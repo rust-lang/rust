@@ -1,4 +1,4 @@
-error: encountered dangling pointer in final constant
+error: encountered dangling pointer in final value of constant
   --> $DIR/dealloc_intrinsic_dangling.rs:7:1
    |
 LL | const _X: &'static u8 = unsafe {

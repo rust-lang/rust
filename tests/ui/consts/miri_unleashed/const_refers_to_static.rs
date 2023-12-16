@@ -30,4 +30,9 @@ const READ_IMMUT: &usize = { //~ ERROR it is undefined behavior to use this valu
     &FOO
 };
 
+static MY_STATIC: u8 = 4;
+const REF_IMMUT: &u8 = &MY_STATIC;
+//~^ ERROR it is undefined behavior to use this value
+//~| encountered a reference pointing to a static variable
+
 fn main() {}

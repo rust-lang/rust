@@ -1,8 +1,8 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/invalid-union.rs:35:1
+  --> $DIR/interior-mut-const-via-union.rs:35:1
    |
 LL | fn main() {
-   | ^^^^^^^^^ constructing invalid value at .<deref>.y.<enum-variant(B)>.0: encountered `UnsafeCell` in a `const`
+   | ^^^^^^^^^ constructing invalid value at .<deref>.y.<enum-variant(B)>.0: encountered `UnsafeCell` in read-only memory
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: 4, align: 4) {
@@ -10,13 +10,13 @@ LL | fn main() {
            }
 
 note: erroneous constant encountered
-  --> $DIR/invalid-union.rs:37:25
+  --> $DIR/interior-mut-const-via-union.rs:37:25
    |
 LL |     let _: &'static _ = &C;
    |                         ^^
 
 note: erroneous constant encountered
-  --> $DIR/invalid-union.rs:37:25
+  --> $DIR/interior-mut-const-via-union.rs:37:25
    |
 LL |     let _: &'static _ = &C;
    |                         ^^
