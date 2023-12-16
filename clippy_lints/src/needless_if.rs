@@ -44,7 +44,6 @@ impl LateLintPass<'_> for NeedlessIf {
             && block.stmts.is_empty()
             && block.expr.is_none()
             && !in_external_macro(cx.sess(), expr.span)
-            && !is_from_proc_macro(cx, expr)
             && let Some(then_snippet) = snippet_opt(cx, then.span)
             // Ignore
             // - empty macro expansions
@@ -53,6 +52,7 @@ impl LateLintPass<'_> for NeedlessIf {
             // - #[cfg]'d out code
             && then_snippet.chars().all(|ch| matches!(ch, '{' | '}') || ch.is_ascii_whitespace())
             && let Some(cond_snippet) = snippet_opt(cx, cond.span)
+            && !is_from_proc_macro(cx, expr)
         {
             span_lint_and_sugg(
                 cx,

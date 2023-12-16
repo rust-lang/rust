@@ -227,3 +227,6 @@ where [(); N.checked_next_power_of_two().unwrap()]: {
 
 /// this checks if the lowerCamelCase issue is fixed
 fn issue_11568() {}
+
+/// There is no try (do() or do_not()).
+fn parenthesized_word() {}

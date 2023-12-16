@@ -3906,7 +3906,7 @@ impl_lint_pass!(Methods => [
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
-fn method_call<'tcx>(
+pub fn method_call<'tcx>(
     recv: &'tcx hir::Expr<'tcx>,
 ) -> Option<(&'tcx str, &'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>], Span, Span)> {
     if let ExprKind::MethodCall(path, receiver, args, call_span) = recv.kind {
