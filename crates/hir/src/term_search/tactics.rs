@@ -8,7 +8,8 @@
 //! * `goal` - Term search target type
 //! And they return iterator that yields type trees that unify with the `goal` type.
 
-use hir_def::generics::TypeOrConstParamData;
+use std::iter;
+
 use hir_ty::db::HirDatabase;
 use hir_ty::mir::BorrowKind;
 use hir_ty::TyBuilder;
@@ -16,8 +17,8 @@ use itertools::Itertools;
 use rustc_hash::FxHashSet;
 
 use crate::{
-    Adt, AssocItem, Enum, GenericParam, HasVisibility, Impl, Module, ModuleDef, ScopeDef, Type,
-    Variant,
+    Adt, AssocItem, Enum, GenericDef, GenericParam, HasVisibility, Impl, Module, ModuleDef,
+    ScopeDef, Type, Variant,
 };
 
 use crate::term_search::TypeTree;
@@ -78,7 +79,7 @@ pub(super) fn trivial<'a>(
         lookup.insert(ty.clone(), std::iter::once(tt.clone()));
 
         // Don't suggest local references as they are not valid for return
-        if matches!(tt, TypeTree::Local(_)) && ty.is_reference() {
+        if matches!(tt, TypeTree::Local(_)) && ty.contains_reference(db) {
             return None;
         }
 
@@ -113,34 +114,64 @@ pub(super) fn type_constructor<'a>(
         variant: Variant,
         goal: &Type,
     ) -> Vec<(Type, Vec<TypeTree>)> {
-        let generics = db.generic_params(variant.parent_enum(db).id.into());
+        let generics = GenericDef::from(variant.parent_enum(db));
+
+        // Ignore unstable variants
+        if variant.is_unstable(db) {
+            return Vec::new();
+        }
 
         // Ignore enums with const generics
-        if generics
-            .type_or_consts
-            .values()
-            .any(|it| matches!(it, TypeOrConstParamData::ConstParamData(_)))
-        {
+        if !generics.const_params(db).is_empty() {
             return Vec::new();
         }
 
         // We currently do not check lifetime bounds so ignore all types that have something to do
         // with them
-        if !generics.lifetimes.is_empty() {
+        if !generics.lifetime_params(db).is_empty() {
             return Vec::new();
         }
+
+        // Only account for stable type parameters for now
+        let type_params = generics.type_params(db);
+
+        // Only account for stable type parameters for now, unstable params can be default
+        // tho, for example in `Box<T, #[unstable] A: Allocator>`
+        if type_params.iter().any(|it| it.is_unstable(db) && it.default(db).is_none()) {
+            return Vec::new();
+        }
+
+        let non_default_type_params_len =
+            type_params.iter().filter(|it| it.default(db).is_none()).count();
 
         let generic_params = lookup
             .iter_types()
             .collect::<Vec<_>>() // Force take ownership
             .into_iter()
-            .permutations(generics.type_or_consts.len());
+            .permutations(non_default_type_params_len);
 
         generic_params
             .filter_map(|generics| {
+                // Insert default type params
+                let mut g = generics.into_iter();
+                let generics: Vec<_> = type_params
+                    .iter()
+                    .map(|it| match it.default(db) {
+                        Some(ty) => ty,
+                        None => g.next().expect("Missing type param"),
+                    })
+                    .collect();
+
                 let enum_ty = parent_enum.ty_with_generics(db, generics.iter().cloned());
 
+                // Allow types with generics only if they take us straight to goal for
+                // performance reasons
                 if !generics.is_empty() && !enum_ty.could_unify_with_deeply(db, goal) {
+                    return None;
+                }
+
+                // Ignore types that have something to do with lifetimes
+                if enum_ty.contains_reference(db) {
                     return None;
                 }
 
@@ -203,33 +234,64 @@ pub(super) fn type_constructor<'a>(
                 Some(trees)
             }
             ScopeDef::ModuleDef(ModuleDef::Adt(Adt::Struct(it))) => {
-                let generics = db.generic_params(it.id.into());
+                // Ignore unstable
+                if it.is_unstable(db) {
+                    return None;
+                }
+
+                let generics = GenericDef::from(*it);
 
                 // Ignore enums with const generics
-                if generics
-                    .type_or_consts
-                    .values()
-                    .any(|it| matches!(it, TypeOrConstParamData::ConstParamData(_)))
-                {
+                if !generics.const_params(db).is_empty() {
                     return None;
                 }
 
                 // We currently do not check lifetime bounds so ignore all types that have something to do
                 // with them
-                if !generics.lifetimes.is_empty() {
+                if !generics.lifetime_params(db).is_empty() {
                     return None;
                 }
+
+                let type_params = generics.type_params(db);
+
+                // Only account for stable type parameters for now, unstable params can be default
+                // tho, for example in `Box<T, #[unstable] A: Allocator>`
+                if type_params.iter().any(|it| it.is_unstable(db) && it.default(db).is_none()) {
+                    return None;
+                }
+
+                let non_default_type_params_len =
+                    type_params.iter().filter(|it| it.default(db).is_none()).count();
 
                 let generic_params = lookup
                     .iter_types()
                     .collect::<Vec<_>>() // Force take ownership
                     .into_iter()
-                    .permutations(generics.type_or_consts.len());
+                    .permutations(non_default_type_params_len);
 
                 let trees = generic_params
                     .filter_map(|generics| {
+                        // Insert default type params
+                        let mut g = generics.into_iter();
+                        let generics: Vec<_> = type_params
+                            .iter()
+                            .map(|it| match it.default(db) {
+                                Some(ty) => ty,
+                                None => g.next().expect("Missing type param"),
+                            })
+                            .collect();
                         let struct_ty = it.ty_with_generics(db, generics.iter().cloned());
-                        if !generics.is_empty() && !struct_ty.could_unify_with_deeply(db, goal) {
+
+                        // Allow types with generics only if they take us straight to goal for
+                        // performance reasons
+                        if non_default_type_params_len != 0
+                            && struct_ty.could_unify_with_deeply(db, goal)
+                        {
+                            return None;
+                        }
+
+                        // Ignore types that have something to do with lifetimes
+                        if struct_ty.contains_reference(db) {
                             return None;
                         }
                         let fileds = it.fields(db);
@@ -301,20 +363,31 @@ pub(super) fn free_function<'a>(
     defs.iter()
         .filter_map(|def| match def {
             ScopeDef::ModuleDef(ModuleDef::Function(it)) => {
-                let generics = db.generic_params(it.id.into());
+                let generics = GenericDef::from(*it);
 
                 // Skip functions that require const generics
-                if generics
-                    .type_or_consts
-                    .values()
-                    .any(|it| matches!(it, TypeOrConstParamData::ConstParamData(_)))
-                {
+                if !generics.const_params(db).is_empty() {
                     return None;
                 }
 
-                // Ignore bigger number of generics for now as they kill the performance
                 // Ignore lifetimes as we do not check them
-                if generics.type_or_consts.len() > 0 || !generics.lifetimes.is_empty() {
+                if !generics.lifetime_params(db).is_empty() {
+                    return None;
+                }
+
+                let type_params = generics.type_params(db);
+
+                // Only account for stable type parameters for now, unstable params can be default
+                // tho, for example in `Box<T, #[unstable] A: Allocator>`
+                if type_params.iter().any(|it| it.is_unstable(db) && it.default(db).is_none()) {
+                    return None;
+                }
+
+                let non_default_type_params_len =
+                    type_params.iter().filter(|it| it.default(db).is_none()).count();
+
+                // Ignore bigger number of generics for now as they kill the performance
+                if non_default_type_params_len > 0 {
                     return None;
                 }
 
@@ -322,16 +395,26 @@ pub(super) fn free_function<'a>(
                     .iter_types()
                     .collect::<Vec<_>>() // Force take ownership
                     .into_iter()
-                    .permutations(generics.type_or_consts.len());
+                    .permutations(non_default_type_params_len);
 
                 let trees: Vec<_> = generic_params
                     .filter_map(|generics| {
+                        // Insert default type params
+                        let mut g = generics.into_iter();
+                        let generics: Vec<_> = type_params
+                            .iter()
+                            .map(|it| match it.default(db) {
+                                Some(ty) => ty,
+                                None => g.next().expect("Missing type param"),
+                            })
+                            .collect();
+
                         let ret_ty = it.ret_type_with_generics(db, generics.iter().cloned());
                         // Filter out private and unsafe functions
                         if !it.is_visible_from(db, *module)
                             || it.is_unsafe_to_call(db)
                             || it.is_unstable(db)
-                            || ret_ty.is_reference()
+                            || ret_ty.contains_reference(db)
                             || ret_ty.is_raw_ptr()
                         {
                             return None;
@@ -417,24 +500,17 @@ pub(super) fn impl_method<'a>(
             _ => None,
         })
         .filter_map(|(imp, ty, it)| {
-            let fn_generics = db.generic_params(it.id.into());
-            let imp_generics = db.generic_params(imp.id.into());
+            let fn_generics = GenericDef::from(it);
+            let imp_generics = GenericDef::from(imp);
 
             // Ignore impl if it has const type arguments
-            if fn_generics
-                .type_or_consts
-                .values()
-                .any(|it| matches!(it, TypeOrConstParamData::ConstParamData(_)))
-                || imp_generics
-                    .type_or_consts
-                    .values()
-                    .any(|it| matches!(it, TypeOrConstParamData::ConstParamData(_)))
+            if !fn_generics.const_params(db).is_empty() || !imp_generics.const_params(db).is_empty()
             {
                 return None;
             }
 
             // Ignore all functions that have something to do with lifetimes as we don't check them
-            if !fn_generics.lifetimes.is_empty() {
+            if !fn_generics.lifetime_params(db).is_empty() {
                 return None;
             }
 
@@ -448,8 +524,25 @@ pub(super) fn impl_method<'a>(
                 return None;
             }
 
+            let imp_type_params = imp_generics.type_params(db);
+            let fn_type_params = fn_generics.type_params(db);
+
+            // Only account for stable type parameters for now, unstable params can be default
+            // tho, for example in `Box<T, #[unstable] A: Allocator>`
+            if imp_type_params.iter().any(|it| it.is_unstable(db) && it.default(db).is_none())
+                || fn_type_params.iter().any(|it| it.is_unstable(db) && it.default(db).is_none())
+            {
+                return None;
+            }
+
+            let non_default_type_params_len = imp_type_params
+                .iter()
+                .chain(fn_type_params.iter())
+                .filter(|it| it.default(db).is_none())
+                .count();
+
             // Ignore bigger number of generics for now as they kill the performance
-            if imp_generics.type_or_consts.len() + fn_generics.type_or_consts.len() > 0 {
+            if non_default_type_params_len > 0 {
                 return None;
             }
 
@@ -457,16 +550,27 @@ pub(super) fn impl_method<'a>(
                 .iter_types()
                 .collect::<Vec<_>>() // Force take ownership
                 .into_iter()
-                .permutations(imp_generics.type_or_consts.len() + fn_generics.type_or_consts.len());
+                .permutations(non_default_type_params_len);
 
             let trees: Vec<_> = generic_params
                 .filter_map(|generics| {
+                    // Insert default type params
+                    let mut g = generics.into_iter();
+                    let generics: Vec<_> = imp_type_params
+                        .iter()
+                        .chain(fn_type_params.iter())
+                        .map(|it| match it.default(db) {
+                            Some(ty) => ty,
+                            None => g.next().expect("Missing type param"),
+                        })
+                        .collect();
+
                     let ret_ty = it.ret_type_with_generics(
                         db,
                         ty.type_arguments().chain(generics.iter().cloned()),
                     );
                     // Filter out functions that return references
-                    if ret_ty.is_reference() || ret_ty.is_raw_ptr() {
+                    if ret_ty.contains_reference(db) || ret_ty.is_raw_ptr() {
                         return None;
                     }
 
@@ -589,4 +693,158 @@ pub(super) fn famous_types<'a>(
         tt
     })
     .filter(|tt| tt.ty(db).could_unify_with_deeply(db, goal))
+}
+
+/// # Impl static method (without self type) tactic
+///
+/// Attempts different functions from impl blocks that take no self parameter.
+///
+/// Updates lookup by new types reached and returns iterator that yields
+/// elements that unify with `goal`.
+///
+/// # Arguments
+/// * `db` - HIR database
+/// * `module` - Module where the term search target location
+/// * `defs` - Set of items in scope at term search target location
+/// * `lookup` - Lookup table for types
+/// * `goal` - Term search target type
+pub(super) fn impl_static_method<'a>(
+    db: &'a dyn HirDatabase,
+    module: &'a Module,
+    _defs: &'a FxHashSet<ScopeDef>,
+    lookup: &'a mut LookupTable,
+    goal: &'a Type,
+) -> impl Iterator<Item = TypeTree> + 'a {
+    lookup
+        .take_types_wishlist()
+        .into_iter()
+        .chain(iter::once(goal.clone()))
+        .flat_map(|ty| {
+            Impl::all_for_type(db, ty.clone()).into_iter().map(move |imp| (ty.clone(), imp))
+        })
+        .filter(|(_, imp)| !imp.is_unsafe(db))
+        .flat_map(|(ty, imp)| imp.items(db).into_iter().map(move |item| (imp, ty.clone(), item)))
+        .filter_map(|(imp, ty, it)| match it {
+            AssocItem::Function(f) => Some((imp, ty, f)),
+            _ => None,
+        })
+        .filter_map(|(imp, ty, it)| {
+            let fn_generics = GenericDef::from(it);
+            let imp_generics = GenericDef::from(imp);
+
+            // Ignore impl if it has const type arguments
+            if !fn_generics.const_params(db).is_empty() || !imp_generics.const_params(db).is_empty()
+            {
+                return None;
+            }
+
+            // Ignore all functions that have something to do with lifetimes as we don't check them
+            if !fn_generics.lifetime_params(db).is_empty()
+                || !imp_generics.lifetime_params(db).is_empty()
+            {
+                return None;
+            }
+
+            // Ignore functions with self param
+            if it.has_self_param(db) {
+                return None;
+            }
+
+            // Filter out private and unsafe functions
+            if !it.is_visible_from(db, *module) || it.is_unsafe_to_call(db) || it.is_unstable(db) {
+                return None;
+            }
+
+            let imp_type_params = imp_generics.type_params(db);
+            let fn_type_params = fn_generics.type_params(db);
+
+            // Only account for stable type parameters for now, unstable params can be default
+            // tho, for example in `Box<T, #[unstable] A: Allocator>`
+            if imp_type_params.iter().any(|it| it.is_unstable(db) && it.default(db).is_none())
+                || fn_type_params.iter().any(|it| it.is_unstable(db) && it.default(db).is_none())
+            {
+                return None;
+            }
+
+            let non_default_type_params_len = imp_type_params
+                .iter()
+                .chain(fn_type_params.iter())
+                .filter(|it| it.default(db).is_none())
+                .count();
+
+            // Ignore bigger number of generics for now as they kill the performance
+            if non_default_type_params_len > 0 {
+                return None;
+            }
+
+            let generic_params = lookup
+                .iter_types()
+                .collect::<Vec<_>>() // Force take ownership
+                .into_iter()
+                .permutations(non_default_type_params_len);
+
+            let trees: Vec<_> = generic_params
+                .filter_map(|generics| {
+                    // Insert default type params
+                    let mut g = generics.into_iter();
+                    let generics: Vec<_> = imp_type_params
+                        .iter()
+                        .chain(fn_type_params.iter())
+                        .map(|it| match it.default(db) {
+                            Some(ty) => ty,
+                            None => g.next().expect("Missing type param"),
+                        })
+                        .collect();
+
+                    let ret_ty = it.ret_type_with_generics(
+                        db,
+                        ty.type_arguments().chain(generics.iter().cloned()),
+                    );
+                    // Filter out functions that return references
+                    if ret_ty.contains_reference(db) || ret_ty.is_raw_ptr() {
+                        return None;
+                    }
+
+                    // Ignore functions that do not change the type
+                    // if ty.could_unify_with_deeply(db, &ret_ty) {
+                    //     return None;
+                    // }
+
+                    // Early exit if some param cannot be filled from lookup
+                    let param_trees: Vec<Vec<TypeTree>> = it
+                        .params_without_self_with_generics(
+                            db,
+                            ty.type_arguments().chain(generics.iter().cloned()),
+                        )
+                        .into_iter()
+                        .map(|field| lookup.find_autoref(db, &field.ty()))
+                        .collect::<Option<_>>()?;
+
+                    // Note that we need special case for 0 param constructors because of multi cartesian
+                    // product
+                    let fn_trees: Vec<TypeTree> = if param_trees.is_empty() {
+                        vec![TypeTree::Function { func: it, generics, params: Vec::new() }]
+                    } else {
+                        param_trees
+                            .into_iter()
+                            .multi_cartesian_product()
+                            .take(MAX_VARIATIONS)
+                            .map(|params| TypeTree::Function {
+                                func: it,
+                                generics: generics.clone(),
+
+                                params,
+                            })
+                            .collect()
+                    };
+
+                    lookup.insert(ret_ty.clone(), fn_trees.iter().cloned());
+                    Some((ret_ty, fn_trees))
+                })
+                .collect();
+            Some(trees)
+        })
+        .flatten()
+        .filter_map(|(ty, trees)| ty.could_unify_with_deeply(db, goal).then(|| trees))
+        .flatten()
 }

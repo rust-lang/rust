@@ -439,17 +439,18 @@ impl flags::AnalysisStats {
                                 if let Some(mut err_idx) = err.find("error[E") {
                                     err_idx += 7;
                                     let err_code = &err[err_idx..err_idx + 4];
-                                    // if err_code == "0308" {
-                                    println!("{}", err);
-                                    println!("{}", generated);
-                                    // }
+                                    if err_code == "0282" {
+                                        continue; // Byproduct of testing method
+                                    }
+                                    bar.println(err);
+                                    bar.println(generated);
                                     acc.error_codes
                                         .entry(err_code.to_owned())
                                         .and_modify(|n| *n += 1)
                                         .or_insert(1);
                                 } else {
                                     acc.syntax_errors += 1;
-                                    bar.println(format!("Syntax error here >>>>\n{}", err));
+                                    bar.println(format!("Syntax error: \n{}", err));
                                 }
                             }
                         }

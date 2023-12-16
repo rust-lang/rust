@@ -47,6 +47,8 @@ struct LookupTable {
     round_scopedef_hits: FxHashSet<ScopeDef>,
     /// Amount of rounds since scopedef was first used.
     rounds_since_sopedef_hit: FxHashMap<ScopeDef, u32>,
+    /// Types queried but not present
+    types_wishlist: FxHashSet<Type>,
 }
 
 impl LookupTable {
@@ -149,6 +151,10 @@ impl LookupTable {
     fn exhausted_scopedefs(&self) -> &FxHashSet<ScopeDef> {
         &self.exhausted_scopedefs
     }
+
+    fn take_types_wishlist(&mut self) -> FxHashSet<Type> {
+        std::mem::take(&mut self.types_wishlist)
+    }
 }
 
 /// # Term search
@@ -205,6 +211,7 @@ pub fn term_search<DB: HirDatabase>(
         solutions.extend(tactics::free_function(sema.db, &module, &defs, &mut lookup, goal));
         solutions.extend(tactics::impl_method(sema.db, &module, &defs, &mut lookup, goal));
         solutions.extend(tactics::struct_projection(sema.db, &module, &defs, &mut lookup, goal));
+        solutions.extend(tactics::impl_static_method(sema.db, &module, &defs, &mut lookup, goal));
 
         // Break after 1 round after successful solution
         if solution_found {

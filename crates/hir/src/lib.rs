@@ -1187,6 +1187,10 @@ impl Struct {
     fn variant_data(self, db: &dyn HirDatabase) -> Arc<VariantData> {
         db.struct_data(self.id).variant_data.clone()
     }
+
+    pub fn is_unstable(self, db: &dyn HirDatabase) -> bool {
+        db.attrs(self.id.into()).is_unstable()
+    }
 }
 
 impl HasVisibility for Struct {
@@ -1228,6 +1232,10 @@ impl Union {
 
     fn variant_data(self, db: &dyn HirDatabase) -> Arc<VariantData> {
         db.union_data(self.id).variant_data.clone()
+    }
+
+    pub fn is_unstable(self, db: &dyn HirDatabase) -> bool {
+        db.attrs(self.id.into()).is_unstable()
     }
 }
 
@@ -1318,6 +1326,10 @@ impl Enum {
     pub fn layout(self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
         Adt::from(self).layout(db)
     }
+
+    pub fn is_unstable(self, db: &dyn HirDatabase) -> bool {
+        db.attrs(self.id.into()).is_unstable()
+    }
 }
 
 impl HasVisibility for Enum {
@@ -1392,6 +1404,10 @@ impl Variant {
             ),
             _ => parent_layout,
         })
+    }
+
+    pub fn is_unstable(self, db: &dyn HirDatabase) -> bool {
+        db.attrs(self.id.into()).is_unstable()
     }
 }
 
@@ -2912,13 +2928,47 @@ impl GenericDef {
             .collect()
     }
 
-    pub fn type_params(self, db: &dyn HirDatabase) -> Vec<TypeOrConstParam> {
+    pub fn type_or_const_params(self, db: &dyn HirDatabase) -> Vec<TypeOrConstParam> {
         let generics = db.generic_params(self.into());
         generics
             .type_or_consts
             .iter()
             .map(|(local_id, _)| TypeOrConstParam {
                 id: TypeOrConstParamId { parent: self.into(), local_id },
+            })
+            .collect()
+    }
+
+    pub fn type_params(self, db: &dyn HirDatabase) -> Vec<TypeParam> {
+        let generics = db.generic_params(self.into());
+        generics
+            .type_or_consts
+            .iter()
+            .filter_map(|(local_id, data)| match data {
+                hir_def::generics::TypeOrConstParamData::TypeParamData(_) => Some(TypeParam {
+                    id: TypeParamId::from_unchecked(TypeOrConstParamId {
+                        parent: self.into(),
+                        local_id,
+                    }),
+                }),
+                hir_def::generics::TypeOrConstParamData::ConstParamData(_) => None,
+            })
+            .collect()
+    }
+
+    pub fn const_params(self, db: &dyn HirDatabase) -> Vec<ConstParam> {
+        let generics = db.generic_params(self.into());
+        generics
+            .type_or_consts
+            .iter()
+            .filter_map(|(local_id, data)| match data {
+                hir_def::generics::TypeOrConstParamData::TypeParamData(_) => None,
+                hir_def::generics::TypeOrConstParamData::ConstParamData(_) => Some(ConstParam {
+                    id: ConstParamId::from_unchecked(TypeOrConstParamId {
+                        parent: self.into(),
+                        local_id,
+                    }),
+                }),
             })
             .collect()
     }
@@ -3284,11 +3334,15 @@ impl TypeParam {
         let ty = generic_arg_from_param(db, self.id.into())?;
         let resolver = self.id.parent().resolver(db.upcast());
         match ty.data(Interner) {
-            GenericArgData::Ty(it) => {
+            GenericArgData::Ty(it) if *it.kind(Interner) != TyKind::Error => {
                 Some(Type::new_with_resolver_inner(db, &resolver, it.clone()))
             }
             _ => None,
         }
+    }
+
+    pub fn is_unstable(self, db: &dyn HirDatabase) -> bool {
+        db.attrs(GenericParamId::from(self.id).into()).is_unstable()
     }
 }
 
@@ -3771,6 +3825,50 @@ impl Type {
 
     pub fn is_reference(&self) -> bool {
         matches!(self.ty.kind(Interner), TyKind::Ref(..))
+    }
+
+    pub fn contains_reference(&self, db: &dyn HirDatabase) -> bool {
+        return go(db, self.env.krate, &self.ty);
+
+        fn go(db: &dyn HirDatabase, krate: CrateId, ty: &Ty) -> bool {
+            match ty.kind(Interner) {
+                // Reference itself
+                TyKind::Ref(_, _, _) => true,
+
+                // For non-phantom_data adts we check variants/fields as well as generic parameters
+                TyKind::Adt(adt_id, substitution)
+                    if !db.struct_datum(krate, *adt_id).flags.phantom_data =>
+                {
+                    let adt_datum = &db.struct_datum(krate, *adt_id);
+                    let adt_datum_bound =
+                        adt_datum.binders.clone().substitute(Interner, substitution);
+                    adt_datum_bound
+                        .variants
+                        .into_iter()
+                        .flat_map(|variant| variant.fields.into_iter())
+                        .any(|ty| go(db, krate, &ty))
+                        || substitution
+                            .iter(Interner)
+                            .filter_map(|x| x.ty(Interner))
+                            .any(|ty| go(db, krate, ty))
+                }
+                // And for `PhantomData<T>`, we check `T`.
+                TyKind::Adt(_, substitution)
+                | TyKind::Tuple(_, substitution)
+                | TyKind::OpaqueType(_, substitution)
+                | TyKind::AssociatedType(_, substitution)
+                | TyKind::FnDef(_, substitution) => substitution
+                    .iter(Interner)
+                    .filter_map(|x| x.ty(Interner))
+                    .any(|ty| go(db, krate, ty)),
+
+                // For `[T]` or `*T` we check `T`
+                TyKind::Array(ty, _) | TyKind::Slice(ty) | TyKind::Raw(_, ty) => go(db, krate, ty),
+
+                // Consider everything else as not reference
+                _ => false,
+            }
+        }
     }
 
     pub fn as_reference(&self) -> Option<(Type, Mutability)> {

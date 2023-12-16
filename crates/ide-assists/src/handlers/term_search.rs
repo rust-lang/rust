@@ -91,7 +91,7 @@ mod tests {
             fn f() { let a: i32 = 1; let b: Option<i32> = todo$0!(); }"#,
             r#"macro_rules! todo { () => (_) };
             enum Option<T> { Some(T), None }
-            fn f() { let a: i32 = 1; let b: Option<i32> = Option::None::<i32>; }"#,
+            fn f() { let a: i32 = 1; let b: Option<i32> = Option::None; }"#,
         )
     }
 
@@ -105,6 +105,42 @@ mod tests {
             r#"macro_rules! todo { () => (_) };
             enum Option<T> { None, Some(T) }
             fn f() { let a: i32 = 1; let b: Option<i32> = Option::Some(a); }"#,
+        )
+    }
+
+    #[test]
+    fn test_enum_with_generics3() {
+        check_assist(
+            term_search,
+            r#"macro_rules! todo { () => (_) };
+            enum Option<T> { None, Some(T) }
+            fn f() { let a: Option<i32> = Option::None; let b: Option<Option<i32>> = todo$0!(); }"#,
+            r#"macro_rules! todo { () => (_) };
+            enum Option<T> { None, Some(T) }
+            fn f() { let a: Option<i32> = Option::None; let b: Option<Option<i32>> = Option::Some(a); }"#,
+        )
+    }
+
+    #[test]
+    fn test_enum_with_generics4() {
+        check_assist(
+            term_search,
+            r#"macro_rules! todo { () => (_) };
+            enum Foo<T = i32> { Foo(T) }
+            fn f() { let a = 0; let b: Foo = todo$0!(); }"#,
+            r#"macro_rules! todo { () => (_) };
+            enum Foo<T = i32> { Foo(T) }
+            fn f() { let a = 0; let b: Foo = Foo::Foo(a); }"#,
+        );
+
+        check_assist(
+            term_search,
+            r#"macro_rules! todo { () => (_) };
+            enum Foo<T = i32> { Foo(T) }
+            fn f() { let a: Foo<u32> = Foo::Foo(0); let b: Foo<u32> = todo$0!(); }"#,
+            r#"macro_rules! todo { () => (_) };
+            enum Foo<T = i32> { Foo(T) }
+            fn f() { let a: Foo<u32> = Foo::Foo(0); let b: Foo<u32> = a; }"#,
         )
     }
 
