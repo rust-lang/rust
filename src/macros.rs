@@ -1269,7 +1269,7 @@ impl MacroBranch {
         let has_block_body = old_body.starts_with('{');
 
         let mut config = context.config.clone();
-        config.set().hide_parse_errors(true);
+        config.set().show_parse_errors(false);
 
         result += " {";
 

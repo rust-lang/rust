@@ -122,7 +122,7 @@ fn default_handler(
     source_map: Lrc<SourceMap>,
     ignore_path_set: Lrc<IgnorePathSet>,
     can_reset: Lrc<AtomicBool>,
-    hide_parse_errors: bool,
+    show_parse_errors: bool,
     color: Color,
 ) -> Handler {
     let supports_color = term::stderr().map_or(false, |term| term.supports_color());
@@ -132,7 +132,7 @@ fn default_handler(
         ColorConfig::Never
     };
 
-    let emitter = if hide_parse_errors {
+    let emitter = if !show_parse_errors {
         silent_emitter()
     } else {
         let fallback_bundle = rustc_errors::fallback_fluent_bundle(
@@ -163,7 +163,7 @@ impl ParseSess {
             Lrc::clone(&source_map),
             Lrc::clone(&ignore_path_set),
             Lrc::clone(&can_reset_errors),
-            config.hide_parse_errors(),
+            config.show_parse_errors(),
             config.color(),
         );
         let parse_sess = RawParseSess::with_span_handler(handler, source_map);

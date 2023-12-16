@@ -169,7 +169,8 @@ create_config! {
             "Enables unstable features. Only available on nightly channel";
     disable_all_formatting: bool, false, true, "Don't reformat anything";
     skip_children: bool, false, false, "Don't reformat out of line modules";
-    hide_parse_errors: bool, false, false, "Hide errors from the parser";
+    hide_parse_errors: bool, false, false, "(deprecated: use show_parse_errors instead)";
+    show_parse_errors: bool, true, false, "Show errors from the parser (unstable)";
     error_on_line_overflow: bool, false, false, "Error if unable to get all lines within max_width";
     error_on_unformatted: bool, false, false,
         "Error if unable to get comments or string literals within max_width, \
@@ -204,6 +205,7 @@ impl PartialConfig {
         cloned.print_misformatted_file_names = None;
         cloned.merge_imports = None;
         cloned.fn_args_layout = None;
+        cloned.hide_parse_errors = None;
 
         ::toml::to_string(&cloned).map_err(ToTomlError)
     }
@@ -456,6 +458,13 @@ mod test {
             fn_params_layout: Density, Density::Tall, true,
                 "Control the layout of parameters in a function signatures.";
 
+            // hide_parse_errors renamed to show_parse_errors
+            hide_parse_errors: bool, false, false,
+                "(deprecated: use show_parse_errors instead)";
+            show_parse_errors: bool, true, false,
+                "Show errors from the parser (unstable)";
+
+
             // Width Heuristics
             use_small_heuristics: Heuristics, Heuristics::Default, true,
                 "Whether to use different formatting for items and \
@@ -681,7 +690,7 @@ required_version = "{}"
 unstable_features = false
 disable_all_formatting = false
 skip_children = false
-hide_parse_errors = false
+show_parse_errors = true
 error_on_line_overflow = false
 error_on_unformatted = false
 ignore = []
