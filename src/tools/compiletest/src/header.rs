@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 use std::env;
-use std::fs::canonicalize;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
@@ -812,9 +811,12 @@ fn expand_variables(mut value: String, config: &Config) -> String {
     }
 
     if value.contains(RUST_SRC_BASE) {
-        let src = config.sysroot_base.join("lib/rustlib/src/rust");
-        let canonical = canonicalize(&src).unwrap();
-        value = value.replace(RUST_SRC_BASE, &canonical.to_string_lossy());
+        let src_base = config
+            .sysroot_base
+            .join("lib/rustlib/src/rust")
+            .read_link()
+            .expect("lib/rustlib/src/rust in target is a symlink to checkout root");
+        value = value.replace(RUST_SRC_BASE, &src_base.to_string_lossy());
     }
 
     value
