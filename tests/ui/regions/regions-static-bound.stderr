@@ -9,7 +9,7 @@ LL | fn static_id<'a,'b>(t: &'a ()) -> &'static () where 'a: 'static { t }
 note: the lint level is defined here
   --> $DIR/regions-static-bound.rs:1:9
    |
-LL | #![warn(unused_lifetimes)]
+LL | #![warn(unused_lifetimes, redundant_lifetimes)]
    |         ^^^^^^^^^^^^^^^^
 
 warning: unnecessary lifetime parameter `'a`
@@ -19,6 +19,11 @@ LL | fn static_id<'a,'b>(t: &'a ()) -> &'static () where 'a: 'static { t }
    |              ^^
    |
    = note: you can use the `'static` lifetime directly, in place of `'a`
+note: the lint level is defined here
+  --> $DIR/regions-static-bound.rs:1:27
+   |
+LL | #![warn(unused_lifetimes, redundant_lifetimes)]
+   |                           ^^^^^^^^^^^^^^^^^^^
 
 warning: unnecessary lifetime parameter `'a`
   --> $DIR/regions-static-bound.rs:7:23

@@ -8,8 +8,8 @@ LL | fn invariant_id<'a,'b>(t: &'b mut &'static ()) -> &'b mut &'a ()
 note: the lint level is defined here
   --> $DIR/regions-static-bound-rpass.rs:3:9
    |
-LL | #![warn(unused_lifetimes)]
-   |         ^^^^^^^^^^^^^^^^
+LL | #![warn(redundant_lifetimes)]
+   |         ^^^^^^^^^^^^^^^^^^^
 
 warning: unnecessary lifetime parameter `'a`
   --> $DIR/regions-static-bound-rpass.rs:9:14

@@ -1,5 +1,4 @@
-#![allow(unused)]
-#![deny(unused_lifetimes)]
+#![deny(redundant_lifetimes)]
 
 fn a<'a, 'b>(x: &'a &'b &'a ()) {} //~ ERROR unnecessary lifetime parameter `'b`
 

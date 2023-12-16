@@ -8,8 +8,8 @@ LL | fn test<'a,'b>(x: &'a i32) -> &'b i32
 note: the lint level is defined here
   --> $DIR/regions-free-region-outlives-static-outlives-free-region.rs:11:9
    |
-LL | #![warn(unused_lifetimes)]
-   |         ^^^^^^^^^^^^^^^^
+LL | #![warn(redundant_lifetimes)]
+   |         ^^^^^^^^^^^^^^^^^^^
 
 warning: 1 warning emitted
 
