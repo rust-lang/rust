@@ -361,7 +361,12 @@ fn expected_type_and_name(
                     let ty = it.pat()
                         .and_then(|pat| sema.type_of_pat(&pat))
                         .or_else(|| it.initializer().and_then(|it| sema.type_of_expr(&it)))
-                        .map(TypeInfo::original);
+                        .map(TypeInfo::original)
+                        .filter(|ty| {
+                            // don't infer the let type if the expr is a function,
+                            // preventing parenthesis from vanishing
+                            it.ty().is_some() || !ty.is_fn()
+                        });
                     let name = match it.pat() {
                         Some(ast::Pat::IdentPat(ident)) => ident.name().map(NameOrNameRef::Name),
                         Some(_) | None => None,
@@ -415,20 +420,16 @@ fn expected_type_and_name(
                     })().unwrap_or((None, None))
                 },
                 ast::RecordExprField(it) => {
+                    let field_ty = sema.resolve_record_field(&it).map(|(_, _, ty)| ty);
+                    let field_name = it.field_name().map(NameOrNameRef::NameRef);
                     if let Some(expr) = it.expr() {
                         cov_mark::hit!(expected_type_struct_field_with_leading_char);
-                        (
-                            sema.type_of_expr(&expr).map(TypeInfo::original),
-                            it.field_name().map(NameOrNameRef::NameRef),
-                        )
+                        let ty = field_ty
+                            .or_else(|| sema.type_of_expr(&expr).map(TypeInfo::original));
+                        (ty, field_name)
                     } else {
                         cov_mark::hit!(expected_type_struct_field_followed_by_comma);
-                        let ty = sema.resolve_record_field(&it)
-                            .map(|(_, _, ty)| ty);
-                        (
-                            ty,
-                            it.field_name().map(NameOrNameRef::NameRef),
-                        )
+                        (field_ty, field_name)
                     }
                 },
                 // match foo { $0 }
