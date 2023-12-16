@@ -178,6 +178,9 @@ pub struct TestProps {
     // Whether to tell `rustc` to remap the "src base" directory to a fake
     // directory.
     pub remap_src_base: bool,
+    /// Extra flags to pass to `llvm-cov` when producing coverage reports.
+    /// Only used by the "coverage-run" test mode.
+    pub llvm_cov_flags: Vec<String>,
 }
 
 mod directives {
@@ -216,6 +219,7 @@ mod directives {
     pub const MIR_UNIT_TEST: &'static str = "unit-test";
     pub const REMAP_SRC_BASE: &'static str = "remap-src-base";
     pub const COMPARE_OUTPUT_LINES_BY_SUBSET: &'static str = "compare-output-lines-by-subset";
+    pub const LLVM_COV_FLAGS: &'static str = "llvm-cov-flags";
     // This isn't a real directive, just one that is probably mistyped often
     pub const INCORRECT_COMPILER_FLAGS: &'static str = "compiler-flags";
 }
@@ -265,6 +269,7 @@ impl TestProps {
             stderr_per_bitwidth: false,
             mir_unit_test: None,
             remap_src_base: false,
+            llvm_cov_flags: vec![],
         }
     }
 
@@ -495,6 +500,10 @@ impl TestProps {
                     COMPARE_OUTPUT_LINES_BY_SUBSET,
                     &mut self.compare_output_lines_by_subset,
                 );
+
+                if let Some(flags) = config.parse_name_value_directive(ln, LLVM_COV_FLAGS) {
+                    self.llvm_cov_flags.extend(split_flags(&flags));
+                }
             });
         }
 
