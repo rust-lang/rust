@@ -18,13 +18,24 @@ pub fn lint_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, when: String) {
         .iterate_to_fixpoint()
         .into_results_cursor(body);
 
-    Lint { tcx, when, body, reachable_blocks, storage_liveness }.visit_body(body);
+    Lint {
+        tcx,
+        when,
+        body,
+        is_fn_like: tcx.def_kind(body.source.def_id()).is_fn_like(),
+        always_live_locals,
+        reachable_blocks,
+        storage_liveness,
+    }
+    .visit_body(body);
 }
 
 struct Lint<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     when: String,
     body: &'a Body<'tcx>,
+    is_fn_like: bool,
+    always_live_locals: &'a BitSet<Local>,
     reachable_blocks: BitSet<BasicBlock>,
     storage_liveness: ResultsCursor<'a, 'tcx, MaybeStorageLive<'a>>,
 }
@@ -73,5 +84,28 @@ impl<'a, 'tcx> Visitor<'tcx> for Lint<'a, 'tcx> {
         }
 
         self.super_statement(statement, location);
+    }
+
+    fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
+        match terminator.kind {
+            TerminatorKind::Return => {
+                if self.is_fn_like && self.reachable_blocks.contains(location.block) {
+                    self.storage_liveness.seek_after_primary_effect(location);
+                    for local in self.storage_liveness.get().iter() {
+                        if !self.always_live_locals.contains(local) {
+                            self.fail(
+                                location,
+                                format!(
+                                    "local {local:?} still has storage when returning from function"
+                                ),
+                            );
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        self.super_terminator(terminator, location);
     }
 }
