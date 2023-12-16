@@ -50,6 +50,8 @@ extern crate clippy_utils;
 #[macro_use]
 extern crate declare_clippy_lint;
 
+use std::collections::BTreeMap;
+
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::{Lint, LintId};
 
@@ -74,7 +76,7 @@ mod assertions_on_result_states;
 mod async_yields_async;
 mod attrs;
 mod await_holding_invalid;
-mod blocks_in_if_conditions;
+mod blocks_in_conditions;
 mod bool_assert_comparison;
 mod bool_to_int_with_if;
 mod booleans;
@@ -153,6 +155,7 @@ mod implied_bounds_in_impls;
 mod inconsistent_struct_constructor;
 mod index_refutable_slice;
 mod indexing_slicing;
+mod ineffective_open_options;
 mod infinite_iter;
 mod inherent_impl;
 mod inherent_to_string;
@@ -289,6 +292,7 @@ mod ref_option_ref;
 mod ref_patterns;
 mod reference;
 mod regex;
+mod repeat_vec_with_capacity;
 mod reserve_after_initialization;
 mod return_self_not_must_use;
 mod returns;
@@ -325,6 +329,7 @@ mod tuple_array_conversions;
 mod types;
 mod undocumented_unsafe_blocks;
 mod unicode;
+mod uninhabited_references;
 mod uninit_vec;
 mod unit_return_expecting_ord;
 mod unit_types;
@@ -653,7 +658,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::<significant_drop_tightening::SignificantDropTightening<'_>>::default());
     store.register_late_pass(|_| Box::new(len_zero::LenZero));
     store.register_late_pass(|_| Box::new(attrs::Attributes));
-    store.register_late_pass(|_| Box::new(blocks_in_if_conditions::BlocksInIfConditions));
+    store.register_late_pass(|_| Box::new(blocks_in_conditions::BlocksInConditions));
     store.register_late_pass(|_| Box::new(unicode::Unicode));
     store.register_late_pass(|_| Box::new(uninit_vec::UninitVec));
     store.register_late_pass(|_| Box::new(unit_return_expecting_ord::UnitReturnExpectingOrd));
@@ -722,6 +727,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         Box::new(vec::UselessVec {
             too_large_for_stack,
             msrv: msrv(),
+            span_to_lint_map: BTreeMap::new(),
         })
     });
     store.register_late_pass(|_| Box::new(panic_unimplemented::PanicUnimplemented));
@@ -1069,6 +1075,9 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(iter_without_into_iter::IterWithoutIntoIter));
     store.register_late_pass(|_| Box::new(iter_over_hash_type::IterOverHashType));
     store.register_late_pass(|_| Box::new(impl_hash_with_borrow_str_and_bytes::ImplHashWithBorrowStrBytes));
+    store.register_late_pass(|_| Box::new(repeat_vec_with_capacity::RepeatVecWithCapacity));
+    store.register_late_pass(|_| Box::new(uninhabited_references::UninhabitedReferences));
+    store.register_late_pass(|_| Box::new(ineffective_open_options::IneffectiveOpenOptions));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

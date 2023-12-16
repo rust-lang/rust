@@ -319,5 +319,27 @@ help: try
 LL | /// Foo \[bar\] \[baz\] \[qux\]. `DocMarkdownLint`
    |                                  ~~~~~~~~~~~~~~~~~
 
-error: aborting due to 29 previous errors
+error: item in documentation is missing backticks
+  --> $DIR/doc-fixable.rs:231:22
+   |
+LL | /// There is no try (do() or do_not()).
+   |                      ^^^^
+   |
+help: try
+   |
+LL | /// There is no try (`do()` or do_not()).
+   |                      ~~~~~~
+
+error: item in documentation is missing backticks
+  --> $DIR/doc-fixable.rs:231:30
+   |
+LL | /// There is no try (do() or do_not()).
+   |                              ^^^^^^^^
+   |
+help: try
+   |
+LL | /// There is no try (do() or `do_not()`).
+   |                              ~~~~~~~~~~
+
+error: aborting due to 31 previous errors
 

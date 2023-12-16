@@ -1,4 +1,4 @@
-#![warn(clippy::blocks_in_if_conditions)]
+#![warn(clippy::blocks_in_conditions)]
 #![allow(
     unused,
     clippy::let_and_return,
@@ -22,7 +22,7 @@ fn pred_test() {
         && predicate(
             |x| {
                 //~^ ERROR: in an `if` condition, avoid complex blocks or closures with blocks
-                //~| NOTE: `-D clippy::blocks-in-if-conditions` implied by `-D warnings`
+                //~| NOTE: `-D clippy::blocks-in-conditions` implied by `-D warnings`
                 let target = 3;
                 x == target
             },
@@ -58,6 +58,23 @@ fn closure(_: impl FnMut()) -> bool {
 
 fn function_with_empty_closure() {
     if closure(|| {}) {}
+}
+
+// issue #11814
+fn match_with_pred() {
+    let v = 3;
+    match Some(predicate(
+        |x| {
+            //~^ ERROR: in a `match` scrutinee, avoid complex blocks or closures with blocks
+            let target = 3;
+            x == target
+        },
+        v,
+    )) {
+        Some(true) => 1,
+        Some(false) => 2,
+        None => 3,
+    };
 }
 
 #[rustfmt::skip]

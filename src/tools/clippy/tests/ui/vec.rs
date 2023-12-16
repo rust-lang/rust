@@ -176,3 +176,37 @@ fn below() {
         let _: String = a;
     }
 }
+
+fn func_needing_vec(_bar: usize, _baz: Vec<usize>) {}
+fn func_not_needing_vec(_bar: usize, _baz: usize) {}
+
+fn issue11861() {
+    macro_rules! this_macro_needs_vec {
+        ($x:expr) => {{
+            func_needing_vec($x.iter().sum(), $x);
+            for _ in $x {}
+        }};
+    }
+    macro_rules! this_macro_doesnt_need_vec {
+        ($x:expr) => {{ func_not_needing_vec($x.iter().sum(), $x.iter().sum()) }};
+    }
+
+    // Do not lint the next line
+    this_macro_needs_vec!(vec![1]);
+    this_macro_doesnt_need_vec!(vec![1]); //~ ERROR: useless use of `vec!`
+
+    macro_rules! m {
+        ($x:expr) => {
+            fn f2() {
+                let _x: Vec<i32> = $x;
+            }
+            fn f() {
+                let _x = $x;
+                $x.starts_with(&[]);
+            }
+        };
+    }
+
+    // should not lint
+    m!(vec![1]);
+}
