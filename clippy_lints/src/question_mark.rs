@@ -256,6 +256,7 @@ impl QuestionMark {
                 let_expr,
                 if_then,
                 if_else,
+                ..
             }) = higher::IfLet::hir(cx, expr)
             && !is_else_clause(cx.tcx, expr)
             && let PatKind::TupleStruct(ref path1, [field], ddpos) = let_pat.kind

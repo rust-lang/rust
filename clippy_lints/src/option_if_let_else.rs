@@ -238,6 +238,7 @@ fn detect_option_if_let_else<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) ->
         let_expr,
         if_then,
         if_else: Some(if_else),
+        ..
     }) = higher::IfLet::hir(cx, expr)
         && !cx.typeck_results().expr_ty(expr).is_unit()
         && !is_else_clause(cx.tcx, expr)

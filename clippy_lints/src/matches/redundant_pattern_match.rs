@@ -12,13 +12,13 @@ use rustc_hir::LangItem::{self, OptionNone, OptionSome, PollPending, PollReady, 
 use rustc_hir::{Arm, Expr, ExprKind, Guard, Node, Pat, PatKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
-use rustc_span::{sym, Symbol};
+use rustc_span::{sym, Span, Symbol};
 use std::fmt::Write;
 use std::ops::ControlFlow;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     if let Some(higher::WhileLet { let_pat, let_expr, .. }) = higher::WhileLet::hir(expr) {
-        find_sugg_for_if_let(cx, expr, let_pat, let_expr, "while", false);
+        find_method_sugg_for_if_let(cx, expr, let_pat, let_expr, "while", false);
     }
 }
 
@@ -28,8 +28,34 @@ pub(super) fn check_if_let<'tcx>(
     pat: &'tcx Pat<'_>,
     scrutinee: &'tcx Expr<'_>,
     has_else: bool,
+    let_span: Span,
 ) {
-    find_sugg_for_if_let(cx, expr, pat, scrutinee, "if", has_else);
+    find_if_let_true(cx, pat, scrutinee, let_span);
+    find_method_sugg_for_if_let(cx, expr, pat, scrutinee, "if", has_else);
+}
+
+fn find_if_let_true<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, scrutinee: &'tcx Expr<'_>, let_span: Span) {
+    if let PatKind::Lit(lit) = pat.kind
+        && let ExprKind::Lit(lit) = lit.kind
+        && let LitKind::Bool(is_true) = lit.node
+    {
+        let mut snip = snippet(cx, scrutinee.span, "..").into_owned();
+
+        if !is_true {
+            // Invert condition for `if let false = ...`
+            snip.insert(0, '!');
+        }
+
+        span_lint_and_sugg(
+            cx,
+            REDUNDANT_PATTERN_MATCHING,
+            let_span,
+            "using `if let` to pattern match a boolean",
+            "consider using a regular `if` expression",
+            snip,
+            Applicability::MachineApplicable,
+        );
+    }
 }
 
 // Extract the generic arguments out of a type
@@ -100,7 +126,7 @@ fn find_method_and_type<'tcx>(
     }
 }
 
-fn find_sugg_for_if_let<'tcx>(
+fn find_method_sugg_for_if_let<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'_>,
     let_pat: &Pat<'_>,

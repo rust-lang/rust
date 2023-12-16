@@ -1104,6 +1104,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     if_let.let_pat,
                     if_let.let_expr,
                     if_let.if_else.is_some(),
+                    if_let.let_span,
                 );
                 needless_match::check_if_let(cx, expr, &if_let);
             }
