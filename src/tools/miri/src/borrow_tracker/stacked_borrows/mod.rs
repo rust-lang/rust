@@ -830,7 +830,9 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
         let new_prov = this.sb_reborrow(place, size, new_perm, new_tag, info)?;
 
         // Adjust place.
-        Ok(place.clone().map_provenance(|_| new_prov))
+        // (If the closure gets called, that means the old provenance was `Some`, and hence the new
+        // one must also be `Some`.)
+        Ok(place.clone().map_provenance(|_| new_prov.unwrap()))
     }
 
     /// Retags an individual pointer, returning the retagged version.

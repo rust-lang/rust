@@ -62,8 +62,8 @@ pub(super) struct MemPlace<Prov: Provenance = CtfeProvenance> {
 
 impl<Prov: Provenance> MemPlace<Prov> {
     /// Adjust the provenance of the main pointer (metadata is unaffected).
-    pub fn map_provenance(self, f: impl FnOnce(Option<Prov>) -> Option<Prov>) -> Self {
-        MemPlace { ptr: self.ptr.map_provenance(f), ..self }
+    pub fn map_provenance(self, f: impl FnOnce(Prov) -> Prov) -> Self {
+        MemPlace { ptr: self.ptr.map_provenance(|p| p.map(f)), ..self }
     }
 
     /// Turn a mplace into a (thin or wide) pointer, as a reference, pointing to the same space.
@@ -128,7 +128,7 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
     }
 
     /// Adjust the provenance of the main pointer (metadata is unaffected).
-    pub fn map_provenance(self, f: impl FnOnce(Option<Prov>) -> Option<Prov>) -> Self {
+    pub fn map_provenance(self, f: impl FnOnce(Prov) -> Prov) -> Self {
         MPlaceTy { mplace: self.mplace.map_provenance(f), ..self }
     }
 
