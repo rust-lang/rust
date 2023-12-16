@@ -377,9 +377,6 @@ pub trait TypeReflection<'gcc, 'tcx>  {
     fn is_i128(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
     fn is_u128(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
 
-    fn is_f32(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
-    fn is_f64(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
-
     fn is_vector(&self) -> bool;
 }
 
@@ -462,14 +459,6 @@ impl<'gcc, 'tcx> TypeReflection<'gcc, 'tcx> for Type<'gcc> {
 
     fn is_u128(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
         self.unqualified() == cx.u128_type.unqualified()
-    }
-
-    fn is_f32(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
-        self.unqualified() == cx.context.new_type::<f32>()
-    }
-
-    fn is_f64(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
-        self.unqualified() == cx.context.new_type::<f64>()
     }
 
     fn is_vector(&self) -> bool {
