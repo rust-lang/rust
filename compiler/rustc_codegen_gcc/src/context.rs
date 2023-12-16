@@ -22,12 +22,6 @@ use rustc_target::spec::{HasTargetSpec, Target, TlsModel};
 use crate::callee::get_fn;
 use crate::common::SignType;
 
-#[derive(Clone)]
-pub struct FuncSig<'gcc> {
-    pub params: Vec<Type<'gcc>>,
-    pub return_type: Type<'gcc>,
-}
-
 pub struct CodegenCx<'gcc, 'tcx> {
     pub check_overflow: bool,
     pub codegen_unit: &'tcx CodegenUnit<'tcx>,
