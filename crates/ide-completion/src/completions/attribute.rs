@@ -26,6 +26,7 @@ mod cfg;
 mod derive;
 mod lint;
 mod repr;
+mod macro_use;
 
 pub(crate) use self::derive::complete_derive_path;
 
@@ -35,6 +36,7 @@ pub(crate) fn complete_known_attribute_input(
     ctx: &CompletionContext<'_>,
     &colon_prefix: &bool,
     fake_attribute_under_caret: &ast::Attr,
+    extern_crate: Option<&ast::ExternCrate>,
 ) -> Option<()> {
     let attribute = fake_attribute_under_caret;
     let name_ref = match attribute.path() {
@@ -66,6 +68,9 @@ pub(crate) fn complete_known_attribute_input(
             lint::complete_lint(acc, ctx, colon_prefix, &existing_lints, &lints);
         }
         "cfg" => cfg::complete_cfg(acc, ctx),
+        "macro_use" => {
+            macro_use::complete_macro_use(acc, ctx, extern_crate, &parse_tt_as_comma_sep_paths(tt)?)
+        }
         _ => (),
     }
     Some(())
