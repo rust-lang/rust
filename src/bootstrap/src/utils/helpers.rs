@@ -548,3 +548,11 @@ pub fn add_rustdoc_cargo_linker_args(
         cmd.env("RUSTDOCFLAGS", flags);
     }
 }
+
+/// Converts `T` into a hexadecimal `String`.
+pub fn hex_encode<T>(input: T) -> String
+where
+    T: AsRef<[u8]>,
+{
+    input.as_ref().iter().map(|x| format!("{:02x}", x)).collect()
+}
