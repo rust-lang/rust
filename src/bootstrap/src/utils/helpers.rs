@@ -20,6 +20,10 @@ use crate::LldMode;
 
 pub use crate::utils::dylib::{dylib_path, dylib_path_var};
 
+#[cfg(test)]
+#[path = "../tests/helpers.rs"]
+mod tests;
+
 /// A helper macro to `unwrap` a result except also print out details like:
 ///
 /// * The file/line of the panic
