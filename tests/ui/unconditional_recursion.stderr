@@ -1,0 +1,251 @@
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:42:5
+   |
+LL |     fn ne(&self, other: &Self) -> bool {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |
+LL |         self.ne(other)
+   |         -------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+   = note: `-D unconditional-recursion` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(unconditional_recursion)]`
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:46:5
+   |
+LL |     fn eq(&self, other: &Self) -> bool {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |
+LL |         self.eq(other)
+   |         -------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:12:5
+   |
+LL | /     fn ne(&self, other: &Self) -> bool {
+LL | |
+LL | |         self != other
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:14:9
+   |
+LL |         self != other
+   |         ^^^^^^^^^^^^^
+   = note: `-D clippy::unconditional-recursion` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unconditional_recursion)]`
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:16:5
+   |
+LL | /     fn eq(&self, other: &Self) -> bool {
+LL | |
+LL | |         self == other
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:18:9
+   |
+LL |         self == other
+   |         ^^^^^^^^^^^^^
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:42:5
+   |
+LL | /     fn ne(&self, other: &Self) -> bool {
+LL | |
+LL | |         self.ne(other)
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:44:9
+   |
+LL |         self.ne(other)
+   |         ^^^^^^^^^^^^^^
+
+error: parameter is only used in recursion
+  --> $DIR/unconditional_recursion.rs:42:18
+   |
+LL |     fn ne(&self, other: &Self) -> bool {
+   |                  ^^^^^ help: if this is intentional, prefix it with an underscore: `_other`
+   |
+note: parameter used here
+  --> $DIR/unconditional_recursion.rs:44:17
+   |
+LL |         self.ne(other)
+   |                 ^^^^^
+   = note: `-D clippy::only-used-in-recursion` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::only_used_in_recursion)]`
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:46:5
+   |
+LL | /     fn eq(&self, other: &Self) -> bool {
+LL | |
+LL | |         self.eq(other)
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:48:9
+   |
+LL |         self.eq(other)
+   |         ^^^^^^^^^^^^^^
+
+error: parameter is only used in recursion
+  --> $DIR/unconditional_recursion.rs:46:18
+   |
+LL |     fn eq(&self, other: &Self) -> bool {
+   |                  ^^^^^ help: if this is intentional, prefix it with an underscore: `_other`
+   |
+note: parameter used here
+  --> $DIR/unconditional_recursion.rs:48:17
+   |
+LL |         self.eq(other)
+   |                 ^^^^^
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:90:5
+   |
+LL | /     fn ne(&self, other: &Self) -> bool {
+LL | |
+LL | |         other != self
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:92:9
+   |
+LL |         other != self
+   |         ^^^^^^^^^^^^^
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:94:5
+   |
+LL | /     fn eq(&self, other: &Self) -> bool {
+LL | |
+LL | |         other == self
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:96:9
+   |
+LL |         other == self
+   |         ^^^^^^^^^^^^^
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:104:5
+   |
+LL | /     fn ne(&self, other: &Self) -> bool {
+LL | |
+LL | |         other != other
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:106:9
+   |
+LL |         other != other
+   |         ^^^^^^^^^^^^^^
+
+error: equal expressions as operands to `!=`
+  --> $DIR/unconditional_recursion.rs:106:9
+   |
+LL |         other != other
+   |         ^^^^^^^^^^^^^^
+   |
+   = note: `#[deny(clippy::eq_op)]` on by default
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:108:5
+   |
+LL | /     fn eq(&self, other: &Self) -> bool {
+LL | |
+LL | |         other == other
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:110:9
+   |
+LL |         other == other
+   |         ^^^^^^^^^^^^^^
+
+error: equal expressions as operands to `==`
+  --> $DIR/unconditional_recursion.rs:110:9
+   |
+LL |         other == other
+   |         ^^^^^^^^^^^^^^
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:117:5
+   |
+LL | /     fn ne(&self, _other: &Self) -> bool {
+LL | |
+LL | |         self != self
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:119:9
+   |
+LL |         self != self
+   |         ^^^^^^^^^^^^
+
+error: equal expressions as operands to `!=`
+  --> $DIR/unconditional_recursion.rs:119:9
+   |
+LL |         self != self
+   |         ^^^^^^^^^^^^
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:121:5
+   |
+LL | /     fn eq(&self, _other: &Self) -> bool {
+LL | |
+LL | |         self == self
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:123:9
+   |
+LL |         self == self
+   |         ^^^^^^^^^^^^
+
+error: equal expressions as operands to `==`
+  --> $DIR/unconditional_recursion.rs:123:9
+   |
+LL |         self == self
+   |         ^^^^^^^^^^^^
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:149:13
+   |
+LL | /             fn eq(&self, other: &Self) -> bool {
+LL | |                 self == other
+LL | |             }
+   | |_____________^
+...
+LL |   impl_partial_eq!(S5);
+   |   -------------------- in this macro invocation
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:150:17
+   |
+LL |                 self == other
+   |                 ^^^^^^^^^^^^^
+...
+LL | impl_partial_eq!(S5);
+   | -------------------- in this macro invocation
+   = note: this error originates in the macro `impl_partial_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 19 previous errors
+

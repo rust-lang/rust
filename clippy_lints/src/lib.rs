@@ -327,6 +327,7 @@ mod trait_bounds;
 mod transmute;
 mod tuple_array_conversions;
 mod types;
+mod unconditional_recursion;
 mod undocumented_unsafe_blocks;
 mod unicode;
 mod uninhabited_references;
@@ -1078,6 +1079,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(repeat_vec_with_capacity::RepeatVecWithCapacity));
     store.register_late_pass(|_| Box::new(uninhabited_references::UninhabitedReferences));
     store.register_late_pass(|_| Box::new(ineffective_open_options::IneffectiveOpenOptions));
+    store.register_late_pass(|_| Box::new(unconditional_recursion::UnconditionalRecursion));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
