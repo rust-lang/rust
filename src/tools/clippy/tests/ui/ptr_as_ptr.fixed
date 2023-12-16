@@ -71,3 +71,118 @@ fn _msrv_1_38() {
     let _ = ptr.cast::<i32>();
     let _ = mut_ptr.cast::<i32>();
 }
+
+#[allow(clippy::unnecessary_cast)]
+mod null {
+    fn use_path_mut() -> *mut u32 {
+        use std::ptr;
+        ptr::null_mut::<u32>()
+    }
+
+    fn full_path_mut() -> *mut u32 {
+        std::ptr::null_mut::<u32>()
+    }
+
+    fn core_path_mut() -> *mut u32 {
+        use core::ptr;
+        ptr::null_mut::<u32>()
+    }
+
+    fn full_core_path_mut() -> *mut u32 {
+        core::ptr::null_mut::<u32>()
+    }
+
+    fn use_path() -> *const u32 {
+        use std::ptr;
+        ptr::null::<u32>()
+    }
+
+    fn full_path() -> *const u32 {
+        std::ptr::null::<u32>()
+    }
+
+    fn core_path() -> *const u32 {
+        use core::ptr;
+        ptr::null::<u32>()
+    }
+
+    fn full_core_path() -> *const u32 {
+        core::ptr::null::<u32>()
+    }
+}
+
+mod null_ptr_infer {
+    fn use_path_mut() -> *mut u32 {
+        use std::ptr;
+        ptr::null_mut()
+    }
+
+    fn full_path_mut() -> *mut u32 {
+        std::ptr::null_mut()
+    }
+
+    fn core_path_mut() -> *mut u32 {
+        use core::ptr;
+        ptr::null_mut()
+    }
+
+    fn full_core_path_mut() -> *mut u32 {
+        core::ptr::null_mut()
+    }
+
+    fn use_path() -> *const u32 {
+        use std::ptr;
+        ptr::null()
+    }
+
+    fn full_path() -> *const u32 {
+        std::ptr::null()
+    }
+
+    fn core_path() -> *const u32 {
+        use core::ptr;
+        ptr::null()
+    }
+
+    fn full_core_path() -> *const u32 {
+        core::ptr::null()
+    }
+}
+
+mod null_entire_infer {
+    fn use_path_mut() -> *mut u32 {
+        use std::ptr;
+        ptr::null_mut()
+    }
+
+    fn full_path_mut() -> *mut u32 {
+        std::ptr::null_mut()
+    }
+
+    fn core_path_mut() -> *mut u32 {
+        use core::ptr;
+        ptr::null_mut()
+    }
+
+    fn full_core_path_mut() -> *mut u32 {
+        core::ptr::null_mut()
+    }
+
+    fn use_path() -> *const u32 {
+        use std::ptr;
+        ptr::null()
+    }
+
+    fn full_path() -> *const u32 {
+        std::ptr::null()
+    }
+
+    fn core_path() -> *const u32 {
+        use core::ptr;
+        ptr::null()
+    }
+
+    fn full_core_path() -> *const u32 {
+        core::ptr::null()
+    }
+}

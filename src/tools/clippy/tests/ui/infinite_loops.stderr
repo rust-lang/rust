@@ -1,0 +1,259 @@
+error: infinite loop detected
+  --> $DIR/infinite_loops.rs:8:5
+   |
+LL | /     loop {
+LL | |
+LL | |         do_something();
+LL | |     }
+   | |_____^
+   |
+   = note: `-D clippy::infinite-loop` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::infinite_loop)]`
+help: if this is intentional, consider specifing `!` as function return
+   |
+LL | fn no_break() -> ! {
+   |               ++++
+
+error: infinite loop detected
+  --> $DIR/infinite_loops.rs:15:5
+   |
+LL | /     loop {
+LL | |
+LL | |         loop {
+LL | |
+...  |
+LL | |         do_something();
+LL | |     }
+   | |_____^
+   |
+help: if this is intentional, consider specifing `!` as function return
+   |
+LL | fn all_inf() -> ! {
+   |              ++++
+
+error: infinite loop detected
+  --> $DIR/infinite_loops.rs:17:9
+   |
+LL | /         loop {
+LL | |
+LL | |             loop {
+LL | |
+LL | |                 do_something();
+LL | |             }
+LL | |         }
+   | |_________^
+   |
+help: if this is intentional, consider specifing `!` as function return
+   |
+LL | fn all_inf() -> ! {
+   |              ++++
+
+error: infinite loop detected
+  --> $DIR/infinite_loops.rs:19:13
+   |
+LL | /             loop {
+LL | |
+LL | |                 do_something();
+LL | |             }
+   | |_____________^
+   |
+help: if this is intentional, consider specifing `!` as function return
+   |
+LL | fn all_inf() -> ! {
+   |              ++++
+
+error: infinite loop detected
+  --> $DIR/infinite_loops.rs:33:5
+   |
+LL | /     loop {
+LL | |
+LL | |         do_something();
+LL | |     }
+   | |_____^
+   |
+   = help: if this is not intended, try adding a `break` or `return` condition in the loop
+
+error: infinite loop detected
+  --> $DIR/infinite_loops.rs:46:5
+   |
+LL | /     loop {
+LL | |         fn inner_fn() -> ! {
+LL | |             std::process::exit(0);
+LL | |         }
+LL | |         do_something();
+LL | |     }
+   | |_____^
+   |
+help: if this is intentional, consider specifing `!` as function return
+   |
+LL | fn no_break_never_ret_noise() -> ! {
+   |                               ++++
+
+error: infinite loop detected
+  --> $DIR/infinite_loops.rs:89:5
+   |
+LL | /     loop {
+LL | |
+LL | |         loop {
+LL | |             if cond {
+...  |
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: if this is intentional, consider specifing `!` as function return
+   |
+LL | fn break_inner_but_not_outer_1(cond: bool) -> ! {
+   |                                            ++++
+
+error: infinite loop detected
+  --> $DIR/infinite_loops.rs:100:5
+   |
+LL | /     loop {
+LL | |
+LL | |         'inner: loop {
+LL | |             loop {
+...  |
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: if this is intentional, consider specifing `!` as function return
+   |
+LL | fn break_inner_but_not_outer_2(cond: bool) -> ! {
+   |                                            ++++
+
+error: infinite loop detected
+  --> $DIR/infinite_loops.rs:114:9
+   |
+LL | /         loop {
+LL | |
+LL | |             do_something();
+LL | |         }
+   | |_________^
+   |
+help: if this is intentional, consider specifing `!` as function return
+   |
+LL | fn break_outer_but_not_inner() -> ! {
+   |                                ++++
+
+error: infinite loop detected
+  --> $DIR/infinite_loops.rs:137:9
+   |
+LL | /         loop {
+LL | |
+LL | |             'inner: loop {
+LL | |                 loop {
+...  |
+LL | |             }
+LL | |         }
+   | |_________^
+   |
+help: if this is intentional, consider specifing `!` as function return
+   |
+LL | fn break_wrong_loop(cond: bool) -> ! {
+   |                                 ++++
+
+error: infinite loop detected
+  --> $DIR/infinite_loops.rs:177:5
+   |
+LL | /     loop {
+LL | |
+LL | |         match opt {
+LL | |             Some(v) => {
+...  |
+LL | |         }
+LL | |     }
+   | |_____^
+   |
+help: if this is intentional, consider specifing `!` as function return
+   |
+LL | fn match_like() -> ! {
+   |                 ++++
+
+error: infinite loop detected
+  --> $DIR/infinite_loops.rs:218:5
+   |
+LL | /     loop {
+LL | |
+LL | |         let _x = matches!(result, Ok(v) if v != 0).then_some(0);
+LL | |     }
+   | |_____^
+   |
+help: if this is intentional, consider specifing `!` as function return
+   |
+LL | fn match_like() -> ! {
+   |                 ++++
+
+error: infinite loop detected
+  --> $DIR/infinite_loops.rs:223:5
+   |
+LL | /     loop {
+LL | |
+LL | |         // This `return` does not return the function, so it doesn't count
+LL | |         let _x = matches!(result, Ok(v) if v != 0).then(|| {
+...  |
+LL | |         });
+LL | |     }
+   | |_____^
+   |
+help: if this is intentional, consider specifing `!` as function return
+   |
+LL | fn match_like() -> ! {
+   |                 ++++
+
+error: infinite loop detected
+  --> $DIR/infinite_loops.rs:328:9
+   |
+LL | /         loop {
+LL | |
+LL | |             do_something();
+LL | |         }
+   | |_________^
+   |
+help: if this is intentional, consider specifing `!` as function return
+   |
+LL |     fn problematic_trait_method() -> ! {
+   |                                   ++++
+
+error: infinite loop detected
+  --> $DIR/infinite_loops.rs:338:9
+   |
+LL | /         loop {
+LL | |
+LL | |             do_something();
+LL | |         }
+   | |_________^
+   |
+help: if this is intentional, consider specifing `!` as function return
+   |
+LL |     fn could_be_problematic() -> ! {
+   |                               ++++
+
+error: infinite loop detected
+  --> $DIR/infinite_loops.rs:347:9
+   |
+LL | /         loop {
+LL | |
+LL | |             do_something();
+LL | |         }
+   | |_________^
+   |
+help: if this is intentional, consider specifing `!` as function return
+   |
+LL |     let _loop_forever = || -> ! {
+   |                            ++++
+
+error: infinite loop detected
+  --> $DIR/infinite_loops.rs:361:8
+   |
+LL |       Ok(loop {
+   |  ________^
+LL | |         do_something()
+LL | |     })
+   | |_____^
+   |
+   = help: if this is not intended, try adding a `break` or `return` condition in the loop
+
+error: aborting due to 17 previous errors
+

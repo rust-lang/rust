@@ -1,25 +1,27 @@
+use std::collections::BTreeMap;
 use std::ops::ControlFlow;
 
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::consts::{constant, Constant};
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::for_each_local_use_after_expr;
 use clippy_utils::{get_parent_expr, higher, is_trait_method};
 use rustc_errors::Applicability;
-use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, Node, PatKind};
+use rustc_hir::{BorrowKind, Expr, ExprKind, HirId, Mutability, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::impl_lint_pass;
-use rustc_span::{sym, Span};
+use rustc_span::{sym, DesugaringKind, Span};
 
 #[expect(clippy::module_name_repetitions)]
 #[derive(Clone)]
 pub struct UselessVec {
     pub too_large_for_stack: u64,
     pub msrv: Msrv,
+    pub span_to_lint_map: BTreeMap<Span, Option<(HirId, SuggestedType, String, Applicability)>>,
 }
 
 declare_clippy_lint! {
@@ -69,64 +71,88 @@ pub fn is_allowed_vec_method(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 
 impl<'tcx> LateLintPass<'tcx> for UselessVec {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        // search for `&vec![_]` or `vec![_]` expressions where the adjusted type is `&[_]`
-        if adjusts_to_slice(cx, expr)
-            && let Some(vec_args) = higher::VecArgs::hir(cx, expr.peel_borrows())
-        {
-            let (suggest_slice, span) = if let ExprKind::AddrOf(BorrowKind::Ref, mutability, _) = expr.kind {
-                // `expr` is `&vec![_]`, so suggest `&[_]` (or `&mut[_]` resp.)
-                (SuggestedType::SliceRef(mutability), expr.span)
-            } else {
-                // `expr` is the `vec![_]` expansion, so suggest `[_]`
-                // and also use the span of the actual `vec![_]` expression
-                (SuggestedType::Array, expr.span.ctxt().outer_expn_data().call_site)
-            };
+        if let Some(vec_args) = higher::VecArgs::hir(cx, expr.peel_borrows()) {
+            // search for `let foo = vec![_]` expressions where all uses of `foo`
+            // adjust to slices or call a method that exist on slices (e.g. len)
+            if let Node::Local(local) = cx.tcx.hir().get_parent(expr.hir_id)
+                // for now ignore locals with type annotations.
+                // this is to avoid compile errors when doing the suggestion here: let _: Vec<_> = vec![..];
+                && local.ty.is_none()
+                && let PatKind::Binding(_, id, ..) = local.pat.kind
+                && is_copy(cx, vec_type(cx.typeck_results().expr_ty_adjusted(expr.peel_borrows())))
+            {
+                let only_slice_uses = for_each_local_use_after_expr(cx, id, expr.hir_id, |expr| {
+                    // allow indexing into a vec and some set of allowed method calls that exist on slices, too
+                    if let Some(parent) = get_parent_expr(cx, expr)
+                        && (adjusts_to_slice(cx, expr)
+                            || matches!(parent.kind, ExprKind::Index(..))
+                            || is_allowed_vec_method(cx, parent))
+                    {
+                        ControlFlow::Continue(())
+                    } else {
+                        ControlFlow::Break(())
+                    }
+                })
+                .is_continue();
 
-            self.check_vec_macro(cx, &vec_args, span, suggest_slice);
-        }
-
-        // search for `let foo = vec![_]` expressions where all uses of `foo`
-        // adjust to slices or call a method that exist on slices (e.g. len)
-        if let Some(vec_args) = higher::VecArgs::hir(cx, expr)
-            && let Node::Local(local) = cx.tcx.hir().get_parent(expr.hir_id)
-            // for now ignore locals with type annotations.
-            // this is to avoid compile errors when doing the suggestion here: let _: Vec<_> = vec![..];
-            && local.ty.is_none()
-            && let PatKind::Binding(_, id, ..) = local.pat.kind
-            && is_copy(cx, vec_type(cx.typeck_results().expr_ty_adjusted(expr)))
-        {
-            let only_slice_uses = for_each_local_use_after_expr(cx, id, expr.hir_id, |expr| {
-                // allow indexing into a vec and some set of allowed method calls that exist on slices, too
-                if let Some(parent) = get_parent_expr(cx, expr)
-                    && (adjusts_to_slice(cx, expr)
-                        || matches!(parent.kind, ExprKind::Index(..))
-                        || is_allowed_vec_method(cx, parent))
-                {
-                    ControlFlow::Continue(())
+                let span = expr.span.ctxt().outer_expn_data().call_site;
+                if only_slice_uses {
+                    self.check_vec_macro(cx, &vec_args, span, expr.hir_id, SuggestedType::Array);
                 } else {
-                    ControlFlow::Break(())
+                    self.span_to_lint_map.insert(span, None);
                 }
-            })
-            .is_continue();
+            }
+            // if the local pattern has a specified type, do not lint.
+            else if let Some(_) = higher::VecArgs::hir(cx, expr)
+                && let Node::Local(local) = cx.tcx.hir().get_parent(expr.hir_id)
+                && local.ty.is_some()
+            {
+                let span = expr.span.ctxt().outer_expn_data().call_site;
+                self.span_to_lint_map.insert(span, None);
+            }
+            // search for `for _ in vec![...]`
+            else if let Some(parent) = get_parent_expr(cx, expr)
+                && parent.span.is_desugaring(DesugaringKind::ForLoop)
+                && self.msrv.meets(msrvs::ARRAY_INTO_ITERATOR)
+            {
+                // report the error around the `vec!` not inside `<std macros>:`
+                let span = expr.span.ctxt().outer_expn_data().call_site;
+                self.check_vec_macro(cx, &vec_args, span, expr.hir_id, SuggestedType::Array);
+            }
+            // search for `&vec![_]` or `vec![_]` expressions where the adjusted type is `&[_]`
+            else {
+                let (suggest_slice, span) = if let ExprKind::AddrOf(BorrowKind::Ref, mutability, _) = expr.kind {
+                    // `expr` is `&vec![_]`, so suggest `&[_]` (or `&mut[_]` resp.)
+                    (SuggestedType::SliceRef(mutability), expr.span)
+                } else {
+                    // `expr` is the `vec![_]` expansion, so suggest `[_]`
+                    // and also use the span of the actual `vec![_]` expression
+                    (SuggestedType::Array, expr.span.ctxt().outer_expn_data().call_site)
+                };
 
-            if only_slice_uses {
-                self.check_vec_macro(
-                    cx,
-                    &vec_args,
-                    expr.span.ctxt().outer_expn_data().call_site,
-                    SuggestedType::Array,
-                );
+                if adjusts_to_slice(cx, expr) {
+                    self.check_vec_macro(cx, &vec_args, span, expr.hir_id, suggest_slice);
+                } else {
+                    self.span_to_lint_map.insert(span, None);
+                }
             }
         }
+    }
 
-        // search for `for _ in vec![…]`
-        if let Some(higher::ForLoop { arg, .. }) = higher::ForLoop::hir(expr)
-            && let Some(vec_args) = higher::VecArgs::hir(cx, arg)
-            && self.msrv.meets(msrvs::ARRAY_INTO_ITERATOR)
-        {
-            // report the error around the `vec!` not inside `<std macros>:`
-            let span = arg.span.ctxt().outer_expn_data().call_site;
-            self.check_vec_macro(cx, &vec_args, span, SuggestedType::Array);
+    fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
+        for (span, lint_opt) in &self.span_to_lint_map {
+            if let Some((hir_id, suggest_slice, snippet, applicability)) = lint_opt {
+                let help_msg = format!(
+                    "you can use {} directly",
+                    match suggest_slice {
+                        SuggestedType::SliceRef(_) => "a slice",
+                        SuggestedType::Array => "an array",
+                    }
+                );
+                span_lint_hir_and_then(cx, USELESS_VEC, *hir_id, *span, "useless use of `vec!`", |diag| {
+                    diag.span_suggestion(*span, help_msg, snippet, *applicability);
+                });
+            }
         }
     }
 
@@ -134,7 +160,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessVec {
 }
 
 #[derive(Copy, Clone)]
-enum SuggestedType {
+pub(crate) enum SuggestedType {
     /// Suggest using a slice `&[..]` / `&mut [..]`
     SliceRef(Mutability),
     /// Suggest using an array: `[..]`
@@ -147,6 +173,7 @@ impl UselessVec {
         cx: &LateContext<'tcx>,
         vec_args: &higher::VecArgs<'tcx>,
         span: Span,
+        hir_id: HirId,
         suggest_slice: SuggestedType,
     ) {
         if span.from_expansion() {
@@ -204,21 +231,9 @@ impl UselessVec {
             },
         };
 
-        span_lint_and_sugg(
-            cx,
-            USELESS_VEC,
-            span,
-            "useless use of `vec!`",
-            &format!(
-                "you can use {} directly",
-                match suggest_slice {
-                    SuggestedType::SliceRef(_) => "a slice",
-                    SuggestedType::Array => "an array",
-                }
-            ),
-            snippet,
-            applicability,
-        );
+        self.span_to_lint_map
+            .entry(span)
+            .or_insert(Some((hir_id, suggest_slice, snippet, applicability)));
     }
 }
 
