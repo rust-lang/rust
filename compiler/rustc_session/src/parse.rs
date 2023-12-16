@@ -4,6 +4,7 @@
 use crate::config::{Cfg, CheckCfg};
 use crate::errors::{
     CliFeatureDiagnosticHelp, FeatureDiagnosticForIssue, FeatureDiagnosticHelp, FeatureGateError,
+    SuggestUpgradeCompiler,
 };
 use crate::lint::{
     builtin::UNSTABLE_SYNTAX_PRE_EXPANSION, BufferedEarlyLint, BuiltinLintDiagnostics, Lint, LintId,
@@ -179,6 +180,8 @@ pub fn add_feature_diagnostics_for_issue(
         } else {
             err.subdiagnostic(FeatureDiagnosticHelp { feature });
         }
+
+        err.subdiagnostic(SuggestUpgradeCompiler::new());
     }
 }
 
