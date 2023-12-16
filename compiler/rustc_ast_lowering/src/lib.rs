@@ -874,15 +874,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         binder: NodeId,
         generic_params: &[GenericParam],
     ) -> &'hir [hir::GenericParam<'hir>] {
-        let mut generic_params: Vec<_> = self
-            .lower_generic_params_mut(generic_params, hir::GenericParamSource::Binder)
-            .collect();
+        let mut params = vec![];
+
         let extra_lifetimes = self.resolver.take_extra_lifetime_params(binder);
         debug!(?extra_lifetimes);
-        generic_params.extend(extra_lifetimes.into_iter().filter_map(|(ident, node_id, res)| {
+        params.extend(extra_lifetimes.into_iter().filter_map(|(ident, node_id, res)| {
             self.lifetime_res_to_generic_param(ident, node_id, res, hir::GenericParamSource::Binder)
         }));
-        let generic_params = self.arena.alloc_from_iter(generic_params);
+
+        params
+            .extend(self.lower_generic_params_mut(generic_params, hir::GenericParamSource::Binder));
+
+        let generic_params = self.arena.alloc_from_iter(params);
         debug!(?generic_params);
 
         generic_params
