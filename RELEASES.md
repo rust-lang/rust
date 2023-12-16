@@ -121,7 +121,7 @@ tools.
 
 - [Optimize `librustc_driver.so` with BOLT.](https://github.com/rust-lang/rust/pull/116352/)
 - [Enable parallel rustc front end in dev and nightly builds.](https://github.com/rust-lang/rust/pull/117435/)
-- [Distribute `rustc-codegen-cratelift` as rustup component on the nightly channel.](https://github.com/rust-lang/rust/pull/81746/)
+- [Distribute `rustc-codegen-cranelift` as rustup component on the nightly channel.](https://github.com/rust-lang/rust/pull/81746/)
 
 Version 1.74.1 (2023-12-07)
 ===========================
