@@ -71,48 +71,34 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
     return hasFoundFile;
 }
 
-let toggleLabel;
-
-function getToggleLabel() {
-    toggleLabel = toggleLabel || document.querySelector("#src-sidebar-toggle button");
-    return toggleLabel;
-}
-
 window.rustdocCloseSourceSidebar = () => {
     removeClass(document.documentElement, "src-sidebar-expanded");
-    getToggleLabel().innerText = ">";
     updateLocalStorage("source-sidebar-show", "false");
 };
 
 window.rustdocShowSourceSidebar = () => {
     addClass(document.documentElement, "src-sidebar-expanded");
-    getToggleLabel().innerText = "<";
     updateLocalStorage("source-sidebar-show", "true");
 };
 
-function toggleSidebar() {
-    const child = this.parentNode.children[0];
-    if (child.innerText === ">") {
-        window.rustdocShowSourceSidebar();
-    } else {
-        window.rustdocCloseSourceSidebar();
-    }
+function createButton(className, text, onclick) {
+    const button = document.createElement("button");
+    button.className = className;
+    button.innerText = text;
+    button.onclick = onclick;
+    return button;
 }
 
 function createSidebarToggle() {
     const sidebarToggle = document.createElement("div");
     sidebarToggle.id = "src-sidebar-toggle";
 
-    const inner = document.createElement("button");
+    sidebarToggle.appendChild(createButton("expand", ">", window.rustdocShowSourceSidebar));
+    sidebarToggle.appendChild(createButton("collapse", "<", window.rustdocCloseSourceSidebar));
 
     if (getCurrentValue("source-sidebar-show") === "true") {
-        inner.innerText = "<";
-    } else {
-        inner.innerText = ">";
+        window.rustdocShowSourceSidebar();
     }
-    inner.onclick = toggleSidebar;
-
-    sidebarToggle.appendChild(inner);
     return sidebarToggle;
 }
 

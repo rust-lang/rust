@@ -1540,6 +1540,30 @@ a.tooltip:hover::after {
 	align-items: stretch;
 	z-index: 10;
 }
+#src-sidebar-toggle > button {
+	font-size: inherit;
+	font-weight: bold;
+	background: none;
+	color: inherit;
+	text-align: center;
+	border: none;
+	outline: none;
+	flex: 1 1;
+	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
+	-webkit-appearance: none;
+	opacity: 1;
+	display: block;
+}
+#src-sidebar-toggle > button.collapse {
+	display: none;
+}
+.src-sidebar-expanded #src-sidebar-toggle > button.expand {
+	display: none;
+}
+.src-sidebar-expanded #src-sidebar-toggle > button.collapse {
+	display: block;
+}
+
 #src-sidebar {
 	width: 100%;
 	overflow: auto;
@@ -1557,20 +1581,6 @@ a.tooltip:hover::after {
 #src-sidebar div.files > a.selected {
 	background-color: var(--src-sidebar-background-selected);
 }
-#src-sidebar-toggle > button {
-	font-size: inherit;
-	font-weight: bold;
-	background: none;
-	color: inherit;
-	text-align: center;
-	border: none;
-	outline: none;
-	flex: 1 1;
-	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
-	-webkit-appearance: none;
-	opacity: 1;
-}
-
 #settings-menu, #help-button {
 	margin-left: 4px;
 	display: flex;
