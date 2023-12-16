@@ -350,6 +350,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             let_pat,
             let_expr,
             if_then,
+            ..
         }) = higher::WhileLet::hir(expr.value)
         {
             bind!(self, let_pat, let_expr, if_then);

@@ -186,7 +186,7 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
                     match higher::IfLetOrMatch::parse(cx, map_body.value) {
                         // For `if let` we want to check that the variant matching arm references the local created by
                         // its pattern
-                        Some(higher::IfLetOrMatch::IfLet(sc, pat, then, Some(else_)))
+                        Some(higher::IfLetOrMatch::IfLet(sc, pat, then, Some(else_), ..))
                             if let Some((ident, span)) = expr_uses_local(pat, then) =>
                         {
                             (sc, else_, ident, span)
