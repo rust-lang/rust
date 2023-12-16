@@ -11,6 +11,24 @@ use crate::{
     Variants, WrappingRange,
 };
 
+// A variant is absent if it's uninhabited and only has ZST fields.
+// Present uninhabited variants only require space for their fields,
+// but *not* an encoding of the discriminant (e.g., a tag value).
+// See issue #49298 for more details on the need to leave space
+// for non-ZST uninhabited data (mostly partial initialization).
+fn absent<'a, FieldIdx, VariantIdx, F>(fields: &IndexSlice<FieldIdx, F>) -> bool
+where
+    FieldIdx: Idx,
+    VariantIdx: Idx,
+    F: Deref<Target = &'a LayoutS<FieldIdx, VariantIdx>> + fmt::Debug,
+{
+    let uninhabited = fields.iter().any(|f| f.abi.is_uninhabited());
+    // We cannot ignore alignment; that might lead us to entirely discard a variant and
+    // produce an enum that is less aligned than it should be!
+    let is_1zst = fields.iter().all(|f| f.is_1zst());
+    uninhabited && is_1zst
+}
+
 pub trait LayoutCalculator {
     type TargetDataLayoutRef: Borrow<TargetDataLayout>;
 
@@ -168,18 +186,6 @@ pub trait LayoutCalculator {
             Scalar::Initialized { value, valid_range: WrappingRange::full(size) }
         };
 
-        // A variant is absent if it's uninhabited and only has ZST fields.
-        // Present uninhabited variants only require space for their fields,
-        // but *not* an encoding of the discriminant (e.g., a tag value).
-        // See issue #49298 for more details on the need to leave space
-        // for non-ZST uninhabited data (mostly partial initialization).
-        let absent = |fields: &IndexSlice<FieldIdx, F>| {
-            let uninhabited = fields.iter().any(|f| f.abi.is_uninhabited());
-            // We cannot ignore alignment; that might lead us to entirely discard a variant and
-            // produce an enum that is less aligned than it should be!
-            let is_1zst = fields.iter().all(|f| f.is_1zst());
-            uninhabited && is_1zst
-        };
         let (present_first, present_second) = {
             let mut present_variants = variants
                 .iter_enumerated()
