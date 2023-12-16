@@ -518,5 +518,10 @@ extern "rust-intrinsic" {
         arg: ARG,
         called_in_const: F,
         called_at_rt: G,
-    ) -> RET;
+    ) -> RET
+    /* where clauses enforced by built-in method confirmation:
+    where
+        F: const FnOnce<Arg, Output = RET>,
+        G: FnOnce<Arg, Output = RET>,
+     */;
 }
