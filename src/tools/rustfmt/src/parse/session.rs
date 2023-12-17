@@ -118,7 +118,7 @@ impl From<Color> for ColorConfig {
     }
 }
 
-fn default_handler(
+fn default_dcx(
     source_map: Lrc<SourceMap>,
     ignore_path_set: Lrc<IgnorePathSet>,
     can_reset: Lrc<AtomicBool>,
@@ -159,7 +159,7 @@ impl ParseSess {
         let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let can_reset_errors = Lrc::new(AtomicBool::new(false));
 
-        let handler = default_handler(
+        let handler = default_dcx(
             Lrc::clone(&source_map),
             Lrc::clone(&ignore_path_set),
             Lrc::clone(&can_reset_errors),
