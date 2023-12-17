@@ -183,7 +183,7 @@ pub(crate) fn run_fat(
     modules: Vec<FatLtoInput<GccCodegenBackend>>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
 ) -> Result<LtoModuleCodegen<GccCodegenBackend>, FatalError> {
-    let diag_handler = cgcx.create_diag_handler();
+    let diag_handler = cgcx.create_dcx();
     let lto_data = prepare_lto(cgcx, &diag_handler)?;
     /*let symbols_below_threshold =
         lto_data.symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();*/

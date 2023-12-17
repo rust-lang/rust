@@ -359,7 +359,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
 }
 
 impl<B: WriteBackendMethods> CodegenContext<B> {
-    pub fn create_diag_handler(&self) -> DiagCtxt {
+    pub fn create_dcx(&self) -> DiagCtxt {
         DiagCtxt::with_emitter(Box::new(self.diag_emitter.clone()))
     }
 
@@ -825,7 +825,7 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
     module: ModuleCodegen<B::Module>,
     module_config: &ModuleConfig,
 ) -> Result<WorkItemResult<B>, FatalError> {
-    let diag_handler = cgcx.create_diag_handler();
+    let diag_handler = cgcx.create_dcx();
 
     unsafe {
         B::optimize(cgcx, &diag_handler, &module, module_config)?;
@@ -891,11 +891,7 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
         match link_or_copy(&source_file, &output_path) {
             Ok(_) => Some(output_path),
             Err(error) => {
-                cgcx.create_diag_handler().emit_err(errors::CopyPathBuf {
-                    source_file,
-                    output_path,
-                    error,
-                });
+                cgcx.create_dcx().emit_err(errors::CopyPathBuf { source_file, output_path, error });
                 None
             }
         }
@@ -939,7 +935,7 @@ fn finish_intra_module_work<B: ExtraBackendMethods>(
     module: ModuleCodegen<B::Module>,
     module_config: &ModuleConfig,
 ) -> Result<WorkItemResult<B>, FatalError> {
-    let diag_handler = cgcx.create_diag_handler();
+    let diag_handler = cgcx.create_dcx();
 
     if !cgcx.opts.unstable_opts.combine_cgu
         || module.kind == ModuleKind::Metadata
@@ -1595,7 +1591,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         let needs_link = mem::take(&mut needs_link);
         if !needs_link.is_empty() {
             assert!(compiled_modules.is_empty());
-            let diag_handler = cgcx.create_diag_handler();
+            let diag_handler = cgcx.create_dcx();
             let module = B::run_link(&cgcx, &diag_handler, needs_link).map_err(|_| ())?;
             let module = unsafe {
                 B::codegen(&cgcx, &diag_handler, module, cgcx.config(ModuleKind::Regular))

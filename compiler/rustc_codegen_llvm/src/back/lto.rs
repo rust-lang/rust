@@ -200,7 +200,7 @@ pub(crate) fn run_fat(
     modules: Vec<FatLtoInput<LlvmCodegenBackend>>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
 ) -> Result<LtoModuleCodegen<LlvmCodegenBackend>, FatalError> {
-    let diag_handler = cgcx.create_diag_handler();
+    let diag_handler = cgcx.create_dcx();
     let (symbols_below_threshold, upstream_modules) = prepare_lto(cgcx, &diag_handler)?;
     let symbols_below_threshold =
         symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
@@ -222,7 +222,7 @@ pub(crate) fn run_thin(
     modules: Vec<(String, ThinBuffer)>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
 ) -> Result<(Vec<LtoModuleCodegen<LlvmCodegenBackend>>, Vec<WorkProduct>), FatalError> {
-    let diag_handler = cgcx.create_diag_handler();
+    let diag_handler = cgcx.create_dcx();
     let (symbols_below_threshold, upstream_modules) = prepare_lto(cgcx, &diag_handler)?;
     let symbols_below_threshold =
         symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
@@ -721,7 +721,7 @@ pub unsafe fn optimize_thin_module(
     thin_module: ThinModule<LlvmCodegenBackend>,
     cgcx: &CodegenContext<LlvmCodegenBackend>,
 ) -> Result<ModuleCodegen<ModuleLlvm>, FatalError> {
-    let diag_handler = cgcx.create_diag_handler();
+    let diag_handler = cgcx.create_dcx();
 
     let module_name = &thin_module.shared.module_names[thin_module.idx];
     let tm_factory_config = TargetMachineFactoryConfig::new(cgcx, module_name.to_str().unwrap());
