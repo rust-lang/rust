@@ -36,7 +36,7 @@ extern "platform-intrinsic" {
     /// Additionally for signed integers, `<int>::MIN / -1` is undefined behavior.
     pub fn simd_rem<T>(lhs: T, rhs: T) -> T;
 
-    /// Elementwise vector left shift.
+    /// Elementwise vector left shift, with UB on overflow.
     ///
     /// Shift `lhs` left by `rhs`, shifting in sign bits for signed types.
     ///
@@ -47,7 +47,7 @@ extern "platform-intrinsic" {
     /// Each element of `rhs` must be less than `<int>::BITS`.
     pub fn simd_shl<T>(lhs: T, rhs: T) -> T;
 
-    /// Elementwise vector right shift.
+    /// Elementwise vector right shift, with UB on overflow.
     ///
     /// Shift `lhs` right by `rhs`, shifting in sign bits for signed types.
     ///
@@ -75,11 +75,11 @@ extern "platform-intrinsic" {
 
     /// Numerically cast a vector, elementwise.
     ///
-    /// When casting floats to integers, the result is truncated.
+    /// When casting floats to integers, the result is truncated. Out-of-bounds result lead to UB.
     /// When casting integers to floats, the result is rounded.
     /// Otherwise, truncates or extends the value, maintaining the sign for signed integers.
     ///
-    /// `T` and `U` be a vectors of integer or floating point primitive types, and must have the
+    /// `T` and `U` must be vectors of integer or floating point primitive types, and must have the
     /// same length.
     ///
     /// # Safety
