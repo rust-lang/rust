@@ -4,11 +4,14 @@ warning: future cannot be sent between threads safely
 LL | pub async fn bar<'a, T: 'a>(_: T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future returned by `bar` is not `Send`
    |
-note: captured value is not `Send`
-  --> tests/ui/crashes/ice-10645.rs:5:29
+note: future is not `Send` as this value is used across an await
+  --> tests/ui/crashes/ice-10645.rs:5:35
    |
 LL | pub async fn bar<'a, T: 'a>(_: T) {}
-   |                             ^ has type `T` which is not `Send`
+   |                                   ^-
+   |                                   |
+   |                                   await occurs here, with `{}` maybe used later
+   |                                   has type `T` which is not `Send`
    = note: `T` doesn't implement `std::marker::Send`
    = note: `-D clippy::future-not-send` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::future_not_send)]`

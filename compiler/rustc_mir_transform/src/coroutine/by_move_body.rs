@@ -29,7 +29,7 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
         let ty::Coroutine(_, args) = *coroutine_ty.kind() else { bug!("{body:#?}") };
 
         let coroutine_kind = args.as_coroutine().kind_ty().to_opt_closure_kind().unwrap();
-        if coroutine_kind == ty::ClosureKind::FnOnce {
+        if matches!(coroutine_kind, ty::ClosureKind::FnOnce) {
             return;
         }
 
@@ -43,6 +43,7 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
                 capture.place.ty()
             }),
         );
+        let by_ref_fields = &by_ref_fields;
         let by_move_coroutine_ty = Ty::new_coroutine(
             tcx,
             coroutine_def_id.to_def_id(),
@@ -62,6 +63,7 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
         );
 
         let mut by_move_body = body.clone();
+        by_move_body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty = by_move_coroutine_ty;
         MakeByMoveBody { tcx, by_ref_fields, by_move_coroutine_ty }.visit_body(&mut by_move_body);
         dump_mir(tcx, false, "coroutine_by_move", &0, &by_move_body, |_, _| Ok(()));
         by_move_body.source = mir::MirSource::from_instance(InstanceDef::CoroutineKindShim {
@@ -71,13 +73,13 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
     }
 }
 
-struct MakeByMoveBody<'tcx> {
+struct MakeByMoveBody<'tcx, 'a> {
     tcx: TyCtxt<'tcx>,
-    by_ref_fields: FxIndexSet<FieldIdx>,
+    by_ref_fields: &'a FxIndexSet<FieldIdx>,
     by_move_coroutine_ty: Ty<'tcx>,
 }
 
-impl<'tcx> MutVisitor<'tcx> for MakeByMoveBody<'tcx> {
+impl<'tcx, 'a> MutVisitor<'tcx> for MakeByMoveBody<'tcx, 'a> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }

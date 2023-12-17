@@ -1,6 +1,6 @@
 use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
+use rustc_middle::{mir::visit::Visitor, ty};
 
 use crate::{AnalysisDomain, GenKill, GenKillAnalysis};
 
@@ -12,11 +12,28 @@ use crate::{AnalysisDomain, GenKill, GenKillAnalysis};
 /// `MaybeBorrowedLocals` is used to compute which locals are live during a yield expression for
 /// immovable coroutines.
 #[derive(Clone, Copy)]
-pub struct MaybeBorrowedLocals;
+pub struct MaybeBorrowedLocals {
+    upvar_start: Option<(Local, usize)>,
+}
 
 impl MaybeBorrowedLocals {
+    /// `upvar_start` is to signal that upvars are treated as locals,
+    /// and locals greater than this value refers to upvars accessed
+    /// through the tuple `ty::CAPTURE_STRUCT_LOCAL`, aka. _1.
+    pub fn new(upvar_start: Option<(Local, usize)>) -> Self {
+        Self { upvar_start }
+    }
+
     pub(super) fn transfer_function<'a, T>(&'a self, trans: &'a mut T) -> TransferFunction<'a, T> {
-        TransferFunction { trans }
+        TransferFunction { trans, upvar_start: self.upvar_start }
+    }
+
+    pub fn domain_size(&self, body: &Body<'_>) -> usize {
+        if let Some((start, len)) = self.upvar_start {
+            start.as_usize() + len
+        } else {
+            body.local_decls.len()
+        }
     }
 }
 
@@ -26,7 +43,7 @@ impl<'tcx> AnalysisDomain<'tcx> for MaybeBorrowedLocals {
 
     fn bottom_value(&self, body: &Body<'tcx>) -> Self::Domain {
         // bottom = unborrowed
-        BitSet::new_empty(body.local_decls().len())
+        BitSet::new_empty(self.domain_size(body))
     }
 
     fn initialize_start_block(&self, _: &Body<'tcx>, _: &mut Self::Domain) {
@@ -38,7 +55,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeBorrowedLocals {
     type Idx = Local;
 
     fn domain_size(&self, body: &Body<'tcx>) -> usize {
-        body.local_decls.len()
+        self.domain_size(body)
     }
 
     fn statement_effect(
@@ -72,6 +89,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeBorrowedLocals {
 /// A `Visitor` that defines the transfer function for `MaybeBorrowedLocals`.
 pub(super) struct TransferFunction<'a, T> {
     trans: &'a mut T,
+    upvar_start: Option<(Local, usize)>,
 }
 
 impl<'tcx, T> Visitor<'tcx> for TransferFunction<'_, T>
@@ -97,7 +115,20 @@ where
             Rvalue::AddressOf(_, borrowed_place)
             | Rvalue::Ref(_, BorrowKind::Mut { .. } | BorrowKind::Shared, borrowed_place) => {
                 if !borrowed_place.is_indirect() {
-                    self.trans.gen(borrowed_place.local);
+                    if borrowed_place.local == ty::CAPTURE_STRUCT_LOCAL
+                        && let Some((upvar_start, nr_upvars)) = self.upvar_start
+                    {
+                        match **borrowed_place.projection {
+                            [ProjectionElem::Field(field, _), ..]
+                                if field.as_usize() < nr_upvars =>
+                            {
+                                self.trans.gen(upvar_start + field.as_usize())
+                            }
+                            _ => bug!("unexpected upvar access"),
+                        }
+                    } else {
+                        self.trans.gen(borrowed_place.local);
+                    }
                 }
             }
 
@@ -132,7 +163,26 @@ where
                 //
                 // [#61069]: https://github.com/rust-lang/rust/pull/61069
                 if !dropped_place.is_indirect() {
-                    self.trans.gen(dropped_place.local);
+                    if dropped_place.local == ty::CAPTURE_STRUCT_LOCAL
+                        && let Some((upvar_start, nr_upvars)) = self.upvar_start
+                    {
+                        match **dropped_place.projection {
+                            [] => {
+                                for field in 0..nr_upvars {
+                                    self.trans.gen(upvar_start + field)
+                                }
+                                self.trans.gen(dropped_place.local)
+                            }
+                            [ProjectionElem::Field(field, _), ..]
+                                if field.as_usize() < nr_upvars =>
+                            {
+                                self.trans.gen(upvar_start + field.as_usize())
+                            }
+                            _ => bug!("unexpected upvar access"),
+                        }
+                    } else {
+                        self.trans.gen(dropped_place.local);
+                    }
                 }
             }
 
@@ -169,6 +219,6 @@ pub fn borrowed_locals(body: &Body<'_>) -> BitSet<Local> {
     }
 
     let mut borrowed = Borrowed(BitSet::new_empty(body.local_decls.len()));
-    TransferFunction { trans: &mut borrowed }.visit_body(body);
+    TransferFunction { trans: &mut borrowed, upvar_start: None }.visit_body(body);
     borrowed.0
 }
