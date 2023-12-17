@@ -303,6 +303,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let variant_dest = self.project_downcast(dest, variant_index)?;
                 (variant_index, variant_dest, active_field_index)
             }
+            mir::AggregateKind::Coroutine(_def_id, _args) => {
+                (FIRST_VARIANT, self.project_downcast(dest, FIRST_VARIANT)?, None)
+            }
             _ => (FIRST_VARIANT, dest.clone(), None),
         };
         if active_field_index.is_some() {

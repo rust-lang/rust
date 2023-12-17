@@ -169,7 +169,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
 
         let borrowed = rustc_mir_dataflow::impls::borrowed_locals(body);
 
-        let live = MaybeLiveLocals
+        let live = MaybeLiveLocals { upvars: None }
             .into_engine(tcx, body)
             .pass_name("MaybeLiveLocals-DestinationPropagation")
             .iterate_to_fixpoint();

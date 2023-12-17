@@ -1523,8 +1523,7 @@ pub struct LayoutS<FieldIdx: Idx, VariantIdx: Idx> {
 
     /// Encodes information about multi-variant layouts.
     /// Even with `Multiple` variants, a layout still has its own fields! Those are then
-    /// shared between all variants. One of them will be the discriminant,
-    /// but e.g. coroutines can have more.
+    /// shared between all variants. One of them will be the discriminant.
     ///
     /// To access all fields of this layout, both `fields` and the fields of the active variant
     /// must be taken into account.

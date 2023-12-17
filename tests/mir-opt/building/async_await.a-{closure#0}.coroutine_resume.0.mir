@@ -1,12 +1,28 @@
 // MIR for `a::{closure#0}` 0 coroutine_resume
 /* coroutine_layout = CoroutineLayout {
+    upvar_start: _0,
     field_tys: {},
     variant_fields: {
         Unresumed(0): [],
         Returned (1): [],
         Panicked (2): [],
     },
+    field_names: {},
     storage_conflicts: BitMatrix(0x0) {},
+    variant_source_info: {
+        0: SourceInfo {
+            span: $DIR/async_await.rs:12:14: 12:14 (#0),
+            scope: scope[0],
+        },
+        1: SourceInfo {
+            span: $DIR/async_await.rs:12:16: 12:16 (#0),
+            scope: scope[0],
+        },
+        2: SourceInfo {
+            span: $DIR/async_await.rs:12:16: 12:16 (#0),
+            scope: scope[0],
+        },
+    },
 } */
 
 fn a::{closure#0}(_1: Pin<&mut {async fn body of a()}>, _2: &mut Context<'_>) -> Poll<()> {

@@ -69,7 +69,8 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
                 }
 
                 // Account that `arg` is read from, so we don't promote another argument to a move.
-                LivenessTransferFunction(&mut state).visit_operand(arg, loc);
+                LivenessTransferFunction { trans: &mut state, upvars: None }
+                    .visit_operand(arg, loc);
             }
         }
 

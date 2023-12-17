@@ -2414,8 +2414,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             && let Some(coroutine_info) = self.tcx.mir_coroutine_witnesses(coroutine_did)
         {
             debug!(?coroutine_info);
-            'find_source: for (variant, source_info) in
-                coroutine_info.variant_fields.iter().zip(&coroutine_info.variant_source_info)
+            // The first variant is a collection of upvars, which is handled below
+            'find_source: for (variant, source_info) in coroutine_info
+                .variant_fields
+                .iter()
+                .zip(&coroutine_info.variant_source_info)
+                .skip(1)
             {
                 debug!(?variant);
                 for &local in variant {
@@ -3203,8 +3207,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         let parent_trait_ref =
                             self.resolve_vars_if_possible(data.parent_trait_pred);
                         let nested_ty = parent_trait_ref.skip_binder().self_ty();
-                        matches!(nested_ty.kind(), ty::Coroutine(..))
-                            || matches!(nested_ty.kind(), ty::Closure(..))
+                        matches!(nested_ty.kind(), ty::Coroutine(..) | ty::Closure(..))
                     } else {
                         false
                     }

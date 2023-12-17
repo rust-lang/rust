@@ -686,12 +686,12 @@ fn build_union_fields_for_direct_tag_coroutine<'ll, 'tcx>(
     let coroutine_layout =
         cx.tcx.coroutine_layout(coroutine_def_id, coroutine_args.kind_ty()).unwrap();
 
-    let common_upvar_names = cx.tcx.closure_saved_names_of_captured_variables(coroutine_def_id);
     let variant_range = coroutine_args.variant_range(coroutine_def_id, cx.tcx);
     let variant_count = (variant_range.start.as_u32()..variant_range.end.as_u32()).len();
 
     let tag_base_type = tag_base_type(cx, coroutine_type_and_layout);
 
+    let common_upvar_names = cx.tcx.closure_saved_names_of_captured_variables(coroutine_def_id);
     let variant_names_type_di_node = build_variant_names_type_di_node(
         cx,
         coroutine_type_di_node,

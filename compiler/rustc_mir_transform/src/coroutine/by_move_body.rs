@@ -223,6 +223,7 @@ impl<'tcx> MirPass<'tcx> for ByMoveBody {
             );
 
         let mut by_move_body = body.clone();
+        by_move_body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty = by_move_coroutine_ty;
         MakeByMoveBody { tcx, field_remapping, by_move_coroutine_ty }.visit_body(&mut by_move_body);
         dump_mir(tcx, false, "coroutine_by_move", &0, &by_move_body, |_, _| Ok(()));
         // FIXME: use query feeding to generate the body right here and then only store the `DefId` of the new body.

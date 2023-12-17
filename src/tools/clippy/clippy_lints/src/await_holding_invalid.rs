@@ -6,6 +6,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::CoroutineLayout;
+use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::{sym, Span};
 
@@ -210,48 +211,90 @@ impl<'tcx> LateLintPass<'tcx> for AwaitHolding {
 impl AwaitHolding {
     fn check_interior_types(&self, cx: &LateContext<'_>, coroutine: &CoroutineLayout<'_>) {
         for (ty_index, ty_cause) in coroutine.field_tys.iter_enumerated() {
-            if let rustc_middle::ty::Adt(adt, _) = ty_cause.ty.kind() {
+            if let ty::Adt(adt, _) = ty_cause.ty.kind() {
                 let await_points = || {
                     coroutine
                         .variant_source_info
                         .iter_enumerated()
                         .filter_map(|(variant, source_info)| {
-                            coroutine.variant_fields[variant]
-                                .raw
-                                .contains(&ty_index)
-                                .then_some(source_info.span)
+                            let is_upvar = variant.as_usize() == ty::CoroutineArgs::UNRESUMED;
+                            coroutine.variant_fields[variant].raw.contains(&ty_index).then(|| {
+                                if is_upvar {
+                                    (is_upvar, coroutine.field_tys[ty_index].source_info.span)
+                                } else {
+                                    (is_upvar, source_info.span)
+                                }
+                            })
                         })
                         .collect::<Vec<_>>()
                 };
                 if is_mutex_guard(cx, adt.did()) {
+                    let occurrences = await_points();
+                    let is_upvar = occurrences.iter().any(|&(is_upvar, _)| is_upvar);
+                    let sp: Vec<_> = occurrences
+                        .into_iter()
+                        .filter_map(|(is_upvar, sp)| (!is_upvar).then_some(sp))
+                        .collect();
                     span_lint_and_then(
                         cx,
                         AWAIT_HOLDING_LOCK,
                         ty_cause.source_info.span,
-                        "this `MutexGuard` is held across an `await` point",
+                        if is_upvar {
+                            "this `MutexGuard` is passed in through an argument or captured by the closure body"
+                        } else {
+                            "this `MutexGuard` is held across an `await` point"
+                        },
                         |diag| {
-                            diag.help(
+                            diag.help(if is_upvar {
+                                "consider using an async-aware `Mutex` type"
+                            } else {
                                 "consider using an async-aware `Mutex` type or ensuring the \
-                                `MutexGuard` is dropped before calling await",
-                            );
-                            diag.span_note(
-                                await_points(),
-                                "these are all the `await` points this lock is held through",
-                            );
+                                `MutexGuard` is dropped before calling await"
+                            });
+                            if !sp.is_empty() {
+                                diag.span_note(
+                                    sp,
+                                    if is_upvar {
+                                        "these are the arguments or captured variables holding the `MutexGuard`"
+                                    } else {
+                                        "these are all the `await` points this lock is held through"
+                                    },
+                                );
+                            }
                         },
                     );
                 } else if is_refcell_ref(cx, adt.did()) {
+                    let occurrences = await_points();
+                    let is_upvar = occurrences.iter().any(|&(is_upvar, _)| is_upvar);
+                    let sp: Vec<_> = occurrences
+                        .into_iter()
+                        .filter_map(|(is_upvar, sp)| (!is_upvar).then_some(sp))
+                        .collect();
                     span_lint_and_then(
                         cx,
                         AWAIT_HOLDING_REFCELL_REF,
                         ty_cause.source_info.span,
-                        "this `RefCell` reference is held across an `await` point",
+                        if is_upvar {
+                            "this `RefCell` reference is passed in through an argument or captured by the closure body"
+                        } else {
+                            "this `RefCell` reference is held across an `await` point"
+                        },
                         |diag| {
-                            diag.help("ensure the reference is dropped before calling `await`");
-                            diag.span_note(
-                                await_points(),
-                                "these are all the `await` points this reference is held through",
-                            );
+                            diag.help(if is_upvar {
+                                "ensure the `RefCell` reference is not passed as an argument, captured or kept before calling `await`"
+                            } else {
+                                "ensure the reference is dropped before calling `await`"
+                            });
+                            if !sp.is_empty() {
+                                diag.span_note(
+                                    sp,
+                                    if is_upvar {
+                                        "these are all the arguments or captured variables holding this reference"
+                                    } else {
+                                        "these are all the `await` points this reference is held through"
+                                    },
+                                );
+                            }
                         },
                     );
                 } else if let Some(disallowed) = self.def_ids.get(&adt.did()) {

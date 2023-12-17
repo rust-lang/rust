@@ -533,6 +533,7 @@ mod issue5787 {
 
     impl Foo {
         // doesn't get linted without async
+        #[allow(clippy::await_holding_lock)]
         pub async fn wait<'a, T>(&self, guard: MutexGuard<'a, T>) -> MutexGuard<'a, T> {
             guard
         }

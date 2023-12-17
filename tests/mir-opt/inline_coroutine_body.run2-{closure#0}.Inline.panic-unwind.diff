@@ -22,7 +22,7 @@
               }
 +             scope 6 (inlined ActionPermit::<'_, T>::perform::{closure#0}) {
 +                 debug _task_context => _31;
-+                 debug self => ((*(_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()})).0: ActionPermit<'_, T>);
++                 debug self => (((*(_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()})) as variant#0).0: ActionPermit<'_, T>);
 +                 let _11: ActionPermit<'_, T>;
 +                 let mut _12: std::future::Ready<()>;
 +                 let mut _13: std::future::Ready<()>;
@@ -179,7 +179,7 @@
 +         _31 = move _9;
 +         _34 = deref_copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
 +         _35 = deref_copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
-+         (((*_34) as variant#3).0: ActionPermit<'_, T>) = move ((*_35).0: ActionPermit<'_, T>);
++         (((*_34) as variant#3).0: ActionPermit<'_, T>) = move (((*_35) as variant#0).0: ActionPermit<'_, T>);
 +         StorageLive(_12);
 +         StorageLive(_13);
 +         StorageLive(_14);

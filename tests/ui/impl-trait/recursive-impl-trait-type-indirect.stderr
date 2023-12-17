@@ -92,7 +92,9 @@ error[E0720]: cannot resolve opaque type
    |
 LL |   fn coroutine_capture() -> impl Sized {
    |                             ^^^^^^^^^^ recursive opaque type
-...
+LL |
+LL |       let x = coroutine_capture();
+   |           - coroutine captures itself here
 LL | /     move || {
 LL | |         yield;
 LL | |         x;

@@ -856,7 +856,7 @@ where
                         if i == tag_field {
                             return TyMaybeWithLayout::TyAndLayout(tag_layout(tag));
                         }
-                        TyMaybeWithLayout::Ty(args.as_coroutine().prefix_tys()[i])
+                        bug!("coroutine has no prefix field");
                     }
                 },
 

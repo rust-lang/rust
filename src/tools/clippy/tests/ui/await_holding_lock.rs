@@ -4,7 +4,7 @@
 // When adding or modifying a test, please do the same for parking_lot::Mutex.
 mod std_mutex {
     use super::baz;
-    use std::sync::{Mutex, RwLock};
+    use std::sync::{Mutex, MutexGuard, RwLock};
 
     pub async fn bad(x: &Mutex<u32>) -> u32 {
         let guard = x.lock().unwrap();
@@ -59,6 +59,11 @@ mod std_mutex {
         let third = baz().await;
 
         first + second + third
+    }
+
+    pub async fn equally_bad(x: MutexGuard<'_, u32>) {
+        //~^ ERROR: this `MutexGuard` is passed in through an argument or captured by the closure body
+        drop(x);
     }
 
     pub async fn not_good(x: &Mutex<u32>) -> u32 {

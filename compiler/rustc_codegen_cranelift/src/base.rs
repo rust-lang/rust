@@ -810,6 +810,9 @@ fn codegen_stmt<'tcx>(
                             let variant_dest = lval.downcast_variant(fx, variant_index);
                             (variant_index, variant_dest, active_field_index)
                         }
+                        mir::AggregateKind::Coroutine(_, _) => {
+                            (FIRST_VARIANT, lval.downcast_variant(fx, FIRST_VARIANT), None)
+                        }
                         _ => (FIRST_VARIANT, lval, None),
                     };
                     if active_field_index.is_some() {
