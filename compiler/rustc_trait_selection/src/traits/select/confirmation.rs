@@ -71,7 +71,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::Builtin(BuiltinImplSource::Misc, data)
             }
 
-            ProjectionCandidate(idx, _) => {
+            ProjectionCandidate(idx) => {
                 let obligations = self.confirm_projection_candidate(obligation, idx)?;
                 ImplSource::Param(obligations)
             }
@@ -1313,7 +1313,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // If we have a projection type, make sure to normalize it so we replace it
                 // with a fresh infer variable
                 ty::Alias(ty::Projection | ty::Inherent, ..) => {
-                    // FIXME(effects) this needs constness
                     let predicate = normalize_with_depth_to(
                         self,
                         obligation.param_env,
@@ -1344,7 +1343,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // since it's either not `const Drop` (and we raise an error during selection),
                 // or it's an ADT (and we need to check for a custom impl during selection)
                 _ => {
-                    // FIXME(effects) this needs constness
                     let predicate = self_ty.rebind(ty::TraitPredicate {
                         trait_ref: ty::TraitRef::from_lang_item(
                             self.tcx(),
