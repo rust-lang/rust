@@ -344,7 +344,7 @@ impl Command {
         println!(
             // Open PR with `subtree update` title to silence the `no-merges` triagebot check
             // See https://github.com/rust-lang/rust/pull/114157
-            "    https://github.com/rust-lang/rust/compare/{github_user}:{branch}?quick_pull=1&title=Miri+subtree+update"
+            "    https://github.com/rust-lang/rust/compare/{github_user}:{branch}?quick_pull=1&title=Miri+subtree+update&body=r?+@ghost"
         );
 
         drop(josh);
