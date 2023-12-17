@@ -1357,7 +1357,7 @@ fn default_emitter(
 // JUSTIFICATION: literally session construction
 #[allow(rustc::bad_opt_access)]
 pub fn build_session(
-    early_handler: EarlyDiagCtxt,
+    early_dcx: EarlyDiagCtxt,
     sopts: config::Options,
     io: CompilerIO,
     bundle: Option<Lrc<rustc_errors::FluentBundle>>,
@@ -1387,13 +1387,13 @@ pub fn build_session(
         None => filesearch::get_or_default_sysroot().expect("Failed finding sysroot"),
     };
 
-    let target_cfg = config::build_target_config(&early_handler, &sopts, target_override, &sysroot);
+    let target_cfg = config::build_target_config(&early_dcx, &sopts, target_override, &sysroot);
     let host_triple = TargetTriple::from_triple(config::host_triple());
     let (host, target_warnings) = Target::search(&host_triple, &sysroot).unwrap_or_else(|e| {
-        early_handler.early_error(format!("Error loading host specification: {e}"))
+        early_dcx.early_error(format!("Error loading host specification: {e}"))
     });
     for warning in target_warnings.warning_messages() {
-        early_handler.early_warn(warning)
+        early_dcx.early_warn(warning)
     }
 
     let loader = file_loader.unwrap_or_else(|| Box::new(RealFileLoader));
@@ -1422,9 +1422,9 @@ pub fn build_session(
         span_diagnostic = span_diagnostic.with_ice_file(ice_file);
     }
 
-    // Now that the proper handler has been constructed, drop the early handler
-    // to prevent accidental use.
-    drop(early_handler);
+    // Now that the proper handler has been constructed, drop early_dcx to
+    // prevent accidental use.
+    drop(early_dcx);
 
     let self_profiler = if let SwitchWithOptPath::Enabled(ref d) = sopts.unstable_opts.self_profile
     {

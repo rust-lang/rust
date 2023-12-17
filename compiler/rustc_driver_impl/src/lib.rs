@@ -495,7 +495,7 @@ fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<OutFileNa
 
 // Extract input (string or file and optional path) from matches.
 fn make_input(
-    handler: &EarlyDiagCtxt,
+    early_dcx: &EarlyDiagCtxt,
     free_matches: &[String],
 ) -> Result<Option<Input>, ErrorGuaranteed> {
     if free_matches.len() == 1 {
@@ -505,7 +505,7 @@ fn make_input(
             if io::stdin().read_to_string(&mut src).is_err() {
                 // Immediately stop compilation if there was an issue reading
                 // the input (for example if the input stream is not UTF-8).
-                let reported = handler.early_error_no_abort(
+                let reported = early_dcx.early_error_no_abort(
                     "couldn't read from stdin, as it did not contain valid UTF-8",
                 );
                 return Err(reported);
@@ -537,7 +537,7 @@ pub enum Compilation {
     Continue,
 }
 
-fn handle_explain(handler: &EarlyDiagCtxt, registry: Registry, code: &str, color: ColorConfig) {
+fn handle_explain(early_dcx: &EarlyDiagCtxt, registry: Registry, code: &str, color: ColorConfig) {
     let upper_cased_code = code.to_ascii_uppercase();
     let normalised =
         if upper_cased_code.starts_with('E') { upper_cased_code } else { format!("E{code:0>4}") };
@@ -567,7 +567,7 @@ fn handle_explain(handler: &EarlyDiagCtxt, registry: Registry, code: &str, color
             }
         }
         Err(InvalidErrorCode) => {
-            handler.early_error(format!("{code} is not a valid error code"));
+            early_dcx.early_error(format!("{code} is not a valid error code"));
         }
     }
 }
@@ -669,7 +669,7 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
     }
 }
 
-fn list_metadata(handler: &EarlyDiagCtxt, sess: &Session, metadata_loader: &dyn MetadataLoader) {
+fn list_metadata(early_dcx: &EarlyDiagCtxt, sess: &Session, metadata_loader: &dyn MetadataLoader) {
     match sess.io.input {
         Input::File(ref ifile) => {
             let path = &(*ifile);
@@ -685,13 +685,13 @@ fn list_metadata(handler: &EarlyDiagCtxt, sess: &Session, metadata_loader: &dyn 
             safe_println!("{}", String::from_utf8(v).unwrap());
         }
         Input::Str { .. } => {
-            handler.early_error("cannot list metadata for stdin");
+            early_dcx.early_error("cannot list metadata for stdin");
         }
     }
 }
 
 fn print_crate_info(
-    handler: &EarlyDiagCtxt,
+    early_dcx: &EarlyDiagCtxt,
     codegen_backend: &dyn CodegenBackend,
     sess: &Session,
     parse_attrs: bool,
@@ -838,7 +838,7 @@ fn print_crate_info(
                         .expect("unknown Apple target OS");
                     println_info!("deployment_target={}", format!("{major}.{minor}"))
                 } else {
-                    handler
+                    early_dcx
                         .early_error("only Apple targets currently support deployment version info")
                 }
             }
@@ -869,7 +869,7 @@ pub macro version($handler: expr, $binary: literal, $matches: expr) {
 
 #[doc(hidden)] // use the macro instead
 pub fn version_at_macro_invocation(
-    handler: &EarlyDiagCtxt,
+    early_dcx: &EarlyDiagCtxt,
     binary: &str,
     matches: &getopts::Matches,
     version: &str,
@@ -890,7 +890,7 @@ pub fn version_at_macro_invocation(
 
         let debug_flags = matches.opt_strs("Z");
         let backend_name = debug_flags.iter().find_map(|x| x.strip_prefix("codegen-backend="));
-        get_codegen_backend(handler, &None, backend_name).print_version();
+        get_codegen_backend(early_dcx, &None, backend_name).print_version();
     }
 }
 
@@ -1068,7 +1068,7 @@ Available lint options:
 /// Show help for flag categories shared between rustdoc and rustc.
 ///
 /// Returns whether a help option was printed.
-pub fn describe_flag_categories(handler: &EarlyDiagCtxt, matches: &Matches) -> bool {
+pub fn describe_flag_categories(early_dcx: &EarlyDiagCtxt, matches: &Matches) -> bool {
     // Handle the special case of -Wall.
     let wall = matches.opt_strs("W");
     if wall.iter().any(|x| *x == "all") {
@@ -1090,12 +1090,12 @@ pub fn describe_flag_categories(handler: &EarlyDiagCtxt, matches: &Matches) -> b
     }
 
     if cg_flags.iter().any(|x| *x == "no-stack-check") {
-        handler.early_warn("the --no-stack-check flag is deprecated and does nothing");
+        early_dcx.early_warn("the --no-stack-check flag is deprecated and does nothing");
     }
 
     if cg_flags.iter().any(|x| *x == "passes=list") {
         let backend_name = debug_flags.iter().find_map(|x| x.strip_prefix("codegen-backend="));
-        get_codegen_backend(handler, &None, backend_name).print_passes();
+        get_codegen_backend(early_dcx, &None, backend_name).print_passes();
         return true;
     }
 
@@ -1156,7 +1156,7 @@ fn print_flag_list<T>(
 /// This does not need to be `pub` for rustc itself, but @chaosite needs it to
 /// be public when using rustc as a library, see
 /// <https://github.com/rust-lang/rust/commit/2b4c33817a5aaecabf4c6598d41e190080ec119e>
-pub fn handle_options(handler: &EarlyDiagCtxt, args: &[String]) -> Option<getopts::Matches> {
+pub fn handle_options(early_dcx: &EarlyDiagCtxt, args: &[String]) -> Option<getopts::Matches> {
     if args.is_empty() {
         // user did not write `-v` nor `-Z unstable-options`, so do not
         // include that extra information.
@@ -1182,7 +1182,7 @@ pub fn handle_options(handler: &EarlyDiagCtxt, args: &[String]) -> Option<getopt
                 .map(|(flag, _)| format!("{e}. Did you mean `-{flag} {opt}`?")),
             _ => None,
         };
-        handler.early_error(msg.unwrap_or_else(|| e.to_string()));
+        early_dcx.early_error(msg.unwrap_or_else(|| e.to_string()));
     });
 
     // For all options we just parsed, we check a few aspects:
@@ -1196,7 +1196,7 @@ pub fn handle_options(handler: &EarlyDiagCtxt, args: &[String]) -> Option<getopt
     //   we're good to go.
     // * Otherwise, if we're an unstable option then we generate an error
     //   (unstable option being used on stable)
-    nightly_options::check_nightly_options(handler, &matches, &config::rustc_optgroups());
+    nightly_options::check_nightly_options(early_dcx, &matches, &config::rustc_optgroups());
 
     if matches.opt_present("h") || matches.opt_present("help") {
         // Only show unstable options in --help if we accept unstable options.
@@ -1206,12 +1206,12 @@ pub fn handle_options(handler: &EarlyDiagCtxt, args: &[String]) -> Option<getopt
         return None;
     }
 
-    if describe_flag_categories(handler, &matches) {
+    if describe_flag_categories(early_dcx, &matches) {
         return None;
     }
 
     if matches.opt_present("version") {
-        version!(handler, "rustc", &matches);
+        version!(early_dcx, "rustc", &matches);
         return None;
     }
 
@@ -1472,16 +1472,16 @@ fn report_ice(
 
 /// This allows tools to enable rust logging without having to magically match rustc's
 /// tracing crate version.
-pub fn init_rustc_env_logger(handler: &EarlyDiagCtxt) {
-    init_logger(handler, rustc_log::LoggerConfig::from_env("RUSTC_LOG"));
+pub fn init_rustc_env_logger(early_dcx: &EarlyDiagCtxt) {
+    init_logger(early_dcx, rustc_log::LoggerConfig::from_env("RUSTC_LOG"));
 }
 
 /// This allows tools to enable rust logging without having to magically match rustc's
 /// tracing crate version. In contrast to `init_rustc_env_logger` it allows you to choose
 /// the values directly rather than having to set an environment variable.
-pub fn init_logger(handler: &EarlyDiagCtxt, cfg: rustc_log::LoggerConfig) {
+pub fn init_logger(early_dcx: &EarlyDiagCtxt, cfg: rustc_log::LoggerConfig) {
     if let Err(error) = rustc_log::init_logger(cfg) {
-        handler.early_error(error.to_string());
+        early_dcx.early_error(error.to_string());
     }
 }
 

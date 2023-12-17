@@ -215,7 +215,7 @@ fn rustc_logger_config() -> rustc_log::LoggerConfig {
     cfg
 }
 
-fn init_early_loggers(handler: &EarlyDiagCtxt) {
+fn init_early_loggers(early_dcx: &EarlyDiagCtxt) {
     // Note that our `extern crate log` is *not* the same as rustc's; as a result, we have to
     // initialize them both, and we always initialize `miri`'s first.
     let env = env_logger::Env::new().filter("MIRI_LOG").write_style("MIRI_LOG_STYLE");
@@ -224,15 +224,15 @@ fn init_early_loggers(handler: &EarlyDiagCtxt) {
     // If it is not set, we avoid initializing now so that we can initialize later with our custom
     // settings, and *not* log anything for what happens before `miri` gets started.
     if env::var_os("RUSTC_LOG").is_some() {
-        rustc_driver::init_logger(handler, rustc_logger_config());
+        rustc_driver::init_logger(early_dcx, rustc_logger_config());
     }
 }
 
-fn init_late_loggers(handler: &EarlyDiagCtxt, tcx: TyCtxt<'_>) {
+fn init_late_loggers(early_dcx: &EarlyDiagCtxt, tcx: TyCtxt<'_>) {
     // If `RUSTC_LOG` is not set, then `init_early_loggers` did not call
     // `rustc_driver::init_logger`, so we have to do this now.
     if env::var_os("RUSTC_LOG").is_none() {
-        rustc_driver::init_logger(handler, rustc_logger_config());
+        rustc_driver::init_logger(early_dcx, rustc_logger_config());
     }
 
     // If `MIRI_BACKTRACE` is set and `RUSTC_CTFE_BACKTRACE` is not, set `RUSTC_CTFE_BACKTRACE`.

@@ -255,10 +255,10 @@ macro_rules! options {
 
     impl $struct_name {
         pub fn build(
-            handler: &EarlyDiagCtxt,
+            early_dcx: &EarlyDiagCtxt,
             matches: &getopts::Matches,
         ) -> $struct_name {
-            build_options(handler, matches, $stat, $prefix, $outputname)
+            build_options(early_dcx, matches, $stat, $prefix, $outputname)
         }
 
         fn dep_tracking_hash(&self, for_crate_hash: bool, error_format: ErrorOutputType) -> u64 {
@@ -319,7 +319,7 @@ type OptionSetter<O> = fn(&mut O, v: Option<&str>) -> bool;
 type OptionDescrs<O> = &'static [(&'static str, OptionSetter<O>, &'static str, &'static str)];
 
 fn build_options<O: Default>(
-    handler: &EarlyDiagCtxt,
+    early_dcx: &EarlyDiagCtxt,
     matches: &getopts::Matches,
     descrs: OptionDescrs<O>,
     prefix: &str,
@@ -337,12 +337,12 @@ fn build_options<O: Default>(
             Some((_, setter, type_desc, _)) => {
                 if !setter(&mut op, value) {
                     match value {
-                        None => handler.early_error(
+                        None => early_dcx.early_error(
                             format!(
                                 "{outputname} option `{key}` requires {type_desc} ({prefix} {key}=<value>)"
                             ),
                         ),
-                        Some(value) => handler.early_error(
+                        Some(value) => early_dcx.early_error(
                             format!(
                                 "incorrect value `{value}` for {outputname} option `{key}` - {type_desc} was expected"
                             ),
@@ -350,7 +350,7 @@ fn build_options<O: Default>(
                     }
                 }
             }
-            None => handler.early_error(format!("unknown {outputname} option: `{key}`")),
+            None => early_dcx.early_error(format!("unknown {outputname} option: `{key}`")),
         }
     }
     return op;

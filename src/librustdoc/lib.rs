@@ -189,15 +189,15 @@ pub fn main() {
     process::exit(exit_code);
 }
 
-fn init_logging(handler: &EarlyDiagCtxt) {
+fn init_logging(early_dcx: &EarlyDiagCtxt) {
     let color_logs = match std::env::var("RUSTDOC_LOG_COLOR").as_deref() {
         Ok("always") => true,
         Ok("never") => false,
         Ok("auto") | Err(VarError::NotPresent) => io::stdout().is_terminal(),
-        Ok(value) => handler.early_error(format!(
+        Ok(value) => early_dcx.early_error(format!(
             "invalid log color value '{value}': expected one of always, never, or auto",
         )),
-        Err(VarError::NotUnicode(value)) => handler.early_error(format!(
+        Err(VarError::NotUnicode(value)) => early_dcx.early_error(format!(
             "invalid log color value '{}': expected one of always, never, or auto",
             value.to_string_lossy()
         )),
@@ -220,13 +220,13 @@ fn init_logging(handler: &EarlyDiagCtxt) {
     tracing::subscriber::set_global_default(subscriber).unwrap();
 }
 
-fn get_args(handler: &EarlyDiagCtxt) -> Option<Vec<String>> {
+fn get_args(early_dcx: &EarlyDiagCtxt) -> Option<Vec<String>> {
     env::args_os()
         .enumerate()
         .map(|(i, arg)| {
             arg.into_string()
                 .map_err(|arg| {
-                    handler.early_warn(format!("Argument {i} is not valid Unicode: {arg:?}"));
+                    early_dcx.early_warn(format!("Argument {i} is not valid Unicode: {arg:?}"));
                 })
                 .ok()
         })
@@ -704,7 +704,7 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
 }
 
 fn main_args(
-    handler: &mut EarlyDiagCtxt,
+    early_dcx: &mut EarlyDiagCtxt,
     at_args: &[String],
     using_internal_features: Arc<AtomicBool>,
 ) -> MainResult {
@@ -718,7 +718,7 @@ fn main_args(
     // the compiler with @empty_file as argv[0] and no more arguments.
     let at_args = at_args.get(1..).unwrap_or_default();
 
-    let args = rustc_driver::args::arg_expand_all(handler, at_args);
+    let args = rustc_driver::args::arg_expand_all(early_dcx, at_args);
 
     let mut options = getopts::Options::new();
     for option in opts() {
@@ -727,13 +727,13 @@ fn main_args(
     let matches = match options.parse(&args) {
         Ok(m) => m,
         Err(err) => {
-            handler.early_error(err.to_string());
+            early_dcx.early_error(err.to_string());
         }
     };
 
     // Note that we discard any distinction between different non-zero exit
     // codes from `from_matches` here.
-    let (options, render_options) = match config::Options::from_matches(handler, &matches, args) {
+    let (options, render_options) = match config::Options::from_matches(early_dcx, &matches, args) {
         Ok(opts) => opts,
         Err(code) => {
             return if code == 0 {

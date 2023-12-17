@@ -161,16 +161,16 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     })
 }
 
-fn load_backend_from_dylib(handler: &EarlyDiagCtxt, path: &Path) -> MakeBackendFn {
+fn load_backend_from_dylib(early_dcx: &EarlyDiagCtxt, path: &Path) -> MakeBackendFn {
     let lib = unsafe { Library::new(path) }.unwrap_or_else(|err| {
         let err = format!("couldn't load codegen backend {path:?}: {err}");
-        handler.early_error(err);
+        early_dcx.early_error(err);
     });
 
     let backend_sym = unsafe { lib.get::<MakeBackendFn>(b"__rustc_codegen_backend") }
         .unwrap_or_else(|e| {
             let err = format!("couldn't load codegen backend: {e}");
-            handler.early_error(err);
+            early_dcx.early_error(err);
         });
 
     // Intentionally leak the dynamic library. We can't ever unload it
@@ -185,7 +185,7 @@ fn load_backend_from_dylib(handler: &EarlyDiagCtxt, path: &Path) -> MakeBackendF
 ///
 /// A name of `None` indicates that the default backend should be used.
 pub fn get_codegen_backend(
-    handler: &EarlyDiagCtxt,
+    early_dcx: &EarlyDiagCtxt,
     maybe_sysroot: &Option<PathBuf>,
     backend_name: Option<&str>,
 ) -> Box<dyn CodegenBackend> {
@@ -196,11 +196,11 @@ pub fn get_codegen_backend(
 
         match backend_name.unwrap_or(default_codegen_backend) {
             filename if filename.contains('.') => {
-                load_backend_from_dylib(handler, filename.as_ref())
+                load_backend_from_dylib(early_dcx, filename.as_ref())
             }
             #[cfg(feature = "llvm")]
             "llvm" => rustc_codegen_llvm::LlvmCodegenBackend::new,
-            backend_name => get_codegen_sysroot(handler, maybe_sysroot, backend_name),
+            backend_name => get_codegen_sysroot(early_dcx, maybe_sysroot, backend_name),
         }
     });
 
@@ -233,7 +233,7 @@ fn get_rustc_path_inner(bin_path: &str) -> Option<PathBuf> {
 }
 
 fn get_codegen_sysroot(
-    handler: &EarlyDiagCtxt,
+    early_dcx: &EarlyDiagCtxt,
     maybe_sysroot: &Option<PathBuf>,
     backend_name: &str,
 ) -> MakeBackendFn {
@@ -271,7 +271,7 @@ fn get_codegen_sysroot(
             "failed to find a `codegen-backends` folder \
                            in the sysroot candidates:\n* {candidates}"
         );
-        handler.early_error(err);
+        early_dcx.early_error(err);
     });
     info!("probing {} for a codegen backend", sysroot.display());
 
@@ -282,7 +282,7 @@ fn get_codegen_sysroot(
             sysroot.display(),
             e
         );
-        handler.early_error(err);
+        early_dcx.early_error(err);
     });
 
     let mut file: Option<PathBuf> = None;
@@ -310,16 +310,16 @@ fn get_codegen_sysroot(
                 prev.display(),
                 path.display()
             );
-            handler.early_error(err);
+            early_dcx.early_error(err);
         }
         file = Some(path.clone());
     }
 
     match file {
-        Some(ref s) => load_backend_from_dylib(handler, s),
+        Some(ref s) => load_backend_from_dylib(early_dcx, s),
         None => {
             let err = format!("unsupported builtin codegen backend `{backend_name}`");
-            handler.early_error(err);
+            early_dcx.early_error(err);
         }
     }
 }
