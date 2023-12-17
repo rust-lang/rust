@@ -236,6 +236,13 @@ fn expand_macro<'cx>(
                             target_sp.open = source_sp.open.with_ctxt(ctxt);
                             target_sp.close = source_sp.close.with_ctxt(ctxt);
                         }
+                        (
+                            TokenTree::Delimited(target_sp, ..),
+                            mbe::TokenTree::MetaVar(source_sp, ..),
+                        ) => {
+                            target_sp.open = source_sp.with_ctxt(ctxt);
+                            target_sp.close = source_sp.with_ctxt(ctxt).shrink_to_hi();
+                        }
                         _ => {
                             let sp = rhs_tt.span().with_ctxt(ctxt);
                             tt.set_span(sp);

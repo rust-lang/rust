@@ -125,10 +125,8 @@ pub enum SelectionCandidate<'tcx> {
 
     /// This is a trait matching with a projected type as `Self`, and we found
     /// an applicable bound in the trait definition. The `usize` is an index
-    /// into the list returned by `tcx.item_bounds`. The constness is the
-    /// constness of the bound in the trait.
-    // FIXME(effects) do we need this constness
-    ProjectionCandidate(usize, ty::BoundConstness),
+    /// into the list returned by `tcx.item_bounds`.
+    ProjectionCandidate(usize),
 
     /// Implementation of a `Fn`-family trait by one of the anonymous types
     /// generated for an `||` expression.

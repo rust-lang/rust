@@ -154,10 +154,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .infcx
             .probe(|_| self.match_projection_obligation_against_definition_bounds(obligation));
 
-        // FIXME(effects) proper constness needed?
-        candidates.vec.extend(
-            result.into_iter().map(|idx| ProjectionCandidate(idx, ty::BoundConstness::NotConst)),
-        );
+        candidates.vec.extend(result.into_iter().map(|idx| ProjectionCandidate(idx)));
     }
 
     /// Given an obligation like `<SomeTrait for T>`, searches the obligations that the caller
@@ -585,7 +582,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::Alias(ty::Opaque, _) => {
-                    if candidates.vec.iter().any(|c| matches!(c, ProjectionCandidate(..))) {
+                    if candidates.vec.iter().any(|c| matches!(c, ProjectionCandidate(_))) {
                         // We do not generate an auto impl candidate for `impl Trait`s which already
                         // reference our auto trait.
                         //
