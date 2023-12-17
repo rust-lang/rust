@@ -644,12 +644,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             {
                 if let Some(offset) = self.evaluated[idx].as_ref()
                     && let Ok(offset) = self.ecx.read_target_usize(offset)
+                    && let Some(min_length) = offset.checked_add(1)
                 {
-                    projection.to_mut()[i] = ProjectionElem::ConstantIndex {
-                        offset,
-                        min_length: offset + 1,
-                        from_end: false,
-                    };
+                    projection.to_mut()[i] =
+                        ProjectionElem::ConstantIndex { offset, min_length, from_end: false };
                 } else if let Some(new_idx) = self.try_as_local(idx, location) {
                     projection.to_mut()[i] = ProjectionElem::Index(new_idx);
                     self.reused_locals.insert(new_idx);
