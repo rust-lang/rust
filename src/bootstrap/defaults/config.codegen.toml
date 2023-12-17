@@ -3,15 +3,6 @@
 # Contributors working on the compiler will probably expect compiler docs to be generated.
 compiler-docs = true
 
-[llvm]
-# This enables debug-assertions in LLVM,
-# catching logic errors in codegen much earlier in the process.
-assertions = true
-# enable warnings during the llvm compilation
-enable-warnings = true
-# build llvm from source
-download-ci-llvm = "if-unchanged"
-
 [rust]
 # This enables `RUSTC_LOG=debug`, avoiding confusing situations
 # where adding `debug!()` appears to do nothing.
@@ -23,3 +14,12 @@ incremental = true
 backtrace-on-ice = true
 # Make the compiler and standard library faster to build, at the expense of a ~20% runtime slowdown.
 lto = "off"
+
+[llvm]
+# build llvm from source
+download-ci-llvm = "if-unchanged"
+# This enables debug-assertions in LLVM,
+# catching logic errors in codegen much earlier in the process.
+assertions = true
+# enable warnings during the llvm compilation
+enable-warnings = true
