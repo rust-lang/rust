@@ -47,7 +47,7 @@ pub fn parse_asm_args<'a>(
     sp: Span,
     is_global_asm: bool,
 ) -> PResult<'a, AsmArgs> {
-    let diag = &sess.span_diagnostic;
+    let diag = &sess.dcx;
 
     if p.token == token::Eof {
         return Err(diag.create_err(errors::AsmRequiresTemplate { span: sp }));
@@ -298,7 +298,7 @@ pub fn parse_asm_args<'a>(
 fn err_duplicate_option(p: &mut Parser<'_>, symbol: Symbol, span: Span) {
     // Tool-only output
     let full_span = if p.token.kind == token::Comma { span.to(p.token.span) } else { span };
-    p.sess.span_diagnostic.emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
+    p.sess.dcx.emit_err(errors::AsmOptAlreadyprovided { span, symbol, full_span });
 }
 
 /// Try to set the provided option in the provided `AsmArgs`.
@@ -370,7 +370,7 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, 
     p.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
 
     if p.eat(&token::CloseDelim(Delimiter::Parenthesis)) {
-        return Err(p.sess.span_diagnostic.create_err(errors::NonABI { span: p.token.span }));
+        return Err(p.sess.dcx.create_err(errors::NonABI { span: p.token.span }));
     }
 
     let mut new_abis = Vec::new();
@@ -381,8 +381,7 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, 
             }
             Err(opt_lit) => {
                 let span = opt_lit.map_or(p.token.span, |lit| lit.span);
-                let mut err =
-                    p.sess.span_diagnostic.struct_span_err(span, "expected string literal");
+                let mut err = p.sess.dcx.struct_span_err(span, "expected string literal");
                 err.span_label(span, "not a string literal");
                 return Err(err);
             }

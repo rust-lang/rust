@@ -254,7 +254,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn diagnostic(&self) -> &'a DiagCtxt {
-        &self.sess.span_diagnostic
+        &self.sess.dcx
     }
 
     /// Replace `self` with `snapshot.parser`.

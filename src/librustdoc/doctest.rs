@@ -641,7 +641,7 @@ pub(crate) fn make_test(
             // handler. Any errors in the tests will be reported when the test file is compiled,
             // Note that we still need to cancel the errors above otherwise `DiagnosticBuilder`
             // will panic on drop.
-            sess.span_diagnostic.reset_err_count();
+            sess.dcx.reset_err_count();
 
             (found_main, found_extern_crate, found_macro)
         })

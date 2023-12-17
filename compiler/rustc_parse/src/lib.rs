@@ -100,7 +100,7 @@ pub fn parse_stream_from_source_str(
 
 /// Creates a new parser from a source string.
 pub fn new_parser_from_source_str(sess: &ParseSess, name: FileName, source: String) -> Parser<'_> {
-    panictry_buffer!(&sess.span_diagnostic, maybe_new_parser_from_source_str(sess, name, source))
+    panictry_buffer!(&sess.dcx, maybe_new_parser_from_source_str(sess, name, source))
 }
 
 /// Creates a new parser from a source string. Returns any buffered errors from lexing the initial
@@ -121,7 +121,7 @@ pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path, sp: Option<Spa
 
 /// Given a session and a `source_file`, returns a parser.
 fn source_file_to_parser(sess: &ParseSess, source_file: Lrc<SourceFile>) -> Parser<'_> {
-    panictry_buffer!(&sess.span_diagnostic, maybe_source_file_to_parser(sess, source_file))
+    panictry_buffer!(&sess.dcx, maybe_source_file_to_parser(sess, source_file))
 }
 
 /// Given a session and a `source_file`, return a parser. Returns any buffered errors from lexing the
@@ -166,7 +166,7 @@ fn file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>) -> 
     match try_file_to_source_file(sess, path, spanopt) {
         Ok(source_file) => source_file,
         Err(d) => {
-            sess.span_diagnostic.emit_diagnostic(d);
+            sess.dcx.emit_diagnostic(d);
             FatalError.raise();
         }
     }
@@ -178,7 +178,7 @@ pub fn source_file_to_stream(
     source_file: Lrc<SourceFile>,
     override_span: Option<Span>,
 ) -> TokenStream {
-    panictry_buffer!(&sess.span_diagnostic, maybe_file_to_stream(sess, source_file, override_span))
+    panictry_buffer!(&sess.dcx, maybe_file_to_stream(sess, source_file, override_span))
 }
 
 /// Given a source file, produces a sequence of token trees. Returns any buffered errors from
@@ -189,7 +189,7 @@ pub fn maybe_file_to_stream(
     override_span: Option<Span>,
 ) -> Result<TokenStream, Vec<Diagnostic>> {
     let src = source_file.src.as_ref().unwrap_or_else(|| {
-        sess.span_diagnostic.bug(format!(
+        sess.dcx.bug(format!(
             "cannot lex `source_file` without source: {}",
             sess.source_map().filename_for_diagnostics(&source_file.name)
         ));

@@ -3537,7 +3537,7 @@ impl<'a> Parser<'a> {
                     ident_span: this.token.span,
                     token: this.look_ahead(1, |t| t.clone()),
                 }
-                .into_diagnostic(&self.sess.span_diagnostic));
+                .into_diagnostic(&self.sess.dcx));
             }
             let (ident, expr) = if is_shorthand {
                 // Mimic `x: x` for the `x` field shorthand.

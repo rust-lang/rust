@@ -678,7 +678,7 @@ impl Session {
 
     #[inline]
     pub fn diagnostic(&self) -> &DiagCtxt {
-        &self.parse_sess.span_diagnostic
+        &self.parse_sess.dcx
     }
 
     #[inline]

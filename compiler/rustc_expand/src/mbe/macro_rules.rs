@@ -402,7 +402,7 @@ pub fn compile_declarative_macro(
     };
     let dummy_syn_ext = || (mk_syn_ext(Box::new(macro_rules_dummy_expander)), Vec::new());
 
-    let diag = &sess.parse_sess.span_diagnostic;
+    let diag = &sess.parse_sess.dcx;
     let lhs_nm = Ident::new(sym::lhs, def.span);
     let rhs_nm = Ident::new(sym::rhs, def.span);
     let tt_spec = Some(NonterminalKind::TT);
@@ -626,7 +626,7 @@ fn check_lhs_nt_follows(sess: &ParseSess, def: &ast::Item, lhs: &mbe::TokenTree)
         check_matcher(sess, def, &delimited.tts)
     } else {
         let msg = "invalid macro matcher; matchers must be contained in balanced delimiters";
-        sess.span_diagnostic.span_err(lhs.span(), msg);
+        sess.dcx.span_err(lhs.span(), msg);
         false
     }
     // we don't abort on errors on rejection, the driver will do that for us
@@ -652,8 +652,7 @@ fn is_empty_token_tree(sess: &ParseSess, seq: &mbe::SequenceRepetition) -> bool 
                         iter.next();
                     }
                     let span = t.span.to(now.span);
-                    sess.span_diagnostic
-                        .span_note(span, "doc comments are ignored in matcher position");
+                    sess.dcx.span_note(span, "doc comments are ignored in matcher position");
                 }
                 mbe::TokenTree::Sequence(_, sub_seq)
                     if (sub_seq.kleene.op == mbe::KleeneOp::ZeroOrMore
@@ -683,7 +682,7 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[mbe::TokenTree]) -> bool {
             TokenTree::Sequence(span, seq) => {
                 if is_empty_token_tree(sess, seq) {
                     let sp = span.entire();
-                    sess.span_diagnostic.span_err(sp, "repetition matches empty token tree");
+                    sess.dcx.span_err(sp, "repetition matches empty token tree");
                     return false;
                 }
                 if !check_lhs_no_empty_seq(sess, &seq.tts) {
@@ -700,7 +699,7 @@ fn check_rhs(sess: &ParseSess, rhs: &mbe::TokenTree) -> bool {
     match *rhs {
         mbe::TokenTree::Delimited(..) => return true,
         _ => {
-            sess.span_diagnostic.span_err(rhs.span(), "macro rhs must be delimited");
+            sess.dcx.span_err(rhs.span(), "macro rhs must be delimited");
         }
     }
     false
@@ -709,9 +708,9 @@ fn check_rhs(sess: &ParseSess, rhs: &mbe::TokenTree) -> bool {
 fn check_matcher(sess: &ParseSess, def: &ast::Item, matcher: &[mbe::TokenTree]) -> bool {
     let first_sets = FirstSets::new(matcher);
     let empty_suffix = TokenSet::empty();
-    let err = sess.span_diagnostic.err_count();
+    let err = sess.dcx.err_count();
     check_matcher_core(sess, def, &first_sets, matcher, &empty_suffix);
-    err == sess.span_diagnostic.err_count()
+    err == sess.dcx.err_count()
 }
 
 fn has_compile_error_macro(rhs: &mbe::TokenTree) -> bool {
@@ -1190,7 +1189,7 @@ fn check_matcher_core<'tt>(
                             };
 
                             let sp = next_token.span();
-                            let mut err = sess.span_diagnostic.struct_span_err(
+                            let mut err = sess.dcx.struct_span_err(
                                 sp,
                                 format!(
                                     "`${name}:{frag}` {may_be} followed by `{next}`, which \

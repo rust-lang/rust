@@ -1208,7 +1208,7 @@ pub fn resolve_path(
                     span,
                     path: parse_sess.source_map().filename_for_diagnostics(&other).to_string(),
                 }
-                .into_diagnostic(&parse_sess.span_diagnostic));
+                .into_diagnostic(&parse_sess.dcx));
             }
         };
         result.pop();

@@ -103,8 +103,7 @@ pub fn feature_err_issue(
 
     // Cancel an earlier warning for this same error, if it exists.
     if let Some(span) = span.primary_span() {
-        if let Some(err) = sess.span_diagnostic.steal_diagnostic(span, StashKey::EarlySyntaxWarning)
-        {
+        if let Some(err) = sess.dcx.steal_diagnostic(span, StashKey::EarlySyntaxWarning) {
             err.cancel()
         }
     }
@@ -138,7 +137,7 @@ pub fn feature_warn_issue(
     issue: GateIssue,
     explain: &'static str,
 ) {
-    let mut err = sess.span_diagnostic.struct_span_warn(span, explain);
+    let mut err = sess.dcx.struct_span_warn(span, explain);
     add_feature_diagnostics_for_issue(&mut err, sess, feature, issue, false);
 
     // Decorate this as a future-incompatibility lint as in rustc_middle::lint::struct_lint_level
@@ -189,7 +188,7 @@ pub fn add_feature_diagnostics_for_issue(
 
 /// Info about a parsing session.
 pub struct ParseSess {
-    pub span_diagnostic: DiagCtxt,
+    pub dcx: DiagCtxt,
     pub unstable_features: UnstableFeatures,
     pub config: Cfg,
     pub check_config: CheckCfg,
@@ -233,7 +232,7 @@ impl ParseSess {
 
     pub fn with_span_handler(handler: DiagCtxt, source_map: Lrc<SourceMap>) -> Self {
         Self {
-            span_diagnostic: handler,
+            dcx: handler,
             unstable_features: UnstableFeatures::from_environment(None),
             config: Cfg::default(),
             check_config: CheckCfg::default(),
@@ -323,7 +322,7 @@ impl ParseSess {
         &'a self,
         err: impl IntoDiagnostic<'a>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        err.into_diagnostic(&self.span_diagnostic)
+        err.into_diagnostic(&self.dcx)
     }
 
     #[track_caller]
@@ -336,7 +335,7 @@ impl ParseSess {
         &'a self,
         warning: impl IntoDiagnostic<'a, ()>,
     ) -> DiagnosticBuilder<'a, ()> {
-        warning.into_diagnostic(&self.span_diagnostic)
+        warning.into_diagnostic(&self.dcx)
     }
 
     #[track_caller]
@@ -349,7 +348,7 @@ impl ParseSess {
         &'a self,
         note: impl IntoDiagnostic<'a, Noted>,
     ) -> DiagnosticBuilder<'a, Noted> {
-        note.into_diagnostic(&self.span_diagnostic)
+        note.into_diagnostic(&self.dcx)
     }
 
     #[track_caller]
@@ -362,7 +361,7 @@ impl ParseSess {
         &'a self,
         fatal: impl IntoDiagnostic<'a, !>,
     ) -> DiagnosticBuilder<'a, !> {
-        fatal.into_diagnostic(&self.span_diagnostic)
+        fatal.into_diagnostic(&self.dcx)
     }
 
     #[track_caller]
@@ -376,18 +375,18 @@ impl ParseSess {
         &self,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        self.span_diagnostic.struct_err(msg)
+        self.dcx.struct_err(msg)
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
-        self.span_diagnostic.struct_warn(msg)
+        self.dcx.struct_warn(msg)
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, !> {
-        self.span_diagnostic.struct_fatal(msg)
+        self.dcx.struct_fatal(msg)
     }
 }

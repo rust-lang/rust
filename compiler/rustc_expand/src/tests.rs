@@ -46,7 +46,7 @@ where
 {
     let mut p = string_to_parser(&ps, s);
     let x = f(&mut p).unwrap();
-    p.sess.span_diagnostic.abort_if_errors();
+    p.sess.dcx.abort_if_errors();
     x
 }
 
