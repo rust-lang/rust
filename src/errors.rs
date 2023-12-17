@@ -112,8 +112,8 @@ pub(crate) struct TargetFeatureDisableOrEnable<'a> {
 pub(crate) struct MissingFeatures;
 
 impl IntoDiagnostic<'_, ErrorGuaranteed> for TargetFeatureDisableOrEnable<'_> {
-    fn into_diagnostic(self, handler: &'_ DiagCtxt) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(fluent::codegen_gcc_target_feature_disable_or_enable);
+    fn into_diagnostic(self, dcx: &'_ DiagCtxt) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+        let mut diag = dcx.struct_err(fluent::codegen_gcc_target_feature_disable_or_enable);
         if let Some(span) = self.span {
             diag.set_span(span);
         };

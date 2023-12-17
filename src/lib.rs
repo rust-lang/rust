@@ -330,7 +330,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         unimplemented!()
     }
 
-    unsafe fn optimize(_cgcx: &CodegenContext<Self>, _diag_handler: &DiagCtxt, module: &ModuleCodegen<Self::Module>, config: &ModuleConfig) -> Result<(), FatalError> {
+    unsafe fn optimize(_cgcx: &CodegenContext<Self>, _dcx: &DiagCtxt, module: &ModuleCodegen<Self::Module>, config: &ModuleConfig) -> Result<(), FatalError> {
         module.module_llvm.context.set_optimization_level(to_gcc_opt_level(config.opt_level));
         Ok(())
     }
@@ -344,8 +344,8 @@ impl WriteBackendMethods for GccCodegenBackend {
         unimplemented!();
     }
 
-    unsafe fn codegen(cgcx: &CodegenContext<Self>, diag_handler: &DiagCtxt, module: ModuleCodegen<Self::Module>, config: &ModuleConfig) -> Result<CompiledModule, FatalError> {
-        back::write::codegen(cgcx, diag_handler, module, config)
+    unsafe fn codegen(cgcx: &CodegenContext<Self>, dcx: &DiagCtxt, module: ModuleCodegen<Self::Module>, config: &ModuleConfig) -> Result<CompiledModule, FatalError> {
+        back::write::codegen(cgcx, dcx, module, config)
     }
 
     fn prepare_thin(_module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer) {
@@ -356,8 +356,8 @@ impl WriteBackendMethods for GccCodegenBackend {
         unimplemented!();
     }
 
-    fn run_link(cgcx: &CodegenContext<Self>, diag_handler: &DiagCtxt, modules: Vec<ModuleCodegen<Self::Module>>) -> Result<ModuleCodegen<Self::Module>, FatalError> {
-        back::write::link(cgcx, diag_handler, modules)
+    fn run_link(cgcx: &CodegenContext<Self>, dcx: &DiagCtxt, modules: Vec<ModuleCodegen<Self::Module>>) -> Result<ModuleCodegen<Self::Module>, FatalError> {
+        back::write::link(cgcx, dcx, modules)
     }
 }
 
