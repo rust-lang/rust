@@ -94,6 +94,7 @@ mod single_char_pattern;
 mod single_char_push_string;
 mod skip_while_next;
 mod stable_sort_primitive;
+mod str_split;
 mod str_splitn;
 mod string_extend_chars;
 mod string_lit_chars_any;
@@ -3856,6 +3857,36 @@ declare_clippy_lint! {
     "using `.map(f).unwrap_or_default()`, which is more succinctly expressed as `is_some_and(f)` or `is_ok_and(f)`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    ///
+    /// Checks for usages of `str.trim().split("\n")` and `str.trim().split("\r\n")`.
+    ///
+    /// ### Why is this bad?
+    ///
+    /// Hard-coding the line endings makes the code less compatible. `str.lines` should be used instead.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// "some\ntext\nwith\nnewlines\n".trim().split('\n');
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// "some\ntext\nwith\nnewlines\n".lines();
+    /// ```
+    ///
+    /// ### Known Problems
+    ///
+    /// This lint cannot detect if the split is intentionally restricted to a single type of newline (`"\n"` or
+    /// `"\r\n"`), for example during the parsing of a specific file format in which precisely one newline type is
+    /// valid.
+    /// ```
+    #[clippy::version = "1.76.0"]
+    pub STR_SPLIT_AT_NEWLINE,
+    pedantic,
+    "splitting a trimmed string at hard-coded newlines"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -4011,6 +4042,7 @@ impl_lint_pass!(Methods => [
     ITER_FILTER_IS_SOME,
     ITER_FILTER_IS_OK,
     MANUAL_IS_VARIANT_AND,
+    STR_SPLIT_AT_NEWLINE,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4596,6 +4628,9 @@ impl Methods {
                 },
                 ("sort_unstable_by", [arg]) => {
                     unnecessary_sort_by::check(cx, expr, recv, arg, true);
+                },
+                ("split", [arg]) => {
+                    str_split::check(cx, expr, recv, arg);
                 },
                 ("splitn" | "rsplitn", [count_arg, pat_arg]) => {
                     if let Some(Constant::Int(count)) = constant(cx, cx.typeck_results(), count_arg) {
