@@ -413,13 +413,13 @@ use std::backtrace::{Backtrace, BacktraceStatus};
 /// Certain errors (fatal, bug, unimpl) may cause immediate exit,
 /// others log errors for later reporting.
 pub struct DiagCtxt {
-    inner: Lock<HandlerInner>,
+    inner: Lock<DiagCtxtInner>,
 }
 
 /// This inner struct exists to keep it all behind a single lock;
 /// this is done to prevent possible deadlocks in a multi-threaded compiler,
 /// as well as inconsistent state observation.
-struct HandlerInner {
+struct DiagCtxtInner {
     flags: HandlerFlags,
     /// The number of lint errors that have been emitted.
     lint_err_count: usize,
@@ -540,7 +540,7 @@ pub struct HandlerFlags {
     pub track_diagnostics: bool,
 }
 
-impl Drop for HandlerInner {
+impl Drop for DiagCtxtInner {
     fn drop(&mut self) {
         self.emit_stashed_diagnostics();
 
@@ -597,7 +597,7 @@ impl DiagCtxt {
 
     pub fn with_emitter(emitter: Box<DynEmitter>) -> Self {
         Self {
-            inner: Lock::new(HandlerInner {
+            inner: Lock::new(DiagCtxtInner {
                 flags: HandlerFlags { can_emit_warnings: true, ..Default::default() },
                 lint_err_count: 0,
                 err_count: 0,
@@ -1057,7 +1057,7 @@ impl DiagCtxt {
         inner.emit_diagnostic(diagnostic).unwrap()
     }
 
-    // FIXME(eddyb) note the comment inside `impl Drop for HandlerInner`, that's
+    // FIXME(eddyb) note the comment inside `impl Drop for DiagCtxtInner`, that's
     // where the explanation of what "good path" is (also, it should be renamed).
     pub fn good_path_delayed_bug(&self, msg: impl Into<DiagnosticMessage>) {
         let mut inner = self.inner.borrow_mut();
@@ -1396,12 +1396,12 @@ impl DiagCtxt {
     }
 
     /// This methods steals all [`LintExpectationId`]s that are stored inside
-    /// [`HandlerInner`] and indicate that the linked expectation has been fulfilled.
+    /// [`DiagCtxtInner`] and indicate that the linked expectation has been fulfilled.
     #[must_use]
     pub fn steal_fulfilled_expectation_ids(&self) -> FxHashSet<LintExpectationId> {
         assert!(
             self.inner.borrow().unstable_expect_diagnostics.is_empty(),
-            "`HandlerInner::unstable_expect_diagnostics` should be empty at this point",
+            "`DiagCtxtInner::unstable_expect_diagnostics` should be empty at this point",
         );
         std::mem::take(&mut self.inner.borrow_mut().fulfilled_expectations)
     }
@@ -1414,10 +1414,10 @@ impl DiagCtxt {
 }
 
 // Note: we prefer implementing operations on `DiagCtxt`, rather than
-// `HandlerInner`, whenever possible. This minimizes functions where
+// `DiagCtxtInner`, whenever possible. This minimizes functions where
 // `DiagCtxt::foo()` just borrows `inner` and forwards a call to
 // `HanderInner::foo`.
-impl HandlerInner {
+impl DiagCtxtInner {
     /// Emit all stashed diagnostics.
     fn emit_stashed_diagnostics(&mut self) -> Option<ErrorGuaranteed> {
         let has_errors = self.has_errors();
