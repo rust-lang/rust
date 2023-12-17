@@ -790,7 +790,7 @@ impl SyntaxExtension {
             .map(|attr| {
                 // Override `helper_attrs` passed above if it's a built-in macro,
                 // marking `proc_macro_derive` macros as built-in is not a realistic use case.
-                parse_macro_name_and_helper_attrs(sess.diagnostic(), attr, "built-in").map_or_else(
+                parse_macro_name_and_helper_attrs(sess.dcx(), attr, "built-in").map_or_else(
                     || (Some(name), Vec::new()),
                     |(name, helper_attrs)| (Some(name), helper_attrs),
                 )
@@ -1119,7 +1119,7 @@ impl<'a> ExtCtxt<'a> {
         sp: S,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        self.sess.diagnostic().struct_span_err(sp, msg)
+        self.sess.dcx().struct_span_err(sp, msg)
     }
 
     #[track_caller]
@@ -1143,10 +1143,10 @@ impl<'a> ExtCtxt<'a> {
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) {
-        self.sess.diagnostic().span_err(sp, msg);
+        self.sess.dcx().span_err(sp, msg);
     }
     pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) -> ! {
-        self.sess.diagnostic().span_bug(sp, msg);
+        self.sess.dcx().span_bug(sp, msg);
     }
     pub fn trace_macros_diag(&mut self) {
         for (span, notes) in self.expansions.iter() {
@@ -1160,7 +1160,7 @@ impl<'a> ExtCtxt<'a> {
         self.expansions.clear();
     }
     pub fn bug(&self, msg: &'static str) -> ! {
-        self.sess.diagnostic().bug(msg);
+        self.sess.dcx().bug(msg);
     }
     pub fn trace_macros(&self) -> bool {
         self.ecfg.trace_mac

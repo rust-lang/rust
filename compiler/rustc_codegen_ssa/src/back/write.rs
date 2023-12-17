@@ -558,7 +558,7 @@ fn produce_final_output_artifacts(
             }
             if !sess.opts.cg.save_temps && !keep_numbered {
                 // The user just wants `foo.x`, not `foo.#module-name#.x`.
-                ensure_removed(sess.diagnostic(), &path);
+                ensure_removed(sess.dcx(), &path);
             }
         } else {
             let extension = crate_output
@@ -649,19 +649,19 @@ fn produce_final_output_artifacts(
         for module in compiled_modules.modules.iter() {
             if let Some(ref path) = module.object {
                 if !keep_numbered_objects {
-                    ensure_removed(sess.diagnostic(), path);
+                    ensure_removed(sess.dcx(), path);
                 }
             }
 
             if let Some(ref path) = module.dwarf_object {
                 if !keep_numbered_objects {
-                    ensure_removed(sess.diagnostic(), path);
+                    ensure_removed(sess.dcx(), path);
                 }
             }
 
             if let Some(ref path) = module.bytecode {
                 if !keep_numbered_bitcode {
-                    ensure_removed(sess.diagnostic(), path);
+                    ensure_removed(sess.dcx(), path);
                 }
             }
         }
@@ -669,7 +669,7 @@ fn produce_final_output_artifacts(
         if !user_wants_bitcode {
             if let Some(ref allocator_module) = compiled_modules.allocator_module {
                 if let Some(ref path) = allocator_module.bytecode {
-                    ensure_removed(sess.diagnostic(), path);
+                    ensure_removed(sess.dcx(), path);
                 }
             }
         }
@@ -1842,7 +1842,7 @@ impl SharedEmitterMain {
 
             match message {
                 Ok(SharedEmitterMessage::Diagnostic(diag)) => {
-                    let handler = sess.diagnostic();
+                    let handler = sess.dcx();
                     let mut d = rustc_errors::Diagnostic::new_with_messages(diag.lvl, diag.msg);
                     if let Some(code) = diag.code {
                         d.code(code);

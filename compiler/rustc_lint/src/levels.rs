@@ -144,7 +144,7 @@ fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExp
     builder.add_id(hir::CRATE_HIR_ID);
     tcx.hir().walk_toplevel_module(&mut builder);
 
-    tcx.sess.diagnostic().update_unstable_expectation_id(&builder.provider.unstable_to_stable_ids);
+    tcx.sess.dcx().update_unstable_expectation_id(&builder.provider.unstable_to_stable_ids);
 
     builder.provider.expectations
 }

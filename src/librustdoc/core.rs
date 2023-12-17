@@ -408,7 +408,7 @@ pub(crate) fn run_global_ctxt(
     // Process all of the crate attributes, extracting plugin metadata along
     // with the passes which we are supposed to run.
     for attr in krate.module.attrs.lists(sym::doc) {
-        let diag = ctxt.sess().diagnostic();
+        let diag = ctxt.sess().dcx();
 
         let name = attr.name_or_empty();
         // `plugins = "..."`, `no_default_passes`, and `passes = "..."` have no effect
@@ -448,7 +448,7 @@ pub(crate) fn run_global_ctxt(
 
     tcx.sess.time("check_lint_expectations", || tcx.check_expectations(Some(sym::rustdoc)));
 
-    if tcx.sess.diagnostic().has_errors_or_lint_errors().is_some() {
+    if tcx.sess.dcx().has_errors_or_lint_errors().is_some() {
         rustc_errors::FatalError.raise();
     }
 

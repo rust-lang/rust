@@ -143,7 +143,7 @@ pub fn link_binary<'a>(
                 }
             }
             if sess.opts.json_artifact_notifications {
-                sess.diagnostic().emit_artifact_notification(&out_filename, "link");
+                sess.dcx().emit_artifact_notification(&out_filename, "link");
             }
 
             if sess.prof.enabled() {
@@ -183,13 +183,13 @@ pub fn link_binary<'a>(
             |preserve_objects: bool, preserve_dwarf_objects: bool, module: &CompiledModule| {
                 if !preserve_objects {
                     if let Some(ref obj) = module.object {
-                        ensure_removed(sess.diagnostic(), obj);
+                        ensure_removed(sess.dcx(), obj);
                     }
                 }
 
                 if !preserve_dwarf_objects {
                     if let Some(ref dwo_obj) = module.dwarf_object {
-                        ensure_removed(sess.diagnostic(), dwo_obj);
+                        ensure_removed(sess.dcx(), dwo_obj);
                     }
                 }
             };
@@ -208,7 +208,7 @@ pub fn link_binary<'a>(
 
         // Remove the temporary files if output goes to stdout
         for temp in tempfiles_for_stdout_output {
-            ensure_removed(sess.diagnostic(), &temp);
+            ensure_removed(sess.dcx(), &temp);
         }
 
         // If no requested outputs require linking, then the object temporaries should
@@ -933,7 +933,7 @@ fn link_natively<'a>(
                     command: &cmd,
                     escaped_output,
                 };
-                sess.diagnostic().emit_err(err);
+                sess.dcx().emit_err(err);
                 // If MSVC's `link.exe` was expected but the return code
                 // is not a Microsoft LNK error then suggest a way to fix or
                 // install the Visual Studio build tools.

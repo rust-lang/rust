@@ -413,7 +413,7 @@ enum TupleArgumentsFlag {
 }
 
 fn fatally_break_rust(tcx: TyCtxt<'_>) {
-    let handler = tcx.sess.diagnostic();
+    let handler = tcx.sess.dcx();
     handler.span_bug_no_panic(
         MultiSpan::new(),
         "It looks like you're trying to break rust; would you like some ICE?",

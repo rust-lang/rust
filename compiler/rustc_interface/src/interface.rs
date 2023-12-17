@@ -382,12 +382,12 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
             codegen_backend.init(&sess);
 
-            let cfg = parse_cfg(&sess.diagnostic(), config.crate_cfg);
+            let cfg = parse_cfg(&sess.dcx(), config.crate_cfg);
             let mut cfg = config::build_configuration(&sess, cfg);
             util::add_configuration(&mut cfg, &mut sess, &*codegen_backend);
             sess.parse_sess.config = cfg;
 
-            let mut check_cfg = parse_check_cfg(&sess.diagnostic(), config.crate_check_cfg);
+            let mut check_cfg = parse_check_cfg(&sess.dcx(), config.crate_check_cfg);
             check_cfg.fill_well_known(&sess.target);
             sess.parse_sess.check_config = check_cfg;
 

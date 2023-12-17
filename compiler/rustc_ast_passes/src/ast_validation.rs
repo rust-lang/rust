@@ -221,7 +221,7 @@ impl<'a> AstValidator<'a> {
     }
 
     fn err_handler(&self) -> &rustc_errors::DiagCtxt {
-        self.session.diagnostic()
+        self.session.dcx()
     }
 
     fn check_lifetime(&self, ident: Ident) {

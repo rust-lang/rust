@@ -92,7 +92,7 @@ pub(super) fn build_custom_mir<'tcx>(
         pctxt.parse_body(expr)?;
     };
     if let Err(err) = res {
-        tcx.sess.diagnostic().span_fatal(
+        tcx.sess.dcx().span_fatal(
             err.span,
             format!("Could not parse {}, found: {:?}", err.expected, err.item_description),
         )

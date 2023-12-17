@@ -473,7 +473,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         backtrace.print_backtrace();
         // FIXME(fee1-dead), HACK: we want to use the error as title therefore we can just extract the
         // label and arguments from the InterpError.
-        let handler = self.tcx.sess.diagnostic();
+        let handler = self.tcx.sess.dcx();
         #[allow(rustc::untranslatable_diagnostic)]
         let mut diag = self.tcx.sess.struct_allow("");
         let msg = e.diagnostic_message();

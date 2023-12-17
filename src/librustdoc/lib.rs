@@ -803,7 +803,7 @@ fn main_args(
 
         compiler.enter(|queries| {
             let mut gcx = abort_on_err(queries.global_ctxt(), sess);
-            if sess.diagnostic().has_errors_or_lint_errors().is_some() {
+            if sess.dcx().has_errors_or_lint_errors().is_some() {
                 sess.fatal("Compilation failed, aborting rustdoc");
             }
 

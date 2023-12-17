@@ -594,9 +594,7 @@ fn virtual_call_violations_for_method<'tcx>(
             // would already have reported an error at the definition of the
             // auto trait.
             if pred_trait_ref.args.len() != 1 {
-                tcx.sess
-                    .diagnostic()
-                    .span_delayed_bug(span, "auto traits cannot have generic parameters");
+                tcx.sess.dcx().span_delayed_bug(span, "auto traits cannot have generic parameters");
             }
             return false;
         }

@@ -47,7 +47,7 @@ pub fn inject(
     features: &Features,
     resolver: &mut dyn ResolverExpand,
 ) {
-    let span_diagnostic = sess.diagnostic();
+    let span_diagnostic = sess.dcx();
     let panic_strategy = sess.panic_strategy();
     let platform_panic_strategy = sess.target.panic_strategy;
 

@@ -482,14 +482,14 @@ pub fn compile_declarative_macro(
 
                 let s = parse_failure_msg(&token);
                 let sp = token.span.substitute_dummy(def.span);
-                let mut err = sess.diagnostic().struct_span_err(sp, s);
+                let mut err = sess.dcx().struct_span_err(sp, s);
                 err.span_label(sp, msg);
                 annotate_doc_comment(&mut err, sess.source_map(), sp);
                 err.emit();
                 return dummy_syn_ext();
             }
             Error(sp, msg) => {
-                sess.diagnostic().struct_span_err(sp.substitute_dummy(def.span), msg).emit();
+                sess.dcx().struct_span_err(sp.substitute_dummy(def.span), msg).emit();
                 return dummy_syn_ext();
             }
             ErrorReported(_) => {
@@ -518,10 +518,10 @@ pub fn compile_declarative_macro(
                     valid &= check_lhs_nt_follows(&sess.parse_sess, def, &tt);
                     return tt;
                 }
-                sess.diagnostic().span_bug(def.span, "wrong-structured lhs")
+                sess.dcx().span_bug(def.span, "wrong-structured lhs")
             })
             .collect::<Vec<mbe::TokenTree>>(),
-        _ => sess.diagnostic().span_bug(def.span, "wrong-structured lhs"),
+        _ => sess.dcx().span_bug(def.span, "wrong-structured lhs"),
     };
 
     let rhses = match &argument_map[&MacroRulesNormalizedIdent::new(rhs_nm)] {
@@ -540,10 +540,10 @@ pub fn compile_declarative_macro(
                     .pop()
                     .unwrap();
                 }
-                sess.diagnostic().span_bug(def.span, "wrong-structured rhs")
+                sess.dcx().span_bug(def.span, "wrong-structured rhs")
             })
             .collect::<Vec<mbe::TokenTree>>(),
-        _ => sess.diagnostic().span_bug(def.span, "wrong-structured rhs"),
+        _ => sess.dcx().span_bug(def.span, "wrong-structured rhs"),
     };
 
     for rhs in &rhses {
@@ -599,7 +599,7 @@ pub fn compile_declarative_macro(
                     mbe::TokenTree::Delimited(.., delimited) => {
                         mbe::macro_parser::compute_locs(&delimited.tts)
                     }
-                    _ => sess.diagnostic().span_bug(def.span, "malformed macro lhs"),
+                    _ => sess.dcx().span_bug(def.span, "malformed macro lhs"),
                 }
             })
             .collect()

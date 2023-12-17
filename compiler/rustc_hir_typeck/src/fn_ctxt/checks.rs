@@ -1852,7 +1852,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         for (span, code) in errors_causecode {
             let Some(mut diag) =
-                self.tcx.sess.diagnostic().steal_diagnostic(span, StashKey::MaybeForgetReturn)
+                self.tcx.sess.dcx().steal_diagnostic(span, StashKey::MaybeForgetReturn)
             else {
                 continue;
             };

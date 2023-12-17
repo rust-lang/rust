@@ -311,7 +311,7 @@ pub(crate) fn run(
 
         // The visitor might have found a type error, which we need to
         // promote to a fatal error
-        if tcx.sess.diagnostic().has_errors_or_lint_errors().is_some() {
+        if tcx.sess.dcx().has_errors_or_lint_errors().is_some() {
             return Err(String::from("Compilation failed, aborting rustdoc"));
         }
 

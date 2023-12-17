@@ -384,7 +384,7 @@ pub fn report_error<'tcx, 'mir>(
 
     // Include a note like `std` does when we omit frames from a backtrace
     if was_pruned {
-        ecx.tcx.sess.diagnostic().note(
+        ecx.tcx.sess.dcx().note(
             "some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace",
         );
     }
@@ -431,7 +431,7 @@ pub fn report_leaks<'mir, 'tcx>(
         );
     }
     if any_pruned {
-        ecx.tcx.sess.diagnostic().note(
+        ecx.tcx.sess.dcx().note(
             "some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace",
         );
     }
@@ -456,7 +456,7 @@ pub fn report_msg<'tcx>(
     let mut err = match diag_level {
         DiagLevel::Error => sess.struct_span_err(span, title).forget_guarantee(),
         DiagLevel::Warning => sess.struct_span_warn(span, title),
-        DiagLevel::Note => sess.diagnostic().struct_span_note(span, title),
+        DiagLevel::Note => sess.dcx().struct_span_note(span, title),
     };
 
     // Show main message.

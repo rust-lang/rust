@@ -52,7 +52,7 @@ fn mk_session(matches: getopts::Matches) -> (Session, Cfg) {
         Arc::default(),
         Default::default(),
     );
-    let cfg = parse_cfg(&sess.diagnostic(), matches.opt_strs("cfg"));
+    let cfg = parse_cfg(&sess.dcx(), matches.opt_strs("cfg"));
     (sess, cfg)
 }
 
@@ -143,20 +143,20 @@ fn test_can_print_warnings() {
     rustc_span::create_default_session_globals_then(|| {
         let matches = optgroups().parse(&["-Awarnings".to_string()]).unwrap();
         let (sess, _) = mk_session(matches);
-        assert!(!sess.diagnostic().can_emit_warnings());
+        assert!(!sess.dcx().can_emit_warnings());
     });
 
     rustc_span::create_default_session_globals_then(|| {
         let matches =
             optgroups().parse(&["-Awarnings".to_string(), "-Dwarnings".to_string()]).unwrap();
         let (sess, _) = mk_session(matches);
-        assert!(sess.diagnostic().can_emit_warnings());
+        assert!(sess.dcx().can_emit_warnings());
     });
 
     rustc_span::create_default_session_globals_then(|| {
         let matches = optgroups().parse(&["-Adead_code".to_string()]).unwrap();
         let (sess, _) = mk_session(matches);
-        assert!(sess.diagnostic().can_emit_warnings());
+        assert!(sess.dcx().can_emit_warnings());
     });
 }
 

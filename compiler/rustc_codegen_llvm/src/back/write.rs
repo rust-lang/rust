@@ -105,7 +105,7 @@ pub fn create_informational_target_machine(sess: &Session) -> OwnedTargetMachine
     // system/tcx is set up.
     let features = llvm_util::global_llvm_features(sess, false);
     target_machine_factory(sess, config::OptLevel::No, &features)(config)
-        .unwrap_or_else(|err| llvm_err(sess.diagnostic(), err).raise())
+        .unwrap_or_else(|err| llvm_err(sess.dcx(), err).raise())
 }
 
 pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTargetMachine {
@@ -128,7 +128,7 @@ pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTargetMach
         tcx.backend_optimization_level(()),
         tcx.global_backend_features(()),
     )(config)
-    .unwrap_or_else(|err| llvm_err(tcx.sess.diagnostic(), err).raise())
+    .unwrap_or_else(|err| llvm_err(tcx.sess.dcx(), err).raise())
 }
 
 pub fn to_llvm_opt_settings(

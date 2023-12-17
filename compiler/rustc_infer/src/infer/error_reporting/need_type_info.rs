@@ -376,7 +376,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 multi_suggestions,
                 bad_label,
             }
-            .into_diagnostic(self.tcx.sess.diagnostic()),
+            .into_diagnostic(self.tcx.sess.dcx()),
             TypeAnnotationNeeded::E0283 => AmbiguousImpl {
                 span,
                 source_kind,
@@ -386,7 +386,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 multi_suggestions,
                 bad_label,
             }
-            .into_diagnostic(self.tcx.sess.diagnostic()),
+            .into_diagnostic(self.tcx.sess.dcx()),
             TypeAnnotationNeeded::E0284 => AmbiguousReturn {
                 span,
                 source_kind,
@@ -396,7 +396,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 multi_suggestions,
                 bad_label,
             }
-            .into_diagnostic(self.tcx.sess.diagnostic()),
+            .into_diagnostic(self.tcx.sess.dcx()),
         }
     }
 }
@@ -583,7 +583,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 multi_suggestions,
                 bad_label: None,
             }
-            .into_diagnostic(self.tcx.sess.diagnostic()),
+            .into_diagnostic(self.tcx.sess.dcx()),
             TypeAnnotationNeeded::E0283 => AmbiguousImpl {
                 span,
                 source_kind,
@@ -593,7 +593,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 multi_suggestions,
                 bad_label: None,
             }
-            .into_diagnostic(self.tcx.sess.diagnostic()),
+            .into_diagnostic(self.tcx.sess.dcx()),
             TypeAnnotationNeeded::E0284 => AmbiguousReturn {
                 span,
                 source_kind,
@@ -603,7 +603,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 multi_suggestions,
                 bad_label: None,
             }
-            .into_diagnostic(self.tcx.sess.diagnostic()),
+            .into_diagnostic(self.tcx.sess.dcx()),
         }
     }
 }
