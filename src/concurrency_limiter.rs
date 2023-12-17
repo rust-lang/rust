@@ -46,7 +46,7 @@ impl ConcurrencyLimiter {
         }
     }
 
-    pub(super) fn acquire(&mut self, handler: &rustc_errors::Handler) -> ConcurrencyLimiterToken {
+    pub(super) fn acquire(&mut self, handler: &rustc_errors::DiagCtxt) -> ConcurrencyLimiterToken {
         let mut state = self.state.lock().unwrap();
         loop {
             state.assert_invariants();
