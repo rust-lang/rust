@@ -218,7 +218,7 @@ impl ParseSess {
     }
 
     pub(crate) fn set_silent_emitter(&mut self) {
-        self.parse_sess.span_diagnostic = DiagCtxt::with_emitter(silent_emitter());
+        self.parse_sess.dcx = DiagCtxt::with_emitter(silent_emitter());
     }
 
     pub(crate) fn span_to_filename(&self, span: Span) -> FileName {
@@ -285,7 +285,7 @@ impl ParseSess {
 impl ParseSess {
     pub(super) fn emit_diagnostics(&self, diagnostics: Vec<Diagnostic>) {
         for diagnostic in diagnostics {
-            self.parse_sess.span_diagnostic.emit_diagnostic(diagnostic);
+            self.parse_sess.dcx.emit_diagnostic(diagnostic);
         }
     }
 
@@ -294,11 +294,11 @@ impl ParseSess {
     }
 
     pub(super) fn has_errors(&self) -> bool {
-        self.parse_sess.span_diagnostic.has_errors().is_some()
+        self.parse_sess.dcx.has_errors().is_some()
     }
 
     pub(super) fn reset_errors(&self) {
-        self.parse_sess.span_diagnostic.reset_err_count();
+        self.parse_sess.dcx.reset_err_count();
     }
 }
 
