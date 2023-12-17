@@ -18,7 +18,8 @@ use rustc_target::abi::{Abi, Size};
 
 use crate::borrow_tracker::{
     stacked_borrows::diagnostics::{AllocHistory, DiagnosticCx, DiagnosticCxBuilder},
-    AccessKind, GlobalStateInner, ProtectorKind,};
+    AccessKind, GlobalStateInner, ProtectorKind,
+};
 use crate::*;
 
 use diagnostics::{RetagCause, RetagInfo};

@@ -48,11 +48,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // First, we do some basic argument validation as required by mmap
         if (flags & (map_private | map_shared)).count_ones() != 1 {
             this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
-            return Ok(Scalar::from_maybe_pointer(Pointer::null(), this));
+            return Ok(this.eval_libc("MAP_FAILED"));
         }
         if length == 0 {
             this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
-            return Ok(Scalar::from_maybe_pointer(Pointer::null(), this));
+            return Ok(this.eval_libc("MAP_FAILED"));
         }
 
         // If a user tries to map a file, we want to loudly inform them that this is not going
@@ -72,7 +72,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Miri doesn't support MAP_FIXED or any any protections other than PROT_READ|PROT_WRITE.
         if flags & map_fixed != 0 || prot != prot_read | prot_write {
             this.set_last_error(Scalar::from_i32(this.eval_libc_i32("ENOTSUP")))?;
-            return Ok(Scalar::from_maybe_pointer(Pointer::null(), this));
+            return Ok(this.eval_libc("MAP_FAILED"));
         }
 
         // Miri does not support shared mappings, or any of the other extensions that for example

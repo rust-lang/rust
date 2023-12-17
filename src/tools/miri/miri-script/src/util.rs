@@ -73,7 +73,9 @@ impl MiriEnv {
             flags.push("-C link-args=-Wl,-rpath,");
             flags.push(libdir);
             // Enable rustc-specific lints (ignored without `-Zunstable-options`).
-            flags.push(" -Zunstable-options -Wrustc::internal -Wrust_2018_idioms -Wunused_lifetimes -Wsemicolon_in_expressions_from_macros");
+            flags.push(
+                " -Zunstable-options -Wrustc::internal -Wrust_2018_idioms -Wunused_lifetimes",
+            );
             // Add user-defined flags.
             if let Some(value) = std::env::var_os("RUSTFLAGS") {
                 flags.push(" ");
