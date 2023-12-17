@@ -415,7 +415,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    fn unsize_into(
+    pub fn unsize_into(
         &mut self,
         src: &OpTy<'tcx, M::Provenance>,
         cast_ty: TyAndLayout<'tcx>,
