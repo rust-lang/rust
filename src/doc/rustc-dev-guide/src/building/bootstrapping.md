@@ -29,7 +29,7 @@ Note that this documentation mostly covers user-facing information. See
 - Stage 2: the truly current compiler
 - Stage 3: the same-result test
 
-Compiling `rustc` is done in stages. Here's a diagram, adapted from Joshua Nelson's
+Compiling `rustc` is done in stages. Here's a diagram, adapted from Jynn Nelson's
 [talk on bootstrapping][rustconf22-talk] at RustConf 2022, with detailed explanations below.
 
 The `A`, `B`, `C`, and `D` show the ordering of the stages of bootstrapping.
