@@ -461,8 +461,8 @@ pub(crate) struct NonExhaustivePatternsTypeNotEmpty<'p, 'tcx, 'm> {
 }
 
 impl<'a> IntoDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
-    fn into_diagnostic(self, handler: &'a DiagCtxt) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_span_err_with_code(
+    fn into_diagnostic(self, dcx: &'a DiagCtxt) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+        let mut diag = dcx.struct_span_err_with_code(
             self.span,
             fluent::mir_build_non_exhaustive_patterns_type_not_empty,
             error_code!(E0004),

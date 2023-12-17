@@ -52,7 +52,7 @@ pub fn inject(
     is_proc_macro_crate: bool,
     has_proc_macro_decls: bool,
     is_test_crate: bool,
-    handler: &rustc_errors::DiagCtxt,
+    dcx: &rustc_errors::DiagCtxt,
 ) {
     let ecfg = ExpansionConfig::default("proc_macro".to_string(), features);
     let mut cx = ExtCtxt::new(sess, ecfg, resolver, None);
@@ -60,7 +60,7 @@ pub fn inject(
     let mut collect = CollectProcMacros {
         macros: Vec::new(),
         in_root: true,
-        dcx: handler,
+        dcx,
         source_map: sess.source_map(),
         is_proc_macro_crate,
         is_test_crate,

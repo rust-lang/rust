@@ -21,7 +21,7 @@ use std::thread::panicking;
 pub trait IntoDiagnostic<'a, G: EmissionGuarantee = ErrorGuaranteed> {
     /// Write out as a diagnostic out of `DiagCtxt`.
     #[must_use]
-    fn into_diagnostic(self, handler: &'a DiagCtxt) -> DiagnosticBuilder<'a, G>;
+    fn into_diagnostic(self, dcx: &'a DiagCtxt) -> DiagnosticBuilder<'a, G>;
 }
 
 impl<'a, T, G> IntoDiagnostic<'a, G> for Spanned<T>
@@ -29,8 +29,8 @@ where
     T: IntoDiagnostic<'a, G>,
     G: EmissionGuarantee,
 {
-    fn into_diagnostic(self, handler: &'a DiagCtxt) -> DiagnosticBuilder<'a, G> {
-        let mut diag = self.node.into_diagnostic(handler);
+    fn into_diagnostic(self, dcx: &'a DiagCtxt) -> DiagnosticBuilder<'a, G> {
+        let mut diag = self.node.into_diagnostic(dcx);
         diag.set_span(self.span);
         diag
     }
@@ -110,7 +110,7 @@ pub trait EmissionGuarantee: Sized {
     /// Creates a new `DiagnosticBuilder` that will return this type of guarantee.
     #[track_caller]
     fn make_diagnostic_builder(
-        handler: &DiagCtxt,
+        dcx: &DiagCtxt,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self>;
 }
@@ -166,10 +166,10 @@ impl EmissionGuarantee for ErrorGuaranteed {
 
     #[track_caller]
     fn make_diagnostic_builder(
-        handler: &DiagCtxt,
+        dcx: &DiagCtxt,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new(handler, Level::Error { lint: false }, msg)
+        DiagnosticBuilder::new(dcx, Level::Error { lint: false }, msg)
     }
 }
 
@@ -189,10 +189,10 @@ impl EmissionGuarantee for () {
     }
 
     fn make_diagnostic_builder(
-        handler: &DiagCtxt,
+        dcx: &DiagCtxt,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new(handler, Level::Warning(None), msg)
+        DiagnosticBuilder::new(dcx, Level::Warning(None), msg)
     }
 }
 
@@ -217,10 +217,10 @@ impl EmissionGuarantee for Noted {
     }
 
     fn make_diagnostic_builder(
-        handler: &DiagCtxt,
+        dcx: &DiagCtxt,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new(handler, Level::Note, msg)
+        DiagnosticBuilder::new(dcx, Level::Note, msg)
     }
 }
 
@@ -246,10 +246,10 @@ impl EmissionGuarantee for Bug {
     }
 
     fn make_diagnostic_builder(
-        handler: &DiagCtxt,
+        dcx: &DiagCtxt,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new(handler, Level::Bug, msg)
+        DiagnosticBuilder::new(dcx, Level::Bug, msg)
     }
 }
 
@@ -270,10 +270,10 @@ impl EmissionGuarantee for ! {
     }
 
     fn make_diagnostic_builder(
-        handler: &DiagCtxt,
+        dcx: &DiagCtxt,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new(handler, Level::Fatal, msg)
+        DiagnosticBuilder::new(dcx, Level::Fatal, msg)
     }
 }
 
@@ -294,10 +294,10 @@ impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
     }
 
     fn make_diagnostic_builder(
-        handler: &DiagCtxt,
+        dcx: &DiagCtxt,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new(handler, Level::Fatal, msg)
+        DiagnosticBuilder::new(dcx, Level::Fatal, msg)
     }
 }
 
@@ -343,22 +343,22 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     /// `struct_*` methods on [`DiagCtxt`].
     #[track_caller]
     pub(crate) fn new<M: Into<DiagnosticMessage>>(
-        handler: &'a DiagCtxt,
+        dcx: &'a DiagCtxt,
         level: Level,
         message: M,
     ) -> Self {
         let diagnostic = Diagnostic::new(level, message);
-        Self::new_diagnostic(handler, diagnostic)
+        Self::new_diagnostic(dcx, diagnostic)
     }
 
     /// Creates a new `DiagnosticBuilder` with an already constructed
     /// diagnostic.
     #[track_caller]
-    pub(crate) fn new_diagnostic(handler: &'a DiagCtxt, diagnostic: Diagnostic) -> Self {
+    pub(crate) fn new_diagnostic(dcx: &'a DiagCtxt, diagnostic: Diagnostic) -> Self {
         debug!("Created new diagnostic");
         Self {
             inner: DiagnosticBuilderInner {
-                state: DiagnosticBuilderState::Emittable(handler),
+                state: DiagnosticBuilderState::Emittable(dcx),
                 diagnostic: Box::new(diagnostic),
             },
             _marker: PhantomData,

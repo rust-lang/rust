@@ -61,9 +61,9 @@ impl IntoDiagnostic<'_> for NegativePositiveConflict<'_> {
     #[track_caller]
     fn into_diagnostic(
         self,
-        handler: &DiagCtxt,
+        dcx: &DiagCtxt,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(fluent::trait_selection_negative_positive_conflict);
+        let mut diag = dcx.struct_err(fluent::trait_selection_negative_positive_conflict);
         diag.set_arg("trait_desc", self.trait_desc.print_only_trait_path().to_string());
         diag.set_arg(
             "self_desc",

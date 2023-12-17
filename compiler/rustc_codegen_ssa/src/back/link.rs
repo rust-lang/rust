@@ -52,10 +52,10 @@ use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
 use std::{env, fmt, fs, io, mem, str};
 
-pub fn ensure_removed(diag_handler: &DiagCtxt, path: &Path) {
+pub fn ensure_removed(dcx: &DiagCtxt, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
         if e.kind() != io::ErrorKind::NotFound {
-            diag_handler.err(format!("failed to remove {}: {}", path.display(), e));
+            dcx.err(format!("failed to remove {}: {}", path.display(), e));
         }
     }
 }

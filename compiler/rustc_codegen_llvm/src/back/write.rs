@@ -45,15 +45,15 @@ use std::slice;
 use std::str;
 use std::sync::Arc;
 
-pub fn llvm_err<'a>(handler: &rustc_errors::DiagCtxt, err: LlvmError<'a>) -> FatalError {
+pub fn llvm_err<'a>(dcx: &rustc_errors::DiagCtxt, err: LlvmError<'a>) -> FatalError {
     match llvm::last_error() {
-        Some(llvm_err) => handler.emit_almost_fatal(WithLlvmError(err, llvm_err)),
-        None => handler.emit_almost_fatal(err),
+        Some(llvm_err) => dcx.emit_almost_fatal(WithLlvmError(err, llvm_err)),
+        None => dcx.emit_almost_fatal(err),
     }
 }
 
 pub fn write_output_file<'ll>(
-    handler: &rustc_errors::DiagCtxt,
+    dcx: &rustc_errors::DiagCtxt,
     target: &'ll llvm::TargetMachine,
     pm: &llvm::PassManager<'ll>,
     m: &'ll llvm::Module,
@@ -93,9 +93,7 @@ pub fn write_output_file<'ll>(
             }
         }
 
-        result
-            .into_result()
-            .map_err(|()| llvm_err(handler, LlvmError::WriteOutput { path: output }))
+        result.into_result().map_err(|()| llvm_err(dcx, LlvmError::WriteOutput { path: output }))
     }
 }
 
@@ -340,7 +338,7 @@ pub struct DiagnosticHandlers<'a> {
 impl<'a> DiagnosticHandlers<'a> {
     pub fn new(
         cgcx: &'a CodegenContext<LlvmCodegenBackend>,
-        handler: &'a DiagCtxt,
+        dcx: &'a DiagCtxt,
         llcx: &'a llvm::Context,
         module: &ModuleCodegen<ModuleLlvm>,
         stage: CodegenDiagnosticsStage,
@@ -375,7 +373,7 @@ impl<'a> DiagnosticHandlers<'a> {
             .and_then(|dir| dir.to_str().and_then(|p| CString::new(p).ok()));
 
         let pgo_available = cgcx.opts.cg.profile_use.is_some();
-        let data = Box::into_raw(Box::new((cgcx, handler)));
+        let data = Box::into_raw(Box::new((cgcx, dcx)));
         unsafe {
             let old_handler = llvm::LLVMRustContextGetDiagnosticHandler(llcx);
             llvm::LLVMRustContextConfigureDiagnosticHandler(
@@ -507,7 +505,7 @@ fn get_instr_profile_output_path(config: &ModuleConfig) -> Option<CString> {
 
 pub(crate) unsafe fn llvm_optimize(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
-    diag_handler: &DiagCtxt,
+    dcx: &DiagCtxt,
     module: &ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
     opt_level: config::OptLevel,
@@ -588,13 +586,13 @@ pub(crate) unsafe fn llvm_optimize(
         llvm_plugins.as_ptr().cast(),
         llvm_plugins.len(),
     );
-    result.into_result().map_err(|()| llvm_err(diag_handler, LlvmError::RunLlvmPasses))
+    result.into_result().map_err(|()| llvm_err(dcx, LlvmError::RunLlvmPasses))
 }
 
 // Unsafe due to LLVM calls.
 pub(crate) unsafe fn optimize(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
-    diag_handler: &DiagCtxt,
+    dcx: &DiagCtxt,
     module: &ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
 ) -> Result<(), FatalError> {
@@ -602,8 +600,7 @@ pub(crate) unsafe fn optimize(
 
     let llmod = module.module_llvm.llmod();
     let llcx = &*module.module_llvm.llcx;
-    let _handlers =
-        DiagnosticHandlers::new(cgcx, diag_handler, llcx, module, CodegenDiagnosticsStage::Opt);
+    let _handlers = DiagnosticHandlers::new(cgcx, dcx, llcx, module, CodegenDiagnosticsStage::Opt);
 
     let module_name = module.name.clone();
     let module_name = Some(&module_name[..]);
@@ -621,14 +618,14 @@ pub(crate) unsafe fn optimize(
             _ if cgcx.opts.cg.linker_plugin_lto.enabled() => llvm::OptStage::PreLinkThinLTO,
             _ => llvm::OptStage::PreLinkNoLTO,
         };
-        return llvm_optimize(cgcx, diag_handler, module, config, opt_level, opt_stage);
+        return llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage);
     }
     Ok(())
 }
 
 pub(crate) fn link(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
-    diag_handler: &DiagCtxt,
+    dcx: &DiagCtxt,
     mut modules: Vec<ModuleCodegen<ModuleLlvm>>,
 ) -> Result<ModuleCodegen<ModuleLlvm>, FatalError> {
     use super::lto::{Linker, ModuleBuffer};
@@ -641,9 +638,9 @@ pub(crate) fn link(
     for module in elements {
         let _timer = cgcx.prof.generic_activity_with_arg("LLVM_link_module", &*module.name);
         let buffer = ModuleBuffer::new(module.module_llvm.llmod());
-        linker.add(buffer.data()).map_err(|()| {
-            llvm_err(diag_handler, LlvmError::SerializeModule { name: &module.name })
-        })?;
+        linker
+            .add(buffer.data())
+            .map_err(|()| llvm_err(dcx, LlvmError::SerializeModule { name: &module.name }))?;
     }
     drop(linker);
     Ok(modules.remove(0))
@@ -651,7 +648,7 @@ pub(crate) fn link(
 
 pub(crate) unsafe fn codegen(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
-    diag_handler: &DiagCtxt,
+    dcx: &DiagCtxt,
     module: ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
 ) -> Result<CompiledModule, FatalError> {
@@ -662,13 +659,8 @@ pub(crate) unsafe fn codegen(
         let tm = &*module.module_llvm.tm;
         let module_name = module.name.clone();
         let module_name = Some(&module_name[..]);
-        let _handlers = DiagnosticHandlers::new(
-            cgcx,
-            diag_handler,
-            llcx,
-            &module,
-            CodegenDiagnosticsStage::Codegen,
-        );
+        let _handlers =
+            DiagnosticHandlers::new(cgcx, dcx, llcx, &module, CodegenDiagnosticsStage::Codegen);
 
         if cgcx.msvc_imps_needed {
             create_msvc_imps(cgcx, llcx, llmod);
@@ -726,7 +718,7 @@ pub(crate) unsafe fn codegen(
                     .prof
                     .generic_activity_with_arg("LLVM_module_codegen_emit_bitcode", &*module.name);
                 if let Err(err) = fs::write(&bc_out, data) {
-                    diag_handler.emit_err(WriteBytecode { path: &bc_out, err });
+                    dcx.emit_err(WriteBytecode { path: &bc_out, err });
                 }
             }
 
@@ -776,9 +768,7 @@ pub(crate) unsafe fn codegen(
                 record_artifact_size(&cgcx.prof, "llvm_ir", &out);
             }
 
-            result
-                .into_result()
-                .map_err(|()| llvm_err(diag_handler, LlvmError::WriteIr { path: &out }))?;
+            result.into_result().map_err(|()| llvm_err(dcx, LlvmError::WriteIr { path: &out }))?;
         }
 
         if config.emit_asm {
@@ -797,7 +787,7 @@ pub(crate) unsafe fn codegen(
             };
             with_codegen(tm, llmod, |cpm| {
                 write_output_file(
-                    diag_handler,
+                    dcx,
                     tm,
                     cpm,
                     llmod,
@@ -832,7 +822,7 @@ pub(crate) unsafe fn codegen(
 
                 with_codegen(tm, llmod, |cpm| {
                     write_output_file(
-                        diag_handler,
+                        dcx,
                         tm,
                         cpm,
                         llmod,
@@ -847,12 +837,12 @@ pub(crate) unsafe fn codegen(
             EmitObj::Bitcode => {
                 debug!("copying bitcode {:?} to obj {:?}", bc_out, obj_out);
                 if let Err(err) = link_or_copy(&bc_out, &obj_out) {
-                    diag_handler.emit_err(CopyBitcode { err });
+                    dcx.emit_err(CopyBitcode { err });
                 }
 
                 if !config.emit_bc {
                     debug!("removing_bitcode {:?}", bc_out);
-                    ensure_removed(diag_handler, &bc_out);
+                    ensure_removed(dcx, &bc_out);
                 }
             }
 

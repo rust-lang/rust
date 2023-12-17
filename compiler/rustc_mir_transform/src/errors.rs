@@ -64,15 +64,12 @@ pub(crate) struct RequiresUnsafe {
 // but this would result in a lot of duplication.
 impl<'sess> IntoDiagnostic<'sess> for RequiresUnsafe {
     #[track_caller]
-    fn into_diagnostic(
-        self,
-        handler: &'sess DiagCtxt,
-    ) -> DiagnosticBuilder<'sess, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(fluent::mir_transform_requires_unsafe);
+    fn into_diagnostic(self, dcx: &'sess DiagCtxt) -> DiagnosticBuilder<'sess, ErrorGuaranteed> {
+        let mut diag = dcx.struct_err(fluent::mir_transform_requires_unsafe);
         diag.code(rustc_errors::DiagnosticId::Error("E0133".to_string()));
         diag.set_span(self.span);
         diag.span_label(self.span, self.details.label());
-        let desc = handler.eagerly_translate_to_string(self.details.label(), [].into_iter());
+        let desc = dcx.eagerly_translate_to_string(self.details.label(), [].into_iter());
         diag.set_arg("details", desc);
         diag.set_arg("op_in_unsafe_fn_allowed", self.op_in_unsafe_fn_allowed);
         self.details.add_subdiagnostics(&mut diag);

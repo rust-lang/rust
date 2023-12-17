@@ -1042,11 +1042,11 @@ impl<'a> IntoDiagnostic<'a> for ExpectedIdentifier {
     #[track_caller]
     fn into_diagnostic(
         self,
-        handler: &'a rustc_errors::DiagCtxt,
+        dcx: &'a rustc_errors::DiagCtxt,
     ) -> rustc_errors::DiagnosticBuilder<'a, ErrorGuaranteed> {
         let token_descr = TokenDescription::from_token(&self.token);
 
-        let mut diag = handler.struct_err(match token_descr {
+        let mut diag = dcx.struct_err(match token_descr {
             Some(TokenDescription::ReservedIdentifier) => {
                 fluent::parse_expected_identifier_found_reserved_identifier_str
             }
@@ -1099,11 +1099,11 @@ impl<'a> IntoDiagnostic<'a> for ExpectedSemi {
     #[track_caller]
     fn into_diagnostic(
         self,
-        handler: &'a rustc_errors::DiagCtxt,
+        dcx: &'a rustc_errors::DiagCtxt,
     ) -> rustc_errors::DiagnosticBuilder<'a, ErrorGuaranteed> {
         let token_descr = TokenDescription::from_token(&self.token);
 
-        let mut diag = handler.struct_err(match token_descr {
+        let mut diag = dcx.struct_err(match token_descr {
             Some(TokenDescription::ReservedIdentifier) => {
                 fluent::parse_expected_semi_found_reserved_identifier_str
             }

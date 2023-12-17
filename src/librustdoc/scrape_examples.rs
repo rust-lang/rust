@@ -40,7 +40,7 @@ pub(crate) struct ScrapeExamplesOptions {
 impl ScrapeExamplesOptions {
     pub(crate) fn new(
         matches: &getopts::Matches,
-        diag: &rustc_errors::DiagCtxt,
+        dcx: &rustc_errors::DiagCtxt,
     ) -> Result<Option<Self>, i32> {
         let output_path = matches.opt_str("scrape-examples-output-path");
         let target_crates = matches.opt_strs("scrape-examples-target-crate");
@@ -52,11 +52,11 @@ impl ScrapeExamplesOptions {
                 scrape_tests,
             })),
             (Some(_), false, _) | (None, true, _) => {
-                diag.err("must use --scrape-examples-output-path and --scrape-examples-target-crate together");
+                dcx.err("must use --scrape-examples-output-path and --scrape-examples-target-crate together");
                 Err(1)
             }
             (None, false, true) => {
-                diag.err("must use --scrape-examples-output-path and --scrape-examples-target-crate with --scrape-tests");
+                dcx.err("must use --scrape-examples-output-path and --scrape-examples-target-crate with --scrape-tests");
                 Err(1)
             }
             (None, false, false) => Ok(None),
@@ -341,7 +341,7 @@ pub(crate) fn run(
 // options.
 pub(crate) fn load_call_locations(
     with_examples: Vec<String>,
-    diag: &rustc_errors::DiagCtxt,
+    dcx: &rustc_errors::DiagCtxt,
 ) -> Result<AllCallLocations, i32> {
     let inner = || {
         let mut all_calls: AllCallLocations = FxHashMap::default();
@@ -359,7 +359,7 @@ pub(crate) fn load_call_locations(
     };
 
     inner().map_err(|e: String| {
-        diag.err(format!("failed to load examples: {e}"));
+        dcx.err(format!("failed to load examples: {e}"));
         1
     })
 }

@@ -42,7 +42,7 @@ pub struct Compiler {
 }
 
 /// Converts strings provided as `--cfg [cfgspec]` into a `Cfg`.
-pub(crate) fn parse_cfg(handler: &DiagCtxt, cfgs: Vec<String>) -> Cfg {
+pub(crate) fn parse_cfg(dcx: &DiagCtxt, cfgs: Vec<String>) -> Cfg {
     cfgs.into_iter()
         .map(|s| {
             let sess = ParseSess::with_silent_emitter(Some(format!(
@@ -54,12 +54,11 @@ pub(crate) fn parse_cfg(handler: &DiagCtxt, cfgs: Vec<String>) -> Cfg {
                 ($reason: expr) => {
                     #[allow(rustc::untranslatable_diagnostic)]
                     #[allow(rustc::diagnostic_outside_of_impl)]
-                    handler
-                        .struct_fatal(format!(
-                            concat!("invalid `--cfg` argument: `{}` (", $reason, ")"),
-                            s
-                        ))
-                        .emit();
+                    dcx.struct_fatal(format!(
+                        concat!("invalid `--cfg` argument: `{}` (", $reason, ")"),
+                        s
+                    ))
+                    .emit();
                 };
             }
 
@@ -101,7 +100,7 @@ pub(crate) fn parse_cfg(handler: &DiagCtxt, cfgs: Vec<String>) -> Cfg {
 }
 
 /// Converts strings provided as `--check-cfg [specs]` into a `CheckCfg`.
-pub(crate) fn parse_check_cfg(handler: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
+pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
     // If any --check-cfg is passed then exhaustive_values and exhaustive_names
     // are enabled by default.
     let exhaustive_names = !specs.is_empty();
@@ -118,12 +117,11 @@ pub(crate) fn parse_check_cfg(handler: &DiagCtxt, specs: Vec<String>) -> CheckCf
             ($reason:expr) => {
                 #[allow(rustc::untranslatable_diagnostic)]
                 #[allow(rustc::diagnostic_outside_of_impl)]
-                handler
-                    .struct_fatal(format!(
-                        concat!("invalid `--check-cfg` argument: `{}` (", $reason, ")"),
-                        s
-                    ))
-                    .emit()
+                dcx.struct_fatal(format!(
+                    concat!("invalid `--check-cfg` argument: `{}` (", $reason, ")"),
+                    s
+                ))
+                .emit()
             };
         }
 
@@ -433,7 +431,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 }
 
 pub fn try_print_query_stack(
-    handler: &DiagCtxt,
+    dcx: &DiagCtxt,
     num_frames: Option<usize>,
     file: Option<std::fs::File>,
 ) {
@@ -447,7 +445,7 @@ pub fn try_print_query_stack(
             ty::print::with_no_queries!(print_query_stack(
                 QueryCtxt::new(icx.tcx),
                 icx.query,
-                handler,
+                dcx,
                 num_frames,
                 file,
             ))

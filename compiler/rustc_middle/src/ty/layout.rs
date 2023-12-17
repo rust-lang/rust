@@ -1273,13 +1273,13 @@ pub enum FnAbiError<'tcx> {
 }
 
 impl<'a, 'b> IntoDiagnostic<'a, !> for FnAbiError<'b> {
-    fn into_diagnostic(self, handler: &'a DiagCtxt) -> DiagnosticBuilder<'a, !> {
+    fn into_diagnostic(self, dcx: &'a DiagCtxt) -> DiagnosticBuilder<'a, !> {
         match self {
-            Self::Layout(e) => e.into_diagnostic().into_diagnostic(handler),
+            Self::Layout(e) => e.into_diagnostic().into_diagnostic(dcx),
             Self::AdjustForForeignAbi(call::AdjustForForeignAbiError::Unsupported {
                 arch,
                 abi,
-            }) => UnsupportedFnAbi { arch, abi: abi.name() }.into_diagnostic(handler),
+            }) => UnsupportedFnAbi { arch, abi: abi.name() }.into_diagnostic(dcx),
         }
     }
 }

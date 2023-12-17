@@ -696,7 +696,7 @@ impl<'a> AstValidator<'a> {
 /// Checks that generic parameters are in the correct order,
 /// which is lifetimes, then types and then consts. (`<'a, T, const N: usize>`)
 fn validate_generic_param_order(
-    handler: &rustc_errors::DiagCtxt,
+    dcx: &rustc_errors::DiagCtxt,
     generics: &[GenericParam],
     span: Span,
 ) {
@@ -759,7 +759,7 @@ fn validate_generic_param_order(
         ordered_params += ">";
 
         for (param_ord, (max_param, spans)) in &out_of_order {
-            handler.emit_err(errors::OutOfOrderParams {
+            dcx.emit_err(errors::OutOfOrderParams {
                 spans: spans.clone(),
                 sugg_span: span,
                 param_ord,

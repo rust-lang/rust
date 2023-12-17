@@ -867,9 +867,9 @@ impl IntoDiagnostic<'_> for InvalidAttrAtCrateLevel {
     #[track_caller]
     fn into_diagnostic(
         self,
-        handler: &'_ rustc_errors::DiagCtxt,
+        dcx: &'_ rustc_errors::DiagCtxt,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(fluent::passes_invalid_attr_at_crate_level);
+        let mut diag = dcx.struct_err(fluent::passes_invalid_attr_at_crate_level);
         diag.set_span(self.span);
         diag.set_arg("name", self.name);
         // Only emit an error with a suggestion if we can create a string out
@@ -1020,9 +1020,9 @@ impl<'a> IntoDiagnostic<'_> for BreakNonLoop<'a> {
     #[track_caller]
     fn into_diagnostic(
         self,
-        handler: &rustc_errors::DiagCtxt,
+        dcx: &rustc_errors::DiagCtxt,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_span_err_with_code(
+        let mut diag = dcx.struct_span_err_with_code(
             self.span,
             fluent::passes_break_non_loop,
             error_code!(E0571),
@@ -1169,9 +1169,9 @@ impl IntoDiagnostic<'_> for NakedFunctionsAsmBlock {
     #[track_caller]
     fn into_diagnostic(
         self,
-        handler: &rustc_errors::DiagCtxt,
+        dcx: &rustc_errors::DiagCtxt,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_span_err_with_code(
+        let mut diag = dcx.struct_span_err_with_code(
             self.span,
             fluent::passes_naked_functions_asm_block,
             error_code!(E0787),
@@ -1285,9 +1285,9 @@ impl<'a> IntoDiagnostic<'a> for NoMainErr {
     #[track_caller]
     fn into_diagnostic(
         self,
-        handler: &'a rustc_errors::DiagCtxt,
+        dcx: &'a rustc_errors::DiagCtxt,
     ) -> rustc_errors::DiagnosticBuilder<'a, ErrorGuaranteed> {
-        let mut diag = handler.struct_span_err_with_code(
+        let mut diag = dcx.struct_span_err_with_code(
             DUMMY_SP,
             fluent::passes_no_main_function,
             error_code!(E0601),
@@ -1348,9 +1348,9 @@ impl IntoDiagnostic<'_> for DuplicateLangItem {
     #[track_caller]
     fn into_diagnostic(
         self,
-        handler: &rustc_errors::DiagCtxt,
+        dcx: &rustc_errors::DiagCtxt,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err_with_code(
+        let mut diag = dcx.struct_err_with_code(
             match self.duplicate {
                 Duplicate::Plain => fluent::passes_duplicate_lang_item,
                 Duplicate::Crate => fluent::passes_duplicate_lang_item_crate,

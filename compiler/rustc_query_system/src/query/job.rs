@@ -610,7 +610,7 @@ pub(crate) fn report_cycle<'a>(
 pub fn print_query_stack<Qcx: QueryContext>(
     qcx: Qcx,
     mut current_query: Option<QueryJobId>,
-    handler: &DiagCtxt,
+    dcx: &DiagCtxt,
     num_frames: Option<usize>,
     mut file: Option<std::fs::File>,
 ) -> usize {
@@ -638,7 +638,7 @@ pub fn print_query_stack<Qcx: QueryContext>(
                 ),
             );
             diag.span = query_info.job.span.into();
-            handler.force_print_diagnostic(diag);
+            dcx.force_print_diagnostic(diag);
             count_printed += 1;
         }
 

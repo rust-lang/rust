@@ -673,11 +673,11 @@ fn usage(argv0: &str) {
 /// A result type used by several functions under `main()`.
 type MainResult = Result<(), ErrorGuaranteed>;
 
-fn wrap_return(diag: &rustc_errors::DiagCtxt, res: Result<(), String>) -> MainResult {
+fn wrap_return(dcx: &rustc_errors::DiagCtxt, res: Result<(), String>) -> MainResult {
     match res {
-        Ok(()) => diag.has_errors().map_or(Ok(()), Err),
+        Ok(()) => dcx.has_errors().map_or(Ok(()), Err),
         Err(err) => {
-            let reported = diag.struct_err(err).emit();
+            let reported = dcx.struct_err(err).emit();
             Err(reported)
         }
     }

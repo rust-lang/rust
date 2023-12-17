@@ -61,7 +61,7 @@ struct LtoData {
     tmp_path: TempDir,
 }
 
-fn prepare_lto(cgcx: &CodegenContext<GccCodegenBackend>, diag_handler: &DiagCtxt) -> Result<LtoData, FatalError> {
+fn prepare_lto(cgcx: &CodegenContext<GccCodegenBackend>, dcx: &DiagCtxt) -> Result<LtoData, FatalError> {
     let export_threshold = match cgcx.lto {
         // We're just doing LTO for our one crate
         Lto::ThinLocal => SymbolExportLevel::Rust,
@@ -106,18 +106,18 @@ fn prepare_lto(cgcx: &CodegenContext<GccCodegenBackend>, diag_handler: &DiagCtxt
         // Make sure we actually can run LTO
         for crate_type in cgcx.crate_types.iter() {
             if !crate_type_allows_lto(*crate_type) {
-                diag_handler.emit_err(LtoDisallowed);
+                dcx.emit_err(LtoDisallowed);
                 return Err(FatalError);
             } else if *crate_type == CrateType::Dylib {
                 if !cgcx.opts.unstable_opts.dylib_lto {
-                    diag_handler.emit_err(LtoDylib);
+                    dcx.emit_err(LtoDylib);
                     return Err(FatalError);
                 }
             }
         }
 
         if cgcx.opts.cg.prefer_dynamic && !cgcx.opts.unstable_opts.dylib_lto {
-            diag_handler.emit_err(DynamicLinkingWithLTO);
+            dcx.emit_err(DynamicLinkingWithLTO);
             return Err(FatalError);
         }
 
@@ -154,7 +154,7 @@ fn prepare_lto(cgcx: &CodegenContext<GccCodegenBackend>, diag_handler: &DiagCtxt
                         upstream_modules.push((module, CString::new(name).unwrap()));
                     }
                     Err(e) => {
-                        diag_handler.emit_err(e);
+                        dcx.emit_err(e);
                         return Err(FatalError);
                     }
                 }
@@ -183,16 +183,16 @@ pub(crate) fn run_fat(
     modules: Vec<FatLtoInput<GccCodegenBackend>>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
 ) -> Result<LtoModuleCodegen<GccCodegenBackend>, FatalError> {
-    let diag_handler = cgcx.create_dcx();
-    let lto_data = prepare_lto(cgcx, &diag_handler)?;
+    let dcx = cgcx.create_dcx();
+    let lto_data = prepare_lto(cgcx, &dcx)?;
     /*let symbols_below_threshold =
         lto_data.symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();*/
-    fat_lto(cgcx, &diag_handler, modules, cached_modules, lto_data.upstream_modules, lto_data.tmp_path,
+    fat_lto(cgcx, &dcx, modules, cached_modules, lto_data.upstream_modules, lto_data.tmp_path,
         //&symbols_below_threshold,
     )
 }
 
-fn fat_lto(cgcx: &CodegenContext<GccCodegenBackend>, _diag_handler: &DiagCtxt, modules: Vec<FatLtoInput<GccCodegenBackend>>, cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>, mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>, tmp_path: TempDir,
+fn fat_lto(cgcx: &CodegenContext<GccCodegenBackend>, _dcx: &DiagCtxt, modules: Vec<FatLtoInput<GccCodegenBackend>>, cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>, mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>, tmp_path: TempDir,
     //symbols_below_threshold: &[*const libc::c_char],
 ) -> Result<LtoModuleCodegen<GccCodegenBackend>, FatalError> {
     let _timer = cgcx.prof.generic_activity("GCC_fat_lto_build_monolithic_module");
@@ -257,7 +257,7 @@ fn fat_lto(cgcx: &CodegenContext<GccCodegenBackend>, _diag_handler: &DiagCtxt, m
             let (buffer, name) = serialized_modules.remove(0);
             info!("no in-memory regular modules to choose from, parsing {:?}", name);
             ModuleCodegen {
-                module_llvm: GccContext::parse(cgcx, &name, buffer.data(), diag_handler)?,
+                module_llvm: GccContext::parse(cgcx, &name, buffer.data(), dcx)?,
                 name: name.into_string().unwrap(),
                 kind: ModuleKind::Regular,
             }*/

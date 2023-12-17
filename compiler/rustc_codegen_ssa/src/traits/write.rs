@@ -16,7 +16,7 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
     /// Merge all modules into main_module and returning it
     fn run_link(
         cgcx: &CodegenContext<Self>,
-        diag_handler: &DiagCtxt,
+        dcx: &DiagCtxt,
         modules: Vec<ModuleCodegen<Self::Module>>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError>;
     /// Performs fat LTO by merging all modules into a single one and returning it
@@ -38,7 +38,7 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
     fn print_statistics(&self);
     unsafe fn optimize(
         cgcx: &CodegenContext<Self>,
-        diag_handler: &DiagCtxt,
+        dcx: &DiagCtxt,
         module: &ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<(), FatalError>;
@@ -52,7 +52,7 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
     ) -> Result<ModuleCodegen<Self::Module>, FatalError>;
     unsafe fn codegen(
         cgcx: &CodegenContext<Self>,
-        diag_handler: &DiagCtxt,
+        dcx: &DiagCtxt,
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<CompiledModule, FatalError>;

@@ -230,9 +230,9 @@ impl ParseSess {
         ParseSess::with_dcx(handler, sm)
     }
 
-    pub fn with_dcx(handler: DiagCtxt, source_map: Lrc<SourceMap>) -> Self {
+    pub fn with_dcx(dcx: DiagCtxt, source_map: Lrc<SourceMap>) -> Self {
         Self {
-            dcx: handler,
+            dcx,
             unstable_features: UnstableFeatures::from_environment(None),
             config: Cfg::default(),
             check_config: CheckCfg::default(),

@@ -47,7 +47,7 @@ pub fn crate_type_allows_lto(crate_type: CrateType) -> bool {
 
 fn prepare_lto(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
-    diag_handler: &DiagCtxt,
+    dcx: &DiagCtxt,
 ) -> Result<(Vec<CString>, Vec<(SerializedModule<ModuleBuffer>, CString)>), FatalError> {
     let export_threshold = match cgcx.lto {
         // We're just doing LTO for our one crate
@@ -84,23 +84,23 @@ fn prepare_lto(
         // Make sure we actually can run LTO
         for crate_type in cgcx.crate_types.iter() {
             if !crate_type_allows_lto(*crate_type) {
-                diag_handler.emit_err(LtoDisallowed);
+                dcx.emit_err(LtoDisallowed);
                 return Err(FatalError);
             } else if *crate_type == CrateType::Dylib {
                 if !cgcx.opts.unstable_opts.dylib_lto {
-                    diag_handler.emit_err(LtoDylib);
+                    dcx.emit_err(LtoDylib);
                     return Err(FatalError);
                 }
             } else if *crate_type == CrateType::ProcMacro {
                 if !cgcx.opts.unstable_opts.dylib_lto {
-                    diag_handler.emit_err(LtoProcMacro);
+                    dcx.emit_err(LtoProcMacro);
                     return Err(FatalError);
                 }
             }
         }
 
         if cgcx.opts.cg.prefer_dynamic && !cgcx.opts.unstable_opts.dylib_lto {
-            diag_handler.emit_err(DynamicLinkingWithLTO);
+            dcx.emit_err(DynamicLinkingWithLTO);
             return Err(FatalError);
         }
 
@@ -138,7 +138,7 @@ fn prepare_lto(
                         upstream_modules.push((module, CString::new(name).unwrap()));
                     }
                     Err(e) => {
-                        diag_handler.emit_err(e);
+                        dcx.emit_err(e);
                         return Err(FatalError);
                     }
                 }
@@ -250,7 +250,7 @@ pub(crate) fn prepare_thin(module: ModuleCodegen<ModuleLlvm>) -> (String, ThinBu
 
 fn fat_lto(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
-    diag_handler: &DiagCtxt,
+    dcx: &DiagCtxt,
     modules: Vec<FatLtoInput<LlvmCodegenBackend>>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
     mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
@@ -316,7 +316,7 @@ fn fat_lto(
             let (buffer, name) = serialized_modules.remove(0);
             info!("no in-memory regular modules to choose from, parsing {:?}", name);
             ModuleCodegen {
-                module_llvm: ModuleLlvm::parse(cgcx, &name, buffer.data(), diag_handler)?,
+                module_llvm: ModuleLlvm::parse(cgcx, &name, buffer.data(), dcx)?,
                 name: name.into_string().unwrap(),
                 kind: ModuleKind::Regular,
             }
@@ -333,13 +333,8 @@ fn fat_lto(
         // The linking steps below may produce errors and diagnostics within LLVM
         // which we'd like to handle and print, so set up our diagnostic handlers
         // (which get unregistered when they go out of scope below).
-        let _handler = DiagnosticHandlers::new(
-            cgcx,
-            diag_handler,
-            llcx,
-            &module,
-            CodegenDiagnosticsStage::LTO,
-        );
+        let _handler =
+            DiagnosticHandlers::new(cgcx, dcx, llcx, &module, CodegenDiagnosticsStage::LTO);
 
         // For all other modules we codegened we'll need to link them into our own
         // bitcode. All modules were codegened in their own LLVM context, however,
@@ -367,9 +362,7 @@ fn fat_lto(
                 });
             info!("linking {:?}", name);
             let data = bc_decoded.data();
-            linker
-                .add(data)
-                .map_err(|()| write::llvm_err(diag_handler, LlvmError::LoadBitcode { name }))?;
+            linker.add(data).map_err(|()| write::llvm_err(dcx, LlvmError::LoadBitcode { name }))?;
             serialized_bitcode.push(bc_decoded);
         }
         drop(linker);
@@ -452,7 +445,7 @@ impl Drop for Linker<'_> {
 /// they all go out of scope.
 fn thin_lto(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
-    diag_handler: &DiagCtxt,
+    dcx: &DiagCtxt,
     modules: Vec<(String, ThinBuffer)>,
     serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
@@ -527,7 +520,7 @@ fn thin_lto(
             symbols_below_threshold.as_ptr(),
             symbols_below_threshold.len() as u32,
         )
-        .ok_or_else(|| write::llvm_err(diag_handler, LlvmError::PrepareThinLtoContext))?;
+        .ok_or_else(|| write::llvm_err(dcx, LlvmError::PrepareThinLtoContext))?;
 
         let data = ThinData(data);
 
@@ -599,7 +592,7 @@ fn thin_lto(
         // session, overwriting the previous serialized data (if any).
         if let Some(path) = key_map_path {
             if let Err(err) = curr_key_map.save_to_file(&path) {
-                return Err(write::llvm_err(diag_handler, LlvmError::WriteThinLtoKey { err }));
+                return Err(write::llvm_err(dcx, LlvmError::WriteThinLtoKey { err }));
             }
         }
 
@@ -609,7 +602,7 @@ fn thin_lto(
 
 pub(crate) fn run_pass_manager(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
-    diag_handler: &DiagCtxt,
+    dcx: &DiagCtxt,
     module: &mut ModuleCodegen<ModuleLlvm>,
     thin: bool,
 ) -> Result<(), FatalError> {
@@ -637,7 +630,7 @@ pub(crate) fn run_pass_manager(
         }
         let opt_stage = if thin { llvm::OptStage::ThinLTO } else { llvm::OptStage::FatLTO };
         let opt_level = config.opt_level.unwrap_or(config::OptLevel::No);
-        write::llvm_optimize(cgcx, diag_handler, module, config, opt_level, opt_stage)?;
+        write::llvm_optimize(cgcx, dcx, module, config, opt_level, opt_stage)?;
     }
     debug!("lto done");
     Ok(())
@@ -868,10 +861,10 @@ pub fn parse_module<'a>(
     cx: &'a llvm::Context,
     name: &CStr,
     data: &[u8],
-    diag_handler: &DiagCtxt,
+    dcx: &DiagCtxt,
 ) -> Result<&'a llvm::Module, FatalError> {
     unsafe {
         llvm::LLVMRustParseBitcodeForLTO(cx, data.as_ptr(), data.len(), name.as_ptr())
-            .ok_or_else(|| write::llvm_err(diag_handler, LlvmError::ParseBitcode))
+            .ok_or_else(|| write::llvm_err(dcx, LlvmError::ParseBitcode))
     }
 }

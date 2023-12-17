@@ -803,12 +803,12 @@ impl Options {
 }
 
 /// Prints deprecation warnings for deprecated options
-fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::DiagCtxt) {
+fn check_deprecated_options(matches: &getopts::Matches, dcx: &rustc_errors::DiagCtxt) {
     let deprecated_flags = [];
 
     for &flag in deprecated_flags.iter() {
         if matches.opt_present(flag) {
-            diag.struct_warn(format!("the `{flag}` flag is deprecated"))
+            dcx.struct_warn(format!("the `{flag}` flag is deprecated"))
                 .note(
                     "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
                     for more information",
@@ -821,7 +821,7 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Dia
 
     for &flag in removed_flags.iter() {
         if matches.opt_present(flag) {
-            let mut err = diag.struct_warn(format!("the `{flag}` flag no longer functions"));
+            let mut err = dcx.struct_warn(format!("the `{flag}` flag no longer functions"));
             err.note(
                 "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
                 for more information",
