@@ -1727,52 +1727,52 @@ enum IncrCompSession {
 
 /// A wrapper around an [`DiagCtxt`] that is used for early error emissions.
 pub struct EarlyDiagCtxt {
-    handler: DiagCtxt,
+    dcx: DiagCtxt,
 }
 
 impl EarlyDiagCtxt {
     pub fn new(output: ErrorOutputType) -> Self {
         let emitter = mk_emitter(output);
-        Self { handler: DiagCtxt::with_emitter(emitter) }
+        Self { dcx: DiagCtxt::with_emitter(emitter) }
     }
 
     pub fn abort_if_errors(&self) {
-        self.handler.abort_if_errors()
+        self.dcx.abort_if_errors()
     }
 
-    /// Swap out the underlying handler once we acquire the user's preference on error emission
+    /// Swap out the underlying dcx once we acquire the user's preference on error emission
     /// format. Any errors prior to that will cause an abort and all stashed diagnostics of the
-    /// previous handler will be emitted.
+    /// previous dcx will be emitted.
     pub fn abort_if_error_and_set_error_format(&mut self, output: ErrorOutputType) {
-        self.handler.abort_if_errors();
+        self.dcx.abort_if_errors();
 
         let emitter = mk_emitter(output);
-        self.handler = DiagCtxt::with_emitter(emitter);
+        self.dcx = DiagCtxt::with_emitter(emitter);
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_note(&self, msg: impl Into<DiagnosticMessage>) {
-        self.handler.struct_note(msg).emit()
+        self.dcx.struct_note(msg).emit()
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_help(&self, msg: impl Into<DiagnosticMessage>) {
-        self.handler.struct_help(msg).emit()
+        self.dcx.struct_help(msg).emit()
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     #[must_use = "ErrorGuaranteed must be returned from `run_compiler` in order to exit with a non-zero status code"]
     pub fn early_error_no_abort(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
-        self.handler.struct_err(msg).emit()
+        self.dcx.struct_err(msg).emit()
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_error(&self, msg: impl Into<DiagnosticMessage>) -> ! {
-        self.handler.struct_fatal(msg).emit()
+        self.dcx.struct_fatal(msg).emit()
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
@@ -1781,13 +1781,13 @@ impl EarlyDiagCtxt {
         &self,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, !> {
-        self.handler.struct_fatal(msg)
+        self.dcx.struct_fatal(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_warn(&self, msg: impl Into<DiagnosticMessage>) {
-        self.handler.struct_warn(msg).emit()
+        self.dcx.struct_warn(msg).emit()
     }
 
     pub fn initialize_checked_jobserver(&self) {
@@ -1795,10 +1795,7 @@ impl EarlyDiagCtxt {
         jobserver::initialize_checked(|err| {
             #[allow(rustc::untranslatable_diagnostic)]
             #[allow(rustc::diagnostic_outside_of_impl)]
-            self.handler
-                .struct_warn(err)
-                .note("the build environment is likely misconfigured")
-                .emit()
+            self.dcx.struct_warn(err).note("the build environment is likely misconfigured").emit()
         });
     }
 }
