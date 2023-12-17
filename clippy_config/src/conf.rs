@@ -1,5 +1,5 @@
 use crate::msrvs::Msrv;
-use crate::types::{DisallowedPath, MacroMatcher, MatchLintBehaviour, Rename};
+use crate::types::{DisallowedPath, MacroMatcher, MatchLintBehaviour, PubUnderscoreFieldsBehaviour, Rename};
 use crate::ClippyConfiguration;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_session::Session;
@@ -547,6 +547,11 @@ define_Conf! {
     ///
     /// Whether to also run the listed lints on private items.
     (check_private_items: bool = false),
+    /// Lint: PUB_UNDERSCORE_FIELDS
+    ///
+    /// Lint "public" fields in a struct that are prefixed with an underscore based on their
+    /// exported visibility; or whether they are marked as "pub".
+    (pub_underscore_fields_behavior: PubUnderscoreFieldsBehaviour = PubUnderscoreFieldsBehaviour::PublicallyExported),
 }
 
 /// Search for the configuration file.

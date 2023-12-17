@@ -576,6 +576,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::ptr::MUT_FROM_REF_INFO,
     crate::ptr::PTR_ARG_INFO,
     crate::ptr_offset_with_cast::PTR_OFFSET_WITH_CAST_INFO,
+    crate::pub_underscore_fields::PUB_UNDERSCORE_FIELDS_INFO,
     crate::pub_use::PUB_USE_INFO,
     crate::question_mark::QUESTION_MARK_INFO,
     crate::question_mark_used::QUESTION_MARK_USED_INFO,
