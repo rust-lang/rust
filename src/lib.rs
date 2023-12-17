@@ -100,7 +100,7 @@ use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModul
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, ThinBufferMethods, WriteBackendMethods};
-use rustc_errors::{ErrorGuaranteed, Handler};
+use rustc_errors::{ErrorGuaranteed, DiagCtxt};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::util::Providers;
@@ -330,7 +330,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         unimplemented!()
     }
 
-    unsafe fn optimize(_cgcx: &CodegenContext<Self>, _diag_handler: &Handler, module: &ModuleCodegen<Self::Module>, config: &ModuleConfig) -> Result<(), FatalError> {
+    unsafe fn optimize(_cgcx: &CodegenContext<Self>, _diag_handler: &DiagCtxt, module: &ModuleCodegen<Self::Module>, config: &ModuleConfig) -> Result<(), FatalError> {
         module.module_llvm.context.set_optimization_level(to_gcc_opt_level(config.opt_level));
         Ok(())
     }
@@ -344,7 +344,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         unimplemented!();
     }
 
-    unsafe fn codegen(cgcx: &CodegenContext<Self>, diag_handler: &Handler, module: ModuleCodegen<Self::Module>, config: &ModuleConfig) -> Result<CompiledModule, FatalError> {
+    unsafe fn codegen(cgcx: &CodegenContext<Self>, diag_handler: &DiagCtxt, module: ModuleCodegen<Self::Module>, config: &ModuleConfig) -> Result<CompiledModule, FatalError> {
         back::write::codegen(cgcx, diag_handler, module, config)
     }
 
@@ -356,7 +356,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         unimplemented!();
     }
 
-    fn run_link(cgcx: &CodegenContext<Self>, diag_handler: &Handler, modules: Vec<ModuleCodegen<Self::Module>>) -> Result<ModuleCodegen<Self::Module>, FatalError> {
+    fn run_link(cgcx: &CodegenContext<Self>, diag_handler: &DiagCtxt, modules: Vec<ModuleCodegen<Self::Module>>) -> Result<ModuleCodegen<Self::Module>, FatalError> {
         back::write::link(cgcx, diag_handler, modules)
     }
 }

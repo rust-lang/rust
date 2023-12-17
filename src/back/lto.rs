@@ -30,7 +30,7 @@ use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput};
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{looks_like_rust_object_file, ModuleCodegen, ModuleKind};
 use rustc_data_structures::memmap::Mmap;
-use rustc_errors::{FatalError, Handler};
+use rustc_errors::{FatalError, DiagCtxt};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::dep_graph::WorkProduct;
 use rustc_middle::middle::exported_symbols::{SymbolExportInfo, SymbolExportLevel};
@@ -61,7 +61,7 @@ struct LtoData {
     tmp_path: TempDir,
 }
 
-fn prepare_lto(cgcx: &CodegenContext<GccCodegenBackend>, diag_handler: &Handler) -> Result<LtoData, FatalError> {
+fn prepare_lto(cgcx: &CodegenContext<GccCodegenBackend>, diag_handler: &DiagCtxt) -> Result<LtoData, FatalError> {
     let export_threshold = match cgcx.lto {
         // We're just doing LTO for our one crate
         Lto::ThinLocal => SymbolExportLevel::Rust,
@@ -192,7 +192,7 @@ pub(crate) fn run_fat(
     )
 }
 
-fn fat_lto(cgcx: &CodegenContext<GccCodegenBackend>, _diag_handler: &Handler, modules: Vec<FatLtoInput<GccCodegenBackend>>, cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>, mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>, tmp_path: TempDir,
+fn fat_lto(cgcx: &CodegenContext<GccCodegenBackend>, _diag_handler: &DiagCtxt, modules: Vec<FatLtoInput<GccCodegenBackend>>, cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>, mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>, tmp_path: TempDir,
     //symbols_below_threshold: &[*const libc::c_char],
 ) -> Result<LtoModuleCodegen<GccCodegenBackend>, FatalError> {
     let _timer = cgcx.prof.generic_activity("GCC_fat_lto_build_monolithic_module");
