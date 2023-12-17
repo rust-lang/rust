@@ -19,7 +19,7 @@ use rustc_session::EarlyDiagCtxt;
 use rustc_span::edition::Edition;
 use rustc_target::spec::TargetTriple;
 
-use crate::core::new_handler;
+use crate::core::new_dcx;
 use crate::externalfiles::ExternalHtml;
 use crate::html;
 use crate::html::markdown::IdMap;
@@ -348,7 +348,7 @@ impl Options {
         let codegen_options = CodegenOptions::build(handler, matches);
         let unstable_opts = UnstableOptions::build(handler, matches);
 
-        let diag = new_handler(error_format, None, diagnostic_width, &unstable_opts);
+        let diag = new_dcx(error_format, None, diagnostic_width, &unstable_opts);
 
         // check for deprecated options
         check_deprecated_options(matches, &diag);

@@ -123,8 +123,8 @@ impl<'tcx> DocContext<'tcx> {
 /// Creates a new `DiagCtxt` that can be used to emit warnings and errors.
 ///
 /// If the given `error_format` is `ErrorOutputType::Json` and no `SourceMap` is given, a new one
-/// will be created for the handler.
-pub(crate) fn new_handler(
+/// will be created for the `DiagCtxt`.
+pub(crate) fn new_dcx(
     error_format: ErrorOutputType,
     source_map: Option<Lrc<source_map::SourceMap>>,
     diagnostic_width: Option<usize>,

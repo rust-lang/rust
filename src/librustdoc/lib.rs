@@ -745,12 +745,8 @@ fn main_args(
         }
     };
 
-    let diag = core::new_handler(
-        options.error_format,
-        None,
-        options.diagnostic_width,
-        &options.unstable_opts,
-    );
+    let diag =
+        core::new_dcx(options.error_format, None, options.diagnostic_width, &options.unstable_opts);
 
     match (options.should_test, options.markdown_input()) {
         (true, true) => return wrap_return(&diag, markdown::test(options)),
