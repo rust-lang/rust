@@ -199,6 +199,8 @@ extern "platform-intrinsic" {
     ///
     /// `V` must be a vector of integers with the same length as `T` (but any element size).
     ///
+    /// `idx` must be a constant.
+    ///
     /// For each pointer in `ptr`, if the corresponding value in `mask` is `!0`, read the pointer.
     /// Otherwise if the corresponding value in `mask` is `0`, return the corresponding value from
     /// `val`.
@@ -319,15 +321,20 @@ extern "platform-intrinsic" {
     /// `T` must be an integer vector.
     ///
     /// `U` must be either the smallest unsigned integer with at least as many bits as the length
+    /// of `T`, or the smallest array of `u8` with as many bits as the length of `T`.
     ///
     /// Each element is truncated to a single bit and packed into the result.
     ///
-    /// The bit order depends on the byte endianness.
-    /// The bitmask is always packed into the smallest/first bits, but the order is LSB-first for
-    /// little endian and MSB-first for big endian.
-    /// In other words, the LSB corresponds to the first vector element for little endian,
-    /// and the last vector element for big endian.
-    /// of `T`, or the smallest array of `u8` with as many bits as the length of `T`.
+    /// No matter whether the output is an array or an unsigned integer, it is treated as a single
+    /// contiguous list of bits. The bitmask is always packed on the least-significant side of the
+    /// output, and padded with 0s in the most-significant bits. The order of the bits depends on
+    /// endianess:
+    ///
+    /// * On little endian, the least significant bit corresponds to the first vector element.
+    /// * On big endian, the least significant bit corresponds to the last vector element.
+    ///
+    /// For example, `[-1, 0, -1, -1]` packs to `0b1101` on little endian and `0b1011` on big
+    /// endian.
     ///
     /// # Safety
     /// `x` must contain only `0` and `!0`.
@@ -349,7 +356,7 @@ extern "platform-intrinsic" {
 
     /// Select elements from a bitmask.
     ///
-    /// `M` must be an unsigned integer of type matching `simd_bitmask`.
+    /// `M` must be an unsigned integer or array of `u8`, matching `simd_bitmask`.
     ///
     /// `T` must be a vector.
     ///
@@ -360,7 +367,7 @@ extern "platform-intrinsic" {
     /// The bitmask bit order matches `simd_bitmask`.
     ///
     /// # Safety
-    /// `mask` must only contain `0` and `!0`.
+    /// Padding bits must be all zero.
     pub fn simd_select_bitmask<M, T>(m: M, yes: T, no: T) -> T;
 
     /// Elementwise calculates the offset from a pointer vector, potentially wrapping.
