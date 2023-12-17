@@ -18,7 +18,7 @@ extern crate rustc_span;
 use rustc_interface::interface;
 use rustc_session::config::ErrorOutputType;
 use rustc_session::parse::ParseSess;
-use rustc_session::EarlyErrorHandler;
+use rustc_session::EarlyDiagCtxt;
 use rustc_span::symbol::Symbol;
 
 use std::env;
@@ -174,7 +174,7 @@ const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust-clippy/issues/ne
 #[allow(clippy::too_many_lines)]
 #[allow(clippy::ignored_unit_patterns)]
 pub fn main() {
-    let handler = EarlyErrorHandler::new(ErrorOutputType::default());
+    let handler = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     rustc_driver::init_rustc_env_logger(&handler);
 

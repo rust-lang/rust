@@ -2,7 +2,7 @@ use crate::config::*;
 
 use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
-use crate::{lint, EarlyErrorHandler};
+use crate::{lint, EarlyDiagCtxt};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_data_structures::stable_hasher::Hash64;
@@ -255,7 +255,7 @@ macro_rules! options {
 
     impl $struct_name {
         pub fn build(
-            handler: &EarlyErrorHandler,
+            handler: &EarlyDiagCtxt,
             matches: &getopts::Matches,
         ) -> $struct_name {
             build_options(handler, matches, $stat, $prefix, $outputname)
@@ -319,7 +319,7 @@ type OptionSetter<O> = fn(&mut O, v: Option<&str>) -> bool;
 type OptionDescrs<O> = &'static [(&'static str, OptionSetter<O>, &'static str, &'static str)];
 
 fn build_options<O: Default>(
-    handler: &EarlyErrorHandler,
+    handler: &EarlyDiagCtxt,
     matches: &getopts::Matches,
     descrs: OptionDescrs<O>,
     prefix: &str,

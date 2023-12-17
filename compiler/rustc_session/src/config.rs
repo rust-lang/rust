@@ -7,7 +7,7 @@ use crate::errors::FileWriteFail;
 use crate::search_paths::SearchPath;
 use crate::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
 use crate::{lint, HashStableContext};
-use crate::{EarlyErrorHandler, Session};
+use crate::{EarlyDiagCtxt, Session};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{StableOrd, ToStableHashKey};
 use rustc_errors::emitter::HumanReadableErrorType;
@@ -1584,7 +1584,7 @@ pub fn build_configuration(sess: &Session, mut user_cfg: Cfg) -> Cfg {
 }
 
 pub(super) fn build_target_config(
-    handler: &EarlyErrorHandler,
+    handler: &EarlyDiagCtxt,
     opts: &Options,
     target_override: Option<Target>,
     sysroot: &Path,
@@ -1844,7 +1844,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
 }
 
 pub fn get_cmd_lint_options(
-    handler: &EarlyErrorHandler,
+    handler: &EarlyDiagCtxt,
     matches: &getopts::Matches,
 ) -> (Vec<(String, lint::Level)>, bool, Option<lint::Level>) {
     let mut lint_opts_with_position = vec![];
@@ -1876,7 +1876,7 @@ pub fn get_cmd_lint_options(
 }
 
 /// Parses the `--color` flag.
-pub fn parse_color(handler: &EarlyErrorHandler, matches: &getopts::Matches) -> ColorConfig {
+pub fn parse_color(handler: &EarlyDiagCtxt, matches: &getopts::Matches) -> ColorConfig {
     match matches.opt_str("color").as_deref() {
         Some("auto") => ColorConfig::Auto,
         Some("always") => ColorConfig::Always,
@@ -1930,7 +1930,7 @@ impl JsonUnusedExterns {
 ///
 /// The first value returned is how to render JSON diagnostics, and the second
 /// is whether or not artifact notifications are enabled.
-pub fn parse_json(handler: &EarlyErrorHandler, matches: &getopts::Matches) -> JsonConfig {
+pub fn parse_json(handler: &EarlyDiagCtxt, matches: &getopts::Matches) -> JsonConfig {
     let mut json_rendered: fn(ColorConfig) -> HumanReadableErrorType =
         HumanReadableErrorType::Default;
     let mut json_color = ColorConfig::Never;
@@ -1968,7 +1968,7 @@ pub fn parse_json(handler: &EarlyErrorHandler, matches: &getopts::Matches) -> Js
 
 /// Parses the `--error-format` flag.
 pub fn parse_error_format(
-    handler: &mut EarlyErrorHandler,
+    handler: &mut EarlyDiagCtxt,
     matches: &getopts::Matches,
     color: ColorConfig,
     json_rendered: HumanReadableErrorType,
@@ -2019,7 +2019,7 @@ pub fn parse_error_format(
     error_format
 }
 
-pub fn parse_crate_edition(handler: &EarlyErrorHandler, matches: &getopts::Matches) -> Edition {
+pub fn parse_crate_edition(handler: &EarlyDiagCtxt, matches: &getopts::Matches) -> Edition {
     let edition = match matches.opt_str("edition") {
         Some(arg) => Edition::from_str(&arg).unwrap_or_else(|_| {
             handler.early_error(format!(
@@ -2046,7 +2046,7 @@ pub fn parse_crate_edition(handler: &EarlyErrorHandler, matches: &getopts::Match
 }
 
 fn check_error_format_stability(
-    handler: &mut EarlyErrorHandler,
+    handler: &mut EarlyDiagCtxt,
     unstable_opts: &UnstableOptions,
     error_format: ErrorOutputType,
     json_rendered: HumanReadableErrorType,
@@ -2072,7 +2072,7 @@ fn check_error_format_stability(
 }
 
 fn parse_output_types(
-    handler: &EarlyErrorHandler,
+    handler: &EarlyDiagCtxt,
     unstable_opts: &UnstableOptions,
     matches: &getopts::Matches,
 ) -> OutputTypes {
@@ -2106,7 +2106,7 @@ fn split_out_file_name(arg: &str) -> (&str, Option<OutFileName>) {
 }
 
 fn should_override_cgus_and_disable_thinlto(
-    handler: &EarlyErrorHandler,
+    handler: &EarlyDiagCtxt,
     output_types: &OutputTypes,
     matches: &getopts::Matches,
     mut codegen_units: Option<usize>,
@@ -2151,7 +2151,7 @@ fn should_override_cgus_and_disable_thinlto(
 }
 
 fn collect_print_requests(
-    handler: &EarlyErrorHandler,
+    handler: &EarlyDiagCtxt,
     cg: &mut CodegenOptions,
     unstable_opts: &mut UnstableOptions,
     matches: &getopts::Matches,
@@ -2247,10 +2247,7 @@ fn collect_print_requests(
     prints
 }
 
-pub fn parse_target_triple(
-    handler: &EarlyErrorHandler,
-    matches: &getopts::Matches,
-) -> TargetTriple {
+pub fn parse_target_triple(handler: &EarlyDiagCtxt, matches: &getopts::Matches) -> TargetTriple {
     match matches.opt_str("target") {
         Some(target) if target.ends_with(".json") => {
             let path = Path::new(&target);
@@ -2264,7 +2261,7 @@ pub fn parse_target_triple(
 }
 
 fn parse_opt_level(
-    handler: &EarlyErrorHandler,
+    handler: &EarlyDiagCtxt,
     matches: &getopts::Matches,
     cg: &CodegenOptions,
 ) -> OptLevel {
@@ -2317,7 +2314,7 @@ fn select_debuginfo(matches: &getopts::Matches, cg: &CodegenOptions) -> DebugInf
 }
 
 fn parse_assert_incr_state(
-    handler: &EarlyErrorHandler,
+    handler: &EarlyDiagCtxt,
     opt_assertion: &Option<String>,
 ) -> Option<IncrementalStateAssertion> {
     match opt_assertion {
@@ -2331,7 +2328,7 @@ fn parse_assert_incr_state(
 }
 
 fn parse_native_lib_kind(
-    handler: &EarlyErrorHandler,
+    handler: &EarlyDiagCtxt,
     matches: &getopts::Matches,
     kind: &str,
 ) -> (NativeLibKind, Option<bool>) {
@@ -2366,7 +2363,7 @@ fn parse_native_lib_kind(
 }
 
 fn parse_native_lib_modifiers(
-    handler: &EarlyErrorHandler,
+    handler: &EarlyDiagCtxt,
     mut kind: NativeLibKind,
     modifiers: &str,
     matches: &getopts::Matches,
@@ -2436,7 +2433,7 @@ fn parse_native_lib_modifiers(
     (kind, verbatim)
 }
 
-fn parse_libs(handler: &EarlyErrorHandler, matches: &getopts::Matches) -> Vec<NativeLib> {
+fn parse_libs(handler: &EarlyDiagCtxt, matches: &getopts::Matches) -> Vec<NativeLib> {
     matches
         .opt_strs("l")
         .into_iter()
@@ -2468,7 +2465,7 @@ fn parse_libs(handler: &EarlyErrorHandler, matches: &getopts::Matches) -> Vec<Na
 }
 
 pub fn parse_externs(
-    handler: &EarlyErrorHandler,
+    handler: &EarlyDiagCtxt,
     matches: &getopts::Matches,
     unstable_opts: &UnstableOptions,
 ) -> Externs {
@@ -2596,7 +2593,7 @@ pub fn parse_externs(
 }
 
 fn parse_remap_path_prefix(
-    handler: &EarlyErrorHandler,
+    handler: &EarlyDiagCtxt,
     matches: &getopts::Matches,
     unstable_opts: &UnstableOptions,
 ) -> Vec<(PathBuf, PathBuf)> {
@@ -2619,7 +2616,7 @@ fn parse_remap_path_prefix(
 }
 
 fn parse_logical_env(
-    handler: &mut EarlyErrorHandler,
+    handler: &mut EarlyDiagCtxt,
     matches: &getopts::Matches,
 ) -> FxIndexMap<String, String> {
     let mut vars = FxIndexMap::default();
@@ -2637,10 +2634,7 @@ fn parse_logical_env(
 
 // JUSTIFICATION: before wrapper fn is available
 #[allow(rustc::bad_opt_access)]
-pub fn build_session_options(
-    handler: &mut EarlyErrorHandler,
-    matches: &getopts::Matches,
-) -> Options {
+pub fn build_session_options(handler: &mut EarlyDiagCtxt, matches: &getopts::Matches) -> Options {
     let color = parse_color(handler, matches);
 
     let edition = parse_crate_edition(handler, matches);
@@ -2959,7 +2953,7 @@ pub fn build_session_options(
     }
 }
 
-fn parse_pretty(handler: &EarlyErrorHandler, unstable_opts: &UnstableOptions) -> Option<PpMode> {
+fn parse_pretty(handler: &EarlyDiagCtxt, unstable_opts: &UnstableOptions) -> Option<PpMode> {
     use PpMode::*;
 
     let first = match unstable_opts.unpretty.as_deref()? {
@@ -3026,7 +3020,7 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
 
 pub mod nightly_options {
     use super::{OptionStability, RustcOptGroup};
-    use crate::EarlyErrorHandler;
+    use crate::EarlyDiagCtxt;
     use rustc_feature::UnstableFeatures;
 
     pub fn is_unstable_enabled(matches: &getopts::Matches) -> bool {
@@ -3043,7 +3037,7 @@ pub mod nightly_options {
     }
 
     pub fn check_nightly_options(
-        handler: &EarlyErrorHandler,
+        handler: &EarlyDiagCtxt,
         matches: &getopts::Matches,
         flags: &[RustcOptGroup],
     ) {

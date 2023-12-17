@@ -35,7 +35,7 @@ use rustc_middle::{
 };
 use rustc_session::config::{CrateType, ErrorOutputType, OptLevel};
 use rustc_session::search_paths::PathKind;
-use rustc_session::{CtfeBacktrace, EarlyErrorHandler};
+use rustc_session::{CtfeBacktrace, EarlyDiagCtxt};
 
 use miri::{BacktraceStyle, BorrowTrackerMethod, ProvenanceMode, RetagFields};
 
@@ -69,7 +69,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                 tcx.sess.fatal("miri cannot be run on programs that fail compilation");
             }
 
-            let handler = EarlyErrorHandler::new(tcx.sess.opts.error_format);
+            let handler = EarlyDiagCtxt::new(tcx.sess.opts.error_format);
             init_late_loggers(&handler, tcx);
             if !tcx.crate_types().contains(&CrateType::Executable) {
                 tcx.sess.fatal("miri only makes sense on bin crates");
@@ -215,7 +215,7 @@ fn rustc_logger_config() -> rustc_log::LoggerConfig {
     cfg
 }
 
-fn init_early_loggers(handler: &EarlyErrorHandler) {
+fn init_early_loggers(handler: &EarlyDiagCtxt) {
     // Note that our `extern crate log` is *not* the same as rustc's; as a result, we have to
     // initialize them both, and we always initialize `miri`'s first.
     let env = env_logger::Env::new().filter("MIRI_LOG").write_style("MIRI_LOG_STYLE");
@@ -228,7 +228,7 @@ fn init_early_loggers(handler: &EarlyErrorHandler) {
     }
 }
 
-fn init_late_loggers(handler: &EarlyErrorHandler, tcx: TyCtxt<'_>) {
+fn init_late_loggers(handler: &EarlyDiagCtxt, tcx: TyCtxt<'_>) {
     // If `RUSTC_LOG` is not set, then `init_early_loggers` did not call
     // `rustc_driver::init_logger`, so we have to do this now.
     if env::var_os("RUSTC_LOG").is_none() {
@@ -300,7 +300,7 @@ fn parse_comma_list<T: FromStr>(input: &str) -> Result<Vec<T>, T::Err> {
 }
 
 fn main() {
-    let handler = EarlyErrorHandler::new(ErrorOutputType::default());
+    let handler = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     // Snapshot a copy of the environment before `rustc` starts messing with it.
     // (`install_ice_hook` might change `RUST_BACKTRACE`.)

@@ -38,7 +38,7 @@ use rustc_session::config::{nightly_options, CG_OPTIONS, Z_OPTIONS};
 use rustc_session::config::{ErrorOutputType, Input, OutFileName, OutputType, TrimmedDefPaths};
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
-use rustc_session::{config, EarlyErrorHandler, Session};
+use rustc_session::{config, EarlyDiagCtxt, Session};
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::FileLoader;
 use rustc_span::symbol::sym;
@@ -291,7 +291,7 @@ fn run_compiler(
     >,
     using_internal_features: Arc<std::sync::atomic::AtomicBool>,
 ) -> interface::Result<()> {
-    let mut default_handler = EarlyErrorHandler::new(ErrorOutputType::default());
+    let mut default_handler = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     // Throw away the first argument, the name of the binary.
     // In case of at_args being empty, as might be the case by
@@ -369,7 +369,7 @@ fn run_compiler(
             return sess.compile_status();
         }
 
-        let handler = EarlyErrorHandler::new(sess.opts.error_format);
+        let handler = EarlyDiagCtxt::new(sess.opts.error_format);
 
         if print_crate_info(&handler, codegen_backend, sess, has_input) == Compilation::Stop {
             return sess.compile_status();
@@ -495,7 +495,7 @@ fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<OutFileNa
 
 // Extract input (string or file and optional path) from matches.
 fn make_input(
-    handler: &EarlyErrorHandler,
+    handler: &EarlyDiagCtxt,
     free_matches: &[String],
 ) -> Result<Option<Input>, ErrorGuaranteed> {
     if free_matches.len() == 1 {
@@ -537,7 +537,7 @@ pub enum Compilation {
     Continue,
 }
 
-fn handle_explain(handler: &EarlyErrorHandler, registry: Registry, code: &str, color: ColorConfig) {
+fn handle_explain(handler: &EarlyDiagCtxt, registry: Registry, code: &str, color: ColorConfig) {
     let upper_cased_code = code.to_ascii_uppercase();
     let normalised =
         if upper_cased_code.starts_with('E') { upper_cased_code } else { format!("E{code:0>4}") };
@@ -669,11 +669,7 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
     }
 }
 
-fn list_metadata(
-    handler: &EarlyErrorHandler,
-    sess: &Session,
-    metadata_loader: &dyn MetadataLoader,
-) {
+fn list_metadata(handler: &EarlyDiagCtxt, sess: &Session, metadata_loader: &dyn MetadataLoader) {
     match sess.io.input {
         Input::File(ref ifile) => {
             let path = &(*ifile);
@@ -695,7 +691,7 @@ fn list_metadata(
 }
 
 fn print_crate_info(
-    handler: &EarlyErrorHandler,
+    handler: &EarlyDiagCtxt,
     codegen_backend: &dyn CodegenBackend,
     sess: &Session,
     parse_attrs: bool,
@@ -873,7 +869,7 @@ pub macro version($handler: expr, $binary: literal, $matches: expr) {
 
 #[doc(hidden)] // use the macro instead
 pub fn version_at_macro_invocation(
-    handler: &EarlyErrorHandler,
+    handler: &EarlyDiagCtxt,
     binary: &str,
     matches: &getopts::Matches,
     version: &str,
@@ -1072,7 +1068,7 @@ Available lint options:
 /// Show help for flag categories shared between rustdoc and rustc.
 ///
 /// Returns whether a help option was printed.
-pub fn describe_flag_categories(handler: &EarlyErrorHandler, matches: &Matches) -> bool {
+pub fn describe_flag_categories(handler: &EarlyDiagCtxt, matches: &Matches) -> bool {
     // Handle the special case of -Wall.
     let wall = matches.opt_strs("W");
     if wall.iter().any(|x| *x == "all") {
@@ -1160,7 +1156,7 @@ fn print_flag_list<T>(
 /// This does not need to be `pub` for rustc itself, but @chaosite needs it to
 /// be public when using rustc as a library, see
 /// <https://github.com/rust-lang/rust/commit/2b4c33817a5aaecabf4c6598d41e190080ec119e>
-pub fn handle_options(handler: &EarlyErrorHandler, args: &[String]) -> Option<getopts::Matches> {
+pub fn handle_options(handler: &EarlyDiagCtxt, args: &[String]) -> Option<getopts::Matches> {
     if args.is_empty() {
         // user did not write `-v` nor `-Z unstable-options`, so do not
         // include that extra information.
@@ -1336,7 +1332,7 @@ pub fn install_ice_hook(
                 if msg.starts_with("failed printing to stdout: ") && msg.ends_with("(os error 232)")
                 {
                     // the error code is already going to be reported when the panic unwinds up the stack
-                    let handler = EarlyErrorHandler::new(ErrorOutputType::default());
+                    let handler = EarlyDiagCtxt::new(ErrorOutputType::default());
                     let _ = handler.early_error_no_abort(msg.clone());
                     return;
                 }
@@ -1476,14 +1472,14 @@ fn report_ice(
 
 /// This allows tools to enable rust logging without having to magically match rustc's
 /// tracing crate version.
-pub fn init_rustc_env_logger(handler: &EarlyErrorHandler) {
+pub fn init_rustc_env_logger(handler: &EarlyDiagCtxt) {
     init_logger(handler, rustc_log::LoggerConfig::from_env("RUSTC_LOG"));
 }
 
 /// This allows tools to enable rust logging without having to magically match rustc's
 /// tracing crate version. In contrast to `init_rustc_env_logger` it allows you to choose
 /// the values directly rather than having to set an environment variable.
-pub fn init_logger(handler: &EarlyErrorHandler, cfg: rustc_log::LoggerConfig) {
+pub fn init_logger(handler: &EarlyDiagCtxt, cfg: rustc_log::LoggerConfig) {
     if let Err(error) = rustc_log::init_logger(cfg) {
         handler.early_error(error.to_string());
     }
@@ -1493,7 +1489,7 @@ pub fn main() -> ! {
     let start_time = Instant::now();
     let start_rss = get_resident_set_size();
 
-    let handler = EarlyErrorHandler::new(ErrorOutputType::default());
+    let handler = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     init_rustc_env_logger(&handler);
     signal_handler::install();

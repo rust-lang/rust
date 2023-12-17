@@ -18,7 +18,7 @@ use rustc_query_system::query::print_query_stack;
 use rustc_session::config::{self, Cfg, CheckCfg, ExpectedValues, Input, OutFileName};
 use rustc_session::filesearch::sysroot_candidates;
 use rustc_session::parse::ParseSess;
-use rustc_session::{lint, CompilerIO, EarlyErrorHandler, Session};
+use rustc_session::{lint, CompilerIO, EarlyDiagCtxt, Session};
 use rustc_span::source_map::FileLoader;
 use rustc_span::symbol::sym;
 use rustc_span::FileName;
@@ -317,7 +317,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
     rustc_data_structures::sync::set_dyn_thread_safe_mode(config.opts.unstable_opts.threads > 1);
 
     // Check jobserver before run_in_thread_pool_with_globals, which call jobserver::acquire_thread
-    let early_handler = EarlyErrorHandler::new(config.opts.error_format);
+    let early_handler = EarlyDiagCtxt::new(config.opts.error_format);
     early_handler.initialize_checked_jobserver();
 
     util::run_in_thread_pool_with_globals(
@@ -326,7 +326,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
         || {
             crate::callbacks::setup_callbacks();
 
-            let early_handler = EarlyErrorHandler::new(config.opts.error_format);
+            let early_handler = EarlyDiagCtxt::new(config.opts.error_format);
 
             let codegen_backend = if let Some(make_codegen_backend) = config.make_codegen_backend {
                 make_codegen_backend(&config.opts)

@@ -13,7 +13,7 @@ use rustc_session::config::{
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
-use rustc_session::{build_session, getopts, CompilerIO, EarlyErrorHandler, Session};
+use rustc_session::{build_session, getopts, CompilerIO, EarlyDiagCtxt, Session};
 use rustc_span::edition::{Edition, DEFAULT_EDITION};
 use rustc_span::symbol::sym;
 use rustc_span::{FileName, SourceFileHashAlgorithm};
@@ -25,7 +25,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 fn mk_session(matches: getopts::Matches) -> (Session, Cfg) {
-    let mut early_handler = EarlyErrorHandler::new(ErrorOutputType::default());
+    let mut early_handler = EarlyDiagCtxt::new(ErrorOutputType::default());
     early_handler.initialize_checked_jobserver();
 
     let registry = registry::Registry::new(&[]);
@@ -301,7 +301,7 @@ fn test_search_paths_tracking_hash_different_order() {
     let mut v3 = Options::default();
     let mut v4 = Options::default();
 
-    let handler = EarlyErrorHandler::new(JSON);
+    let handler = EarlyDiagCtxt::new(JSON);
     const JSON: ErrorOutputType = ErrorOutputType::Json {
         pretty: false,
         json_rendered: HumanReadableErrorType::Default(ColorConfig::Never),
@@ -854,7 +854,7 @@ fn test_edition_parsing() {
     let options = Options::default();
     assert!(options.edition == DEFAULT_EDITION);
 
-    let mut handler = EarlyErrorHandler::new(ErrorOutputType::default());
+    let mut handler = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     let matches = optgroups().parse(&["--edition=2018".to_string()]).unwrap();
     let sessopts = build_session_options(&mut handler, &matches);

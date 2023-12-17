@@ -1357,7 +1357,7 @@ fn default_emitter(
 // JUSTIFICATION: literally session construction
 #[allow(rustc::bad_opt_access)]
 pub fn build_session(
-    early_handler: EarlyErrorHandler,
+    early_handler: EarlyDiagCtxt,
     sopts: config::Options,
     io: CompilerIO,
     bundle: Option<Lrc<rustc_errors::FluentBundle>>,
@@ -1726,11 +1726,11 @@ enum IncrCompSession {
 }
 
 /// A wrapper around an [`DiagCtxt`] that is used for early error emissions.
-pub struct EarlyErrorHandler {
+pub struct EarlyDiagCtxt {
     handler: DiagCtxt,
 }
 
-impl EarlyErrorHandler {
+impl EarlyDiagCtxt {
     pub fn new(output: ErrorOutputType) -> Self {
         let emitter = mk_emitter(output);
         Self { handler: DiagCtxt::with_emitter(emitter) }

@@ -1,5 +1,5 @@
 use crate::filesearch::make_target_lib_path;
-use crate::EarlyErrorHandler;
+use crate::EarlyDiagCtxt;
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug)]
@@ -46,7 +46,7 @@ impl PathKind {
 }
 
 impl SearchPath {
-    pub fn from_cli_opt(handler: &EarlyErrorHandler, path: &str) -> Self {
+    pub fn from_cli_opt(handler: &EarlyDiagCtxt, path: &str) -> Self {
         let (kind, path) = if let Some(stripped) = path.strip_prefix("native=") {
             (PathKind::Native, stripped)
         } else if let Some(stripped) = path.strip_prefix("crate=") {

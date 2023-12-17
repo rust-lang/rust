@@ -82,7 +82,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
-use rustc_session::{getopts, EarlyErrorHandler};
+use rustc_session::{getopts, EarlyDiagCtxt};
 
 use crate::clean::utils::DOC_RUST_LANG_ORG_CHANNEL;
 
@@ -157,7 +157,7 @@ pub fn main() {
         }
     }
 
-    let mut handler = EarlyErrorHandler::new(ErrorOutputType::default());
+    let mut handler = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     let using_internal_features = rustc_driver::install_ice_hook(
         "https://github.com/rust-lang/rust/issues/new\
@@ -189,7 +189,7 @@ pub fn main() {
     process::exit(exit_code);
 }
 
-fn init_logging(handler: &EarlyErrorHandler) {
+fn init_logging(handler: &EarlyDiagCtxt) {
     let color_logs = match std::env::var("RUSTDOC_LOG_COLOR").as_deref() {
         Ok("always") => true,
         Ok("never") => false,
@@ -220,7 +220,7 @@ fn init_logging(handler: &EarlyErrorHandler) {
     tracing::subscriber::set_global_default(subscriber).unwrap();
 }
 
-fn get_args(handler: &EarlyErrorHandler) -> Option<Vec<String>> {
+fn get_args(handler: &EarlyDiagCtxt) -> Option<Vec<String>> {
     env::args_os()
         .enumerate()
         .map(|(i, arg)| {
@@ -704,7 +704,7 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
 }
 
 fn main_args(
-    handler: &mut EarlyErrorHandler,
+    handler: &mut EarlyDiagCtxt,
     at_args: &[String],
     using_internal_features: Arc<AtomicBool>,
 ) -> MainResult {

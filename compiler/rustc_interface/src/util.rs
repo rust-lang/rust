@@ -14,7 +14,7 @@ use rustc_session::{filesearch, output, Session};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Symbol};
-use session::EarlyErrorHandler;
+use session::EarlyDiagCtxt;
 use std::env;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 use std::mem;
@@ -161,7 +161,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     })
 }
 
-fn load_backend_from_dylib(handler: &EarlyErrorHandler, path: &Path) -> MakeBackendFn {
+fn load_backend_from_dylib(handler: &EarlyDiagCtxt, path: &Path) -> MakeBackendFn {
     let lib = unsafe { Library::new(path) }.unwrap_or_else(|err| {
         let err = format!("couldn't load codegen backend {path:?}: {err}");
         handler.early_error(err);
@@ -185,7 +185,7 @@ fn load_backend_from_dylib(handler: &EarlyErrorHandler, path: &Path) -> MakeBack
 ///
 /// A name of `None` indicates that the default backend should be used.
 pub fn get_codegen_backend(
-    handler: &EarlyErrorHandler,
+    handler: &EarlyDiagCtxt,
     maybe_sysroot: &Option<PathBuf>,
     backend_name: Option<&str>,
 ) -> Box<dyn CodegenBackend> {
@@ -233,7 +233,7 @@ fn get_rustc_path_inner(bin_path: &str) -> Option<PathBuf> {
 }
 
 fn get_codegen_sysroot(
-    handler: &EarlyErrorHandler,
+    handler: &EarlyDiagCtxt,
     maybe_sysroot: &Option<PathBuf>,
     backend_name: &str,
 ) -> MakeBackendFn {

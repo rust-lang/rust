@@ -15,7 +15,7 @@ use rustc_session::config::{
 use rustc_session::getopts;
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
-use rustc_session::EarlyErrorHandler;
+use rustc_session::EarlyDiagCtxt;
 use rustc_span::edition::Edition;
 use rustc_target::spec::TargetTriple;
 
@@ -320,7 +320,7 @@ impl Options {
     /// Parses the given command-line for options. If an error message or other early-return has
     /// been printed, returns `Err` with the exit code.
     pub(crate) fn from_matches(
-        handler: &mut EarlyErrorHandler,
+        handler: &mut EarlyDiagCtxt,
         matches: &getopts::Matches,
         args: Vec<String>,
     ) -> Result<(Options, RenderOptions), i32> {
