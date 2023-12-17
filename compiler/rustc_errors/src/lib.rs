@@ -420,7 +420,7 @@ pub struct DiagCtxt {
 /// this is done to prevent possible deadlocks in a multi-threaded compiler,
 /// as well as inconsistent state observation.
 struct DiagCtxtInner {
-    flags: HandlerFlags,
+    flags: DiagCtxtFlags,
     /// The number of lint errors that have been emitted.
     lint_err_count: usize,
     /// The number of errors that have been emitted, including duplicates.
@@ -518,7 +518,7 @@ pub static TRACK_DIAGNOSTICS: AtomicRef<fn(&mut Diagnostic, &mut dyn FnMut(&mut 
     AtomicRef::new(&(default_track_diagnostic as _));
 
 #[derive(Copy, Clone, Default)]
-pub struct HandlerFlags {
+pub struct DiagCtxtFlags {
     /// If false, warning-level lints are suppressed.
     /// (rustc: see `--allow warnings` and `--cap-lints`)
     pub can_emit_warnings: bool,
@@ -585,7 +585,7 @@ impl DiagCtxt {
         self
     }
 
-    pub fn with_flags(mut self, flags: HandlerFlags) -> Self {
+    pub fn with_flags(mut self, flags: DiagCtxtFlags) -> Self {
         self.inner.get_mut().flags = flags;
         self
     }
@@ -598,7 +598,7 @@ impl DiagCtxt {
     pub fn with_emitter(emitter: Box<DynEmitter>) -> Self {
         Self {
             inner: Lock::new(DiagCtxtInner {
-                flags: HandlerFlags { can_emit_warnings: true, ..Default::default() },
+                flags: DiagCtxtFlags { can_emit_warnings: true, ..Default::default() },
                 lint_err_count: 0,
                 err_count: 0,
                 warn_count: 0,

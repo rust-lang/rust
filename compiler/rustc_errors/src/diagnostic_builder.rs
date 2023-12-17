@@ -40,7 +40,7 @@ where
 ///
 /// If there is some state in a downstream crate you would like to
 /// access in the methods of `DiagnosticBuilder` here, consider
-/// extending `HandlerFlags`, accessed via `self.handler.flags`.
+/// extending `DiagCtxtFlags`.
 #[must_use]
 #[derive(Clone)]
 pub struct DiagnosticBuilder<'a, G: EmissionGuarantee> {
