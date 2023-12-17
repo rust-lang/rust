@@ -1155,7 +1155,7 @@ impl Options {
 }
 
 impl UnstableOptions {
-    pub fn diagnostic_handler_flags(&self, can_emit_warnings: bool) -> DiagCtxtFlags {
+    pub fn dcx_flags(&self, can_emit_warnings: bool) -> DiagCtxtFlags {
         DiagCtxtFlags {
             can_emit_warnings,
             treat_err_as_bug: self.treat_err_as_bug,

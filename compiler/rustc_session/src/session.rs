@@ -1417,7 +1417,7 @@ pub fn build_session(
     let emitter = default_emitter(&sopts, registry, source_map.clone(), bundle, fallback_bundle);
 
     let mut span_diagnostic = DiagCtxt::with_emitter(emitter)
-        .with_flags(sopts.unstable_opts.diagnostic_handler_flags(can_emit_warnings));
+        .with_flags(sopts.unstable_opts.dcx_flags(can_emit_warnings));
     if let Some(ice_file) = ice_file {
         span_diagnostic = span_diagnostic.with_ice_file(ice_file);
     }
