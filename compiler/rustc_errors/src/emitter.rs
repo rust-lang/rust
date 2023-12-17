@@ -553,10 +553,10 @@ impl Emitter for EmitterWriter {
 }
 
 /// An emitter that does nothing when emitting a non-fatal diagnostic.
-/// Fatal diagnostics are forwarded to `fatal_handler` to avoid silent
+/// Fatal diagnostics are forwarded to `fatal_dcx` to avoid silent
 /// failures of rustc, as witnessed e.g. in issue #89358.
 pub struct SilentEmitter {
-    pub fatal_handler: DiagCtxt,
+    pub fatal_dcx: DiagCtxt,
     pub fatal_note: Option<String>,
 }
 
@@ -581,7 +581,7 @@ impl Emitter for SilentEmitter {
             if let Some(ref note) = self.fatal_note {
                 d.note(note.clone());
             }
-            self.fatal_handler.emit_diagnostic(d);
+            self.fatal_dcx.emit_diagnostic(d);
         }
     }
 }
