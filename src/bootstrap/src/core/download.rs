@@ -11,9 +11,9 @@ use std::{
 use build_helper::ci::CiEnv;
 use xz2::bufread::XzDecoder;
 
-use crate::core::build_steps::llvm::detect_llvm_sha;
 use crate::core::config::RustfmtMetadata;
 use crate::utils::helpers::{check_run, exe, program_out_of_date};
+use crate::{core::build_steps::llvm::detect_llvm_sha, utils::helpers::hex_encode};
 use crate::{t, Config};
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
@@ -345,7 +345,7 @@ impl Config {
             reader.consume(l);
         }
 
-        let checksum = hex::encode(hasher.finalize().as_slice());
+        let checksum = hex_encode(hasher.finalize().as_slice());
         let verified = checksum == expected;
 
         if !verified {
