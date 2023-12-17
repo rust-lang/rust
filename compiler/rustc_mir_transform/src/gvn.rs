@@ -550,6 +550,16 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     }
                     value.offset(Size::ZERO, to, &self.ecx).ok()?
                 }
+                CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize) => {
+                    let src = self.evaluated[value].as_ref()?;
+                    let to = self.ecx.layout_of(to).ok()?;
+                    let dest = self.ecx.allocate(to, MemoryKind::Stack).ok()?;
+                    self.ecx.unsize_into(src, to, &dest.clone().into()).ok()?;
+                    self.ecx
+                        .alloc_mark_immutable(dest.ptr().provenance.unwrap().alloc_id())
+                        .ok()?;
+                    dest.into()
+                }
                 _ => return None,
             },
         };
