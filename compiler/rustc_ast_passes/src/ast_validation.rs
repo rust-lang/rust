@@ -220,7 +220,7 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn err_handler(&self) -> &rustc_errors::Handler {
+    fn err_handler(&self) -> &rustc_errors::DiagCtxt {
         self.session.diagnostic()
     }
 
@@ -697,7 +697,7 @@ impl<'a> AstValidator<'a> {
 /// Checks that generic parameters are in the correct order,
 /// which is lifetimes, then types and then consts. (`<'a, T, const N: usize>`)
 fn validate_generic_param_order(
-    handler: &rustc_errors::Handler,
+    handler: &rustc_errors::DiagCtxt,
     generics: &[GenericParam],
     span: Span,
 ) {

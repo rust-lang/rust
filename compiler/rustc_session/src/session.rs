@@ -22,9 +22,9 @@ use rustc_errors::emitter::{DynEmitter, EmitterWriter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
-    error_code, fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
-    ErrorGuaranteed, FluentBundle, Handler, IntoDiagnostic, LazyFallbackBundle, MultiSpan, Noted,
-    TerminalUrl,
+    error_code, fallback_fluent_bundle, DiagCtxt, DiagnosticBuilder, DiagnosticId,
+    DiagnosticMessage, ErrorGuaranteed, FluentBundle, IntoDiagnostic, LazyFallbackBundle,
+    MultiSpan, Noted, TerminalUrl,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -677,7 +677,7 @@ impl Session {
     }
 
     #[inline]
-    pub fn diagnostic(&self) -> &Handler {
+    pub fn diagnostic(&self) -> &DiagCtxt {
         &self.parse_sess.span_diagnostic
     }
 
@@ -1416,7 +1416,7 @@ pub fn build_session(
     );
     let emitter = default_emitter(&sopts, registry, source_map.clone(), bundle, fallback_bundle);
 
-    let mut span_diagnostic = Handler::with_emitter(emitter)
+    let mut span_diagnostic = DiagCtxt::with_emitter(emitter)
         .with_flags(sopts.unstable_opts.diagnostic_handler_flags(can_emit_warnings));
     if let Some(ice_file) = ice_file {
         span_diagnostic = span_diagnostic.with_ice_file(ice_file);
@@ -1725,15 +1725,15 @@ enum IncrCompSession {
     InvalidBecauseOfErrors { session_directory: PathBuf },
 }
 
-/// A wrapper around an [`Handler`] that is used for early error emissions.
+/// A wrapper around an [`DiagCtxt`] that is used for early error emissions.
 pub struct EarlyErrorHandler {
-    handler: Handler,
+    handler: DiagCtxt,
 }
 
 impl EarlyErrorHandler {
     pub fn new(output: ErrorOutputType) -> Self {
         let emitter = mk_emitter(output);
-        Self { handler: Handler::with_emitter(emitter) }
+        Self { handler: DiagCtxt::with_emitter(emitter) }
     }
 
     pub fn abort_if_errors(&self) {
@@ -1747,7 +1747,7 @@ impl EarlyErrorHandler {
         self.handler.abort_if_errors();
 
         let emitter = mk_emitter(output);
-        self.handler = Handler::with_emitter(emitter);
+        self.handler = DiagCtxt::with_emitter(emitter);
     }
 
     #[allow(rustc::untranslatable_diagnostic)]

@@ -8,7 +8,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::registry::Registry;
-use rustc_errors::{ErrorGuaranteed, Handler};
+use rustc_errors::{DiagCtxt, ErrorGuaranteed};
 use rustc_lint::LintStore;
 use rustc_middle::ty;
 use rustc_middle::util::Providers;
@@ -42,7 +42,7 @@ pub struct Compiler {
 }
 
 /// Converts strings provided as `--cfg [cfgspec]` into a `Cfg`.
-pub(crate) fn parse_cfg(handler: &Handler, cfgs: Vec<String>) -> Cfg {
+pub(crate) fn parse_cfg(handler: &DiagCtxt, cfgs: Vec<String>) -> Cfg {
     cfgs.into_iter()
         .map(|s| {
             let sess = ParseSess::with_silent_emitter(Some(format!(
@@ -101,7 +101,7 @@ pub(crate) fn parse_cfg(handler: &Handler, cfgs: Vec<String>) -> Cfg {
 }
 
 /// Converts strings provided as `--check-cfg [specs]` into a `CheckCfg`.
-pub(crate) fn parse_check_cfg(handler: &Handler, specs: Vec<String>) -> CheckCfg {
+pub(crate) fn parse_check_cfg(handler: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
     // If any --check-cfg is passed then exhaustive_values and exhaustive_names
     // are enabled by default.
     let exhaustive_names = !specs.is_empty();
@@ -433,14 +433,14 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 }
 
 pub fn try_print_query_stack(
-    handler: &Handler,
+    handler: &DiagCtxt,
     num_frames: Option<usize>,
     file: Option<std::fs::File>,
 ) {
     eprintln!("query stack during panic:");
 
     // Be careful relying on global state here: this code is called from
-    // a panic hook, which means that the global `Handler` may be in a weird
+    // a panic hook, which means that the global `DiagCtxt` may be in a weird
     // state if it was responsible for triggering the panic.
     let i = ty::tls::with_context_opt(|icx| {
         if let Some(icx) = icx {

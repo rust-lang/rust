@@ -4,7 +4,7 @@ use crate::assert_module_sources::CguReuse;
 use crate::back::command::Command;
 use crate::fluent_generated as fluent;
 use rustc_errors::{
-    DiagnosticArgValue, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic,
+    DiagCtxt, DiagnosticArgValue, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic,
     IntoDiagnosticArg,
 };
 use rustc_macros::Diagnostic;
@@ -210,7 +210,7 @@ pub enum LinkRlibError {
 pub struct ThorinErrorWrapper(pub thorin::Error);
 
 impl IntoDiagnostic<'_> for ThorinErrorWrapper {
-    fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    fn into_diagnostic(self, handler: &DiagCtxt) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         let mut diag;
         match self.0 {
             thorin::Error::ReadInput(_) => {
@@ -412,7 +412,7 @@ pub struct LinkingFailed<'a> {
 }
 
 impl IntoDiagnostic<'_> for LinkingFailed<'_> {
-    fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    fn into_diagnostic(self, handler: &DiagCtxt) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         let mut diag = handler.struct_err(fluent::codegen_ssa_linking_failed);
         diag.set_arg("linker_path", format!("{}", self.linker_path.display()));
         diag.set_arg("exit_status", format!("{}", self.exit_status));

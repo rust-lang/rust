@@ -1350,7 +1350,7 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt<'_>, tts: TokenStream) -> Option<Vec<
 }
 
 pub fn parse_macro_name_and_helper_attrs(
-    diag: &rustc_errors::Handler,
+    diag: &rustc_errors::DiagCtxt,
     attr: &Attribute,
     macro_type: &str,
 ) -> Option<(Symbol, Vec<Symbol>)> {

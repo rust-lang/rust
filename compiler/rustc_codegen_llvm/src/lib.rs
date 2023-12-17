@@ -40,7 +40,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::{CodegenResults, CompiledModule};
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{ErrorGuaranteed, FatalError, Handler};
+use rustc_errors::{DiagCtxt, ErrorGuaranteed, FatalError};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
@@ -200,7 +200,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     fn run_link(
         cgcx: &CodegenContext<Self>,
-        diag_handler: &Handler,
+        diag_handler: &DiagCtxt,
         modules: Vec<ModuleCodegen<Self::Module>>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
         back::write::link(cgcx, diag_handler, modules)
@@ -221,7 +221,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     unsafe fn optimize(
         cgcx: &CodegenContext<Self>,
-        diag_handler: &Handler,
+        diag_handler: &DiagCtxt,
         module: &ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<(), FatalError> {
@@ -242,7 +242,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
     unsafe fn codegen(
         cgcx: &CodegenContext<Self>,
-        diag_handler: &Handler,
+        diag_handler: &DiagCtxt,
         module: ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<CompiledModule, FatalError> {
@@ -447,7 +447,7 @@ impl ModuleLlvm {
         cgcx: &CodegenContext<LlvmCodegenBackend>,
         name: &CStr,
         buffer: &[u8],
-        handler: &Handler,
+        handler: &DiagCtxt,
     ) -> Result<Self, FatalError> {
         unsafe {
             let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);

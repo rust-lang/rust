@@ -26,7 +26,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_errors::{FatalError, Handler, Level};
+use rustc_errors::{DiagCtxt, FatalError, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{self, Lto, OutputType, Passes, SplitDwarfKind, SwitchWithOptPath};
@@ -45,7 +45,7 @@ use std::slice;
 use std::str;
 use std::sync::Arc;
 
-pub fn llvm_err<'a>(handler: &rustc_errors::Handler, err: LlvmError<'a>) -> FatalError {
+pub fn llvm_err<'a>(handler: &rustc_errors::DiagCtxt, err: LlvmError<'a>) -> FatalError {
     match llvm::last_error() {
         Some(llvm_err) => handler.emit_almost_fatal(WithLlvmError(err, llvm_err)),
         None => handler.emit_almost_fatal(err),
@@ -53,7 +53,7 @@ pub fn llvm_err<'a>(handler: &rustc_errors::Handler, err: LlvmError<'a>) -> Fata
 }
 
 pub fn write_output_file<'ll>(
-    handler: &rustc_errors::Handler,
+    handler: &rustc_errors::DiagCtxt,
     target: &'ll llvm::TargetMachine,
     pm: &llvm::PassManager<'ll>,
     m: &'ll llvm::Module,
@@ -332,7 +332,7 @@ pub enum CodegenDiagnosticsStage {
 }
 
 pub struct DiagnosticHandlers<'a> {
-    data: *mut (&'a CodegenContext<LlvmCodegenBackend>, &'a Handler),
+    data: *mut (&'a CodegenContext<LlvmCodegenBackend>, &'a DiagCtxt),
     llcx: &'a llvm::Context,
     old_handler: Option<&'a llvm::DiagnosticHandler>,
 }
@@ -340,7 +340,7 @@ pub struct DiagnosticHandlers<'a> {
 impl<'a> DiagnosticHandlers<'a> {
     pub fn new(
         cgcx: &'a CodegenContext<LlvmCodegenBackend>,
-        handler: &'a Handler,
+        handler: &'a DiagCtxt,
         llcx: &'a llvm::Context,
         module: &ModuleCodegen<ModuleLlvm>,
         stage: CodegenDiagnosticsStage,
@@ -429,7 +429,7 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
     if user.is_null() {
         return;
     }
-    let (cgcx, diag_handler) = *(user as *const (&CodegenContext<LlvmCodegenBackend>, &Handler));
+    let (cgcx, diag_handler) = *(user as *const (&CodegenContext<LlvmCodegenBackend>, &DiagCtxt));
 
     match llvm::diagnostic::Diagnostic::unpack(info) {
         llvm::diagnostic::InlineAsm(inline) => {
@@ -507,7 +507,7 @@ fn get_instr_profile_output_path(config: &ModuleConfig) -> Option<CString> {
 
 pub(crate) unsafe fn llvm_optimize(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
-    diag_handler: &Handler,
+    diag_handler: &DiagCtxt,
     module: &ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
     opt_level: config::OptLevel,
@@ -594,7 +594,7 @@ pub(crate) unsafe fn llvm_optimize(
 // Unsafe due to LLVM calls.
 pub(crate) unsafe fn optimize(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
-    diag_handler: &Handler,
+    diag_handler: &DiagCtxt,
     module: &ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
 ) -> Result<(), FatalError> {
@@ -628,7 +628,7 @@ pub(crate) unsafe fn optimize(
 
 pub(crate) fn link(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
-    diag_handler: &Handler,
+    diag_handler: &DiagCtxt,
     mut modules: Vec<ModuleCodegen<ModuleLlvm>>,
 ) -> Result<ModuleCodegen<ModuleLlvm>, FatalError> {
     use super::lto::{Linker, ModuleBuffer};
@@ -651,7 +651,7 @@ pub(crate) fn link(
 
 pub(crate) unsafe fn codegen(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
-    diag_handler: &Handler,
+    diag_handler: &DiagCtxt,
     module: ModuleCodegen<ModuleLlvm>,
     config: &ModuleConfig,
 ) -> Result<CompiledModule, FatalError> {

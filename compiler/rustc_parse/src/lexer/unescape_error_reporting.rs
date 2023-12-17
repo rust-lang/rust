@@ -3,14 +3,14 @@
 use std::iter::once;
 use std::ops::Range;
 
-use rustc_errors::{Applicability, Handler};
+use rustc_errors::{Applicability, DiagCtxt};
 use rustc_lexer::unescape::{EscapeError, Mode};
 use rustc_span::{BytePos, Span};
 
 use crate::errors::{MoreThanOneCharNote, MoreThanOneCharSugg, NoBraceUnicodeSub, UnescapeError};
 
 pub(crate) fn emit_unescape_error(
-    handler: &Handler,
+    handler: &DiagCtxt,
     // interior part of the literal, between quotes
     lit: &str,
     // full span of the literal, including quotes and any prefix

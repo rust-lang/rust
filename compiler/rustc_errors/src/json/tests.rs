@@ -1,7 +1,7 @@
 use super::*;
 
 use crate::emitter::ColorConfig;
-use crate::Handler;
+use crate::DiagCtxt;
 use rustc_span::BytePos;
 
 use std::str;
@@ -61,7 +61,7 @@ fn test_positions(code: &str, span: (u32, u32), expected_output: SpanTestData) {
         );
 
         let span = Span::with_root_ctxt(BytePos(span.0), BytePos(span.1));
-        let handler = Handler::with_emitter(Box::new(je));
+        let handler = DiagCtxt::with_emitter(Box::new(je));
         handler.span_err(span, "foo");
 
         let bytes = output.lock().unwrap();

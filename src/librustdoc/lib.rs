@@ -673,7 +673,7 @@ fn usage(argv0: &str) {
 /// A result type used by several functions under `main()`.
 type MainResult = Result<(), ErrorGuaranteed>;
 
-fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> MainResult {
+fn wrap_return(diag: &rustc_errors::DiagCtxt, res: Result<(), String>) -> MainResult {
     match res {
         Ok(()) => diag.has_errors().map_or(Ok(()), Err),
         Err(err) => {
@@ -774,7 +774,7 @@ fn main_args(
     }
 
     // need to move these items separately because we lose them by the time the closure is called,
-    // but we can't create the Handler ahead of time because it's not Send
+    // but we can't create the handler ahead of time because it's not Send
     let show_coverage = options.show_coverage;
     let run_check = options.run_check;
 

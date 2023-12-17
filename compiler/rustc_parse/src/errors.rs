@@ -1042,7 +1042,7 @@ impl<'a> IntoDiagnostic<'a> for ExpectedIdentifier {
     #[track_caller]
     fn into_diagnostic(
         self,
-        handler: &'a rustc_errors::Handler,
+        handler: &'a rustc_errors::DiagCtxt,
     ) -> rustc_errors::DiagnosticBuilder<'a, ErrorGuaranteed> {
         let token_descr = TokenDescription::from_token(&self.token);
 
@@ -1099,7 +1099,7 @@ impl<'a> IntoDiagnostic<'a> for ExpectedSemi {
     #[track_caller]
     fn into_diagnostic(
         self,
-        handler: &'a rustc_errors::Handler,
+        handler: &'a rustc_errors::DiagCtxt,
     ) -> rustc_errors::DiagnosticBuilder<'a, ErrorGuaranteed> {
         let token_descr = TokenDescription::from_token(&self.token);
 

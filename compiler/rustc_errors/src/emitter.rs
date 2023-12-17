@@ -16,8 +16,8 @@ use crate::snippet::{
 use crate::styled_buffer::StyledBuffer;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
-    diagnostic::DiagnosticLocation, CodeSuggestion, Diagnostic, DiagnosticId, DiagnosticMessage,
-    FluentBundle, Handler, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic,
+    diagnostic::DiagnosticLocation, CodeSuggestion, DiagCtxt, Diagnostic, DiagnosticId,
+    DiagnosticMessage, FluentBundle, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic,
     SubstitutionHighlight, SuggestionStyle, TerminalUrl,
 };
 use rustc_lint_defs::pluralize;
@@ -556,7 +556,7 @@ impl Emitter for EmitterWriter {
 /// Fatal diagnostics are forwarded to `fatal_handler` to avoid silent
 /// failures of rustc, as witnessed e.g. in issue #89358.
 pub struct SilentEmitter {
-    pub fatal_handler: Handler,
+    pub fatal_handler: DiagCtxt,
     pub fatal_note: Option<String>,
 }
 

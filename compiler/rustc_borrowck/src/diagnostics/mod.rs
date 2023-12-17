@@ -624,7 +624,7 @@ impl UseSpans<'_> {
     /// Add a subdiagnostic to the use of the captured variable, if it exists.
     pub(super) fn var_subdiag(
         self,
-        handler: Option<&rustc_errors::Handler>,
+        handler: Option<&rustc_errors::DiagCtxt>,
         err: &mut Diagnostic,
         kind: Option<rustc_middle::mir::BorrowKind>,
         f: impl FnOnce(Option<CoroutineKind>, Span) -> CaptureVarCause,

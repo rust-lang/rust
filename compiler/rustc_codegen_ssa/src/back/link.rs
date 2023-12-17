@@ -4,7 +4,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
-use rustc_errors::{ErrorGuaranteed, Handler};
+use rustc_errors::{DiagCtxt, ErrorGuaranteed};
 use rustc_fs_util::{fix_windows_verbatim_for_gcc, try_canonicalize};
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_metadata::find_native_static_library;
@@ -52,7 +52,7 @@ use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
 use std::{env, fmt, fs, io, mem, str};
 
-pub fn ensure_removed(diag_handler: &Handler, path: &Path) {
+pub fn ensure_removed(diag_handler: &DiagCtxt, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
         if e.kind() != io::ErrorKind::NotFound {
             diag_handler.err(format!("failed to remove {}: {}", path.display(), e));

@@ -2,7 +2,7 @@ use std::num::IntErrorKind;
 
 use rustc_ast as ast;
 use rustc_errors::{
-    error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic,
+    error_code, Applicability, DiagCtxt, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic,
 };
 use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
@@ -51,7 +51,7 @@ pub(crate) struct UnknownMetaItem<'a> {
 
 // Manual implementation to be able to format `expected` items correctly.
 impl<'a> IntoDiagnostic<'a> for UnknownMetaItem<'_> {
-    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    fn into_diagnostic(self, handler: &'a DiagCtxt) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let expected = self.expected.iter().map(|name| format!("`{name}`")).collect::<Vec<_>>();
         let mut diag = handler.struct_span_err_with_code(
             self.span,
@@ -201,7 +201,7 @@ pub(crate) struct UnsupportedLiteral {
 }
 
 impl<'a> IntoDiagnostic<'a> for UnsupportedLiteral {
-    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    fn into_diagnostic(self, handler: &'a DiagCtxt) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
         let mut diag = handler.struct_span_err_with_code(
             self.span,
             match self.reason {

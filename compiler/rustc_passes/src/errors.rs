@@ -867,7 +867,7 @@ impl IntoDiagnostic<'_> for InvalidAttrAtCrateLevel {
     #[track_caller]
     fn into_diagnostic(
         self,
-        handler: &'_ rustc_errors::Handler,
+        handler: &'_ rustc_errors::DiagCtxt,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
         let mut diag = handler.struct_err(fluent::passes_invalid_attr_at_crate_level);
         diag.set_span(self.span);
@@ -1020,7 +1020,7 @@ impl<'a> IntoDiagnostic<'_> for BreakNonLoop<'a> {
     #[track_caller]
     fn into_diagnostic(
         self,
-        handler: &rustc_errors::Handler,
+        handler: &rustc_errors::DiagCtxt,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
         let mut diag = handler.struct_span_err_with_code(
             self.span,
@@ -1169,7 +1169,7 @@ impl IntoDiagnostic<'_> for NakedFunctionsAsmBlock {
     #[track_caller]
     fn into_diagnostic(
         self,
-        handler: &rustc_errors::Handler,
+        handler: &rustc_errors::DiagCtxt,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
         let mut diag = handler.struct_span_err_with_code(
             self.span,
@@ -1285,7 +1285,7 @@ impl<'a> IntoDiagnostic<'a> for NoMainErr {
     #[track_caller]
     fn into_diagnostic(
         self,
-        handler: &'a rustc_errors::Handler,
+        handler: &'a rustc_errors::DiagCtxt,
     ) -> rustc_errors::DiagnosticBuilder<'a, ErrorGuaranteed> {
         let mut diag = handler.struct_span_err_with_code(
             DUMMY_SP,
@@ -1348,7 +1348,7 @@ impl IntoDiagnostic<'_> for DuplicateLangItem {
     #[track_caller]
     fn into_diagnostic(
         self,
-        handler: &rustc_errors::Handler,
+        handler: &rustc_errors::DiagCtxt,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
         let mut diag = handler.struct_err_with_code(
             match self.duplicate {

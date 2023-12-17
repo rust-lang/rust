@@ -803,7 +803,7 @@ impl Options {
 }
 
 /// Prints deprecation warnings for deprecated options
-fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Handler) {
+fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::DiagCtxt) {
     let deprecated_flags = [];
 
     for &flag in deprecated_flags.iter() {

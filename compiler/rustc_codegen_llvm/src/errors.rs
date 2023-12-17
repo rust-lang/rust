@@ -5,7 +5,7 @@ use std::path::Path;
 use crate::fluent_generated as fluent;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_errors::{
-    DiagnosticBuilder, EmissionGuarantee, ErrorGuaranteed, FatalError, Handler, IntoDiagnostic,
+    DiagCtxt, DiagnosticBuilder, EmissionGuarantee, ErrorGuaranteed, FatalError, IntoDiagnostic,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
@@ -102,7 +102,7 @@ pub(crate) struct DynamicLinkingWithLTO;
 pub(crate) struct ParseTargetMachineConfig<'a>(pub LlvmError<'a>);
 
 impl IntoDiagnostic<'_, FatalError> for ParseTargetMachineConfig<'_> {
-    fn into_diagnostic(self, handler: &'_ Handler) -> DiagnosticBuilder<'_, FatalError> {
+    fn into_diagnostic(self, handler: &'_ DiagCtxt) -> DiagnosticBuilder<'_, FatalError> {
         let diag: DiagnosticBuilder<'_, FatalError> = self.0.into_diagnostic(handler);
         let (message, _) = diag.styled_message().first().expect("`LlvmError` with no message");
         let message = handler.eagerly_translate_to_string(message.clone(), diag.args());
@@ -125,7 +125,7 @@ pub(crate) struct TargetFeatureDisableOrEnable<'a> {
 pub(crate) struct MissingFeatures;
 
 impl IntoDiagnostic<'_, ErrorGuaranteed> for TargetFeatureDisableOrEnable<'_> {
-    fn into_diagnostic(self, handler: &'_ Handler) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    fn into_diagnostic(self, handler: &'_ DiagCtxt) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         let mut diag = handler.struct_err(fluent::codegen_llvm_target_feature_disable_or_enable);
         if let Some(span) = self.span {
             diag.set_span(span);
@@ -185,7 +185,7 @@ pub enum LlvmError<'a> {
 pub(crate) struct WithLlvmError<'a>(pub LlvmError<'a>, pub String);
 
 impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for WithLlvmError<'_> {
-    fn into_diagnostic(self, handler: &'_ Handler) -> DiagnosticBuilder<'_, G> {
+    fn into_diagnostic(self, handler: &'_ DiagCtxt) -> DiagnosticBuilder<'_, G> {
         use LlvmError::*;
         let msg_with_llvm_err = match &self.0 {
             WriteOutput { .. } => fluent::codegen_llvm_write_output_with_llvm_err,

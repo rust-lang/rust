@@ -1,9 +1,9 @@
 use crate::diagnostic::IntoDiagnosticArg;
+use crate::{DiagCtxt, Level, MultiSpan, StashKey};
 use crate::{
     Diagnostic, DiagnosticId, DiagnosticMessage, DiagnosticStyledString, ErrorGuaranteed,
     ExplicitBug, SubdiagnosticMessage,
 };
-use crate::{Handler, Level, MultiSpan, StashKey};
 use rustc_lint_defs::Applicability;
 use rustc_span::source_map::Spanned;
 
@@ -19,9 +19,9 @@ use std::thread::panicking;
 /// `#[derive(Diagnostic)]` -- see [rustc_macros::Diagnostic].
 #[rustc_diagnostic_item = "IntoDiagnostic"]
 pub trait IntoDiagnostic<'a, G: EmissionGuarantee = ErrorGuaranteed> {
-    /// Write out as a diagnostic out of `Handler`.
+    /// Write out as a diagnostic out of `DiagCtxt`.
     #[must_use]
-    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, G>;
+    fn into_diagnostic(self, handler: &'a DiagCtxt) -> DiagnosticBuilder<'a, G>;
 }
 
 impl<'a, T, G> IntoDiagnostic<'a, G> for Spanned<T>
@@ -29,7 +29,7 @@ where
     T: IntoDiagnostic<'a, G>,
     G: EmissionGuarantee,
 {
-    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, G> {
+    fn into_diagnostic(self, handler: &'a DiagCtxt) -> DiagnosticBuilder<'a, G> {
         let mut diag = self.node.into_diagnostic(handler);
         diag.set_span(self.span);
         diag
@@ -74,8 +74,8 @@ struct DiagnosticBuilderInner<'a> {
 enum DiagnosticBuilderState<'a> {
     /// Initial state of a `DiagnosticBuilder`, before `.emit()` or `.cancel()`.
     ///
-    /// The `Diagnostic` will be emitted through this `Handler`.
-    Emittable(&'a Handler),
+    /// The `Diagnostic` will be emitted through this `DiagCtxt`.
+    Emittable(&'a DiagCtxt),
 
     /// State of a `DiagnosticBuilder`, after `.emit()` or *during* `.cancel()`.
     ///
@@ -95,7 +95,7 @@ enum DiagnosticBuilderState<'a> {
 // `DiagnosticBuilderState` should be pointer-sized.
 rustc_data_structures::static_assert_size!(
     DiagnosticBuilderState<'_>,
-    std::mem::size_of::<&Handler>()
+    std::mem::size_of::<&DiagCtxt>()
 );
 
 /// Trait for types that `DiagnosticBuilder::emit` can return as a "guarantee"
@@ -110,7 +110,7 @@ pub trait EmissionGuarantee: Sized {
     /// Creates a new `DiagnosticBuilder` that will return this type of guarantee.
     #[track_caller]
     fn make_diagnostic_builder(
-        handler: &Handler,
+        handler: &DiagCtxt,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self>;
 }
@@ -128,7 +128,7 @@ impl<'a> DiagnosticBuilder<'a, ErrorGuaranteed> {
 impl EmissionGuarantee for ErrorGuaranteed {
     fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
         match db.inner.state {
-            // First `.emit()` call, the `&Handler` is still available.
+            // First `.emit()` call, the `&DiagCtxt` is still available.
             DiagnosticBuilderState::Emittable(handler) => {
                 db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
 
@@ -166,7 +166,7 @@ impl EmissionGuarantee for ErrorGuaranteed {
 
     #[track_caller]
     fn make_diagnostic_builder(
-        handler: &Handler,
+        handler: &DiagCtxt,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
         DiagnosticBuilder::new(handler, Level::Error { lint: false }, msg)
@@ -177,7 +177,7 @@ impl EmissionGuarantee for ErrorGuaranteed {
 impl EmissionGuarantee for () {
     fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
         match db.inner.state {
-            // First `.emit()` call, the `&Handler` is still available.
+            // First `.emit()` call, the `&DiagCtxt` is still available.
             DiagnosticBuilderState::Emittable(handler) => {
                 db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
 
@@ -189,7 +189,7 @@ impl EmissionGuarantee for () {
     }
 
     fn make_diagnostic_builder(
-        handler: &Handler,
+        handler: &DiagCtxt,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
         DiagnosticBuilder::new(handler, Level::Warning(None), msg)
@@ -204,7 +204,7 @@ pub struct Noted;
 impl EmissionGuarantee for Noted {
     fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
         match db.inner.state {
-            // First `.emit()` call, the `&Handler` is still available.
+            // First `.emit()` call, the `&DiagCtxt` is still available.
             DiagnosticBuilderState::Emittable(handler) => {
                 db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
                 handler.emit_diagnostic_without_consuming(&mut db.inner.diagnostic);
@@ -217,7 +217,7 @@ impl EmissionGuarantee for Noted {
     }
 
     fn make_diagnostic_builder(
-        handler: &Handler,
+        handler: &DiagCtxt,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
         DiagnosticBuilder::new(handler, Level::Note, msg)
@@ -232,7 +232,7 @@ pub struct Bug;
 impl EmissionGuarantee for Bug {
     fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
         match db.inner.state {
-            // First `.emit()` call, the `&Handler` is still available.
+            // First `.emit()` call, the `&DiagCtxt` is still available.
             DiagnosticBuilderState::Emittable(handler) => {
                 db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
 
@@ -246,7 +246,7 @@ impl EmissionGuarantee for Bug {
     }
 
     fn make_diagnostic_builder(
-        handler: &Handler,
+        handler: &DiagCtxt,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
         DiagnosticBuilder::new(handler, Level::Bug, msg)
@@ -256,7 +256,7 @@ impl EmissionGuarantee for Bug {
 impl EmissionGuarantee for ! {
     fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
         match db.inner.state {
-            // First `.emit()` call, the `&Handler` is still available.
+            // First `.emit()` call, the `&DiagCtxt` is still available.
             DiagnosticBuilderState::Emittable(handler) => {
                 db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
 
@@ -270,7 +270,7 @@ impl EmissionGuarantee for ! {
     }
 
     fn make_diagnostic_builder(
-        handler: &Handler,
+        handler: &DiagCtxt,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
         DiagnosticBuilder::new(handler, Level::Fatal, msg)
@@ -280,7 +280,7 @@ impl EmissionGuarantee for ! {
 impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
     fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
         match db.inner.state {
-            // First `.emit()` call, the `&Handler` is still available.
+            // First `.emit()` call, the `&DiagCtxt` is still available.
             DiagnosticBuilderState::Emittable(handler) => {
                 db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
 
@@ -294,7 +294,7 @@ impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
     }
 
     fn make_diagnostic_builder(
-        handler: &Handler,
+        handler: &DiagCtxt,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, Self> {
         DiagnosticBuilder::new(handler, Level::Fatal, msg)
@@ -340,10 +340,10 @@ impl<G: EmissionGuarantee> DerefMut for DiagnosticBuilder<'_, G> {
 
 impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     /// Convenience function for internal use, clients should use one of the
-    /// `struct_*` methods on [`Handler`].
+    /// `struct_*` methods on [`DiagCtxt`].
     #[track_caller]
     pub(crate) fn new<M: Into<DiagnosticMessage>>(
-        handler: &'a Handler,
+        handler: &'a DiagCtxt,
         level: Level,
         message: M,
     ) -> Self {
@@ -354,7 +354,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     /// Creates a new `DiagnosticBuilder` with an already constructed
     /// diagnostic.
     #[track_caller]
-    pub(crate) fn new_diagnostic(handler: &'a Handler, diagnostic: Diagnostic) -> Self {
+    pub(crate) fn new_diagnostic(handler: &'a DiagCtxt, diagnostic: Diagnostic) -> Self {
         debug!("Created new diagnostic");
         Self {
             inner: DiagnosticBuilderInner {
@@ -398,7 +398,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
 
     /// Stashes diagnostic for possible later improvement in a different,
     /// later stage of the compiler. The diagnostic can be accessed with
-    /// the provided `span` and `key` through [`Handler::steal_diagnostic()`].
+    /// the provided `span` and `key` through [`DiagCtxt::steal_diagnostic()`].
     ///
     /// As with `buffer`, this is unless the handler has disabled such buffering.
     pub fn stash(self, span: Span, key: StashKey) {
@@ -409,9 +409,9 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
 
     /// Converts the builder to a `Diagnostic` for later emission,
     /// unless handler has disabled such buffering, or `.emit()` was called.
-    pub fn into_diagnostic(mut self) -> Option<(Diagnostic, &'a Handler)> {
+    pub fn into_diagnostic(mut self) -> Option<(Diagnostic, &'a DiagCtxt)> {
         let handler = match self.inner.state {
-            // No `.emit()` calls, the `&Handler` is still available.
+            // No `.emit()` calls, the `&DiagCtxt` is still available.
             DiagnosticBuilderState::Emittable(handler) => handler,
             // `.emit()` was previously called, nothing we can do.
             DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {
@@ -440,8 +440,8 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         Some((diagnostic, handler))
     }
 
-    /// Retrieves the [`Handler`] if available
-    pub fn handler(&self) -> Option<&Handler> {
+    /// Retrieves the [`DiagCtxt`] if available
+    pub fn handler(&self) -> Option<&DiagCtxt> {
         match self.inner.state {
             DiagnosticBuilderState::Emittable(handler) => Some(handler),
             DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => None,

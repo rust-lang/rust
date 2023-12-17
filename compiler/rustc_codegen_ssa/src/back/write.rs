@@ -14,7 +14,7 @@ use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::Emitter;
-use rustc_errors::{translation::Translate, DiagnosticId, FatalError, Handler, Level};
+use rustc_errors::{translation::Translate, DiagCtxt, DiagnosticId, FatalError, Level};
 use rustc_errors::{DiagnosticMessage, Style};
 use rustc_fs_util::link_or_copy;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
@@ -344,7 +344,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     /// how to call the compiler with the same arguments.
     pub expanded_args: Vec<String>,
 
-    /// Handler to use for diagnostics produced during codegen.
+    /// Emitter to use for diagnostics produced during codegen.
     pub diag_emitter: SharedEmitter,
     /// LLVM optimizations for which we want to print remarks.
     pub remark: Passes,
@@ -359,8 +359,8 @@ pub struct CodegenContext<B: WriteBackendMethods> {
 }
 
 impl<B: WriteBackendMethods> CodegenContext<B> {
-    pub fn create_diag_handler(&self) -> Handler {
-        Handler::with_emitter(Box::new(self.diag_emitter.clone()))
+    pub fn create_diag_handler(&self) -> DiagCtxt {
+        DiagCtxt::with_emitter(Box::new(self.diag_emitter.clone()))
     }
 
     pub fn config(&self, kind: ModuleKind) -> &ModuleConfig {

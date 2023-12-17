@@ -8,7 +8,7 @@ use rustc_span::{BytePos, Span};
 
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::EmitterWriter;
-use rustc_errors::{Handler, MultiSpan, PResult};
+use rustc_errors::{DiagCtxt, MultiSpan, PResult};
 use termcolor::WriteColor;
 
 use std::io;
@@ -23,7 +23,7 @@ fn string_to_parser(ps: &ParseSess, source_str: String) -> Parser<'_> {
     new_parser_from_source_str(ps, PathBuf::from("bogofile").into(), source_str)
 }
 
-fn create_test_handler() -> (Handler, Lrc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
+fn create_test_handler() -> (DiagCtxt, Lrc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
     let output = Arc::new(Mutex::new(Vec::new()));
     let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
     let fallback_bundle = rustc_errors::fallback_fluent_bundle(
@@ -33,7 +33,7 @@ fn create_test_handler() -> (Handler, Lrc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
     let emitter = EmitterWriter::new(Box::new(Shared { data: output.clone() }), fallback_bundle)
         .sm(Some(source_map.clone()))
         .diagnostic_width(Some(140));
-    let handler = Handler::with_emitter(Box::new(emitter));
+    let handler = DiagCtxt::with_emitter(Box::new(emitter));
     (handler, source_map, output)
 }
 

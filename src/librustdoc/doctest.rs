@@ -558,7 +558,7 @@ pub(crate) fn make_test(
     let result = rustc_driver::catch_fatal_errors(|| {
         rustc_span::create_session_if_not_set_then(edition, |_| {
             use rustc_errors::emitter::{Emitter, EmitterWriter};
-            use rustc_errors::Handler;
+            use rustc_errors::DiagCtxt;
             use rustc_parse::parser::ForceCollect;
             use rustc_span::source_map::FilePathMapping;
 
@@ -579,7 +579,7 @@ pub(crate) fn make_test(
             let emitter = EmitterWriter::new(Box::new(io::sink()), fallback_bundle);
 
             // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
-            let handler = Handler::with_emitter(Box::new(emitter)).disable_warnings();
+            let handler = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
             let sess = ParseSess::with_span_handler(handler, sm);
 
             let mut found_main = false;
@@ -740,7 +740,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
     rustc_driver::catch_fatal_errors(|| {
         rustc_span::create_session_if_not_set_then(edition, |_| {
             use rustc_errors::emitter::EmitterWriter;
-            use rustc_errors::Handler;
+            use rustc_errors::DiagCtxt;
             use rustc_span::source_map::FilePathMapping;
 
             let filename = FileName::anon_source_code(source);
@@ -754,7 +754,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
 
             let emitter = EmitterWriter::new(Box::new(io::sink()), fallback_bundle);
 
-            let handler = Handler::with_emitter(Box::new(emitter)).disable_warnings();
+            let handler = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
             let sess = ParseSess::with_span_handler(handler, sm);
             let mut parser =
                 match maybe_new_parser_from_source_str(&sess, filename, source.to_owned()) {

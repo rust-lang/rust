@@ -1,5 +1,5 @@
 use rustc_errors::{
-    DiagnosticArgValue, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee, Handler,
+    DiagCtxt, DiagnosticArgValue, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee,
     IntoDiagnostic,
 };
 use rustc_hir::ConstContext;
@@ -434,7 +434,7 @@ pub trait ReportErrorExt {
     fn diagnostic_message(&self) -> DiagnosticMessage;
     fn add_args<G: EmissionGuarantee>(
         self,
-        handler: &Handler,
+        handler: &DiagCtxt,
         builder: &mut DiagnosticBuilder<'_, G>,
     );
 
@@ -454,7 +454,7 @@ pub trait ReportErrorExt {
     }
 }
 
-fn bad_pointer_message(msg: CheckInAllocMsg, handler: &Handler) -> String {
+fn bad_pointer_message(msg: CheckInAllocMsg, handler: &DiagCtxt) -> String {
     use crate::fluent_generated::*;
 
     let msg = match msg {
@@ -514,7 +514,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
 
     fn add_args<G: EmissionGuarantee>(
         self,
-        handler: &Handler,
+        handler: &DiagCtxt,
         builder: &mut DiagnosticBuilder<'_, G>,
     ) {
         use UndefinedBehaviorInfo::*;
@@ -678,7 +678,11 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
         }
     }
 
-    fn add_args<G: EmissionGuarantee>(self, handler: &Handler, err: &mut DiagnosticBuilder<'_, G>) {
+    fn add_args<G: EmissionGuarantee>(
+        self,
+        handler: &DiagCtxt,
+        err: &mut DiagnosticBuilder<'_, G>,
+    ) {
         use crate::fluent_generated as fluent;
         use rustc_middle::mir::interpret::ValidationErrorKind::*;
 
@@ -704,7 +708,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
         fn add_range_arg<G: EmissionGuarantee>(
             r: WrappingRange,
             max_hi: u128,
-            handler: &Handler,
+            handler: &DiagCtxt,
             err: &mut DiagnosticBuilder<'_, G>,
         ) {
             let WrappingRange { start: lo, end: hi } = r;
@@ -804,7 +808,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
             UnsupportedOpInfo::ReadExternStatic(_) => const_eval_read_extern_static,
         }
     }
-    fn add_args<G: EmissionGuarantee>(self, _: &Handler, builder: &mut DiagnosticBuilder<'_, G>) {
+    fn add_args<G: EmissionGuarantee>(self, _: &DiagCtxt, builder: &mut DiagnosticBuilder<'_, G>) {
         use crate::fluent_generated::*;
 
         use UnsupportedOpInfo::*;
@@ -839,7 +843,7 @@ impl<'tcx> ReportErrorExt for InterpError<'tcx> {
     }
     fn add_args<G: EmissionGuarantee>(
         self,
-        handler: &Handler,
+        handler: &DiagCtxt,
         builder: &mut DiagnosticBuilder<'_, G>,
     ) {
         match self {
@@ -871,7 +875,7 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
     }
     fn add_args<G: EmissionGuarantee>(
         self,
-        handler: &Handler,
+        handler: &DiagCtxt,
         builder: &mut DiagnosticBuilder<'_, G>,
     ) {
         match self {
@@ -904,5 +908,5 @@ impl ReportErrorExt for ResourceExhaustionInfo {
             ResourceExhaustionInfo::AddressSpaceFull => const_eval_address_space_full,
         }
     }
-    fn add_args<G: EmissionGuarantee>(self, _: &Handler, _: &mut DiagnosticBuilder<'_, G>) {}
+    fn add_args<G: EmissionGuarantee>(self, _: &DiagCtxt, _: &mut DiagnosticBuilder<'_, G>) {}
 }

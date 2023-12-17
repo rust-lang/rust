@@ -34,8 +34,8 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    pluralize, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, DiagnosticMessage,
-    ErrorGuaranteed, FatalError, Handler, IntoDiagnostic, MultiSpan, PResult,
+    pluralize, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
+    DiagnosticMessage, ErrorGuaranteed, FatalError, IntoDiagnostic, MultiSpan, PResult,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
@@ -253,7 +253,7 @@ impl<'a> Parser<'a> {
         self.diagnostic().span_bug(sp, msg)
     }
 
-    pub(super) fn diagnostic(&self) -> &'a Handler {
+    pub(super) fn diagnostic(&self) -> &'a DiagCtxt {
         &self.sess.span_diagnostic
     }
 

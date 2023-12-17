@@ -38,7 +38,7 @@ enum ProcMacro {
 struct CollectProcMacros<'a> {
     macros: Vec<ProcMacro>,
     in_root: bool,
-    handler: &'a rustc_errors::Handler,
+    handler: &'a rustc_errors::DiagCtxt,
     source_map: &'a SourceMap,
     is_proc_macro_crate: bool,
     is_test_crate: bool,
@@ -52,7 +52,7 @@ pub fn inject(
     is_proc_macro_crate: bool,
     has_proc_macro_decls: bool,
     is_test_crate: bool,
-    handler: &rustc_errors::Handler,
+    handler: &rustc_errors::DiagCtxt,
 ) {
     let ecfg = ExpansionConfig::default("proc_macro".to_string(), features);
     let mut cx = ExtCtxt::new(sess, ecfg, resolver, None);

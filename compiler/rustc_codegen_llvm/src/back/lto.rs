@@ -14,7 +14,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{looks_like_rust_object_file, ModuleCodegen, ModuleKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
-use rustc_errors::{FatalError, Handler};
+use rustc_errors::{DiagCtxt, FatalError};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::bug;
 use rustc_middle::dep_graph::WorkProduct;
@@ -47,7 +47,7 @@ pub fn crate_type_allows_lto(crate_type: CrateType) -> bool {
 
 fn prepare_lto(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
-    diag_handler: &Handler,
+    diag_handler: &DiagCtxt,
 ) -> Result<(Vec<CString>, Vec<(SerializedModule<ModuleBuffer>, CString)>), FatalError> {
     let export_threshold = match cgcx.lto {
         // We're just doing LTO for our one crate
@@ -250,7 +250,7 @@ pub(crate) fn prepare_thin(module: ModuleCodegen<ModuleLlvm>) -> (String, ThinBu
 
 fn fat_lto(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
-    diag_handler: &Handler,
+    diag_handler: &DiagCtxt,
     modules: Vec<FatLtoInput<LlvmCodegenBackend>>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
     mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
@@ -452,7 +452,7 @@ impl Drop for Linker<'_> {
 /// they all go out of scope.
 fn thin_lto(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
-    diag_handler: &Handler,
+    diag_handler: &DiagCtxt,
     modules: Vec<(String, ThinBuffer)>,
     serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
@@ -609,7 +609,7 @@ fn thin_lto(
 
 pub(crate) fn run_pass_manager(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
-    diag_handler: &Handler,
+    diag_handler: &DiagCtxt,
     module: &mut ModuleCodegen<ModuleLlvm>,
     thin: bool,
 ) -> Result<(), FatalError> {
@@ -868,7 +868,7 @@ pub fn parse_module<'a>(
     cx: &'a llvm::Context,
     name: &CStr,
     data: &[u8],
-    diag_handler: &Handler,
+    diag_handler: &DiagCtxt,
 ) -> Result<&'a llvm::Module, FatalError> {
     unsafe {
         llvm::LLVMRustParseBitcodeForLTO(cx, data.as_ptr(), data.len(), name.as_ptr())

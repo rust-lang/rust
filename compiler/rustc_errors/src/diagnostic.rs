@@ -886,7 +886,7 @@ impl Diagnostic {
     /// interpolated variables).
     pub fn eager_subdiagnostic(
         &mut self,
-        handler: &crate::Handler,
+        handler: &crate::DiagCtxt,
         subdiagnostic: impl AddToDiagnostic,
     ) -> &mut Self {
         subdiagnostic.add_to_diagnostic_with(self, |diag, msg| {

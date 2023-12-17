@@ -17,7 +17,7 @@ impl<'a> IntoDiagnostic<'a> for FeatureGateError {
     #[track_caller]
     fn into_diagnostic(
         self,
-        handler: &'a rustc_errors::Handler,
+        handler: &'a rustc_errors::DiagCtxt,
     ) -> rustc_errors::DiagnosticBuilder<'a, ErrorGuaranteed> {
         let mut diag = handler.struct_err(self.explain);
         diag.set_span(self.span);

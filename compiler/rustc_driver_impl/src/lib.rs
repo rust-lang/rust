@@ -27,7 +27,7 @@ use rustc_data_structures::profiling::{
 use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
 use rustc_errors::{markdown, ColorConfig};
-use rustc_errors::{ErrorGuaranteed, Handler, PResult};
+use rustc_errors::{DiagCtxt, ErrorGuaranteed, PResult};
 use rustc_feature::find_gated_cfg;
 use rustc_interface::util::{self, collect_crate_types, get_codegen_backend};
 use rustc_interface::{interface, Queries};
@@ -1310,7 +1310,10 @@ fn ice_path() -> &'static Option<PathBuf> {
 /// internal features.
 ///
 /// A custom rustc driver can skip calling this to set up a custom ICE hook.
-pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&Handler)) -> Arc<AtomicBool> {
+pub fn install_ice_hook(
+    bug_report_url: &'static str,
+    extra_info: fn(&DiagCtxt),
+) -> Arc<AtomicBool> {
     // If the user has not explicitly overridden "RUST_BACKTRACE", then produce
     // full backtraces. When a compiler ICE happens, we want to gather
     // as much information as possible to present in the issue opened
@@ -1388,7 +1391,7 @@ pub fn install_ice_hook(bug_report_url: &'static str, extra_info: fn(&Handler)) 
 fn report_ice(
     info: &panic::PanicInfo<'_>,
     bug_report_url: &str,
-    extra_info: fn(&Handler),
+    extra_info: fn(&DiagCtxt),
     using_internal_features: &AtomicBool,
 ) {
     let fallback_bundle =
@@ -1397,7 +1400,7 @@ fn report_ice(
         rustc_errors::ColorConfig::Auto,
         fallback_bundle,
     ));
-    let handler = rustc_errors::Handler::with_emitter(emitter);
+    let handler = rustc_errors::DiagCtxt::with_emitter(emitter);
 
     // a .span_bug or .bug call has already printed what
     // it wants to print.

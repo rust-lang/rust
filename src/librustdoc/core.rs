@@ -120,7 +120,7 @@ impl<'tcx> DocContext<'tcx> {
     }
 }
 
-/// Creates a new diagnostic `Handler` that can be used to emit warnings and errors.
+/// Creates a new `DiagCtxt` that can be used to emit warnings and errors.
 ///
 /// If the given `error_format` is `ErrorOutputType::Json` and no `SourceMap` is given, a new one
 /// will be created for the handler.
@@ -129,7 +129,7 @@ pub(crate) fn new_handler(
     source_map: Option<Lrc<source_map::SourceMap>>,
     diagnostic_width: Option<usize>,
     unstable_opts: &UnstableOptions,
-) -> rustc_errors::Handler {
+) -> rustc_errors::DiagCtxt {
     let fallback_bundle = rustc_errors::fallback_fluent_bundle(
         rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
         false,
@@ -169,7 +169,7 @@ pub(crate) fn new_handler(
         }
     };
 
-    rustc_errors::Handler::with_emitter(emitter)
+    rustc_errors::DiagCtxt::with_emitter(emitter)
         .with_flags(unstable_opts.diagnostic_handler_flags(true))
 }
 
@@ -386,7 +386,7 @@ pub(crate) fn run_global_ctxt(
         );
     }
 
-    fn report_deprecated_attr(name: &str, diag: &rustc_errors::Handler, sp: Span) {
+    fn report_deprecated_attr(name: &str, diag: &rustc_errors::DiagCtxt, sp: Span) {
         let mut msg =
             diag.struct_span_warn(sp, format!("the `#![doc({name})]` attribute is deprecated"));
         msg.note(

@@ -412,7 +412,7 @@ use std::backtrace::{Backtrace, BacktraceStatus};
 /// A handler deals with errors and other compiler output.
 /// Certain errors (fatal, bug, unimpl) may cause immediate exit,
 /// others log errors for later reporting.
-pub struct Handler {
+pub struct DiagCtxt {
     inner: Lock<HandlerInner>,
 }
 
@@ -572,7 +572,7 @@ impl Drop for HandlerInner {
     }
 }
 
-impl Handler {
+impl DiagCtxt {
     pub fn with_tty_emitter(
         sm: Option<Lrc<SourceMap>>,
         fallback_bundle: LazyFallbackBundle,
@@ -1413,9 +1413,9 @@ impl Handler {
     }
 }
 
-// Note: we prefer implementing operations on `Handler`, rather than
+// Note: we prefer implementing operations on `DiagCtxt`, rather than
 // `HandlerInner`, whenever possible. This minimizes functions where
-// `Handler::foo()` just borrows `inner` and forwards a call to
+// `DiagCtxt::foo()` just borrows `inner` and forwards a call to
 // `HanderInner::foo`.
 impl HandlerInner {
     /// Emit all stashed diagnostics.

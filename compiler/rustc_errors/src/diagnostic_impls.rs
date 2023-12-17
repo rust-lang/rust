@@ -1,6 +1,6 @@
 use crate::diagnostic::DiagnosticLocation;
 use crate::{fluent_generated as fluent, AddToDiagnostic};
-use crate::{DiagnosticArgValue, DiagnosticBuilder, Handler, IntoDiagnostic, IntoDiagnosticArg};
+use crate::{DiagCtxt, DiagnosticArgValue, DiagnosticBuilder, IntoDiagnostic, IntoDiagnosticArg};
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
 use rustc_hir as hir;
@@ -246,7 +246,7 @@ impl<Id> IntoDiagnosticArg for hir::def::Res<Id> {
 }
 
 impl IntoDiagnostic<'_, !> for TargetDataLayoutErrors<'_> {
-    fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, !> {
+    fn into_diagnostic(self, handler: &DiagCtxt) -> DiagnosticBuilder<'_, !> {
         let mut diag;
         match self {
             TargetDataLayoutErrors::InvalidAddressSpace { addr_space, err, cause } => {

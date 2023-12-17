@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
 use rustc_errors::{
-    Applicability, DecorateLint, DiagnosticArgValue, DiagnosticBuilder, DiagnosticMessage,
-    EmissionGuarantee, ErrorGuaranteed, Handler, IntoDiagnostic,
+    Applicability, DecorateLint, DiagCtxt, DiagnosticArgValue, DiagnosticBuilder,
+    DiagnosticMessage, EmissionGuarantee, ErrorGuaranteed, IntoDiagnostic,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::{AssertKind, UnsafetyViolationDetails};
@@ -64,7 +64,10 @@ pub(crate) struct RequiresUnsafe {
 // but this would result in a lot of duplication.
 impl<'sess> IntoDiagnostic<'sess> for RequiresUnsafe {
     #[track_caller]
-    fn into_diagnostic(self, handler: &'sess Handler) -> DiagnosticBuilder<'sess, ErrorGuaranteed> {
+    fn into_diagnostic(
+        self,
+        handler: &'sess DiagCtxt,
+    ) -> DiagnosticBuilder<'sess, ErrorGuaranteed> {
         let mut diag = handler.struct_err(fluent::mir_transform_requires_unsafe);
         diag.code(rustc_errors::DiagnosticId::Error("E0133".to_string()));
         diag.set_span(self.span);

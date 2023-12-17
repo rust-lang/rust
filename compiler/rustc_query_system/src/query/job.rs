@@ -5,7 +5,7 @@ use crate::query::DepKind;
 use crate::query::{QueryContext, QueryStackFrame};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{
-    Diagnostic, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic, Level,
+    DiagCtxt, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, Level,
 };
 use rustc_hir::def::DefKind;
 use rustc_session::Session;
@@ -610,12 +610,12 @@ pub(crate) fn report_cycle<'a>(
 pub fn print_query_stack<Qcx: QueryContext>(
     qcx: Qcx,
     mut current_query: Option<QueryJobId>,
-    handler: &Handler,
+    handler: &DiagCtxt,
     num_frames: Option<usize>,
     mut file: Option<std::fs::File>,
 ) -> usize {
     // Be careful relying on global state here: this code is called from
-    // a panic hook, which means that the global `Handler` may be in a weird
+    // a panic hook, which means that the global `DiagCtxt` may be in a weird
     // state if it was responsible for triggering the panic.
     let mut count_printed = 0;
     let mut count_total = 0;

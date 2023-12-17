@@ -27,7 +27,7 @@ impl ExternalHtml {
         md_before_content: &[String],
         md_after_content: &[String],
         nightly_build: bool,
-        diag: &rustc_errors::Handler,
+        diag: &rustc_errors::DiagCtxt,
         id_map: &mut IdMap,
         edition: Edition,
         playground: &Option<Playground>,
@@ -79,7 +79,7 @@ pub(crate) enum LoadStringError {
 
 pub(crate) fn load_string<P: AsRef<Path>>(
     file_path: P,
-    diag: &rustc_errors::Handler,
+    diag: &rustc_errors::DiagCtxt,
 ) -> Result<String, LoadStringError> {
     let file_path = file_path.as_ref();
     let contents = match fs::read(file_path) {
@@ -102,7 +102,7 @@ pub(crate) fn load_string<P: AsRef<Path>>(
     }
 }
 
-fn load_external_files(names: &[String], diag: &rustc_errors::Handler) -> Option<String> {
+fn load_external_files(names: &[String], diag: &rustc_errors::DiagCtxt) -> Option<String> {
     let mut out = String::new();
     for name in names {
         let Ok(s) = load_string(name, diag) else { return None };

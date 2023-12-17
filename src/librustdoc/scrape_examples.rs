@@ -40,7 +40,7 @@ pub(crate) struct ScrapeExamplesOptions {
 impl ScrapeExamplesOptions {
     pub(crate) fn new(
         matches: &getopts::Matches,
-        diag: &rustc_errors::Handler,
+        diag: &rustc_errors::DiagCtxt,
     ) -> Result<Option<Self>, i32> {
         let output_path = matches.opt_str("scrape-examples-output-path");
         let target_crates = matches.opt_strs("scrape-examples-target-crate");
@@ -337,10 +337,11 @@ pub(crate) fn run(
     Ok(())
 }
 
-// Note: the Handler must be passed in explicitly because sess isn't available while parsing options
+// Note: the DiagCtxt must be passed in explicitly because sess isn't available while parsing
+// options.
 pub(crate) fn load_call_locations(
     with_examples: Vec<String>,
-    diag: &rustc_errors::Handler,
+    diag: &rustc_errors::DiagCtxt,
 ) -> Result<AllCallLocations, i32> {
     let inner = || {
         let mut all_calls: AllCallLocations = FxHashMap::default();

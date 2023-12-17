@@ -89,7 +89,7 @@ impl<'a> DiagnosticDerive<'a> {
                 #[track_caller]
                 fn into_diagnostic(
                     self,
-                    #handler: &'__diagnostic_handler_sess rustc_errors::Handler
+                    #handler: &'__diagnostic_handler_sess rustc_errors::DiagCtxt
                 ) -> rustc_errors::DiagnosticBuilder<'__diagnostic_handler_sess, G> {
                     use rustc_errors::IntoDiagnosticArg;
                     #implementation

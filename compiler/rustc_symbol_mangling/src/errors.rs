@@ -16,7 +16,7 @@ pub struct TestOutput {
 impl IntoDiagnostic<'_> for TestOutput {
     fn into_diagnostic(
         self,
-        handler: &'_ rustc_errors::Handler,
+        handler: &'_ rustc_errors::DiagCtxt,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
         let TestOutput { span, kind, content } = self;
 

@@ -11,7 +11,7 @@ use crate::lint::{
 use rustc_ast::node_id::NodeId;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc};
-use rustc_errors::{emitter::SilentEmitter, Handler};
+use rustc_errors::{emitter::SilentEmitter, DiagCtxt};
 use rustc_errors::{
     fallback_fluent_bundle, Diagnostic, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
     ErrorGuaranteed, IntoDiagnostic, MultiSpan, Noted, StashKey,
@@ -189,7 +189,7 @@ pub fn add_feature_diagnostics_for_issue(
 
 /// Info about a parsing session.
 pub struct ParseSess {
-    pub span_diagnostic: Handler,
+    pub span_diagnostic: DiagCtxt,
     pub unstable_features: UnstableFeatures,
     pub config: Cfg,
     pub check_config: CheckCfg,
@@ -227,11 +227,11 @@ impl ParseSess {
     pub fn new(locale_resources: Vec<&'static str>, file_path_mapping: FilePathMapping) -> Self {
         let fallback_bundle = fallback_fluent_bundle(locale_resources, false);
         let sm = Lrc::new(SourceMap::new(file_path_mapping));
-        let handler = Handler::with_tty_emitter(Some(sm.clone()), fallback_bundle);
+        let handler = DiagCtxt::with_tty_emitter(Some(sm.clone()), fallback_bundle);
         ParseSess::with_span_handler(handler, sm)
     }
 
-    pub fn with_span_handler(handler: Handler, source_map: Lrc<SourceMap>) -> Self {
+    pub fn with_span_handler(handler: DiagCtxt, source_map: Lrc<SourceMap>) -> Self {
         Self {
             span_diagnostic: handler,
             unstable_features: UnstableFeatures::from_environment(None),
@@ -256,8 +256,8 @@ impl ParseSess {
     pub fn with_silent_emitter(fatal_note: Option<String>) -> Self {
         let fallback_bundle = fallback_fluent_bundle(Vec::new(), false);
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-        let fatal_handler = Handler::with_tty_emitter(None, fallback_bundle).disable_warnings();
-        let handler = Handler::with_emitter(Box::new(SilentEmitter { fatal_handler, fatal_note }))
+        let fatal_handler = DiagCtxt::with_tty_emitter(None, fallback_bundle).disable_warnings();
+        let handler = DiagCtxt::with_emitter(Box::new(SilentEmitter { fatal_handler, fatal_note }))
             .disable_warnings();
         ParseSess::with_span_handler(handler, sm)
     }
