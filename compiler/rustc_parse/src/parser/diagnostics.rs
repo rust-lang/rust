@@ -246,14 +246,14 @@ impl<'a> Parser<'a> {
         sp: S,
         m: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        self.diagnostic().struct_span_err(sp, m)
+        self.dcx().struct_span_err(sp, m)
     }
 
     pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) -> ! {
-        self.diagnostic().span_bug(sp, msg)
+        self.dcx().span_bug(sp, msg)
     }
 
-    pub(super) fn diagnostic(&self) -> &'a DiagCtxt {
+    pub(super) fn dcx(&self) -> &'a DiagCtxt {
         &self.sess.dcx
     }
 
@@ -284,7 +284,7 @@ impl<'a> Parser<'a> {
                 span: self.prev_token.span,
                 missing_comma: None,
             }
-            .into_diagnostic(self.diagnostic()));
+            .into_diagnostic(self.dcx()));
         }
 
         let valid_follow = &[
@@ -347,7 +347,7 @@ impl<'a> Parser<'a> {
             suggest_remove_comma,
             help_cannot_start_number,
         };
-        let mut err = err.into_diagnostic(self.diagnostic());
+        let mut err = err.into_diagnostic(self.dcx());
 
         // if the token we have is a `<`
         // it *might* be a misplaced generic
@@ -1410,7 +1410,7 @@ impl<'a> Parser<'a> {
                                 // Not entirely sure now, but we bubble the error up with the
                                 // suggestion.
                                 self.restore_snapshot(snapshot);
-                                Err(err.into_diagnostic(self.diagnostic()))
+                                Err(err.into_diagnostic(self.dcx()))
                             }
                         }
                     } else if token::OpenDelim(Delimiter::Parenthesis) == self.token.kind {
@@ -1425,7 +1425,7 @@ impl<'a> Parser<'a> {
                         }
                         // Consume the fn call arguments.
                         match self.consume_fn_args() {
-                            Err(()) => Err(err.into_diagnostic(self.diagnostic())),
+                            Err(()) => Err(err.into_diagnostic(self.dcx())),
                             Ok(()) => {
                                 self.sess.emit_err(err);
                                 // FIXME: actually check that the two expressions in the binop are
@@ -1451,7 +1451,7 @@ impl<'a> Parser<'a> {
                             mk_err_expr(self, inner_op.span.to(self.prev_token.span))
                         } else {
                             // These cases cause too many knock-down errors, bail out (#61329).
-                            Err(err.into_diagnostic(self.diagnostic()))
+                            Err(err.into_diagnostic(self.dcx()))
                         }
                     };
                 }
@@ -2539,7 +2539,7 @@ impl<'a> Parser<'a> {
             Ok(Some(GenericArg::Const(self.parse_const_arg()?)))
         } else {
             let after_kw_const = self.token.span;
-            self.recover_const_arg(after_kw_const, err.into_diagnostic(self.diagnostic())).map(Some)
+            self.recover_const_arg(after_kw_const, err.into_diagnostic(self.dcx())).map(Some)
         }
     }
 
@@ -2897,7 +2897,7 @@ impl<'a> Parser<'a> {
                         span: path.span.shrink_to_hi(),
                         between: between_span,
                     }
-                    .into_diagnostic(self.diagnostic()));
+                    .into_diagnostic(self.dcx()));
                 }
             }
         }

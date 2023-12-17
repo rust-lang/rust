@@ -114,8 +114,9 @@ impl<'a> Parser<'a> {
             NonterminalKind::Item => match self.parse_item(ForceCollect::Yes)? {
                 Some(item) => NtItem(item),
                 None => {
-                    return Err(UnexpectedNonterminal::Item(self.token.span)
-                        .into_diagnostic(self.diagnostic()));
+                    return Err(
+                        UnexpectedNonterminal::Item(self.token.span).into_diagnostic(self.dcx())
+                    );
                 }
             },
             NonterminalKind::Block => {
@@ -127,7 +128,7 @@ impl<'a> Parser<'a> {
                 Some(s) => NtStmt(P(s)),
                 None => {
                     return Err(UnexpectedNonterminal::Statement(self.token.span)
-                        .into_diagnostic(self.diagnostic()));
+                        .into_diagnostic(self.dcx()));
                 }
             },
             NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr => {
@@ -163,7 +164,7 @@ impl<'a> Parser<'a> {
                     span: self.token.span,
                     token: self.token.clone(),
                 }
-                .into_diagnostic(self.diagnostic()));
+                .into_diagnostic(self.dcx()));
             }
             NonterminalKind::Path => {
                 NtPath(P(self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?))
@@ -181,7 +182,7 @@ impl<'a> Parser<'a> {
                         span: self.token.span,
                         token: self.token.clone(),
                     }
-                    .into_diagnostic(self.diagnostic()));
+                    .into_diagnostic(self.dcx()));
                 }
             }
         };
