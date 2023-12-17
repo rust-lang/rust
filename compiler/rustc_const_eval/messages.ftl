@@ -337,7 +337,7 @@ const_eval_too_many_caller_args =
 
 const_eval_transient_mut_borrow = mutable references are not allowed in {const_eval_const_context}s
 
-const_eval_transient_mut_borrow_raw = raw mutable references are not allowed in {const_eval_const_context}s
+const_eval_transient_mut_raw = raw mutable pointers are not allowed in {const_eval_const_context}s
 
 const_eval_try_block_from_output_non_const =
     `try` block cannot convert `{$ty}` to the result in {const_eval_const_context}s
@@ -351,21 +351,21 @@ const_eval_unallowed_heap_allocations =
 
 const_eval_unallowed_inline_asm =
     inline assembly is not allowed in {const_eval_const_context}s
-const_eval_unallowed_mutable_refs =
-    mutable references are not allowed in the final value of {const_eval_const_context}s
+const_eval_unallowed_mutable_raw =
+    raw mutable pointers are not allowed in the final value of {const_eval_const_context}s
     .teach_note =
+        References in statics and constants may only refer to immutable values.
+
+
         Statics are shared everywhere, and if they refer to mutable data one might violate memory
         safety since holding multiple mutable references to shared data is not allowed.
 
 
         If you really want global mutable state, try using static mut or a global UnsafeCell.
 
-const_eval_unallowed_mutable_refs_raw =
-    raw mutable references are not allowed in the final value of {const_eval_const_context}s
+const_eval_unallowed_mutable_refs =
+    mutable references are not allowed in the final value of {const_eval_const_context}s
     .teach_note =
-        References in statics and constants may only refer to immutable values.
-
-
         Statics are shared everywhere, and if they refer to mutable data one might violate memory
         safety since holding multiple mutable references to shared data is not allowed.
 

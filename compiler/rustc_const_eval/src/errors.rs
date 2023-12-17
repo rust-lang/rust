@@ -114,8 +114,8 @@ pub(crate) struct TransientMutBorrowErr {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_transient_mut_borrow_raw, code = "E0658")]
-pub(crate) struct TransientMutBorrowErrRaw {
+#[diag(const_eval_transient_mut_raw, code = "E0658")]
+pub(crate) struct TransientMutRawErr {
     #[primary_span]
     pub span: Span,
     pub kind: ConstContext,
@@ -156,8 +156,8 @@ pub(crate) struct UnallowedMutableRefs {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_unallowed_mutable_refs_raw, code = "E0764")]
-pub(crate) struct UnallowedMutableRefsRaw {
+#[diag(const_eval_unallowed_mutable_raw, code = "E0764")]
+pub(crate) struct UnallowedMutableRaw {
     #[primary_span]
     pub span: Span,
     pub kind: ConstContext,
