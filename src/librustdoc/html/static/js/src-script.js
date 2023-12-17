@@ -81,11 +81,12 @@ window.rustdocShowSourceSidebar = () => {
     updateLocalStorage("source-sidebar-show", "true");
 };
 
-function createButton(className, text, onclick) {
+function createButton(className, text, onclick, ariaLabel) {
     const button = document.createElement("button");
     button.className = className;
     button.innerText = text;
     button.onclick = onclick;
+    button.setAttribute("aria-label", ariaLabel);
     return button;
 }
 
@@ -93,8 +94,10 @@ function createSidebarToggle() {
     const sidebarToggle = document.createElement("div");
     sidebarToggle.id = "src-sidebar-toggle";
 
-    sidebarToggle.appendChild(createButton("expand", ">", window.rustdocShowSourceSidebar));
-    sidebarToggle.appendChild(createButton("collapse", "<", window.rustdocCloseSourceSidebar));
+    sidebarToggle.appendChild(
+        createButton("expand", ">", window.rustdocShowSourceSidebar, "Expand source sidebar"));
+    sidebarToggle.appendChild(
+        createButton("collapse", "<", window.rustdocCloseSourceSidebar, "Collapse source sidebar"));
 
     if (getCurrentValue("source-sidebar-show") === "true") {
         window.rustdocShowSourceSidebar();
