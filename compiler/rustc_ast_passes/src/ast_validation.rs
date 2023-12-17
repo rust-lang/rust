@@ -220,7 +220,7 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn err_handler(&self) -> &rustc_errors::DiagCtxt {
+    fn dcx(&self) -> &rustc_errors::DiagCtxt {
         self.session.dcx()
     }
 
@@ -269,7 +269,7 @@ impl<'a> AstValidator<'a> {
         ) {
             return;
         }
-        self.err_handler().emit_err(errors::InvalidUnnamedFieldTy { span, ty_span: ty.span });
+        self.dcx().emit_err(errors::InvalidUnnamedFieldTy { span, ty_span: ty.span });
     }
 
     fn deny_anon_struct_or_union(&self, ty: &Ty) {
@@ -278,15 +278,14 @@ impl<'a> AstValidator<'a> {
             TyKind::AnonUnion(..) => "union",
             _ => return,
         };
-        self.err_handler()
-            .emit_err(errors::AnonStructOrUnionNotAllowed { struct_or_union, span: ty.span });
+        self.dcx().emit_err(errors::AnonStructOrUnionNotAllowed { struct_or_union, span: ty.span });
     }
 
     fn deny_unnamed_field(&self, field: &FieldDef) {
         if let Some(ident) = field.ident
             && ident.name == kw::Underscore
         {
-            self.err_handler()
+            self.dcx()
                 .emit_err(errors::InvalidUnnamedField { span: field.span, ident_span: ident.span });
         }
     }
@@ -392,7 +391,7 @@ impl<'a> AstValidator<'a> {
             [b0] => b0.span(),
             [b0, .., bl] => b0.span().to(bl.span()),
         };
-        self.err_handler().emit_err(errors::BoundInContext { span, ctx });
+        self.dcx().emit_err(errors::BoundInContext { span, ctx });
     }
 
     fn check_foreign_ty_genericless(
@@ -402,7 +401,7 @@ impl<'a> AstValidator<'a> {
         after_where_clause: &TyAliasWhereClause,
     ) {
         let cannot_have = |span, descr, remove_descr| {
-            self.err_handler().emit_err(errors::ExternTypesCannotHave {
+            self.dcx().emit_err(errors::ExternTypesCannotHave {
                 span,
                 descr,
                 remove_descr,
@@ -428,7 +427,7 @@ impl<'a> AstValidator<'a> {
         let Some(body) = body else {
             return;
         };
-        self.err_handler().emit_err(errors::BodyInExtern {
+        self.dcx().emit_err(errors::BodyInExtern {
             span: ident.span,
             body,
             block: self.current_extern_span(),
@@ -441,7 +440,7 @@ impl<'a> AstValidator<'a> {
         let Some(body) = body else {
             return;
         };
-        self.err_handler().emit_err(errors::FnBodyInExtern {
+        self.dcx().emit_err(errors::FnBodyInExtern {
             span: ident.span,
             body: body.span,
             block: self.current_extern_span(),
@@ -455,7 +454,7 @@ impl<'a> AstValidator<'a> {
     /// An `fn` in `extern { ... }` cannot have qualifiers, e.g. `async fn`.
     fn check_foreign_fn_headerless(&self, ident: Ident, span: Span, header: FnHeader) {
         if header.has_qualifiers() {
-            self.err_handler().emit_err(errors::FnQualifierInExtern {
+            self.dcx().emit_err(errors::FnQualifierInExtern {
                 span: ident.span,
                 block: self.current_extern_span(),
                 sugg_span: span.until(ident.span.shrink_to_lo()),
@@ -466,7 +465,7 @@ impl<'a> AstValidator<'a> {
     /// An item in `extern { ... }` cannot use non-ascii identifier.
     fn check_foreign_item_ascii_only(&self, ident: Ident) {
         if !ident.as_str().is_ascii() {
-            self.err_handler().emit_err(errors::ExternItemAscii {
+            self.dcx().emit_err(errors::ExternItemAscii {
                 span: ident.span,
                 block: self.current_extern_span(),
             });
@@ -495,7 +494,7 @@ impl<'a> AstValidator<'a> {
             if let Const::Yes(const_span) = header.constness {
                 let mut spans = variadic_spans.clone();
                 spans.push(const_span);
-                self.err_handler().emit_err(errors::ConstAndCVariadic {
+                self.dcx().emit_err(errors::ConstAndCVariadic {
                     spans,
                     const_span,
                     variadic_spans: variadic_spans.clone(),
@@ -517,14 +516,14 @@ impl<'a> AstValidator<'a> {
             _ => {}
         };
 
-        self.err_handler().emit_err(errors::BadCVariadic { span: variadic_spans });
+        self.dcx().emit_err(errors::BadCVariadic { span: variadic_spans });
     }
 
     fn check_item_named(&self, ident: Ident, kind: &str) {
         if ident.name != kw::Underscore {
             return;
         }
-        self.err_handler().emit_err(errors::ItemUnderscore { span: ident.span, kind });
+        self.dcx().emit_err(errors::ItemUnderscore { span: ident.span, kind });
     }
 
     fn check_nomangle_item_asciionly(&self, ident: Ident, item_span: Span) {
@@ -615,7 +614,7 @@ impl<'a> AstValidator<'a> {
         let args_len = arg_spans.len();
         let constraint_len = constraint_spans.len();
         // ...and then error:
-        self.err_handler().emit_err(errors::ArgsBeforeConstraint {
+        self.dcx().emit_err(errors::ArgsBeforeConstraint {
             arg_spans: arg_spans.clone(),
             constraints: constraint_spans[0],
             args: *arg_spans.iter().last().unwrap(),
@@ -667,7 +666,7 @@ impl<'a> AstValidator<'a> {
                 }
 
                 if !bounds.iter().any(|b| matches!(b, GenericBound::Trait(..))) {
-                    self.err_handler().emit_err(errors::AtLeastOneTrait { span: ty.span });
+                    self.dcx().emit_err(errors::AtLeastOneTrait { span: ty.span });
                 }
             }
             _ => {}
@@ -823,7 +822,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         errors::VisibilityNotPermittedNote::TraitImpl,
                     );
                     if let TyKind::Err = self_ty.kind {
-                        this.err_handler().emit_err(errors::ObsoleteAuto { span: item.span });
+                        this.dcx().emit_err(errors::ObsoleteAuto { span: item.span });
                     }
                     if let (&Unsafe::Yes(span), &ImplPolarity::Negative(sp)) = (unsafety, polarity)
                     {
@@ -871,7 +870,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     errors::VisibilityNotPermittedNote::IndividualImplItems,
                 );
                 if let &Unsafe::Yes(span) = unsafety {
-                    self.err_handler().emit_err(errors::InherentImplCannotUnsafe {
+                    self.dcx().emit_err(errors::InherentImplCannotUnsafe {
                         span: self_ty.span,
                         annotation_span: span,
                         annotation: "unsafe",
@@ -879,13 +878,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     });
                 }
                 if let &ImplPolarity::Negative(span) = polarity {
-                    self.err_handler().emit_err(error(span, "negative", false));
+                    self.dcx().emit_err(error(span, "negative", false));
                 }
                 if let &Defaultness::Default(def_span) = defaultness {
-                    self.err_handler().emit_err(error(def_span, "`default`", true));
+                    self.dcx().emit_err(error(def_span, "`default`", true));
                 }
                 if let &Const::Yes(span) = constness {
-                    self.err_handler().emit_err(error(span, "`const`", true));
+                    self.dcx().emit_err(error(span, "`const`", true));
                 }
 
                 self.visit_vis(&item.vis);
@@ -937,7 +936,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     errors::VisibilityNotPermittedNote::IndividualForeignItems,
                 );
                 if let &Unsafe::Yes(span) = unsafety {
-                    self.err_handler().emit_err(errors::UnsafeItem { span, kind: "extern block" });
+                    self.dcx().emit_err(errors::UnsafeItem { span, kind: "extern block" });
                 }
                 if abi.is_none() {
                     self.maybe_lint_missing_abi(item.span, item.id);
@@ -988,7 +987,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::Mod(unsafety, mod_kind) => {
                 if let &Unsafe::Yes(span) = unsafety {
-                    self.err_handler().emit_err(errors::UnsafeItem { span, kind: "module" });
+                    self.dcx().emit_err(errors::UnsafeItem { span, kind: "module" });
                 }
                 // Ensure that `path` attributes on modules are recorded as used (cf. issue #35584).
                 if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _))
@@ -1011,7 +1010,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             },
             ItemKind::Union(vdata, generics) => {
                 if vdata.fields().is_empty() {
-                    self.err_handler().emit_err(errors::FieldlessUnion { span: item.span });
+                    self.dcx().emit_err(errors::FieldlessUnion { span: item.span });
                 }
                 match vdata {
                     VariantData::Struct(fields, ..) => {
@@ -1053,10 +1052,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
                 if self.features.lazy_type_alias {
                     if let Err(err) = self.check_type_alias_where_clause_location(ty_alias) {
-                        self.err_handler().emit_err(err);
+                        self.dcx().emit_err(err);
                     }
                 } else if where_clauses.1.0 {
-                    self.err_handler().emit_err(errors::WhereClauseAfterTypeAlias {
+                    self.dcx().emit_err(errors::WhereClauseAfterTypeAlias {
                         span: where_clauses.1.1,
                         help: self.session.is_nightly_build().then_some(()),
                     });
@@ -1141,14 +1140,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
                     if let Some(span) = prev_param_default {
-                        self.err_handler().emit_err(errors::GenericDefaultTrailing { span });
+                        self.dcx().emit_err(errors::GenericDefaultTrailing { span });
                         break;
                     }
                 }
             }
         }
 
-        validate_generic_param_order(self.err_handler(), &generics.params, generics.span);
+        validate_generic_param_order(self.dcx(), &generics.params, generics.span);
 
         for predicate in &generics.where_clause.predicates {
             if let WherePredicate::EqPredicate(predicate) = predicate {
@@ -1169,7 +1168,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             match bound {
                                 GenericBound::Trait(t, _) => {
                                     if !t.bound_generic_params.is_empty() {
-                                        self.err_handler()
+                                        self.dcx()
                                             .emit_err(errors::NestedLifetimes { span: t.span });
                                     }
                                 }
@@ -1195,13 +1194,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         if let GenericBound::Trait(poly, modify) = bound {
             match (ctxt, modify) {
                 (BoundKind::SuperTraits, TraitBoundModifier::Maybe) => {
-                    self.err_handler().emit_err(errors::OptionalTraitSupertrait {
+                    self.dcx().emit_err(errors::OptionalTraitSupertrait {
                         span: poly.span,
                         path_str: pprust::path_to_string(&poly.trait_ref.path),
                     });
                 }
                 (BoundKind::TraitObject, TraitBoundModifier::Maybe) => {
-                    self.err_handler().emit_err(errors::OptionalTraitObject { span: poly.span });
+                    self.dcx().emit_err(errors::OptionalTraitObject { span: poly.span });
                 }
                 (_, &TraitBoundModifier::MaybeConst(span))
                     if let Some(reason) = &self.disallow_tilde_const =>
@@ -1224,16 +1223,16 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         }
                         DisallowTildeConstContext::Item => errors::TildeConstReason::Item,
                     };
-                    self.err_handler().emit_err(errors::TildeConstDisallowed { span, reason });
+                    self.dcx().emit_err(errors::TildeConstDisallowed { span, reason });
                 }
                 (_, TraitBoundModifier::MaybeConstMaybe) => {
-                    self.err_handler().emit_err(errors::OptionalConstExclusive {
+                    self.dcx().emit_err(errors::OptionalConstExclusive {
                         span: bound.span(),
                         modifier: "?",
                     });
                 }
                 (_, TraitBoundModifier::MaybeConstNegative) => {
-                    self.err_handler().emit_err(errors::OptionalConstExclusive {
+                    self.dcx().emit_err(errors::OptionalConstExclusive {
                         span: bound.span(),
                         modifier: "!",
                     });
@@ -1249,7 +1248,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         {
             for arg in &args.args {
                 if let ast::AngleBracketedArg::Constraint(constraint) = arg {
-                    self.err_handler()
+                    self.dcx()
                         .emit_err(errors::ConstraintOnNegativeBound { span: constraint.span });
                 }
             }
@@ -1281,7 +1280,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 | CoroutineKind::AsyncGen { span: aspan, .. } => aspan,
             };
             // FIXME(gen_blocks): Report a different error for `const gen`
-            self.err_handler().emit_err(errors::ConstAndAsync {
+            self.dcx().emit_err(errors::ConstAndAsync {
                 spans: vec![cspan, aspan],
                 cspan,
                 aspan,
@@ -1321,10 +1320,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
                 } else {
                     match ctxt {
-                        FnCtxt::Foreign => {
-                            self.err_handler().emit_err(errors::PatternInForeign { span })
-                        }
-                        _ => self.err_handler().emit_err(errors::PatternInBodiless { span }),
+                        FnCtxt::Foreign => self.dcx().emit_err(errors::PatternInForeign { span }),
+                        _ => self.dcx().emit_err(errors::PatternInBodiless { span }),
                     };
                 }
             });
@@ -1523,7 +1520,7 @@ fn deny_equality_constraints(
             }
         }
     }
-    this.err_handler().emit_err(err);
+    this.dcx().emit_err(err);
 }
 
 pub fn check_crate(
