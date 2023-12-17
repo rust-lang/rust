@@ -231,9 +231,8 @@ pub(crate) fn write_ir_file(
     let res = std::fs::File::create(clif_file_name).and_then(|mut file| write(&mut file));
     if let Err(err) = res {
         // Using early_warn as no Session is available here
-        let handler = rustc_session::EarlyErrorHandler::new(
-            rustc_session::config::ErrorOutputType::default(),
-        );
+        let handler =
+            rustc_session::EarlyDiagCtxt::new(rustc_session::config::ErrorOutputType::default());
         handler.early_warn(format!("error writing ir file: {}", err));
     }
 }

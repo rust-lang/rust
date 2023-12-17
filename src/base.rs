@@ -176,7 +176,7 @@ pub(crate) fn compile_fn(
         match module.define_function(codegened_func.func_id, context) {
             Ok(()) => {}
             Err(ModuleError::Compilation(CodegenError::ImplLimitExceeded)) => {
-                let handler = rustc_session::EarlyErrorHandler::new(
+                let handler = rustc_session::EarlyDiagCtxt::new(
                     rustc_session::config::ErrorOutputType::default(),
                 );
                 handler.early_error(format!(
