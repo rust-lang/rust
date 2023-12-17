@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
 use rustc_errors::emitter::{DynEmitter, Emitter, EmitterWriter};
 use rustc_errors::translation::Translate;
-use rustc_errors::{ColorConfig, Diagnostic, Handler, Level as DiagnosticLevel};
+use rustc_errors::{ColorConfig, DiagCtxt, Diagnostic, Level as DiagnosticLevel};
 use rustc_session::parse::ParseSess as RawParseSess;
 use rustc_span::{
     source_map::{FilePathMapping, SourceMap},
@@ -124,7 +124,7 @@ fn default_handler(
     can_reset: Lrc<AtomicBool>,
     hide_parse_errors: bool,
     color: Color,
-) -> Handler {
+) -> DiagCtxt {
     let supports_color = term::stderr().map_or(false, |term| term.supports_color());
     let emit_color = if supports_color {
         ColorConfig::from(color)
@@ -141,7 +141,7 @@ fn default_handler(
         );
         Box::new(EmitterWriter::stderr(emit_color, fallback_bundle).sm(Some(source_map.clone())))
     };
-    Handler::with_emitter(Box::new(SilentOnIgnoredFilesEmitter {
+    DiagCtxt::with_emitter(Box::new(SilentOnIgnoredFilesEmitter {
         has_non_ignorable_parser_errors: false,
         source_map,
         emitter,
@@ -218,7 +218,7 @@ impl ParseSess {
     }
 
     pub(crate) fn set_silent_emitter(&mut self) {
-        self.parse_sess.span_diagnostic = Handler::with_emitter(silent_emitter());
+        self.parse_sess.span_diagnostic = DiagCtxt::with_emitter(silent_emitter());
     }
 
     pub(crate) fn span_to_filename(&self, span: Span) -> FileName {
