@@ -79,9 +79,10 @@ impl<'a> DiagnosticDerive<'a> {
 
         let DiagnosticDeriveKind::Diagnostic { dcx } = &builder.kind else { unreachable!() };
 
+        // A lifetime of `'a` causes conflicts, but `_sess` is fine.
         let mut imp = structure.gen_impl(quote! {
-            gen impl<'__diagnostic_handler_sess, G>
-                    rustc_errors::IntoDiagnostic<'__diagnostic_handler_sess, G>
+            gen impl<'_sess, G>
+                    rustc_errors::IntoDiagnostic<'_sess, G>
                     for @Self
                 where G: rustc_errors::EmissionGuarantee
             {
@@ -89,8 +90,8 @@ impl<'a> DiagnosticDerive<'a> {
                 #[track_caller]
                 fn into_diagnostic(
                     self,
-                    #dcx: &'__diagnostic_handler_sess rustc_errors::DiagCtxt
-                ) -> rustc_errors::DiagnosticBuilder<'__diagnostic_handler_sess, G> {
+                    #dcx: &'_sess rustc_errors::DiagCtxt
+                ) -> rustc_errors::DiagnosticBuilder<'_sess, G> {
                     use rustc_errors::IntoDiagnosticArg;
                     #implementation
                 }
