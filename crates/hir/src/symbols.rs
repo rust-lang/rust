@@ -8,7 +8,7 @@ use hir_def::{
     TraitId,
 };
 use hir_expand::{HirFileId, InFile};
-use hir_ty::db::HirDatabase;
+use hir_ty::{db::HirDatabase, display::HirDisplay};
 use syntax::{ast::HasName, AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr};
 
 use crate::{Module, ModuleDef, Semantics};
@@ -230,9 +230,12 @@ impl<'a> SymbolCollector<'a> {
 
     fn collect_from_impl(&mut self, impl_id: ImplId) {
         let impl_data = self.db.impl_data(impl_id);
-        for &assoc_item_id in &impl_data.items {
-            self.push_assoc_item(assoc_item_id)
-        }
+        let impl_name = Some(SmolStr::new(impl_data.self_ty.display(self.db).to_string()));
+        self.with_container_name(impl_name, |s| {
+            for &assoc_item_id in &impl_data.items {
+                s.push_assoc_item(assoc_item_id)
+            }
+        })
     }
 
     fn collect_from_trait(&mut self, trait_id: TraitId) {
