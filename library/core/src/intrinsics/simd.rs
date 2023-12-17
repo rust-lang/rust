@@ -49,9 +49,9 @@ extern "platform-intrinsic" {
 
     /// Elementwise vector right shift, with UB on overflow.
     ///
-    /// Shift `lhs` right by `rhs`, shifting in sign bits for signed types.
-    ///
     /// `T` must be a vector of integer primitive types.
+    ///
+    /// Shift `lhs` right by `rhs`, shifting in sign bits for signed types.
     ///
     /// # Safety
     ///
@@ -75,12 +75,12 @@ extern "platform-intrinsic" {
 
     /// Numerically cast a vector, elementwise.
     ///
+    /// `T` and `U` must be vectors of integer or floating point primitive types, and must have the
+    /// same length.
+    ///
     /// When casting floats to integers, the result is truncated. Out-of-bounds result lead to UB.
     /// When casting integers to floats, the result is rounded.
     /// Otherwise, truncates or extends the value, maintaining the sign for signed integers.
-    ///
-    /// `T` and `U` must be vectors of integer or floating point primitive types, and must have the
-    /// same length.
     ///
     /// # Safety
     /// Casting floats to integers truncates, but the truncated value must fit in the target type.
@@ -88,22 +88,22 @@ extern "platform-intrinsic" {
 
     /// Numerically cast a vector, elementwise.
     ///
+    /// `T` and `U` be a vectors of integer or floating point primitive types, and must have the
+    /// same length.
+    ///
     /// Like `simd_cast`, but saturates float-to-integer conversions.
     /// This matches regular `as` and is always safe.
     ///
     /// When casting floats to integers, the result is truncated.
     /// When casting integers to floats, the result is rounded.
     /// Otherwise, truncates or extends the value, maintaining the sign for signed integers.
-    ///
-    /// `T` and `U` be a vectors of integer or floating point primitive types, and must have the
-    /// same length.
     pub fn simd_as<T, U>(x: T) -> U;
 
     /// Elementwise negation of a vector.
     ///
-    /// Rust panics for `-<int>::Min` due to overflow, but it is not UB with this intrinsic.
-    ///
     /// `T` must be a vector of integer or floating-point primitive types.
+    ///
+    /// Rust panics for `-<int>::Min` due to overflow, but it is not UB with this intrinsic.
     pub fn simd_neg<T>(x: T) -> T;
 
     /// Elementwise absolute value of a vector.
@@ -113,94 +113,95 @@ extern "platform-intrinsic" {
 
     /// Elementwise minimum of a vector.
     ///
-    /// Follows IEEE-754 `minNum` semantics.
-    ///
     /// `T` must be a vector of floating-point primitive types.
+    ///
+    /// Follows IEEE-754 `minNum` semantics.
     pub fn simd_fmin<T>(x: T, y: T) -> T;
 
     /// Elementwise maximum of a vector.
     ///
-    /// Follows IEEE-754 `maxNum` semantics.
-    ///
     /// `T` must be a vector of floating-point primitive types.
+    ///
+    /// Follows IEEE-754 `maxNum` semantics.
     pub fn simd_fmax<T>(x: T, y: T) -> T;
 
     /// Tests elementwise equality of two vectors.
     ///
-    /// Returns `0` for false and `!0` for true.
-    ///
     /// `T` must be a vector of floating-point primitive types.
+    ///
     /// `U` must be a vector of integers with the same number of elements and element size as `T`.
+    ///
+    /// Returns `0` for false and `!0` for true.
     pub fn simd_eq<T, U>(x: T, y: T) -> U;
 
     /// Tests elementwise inequality equality of two vectors.
     ///
-    /// Returns `0` for false and `!0` for true.
-    ///
     /// `T` must be a vector of floating-point primitive types.
     ///
     /// `U` must be a vector of integers with the same number of elements and element size as `T`.
+    ///
+    /// Returns `0` for false and `!0` for true.
     pub fn simd_ne<T, U>(x: T, y: T) -> U;
 
     /// Tests if `x` is less than `y`, elementwise.
     ///
-    /// Returns `0` for false and `!0` for true.
-    ///
     /// `T` must be a vector of floating-point primitive types.
     ///
     /// `U` must be a vector of integers with the same number of elements and element size as `T`.
+    ///
+    /// Returns `0` for false and `!0` for true.
     pub fn simd_lt<T, U>(x: T, y: T) -> U;
 
     /// Tests if `x` is less than or equal to `y`, elementwise.
     ///
-    /// Returns `0` for false and `!0` for true.
-    ///
     /// `T` must be a vector of floating-point primitive types.
     ///
     /// `U` must be a vector of integers with the same number of elements and element size as `T`.
+    ///
+    /// Returns `0` for false and `!0` for true.
     pub fn simd_le<T, U>(x: T, y: T) -> U;
 
     /// Tests if `x` is greater than `y`, elementwise.
     ///
-    /// Returns `0` for false and `!0` for true.
-    ///
     /// `T` must be a vector of floating-point primitive types.
     ///
     /// `U` must be a vector of integers with the same number of elements and element size as `T`.
+    ///
+    /// Returns `0` for false and `!0` for true.
     pub fn simd_gt<T, U>(x: T, y: T) -> U;
 
     /// Tests if `x` is greater than or equal to `y`, elementwise.
     ///
-    /// Returns `0` for false and `!0` for true.
-    ///
     /// `T` must be a vector of floating-point primitive types.
     ///
     /// `U` must be a vector of integers with the same number of elements and element size as `T`.
+    ///
+    /// Returns `0` for false and `!0` for true.
     pub fn simd_ge<T, U>(x: T, y: T) -> U;
 
     /// Shuffle two vectors by const indices.
-    ///
-    /// Concatenates `x` and `y`, then returns a new vector such that each element is selected from
-    /// the concatenation by the matching index in `idx`.
     ///
     /// `T` must be a vector.
     ///
     /// `U` must be a const array of `i32`s.
     ///
     /// `V` must be a vector with the same element type as `T` and the same length as `U`.
+    ///
+    /// Concatenates `x` and `y`, then returns a new vector such that each element is selected from
+    /// the concatenation by the matching index in `idx`.
     pub fn simd_shuffle<T, U, V>(x: T, y: T, idx: U) -> V;
 
     /// Read a vector of pointers.
-    ///
-    /// For each pointer in `ptr`, if the corresponding value in `mask` is `!0`, read the pointer.
-    /// Otherwise if the corresponding value in `mask` is `0`, return the corresponding value from
-    /// `val`.
     ///
     /// `T` must be a vector.
     ///
     /// `U` must be a vector of pointers to the element type of `T`, with the same length as `T`.
     ///
     /// `V` must be a vector of integers with the same length as `T` (but any element size).
+    ///
+    /// For each pointer in `ptr`, if the corresponding value in `mask` is `!0`, read the pointer.
+    /// Otherwise if the corresponding value in `mask` is `0`, return the corresponding value from
+    /// `val`.
     ///
     /// # Safety
     /// Unmasked values in `T` must be readable as if by `<ptr>::read` (e.g. aligned to the element
@@ -211,15 +212,15 @@ extern "platform-intrinsic" {
 
     /// Write to a vector of pointers.
     ///
-    /// For each pointer in `ptr`, if the corresponding value in `mask` is `!0`, write the
-    /// corresponding value in `val` to the pointer.
-    /// Otherwise if the corresponding value in `mask` is `0`, do nothing.
-    ///
     /// `T` must be a vector.
     ///
     /// `U` must be a vector of pointers to the element type of `T`, with the same length as `T`.
     ///
     /// `V` must be a vector of integers with the same length as `T` (but any element size).
+    ///
+    /// For each pointer in `ptr`, if the corresponding value in `mask` is `!0`, write the
+    /// corresponding value in `val` to the pointer.
+    /// Otherwise if the corresponding value in `mask` is `0`, do nothing.
     ///
     /// # Safety
     /// Unmasked values in `T` must be writeable as if by `<ptr>::write` (e.g. aligned to the element
@@ -235,27 +236,27 @@ extern "platform-intrinsic" {
 
     /// Subtract two simd vectors elementwise, with saturation.
     ///
-    /// Subtract `rhs` from `lhs`.
-    ///
     /// `T` must be a vector of integer primitive types.
+    ///
+    /// Subtract `rhs` from `lhs`.
     pub fn simd_saturating_sub<T>(lhs: T, rhs: T) -> T;
 
     /// Add elements within a vector from left to right.
     ///
-    /// Starting with the value `y`, add the elements of `x` and accumulate.
-    ///
     /// `T` must be a vector of integer or floating-point primitive types.
     ///
     /// `U` must be the element type of `T`.
+    ///
+    /// Starting with the value `y`, add the elements of `x` and accumulate.
     pub fn simd_reduce_add_ordered<T, U>(x: T, y: U) -> U;
 
     /// Multiply elements within a vector from left to right.
     ///
-    /// Starting with the value `y`, multiply the elements of `x` and accumulate.
-    ///
     /// `T` must be a vector of integer or floating-point primitive types.
     ///
     /// `U` must be the element type of `T`.
+    ///
+    /// Starting with the value `y`, multiply the elements of `x` and accumulate.
     pub fn simd_reduce_mul_ordered<T, U>(x: T, y: U) -> U;
 
     /// Check if all mask values are true.
@@ -276,20 +277,20 @@ extern "platform-intrinsic" {
 
     /// Return the maximum element of a vector.
     ///
-    /// For floating-point values, uses IEEE-754 `maxNum`.
-    ///
     /// `T` must be a vector of integer or floating-point primitive types.
     ///
     /// `U` must be the element type of `T`.
+    ///
+    /// For floating-point values, uses IEEE-754 `maxNum`.
     pub fn simd_reduce_max<T, U>(x: T) -> U;
 
     /// Return the minimum element of a vector.
     ///
-    /// For floating-point values, uses IEEE-754 `minNum`.
-    ///
     /// `T` must be a vector of integer or floating-point primitive types.
     ///
     /// `U` must be the element type of `T`.
+    ///
+    /// For floating-point values, uses IEEE-754 `minNum`.
     pub fn simd_reduce_min<T, U>(x: T) -> U;
 
     /// Logical "and" all elements together.
@@ -315,6 +316,10 @@ extern "platform-intrinsic" {
 
     /// Truncate an integer vector to a bitmask.
     ///
+    /// `T` must be an integer vector.
+    ///
+    /// `U` must be either the smallest unsigned integer with at least as many bits as the length
+    ///
     /// Each element is truncated to a single bit and packed into the result.
     ///
     /// The bit order depends on the byte endianness.
@@ -322,10 +327,6 @@ extern "platform-intrinsic" {
     /// little endian and MSB-first for big endian.
     /// In other words, the LSB corresponds to the first vector element for little endian,
     /// and the last vector element for big endian.
-    ///
-    /// `T` must be an integer vector.
-    ///
-    /// `U` must be either the smallest unsigned integer with at least as many bits as the length
     /// of `T`, or the smallest array of `u8` with as many bits as the length of `T`.
     ///
     /// # Safety
@@ -334,13 +335,13 @@ extern "platform-intrinsic" {
 
     /// Select elements from a mask.
     ///
-    /// For each element, if the corresponding value in `mask` is `!0`, select the element from
-    /// `if_true`.  If the corresponding value in `mask` is `0`, select the element from
-    /// `if_false`.
-    ///
     /// `M` must be an integer vector.
     ///
     /// `T` must be a vector with the same number of elements as `M`.
+    ///
+    /// For each element, if the corresponding value in `mask` is `!0`, select the element from
+    /// `if_true`.  If the corresponding value in `mask` is `0`, select the element from
+    /// `if_false`.
     ///
     /// # Safety
     /// `mask` must only contain `0` and `!0`.
@@ -348,15 +349,15 @@ extern "platform-intrinsic" {
 
     /// Select elements from a bitmask.
     ///
+    /// `M` must be an unsigned integer of type matching `simd_bitmask`.
+    ///
+    /// `T` must be a vector.
+    ///
     /// For each element, if the bit in `mask` is `1`, select the element from
     /// `if_true`.  If the corresponding bit in `mask` is `0`, select the element from
     /// `if_false`.
     ///
     /// The bitmask bit order matches `simd_bitmask`.
-    ///
-    /// `M` must be an unsigned integer of type matching `simd_bitmask`.
-    ///
-    /// `T` must be a vector.
     ///
     /// # Safety
     /// `mask` must only contain `0` and `!0`.
@@ -364,11 +365,11 @@ extern "platform-intrinsic" {
 
     /// Elementwise calculates the offset from a pointer vector, potentially wrapping.
     ///
-    /// Operates as if by `<ptr>::wrapping_offset`.
-    ///
     /// `T` must be a vector of pointers.
     ///
     /// `U` must be a vector of `isize` or `usize` with the same number of elements as `T`.
+    ///
+    /// Operates as if by `<ptr>::wrapping_offset`.
     pub fn simd_arith_offset<T, U>(ptr: T, offset: U) -> T;
 
     /// Cast a vector of pointers.
