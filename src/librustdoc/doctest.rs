@@ -580,7 +580,7 @@ pub(crate) fn make_test(
 
             // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
             let handler = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
-            let sess = ParseSess::with_span_handler(handler, sm);
+            let sess = ParseSess::with_dcx(handler, sm);
 
             let mut found_main = false;
             let mut found_extern_crate = crate_name.is_none();
@@ -755,7 +755,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
             let emitter = EmitterWriter::new(Box::new(io::sink()), fallback_bundle);
 
             let handler = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
-            let sess = ParseSess::with_span_handler(handler, sm);
+            let sess = ParseSess::with_dcx(handler, sm);
             let mut parser =
                 match maybe_new_parser_from_source_str(&sess, filename, source.to_owned()) {
                     Ok(p) => p,

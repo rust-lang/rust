@@ -1448,7 +1448,7 @@ pub fn build_session(
         None
     };
 
-    let mut parse_sess = ParseSess::with_span_handler(span_diagnostic, source_map);
+    let mut parse_sess = ParseSess::with_dcx(span_diagnostic, source_map);
     parse_sess.assume_incomplete_release = sopts.unstable_opts.assume_incomplete_release;
 
     let host_triple = config::host_triple();

@@ -227,10 +227,10 @@ impl ParseSess {
         let fallback_bundle = fallback_fluent_bundle(locale_resources, false);
         let sm = Lrc::new(SourceMap::new(file_path_mapping));
         let handler = DiagCtxt::with_tty_emitter(Some(sm.clone()), fallback_bundle);
-        ParseSess::with_span_handler(handler, sm)
+        ParseSess::with_dcx(handler, sm)
     }
 
-    pub fn with_span_handler(handler: DiagCtxt, source_map: Lrc<SourceMap>) -> Self {
+    pub fn with_dcx(handler: DiagCtxt, source_map: Lrc<SourceMap>) -> Self {
         Self {
             dcx: handler,
             unstable_features: UnstableFeatures::from_environment(None),
@@ -258,7 +258,7 @@ impl ParseSess {
         let fatal_handler = DiagCtxt::with_tty_emitter(None, fallback_bundle).disable_warnings();
         let handler = DiagCtxt::with_emitter(Box::new(SilentEmitter { fatal_handler, fatal_note }))
             .disable_warnings();
-        ParseSess::with_span_handler(handler, sm)
+        ParseSess::with_dcx(handler, sm)
     }
 
     #[inline]

@@ -166,7 +166,7 @@ impl ParseSess {
             config.hide_parse_errors(),
             config.color(),
         );
-        let parse_sess = RawParseSess::with_span_handler(handler, source_map);
+        let parse_sess = RawParseSess::with_dcx(handler, source_map);
 
         Ok(ParseSess {
             parse_sess,

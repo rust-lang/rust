@@ -57,7 +57,7 @@ where
     F: for<'a> FnOnce(&mut Parser<'a>) -> PResult<'a, T>,
 {
     let (handler, source_map, output) = create_test_handler();
-    let ps = ParseSess::with_span_handler(handler, source_map);
+    let ps = ParseSess::with_dcx(handler, source_map);
     let mut p = string_to_parser(&ps, source_str.to_string());
     let result = f(&mut p);
     assert!(result.is_ok());
