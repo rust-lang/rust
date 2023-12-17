@@ -219,6 +219,12 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         def.internal(&mut *tables).repr().simd()
     }
 
+    fn adt_is_cstr(&self, def: AdtDef) -> bool {
+        let mut tables = self.0.borrow_mut();
+        let def_id = def.0.internal(&mut *tables);
+        tables.tcx.lang_items().c_str() == Some(def_id)
+    }
+
     fn fn_sig(&self, def: FnDef, args: &GenericArgs) -> PolyFnSig {
         let mut tables = self.0.borrow_mut();
         let def_id = def.0.internal(&mut *tables);
