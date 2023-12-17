@@ -408,13 +408,18 @@ fn try_extract_error_from_region_constraints<'tcx>(
     mut region_var_origin: impl FnMut(RegionVid) -> RegionVariableOrigin,
     mut universe_of_region: impl FnMut(RegionVid) -> UniverseIndex,
 ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
+    let placeholder_universe = match placeholder_region.kind() {
+        ty::RePlaceholder(p) => p.universe,
+        ty::ReVar(vid) => universe_of_region(vid),
+        _ => ty::UniverseIndex::ROOT,
+    };
     let matches =
         |a_region: Region<'tcx>, b_region: Region<'tcx>| match (a_region.kind(), b_region.kind()) {
             (RePlaceholder(a_p), RePlaceholder(b_p)) => a_p.bound == b_p.bound,
             _ => a_region == b_region,
         };
-    let check = |constraint: &Constraint<'tcx>, cause: &SubregionOrigin<'tcx>, exact| {
-        match *constraint {
+    let mut check =
+        |constraint: &Constraint<'tcx>, cause: &SubregionOrigin<'tcx>, exact| match *constraint {
             Constraint::RegSubReg(sub, sup)
                 if ((exact && sup == placeholder_region)
                     || (!exact && matches(sup, placeholder_region)))
@@ -422,16 +427,16 @@ fn try_extract_error_from_region_constraints<'tcx>(
             {
                 Some((sub, cause.clone()))
             }
-            // FIXME: Should this check the universe of the var?
             Constraint::VarSubReg(vid, sup)
-                if ((exact && sup == placeholder_region)
-                    || (!exact && matches(sup, placeholder_region))) =>
+                if (exact
+                    && sup == placeholder_region
+                    && !universe_of_region(vid).can_name(placeholder_universe))
+                    || (!exact && matches(sup, placeholder_region)) =>
             {
                 Some((ty::Region::new_var(infcx.tcx, vid), cause.clone()))
             }
             _ => None,
-        }
-    };
+        };
     let mut info = region_constraints
         .constraints
         .iter()
