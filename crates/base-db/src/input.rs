@@ -353,6 +353,7 @@ pub enum Edition {
     Edition2015,
     Edition2018,
     Edition2021,
+    Edition2024,
 }
 
 impl Edition {
@@ -739,6 +740,7 @@ impl FromStr for Edition {
             "2015" => Edition::Edition2015,
             "2018" => Edition::Edition2018,
             "2021" => Edition::Edition2021,
+            "2024" => Edition::Edition2024,
             _ => return Err(ParseEditionError { invalid_input: s.to_string() }),
         };
         Ok(res)
@@ -751,6 +753,7 @@ impl fmt::Display for Edition {
             Edition::Edition2015 => "2015",
             Edition::Edition2018 => "2018",
             Edition::Edition2021 => "2021",
+            Edition::Edition2024 => "2024",
         })
     }
 }
