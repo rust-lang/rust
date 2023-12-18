@@ -259,8 +259,8 @@ mod tests {
         assert_eq!(quoted.to_string(), "hello");
         let t = format!("{quoted:?}");
         expect![[r#"
-            SUBTREE $$ Span { range: 0..0, anchor: SpanAnchor(FileId(937550), 0), ctx: SyntaxContextId(0) } Span { range: 0..0, anchor: SpanAnchor(FileId(937550), 0), ctx: SyntaxContextId(0) }
-              IDENT   hello Span { range: 0..0, anchor: SpanAnchor(FileId(937550), 0), ctx: SyntaxContextId(0) }"#]].assert_eq(&t);
+            SUBTREE $$ SpanData { range: 0..0, anchor: SpanAnchor(FileId(937550), 0), ctx: SyntaxContextId(0) } SpanData { range: 0..0, anchor: SpanAnchor(FileId(937550), 0), ctx: SyntaxContextId(0) }
+              IDENT   hello SpanData { range: 0..0, anchor: SpanAnchor(FileId(937550), 0), ctx: SyntaxContextId(0) }"#]].assert_eq(&t);
     }
 
     #[test]

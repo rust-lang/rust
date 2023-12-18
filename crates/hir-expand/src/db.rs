@@ -170,7 +170,20 @@ pub fn span_map(db: &dyn ExpandDatabase, file_id: HirFileId) -> SpanMap {
 }
 
 pub fn real_span_map(db: &dyn ExpandDatabase, file_id: FileId) -> Arc<RealSpanMap> {
-    Arc::new(RealSpanMap::from_file(db, file_id))
+    use syntax::ast::HasModuleItem;
+    let mut pairs = vec![(syntax::TextSize::new(0), span::ROOT_ERASED_FILE_AST_ID)];
+    let ast_id_map = db.ast_id_map(file_id.into());
+    let tree = db.parse(file_id).tree();
+    pairs.extend(
+        tree.items()
+            .map(|item| (item.syntax().text_range().start(), ast_id_map.ast_id(&item).erase())),
+    );
+
+    Arc::new(RealSpanMap::from_file(
+        file_id,
+        pairs.into_boxed_slice(),
+        tree.syntax().text_range().end(),
+    ))
 }
 
 /// This expands the given macro call, but with different arguments. This is

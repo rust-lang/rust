@@ -8,7 +8,7 @@ use salsa::InternId;
 
 mod map;
 
-pub use crate::map::SpanMap;
+pub use crate::map::{RealSpanMap, SpanMap};
 pub use syntax::{TextRange, TextSize};
 pub use vfs::FileId;
 

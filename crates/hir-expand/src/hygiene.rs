@@ -2,6 +2,9 @@
 //!
 //! Specifically, `ast` + `Hygiene` allows you to create a `Name`. Note that, at
 //! this moment, this is horribly incomplete and handles only `$crate`.
+
+// FIXME: Consider moving this into the span crate.
+
 use std::iter;
 
 use span::{MacroCallId, Span, SyntaxContextId};

@@ -79,7 +79,6 @@ dependencies = [
  "syntax",
  "test-utils",
  "triomphe",
- "tt",
  "vfs",
 ]
 

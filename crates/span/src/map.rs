@@ -5,6 +5,9 @@ use std::hash::Hash;
 
 use stdx::{always, itertools::Itertools};
 use syntax::{TextRange, TextSize};
+use vfs::FileId;
+
+use crate::{ErasedFileAstId, Span, SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
 
 /// Maps absolute text ranges for the corresponding file to the relevant span data.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -77,5 +80,52 @@ impl<S: Copy> SpanMap<S> {
 
     pub fn iter(&self) -> impl Iterator<Item = (TextSize, S)> + '_ {
         self.spans.iter().copied()
+    }
+}
+
+#[derive(PartialEq, Eq, Hash, Debug)]
+pub struct RealSpanMap {
+    file_id: FileId,
+    /// Invariant: Sorted vec over TextSize
+    // FIXME: SortedVec<(TextSize, ErasedFileAstId)>?
+    pairs: Box<[(TextSize, ErasedFileAstId)]>,
+    end: TextSize,
+}
+
+impl RealSpanMap {
+    /// Creates a real file span map that returns absolute ranges (relative ranges to the root ast id).
+    pub fn absolute(file_id: FileId) -> Self {
+        RealSpanMap {
+            file_id,
+            pairs: Box::from([(TextSize::new(0), ROOT_ERASED_FILE_AST_ID)]),
+            end: TextSize::new(!0),
+        }
+    }
+
+    pub fn from_file(
+        file_id: FileId,
+        pairs: Box<[(TextSize, ErasedFileAstId)]>,
+        end: TextSize,
+    ) -> Self {
+        Self { file_id, pairs, end }
+    }
+
+    pub fn span_for_range(&self, range: TextRange) -> Span {
+        assert!(
+            range.end() <= self.end,
+            "range {range:?} goes beyond the end of the file {:?}",
+            self.end
+        );
+        let start = range.start();
+        let idx = self
+            .pairs
+            .binary_search_by(|&(it, _)| it.cmp(&start).then(std::cmp::Ordering::Less))
+            .unwrap_err();
+        let (offset, ast_id) = self.pairs[idx - 1];
+        Span {
+            range: range - offset,
+            anchor: SpanAnchor { file_id: self.file_id, ast_id },
+            ctx: SyntaxContextId::ROOT,
+        }
     }
 }
