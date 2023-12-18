@@ -603,7 +603,7 @@ pub fn create_compressed_metadata_file_for_xcoff(
         section: SymbolSection::Section(data_section),
         flags: SymbolFlags::None,
     });
-    let len = data.len() as u32;
+    let len: u32 = data.len().try_into().unwrap();
     let offset = file.append_section_data(section, &len.to_be_bytes(), 1);
     // Add a symbol referring to the rustc metadata.
     file.add_symbol(Symbol {
