@@ -177,13 +177,15 @@ impl CodegenBackend for CraneliftCodegenBackend {
         use rustc_session::config::Lto;
         match sess.lto() {
             Lto::No | Lto::ThinLocal => {}
-            Lto::Thin | Lto::Fat => sess.warn("LTO is not supported. You may get a linker error."),
+            Lto::Thin | Lto::Fat => {
+                sess.dcx().warn("LTO is not supported. You may get a linker error.")
+            }
         }
 
         let mut config = self.config.borrow_mut();
         if config.is_none() {
             let new_config = BackendConfig::from_opts(&sess.opts.cg.llvm_args)
-                .unwrap_or_else(|err| sess.fatal(err));
+                .unwrap_or_else(|err| sess.dcx().fatal(err));
             *config = Some(new_config);
         }
     }
@@ -211,7 +213,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 driver::jit::run_jit(tcx, config);
 
                 #[cfg(not(feature = "jit"))]
-                tcx.sess.fatal("jit support was disabled when compiling rustc_codegen_cranelift");
+                tcx.dcx().fatal("jit support was disabled when compiling rustc_codegen_cranelift");
             }
         }
     }
@@ -243,7 +245,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
 fn target_triple(sess: &Session) -> target_lexicon::Triple {
     match sess.target.llvm_target.parse() {
         Ok(triple) => triple,
-        Err(err) => sess.fatal(format!("target not recognized: {}", err)),
+        Err(err) => sess.dcx().fatal(format!("target not recognized: {}", err)),
     }
 }
 
@@ -310,17 +312,18 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn isa::Tar
         Some(value) => {
             let mut builder =
                 cranelift_codegen::isa::lookup(target_triple.clone()).unwrap_or_else(|err| {
-                    sess.fatal(format!("can't compile for {}: {}", target_triple, err));
+                    sess.dcx().fatal(format!("can't compile for {}: {}", target_triple, err));
                 });
             if let Err(_) = builder.enable(value) {
-                sess.fatal("the specified target cpu isn't currently supported by Cranelift.");
+                sess.dcx()
+                    .fatal("the specified target cpu isn't currently supported by Cranelift.");
             }
             builder
         }
         None => {
             let mut builder =
                 cranelift_codegen::isa::lookup(target_triple.clone()).unwrap_or_else(|err| {
-                    sess.fatal(format!("can't compile for {}: {}", target_triple, err));
+                    sess.dcx().fatal(format!("can't compile for {}: {}", target_triple, err));
                 });
             if target_triple.architecture == target_lexicon::Architecture::X86_64 {
                 // Don't use "haswell" as the default, as it implies `has_lzcnt`.
@@ -333,7 +336,7 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn isa::Tar
 
     match isa_builder.finish(flags) {
         Ok(target_isa) => target_isa,
-        Err(err) => sess.fatal(format!("failed to build TargetIsa: {}", err)),
+        Err(err) => sess.dcx().fatal(format!("failed to build TargetIsa: {}", err)),
     }
 }
 
