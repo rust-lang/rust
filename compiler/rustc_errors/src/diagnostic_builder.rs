@@ -441,7 +441,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     }
 
     /// Retrieves the [`DiagCtxt`] if available
-    pub fn handler(&self) -> Option<&DiagCtxt> {
+    pub fn dcx(&self) -> Option<&DiagCtxt> {
         match self.inner.state {
             DiagnosticBuilderState::Emittable(handler) => Some(handler),
             DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => None,
