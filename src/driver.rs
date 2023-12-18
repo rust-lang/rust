@@ -174,9 +174,9 @@ const BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust-clippy/issues/ne
 #[allow(clippy::too_many_lines)]
 #[allow(clippy::ignored_unit_patterns)]
 pub fn main() {
-    let handler = EarlyDiagCtxt::new(ErrorOutputType::default());
+    let early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
-    rustc_driver::init_rustc_env_logger(&handler);
+    rustc_driver::init_rustc_env_logger(&early_dcx);
 
     let using_internal_features = rustc_driver::install_ice_hook(BUG_REPORT_URL, |handler| {
         // FIXME: this macro calls unwrap internally but is called in a panicking context!  It's not
