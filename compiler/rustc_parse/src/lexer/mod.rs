@@ -7,7 +7,9 @@ use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
-use rustc_errors::{error_code, Applicability, Diagnostic, DiagnosticBuilder, StashKey};
+use rustc_errors::{
+    error_code, Applicability, Diagnostic, DiagnosticBuilder, FatalAbort, StashKey,
+};
 use rustc_lexer::unescape::{self, EscapeError, Mode};
 use rustc_lexer::{Base, DocStyle, RawStrError};
 use rustc_lexer::{Cursor, LiteralKind};
@@ -344,7 +346,7 @@ impl<'a> StringReader<'a> {
         to_pos: BytePos,
         m: &str,
         c: char,
-    ) -> DiagnosticBuilder<'a, !> {
+    ) -> DiagnosticBuilder<'a, FatalAbort> {
         self.sess
             .dcx
             .struct_span_fatal(self.mk_sp(from_pos, to_pos), format!("{}: {}", m, escaped_char(c)))

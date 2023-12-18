@@ -101,11 +101,15 @@ rustc_data_structures::static_assert_size!(
 /// Trait for types that `DiagnosticBuilder::emit` can return as a "guarantee"
 /// (or "proof") token that the emission happened.
 pub trait EmissionGuarantee: Sized {
+    /// This exists so that bugs and fatal errors can both result in `!` (an
+    /// abort) when emitted, but have different aborting behaviour.
+    type EmitResult = Self;
+
     /// Implementation of `DiagnosticBuilder::emit`, fully controlled by each
     /// `impl` of `EmissionGuarantee`, to make it impossible to create a value
-    /// of `Self` without actually performing the emission.
+    /// of `Self::EmitResult` without actually performing the emission.
     #[track_caller]
-    fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self;
+    fn emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self::EmitResult;
 }
 
 impl<'a> DiagnosticBuilder<'a, ErrorGuaranteed> {
@@ -119,7 +123,7 @@ impl<'a> DiagnosticBuilder<'a, ErrorGuaranteed> {
 
 // FIXME(eddyb) make `ErrorGuaranteed` impossible to create outside `.emit()`.
 impl EmissionGuarantee for ErrorGuaranteed {
-    fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
+    fn emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
         match db.inner.state {
             // First `.emit()` call, the `&DiagCtxt` is still available.
             DiagnosticBuilderState::Emittable(dcx) => {
@@ -160,7 +164,7 @@ impl EmissionGuarantee for ErrorGuaranteed {
 
 // FIXME(eddyb) should there be a `Option<ErrorGuaranteed>` impl as well?
 impl EmissionGuarantee for () {
-    fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
+    fn emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
         match db.inner.state {
             // First `.emit()` call, the `&DiagCtxt` is still available.
             DiagnosticBuilderState::Emittable(dcx) => {
@@ -171,37 +175,18 @@ impl EmissionGuarantee for () {
             // `.emit()` was previously called, disallowed from repeating it.
             DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
         }
-    }
-}
-
-/// Marker type which enables implementation of `create_note` and `emit_note` functions for
-/// note-without-error struct diagnostics.
-#[derive(Copy, Clone)]
-pub struct Noted;
-
-impl EmissionGuarantee for Noted {
-    fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
-        match db.inner.state {
-            // First `.emit()` call, the `&DiagCtxt` is still available.
-            DiagnosticBuilderState::Emittable(dcx) => {
-                db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
-                dcx.emit_diagnostic_without_consuming(&mut db.inner.diagnostic);
-            }
-            // `.emit()` was previously called, disallowed from repeating it.
-            DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
-        }
-
-        Noted
     }
 }
 
 /// Marker type which enables implementation of `create_bug` and `emit_bug` functions for
-/// bug struct diagnostics.
+/// bug diagnostics.
 #[derive(Copy, Clone)]
-pub struct Bug;
+pub struct BugAbort;
 
-impl EmissionGuarantee for Bug {
-    fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
+impl EmissionGuarantee for BugAbort {
+    type EmitResult = !;
+
+    fn emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
         match db.inner.state {
             // First `.emit()` call, the `&DiagCtxt` is still available.
             DiagnosticBuilderState::Emittable(dcx) => {
@@ -217,8 +202,15 @@ impl EmissionGuarantee for Bug {
     }
 }
 
-impl EmissionGuarantee for ! {
-    fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
+/// Marker type which enables implementation of `create_fatal` and `emit_fatal` functions for
+/// fatal diagnostics.
+#[derive(Copy, Clone)]
+pub struct FatalAbort;
+
+impl EmissionGuarantee for FatalAbort {
+    type EmitResult = !;
+
+    fn emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
         match db.inner.state {
             // First `.emit()` call, the `&DiagCtxt` is still available.
             DiagnosticBuilderState::Emittable(dcx) => {
@@ -235,7 +227,7 @@ impl EmissionGuarantee for ! {
 }
 
 impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
-    fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self {
+    fn emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
         match db.inner.state {
             // First `.emit()` call, the `&DiagCtxt` is still available.
             DiagnosticBuilderState::Emittable(dcx) => {
@@ -313,8 +305,8 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     /// but there are various places that rely on continuing to use `self`
     /// after calling `emit`.
     #[track_caller]
-    pub fn emit(&mut self) -> G {
-        G::diagnostic_builder_emit_producing_guarantee(self)
+    pub fn emit(&mut self) -> G::EmitResult {
+        G::emit_producing_guarantee(self)
     }
 
     /// Emit the diagnostic unless `delay` is true,
@@ -322,7 +314,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     ///
     /// See `emit` and `delay_as_bug` for details.
     #[track_caller]
-    pub fn emit_unless(&mut self, delay: bool) -> G {
+    pub fn emit_unless(&mut self, delay: bool) -> G::EmitResult {
         if delay {
             self.downgrade_to_delayed_bug();
         }
@@ -409,7 +401,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     /// In the meantime, though, callsites are required to deal with the "bug"
     /// locally in whichever way makes the most sense.
     #[track_caller]
-    pub fn delay_as_bug(&mut self) -> G {
+    pub fn delay_as_bug(&mut self) -> G::EmitResult {
         self.downgrade_to_delayed_bug();
         self.emit()
     }
