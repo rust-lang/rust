@@ -467,10 +467,8 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 }))
             }
 
-            Abi::ScalableVector { .. } => Ok(HomogeneousAggregate::Homogeneous(Reg {
-                kind: RegKind::ScalableVector,
-                size: Size::from_bits(128),
-            })),
+            // Scalable vectors shouldn't exist within a struct.
+            Abi::ScalableVector { .. } => Err(Heterogeneous),
 
             Abi::ScalarPair(..) | Abi::Aggregate { sized: true } => {
                 // Helper for computing `homogeneous_aggregate`, allowing a custom
