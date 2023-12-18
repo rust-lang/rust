@@ -18,7 +18,8 @@
 //!
 //!
 //! See the full discussion : <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Eager.20expansion.20of.20built-in.20macros>
-use base_db::{span::SyntaxContextId, CrateId};
+use base_db::CrateId;
+use span::SyntaxContextId;
 use syntax::{ted, Parse, SyntaxElement, SyntaxNode, TextSize, WalkEvent};
 use triomphe::Arc;
 
@@ -26,7 +27,7 @@ use crate::{
     ast::{self, AstNode},
     db::ExpandDatabase,
     mod_path::ModPath,
-    span::SpanMapRef,
+    span_map::SpanMapRef,
     EagerCallInfo, ExpandError, ExpandResult, ExpandTo, ExpansionSpanMap, InFile, MacroCallId,
     MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
 };

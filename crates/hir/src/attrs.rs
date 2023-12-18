@@ -11,7 +11,7 @@ use hir_def::{
 };
 use hir_expand::{
     name::Name,
-    span::{RealSpanMap, SpanMapRef},
+    span_map::{RealSpanMap, SpanMapRef},
 };
 use hir_ty::db::HirDatabase;
 use syntax::{ast, AstNode};

@@ -2,13 +2,13 @@
 
 use base_db::{
     salsa::{self, debug::DebugQueryTable},
-    span::SyntaxContextId,
     CrateId, Edition, FileId, SourceDatabase,
 };
 use either::Either;
 use limit::Limit;
 use mbe::{syntax_node_to_token_tree, ValueResult};
 use rustc_hash::FxHashSet;
+use span::SyntaxContextId;
 use syntax::{
     ast::{self, HasAttrs},
     AstNode, Parse, SyntaxError, SyntaxNode, SyntaxToken, T,
@@ -23,7 +23,7 @@ use crate::{
     fixup::{self, reverse_fixups, SyntaxFixupUndoInfo},
     hygiene::{apply_mark, SyntaxContextData, Transparency},
     proc_macro::ProcMacros,
-    span::{RealSpanMap, SpanMap, SpanMapRef},
+    span_map::{RealSpanMap, SpanMap, SpanMapRef},
     tt, AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander,
     CustomProcMacroExpander, EagerCallInfo, ExpandError, ExpandResult, ExpandTo, ExpansionSpanMap,
     HirFileId, HirFileIdRepr, MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
@@ -41,7 +41,7 @@ static TOKEN_LIMIT: Limit = Limit::new(1_048_576);
 #[derive(Debug, Clone, Eq, PartialEq)]
 /// Old-style `macro_rules` or the new macros 2.0
 pub struct DeclarativeMacroExpander {
-    pub mac: mbe::DeclarativeMacro<base_db::span::SpanData>,
+    pub mac: mbe::DeclarativeMacro<span::Span>,
     pub transparency: Transparency,
 }
 

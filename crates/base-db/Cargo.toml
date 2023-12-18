@@ -25,3 +25,4 @@ syntax.workspace = true
 test-utils.workspace = true
 tt.workspace = true
 vfs.workspace = true
+span.workspace = true

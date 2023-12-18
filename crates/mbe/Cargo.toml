@@ -22,6 +22,7 @@ syntax.workspace = true
 parser.workspace = true
 tt.workspace = true
 stdx.workspace = true
+span.workspace = true
 
 [dev-dependencies]
 test-utils.workspace = true

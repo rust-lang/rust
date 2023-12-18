@@ -1,23 +1,20 @@
 //! To make attribute macros work reliably when typing, we need to take care to
 //! fix up syntax errors in the code we're passing to them.
 
-use base_db::{
-    span::{ErasedFileAstId, SpanAnchor, SpanData},
-    FileId,
-};
 use la_arena::RawIdx;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
+use span::{ErasedFileAstId, FileId, SpanAnchor, SpanData};
 use stdx::never;
 use syntax::{
     ast::{self, AstNode, HasLoopBody},
     match_ast, SyntaxElement, SyntaxKind, SyntaxNode, TextRange, TextSize,
 };
 use triomphe::Arc;
-use tt::{Spacing, Span};
+use tt::Spacing;
 
 use crate::{
-    span::SpanMapRef,
+    span_map::SpanMapRef,
     tt::{Ident, Leaf, Punct, Subtree},
 };
 
@@ -301,6 +298,7 @@ fn has_error_to_handle(node: &SyntaxNode) -> bool {
 pub(crate) fn reverse_fixups(tt: &mut Subtree, undo_info: &SyntaxFixupUndoInfo) {
     let Some(undo_info) = undo_info.original.as_deref() else { return };
     let undo_info = &**undo_info;
+    #[allow(deprecated)]
     if never!(
         tt.delimiter.close.anchor.file_id == FIXUP_DUMMY_FILE
             || tt.delimiter.open.anchor.file_id == FIXUP_DUMMY_FILE
@@ -364,7 +362,7 @@ mod tests {
 
     use crate::{
         fixup::reverse_fixups,
-        span::{RealSpanMap, SpanMap},
+        span_map::{RealSpanMap, SpanMap},
         tt,
     };
 

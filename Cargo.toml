@@ -71,6 +71,7 @@ proc-macro-srv-cli = { path = "./crates/proc-macro-srv-cli", version = "0.0.0" }
 profile = { path = "./crates/profile", version = "0.0.0" }
 project-model = { path = "./crates/project-model", version = "0.0.0" }
 sourcegen = { path = "./crates/sourcegen", version = "0.0.0" }
+span = { path = "./crates/span", version = "0.0.0" }
 stdx = { path = "./crates/stdx", version = "0.0.0" }
 syntax = { path = "./crates/syntax", version = "0.0.0" }
 test-utils = { path = "./crates/test-utils", version = "0.0.0" }

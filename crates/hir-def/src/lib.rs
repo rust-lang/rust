@@ -63,7 +63,7 @@ use std::{
     panic::{RefUnwindSafe, UnwindSafe},
 };
 
-use base_db::{impl_intern_key, salsa, span::SyntaxContextId, CrateId};
+use base_db::{impl_intern_key, salsa, CrateId};
 use hir_expand::{
     ast_id_map::{AstIdNode, FileAstId},
     attrs::{Attr, AttrId, AttrInput},
@@ -80,6 +80,7 @@ use hir_expand::{
 use item_tree::ExternBlock;
 use la_arena::Idx;
 use nameres::DefMap;
+use span::SyntaxContextId;
 use stdx::impl_from;
 use syntax::{ast, AstNode};
 

@@ -11,9 +11,9 @@ pub mod msg;
 mod process;
 mod version;
 
-use base_db::span::SpanData;
 use indexmap::IndexSet;
 use paths::AbsPathBuf;
+use span::Span;
 use std::{fmt, io, sync::Mutex};
 use triomphe::Arc;
 
@@ -136,13 +136,13 @@ impl ProcMacro {
 
     pub fn expand(
         &self,
-        subtree: &tt::Subtree<SpanData>,
-        attr: Option<&tt::Subtree<SpanData>>,
+        subtree: &tt::Subtree<Span>,
+        attr: Option<&tt::Subtree<Span>>,
         env: Vec<(String, String)>,
-        def_site: SpanData,
-        call_site: SpanData,
-        mixed_site: SpanData,
-    ) -> Result<Result<tt::Subtree<SpanData>, PanicMessage>, ServerError> {
+        def_site: Span,
+        call_site: Span,
+        mixed_site: Span,
+    ) -> Result<Result<tt::Subtree<Span>, PanicMessage>, ServerError> {
         let version = self.process.lock().unwrap_or_else(|e| e.into_inner()).version();
         let current_dir = env
             .iter()

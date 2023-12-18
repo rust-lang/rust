@@ -4,12 +4,11 @@
 
 mod input;
 mod change;
-pub mod span;
 
 use std::panic;
 
 use rustc_hash::FxHashSet;
-use syntax::{ast, Parse, SourceFile, TextRange, TextSize};
+use syntax::{ast, Parse, SourceFile};
 use triomphe::Arc;
 
 pub use crate::{
@@ -21,6 +20,7 @@ pub use crate::{
     },
 };
 pub use salsa::{self, Cancelled};
+pub use span::{FilePosition, FileRange};
 pub use vfs::{file_set::FileSet, AnchoredPath, AnchoredPathBuf, FileId, VfsPath};
 
 #[macro_export]
@@ -39,18 +39,6 @@ macro_rules! impl_intern_key {
 
 pub trait Upcast<T: ?Sized> {
     fn upcast(&self) -> &T;
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct FilePosition {
-    pub file_id: FileId,
-    pub offset: TextSize,
-}
-
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-pub struct FileRange {
-    pub file_id: FileId,
-    pub range: TextRange,
 }
 
 pub const DEFAULT_PARSE_LRU_CAP: usize = 128;

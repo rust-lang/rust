@@ -16,7 +16,6 @@ mod to_parser_input;
 
 #[cfg(test)]
 mod benchmark;
-mod token_map;
 
 use stdx::impl_from;
 use tt::Span;
@@ -30,15 +29,12 @@ use crate::{
 
 // FIXME: we probably should re-think  `token_tree_to_syntax_node` interfaces
 pub use ::parser::TopEntryPoint;
-pub use tt::{Delimiter, DelimiterKind, Punct, SyntaxContext};
+pub use tt::{Delimiter, DelimiterKind, Punct};
 
-pub use crate::{
-    syntax_bridge::{
-        parse_exprs_with_sep, parse_to_token_tree, parse_to_token_tree_static_span,
-        syntax_node_to_token_tree, syntax_node_to_token_tree_modified, token_tree_to_syntax_node,
-        SpanMapper,
-    },
-    token_map::SpanMap,
+pub use crate::syntax_bridge::{
+    parse_exprs_with_sep, parse_to_token_tree, parse_to_token_tree_static_span,
+    syntax_node_to_token_tree, syntax_node_to_token_tree_modified, token_tree_to_syntax_node,
+    SpanMapper,
 };
 
 pub use crate::syntax_bridge::dummy_test_span_utils::*;

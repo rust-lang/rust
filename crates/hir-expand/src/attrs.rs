@@ -1,19 +1,20 @@
 //! A higher level attributes based on TokenTree, with also some shortcuts.
 use std::{fmt, ops};
 
-use base_db::{span::SyntaxContextId, CrateId};
+use base_db::CrateId;
 use cfg::CfgExpr;
 use either::Either;
 use intern::Interned;
 use mbe::{syntax_node_to_token_tree, DelimiterKind, Punct};
 use smallvec::{smallvec, SmallVec};
+use span::SyntaxContextId;
 use syntax::{ast, match_ast, AstNode, AstToken, SmolStr, SyntaxNode};
 use triomphe::Arc;
 
 use crate::{
     db::ExpandDatabase,
     mod_path::ModPath,
-    span::SpanMapRef,
+    span_map::SpanMapRef,
     tt::{self, Subtree},
     InFile,
 };

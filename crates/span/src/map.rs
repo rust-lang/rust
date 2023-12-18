@@ -1,18 +1,20 @@
-//! Mapping between `TokenId`s and the token's position in macro definitions or inputs.
+//! A map that maps a span to every position in a file. Usually maps a span to some range of positions.
+//! Allows bidirectional lookup.
 
 use std::hash::Hash;
 
 use stdx::{always, itertools::Itertools};
 use syntax::{TextRange, TextSize};
-use tt::Span;
 
 /// Maps absolute text ranges for the corresponding file to the relevant span data.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct SpanMap<S: Span> {
+pub struct SpanMap<S> {
     spans: Vec<(TextSize, S)>,
+    // FIXME: Should be
+    // spans: Vec<(TextSize, crate::SyntaxContextId)>,
 }
 
-impl<S: Span> SpanMap<S> {
+impl<S: Copy> SpanMap<S> {
     /// Creates a new empty [`SpanMap`].
     pub fn empty() -> Self {
         Self { spans: Vec::new() }
@@ -44,7 +46,10 @@ impl<S: Span> SpanMap<S> {
     /// Returns all [`TextRange`]s that correspond to the given span.
     ///
     /// Note this does a linear search through the entire backing vector.
-    pub fn ranges_with_span(&self, span: S) -> impl Iterator<Item = TextRange> + '_ {
+    pub fn ranges_with_span(&self, span: S) -> impl Iterator<Item = TextRange> + '_
+    where
+        S: Eq,
+    {
         // FIXME: This should ignore the syntax context!
         self.spans.iter().enumerate().filter_map(move |(idx, &(end, s))| {
             if s != span {

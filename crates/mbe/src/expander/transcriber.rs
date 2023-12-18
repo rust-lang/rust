@@ -226,6 +226,7 @@ fn expand_subtree<S: Span>(
                     tt::Leaf::Literal(tt::Literal {
                         text: index.to_string().into(),
                         // FIXME
+                        #[allow(deprecated)]
                         span: S::DUMMY,
                     })
                     .into(),
@@ -286,6 +287,7 @@ fn expand_subtree<S: Span>(
                     tt::Leaf::Literal(tt::Literal {
                         text: c.to_string().into(),
                         // FIXME
+                        #[allow(deprecated)]
                         span: S::DUMMY,
                     })
                     .into(),
@@ -343,8 +345,10 @@ fn expand_var<S: Span>(
         Err(e) => ExpandResult {
             value: Fragment::Tokens(tt::TokenTree::Subtree(tt::Subtree::empty(tt::DelimSpan {
                 // FIXME
+                #[allow(deprecated)]
                 open: S::DUMMY,
                 // FIXME
+                #[allow(deprecated)]
                 close: S::DUMMY,
             }))),
             err: Some(e),
@@ -487,6 +491,7 @@ fn fix_up_and_push_path_tt<S: Span>(buf: &mut Vec<tt::TokenTree<S>>, subtree: tt
                         char: ':',
                         spacing: tt::Spacing::Joint,
                         // FIXME
+                        #[allow(deprecated)]
                         span: S::DUMMY,
                     })
                     .into(),
@@ -496,6 +501,7 @@ fn fix_up_and_push_path_tt<S: Span>(buf: &mut Vec<tt::TokenTree<S>>, subtree: tt
                         char: ':',
                         spacing: tt::Spacing::Alone,
                         // FIXME
+                        #[allow(deprecated)]
                         span: S::DUMMY,
                     })
                     .into(),

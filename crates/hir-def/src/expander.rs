@@ -4,7 +4,7 @@ use base_db::CrateId;
 use cfg::CfgOptions;
 use drop_bomb::DropBomb;
 use hir_expand::{
-    attrs::RawAttrs, mod_path::ModPath, span::SpanMap, ExpandError, ExpandResult, HirFileId,
+    attrs::RawAttrs, mod_path::ModPath, span_map::SpanMap, ExpandError, ExpandResult, HirFileId,
     InFile, MacroCallId,
 };
 use limit::Limit;

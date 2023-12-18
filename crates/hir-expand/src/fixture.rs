@@ -2,12 +2,13 @@
 use std::{mem, ops::Not, str::FromStr, sync};
 
 use base_db::{
-    salsa::Durability, span::SpanData, CrateDisplayName, CrateGraph, CrateId, CrateName,
-    CrateOrigin, Dependency, DependencyKind, Edition, Env, FileChange, FileId, FilePosition,
-    FileRange, FileSet, LangCrateOrigin, ReleaseChannel, SourceDatabaseExt, SourceRoot, VfsPath,
+    salsa::Durability, CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency,
+    DependencyKind, Edition, Env, FileChange, FileSet, LangCrateOrigin, ReleaseChannel,
+    SourceDatabaseExt, SourceRoot, VfsPath,
 };
 use cfg::CfgOptions;
 use rustc_hash::FxHashMap;
+use span::{FileId, FilePosition, FileRange, Span};
 use test_utils::{
     extract_range_or_offset, Fixture, FixtureWithProjectMeta, RangeOrOffset, CURSOR_MARKER,
     ESCAPED_CURSOR_MARKER,
@@ -580,13 +581,13 @@ struct IdentityProcMacroExpander;
 impl ProcMacroExpander for IdentityProcMacroExpander {
     fn expand(
         &self,
-        subtree: &Subtree<SpanData>,
-        _: Option<&Subtree<SpanData>>,
+        subtree: &Subtree<Span>,
+        _: Option<&Subtree<Span>>,
         _: &Env,
-        _: SpanData,
-        _: SpanData,
-        _: SpanData,
-    ) -> Result<Subtree<SpanData>, ProcMacroExpansionError> {
+        _: Span,
+        _: Span,
+        _: Span,
+    ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
         Ok(subtree.clone())
     }
 }
@@ -597,13 +598,13 @@ struct AttributeInputReplaceProcMacroExpander;
 impl ProcMacroExpander for AttributeInputReplaceProcMacroExpander {
     fn expand(
         &self,
-        _: &Subtree<SpanData>,
-        attrs: Option<&Subtree<SpanData>>,
+        _: &Subtree<Span>,
+        attrs: Option<&Subtree<Span>>,
         _: &Env,
-        _: SpanData,
-        _: SpanData,
-        _: SpanData,
-    ) -> Result<Subtree<SpanData>, ProcMacroExpansionError> {
+        _: Span,
+        _: Span,
+        _: Span,
+    ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
         attrs
             .cloned()
             .ok_or_else(|| ProcMacroExpansionError::Panic("Expected attribute input".into()))
@@ -615,14 +616,14 @@ struct MirrorProcMacroExpander;
 impl ProcMacroExpander for MirrorProcMacroExpander {
     fn expand(
         &self,
-        input: &Subtree<SpanData>,
-        _: Option<&Subtree<SpanData>>,
+        input: &Subtree<Span>,
+        _: Option<&Subtree<Span>>,
         _: &Env,
-        _: SpanData,
-        _: SpanData,
-        _: SpanData,
-    ) -> Result<Subtree<SpanData>, ProcMacroExpansionError> {
-        fn traverse(input: &Subtree<SpanData>) -> Subtree<SpanData> {
+        _: Span,
+        _: Span,
+        _: Span,
+    ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
+        fn traverse(input: &Subtree<Span>) -> Subtree<Span> {
             let mut token_trees = vec![];
             for tt in input.token_trees.iter().rev() {
                 let tt = match tt {
@@ -645,16 +646,16 @@ struct ShortenProcMacroExpander;
 impl ProcMacroExpander for ShortenProcMacroExpander {
     fn expand(
         &self,
-        input: &Subtree<SpanData>,
-        _: Option<&Subtree<SpanData>>,
+        input: &Subtree<Span>,
+        _: Option<&Subtree<Span>>,
         _: &Env,
-        _: SpanData,
-        _: SpanData,
-        _: SpanData,
-    ) -> Result<Subtree<SpanData>, ProcMacroExpansionError> {
+        _: Span,
+        _: Span,
+        _: Span,
+    ) -> Result<Subtree<Span>, ProcMacroExpansionError> {
         return Ok(traverse(input));
 
-        fn traverse(input: &Subtree<SpanData>) -> Subtree<SpanData> {
+        fn traverse(input: &Subtree<Span>) -> Subtree<Span> {
             let token_trees = input
                 .token_trees
                 .iter()
@@ -666,7 +667,7 @@ impl ProcMacroExpander for ShortenProcMacroExpander {
             Subtree { delimiter: input.delimiter, token_trees }
         }
 
-        fn modify_leaf(leaf: &Leaf<SpanData>) -> Leaf<SpanData> {
+        fn modify_leaf(leaf: &Leaf<Span>) -> Leaf<Span> {
             let mut leaf = leaf.clone();
             match &mut leaf {
                 Leaf::Literal(it) => {

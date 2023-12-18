@@ -22,9 +22,10 @@
 //! Our current behavior is ¯\_(ツ)_/¯.
 use std::fmt;
 
-use base_db::{span::SyntaxContextId, AnchoredPathBuf, FileId, FileRange};
+use base_db::{AnchoredPathBuf, FileId, FileRange};
 use either::Either;
 use hir::{FieldSource, HasSource, HirFileIdExt, InFile, ModuleSource, Semantics};
+use span::SyntaxContextId;
 use stdx::{never, TupleExt};
 use syntax::{
     ast::{self, HasName},

@@ -74,6 +74,7 @@ dependencies = [
  "profile",
  "rust-analyzer-salsa",
  "rustc-hash",
+ "span",
  "stdx",
  "syntax",
  "test-utils",
@@ -516,6 +517,7 @@ dependencies = [
  "rustc-dependencies",
  "rustc-hash",
  "smallvec",
+ "span",
  "stdx",
  "syntax",
  "test-utils",
@@ -542,6 +544,7 @@ dependencies = [
  "profile",
  "rustc-hash",
  "smallvec",
+ "span",
  "stdx",
  "syntax",
  "test-utils",
@@ -695,6 +698,7 @@ dependencies = [
  "rayon",
  "rustc-hash",
  "sourcegen",
+ "span",
  "stdx",
  "syntax",
  "test-utils",
@@ -910,6 +914,7 @@ dependencies = [
  "itertools",
  "proc-macro-api",
  "project-model",
+ "span",
  "tracing",
  "tt",
  "vfs",
@@ -977,6 +982,7 @@ dependencies = [
  "parser",
  "rustc-hash",
  "smallvec",
+ "span",
  "stdx",
  "syntax",
  "test-utils",
@@ -1253,6 +1259,7 @@ dependencies = [
  "serde",
  "serde_json",
  "snap",
+ "span",
  "stdx",
  "text-size",
  "tracing",
@@ -1729,6 +1736,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "span"
+version = "0.0.0"
+dependencies = [
+ "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rust-analyzer-salsa",
+ "stdx",
+ "syntax",
+ "vfs",
+]
+
+[[package]]
 name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2000,6 +2018,7 @@ name = "tt"
 version = "0.0.0"
 dependencies = [
  "smol_str",
+ "span",
  "stdx",
  "text-size",
 ]

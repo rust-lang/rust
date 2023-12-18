@@ -1,15 +1,16 @@
 //! Spanmaps allow turning absolute ranges into relative ranges for incrementality purposes as well
 //! as associating spans with text ranges in a particular file.
-use base_db::{
-    span::{ErasedFileAstId, SpanAnchor, SpanData, SyntaxContextId, ROOT_ERASED_FILE_AST_ID},
-    FileId,
-};
+
+// FIXME: Consider moving this into the span crate
+
+use base_db::FileId;
+use span::{ErasedFileAstId, Span, SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
 use syntax::{ast::HasModuleItem, AstNode, TextRange, TextSize};
 use triomphe::Arc;
 
 use crate::db::ExpandDatabase;
 
-pub type ExpansionSpanMap = mbe::SpanMap<SpanData>;
+pub type ExpansionSpanMap = span::SpanMap<Span>;
 
 /// Spanmap for a macro file or a real file
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -28,24 +29,24 @@ pub enum SpanMapRef<'a> {
     RealSpanMap(&'a RealSpanMap),
 }
 
-impl mbe::SpanMapper<SpanData> for SpanMap {
-    fn span_for(&self, range: TextRange) -> SpanData {
+impl mbe::SpanMapper<Span> for SpanMap {
+    fn span_for(&self, range: TextRange) -> Span {
         self.span_for_range(range)
     }
 }
-impl mbe::SpanMapper<SpanData> for SpanMapRef<'_> {
-    fn span_for(&self, range: TextRange) -> SpanData {
+impl mbe::SpanMapper<Span> for SpanMapRef<'_> {
+    fn span_for(&self, range: TextRange) -> Span {
         self.span_for_range(range)
     }
 }
-impl mbe::SpanMapper<SpanData> for RealSpanMap {
-    fn span_for(&self, range: TextRange) -> SpanData {
+impl mbe::SpanMapper<Span> for RealSpanMap {
+    fn span_for(&self, range: TextRange) -> Span {
         self.span_for_range(range)
     }
 }
 
 impl SpanMap {
-    pub fn span_for_range(&self, range: TextRange) -> SpanData {
+    pub fn span_for_range(&self, range: TextRange) -> Span {
         match self {
             Self::ExpansionSpanMap(span_map) => span_map.span_at(range.start()),
             Self::RealSpanMap(span_map) => span_map.span_for_range(range),
@@ -61,7 +62,7 @@ impl SpanMap {
 }
 
 impl SpanMapRef<'_> {
-    pub fn span_for_range(self, range: TextRange) -> SpanData {
+    pub fn span_for_range(self, range: TextRange) -> Span {
         match self {
             Self::ExpansionSpanMap(span_map) => span_map.span_at(range.start()),
             Self::RealSpanMap(span_map) => span_map.span_for_range(range),
@@ -103,7 +104,7 @@ impl RealSpanMap {
         }
     }
 
-    pub fn span_for_range(&self, range: TextRange) -> SpanData {
+    pub fn span_for_range(&self, range: TextRange) -> Span {
         assert!(
             range.end() <= self.end,
             "range {range:?} goes beyond the end of the file {:?}",
@@ -115,7 +116,7 @@ impl RealSpanMap {
             .binary_search_by(|&(it, _)| it.cmp(&start).then(std::cmp::Ordering::Less))
             .unwrap_err();
         let (offset, ast_id) = self.pairs[idx - 1];
-        SpanData {
+        Span {
             range: range - offset,
             anchor: SpanAnchor { file_id: self.file_id, ast_id },
             ctx: SyntaxContextId::ROOT,

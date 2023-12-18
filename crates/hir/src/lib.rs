@@ -148,7 +148,7 @@ use {
     hir_def::path::Path,
     hir_expand::{
         name::AsName,
-        span::{ExpansionSpanMap, RealSpanMap, SpanMap, SpanMapRef},
+        span_map::{ExpansionSpanMap, RealSpanMap, SpanMap, SpanMapRef},
     },
 };
 

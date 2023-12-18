@@ -20,7 +20,7 @@ pub mod mod_path;
 pub mod name;
 pub mod proc_macro;
 pub mod quote;
-pub mod span;
+pub mod span_map;
 mod fixup;
 
 use attrs::collect_attrs;
@@ -28,11 +28,9 @@ use triomphe::Arc;
 
 use std::{fmt, hash::Hash};
 
-use base_db::{
-    span::{HirFileIdRepr, SpanData, SyntaxContextId},
-    CrateId, FileId, FileRange,
-};
+use base_db::{CrateId, FileId};
 use either::Either;
+use span::{FileRange, HirFileIdRepr, Span, SyntaxContextId};
 use syntax::{
     ast::{self, AstNode},
     SyntaxNode, SyntaxToken, TextRange, TextSize,
@@ -47,29 +45,29 @@ use crate::{
     fixup::SyntaxFixupUndoInfo,
     mod_path::ModPath,
     proc_macro::{CustomProcMacroExpander, ProcMacroKind},
-    span::{ExpansionSpanMap, SpanMap},
+    span_map::{ExpansionSpanMap, SpanMap},
 };
 
 pub use crate::ast_id_map::{AstId, ErasedAstId, ErasedFileAstId};
 pub use crate::files::{InFile, InMacroFile, InRealFile};
 
-pub use base_db::span::{HirFileId, MacroCallId, MacroFileId};
 pub use mbe::ValueResult;
+pub use span::{HirFileId, MacroCallId, MacroFileId};
 
-pub type DeclarativeMacro = ::mbe::DeclarativeMacro<tt::SpanData>;
+pub type DeclarativeMacro = ::mbe::DeclarativeMacro<tt::Span>;
 
 pub mod tt {
-    pub use base_db::span::SpanData;
-    pub use tt::{DelimiterKind, Spacing, Span, SpanAnchor};
+    pub use span::Span;
+    pub use tt::{DelimiterKind, Spacing};
 
-    pub type Delimiter = ::tt::Delimiter<SpanData>;
-    pub type DelimSpan = ::tt::DelimSpan<SpanData>;
-    pub type Subtree = ::tt::Subtree<SpanData>;
-    pub type Leaf = ::tt::Leaf<SpanData>;
-    pub type Literal = ::tt::Literal<SpanData>;
-    pub type Punct = ::tt::Punct<SpanData>;
-    pub type Ident = ::tt::Ident<SpanData>;
-    pub type TokenTree = ::tt::TokenTree<SpanData>;
+    pub type Delimiter = ::tt::Delimiter<Span>;
+    pub type DelimSpan = ::tt::DelimSpan<Span>;
+    pub type Subtree = ::tt::Subtree<Span>;
+    pub type Leaf = ::tt::Leaf<Span>;
+    pub type Literal = ::tt::Literal<Span>;
+    pub type Punct = ::tt::Punct<Span>;
+    pub type Ident = ::tt::Ident<Span>;
+    pub type TokenTree = ::tt::TokenTree<Span>;
 }
 
 pub type ExpandResult<T> = ValueResult<T, ExpandError>;
@@ -212,8 +210,8 @@ impl HirFileIdExt for HirFileId {
     fn original_file_respecting_includes(mut self, db: &dyn db::ExpandDatabase) -> FileId {
         loop {
             match self.repr() {
-                base_db::span::HirFileIdRepr::FileId(id) => break id,
-                base_db::span::HirFileIdRepr::MacroFile(file) => {
+                HirFileIdRepr::FileId(id) => break id,
+                HirFileIdRepr::MacroFile(file) => {
                     let loc = db.lookup_intern_macro_call(file.macro_call_id);
                     if loc.def.is_include() {
                         if let Some(eager) = &loc.eager {
@@ -420,7 +418,7 @@ impl MacroDefId {
 }
 
 impl MacroCallLoc {
-    pub fn span(&self, db: &dyn db::ExpandDatabase) -> SpanData {
+    pub fn span(&self, db: &dyn db::ExpandDatabase) -> Span {
         let ast_id = self.kind.erased_ast_id();
         let file_id = self.kind.file_id();
         let range = db.ast_id_map(file_id).get_erased(ast_id).text_range();
@@ -618,7 +616,7 @@ impl ExpansionInfo {
     /// Maps the passed in file range down into a macro expansion if it is the input to a macro call.
     pub fn map_range_down<'a>(
         &'a self,
-        span: SpanData,
+        span: Span,
     ) -> Option<InMacroFile<impl Iterator<Item = SyntaxToken> + 'a>> {
         let tokens = self
             .exp_map
@@ -652,7 +650,7 @@ impl ExpansionInfo {
     ) -> Option<(FileRange, SyntaxContextId)> {
         debug_assert!(self.expanded.value.text_range().contains_range(range));
         let mut spans = self.exp_map.spans_for_range(range);
-        let SpanData { range, anchor, ctx } = spans.next()?;
+        let Span { range, anchor, ctx } = spans.next()?;
         let mut start = range.start();
         let mut end = range.end();
 

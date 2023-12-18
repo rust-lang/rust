@@ -2,7 +2,7 @@
 //! Currently, it tests `#[doc(hidden)]` and `#[doc(alias)]`.
 
 use base_db::FileId;
-use hir_expand::span::{RealSpanMap, SpanMapRef};
+use hir_expand::span_map::{RealSpanMap, SpanMapRef};
 use mbe::syntax_node_to_token_tree;
 use syntax::{ast, AstNode};
 

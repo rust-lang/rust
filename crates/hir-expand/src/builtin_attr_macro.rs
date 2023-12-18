@@ -1,12 +1,8 @@
 //! Builtin attributes.
-
-use base_db::{
-    span::{SyntaxContextId, ROOT_ERASED_FILE_AST_ID},
-    FileId,
-};
+use span::{FileId, MacroCallId, Span, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
 use syntax::{TextRange, TextSize};
 
-use crate::{db::ExpandDatabase, name, tt, ExpandResult, MacroCallId, MacroCallKind};
+use crate::{db::ExpandDatabase, name, tt, ExpandResult, MacroCallKind};
 
 macro_rules! register_builtin {
     ($expand_fn:ident: $(($name:ident, $variant:ident) => $expand:ident),* ) => {
@@ -120,9 +116,9 @@ pub fn pseudo_derive_attr_expansion(
         tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
             char,
             spacing: tt::Spacing::Alone,
-            span: tt::SpanData {
+            span: Span {
                 range: TextRange::empty(TextSize::new(0)),
-                anchor: base_db::span::SpanAnchor {
+                anchor: span::SpanAnchor {
                     file_id: FileId::BOGUS,
                     ast_id: ROOT_ERASED_FILE_AST_ID,
                 },

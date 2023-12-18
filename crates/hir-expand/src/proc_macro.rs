@@ -3,8 +3,9 @@
 use core::fmt;
 use std::{panic::RefUnwindSafe, sync};
 
-use base_db::{span::SpanData, CrateId, Env};
+use base_db::{CrateId, Env};
 use rustc_hash::FxHashMap;
+use span::Span;
 use stdx::never;
 use syntax::SmolStr;
 
@@ -26,9 +27,9 @@ pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe {
         subtree: &tt::Subtree,
         attrs: Option<&tt::Subtree>,
         env: &Env,
-        def_site: SpanData,
-        call_site: SpanData,
-        mixed_site: SpanData,
+        def_site: Span,
+        call_site: Span,
+        mixed_site: Span,
     ) -> Result<tt::Subtree, ProcMacroExpansionError>;
 }
 
@@ -78,9 +79,9 @@ impl CustomProcMacroExpander {
         calling_crate: CrateId,
         tt: &tt::Subtree,
         attr_arg: Option<&tt::Subtree>,
-        def_site: SpanData,
-        call_site: SpanData,
-        mixed_site: SpanData,
+        def_site: Span,
+        call_site: Span,
+        mixed_site: Span,
     ) -> ExpandResult<tt::Subtree> {
         match self.proc_macro_id {
             ProcMacroId(DUMMY_ID) => ExpandResult::new(
