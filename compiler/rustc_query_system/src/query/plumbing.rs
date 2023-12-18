@@ -45,7 +45,6 @@ enum QueryResult {
 }
 
 impl QueryResult {
-
     /// Unwraps the query job and if poisoned will raise a [`FatalError`]
     fn unwrap(self) -> QueryJob {
         match self {
@@ -53,7 +52,6 @@ impl QueryResult {
             Self::Poisoned => FatalError.raise(),
         }
     }
-
 }
 
 impl<K> QueryState<K>
@@ -200,7 +198,7 @@ where
         let job = {
             let mut shard = state.active.lock_shard_by_value(&self.key);
             let job = shard.remove(&self.key).unwrap().unwrap();
-            
+
             shard.insert(self.key, QueryResult::Poisoned);
             job
         };
