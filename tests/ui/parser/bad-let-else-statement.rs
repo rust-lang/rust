@@ -161,4 +161,29 @@ fn q() {
     };
 }
 
+fn r() {
+    let ok = format_args!("") else { return; };
+
+    let bad = format_args! {""} else { return; };
+    //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
+}
+
+fn s() {
+    macro_rules! a {
+        () => { {} }
+    }
+
+    macro_rules! b {
+        (1) => {
+            let x = a!() else { return; };
+        };
+        (2) => {
+            let x = a! {} else { return; };
+            //~^ ERROR right curly brace `}` before `else` in a `let...else` statement not allowed
+        };
+    }
+
+    b!(1); b!(2);
+}
+
 fn main() {}
