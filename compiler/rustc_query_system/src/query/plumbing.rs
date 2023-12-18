@@ -19,7 +19,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lock;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::{outline, sync};
-use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError, StashKey};
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, StashKey};
 use rustc_span::{Span, DUMMY_SP};
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
@@ -45,11 +45,13 @@ enum QueryResult {
 }
 
 impl QueryResult {
-    /// Unwraps the query job and if poisoned will raise a [`FatalError`]
-    fn unwrap(self) -> QueryJob {
+    /// Unwraps the query job expecting that it has started.
+    fn expect_job(self, query_name: &'static str) -> QueryJob {
         match self {
             Self::Started(job) => job,
-            Self::Poisoned => FatalError.raise(),
+            Self::Poisoned => {
+                panic!("job for query {} failed to start and was poisoned", query_name)
+            }
         }
     }
 }
@@ -105,6 +107,7 @@ where
 {
     state: &'tcx QueryState<K>,
     key: K,
+    query_name: &'static str,
 }
 
 #[cold]
@@ -163,9 +166,10 @@ where
 {
     /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter and forgets the JobOwner, so it won't poison the query
-    fn complete<C>(self, cache: &C, result: C::Value, dep_node_index: DepNodeIndex)
+    fn complete<C, Q>(self, q: Q, cache: &C, result: C::Value, dep_node_index: DepNodeIndex)
     where
         C: QueryCache<Key = K>,
+        Q: QueryConfig<Qcx>,
     {
         let key = self.key;
         let state = self.state;
@@ -179,7 +183,7 @@ where
 
         let job = {
             let mut lock = state.active.lock_shard_by_value(&key);
-            lock.remove(&key).unwrap().unwrap()
+            lock.remove(&key).unwrap().expect_job(q.name())
         };
 
         job.signal_complete();
@@ -197,7 +201,7 @@ where
         let state = self.state;
         let job = {
             let mut shard = state.active.lock_shard_by_value(&self.key);
-            let job = shard.remove(&self.key).unwrap().unwrap();
+            let job = shard.remove(&self.key).unwrap().expect_job(self.query_name);
 
             shard.insert(self.key, QueryResult::Poisoned);
             job
@@ -282,7 +286,7 @@ where
                     // We didn't find the query result in the query cache. Check if it was
                     // poisoned due to a panic instead.
                     let lock = query.query_state(qcx).active.get_shard_by_value(&key).lock();
-                    lock.get(&key).unwrap();
+                    lock.get(&key).expect_job(query.name());
                     panic!(
                         "query result must in the cache or the query must be poisoned after a wait"
                     );
@@ -362,7 +366,9 @@ where
                     // so we just return the error.
                     cycle_error(query, qcx, id, span)
                 }
-                QueryResult::Poisoned => FatalError.raise(),
+                QueryResult::Poisoned => {
+                    panic!("job for query {} failed to start and was poisoned", query.name())
+                }
             }
         }
     }
@@ -382,7 +388,7 @@ where
     Qcx: QueryContext,
 {
     // Use `JobOwner` so the query will be poisoned if executing it panics.
-    let job_owner = JobOwner { state, key };
+    let job_owner = JobOwner { state, key, query_name: query.name() };
 
     debug_assert_eq!(qcx.dep_context().dep_graph().is_fully_enabled(), INCR);
 
@@ -437,7 +443,7 @@ where
             }
         }
     }
-    job_owner.complete(cache, result, dep_node_index);
+    job_owner.complete(cache, q, result, dep_node_index);
 
     (result, Some(dep_node_index))
 }
