@@ -94,7 +94,7 @@ use syntax::{
 };
 
 // FIXME: Make this an enum
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum DiagnosticCode {
     RustcHardError(&'static str),
     RustcLint(&'static str),
@@ -198,7 +198,7 @@ impl Diagnostic {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Severity {
     Error,
     Warning,

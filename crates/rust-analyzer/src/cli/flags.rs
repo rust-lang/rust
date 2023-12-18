@@ -98,6 +98,15 @@ xflags::xflags! {
             required path: PathBuf
         }
 
+        /// Run unit tests of the project using mir interpreter
+        cmd rustc-tests {
+            /// Directory with Cargo.toml.
+            required rustc_repo: PathBuf
+
+            /// Only run tests with filter as substring
+            optional --filter path: String
+        }
+
         cmd diagnostics {
             /// Directory with Cargo.toml.
             required path: PathBuf
@@ -159,6 +168,7 @@ pub enum RustAnalyzerCmd {
     Highlight(Highlight),
     AnalysisStats(AnalysisStats),
     RunTests(RunTests),
+    RustcTests(RustcTests),
     Diagnostics(Diagnostics),
     Ssr(Ssr),
     Search(Search),
@@ -209,6 +219,12 @@ pub struct AnalysisStats {
 #[derive(Debug)]
 pub struct RunTests {
     pub path: PathBuf,
+}
+
+#[derive(Debug)]
+pub struct RustcTests {
+    pub rustc_repo: PathBuf,
+    pub filter: Option<String>,
 }
 
 #[derive(Debug)]
