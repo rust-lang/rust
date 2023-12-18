@@ -111,7 +111,10 @@ impl ConfigInfo {
             Some(r) if !r.is_empty() => r.to_string(),
             _ => "rustc".to_string(),
         };
-        self.host_triple = rustc_version_info(Some(&rustc))?.host.unwrap_or_default();
+        self.host_triple = match rustc_version_info(Some(&rustc))?.host {
+            Some(host) => host,
+            None => return Err("no host found".to_string()),
+        };
 
         if self.target_triple.is_empty() {
             if let Some(overwrite) = env.get("OVERWRITE_TARGET_TRIPLE") {
@@ -216,6 +219,8 @@ impl ConfigInfo {
         ));
         let ld_library_path = format!(
             "{target}:{sysroot}:{gcc_path}",
+            // FIXME: It's possible to pick another out directory. Would be nice to have a command
+            // line option to change it.
             target = current_dir.join("target/out").display(),
             sysroot = sysroot.display(),
         );
