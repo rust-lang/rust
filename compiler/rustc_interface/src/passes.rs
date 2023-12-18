@@ -56,7 +56,7 @@ pub fn parse<'a>(sess: &'a Session) -> PResult<'a, ast::Crate> {
     }
 
     if let Some(ref s) = sess.opts.unstable_opts.show_span {
-        rustc_ast_passes::show_span::run(sess.diagnostic(), s, &krate);
+        rustc_ast_passes::show_span::run(sess.dcx(), s, &krate);
     }
 
     if sess.opts.unstable_opts.hir_stats {
@@ -267,7 +267,7 @@ fn configure_and_expand(
             is_proc_macro_crate,
             has_proc_macro_decls,
             is_test_crate,
-            sess.diagnostic(),
+            sess.dcx(),
         )
     });
 
@@ -526,7 +526,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
     match result {
         Ok(_) => {
             if sess.opts.json_artifact_notifications {
-                sess.diagnostic().emit_artifact_notification(deps_filename, "dep-info");
+                sess.dcx().emit_artifact_notification(deps_filename, "dep-info");
             }
         }
         Err(error) => {

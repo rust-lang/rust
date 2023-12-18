@@ -56,7 +56,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                     let res = match res {
                         Ok(lit) => {
                             if token_lit.suffix.is_some() {
-                                let mut err = sess.span_diagnostic.struct_span_err(
+                                let mut err = sess.dcx.struct_span_err(
                                     expr.span,
                                     "suffixed literals are not allowed in attributes",
                                 );
@@ -89,7 +89,7 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
                     //   the error because an earlier error will have already
                     //   been reported.
                     let msg = format!("attribute value must be a literal");
-                    let mut err = sess.span_diagnostic.struct_span_err(expr.span, msg);
+                    let mut err = sess.dcx.struct_span_err(expr.span, msg);
                     if let ast::ExprKind::Err = expr.kind {
                         err.downgrade_to_delayed_bug();
                     }
@@ -206,7 +206,7 @@ fn emit_malformed_attribute(
     if should_warn(name) {
         sess.buffer_lint(ILL_FORMED_ATTRIBUTE_INPUT, span, ast::CRATE_NODE_ID, msg);
     } else {
-        sess.span_diagnostic
+        sess.dcx
             .struct_span_err(span, error_msg)
             .span_suggestions(
                 span,

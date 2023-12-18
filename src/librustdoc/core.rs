@@ -120,16 +120,16 @@ impl<'tcx> DocContext<'tcx> {
     }
 }
 
-/// Creates a new diagnostic `Handler` that can be used to emit warnings and errors.
+/// Creates a new `DiagCtxt` that can be used to emit warnings and errors.
 ///
 /// If the given `error_format` is `ErrorOutputType::Json` and no `SourceMap` is given, a new one
-/// will be created for the handler.
-pub(crate) fn new_handler(
+/// will be created for the `DiagCtxt`.
+pub(crate) fn new_dcx(
     error_format: ErrorOutputType,
     source_map: Option<Lrc<source_map::SourceMap>>,
     diagnostic_width: Option<usize>,
     unstable_opts: &UnstableOptions,
-) -> rustc_errors::Handler {
+) -> rustc_errors::DiagCtxt {
     let fallback_bundle = rustc_errors::fallback_fluent_bundle(
         rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
         false,
@@ -169,8 +169,7 @@ pub(crate) fn new_handler(
         }
     };
 
-    rustc_errors::Handler::with_emitter(emitter)
-        .with_flags(unstable_opts.diagnostic_handler_flags(true))
+    rustc_errors::DiagCtxt::with_emitter(emitter).with_flags(unstable_opts.dcx_flags(true))
 }
 
 /// Parse, resolve, and typecheck the given crate.
@@ -386,9 +385,9 @@ pub(crate) fn run_global_ctxt(
         );
     }
 
-    fn report_deprecated_attr(name: &str, diag: &rustc_errors::Handler, sp: Span) {
+    fn report_deprecated_attr(name: &str, dcx: &rustc_errors::DiagCtxt, sp: Span) {
         let mut msg =
-            diag.struct_span_warn(sp, format!("the `#![doc({name})]` attribute is deprecated"));
+            dcx.struct_span_warn(sp, format!("the `#![doc({name})]` attribute is deprecated"));
         msg.note(
             "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
             for more information",
@@ -408,19 +407,19 @@ pub(crate) fn run_global_ctxt(
     // Process all of the crate attributes, extracting plugin metadata along
     // with the passes which we are supposed to run.
     for attr in krate.module.attrs.lists(sym::doc) {
-        let diag = ctxt.sess().diagnostic();
+        let dcx = ctxt.sess().dcx();
 
         let name = attr.name_or_empty();
         // `plugins = "..."`, `no_default_passes`, and `passes = "..."` have no effect
         if attr.is_word() && name == sym::no_default_passes {
-            report_deprecated_attr("no_default_passes", diag, attr.span());
+            report_deprecated_attr("no_default_passes", dcx, attr.span());
         } else if attr.value_str().is_some() {
             match name {
                 sym::passes => {
-                    report_deprecated_attr("passes = \"...\"", diag, attr.span());
+                    report_deprecated_attr("passes = \"...\"", dcx, attr.span());
                 }
                 sym::plugins => {
-                    report_deprecated_attr("plugins = \"...\"", diag, attr.span());
+                    report_deprecated_attr("plugins = \"...\"", dcx, attr.span());
                 }
                 _ => (),
             }
@@ -448,7 +447,7 @@ pub(crate) fn run_global_ctxt(
 
     tcx.sess.time("check_lint_expectations", || tcx.check_expectations(Some(sym::rustdoc)));
 
-    if tcx.sess.diagnostic().has_errors_or_lint_errors().is_some() {
+    if tcx.sess.dcx().has_errors_or_lint_errors().is_some() {
         rustc_errors::FatalError.raise();
     }
 

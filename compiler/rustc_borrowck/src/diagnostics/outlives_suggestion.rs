@@ -206,7 +206,7 @@ impl OutlivesSuggestionBuilder {
         // If there is exactly one suggestable constraints, then just suggest it. Otherwise, emit a
         // list of diagnostics.
         let mut diag = if suggested.len() == 1 {
-            mbcx.infcx.tcx.sess.diagnostic().struct_help(match suggested.last().unwrap() {
+            mbcx.infcx.tcx.sess.dcx().struct_help(match suggested.last().unwrap() {
                 SuggestedConstraint::Outlives(a, bs) => {
                     let bs: SmallVec<[String; 2]> = bs.iter().map(|r| r.to_string()).collect();
                     format!("add bound `{a}: {}`", bs.join(" + "))
@@ -223,7 +223,7 @@ impl OutlivesSuggestionBuilder {
                 .infcx
                 .tcx
                 .sess
-                .diagnostic()
+                .dcx()
                 .struct_help("the following changes may resolve your lifetime errors");
 
             // Add suggestions.

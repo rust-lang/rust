@@ -417,7 +417,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && let Some(mut diag) = self
                         .tcx
                         .sess
-                        .diagnostic()
+                        .dcx()
                         .steal_diagnostic(segment.ident.span, StashKey::CallIntoMethod)
                 {
                     // Try suggesting `foo(a)` -> `a.foo()` if possible.

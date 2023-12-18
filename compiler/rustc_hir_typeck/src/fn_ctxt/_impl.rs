@@ -848,7 +848,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && let Some(mut diag) = self
                         .tcx
                         .sess
-                        .diagnostic()
+                        .dcx()
                         .steal_diagnostic(qself.span, StashKey::TraitMissingMethod)
                 {
                     diag.emit();
@@ -884,7 +884,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && let Some(mut diag) = self
                         .tcx
                         .sess
-                        .diagnostic()
+                        .dcx()
                         .steal_diagnostic(qself.span, StashKey::TraitMissingMethod)
                 {
                     if trait_missing_method {

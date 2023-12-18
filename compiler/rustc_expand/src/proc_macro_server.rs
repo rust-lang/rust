@@ -506,7 +506,7 @@ impl server::FreeFunctions for Rustc<'_, '_> {
                 None,
             );
         }
-        self.sess().span_diagnostic.emit_diagnostic(diag);
+        self.sess().dcx.emit_diagnostic(diag);
     }
 }
 

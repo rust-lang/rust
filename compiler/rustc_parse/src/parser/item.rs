@@ -438,7 +438,7 @@ impl<'a> Parser<'a> {
             None
         };
 
-        if let Some(err) = err { Err(err.into_diagnostic(self.diagnostic())) } else { Ok(()) }
+        if let Some(err) = err { Err(err.into_diagnostic(self.dcx())) } else { Ok(()) }
     }
 
     fn parse_item_builtin(&mut self) -> PResult<'a, Option<ItemInfo>> {
@@ -759,7 +759,7 @@ impl<'a> Parser<'a> {
             if self.look_ahead(1, |tok| tok == &token::CloseDelim(Delimiter::Brace)) {
                 // FIXME: merge with `DocCommentDoesNotDocumentAnything` (E0585)
                 struct_span_err!(
-                    self.diagnostic(),
+                    self.dcx(),
                     self.token.span,
                     E0584,
                     "found a documentation comment that doesn't document anything",
@@ -1374,7 +1374,7 @@ impl<'a> Parser<'a> {
 
         let span = self.prev_token.span.shrink_to_hi();
         let err: DiagnosticBuilder<'_, ErrorGuaranteed> =
-            errors::MissingConstType { span, colon, kind }.into_diagnostic(self.diagnostic());
+            errors::MissingConstType { span, colon, kind }.into_diagnostic(self.dcx());
         err.stash(span, StashKey::ItemNoType);
 
         // The user intended that the type be inferred,
@@ -1391,7 +1391,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 self.sess.emit_err(err);
             } else {
-                return Err(err.into_diagnostic(self.diagnostic()));
+                return Err(err.into_diagnostic(self.dcx()));
             }
         }
 
@@ -1591,7 +1591,7 @@ impl<'a> Parser<'a> {
         } else {
             let err =
                 errors::UnexpectedTokenAfterStructName::new(self.token.span, self.token.clone());
-            return Err(err.into_diagnostic(self.diagnostic()));
+            return Err(err.into_diagnostic(self.dcx()));
         };
 
         Ok((class_name, ItemKind::Struct(vdata, generics)))
@@ -1787,7 +1787,7 @@ impl<'a> Parser<'a> {
                         let sp = previous_span.shrink_to_hi();
                         err.missing_comma = Some(sp);
                     }
-                    return Err(err.into_diagnostic(self.diagnostic()));
+                    return Err(err.into_diagnostic(self.dcx()));
                 }
             }
             _ => {
@@ -1837,7 +1837,7 @@ impl<'a> Parser<'a> {
                     // Make sure an error was emitted (either by recovering an angle bracket,
                     // or by finding an identifier as the next token), since we're
                     // going to continue parsing
-                    assert!(self.diagnostic().has_errors().is_some());
+                    assert!(self.dcx().has_errors().is_some());
                 } else {
                     return Err(err);
                 }

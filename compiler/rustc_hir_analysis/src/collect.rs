@@ -672,7 +672,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
 
         hir::TraitItemKind::Const(ty, body_id) => {
             tcx.ensure().type_of(def_id);
-            if !tcx.sess.diagnostic().has_stashed_diagnostic(ty.span, StashKey::ItemNoType)
+            if !tcx.sess.dcx().has_stashed_diagnostic(ty.span, StashKey::ItemNoType)
                 && !(is_suggestable_infer_ty(ty) && body_id.is_some())
             {
                 // Account for `const C: _;`.

@@ -17,11 +17,11 @@ pub(crate) struct DiagnosticDerive<'a> {
 }
 
 impl<'a> DiagnosticDerive<'a> {
-    pub(crate) fn new(diag: syn::Ident, handler: syn::Ident, structure: Structure<'a>) -> Self {
+    pub(crate) fn new(diag: syn::Ident, dcx: syn::Ident, structure: Structure<'a>) -> Self {
         Self {
             builder: DiagnosticDeriveBuilder {
                 diag,
-                kind: DiagnosticDeriveKind::Diagnostic { handler },
+                kind: DiagnosticDeriveKind::Diagnostic { dcx },
             },
             structure,
         }
@@ -36,7 +36,7 @@ impl<'a> DiagnosticDerive<'a> {
             let body = builder.body(variant);
 
             let diag = &builder.parent.diag;
-            let DiagnosticDeriveKind::Diagnostic { handler } = &builder.parent.kind else {
+            let DiagnosticDeriveKind::Diagnostic { dcx } = &builder.parent.kind else {
                 unreachable!()
             };
             let init = match builder.slug.value_ref() {
@@ -62,7 +62,7 @@ impl<'a> DiagnosticDerive<'a> {
                 Some(slug) => {
                     slugs.borrow_mut().push(slug.clone());
                     quote! {
-                        let mut #diag = #handler.struct_diagnostic(crate::fluent_generated::#slug);
+                        let mut #diag = #dcx.struct_diagnostic(crate::fluent_generated::#slug);
                     }
                 }
             };
@@ -77,11 +77,12 @@ impl<'a> DiagnosticDerive<'a> {
             }
         });
 
-        let DiagnosticDeriveKind::Diagnostic { handler } = &builder.kind else { unreachable!() };
+        let DiagnosticDeriveKind::Diagnostic { dcx } = &builder.kind else { unreachable!() };
 
+        // A lifetime of `'a` causes conflicts, but `_sess` is fine.
         let mut imp = structure.gen_impl(quote! {
-            gen impl<'__diagnostic_handler_sess, G>
-                    rustc_errors::IntoDiagnostic<'__diagnostic_handler_sess, G>
+            gen impl<'_sess, G>
+                    rustc_errors::IntoDiagnostic<'_sess, G>
                     for @Self
                 where G: rustc_errors::EmissionGuarantee
             {
@@ -89,8 +90,8 @@ impl<'a> DiagnosticDerive<'a> {
                 #[track_caller]
                 fn into_diagnostic(
                     self,
-                    #handler: &'__diagnostic_handler_sess rustc_errors::Handler
-                ) -> rustc_errors::DiagnosticBuilder<'__diagnostic_handler_sess, G> {
+                    #dcx: &'_sess rustc_errors::DiagCtxt
+                ) -> rustc_errors::DiagnosticBuilder<'_sess, G> {
                     use rustc_errors::IntoDiagnosticArg;
                     #implementation
                 }

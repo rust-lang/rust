@@ -205,10 +205,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
 
     fn register_builtin_macro(&mut self, name: Symbol, ext: SyntaxExtensionKind) {
         if self.builtin_macros.insert(name, BuiltinMacroState::NotYetSeen(ext)).is_some() {
-            self.tcx
-                .sess
-                .diagnostic()
-                .bug(format!("built-in macro `{name}` was already registered"));
+            self.tcx.sess.dcx().bug(format!("built-in macro `{name}` was already registered"));
         }
     }
 

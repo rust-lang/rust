@@ -73,7 +73,7 @@ impl<'a> TokenTreesReader<'a> {
 
     fn eof_err(&mut self) -> PErr<'a> {
         let msg = "this file contains an unclosed delimiter";
-        let mut err = self.string_reader.sess.span_diagnostic.struct_span_err(self.token.span, msg);
+        let mut err = self.string_reader.sess.dcx.struct_span_err(self.token.span, msg);
         for &(_, sp) in &self.diag_info.open_braces {
             err.span_label(sp, "unclosed delimiter");
             self.diag_info.unmatched_delims.push(UnmatchedDelim {
@@ -290,7 +290,7 @@ impl<'a> TokenTreesReader<'a> {
         // matching opening delimiter).
         let token_str = token_to_string(&self.token);
         let msg = format!("unexpected closing delimiter: `{token_str}`");
-        let mut err = self.string_reader.sess.span_diagnostic.struct_span_err(self.token.span, msg);
+        let mut err = self.string_reader.sess.dcx.struct_span_err(self.token.span, msg);
 
         report_suspicious_mismatch_block(
             &mut err,

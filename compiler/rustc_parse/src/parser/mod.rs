@@ -1507,7 +1507,7 @@ pub(crate) fn make_unclosed_delims_error(
         opening_candidate: unmatched.candidate_span,
         unclosed: unmatched.unclosed_span,
     }
-    .into_diagnostic(&sess.span_diagnostic);
+    .into_diagnostic(&sess.dcx);
     Some(err)
 }
 

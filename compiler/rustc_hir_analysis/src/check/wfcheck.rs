@@ -1607,15 +1607,10 @@ fn check_method_receiver<'tcx>(
 }
 
 fn e0307(tcx: TyCtxt<'_>, span: Span, receiver_ty: Ty<'_>) -> ErrorGuaranteed {
-    struct_span_err!(
-        tcx.sess.diagnostic(),
-        span,
-        E0307,
-        "invalid `self` parameter type: {receiver_ty}"
-    )
-    .note("type of `self` must be `Self` or a type that dereferences to it")
-    .help(HELP_FOR_SELF_TYPE)
-    .emit()
+    struct_span_err!(tcx.sess.dcx(), span, E0307, "invalid `self` parameter type: {receiver_ty}")
+        .note("type of `self` must be `Self` or a type that dereferences to it")
+        .help(HELP_FOR_SELF_TYPE)
+        .emit()
 }
 
 /// Returns whether `receiver_ty` would be considered a valid receiver type for `self_ty`. If

@@ -3,7 +3,7 @@ use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::{
     emitter::Emitter,
     translation::{to_fluent_args, Translate},
-    Applicability, Diagnostic, Handler, LazyFallbackBundle,
+    Applicability, DiagCtxt, Diagnostic, LazyFallbackBundle,
 };
 use rustc_parse::parse_stream_from_source_str;
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
@@ -42,9 +42,9 @@ fn check_rust_syntax(
     let emitter = BufferEmitter { buffer: Lrc::clone(&buffer), fallback_bundle };
 
     let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-    let handler = Handler::with_emitter(Box::new(emitter)).disable_warnings();
+    let dcx = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
     let source = dox[code_block.code].to_owned();
-    let sess = ParseSess::with_span_handler(handler, sm);
+    let sess = ParseSess::with_dcx(dcx, sm);
 
     let edition = code_block.lang_string.edition.unwrap_or_else(|| cx.tcx.sess.edition());
     let expn_data =

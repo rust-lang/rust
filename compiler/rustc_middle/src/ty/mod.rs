@@ -1484,7 +1484,7 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         if let Some(diag) = tcx
             .sess
-            .diagnostic()
+            .dcx()
             .steal_diagnostic(tcx.def_span(opaque_def_id), StashKey::OpaqueHiddenTypeMismatch)
         {
             diag.cancel();

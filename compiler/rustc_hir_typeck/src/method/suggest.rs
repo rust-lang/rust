@@ -1929,7 +1929,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         };
         let Some(mut diag) =
-            self.tcx.sess.diagnostic().steal_diagnostic(seg1.ident.span, StashKey::CallAssocMethod)
+            self.tcx.sess.dcx().steal_diagnostic(seg1.ident.span, StashKey::CallAssocMethod)
         else {
             return;
         };
