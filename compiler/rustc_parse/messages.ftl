@@ -722,6 +722,8 @@ parse_sugg_turbofish_syntax = use `::<...>` instead of `<...>` to specify lifeti
 
 parse_sugg_wrap_expression_in_parentheses = wrap the expression in parentheses
 
+parse_sugg_wrap_macro_in_parentheses = use parentheses instead of braces for this macro
+
 parse_sugg_wrap_pattern_in_parens = wrap the pattern in parentheses
 
 parse_switch_mut_let_order =
