@@ -5,9 +5,7 @@ use crate::errors::{
 use crate::fluent_generated as fluent;
 use crate::infer::error_reporting::{note_and_explain_region, TypeErrCtxt};
 use crate::infer::{self, SubregionOrigin};
-use rustc_errors::{
-    AddToDiagnostic, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic,
-};
+use rustc_errors::{AddToDiagnostic, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
@@ -136,11 +134,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     note_and_explain::PrefixKind::ContentValidFor,
                     note_and_explain::SuffixKind::Empty,
                 );
-                OutlivesContent {
+                self.tcx.sess.dcx().create_err(OutlivesContent {
                     span,
                     notes: reference_valid.into_iter().chain(content_valid).collect(),
-                }
-                .into_diagnostic(self.tcx.sess.dcx())
+                })
             }
             infer::RelateObjectBound(span) => {
                 let object_valid = note_and_explain::RegionExplanation::new(
@@ -157,11 +154,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     note_and_explain::PrefixKind::SourcePointerValidFor,
                     note_and_explain::SuffixKind::Empty,
                 );
-                OutlivesBound {
+                self.tcx.sess.dcx().create_err(OutlivesBound {
                     span,
                     notes: object_valid.into_iter().chain(pointer_valid).collect(),
-                }
-                .into_diagnostic(self.tcx.sess.dcx())
+                })
             }
             infer::RelateParamBound(span, ty, opt_span) => {
                 let prefix = match *sub {
@@ -176,8 +172,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let note = note_and_explain::RegionExplanation::new(
                     self.tcx, sub, opt_span, prefix, suffix,
                 );
-                FulfillReqLifetime { span, ty: self.resolve_vars_if_possible(ty), note }
-                    .into_diagnostic(self.tcx.sess.dcx())
+                self.tcx.sess.dcx().create_err(FulfillReqLifetime {
+                    span,
+                    ty: self.resolve_vars_if_possible(ty),
+                    note,
+                })
             }
             infer::RelateRegionParamBound(span) => {
                 let param_instantiated = note_and_explain::RegionExplanation::new(
@@ -194,11 +193,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     note_and_explain::PrefixKind::LfParamMustOutlive,
                     note_and_explain::SuffixKind::Empty,
                 );
-                LfBoundNotSatisfied {
+                self.tcx.sess.dcx().create_err(LfBoundNotSatisfied {
                     span,
                     notes: param_instantiated.into_iter().chain(param_must_outlive).collect(),
-                }
-                .into_diagnostic(self.tcx.sess.dcx())
+                })
             }
             infer::ReferenceOutlivesReferent(ty, span) => {
                 let pointer_valid = note_and_explain::RegionExplanation::new(
@@ -215,12 +213,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     note_and_explain::PrefixKind::DataValidFor,
                     note_and_explain::SuffixKind::Empty,
                 );
-                RefLongerThanData {
+                self.tcx.sess.dcx().create_err(RefLongerThanData {
                     span,
                     ty: self.resolve_vars_if_possible(ty),
                     notes: pointer_valid.into_iter().chain(data_valid).collect(),
-                }
-                .into_diagnostic(self.tcx.sess.dcx())
+                })
             }
             infer::CompareImplItemObligation { span, impl_item_def_id, trait_item_def_id } => {
                 let mut err = self.report_extra_impl_obligation(
@@ -277,11 +274,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     note_and_explain::PrefixKind::LfMustOutlive,
                     note_and_explain::SuffixKind::Empty,
                 );
-                LfBoundNotSatisfied {
+                self.tcx.sess.dcx().create_err(LfBoundNotSatisfied {
                     span,
                     notes: instantiated.into_iter().chain(must_outlive).collect(),
-                }
-                .into_diagnostic(self.tcx.sess.dcx())
+                })
             }
         };
         if sub.is_error() || sup.is_error() {

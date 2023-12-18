@@ -1274,6 +1274,7 @@ impl DiagCtxt {
         self.create_err(err).emit()
     }
 
+    #[track_caller]
     pub fn create_err<'a>(
         &'a self,
         err: impl IntoDiagnostic<'a>,

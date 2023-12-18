@@ -32,9 +32,7 @@ use rustc_ast::{HasAttrs, HasTokens, Unsafe, Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::PResult;
-use rustc_errors::{
-    Applicability, DiagnosticBuilder, ErrorGuaranteed, FatalError, IntoDiagnostic, MultiSpan,
-};
+use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, FatalError, MultiSpan};
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -1500,14 +1498,13 @@ pub(crate) fn make_unclosed_delims_error(
     if let Some(sp) = unmatched.unclosed_span {
         spans.push(sp);
     };
-    let err = MismatchedClosingDelimiter {
+    let err = sess.dcx.create_err(MismatchedClosingDelimiter {
         spans,
         delimiter: pprust::token_kind_to_string(&token::CloseDelim(found_delim)).to_string(),
         unmatched: unmatched.found_span,
         opening_candidate: unmatched.candidate_span,
         unclosed: unmatched.unclosed_span,
-    }
-    .into_diagnostic(&sess.dcx);
+    });
     Some(err)
 }
 

@@ -4,9 +4,7 @@ use crate::query::plumbing::CycleError;
 use crate::query::DepKind;
 use crate::query::{QueryContext, QueryStackFrame};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{
-    DiagCtxt, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, Level,
-};
+use rustc_errors::{DiagCtxt, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, Level};
 use rustc_hir::def::DefKind;
 use rustc_session::Session;
 use rustc_span::Span;
@@ -604,7 +602,7 @@ pub(crate) fn report_cycle<'a>(
         note_span: (),
     };
 
-    cycle_diag.into_diagnostic(sess.dcx())
+    sess.dcx().create_err(cycle_diag)
 }
 
 pub fn print_query_stack<Qcx: QueryContext>(

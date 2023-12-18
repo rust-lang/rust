@@ -2,7 +2,6 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Nonterminal::*, NonterminalKind, Token};
 use rustc_ast::HasTokens;
 use rustc_ast_pretty::pprust;
-use rustc_errors::IntoDiagnostic;
 use rustc_errors::PResult;
 use rustc_span::symbol::{kw, Ident};
 
@@ -114,9 +113,9 @@ impl<'a> Parser<'a> {
             NonterminalKind::Item => match self.parse_item(ForceCollect::Yes)? {
                 Some(item) => NtItem(item),
                 None => {
-                    return Err(
-                        UnexpectedNonterminal::Item(self.token.span).into_diagnostic(self.dcx())
-                    );
+                    return Err(self
+                        .dcx()
+                        .create_err(UnexpectedNonterminal::Item(self.token.span)));
                 }
             },
             NonterminalKind::Block => {
@@ -127,8 +126,9 @@ impl<'a> Parser<'a> {
             NonterminalKind::Stmt => match self.parse_stmt(ForceCollect::Yes)? {
                 Some(s) => NtStmt(P(s)),
                 None => {
-                    return Err(UnexpectedNonterminal::Statement(self.token.span)
-                        .into_diagnostic(self.dcx()));
+                    return Err(self
+                        .dcx()
+                        .create_err(UnexpectedNonterminal::Statement(self.token.span)));
                 }
             },
             NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr => {
@@ -160,11 +160,10 @@ impl<'a> Parser<'a> {
                 NtIdent(ident, is_raw)
             }
             NonterminalKind::Ident => {
-                return Err(UnexpectedNonterminal::Ident {
+                return Err(self.dcx().create_err(UnexpectedNonterminal::Ident {
                     span: self.token.span,
                     token: self.token.clone(),
-                }
-                .into_diagnostic(self.dcx()));
+                }));
             }
             NonterminalKind::Path => {
                 NtPath(P(self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?))
@@ -178,11 +177,10 @@ impl<'a> Parser<'a> {
                 if self.check_lifetime() {
                     NtLifetime(self.expect_lifetime().ident)
                 } else {
-                    return Err(UnexpectedNonterminal::Lifetime {
+                    return Err(self.dcx().create_err(UnexpectedNonterminal::Lifetime {
                         span: self.token.span,
                         token: self.token.clone(),
-                    }
-                    .into_diagnostic(self.dcx()));
+                    }));
                 }
             }
         };

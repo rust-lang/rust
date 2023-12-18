@@ -10,10 +10,7 @@ use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
 use rustc_ast::{self as ast};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{
-    struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, PResult,
-    StashKey,
-};
+use rustc_errors::{struct_span_err, Applicability, PResult, StashKey};
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
 use rustc_span::source_map;
@@ -438,7 +435,7 @@ impl<'a> Parser<'a> {
             None
         };
 
-        if let Some(err) = err { Err(err.into_diagnostic(self.dcx())) } else { Ok(()) }
+        if let Some(err) = err { Err(self.dcx().create_err(err)) } else { Ok(()) }
     }
 
     fn parse_item_builtin(&mut self) -> PResult<'a, Option<ItemInfo>> {
@@ -1373,8 +1370,7 @@ impl<'a> Parser<'a> {
         };
 
         let span = self.prev_token.span.shrink_to_hi();
-        let err: DiagnosticBuilder<'_, ErrorGuaranteed> =
-            errors::MissingConstType { span, colon, kind }.into_diagnostic(self.dcx());
+        let err = self.dcx().create_err(errors::MissingConstType { span, colon, kind });
         err.stash(span, StashKey::ItemNoType);
 
         // The user intended that the type be inferred,
@@ -1391,7 +1387,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 self.sess.emit_err(err);
             } else {
-                return Err(err.into_diagnostic(self.dcx()));
+                return Err(self.dcx().create_err(err));
             }
         }
 
@@ -1591,7 +1587,7 @@ impl<'a> Parser<'a> {
         } else {
             let err =
                 errors::UnexpectedTokenAfterStructName::new(self.token.span, self.token.clone());
-            return Err(err.into_diagnostic(self.dcx()));
+            return Err(self.dcx().create_err(err));
         };
 
         Ok((class_name, ItemKind::Struct(vdata, generics)))
@@ -1787,7 +1783,7 @@ impl<'a> Parser<'a> {
                         let sp = previous_span.shrink_to_hi();
                         err.missing_comma = Some(sp);
                     }
-                    return Err(err.into_diagnostic(self.dcx()));
+                    return Err(self.dcx().create_err(err));
                 }
             }
             _ => {
