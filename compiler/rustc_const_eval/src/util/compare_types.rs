@@ -17,6 +17,7 @@ pub fn is_equal_up_to_subtyping<'tcx>(
     param_env: ParamEnv<'tcx>,
     src: Ty<'tcx>,
     dest: Ty<'tcx>,
+    next_trait_solver: bool,
 ) -> bool {
     // Fast path.
     if src == dest {
@@ -24,8 +25,8 @@ pub fn is_equal_up_to_subtyping<'tcx>(
     }
 
     // Check for subtyping in either direction.
-    relate_types(tcx, param_env, Variance::Covariant, src, dest)
-        || relate_types(tcx, param_env, Variance::Covariant, dest, src)
+    relate_types(tcx, param_env, Variance::Covariant, src, dest, next_trait_solver)
+        || relate_types(tcx, param_env, Variance::Covariant, dest, src, next_trait_solver)
 }
 
 /// Returns whether `src` is a subtype of `dest`, i.e. `src <: dest`.
@@ -42,13 +43,17 @@ pub fn relate_types<'tcx>(
     variance: Variance,
     src: Ty<'tcx>,
     dest: Ty<'tcx>,
+    next_trait_solver: bool,
 ) -> bool {
     if src == dest {
         return true;
     }
 
-    let mut builder =
-        tcx.infer_ctxt().ignoring_regions().with_opaque_type_inference(DefiningAnchor::Bubble);
+    let mut builder = tcx
+        .infer_ctxt()
+        .ignoring_regions()
+        .with_next_trait_solver(next_trait_solver)
+        .with_opaque_type_inference(DefiningAnchor::Bubble);
     let infcx = builder.build();
     let ocx = ObligationCtxt::new(&infcx);
     let cause = ObligationCause::dummy();
