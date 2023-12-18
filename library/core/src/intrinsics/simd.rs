@@ -199,7 +199,8 @@ extern "platform-intrinsic" {
     ///
     /// `V` must be a vector of integers with the same length as `T` (but any element size).
     ///
-    /// `idx` must be a constant.
+    /// `idx` must be a constant: either naming a constant item, or an inline
+    /// `const {}` expression.
     ///
     /// For each pointer in `ptr`, if the corresponding value in `mask` is `!0`, read the pointer.
     /// Otherwise if the corresponding value in `mask` is `0`, return the corresponding value from
@@ -333,7 +334,7 @@ extern "platform-intrinsic" {
     /// * On little endian, the least significant bit corresponds to the first vector element.
     /// * On big endian, the least significant bit corresponds to the last vector element.
     ///
-    /// For example, `[-1, 0, -1, -1]` packs to `0b1101` on little endian and `0b1011` on big
+    /// For example, `[!0, 0, !0, !0]` packs to `0b1101` on little endian and `0b1011` on big
     /// endian.
     ///
     /// # Safety
