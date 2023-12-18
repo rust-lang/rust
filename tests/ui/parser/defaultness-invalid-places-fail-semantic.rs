@@ -10,3 +10,7 @@ trait X {
     default fn f1(); //~ ERROR `default` is only allowed on items in trait impls
     default fn f2() {} //~ ERROR `default` is only allowed on items in trait impls
 }
+
+default const E: u8 = 0; //~ ERROR `default` is only allowed on items in trait impls
+default type F = (); //~ ERROR `default` is only allowed on items in trait impls
+default fn h() {} //~ ERROR `default` is only allowed on items in trait impls

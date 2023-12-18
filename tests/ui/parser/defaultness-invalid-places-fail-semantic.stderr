@@ -1,5 +1,5 @@
 error: `default` is only allowed on items in trait impls
-  --> $DIR/trait-item-with-defaultness-fail-semantic.rs:6:5
+  --> $DIR/defaultness-invalid-places-fail-semantic.rs:6:5
    |
 LL |     default const A: u8;
    |     -------^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     default const A: u8;
    |     `default` because of this
 
 error: `default` is only allowed on items in trait impls
-  --> $DIR/trait-item-with-defaultness-fail-semantic.rs:7:5
+  --> $DIR/defaultness-invalid-places-fail-semantic.rs:7:5
    |
 LL |     default const B: u8 = 0;
    |     -------^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |     default const B: u8 = 0;
    |     `default` because of this
 
 error: `default` is only allowed on items in trait impls
-  --> $DIR/trait-item-with-defaultness-fail-semantic.rs:8:5
+  --> $DIR/defaultness-invalid-places-fail-semantic.rs:8:5
    |
 LL |     default type D;
    |     -------^^^^^^^^
@@ -23,7 +23,7 @@ LL |     default type D;
    |     `default` because of this
 
 error: `default` is only allowed on items in trait impls
-  --> $DIR/trait-item-with-defaultness-fail-semantic.rs:9:5
+  --> $DIR/defaultness-invalid-places-fail-semantic.rs:9:5
    |
 LL |     default type C: Ord;
    |     -------^^^^^^^^^^^^^
@@ -31,7 +31,7 @@ LL |     default type C: Ord;
    |     `default` because of this
 
 error: `default` is only allowed on items in trait impls
-  --> $DIR/trait-item-with-defaultness-fail-semantic.rs:10:5
+  --> $DIR/defaultness-invalid-places-fail-semantic.rs:10:5
    |
 LL |     default fn f1();
    |     -------^^^^^^^^^
@@ -39,15 +39,39 @@ LL |     default fn f1();
    |     `default` because of this
 
 error: `default` is only allowed on items in trait impls
-  --> $DIR/trait-item-with-defaultness-fail-semantic.rs:11:5
+  --> $DIR/defaultness-invalid-places-fail-semantic.rs:11:5
    |
 LL |     default fn f2() {}
    |     -------^^^^^^^^
    |     |
    |     `default` because of this
 
+error: `default` is only allowed on items in trait impls
+  --> $DIR/defaultness-invalid-places-fail-semantic.rs:14:1
+   |
+LL | default const E: u8 = 0;
+   | -------^^^^^^^^^^^^^^^^^
+   | |
+   | `default` because of this
+
+error: `default` is only allowed on items in trait impls
+  --> $DIR/defaultness-invalid-places-fail-semantic.rs:15:1
+   |
+LL | default type F = ();
+   | -------^^^^^^^^^^^^^
+   | |
+   | `default` because of this
+
+error: `default` is only allowed on items in trait impls
+  --> $DIR/defaultness-invalid-places-fail-semantic.rs:16:1
+   |
+LL | default fn h() {}
+   | -------^^^^^^^
+   | |
+   | `default` because of this
+
 warning: the feature `specialization` is incomplete and may not be safe to use and/or cause compiler crashes
-  --> $DIR/trait-item-with-defaultness-fail-semantic.rs:1:12
+  --> $DIR/defaultness-invalid-places-fail-semantic.rs:1:12
    |
 LL | #![feature(specialization)]
    |            ^^^^^^^^^^^^^^
@@ -56,5 +80,5 @@ LL | #![feature(specialization)]
    = help: consider using `min_specialization` instead, which is more stable and complete
    = note: `#[warn(incomplete_features)]` on by default
 
-error: aborting due to 6 previous errors; 1 warning emitted
+error: aborting due to 9 previous errors; 1 warning emitted
 

@@ -1028,12 +1028,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     _ => {}
                 }
             }
-            ItemKind::Const(box ConstItem { defaultness, expr: None, .. }) => {
+            ItemKind::Const(box ConstItem { defaultness, expr, .. }) => {
                 self.check_defaultness(item.span, *defaultness);
-                self.session.emit_err(errors::ConstWithoutBody {
-                    span: item.span,
-                    replace_span: self.ending_semi_or_hi(item.span),
-                });
+                if expr.is_none() {
+                    self.session.emit_err(errors::ConstWithoutBody {
+                        span: item.span,
+                        replace_span: self.ending_semi_or_hi(item.span),
+                    });
+                }
             }
             ItemKind::Static(box StaticItem { expr: None, .. }) => {
                 self.session.emit_err(errors::StaticWithoutBody {
