@@ -917,12 +917,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let poll_expr = {
             let awaitee = self.expr_ident(span, awaitee_ident, awaitee_pat_hid);
             let ref_mut_awaitee = self.expr_mut_addr_of(span, awaitee);
-            let task_context = if let Some(task_context_hid) = self.task_context {
-                self.expr_ident_mut(span, task_context_ident, task_context_hid)
-            } else {
-                // Use of `await` outside of an async context, we cannot use `task_context` here.
-                self.expr_err(span, self.tcx.sess.span_delayed_bug(span, "no task_context hir id"))
+
+            let Some(task_context_hid) = self.task_context else {
+                unreachable!("use of `await` outside of an async context.");
             };
+
+            let task_context = self.expr_ident_mut(span, task_context_ident, task_context_hid);
+
             let new_unchecked = self.expr_call_lang_item_fn_mut(
                 span,
                 hir::LangItem::PinNewUnchecked,
@@ -991,16 +992,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             );
             let yield_expr = self.arena.alloc(yield_expr);
 
-            if let Some(task_context_hid) = self.task_context {
-                let lhs = self.expr_ident(span, task_context_ident, task_context_hid);
-                let assign =
-                    self.expr(span, hir::ExprKind::Assign(lhs, yield_expr, self.lower_span(span)));
-                self.stmt_expr(span, assign)
-            } else {
-                // Use of `await` outside of an async context. Return `yield_expr` so that we can
-                // proceed with type checking.
-                self.stmt(span, hir::StmtKind::Semi(yield_expr))
-            }
+            let Some(task_context_hid) = self.task_context else {
+                unreachable!("use of `await` outside of an async context.");
+            };
+
+            let lhs = self.expr_ident(span, task_context_ident, task_context_hid);
+            let assign =
+                self.expr(span, hir::ExprKind::Assign(lhs, yield_expr, self.lower_span(span)));
+            self.stmt_expr(span, assign)
         };
 
         let loop_block = self.block_all(span, arena_vec![self; inner_match_stmt, yield_stmt], None);
@@ -1635,19 +1634,32 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
         };
 
-        let mut yielded =
+        let yielded =
             opt_expr.as_ref().map(|x| self.lower_expr(x)).unwrap_or_else(|| self.expr_unit(span));
 
         if is_async_gen {
-            // yield async_gen_ready($expr);
-            yielded = self.expr_call_lang_item_fn(
+            // `yield $expr` is transformed into `task_context = yield async_gen_ready($expr)`.
+            // This ensures that we store our resumed `ResumeContext` correctly, and also that
+            // the apparent value of the `yield` expression is `()`.
+            let wrapped_yielded = self.expr_call_lang_item_fn(
                 span,
                 hir::LangItem::AsyncGenReady,
                 std::slice::from_ref(yielded),
             );
-        }
+            let yield_expr = self.arena.alloc(
+                self.expr(span, hir::ExprKind::Yield(wrapped_yielded, hir::YieldSource::Yield)),
+            );
 
-        hir::ExprKind::Yield(yielded, hir::YieldSource::Yield)
+            let Some(task_context_hid) = self.task_context else {
+                unreachable!("use of `await` outside of an async context.");
+            };
+            let task_context_ident = Ident::with_dummy_span(sym::_task_context);
+            let lhs = self.expr_ident(span, task_context_ident, task_context_hid);
+
+            hir::ExprKind::Assign(lhs, yield_expr, self.lower_span(span))
+        } else {
+            hir::ExprKind::Yield(yielded, hir::YieldSource::Yield)
+        }
     }
 
     /// Desugar `ExprForLoop` from: `[opt_ident]: for <pat> in <head> <body>` into:
