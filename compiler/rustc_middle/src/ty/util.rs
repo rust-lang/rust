@@ -811,10 +811,12 @@ impl<'tcx> TyCtxt<'tcx> {
                 self.consts.false_
             }
             Some(hir::ConstContext::ConstFn) => {
-                let host_idx = self
-                    .generics_of(def_id)
-                    .host_effect_index
-                    .expect("ConstContext::Maybe must have host effect param");
+                let host_idx = self.generics_of(def_id).host_effect_index.unwrap_or_else(|| {
+                    span_bug!(
+                        self.def_span(def_id),
+                        "item with `ConstContext::ConstFn` must have host effect param"
+                    )
+                });
                 ty::GenericArgs::identity_for_item(self, def_id).const_at(host_idx)
             }
             None => self.consts.true_,

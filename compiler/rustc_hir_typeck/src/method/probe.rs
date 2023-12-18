@@ -17,6 +17,8 @@ use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::infer::{self, InferOk, TyCtxtInferExt};
 use rustc_middle::middle::stability;
 use rustc_middle::query::Providers;
+use rustc_middle::traits::query::type_op::MethodAutoderef;
+use rustc_middle::traits::query::CanonicalMethodAutoderefGoal;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
 use rustc_middle::ty::AssocItem;
 use rustc_middle::ty::GenericParamDefKind;
@@ -36,7 +38,6 @@ use rustc_trait_selection::traits::query::method_autoderef::MethodAutoderefBadTy
 use rustc_trait_selection::traits::query::method_autoderef::{
     CandidateStep, MethodAutoderefStepsResult,
 };
-use rustc_trait_selection::traits::query::CanonicalTyGoal;
 use rustc_trait_selection::traits::NormalizeExt;
 use rustc_trait_selection::traits::{self, ObligationCause};
 use std::cell::RefCell;
@@ -371,13 +372,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         OP: FnOnce(ProbeContext<'_, 'tcx>) -> Result<R, MethodError<'tcx>>,
     {
         let mut orig_values = OriginalQueryValues::default();
-        let param_env_and_self_ty = self.canonicalize_query(
-            ParamEnvAnd { param_env: self.param_env, value: self_ty },
-            &mut orig_values,
-        );
+        let goal = MethodAutoderef {
+            self_ty,
+            host_effect_param: self.tcx.expected_host_effect_param_for_body(self.body_id),
+        };
+        let canonical_goal = self.canonicalize_query(self.param_env.and(goal), &mut orig_values);
 
         let steps = match mode {
-            Mode::MethodCall => self.tcx.method_autoderef_steps(param_env_and_self_ty),
+            Mode::MethodCall => self.tcx.method_autoderef_steps(canonical_goal),
             Mode::Path => self.probe(|_| {
                 // Mode::Path - the deref steps is "trivial". This turns
                 // our CanonicalQuery into a "trivial" QueryResponse. This
@@ -385,20 +387,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // special handling for this "trivial case" is a good idea.
 
                 let infcx = &self.infcx;
-                let (ParamEnvAnd { param_env: _, value: self_ty }, canonical_inference_vars) =
-                    infcx.instantiate_canonical_with_fresh_inference_vars(
-                        span,
-                        &param_env_and_self_ty,
-                    );
+                let (ParamEnvAnd { param_env: _, value: goal }, canonical_inference_vars) =
+                    infcx.instantiate_canonical_with_fresh_inference_vars(span, &canonical_goal);
                 debug!(
-                    "probe_op: Mode::Path, param_env_and_self_ty={:?} self_ty={:?}",
-                    param_env_and_self_ty, self_ty
+                    "probe_op: Mode::Path, canonical_goal={:?} self_ty={:?}",
+                    canonical_goal, self_ty
                 );
                 MethodAutoderefStepsResult {
                     steps: infcx.tcx.arena.alloc_from_iter([CandidateStep {
                         self_ty: self.make_query_response_ignoring_pending_obligations(
                             canonical_inference_vars,
-                            self_ty,
+                            goal.self_ty,
                         ),
                         autoderefs: 0,
                         from_unsafe_deref: false,
@@ -510,17 +509,23 @@ pub fn provide(providers: &mut Providers) {
 
 fn method_autoderef_steps<'tcx>(
     tcx: TyCtxt<'tcx>,
-    goal: CanonicalTyGoal<'tcx>,
+    goal: CanonicalMethodAutoderefGoal<'tcx>,
 ) -> MethodAutoderefStepsResult<'tcx> {
     debug!("method_autoderef_steps({:?})", goal);
 
     let (ref infcx, goal, inference_vars) = tcx.infer_ctxt().build_with_canonical(DUMMY_SP, &goal);
-    let ParamEnvAnd { param_env, value: self_ty } = goal;
+    let ParamEnvAnd { param_env, value: MethodAutoderef { self_ty, host_effect_param } } = goal;
 
-    let mut autoderef =
-        Autoderef::new(infcx, param_env, hir::def_id::CRATE_DEF_ID, DUMMY_SP, self_ty)
-            .include_raw_pointers()
-            .silence_errors();
+    let mut autoderef = Autoderef::new(
+        infcx,
+        param_env,
+        hir::def_id::CRATE_DEF_ID,
+        DUMMY_SP,
+        self_ty,
+        host_effect_param,
+    )
+    .include_raw_pointers()
+    .silence_errors();
     let mut reached_raw_pointer = false;
     let mut steps: Vec<_> = autoderef
         .by_ref()

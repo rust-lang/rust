@@ -14,7 +14,7 @@ use rustc_span::Span;
 
 pub mod type_op {
     use crate::ty::fold::TypeFoldable;
-    use crate::ty::{Predicate, Ty, TyCtxt, UserType};
+    use crate::ty::{Const, Predicate, Ty, TyCtxt, UserType};
     use std::fmt;
 
     #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, TypeVisitable)]
@@ -65,11 +65,22 @@ pub mod type_op {
             Self { value }
         }
     }
+
+    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, TypeVisitable)]
+    pub struct MethodAutoderef<'tcx> {
+        pub self_ty: Ty<'tcx>,
+        /// Expected host effect value of the caller. For const fns, it's
+        /// some const param ty, and for normal functions, it's `true`.
+        pub host_effect_param: Const<'tcx>,
+    }
 }
 
 pub type CanonicalProjectionGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::AliasTy<'tcx>>>;
 
 pub type CanonicalTyGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, Ty<'tcx>>>;
+
+pub type CanonicalMethodAutoderefGoal<'tcx> =
+    Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::MethodAutoderef<'tcx>>>;
 
 pub type CanonicalPredicateGoal<'tcx> = Canonical<'tcx, ty::ParamEnvAnd<'tcx, ty::Predicate<'tcx>>>;
 

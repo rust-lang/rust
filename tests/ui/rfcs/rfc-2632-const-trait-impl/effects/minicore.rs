@@ -1,4 +1,4 @@
-// known-bug: unknown
+// check-pass
 
 #![crate_type = "lib"]
 #![feature(no_core, lang_items, unboxed_closures, auto_traits, intrinsics, rustc_attrs, staged_api)]

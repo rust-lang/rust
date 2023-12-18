@@ -30,6 +30,7 @@ pub struct Autoderef<'a, 'tcx> {
     span: Span,
     body_id: LocalDefId,
     param_env: ty::ParamEnv<'tcx>,
+    host_effect_param: ty::Const<'tcx>,
 
     // Current state:
     state: AutoderefSnapshot<'tcx>,
@@ -112,6 +113,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         body_id: LocalDefId,
         span: Span,
         base_ty: Ty<'tcx>,
+        host_effect_param: ty::Const<'tcx>,
     ) -> Autoderef<'a, 'tcx> {
         Autoderef {
             infcx,
@@ -127,6 +129,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             },
             include_raw_pointers: false,
             silence_errors: false,
+            host_effect_param,
         }
     }
 
@@ -140,11 +143,8 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         // FIXME(effects): This is still broken, since we don't necessarily have a choice of
         // `host = true` or `host = host` in `const` functions. This is also busted in `method_autoderef_steps`.
         let deref_generics = self.infcx.tcx.generics_of(deref_trait_def_id);
-        let args = if let Some(host_param) = deref_generics.host_effect_index {
-            self.infcx.tcx.mk_args(&[
-                ty.into(),
-                self.infcx.var_for_def(self.span, &deref_generics.params[host_param]),
-            ])
+        let args = if deref_generics.host_effect_index.is_some() {
+            self.infcx.tcx.mk_args(&[ty.into(), self.host_effect_param.into()])
         } else {
             self.infcx.tcx.mk_args(&[ty.into()])
         };

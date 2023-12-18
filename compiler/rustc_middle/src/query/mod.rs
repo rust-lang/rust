@@ -30,7 +30,7 @@ use crate::query::plumbing::{
 };
 use crate::thir;
 use crate::traits::query::{
-    CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
+    CanonicalMethodAutoderefGoal, CanonicalPredicateGoal, CanonicalProjectionGoal, CanonicalTyGoal,
     CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpEqGoal, CanonicalTypeOpNormalizeGoal,
     CanonicalTypeOpProvePredicateGoal, CanonicalTypeOpSubtypeGoal, NoSolution,
 };
@@ -2072,9 +2072,9 @@ rustc_queries! {
     }
 
     query method_autoderef_steps(
-        goal: CanonicalTyGoal<'tcx>
+        goal: CanonicalMethodAutoderefGoal<'tcx>
     ) -> MethodAutoderefStepsResult<'tcx> {
-        desc { "computing autoderef types for `{}`", goal.value.value }
+        desc { "computing autoderef types for `{}`", goal.value.value.self_ty }
     }
 
     query supported_target_features(_: CrateNum) -> &'tcx UnordMap<String, Option<Symbol>> {
