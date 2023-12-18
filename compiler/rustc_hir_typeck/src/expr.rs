@@ -722,7 +722,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if let [segment] = path.segments
                         && segment.ident.name == sym::rust
                     {
-                        fatally_break_rust(self.tcx);
+                        fatally_break_rust(self.tcx, expr.span);
                     }
                 }
             }

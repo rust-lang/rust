@@ -968,6 +968,19 @@ impl DiagCtxt {
         DiagnosticBuilder::new(self, Level::Bug, msg)
     }
 
+    /// Construct a builder at the `Bug` level at the given `span` with the `msg`.
+    #[rustc_lint_diagnostics]
+    #[track_caller]
+    pub fn struct_span_bug(
+        &self,
+        span: impl Into<MultiSpan>,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, BugAbort> {
+        let mut result = self.struct_bug(msg);
+        result.set_span(span);
+        result
+    }
+
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn span_fatal(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {

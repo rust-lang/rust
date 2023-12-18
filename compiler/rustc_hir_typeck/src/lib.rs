@@ -52,7 +52,7 @@ use crate::expectation::Expectation;
 use crate::fn_ctxt::RawTy;
 use crate::gather_locals::GatherLocalsVisitor;
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{struct_span_err, DiagnosticId, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{struct_span_err, DiagnosticId, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::Visitor;
@@ -412,24 +412,25 @@ enum TupleArgumentsFlag {
     TupleArguments,
 }
 
-fn fatally_break_rust(tcx: TyCtxt<'_>) {
+fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {
     let dcx = tcx.sess.dcx();
-    dcx.span_bug_no_panic(
-        MultiSpan::new(),
+    let mut diag = dcx.struct_span_bug(
+        span,
         "It looks like you're trying to break rust; would you like some ICE?",
     );
-    dcx.note("the compiler expectedly panicked. this is a feature.");
-    dcx.note(
+    diag.note("the compiler expectedly panicked. this is a feature.");
+    diag.note(
         "we would appreciate a joke overview: \
          https://github.com/rust-lang/rust/issues/43162#issuecomment-320764675",
     );
-    dcx.note(format!("rustc {} running on {}", tcx.sess.cfg_version, config::host_triple(),));
+    diag.note(format!("rustc {} running on {}", tcx.sess.cfg_version, config::host_triple(),));
     if let Some((flags, excluded_cargo_defaults)) = rustc_session::utils::extra_compiler_flags() {
-        dcx.note(format!("compiler flags: {}", flags.join(" ")));
+        diag.note(format!("compiler flags: {}", flags.join(" ")));
         if excluded_cargo_defaults {
-            dcx.note("some of the compiler flags provided by cargo are hidden");
+            diag.note("some of the compiler flags provided by cargo are hidden");
         }
     }
+    diag.emit()
 }
 
 /// `expected` here is the expected number of explicit generic arguments on the trait.
