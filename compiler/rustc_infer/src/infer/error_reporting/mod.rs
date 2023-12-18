@@ -2654,8 +2654,7 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
     }
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        // Unused, only for consts which we treat as always equal
-        ty::ParamEnv::empty()
+        unreachable!("purely structural relation should not need a param-env")
     }
 
     fn tag(&self) -> &'static str {

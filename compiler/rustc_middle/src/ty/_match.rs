@@ -20,12 +20,11 @@ use crate::ty::{self, InferConst, Ty, TyCtxt};
 /// affects any type variables or unification state.
 pub struct MatchAgainstFreshVars<'tcx> {
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
 }
 
 impl<'tcx> MatchAgainstFreshVars<'tcx> {
-    pub fn new(tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> MatchAgainstFreshVars<'tcx> {
-        MatchAgainstFreshVars { tcx, param_env }
+    pub fn new(tcx: TyCtxt<'tcx>) -> MatchAgainstFreshVars<'tcx> {
+        MatchAgainstFreshVars { tcx }
     }
 }
 
@@ -33,13 +32,15 @@ impl<'tcx> TypeRelation<'tcx> for MatchAgainstFreshVars<'tcx> {
     fn tag(&self) -> &'static str {
         "MatchAgainstFreshVars"
     }
+
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.param_env
+        panic!("relation should not need a param-env")
     }
+
     fn a_is_expected(&self) -> bool {
         true
     } // irrelevant
