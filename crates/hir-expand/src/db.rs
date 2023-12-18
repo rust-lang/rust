@@ -22,10 +22,12 @@ use crate::{
     builtin_fn_macro::EagerExpander,
     fixup::{self, reverse_fixups, SyntaxFixupUndoInfo},
     hygiene::{apply_mark, SyntaxContextData, Transparency},
+    proc_macro::ProcMacros,
     span::{RealSpanMap, SpanMap, SpanMapRef},
-    tt, AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallInfo,
-    ExpandError, ExpandResult, ExpandTo, ExpansionSpanMap, HirFileId, HirFileIdRepr, MacroCallId,
-    MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind, MacroFileId, ProcMacroExpander,
+    tt, AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander,
+    CustomProcMacroExpander, EagerCallInfo, ExpandError, ExpandResult, ExpandTo, ExpansionSpanMap,
+    HirFileId, HirFileIdRepr, MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
+    MacroFileId,
 };
 
 /// Total limit on the number of tokens produced by any macro invocation.
@@ -86,11 +88,15 @@ pub enum TokenExpander {
     /// `derive(Copy)` and such.
     BuiltInDerive(BuiltinDeriveExpander),
     /// The thing we love the most here in rust-analyzer -- procedural macros.
-    ProcMacro(ProcMacroExpander),
+    ProcMacro(CustomProcMacroExpander),
 }
 
 #[salsa::query_group(ExpandDatabaseStorage)]
 pub trait ExpandDatabase: SourceDatabase {
+    /// The proc macros.
+    #[salsa::input]
+    fn proc_macros(&self) -> Arc<ProcMacros>;
+
     fn ast_id_map(&self, file_id: HirFileId) -> Arc<AstIdMap>;
 
     /// Main public API -- parses a hir file, not caring whether it's a real

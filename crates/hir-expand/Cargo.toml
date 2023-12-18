@@ -32,6 +32,7 @@ profile.workspace = true
 tt.workspace = true
 mbe.workspace = true
 limit.workspace = true
+test-utils.workspace = true
 
 [dev-dependencies]
 expect-test = "1.4.0"

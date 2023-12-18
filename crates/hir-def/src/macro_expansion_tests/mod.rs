@@ -16,9 +16,15 @@ mod proc_macros;
 
 use std::{iter, ops::Range, sync};
 
-use base_db::{fixture::WithFixture, span::SpanData, ProcMacro, SourceDatabase};
+use base_db::{span::SpanData, SourceDatabase};
 use expect_test::Expect;
-use hir_expand::{db::ExpandDatabase, span::SpanMapRef, InFile, MacroFileId, MacroFileIdExt};
+use hir_expand::{
+    db::ExpandDatabase,
+    fixture::WithFixture,
+    proc_macro::{ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind},
+    span::SpanMapRef,
+    InFile, MacroFileId, MacroFileIdExt,
+};
 use stdx::format_to;
 use syntax::{
     ast::{self, edit::IndentLevel},
@@ -50,7 +56,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
         .into(),
         ProcMacro {
             name: "identity_when_valid".into(),
-            kind: base_db::ProcMacroKind::Attr,
+            kind: ProcMacroKind::Attr,
             expander: sync::Arc::new(IdentityWhenValidProcMacroExpander),
         },
     )];
@@ -307,7 +313,7 @@ fn pretty_print_macro_expansion(
 // compile errors.
 #[derive(Debug)]
 struct IdentityWhenValidProcMacroExpander;
-impl base_db::ProcMacroExpander for IdentityWhenValidProcMacroExpander {
+impl ProcMacroExpander for IdentityWhenValidProcMacroExpander {
     fn expand(
         &self,
         subtree: &Subtree,
@@ -316,7 +322,7 @@ impl base_db::ProcMacroExpander for IdentityWhenValidProcMacroExpander {
         _: SpanData,
         _: SpanData,
         _: SpanData,
-    ) -> Result<Subtree, base_db::ProcMacroExpansionError> {
+    ) -> Result<Subtree, ProcMacroExpansionError> {
         let (parse, _) =
             ::mbe::token_tree_to_syntax_node(subtree, ::mbe::TopEntryPoint::MacroItems);
         if parse.errors().is_empty() {

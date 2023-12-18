@@ -12,7 +12,7 @@ mod diagnostics;
 
 use std::{collections::HashMap, env};
 
-use base_db::{fixture::WithFixture, FileRange, SourceDatabaseExt};
+use base_db::{FileRange, SourceDatabaseExt};
 use expect_test::Expect;
 use hir_def::{
     body::{Body, BodySourceMap, SyntheticSyntax},
@@ -23,7 +23,7 @@ use hir_def::{
     src::HasSource,
     AssocItemId, DefWithBodyId, HasModule, LocalModuleId, Lookup, ModuleDefId,
 };
-use hir_expand::{db::ExpandDatabase, InFile};
+use hir_expand::{db::ExpandDatabase, fixture::WithFixture, InFile};
 use once_cell::race::OnceBool;
 use stdx::format_to;
 use syntax::{

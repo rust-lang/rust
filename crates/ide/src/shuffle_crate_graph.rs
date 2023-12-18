@@ -1,5 +1,6 @@
+use hir::{db::ExpandDatabase, ProcMacros};
 use ide_db::{
-    base_db::{salsa::Durability, CrateGraph, ProcMacros, SourceDatabase},
+    base_db::{salsa::Durability, CrateGraph, SourceDatabase},
     FxHashMap, RootDatabase,
 };
 use triomphe::Arc;

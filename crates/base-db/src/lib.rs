@@ -4,7 +4,6 @@
 
 mod input;
 mod change;
-pub mod fixture;
 pub mod span;
 
 use std::panic;
@@ -14,12 +13,11 @@ use syntax::{ast, Parse, SourceFile, TextRange, TextSize};
 use triomphe::Arc;
 
 pub use crate::{
-    change::Change,
+    change::FileChange,
     input::{
         CrateData, CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency,
-        DependencyKind, Edition, Env, LangCrateOrigin, ProcMacro, ProcMacroExpander,
-        ProcMacroExpansionError, ProcMacroId, ProcMacroKind, ProcMacroLoadResult, ProcMacroPaths,
-        ProcMacros, ReleaseChannel, SourceRoot, SourceRootId, TargetLayoutLoadResult,
+        DependencyKind, Edition, Env, LangCrateOrigin, ProcMacroPaths, ReleaseChannel, SourceRoot,
+        SourceRootId, TargetLayoutLoadResult,
     },
 };
 pub use salsa::{self, Cancelled};
@@ -74,10 +72,6 @@ pub trait SourceDatabase: FileLoader + std::fmt::Debug {
     /// The crate graph.
     #[salsa::input]
     fn crate_graph(&self) -> Arc<CrateGraph>;
-
-    /// The proc macros.
-    #[salsa::input]
-    fn proc_macros(&self) -> Arc<ProcMacros>;
 }
 
 fn parse(db: &dyn SourceDatabase, file_id: FileId) -> Parse<ast::SourceFile> {

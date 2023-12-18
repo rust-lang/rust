@@ -6,7 +6,7 @@
 //! actual IO. See `vfs` and `project_model` in the `rust-analyzer` crate for how
 //! actual IO is done and lowered to input.
 
-use std::{fmt, mem, ops, panic::RefUnwindSafe, str::FromStr, sync};
+use std::{fmt, mem, ops, str::FromStr};
 
 use cfg::CfgOptions;
 use la_arena::{Arena, Idx};
@@ -15,13 +15,9 @@ use syntax::SmolStr;
 use triomphe::Arc;
 use vfs::{file_set::FileSet, AbsPathBuf, AnchoredPath, FileId, VfsPath};
 
-use crate::span::SpanData;
-
 // Map from crate id to the name of the crate and path of the proc-macro. If the value is `None`,
 // then the crate for the proc-macro hasn't been build yet as the build data is missing.
 pub type ProcMacroPaths = FxHashMap<CrateId, Result<(Option<String>, AbsPathBuf), String>>;
-pub type ProcMacros = FxHashMap<CrateId, ProcMacroLoadResult>;
-
 /// Files are grouped into source roots. A source root is a directory on the
 /// file systems which is watched for changes. Typically it corresponds to a
 /// Rust crate. Source roots *might* be nested: in this case, a file belongs to
@@ -242,48 +238,7 @@ impl CrateDisplayName {
         CrateDisplayName { crate_name, canonical_name }
     }
 }
-
-// FIXME: These should not be defined in here? Why does base db know about proc-macros
-// ProcMacroKind is used in [`fixture`], but that module probably shouldn't be in this crate either.
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct ProcMacroId(pub u32);
-
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Hash)]
-pub enum ProcMacroKind {
-    CustomDerive,
-    FuncLike,
-    Attr,
-}
-
-pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe {
-    fn expand(
-        &self,
-        subtree: &tt::Subtree<SpanData>,
-        attrs: Option<&tt::Subtree<SpanData>>,
-        env: &Env,
-        def_site: SpanData,
-        call_site: SpanData,
-        mixed_site: SpanData,
-    ) -> Result<tt::Subtree<SpanData>, ProcMacroExpansionError>;
-}
-
-#[derive(Debug)]
-pub enum ProcMacroExpansionError {
-    Panic(String),
-    /// Things like "proc macro server was killed by OOM".
-    System(String),
-}
-
-pub type ProcMacroLoadResult = Result<Vec<ProcMacro>, String>;
 pub type TargetLayoutLoadResult = Result<Arc<str>, Arc<str>>;
-
-#[derive(Debug, Clone)]
-pub struct ProcMacro {
-    pub name: SmolStr,
-    pub kind: ProcMacroKind,
-    pub expander: sync::Arc<dyn ProcMacroExpander>,
-}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ReleaseChannel {

@@ -15,7 +15,7 @@ use hir_expand::{
     builtin_derive_macro::find_builtin_derive,
     builtin_fn_macro::find_builtin_macro,
     name::{name, AsName, Name},
-    proc_macro::ProcMacroExpander,
+    proc_macro::CustomProcMacroExpander,
     ExpandResult, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind, MacroCallLoc,
     MacroDefId, MacroDefKind,
 };
@@ -95,7 +95,12 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, def_map: DefMap, tree_id: TreeI
                                 ctx: SyntaxContextId::ROOT,
                             },
                         };
-                        (name.as_name(), ProcMacroExpander::new(base_db::ProcMacroId(idx as u32)))
+                        (
+                            name.as_name(),
+                            CustomProcMacroExpander::new(hir_expand::proc_macro::ProcMacroId(
+                                idx as u32,
+                            )),
+                        )
                     })
                     .collect())
             }
@@ -253,7 +258,7 @@ struct DefCollector<'a> {
     /// built by the build system, and is the list of proc. macros we can actually expand. It is
     /// empty when proc. macro support is disabled (in which case we still do name resolution for
     /// them).
-    proc_macros: Result<Vec<(Name, ProcMacroExpander)>, Box<str>>,
+    proc_macros: Result<Vec<(Name, CustomProcMacroExpander)>, Box<str>>,
     is_proc_macro: bool,
     from_glob_import: PerNsGlobImports,
     /// If we fail to resolve an attribute on a `ModItem`, we fall back to ignoring the attribute.
@@ -603,7 +608,7 @@ impl DefCollector<'_> {
         let (expander, kind) =
             match self.proc_macros.as_ref().map(|it| it.iter().find(|(n, _)| n == &def.name)) {
                 Ok(Some(&(_, expander))) => (expander, kind),
-                _ => (ProcMacroExpander::dummy(), kind),
+                _ => (CustomProcMacroExpander::dummy(), kind),
             };
 
         let proc_macro_id =
@@ -2363,8 +2368,10 @@ impl ModCollector<'_, '_> {
 
 #[cfg(test)]
 mod tests {
+    use base_db::SourceDatabase;
+    use hir_expand::fixture::WithFixture;
+
     use crate::{db::DefDatabase, test_db::TestDB};
-    use base_db::{fixture::WithFixture, SourceDatabase};
 
     use super::*;
 

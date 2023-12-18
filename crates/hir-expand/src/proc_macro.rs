@@ -1,18 +1,63 @@
 //! Proc Macro Expander stub
 
-use base_db::{span::SpanData, CrateId, ProcMacroExpansionError, ProcMacroId, ProcMacroKind};
+use core::fmt;
+use std::{panic::RefUnwindSafe, sync};
+
+use base_db::{span::SpanData, CrateId, Env};
+use rustc_hash::FxHashMap;
 use stdx::never;
+use syntax::SmolStr;
 
 use crate::{db::ExpandDatabase, tt, ExpandError, ExpandResult};
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct ProcMacroId(pub u32);
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Hash)]
+pub enum ProcMacroKind {
+    CustomDerive,
+    FuncLike,
+    Attr,
+}
+
+pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe {
+    fn expand(
+        &self,
+        subtree: &tt::Subtree,
+        attrs: Option<&tt::Subtree>,
+        env: &Env,
+        def_site: SpanData,
+        call_site: SpanData,
+        mixed_site: SpanData,
+    ) -> Result<tt::Subtree, ProcMacroExpansionError>;
+}
+
+#[derive(Debug)]
+pub enum ProcMacroExpansionError {
+    Panic(String),
+    /// Things like "proc macro server was killed by OOM".
+    System(String),
+}
+
+pub type ProcMacroLoadResult = Result<Vec<ProcMacro>, String>;
+
+pub type ProcMacros = FxHashMap<CrateId, ProcMacroLoadResult>;
+
+#[derive(Debug, Clone)]
+pub struct ProcMacro {
+    pub name: SmolStr,
+    pub kind: ProcMacroKind,
+    pub expander: sync::Arc<dyn ProcMacroExpander>,
+}
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
-pub struct ProcMacroExpander {
+pub struct CustomProcMacroExpander {
     proc_macro_id: ProcMacroId,
 }
 
 const DUMMY_ID: u32 = !0;
 
-impl ProcMacroExpander {
+impl CustomProcMacroExpander {
     pub fn new(proc_macro_id: ProcMacroId) -> Self {
         assert_ne!(proc_macro_id.0, DUMMY_ID);
         Self { proc_macro_id }

@@ -544,6 +544,7 @@ dependencies = [
  "smallvec",
  "stdx",
  "syntax",
+ "test-utils",
  "tracing",
  "triomphe",
  "tt",
@@ -903,6 +904,7 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "crossbeam-channel",
+ "hir-expand",
  "ide",
  "ide-db",
  "itertools",

@@ -3,9 +3,9 @@ mod generated;
 mod sourcegen;
 
 use expect_test::expect;
-use hir::Semantics;
+use hir::{Semantics, WithFixture};
 use ide_db::{
-    base_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt},
+    base_db::{FileId, FileRange, SourceDatabaseExt},
     imports::insert_use::{ImportGranularity, InsertUseConfig},
     source_change::FileSystemEdit,
     RootDatabase, SnippetCap,

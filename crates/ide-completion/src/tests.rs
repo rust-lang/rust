@@ -24,9 +24,9 @@ mod use_tree;
 mod visibility;
 
 use expect_test::Expect;
-use hir::PrefixKind;
+use hir::{ChangeFixture, PrefixKind};
 use ide_db::{
-    base_db::{fixture::ChangeFixture, FileLoader, FilePosition},
+    base_db::{FileLoader, FilePosition},
     imports::insert_use::{ImportGranularity, InsertUseConfig},
     RootDatabase, SnippetCap,
 };

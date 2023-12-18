@@ -1,5 +1,4 @@
-use base_db::fixture::WithFixture;
-use hir::PrefixKind;
+use hir::{PrefixKind, WithFixture};
 use stdx::trim_indent;
 use test_utils::{assert_eq_text, CURSOR_MARKER};
 

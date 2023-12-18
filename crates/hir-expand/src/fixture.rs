@@ -1,6 +1,11 @@
 //! A set of high-level utility fixture methods to use in tests.
-use std::{mem, str::FromStr, sync};
+use std::{mem, ops::Not, str::FromStr, sync};
 
+use base_db::{
+    salsa::Durability, span::SpanData, CrateDisplayName, CrateGraph, CrateId, CrateName,
+    CrateOrigin, Dependency, DependencyKind, Edition, Env, FileChange, FileId, FilePosition,
+    FileRange, FileSet, LangCrateOrigin, ReleaseChannel, SourceDatabaseExt, SourceRoot, VfsPath,
+};
 use cfg::CfgOptions;
 use rustc_hash::FxHashMap;
 use test_utils::{
@@ -9,19 +14,13 @@ use test_utils::{
 };
 use triomphe::Arc;
 use tt::{Leaf, Subtree, TokenTree};
-use vfs::{file_set::FileSet, VfsPath};
 
 use crate::{
-    input::{CrateName, CrateOrigin, LangCrateOrigin},
-    span::SpanData,
-    Change, CrateDisplayName, CrateGraph, CrateId, Dependency, DependencyKind, Edition, Env,
-    FileId, FilePosition, FileRange, ProcMacro, ProcMacroExpander, ProcMacroExpansionError,
-    ProcMacros, ReleaseChannel, SourceDatabaseExt, SourceRoot, SourceRootId,
+    db::ExpandDatabase,
+    proc_macro::{ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacros},
 };
 
-pub const WORKSPACE: SourceRootId = SourceRootId(0);
-
-pub trait WithFixture: Default + SourceDatabaseExt + 'static {
+pub trait WithFixture: Default + ExpandDatabase + SourceDatabaseExt + 'static {
     #[track_caller]
     fn with_single_file(ra_fixture: &str) -> (Self, FileId) {
         let fixture = ChangeFixture::parse(ra_fixture);
@@ -80,6 +79,7 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
         let fixture = ChangeFixture::parse(ra_fixture);
         let mut db = Self::default();
         fixture.change.apply(&mut db);
+
         let (file_id, range_or_offset) = fixture
             .file_position
             .expect("Could not find file position in fixture. Did you forget to add an `$0`?");
@@ -95,7 +95,42 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
     }
 }
 
-impl<DB: SourceDatabaseExt + Default + 'static> WithFixture for DB {}
+impl<DB: ExpandDatabase + SourceDatabaseExt + Default + 'static> WithFixture for DB {}
+
+#[derive(Debug, Default)]
+pub struct Change {
+    pub source_change: FileChange,
+    pub proc_macros: Option<ProcMacros>,
+}
+
+impl Change {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn apply(self, db: &mut (impl ExpandDatabase + SourceDatabaseExt)) {
+        self.source_change.apply(db);
+        if let Some(proc_macros) = self.proc_macros {
+            db.set_proc_macros_with_durability(Arc::new(proc_macros), Durability::HIGH);
+        }
+    }
+
+    pub fn change_file(&mut self, file_id: FileId, new_text: Option<Arc<str>>) {
+        self.source_change.change_file(file_id, new_text)
+    }
+
+    pub fn set_crate_graph(&mut self, graph: CrateGraph) {
+        self.source_change.set_crate_graph(graph)
+    }
+
+    pub fn set_proc_macros(&mut self, proc_macros: ProcMacros) {
+        self.proc_macros = Some(proc_macros);
+    }
+
+    pub fn set_roots(&mut self, roots: Vec<SourceRoot>) {
+        self.source_change.set_roots(roots)
+    }
+}
 
 pub struct ChangeFixture {
     pub file_position: Option<(FileId, RangeOrOffset)>,
@@ -122,7 +157,7 @@ impl ChangeFixture {
                     .unwrap_or_else(|| panic!("unknown release channel found: {it}"))
             })
             .unwrap_or(ReleaseChannel::Stable);
-        let mut change = Change::new();
+        let mut source_change = FileChange::new();
 
         let mut files = Vec::new();
         let mut crate_graph = CrateGraph::default();
@@ -206,7 +241,7 @@ impl ChangeFixture {
                 default_target_data_layout = meta.target_data_layout;
             }
 
-            change.change_file(file_id, Some(Arc::from(text)));
+            source_change.change_file(file_id, Some(Arc::from(text)));
             let path = VfsPath::new_virtual_path(meta.path);
             file_set.insert(file_id, path);
             files.push(file_id);
@@ -261,7 +296,7 @@ impl ChangeFixture {
             fs.insert(core_file, VfsPath::new_virtual_path("/sysroot/core/lib.rs".to_string()));
             roots.push(SourceRoot::new_library(fs));
 
-            change.change_file(core_file, Some(Arc::from(mini_core.source_code())));
+            source_change.change_file(core_file, Some(Arc::from(mini_core.source_code())));
 
             let all_crates = crate_graph.crates_in_topological_order();
 
@@ -306,7 +341,7 @@ impl ChangeFixture {
             );
             roots.push(SourceRoot::new_library(fs));
 
-            change.change_file(proc_lib_file, Some(Arc::from(source)));
+            source_change.change_file(proc_lib_file, Some(Arc::from(source)));
 
             let all_crates = crate_graph.crates_in_topological_order();
 
@@ -344,11 +379,17 @@ impl ChangeFixture {
             SourceRootKind::Library => SourceRoot::new_library(mem::take(&mut file_set)),
         };
         roots.push(root);
-        change.set_roots(roots);
-        change.set_crate_graph(crate_graph);
-        change.set_proc_macros(proc_macros);
+        source_change.set_roots(roots);
+        source_change.set_crate_graph(crate_graph);
 
-        ChangeFixture { file_position, files, change }
+        ChangeFixture {
+            file_position,
+            files,
+            change: Change {
+                source_change,
+                proc_macros: proc_macros.is_empty().not().then(|| proc_macros),
+            },
+        }
     }
 }
 

@@ -1,5 +1,5 @@
-use base_db::fixture::WithFixture;
 use expect_test::{expect, Expect};
+use hir_expand::fixture::WithFixture;
 
 use crate::{db::DefDatabase, test_db::TestDB};
 

@@ -5,12 +5,14 @@
 use std::{collections::hash_map::Entry, mem, path::Path, sync};
 
 use crossbeam_channel::{unbounded, Receiver};
-use ide::{AnalysisHost, Change, SourceRoot};
+use hir_expand::proc_macro::{
+    ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacroLoadResult,
+    ProcMacros,
+};
+use ide::{AnalysisHost, SourceRoot};
 use ide_db::{
-    base_db::{
-        span::SpanData, CrateGraph, Env, ProcMacro, ProcMacroExpander, ProcMacroExpansionError,
-        ProcMacroKind, ProcMacroLoadResult, ProcMacros,
-    },
+    base_db::{span::SpanData, CrateGraph, Env},
+    fixture::Change,
     FxHashMap,
 };
 use itertools::Itertools;
