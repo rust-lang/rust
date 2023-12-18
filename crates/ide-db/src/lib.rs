@@ -43,10 +43,7 @@ pub mod syntax_helpers {
     pub use parser::LexedStr;
 }
 
-pub mod fixture {
-    pub use hir::{Change, ChangeFixture, WithFixture};
-    pub const WORKSPACE: base_db::SourceRootId = base_db::SourceRootId(0);
-}
+pub use hir::Change;
 
 use std::{fmt, mem::ManuallyDrop};
 

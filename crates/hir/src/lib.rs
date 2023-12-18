@@ -125,7 +125,7 @@ pub use {
     },
     hir_expand::{
         attrs::{Attr, AttrId},
-        fixture::{Change, ChangeFixture, WithFixture},
+        change::Change,
         hygiene::{marks_rev, SyntaxContextExt},
         name::{known, Name},
         proc_macro::ProcMacros,

@@ -13,7 +13,7 @@ doctest = false
 
 [dependencies]
 cov-mark = "2.0.0-pre.1"
-rustc-hash = "1.1.0"
+rustc-hash.workspace = true
 smallvec.workspace = true
 tracing.workspace = true
 

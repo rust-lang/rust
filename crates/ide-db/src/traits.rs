@@ -115,8 +115,9 @@ fn assoc_item_of_trait(
 mod tests {
     use base_db::FilePosition;
     use expect_test::{expect, Expect};
-    use hir::{ChangeFixture, Semantics};
+    use hir::Semantics;
     use syntax::ast::{self, AstNode};
+    use test_fixture::ChangeFixture;
 
     use crate::RootDatabase;
 

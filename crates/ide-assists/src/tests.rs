@@ -3,7 +3,7 @@ mod generated;
 mod sourcegen;
 
 use expect_test::expect;
-use hir::{Semantics, WithFixture};
+use hir::Semantics;
 use ide_db::{
     base_db::{FileId, FileRange, SourceDatabaseExt},
     imports::insert_use::{ImportGranularity, InsertUseConfig},
@@ -12,6 +12,7 @@ use ide_db::{
 };
 use stdx::{format_to, trim_indent};
 use syntax::TextRange;
+use test_fixture::WithFixture;
 use test_utils::{assert_eq_text, extract_offset};
 
 use crate::{

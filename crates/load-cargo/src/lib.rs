@@ -12,8 +12,7 @@ use hir_expand::proc_macro::{
 use ide::{AnalysisHost, SourceRoot};
 use ide_db::{
     base_db::{CrateGraph, Env},
-    fixture::Change,
-    FxHashMap,
+    Change, FxHashMap,
 };
 use itertools::Itertools;
 use proc_macro_api::{MacroDylib, ProcMacroServer};

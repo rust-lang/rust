@@ -12,7 +12,7 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
-rustc-hash = "1.1.0"
+rustc-hash.workspace = true
 either.workspace = true
 arrayvec = "0.7.2"
 itertools.workspace = true

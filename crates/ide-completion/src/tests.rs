@@ -24,7 +24,7 @@ mod use_tree;
 mod visibility;
 
 use expect_test::Expect;
-use hir::{ChangeFixture, PrefixKind};
+use hir::PrefixKind;
 use ide_db::{
     base_db::{FileLoader, FilePosition},
     imports::insert_use::{ImportGranularity, InsertUseConfig},
@@ -32,6 +32,7 @@ use ide_db::{
 };
 use itertools::Itertools;
 use stdx::{format_to, trim_indent};
+use test_fixture::ChangeFixture;
 use test_utils::assert_eq_text;
 
 use crate::{

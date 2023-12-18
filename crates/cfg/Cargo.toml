@@ -12,7 +12,7 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
-rustc-hash = "1.1.0"
+rustc-hash.workspace = true
 
 # locals deps
 tt.workspace = true

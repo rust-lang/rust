@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use chalk_ir::{AdtId, TyKind};
 use either::Either;
 use hir_def::db::DefDatabase;
-use hir_expand::fixture::WithFixture;
+use test_fixture::WithFixture;
 use triomphe::Arc;
 
 use crate::{

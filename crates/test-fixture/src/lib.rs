@@ -2,24 +2,27 @@
 use std::{mem, ops::Not, str::FromStr, sync};
 
 use base_db::{
-    salsa::Durability, CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency,
-    DependencyKind, Edition, Env, FileChange, FileSet, LangCrateOrigin, ReleaseChannel,
-    SourceDatabaseExt, SourceRoot, VfsPath,
+    CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, DependencyKind,
+    Edition, Env, FileChange, FileSet, LangCrateOrigin, ReleaseChannel, SourceDatabaseExt,
+    SourceRoot, VfsPath,
 };
 use cfg::CfgOptions;
+use hir_expand::{
+    change::Change,
+    db::ExpandDatabase,
+    proc_macro::{
+        ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacros,
+    },
+};
 use rustc_hash::FxHashMap;
 use span::{FileId, FilePosition, FileRange, Span};
 use test_utils::{
     extract_range_or_offset, Fixture, FixtureWithProjectMeta, RangeOrOffset, CURSOR_MARKER,
     ESCAPED_CURSOR_MARKER,
 };
-use triomphe::Arc;
 use tt::{Leaf, Subtree, TokenTree};
 
-use crate::{
-    db::ExpandDatabase,
-    proc_macro::{ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacros},
-};
+pub const WORKSPACE: base_db::SourceRootId = base_db::SourceRootId(0);
 
 pub trait WithFixture: Default + ExpandDatabase + SourceDatabaseExt + 'static {
     #[track_caller]
@@ -97,41 +100,6 @@ pub trait WithFixture: Default + ExpandDatabase + SourceDatabaseExt + 'static {
 }
 
 impl<DB: ExpandDatabase + SourceDatabaseExt + Default + 'static> WithFixture for DB {}
-
-#[derive(Debug, Default)]
-pub struct Change {
-    pub source_change: FileChange,
-    pub proc_macros: Option<ProcMacros>,
-}
-
-impl Change {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn apply(self, db: &mut (impl ExpandDatabase + SourceDatabaseExt)) {
-        self.source_change.apply(db);
-        if let Some(proc_macros) = self.proc_macros {
-            db.set_proc_macros_with_durability(Arc::new(proc_macros), Durability::HIGH);
-        }
-    }
-
-    pub fn change_file(&mut self, file_id: FileId, new_text: Option<Arc<str>>) {
-        self.source_change.change_file(file_id, new_text)
-    }
-
-    pub fn set_crate_graph(&mut self, graph: CrateGraph) {
-        self.source_change.set_crate_graph(graph)
-    }
-
-    pub fn set_proc_macros(&mut self, proc_macros: ProcMacros) {
-        self.proc_macros = Some(proc_macros);
-    }
-
-    pub fn set_roots(&mut self, roots: Vec<SourceRoot>) {
-        self.source_change.set_roots(roots)
-    }
-}
 
 pub struct ChangeFixture {
     pub file_position: Option<(FileId, RangeOrOffset)>,
@@ -223,7 +191,7 @@ impl ChangeFixture {
                     origin,
                     meta.target_data_layout
                         .as_deref()
-                        .map(Arc::from)
+                        .map(From::from)
                         .ok_or_else(|| "target_data_layout unset".into()),
                     Some(toolchain),
                 );
@@ -242,7 +210,7 @@ impl ChangeFixture {
                 default_target_data_layout = meta.target_data_layout;
             }
 
-            source_change.change_file(file_id, Some(Arc::from(text)));
+            source_change.change_file(file_id, Some(text.into()));
             let path = VfsPath::new_virtual_path(meta.path);
             file_set.insert(file_id, path);
             files.push(file_id);
@@ -297,7 +265,7 @@ impl ChangeFixture {
             fs.insert(core_file, VfsPath::new_virtual_path("/sysroot/core/lib.rs".to_string()));
             roots.push(SourceRoot::new_library(fs));
 
-            source_change.change_file(core_file, Some(Arc::from(mini_core.source_code())));
+            source_change.change_file(core_file, Some(mini_core.source_code().into()));
 
             let all_crates = crate_graph.crates_in_topological_order();
 
@@ -342,7 +310,7 @@ impl ChangeFixture {
             );
             roots.push(SourceRoot::new_library(fs));
 
-            source_change.change_file(proc_lib_file, Some(Arc::from(source)));
+            source_change.change_file(proc_lib_file, Some(source.into()));
 
             let all_crates = crate_graph.crates_in_topological_order();
 
@@ -406,7 +374,7 @@ pub fn identity(_attr: TokenStream, item: TokenStream) -> TokenStream {
             .into(),
             ProcMacro {
                 name: "identity".into(),
-                kind: crate::ProcMacroKind::Attr,
+                kind: ProcMacroKind::Attr,
                 expander: sync::Arc::new(IdentityProcMacroExpander),
             },
         ),
@@ -420,7 +388,7 @@ pub fn derive_identity(item: TokenStream) -> TokenStream {
             .into(),
             ProcMacro {
                 name: "DeriveIdentity".into(),
-                kind: crate::ProcMacroKind::CustomDerive,
+                kind: ProcMacroKind::CustomDerive,
                 expander: sync::Arc::new(IdentityProcMacroExpander),
             },
         ),
@@ -434,7 +402,7 @@ pub fn input_replace(attr: TokenStream, _item: TokenStream) -> TokenStream {
             .into(),
             ProcMacro {
                 name: "input_replace".into(),
-                kind: crate::ProcMacroKind::Attr,
+                kind: ProcMacroKind::Attr,
                 expander: sync::Arc::new(AttributeInputReplaceProcMacroExpander),
             },
         ),
@@ -448,7 +416,7 @@ pub fn mirror(input: TokenStream) -> TokenStream {
             .into(),
             ProcMacro {
                 name: "mirror".into(),
-                kind: crate::ProcMacroKind::FuncLike,
+                kind: ProcMacroKind::FuncLike,
                 expander: sync::Arc::new(MirrorProcMacroExpander),
             },
         ),
@@ -462,7 +430,7 @@ pub fn shorten(input: TokenStream) -> TokenStream {
             .into(),
             ProcMacro {
                 name: "shorten".into(),
-                kind: crate::ProcMacroKind::FuncLike,
+                kind: ProcMacroKind::FuncLike,
                 expander: sync::Arc::new(ShortenProcMacroExpander),
             },
         ),

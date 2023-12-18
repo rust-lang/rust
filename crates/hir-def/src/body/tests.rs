@@ -2,7 +2,7 @@ mod block;
 
 use base_db::SourceDatabase;
 use expect_test::{expect, Expect};
-use hir_expand::fixture::WithFixture;
+use test_fixture::WithFixture;
 
 use crate::{test_db::TestDB, ModuleDefId};
 
