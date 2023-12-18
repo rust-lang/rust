@@ -366,20 +366,10 @@ img {
 	max-width: 100%;
 }
 
-.sub-logo-container, .logo-container {
+.logo-container {
 	/* zero text boxes so that computed line height = image height exactly */
 	line-height: 0;
 	display: block;
-}
-
-.sub-logo-container {
-	margin-right: 32px;
-}
-
-.sub-logo-container > img {
-	height: 60px;
-	width: 60px;
-	object-fit: contain;
 }
 
 .rust-logo {
@@ -424,14 +414,14 @@ img {
 }
 
 .rustdoc.src .sidebar-resizer {
-	/* when closed, place resizer glow on top of the normal src sidebar border (no need to worry
-	   about sidebar) */
-	left: 49px;
+	/* src pages have separate closed flag */
+	display: none;
 }
 
-.src-sidebar-expanded .rustdoc.src .sidebar-resizer {
+.src-sidebar-expanded .src .sidebar-resizer {
 	/* for src sidebar, gap is already provided by 1px border on sidebar itself, so place resizer
 	   to right of it */
+	display: block;
 	left: var(--src-sidebar-width);
 }
 
@@ -447,7 +437,7 @@ img {
 }
 
 .sidebar-resizing .sidebar {
-	position: fixed;
+	position: fixed !important;
 	z-index: 100;
 }
 .sidebar-resizing > body {
@@ -497,26 +487,23 @@ img {
 }
 
 .sidebar, .mobile-topbar, .sidebar-menu-toggle,
-#src-sidebar-toggle, #src-sidebar {
+#src-sidebar {
 	background-color: var(--sidebar-background-color);
 }
 
-#src-sidebar-toggle > button:hover, #src-sidebar-toggle > button:focus {
-	background-color: var(--sidebar-background-color-hover);
-}
-
-.src .sidebar > *:not(#src-sidebar-toggle) {
-	visibility: hidden;
+.src .sidebar {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: -1000px;
 }
 
 .src-sidebar-expanded .src .sidebar {
+	position: sticky;
+	left: 0;
 	overflow-y: auto;
 	flex-basis: var(--src-sidebar-width);
 	width: var(--src-sidebar-width);
-}
-
-.src-sidebar-expanded .src .sidebar > *:not(#src-sidebar-toggle) {
-	visibility: visible;
 }
 
 #all-types {
@@ -1528,18 +1515,6 @@ a.tooltip:hover::after {
 	font-weight: normal;
 }
 
-#src-sidebar-toggle {
-	position: sticky;
-	top: 0;
-	left: 0;
-	font-size: 1.25rem;
-	border-bottom: 1px solid;
-	display: flex;
-	height: 40px;
-	justify-content: stretch;
-	align-items: stretch;
-	z-index: 10;
-}
 #src-sidebar {
 	width: 100%;
 	overflow: auto;
@@ -1557,18 +1532,14 @@ a.tooltip:hover::after {
 #src-sidebar div.files > a.selected {
 	background-color: var(--src-sidebar-background-selected);
 }
-#src-sidebar-toggle > button {
-	font-size: inherit;
-	font-weight: bold;
-	background: none;
-	color: inherit;
-	text-align: center;
-	border: none;
-	outline: none;
-	flex: 1 1;
-	/* iOS button gradient: https://stackoverflow.com/q/5438567 */
-	-webkit-appearance: none;
-	opacity: 1;
+
+.src-sidebar-title {
+	position: sticky;
+	top: 0;
+	display: flex;
+	padding: 8px;
+	padding-left: 48px;
+	background: var(--sidebar-background-color);
 }
 
 #settings-menu, #help-button {
@@ -1578,7 +1549,8 @@ a.tooltip:hover::after {
 #sidebar-button {
 	display: none;
 }
-.hide-sidebar #sidebar-button {
+.hide-sidebar #sidebar-button,
+.src #sidebar-button {
 	display: flex;
 	margin-right: 4px;
 	position: fixed;
@@ -1587,6 +1559,16 @@ a.tooltip:hover::after {
 	width: 34px;
 	background-color: var(--main-background-color);
 	z-index: 1;
+}
+.src #sidebar-button {
+	left: 12px;
+	z-index: 101;
+}
+.src .search-form {
+	margin-left: 40px;
+}
+.src-sidebar-expanded .src .search-form {
+	margin-left: 0;
 }
 #settings-menu > a, #help-button > a, #sidebar-button > a {
 	display: flex;
@@ -1843,10 +1825,6 @@ in src-script.js and main.js
 		scroll-margin-top: 45px;
 	}
 
-	.hide-sidebar #sidebar-button {
-		position: static;
-	}
-
 	.rustdoc {
 		/* Sidebar should overlay main content, rather than pushing main content to the right.
 		   Turn off `display: flex` on the body element. */
@@ -1974,31 +1952,6 @@ in src-script.js and main.js
 		left: -11px;
 	}
 
-	#src-sidebar-toggle {
-		position: fixed;
-		left: 1px;
-		top: 100px;
-		width: 30px;
-		font-size: 1.5rem;
-		padding: 0;
-		z-index: 10;
-		border-top-right-radius: 3px;
-		border-bottom-right-radius: 3px;
-		border: 1px solid;
-		border-left: 0;
-	}
-
-	.src-sidebar-expanded #src-sidebar-toggle {
-		left: unset;
-		top: unset;
-		width: unset;
-		border-top-right-radius: unset;
-		border-bottom-right-radius: unset;
-		position: sticky;
-		border: 0;
-		border-bottom: 1px solid;
-	}
-
 	/* We don't display these buttons on mobile devices. */
 	#copy-path, #help-button {
 		display: none;
@@ -2013,6 +1966,14 @@ in src-script.js and main.js
 			<path d="m3 7.375h16m0-3h-4" stroke-width="1.25"/></svg>');
 		width: 22px;
 		height: 22px;
+	}
+
+	/* src sidebar button opens modal
+		use hamburger button */
+	.src #sidebar-button > a:before {
+		content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
+			viewBox="0 0 22 22" fill="none" stroke="black">\
+			<path d="M3,5h16M3,11h16M3,17h16" stroke-width="3"/></svg>');
 	}
 
 	/* Display an alternating layout on tablets and phones */
@@ -2040,8 +2001,18 @@ in src-script.js and main.js
 	}
 
 	.src-sidebar-expanded .src .sidebar {
+		position: fixed;
 		max-width: 100vw;
 		width: 100vw;
+	}
+	.src .src-sidebar-title {
+		padding-top: 0;
+	}
+	.hide-sidebar #sidebar-button {
+		position: static;
+	}
+	.src #sidebar-button {
+		position: fixed;
 	}
 
 	/* Position of the "[-]" element. */
@@ -2113,12 +2084,6 @@ in src-script.js and main.js
 
 	.search-form {
 		align-self: stretch;
-	}
-
-	.sub-logo-container > img {
-		height: 35px;
-		width: 35px;
-		margin-bottom: var(--nav-sub-mobile-padding);
 	}
 }
 

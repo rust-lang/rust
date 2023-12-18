@@ -48,7 +48,7 @@ call-function: (
 
 // Next, desktop mode layout.
 set-window-size: (1100, 800)
-wait-for: "#src-sidebar-toggle"
+wait-for: "#sidebar-button"
 // We check that the sidebar isn't expanded and has the expected width.
 assert-css: ("nav.sidebar", {"width": "50px"})
 // We now click on the button to expand the sidebar.
