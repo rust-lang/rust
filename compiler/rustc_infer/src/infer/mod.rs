@@ -1580,11 +1580,16 @@ impl<'tcx> InferCtxt<'tcx> {
             Ok(None) => {
                 let tcx = self.tcx;
                 let def_id = unevaluated.def;
-                span_bug!(
+                // HACK(generic_const_exprs): We delay the bug instead of immediately ICEing since
+                // #117159 may cause us to try to evaluate unevaluatable consts that fail wfcheck
+                // despite an error being constructed. See #118545
+                Err(ErrorHandled::from(tcx.dcx().span_delayed_bug(
                     tcx.def_span(def_id),
-                    "unable to construct a constant value for the unevaluated constant {:?}",
-                    unevaluated
-                );
+                    format!(
+                        "unable to construct a constant value for the unevaluated constant {:?}",
+                        unevaluated
+                    ),
+                )))
             }
             Err(err) => Err(err),
         }
