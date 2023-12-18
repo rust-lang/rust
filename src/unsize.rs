@@ -252,7 +252,9 @@ pub(crate) fn size_and_align_of<'tcx>(
             assert!(!layout.ty.is_simd());
 
             let i = layout.fields.count() - 1;
-            let sized_size = layout.fields.offset(i).bytes();
+            let unsized_offset_unadjusted = layout.fields.offset(i).bytes();
+            let unsized_offset_unadjusted =
+                fx.bcx.ins().iconst(fx.pointer_type, unsized_offset_unadjusted as i64);
             let sized_align = layout.align.abi.bytes();
             let sized_align = fx.bcx.ins().iconst(fx.pointer_type, sized_align as i64);
 
@@ -261,27 +263,41 @@ pub(crate) fn size_and_align_of<'tcx>(
             let field_layout = layout.field(fx, i);
             let (unsized_size, mut unsized_align) = size_and_align_of(fx, field_layout, info);
 
-            // FIXME (#26403, #27023): We should be adding padding
-            // to `sized_size` (to accommodate the `unsized_align`
-            // required of the unsized field that follows) before
-            // summing it with `sized_size`. (Note that since #26403
-            // is unfixed, we do not yet add the necessary padding
-            // here. But this is where the add would go.)
+            // # First compute the dynamic alignment
 
-            // Return the sum of sizes and max of aligns.
-            let size = fx.bcx.ins().iadd_imm(unsized_size, sized_size as i64);
-
-            // Packed types ignore the alignment of their fields.
-            if let ty::Adt(def, _) = layout.ty.kind() {
-                if def.repr().packed() {
-                    unsized_align = sized_align;
+            // For packed types, we need to cap the alignment.
+            if let ty::Adt(def, _) = ty.kind() {
+                if let Some(packed) = def.repr().pack {
+                    if packed.bytes() == 1 {
+                        // We know this will be capped to 1.
+                        unsized_align = fx.bcx.ins().iconst(fx.pointer_type, 1);
+                    } else {
+                        // We have to dynamically compute `min(unsized_align, packed)`.
+                        let packed = fx.bcx.ins().iconst(fx.pointer_type, packed.bytes() as i64);
+                        let cmp =
+                            fx.bcx.ins().icmp(IntCC::UnsignedGreaterThan, unsized_align, packed);
+                        unsized_align = fx.bcx.ins().select(cmp, unsized_align, packed);
+                    }
                 }
             }
 
             // Choose max of two known alignments (combined value must
             // be aligned according to more restrictive of the two).
             let cmp = fx.bcx.ins().icmp(IntCC::UnsignedGreaterThan, sized_align, unsized_align);
-            let align = fx.bcx.ins().select(cmp, sized_align, unsized_align);
+            let full_align = fx.bcx.ins().select(cmp, sized_align, unsized_align);
+
+            // # Then compute the dynamic size
+
+            // The full formula for the size would be:
+            // let unsized_offset_adjusted = unsized_offset_unadjusted.align_to(unsized_align);
+            // let full_size = (unsized_offset_adjusted + unsized_size).align_to(full_align);
+            // However, `unsized_size` is a multiple of `unsized_align`.
+            // Therefore, we can equivalently do the `align_to(unsized_align)` *after* adding `unsized_size`:
+            // let full_size = (unsized_offset_unadjusted + unsized_size).align_to(unsized_align).align_to(full_align);
+            // Furthermore, `align >= unsized_align`, and therefore we only need to do:
+            // let full_size = (unsized_offset_unadjusted + unsized_size).align_to(full_align);
+
+            let full_size = fx.bcx.ins().iadd(unsized_offset_unadjusted, unsized_size);
 
             // Issue #27023: must add any necessary padding to `size`
             // (to make it a multiple of `align`) before returning it.
@@ -293,12 +309,12 @@ pub(crate) fn size_and_align_of<'tcx>(
             // emulated via the semi-standard fast bit trick:
             //
             //   `(size + (align-1)) & -align`
-            let addend = fx.bcx.ins().iadd_imm(align, -1);
-            let add = fx.bcx.ins().iadd(size, addend);
-            let neg = fx.bcx.ins().ineg(align);
-            let size = fx.bcx.ins().band(add, neg);
+            let addend = fx.bcx.ins().iadd_imm(full_align, -1);
+            let add = fx.bcx.ins().iadd(full_size, addend);
+            let neg = fx.bcx.ins().ineg(full_align);
+            let full_size = fx.bcx.ins().band(add, neg);
 
-            (size, align)
+            (full_size, full_align)
         }
         _ => bug!("size_and_align_of_dst: {ty} not supported"),
     }
