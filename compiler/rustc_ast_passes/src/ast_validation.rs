@@ -41,6 +41,7 @@ enum DisallowTildeConstContext<'a> {
     TraitObject,
     Fn(FnKind<'a>),
     Trait(Span),
+    TraitImpl(Span),
     Impl(Span),
     Item,
 }
@@ -836,7 +837,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     this.visit_vis(&item.vis);
                     this.visit_ident(item.ident);
                     let disallowed = matches!(constness, Const::No)
-                        .then(|| DisallowTildeConstContext::Impl(item.span));
+                        .then(|| DisallowTildeConstContext::TraitImpl(item.span));
                     this.with_tilde_const(disallowed, |this| this.visit_generics(generics));
                     this.visit_trait_ref(t);
                     this.visit_ty(self_ty);
@@ -889,7 +890,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
                 self.visit_vis(&item.vis);
                 self.visit_ident(item.ident);
-                self.with_tilde_const(None, |this| this.visit_generics(generics));
+                self.with_tilde_const(Some(DisallowTildeConstContext::Impl(item.span)), |this| {
+                    this.visit_generics(generics)
+                });
                 self.visit_ty(self_ty);
                 walk_list!(self, visit_assoc_item, items, AssocCtxt::Impl);
                 walk_list!(self, visit_attribute, &item.attrs);
@@ -1215,7 +1218,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         &DisallowTildeConstContext::Trait(span) => {
                             errors::TildeConstReason::Trait { span }
                         }
+                        &DisallowTildeConstContext::TraitImpl(span) => {
+                            errors::TildeConstReason::TraitImpl { span }
+                        }
                         &DisallowTildeConstContext::Impl(span) => {
+                            // FIXME(effects): Consider providing a help message or even a structured
+                            // suggestion for moving such bounds to the assoc const fns if available.
                             errors::TildeConstReason::Impl { span }
                         }
                         DisallowTildeConstContext::TraitObject => {

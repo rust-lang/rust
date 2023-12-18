@@ -1,5 +1,4 @@
-// known-bug: #110395
-// FIXME check-pass
+// check-pass
 #![feature(const_trait_impl, effects)]
 
 #[const_trait]
@@ -9,8 +8,8 @@ trait Foo {
 
 struct Bar<T>(T);
 
-impl<T: ~const Foo> Bar<T> {
-    const fn foo(&self) {
+impl<T> Bar<T> {
+    const fn foo(&self) where T: ~const Foo {
         self.0.foo()
     }
 }

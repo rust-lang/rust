@@ -563,6 +563,11 @@ pub enum TildeConstReason {
         #[primary_span]
         span: Span,
     },
+    #[note(ast_passes_trait_impl)]
+    TraitImpl {
+        #[primary_span]
+        span: Span,
+    },
     #[note(ast_passes_impl)]
     Impl {
         #[primary_span]
