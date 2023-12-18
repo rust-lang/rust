@@ -571,6 +571,11 @@ define_Conf! {
     ///
     /// Don't lint when comparing the result of a modulo operation to zero.
     (allow_comparison_to_zero: bool = true),
+    /// Lint: WILDCARD_IMPORTS.
+    ///
+    /// List of path segments to ignore when checking wildcard imports,
+    /// could get overrided by `warn_on_all_wildcard_imports`.
+    (ignored_wildcard_imports: Vec<String> = Vec::new()),
 }
 
 /// Search for the configuration file.

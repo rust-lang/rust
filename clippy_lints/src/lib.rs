@@ -545,6 +545,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         excessive_nesting_threshold,
         future_size_threshold,
         ref ignore_interior_mutability,
+        ref ignored_wildcard_imports,
         large_error_threshold,
         literal_representation_threshold,
         matches_for_let_else,
@@ -876,7 +877,12 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         ))
     });
     store.register_early_pass(|| Box::new(option_env_unwrap::OptionEnvUnwrap));
-    store.register_late_pass(move |_| Box::new(wildcard_imports::WildcardImports::new(warn_on_all_wildcard_imports)));
+    store.register_late_pass(move |_| {
+        Box::new(wildcard_imports::WildcardImports::new(
+            warn_on_all_wildcard_imports,
+            ignored_wildcard_imports.clone(),
+        ))
+    });
     store.register_late_pass(|_| Box::<redundant_pub_crate::RedundantPubCrate>::default());
     store.register_late_pass(|_| Box::new(unnamed_address::UnnamedAddress));
     store.register_late_pass(|_| Box::<dereference::Dereferencing<'_>>::default());

@@ -1,6 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_test_module_or_function;
 use clippy_utils::source::{snippet, snippet_with_applicability};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Item, ItemKind, PathSegment, UseKind};
@@ -100,13 +101,15 @@ declare_clippy_lint! {
 pub struct WildcardImports {
     warn_on_all: bool,
     test_modules_deep: u32,
+    ignored_segments: Vec<String>,
 }
 
 impl WildcardImports {
-    pub fn new(warn_on_all: bool) -> Self {
+    pub fn new(warn_on_all: bool, ignored_wildcard_imports: Vec<String>) -> Self {
         Self {
             warn_on_all,
             test_modules_deep: 0,
+            ignored_segments: ignored_wildcard_imports,
         }
     }
 }
@@ -190,6 +193,7 @@ impl WildcardImports {
         item.span.from_expansion()
             || is_prelude_import(segments)
             || (is_super_only_import(segments) && self.test_modules_deep > 0)
+            || is_ignored_via_config(segments, &self.ignored_segments)
     }
 }
 
@@ -198,10 +202,20 @@ impl WildcardImports {
 fn is_prelude_import(segments: &[PathSegment<'_>]) -> bool {
     segments
         .iter()
-        .any(|ps| ps.ident.name.as_str().contains(sym::prelude.as_str()))
+        .any(|ps| ps.ident.as_str().contains(sym::prelude.as_str()))
 }
 
 // Allow "super::*" imports in tests.
 fn is_super_only_import(segments: &[PathSegment<'_>]) -> bool {
     segments.len() == 1 && segments[0].ident.name == kw::Super
+}
+
+// Allow skipping imports containing user configured segments,
+// i.e. "...::utils::...::*" if user put `ignored-wildcard-imports = ["utils"]` in `Clippy.toml`
+fn is_ignored_via_config(segments: &[PathSegment<'_>], ignored_segments: &[String]) -> bool {
+    let segments_set: FxHashSet<&str> = segments.iter().map(|s| s.ident.as_str()).collect();
+    let ignored_set: FxHashSet<&str> = ignored_segments.iter().map(String::as_str).collect();
+    // segment matching need to be exact instead of using 'contains', in case user unintentionaly put
+    // a single character in the config thus skipping most of the warnings.
+    segments_set.intersection(&ignored_set).next().is_some()
 }
