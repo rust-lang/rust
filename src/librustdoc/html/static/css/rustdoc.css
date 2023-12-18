@@ -1548,6 +1548,7 @@ a.tooltip:hover::after {
 }
 #sidebar-button {
 	display: none;
+	line-height: 0;
 }
 .hide-sidebar #sidebar-button,
 .src #sidebar-button {
@@ -1925,11 +1926,8 @@ in src-script.js and main.js
 
 	.sidebar-menu-toggle {
 		width: 45px;
-		/* Rare exception to specifying font sizes in rem. Since this is acting
-		   as an icon, it's okay to specify its sizes in pixels. */
-		font-size: 32px;
 		border: none;
-		color: var(--main-color);
+		line-height: 0;
 	}
 
 	.hide-sidebar .sidebar-menu-toggle {
@@ -1964,13 +1962,25 @@ in src-script.js and main.js
 		width: 22px;
 		height: 22px;
 	}
+	.sidebar-menu-toggle:before {
+		filter: var(--mobile-sidebar-menu-filter);
+	}
+	.sidebar-menu-toggle:hover {
+		background: var(--main-background-color);
+	}
 
-	/* src sidebar button opens modal
+	/* sidebar button opens modal
 		use hamburger button */
-	.src #sidebar-button > a:before {
+	.src #sidebar-button > a:before, .sidebar-menu-toggle:before {
 		content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
 			viewBox="0 0 22 22" fill="none" stroke="black">\
-			<path d="M3,5h16M3,11h16M3,17h16" stroke-width="3"/></svg>');
+			<path d="M3,5h16M3,11h16M3,17h16" stroke-width="2.75"/></svg>');
+		opacity: 0.75;
+	}
+	.src #sidebar-button > a:hover:before, .sidebar-menu-toggle:hover:before,
+	.src #sidebar-button > a:active:before, .sidebar-menu-toggle:active:before,
+	.src #sidebar-button > a:focus:before, .sidebar-menu-toggle:focus:before {
+		opacity: 1;
 	}
 
 	/* Display an alternating layout on tablets and phones */
@@ -2303,6 +2313,7 @@ in src-script.js and main.js
 	--code-attribute-color: #999;
 	--toggles-color: #999;
 	--toggle-filter: none;
+	--mobile-sidebar-menu-filter: none;
 	--search-input-focused-border-color: #66afe9;
 	--copy-path-button-color: #999;
 	--copy-path-img-filter: invert(50%);
@@ -2407,6 +2418,7 @@ in src-script.js and main.js
 	--code-attribute-color: #999;
 	--toggles-color: #999;
 	--toggle-filter: invert(100%);
+	--mobile-sidebar-menu-filter: invert(100%);
 	--search-input-focused-border-color: #008dfd;
 	--copy-path-button-color: #999;
 	--copy-path-img-filter: invert(50%);
@@ -2518,6 +2530,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--code-attribute-color: #999;
 	--toggles-color: #999;
 	--toggle-filter: invert(100%);
+	--mobile-sidebar-menu-filter: invert(100%);
 	--search-input-focused-border-color: #5c6773; /* Same as `--border-color`. */
 	--copy-path-button-color: #fff;
 	--copy-path-img-filter: invert(70%);

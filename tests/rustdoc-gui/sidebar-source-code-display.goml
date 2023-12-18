@@ -130,7 +130,7 @@ call-function: ("check-colors", {
 set-window-size: (500, 700)
 reload:
 // Waiting for the sidebar to be displayed...
-wait-for-css: ("#src-sidebar", {"position": "sticky", "left": "0"})
+wait-for-css: (".src .sidebar > *", {"visibility": "visible"})
 
 // We now check it takes the full size of the display.
 assert-property: ("body", {"clientWidth": "500", "clientHeight": "700"})
@@ -138,7 +138,7 @@ assert-property: (".sidebar", {"clientWidth": "500", "clientHeight": "700"})
 
 // We now check that the scroll position is kept when opening the sidebar.
 click: "#sidebar-button"
-wait-for-css: (".sidebar", {"position": "absolute", "left": "-1000px"})
+wait-for-css: (".src .sidebar > *", {"visibility": "hidden"})
 // We scroll to line 117 to change the scroll position.
 scroll-to: '//*[@id="117"]'
 assert-window-property: {"pageYOffset": "2516"}
