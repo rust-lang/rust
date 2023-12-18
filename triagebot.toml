@@ -605,19 +605,19 @@ cc = ["@davidtwco", "@wesleywiser"]
 message = """
 This PR modifies `src/bootstrap/src/core/config`.
 
-If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs` and `change-id` in `config.example.toml`.
+If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs`.
 """
 [mentions."src/bootstrap/defaults"]
 message = """
 This PR modifies `src/bootstrap/defaults`.
 
-If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs` and `change-id` in `config.example.toml`.
+If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs`.
 """
 [mentions."config.example.toml"]
 message = """
 This PR modifies `config.example.toml`.
 
-If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs` and `change-id` in `config.example.toml`.
+If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs`.
 """
 
 [mentions."src/bootstrap/defaults/config.compiler.toml"]
