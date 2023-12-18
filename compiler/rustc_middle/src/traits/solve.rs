@@ -248,6 +248,9 @@ pub enum GoalSource {
     /// This also impacts whether we erase constraints on overflow.
     /// Erasing constraints is generally very useful for perf and also
     /// results in better error messages by avoiding spurious errors.
+    /// We do not erase overflow constraints in `normalizes-to` goals unless
+    /// they are from an impl where-clause. This is necessary due to
+    /// backwards compatability, cc trait-system-refactor-initiatitive#70.
     ImplWhereBound,
 }
 

@@ -157,7 +157,7 @@ impl<'tcx> InferCtxtEvalExt<'tcx> for InferCtxt<'tcx> {
         Option<inspect::GoalEvaluation<'tcx>>,
     ) {
         EvalCtxt::enter_root(self, generate_proof_tree, |ecx| {
-            ecx.evaluate_goal(GoalEvaluationKind::Root, goal)
+            ecx.evaluate_goal(GoalEvaluationKind::Root, GoalSource::Misc, goal)
         })
     }
 }
@@ -335,6 +335,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     fn evaluate_goal(
         &mut self,
         goal_evaluation_kind: GoalEvaluationKind,
+        source: GoalSource,
         goal: Goal<'tcx, ty::Predicate<'tcx>>,
     ) -> Result<(bool, Certainty, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution> {
         let (orig_values, canonical_goal) = self.canonicalize_goal(goal);
@@ -354,13 +355,13 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             Ok(response) => response,
         };
 
-        let has_changed = !canonical_response.value.var_values.is_identity_modulo_regions()
-            || !canonical_response.value.external_constraints.opaque_types.is_empty();
-        let (certainty, nested_goals) = match self.instantiate_and_apply_query_response(
-            goal.param_env,
-            orig_values,
-            canonical_response,
-        ) {
+        let (certainty, has_changed, nested_goals) = match self
+            .instantiate_response_discarding_overflow(
+                goal.param_env,
+                source,
+                orig_values,
+                canonical_response,
+            ) {
             Err(e) => {
                 self.inspect.goal_evaluation(goal_evaluation);
                 return Err(e);
@@ -385,6 +386,30 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         // we should re-add an assert here.
 
         Ok((has_changed, certainty, nested_goals))
+    }
+
+    fn instantiate_response_discarding_overflow(
+        &mut self,
+        param_env: ty::ParamEnv<'tcx>,
+        source: GoalSource,
+        original_values: Vec<ty::GenericArg<'tcx>>,
+        response: CanonicalResponse<'tcx>,
+    ) -> Result<(Certainty, bool, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution> {
+        let keep_overflow_constraints = || {
+            self.search_graph.current_goal_is_normalizes_to()
+                && source != GoalSource::ImplWhereBound
+        };
+
+        if response.value.certainty == Certainty::OVERFLOW && !keep_overflow_constraints() {
+            Ok((Certainty::OVERFLOW, false, Vec::new()))
+        } else {
+            let has_changed = !response.value.var_values.is_identity_modulo_regions()
+                || !response.value.external_constraints.opaque_types.is_empty();
+
+            let (certainty, nested_goals) =
+                self.instantiate_and_apply_query_response(param_env, original_values, response)?;
+            Ok((certainty, has_changed, nested_goals))
+        }
     }
 
     fn compute_goal(&mut self, goal: Goal<'tcx, ty::Predicate<'tcx>>) -> QueryResult<'tcx> {
@@ -509,6 +534,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
             let (_, certainty, instantiate_goals) = self.evaluate_goal(
                 GoalEvaluationKind::Nested { is_normalizes_to_hack: IsNormalizesToHack::Yes },
+                GoalSource::Misc,
                 unconstrained_goal,
             )?;
             self.nested_goals.goals.extend(with_misc_source(instantiate_goals));
@@ -544,6 +570,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         for (source, goal) in goals.goals.drain(..) {
             let (has_changed, certainty, instantiate_goals) = self.evaluate_goal(
                 GoalEvaluationKind::Nested { is_normalizes_to_hack: IsNormalizesToHack::No },
+                source,
                 goal,
             )?;
             self.nested_goals.goals.extend(with_misc_source(instantiate_goals));
