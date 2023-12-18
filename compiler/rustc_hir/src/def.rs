@@ -3,8 +3,8 @@ use crate::hir;
 
 use rustc_ast as ast;
 use rustc_ast::NodeId;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::ToStableHashKey;
+use rustc_data_structures::unord::UnordMap;
 use rustc_macros::HashStable_Generic;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::MacroKind;
@@ -806,4 +806,4 @@ pub enum LifetimeRes {
     ElidedAnchor { start: NodeId, end: NodeId },
 }
 
-pub type DocLinkResMap = FxHashMap<(Symbol, Namespace), Option<Res<NodeId>>>;
+pub type DocLinkResMap = UnordMap<(Symbol, Namespace), Option<Res<NodeId>>>;
