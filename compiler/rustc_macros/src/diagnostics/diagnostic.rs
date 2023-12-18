@@ -92,7 +92,6 @@ impl<'a> DiagnosticDerive<'a> {
                     self,
                     #dcx: &'_sess rustc_errors::DiagCtxt
                 ) -> rustc_errors::DiagnosticBuilder<'_sess, G> {
-                    use rustc_errors::IntoDiagnosticArg;
                     #implementation
                 }
             }
@@ -177,7 +176,6 @@ impl<'a> LintDiagnosticDerive<'a> {
                     self,
                     #diag: &'__b mut rustc_errors::DiagnosticBuilder<'__a, ()>
                 ) {
-                    use rustc_errors::IntoDiagnosticArg;
                     #implementation;
                 }
 
