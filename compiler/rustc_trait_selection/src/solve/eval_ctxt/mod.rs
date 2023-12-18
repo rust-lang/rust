@@ -23,14 +23,15 @@ use rustc_middle::ty::{
 use rustc_session::config::DumpSolverProofTree;
 use rustc_span::DUMMY_SP;
 use std::io::Write;
+use std::iter;
 use std::ops::ControlFlow;
 
 use crate::traits::vtable::{count_own_vtable_entries, prepare_vtable_segments, VtblSegment};
 
 use super::inspect::ProofTreeBuilder;
-use super::SolverMode;
 use super::{search_graph, GoalEvaluationKind};
 use super::{search_graph::SearchGraph, Goal};
+use super::{GoalSource, SolverMode};
 pub use select::InferCtxtSelectExt;
 
 mod canonical;
@@ -105,7 +106,7 @@ pub(super) struct NestedGoals<'tcx> {
     /// can be unsound with more powerful coinduction in the future.
     pub(super) normalizes_to_hack_goal: Option<Goal<'tcx, ty::NormalizesTo<'tcx>>>,
     /// The rest of the goals which have not yet processed or remain ambiguous.
-    pub(super) goals: Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
+    pub(super) goals: Vec<(GoalSource, Goal<'tcx, ty::Predicate<'tcx>>)>,
 }
 
 impl<'tcx> NestedGoals<'tcx> {
@@ -439,7 +440,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         } else {
             let kind = self.infcx.instantiate_binder_with_placeholders(kind);
             let goal = goal.with(self.tcx(), ty::Binder::dummy(kind));
-            self.add_goal(goal);
+            self.add_goal(GoalSource::Misc, goal);
             self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         }
     }
@@ -488,6 +489,13 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         let mut goals = core::mem::replace(&mut self.nested_goals, NestedGoals::new());
 
         self.inspect.evaluate_added_goals_loop_start();
+
+        fn with_misc_source<'tcx>(
+            it: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
+        ) -> impl Iterator<Item = (GoalSource, Goal<'tcx, ty::Predicate<'tcx>>)> {
+            iter::zip(iter::repeat(GoalSource::Misc), it)
+        }
+
         // If this loop did not result in any progress, what's our final certainty.
         let mut unchanged_certainty = Some(Certainty::Yes);
         if let Some(goal) = goals.normalizes_to_hack_goal.take() {
@@ -503,7 +511,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
                 GoalEvaluationKind::Nested { is_normalizes_to_hack: IsNormalizesToHack::Yes },
                 unconstrained_goal,
             )?;
-            self.nested_goals.goals.extend(instantiate_goals);
+            self.nested_goals.goals.extend(with_misc_source(instantiate_goals));
 
             // Finally, equate the goal's RHS with the unconstrained var.
             // We put the nested goals from this into goals instead of
@@ -512,7 +520,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             // matters in practice, though.
             let eq_goals =
                 self.eq_and_get_goals(goal.param_env, goal.predicate.term, unconstrained_rhs)?;
-            goals.goals.extend(eq_goals);
+            goals.goals.extend(with_misc_source(eq_goals));
 
             // We only look at the `projection_ty` part here rather than
             // looking at the "has changed" return from evaluate_goal,
@@ -533,12 +541,12 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             }
         }
 
-        for goal in goals.goals.drain(..) {
+        for (source, goal) in goals.goals.drain(..) {
             let (has_changed, certainty, instantiate_goals) = self.evaluate_goal(
                 GoalEvaluationKind::Nested { is_normalizes_to_hack: IsNormalizesToHack::No },
                 goal,
             )?;
-            self.nested_goals.goals.extend(instantiate_goals);
+            self.nested_goals.goals.extend(with_misc_source(instantiate_goals));
             if has_changed {
                 unchanged_certainty = None;
             }
@@ -546,7 +554,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
             match certainty {
                 Certainty::Yes => {}
                 Certainty::Maybe(_) => {
-                    self.nested_goals.goals.push(goal);
+                    self.nested_goals.goals.push((source, goal));
                     unchanged_certainty = unchanged_certainty.map(|c| c.unify_with(certainty));
                 }
             }
@@ -670,7 +678,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             .at(&ObligationCause::dummy(), param_env)
             .eq(DefineOpaqueTypes::No, lhs, rhs)
             .map(|InferOk { value: (), obligations }| {
-                self.add_goals(obligations.into_iter().map(|o| o.into()));
+                self.add_goals(GoalSource::Misc, obligations.into_iter().map(|o| o.into()));
             })
             .map_err(|e| {
                 debug!(?e, "failed to equate");
@@ -689,7 +697,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             .at(&ObligationCause::dummy(), param_env)
             .sub(DefineOpaqueTypes::No, sub, sup)
             .map(|InferOk { value: (), obligations }| {
-                self.add_goals(obligations.into_iter().map(|o| o.into()));
+                self.add_goals(GoalSource::Misc, obligations.into_iter().map(|o| o.into()));
             })
             .map_err(|e| {
                 debug!(?e, "failed to subtype");
@@ -709,7 +717,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             .at(&ObligationCause::dummy(), param_env)
             .relate(DefineOpaqueTypes::No, lhs, variance, rhs)
             .map(|InferOk { value: (), obligations }| {
-                self.add_goals(obligations.into_iter().map(|o| o.into()));
+                self.add_goals(GoalSource::Misc, obligations.into_iter().map(|o| o.into()));
             })
             .map_err(|e| {
                 debug!(?e, "failed to relate");
@@ -842,7 +850,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             true,
             &mut obligations,
         )?;
-        self.add_goals(obligations.into_iter().map(|o| o.into()));
+        self.add_goals(GoalSource::Misc, obligations.into_iter().map(|o| o.into()));
         Ok(())
     }
 
@@ -862,7 +870,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             hidden_ty,
             &mut obligations,
         );
-        self.add_goals(obligations.into_iter().map(|o| o.into()));
+        self.add_goals(GoalSource::Misc, obligations.into_iter().map(|o| o.into()));
     }
 
     // Do something for each opaque/hidden pair defined with `def_id` in the

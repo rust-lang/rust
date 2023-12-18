@@ -19,8 +19,8 @@ use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::traits::solve::{
-    CanonicalResponse, Certainty, ExternalConstraintsData, Goal, IsNormalizesToHack, QueryResult,
-    Response,
+    CanonicalResponse, Certainty, ExternalConstraintsData, Goal, GoalSource, IsNormalizesToHack,
+    QueryResult, Response,
 };
 use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt, UniverseIndex};
 use rustc_middle::ty::{
@@ -157,7 +157,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     ) -> QueryResult<'tcx> {
         match self.well_formed_goals(goal.param_env, goal.predicate) {
             Some(goals) => {
-                self.add_goals(goals);
+                self.add_goals(GoalSource::Misc, goals);
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
             None => self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS),
@@ -223,15 +223,19 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn add_goal(&mut self, goal: Goal<'tcx, ty::Predicate<'tcx>>) {
-        inspect::ProofTreeBuilder::add_goal(self, goal);
-        self.nested_goals.goals.push(goal);
+    fn add_goal(&mut self, source: GoalSource, goal: Goal<'tcx, ty::Predicate<'tcx>>) {
+        inspect::ProofTreeBuilder::add_goal(self, source, goal);
+        self.nested_goals.goals.push((source, goal));
     }
 
     #[instrument(level = "debug", skip(self, goals))]
-    fn add_goals(&mut self, goals: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>) {
+    fn add_goals(
+        &mut self,
+        source: GoalSource,
+        goals: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
+    ) {
         for goal in goals {
-            self.add_goal(goal);
+            self.add_goal(source, goal);
         }
     }
 
@@ -335,7 +339,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 param_env,
                 ty::NormalizesTo { alias, term: normalized_ty.into() },
             );
-            this.add_goal(normalizes_to_goal);
+            this.add_goal(GoalSource::Misc, normalizes_to_goal);
             this.try_evaluate_added_goals()?;
             let ty = this.resolve_vars_if_possible(normalized_ty);
             Ok(this.try_normalize_ty_recur(param_env, define_opaque_types, depth + 1, ty))
