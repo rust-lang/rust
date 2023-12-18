@@ -275,7 +275,8 @@ fn from_field_name(expr: &ast::Expr) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use ide_db::base_db::{fixture::WithFixture, FileRange};
+    use hir::WithFixture;
+    use ide_db::base_db::FileRange;
 
     use super::*;
 

@@ -63,7 +63,7 @@ use std::{
     panic::{RefUnwindSafe, UnwindSafe},
 };
 
-use base_db::{impl_intern_key, salsa, span::SyntaxContextId, CrateId, ProcMacroKind};
+use base_db::{impl_intern_key, salsa, span::SyntaxContextId, CrateId};
 use hir_expand::{
     ast_id_map::{AstIdNode, FileAstId},
     attrs::{Attr, AttrId, AttrInput},
@@ -73,7 +73,7 @@ use hir_expand::{
     db::ExpandDatabase,
     eager::expand_eager_macro_input,
     name::Name,
-    proc_macro::ProcMacroExpander,
+    proc_macro::{CustomProcMacroExpander, ProcMacroKind},
     AstId, ExpandError, ExpandResult, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind,
     MacroDefId, MacroDefKind,
 };
@@ -400,7 +400,7 @@ pub struct ProcMacroId(salsa::InternId);
 pub struct ProcMacroLoc {
     pub container: CrateRootModuleId,
     pub id: ItemTreeId<Function>,
-    pub expander: ProcMacroExpander,
+    pub expander: CustomProcMacroExpander,
     pub kind: ProcMacroKind,
 }
 impl_intern!(ProcMacroId, ProcMacroLoc, intern_proc_macro, lookup_intern_proc_macro);

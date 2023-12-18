@@ -16,10 +16,9 @@
 use std::{iter, mem};
 
 use flycheck::{FlycheckConfig, FlycheckHandle};
-use hir::db::DefDatabase;
-use ide::Change;
+use hir::{db::DefDatabase, Change, ProcMacros};
 use ide_db::{
-    base_db::{salsa::Durability, CrateGraph, ProcMacroPaths, ProcMacros},
+    base_db::{salsa::Durability, CrateGraph, ProcMacroPaths},
     FxHashMap,
 };
 use itertools::Itertools;

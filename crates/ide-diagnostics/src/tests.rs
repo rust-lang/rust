@@ -2,10 +2,9 @@
 mod sourcegen;
 
 use expect_test::Expect;
+use hir::WithFixture;
 use ide_db::{
-    assists::AssistResolveStrategy,
-    base_db::{fixture::WithFixture, SourceDatabaseExt},
-    LineIndexDatabase, RootDatabase,
+    assists::AssistResolveStrategy, base_db::SourceDatabaseExt, LineIndexDatabase, RootDatabase,
 };
 use itertools::Itertools;
 use stdx::trim_indent;

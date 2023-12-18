@@ -7,7 +7,8 @@ use std::time::Instant;
 
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use flycheck::FlycheckHandle;
-use ide::{Analysis, AnalysisHost, Cancellable, Change, FileId};
+use hir::Change;
+use ide::{Analysis, AnalysisHost, Cancellable, FileId};
 use ide_db::base_db::{CrateId, FileLoader, ProcMacroPaths, SourceDatabase};
 use load_cargo::SourceRootConfig;
 use lsp_types::{SemanticTokens, Url};

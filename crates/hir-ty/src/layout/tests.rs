@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 
-use base_db::fixture::WithFixture;
 use chalk_ir::{AdtId, TyKind};
 use either::Either;
 use hir_def::db::DefDatabase;
+use hir_expand::fixture::WithFixture;
 use triomphe::Arc;
 
 use crate::{

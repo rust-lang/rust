@@ -378,9 +378,8 @@ impl Query {
 #[cfg(test)]
 mod tests {
 
-    use base_db::fixture::WithFixture;
     use expect_test::expect_file;
-    use hir::symbols::SymbolCollector;
+    use hir::{symbols::SymbolCollector, WithFixture};
 
     use super::*;
 

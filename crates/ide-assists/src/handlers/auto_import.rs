@@ -280,12 +280,8 @@ fn module_distance_heuristic(db: &dyn HirDatabase, current: &Module, item: &Modu
 mod tests {
     use super::*;
 
-    use hir::Semantics;
-    use ide_db::{
-        assists::AssistResolveStrategy,
-        base_db::{fixture::WithFixture, FileRange},
-        RootDatabase,
-    };
+    use hir::{Semantics, WithFixture};
+    use ide_db::{assists::AssistResolveStrategy, base_db::FileRange, RootDatabase};
 
     use crate::tests::{
         check_assist, check_assist_by_label, check_assist_not_applicable, check_assist_target,

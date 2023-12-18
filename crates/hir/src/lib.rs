@@ -37,7 +37,7 @@ mod display;
 use std::{iter, mem::discriminant, ops::ControlFlow};
 
 use arrayvec::ArrayVec;
-use base_db::{CrateDisplayName, CrateId, CrateOrigin, Edition, FileId, ProcMacroKind};
+use base_db::{CrateDisplayName, CrateId, CrateOrigin, Edition, FileId};
 use either::Either;
 use hir_def::{
     body::{BodyDiagnostic, SyntheticSyntax},
@@ -59,7 +59,7 @@ use hir_def::{
     Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId, TraitAliasId, TraitId,
     TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
 };
-use hir_expand::{attrs::collect_attrs, name::name, MacroCallKind};
+use hir_expand::{attrs::collect_attrs, name::name, proc_macro::ProcMacroKind, MacroCallKind};
 use hir_ty::{
     all_super_traits, autoderef, check_orphan_rules,
     consteval::{try_const_usize, unknown_const_as_generic, ConstEvalError, ConstExt},
@@ -125,8 +125,10 @@ pub use {
     },
     hir_expand::{
         attrs::{Attr, AttrId},
+        fixture::{Change, ChangeFixture, WithFixture},
         hygiene::{marks_rev, SyntaxContextExt},
         name::{known, Name},
+        proc_macro::ProcMacros,
         tt, ExpandResult, HirFileId, HirFileIdExt, InFile, InMacroFile, InRealFile, MacroFileId,
         MacroFileIdExt,
     },

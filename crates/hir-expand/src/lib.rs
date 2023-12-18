@@ -6,20 +6,21 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-pub mod db;
 pub mod ast_id_map;
-pub mod name;
-pub mod hygiene;
+pub mod attrs;
 pub mod builtin_attr_macro;
 pub mod builtin_derive_macro;
 pub mod builtin_fn_macro;
+pub mod db;
+pub mod eager;
+pub mod files;
+pub mod fixture;
+pub mod hygiene;
+pub mod mod_path;
+pub mod name;
 pub mod proc_macro;
 pub mod quote;
-pub mod eager;
-pub mod mod_path;
-pub mod attrs;
 pub mod span;
-pub mod files;
 mod fixup;
 
 use attrs::collect_attrs;
@@ -29,7 +30,7 @@ use std::{fmt, hash::Hash};
 
 use base_db::{
     span::{HirFileIdRepr, SpanData, SyntaxContextId},
-    CrateId, FileId, FileRange, ProcMacroKind,
+    CrateId, FileId, FileRange,
 };
 use either::Either;
 use syntax::{
@@ -45,7 +46,7 @@ use crate::{
     db::TokenExpander,
     fixup::SyntaxFixupUndoInfo,
     mod_path::ModPath,
-    proc_macro::ProcMacroExpander,
+    proc_macro::{CustomProcMacroExpander, ProcMacroKind},
     span::{ExpansionSpanMap, SpanMap},
 };
 
@@ -138,7 +139,7 @@ pub enum MacroDefKind {
     BuiltInAttr(BuiltinAttrExpander, AstId<ast::Macro>),
     BuiltInDerive(BuiltinDeriveExpander, AstId<ast::Macro>),
     BuiltInEager(EagerExpander, AstId<ast::Macro>),
-    ProcMacro(ProcMacroExpander, ProcMacroKind, AstId<ast::Fn>),
+    ProcMacro(CustomProcMacroExpander, ProcMacroKind, AstId<ast::Fn>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

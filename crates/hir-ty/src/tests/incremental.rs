@@ -1,4 +1,5 @@
-use base_db::{fixture::WithFixture, SourceDatabaseExt};
+use base_db::SourceDatabaseExt;
+use hir_expand::fixture::WithFixture;
 use triomphe::Arc;
 
 use crate::{db::HirDatabase, test_db::TestDB};
