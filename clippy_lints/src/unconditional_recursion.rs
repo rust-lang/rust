@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::{get_trait_def_id, path_res};
+use clippy_utils::{expr_or_init, get_trait_def_id, path_res};
 use rustc_ast::BinOpKind;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -56,13 +56,8 @@ fn is_local(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     matches!(path_res(cx, expr), Res::Local(_))
 }
 
-fn check_partial_eq(
-    cx: &LateContext<'_>,
-    body: &Body<'_>,
-    method_span: Span,
-    method_def_id: LocalDefId,
-    name: Ident,
-) {
+#[allow(clippy::unnecessary_def_path)]
+fn check_partial_eq(cx: &LateContext<'_>, body: &Body<'_>, method_span: Span, method_def_id: LocalDefId, name: Ident) {
     let args = cx
         .tcx
         .instantiate_bound_regions_with_erased(cx.tcx.fn_sig(method_def_id).skip_binder())
@@ -126,8 +121,62 @@ fn check_partial_eq(
     }
 }
 
+#[allow(clippy::unnecessary_def_path)]
+fn check_to_string(cx: &LateContext<'_>, body: &Body<'_>, method_span: Span, method_def_id: LocalDefId, name: Ident) {
+    let args = cx
+        .tcx
+        .instantiate_bound_regions_with_erased(cx.tcx.fn_sig(method_def_id).skip_binder())
+        .inputs();
+    // That has one argument.
+    if let [_self_arg] = args
+        && let hir_id = cx.tcx.local_def_id_to_hir_id(method_def_id)
+        && let Some((
+            _,
+            Node::Item(Item {
+                kind: ItemKind::Impl(impl_),
+                owner_id,
+                ..
+            }),
+        )) = cx.tcx.hir().parent_iter(hir_id).next()
+        // We exclude `impl` blocks generated from rustc's proc macros.
+        && !cx.tcx.has_attr(*owner_id, sym::automatically_derived)
+        // It is a implementation of a trait.
+        && let Some(trait_) = impl_.of_trait
+        && let Some(trait_def_id) = trait_.trait_def_id()
+        // The trait is `ToString`.
+        && Some(trait_def_id) == get_trait_def_id(cx, &["alloc", "string", "ToString"])
+    {
+        let expr = expr_or_init(cx, body.value.peel_blocks());
+        let is_bad = match expr.kind {
+            ExprKind::MethodCall(segment, receiver, &[arg], _) if segment.ident.name == name.name => {
+                if is_local(cx, receiver)
+                    && is_local(cx, &arg)
+                    && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+                    && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
+                    && trait_id == trait_def_id
+                {
+                    true
+                } else {
+                    false
+                }
+            },
+            _ => false,
+        };
+        if is_bad {
+            span_lint_and_then(
+                cx,
+                UNCONDITIONAL_RECURSION,
+                method_span,
+                "function cannot return without recursing",
+                |diag| {
+                    diag.span_note(expr.span, "recursive call site");
+                },
+            );
+        }
+    }
+}
+
 impl<'tcx> LateLintPass<'tcx> for UnconditionalRecursion {
-    #[allow(clippy::unnecessary_def_path)]
     fn check_fn(
         &mut self,
         cx: &LateContext<'tcx>,
@@ -141,6 +190,8 @@ impl<'tcx> LateLintPass<'tcx> for UnconditionalRecursion {
         if let FnKind::Method(name, _) = kind {
             if name.name == sym::eq || name.name == sym::ne {
                 check_partial_eq(cx, body, method_span, method_def_id, name);
+            } else if name.name == sym::to_string {
+                check_to_string(cx, body, method_span, method_def_id, name);
             }
         }
     }
