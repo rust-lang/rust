@@ -1,0 +1,8 @@
+error: const trait bounds are not allowed in trait object types
+  --> $DIR/const-trait-bounds-trait-objects.rs:8:17
+   |
+LL |     let _: &dyn const Trait;
+   |                 ^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

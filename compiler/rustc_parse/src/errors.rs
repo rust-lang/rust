@@ -2556,19 +2556,12 @@ pub(crate) struct AssocLifetime {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_tilde_const_lifetime)]
-pub(crate) struct TildeConstLifetime {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(parse_modifier_lifetime)]
 pub(crate) struct ModifierLifetime {
     #[primary_span]
     #[suggestion(style = "tool-only", applicability = "maybe-incorrect", code = "")]
     pub span: Span,
-    pub sigil: &'static str,
+    pub modifier: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -2579,15 +2572,6 @@ pub(crate) struct ParenthesizedLifetime {
     #[suggestion(style = "short", applicability = "machine-applicable", code = "{snippet}")]
     pub sugg: Option<Span>,
     pub snippet: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(parse_const_bounds_missing_tilde)]
-pub(crate) struct ConstMissingTilde {
-    #[primary_span]
-    pub span: Span,
-    #[suggestion(code = "~", applicability = "machine-applicable")]
-    pub start: Span,
 }
 
 #[derive(Diagnostic)]

@@ -1561,7 +1561,7 @@ impl<'a> State<'a> {
                 GenericBound::Trait(tref, modifier) => {
                     match modifier.constness {
                         ast::BoundConstness::Never => {}
-                        ast::BoundConstness::Maybe(_) => {
+                        ast::BoundConstness::Always(_) | ast::BoundConstness::Maybe(_) => {
                             self.word_space(modifier.constness.as_str());
                         }
                     }

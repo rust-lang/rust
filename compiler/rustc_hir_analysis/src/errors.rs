@@ -408,6 +408,7 @@ pub struct ConstImplForNonConstTrait {
 pub struct ConstBoundForNonConstTrait {
     #[primary_span]
     pub span: Span,
+    pub modifier: &'static str,
 }
 
 #[derive(Diagnostic)]

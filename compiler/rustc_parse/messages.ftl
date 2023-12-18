@@ -95,9 +95,6 @@ parse_compound_assignment_expression_in_let = can't reassign to an uninitialized
     .suggestion = initialize the variable
     .help = if you meant to overwrite, remove the `let` binding
 
-parse_const_bounds_missing_tilde = const bounds must start with `~`
-    .suggestion = add `~`
-
 parse_const_generic_without_braces = expressions must be enclosed in braces to be used as const generic arguments
     .suggestion = enclose the `const` expression in braces
 
@@ -555,8 +552,8 @@ parse_missing_trait_in_trait_impl = missing trait in a trait impl
     .suggestion_add_trait = add a trait here
     .suggestion_remove_for = for an inherent impl, drop this `for`
 
-parse_modifier_lifetime = `{$sigil}` may only modify trait bounds, not lifetime bounds
-    .suggestion = remove the `{$sigil}`
+parse_modifier_lifetime = `{$modifier}` may only modify trait bounds, not lifetime bounds
+    .suggestion = remove the `{$modifier}`
 
 parse_more_than_one_char = character literal may only contain one codepoint
     .followed_by = this `{$chr}` is followed by the combining {$len ->
@@ -728,8 +725,6 @@ parse_switch_ref_box_order = switch the order of `ref` and `box`
 
 parse_ternary_operator = Rust has no ternary operator
     .help = use an `if-else` expression instead
-
-parse_tilde_const_lifetime = `~const` may only modify trait bounds, not lifetime bounds
 
 parse_tilde_is_not_unary_operator = `~` cannot be used as a unary operator
     .suggestion = use `!` to perform bitwise not
