@@ -34,8 +34,8 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    pluralize, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
-    DiagnosticMessage, FatalError, MultiSpan, PResult,
+    pluralize, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder, FatalError,
+    PResult,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
@@ -239,21 +239,7 @@ impl<'a> DerefMut for SnapshotParser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn struct_span_err<S: Into<MultiSpan>>(
-        &self,
-        sp: S,
-        m: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'a> {
-        self.dcx().struct_span_err(sp, m)
-    }
-
-    pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) -> ! {
-        self.dcx().span_bug(sp, msg)
-    }
-
-    pub(super) fn dcx(&self) -> &'a DiagCtxt {
+    pub fn dcx(&self) -> &'a DiagCtxt {
         &self.sess.dcx
     }
 
@@ -610,7 +596,7 @@ impl<'a> Parser<'a> {
         };
         self.last_unexpected_token_span = Some(self.token.span);
         // FIXME: translation requires list formatting (for `expect`)
-        let mut err = self.struct_span_err(self.token.span, msg_exp);
+        let mut err = self.dcx().struct_span_err(self.token.span, msg_exp);
 
         if let TokenKind::Ident(symbol, _) = &self.prev_token.kind {
             if ["def", "fun", "func", "function"].contains(&symbol.as_str()) {
@@ -1647,7 +1633,7 @@ impl<'a> Parser<'a> {
         kind: IncDecRecovery,
         op_span: Span,
     ) -> PResult<'a, P<Expr>> {
-        let mut err = self.struct_span_err(
+        let mut err = self.dcx().struct_span_err(
             op_span,
             format!("Rust has no {} {} operator", kind.fixity, kind.op.name()),
         );
@@ -1843,7 +1829,7 @@ impl<'a> Parser<'a> {
                 _ => this_token_str,
             },
         );
-        let mut err = self.struct_span_err(sp, msg);
+        let mut err = self.dcx().struct_span_err(sp, msg);
         let label_exp = format!("expected `{token_str}`");
         let sm = self.sess.source_map();
         if !sm.is_multiline(prev_sp.until(sp)) {
@@ -1978,7 +1964,7 @@ impl<'a> Parser<'a> {
             self.consume_block(Delimiter::Parenthesis, ConsumeClosingDelim::No); //eat the block
             let hi = self.token.span;
             self.bump(); //remove )
-            let mut err = self.struct_span_err(lo.to(hi), "use of deprecated `try` macro");
+            let mut err = self.dcx().struct_span_err(lo.to(hi), "use of deprecated `try` macro");
             err.note("in the 2018 edition `try` is a reserved keyword, and the `try!()` macro is deprecated");
             let prefix = if is_empty { "" } else { "alternatively, " };
             if !is_empty {
@@ -2328,7 +2314,7 @@ impl<'a> Parser<'a> {
                 format!("expected expression, found {}", super::token_descr(&self.token)),
             ),
         };
-        let mut err = self.struct_span_err(span, msg);
+        let mut err = self.dcx().struct_span_err(span, msg);
         let sp = self.sess.source_map().start_point(self.token.span);
         if let Some(sp) = self.sess.ambiguous_block_expr_parse.borrow().get(&sp) {
             err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
@@ -2450,7 +2436,7 @@ impl<'a> Parser<'a> {
         // We are causing this error here exclusively in case that a `const` expression
         // could be recovered from the current parser state, even if followed by more
         // arguments after a comma.
-        let mut err = self.struct_span_err(
+        let mut err = self.dcx().struct_span_err(
             self.token.span,
             format!("expected one of `,` or `>`, found {}", super::token_descr(&self.token)),
         );
@@ -2840,7 +2826,7 @@ impl<'a> Parser<'a> {
         let label = self.eat_label().expect("just checked if a label exists");
         self.bump(); // eat `:`
         let span = label.ident.span.to(self.prev_token.span);
-        let mut err = self.struct_span_err(span, "block label not supported here");
+        let mut err = self.dcx().struct_span_err(span, "block label not supported here");
         err.span_label(span, "not supported here");
         err.tool_only_span_suggestion(
             label.ident.span.until(self.token.span),
@@ -2875,7 +2861,7 @@ impl<'a> Parser<'a> {
             err.cancel();
         }
         let seq_span = lo.to(self.prev_token.span);
-        let mut err = self.struct_span_err(comma_span, "unexpected `,` in pattern");
+        let mut err = self.dcx().struct_span_err(comma_span, "unexpected `,` in pattern");
         if let Ok(seq_snippet) = self.span_to_snippet(seq_span) {
             err.multipart_suggestion(
                 format!(
@@ -2970,7 +2956,7 @@ impl<'a> Parser<'a> {
             }
             self.bump();
         }
-        let mut err = self.struct_span_err(spans, "encountered diff marker");
+        let mut err = self.dcx().struct_span_err(spans, "encountered diff marker");
         err.span_label(start, "after this is the code before the merge");
         if let Some(middle) = middlediff3 {
             err.span_label(middle, "");

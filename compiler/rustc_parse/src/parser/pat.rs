@@ -459,7 +459,7 @@ impl<'a> Parser<'a> {
                         super::token_descr(&self_.token)
                     );
 
-                    let mut err = self_.struct_span_err(self_.token.span, msg);
+                    let mut err = self_.dcx().struct_span_err(self_.token.span, msg);
                     err.span_label(self_.token.span, format!("expected {expected}"));
                     err
                 });
@@ -695,7 +695,7 @@ impl<'a> Parser<'a> {
         let expected = Expected::to_string_or_fallback(expected);
         let msg = format!("expected {}, found {}", expected, super::token_descr(&self.token));
 
-        let mut err = self.struct_span_err(self.token.span, msg);
+        let mut err = self.dcx().struct_span_err(self.token.span, msg);
         err.span_label(self.token.span, format!("expected {expected}"));
 
         let sp = self.sess.source_map().start_point(self.token.span);
@@ -1029,7 +1029,7 @@ impl<'a> Parser<'a> {
                 }
                 let token_str = super::token_descr(&self.token);
                 let msg = format!("expected `}}`, found {token_str}");
-                let mut err = self.struct_span_err(self.token.span, msg);
+                let mut err = self.dcx().struct_span_err(self.token.span, msg);
 
                 err.span_label(self.token.span, "expected `}`");
                 let mut comma_sp = None;

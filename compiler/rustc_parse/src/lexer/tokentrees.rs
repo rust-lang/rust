@@ -257,7 +257,7 @@ impl<'a> TokenTreesReader<'a> {
                     // This might be the beginning of the `if`/`while` body (i.e., the end of the condition)
                     in_cond = false;
                 } else if maybe_andand == token::AndAnd && maybe_let.is_keyword(kw::Let) {
-                    let mut err = parser.struct_span_err(
+                    let mut err = parser.dcx().struct_span_err(
                         parser.token.span,
                         "found a `{` in the middle of a let-chain",
                     );

@@ -341,7 +341,7 @@ impl<'a> Parser<'a> {
             }
         } else {
             let msg = format!("expected type, found {}", super::token_descr(&self.token));
-            let mut err = self.struct_span_err(self.token.span, msg);
+            let mut err = self.dcx().struct_span_err(self.token.span, msg);
             err.span_label(self.token.span, "expected type");
             return Err(err);
         };
@@ -902,7 +902,7 @@ impl<'a> Parser<'a> {
         } else if !self.token.is_path_start() && self.token.can_begin_type() {
             let ty = self.parse_ty_no_plus()?;
             // Instead of finding a path (a trait), we found a type.
-            let mut err = self.struct_span_err(ty.span, "expected a trait, found type");
+            let mut err = self.dcx().struct_span_err(ty.span, "expected a trait, found type");
 
             // If we can recover, try to extract a path from the type. Note
             // that we do not use the try operator when parsing the type because
@@ -1096,8 +1096,9 @@ impl<'a> Parser<'a> {
         lifetime_defs.append(&mut generic_params);
 
         let generic_args_span = generic_args.span();
-        let mut err =
-            self.struct_span_err(generic_args_span, "`Fn` traits cannot take lifetime parameters");
+        let mut err = self
+            .dcx()
+            .struct_span_err(generic_args_span, "`Fn` traits cannot take lifetime parameters");
         let snippet = format!(
             "for<{}> ",
             lifetimes.iter().map(|lt| lt.ident.as_str()).intersperse(", ").collect::<String>(),
@@ -1123,7 +1124,7 @@ impl<'a> Parser<'a> {
             self.bump();
             Lifetime { ident, id: ast::DUMMY_NODE_ID }
         } else {
-            self.span_bug(self.token.span, "not a lifetime")
+            self.dcx().span_bug(self.token.span, "not a lifetime")
         }
     }
 

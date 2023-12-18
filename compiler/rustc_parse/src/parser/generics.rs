@@ -64,7 +64,7 @@ impl<'a> Parser<'a> {
                     Ok(p) => {
                         if let TyKind::ImplTrait(_, bounds) = &p.kind {
                             let span = impl_span.to(self.token.span.shrink_to_lo());
-                            let mut err = self.struct_span_err(
+                            let mut err = self.dcx().struct_span_err(
                                 span,
                                 "expected trait bound, found `impl Trait` type",
                             );
@@ -141,7 +141,7 @@ impl<'a> Parser<'a> {
         // Parse optional const generics default value.
         let default = if self.eat(&token::Eq) { Some(self.parse_const_arg()?) } else { None };
 
-        let mut err = self.struct_span_err(
+        let mut err = self.dcx().struct_span_err(
             mistyped_const_ident.span,
             format!("`const` keyword was mistyped as `{}`", mistyped_const_ident.as_str()),
         );

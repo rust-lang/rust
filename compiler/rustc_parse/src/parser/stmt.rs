@@ -444,7 +444,7 @@ impl<'a> Parser<'a> {
         msg: Cow<'static, str>,
     ) -> DiagnosticBuilder<'a> {
         let sp = self.token.span;
-        let mut e = self.struct_span_err(sp, msg);
+        let mut e = self.dcx().struct_span_err(sp, msg);
         let do_not_suggest_help = self.token.is_keyword(kw::In) || self.token == token::Colon;
 
         // Check to see if the user has written something like

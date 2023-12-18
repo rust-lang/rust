@@ -63,7 +63,7 @@ impl<'a> Parser<'a> {
             let token_str = super::token_descr(&self.token);
             if !self.maybe_consume_incorrect_semicolon(&items) {
                 let msg = format!("expected item, found {token_str}");
-                let mut err = self.struct_span_err(self.token.span, msg);
+                let mut err = self.dcx().struct_span_err(self.token.span, msg);
                 let span = self.token.span;
                 if self.is_kw_followed_by_ident(kw::Let) {
                     err.span_label(
@@ -484,7 +484,7 @@ impl<'a> Parser<'a> {
         } else {
             "expected item after attributes"
         };
-        let mut err = self.struct_span_err(end.span, msg);
+        let mut err = self.dcx().struct_span_err(end.span, msg);
         if end.is_doc_comment() {
             err.span_label(end.span, "this doc comment doesn't document anything");
         } else if self.token.kind == TokenKind::Semi {
@@ -712,7 +712,8 @@ impl<'a> Parser<'a> {
                     let non_item_span = self.token.span;
                     let is_let = self.token.is_keyword(kw::Let);
 
-                    let mut err = self.struct_span_err(non_item_span, "non-item in item list");
+                    let mut err =
+                        self.dcx().struct_span_err(non_item_span, "non-item in item list");
                     self.consume_block(Delimiter::Brace, ConsumeClosingDelim::Yes);
                     if is_let {
                         err.span_suggestion(
@@ -1617,7 +1618,7 @@ impl<'a> Parser<'a> {
         } else {
             let token_str = super::token_descr(&self.token);
             let msg = format!("expected `where` or `{{` after union name, found {token_str}");
-            let mut err = self.struct_span_err(self.token.span, msg);
+            let mut err = self.dcx().struct_span_err(self.token.span, msg);
             err.span_label(self.token.span, "expected `where` or `{` after union name");
             return Err(err);
         };
@@ -1657,7 +1658,7 @@ impl<'a> Parser<'a> {
                 if parsed_where { "" } else { "`where`, or " },
                 token_str
             );
-            let mut err = self.struct_span_err(self.token.span, msg);
+            let mut err = self.dcx().struct_span_err(self.token.span, msg);
             err.span_label(
                 self.token.span,
                 format!(
@@ -1749,7 +1750,8 @@ impl<'a> Parser<'a> {
         }
         if self.eat(&token::Semi) {
             let sp = self.prev_token.span;
-            let mut err = self.struct_span_err(sp, format!("{adt_ty} fields are separated by `,`"));
+            let mut err =
+                self.dcx().struct_span_err(sp, format!("{adt_ty} fields are separated by `,`"));
             err.span_suggestion_short(
                 sp,
                 "replace `;` with `,`",
@@ -1788,7 +1790,7 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 let sp = self.prev_token.span.shrink_to_hi();
-                let mut err = self.struct_span_err(
+                let mut err = self.dcx().struct_span_err(
                     sp,
                     format!("expected `,`, or `}}`, found {}", super::token_descr(&self.token)),
                 );
@@ -1935,7 +1937,7 @@ impl<'a> Parser<'a> {
                     Case::Insensitive,
                 ) {
                     Ok(_) => {
-                        let mut err = self.struct_span_err(
+                        let mut err = self.dcx().struct_span_err(
                             lo.to(self.prev_token.span),
                             format!("functions are not allowed in {adt_ty} definitions"),
                         );
@@ -1954,7 +1956,7 @@ impl<'a> Parser<'a> {
             } else if self.eat_keyword(kw::Struct) {
                 match self.parse_item_struct() {
                     Ok((ident, _)) => {
-                        let mut err = self.struct_span_err(
+                        let mut err = self.dcx().struct_span_err(
                             lo.with_hi(ident.span.hi()),
                             format!("structs are not allowed in {adt_ty} definitions"),
                         );
@@ -2101,7 +2103,7 @@ impl<'a> Parser<'a> {
 
     fn report_invalid_macro_expansion_item(&self, args: &DelimArgs) {
         let span = args.dspan.entire();
-        let mut err = self.struct_span_err(
+        let mut err = self.dcx().struct_span_err(
             span,
             "macros that expand to items must be delimited with braces or followed by a semicolon",
         );
