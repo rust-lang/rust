@@ -1159,6 +1159,7 @@ impl<'a> ExtCtxt<'a> {
         // Fixme: does this result in errors?
         self.expansions.clear();
     }
+    #[rustc_lint_diagnostics]
     pub fn bug(&self, msg: &'static str) -> ! {
         self.sess.dcx().bug(msg);
     }
