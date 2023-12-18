@@ -546,8 +546,8 @@ impl<G: EmissionGuarantee> Drop for DiagnosticBuilder<'_, G> {
 
 #[macro_export]
 macro_rules! struct_span_err {
-    ($session:expr, $span:expr, $code:ident, $($message:tt)*) => ({
-        $session.struct_span_err_with_code(
+    ($dcx:expr, $span:expr, $code:ident, $($message:tt)*) => ({
+        $dcx.struct_span_err_with_code(
             $span,
             format!($($message)*),
             $crate::error_code!($code),

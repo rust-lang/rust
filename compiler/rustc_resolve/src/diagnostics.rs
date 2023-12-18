@@ -5,8 +5,10 @@ use rustc_ast::{self as ast, Crate, ItemKind, ModKind, NodeId, Path, CRATE_NODE_
 use rustc_ast::{MetaItemKind, NestedMetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{pluralize, report_ambiguity_error, struct_span_err, SuggestionStyle};
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{
+    pluralize, report_ambiguity_error, struct_span_err, Applicability, DiagCtxt, Diagnostic,
+    DiagnosticBuilder, ErrorGuaranteed, MultiSpan, SuggestionStyle,
+};
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, CtorOf, DefKind, NonMacroAttrKind, PerNS};
@@ -116,6 +118,10 @@ fn reduce_impl_span_to_impl_keyword(sm: &SourceMap, impl_span: Span) -> Span {
 }
 
 impl<'a, 'tcx> Resolver<'a, 'tcx> {
+    pub(crate) fn dcx(&self) -> &'tcx DiagCtxt {
+        self.tcx.dcx()
+    }
+
     pub(crate) fn report_errors(&mut self, krate: &Crate) {
         self.report_with_use_injections(krate);
 
@@ -145,7 +151,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     BuiltinLintDiagnostics::AmbiguousGlobImports { diag },
                 );
             } else {
-                let mut err = struct_span_err!(self.tcx.sess, diag.span, E0659, "{}", &diag.msg);
+                let mut err = struct_span_err!(self.dcx(), diag.span, E0659, "{}", &diag.msg);
                 report_ambiguity_error(&mut err, diag);
                 err.emit();
             }
@@ -246,15 +252,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let msg = format!("the name `{name}` is defined multiple times");
 
         let mut err = match (old_binding.is_extern_crate(), new_binding.is_extern_crate()) {
-            (true, true) => struct_span_err!(self.tcx.sess, span, E0259, "{}", msg),
+            (true, true) => struct_span_err!(self.dcx(), span, E0259, "{}", msg),
             (true, _) | (_, true) => match new_binding.is_import() && old_binding.is_import() {
-                true => struct_span_err!(self.tcx.sess, span, E0254, "{}", msg),
-                false => struct_span_err!(self.tcx.sess, span, E0260, "{}", msg),
+                true => struct_span_err!(self.dcx(), span, E0254, "{}", msg),
+                false => struct_span_err!(self.dcx(), span, E0260, "{}", msg),
             },
             _ => match (old_binding.is_import_user_facing(), new_binding.is_import_user_facing()) {
-                (false, false) => struct_span_err!(self.tcx.sess, span, E0428, "{}", msg),
-                (true, true) => struct_span_err!(self.tcx.sess, span, E0252, "{}", msg),
-                _ => struct_span_err!(self.tcx.sess, span, E0255, "{}", msg),
+                (false, false) => struct_span_err!(self.dcx(), span, E0428, "{}", msg),
+                (true, true) => struct_span_err!(self.dcx(), span, E0252, "{}", msg),
+                _ => struct_span_err!(self.dcx(), span, E0255, "{}", msg),
             },
         };
 
@@ -566,7 +572,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let def_id = match outer_res {
                     Res::SelfTyParam { .. } => {
                         err.label = Some(Label::SelfTyParam(span));
-                        return self.tcx.sess.create_err(err);
+                        return self.dcx().create_err(err);
                     }
                     Res::SelfTyAlias { alias_to: def_id, .. } => {
                         err.label = Some(Label::SelfTyAlias(reduce_impl_span_to_impl_keyword(
@@ -574,7 +580,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             self.def_span(def_id),
                         )));
                         err.refer_to_type_directly = Some(span);
-                        return self.tcx.sess.create_err(err);
+                        return self.dcx().create_err(err);
                     }
                     Res::Def(DefKind::TyParam, def_id) => {
                         err.label = Some(Label::TyParam(self.def_span(def_id)));
@@ -606,14 +612,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     err.sugg = Some(errs::GenericParamsFromOuterItemSugg { span, snippet });
                 }
 
-                self.tcx.sess.create_err(err)
+                self.dcx().create_err(err)
             }
             ResolutionError::NameAlreadyUsedInParameterList(name, first_use_span) => self
-                .tcx
-                .sess
+                .dcx()
                 .create_err(errs::NameAlreadyUsedInParameterList { span, first_use_span, name }),
             ResolutionError::MethodNotMemberOfTrait(method, trait_, candidate) => {
-                self.tcx.sess.create_err(errs::MethodNotMemberOfTrait {
+                self.dcx().create_err(errs::MethodNotMemberOfTrait {
                     span,
                     method,
                     trait_,
@@ -624,7 +629,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 })
             }
             ResolutionError::TypeNotMemberOfTrait(type_, trait_, candidate) => {
-                self.tcx.sess.create_err(errs::TypeNotMemberOfTrait {
+                self.dcx().create_err(errs::TypeNotMemberOfTrait {
                     span,
                     type_,
                     trait_,
@@ -635,7 +640,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 })
             }
             ResolutionError::ConstNotMemberOfTrait(const_, trait_, candidate) => {
-                self.tcx.sess.create_err(errs::ConstNotMemberOfTrait {
+                self.dcx().create_err(errs::ConstNotMemberOfTrait {
                     span,
                     const_,
                     trait_,
@@ -653,7 +658,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 let msp = MultiSpan::from_spans(target_sp.clone());
                 let mut err = struct_span_err!(
-                    self.tcx.sess,
+                    self.dcx(),
                     msp,
                     E0408,
                     "variable `{}` is not bound in all patterns",
@@ -706,19 +711,17 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 err
             }
             ResolutionError::VariableBoundWithDifferentMode(variable_name, first_binding_span) => {
-                self.tcx.sess.create_err(errs::VariableBoundWithDifferentMode {
+                self.dcx().create_err(errs::VariableBoundWithDifferentMode {
                     span,
                     first_binding_span,
                     variable_name,
                 })
             }
             ResolutionError::IdentifierBoundMoreThanOnceInParameterList(identifier) => self
-                .tcx
-                .sess
+                .dcx()
                 .create_err(errs::IdentifierBoundMoreThanOnceInParameterList { span, identifier }),
             ResolutionError::IdentifierBoundMoreThanOnceInSamePattern(identifier) => self
-                .tcx
-                .sess
+                .dcx()
                 .create_err(errs::IdentifierBoundMoreThanOnceInSamePattern { span, identifier }),
             ResolutionError::UndeclaredLabel { name, suggestion } => {
                 let ((sub_reachable, sub_reachable_suggestion), sub_unreachable) = match suggestion
@@ -744,7 +747,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     // No similarly-named labels exist.
                     None => ((None, None), None),
                 };
-                self.tcx.sess.create_err(errs::UndeclaredLabel {
+                self.dcx().create_err(errs::UndeclaredLabel {
                     span,
                     name,
                     sub_reachable,
@@ -769,22 +772,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     };
                     (Some(suggestion), Some(mpart_suggestion))
                 };
-                self.tcx.sess.create_err(errs::SelfImportsOnlyAllowedWithin {
+                self.dcx().create_err(errs::SelfImportsOnlyAllowedWithin {
                     span,
                     suggestion,
                     mpart_suggestion,
                 })
             }
             ResolutionError::SelfImportCanOnlyAppearOnceInTheList => {
-                self.tcx.sess.create_err(errs::SelfImportCanOnlyAppearOnceInTheList { span })
+                self.dcx().create_err(errs::SelfImportCanOnlyAppearOnceInTheList { span })
             }
-            ResolutionError::SelfImportOnlyInImportListWithNonEmptyPrefix => self
-                .tcx
-                .sess
-                .create_err(errs::SelfImportOnlyInImportListWithNonEmptyPrefix { span }),
+            ResolutionError::SelfImportOnlyInImportListWithNonEmptyPrefix => {
+                self.dcx().create_err(errs::SelfImportOnlyInImportListWithNonEmptyPrefix { span })
+            }
             ResolutionError::FailedToResolve { last_segment, label, suggestion, module } => {
                 let mut err =
-                    struct_span_err!(self.tcx.sess, span, E0433, "failed to resolve: {}", &label);
+                    struct_span_err!(self.dcx(), span, E0433, "failed to resolve: {}", &label);
                 err.span_label(span, label);
 
                 if let Some((suggestions, msg, applicability)) = suggestion {
@@ -805,7 +807,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 err
             }
             ResolutionError::CannotCaptureDynamicEnvironmentInFnItem => {
-                self.tcx.sess.create_err(errs::CannotCaptureDynamicEnvironmentInFnItem { span })
+                self.dcx().create_err(errs::CannotCaptureDynamicEnvironmentInFnItem { span })
             }
             ResolutionError::AttemptToUseNonConstantValueInConstant(ident, suggestion, current) => {
                 // let foo =...
@@ -844,7 +846,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     ),
                 };
 
-                self.tcx.sess.create_err(errs::AttemptToUseNonConstantValueInConstant {
+                self.dcx().create_err(errs::AttemptToUseNonConstantValueInConstant {
                     span,
                     with,
                     with_label,
@@ -858,7 +860,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 article,
                 shadowed_binding,
                 shadowed_binding_span,
-            } => self.tcx.sess.create_err(errs::BindingShadowsSomethingUnacceptable {
+            } => self.dcx().create_err(errs::BindingShadowsSomethingUnacceptable {
                 span,
                 shadowing_binding,
                 shadowed_binding,
@@ -875,14 +877,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 name,
             }),
             ResolutionError::ForwardDeclaredGenericParam => {
-                self.tcx.sess.create_err(errs::ForwardDeclaredGenericParam { span })
+                self.dcx().create_err(errs::ForwardDeclaredGenericParam { span })
             }
             ResolutionError::ParamInTyOfConstParam { name, param_kind: is_type } => self
-                .tcx
-                .sess
+                .dcx()
                 .create_err(errs::ParamInTyOfConstParam { span, name, param_kind: is_type }),
             ResolutionError::ParamInNonTrivialAnonConst { name, param_kind: is_type } => {
-                self.tcx.sess.create_err(errs::ParamInNonTrivialAnonConst {
+                self.dcx().create_err(errs::ParamInNonTrivialAnonConst {
                     span,
                     name,
                     param_kind: is_type,
@@ -894,11 +895,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 })
             }
             ResolutionError::ParamInEnumDiscriminant { name, param_kind: is_type } => self
-                .tcx
-                .sess
+                .dcx()
                 .create_err(errs::ParamInEnumDiscriminant { span, name, param_kind: is_type }),
             ResolutionError::SelfInGenericParamDefault => {
-                self.tcx.sess.create_err(errs::SelfInGenericParamDefault { span })
+                self.dcx().create_err(errs::SelfInGenericParamDefault { span })
             }
             ResolutionError::UnreachableLabel { name, definition_span, suggestion } => {
                 let ((sub_suggestion_label, sub_suggestion), sub_unreachable_label) =
@@ -926,7 +926,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         // No similarly-named labels exist.
                         None => ((None, None), None),
                     };
-                self.tcx.sess.create_err(errs::UnreachableLabel {
+                self.dcx().create_err(errs::UnreachableLabel {
                     span,
                     name,
                     definition_span,
@@ -942,7 +942,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 trait_item_span,
                 trait_path,
             } => {
-                let mut err = self.tcx.sess.struct_span_err_with_code(
+                let mut err = self.dcx().struct_span_err_with_code(
                     span,
                     format!(
                         "item `{name}` is an associated {kind}, which doesn't match its trait `{trait_path}`",
@@ -954,15 +954,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 err
             }
             ResolutionError::TraitImplDuplicate { name, trait_item_span, old_span } => self
-                .tcx
-                .sess
+                .dcx()
                 .create_err(errs::TraitImplDuplicate { span, name, trait_item_span, old_span }),
-            ResolutionError::InvalidAsmSym => {
-                self.tcx.sess.create_err(errs::InvalidAsmSym { span })
-            }
-            ResolutionError::LowercaseSelf => {
-                self.tcx.sess.create_err(errs::LowercaseSelf { span })
-            }
+            ResolutionError::InvalidAsmSym => self.dcx().create_err(errs::InvalidAsmSym { span }),
+            ResolutionError::LowercaseSelf => self.dcx().create_err(errs::LowercaseSelf { span }),
         }
     }
 
@@ -972,7 +967,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     ) -> ErrorGuaranteed {
         match vis_resolution_error {
             VisResolutionError::Relative2018(span, path) => {
-                self.tcx.sess.create_err(errs::Relative2018 {
+                self.dcx().create_err(errs::Relative2018 {
                     span,
                     path_span: path.span,
                     // intentionally converting to String, as the text would also be used as
@@ -981,7 +976,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 })
             }
             VisResolutionError::AncestorOnly(span) => {
-                self.tcx.sess.create_err(errs::AncestorOnly(span))
+                self.dcx().create_err(errs::AncestorOnly(span))
             }
             VisResolutionError::FailedToResolve(span, label, suggestion) => self.into_struct_error(
                 span,
@@ -993,14 +988,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 },
             ),
             VisResolutionError::ExpectedFound(span, path_str, res) => {
-                self.tcx.sess.create_err(errs::ExpectedFound { span, res, path_str })
+                self.dcx().create_err(errs::ExpectedFound { span, res, path_str })
             }
             VisResolutionError::Indeterminate(span) => {
-                self.tcx.sess.create_err(errs::Indeterminate(span))
+                self.dcx().create_err(errs::Indeterminate(span))
             }
-            VisResolutionError::ModuleOnly(span) => {
-                self.tcx.sess.create_err(errs::ModuleOnly(span))
-            }
+            VisResolutionError::ModuleOnly(span) => self.dcx().create_err(errs::ModuleOnly(span)),
         }
         .emit()
     }
@@ -1699,7 +1692,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         // Print the primary message.
         let descr = get_descr(binding);
         let mut err =
-            struct_span_err!(self.tcx.sess, ident.span, E0603, "{} `{}` is private", descr, ident);
+            struct_span_err!(self.dcx(), ident.span, E0603, "{} `{}` is private", descr, ident);
         err.span_label(ident.span, format!("private {descr}"));
 
         let mut not_publicly_reexported = false;

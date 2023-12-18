@@ -439,8 +439,8 @@ pub trait ReportErrorExt {
         Self: Sized,
     {
         ty::tls::with(move |tcx| {
-            let mut builder = tcx.sess.struct_allow(DiagnosticMessage::Str(String::new().into()));
-            let dcx = tcx.sess.dcx();
+            let dcx = tcx.dcx();
+            let mut builder = dcx.struct_allow(DiagnosticMessage::Str(String::new().into()));
             let message = self.diagnostic_message();
             self.add_args(dcx, &mut builder);
             let s = dcx.eagerly_translate_to_string(message, builder.args());

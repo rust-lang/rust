@@ -714,7 +714,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                self.tcx.sess.span_delayed_bug(
+                self.dcx().span_delayed_bug(
                     closure_span,
                     format!(
                         "two identical projections: ({:?}, {:?})",
@@ -1501,7 +1501,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         if self.should_log_capture_analysis(closure_def_id) {
             let mut diag =
-                self.tcx.sess.struct_span_err(closure_span, "First Pass analysis includes:");
+                self.dcx().struct_span_err(closure_span, "First Pass analysis includes:");
             for (place, capture_info) in capture_information {
                 let capture_str = construct_capture_info_string(self.tcx, place, capture_info);
                 let output_str = format!("Capturing {capture_str}");
@@ -1520,7 +1520,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.typeck_results.borrow().closure_min_captures.get(&closure_def_id)
             {
                 let mut diag =
-                    self.tcx.sess.struct_span_err(closure_span, "Min Capture analysis includes:");
+                    self.dcx().struct_span_err(closure_span, "Min Capture analysis includes:");
 
                 for (_, min_captures_for_var) in min_captures {
                     for capture in min_captures_for_var {

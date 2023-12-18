@@ -32,7 +32,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let asm_arch =
             if self.tcx.sess.opts.actually_rustdoc { None } else { self.tcx.sess.asm_arch };
         if asm_arch.is_none() && !self.tcx.sess.opts.actually_rustdoc {
-            self.tcx.sess.emit_err(InlineAsmUnsupportedTarget { span: sp });
+            self.dcx().emit_err(InlineAsmUnsupportedTarget { span: sp });
         }
         if let Some(asm_arch) = asm_arch {
             // Inline assembly is currently only stable for these architectures.
@@ -60,7 +60,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             && !matches!(asm_arch, Some(asm::InlineAsmArch::X86 | asm::InlineAsmArch::X86_64))
             && !self.tcx.sess.opts.actually_rustdoc
         {
-            self.tcx.sess.emit_err(AttSyntaxOnlyX86 { span: sp });
+            self.dcx().emit_err(AttSyntaxOnlyX86 { span: sp });
         }
         if asm.options.contains(InlineAsmOptions::MAY_UNWIND) && !self.tcx.features().asm_unwind {
             feature_err(
@@ -87,7 +87,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     != source_map.span_to_snippet(*abi_span))
                                 .then_some(());
 
-                                self.tcx.sess.emit_err(AbiSpecifiedMultipleTimes {
+                                self.dcx().emit_err(AbiSpecifiedMultipleTimes {
                                     abi_span: *abi_span,
                                     prev_name: *prev_name,
                                     prev_span: *prev_sp,
@@ -100,14 +100,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         }
                     }
                     Err(&[]) => {
-                        self.tcx.sess.emit_err(ClobberAbiNotSupported { abi_span: *abi_span });
+                        self.dcx().emit_err(ClobberAbiNotSupported { abi_span: *abi_span });
                     }
                     Err(supported_abis) => {
                         let mut abis = format!("`{}`", supported_abis[0]);
                         for m in &supported_abis[1..] {
                             let _ = write!(abis, ", `{m}`");
                         }
-                        self.tcx.sess.emit_err(InvalidAbiClobberAbi {
+                        self.dcx().emit_err(InvalidAbiClobberAbi {
                             abi_span: *abi_span,
                             supported_abis: abis,
                         });
@@ -128,7 +128,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     InlineAsmRegOrRegClass::Reg(reg) => {
                         asm::InlineAsmRegOrRegClass::Reg(if let Some(asm_arch) = asm_arch {
                             asm::InlineAsmReg::parse(asm_arch, reg).unwrap_or_else(|error| {
-                                sess.emit_err(InvalidRegister { op_span: *op_sp, reg, error });
+                                self.dcx().emit_err(InvalidRegister {
+                                    op_span: *op_sp,
+                                    reg,
+                                    error,
+                                });
                                 asm::InlineAsmReg::Err
                             })
                         } else {
@@ -139,7 +143,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         asm::InlineAsmRegOrRegClass::RegClass(if let Some(asm_arch) = asm_arch {
                             asm::InlineAsmRegClass::parse(asm_arch, reg_class).unwrap_or_else(
                                 |error| {
-                                    sess.emit_err(InvalidRegisterClass {
+                                    self.dcx().emit_err(InvalidRegisterClass {
                                         op_span: *op_sp,
                                         reg_class,
                                         error,
@@ -276,7 +280,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     class_name: class.name(),
                                 }
                             };
-                            sess.emit_err(InvalidAsmTemplateModifierRegClass {
+                            self.dcx().emit_err(InvalidAsmTemplateModifierRegClass {
                                 placeholder_span,
                                 op_span: op_sp,
                                 sub,
@@ -284,14 +288,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         }
                     }
                     hir::InlineAsmOperand::Const { .. } => {
-                        sess.emit_err(InvalidAsmTemplateModifierConst {
+                        self.dcx().emit_err(InvalidAsmTemplateModifierConst {
                             placeholder_span,
                             op_span: op_sp,
                         });
                     }
                     hir::InlineAsmOperand::SymFn { .. }
                     | hir::InlineAsmOperand::SymStatic { .. } => {
-                        sess.emit_err(InvalidAsmTemplateModifierSym {
+                        self.dcx().emit_err(InvalidAsmTemplateModifierSym {
                             placeholder_span,
                             op_span: op_sp,
                         });
@@ -315,7 +319,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // require that the operand name an explicit register, not a
                 // register class.
                 if reg_class.is_clobber_only(asm_arch.unwrap()) && !op.is_clobber() {
-                    sess.emit_err(RegisterClassOnlyClobber {
+                    self.dcx().emit_err(RegisterClassOnlyClobber {
                         op_span: op_sp,
                         reg_class_name: reg_class.name(),
                     });
@@ -384,7 +388,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     }
                                 };
 
-                                sess.emit_err(RegisterConflict {
+                                self.dcx().emit_err(RegisterConflict {
                                     op_span1: op_sp,
                                     op_span2: op_sp2,
                                     reg1_name: reg_str(idx),

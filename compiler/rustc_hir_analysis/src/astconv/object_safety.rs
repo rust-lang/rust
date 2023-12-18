@@ -90,7 +90,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let first_trait = &regular_traits[0];
             let additional_trait = &regular_traits[1];
             let mut err = struct_span_err!(
-                tcx.sess,
+                tcx.dcx(),
                 additional_trait.bottom().1,
                 E0225,
                 "only auto traits can be used as additional traits in a trait object"
@@ -126,7 +126,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .find(|&trait_ref| tcx.is_trait_alias(trait_ref))
                 .map(|trait_ref| tcx.def_span(trait_ref));
             let reported =
-                tcx.sess.emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span });
+                tcx.dcx().emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span });
             return Ty::new_error(tcx, reported);
         }
 
@@ -290,7 +290,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 if references_self {
                     let def_id = i.bottom().0.def_id();
                     let mut err = struct_span_err!(
-                        tcx.sess,
+                        tcx.dcx(),
                         i.bottom().1,
                         E0038,
                         "the {} `{}` cannot be made into an object",
@@ -326,7 +326,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         false
                     });
                     if references_self {
-                        let guar = tcx.sess.span_delayed_bug(
+                        let guar = tcx.dcx().span_delayed_bug(
                             span,
                             "trait object projection bounds reference `Self`",
                         );
@@ -375,7 +375,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 } else {
                     self.re_infer(None, span).unwrap_or_else(|| {
                         let mut err = struct_span_err!(
-                            tcx.sess,
+                            tcx.dcx(),
                             span,
                             E0228,
                             "the lifetime bound for this object type cannot be deduced \

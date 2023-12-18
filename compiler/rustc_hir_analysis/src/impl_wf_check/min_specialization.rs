@@ -135,7 +135,7 @@ fn check_has_items(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId, impl2_node: Node, 
         && tcx.associated_item_def_ids(impl1_def_id).is_empty()
     {
         let base_impl_span = tcx.def_span(impl2_id);
-        tcx.sess.emit_err(errors::EmptySpecialization { span, base_impl_span });
+        tcx.dcx().emit_err(errors::EmptySpecialization { span, base_impl_span });
     }
 }
 
@@ -152,7 +152,7 @@ fn check_constness(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId, impl2_node: Node, 
 
     if let hir::Constness::Const = impl2_constness {
         if let hir::Constness::NotConst = impl1_constness {
-            tcx.sess.emit_err(errors::ConstSpecialize { span });
+            tcx.dcx().emit_err(errors::ConstSpecialize { span });
         }
     }
 }
@@ -207,7 +207,7 @@ fn get_impl_args(
     let _ = ocx.resolve_regions_and_report_errors(impl1_def_id, &outlives_env);
     let Ok(impl2_args) = infcx.fully_resolve(impl2_args) else {
         let span = tcx.def_span(impl1_def_id);
-        let guar = tcx.sess.emit_err(SubstsOnOverriddenImpl { span });
+        let guar = tcx.dcx().emit_err(SubstsOnOverriddenImpl { span });
         return Err(guar);
     };
     Ok((impl1_args, impl2_args))
@@ -295,7 +295,7 @@ fn check_duplicate_params<'tcx>(
     base_params.sort_by_key(|param| param.0);
     if let (_, [duplicate, ..]) = base_params.partition_dedup() {
         let param = impl1_args[duplicate.0 as usize];
-        tcx.sess
+        tcx.dcx()
             .struct_span_err(span, format!("specializing impl repeats parameter `{param}`"))
             .emit();
     }
@@ -315,7 +315,7 @@ fn check_static_lifetimes<'tcx>(
     span: Span,
 ) {
     if tcx.any_free_region_meets(parent_args, |r| r.is_static()) {
-        tcx.sess.emit_err(errors::StaticSpecialize { span });
+        tcx.dcx().emit_err(errors::StaticSpecialize { span });
     }
 }
 
@@ -455,7 +455,7 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, clause: ty::Clause<'tcx>, sp
                 trait_specialization_kind(tcx, clause),
                 Some(TraitSpecializationKind::Marker)
             ) {
-                tcx.sess
+                tcx.dcx()
                     .struct_span_err(
                         span,
                         format!(
@@ -467,7 +467,7 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, clause: ty::Clause<'tcx>, sp
             }
         }
         ty::ClauseKind::Projection(ty::ProjectionPredicate { projection_ty, term }) => {
-            tcx.sess
+            tcx.dcx()
                 .struct_span_err(
                     span,
                     format!("cannot specialize on associated type `{projection_ty} == {term}`",),
@@ -485,7 +485,7 @@ fn check_specialization_on<'tcx>(tcx: TyCtxt<'tcx>, clause: ty::Clause<'tcx>, sp
             // revisited.
         }
         _ => {
-            tcx.sess
+            tcx.dcx()
                 .struct_span_err(span, format!("cannot specialize on predicate `{clause}`"))
                 .emit();
         }

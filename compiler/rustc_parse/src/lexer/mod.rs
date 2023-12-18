@@ -409,7 +409,7 @@ impl<'a> StringReader<'a> {
         match kind {
             rustc_lexer::LiteralKind::Char { terminated } => {
                 if !terminated {
-                    self.sess.dcx.span_fatal_with_code(
+                    self.dcx().span_fatal_with_code(
                         self.mk_sp(start, end),
                         "unterminated character literal",
                         error_code!(E0762),
@@ -419,7 +419,7 @@ impl<'a> StringReader<'a> {
             }
             rustc_lexer::LiteralKind::Byte { terminated } => {
                 if !terminated {
-                    self.sess.dcx.span_fatal_with_code(
+                    self.dcx().span_fatal_with_code(
                         self.mk_sp(start + BytePos(1), end),
                         "unterminated byte constant",
                         error_code!(E0763),
@@ -429,7 +429,7 @@ impl<'a> StringReader<'a> {
             }
             rustc_lexer::LiteralKind::Str { terminated } => {
                 if !terminated {
-                    self.sess.dcx.span_fatal_with_code(
+                    self.dcx().span_fatal_with_code(
                         self.mk_sp(start, end),
                         "unterminated double quote string",
                         error_code!(E0765),
@@ -439,7 +439,7 @@ impl<'a> StringReader<'a> {
             }
             rustc_lexer::LiteralKind::ByteStr { terminated } => {
                 if !terminated {
-                    self.sess.dcx.span_fatal_with_code(
+                    self.dcx().span_fatal_with_code(
                         self.mk_sp(start + BytePos(1), end),
                         "unterminated double quote byte string",
                         error_code!(E0766),
@@ -449,7 +449,7 @@ impl<'a> StringReader<'a> {
             }
             rustc_lexer::LiteralKind::CStr { terminated } => {
                 if !terminated {
-                    self.sess.dcx.span_fatal_with_code(
+                    self.dcx().span_fatal_with_code(
                         self.mk_sp(start + BytePos(1), end),
                         "unterminated C string",
                         error_code!(E0767),
@@ -584,7 +584,7 @@ impl<'a> StringReader<'a> {
         possible_offset: Option<u32>,
         found_terminators: u32,
     ) -> ! {
-        let mut err = self.sess.dcx.struct_span_fatal_with_code(
+        let mut err = self.dcx().struct_span_fatal_with_code(
             self.mk_sp(start, start),
             "unterminated raw string",
             error_code!(E0748),
@@ -620,7 +620,7 @@ impl<'a> StringReader<'a> {
             None => "unterminated block comment",
         };
         let last_bpos = self.pos;
-        let mut err = self.sess.dcx.struct_span_fatal_with_code(
+        let mut err = self.dcx().struct_span_fatal_with_code(
             self.mk_sp(start, last_bpos),
             msg,
             error_code!(E0758),
@@ -725,7 +725,7 @@ impl<'a> StringReader<'a> {
                     has_fatal_err = true;
                 }
                 emit_unescape_error(
-                    &self.sess.dcx,
+                    self.dcx(),
                     lit_content,
                     span_with_quotes,
                     span,

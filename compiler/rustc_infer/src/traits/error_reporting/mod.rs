@@ -20,7 +20,7 @@ impl<'tcx> InferCtxt<'tcx> {
         requirement: &dyn fmt::Display,
     ) -> DiagnosticBuilder<'tcx> {
         let mut err = struct_span_err!(
-            self.tcx.sess,
+            self.tcx.dcx(),
             error_span,
             E0276,
             "impl has stricter requirements than trait"
@@ -51,7 +51,7 @@ pub fn report_object_safety_error<'tcx>(
         _ => None,
     });
     let mut err = struct_span_err!(
-        tcx.sess,
+        tcx.dcx(),
         span,
         E0038,
         "the trait `{}` cannot be made into an object",

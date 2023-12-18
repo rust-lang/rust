@@ -59,8 +59,10 @@ use crate::traits::{
 };
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_errors::{error_code, Applicability, DiagnosticBuilder, DiagnosticStyledString};
-use rustc_errors::{pluralize, struct_span_err, Diagnostic, ErrorGuaranteed, IntoDiagnosticArg};
+use rustc_errors::{
+    error_code, pluralize, struct_span_err, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
+    DiagnosticStyledString, ErrorGuaranteed, IntoDiagnosticArg,
+};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -142,7 +144,11 @@ impl Drop for TypeErrCtxt<'_, '_> {
     }
 }
 
-impl TypeErrCtxt<'_, '_> {
+impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
+    pub fn dcx(&self) -> &'tcx DiagCtxt {
+        self.infcx.tcx.dcx()
+    }
+
     /// This is just to avoid a potential footgun of accidentally
     /// dropping `typeck_results` by calling `InferCtxt::err_ctxt`
     #[deprecated(note = "you already have a `TypeErrCtxt`")]
@@ -307,7 +313,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
     hidden_region: ty::Region<'tcx>,
     opaque_ty_key: ty::OpaqueTypeKey<'tcx>,
 ) -> DiagnosticBuilder<'tcx> {
-    let mut err = tcx.sess.create_err(errors::OpaqueCapturesLifetime {
+    let mut err = tcx.dcx().create_err(errors::OpaqueCapturesLifetime {
         span,
         opaque_ty: Ty::new_opaque(tcx, opaque_ty_key.def_id.to_def_id(), opaque_ty_key.args),
         opaque_ty_span: tcx.def_span(opaque_ty_key.def_id),
@@ -516,7 +522,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
 
         self.tcx
-            .sess
+            .dcx()
             .span_delayed_bug(self.tcx.def_span(generic_param_scope), "expected region errors")
     }
 
@@ -2180,7 +2186,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             span,
             self.type_error_additional_suggestions(&trace, terr),
         );
-        let mut diag = self.tcx.sess.create_err(failure_code);
+        let mut diag = self.tcx.dcx().create_err(failure_code);
         self.note_type_err(&mut diag, &trace.cause, None, Some(trace.values), terr, false, false);
         diag
     }
@@ -2346,7 +2352,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             },
         };
 
-        let mut err = self.tcx.sess.struct_span_err_with_code(
+        let mut err = self.tcx.dcx().struct_span_err_with_code(
             span,
             format!("{labeled_user_string} may not live long enough"),
             match sub.kind() {
@@ -2771,7 +2777,7 @@ impl<'tcx> InferCtxt<'tcx> {
         };
 
         struct_span_err!(
-            self.tcx.sess,
+            self.tcx.dcx(),
             var_origin.span(),
             E0495,
             "cannot infer an appropriate lifetime{} due to conflicting requirements",

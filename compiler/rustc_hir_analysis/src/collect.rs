@@ -337,7 +337,7 @@ fn bad_placeholder<'tcx>(
     let kind = if kind.ends_with('s') { format!("{kind}es") } else { format!("{kind}s") };
 
     spans.sort();
-    tcx.sess.create_err(errors::PlaceholderNotAllowedItemSignatures { spans, kind })
+    tcx.dcx().create_err(errors::PlaceholderNotAllowedItemSignatures { spans, kind })
 }
 
 impl<'tcx> ItemCtxt<'tcx> {
@@ -476,7 +476,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
             }
             Ty::new_error(
                 self.tcx(),
-                self.tcx().sess.emit_err(errors::AssociatedTypeTraitUninferredGenericParams {
+                self.tcx().dcx().emit_err(errors::AssociatedTypeTraitUninferredGenericParams {
                     span,
                     inferred_sugg,
                     bound,
@@ -672,7 +672,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
 
         hir::TraitItemKind::Const(ty, body_id) => {
             tcx.ensure().type_of(def_id);
-            if !tcx.sess.dcx().has_stashed_diagnostic(ty.span, StashKey::ItemNoType)
+            if !tcx.dcx().has_stashed_diagnostic(ty.span, StashKey::ItemNoType)
                 && !(is_suggestable_infer_ty(ty) && body_id.is_some())
             {
                 // Account for `const C: _;`.
@@ -756,7 +756,7 @@ fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
                 Some(discr)
             } else {
                 let span = tcx.def_span(variant.def_id);
-                tcx.sess.emit_err(errors::EnumDiscriminantOverflowed {
+                tcx.dcx().emit_err(errors::EnumDiscriminantOverflowed {
                     span,
                     discr: prev_discr.unwrap().to_string(),
                     item_name: tcx.item_name(variant.def_id),
@@ -797,7 +797,7 @@ fn convert_variant(
         .map(|f| {
             let dup_span = seen_fields.get(&f.ident.normalize_to_macros_2_0()).cloned();
             if let Some(prev_span) = dup_span {
-                tcx.sess.emit_err(errors::FieldAlreadyDeclared {
+                tcx.dcx().emit_err(errors::FieldAlreadyDeclared {
                     field_name: f.ident,
                     span: f.span,
                     prev_span,
@@ -905,7 +905,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
 
     let paren_sugar = tcx.has_attr(def_id, sym::rustc_paren_sugar);
     if paren_sugar && !tcx.features().unboxed_closures {
-        tcx.sess.emit_err(errors::ParenSugarAttribute { span: item.span });
+        tcx.dcx().emit_err(errors::ParenSugarAttribute { span: item.span });
     }
 
     let is_marker = tcx.has_attr(def_id, sym::marker);
@@ -925,7 +925,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         // and that they are all identifiers
         .and_then(|attr| match attr.meta_item_list() {
             Some(items) if items.len() < 2 => {
-                tcx.sess.emit_err(errors::MustImplementOneOfAttribute { span: attr.span });
+                tcx.dcx().emit_err(errors::MustImplementOneOfAttribute { span: attr.span });
 
                 None
             }
@@ -934,7 +934,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
                 .map(|item| item.ident().ok_or(item.span()))
                 .collect::<Result<Box<[_]>, _>>()
                 .map_err(|span| {
-                    tcx.sess.emit_err(errors::MustBeNameOfAssociatedFunction { span });
+                    tcx.dcx().emit_err(errors::MustBeNameOfAssociatedFunction { span });
                 })
                 .ok()
                 .zip(Some(attr.span)),
@@ -950,7 +950,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
                 match item {
                     Some(item) if matches!(item.kind, hir::AssocItemKind::Fn { .. }) => {
                         if !tcx.defaultness(item.id.owner_id).has_value() {
-                            tcx.sess.emit_err(errors::FunctionNotHaveDefaultImplementation {
+                            tcx.dcx().emit_err(errors::FunctionNotHaveDefaultImplementation {
                                 span: item.span,
                                 note_span: attr_span,
                             });
@@ -961,14 +961,14 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
                         return None;
                     }
                     Some(item) => {
-                        tcx.sess.emit_err(errors::MustImplementNotFunction {
+                        tcx.dcx().emit_err(errors::MustImplementNotFunction {
                             span: item.span,
                             span_note: errors::MustImplementNotFunctionSpanNote { span: attr_span },
                             note: errors::MustImplementNotFunctionNote {},
                         });
                     }
                     None => {
-                        tcx.sess.emit_err(errors::FunctionNotFoundInTrait { span: ident.span });
+                        tcx.dcx().emit_err(errors::FunctionNotFoundInTrait { span: ident.span });
                     }
                 }
 
@@ -984,7 +984,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
 
             for ident in &*list {
                 if let Some(dup) = set.insert(ident.name, ident.span) {
-                    tcx.sess
+                    tcx.dcx()
                         .emit_err(errors::FunctionNamesDuplicated { spans: vec![dup, ident.span] });
 
                     no_dups = false;
@@ -1005,7 +1005,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
                 && let Some(lit) = meta.name_value_literal()
             {
                 if seen_attr {
-                    tcx.sess.span_err(meta.span, "duplicated `implement_via_object` meta item");
+                    tcx.dcx().span_err(meta.span, "duplicated `implement_via_object` meta item");
                 }
                 seen_attr = true;
 
@@ -1017,7 +1017,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
                         implement_via_object = false;
                     }
                     _ => {
-                        tcx.sess.span_err(
+                        tcx.dcx().span_err(
                             meta.span,
                             format!(
                                 "unknown literal passed to `implement_via_object` attribute: {}",
@@ -1027,14 +1027,14 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
                     }
                 }
             } else {
-                tcx.sess.span_err(
+                tcx.dcx().span_err(
                     meta.span(),
                     format!("unknown meta item passed to `rustc_deny_explicit_impl` {meta:?}"),
                 );
             }
         }
         if !seen_attr {
-            tcx.sess.span_err(attr.span, "missing `implement_via_object` meta item");
+            tcx.dcx().span_err(attr.span, "missing `implement_via_object` meta item");
         }
     }
 
@@ -1414,7 +1414,7 @@ fn check_impl_constness(
     }
 
     let trait_name = tcx.item_name(trait_def_id).to_string();
-    Some(tcx.sess.emit_err(errors::ConstImplForNonConstTrait {
+    Some(tcx.dcx().emit_err(errors::ConstImplForNonConstTrait {
         trait_ref_span: ast_trait_ref.path.span,
         trait_name,
         local_trait_span:
@@ -1435,7 +1435,7 @@ fn impl_polarity(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplPolarity {
         }) => {
             if is_rustc_reservation {
                 let span = span.to(of_trait.as_ref().map_or(*span, |t| t.path.span));
-                tcx.sess.span_err(span, "reservation impls can't be negative");
+                tcx.dcx().span_err(span, "reservation impls can't be negative");
             }
             ty::ImplPolarity::Negative
         }
@@ -1445,7 +1445,7 @@ fn impl_polarity(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplPolarity {
             ..
         }) => {
             if is_rustc_reservation {
-                tcx.sess.span_err(item.span, "reservation impls can't be inherent");
+                tcx.dcx().span_err(item.span, "reservation impls can't be inherent");
             }
             ty::ImplPolarity::Positive
         }
@@ -1535,7 +1535,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
                     .source_map()
                     .span_to_snippet(ast_ty.span)
                     .map_or_else(|_| String::new(), |s| format!(" `{s}`"));
-                tcx.sess.emit_err(errors::SIMDFFIHighlyExperimental { span: ast_ty.span, snip });
+                tcx.dcx().emit_err(errors::SIMDFFIHighlyExperimental { span: ast_ty.span, snip });
             }
         };
         for (input, ty) in iter::zip(decl.inputs, fty.inputs().skip_binder()) {

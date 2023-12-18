@@ -147,7 +147,7 @@ fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi
         (true, false) => CONVENTIONS_UNSTABLE,
     };
 
-    tcx.sess.emit_err(errors::VariadicFunctionCompatibleConvention { span, conventions });
+    tcx.dcx().emit_err(errors::VariadicFunctionCompatibleConvention { span, conventions });
 }
 
 pub fn provide(providers: &mut Providers) {

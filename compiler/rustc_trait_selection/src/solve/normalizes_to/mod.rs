@@ -195,7 +195,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             };
 
             let error_response = |ecx: &mut EvalCtxt<'_, 'tcx>, reason| {
-                let guar = tcx.sess.span_delayed_bug(tcx.def_span(assoc_def.item.def_id), reason);
+                let guar = tcx.dcx().span_delayed_bug(tcx.def_span(assoc_def.item.def_id), reason);
                 let error_term = match assoc_def.item.kind {
                     ty::AssocKind::Const => ty::Const::new_error(
                         tcx,
@@ -286,7 +286,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
-        ecx.tcx().sess.span_delayed_bug(
+        ecx.tcx().dcx().span_delayed_bug(
             ecx.tcx().def_span(goal.predicate.def_id()),
             "associated types not allowed on auto traits",
         );

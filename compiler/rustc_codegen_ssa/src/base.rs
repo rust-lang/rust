@@ -448,7 +448,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let Some(llfn) = cx.declare_c_main(llfty) else {
             // FIXME: We should be smart and show a better diagnostic here.
             let span = cx.tcx().def_span(rust_main_def_id);
-            cx.sess().emit_err(errors::MultipleMainFunctions { span });
+            cx.sess().dcx().emit_err(errors::MultipleMainFunctions { span });
             cx.sess().abort_if_errors();
             bug!();
         };
@@ -620,7 +620,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                 &exported_symbols::metadata_symbol_name(tcx),
             );
             if let Err(error) = std::fs::write(&file_name, data) {
-                tcx.sess.emit_fatal(errors::MetadataObjectFileWrite { error });
+                tcx.dcx().emit_fatal(errors::MetadataObjectFileWrite { error });
             }
             CompiledModule {
                 name: metadata_cgu_name,
@@ -819,7 +819,7 @@ impl CrateInfo {
         let subsystem = attr::first_attr_value_str_by_name(crate_attrs, sym::windows_subsystem);
         let windows_subsystem = subsystem.map(|subsystem| {
             if subsystem != sym::windows && subsystem != sym::console {
-                tcx.sess.emit_fatal(errors::InvalidWindowsSubsystem { subsystem });
+                tcx.dcx().emit_fatal(errors::InvalidWindowsSubsystem { subsystem });
             }
             subsystem.to_string()
         });

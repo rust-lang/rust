@@ -134,7 +134,7 @@ impl<'tcx> IfThisChanged<'tcx> {
                     Some(n) => {
                         match DepNode::from_label_string(self.tcx, n.as_str(), def_path_hash) {
                             Ok(n) => n,
-                            Err(()) => self.tcx.sess.emit_fatal(errors::UnrecognizedDepNode {
+                            Err(()) => self.tcx.dcx().emit_fatal(errors::UnrecognizedDepNode {
                                 span: attr.span,
                                 name: n,
                             }),
@@ -148,14 +148,14 @@ impl<'tcx> IfThisChanged<'tcx> {
                     Some(n) => {
                         match DepNode::from_label_string(self.tcx, n.as_str(), def_path_hash) {
                             Ok(n) => n,
-                            Err(()) => self.tcx.sess.emit_fatal(errors::UnrecognizedDepNode {
+                            Err(()) => self.tcx.dcx().emit_fatal(errors::UnrecognizedDepNode {
                                 span: attr.span,
                                 name: n,
                             }),
                         }
                     }
                     None => {
-                        self.tcx.sess.emit_fatal(errors::MissingDepNode { span: attr.span });
+                        self.tcx.dcx().emit_fatal(errors::MissingDepNode { span: attr.span });
                     }
                 };
                 self.then_this_would_need.push((
@@ -201,7 +201,7 @@ fn check_paths<'tcx>(tcx: TyCtxt<'tcx>, if_this_changed: &Sources, then_this_wou
     // Return early here so as not to construct the query, which is not cheap.
     if if_this_changed.is_empty() {
         for &(target_span, _, _, _) in then_this_would_need {
-            tcx.sess.emit_err(errors::MissingIfThisChanged { span: target_span });
+            tcx.dcx().emit_err(errors::MissingIfThisChanged { span: target_span });
         }
         return;
     }
@@ -210,13 +210,13 @@ fn check_paths<'tcx>(tcx: TyCtxt<'tcx>, if_this_changed: &Sources, then_this_wou
             let dependents = query.transitive_predecessors(source_dep_node);
             for &(target_span, ref target_pass, _, ref target_dep_node) in then_this_would_need {
                 if !dependents.contains(&target_dep_node) {
-                    tcx.sess.emit_err(errors::NoPath {
+                    tcx.dcx().emit_err(errors::NoPath {
                         span: target_span,
                         source: tcx.def_path_str(source_def_id),
                         target: *target_pass,
                     });
                 } else {
-                    tcx.sess.emit_err(errors::Ok { span: target_span });
+                    tcx.dcx().emit_err(errors::Ok { span: target_span });
                 }
             }
         }

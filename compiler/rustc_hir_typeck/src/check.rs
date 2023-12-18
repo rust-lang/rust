@@ -215,22 +215,22 @@ pub(super) fn check_fn<'a, 'tcx>(
 fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>) {
     let DefKind::Fn = tcx.def_kind(fn_id) else {
         let span = tcx.def_span(fn_id);
-        tcx.sess.span_err(span, "should be a function");
+        tcx.dcx().span_err(span, "should be a function");
         return;
     };
 
     let generic_counts = tcx.generics_of(fn_id).own_counts();
     if generic_counts.types != 0 {
         let span = tcx.def_span(fn_id);
-        tcx.sess.span_err(span, "should have no type parameters");
+        tcx.dcx().span_err(span, "should have no type parameters");
     }
     if generic_counts.consts != 0 {
         let span = tcx.def_span(fn_id);
-        tcx.sess.span_err(span, "should have no const parameters");
+        tcx.dcx().span_err(span, "should have no const parameters");
     }
 
     let Some(panic_info_did) = tcx.lang_items().panic_info() else {
-        tcx.sess.err("language item required, but not found: `panic_info`");
+        tcx.dcx().err("language item required, but not found: `panic_info`");
         return;
     };
 

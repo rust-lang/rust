@@ -4,10 +4,9 @@ mod arg_matrix;
 mod checks;
 mod suggestions;
 
-use rustc_errors::ErrorGuaranteed;
-
 use crate::coercion::DynamicCoerceMany;
 use crate::{Diverges, EnclosingBreakables, Inherited};
+use rustc_errors::{DiagCtxt, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir_analysis::astconv::AstConv;
@@ -132,6 +131,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             inh,
             fallback_has_occurred: Cell::new(false),
         }
+    }
+
+    pub(crate) fn dcx(&self) -> &'tcx DiagCtxt {
+        self.tcx.dcx()
     }
 
     pub fn cause(&self, span: Span, code: ObligationCauseCode<'tcx>) -> ObligationCause<'tcx> {

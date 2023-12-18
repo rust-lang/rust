@@ -277,7 +277,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // FIXME: currently we never try to compose autoderefs
                     // and ReifyFnPointer/UnsafeFnPointer, but we could.
                     _ => {
-                        self.tcx.sess.span_delayed_bug(
+                        self.dcx().span_delayed_bug(
                             expr.span,
                             format!(
                                 "while adjusting {:?}, can't compose {:?} and {:?}",
@@ -845,11 +845,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .and_then(|r| {
                 // lint bare trait if the method is found in the trait
                 if span.edition().at_least_rust_2021()
-                    && let Some(mut diag) = self
-                        .tcx
-                        .sess
-                        .dcx()
-                        .steal_diagnostic(qself.span, StashKey::TraitMissingMethod)
+                    && let Some(mut diag) =
+                        self.dcx().steal_diagnostic(qself.span, StashKey::TraitMissingMethod)
                 {
                     diag.emit();
                 }
@@ -857,8 +854,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             })
             .or_else(|error| {
                 let guar = self
-                    .tcx
-                    .sess
+                    .dcx()
                     .span_delayed_bug(span, "method resolution should've emitted an error");
                 let result = match error {
                     method::MethodError::PrivateMatch(kind, def_id, _) => Ok((kind, def_id)),
@@ -881,11 +877,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // emit or cancel the diagnostic for bare traits
                 if span.edition().at_least_rust_2021()
-                    && let Some(mut diag) = self
-                        .tcx
-                        .sess
-                        .dcx()
-                        .steal_diagnostic(qself.span, StashKey::TraitMissingMethod)
+                    && let Some(mut diag) =
+                        self.dcx().steal_diagnostic(qself.span, StashKey::TraitMissingMethod)
                 {
                     if trait_missing_method {
                         // cancel the diag for bare traits when meeting `MyTrait::missing_method`
@@ -1216,7 +1209,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Check the visibility of the ctor.
                     let vis = tcx.visibility(ctor_def_id);
                     if !vis.is_accessible_from(tcx.parent_module(hir_id).to_def_id(), tcx) {
-                        tcx.sess
+                        tcx.dcx()
                             .emit_err(CtorIsPrivate { span, def: tcx.def_path_str(adt_def.did()) });
                     }
                     let new_res = Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
@@ -1225,7 +1218,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (new_res, Some(user_args.args))
                 }
                 _ => {
-                    let mut err = tcx.sess.struct_span_err(
+                    let mut err = tcx.dcx().struct_span_err(
                         span,
                         "the `Self` constructor can only be used with tuple or unit structs",
                     );
@@ -1433,7 +1426,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ) {
                 Ok(ok) => self.register_infer_ok_obligations(ok),
                 Err(_) => {
-                    self.tcx.sess.span_delayed_bug(
+                    self.dcx().span_delayed_bug(
                         span,
                         format!(
                         "instantiate_value_path: (UFCS) {self_ty:?} was a subtype of {impl_ty:?} but now is not?",

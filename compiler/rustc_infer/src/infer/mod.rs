@@ -20,7 +20,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::undo_log::Rollback;
 use rustc_data_structures::unify as ut;
-use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{DiagCtxt, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue, EffectVarValue};
@@ -739,6 +739,10 @@ pub struct CombinedSnapshot<'tcx> {
 }
 
 impl<'tcx> InferCtxt<'tcx> {
+    pub fn dcx(&self) -> &'tcx DiagCtxt {
+        self.tcx.dcx()
+    }
+
     pub fn next_trait_solver(&self) -> bool {
         self.next_trait_solver
     }
@@ -1432,7 +1436,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 if value.has_infer_regions() {
                     let guar = self
                         .tcx
-                        .sess
+                        .dcx()
                         .span_delayed_bug(DUMMY_SP, format!("`{value:?}` is not fully resolved"));
                     Ok(self.tcx.fold_regions(value, |re, _| {
                         if re.is_var() { ty::Region::new_error(self.tcx, guar) } else { re }

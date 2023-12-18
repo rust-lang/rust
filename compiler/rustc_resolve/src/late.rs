@@ -1665,7 +1665,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                         ("`'_` cannot be used here", "`'_` is a reserved lifetime name")
                     };
                     let mut diag = rustc_errors::struct_span_err!(
-                        self.r.tcx.sess,
+                        self.r.dcx(),
                         lifetime.ident.span,
                         E0637,
                         "{}",
@@ -1854,7 +1854,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     | LifetimeRibKind::AnonymousWarn(_) => {
                         let sess = self.r.tcx.sess;
                         let mut err = rustc_errors::struct_span_err!(
-                            sess,
+                            sess.dcx(),
                             path_span,
                             E0726,
                             "implicit elided lifetime not allowed here"
@@ -2301,11 +2301,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             let report_error = |this: &Self, ns| {
                 if this.should_report_errs() {
                     let what = if ns == TypeNS { "type parameters" } else { "local variables" };
-                    this.r
-                        .tcx
-                        .sess
-                        .create_err(ImportsCannotReferTo { span: ident.span, what })
-                        .emit();
+                    this.r.dcx().create_err(ImportsCannotReferTo { span: ident.span, what }).emit();
                 }
             };
 
@@ -2599,7 +2595,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
             if param.ident.name == kw::UnderscoreLifetime {
                 rustc_errors::struct_span_err!(
-                    self.r.tcx.sess,
+                    self.r.dcx(),
                     param.ident.span,
                     E0637,
                     "`'_` cannot be used here"
@@ -2613,7 +2609,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
             if param.ident.name == kw::StaticLifetime {
                 rustc_errors::struct_span_err!(
-                    self.r.tcx.sess,
+                    self.r.dcx(),
                     param.ident.span,
                     E0262,
                     "invalid lifetime parameter name: `{}`",
@@ -3559,7 +3555,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             Res::SelfCtor(_) => {
                 // We resolve `Self` in pattern position as an ident sometimes during recovery,
                 // so delay a bug instead of ICEing.
-                self.r.tcx.sess.span_delayed_bug(
+                self.r.dcx().span_delayed_bug(
                     ident.span,
                     "unexpected `SelfCtor` in pattern, expected identifier"
                 );

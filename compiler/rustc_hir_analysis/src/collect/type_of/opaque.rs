@@ -15,7 +15,7 @@ pub fn test_opaque_hidden_types(tcx: TyCtxt<'_>) {
             if matches!(tcx.def_kind(id.owner_id), DefKind::OpaqueTy) {
                 let type_of = tcx.type_of(id.owner_id).instantiate_identity();
 
-                tcx.sess.emit_err(TypeOf { span: tcx.def_span(id.owner_id), type_of });
+                tcx.dcx().emit_err(TypeOf { span: tcx.def_span(id.owner_id), type_of });
             }
         }
     }
@@ -92,7 +92,7 @@ pub(super) fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: Local
             // Account for `type Alias = impl Trait<Foo = impl Trait>;` (#116031)
             parent_def_id = tcx.local_parent(parent_def_id);
         }
-        let reported = tcx.sess.emit_err(UnconstrainedOpaqueType {
+        let reported = tcx.dcx().emit_err(UnconstrainedOpaqueType {
             span: tcx.def_span(def_id),
             name: tcx.item_name(parent_def_id.to_def_id()),
             what: match tcx.hir_node(scope) {
@@ -158,7 +158,7 @@ impl TaitConstraintLocator<'_> {
             }
             constrained = true;
             if !self.tcx.opaque_types_defined_by(item_def_id).contains(&self.def_id) {
-                self.tcx.sess.emit_err(TaitForwardCompat {
+                self.tcx.dcx().emit_err(TaitForwardCompat {
                     span: hidden_type.span,
                     item_span: self
                         .tcx

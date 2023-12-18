@@ -236,13 +236,13 @@ pub(crate) fn verify_func(
         match cranelift_codegen::verify_function(&func, &flags) {
             Ok(_) => {}
             Err(err) => {
-                tcx.sess.err(format!("{:?}", err));
+                tcx.dcx().err(format!("{:?}", err));
                 let pretty_error = cranelift_codegen::print_errors::pretty_verifier_error(
                     &func,
                     Some(Box::new(writer)),
                     err,
                 );
-                tcx.sess.fatal(format!("cranelift verify error:\n{}", pretty_error));
+                tcx.dcx().fatal(format!("cranelift verify error:\n{}", pretty_error));
             }
         }
     });
@@ -450,7 +450,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 unwind: _,
             } => {
                 if options.contains(InlineAsmOptions::MAY_UNWIND) {
-                    fx.tcx.sess.span_fatal(
+                    fx.tcx.dcx().span_fatal(
                         source_info.span,
                         "cranelift doesn't support unwinding from inline assembly.",
                     );
@@ -812,7 +812,7 @@ fn codegen_stmt<'tcx>(
         | StatementKind::PlaceMention(..)
         | StatementKind::AscribeUserType(..) => {}
 
-        StatementKind::Coverage { .. } => fx.tcx.sess.fatal("-Zcoverage is unimplemented"),
+        StatementKind::Coverage { .. } => fx.tcx.dcx().fatal("-Zcoverage is unimplemented"),
         StatementKind::Intrinsic(ref intrinsic) => match &**intrinsic {
             // We ignore `assume` intrinsics, they are only useful for optimizations
             NonDivergingIntrinsic::Assume(_) => {}

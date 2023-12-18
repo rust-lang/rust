@@ -167,7 +167,7 @@ impl QueryContext for QueryCtxt<'_> {
             limit => limit * 2,
         };
 
-        self.sess.emit_fatal(QueryOverflow {
+        self.sess.dcx().emit_fatal(QueryOverflow {
             span,
             layout_of_depth,
             suggested_limit,

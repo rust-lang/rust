@@ -116,7 +116,7 @@ where
             if !self.recursion_limit.value_within_limit(level) {
                 // Not having a `Span` isn't great. But there's hopefully some other
                 // recursion limit error as well.
-                tcx.sess.emit_err(NeedsDropOverflow { query_ty: self.query_ty });
+                tcx.dcx().emit_err(NeedsDropOverflow { query_ty: self.query_ty });
                 return Some(Err(AlwaysRequiresDrop));
             }
 

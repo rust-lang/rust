@@ -797,13 +797,13 @@ impl SyntaxExtension {
         let const_stability = attr::find_const_stability(sess, attrs, span);
         let body_stability = attr::find_body_stability(sess, attrs);
         if let Some((_, sp)) = const_stability {
-            sess.emit_err(errors::MacroConstStability {
+            sess.dcx().emit_err(errors::MacroConstStability {
                 span: sp,
                 head_span: sess.source_map().guess_head_span(span),
             });
         }
         if let Some((_, sp)) = body_stability {
-            sess.emit_err(errors::MacroBodyStability {
+            sess.dcx().emit_err(errors::MacroBodyStability {
                 span: sp,
                 head_span: sess.source_map().guess_head_span(span),
             });

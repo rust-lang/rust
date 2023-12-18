@@ -246,15 +246,15 @@ fn configure_and_expand(
 
     if crate_types.len() > 1 {
         if is_executable_crate {
-            sess.emit_err(errors::MixedBinCrate);
+            sess.dcx().emit_err(errors::MixedBinCrate);
         }
         if is_proc_macro_crate {
-            sess.emit_err(errors::MixedProcMacroCrate);
+            sess.dcx().emit_err(errors::MixedProcMacroCrate);
         }
     }
 
     if is_proc_macro_crate && sess.panic_strategy() == PanicStrategy::Abort {
-        sess.emit_warning(errors::ProcMacroCratePanicAbort);
+        sess.dcx().emit_warning(errors::ProcMacroCratePanicAbort);
     }
 
     sess.time("maybe_create_a_macro_crate", || {
@@ -314,9 +314,9 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
             spans.sort();
             if ident == sym::ferris {
                 let first_span = spans[0];
-                sess.emit_err(errors::FerrisIdentifier { spans, first_span });
+                sess.dcx().emit_err(errors::FerrisIdentifier { spans, first_span });
             } else {
-                sess.emit_err(errors::EmojiIdentifier { spans, ident });
+                sess.dcx().emit_err(errors::EmojiIdentifier { spans, ident });
             }
         }
     });
@@ -530,7 +530,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
             }
         }
         Err(error) => {
-            sess.emit_fatal(errors::ErrorWritingDependencies { path: deps_filename, error });
+            sess.dcx().emit_fatal(errors::ErrorWritingDependencies { path: deps_filename, error });
         }
     }
 }
@@ -576,10 +576,10 @@ pub(crate) fn write_dep_info(tcx: TyCtxt<'_>) {
     if let Some(input_path) = sess.io.input.opt_path() {
         if sess.opts.will_create_output_file() {
             if output_contains_path(&output_paths, input_path) {
-                sess.emit_fatal(errors::InputFileWouldBeOverWritten { path: input_path });
+                sess.dcx().emit_fatal(errors::InputFileWouldBeOverWritten { path: input_path });
             }
             if let Some(dir_path) = output_conflicts_with_dir(&output_paths) {
-                sess.emit_fatal(errors::GeneratedFileConflictsWithDirectory {
+                sess.dcx().emit_fatal(errors::GeneratedFileConflictsWithDirectory {
                     input_path,
                     dir_path,
                 });
@@ -589,7 +589,7 @@ pub(crate) fn write_dep_info(tcx: TyCtxt<'_>) {
 
     if let Some(ref dir) = sess.io.temps_dir {
         if fs::create_dir_all(dir).is_err() {
-            sess.emit_fatal(errors::TempsDirError);
+            sess.dcx().emit_fatal(errors::TempsDirError);
         }
     }
 
@@ -601,7 +601,7 @@ pub(crate) fn write_dep_info(tcx: TyCtxt<'_>) {
     if !only_dep_info {
         if let Some(ref dir) = sess.io.output_dir {
             if fs::create_dir_all(dir).is_err() {
-                sess.emit_fatal(errors::OutDirError);
+                sess.dcx().emit_fatal(errors::OutDirError);
             }
         }
     }
@@ -937,7 +937,7 @@ pub fn start_codegen<'tcx>(
 
     if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
         if let Err(error) = rustc_mir_transform::dump_mir::emit_mir(tcx) {
-            tcx.sess.emit_err(errors::CantEmitMIR { error });
+            tcx.dcx().emit_err(errors::CantEmitMIR { error });
             tcx.sess.abort_if_errors();
         }
     }

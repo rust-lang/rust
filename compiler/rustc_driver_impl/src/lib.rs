@@ -640,20 +640,22 @@ fn show_md_content_with_pager(content: &str, color: ColorConfig) {
 
 fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
     assert!(sess.opts.unstable_opts.link_only);
+    let dcx = sess.dcx();
     if let Input::File(file) = &sess.io.input {
         let rlink_data = fs::read(file).unwrap_or_else(|err| {
-            sess.emit_fatal(RlinkUnableToRead { err });
+            dcx.emit_fatal(RlinkUnableToRead { err });
         });
         let (codegen_results, outputs) = match CodegenResults::deserialize_rlink(sess, rlink_data) {
             Ok((codegen, outputs)) => (codegen, outputs),
             Err(err) => {
                 match err {
-                    CodegenErrors::WrongFileType => sess.emit_fatal(RLinkWrongFileType),
-                    CodegenErrors::EmptyVersionNumber => sess.emit_fatal(RLinkEmptyVersionNumber),
+                    CodegenErrors::WrongFileType => dcx.emit_fatal(RLinkWrongFileType),
+                    CodegenErrors::EmptyVersionNumber => dcx.emit_fatal(RLinkEmptyVersionNumber),
                     CodegenErrors::EncodingVersionMismatch { version_array, rlink_version } => sess
+                        .dcx()
                         .emit_fatal(RLinkEncodingVersionMismatch { version_array, rlink_version }),
                     CodegenErrors::RustcVersionMismatch { rustc_version } => {
-                        sess.emit_fatal(RLinkRustcVersionMismatch {
+                        dcx.emit_fatal(RLinkRustcVersionMismatch {
                             rustc_version,
                             current_version: sess.cfg_version,
                         })
@@ -664,7 +666,7 @@ fn process_rlink(sess: &Session, compiler: &interface::Compiler) {
         let result = compiler.codegen_backend.link(sess, codegen_results, &outputs);
         abort_on_err(result, sess);
     } else {
-        sess.emit_fatal(RlinkNotAFile {})
+        dcx.emit_fatal(RlinkNotAFile {})
     }
 }
 

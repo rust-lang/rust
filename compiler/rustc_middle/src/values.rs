@@ -191,7 +191,7 @@ pub fn recursive_type_error(
         s
     };
     let mut err = struct_span_err!(
-        tcx.sess,
+        tcx.dcx(),
         err_span,
         E0072,
         "recursive type{} {} {} infinite size",

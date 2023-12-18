@@ -371,7 +371,7 @@ fn collect_items_rec<'tcx>(
     // current step of mono items collection.
     //
     // FIXME: don't rely on global state, instead bubble up errors. Note: this is very hard to do.
-    let error_count = tcx.sess.dcx().err_count();
+    let error_count = tcx.dcx().err_count();
 
     match starting_item.node {
         MonoItem::Static(def_id) => {
@@ -459,12 +459,12 @@ fn collect_items_rec<'tcx>(
 
     // Check for PMEs and emit a diagnostic if one happened. To try to show relevant edges of the
     // mono item graph.
-    if tcx.sess.dcx().err_count() > error_count
+    if tcx.dcx().err_count() > error_count
         && starting_item.node.is_generic_fn(tcx)
         && starting_item.node.is_user_defined()
     {
         let formatted_item = with_no_trimmed_paths!(starting_item.node.to_string());
-        tcx.sess.emit_note(EncounteredErrorWhileInstantiating {
+        tcx.dcx().emit_note(EncounteredErrorWhileInstantiating {
             span: starting_item.span,
             formatted_item,
         });
@@ -541,7 +541,7 @@ fn check_recursion_limit<'tcx>(
         } else {
             None
         };
-        tcx.sess.emit_fatal(RecursionLimit {
+        tcx.dcx().emit_fatal(RecursionLimit {
             span,
             shrunk,
             def_span,
@@ -584,7 +584,7 @@ fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
         } else {
             None
         };
-        tcx.sess.emit_fatal(TypeLengthLimit { span, shrunk, was_written, path, type_length });
+        tcx.dcx().emit_fatal(TypeLengthLimit { span, shrunk, was_written, path, type_length });
     }
 }
 
@@ -997,7 +997,7 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
     }
 
     if !tcx.is_mir_available(def_id) {
-        tcx.sess.emit_fatal(NoOptimizedMir {
+        tcx.dcx().emit_fatal(NoOptimizedMir {
             span: tcx.def_span(def_id),
             crate_name: tcx.crate_name(def_id.krate),
         });

@@ -1,10 +1,14 @@
 use rustc_errors::{
-    struct_span_err, DiagnosticBuilder, DiagnosticId, DiagnosticMessage, MultiSpan,
+    struct_span_err, DiagCtxt, DiagnosticBuilder, DiagnosticId, DiagnosticMessage, MultiSpan,
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 
 impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
+    pub fn dcx(&self) -> &'tcx DiagCtxt {
+        self.infcx.dcx()
+    }
+
     pub(crate) fn cannot_move_when_borrowed(
         &self,
         span: Span,
@@ -13,7 +17,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         borrow_place: &str,
         value_place: &str,
     ) -> DiagnosticBuilder<'tcx> {
-        self.infcx.tcx.sess.create_err(crate::session_diagnostics::MoveBorrow {
+        self.dcx().create_err(crate::session_diagnostics::MoveBorrow {
             place,
             span,
             borrow_place,
@@ -30,7 +34,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         borrow_desc: &str,
     ) -> DiagnosticBuilder<'tcx> {
         let mut err = struct_span_err!(
-            self,
+            self.dcx(),
             span,
             E0503,
             "cannot use {} because it was mutably borrowed",
@@ -53,7 +57,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
     ) -> DiagnosticBuilder<'tcx> {
         let via = |msg: &str| if msg.is_empty() { "".to_string() } else { format!(" (via {msg})") };
         let mut err = struct_span_err!(
-            self,
+            self.dcx(),
             new_loan_span,
             E0499,
             "cannot borrow {}{} as mutable more than once at a time",
@@ -99,7 +103,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         old_load_end_span: Option<Span>,
     ) -> DiagnosticBuilder<'tcx> {
         let mut err = struct_span_err!(
-            self,
+            self.dcx(),
             new_loan_span,
             E0524,
             "two closures require unique access to {} at the same time",
@@ -132,7 +136,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         previous_end_span: Option<Span>,
     ) -> DiagnosticBuilder<'cx> {
         let mut err = struct_span_err!(
-            self,
+            self.dcx(),
             new_loan_span,
             E0500,
             "closure requires unique access to {} but {} is already borrowed{}",
@@ -164,7 +168,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         second_borrow_desc: &str,
     ) -> DiagnosticBuilder<'cx> {
         let mut err = struct_span_err!(
-            self,
+            self.dcx(),
             new_loan_span,
             E0501,
             "cannot borrow {}{} as {} because previous closure requires unique access",
@@ -197,7 +201,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
     ) -> DiagnosticBuilder<'cx> {
         let via = |msg: &str| if msg.is_empty() { "".to_string() } else { format!(" (via {msg})") };
         let mut err = struct_span_err!(
-            self,
+            self.dcx(),
             span,
             E0502,
             "cannot borrow {}{} as {} because {} is also borrowed as {}{}",
@@ -237,7 +241,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         desc: &str,
     ) -> DiagnosticBuilder<'cx> {
         let mut err = struct_span_err!(
-            self,
+            self.dcx(),
             span,
             E0506,
             "cannot assign to {} because it is borrowed",
@@ -286,7 +290,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
             _ => span_bug!(move_from_span, "this path should not cause illegal move"),
         };
         let mut err = struct_span_err!(
-            self,
+            self.dcx(),
             move_from_span,
             E0508,
             "cannot move out of type `{}`, a non-copy {}",
@@ -303,7 +307,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         container_ty: Ty<'_>,
     ) -> DiagnosticBuilder<'cx> {
         let mut err = struct_span_err!(
-            self,
+            self.dcx(),
             move_from_span,
             E0509,
             "cannot move out of type `{}`, which implements the `Drop` trait",
@@ -323,7 +327,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         let moved_path = moved_path.map(|mp| format!(": `{mp}`")).unwrap_or_default();
 
         struct_span_err!(
-            self,
+            self.dcx(),
             use_span,
             E0382,
             "{} of {}moved value{}",
@@ -351,7 +355,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         action: &str,
     ) -> DiagnosticBuilder<'tcx> {
         let mut err = struct_span_err!(
-            self,
+            self.dcx(),
             mutate_span,
             E0510,
             "cannot {} {} in {}",
@@ -371,7 +375,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
     ) -> DiagnosticBuilder<'tcx> {
         let coroutine_kind = self.body.coroutine.as_ref().unwrap().coroutine_kind;
         let mut err = struct_span_err!(
-            self,
+            self.dcx(),
             span,
             E0626,
             "borrow may still be in use when {coroutine_kind:#} yields",
@@ -385,7 +389,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         borrow_span: Span,
     ) -> DiagnosticBuilder<'tcx> {
         struct_span_err!(
-            self,
+            self.dcx(),
             borrow_span,
             E0713,
             "borrow may still be in use when destructor runs",
@@ -408,7 +412,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         path_desc: &str,
     ) -> DiagnosticBuilder<'tcx> {
         let mut err = struct_span_err!(
-            self,
+            self.dcx(),
             span,
             E0515,
             "cannot {RETURN} {REFERENCE} {LOCAL}",
@@ -434,7 +438,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         scope: &str,
     ) -> DiagnosticBuilder<'tcx> {
         let mut err = struct_span_err!(
-            self,
+            self.dcx(),
             closure_span,
             E0373,
             "{closure_kind} may outlive the current {scope}, but it borrows {borrowed_path}, \
@@ -467,7 +471,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> DiagnosticBuilder<'tcx> {
-        self.infcx.tcx.sess.struct_span_err_with_code(sp, msg, code)
+        self.dcx().struct_span_err_with_code(sp, msg, code)
     }
 }
 
@@ -477,7 +481,7 @@ pub(crate) fn borrowed_data_escapes_closure<'tcx>(
     escapes_from: &str,
 ) -> DiagnosticBuilder<'tcx> {
     struct_span_err!(
-        tcx.sess,
+        tcx.dcx(),
         escape_span,
         E0521,
         "borrowed data escapes outside of {}",

@@ -1136,7 +1136,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             });
         } else {
             issued_spans.var_subdiag(
-                Some(self.infcx.tcx.sess.dcx()),
+                Some(self.dcx()),
                 &mut err,
                 Some(issued_borrow.kind),
                 |kind, var_span| {
@@ -1153,7 +1153,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             );
 
             borrow_spans.var_subdiag(
-                Some(self.infcx.tcx.sess.dcx()),
+                Some(self.dcx()),
                 &mut err,
                 Some(gen_borrow_kind),
                 |kind, var_span| {

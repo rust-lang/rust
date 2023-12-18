@@ -10,6 +10,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, FreezeReadGuard, FreezeWriteGuard};
+use rustc_errors::DiagCtxt;
 use rustc_expand::base::SyntaxExtension;
 use rustc_fs_util::try_canonicalize;
 use rustc_hir::def_id::{CrateNum, LocalDefId, StableCrateId, StableCrateIdMap, LOCAL_CRATE};
@@ -86,6 +87,12 @@ impl<'a, 'tcx> std::ops::Deref for CrateLoader<'a, 'tcx> {
 
     fn deref(&self) -> &Self::Target {
         &self.tcx
+    }
+}
+
+impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
+    fn dcx(&self) -> &'tcx DiagCtxt {
+        &self.tcx.dcx()
     }
 }
 
@@ -267,11 +274,7 @@ impl CStore {
             let unused_externs =
                 self.unused_externs.iter().map(|ident| ident.to_ident_string()).collect::<Vec<_>>();
             let unused_externs = unused_externs.iter().map(String::as_str).collect::<Vec<&str>>();
-            tcx.sess.dcx().emit_unused_externs(
-                level,
-                json_unused_externs.is_loud(),
-                &unused_externs,
-            );
+            tcx.dcx().emit_unused_externs(level, json_unused_externs.is_loud(), &unused_externs);
         }
     }
 
@@ -768,10 +771,10 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         // Sanity check the loaded crate to ensure it is indeed a panic runtime
         // and the panic strategy is indeed what we thought it was.
         if !data.is_panic_runtime() {
-            self.sess.emit_err(errors::CrateNotPanicRuntime { crate_name: name });
+            self.dcx().emit_err(errors::CrateNotPanicRuntime { crate_name: name });
         }
         if data.required_panic_strategy() != Some(desired_strategy) {
-            self.sess
+            self.dcx()
                 .emit_err(errors::NoPanicStrategy { crate_name: name, strategy: desired_strategy });
         }
 
@@ -792,7 +795,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
 
         let name = Symbol::intern(&self.sess.opts.unstable_opts.profiler_runtime);
         if name == sym::profiler_builtins && attr::contains_name(&krate.attrs, sym::no_core) {
-            self.sess.emit_err(errors::ProfilerBuiltinsNeedsCore);
+            self.dcx().emit_err(errors::ProfilerBuiltinsNeedsCore);
         }
 
         let Some(cnum) = self.resolve_crate(name, DUMMY_SP, CrateDepKind::Implicit) else {
@@ -802,21 +805,21 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
 
         // Sanity check the loaded crate to ensure it is indeed a profiler runtime
         if !data.is_profiler_runtime() {
-            self.sess.emit_err(errors::NotProfilerRuntime { crate_name: name });
+            self.dcx().emit_err(errors::NotProfilerRuntime { crate_name: name });
         }
     }
 
     fn inject_allocator_crate(&mut self, krate: &ast::Crate) {
         self.cstore.has_global_allocator = match &*global_allocator_spans(krate) {
             [span1, span2, ..] => {
-                self.sess.emit_err(errors::NoMultipleGlobalAlloc { span2: *span2, span1: *span1 });
+                self.dcx().emit_err(errors::NoMultipleGlobalAlloc { span2: *span2, span1: *span1 });
                 true
             }
             spans => !spans.is_empty(),
         };
         self.cstore.has_alloc_error_handler = match &*alloc_error_handler_spans(krate) {
             [span1, span2, ..] => {
-                self.sess
+                self.dcx()
                     .emit_err(errors::NoMultipleAllocErrorHandler { span2: *span2, span1: *span1 });
                 true
             }
@@ -853,7 +856,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
             if data.has_global_allocator() {
                 match global_allocator {
                     Some(other_crate) => {
-                        self.sess.emit_err(errors::ConflictingGlobalAlloc {
+                        self.dcx().emit_err(errors::ConflictingGlobalAlloc {
                             crate_name: data.name(),
                             other_crate_name: other_crate,
                         });
@@ -868,7 +871,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
             if data.has_alloc_error_handler() {
                 match alloc_error_handler {
                     Some(other_crate) => {
-                        self.sess.emit_err(errors::ConflictingAllocErrorHandler {
+                        self.dcx().emit_err(errors::ConflictingAllocErrorHandler {
                             crate_name: data.name(),
                             other_crate_name: other_crate,
                         });
@@ -888,7 +891,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
             if !attr::contains_name(&krate.attrs, sym::default_lib_allocator)
                 && !self.cstore.iter_crate_data().any(|(_, data)| data.has_default_lib_allocator())
             {
-                self.sess.emit_err(errors::GlobalAllocRequired);
+                self.dcx().emit_err(errors::GlobalAllocRequired);
             }
             self.cstore.allocator_kind = Some(AllocatorKind::Default);
         }
@@ -932,7 +935,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         for dep in self.cstore.crate_dependencies_in_reverse_postorder(krate) {
             let data = self.cstore.get_crate_data(dep);
             if needs_dep(&data) {
-                self.sess.emit_err(errors::NoTransitiveNeedsDep {
+                self.dcx().emit_err(errors::NoTransitiveNeedsDep {
                     crate_name: self.cstore.get_crate_data(krate).name(),
                     needs_crate_name: what,
                     deps_crate_name: data.name(),

@@ -1201,7 +1201,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                             }
                                         };
                                         self.report_error(span, error);
-                                        self.tcx.sess.span_delayed_bug(span, CG_BUG_STR);
+                                        self.dcx().span_delayed_bug(span, CG_BUG_STR);
                                     }
 
                                     return Res::Err;
@@ -1496,7 +1496,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         record_segment_res(self, res);
                     } else if res == Res::ToolMod && !is_last && opt_ns.is_some() {
                         if binding.is_import() {
-                            self.tcx.sess.emit_err(errors::ToolModuleImported {
+                            self.dcx().emit_err(errors::ToolModuleImported {
                                 span: ident.span,
                                 import: binding.span,
                             });

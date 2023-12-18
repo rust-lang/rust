@@ -5,6 +5,7 @@
 //! it finds operations that are invalid in a certain context.
 
 use rustc_attr as attr;
+use rustc_errors::DiagCtxt;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir;
@@ -42,6 +43,10 @@ impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
     ) -> Self {
         let const_kind = tcx.hir().body_const_context(body.source.def_id().expect_local());
         ConstCx { body, tcx, param_env, const_kind }
+    }
+
+    pub(crate) fn dcx(&self) -> &'tcx DiagCtxt {
+        self.tcx.dcx()
     }
 
     pub fn def_id(&self) -> LocalDefId {
@@ -112,7 +117,7 @@ pub fn is_const_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         None if is_parent_const_stable_trait(tcx, def_id) => {
             // Remove this when `#![feature(const_trait_impl)]` is stabilized,
             // returning `true` unconditionally.
-            tcx.sess.span_delayed_bug(
+            tcx.dcx().span_delayed_bug(
                 tcx.def_span(def_id),
                 "trait implementations cannot be const stable yet",
             );

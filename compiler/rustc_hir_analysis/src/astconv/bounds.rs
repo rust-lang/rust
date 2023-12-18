@@ -48,7 +48,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         }
 
         if unbounds.len() > 1 {
-            tcx.sess.emit_err(errors::MultipleRelaxedDefaultBounds {
+            tcx.dcx().emit_err(errors::MultipleRelaxedDefaultBounds {
                 spans: unbounds.iter().map(|ptr| ptr.span).collect(),
             });
         }
@@ -64,7 +64,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                 }
             }
             // There was a `?Trait` bound, but it was not `?Sized`; warn.
-            tcx.sess.span_warn(
+            tcx.dcx().span_warn(
                 unbound.span,
                 "relaxing a default bound only does something for `?Sized`; \
                 all other traits are not bound by default",
@@ -289,7 +289,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             .expect("missing associated item");
 
         if !assoc_item.visibility(tcx).is_accessible_from(def_scope, tcx) {
-            tcx.sess
+            tcx.dcx()
                 .struct_span_err(
                     binding.span,
                     format!("{} `{}` is private", assoc_item.kind, binding.item_name),
@@ -303,7 +303,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             dup_bindings
                 .entry(assoc_item.def_id)
                 .and_modify(|prev_span| {
-                    tcx.sess.emit_err(errors::ValueOfAssociatedStructAlreadySpecified {
+                    tcx.dcx().emit_err(errors::ValueOfAssociatedStructAlreadySpecified {
                         span: binding.span,
                         prev_span: *prev_span,
                         item_name: binding.item_name,
@@ -332,7 +332,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                         .into(),
                         ty::GenericParamDefKind::Type { .. } => {
                             if !emitted_bad_param_err {
-                                tcx.sess.emit_err(
+                                tcx.dcx().emit_err(
                                     crate::errors::ReturnTypeNotationIllegalParam::Type {
                                         span: path_span,
                                         param_span: tcx.def_span(param.def_id),
@@ -352,7 +352,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                         }
                         ty::GenericParamDefKind::Const { .. } => {
                             if !emitted_bad_param_err {
-                                tcx.sess.emit_err(
+                                tcx.dcx().emit_err(
                                     crate::errors::ReturnTypeNotationIllegalParam::Const {
                                         span: path_span,
                                         param_span: tcx.def_span(param.def_id),
@@ -385,7 +385,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             {
                 alias_ty
             } else {
-                return Err(self.tcx().sess.emit_err(
+                return Err(self.tcx().dcx().emit_err(
                     crate::errors::ReturnTypeNotationOnNonRpitit {
                         span: binding.span,
                         ty: tcx.liberate_late_bound_regions(assoc_item.def_id, output),
@@ -452,7 +452,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                     late_bound_in_ty,
                     |br_name| {
                         struct_span_err!(
-                            tcx.sess,
+                            tcx.dcx(),
                             binding.span,
                             E0582,
                             "binding for associated type `{}` references {}, \
@@ -467,7 +467,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
 
         match binding.kind {
             ConvertedBindingKind::Equality(..) if let ty::AssocKind::Fn = assoc_kind => {
-                return Err(self.tcx().sess.emit_err(
+                return Err(self.tcx().dcx().emit_err(
                     crate::errors::ReturnTypeNotationEqualityBound { span: binding.span },
                 ));
             }

@@ -881,7 +881,7 @@ impl<'tcx, 'a> TestReachabilityVisitor<'tcx, 'a> {
             } else {
                 error_msg.push_str("not in the table");
             }
-            self.tcx.sess.emit_err(ReportEffectiveVisibility { span, descr: error_msg });
+            self.tcx.dcx().emit_err(ReportEffectiveVisibility { span, descr: error_msg });
         }
     }
 }
@@ -966,7 +966,7 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
         let hir_id = self.tcx.local_def_id_to_hir_id(self.current_item);
         let def_id = self.tcx.adjust_ident_and_get_scope(ident, def.did(), hir_id).1;
         if !field.vis.is_accessible_from(def_id, self.tcx) {
-            self.tcx.sess.emit_err(FieldIsPrivate {
+            self.tcx.dcx().emit_err(FieldIsPrivate {
                 span,
                 field_name: field.name,
                 variant_descr: def.variant_descr(),
@@ -1100,7 +1100,7 @@ impl<'tcx> TypePrivacyVisitor<'tcx> {
     fn check_def_id(&mut self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
         let is_error = !self.item_is_accessible(def_id);
         if is_error {
-            self.tcx.sess.emit_err(ItemIsPrivate { span: self.span, kind, descr: descr.into() });
+            self.tcx.dcx().emit_err(ItemIsPrivate { span: self.span, kind, descr: descr.into() });
         }
         is_error
     }
@@ -1229,7 +1229,7 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                     }
                 } else {
                     self.tcx
-                        .sess
+                        .dcx()
                         .span_delayed_bug(expr.span, "no type-dependent def for method call");
                 }
             }
@@ -1276,9 +1276,9 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 let sess = self.tcx.sess;
                 let _ = match name {
                     Some(name) => {
-                        sess.emit_err(ItemIsPrivate { span, kind, descr: (&name).into() })
+                        sess.dcx().emit_err(ItemIsPrivate { span, kind, descr: (&name).into() })
                     }
-                    None => sess.emit_err(UnnamedItemIsPrivate { span, kind }),
+                    None => sess.dcx().emit_err(UnnamedItemIsPrivate { span, kind }),
                 };
                 return;
             }
@@ -1434,7 +1434,7 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
                 }
             };
 
-            self.tcx.sess.emit_err(InPublicInterface {
+            self.tcx.dcx().emit_err(InPublicInterface {
                 span,
                 vis_descr,
                 kind,

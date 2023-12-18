@@ -198,7 +198,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
             if let (hir::Defaultness::Default { .. }, true) = (impl_.defaultness, is_auto) {
                 let sp = impl_.of_trait.as_ref().map_or(item.span, |t| t.path.span);
                 let mut err =
-                    tcx.sess.struct_span_err(sp, "impls of auto traits cannot be default");
+                    tcx.dcx().struct_span_err(sp, "impls of auto traits cannot be default");
                 err.span_labels(impl_.defaultness_span, "default because of this");
                 err.span_label(sp, "auto trait");
                 res = Err(err.emit());
@@ -217,7 +217,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
                         let mut spans = vec![span];
                         spans.extend(impl_.defaultness_span);
                         res = Err(struct_span_err!(
-                            tcx.sess,
+                            tcx.dcx(),
                             spans,
                             E0750,
                             "negative impls cannot be default impls"
@@ -485,7 +485,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
 
         if !unsatisfied_bounds.is_empty() {
             let plural = pluralize!(unsatisfied_bounds.len());
-            let mut err = tcx.sess.struct_span_err(
+            let mut err = tcx.dcx().struct_span_err(
                 gat_item_hir.span,
                 format!("missing required bound{} on `{}`", plural, gat_item_hir.ident),
             );
@@ -829,7 +829,7 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
             return;
         }
         let sugg = trait_should_be_self.iter().map(|span| (*span, "Self".to_string())).collect();
-        tcx.sess
+        tcx.dcx()
             .struct_span_err(
                 trait_should_be_self,
                 "associated item referring to unboxed trait object for its own trait",
@@ -883,15 +883,15 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
             } else {
                 let mut diag = match ty.kind() {
                     ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Error(_) => return Ok(()),
-                    ty::FnPtr(_) => tcx.sess.struct_span_err(
+                    ty::FnPtr(_) => tcx.dcx().struct_span_err(
                         hir_ty.span,
                         "using function pointers as const generic parameters is forbidden",
                     ),
-                    ty::RawPtr(_) => tcx.sess.struct_span_err(
+                    ty::RawPtr(_) => tcx.dcx().struct_span_err(
                         hir_ty.span,
                         "using raw pointers as const generic parameters is forbidden",
                     ),
-                    _ => tcx.sess.struct_span_err(
+                    _ => tcx.dcx().struct_span_err(
                         hir_ty.span,
                         format!("`{}` is forbidden as the type of a const generic parameter", ty),
                     ),
@@ -1032,7 +1032,7 @@ fn check_type_defn<'tcx>(
                     let ty = tcx.type_of(variant.tail().did).instantiate_identity();
                     let ty = tcx.erase_regions(ty);
                     if ty.has_infer() {
-                        tcx.sess
+                        tcx.dcx()
                             .span_delayed_bug(item.span, format!("inference variables in {ty:?}"));
                         // Just treat unresolved type expression as if it needs drop.
                         true
@@ -1114,7 +1114,7 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) -> Result<(), ErrorGuarant
     {
         for associated_def_id in &*tcx.associated_item_def_ids(def_id) {
             struct_span_err!(
-                tcx.sess,
+                tcx.dcx(),
                 tcx.def_span(*associated_def_id),
                 E0714,
                 "marker traits cannot have associated items",
@@ -1532,14 +1532,14 @@ fn check_fn_or_method<'tcx>(
                 tcx.require_lang_item(hir::LangItem::Sized, Some(span)),
             );
         } else {
-            tcx.sess.span_err(
+            tcx.dcx().span_err(
                 hir_decl.inputs.last().map_or(span, |input| input.span),
                 "functions with the \"rust-call\" ABI must take a single non-self tuple argument",
             );
         }
         // No more inputs other than the `self` type and the tuple type
         if inputs.next().is_some() {
-            tcx.sess.span_err(
+            tcx.dcx().span_err(
                 hir_decl.inputs.last().map_or(span, |input| input.span),
                 "functions with the \"rust-call\" ABI must take a single non-self tuple argument",
             );
@@ -1607,7 +1607,7 @@ fn check_method_receiver<'tcx>(
 }
 
 fn e0307(tcx: TyCtxt<'_>, span: Span, receiver_ty: Ty<'_>) -> ErrorGuaranteed {
-    struct_span_err!(tcx.sess.dcx(), span, E0307, "invalid `self` parameter type: {receiver_ty}")
+    struct_span_err!(tcx.dcx(), span, E0307, "invalid `self` parameter type: {receiver_ty}")
         .note("type of `self` must be `Self` or a type that dereferences to it")
         .help(HELP_FOR_SELF_TYPE)
         .emit()
@@ -1807,7 +1807,7 @@ fn check_variances_for_type_defn<'tcx>(
             //
             // if they aren't in the same order, then the user has written invalid code, and already
             // got an error about it (or I'm wrong about this)
-            tcx.sess.span_delayed_bug(
+            tcx.dcx().span_delayed_bug(
                 hir_param.span,
                 "hir generics and ty generics in different order",
             );
@@ -1913,7 +1913,8 @@ fn check_mod_type_wf(tcx: TyCtxt<'_>, module: LocalModDefId) -> Result<(), Error
 }
 
 fn error_392(tcx: TyCtxt<'_>, span: Span, param_name: Symbol) -> DiagnosticBuilder<'_> {
-    let mut err = struct_span_err!(tcx.sess, span, E0392, "parameter `{param_name}` is never used");
+    let mut err =
+        struct_span_err!(tcx.dcx(), span, E0392, "parameter `{param_name}` is never used");
     err.span_label(span, "unused parameter");
     err
 }

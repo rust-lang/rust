@@ -1012,7 +1012,7 @@ pub(crate) trait AttributesExt {
                             match Cfg::parse(cfg_mi) {
                                 Ok(new_cfg) => cfg &= new_cfg,
                                 Err(e) => {
-                                    sess.span_err(e.span, e.msg);
+                                    sess.dcx().span_err(e.span, e.msg);
                                 }
                             }
                         }

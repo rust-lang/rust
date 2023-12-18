@@ -84,7 +84,7 @@ impl<'tcx> RegionErrors<'tcx> {
     #[track_caller]
     pub fn push(&mut self, val: impl Into<RegionErrorKind<'tcx>>) {
         let val = val.into();
-        self.1.sess.span_delayed_bug(DUMMY_SP, format!("{val:?}"));
+        self.1.sess.dcx().span_delayed_bug(DUMMY_SP, format!("{val:?}"));
         self.0.push(val);
     }
     pub fn is_empty(&self) -> bool {
@@ -327,11 +327,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         // to report it; we could probably handle it by
                         // iterating over the universal regions and reporting
                         // an error that multiple bounds are required.
-                        let mut diag =
-                            self.infcx.tcx.sess.create_err(GenericDoesNotLiveLongEnough {
-                                kind: type_test.generic_kind.to_string(),
-                                span: type_test_span,
-                            });
+                        let mut diag = self.dcx().create_err(GenericDoesNotLiveLongEnough {
+                            kind: type_test.generic_kind.to_string(),
+                            span: type_test_span,
+                        });
 
                         // Add notes and suggestions for the case of 'static lifetime
                         // implied but not specified when a generic associated types
@@ -596,7 +595,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             },
         };
 
-        let mut diag = self.infcx.tcx.sess.create_err(err);
+        let mut diag = self.dcx().create_err(err);
 
         if let ReturnConstraint::ClosureUpvar(upvar_field) = kind {
             let def_id = match self.regioncx.universal_regions().defining_ty {
@@ -758,7 +757,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mir_def_name = self.infcx.tcx.def_descr(self.mir_def_id().to_def_id());
 
         let err = LifetimeOutliveErr { span: *span };
-        let mut diag = self.infcx.tcx.sess.create_err(err);
+        let mut diag = self.dcx().create_err(err);
 
         // In certain scenarios, such as the one described in issue #118021,
         // we might encounter a lifetime that cannot be named.

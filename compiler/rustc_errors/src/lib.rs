@@ -980,10 +980,22 @@ impl DiagCtxt {
         self.struct_span_bug(span, msg).emit()
     }
 
-    /// For documentation on this, see `Session::span_delayed_bug`.
+    /// Ensures that compilation cannot succeed.
+    ///
+    /// If this function has been called but no errors have been emitted and
+    /// compilation succeeds, it will cause an internal compiler error (ICE).
+    ///
+    /// This can be used in code paths that should never run on successful compilations.
+    /// For example, it can be used to create an [`ErrorGuaranteed`]
+    /// (but you should prefer threading through the [`ErrorGuaranteed`] from an error emission
+    /// directly).
+    ///
+    /// If no span is available, use [`DUMMY_SP`].
+    ///
+    /// [`DUMMY_SP`]: rustc_span::DUMMY_SP
     ///
     /// Note: this function used to be called `delay_span_bug`. It was renamed
-    /// to match similar functions like `span_bug`, `span_err`, etc.
+    /// to match similar functions like `span_err`, `span_warn`, etc.
     #[track_caller]
     pub fn span_delayed_bug(
         &self,

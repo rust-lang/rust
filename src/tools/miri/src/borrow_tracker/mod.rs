@@ -343,7 +343,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         match method {
             BorrowTrackerMethod::StackedBorrows => {
-                this.tcx.tcx.sess.warn("Stacked Borrows does not support named pointers; `miri_pointer_name` is a no-op");
+                this.tcx.tcx.dcx().warn("Stacked Borrows does not support named pointers; `miri_pointer_name` is a no-op");
                 Ok(())
             }
             BorrowTrackerMethod::TreeBorrows =>

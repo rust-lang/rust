@@ -61,7 +61,7 @@ impl base::BangProcMacro for BangProcMacro {
         let strategy = exec_strategy(ecx);
         let server = proc_macro_server::Rustc::new(ecx);
         self.client.run(&strategy, server, input, proc_macro_backtrace).map_err(|e| {
-            ecx.sess.emit_err(errors::ProcMacroPanicked {
+            ecx.dcx().emit_err(errors::ProcMacroPanicked {
                 span,
                 message: e
                     .as_str()
@@ -180,7 +180,7 @@ impl MultiItemModifier for DeriveProcMacro {
 
         // fail if there have been errors emitted
         if ecx.dcx().err_count() > error_count_before {
-            ecx.sess.emit_err(errors::ProcMacroDeriveTokens { span });
+            ecx.dcx().emit_err(errors::ProcMacroDeriveTokens { span });
         }
 
         ExpandResult::Ready(items)
