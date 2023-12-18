@@ -140,8 +140,6 @@ rm -r tests/run-make/extern-fn-explicit-align # argument alignment not yet suppo
 
 rm tests/ui/codegen/subtyping-enforces-type-equality.rs # assert_assignable bug with Coroutine's
 
-rm tests/ui/packed/issue-118537-field-offset-ice.rs # rust-lang/rust#118540
-
 # bugs in the test suite
 # ======================
 rm tests/ui/backtrace.rs # TODO warning

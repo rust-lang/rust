@@ -274,8 +274,7 @@ pub(crate) fn size_and_align_of<'tcx>(
                     } else {
                         // We have to dynamically compute `min(unsized_align, packed)`.
                         let packed = fx.bcx.ins().iconst(fx.pointer_type, packed.bytes() as i64);
-                        let cmp =
-                            fx.bcx.ins().icmp(IntCC::UnsignedGreaterThan, unsized_align, packed);
+                        let cmp = fx.bcx.ins().icmp(IntCC::UnsignedLessThan, unsized_align, packed);
                         unsized_align = fx.bcx.ins().select(cmp, unsized_align, packed);
                     }
                 }
