@@ -106,13 +106,6 @@ pub trait EmissionGuarantee: Sized {
     /// of `Self` without actually performing the emission.
     #[track_caller]
     fn diagnostic_builder_emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self;
-
-    /// Creates a new `DiagnosticBuilder` that will return this type of guarantee.
-    #[track_caller]
-    fn make_diagnostic_builder(
-        dcx: &DiagCtxt,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, Self>;
 }
 
 impl<'a> DiagnosticBuilder<'a, ErrorGuaranteed> {
@@ -163,14 +156,6 @@ impl EmissionGuarantee for ErrorGuaranteed {
             }
         }
     }
-
-    #[track_caller]
-    fn make_diagnostic_builder(
-        dcx: &DiagCtxt,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new(dcx, Level::Error { lint: false }, msg)
-    }
 }
 
 // FIXME(eddyb) should there be a `Option<ErrorGuaranteed>` impl as well?
@@ -186,13 +171,6 @@ impl EmissionGuarantee for () {
             // `.emit()` was previously called, disallowed from repeating it.
             DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
         }
-    }
-
-    fn make_diagnostic_builder(
-        dcx: &DiagCtxt,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new(dcx, Level::Warning(None), msg)
     }
 }
 
@@ -214,13 +192,6 @@ impl EmissionGuarantee for Noted {
         }
 
         Noted
-    }
-
-    fn make_diagnostic_builder(
-        dcx: &DiagCtxt,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new(dcx, Level::Note, msg)
     }
 }
 
@@ -244,13 +215,6 @@ impl EmissionGuarantee for Bug {
         // Then panic. No need to return the marker type.
         panic::panic_any(ExplicitBug);
     }
-
-    fn make_diagnostic_builder(
-        dcx: &DiagCtxt,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new(dcx, Level::Bug, msg)
-    }
 }
 
 impl EmissionGuarantee for ! {
@@ -268,13 +232,6 @@ impl EmissionGuarantee for ! {
         // Then fatally error, returning `!`
         crate::FatalError.raise()
     }
-
-    fn make_diagnostic_builder(
-        dcx: &DiagCtxt,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new(dcx, Level::Fatal, msg)
-    }
 }
 
 impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
@@ -291,13 +248,6 @@ impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
         }
         // Then fatally error..
         rustc_span::fatal_error::FatalError
-    }
-
-    fn make_diagnostic_builder(
-        dcx: &DiagCtxt,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, Self> {
-        DiagnosticBuilder::new(dcx, Level::Fatal, msg)
     }
 }
 
