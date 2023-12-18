@@ -239,6 +239,45 @@ extern "platform-intrinsic" {
     /// `mask` must only contain `0` or `!0` values.
     pub fn simd_scatter<T, U, V>(val: T, ptr: U, mask: V);
 
+    /// Read a vector of pointers.
+    ///
+    /// `T` must be a vector.
+    ///
+    /// `U` must be a vector of pointers to the element type of `T`, with the same length as `T`.
+    ///
+    /// `V` must be a vector of integers with the same length as `T` (but any element size).
+    ///
+    /// For each element, if the corresponding value in `mask` is `!0`, read the corresponding
+    /// pointer from `ptr`.
+    /// Otherwise if the corresponding value in `mask` is `0`, return the corresponding value from
+    /// `val`.
+    ///
+    /// # Safety
+    /// Unmasked values in `T` must be readable as if by `<ptr>::read` (e.g. aligned to the element
+    /// type).
+    ///
+    /// `mask` must only contain `0` or `!0` values.
+    pub fn simd_masked_load<V, U, T>(mask: V, ptr: U, val: T) -> T;
+
+    /// Write to a vector of pointers.
+    ///
+    /// `T` must be a vector.
+    ///
+    /// `U` must be a vector of pointers to the element type of `T`, with the same length as `T`.
+    ///
+    /// `V` must be a vector of integers with the same length as `T` (but any element size).
+    ///
+    /// For each element, if the corresponding value in `mask` is `!0`, write the corresponding
+    /// value in `val` to the pointer.
+    /// Otherwise if the corresponding value in `mask` is `0`, do nothing.
+    ///
+    /// # Safety
+    /// Unmasked values in `T` must be writeable as if by `<ptr>::write` (e.g. aligned to the element
+    /// type).
+    ///
+    /// `mask` must only contain `0` or `!0` values.
+    pub fn simd_masked_store<V, U, T>(mask: V, ptr: U, val: T);
+
     /// Add two simd vectors elementwise, with saturation.
     ///
     /// `T` must be a vector of integer primitive types.
