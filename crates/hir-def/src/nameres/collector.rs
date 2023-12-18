@@ -545,6 +545,8 @@ impl DefCollector<'_> {
             Edition::Edition2015 => name![rust_2015],
             Edition::Edition2018 => name![rust_2018],
             Edition::Edition2021 => name![rust_2021],
+            // FIXME: update this when rust_2024 exists
+            Edition::Edition2024 => name![rust_2021],
         };
 
         let path_kind = match self.def_map.data.edition {
