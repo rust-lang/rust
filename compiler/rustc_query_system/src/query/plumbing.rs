@@ -286,7 +286,7 @@ where
                     // poisoned due to a panic instead.
                     let lock = query.query_state(qcx).active.get_shard_by_value(&key).lock();
                     match lock.get(&key) {
-                        poisoned @ Some(QueryResult::Poisoned) => poisoned.expect_job(query.name()),
+                        Some(poisoned @ QueryResult::Poisoned) => poisoned.expect_job(query.name()),
                         _ => panic!(
                             "query result must in the cache or the query must be poisoned after a wait"
                         ),
