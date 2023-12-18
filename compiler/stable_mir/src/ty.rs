@@ -3,6 +3,7 @@ use super::{
     mir::{Body, Mutability},
     with, DefId, Error, Symbol,
 };
+use crate::abi::Layout;
 use crate::crate_def::CrateDef;
 use crate::mir::alloc::{read_target_int, read_target_uint, AllocId};
 use crate::target::MachineInfo;
@@ -84,6 +85,11 @@ impl Ty {
     /// Create a type representing an unsigned integer.
     pub fn unsigned_ty(inner: UintTy) -> Ty {
         Ty::from_rigid_kind(RigidTy::Uint(inner))
+    }
+
+    /// Get a type layout.
+    pub fn layout(self) -> Result<Layout, Error> {
+        with(|cx| cx.ty_layout(self))
     }
 }
 

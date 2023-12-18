@@ -12,9 +12,11 @@ use rustc_middle::mir;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use stable_mir::abi::Layout;
 use stable_mir::mir::mono::InstanceDef;
 use stable_mir::ty::{ConstId, Span};
 use stable_mir::ItemKind;
+use std::ops::RangeInclusive;
 use tracing::debug;
 
 use crate::rustc_internal::IndexMap;
@@ -32,6 +34,7 @@ pub struct Tables<'tcx> {
     pub(crate) types: IndexMap<Ty<'tcx>, stable_mir::ty::Ty>,
     pub(crate) instances: IndexMap<ty::Instance<'tcx>, InstanceDef>,
     pub(crate) constants: IndexMap<mir::Const<'tcx>, ConstId>,
+    pub(crate) layouts: IndexMap<rustc_target::abi::Layout<'tcx>, Layout>,
 }
 
 impl<'tcx> Tables<'tcx> {
@@ -160,5 +163,15 @@ where
     type T = (T::T, U::T);
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         (self.0.stable(tables), self.1.stable(tables))
+    }
+}
+
+impl<'tcx, T> Stable<'tcx> for RangeInclusive<T>
+where
+    T: Stable<'tcx>,
+{
+    type T = RangeInclusive<T::T>;
+    fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        RangeInclusive::new(self.start().stable(tables), self.end().stable(tables))
     }
 }

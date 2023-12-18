@@ -209,7 +209,6 @@ fn check_len(item: CrateItem) {
     assert_eq!(alloc.read_uint(), Ok(2));
 }
 
-// Use internal API to find a function in a crate.
 fn get_item<'a>(
     items: &'a CrateItems,
     item: (ItemKind, &str),

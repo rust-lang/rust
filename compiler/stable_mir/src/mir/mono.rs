@@ -1,3 +1,4 @@
+use crate::abi::FnAbi;
 use crate::crate_def::CrateDef;
 use crate::mir::Body;
 use crate::ty::{Allocation, ClosureDef, ClosureKind, FnDef, GenericArgs, IndexedVal, Ty};
@@ -54,6 +55,11 @@ impl Instance {
     /// Get the instance type with generic substitutions applied and lifetimes erased.
     pub fn ty(&self) -> Ty {
         with(|context| context.instance_ty(self.def))
+    }
+
+    /// Retrieve information about this instance binary interface.
+    pub fn fn_abi(&self) -> Result<FnAbi, Error> {
+        with(|cx| cx.instance_abi(self.def))
     }
 
     /// Retrieve the instance's mangled name used for calling the given instance.
