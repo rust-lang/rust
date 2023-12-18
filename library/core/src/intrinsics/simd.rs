@@ -83,7 +83,14 @@ extern "platform-intrinsic" {
     /// Otherwise, truncates or extends the value, maintaining the sign for signed integers.
     ///
     /// # Safety
-    /// Casting floats to integers truncates, but the truncated value must fit in the target type.
+    /// Casting from integer types is always safe.
+    /// Casting between two float types is also always safe.
+    ///
+    /// Casting floats to integers truncates, following the same rules as `to_int_unchecked`.
+    /// Specifically, each element must:
+    /// * Not be `NaN`
+    /// * Not be infinite
+    /// * Be representable in the return type, after truncating off its fractional part
     pub fn simd_cast<T, U>(x: T) -> U;
 
     /// Numerically cast a vector, elementwise.
@@ -91,7 +98,7 @@ extern "platform-intrinsic" {
     /// `T` and `U` be a vectors of integer or floating point primitive types, and must have the
     /// same length.
     ///
-    /// Like `simd_cast`, but saturates float-to-integer conversions.
+    /// Like `simd_cast`, but saturates float-to-integer conversions (NaN becomes 0).
     /// This matches regular `as` and is always safe.
     ///
     /// When casting floats to integers, the result is truncated.
@@ -336,6 +343,10 @@ extern "platform-intrinsic" {
     ///
     /// For example, `[!0, 0, !0, !0]` packs to `0b1101` on little endian and `0b1011` on big
     /// endian.
+    ///
+    /// To consider a larger example, `[!0, 0, 0, 0, 0, 0, 0, 0, !0, !0, 0, 0, 0, 0, !0, 0]` packs
+    /// to `[0b00000001, 0b01000011]` or `0b0100001100000001` on little endian, and `[0b10000000,
+    /// 0b11000010]` or `0b1000000011000010` on big endian.
     ///
     /// # Safety
     /// `x` must contain only `0` and `!0`.
