@@ -790,8 +790,7 @@ impl<'tcx> TyCtxt<'tcx> {
         // FIXME(effects): This is suspicious and should probably not be done,
         // especially now that we enforce host effects and then properly handle
         // effect vars during fallback.
-        let mut host_always_on =
-            !self.features().effects || self.sess.opts.unstable_opts.unleash_the_miri_inside_of_you;
+        let mut host_always_on = self.sess.opts.unstable_opts.unleash_the_miri_inside_of_you;
 
         // Compute the constness required by the context.
         let const_context = self.hir().body_const_context(def_id);

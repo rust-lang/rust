@@ -571,7 +571,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir::ItemKind::Impl(impl_) => {
                 self.is_in_trait_impl = impl_.of_trait.is_some();
             }
-            hir::ItemKind::Trait(_, _, generics, _, _) if self.tcx.features().effects => {
+            hir::ItemKind::Trait(_, _, generics, _, _) => {
                 self.host_param_id = generics
                     .params
                     .iter()
@@ -1391,9 +1391,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // Desugar `~const` bound in generics into an additional `const host: bool` param
         // if the effects feature is enabled. This needs to be done before we lower where
         // clauses since where clauses need to bind to the DefId of the host param
-        let host_param_parts = if let Const::Yes(span) = constness
-            && self.tcx.features().effects
-        {
+        let host_param_parts = if let Const::Yes(span) = constness {
             let span = self.lower_span(span);
             let param_node_id = self.next_node_id();
             let hir_id = self.next_id();

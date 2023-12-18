@@ -38,7 +38,7 @@ pub(super) fn predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredic
         // an obligation and instead be skipped. Otherwise we'd use
         // `tcx.def_span(def_id);`
         let span = rustc_span::DUMMY_SP;
-        let non_const_bound = if tcx.features().effects && tcx.has_attr(def_id, sym::const_trait) {
+        let non_const_bound = if tcx.has_attr(def_id, sym::const_trait) {
             // when `Self` is a const trait, also add `Self: Trait<.., true>` as implied bound,
             // because only implementing `Self: Trait<.., false>` is currently not possible.
             Some((
