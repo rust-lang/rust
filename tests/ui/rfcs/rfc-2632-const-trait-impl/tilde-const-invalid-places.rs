@@ -52,4 +52,7 @@ trait Child1 where Self: ~const Trait {} //~ ERROR `~const` is not allowed
 // non-const impl
 impl<T: ~const Trait> Trait for T {} //~ ERROR `~const` is not allowed
 
+// inherent impl (regression test for issue #117004)
+impl<T: ~const Trait> Struct<T> {} //~ ERROR `~const` is not allowed
+
 fn main() {}
