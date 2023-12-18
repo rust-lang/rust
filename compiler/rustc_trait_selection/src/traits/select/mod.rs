@@ -1865,7 +1865,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             }
 
             // Drop otherwise equivalent non-const fn pointer candidates
-            (FnPointerCandidate { .. }, FnPointerCandidate { is_const: false }) => DropVictim::Yes,
+            (FnPointerCandidate { .. }, FnPointerCandidate { fn_host_effect }) => {
+                DropVictim::drop_if(*fn_host_effect == self.tcx().consts.true_)
+            }
 
             (
                 ParamCandidate(ref other_cand),
@@ -2660,6 +2662,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
         args: GenericArgsRef<'tcx>,
+        fn_host_effect: ty::Const<'tcx>,
     ) -> ty::PolyTraitRef<'tcx> {
         let closure_sig = args.as_closure().sig();
 
@@ -2680,6 +2683,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             self_ty,
             closure_sig,
             util::TupleArgumentsFlag::No,
+            fn_host_effect,
         )
         .map_bound(|(trait_ref, _)| trait_ref)
     }

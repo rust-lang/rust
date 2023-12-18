@@ -230,11 +230,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let minimum_input_count = expected_input_tys.len();
         let provided_arg_count = provided_args.len();
 
-        let is_const_eval_select = matches!(fn_def_id, Some(def_id) if
-            self.tcx.def_kind(def_id) == hir::def::DefKind::Fn
-            && self.tcx.is_intrinsic(def_id)
-            && self.tcx.item_name(def_id) == sym::const_eval_select);
-
         // We introduce a helper function to demand that a given argument satisfy a given input
         // This is more complicated than just checking type equality, as arguments could be coerced
         // This version writes those types back so further type checking uses the narrowed types
@@ -267,30 +262,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             if coerce_error.is_some() {
                 return Compatibility::Incompatible(coerce_error);
-            }
-
-            // Check that second and third argument of `const_eval_select` must be `FnDef`, and additionally that
-            // the second argument must be `const fn`. The first argument must be a tuple, but this is already expressed
-            // in the function signature (`F: FnOnce<ARG>`), so I did not bother to add another check here.
-            //
-            // This check is here because there is currently no way to express a trait bound for `FnDef` types only.
-            if is_const_eval_select && (1..=2).contains(&idx) {
-                if let ty::FnDef(def_id, args) = *checked_ty.kind() {
-                    if idx == 1 {
-                        if !self.tcx.is_const_fn_raw(def_id) {
-                            self.tcx.sess.emit_err(errors::ConstSelectMustBeConst {
-                                span: provided_arg.span,
-                            });
-                        } else {
-                            self.enforce_context_effects(provided_arg.span, def_id, args)
-                        }
-                    }
-                } else {
-                    self.tcx.sess.emit_err(errors::ConstSelectMustBeFn {
-                        span: provided_arg.span,
-                        ty: checked_ty,
-                    });
-                }
             }
 
             // 3. Check if the formal type is a supertype of the checked one

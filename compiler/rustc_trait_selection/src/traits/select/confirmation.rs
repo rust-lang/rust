@@ -103,8 +103,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::Builtin(BuiltinImplSource::Misc, vtable_iterator)
             }
 
-            FnPointerCandidate { is_const } => {
-                let data = self.confirm_fn_pointer_candidate(obligation, is_const)?;
+            FnPointerCandidate { fn_host_effect } => {
+                let data = self.confirm_fn_pointer_candidate(obligation, fn_host_effect)?;
                 ImplSource::Builtin(BuiltinImplSource::Misc, data)
             }
 
@@ -653,8 +653,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_fn_pointer_candidate(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
-        // FIXME(effects)
-        _is_const: bool,
+        fn_host_effect: ty::Const<'tcx>,
     ) -> Result<Vec<PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         debug!(?obligation, "confirm_fn_pointer_candidate");
 
@@ -675,6 +674,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             self_ty,
             sig,
             util::TupleArgumentsFlag::Yes,
+            fn_host_effect,
         )
         .map_bound(|(trait_ref, _)| trait_ref);
 
@@ -860,7 +860,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             bug!("closure candidate for non-closure {:?}", obligation);
         };
 
-        let trait_ref = self.closure_trait_ref_unnormalized(obligation, args);
+        let trait_ref =
+            self.closure_trait_ref_unnormalized(obligation, args, self.tcx().consts.true_);
         let nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
 
         debug!(?closure_def_id, ?trait_ref, ?nested, "confirm closure candidate obligations");
