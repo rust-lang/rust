@@ -117,7 +117,7 @@ impl<'sm> CachingSourceMapView<'sm> {
         self.time_stamp += 1;
 
         // Check if lo and hi are in the cached lines.
-        let lo_cache_idx = self.cache_entry_index(span_data.lo);
+        let lo_cache_idx: isize = self.cache_entry_index(span_data.lo);
         let hi_cache_idx = self.cache_entry_index(span_data.hi);
 
         if lo_cache_idx != -1 && hi_cache_idx != -1 {
@@ -205,7 +205,9 @@ impl<'sm> CachingSourceMapView<'sm> {
                 (lo_cache_idx as usize, oldest)
             }
             _ => {
-                panic!();
+                panic!(
+                    "the case of neither value being equal to -1 was handled above and the function returns."
+                );
             }
         };
 
