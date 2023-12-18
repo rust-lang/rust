@@ -55,7 +55,7 @@ fn equate_intrinsic_type<'tcx>(
         && gen_count_ok(own_counts.consts, n_cts, "const")
     {
         let it_def_id = it.owner_id.def_id;
-        check_function_signature(
+        let _ = check_function_signature(
             tcx,
             ObligationCause::new(it.span, it_def_id, ObligationCauseCode::IntrinsicType),
             it_def_id.into(),
