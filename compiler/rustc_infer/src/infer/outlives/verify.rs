@@ -1,7 +1,7 @@
 use crate::infer::outlives::components::{compute_alias_components_recursive, Component};
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::region_constraints::VerifyIfEq;
-use crate::infer::VerifyBound;
+use crate::infer::{GenericKind, VerifyBound};
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_middle::ty::GenericArg;
 use rustc_middle::ty::{self, OutlivesPredicate, Ty, TyCtxt};
@@ -245,10 +245,20 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                     "declared_generic_bounds_from_env_for_erased_ty: region_bound_pair = {:?}",
                     (r, p)
                 );
+                // Fast path for the common case.
+                match (&p, erased_ty.kind()) {
+                    // In outlive routines, all types are expected to be fully normalized.
+                    // And therefore we can safely use structural equality for alias types.
+                    (GenericKind::Param(p1), ty::Param(p2)) if p1 == p2 => {}
+                    (GenericKind::Placeholder(p1), ty::Placeholder(p2)) if p1 == p2 => {}
+                    (GenericKind::Alias(a1), ty::Alias(_, a2)) if a1.def_id == a2.def_id => {}
+                    _ => return None,
+                }
+
                 let p_ty = p.to_ty(tcx);
                 let erased_p_ty = self.tcx.erase_regions(p_ty);
                 (erased_p_ty == erased_ty)
-                    .then_some(ty::Binder::dummy(ty::OutlivesPredicate(p.to_ty(tcx), r)))
+                    .then_some(ty::Binder::dummy(ty::OutlivesPredicate(p_ty, r)))
             });
 
         param_bounds
