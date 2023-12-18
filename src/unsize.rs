@@ -2,6 +2,9 @@
 //!
 //! [`PointerCoercion::Unsize`]: `rustc_middle::ty::adjustment::PointerCoercion::Unsize`
 
+use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
+
+use crate::base::codegen_panic_nounwind;
 use crate::prelude::*;
 
 // Adapted from https://github.com/rust-lang/rust/blob/2a663555ddf36f6b041445894a8c175cd1bc718c/src/librustc_codegen_ssa/base.rs#L159-L307
@@ -187,27 +190,62 @@ pub(crate) fn coerce_dyn_star<'tcx>(
 
 // Adapted from https://github.com/rust-lang/rust/blob/2a663555ddf36f6b041445894a8c175cd1bc718c/src/librustc_codegen_ssa/glue.rs
 
-pub(crate) fn size_and_align_of_dst<'tcx>(
+pub(crate) fn size_and_align_of<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     layout: TyAndLayout<'tcx>,
-    info: Value,
+    info: Option<Value>,
 ) -> (Value, Value) {
-    assert!(layout.is_unsized() || layout.abi == Abi::Uninhabited);
-    match layout.ty.kind() {
+    if layout.is_sized() {
+        return (
+            fx.bcx.ins().iconst(fx.pointer_type, layout.size.bytes() as i64),
+            fx.bcx.ins().iconst(fx.pointer_type, layout.align.abi.bytes() as i64),
+        );
+    }
+
+    let ty = layout.ty;
+    match ty.kind() {
         ty::Dynamic(..) => {
             // load size/align from vtable
-            (crate::vtable::size_of_obj(fx, info), crate::vtable::min_align_of_obj(fx, info))
+            (
+                crate::vtable::size_of_obj(fx, info.unwrap()),
+                crate::vtable::min_align_of_obj(fx, info.unwrap()),
+            )
         }
         ty::Slice(_) | ty::Str => {
             let unit = layout.field(fx, 0);
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
             (
-                fx.bcx.ins().imul_imm(info, unit.size.bytes() as i64),
+                fx.bcx.ins().imul_imm(info.unwrap(), unit.size.bytes() as i64),
                 fx.bcx.ins().iconst(fx.pointer_type, unit.align.abi.bytes() as i64),
             )
         }
-        _ => {
+        ty::Foreign(_) => {
+            let trap_block = fx.bcx.create_block();
+            let true_ = fx.bcx.ins().iconst(types::I8, 1);
+            let next_block = fx.bcx.create_block();
+            fx.bcx.ins().brif(true_, trap_block, &[], next_block, &[]);
+            fx.bcx.seal_block(trap_block);
+            fx.bcx.seal_block(next_block);
+            fx.bcx.switch_to_block(trap_block);
+
+            // `extern` type. We cannot compute the size, so panic.
+            let msg_str = with_no_visible_paths!({
+                with_no_trimmed_paths!({
+                    format!("attempted to compute the size or alignment of extern type `{ty}`")
+                })
+            });
+
+            codegen_panic_nounwind(fx, &msg_str, None);
+
+            fx.bcx.switch_to_block(next_block);
+
+            // This function does not return so we can now return whatever we want.
+            let size = fx.bcx.ins().iconst(fx.pointer_type, 42);
+            let align = fx.bcx.ins().iconst(fx.pointer_type, 42);
+            (size, align)
+        }
+        ty::Adt(..) | ty::Tuple(..) => {
             // First get the size of all statically known fields.
             // Don't use size_of because it also rounds up to alignment, which we
             // want to avoid, as the unsized field's alignment could be smaller.
@@ -221,7 +259,7 @@ pub(crate) fn size_and_align_of_dst<'tcx>(
             // Recurse to get the size of the dynamically sized field (must be
             // the last field).
             let field_layout = layout.field(fx, i);
-            let (unsized_size, mut unsized_align) = size_and_align_of_dst(fx, field_layout, info);
+            let (unsized_size, mut unsized_align) = size_and_align_of(fx, field_layout, info);
 
             // FIXME (#26403, #27023): We should be adding padding
             // to `sized_size` (to accommodate the `unsized_align`
@@ -262,5 +300,6 @@ pub(crate) fn size_and_align_of_dst<'tcx>(
 
             (size, align)
         }
+        _ => bug!("size_and_align_of_dst: {ty} not supported"),
     }
 }
