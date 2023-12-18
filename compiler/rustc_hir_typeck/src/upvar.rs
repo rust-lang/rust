@@ -679,49 +679,37 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // `tests/ui/closures/2229_closure_analysis/preserve_field_drop_order.rs`.
         for (_, captures) in &mut root_var_min_capture_list {
             captures.sort_by(|capture1, capture2| {
-                for (p1, p2) in capture1.place.projections.iter().zip(&capture2.place.projections) {
+                fn is_field<'a>(p: &&Projection<'a>) -> bool {
+                    match p.kind {
+                        ProjectionKind::Field(_, _) => true,
+                        ProjectionKind::Deref | ProjectionKind::OpaqueCast => false,
+                        p @ (ProjectionKind::Subslice | ProjectionKind::Index) => {
+                            bug!("ProjectionKind {:?} was unexpected", p)
+                        }
+                    }
+                }
+
+                // Need to sort only by Field projections, so filter away others.
+                // A previous implementation considered other projection types too
+                // but that caused ICE #118144
+                let capture1_field_projections = capture1.place.projections.iter().filter(is_field);
+                let capture2_field_projections = capture2.place.projections.iter().filter(is_field);
+
+                for (p1, p2) in capture1_field_projections.zip(capture2_field_projections) {
                     // We do not need to look at the `Projection.ty` fields here because at each
                     // step of the iteration, the projections will either be the same and therefore
                     // the types must be as well or the current projection will be different and
                     // we will return the result of comparing the field indexes.
                     match (p1.kind, p2.kind) {
-                        // Paths are the same, continue to next loop.
-                        (ProjectionKind::Deref, ProjectionKind::Deref) => {}
-                        (ProjectionKind::OpaqueCast, ProjectionKind::OpaqueCast) => {}
-                        (ProjectionKind::Field(i1, _), ProjectionKind::Field(i2, _))
-                            if i1 == i2 => {}
-
-                        // Fields are different, compare them.
                         (ProjectionKind::Field(i1, _), ProjectionKind::Field(i2, _)) => {
-                            return i1.cmp(&i2);
+                            // Compare only if paths are different.
+                            // Otherwise continue to the next iteration
+                            if i1 != i2 {
+                                return i1.cmp(&i2);
+                            }
                         }
-
-                        // We should have either a pair of `Deref`s or a pair of `Field`s.
-                        // Anything else is a bug.
-                        (
-                            l @ (ProjectionKind::Deref | ProjectionKind::Field(..)),
-                            r @ (ProjectionKind::Deref | ProjectionKind::Field(..)),
-                        ) => bug!(
-                            "ProjectionKinds Deref and Field were mismatched: ({:?}, {:?})",
-                            l,
-                            r
-                        ),
-                        (
-                            l @ (ProjectionKind::Index
-                            | ProjectionKind::Subslice
-                            | ProjectionKind::Deref
-                            | ProjectionKind::OpaqueCast
-                            | ProjectionKind::Field(..)),
-                            r @ (ProjectionKind::Index
-                            | ProjectionKind::Subslice
-                            | ProjectionKind::Deref
-                            | ProjectionKind::OpaqueCast
-                            | ProjectionKind::Field(..)),
-                        ) => bug!(
-                            "ProjectionKinds Index or Subslice were unexpected: ({:?}, {:?})",
-                            l,
-                            r
-                        ),
+                        // Given the filter above, this arm should never be hit
+                        (l, r) => bug!("ProjectionKinds {:?} or {:?} were unexpected", l, r),
                     }
                 }
 
