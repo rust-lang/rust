@@ -166,10 +166,9 @@ where
 {
     /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter and forgets the JobOwner, so it won't poison the query
-    fn complete<C, Q>(self, q: Q, cache: &C, result: C::Value, dep_node_index: DepNodeIndex)
+    fn complete<C, Q>(self, cache: &C, result: C::Value, dep_node_index: DepNodeIndex)
     where
         C: QueryCache<Key = K>,
-        Q: QueryConfig<Qcx>,
     {
         let key = self.key;
         let state = self.state;
@@ -183,7 +182,7 @@ where
 
         let job = {
             let mut lock = state.active.lock_shard_by_value(&key);
-            lock.remove(&key).unwrap().expect_job(q.name())
+            lock.remove(&key).unwrap().expect_job(self.query_name)
         };
 
         job.signal_complete();
@@ -443,7 +442,7 @@ where
             }
         }
     }
-    job_owner.complete(cache, q, result, dep_node_index);
+    job_owner.complete(cache, result, dep_node_index);
 
     (result, Some(dep_node_index))
 }
