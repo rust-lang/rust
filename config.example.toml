@@ -29,8 +29,8 @@
 #  - A change in the default values
 #
 # If `change-id` does not match the version that is currently running,
-# `x.py` will prompt you to update it and check the related PR for more details.
-change-id = 118703
+# `x.py` will inform you about the changes made on bootstrap.
+# change-id = <latest change id in src/bootstrap/src/utils/change_tracker.rs>
 
 # =============================================================================
 # Tweaking how LLVM is compiled
