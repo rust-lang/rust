@@ -51,7 +51,11 @@ impl<'a> DiagnosticDerive<'a> {
                 Some(slug) => {
                     slugs.borrow_mut().push(slug.clone());
                     quote! {
-                        let mut diag = dcx.struct_diagnostic(crate::fluent_generated::#slug);
+                        let mut diag = rustc_errors::DiagnosticBuilder::new(
+                            dcx,
+                            level,
+                            crate::fluent_generated::#slug
+                        );
                     }
                 }
             };
@@ -77,7 +81,8 @@ impl<'a> DiagnosticDerive<'a> {
                 #[track_caller]
                 fn into_diagnostic(
                     self,
-                    dcx: &'_sess rustc_errors::DiagCtxt
+                    dcx: &'_sess rustc_errors::DiagCtxt,
+                    level: rustc_errors::Level
                 ) -> rustc_errors::DiagnosticBuilder<'_sess, G> {
                     #implementation
                 }

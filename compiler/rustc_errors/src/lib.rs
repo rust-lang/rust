@@ -1279,14 +1279,14 @@ impl DiagCtxt {
         &'a self,
         err: impl IntoDiagnostic<'a>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        err.into_diagnostic(self)
+        err.into_diagnostic(self, Level::Error { lint: false })
     }
 
     pub fn create_warning<'a>(
         &'a self,
         warning: impl IntoDiagnostic<'a, ()>,
     ) -> DiagnosticBuilder<'a, ()> {
-        warning.into_diagnostic(self)
+        warning.into_diagnostic(self, Level::Warning(None))
     }
 
     pub fn emit_warning<'a>(&'a self, warning: impl IntoDiagnostic<'a, ()>) {
@@ -1297,7 +1297,7 @@ impl DiagCtxt {
         &'a self,
         fatal: impl IntoDiagnostic<'a, FatalError>,
     ) -> DiagnosticBuilder<'a, FatalError> {
-        fatal.into_diagnostic(self)
+        fatal.into_diagnostic(self, Level::Fatal)
     }
 
     pub fn emit_almost_fatal<'a>(
@@ -1311,7 +1311,7 @@ impl DiagCtxt {
         &'a self,
         fatal: impl IntoDiagnostic<'a, !>,
     ) -> DiagnosticBuilder<'a, !> {
-        fatal.into_diagnostic(self)
+        fatal.into_diagnostic(self, Level::Fatal)
     }
 
     pub fn emit_fatal<'a>(&'a self, fatal: impl IntoDiagnostic<'a, !>) -> ! {
@@ -1322,7 +1322,7 @@ impl DiagCtxt {
         &'a self,
         bug: impl IntoDiagnostic<'a, diagnostic_builder::Bug>,
     ) -> DiagnosticBuilder<'a, diagnostic_builder::Bug> {
-        bug.into_diagnostic(self)
+        bug.into_diagnostic(self, Level::Bug)
     }
 
     pub fn emit_bug<'a>(
@@ -1340,7 +1340,7 @@ impl DiagCtxt {
         &'a self,
         note: impl IntoDiagnostic<'a, Noted>,
     ) -> DiagnosticBuilder<'a, Noted> {
-        note.into_diagnostic(self)
+        note.into_diagnostic(self, Level::Note)
     }
 
     pub fn emit_artifact_notification(&self, path: &Path, artifact_type: &str) {

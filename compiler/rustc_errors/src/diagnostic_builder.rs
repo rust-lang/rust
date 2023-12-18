@@ -21,7 +21,7 @@ use std::thread::panicking;
 pub trait IntoDiagnostic<'a, G: EmissionGuarantee = ErrorGuaranteed> {
     /// Write out as a diagnostic out of `DiagCtxt`.
     #[must_use]
-    fn into_diagnostic(self, dcx: &'a DiagCtxt) -> DiagnosticBuilder<'a, G>;
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G>;
 }
 
 impl<'a, T, G> IntoDiagnostic<'a, G> for Spanned<T>
@@ -29,8 +29,8 @@ where
     T: IntoDiagnostic<'a, G>,
     G: EmissionGuarantee,
 {
-    fn into_diagnostic(self, dcx: &'a DiagCtxt) -> DiagnosticBuilder<'a, G> {
-        let mut diag = self.node.into_diagnostic(dcx);
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
+        let mut diag = self.node.into_diagnostic(dcx, level);
         diag.set_span(self.span);
         diag
     }
@@ -339,16 +339,10 @@ impl<G: EmissionGuarantee> DerefMut for DiagnosticBuilder<'_, G> {
 }
 
 impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
-    /// Convenience function for internal use, clients should use one of the
-    /// `struct_*` methods on [`DiagCtxt`].
+    #[rustc_lint_diagnostics]
     #[track_caller]
-    pub(crate) fn new<M: Into<DiagnosticMessage>>(
-        dcx: &'a DiagCtxt,
-        level: Level,
-        message: M,
-    ) -> Self {
-        let diagnostic = Diagnostic::new(level, message);
-        Self::new_diagnostic(dcx, diagnostic)
+    pub fn new<M: Into<DiagnosticMessage>>(dcx: &'a DiagCtxt, level: Level, message: M) -> Self {
+        Self::new_diagnostic(dcx, Diagnostic::new(level, message))
     }
 
     /// Creates a new `DiagnosticBuilder` with an already constructed
@@ -400,15 +394,15 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     /// later stage of the compiler. The diagnostic can be accessed with
     /// the provided `span` and `key` through [`DiagCtxt::steal_diagnostic()`].
     ///
-    /// As with `buffer`, this is unless the handler has disabled such buffering.
+    /// As with `buffer`, this is unless the dcx has disabled such buffering.
     pub fn stash(self, span: Span, key: StashKey) {
-        if let Some((diag, handler)) = self.into_diagnostic() {
-            handler.stash_diagnostic(span, key, diag);
+        if let Some((diag, dcx)) = self.into_diagnostic() {
+            dcx.stash_diagnostic(span, key, diag);
         }
     }
 
     /// Converts the builder to a `Diagnostic` for later emission,
-    /// unless handler has disabled such buffering, or `.emit()` was called.
+    /// unless dcx has disabled such buffering, or `.emit()` was called.
     pub fn into_diagnostic(mut self) -> Option<(Diagnostic, &'a DiagCtxt)> {
         let dcx = match self.inner.state {
             // No `.emit()` calls, the `&DiagCtxt` is still available.
@@ -449,7 +443,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     }
 
     /// Buffers the diagnostic for later emission,
-    /// unless handler has disabled such buffering.
+    /// unless dcx has disabled such buffering.
     pub fn buffer(self, buffered_diagnostics: &mut Vec<Diagnostic>) {
         buffered_diagnostics.extend(self.into_diagnostic().map(|(diag, _)| diag));
     }

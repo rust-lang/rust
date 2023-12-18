@@ -1,6 +1,6 @@
 use rustc_errors::{
-    AddToDiagnostic, DiagCtxt, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, MultiSpan,
-    SingleLabelManySpans,
+    AddToDiagnostic, DiagCtxt, DiagnosticBuilder, EmissionGuarantee, IntoDiagnostic, Level,
+    MultiSpan, SingleLabelManySpans,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};
@@ -446,14 +446,14 @@ pub(crate) struct EnvNotDefinedWithUserMessage {
 }
 
 // Hand-written implementation to support custom user messages.
-impl<'a> IntoDiagnostic<'a> for EnvNotDefinedWithUserMessage {
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for EnvNotDefinedWithUserMessage {
     #[track_caller]
-    fn into_diagnostic(self, dcx: &'a DiagCtxt) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
         #[expect(
             rustc::untranslatable_diagnostic,
             reason = "cannot translate user-provided messages"
         )]
-        let mut diag = dcx.struct_err(self.msg_from_user.to_string());
+        let mut diag = DiagnosticBuilder::new(dcx, level, self.msg_from_user.to_string());
         diag.set_span(self.span);
         diag
     }
@@ -801,9 +801,13 @@ pub(crate) struct AsmClobberNoReg {
     pub(crate) clobbers: Vec<Span>,
 }
 
-impl<'a> IntoDiagnostic<'a> for AsmClobberNoReg {
-    fn into_diagnostic(self, dcx: &'a DiagCtxt) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        let mut diag = dcx.struct_err(crate::fluent_generated::builtin_macros_asm_clobber_no_reg);
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for AsmClobberNoReg {
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
+        let mut diag = DiagnosticBuilder::new(
+            dcx,
+            level,
+            crate::fluent_generated::builtin_macros_asm_clobber_no_reg,
+        );
         diag.set_span(self.spans.clone());
         // eager translation as `span_labels` takes `AsRef<str>`
         let lbl1 = dcx.eagerly_translate_to_string(

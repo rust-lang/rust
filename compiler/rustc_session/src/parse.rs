@@ -14,7 +14,7 @@ use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc};
 use rustc_errors::{emitter::SilentEmitter, DiagCtxt};
 use rustc_errors::{
     fallback_fluent_bundle, Diagnostic, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
-    ErrorGuaranteed, IntoDiagnostic, MultiSpan, Noted, StashKey,
+    ErrorGuaranteed, IntoDiagnostic, Level, MultiSpan, Noted, StashKey,
 };
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
@@ -322,7 +322,7 @@ impl ParseSess {
         &'a self,
         err: impl IntoDiagnostic<'a>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        err.into_diagnostic(&self.dcx)
+        err.into_diagnostic(&self.dcx, Level::Error { lint: false })
     }
 
     #[track_caller]
@@ -335,7 +335,7 @@ impl ParseSess {
         &'a self,
         warning: impl IntoDiagnostic<'a, ()>,
     ) -> DiagnosticBuilder<'a, ()> {
-        warning.into_diagnostic(&self.dcx)
+        warning.into_diagnostic(&self.dcx, Level::Warning(None))
     }
 
     #[track_caller]
@@ -348,7 +348,7 @@ impl ParseSess {
         &'a self,
         note: impl IntoDiagnostic<'a, Noted>,
     ) -> DiagnosticBuilder<'a, Noted> {
-        note.into_diagnostic(&self.dcx)
+        note.into_diagnostic(&self.dcx, Level::Note)
     }
 
     #[track_caller]
@@ -361,7 +361,7 @@ impl ParseSess {
         &'a self,
         fatal: impl IntoDiagnostic<'a, !>,
     ) -> DiagnosticBuilder<'a, !> {
-        fatal.into_diagnostic(&self.dcx)
+        fatal.into_diagnostic(&self.dcx, Level::Fatal)
     }
 
     #[track_caller]
