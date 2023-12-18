@@ -42,6 +42,7 @@ tracing-tree.workspace = true
 triomphe.workspace = true
 nohash-hasher.workspace = true
 always-assert = "0.1.2"
+walkdir = "2.3.2"
 
 cfg.workspace = true
 flycheck.workspace = true

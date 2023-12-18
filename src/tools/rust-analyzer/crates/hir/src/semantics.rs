@@ -20,8 +20,8 @@ use hir_def::{
     AsMacroCall, DefWithBodyId, FunctionId, MacroId, TraitId, VariantId,
 };
 use hir_expand::{
-    db::ExpandDatabase, files::InRealFile, name::AsName, ExpansionInfo, InMacroFile, MacroCallId,
-    MacroFileId, MacroFileIdExt,
+    attrs::collect_attrs, db::ExpandDatabase, files::InRealFile, name::AsName, ExpansionInfo,
+    InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
 };
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -29,7 +29,7 @@ use smallvec::{smallvec, SmallVec};
 use stdx::TupleExt;
 use syntax::{
     algo::skip_trivia_token,
-    ast::{self, HasAttrs as _, HasDocComments, HasGenericParams, HasLoopBody, IsString as _},
+    ast::{self, HasAttrs as _, HasGenericParams, HasLoopBody, IsString as _},
     match_ast, AstNode, AstToken, Direction, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken,
     TextRange, TextSize,
 };
@@ -673,11 +673,22 @@ impl<'db> SemanticsImpl<'db> {
                             }
                             _ => 0,
                         };
+                        // FIXME: here, the attribute's text range is used to strip away all
+                        // entries from the start of the attribute "list" up the the invoking
+                        // attribute. But in
+                        // ```
+                        // mod foo {
+                        //     #![inner]
+                        // }
+                        // ```
+                        // we don't wanna strip away stuff in the `mod foo {` range, that is
+                        // here if the id corresponds to an inner attribute we got strip all
+                        // text ranges of the outer ones, and then all of the inner ones up
+                        // to the invoking attribute so that the inbetween is ignored.
                         let text_range = item.syntax().text_range();
-                        let start = item
-                            .doc_comments_and_attrs()
+                        let start = collect_attrs(&item)
                             .nth(attr_id)
-                            .map(|attr| match attr {
+                            .map(|attr| match attr.1 {
                                 Either::Left(it) => it.syntax().text_range().start(),
                                 Either::Right(it) => it.syntax().text_range().start(),
                             })
@@ -937,10 +948,10 @@ impl<'db> SemanticsImpl<'db> {
     pub fn resolve_type(&self, ty: &ast::Type) -> Option<Type> {
         let analyze = self.analyze(ty.syntax())?;
         let ctx = LowerCtx::with_file_id(self.db.upcast(), analyze.file_id);
-        let ty = hir_ty::TyLoweringContext::new(
+        let ty = hir_ty::TyLoweringContext::new_maybe_unowned(
             self.db,
             &analyze.resolver,
-            analyze.resolver.module().into(),
+            analyze.resolver.type_owner(),
         )
         .lower_ty(&crate::TypeRef::from_ast(&ctx, ty.clone()));
         Some(Type::new_with_resolver(self.db, &analyze.resolver, ty))

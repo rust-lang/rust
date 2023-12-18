@@ -110,6 +110,7 @@ pub struct PublishReleaseNotes {
 #[derive(Debug)]
 pub enum MeasurementType {
     Build,
+    RustcTests,
     AnalyzeSelf,
     AnalyzeRipgrep,
     AnalyzeWebRender,
@@ -122,6 +123,7 @@ impl FromStr for MeasurementType {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "build" => Ok(Self::Build),
+            "rustc_tests" => Ok(Self::RustcTests),
             "self" => Ok(Self::AnalyzeSelf),
             "ripgrep-13.0.0" => Ok(Self::AnalyzeRipgrep),
             "webrender-2022" => Ok(Self::AnalyzeWebRender),
@@ -135,6 +137,7 @@ impl AsRef<str> for MeasurementType {
     fn as_ref(&self) -> &str {
         match self {
             Self::Build => "build",
+            Self::RustcTests => "rustc_tests",
             Self::AnalyzeSelf => "self",
             Self::AnalyzeRipgrep => "ripgrep-13.0.0",
             Self::AnalyzeWebRender => "webrender-2022",
