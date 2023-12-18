@@ -2601,7 +2601,9 @@ fn parse_remap_path_prefix(
         .opt_strs("remap-path-prefix")
         .into_iter()
         .map(|remap| match remap.rsplit_once('=') {
-            None => early_dcx.early_error("--remap-path-prefix must contain '=' between FROM and TO"),
+            None => {
+                early_dcx.early_error("--remap-path-prefix must contain '=' between FROM and TO")
+            }
             Some((from, to)) => (PathBuf::from(from), PathBuf::from(to)),
         })
         .collect();
@@ -2673,8 +2675,12 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let output_types = parse_output_types(early_dcx, &unstable_opts, matches);
 
     let mut cg = CodegenOptions::build(early_dcx, matches);
-    let (disable_local_thinlto, mut codegen_units) =
-        should_override_cgus_and_disable_thinlto(early_dcx, &output_types, matches, cg.codegen_units);
+    let (disable_local_thinlto, mut codegen_units) = should_override_cgus_and_disable_thinlto(
+        early_dcx,
+        &output_types,
+        matches,
+        cg.codegen_units,
+    );
 
     if unstable_opts.threads == 0 {
         early_dcx.early_error("value for threads must be a positive non-zero integer");
@@ -2851,7 +2857,8 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     }
 
     if cg.remark.is_empty() && unstable_opts.remark_dir.is_some() {
-        early_dcx.early_warn("using -Z remark-dir without enabling remarks using e.g. -C remark=all");
+        early_dcx
+            .early_warn("using -Z remark-dir without enabling remarks using e.g. -C remark=all");
     }
 
     let externs = parse_externs(early_dcx, matches, &unstable_opts);

@@ -181,8 +181,8 @@ pub(crate) struct UnsafeOpInUnsafeFn {
 impl<'a> DecorateLint<'a, ()> for UnsafeOpInUnsafeFn {
     #[track_caller]
     fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, ()>) {
-        let handler = diag.dcx().expect("lint should not yet be emitted");
-        let desc = handler.eagerly_translate_to_string(self.details.label(), [].into_iter());
+        let dcx = diag.dcx().expect("lint should not yet be emitted");
+        let desc = dcx.eagerly_translate_to_string(self.details.label(), [].into_iter());
         diag.set_arg("details", desc);
         diag.span_label(self.details.span, self.details.label());
         self.details.add_subdiagnostics(diag);

@@ -376,7 +376,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                     return Ok(quote! {});
                 }
 
-                let handler = match &self.parent.kind {
+                let dcx = match &self.parent.kind {
                     DiagnosticDeriveKind::Diagnostic { dcx } => dcx,
                     DiagnosticDeriveKind::LintDiagnostic => {
                         throw_invalid_attr!(attr, |diag| {
@@ -384,7 +384,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                         })
                     }
                 };
-                return Ok(quote! { #diag.eager_subdiagnostic(#handler, #binding); });
+                return Ok(quote! { #diag.eager_subdiagnostic(#dcx, #binding); });
             }
             _ => (),
         }

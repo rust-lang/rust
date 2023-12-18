@@ -33,8 +33,8 @@ fn create_test_handler() -> (DiagCtxt, Lrc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
     let emitter = EmitterWriter::new(Box::new(Shared { data: output.clone() }), fallback_bundle)
         .sm(Some(source_map.clone()))
         .diagnostic_width(Some(140));
-    let handler = DiagCtxt::with_emitter(Box::new(emitter));
-    (handler, source_map, output)
+    let dcx = DiagCtxt::with_emitter(Box::new(emitter));
+    (dcx, source_map, output)
 }
 
 /// Returns the result of parsing the given string via the given callback.

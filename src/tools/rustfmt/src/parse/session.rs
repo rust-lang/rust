@@ -159,14 +159,14 @@ impl ParseSess {
         let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let can_reset_errors = Lrc::new(AtomicBool::new(false));
 
-        let handler = default_dcx(
+        let dcx = default_dcx(
             Lrc::clone(&source_map),
             Lrc::clone(&ignore_path_set),
             Lrc::clone(&can_reset_errors),
             config.hide_parse_errors(),
             config.color(),
         );
-        let parse_sess = RawParseSess::with_dcx(handler, source_map);
+        let parse_sess = RawParseSess::with_dcx(dcx, source_map);
 
         Ok(ParseSess {
             parse_sess,

@@ -47,7 +47,7 @@ pub fn inject(
     features: &Features,
     resolver: &mut dyn ResolverExpand,
 ) {
-    let span_diagnostic = sess.dcx();
+    let dcx = sess.dcx();
     let panic_strategy = sess.panic_strategy();
     let platform_panic_strategy = sess.target.panic_strategy;
 
@@ -60,7 +60,7 @@ pub fn inject(
 
     // Do this here so that the test_runner crate attribute gets marked as used
     // even in non-test builds
-    let test_runner = get_test_runner(span_diagnostic, krate);
+    let test_runner = get_test_runner(dcx, krate);
 
     if sess.is_test_crate() {
         let panic_strategy = match (panic_strategy, sess.opts.unstable_opts.panic_abort_tests) {
@@ -70,7 +70,7 @@ pub fn inject(
                     // Silently allow compiling with panic=abort on these platforms,
                     // but with old behavior (abort if a test fails).
                 } else {
-                    span_diagnostic.emit_err(errors::TestsNotSupport {});
+                    dcx.emit_err(errors::TestsNotSupport {});
                 }
                 PanicStrategy::Unwind
             }

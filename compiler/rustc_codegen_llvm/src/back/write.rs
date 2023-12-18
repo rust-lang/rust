@@ -427,7 +427,7 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
     if user.is_null() {
         return;
     }
-    let (cgcx, diag_handler) = *(user as *const (&CodegenContext<LlvmCodegenBackend>, &DiagCtxt));
+    let (cgcx, dcx) = *(user as *const (&CodegenContext<LlvmCodegenBackend>, &DiagCtxt));
 
     match llvm::diagnostic::Diagnostic::unpack(info) {
         llvm::diagnostic::InlineAsm(inline) => {
@@ -435,7 +435,7 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
         }
 
         llvm::diagnostic::Optimization(opt) => {
-            diag_handler.emit_note(FromLlvmOptimizationDiag {
+            dcx.emit_note(FromLlvmOptimizationDiag {
                 filename: &opt.filename,
                 line: opt.line,
                 column: opt.column,
@@ -457,14 +457,14 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
                 llvm::LLVMRustWriteDiagnosticInfoToString(diagnostic_ref, s)
             })
             .expect("non-UTF8 diagnostic");
-            diag_handler.emit_warning(FromLlvmDiag { message });
+            dcx.emit_warning(FromLlvmDiag { message });
         }
         llvm::diagnostic::Unsupported(diagnostic_ref) => {
             let message = llvm::build_string(|s| {
                 llvm::LLVMRustWriteDiagnosticInfoToString(diagnostic_ref, s)
             })
             .expect("non-UTF8 diagnostic");
-            diag_handler.emit_err(FromLlvmDiag { message });
+            dcx.emit_err(FromLlvmDiag { message });
         }
         llvm::diagnostic::UnknownDiagnostic(..) => {}
     }

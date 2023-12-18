@@ -315,8 +315,8 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
     rustc_data_structures::sync::set_dyn_thread_safe_mode(config.opts.unstable_opts.threads > 1);
 
     // Check jobserver before run_in_thread_pool_with_globals, which call jobserver::acquire_thread
-    let early_handler = EarlyDiagCtxt::new(config.opts.error_format);
-    early_handler.initialize_checked_jobserver();
+    let early_dcx = EarlyDiagCtxt::new(config.opts.error_format);
+    early_dcx.initialize_checked_jobserver();
 
     util::run_in_thread_pool_with_globals(
         config.opts.edition,
@@ -324,13 +324,13 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
         || {
             crate::callbacks::setup_callbacks();
 
-            let early_handler = EarlyDiagCtxt::new(config.opts.error_format);
+            let early_dcx = EarlyDiagCtxt::new(config.opts.error_format);
 
             let codegen_backend = if let Some(make_codegen_backend) = config.make_codegen_backend {
                 make_codegen_backend(&config.opts)
             } else {
                 util::get_codegen_backend(
-                    &early_handler,
+                    &early_dcx,
                     &config.opts.maybe_sysroot,
                     config.opts.unstable_opts.codegen_backend.as_deref(),
                 )
@@ -347,7 +347,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             ) {
                 Ok(bundle) => bundle,
                 Err(e) => {
-                    early_handler.early_error(format!("failed to load fluent bundle: {e}"));
+                    early_dcx.early_error(format!("failed to load fluent bundle: {e}"));
                 }
             };
 
@@ -358,7 +358,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             let target_override = codegen_backend.target_override(&config.opts);
 
             let mut sess = rustc_session::build_session(
-                early_handler,
+                early_dcx,
                 config.opts,
                 CompilerIO {
                     input: config.input,

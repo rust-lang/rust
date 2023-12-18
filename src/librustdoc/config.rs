@@ -348,10 +348,10 @@ impl Options {
         let codegen_options = CodegenOptions::build(early_dcx, matches);
         let unstable_opts = UnstableOptions::build(early_dcx, matches);
 
-        let diag = new_dcx(error_format, None, diagnostic_width, &unstable_opts);
+        let dcx = new_dcx(error_format, None, diagnostic_width, &unstable_opts);
 
         // check for deprecated options
-        check_deprecated_options(matches, &diag);
+        check_deprecated_options(matches, &dcx);
 
         if matches.opt_strs("passes") == ["list"] {
             println!("Available passes for running rustdoc:");
@@ -391,7 +391,7 @@ impl Options {
                 match kind.parse() {
                     Ok(kind) => emit.push(kind),
                     Err(()) => {
-                        diag.err(format!("unrecognized emission type: {kind}"));
+                        dcx.err(format!("unrecognized emission type: {kind}"));
                         return Err(1);
                     }
                 }
@@ -421,7 +421,7 @@ impl Options {
             let paths = match theme::load_css_paths(content) {
                 Ok(p) => p,
                 Err(e) => {
-                    diag.struct_err(e).emit();
+                    dcx.struct_err(e).emit();
                     return Err(1);
                 }
             };
@@ -430,7 +430,7 @@ impl Options {
             println!("rustdoc: [check-theme] Starting tests! (Ignoring all other arguments)");
             for theme_file in to_check.iter() {
                 print!(" - Checking \"{theme_file}\"...");
-                let (success, differences) = theme::test_theme_against(theme_file, &paths, &diag);
+                let (success, differences) = theme::test_theme_against(theme_file, &paths, &dcx);
                 if !differences.is_empty() || !success {
                     println!(" FAILED");
                     errors += 1;
@@ -452,10 +452,10 @@ impl Options {
         let input = PathBuf::from(if describe_lints {
             "" // dummy, this won't be used
         } else if matches.free.is_empty() {
-            diag.struct_err("missing file operand").emit();
+            dcx.struct_err("missing file operand").emit();
             return Err(1);
         } else if matches.free.len() > 1 {
-            diag.struct_err("too many file operands").emit();
+            dcx.struct_err("too many file operands").emit();
             return Err(1);
         } else {
             &matches.free[0]
@@ -467,7 +467,7 @@ impl Options {
         let extern_html_root_urls = match parse_extern_html_roots(matches) {
             Ok(ex) => ex,
             Err(err) => {
-                diag.struct_err(err).emit();
+                dcx.struct_err(err).emit();
                 return Err(1);
             }
         };
@@ -526,7 +526,7 @@ impl Options {
         let no_run = matches.opt_present("no-run");
 
         if !should_test && no_run {
-            diag.err("the `--test` flag must be passed to enable `--no-run`");
+            dcx.err("the `--test` flag must be passed to enable `--no-run`");
             return Err(1);
         }
 
@@ -534,7 +534,7 @@ impl Options {
         let output = matches.opt_str("output").map(|s| PathBuf::from(&s));
         let output = match (out_dir, output) {
             (Some(_), Some(_)) => {
-                diag.struct_err("cannot use both 'out-dir' and 'output' at once").emit();
+                dcx.struct_err("cannot use both 'out-dir' and 'output' at once").emit();
                 return Err(1);
             }
             (Some(out_dir), None) => out_dir,
@@ -549,7 +549,7 @@ impl Options {
 
         if let Some(ref p) = extension_css {
             if !p.is_file() {
-                diag.struct_err("option --extend-css argument must be a file").emit();
+                dcx.struct_err("option --extend-css argument must be a file").emit();
                 return Err(1);
             }
         }
@@ -567,7 +567,7 @@ impl Options {
             let paths = match theme::load_css_paths(content) {
                 Ok(p) => p,
                 Err(e) => {
-                    diag.struct_err(e).emit();
+                    dcx.struct_err(e).emit();
                     return Err(1);
                 }
             };
@@ -576,23 +576,23 @@ impl Options {
                 matches.opt_strs("theme").iter().map(|s| (PathBuf::from(&s), s.to_owned()))
             {
                 if !theme_file.is_file() {
-                    diag.struct_err(format!("invalid argument: \"{theme_s}\""))
+                    dcx.struct_err(format!("invalid argument: \"{theme_s}\""))
                         .help("arguments to --theme must be files")
                         .emit();
                     return Err(1);
                 }
                 if theme_file.extension() != Some(OsStr::new("css")) {
-                    diag.struct_err(format!("invalid argument: \"{theme_s}\""))
+                    dcx.struct_err(format!("invalid argument: \"{theme_s}\""))
                         .help("arguments to --theme must have a .css extension")
                         .emit();
                     return Err(1);
                 }
-                let (success, ret) = theme::test_theme_against(&theme_file, &paths, &diag);
+                let (success, ret) = theme::test_theme_against(&theme_file, &paths, &dcx);
                 if !success {
-                    diag.struct_err(format!("error loading theme file: \"{theme_s}\"")).emit();
+                    dcx.struct_err(format!("error loading theme file: \"{theme_s}\"")).emit();
                     return Err(1);
                 } else if !ret.is_empty() {
-                    diag.struct_warn(format!(
+                    dcx.struct_warn(format!(
                         "theme file \"{theme_s}\" is missing CSS rules from the default theme",
                     ))
                     .warn("the theme may appear incorrect when loaded")
@@ -615,7 +615,7 @@ impl Options {
             &matches.opt_strs("markdown-before-content"),
             &matches.opt_strs("markdown-after-content"),
             nightly_options::match_is_nightly_build(matches),
-            &diag,
+            &dcx,
             &mut id_map,
             edition,
             &None,
@@ -626,7 +626,7 @@ impl Options {
         match matches.opt_str("r").as_deref() {
             Some("rust") | None => {}
             Some(s) => {
-                diag.struct_err(format!("unknown input format: {s}")).emit();
+                dcx.struct_err(format!("unknown input format: {s}")).emit();
                 return Err(1);
             }
         }
@@ -634,7 +634,7 @@ impl Options {
         let index_page = matches.opt_str("index-page").map(|s| PathBuf::from(&s));
         if let Some(ref index_page) = index_page {
             if !index_page.is_file() {
-                diag.struct_err("option `--index-page` argument must be a file").emit();
+                dcx.struct_err("option `--index-page` argument must be a file").emit();
                 return Err(1);
             }
         }
@@ -646,7 +646,7 @@ impl Options {
         let crate_types = match parse_crate_types_from_list(matches.opt_strs("crate-type")) {
             Ok(types) => types,
             Err(e) => {
-                diag.struct_err(format!("unknown crate type: {e}")).emit();
+                dcx.struct_err(format!("unknown crate type: {e}")).emit();
                 return Err(1);
             }
         };
@@ -655,7 +655,7 @@ impl Options {
             Some(s) => match OutputFormat::try_from(s.as_str()) {
                 Ok(out_fmt) => {
                     if !out_fmt.is_json() && show_coverage {
-                        diag.struct_err(
+                        dcx.struct_err(
                             "html output format isn't supported for the --show-coverage option",
                         )
                         .emit();
@@ -664,7 +664,7 @@ impl Options {
                     out_fmt
                 }
                 Err(e) => {
-                    diag.struct_err(e).emit();
+                    dcx.struct_err(e).emit();
                     return Err(1);
                 }
             },
@@ -709,16 +709,16 @@ impl Options {
         let html_no_source = matches.opt_present("html-no-source");
 
         if generate_link_to_definition && (show_coverage || output_format != OutputFormat::Html) {
-            diag.struct_err(
+            dcx.struct_err(
                 "--generate-link-to-definition option can only be used with HTML output format",
             )
             .emit();
             return Err(1);
         }
 
-        let scrape_examples_options = ScrapeExamplesOptions::new(matches, &diag)?;
+        let scrape_examples_options = ScrapeExamplesOptions::new(matches, &dcx)?;
         let with_examples = matches.opt_strs("with-examples");
-        let call_locations = crate::scrape_examples::load_call_locations(with_examples, &diag)?;
+        let call_locations = crate::scrape_examples::load_call_locations(with_examples, &dcx)?;
 
         let unstable_features =
             rustc_feature::UnstableFeatures::from_environment(crate_name.as_deref());

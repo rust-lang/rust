@@ -226,8 +226,8 @@ impl ParseSess {
     pub fn new(locale_resources: Vec<&'static str>, file_path_mapping: FilePathMapping) -> Self {
         let fallback_bundle = fallback_fluent_bundle(locale_resources, false);
         let sm = Lrc::new(SourceMap::new(file_path_mapping));
-        let handler = DiagCtxt::with_tty_emitter(Some(sm.clone()), fallback_bundle);
-        ParseSess::with_dcx(handler, sm)
+        let dcx = DiagCtxt::with_tty_emitter(Some(sm.clone()), fallback_bundle);
+        ParseSess::with_dcx(dcx, sm)
     }
 
     pub fn with_dcx(dcx: DiagCtxt, source_map: Lrc<SourceMap>) -> Self {
@@ -256,9 +256,9 @@ impl ParseSess {
         let fallback_bundle = fallback_fluent_bundle(Vec::new(), false);
         let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let fatal_dcx = DiagCtxt::with_tty_emitter(None, fallback_bundle).disable_warnings();
-        let handler = DiagCtxt::with_emitter(Box::new(SilentEmitter { fatal_dcx, fatal_note }))
+        let dcx = DiagCtxt::with_emitter(Box::new(SilentEmitter { fatal_dcx, fatal_note }))
             .disable_warnings();
-        ParseSess::with_dcx(handler, sm)
+        ParseSess::with_dcx(dcx, sm)
     }
 
     #[inline]

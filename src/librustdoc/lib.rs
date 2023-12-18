@@ -157,7 +157,7 @@ pub fn main() {
         }
     }
 
-    let mut handler = EarlyDiagCtxt::new(ErrorOutputType::default());
+    let mut early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     let using_internal_features = rustc_driver::install_ice_hook(
         "https://github.com/rust-lang/rust/issues/new\
@@ -175,11 +175,11 @@ pub fn main() {
     // `debug_logging = true` is because all rustc logging goes to its version of tracing (the one
     // in the sysroot), and all of rustdoc's logging goes to its version (the one in Cargo.toml).
 
-    init_logging(&handler);
-    rustc_driver::init_logger(&handler, rustc_log::LoggerConfig::from_env("RUSTDOC_LOG"));
+    init_logging(&early_dcx);
+    rustc_driver::init_logger(&early_dcx, rustc_log::LoggerConfig::from_env("RUSTDOC_LOG"));
 
-    let exit_code = rustc_driver::catch_with_exit_code(|| match get_args(&handler) {
-        Some(args) => main_args(&mut handler, &args, using_internal_features),
+    let exit_code = rustc_driver::catch_with_exit_code(|| match get_args(&early_dcx) {
+        Some(args) => main_args(&mut early_dcx, &args, using_internal_features),
         _ =>
         {
             #[allow(deprecated)]
@@ -770,7 +770,7 @@ fn main_args(
     }
 
     // need to move these items separately because we lose them by the time the closure is called,
-    // but we can't create the handler ahead of time because it's not Send
+    // but we can't create the dcx ahead of time because it's not Send
     let show_coverage = options.show_coverage;
     let run_check = options.run_check;
 

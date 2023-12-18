@@ -1416,10 +1416,10 @@ pub fn build_session(
     );
     let emitter = default_emitter(&sopts, registry, source_map.clone(), bundle, fallback_bundle);
 
-    let mut span_diagnostic = DiagCtxt::with_emitter(emitter)
+    let mut dcx = DiagCtxt::with_emitter(emitter)
         .with_flags(sopts.unstable_opts.dcx_flags(can_emit_warnings));
     if let Some(ice_file) = ice_file {
-        span_diagnostic = span_diagnostic.with_ice_file(ice_file);
+        dcx = dcx.with_ice_file(ice_file);
     }
 
     // Now that the proper handler has been constructed, drop early_dcx to
@@ -1440,7 +1440,7 @@ pub fn build_session(
         match profiler {
             Ok(profiler) => Some(Arc::new(profiler)),
             Err(e) => {
-                span_diagnostic.emit_warning(errors::FailedToCreateProfiler { err: e.to_string() });
+                dcx.emit_warning(errors::FailedToCreateProfiler { err: e.to_string() });
                 None
             }
         }
@@ -1448,7 +1448,7 @@ pub fn build_session(
         None
     };
 
-    let mut parse_sess = ParseSess::with_dcx(span_diagnostic, source_map);
+    let mut parse_sess = ParseSess::with_dcx(dcx, source_map);
     parse_sess.assume_incomplete_release = sopts.unstable_opts.assume_incomplete_release;
 
     let host_triple = config::host_triple();

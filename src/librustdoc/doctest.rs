@@ -579,8 +579,8 @@ pub(crate) fn make_test(
             let emitter = EmitterWriter::new(Box::new(io::sink()), fallback_bundle);
 
             // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
-            let handler = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
-            let sess = ParseSess::with_dcx(handler, sm);
+            let dcx = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
+            let sess = ParseSess::with_dcx(dcx, sm);
 
             let mut found_main = false;
             let mut found_extern_crate = crate_name.is_none();
@@ -638,7 +638,7 @@ pub(crate) fn make_test(
             }
 
             // Reset errors so that they won't be reported as compiler bugs when dropping the
-            // handler. Any errors in the tests will be reported when the test file is compiled,
+            // dcx. Any errors in the tests will be reported when the test file is compiled,
             // Note that we still need to cancel the errors above otherwise `DiagnosticBuilder`
             // will panic on drop.
             sess.dcx.reset_err_count();
@@ -754,8 +754,8 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
 
             let emitter = EmitterWriter::new(Box::new(io::sink()), fallback_bundle);
 
-            let handler = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
-            let sess = ParseSess::with_dcx(handler, sm);
+            let dcx = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
+            let sess = ParseSess::with_dcx(dcx, sm);
             let mut parser =
                 match maybe_new_parser_from_source_str(&sess, filename, source.to_owned()) {
                     Ok(p) => p,

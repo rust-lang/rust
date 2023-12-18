@@ -291,7 +291,7 @@ fn run_compiler(
     >,
     using_internal_features: Arc<std::sync::atomic::AtomicBool>,
 ) -> interface::Result<()> {
-    let mut default_handler = EarlyDiagCtxt::new(ErrorOutputType::default());
+    let mut default_early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     // Throw away the first argument, the name of the binary.
     // In case of at_args being empty, as might be the case by
@@ -303,14 +303,14 @@ fn run_compiler(
     // the compiler with @empty_file as argv[0] and no more arguments.
     let at_args = at_args.get(1..).unwrap_or_default();
 
-    let args = args::arg_expand_all(&default_handler, at_args);
+    let args = args::arg_expand_all(&default_early_dcx, at_args);
 
-    let Some(matches) = handle_options(&default_handler, &args) else { return Ok(()) };
+    let Some(matches) = handle_options(&default_early_dcx, &args) else { return Ok(()) };
 
-    let sopts = config::build_session_options(&mut default_handler, &matches);
+    let sopts = config::build_session_options(&mut default_early_dcx, &matches);
 
     if let Some(ref code) = matches.opt_str("explain") {
-        handle_explain(&default_handler, diagnostics_registry(), code, sopts.color);
+        handle_explain(&default_early_dcx, diagnostics_registry(), code, sopts.color);
         return Ok(());
     }
 
@@ -336,7 +336,7 @@ fn run_compiler(
         expanded_args: args,
     };
 
-    let has_input = match make_input(&default_handler, &matches.free) {
+    let has_input = match make_input(&default_early_dcx, &matches.free) {
         Err(reported) => return Err(reported),
         Ok(Some(input)) => {
             config.input = input;
@@ -345,7 +345,7 @@ fn run_compiler(
         Ok(None) => match matches.free.len() {
             0 => false, // no input: we will exit early
             1 => panic!("make_input should have provided valid inputs"),
-            _ => default_handler.early_error(format!(
+            _ => default_early_dcx.early_error(format!(
                 "multiple input filenames provided (first two filenames are `{}` and `{}`)",
                 matches.free[0], matches.free[1],
             )),
@@ -354,8 +354,8 @@ fn run_compiler(
 
     callbacks.config(&mut config);
 
-    default_handler.abort_if_errors();
-    drop(default_handler);
+    default_early_dcx.abort_if_errors();
+    drop(default_early_dcx);
 
     interface::run_compiler(config, |compiler| {
         let sess = &compiler.sess;
@@ -369,18 +369,18 @@ fn run_compiler(
             return sess.compile_status();
         }
 
-        let handler = EarlyDiagCtxt::new(sess.opts.error_format);
+        let early_dcx = EarlyDiagCtxt::new(sess.opts.error_format);
 
-        if print_crate_info(&handler, codegen_backend, sess, has_input) == Compilation::Stop {
+        if print_crate_info(&early_dcx, codegen_backend, sess, has_input) == Compilation::Stop {
             return sess.compile_status();
         }
 
         if !has_input {
-            handler.early_error("no input filename given"); // this is fatal
+            early_dcx.early_error("no input filename given"); // this is fatal
         }
 
         if !sess.opts.unstable_opts.ls.is_empty() {
-            list_metadata(&handler, sess, &*codegen_backend.metadata_loader());
+            list_metadata(&early_dcx, sess, &*codegen_backend.metadata_loader());
             return sess.compile_status();
         }
 
@@ -852,12 +852,12 @@ fn print_crate_info(
 /// Prints version information
 ///
 /// NOTE: this is a macro to support drivers built at a different time than the main `rustc_driver` crate.
-pub macro version($handler: expr, $binary: literal, $matches: expr) {
+pub macro version($early_dcx: expr, $binary: literal, $matches: expr) {
     fn unw(x: Option<&str>) -> &str {
         x.unwrap_or("unknown")
     }
     $crate::version_at_macro_invocation(
-        $handler,
+        $early_dcx,
         $binary,
         $matches,
         unw(option_env!("CFG_VERSION")),
@@ -1332,8 +1332,8 @@ pub fn install_ice_hook(
                 if msg.starts_with("failed printing to stdout: ") && msg.ends_with("(os error 232)")
                 {
                     // the error code is already going to be reported when the panic unwinds up the stack
-                    let handler = EarlyDiagCtxt::new(ErrorOutputType::default());
-                    let _ = handler.early_error_no_abort(msg.clone());
+                    let early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
+                    let _ = early_dcx.early_error_no_abort(msg.clone());
                     return;
                 }
             };
@@ -1396,20 +1396,20 @@ fn report_ice(
         rustc_errors::ColorConfig::Auto,
         fallback_bundle,
     ));
-    let handler = rustc_errors::DiagCtxt::with_emitter(emitter);
+    let dcx = rustc_errors::DiagCtxt::with_emitter(emitter);
 
     // a .span_bug or .bug call has already printed what
     // it wants to print.
     if !info.payload().is::<rustc_errors::ExplicitBug>()
         && !info.payload().is::<rustc_errors::DelayedBugPanic>()
     {
-        handler.emit_err(session_diagnostics::Ice);
+        dcx.emit_err(session_diagnostics::Ice);
     }
 
     if using_internal_features.load(std::sync::atomic::Ordering::Relaxed) {
-        handler.emit_note(session_diagnostics::IceBugReportInternalFeature);
+        dcx.emit_note(session_diagnostics::IceBugReportInternalFeature);
     } else {
-        handler.emit_note(session_diagnostics::IceBugReport { bug_report_url });
+        dcx.emit_note(session_diagnostics::IceBugReport { bug_report_url });
     }
 
     let version = util::version_str!().unwrap_or("unknown_version");
@@ -1421,7 +1421,7 @@ fn report_ice(
         // Create the ICE dump target file.
         match crate::fs::File::options().create(true).append(true).open(&path) {
             Ok(mut file) => {
-                handler.emit_note(session_diagnostics::IcePath { path: path.clone() });
+                dcx.emit_note(session_diagnostics::IcePath { path: path.clone() });
                 if FIRST_PANIC.swap(false, Ordering::SeqCst) {
                     let _ = write!(file, "\n\nrustc version: {version}\nplatform: {triple}");
                 }
@@ -1429,26 +1429,26 @@ fn report_ice(
             }
             Err(err) => {
                 // The path ICE couldn't be written to disk, provide feedback to the user as to why.
-                handler.emit_warning(session_diagnostics::IcePathError {
+                dcx.emit_warning(session_diagnostics::IcePathError {
                     path: path.clone(),
                     error: err.to_string(),
                     env_var: std::env::var_os("RUSTC_ICE")
                         .map(PathBuf::from)
                         .map(|env_var| session_diagnostics::IcePathErrorEnv { env_var }),
                 });
-                handler.emit_note(session_diagnostics::IceVersion { version, triple });
+                dcx.emit_note(session_diagnostics::IceVersion { version, triple });
                 None
             }
         }
     } else {
-        handler.emit_note(session_diagnostics::IceVersion { version, triple });
+        dcx.emit_note(session_diagnostics::IceVersion { version, triple });
         None
     };
 
     if let Some((flags, excluded_cargo_defaults)) = rustc_session::utils::extra_compiler_flags() {
-        handler.emit_note(session_diagnostics::IceFlags { flags: flags.join(" ") });
+        dcx.emit_note(session_diagnostics::IceFlags { flags: flags.join(" ") });
         if excluded_cargo_defaults {
-            handler.emit_note(session_diagnostics::IceExcludeCargoDefaults);
+            dcx.emit_note(session_diagnostics::IceExcludeCargoDefaults);
         }
     }
 
@@ -1457,11 +1457,11 @@ fn report_ice(
 
     let num_frames = if backtrace { None } else { Some(2) };
 
-    interface::try_print_query_stack(&handler, num_frames, file);
+    interface::try_print_query_stack(&dcx, num_frames, file);
 
     // We don't trust this callback not to panic itself, so run it at the end after we're sure we've
     // printed all the relevant info.
-    extra_info(&handler);
+    extra_info(&dcx);
 
     #[cfg(windows)]
     if env::var("RUSTC_BREAK_ON_ICE").is_ok() {
@@ -1489,9 +1489,9 @@ pub fn main() -> ! {
     let start_time = Instant::now();
     let start_rss = get_resident_set_size();
 
-    let handler = EarlyDiagCtxt::new(ErrorOutputType::default());
+    let early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
-    init_rustc_env_logger(&handler);
+    init_rustc_env_logger(&early_dcx);
     signal_handler::install();
     let mut callbacks = TimePassesCallbacks::default();
     let using_internal_features = install_ice_hook(DEFAULT_BUG_REPORT_URL, |_| ());
@@ -1500,7 +1500,7 @@ pub fn main() -> ! {
             .enumerate()
             .map(|(i, arg)| {
                 arg.into_string().unwrap_or_else(|arg| {
-                    handler.early_error(format!("argument {i} is not valid Unicode: {arg:?}"))
+                    early_dcx.early_error(format!("argument {i} is not valid Unicode: {arg:?}"))
                 })
             })
             .collect::<Vec<_>>();

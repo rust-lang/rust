@@ -402,7 +402,7 @@ pub fn compile_declarative_macro(
     };
     let dummy_syn_ext = || (mk_syn_ext(Box::new(macro_rules_dummy_expander)), Vec::new());
 
-    let diag = &sess.parse_sess.dcx;
+    let dcx = &sess.parse_sess.dcx;
     let lhs_nm = Ident::new(sym::lhs, def.span);
     let rhs_nm = Ident::new(sym::rhs, def.span);
     let tt_spec = Some(NonterminalKind::TT);
@@ -560,10 +560,10 @@ pub fn compile_declarative_macro(
     let (transparency, transparency_error) = attr::find_transparency(&def.attrs, macro_rules);
     match transparency_error {
         Some(TransparencyError::UnknownTransparency(value, span)) => {
-            diag.span_err(span, format!("unknown macro transparency: `{value}`"));
+            dcx.span_err(span, format!("unknown macro transparency: `{value}`"));
         }
         Some(TransparencyError::MultipleTransparencyAttrs(old_span, new_span)) => {
-            diag.span_err(vec![old_span, new_span], "multiple macro transparency attributes");
+            dcx.span_err(vec![old_span, new_span], "multiple macro transparency attributes");
         }
         None => {}
     }

@@ -69,8 +69,8 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                 tcx.sess.fatal("miri cannot be run on programs that fail compilation");
             }
 
-            let handler = EarlyDiagCtxt::new(tcx.sess.opts.error_format);
-            init_late_loggers(&handler, tcx);
+            let early_dcx = EarlyDiagCtxt::new(tcx.sess.opts.error_format);
+            init_late_loggers(&early_dcx, tcx);
             if !tcx.crate_types().contains(&CrateType::Executable) {
                 tcx.sess.fatal("miri only makes sense on bin crates");
             }
@@ -300,7 +300,7 @@ fn parse_comma_list<T: FromStr>(input: &str) -> Result<Vec<T>, T::Err> {
 }
 
 fn main() {
-    let handler = EarlyDiagCtxt::new(ErrorOutputType::default());
+    let early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     // Snapshot a copy of the environment before `rustc` starts messing with it.
     // (`install_ice_hook` might change `RUST_BACKTRACE`.)
@@ -311,7 +311,7 @@ fn main() {
         // Earliest rustc setup.
         let using_internal_features =
             rustc_driver::install_ice_hook(rustc_driver::DEFAULT_BUG_REPORT_URL, |_| ());
-        rustc_driver::init_rustc_env_logger(&handler);
+        rustc_driver::init_rustc_env_logger(&early_dcx);
 
         let target_crate = if crate_kind == "target" {
             true
@@ -335,7 +335,7 @@ fn main() {
         rustc_driver::install_ice_hook("https://github.com/rust-lang/miri/issues/new", |_| ());
 
     // Init loggers the Miri way.
-    init_early_loggers(&handler);
+    init_early_loggers(&early_dcx);
 
     // Parse our arguments and split them across `rustc` and `miri`.
     let mut miri_config = miri::MiriConfig::default();

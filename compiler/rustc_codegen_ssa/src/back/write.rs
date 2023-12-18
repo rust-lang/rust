@@ -825,10 +825,10 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
     module: ModuleCodegen<B::Module>,
     module_config: &ModuleConfig,
 ) -> Result<WorkItemResult<B>, FatalError> {
-    let diag_handler = cgcx.create_dcx();
+    let dcx = cgcx.create_dcx();
 
     unsafe {
-        B::optimize(cgcx, &diag_handler, &module, module_config)?;
+        B::optimize(cgcx, &dcx, &module, module_config)?;
     }
 
     // After we've done the initial round of optimizations we need to
@@ -935,13 +935,13 @@ fn finish_intra_module_work<B: ExtraBackendMethods>(
     module: ModuleCodegen<B::Module>,
     module_config: &ModuleConfig,
 ) -> Result<WorkItemResult<B>, FatalError> {
-    let diag_handler = cgcx.create_dcx();
+    let dcx = cgcx.create_dcx();
 
     if !cgcx.opts.unstable_opts.combine_cgu
         || module.kind == ModuleKind::Metadata
         || module.kind == ModuleKind::Allocator
     {
-        let module = unsafe { B::codegen(cgcx, &diag_handler, module, module_config)? };
+        let module = unsafe { B::codegen(cgcx, &dcx, module, module_config)? };
         Ok(WorkItemResult::Finished(module))
     } else {
         Ok(WorkItemResult::NeedsLink(module))
@@ -1591,11 +1591,10 @@ fn start_executing_work<B: ExtraBackendMethods>(
         let needs_link = mem::take(&mut needs_link);
         if !needs_link.is_empty() {
             assert!(compiled_modules.is_empty());
-            let diag_handler = cgcx.create_dcx();
-            let module = B::run_link(&cgcx, &diag_handler, needs_link).map_err(|_| ())?;
+            let dcx = cgcx.create_dcx();
+            let module = B::run_link(&cgcx, &dcx, needs_link).map_err(|_| ())?;
             let module = unsafe {
-                B::codegen(&cgcx, &diag_handler, module, cgcx.config(ModuleKind::Regular))
-                    .map_err(|_| ())?
+                B::codegen(&cgcx, &dcx, module, cgcx.config(ModuleKind::Regular)).map_err(|_| ())?
             };
             compiled_modules.push(module);
         }
@@ -1838,13 +1837,13 @@ impl SharedEmitterMain {
 
             match message {
                 Ok(SharedEmitterMessage::Diagnostic(diag)) => {
-                    let handler = sess.dcx();
+                    let dcx = sess.dcx();
                     let mut d = rustc_errors::Diagnostic::new_with_messages(diag.lvl, diag.msg);
                     if let Some(code) = diag.code {
                         d.code(code);
                     }
                     d.replace_args(diag.args);
-                    handler.emit_diagnostic(d);
+                    dcx.emit_diagnostic(d);
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)) => {
                     let msg = msg.strip_prefix("error: ").unwrap_or(&msg).to_string();

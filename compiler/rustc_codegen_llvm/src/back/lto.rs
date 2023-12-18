@@ -200,18 +200,11 @@ pub(crate) fn run_fat(
     modules: Vec<FatLtoInput<LlvmCodegenBackend>>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
 ) -> Result<LtoModuleCodegen<LlvmCodegenBackend>, FatalError> {
-    let diag_handler = cgcx.create_dcx();
-    let (symbols_below_threshold, upstream_modules) = prepare_lto(cgcx, &diag_handler)?;
+    let dcx = cgcx.create_dcx();
+    let (symbols_below_threshold, upstream_modules) = prepare_lto(cgcx, &dcx)?;
     let symbols_below_threshold =
         symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
-    fat_lto(
-        cgcx,
-        &diag_handler,
-        modules,
-        cached_modules,
-        upstream_modules,
-        &symbols_below_threshold,
-    )
+    fat_lto(cgcx, &dcx, modules, cached_modules, upstream_modules, &symbols_below_threshold)
 }
 
 /// Performs thin LTO by performing necessary global analysis and returning two
@@ -222,8 +215,8 @@ pub(crate) fn run_thin(
     modules: Vec<(String, ThinBuffer)>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
 ) -> Result<(Vec<LtoModuleCodegen<LlvmCodegenBackend>>, Vec<WorkProduct>), FatalError> {
-    let diag_handler = cgcx.create_dcx();
-    let (symbols_below_threshold, upstream_modules) = prepare_lto(cgcx, &diag_handler)?;
+    let dcx = cgcx.create_dcx();
+    let (symbols_below_threshold, upstream_modules) = prepare_lto(cgcx, &dcx)?;
     let symbols_below_threshold =
         symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
     if cgcx.opts.cg.linker_plugin_lto.enabled() {
@@ -232,14 +225,7 @@ pub(crate) fn run_thin(
                       is deferred to the linker"
         );
     }
-    thin_lto(
-        cgcx,
-        &diag_handler,
-        modules,
-        upstream_modules,
-        cached_modules,
-        &symbols_below_threshold,
-    )
+    thin_lto(cgcx, &dcx, modules, upstream_modules, cached_modules, &symbols_below_threshold)
 }
 
 pub(crate) fn prepare_thin(module: ModuleCodegen<ModuleLlvm>) -> (String, ThinBuffer) {
@@ -714,11 +700,11 @@ pub unsafe fn optimize_thin_module(
     thin_module: ThinModule<LlvmCodegenBackend>,
     cgcx: &CodegenContext<LlvmCodegenBackend>,
 ) -> Result<ModuleCodegen<ModuleLlvm>, FatalError> {
-    let diag_handler = cgcx.create_dcx();
+    let dcx = cgcx.create_dcx();
 
     let module_name = &thin_module.shared.module_names[thin_module.idx];
     let tm_factory_config = TargetMachineFactoryConfig::new(cgcx, module_name.to_str().unwrap());
-    let tm = (cgcx.tm_factory)(tm_factory_config).map_err(|e| write::llvm_err(&diag_handler, e))?;
+    let tm = (cgcx.tm_factory)(tm_factory_config).map_err(|e| write::llvm_err(&dcx, e))?;
 
     // Right now the implementation we've got only works over serialized
     // modules, so we create a fresh new LLVM context and parse the module
@@ -726,7 +712,7 @@ pub unsafe fn optimize_thin_module(
     // crates but for locally codegened modules we may be able to reuse
     // that LLVM Context and Module.
     let llcx = llvm::LLVMRustContextCreate(cgcx.fewer_names);
-    let llmod_raw = parse_module(llcx, module_name, thin_module.data(), &diag_handler)? as *const _;
+    let llmod_raw = parse_module(llcx, module_name, thin_module.data(), &dcx)? as *const _;
     let mut module = ModuleCodegen {
         module_llvm: ModuleLlvm { llmod_raw, llcx, tm: ManuallyDrop::new(tm) },
         name: thin_module.name().to_string(),
@@ -749,7 +735,7 @@ pub unsafe fn optimize_thin_module(
             let _timer =
                 cgcx.prof.generic_activity_with_arg("LLVM_thin_lto_rename", thin_module.name());
             if !llvm::LLVMRustPrepareThinLTORename(thin_module.shared.data.0, llmod, target) {
-                return Err(write::llvm_err(&diag_handler, LlvmError::PrepareThinLtoModule));
+                return Err(write::llvm_err(&dcx, LlvmError::PrepareThinLtoModule));
             }
             save_temp_bitcode(cgcx, &module, "thin-lto-after-rename");
         }
@@ -759,7 +745,7 @@ pub unsafe fn optimize_thin_module(
                 .prof
                 .generic_activity_with_arg("LLVM_thin_lto_resolve_weak", thin_module.name());
             if !llvm::LLVMRustPrepareThinLTOResolveWeak(thin_module.shared.data.0, llmod) {
-                return Err(write::llvm_err(&diag_handler, LlvmError::PrepareThinLtoModule));
+                return Err(write::llvm_err(&dcx, LlvmError::PrepareThinLtoModule));
             }
             save_temp_bitcode(cgcx, &module, "thin-lto-after-resolve");
         }
@@ -769,7 +755,7 @@ pub unsafe fn optimize_thin_module(
                 .prof
                 .generic_activity_with_arg("LLVM_thin_lto_internalize", thin_module.name());
             if !llvm::LLVMRustPrepareThinLTOInternalize(thin_module.shared.data.0, llmod) {
-                return Err(write::llvm_err(&diag_handler, LlvmError::PrepareThinLtoModule));
+                return Err(write::llvm_err(&dcx, LlvmError::PrepareThinLtoModule));
             }
             save_temp_bitcode(cgcx, &module, "thin-lto-after-internalize");
         }
@@ -778,7 +764,7 @@ pub unsafe fn optimize_thin_module(
             let _timer =
                 cgcx.prof.generic_activity_with_arg("LLVM_thin_lto_import", thin_module.name());
             if !llvm::LLVMRustPrepareThinLTOImport(thin_module.shared.data.0, llmod, target) {
-                return Err(write::llvm_err(&diag_handler, LlvmError::PrepareThinLtoModule));
+                return Err(write::llvm_err(&dcx, LlvmError::PrepareThinLtoModule));
             }
             save_temp_bitcode(cgcx, &module, "thin-lto-after-import");
         }
@@ -790,7 +776,7 @@ pub unsafe fn optimize_thin_module(
         // little differently.
         {
             info!("running thin lto passes over {}", module.name);
-            run_pass_manager(cgcx, &diag_handler, &mut module, true)?;
+            run_pass_manager(cgcx, &dcx, &mut module, true)?;
             save_temp_bitcode(cgcx, &module, "thin-lto-after-pm");
         }
     }
