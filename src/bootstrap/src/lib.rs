@@ -88,7 +88,7 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     (Some(Mode::Std), "no_sync", None),
     (Some(Mode::Std), "backtrace_in_libstd", None),
     /* Extra values not defined in the built-in targets yet, but used in std */
-    (Some(Mode::Std), "target_env", Some(&["libnx"])),
+    (Some(Mode::Std), "target_env", Some(&["libnx", "preview2"])),
     // (Some(Mode::Std), "target_os", Some(&[])),
     // #[cfg(bootstrap)] zkvm
     (Some(Mode::Std), "target_os", Some(&["zkvm"])),
