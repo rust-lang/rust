@@ -607,8 +607,8 @@ passes_rustc_intrinsic_const_vector_arg =
 
 passes_rustc_intrinsic_const_vector_arg_invalid = attribute requires a parameter index
 
-passes_rustc_intrinsic_const_vector_arg_non_vector = parameter at index {$index} must be a simd type
-    .label = parameter is a non-simd type
+passes_rustc_intrinsic_const_vector_arg_non_vector = parameter at index {$index} must be a simd type defined in the local crate
+    .label = parameter is a non-simd type or is not defined locally
 
 passes_rustc_intrinsic_const_vector_arg_out_of_bounds = function does not have a parameter at index {$index}
     .label = function has {$arg_count} arguments

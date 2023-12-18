@@ -2129,18 +2129,44 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         return false;
                     }
 
-                    let param_ty = decl.inputs[*val as usize];
-                    let type_id: Option<DefId> = match param_ty.kind {
-                        TyKind::Path(path) => match path {
-                            QPath::Resolved(_, Path { res: Res::Def(_, id), .. }) => Some(*id),
-                            QPath::TypeRelative(_, PathSegment { res: Res::Def(_, id), .. }) => {
-                                Some(*id)
-                            }
+                    fn get_type_def(tcx: TyCtxt<'_>, param_ty: rustc_hir::Ty<'_>) -> Option<DefId> {
+                        let type_id: Option<DefId> = match param_ty.kind {
+                            TyKind::Path(path) => match path {
+                                QPath::Resolved(_, Path { res: Res::Def(_, id), .. })
+                                | QPath::TypeRelative(
+                                    _,
+                                    PathSegment { res: Res::Def(_, id), .. },
+                                )
+                                | QPath::Resolved(
+                                    _,
+                                    Path { res: Res::SelfTyAlias { alias_to: id, .. }, .. },
+                                )
+                                | QPath::TypeRelative(
+                                    _,
+                                    PathSegment {
+                                        res: Res::SelfTyAlias { alias_to: id, .. }, ..
+                                    },
+                                ) => Some(*id),
+                                _ => None,
+                            },
                             _ => None,
-                        },
-                        _ => None,
-                    };
+                        };
+                        if let Some(type_id) = type_id
+                            && let Some(did) = type_id.as_local()
+                        {
+                            if let Some(param_ty) =
+                                tcx.hir_node(tcx.local_def_id_to_hir_id(did)).ty()
+                            {
+                                return get_type_def(tcx, *param_ty);
+                            } else {
+                                return Some(type_id);
+                            }
+                        }
+                        None
+                    }
 
+                    let param_ty = decl.inputs[*val as usize];
+                    let type_id = get_type_def(self.tcx, param_ty);
                     let is_simd = if let Some(type_id) = type_id {
                         self.tcx
                             .get_attrs(type_id, sym::repr)

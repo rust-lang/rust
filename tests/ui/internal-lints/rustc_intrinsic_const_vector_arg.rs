@@ -3,10 +3,13 @@
 #![feature(inline_const)]
 #![feature(intrinsics)]
 #![allow(non_camel_case_types)]
+#![feature(portable_simd)]
 #![feature(repr_simd)]
 #![feature(rustc_attrs)]
 #![feature(simd_ffi)]
 #![allow(unused)]
+
+use std::simd::prelude::Simd;
 
 #[repr(simd)]
 #[derive(Clone)]
@@ -46,13 +49,18 @@ extern "unadjusted" {
 }
 
 extern "unadjusted" {
-    #[rustc_intrinsic_const_vector_arg(0,2)] //~ ERROR function does not have a parameter at index 2
+    #[rustc_intrinsic_const_vector_arg(0, 2)] //~ ERROR function does not have a parameter at index 2
     fn foo8(a: i8x2, b: i8);
 }
 
 extern "unadjusted" {
-    #[rustc_intrinsic_const_vector_arg(0)] //~ ERROR parameter at index 0 must be a simd type
+    #[rustc_intrinsic_const_vector_arg(0)] //~ ERROR parameter at index 0 must be a simd type defined in the local crate
     fn foo9(a: i8);
+}
+
+extern "unadjusted" {
+    #[rustc_intrinsic_const_vector_arg(0)] //~ ERROR parameter at index 0 must be a simd type defined in the local crate
+    fn foo10(a: Simd<i8, 2>);
 }
 
 fn main() {}
