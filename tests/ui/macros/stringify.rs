@@ -211,8 +211,7 @@ fn test_expr() {
     }
     c2_match_arm!(
         [ { 1 } - 1 ],
-        // FIXME(dtolnay): this is invalid syntax, needs parens.
-        "match () { _ => { 1 } - 1, }",
+        "match () { _ => ({ 1 }) - 1, }",
         "match() { _ => { 1 } - 1 }",
     );
 
@@ -669,8 +668,7 @@ fn test_stmt() {
     }
     c2_let_expr_minus_one!(
         [ match void {} ],
-        // FIXME(dtolnay): no parens needed.
-        "let _ = (match void {}) - 1;",
+        "let _ = match void {} - 1;",
         "let _ = match void {} - 1",
     );
 
@@ -706,25 +704,21 @@ fn test_stmt() {
     c2_minus_one!(
         [ match void {} ],
         "(match void {}) - 1;",
-        // FIXME(dtolnay): no parens expected.
-        "(match void {}) - 1",
+        "match void {} - 1",
     );
     c2_minus_one!(
         [ match void {}() ],
-        // FIXME(dtolnay): needs parens around match.
-        "match void {}() - 1;",
+        "(match void {})() - 1;",
         "match void {}() - 1",
     );
     c2_minus_one!(
         [ match void {}[0] ],
-        // FIXME(dtolnay): needs parens around match.
-        "match void {}[0] - 1;",
+        "(match void {})[0] - 1;",
         "match void {}[0] - 1",
     );
     c2_minus_one!(
         [ loop { break 1; } ],
-        // FIXME(dtolnay): needs parens around loop.
-        "loop { break 1; } - 1;",
+        "(loop { break 1; }) - 1;",
         "loop { break 1; } - 1",
     );
 
