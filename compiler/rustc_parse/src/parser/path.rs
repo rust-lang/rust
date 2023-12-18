@@ -175,7 +175,7 @@ impl<'a> Parser<'a> {
                     .filter_map(|segment| segment.args.as_ref())
                     .map(|arg| arg.span())
                     .collect::<Vec<_>>();
-                parser.sess.emit_err(errors::GenericsInPath { span });
+                parser.dcx().emit_err(errors::GenericsInPath { span });
             }
         };
 
@@ -246,7 +246,7 @@ impl<'a> Parser<'a> {
                         && self.look_ahead(1, |token| self.token.span.hi() == token.span.lo())
                     {
                         self.bump(); // bump past the colon
-                        self.sess.emit_err(PathSingleColon {
+                        self.dcx().emit_err(PathSingleColon {
                             span: self.prev_token.span,
                             type_ascription: self
                                 .sess
@@ -350,7 +350,7 @@ impl<'a> Parser<'a> {
                     && self.look_ahead(1, |tok| tok.kind == token::DotDot)
                 {
                     self.bump();
-                    self.sess
+                    self.dcx()
                         .emit_err(errors::BadReturnTypeNotationDotDot { span: self.token.span });
                     self.bump();
                     self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
@@ -359,7 +359,7 @@ impl<'a> Parser<'a> {
                     if self.eat_noexpect(&token::RArrow) {
                         let lo = self.prev_token.span;
                         let ty = self.parse_ty()?;
-                        self.sess
+                        self.dcx()
                             .emit_err(errors::BadReturnTypeNotationOutput { span: lo.to(ty.span) });
                     }
 
@@ -535,7 +535,7 @@ impl<'a> Parser<'a> {
                     // i.e. no multibyte characters, in this range.
                     let span = lo
                         .with_hi(lo.lo() + BytePos(snapshot.unmatched_angle_bracket_count.into()));
-                    self.sess.emit_err(errors::UnmatchedAngle {
+                    self.dcx().emit_err(errors::UnmatchedAngle {
                         span,
                         plural: snapshot.unmatched_angle_bracket_count > 1,
                     });
@@ -678,7 +678,7 @@ impl<'a> Parser<'a> {
                 c.into()
             }
             Some(GenericArg::Lifetime(lt)) => {
-                self.sess.emit_err(errors::AssocLifetime { span, lifetime: lt.ident.span });
+                self.dcx().emit_err(errors::AssocLifetime { span, lifetime: lt.ident.span });
                 self.mk_ty(span, ast::TyKind::Err).into()
             }
             None => {

@@ -1115,7 +1115,7 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn trace_macros_diag(&mut self) {
         for (span, notes) in self.expansions.iter() {
-            let mut db = self.sess.parse_sess.create_note(errors::TraceMacro { span: *span });
+            let mut db = self.dcx().create_note(errors::TraceMacro { span: *span });
             for note in notes {
                 db.note(note.clone());
             }

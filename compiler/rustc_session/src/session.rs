@@ -371,7 +371,7 @@ impl Session {
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_err(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_> {
-        self.parse_sess.struct_err(msg)
+        self.dcx().struct_err(msg)
     }
     #[track_caller]
     #[rustc_lint_diagnostics]
@@ -461,7 +461,7 @@ impl Session {
     }
     #[track_caller]
     pub fn create_err<'a>(&'a self, err: impl IntoDiagnostic<'a>) -> DiagnosticBuilder<'a> {
-        self.parse_sess.create_err(err)
+        self.dcx().create_err(err)
     }
     #[track_caller]
     pub fn create_feature_err<'a>(
@@ -469,7 +469,7 @@ impl Session {
         err: impl IntoDiagnostic<'a>,
         feature: Symbol,
     ) -> DiagnosticBuilder<'a> {
-        let mut err = self.parse_sess.create_err(err);
+        let mut err = self.dcx().create_err(err);
         if err.code.is_none() {
             err.code(error_code!(E0658));
         }
@@ -478,40 +478,40 @@ impl Session {
     }
     #[track_caller]
     pub fn emit_err<'a>(&'a self, err: impl IntoDiagnostic<'a>) -> ErrorGuaranteed {
-        self.parse_sess.emit_err(err)
+        self.dcx().emit_err(err)
     }
     #[track_caller]
     pub fn create_warning<'a>(
         &'a self,
         err: impl IntoDiagnostic<'a, ()>,
     ) -> DiagnosticBuilder<'a, ()> {
-        self.parse_sess.create_warning(err)
+        self.dcx().create_warning(err)
     }
     #[track_caller]
     pub fn emit_warning<'a>(&'a self, warning: impl IntoDiagnostic<'a, ()>) {
-        self.parse_sess.emit_warning(warning)
+        self.dcx().emit_warning(warning)
     }
     #[track_caller]
     pub fn create_note<'a>(
         &'a self,
         note: impl IntoDiagnostic<'a, ()>,
     ) -> DiagnosticBuilder<'a, ()> {
-        self.parse_sess.create_note(note)
+        self.dcx().create_note(note)
     }
     #[track_caller]
     pub fn emit_note<'a>(&'a self, note: impl IntoDiagnostic<'a, ()>) {
-        self.parse_sess.emit_note(note)
+        self.dcx().emit_note(note)
     }
     #[track_caller]
     pub fn create_fatal<'a>(
         &'a self,
         fatal: impl IntoDiagnostic<'a, FatalAbort>,
     ) -> DiagnosticBuilder<'a, FatalAbort> {
-        self.parse_sess.create_fatal(fatal)
+        self.dcx().create_fatal(fatal)
     }
     #[track_caller]
     pub fn emit_fatal<'a>(&'a self, fatal: impl IntoDiagnostic<'a, FatalAbort>) -> ! {
-        self.parse_sess.emit_fatal(fatal)
+        self.dcx().emit_fatal(fatal)
     }
     #[inline]
     pub fn err_count(&self) -> usize {

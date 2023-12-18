@@ -323,7 +323,7 @@ impl<'a> Parser<'a> {
         debug!("checking if {:?} is unsuffixed", lit);
 
         if !lit.kind.is_unsuffixed() {
-            self.sess.emit_err(SuffixedLiteralInAttribute { span: lit.span });
+            self.dcx().emit_err(SuffixedLiteralInAttribute { span: lit.span });
         }
 
         Ok(lit)

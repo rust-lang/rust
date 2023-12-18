@@ -1203,6 +1203,7 @@ impl DiagCtxt {
         self.inner.borrow_mut().emit_diagnostic_without_consuming(diagnostic)
     }
 
+    #[track_caller]
     pub fn emit_err<'a>(&'a self, err: impl IntoDiagnostic<'a>) -> ErrorGuaranteed {
         self.create_err(err).emit()
     }
@@ -1212,6 +1213,7 @@ impl DiagCtxt {
         err.into_diagnostic(self, Error { lint: false })
     }
 
+    #[track_caller]
     pub fn create_warning<'a>(
         &'a self,
         warning: impl IntoDiagnostic<'a, ()>,
@@ -1219,10 +1221,12 @@ impl DiagCtxt {
         warning.into_diagnostic(self, Warning(None))
     }
 
+    #[track_caller]
     pub fn emit_warning<'a>(&'a self, warning: impl IntoDiagnostic<'a, ()>) {
         self.create_warning(warning).emit()
     }
 
+    #[track_caller]
     pub fn create_almost_fatal<'a>(
         &'a self,
         fatal: impl IntoDiagnostic<'a, FatalError>,
@@ -1230,6 +1234,7 @@ impl DiagCtxt {
         fatal.into_diagnostic(self, Fatal)
     }
 
+    #[track_caller]
     pub fn emit_almost_fatal<'a>(
         &'a self,
         fatal: impl IntoDiagnostic<'a, FatalError>,
@@ -1237,6 +1242,7 @@ impl DiagCtxt {
         self.create_almost_fatal(fatal).emit()
     }
 
+    #[track_caller]
     pub fn create_fatal<'a>(
         &'a self,
         fatal: impl IntoDiagnostic<'a, FatalAbort>,
@@ -1244,10 +1250,12 @@ impl DiagCtxt {
         fatal.into_diagnostic(self, Fatal)
     }
 
+    #[track_caller]
     pub fn emit_fatal<'a>(&'a self, fatal: impl IntoDiagnostic<'a, FatalAbort>) -> ! {
         self.create_fatal(fatal).emit()
     }
 
+    #[track_caller]
     pub fn create_bug<'a>(
         &'a self,
         bug: impl IntoDiagnostic<'a, BugAbort>,
@@ -1255,14 +1263,17 @@ impl DiagCtxt {
         bug.into_diagnostic(self, Bug)
     }
 
-    pub fn emit_bug<'a>(&'a self, bug: impl IntoDiagnostic<'a, BugAbort>) -> ! {
+    #[track_caller]
+    pub fn emit_bug<'a>(&'a self, bug: impl IntoDiagnostic<'a, diagnostic_builder::BugAbort>) -> ! {
         self.create_bug(bug).emit()
     }
 
+    #[track_caller]
     pub fn emit_note<'a>(&'a self, note: impl IntoDiagnostic<'a, ()>) {
         self.create_note(note).emit()
     }
 
+    #[track_caller]
     pub fn create_note<'a>(
         &'a self,
         note: impl IntoDiagnostic<'a, ()>,

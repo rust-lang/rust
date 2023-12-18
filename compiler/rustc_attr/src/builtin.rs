@@ -588,6 +588,7 @@ pub fn eval_condition(
     features: Option<&Features>,
     eval: &mut impl FnMut(Condition) -> bool,
 ) -> bool {
+    let dcx = &sess.dcx;
     match &cfg.kind {
         ast::MetaItemKind::List(mis) if cfg.name_or_empty() == sym::version => {
             try_gate_cfg(sym::version, cfg.span, sess, features);
@@ -599,18 +600,18 @@ pub fn eval_condition(
                     NestedMetaItem::Lit(MetaItemLit { span, .. })
                     | NestedMetaItem::MetaItem(MetaItem { span, .. }),
                 ] => {
-                    sess.emit_err(session_diagnostics::ExpectedVersionLiteral { span: *span });
+                    dcx.emit_err(session_diagnostics::ExpectedVersionLiteral { span: *span });
                     return false;
                 }
                 [..] => {
-                    sess.emit_err(session_diagnostics::ExpectedSingleVersionLiteral {
+                    dcx.emit_err(session_diagnostics::ExpectedSingleVersionLiteral {
                         span: cfg.span,
                     });
                     return false;
                 }
             };
             let Some(min_version) = parse_version(*min_version) else {
-                sess.emit_warning(session_diagnostics::UnknownVersionLiteral { span: *span });
+                dcx.emit_warning(session_diagnostics::UnknownVersionLiteral { span: *span });
                 return false;
             };
 
@@ -624,7 +625,7 @@ pub fn eval_condition(
         ast::MetaItemKind::List(mis) => {
             for mi in mis.iter() {
                 if !mi.is_meta_item() {
-                    sess.emit_err(session_diagnostics::UnsupportedLiteral {
+                    dcx.emit_err(session_diagnostics::UnsupportedLiteral {
                         span: mi.span(),
                         reason: UnsupportedLiteralReason::Generic,
                         is_bytestr: false,
@@ -653,9 +654,7 @@ pub fn eval_condition(
                     }),
                 sym::not => {
                     if mis.len() != 1 {
-                        sess.emit_err(session_diagnostics::ExpectedOneCfgPattern {
-                            span: cfg.span,
-                        });
+                        dcx.emit_err(session_diagnostics::ExpectedOneCfgPattern { span: cfg.span });
                         return false;
                     }
 
@@ -684,7 +683,7 @@ pub fn eval_condition(
                     })
                 }
                 _ => {
-                    sess.emit_err(session_diagnostics::InvalidPredicate {
+                    dcx.emit_err(session_diagnostics::InvalidPredicate {
                         span: cfg.span,
                         predicate: pprust::path_to_string(&cfg.path),
                     });
@@ -693,11 +692,11 @@ pub fn eval_condition(
             }
         }
         ast::MetaItemKind::Word | MetaItemKind::NameValue(..) if cfg.path.segments.len() != 1 => {
-            sess.emit_err(session_diagnostics::CfgPredicateIdentifier { span: cfg.path.span });
+            dcx.emit_err(session_diagnostics::CfgPredicateIdentifier { span: cfg.path.span });
             true
         }
         MetaItemKind::NameValue(lit) if !lit.kind.is_str() => {
-            sess.emit_err(session_diagnostics::UnsupportedLiteral {
+            dcx.emit_err(session_diagnostics::UnsupportedLiteral {
                 span: lit.span,
                 reason: UnsupportedLiteralReason::CfgString,
                 is_bytestr: lit.kind.is_bytestr(),
@@ -945,7 +944,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
     assert!(attr.has_name(sym::repr), "expected `#[repr(..)]`, found: {attr:?}");
     use ReprAttr::*;
     let mut acc = Vec::new();
-    let diagnostic = sess.dcx();
+    let dcx = sess.dcx();
 
     if let Some(items) = attr.meta_item_list() {
         for item in items {
@@ -1062,7 +1061,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                 // (e.g. if we only pretty-print the source), so we have to gate
                 // the `span_delayed_bug` call as follows:
                 if sess.opts.pretty.map_or(true, |pp| pp.needs_analysis()) {
-                    diagnostic.span_delayed_bug(item.span(), "unrecognized representation hint");
+                    dcx.span_delayed_bug(item.span(), "unrecognized representation hint");
                 }
             }
         }

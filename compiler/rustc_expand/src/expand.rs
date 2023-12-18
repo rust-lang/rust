@@ -957,7 +957,7 @@ pub fn ensure_complete_parse<'a>(
 
         let expands_to_match_arm = kind_name == "pattern" && parser.token == token::FatArrow;
 
-        parser.sess.emit_err(IncompleteParse {
+        parser.dcx().emit_err(IncompleteParse {
             span: def_site_span,
             token,
             label_span: span,

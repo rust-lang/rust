@@ -105,7 +105,7 @@ pub fn check_meta_bad_delim(sess: &ParseSess, span: DelimSpan, delim: Delimiter)
     if let Delimiter::Parenthesis = delim {
         return;
     }
-    sess.emit_err(errors::MetaBadDelim {
+    sess.dcx.emit_err(errors::MetaBadDelim {
         span: span.entire(),
         sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
     });
@@ -115,7 +115,7 @@ pub fn check_cfg_attr_bad_delim(sess: &ParseSess, span: DelimSpan, delim: Delimi
     if let Delimiter::Parenthesis = delim {
         return;
     }
-    sess.emit_err(errors::CfgAttrBadDelim {
+    sess.dcx.emit_err(errors::CfgAttrBadDelim {
         span: span.entire(),
         sugg: errors::MetaBadDelimSugg { open: span.open, close: span.close },
     });
