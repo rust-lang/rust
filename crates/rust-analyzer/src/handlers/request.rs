@@ -801,7 +801,7 @@ pub(crate) fn handle_runnables(
             }
         }
         None => {
-            if !snap.config.linked_projects().is_empty() {
+            if !snap.config.linked_or_discovered_projects().is_empty() {
                 res.push(lsp_ext::Runnable {
                     label: "cargo check --workspace".to_string(),
                     location: None,
