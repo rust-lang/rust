@@ -1519,12 +1519,6 @@ a.tooltip:hover::after {
 	width: 100%;
 	overflow: auto;
 }
-#src-sidebar > .title {
-	font-size: 1.5rem;
-	text-align: center;
-	border-bottom: 1px solid var(--border-color);
-	margin-bottom: 6px;
-}
 #src-sidebar div.files > a:hover, details.dir-entry summary:hover,
 #src-sidebar div.files > a:focus, details.dir-entry summary:focus {
 	background-color: var(--src-sidebar-background-hover);
@@ -1539,7 +1533,9 @@ a.tooltip:hover::after {
 	display: flex;
 	padding: 8px;
 	padding-left: 48px;
+	padding-bottom: 7px;
 	background: var(--sidebar-background-color);
+	border-bottom: 1px solid var(--border-color);
 }
 
 #settings-menu, #help-button {
@@ -2622,8 +2618,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 :root[data-theme="ayu"] h4,
 :where(:root[data-theme="ayu"]) h1 a,
 :root[data-theme="ayu"] .sidebar h2 a,
-:root[data-theme="ayu"] .sidebar h3 a,
-:root[data-theme="ayu"] #source-sidebar > .title {
+:root[data-theme="ayu"] .sidebar h3 a {
 	color: #fff;
 }
 
