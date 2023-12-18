@@ -98,6 +98,8 @@ pub enum RegionResolutionError<'tcx> {
         SubregionOrigin<'tcx>, // cause of the constraint
         Region<'tcx>,          // the placeholder `'b`
     ),
+
+    CannotNormalize(Ty<'tcx>, SubregionOrigin<'tcx>),
 }
 
 impl<'tcx> RegionResolutionError<'tcx> {
@@ -106,7 +108,8 @@ impl<'tcx> RegionResolutionError<'tcx> {
             RegionResolutionError::ConcreteFailure(origin, _, _)
             | RegionResolutionError::GenericBoundFailure(origin, _, _)
             | RegionResolutionError::SubSupConflict(_, _, origin, _, _, _, _)
-            | RegionResolutionError::UpperBoundUniverseConflict(_, _, _, origin, _) => origin,
+            | RegionResolutionError::UpperBoundUniverseConflict(_, _, _, origin, _)
+            | RegionResolutionError::CannotNormalize(_, origin) => origin,
         }
     }
 }

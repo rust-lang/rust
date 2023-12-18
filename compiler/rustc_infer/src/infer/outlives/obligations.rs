@@ -123,15 +123,19 @@ impl<'tcx> InferCtxt<'tcx> {
     /// flow of the inferencer. The key point is that it is
     /// invoked after all type-inference variables have been bound --
     /// right before lexical region resolution.
-    #[instrument(level = "debug", skip(self, outlives_env))]
-    pub fn process_registered_region_obligations(&self, outlives_env: &OutlivesEnvironment<'tcx>) {
+    #[instrument(level = "debug", skip(self, outlives_env, deeply_normalize_ty))]
+    pub fn process_registered_region_obligations<E>(
+        &self,
+        outlives_env: &OutlivesEnvironment<'tcx>,
+        mut deeply_normalize_ty: impl FnMut(Ty<'tcx>) -> Result<Ty<'tcx>, E>,
+    ) -> Result<(), (E, SubregionOrigin<'tcx>)> {
         assert!(!self.in_snapshot(), "cannot process registered region obligations in a snapshot");
 
         let my_region_obligations = self.take_registered_region_obligations();
 
         for RegionObligation { sup_type, sub_region, origin } in my_region_obligations {
+            let sup_type = deeply_normalize_ty(sup_type).map_err(|e| (e, origin.clone()))?;
             debug!(?sup_type, ?sub_region, ?origin);
-            let sup_type = self.resolve_vars_if_possible(sup_type);
 
             let outlives = &mut TypeOutlives::new(
                 self,
@@ -143,6 +147,8 @@ impl<'tcx> InferCtxt<'tcx> {
             let category = origin.to_constraint_category();
             outlives.type_must_outlive(origin, sup_type, sub_region, category);
         }
+
+        Ok(())
     }
 }
 

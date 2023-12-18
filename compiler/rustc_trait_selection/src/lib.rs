@@ -39,6 +39,7 @@ extern crate smallvec;
 
 pub mod errors;
 pub mod infer;
+pub mod regions;
 pub mod solve;
 pub mod traits;
 
