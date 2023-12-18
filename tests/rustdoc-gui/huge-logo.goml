@@ -11,13 +11,3 @@ set-window-size: (400, 600)
 // offset = size + margin
 assert-property: (".mobile-topbar .logo-container", {"offsetWidth": "55", "offsetHeight": 45})
 assert-property: (".mobile-topbar .logo-container img", {"offsetWidth": "35", "offsetHeight": 35})
-
-go-to: "file://" + |DOC_PATH| + "/src/huge_logo/lib.rs.html"
-
-set-window-size: (1280, 1024)
-assert-property: (".sub-logo-container", {"offsetWidth": "60", "offsetHeight": 60})
-
-set-window-size: (400, 600)
-// 43 because 35px + 8px of margin
-assert-css: (".sub-logo-container > img", {"margin-bottom": "8px"})
-assert-property: (".sub-logo-container", {"offsetWidth": "35", "offsetHeight": 43})

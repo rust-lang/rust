@@ -9,10 +9,10 @@ assert-css: ("#sidebar-button", {"display": "none"})
 javascript: true
 reload:
 wait-for: "#src-sidebar"
-assert-css: ("#src-sidebar", {"position": "absolute", "left": "-1000px"})
+assert-css: (".src .sidebar > *", {"visibility": "hidden"})
 // Let's expand the sidebar now.
-click: "#src-sidebar"
-wait-for-css: ("#src-sidebar", {"position": "sticky", "left": "0"})
+click: "#sidebar-button"
+wait-for-css: (".src .sidebar > *", {"visibility": "visible"})
 
 // We now check that opening the sidebar and clicking a link will leave it open.
 // The behavior here on desktop is different than the behavior on mobile,
@@ -32,12 +32,11 @@ define-function: (
     "check-colors",
     (
         theme, color, color_hover, background, background_hover, background_toggle,
-        background_toggle_hover,
     ),
     block {
         set-local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         reload:
-        wait-for-css: ("#src-sidebar", {"position": "sticky", "left": "0"})
+        wait-for-css: (".src .sidebar > *", {"visibility": "visible"})
         assert-css: (
             "#src-sidebar details[open] > .files a.selected",
             {"color": |color_hover|, "background-color": |background|},
@@ -108,6 +107,7 @@ call-function: ("check-colors", {
     "color_hover": "#000",
     "background": "#fff",
     "background_hover": "#e0e0e0",
+    "background_toggle": "rgba(0, 0, 0, 0)",
 })
 call-function: ("check-colors", {
     "theme": "dark",
@@ -115,6 +115,7 @@ call-function: ("check-colors", {
     "color_hover": "#ddd",
     "background": "#333",
     "background_hover": "#444",
+    "background_toggle": "rgba(0, 0, 0, 0)",
 })
 call-function: ("check-colors", {
     "theme": "ayu",
@@ -122,6 +123,7 @@ call-function: ("check-colors", {
     "color_hover": "#ffb44c",
     "background": "#14191f",
     "background_hover": "#14191f",
+    "background_toggle": "rgba(0, 0, 0, 0)",
 })
 
 // Now checking on mobile devices.

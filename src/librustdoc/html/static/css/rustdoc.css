@@ -391,6 +391,7 @@ img {
 
 .rustdoc.src .sidebar {
 	flex-basis: 50px;
+	width: 50px;
 	border-right: 1px solid;
 	overflow-x: hidden;
 	/* The sidebar is by default hidden  */
@@ -414,14 +415,14 @@ img {
 }
 
 .rustdoc.src .sidebar-resizer {
-	/* src pages have separate closed flag */
-	display: none;
+	/* when closed, place resizer glow on top of the normal src sidebar border (no need to
+	worry about sidebar) */
+	left: 49px;
 }
 
 .src-sidebar-expanded .src .sidebar-resizer {
 	/* for src sidebar, gap is already provided by 1px border on sidebar itself, so place resizer
 	   to right of it */
-	display: block;
 	left: var(--src-sidebar-width);
 }
 
@@ -437,7 +438,7 @@ img {
 }
 
 .sidebar-resizing .sidebar {
-	position: fixed !important;
+	position: fixed;
 	z-index: 100;
 }
 .sidebar-resizing > body {
@@ -491,19 +492,18 @@ img {
 	background-color: var(--sidebar-background-color);
 }
 
-.src .sidebar {
-	position: absolute;
-	top: 0;
-	bottom: 0;
-	left: -1000px;
+.src .sidebar > * {
+	visibility: hidden;
 }
 
 .src-sidebar-expanded .src .sidebar {
-	position: sticky;
-	left: 0;
 	overflow-y: auto;
 	flex-basis: var(--src-sidebar-width);
 	width: var(--src-sidebar-width);
+}
+
+.src-sidebar-expanded .src .sidebar > * {
+	visibility: visible;
 }
 
 #all-types {
@@ -1561,14 +1561,8 @@ a.tooltip:hover::after {
 	z-index: 1;
 }
 .src #sidebar-button {
-	left: 12px;
+	left: 8px;
 	z-index: 101;
-}
-.src .search-form {
-	margin-left: 40px;
-}
-.src-sidebar-expanded .src .search-form {
-	margin-left: 0;
 }
 #settings-menu > a, #help-button > a, #sidebar-button > a {
 	display: flex;
@@ -1878,6 +1872,9 @@ in src-script.js and main.js
 		padding: 0;
 		height: 100vh;
 		border: 0;
+	}
+	.src .search-form {
+		margin-left: 40px;
 	}
 
 	.sidebar.shown,
