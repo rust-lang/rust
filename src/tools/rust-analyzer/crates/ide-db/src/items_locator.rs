@@ -3,13 +3,13 @@
 //! The main reason for this module to exist is the fact that project's items and dependencies' items
 //! are located in different caches, with different APIs.
 use either::Either;
-use hir::{import_map, AsAssocItem, Crate, ItemInNs, Semantics};
+use hir::{import_map, Crate, ItemInNs, Semantics};
 use limit::Limit;
 
 use crate::{imports::import_assets::NameToImport, symbol_index, RootDatabase};
 
 /// A value to use, when uncertain which limit to pick.
-pub static DEFAULT_QUERY_SEARCH_LIMIT: Limit = Limit::new(40);
+pub static DEFAULT_QUERY_SEARCH_LIMIT: Limit = Limit::new(100);
 
 pub use import_map::AssocSearchMode;
 
@@ -36,7 +36,9 @@ pub fn items_with_name<'a>(
         NameToImport::Prefix(exact_name, case_sensitive)
         | NameToImport::Exact(exact_name, case_sensitive) => {
             let mut local_query = symbol_index::Query::new(exact_name.clone());
-            let mut external_query = import_map::Query::new(exact_name);
+            let mut external_query =
+                // import_map::Query::new(exact_name).assoc_search_mode(assoc_item_search);
+                import_map::Query::new(exact_name);
             if prefix {
                 local_query.prefix();
                 external_query = external_query.prefix();
@@ -101,8 +103,8 @@ fn find_items<'a>(
         .into_iter()
         .filter(move |candidate| match assoc_item_search {
             AssocSearchMode::Include => true,
-            AssocSearchMode::Exclude => candidate.def.as_assoc_item(db).is_none(),
-            AssocSearchMode::AssocItemsOnly => candidate.def.as_assoc_item(db).is_some(),
+            AssocSearchMode::Exclude => !candidate.is_assoc,
+            AssocSearchMode::AssocItemsOnly => candidate.is_assoc,
         })
         .map(|local_candidate| match local_candidate.def {
             hir::ModuleDef::Macro(macro_def) => ItemInNs::Macros(macro_def),

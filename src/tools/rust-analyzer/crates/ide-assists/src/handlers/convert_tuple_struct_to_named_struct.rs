@@ -216,7 +216,7 @@ fn edit_field_references(
             edit.edit_file(file_id);
             for r in refs {
                 if let Some(name_ref) = r.name.as_name_ref() {
-                    edit.replace(name_ref.syntax().text_range(), name.text());
+                    edit.replace(ctx.sema.original_range(name_ref.syntax()).range, name.text());
                 }
             }
         }

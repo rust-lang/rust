@@ -8,12 +8,13 @@ use base_db::{
 use la_arena::RawIdx;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
+use stdx::never;
 use syntax::{
     ast::{self, AstNode, HasLoopBody},
     match_ast, SyntaxElement, SyntaxKind, SyntaxNode, TextRange, TextSize,
 };
 use triomphe::Arc;
-use tt::Spacing;
+use tt::{Spacing, Span};
 
 use crate::{
     span::SpanMapRef,
@@ -45,19 +46,20 @@ impl SyntaxFixupUndoInfo {
 // replacement -> censor + append
 // append -> insert a fake node, here we need to assemble some dummy span that we can figure out how
 // to remove later
+const FIXUP_DUMMY_FILE: FileId = FileId::from_raw(FileId::MAX_FILE_ID);
+const FIXUP_DUMMY_AST_ID: ErasedFileAstId = ErasedFileAstId::from_raw(RawIdx::from_u32(!0));
+const FIXUP_DUMMY_RANGE: TextRange = TextRange::empty(TextSize::new(0));
+const FIXUP_DUMMY_RANGE_END: TextSize = TextSize::new(!0);
 
 pub(crate) fn fixup_syntax(span_map: SpanMapRef<'_>, node: &SyntaxNode) -> SyntaxFixups {
     let mut append = FxHashMap::<SyntaxElement, _>::default();
     let mut remove = FxHashSet::<SyntaxNode>::default();
     let mut preorder = node.preorder();
     let mut original = Vec::new();
-    let dummy_range = TextRange::empty(TextSize::new(0));
+    let dummy_range = FIXUP_DUMMY_RANGE;
     // we use a file id of `FileId(!0)` to signal a fake node, and the text range's start offset as
     // the index into the replacement vec but only if the end points to !0
-    let dummy_anchor = SpanAnchor {
-        file_id: FileId::from_raw(!0),
-        ast_id: ErasedFileAstId::from_raw(RawIdx::from(!0)),
-    };
+    let dummy_anchor = SpanAnchor { file_id: FIXUP_DUMMY_FILE, ast_id: FIXUP_DUMMY_AST_ID };
     let fake_span = |range| SpanData {
         range: dummy_range,
         anchor: dummy_anchor,
@@ -76,7 +78,7 @@ pub(crate) fn fixup_syntax(span_map: SpanMapRef<'_>, node: &SyntaxNode) -> Synta
             let replacement = Leaf::Ident(Ident {
                 text: "__ra_fixup".into(),
                 span: SpanData {
-                    range: TextRange::new(TextSize::new(idx), TextSize::new(!0)),
+                    range: TextRange::new(TextSize::new(idx), FIXUP_DUMMY_RANGE_END),
                     anchor: dummy_anchor,
                     ctx: span_map.span_for_range(node_range).ctx,
                 },
@@ -299,6 +301,13 @@ fn has_error_to_handle(node: &SyntaxNode) -> bool {
 pub(crate) fn reverse_fixups(tt: &mut Subtree, undo_info: &SyntaxFixupUndoInfo) {
     let Some(undo_info) = undo_info.original.as_deref() else { return };
     let undo_info = &**undo_info;
+    if never!(
+        tt.delimiter.close.anchor.file_id == FIXUP_DUMMY_FILE
+            || tt.delimiter.open.anchor.file_id == FIXUP_DUMMY_FILE
+    ) {
+        tt.delimiter.close = SpanData::DUMMY;
+        tt.delimiter.open = SpanData::DUMMY;
+    }
     reverse_fixups_(tt, undo_info);
 }
 
@@ -310,17 +319,28 @@ fn reverse_fixups_(tt: &mut Subtree, undo_info: &[Subtree]) {
         .filter(|tt| match tt {
             tt::TokenTree::Leaf(leaf) => {
                 let span = leaf.span();
-                span.anchor.file_id != FileId::from_raw(!0) || span.range.end() == TextSize::new(!0)
+                let is_real_leaf = span.anchor.file_id != FIXUP_DUMMY_FILE;
+                let is_replaced_node = span.range.end() == FIXUP_DUMMY_RANGE_END;
+                is_real_leaf || is_replaced_node
             }
             tt::TokenTree::Subtree(_) => true,
         })
         .flat_map(|tt| match tt {
             tt::TokenTree::Subtree(mut tt) => {
+                if tt.delimiter.close.anchor.file_id == FIXUP_DUMMY_FILE
+                    || tt.delimiter.open.anchor.file_id == FIXUP_DUMMY_FILE
+                {
+                    // Even though fixup never creates subtrees with fixup spans, the old proc-macro server
+                    // might copy them if the proc-macro asks for it, so we need to filter those out
+                    // here as well.
+                    return SmallVec::new_const();
+                }
                 reverse_fixups_(&mut tt, undo_info);
                 SmallVec::from_const([tt.into()])
             }
             tt::TokenTree::Leaf(leaf) => {
-                if leaf.span().anchor.file_id == FileId::from_raw(!0) {
+                if leaf.span().anchor.file_id == FIXUP_DUMMY_FILE {
+                    // we have a fake node here, we need to replace it again with the original
                     let original = undo_info[u32::from(leaf.span().range.start()) as usize].clone();
                     if original.delimiter.kind == tt::DelimiterKind::Invisible {
                         original.token_trees.into()
@@ -328,6 +348,7 @@ fn reverse_fixups_(tt: &mut Subtree, undo_info: &[Subtree]) {
                         SmallVec::from_const([original.into()])
                     }
                 } else {
+                    // just a normal leaf
                     SmallVec::from_const([leaf.into()])
                 }
             }

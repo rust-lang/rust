@@ -597,8 +597,8 @@ fn main() {
 }
 "#,
         expect![[r#"
-            ct SPECIAL_CONST (use dep::test_mod::TestTrait) u8 DEPRECATED
             fn weird_function() (use dep::test_mod::TestTrait) fn() DEPRECATED
+            ct SPECIAL_CONST (use dep::test_mod::TestTrait) u8 DEPRECATED
         "#]],
     );
 }
@@ -717,7 +717,7 @@ fn main() {
     check(
         fixture,
         expect![[r#"
-            st Item (use foo::bar::baz::Item) Item
+            st Item (use foo::bar) Item
         "#]],
     );
 
@@ -725,19 +725,19 @@ fn main() {
         "Item",
         fixture,
         r#"
-        use foo::bar;
+use foo::bar;
 
-        mod foo {
-            pub mod bar {
-                pub mod baz {
-                    pub struct Item;
-                }
-            }
+mod foo {
+    pub mod bar {
+        pub mod baz {
+            pub struct Item;
         }
+    }
+}
 
-        fn main() {
-            bar::baz::Item
-        }"#,
+fn main() {
+    bar::baz::Item
+}"#,
     );
 }
 
@@ -803,7 +803,7 @@ fn main() {
     check(
         fixture,
         expect![[r#"
-            ct TEST_ASSOC (use foo::bar::Item) usize
+            ct TEST_ASSOC (use foo::bar) usize
         "#]],
     );
 

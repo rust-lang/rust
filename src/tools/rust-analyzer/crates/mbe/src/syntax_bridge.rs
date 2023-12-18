@@ -311,7 +311,7 @@ where
 
                             let ident = tt::Leaf::from(tt::Ident {
                                 text: SmolStr::new(&token.to_text(conv)[1..]),
-                                span: conv.span_for(TextRange::at(
+                                span: conv.span_for(TextRange::new(
                                     abs_range.start() + TextSize::of('\''),
                                     abs_range.end(),
                                 )),
@@ -625,25 +625,6 @@ impl<SpanMap, S> Converter<SpanMap, S> {
     }
 
     fn next_token(&mut self) -> Option<SyntaxToken> {
-        // while let Some(ev) = self.preorder.next() {
-        //     match ev {
-        //         WalkEvent::Enter(SyntaxElement::Token(t)) => {
-        //             if let Some(leafs) = self.append.remove(&t.clone().into()) {
-        //                 self.current_leafs.extend(leafs);
-        //             }
-        //             return Some(t);
-        //         }
-        //         WalkEvent::Enter(SyntaxElement::Node(n)) if self.remove.contains(&n) => {
-        //             self.preorder.skip_subtree();
-        //             if let Some(leafs) = self.append.remove(&n.into()) {
-        //                 self.current_leafs.extend(leafs);
-        //             }
-        //         }
-        //         _ => (),
-        //     }
-        // }
-        // None;
-
         while let Some(ev) = self.preorder.next() {
             match ev {
                 WalkEvent::Enter(SyntaxElement::Token(t)) => return Some(t),
