@@ -11,45 +11,33 @@ use stdx::impl_from;
 pub use smol_str::SmolStr;
 pub use text_size::{TextRange, TextSize};
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub struct SpanData<Anchor, Ctx> {
-    /// The text range of this span, relative to the anchor.
-    /// We need the anchor for incrementality, as storing absolute ranges will require
-    /// recomputation on every change in a file at all times.
-    pub range: TextRange,
-    pub anchor: Anchor,
-    /// The syntax context of the span.
-    pub ctx: Ctx,
-}
-
-impl<Anchor: SpanAnchor, Ctx: SyntaxContext> Span for SpanData<Anchor, Ctx> {
-    #[allow(deprecated)]
-    const DUMMY: Self = SpanData {
-        range: TextRange::empty(TextSize::new(0)),
-        anchor: Anchor::DUMMY,
-        ctx: Ctx::DUMMY,
-    };
-}
-
 pub trait Span: std::fmt::Debug + Copy + Sized + Eq {
     // FIXME: Should not exist. Dummy spans will always be wrong if they leak somewhere. Instead,
     // the call site or def site spans should be used in relevant places, its just that we don't
     // expose those everywhere in the yet.
+    #[deprecated = "dummy spans will panic if surfaced incorrectly, as such they should be replaced appropriately"]
     const DUMMY: Self;
 }
 
-// FIXME: Should not exist
-pub trait SpanAnchor:
-    std::fmt::Debug + Copy + Sized + Eq + Copy + fmt::Debug + std::hash::Hash
-{
-    #[deprecated(note = "this should not exist")]
-    const DUMMY: Self;
-}
-
-// FIXME: Should not exist
 pub trait SyntaxContext: std::fmt::Debug + Copy + Sized + Eq {
-    #[deprecated(note = "this should not exist")]
+    #[deprecated = "dummy spans will panic if surfaced incorrectly, as such they should be replaced appropriately"]
     const DUMMY: Self;
+}
+
+impl<Ctx: SyntaxContext> Span for span::SpanData<Ctx> {
+    #[allow(deprecated)]
+    const DUMMY: Self = span::SpanData {
+        range: TextRange::empty(TextSize::new(0)),
+        anchor: span::SpanAnchor {
+            file_id: span::FileId::BOGUS,
+            ast_id: span::ROOT_ERASED_FILE_AST_ID,
+        },
+        ctx: Ctx::DUMMY,
+    };
+}
+
+impl SyntaxContext for span::SyntaxContextId {
+    const DUMMY: Self = Self::ROOT;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -136,6 +124,7 @@ pub struct DelimSpan<S> {
 
 impl<S: Span> DelimSpan<S> {
     // FIXME should not exist
+    #[allow(deprecated)]
     pub const DUMMY: Self = Self { open: S::DUMMY, close: S::DUMMY };
 }
 
@@ -148,6 +137,7 @@ pub struct Delimiter<S> {
 
 impl<S: Span> Delimiter<S> {
     // FIXME should not exist
+    #[allow(deprecated)]
     pub const DUMMY_INVISIBLE: Self =
         Self { open: S::DUMMY, close: S::DUMMY, kind: DelimiterKind::Invisible };
 

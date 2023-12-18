@@ -42,7 +42,7 @@ use std::{
 };
 
 use ast::{AstNode, HasName, StructKind};
-use base_db::{span::SyntaxContextId, CrateId};
+use base_db::CrateId;
 use either::Either;
 use hir_expand::{
     ast_id_map::{AstIdNode, FileAstId},
@@ -55,6 +55,7 @@ use la_arena::{Arena, Idx, IdxRange, RawIdx};
 use profile::Count;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
+use span::SyntaxContextId;
 use stdx::never;
 use syntax::{ast, match_ast, SyntaxKind};
 use triomphe::Arc;

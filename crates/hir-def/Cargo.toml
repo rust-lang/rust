@@ -42,6 +42,7 @@ mbe.workspace = true
 cfg.workspace = true
 tt.workspace = true
 limit.workspace = true
+span.workspace = true
 
 
 [dev-dependencies]

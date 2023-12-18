@@ -2,9 +2,12 @@
 //!
 //! Specifically, `ast` + `Hygiene` allows you to create a `Name`. Note that, at
 //! this moment, this is horribly incomplete and handles only `$crate`.
+
+// FIXME: Consider moving this into the span crate.
+
 use std::iter;
 
-use base_db::span::{MacroCallId, SpanData, SyntaxContextId};
+use span::{MacroCallId, Span, SyntaxContextId};
 
 use crate::db::ExpandDatabase;
 
@@ -78,37 +81,29 @@ pub enum Transparency {
     Opaque,
 }
 
-pub fn span_with_def_site_ctxt(
-    db: &dyn ExpandDatabase,
-    span: SpanData,
-    expn_id: MacroCallId,
-) -> SpanData {
+pub fn span_with_def_site_ctxt(db: &dyn ExpandDatabase, span: Span, expn_id: MacroCallId) -> Span {
     span_with_ctxt_from_mark(db, span, expn_id, Transparency::Opaque)
 }
 
-pub fn span_with_call_site_ctxt(
-    db: &dyn ExpandDatabase,
-    span: SpanData,
-    expn_id: MacroCallId,
-) -> SpanData {
+pub fn span_with_call_site_ctxt(db: &dyn ExpandDatabase, span: Span, expn_id: MacroCallId) -> Span {
     span_with_ctxt_from_mark(db, span, expn_id, Transparency::Transparent)
 }
 
 pub fn span_with_mixed_site_ctxt(
     db: &dyn ExpandDatabase,
-    span: SpanData,
+    span: Span,
     expn_id: MacroCallId,
-) -> SpanData {
+) -> Span {
     span_with_ctxt_from_mark(db, span, expn_id, Transparency::SemiTransparent)
 }
 
 fn span_with_ctxt_from_mark(
     db: &dyn ExpandDatabase,
-    span: SpanData,
+    span: Span,
     expn_id: MacroCallId,
     transparency: Transparency,
-) -> SpanData {
-    SpanData { ctx: apply_mark(db, SyntaxContextId::ROOT, expn_id, transparency), ..span }
+) -> Span {
+    Span { ctx: apply_mark(db, SyntaxContextId::ROOT, expn_id, transparency), ..span }
 }
 
 pub(super) fn apply_mark(

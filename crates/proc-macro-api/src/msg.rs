@@ -136,29 +136,27 @@ fn write_json(out: &mut impl Write, msg: &str) -> io::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use base_db::{
-        span::{ErasedFileAstId, SpanAnchor, SpanData, SyntaxContextId},
-        FileId,
-    };
+    use base_db::FileId;
     use la_arena::RawIdx;
+    use span::{ErasedFileAstId, Span, SpanAnchor, SyntaxContextId};
     use text_size::{TextRange, TextSize};
     use tt::{Delimiter, DelimiterKind, Ident, Leaf, Literal, Punct, Spacing, Subtree, TokenTree};
 
     use super::*;
 
-    fn fixture_token_tree() -> Subtree<SpanData> {
+    fn fixture_token_tree() -> Subtree<Span> {
         let anchor = SpanAnchor {
             file_id: FileId::from_raw(0),
             ast_id: ErasedFileAstId::from_raw(RawIdx::from(0)),
         };
         let mut subtree = Subtree {
             delimiter: Delimiter {
-                open: SpanData {
+                open: Span {
                     range: TextRange::empty(TextSize::new(0)),
                     anchor,
                     ctx: SyntaxContextId::ROOT,
                 },
-                close: SpanData {
+                close: Span {
                     range: TextRange::empty(TextSize::new(13)),
                     anchor,
                     ctx: SyntaxContextId::ROOT,
@@ -170,7 +168,7 @@ mod tests {
         subtree.token_trees.push(TokenTree::Leaf(
             Ident {
                 text: "struct".into(),
-                span: SpanData {
+                span: Span {
                     range: TextRange::at(TextSize::new(0), TextSize::of("struct")),
                     anchor,
                     ctx: SyntaxContextId::ROOT,
@@ -181,7 +179,7 @@ mod tests {
         subtree.token_trees.push(TokenTree::Leaf(
             Ident {
                 text: "Foo".into(),
-                span: SpanData {
+                span: Span {
                     range: TextRange::at(TextSize::new(5), TextSize::of("Foo")),
                     anchor,
                     ctx: SyntaxContextId::ROOT,
@@ -192,7 +190,7 @@ mod tests {
         subtree.token_trees.push(TokenTree::Leaf(Leaf::Literal(Literal {
             text: "Foo".into(),
 
-            span: SpanData {
+            span: Span {
                 range: TextRange::at(TextSize::new(8), TextSize::of("Foo")),
                 anchor,
                 ctx: SyntaxContextId::ROOT,
@@ -200,7 +198,7 @@ mod tests {
         })));
         subtree.token_trees.push(TokenTree::Leaf(Leaf::Punct(Punct {
             char: '@',
-            span: SpanData {
+            span: Span {
                 range: TextRange::at(TextSize::new(11), TextSize::of('@')),
                 anchor,
                 ctx: SyntaxContextId::ROOT,
@@ -209,12 +207,12 @@ mod tests {
         })));
         subtree.token_trees.push(TokenTree::Subtree(Subtree {
             delimiter: Delimiter {
-                open: SpanData {
+                open: Span {
                     range: TextRange::at(TextSize::new(12), TextSize::of('{')),
                     anchor,
                     ctx: SyntaxContextId::ROOT,
                 },
-                close: SpanData {
+                close: Span {
                     range: TextRange::at(TextSize::new(13), TextSize::of('}')),
                     anchor,
                     ctx: SyntaxContextId::ROOT,

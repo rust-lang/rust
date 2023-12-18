@@ -5,6 +5,8 @@
 //! item as an ID. That way, id's don't change unless the set of items itself
 //! changes.
 
+// FIXME: Consider moving this into the span crate
+
 use std::{
     any::type_name,
     fmt,
@@ -17,9 +19,9 @@ use profile::Count;
 use rustc_hash::FxHasher;
 use syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
 
-use crate::db;
+use crate::db::ExpandDatabase;
 
-pub use base_db::span::ErasedFileAstId;
+pub use span::ErasedFileAstId;
 
 /// `AstId` points to an AST node in any file.
 ///
@@ -27,13 +29,13 @@ pub use base_db::span::ErasedFileAstId;
 pub type AstId<N> = crate::InFile<FileAstId<N>>;
 
 impl<N: AstIdNode> AstId<N> {
-    pub fn to_node(&self, db: &dyn db::ExpandDatabase) -> N {
+    pub fn to_node(&self, db: &dyn ExpandDatabase) -> N {
         self.to_ptr(db).to_node(&db.parse_or_expand(self.file_id))
     }
-    pub fn to_in_file_node(&self, db: &dyn db::ExpandDatabase) -> crate::InFile<N> {
+    pub fn to_in_file_node(&self, db: &dyn ExpandDatabase) -> crate::InFile<N> {
         crate::InFile::new(self.file_id, self.to_ptr(db).to_node(&db.parse_or_expand(self.file_id)))
     }
-    pub fn to_ptr(&self, db: &dyn db::ExpandDatabase) -> AstPtr<N> {
+    pub fn to_ptr(&self, db: &dyn ExpandDatabase) -> AstPtr<N> {
         db.ast_id_map(self.file_id).get(self.value)
     }
 }
@@ -41,7 +43,7 @@ impl<N: AstIdNode> AstId<N> {
 pub type ErasedAstId = crate::InFile<ErasedFileAstId>;
 
 impl ErasedAstId {
-    pub fn to_ptr(&self, db: &dyn db::ExpandDatabase) -> SyntaxNodePtr {
+    pub fn to_ptr(&self, db: &dyn ExpandDatabase) -> SyntaxNodePtr {
         db.ast_id_map(self.file_id).get_erased(self.value)
     }
 }

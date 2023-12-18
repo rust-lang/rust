@@ -5,7 +5,7 @@
 
 use std::{cmp::Ordering, iter, mem};
 
-use base_db::{span::SyntaxContextId, CrateId, Dependency, Edition, FileId};
+use base_db::{CrateId, Dependency, Edition, FileId};
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{
@@ -23,6 +23,7 @@ use itertools::{izip, Itertools};
 use la_arena::Idx;
 use limit::Limit;
 use rustc_hash::{FxHashMap, FxHashSet};
+use span::{Span, SyntaxContextId};
 use stdx::always;
 use syntax::{ast, SmolStr};
 use triomphe::Arc;
@@ -86,11 +87,11 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, def_map: DefMap, tree_id: TreeI
                         // FIXME: a hacky way to create a Name from string.
                         let name = tt::Ident {
                             text: it.name.clone(),
-                            span: tt::SpanData {
+                            span: Span {
                                 range: syntax::TextRange::empty(syntax::TextSize::new(0)),
-                                anchor: base_db::span::SpanAnchor {
+                                anchor: span::SpanAnchor {
                                     file_id: FileId::BOGUS,
-                                    ast_id: base_db::span::ROOT_ERASED_FILE_AST_ID,
+                                    ast_id: span::ROOT_ERASED_FILE_AST_ID,
                                 },
                                 ctx: SyntaxContextId::ROOT,
                             },
@@ -2095,11 +2096,11 @@ impl ModCollector<'_, '_> {
                     // FIXME: a hacky way to create a Name from string.
                     name = tt::Ident {
                         text: it.clone(),
-                        span: tt::SpanData {
+                        span: Span {
                             range: syntax::TextRange::empty(syntax::TextSize::new(0)),
-                            anchor: base_db::span::SpanAnchor {
+                            anchor: span::SpanAnchor {
                                 file_id: FileId::BOGUS,
-                                ast_id: base_db::span::ROOT_ERASED_FILE_AST_ID,
+                                ast_id: span::ROOT_ERASED_FILE_AST_ID,
                             },
                             ctx: SyntaxContextId::ROOT,
                         },
