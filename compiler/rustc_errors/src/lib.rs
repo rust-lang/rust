@@ -1080,13 +1080,6 @@ impl DiagCtxt {
     }
 
     #[track_caller]
-    pub fn span_bug_no_panic(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) {
-        let mut diag = Diagnostic::new(Bug, msg);
-        diag.set_span(span);
-        self.emit_diagnostic(diag);
-    }
-
-    #[track_caller]
     #[rustc_lint_diagnostics]
     pub fn span_note(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) {
         self.struct_span_note(span, msg).emit()
