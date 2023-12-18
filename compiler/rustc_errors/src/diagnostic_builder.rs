@@ -112,6 +112,22 @@ pub trait EmissionGuarantee: Sized {
     fn emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self::EmitResult;
 }
 
+impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
+    /// Most `emit_producing_guarantee` functions use this as a starting point.
+    fn emit_producing_nothing(&mut self) {
+        match self.inner.state {
+            // First `.emit()` call, the `&DiagCtxt` is still available.
+            DiagnosticBuilderState::Emittable(dcx) => {
+                self.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
+
+                dcx.emit_diagnostic_without_consuming(&mut self.inner.diagnostic);
+            }
+            // `.emit()` was previously called, disallowed from repeating it.
+            DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
+        }
+    }
+}
+
 impl<'a> DiagnosticBuilder<'a, ErrorGuaranteed> {
     /// Discard the guarantee `.emit()` would return, in favor of having the
     /// type `DiagnosticBuilder<'a, ()>`. This may be necessary whenever there
@@ -124,6 +140,7 @@ impl<'a> DiagnosticBuilder<'a, ErrorGuaranteed> {
 // FIXME(eddyb) make `ErrorGuaranteed` impossible to create outside `.emit()`.
 impl EmissionGuarantee for ErrorGuaranteed {
     fn emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
+        // Contrast this with `emit_producing_nothing`.
         match db.inner.state {
             // First `.emit()` call, the `&DiagCtxt` is still available.
             DiagnosticBuilderState::Emittable(dcx) => {
@@ -165,16 +182,7 @@ impl EmissionGuarantee for ErrorGuaranteed {
 // FIXME(eddyb) should there be a `Option<ErrorGuaranteed>` impl as well?
 impl EmissionGuarantee for () {
     fn emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
-        match db.inner.state {
-            // First `.emit()` call, the `&DiagCtxt` is still available.
-            DiagnosticBuilderState::Emittable(dcx) => {
-                db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
-
-                dcx.emit_diagnostic_without_consuming(&mut db.inner.diagnostic);
-            }
-            // `.emit()` was previously called, disallowed from repeating it.
-            DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
-        }
+        db.emit_producing_nothing();
     }
 }
 
@@ -187,17 +195,7 @@ impl EmissionGuarantee for BugAbort {
     type EmitResult = !;
 
     fn emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
-        match db.inner.state {
-            // First `.emit()` call, the `&DiagCtxt` is still available.
-            DiagnosticBuilderState::Emittable(dcx) => {
-                db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
-
-                dcx.emit_diagnostic_without_consuming(&mut db.inner.diagnostic);
-            }
-            // `.emit()` was previously called, disallowed from repeating it.
-            DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
-        }
-        // Then panic. No need to return the marker type.
+        db.emit_producing_nothing();
         panic::panic_any(ExplicitBug);
     }
 }
@@ -211,34 +209,14 @@ impl EmissionGuarantee for FatalAbort {
     type EmitResult = !;
 
     fn emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
-        match db.inner.state {
-            // First `.emit()` call, the `&DiagCtxt` is still available.
-            DiagnosticBuilderState::Emittable(dcx) => {
-                db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
-
-                dcx.emit_diagnostic_without_consuming(&mut db.inner.diagnostic);
-            }
-            // `.emit()` was previously called, disallowed from repeating it.
-            DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
-        }
-        // Then fatally error, returning `!`
+        db.emit_producing_nothing();
         crate::FatalError.raise()
     }
 }
 
 impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
     fn emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
-        match db.inner.state {
-            // First `.emit()` call, the `&DiagCtxt` is still available.
-            DiagnosticBuilderState::Emittable(dcx) => {
-                db.inner.state = DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation;
-
-                dcx.emit_diagnostic_without_consuming(&mut db.inner.diagnostic);
-            }
-            // `.emit()` was previously called, disallowed from repeating it.
-            DiagnosticBuilderState::AlreadyEmittedOrDuringCancellation => {}
-        }
-        // Then fatally error..
+        db.emit_producing_nothing();
         rustc_span::fatal_error::FatalError
     }
 }
