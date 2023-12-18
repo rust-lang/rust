@@ -93,7 +93,7 @@ impl base::AttrProcMacro for AttrProcMacro {
         let server = proc_macro_server::Rustc::new(ecx);
         self.client.run(&strategy, server, annotation, annotated, proc_macro_backtrace).map_err(
             |e| {
-                let mut err = ecx.struct_span_err(span, "custom attribute panicked");
+                let mut err = ecx.dcx().struct_span_err(span, "custom attribute panicked");
                 if let Some(s) = e.as_str() {
                     err.help(format!("message: {s}"));
                 }
@@ -146,7 +146,7 @@ impl MultiItemModifier for DeriveProcMacro {
             match self.client.run(&strategy, server, input, proc_macro_backtrace) {
                 Ok(stream) => stream,
                 Err(e) => {
-                    let mut err = ecx.struct_span_err(span, "proc-macro derive panicked");
+                    let mut err = ecx.dcx().struct_span_err(span, "proc-macro derive panicked");
                     if let Some(s) = e.as_str() {
                         err.help(format!("message: {s}"));
                     }
@@ -156,7 +156,7 @@ impl MultiItemModifier for DeriveProcMacro {
             }
         };
 
-        let error_count_before = ecx.sess.dcx().err_count();
+        let error_count_before = ecx.dcx().err_count();
         let mut parser =
             rustc_parse::stream_to_parser(&ecx.sess.parse_sess, stream, Some("proc-macro derive"));
         let mut items = vec![];
@@ -179,7 +179,7 @@ impl MultiItemModifier for DeriveProcMacro {
         }
 
         // fail if there have been errors emitted
-        if ecx.sess.dcx().err_count() > error_count_before {
+        if ecx.dcx().err_count() > error_count_before {
             ecx.sess.emit_err(errors::ProcMacroDeriveTokens { span });
         }
 

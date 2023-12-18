@@ -99,7 +99,7 @@ fn cs_total_eq_assert(
                 process_variant(&variant.data);
             }
         }
-        _ => cx.span_bug(trait_span, "unexpected substructure in `derive(Eq)`"),
+        _ => cx.dcx().span_bug(trait_span, "unexpected substructure in `derive(Eq)`"),
     }
     BlockOrExpr::new_stmts(stmts)
 }

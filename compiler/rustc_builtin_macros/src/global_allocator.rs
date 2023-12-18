@@ -34,7 +34,7 @@ pub fn expand(
     {
         (item, true, ecx.with_def_site_ctxt(ty.span))
     } else {
-        ecx.sess.dcx().emit_err(errors::AllocMustStatics { span: item.span() });
+        ecx.dcx().emit_err(errors::AllocMustStatics { span: item.span() });
         return vec![orig_item];
     };
 

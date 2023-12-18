@@ -185,7 +185,9 @@ pub(super) fn transcribe<'a>(
             seq @ mbe::TokenTree::Sequence(_, delimited) => {
                 match lockstep_iter_size(seq, interp, &repeats) {
                     LockstepIterSize::Unconstrained => {
-                        return Err(cx.create_err(NoSyntaxVarsExprRepeat { span: seq.span() }));
+                        return Err(cx
+                            .dcx()
+                            .create_err(NoSyntaxVarsExprRepeat { span: seq.span() }));
                     }
 
                     LockstepIterSize::Contradiction(msg) => {
@@ -193,7 +195,9 @@ pub(super) fn transcribe<'a>(
                         // happens when two meta-variables are used in the same repetition in a
                         // sequence, but they come from different sequence matchers and repeat
                         // different amounts.
-                        return Err(cx.create_err(MetaVarsDifSeqMatchers { span: seq.span(), msg }));
+                        return Err(cx
+                            .dcx()
+                            .create_err(MetaVarsDifSeqMatchers { span: seq.span(), msg }));
                     }
 
                     LockstepIterSize::Constraint(len, _) => {
@@ -207,7 +211,9 @@ pub(super) fn transcribe<'a>(
                                 // FIXME: this really ought to be caught at macro definition
                                 // time... It happens when the Kleene operator in the matcher and
                                 // the body for the same meta-variable do not match.
-                                return Err(cx.create_err(MustRepeatOnce { span: sp.entire() }));
+                                return Err(cx
+                                    .dcx()
+                                    .create_err(MustRepeatOnce { span: sp.entire() }));
                             }
                         } else {
                             // 0 is the initial counter (we have done 0 repetitions so far). `len`
@@ -249,7 +255,7 @@ pub(super) fn transcribe<'a>(
                         }
                         MatchedSeq(..) => {
                             // We were unable to descend far enough. This is an error.
-                            return Err(cx.create_err(VarStillRepeating { span: sp, ident }));
+                            return Err(cx.dcx().create_err(VarStillRepeating { span: sp, ident }));
                         }
                     }
                 } else {
@@ -501,7 +507,7 @@ fn count_repetitions<'a>(
     }
 
     if let MatchedTokenTree(_) | MatchedNonterminal(_) = matched {
-        return Err(cx.create_err(CountRepetitionMisplaced { span: sp.entire() }));
+        return Err(cx.dcx().create_err(CountRepetitionMisplaced { span: sp.entire() }));
     }
 
     count(cx, depth_user, depth_max, matched, sp)
@@ -518,7 +524,7 @@ where
 {
     let span = ident.span;
     let key = MacroRulesNormalizedIdent::new(ident);
-    interp.get(&key).ok_or_else(|| cx.create_err(MetaVarExprUnrecognizedVar { span, key }))
+    interp.get(&key).ok_or_else(|| cx.dcx().create_err(MetaVarExprUnrecognizedVar { span, key }))
 }
 
 /// Used by meta-variable expressions when an user input is out of the actual declared bounds. For
@@ -540,7 +546,7 @@ fn out_of_bounds_err<'a>(
              must be less than {max}"
         )
     };
-    cx.struct_span_err(span, msg)
+    cx.dcx().struct_span_err(span, msg)
 }
 
 fn transcribe_metavar_expr<'a>(

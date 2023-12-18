@@ -513,7 +513,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 ExpandResult::Retry(invoc) => {
                     if force {
-                        self.cx.span_bug(
+                        self.cx.dcx().span_bug(
                             invoc.span(),
                             "expansion entered force mode but is still stuck",
                         );
@@ -611,7 +611,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             limit => limit * 2,
         };
 
-        self.cx.emit_err(RecursionLimitReached {
+        self.cx.dcx().emit_err(RecursionLimitReached {
             span: expn_data.call_site,
             descr: expn_data.kind.descr(),
             suggested_limit,
@@ -624,7 +624,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     /// A macro's expansion does not fit in this fragment kind.
     /// For example, a non-type macro in a type position.
     fn error_wrong_fragment_kind(&mut self, kind: AstFragmentKind, mac: &ast::MacCall, span: Span) {
-        self.cx.emit_err(WrongFragmentKind { span, kind: kind.name(), name: &mac.path });
+        self.cx.dcx().emit_err(WrongFragmentKind { span, kind: kind.name(), name: &mac.path });
 
         self.cx.trace_macros_diag();
     }
@@ -702,7 +702,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     };
                     let attr_item = attr.unwrap_normal_item();
                     if let AttrArgs::Eq(..) = attr_item.args {
-                        self.cx.emit_err(UnsupportedKeyValue { span });
+                        self.cx.dcx().emit_err(UnsupportedKeyValue { span });
                     }
                     let inner_tokens = attr_item.args.inner_tokens();
                     let Ok(tok_result) = expander.expand(self.cx, span, inner_tokens, tokens)
@@ -729,7 +729,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 AstFragmentKind::Expr | AstFragmentKind::MethodReceiverExpr
                             ) && items.is_empty()
                             {
-                                self.cx.emit_err(RemoveExprNotSupported { span });
+                                self.cx.dcx().emit_err(RemoveExprNotSupported { span });
                                 fragment_kind.dummy(span)
                             } else {
                                 fragment_kind.expect_from_annotatables(items)
@@ -1050,7 +1050,7 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
         _pos: usize,
         span: Span,
     ) {
-        collector.cx.emit_err(RemoveNodeNotSupported { span, descr: Self::descr() });
+        collector.cx.dcx().emit_err(RemoveNodeNotSupported { span, descr: Self::descr() });
     }
 
     /// All of the names (items) declared by this node.

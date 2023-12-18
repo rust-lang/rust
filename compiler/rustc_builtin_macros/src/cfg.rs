@@ -39,7 +39,7 @@ fn parse_cfg<'a>(cx: &mut ExtCtxt<'a>, span: Span, tts: TokenStream) -> PResult<
     let mut p = cx.new_parser_from_tts(tts);
 
     if p.token == token::Eof {
-        return Err(cx.create_err(errors::RequiresCfgPattern { span }));
+        return Err(cx.dcx().create_err(errors::RequiresCfgPattern { span }));
     }
 
     let cfg = p.parse_meta_item()?;
@@ -47,7 +47,7 @@ fn parse_cfg<'a>(cx: &mut ExtCtxt<'a>, span: Span, tts: TokenStream) -> PResult<
     let _ = p.eat(&token::Comma);
 
     if !p.eat(&token::Eof) {
-        return Err(cx.create_err(errors::OneCfgPattern { span }));
+        return Err(cx.dcx().create_err(errors::OneCfgPattern { span }));
     }
 
     Ok(cfg)

@@ -41,7 +41,7 @@ pub fn expand_deriving_default(
                         default_struct_substructure(cx, trait_span, substr, fields)
                     }
                     StaticEnum(enum_def, _) => default_enum_substructure(cx, trait_span, enum_def),
-                    _ => cx.span_bug(trait_span, "method in `derive(Default)`"),
+                    _ => cx.dcx().span_bug(trait_span, "method in `derive(Default)`"),
                 }
             })),
         }],
@@ -120,7 +120,7 @@ fn extract_default_variant<'a>(
             let suggs = possible_defaults
                 .map(|v| errors::NoDefaultVariantSugg { span: v.span, ident: v.ident })
                 .collect();
-            cx.emit_err(errors::NoDefaultVariant { span: trait_span, suggs });
+            cx.dcx().emit_err(errors::NoDefaultVariant { span: trait_span, suggs });
 
             return Err(());
         }
@@ -140,7 +140,7 @@ fn extract_default_variant<'a>(
                         .then_some(errors::MultipleDefaultsSugg { spans, ident: variant.ident })
                 })
                 .collect();
-            cx.emit_err(errors::MultipleDefaults {
+            cx.dcx().emit_err(errors::MultipleDefaults {
                 span: trait_span,
                 first: first.span,
                 additional: rest.iter().map(|v| v.span).collect(),
@@ -151,12 +151,12 @@ fn extract_default_variant<'a>(
     };
 
     if !matches!(variant.data, VariantData::Unit(..)) {
-        cx.emit_err(errors::NonUnitDefault { span: variant.ident.span });
+        cx.dcx().emit_err(errors::NonUnitDefault { span: variant.ident.span });
         return Err(());
     }
 
     if let Some(non_exhaustive_attr) = attr::find_by_name(&variant.attrs, sym::non_exhaustive) {
-        cx.emit_err(errors::NonExhaustiveDefault {
+        cx.dcx().emit_err(errors::NonExhaustiveDefault {
             span: variant.ident.span,
             non_exhaustive: non_exhaustive_attr.span,
         });
@@ -176,14 +176,14 @@ fn validate_default_attribute(
 
     let attr = match attrs.as_slice() {
         [attr] => attr,
-        [] => cx.bug(
+        [] => cx.dcx().bug(
             "this method must only be called with a variant that has a `#[default]` attribute",
         ),
         [first, rest @ ..] => {
             let sugg = errors::MultipleDefaultAttrsSugg {
                 spans: rest.iter().map(|attr| attr.span).collect(),
             };
-            cx.emit_err(errors::MultipleDefaultAttrs {
+            cx.dcx().emit_err(errors::MultipleDefaultAttrs {
                 span: default_variant.ident.span,
                 first: first.span,
                 first_rest: rest[0].span,
@@ -196,7 +196,7 @@ fn validate_default_attribute(
         }
     };
     if !attr.is_word() {
-        cx.emit_err(errors::DefaultHasArg { span: attr.span });
+        cx.dcx().emit_err(errors::DefaultHasArg { span: attr.span });
 
         return Err(());
     }
@@ -210,7 +210,7 @@ struct DetectNonVariantDefaultAttr<'a, 'b> {
 impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonVariantDefaultAttr<'a, 'b> {
     fn visit_attribute(&mut self, attr: &'a rustc_ast::Attribute) {
         if attr.has_name(kw::Default) {
-            self.cx.emit_err(errors::NonUnitDefault { span: attr.span });
+            self.cx.dcx().emit_err(errors::NonUnitDefault { span: attr.span });
         }
 
         rustc_ast::visit::walk_attribute(self, attr);

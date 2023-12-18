@@ -430,7 +430,7 @@ fn find_type_parameters(
         }
 
         fn visit_mac_call(&mut self, mac: &ast::MacCall) {
-            self.cx.emit_err(errors::DeriveMacroCall { span: mac.span() });
+            self.cx.dcx().emit_err(errors::DeriveMacroCall { span: mac.span() });
         }
     }
 
@@ -503,7 +503,7 @@ impl<'a> TraitDef<'a> {
                                 is_packed,
                             )
                         } else {
-                            cx.emit_err(errors::DeriveUnion { span: mitem.span });
+                            cx.dcx().emit_err(errors::DeriveUnion { span: mitem.span });
                             return;
                         }
                     }
@@ -974,7 +974,7 @@ impl<'a> MethodDef<'a> {
             match ty {
                 // Selflike (`&Self`) arguments only occur in non-static methods.
                 Ref(box Self_, _) if !self.is_static() => selflike_args.push(arg_expr),
-                Self_ => cx.span_bug(span, "`Self` in non-return position"),
+                Self_ => cx.dcx().span_bug(span, "`Self` in non-return position"),
                 _ => nonselflike_args.push(arg_expr),
             }
         }
@@ -1441,9 +1441,9 @@ impl<'a> TraitDef<'a> {
 
         let is_tuple = matches!(struct_def, ast::VariantData::Tuple(..));
         match (just_spans.is_empty(), named_idents.is_empty()) {
-            (false, false) => {
-                cx.span_bug(self.span, "a struct with named and unnamed fields in generic `derive`")
-            }
+            (false, false) => cx
+                .dcx()
+                .span_bug(self.span, "a struct with named and unnamed fields in generic `derive`"),
             // named fields
             (_, false) => Named(named_idents),
             // unnamed fields
@@ -1489,7 +1489,7 @@ impl<'a> TraitDef<'a> {
                         let field_pats = pieces_iter
                             .map(|(sp, ident, pat)| {
                                 if ident.is_none() {
-                                    cx.span_bug(
+                                    cx.dcx().span_bug(
                                         sp,
                                         "a braced struct with unnamed fields in `derive`",
                                     );
@@ -1707,7 +1707,9 @@ where
                 tag_check_expr
             }
         }
-        StaticEnum(..) | StaticStruct(..) => cx.span_bug(trait_span, "static function in `derive`"),
-        AllFieldlessEnum(..) => cx.span_bug(trait_span, "fieldless enum in `derive`"),
+        StaticEnum(..) | StaticStruct(..) => {
+            cx.dcx().span_bug(trait_span, "static function in `derive`")
+        }
+        AllFieldlessEnum(..) => cx.dcx().span_bug(trait_span, "fieldless enum in `derive`"),
     }
 }

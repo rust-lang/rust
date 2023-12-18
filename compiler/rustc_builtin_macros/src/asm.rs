@@ -541,7 +541,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
             let err = parser.errors.remove(0);
             let err_sp = template_span.from_inner(InnerSpan::new(err.span.start, err.span.end));
             let msg = format!("invalid asm template string: {}", err.description);
-            let mut e = ecx.struct_span_err(err_sp, msg);
+            let mut e = ecx.dcx().struct_span_err(err_sp, msg);
             e.span_label(err_sp, err.label + " in asm template string");
             if let Some(note) = err.note {
                 e.note(note);
@@ -575,7 +575,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                                 || args.reg_args.contains(idx)
                             {
                                 let msg = format!("invalid reference to argument at index {idx}");
-                                let mut err = ecx.struct_span_err(span, msg);
+                                let mut err = ecx.dcx().struct_span_err(span, msg);
                                 err.span_label(span, "from here");
 
                                 let positional_args = args.operands.len()
@@ -625,12 +625,13 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                                 None => {
                                     let msg = format!("there is no argument named `{name}`");
                                     let span = arg.position_span;
-                                    ecx.struct_span_err(
-                                        template_span
-                                            .from_inner(InnerSpan::new(span.start, span.end)),
-                                        msg,
-                                    )
-                                    .emit();
+                                    ecx.dcx()
+                                        .struct_span_err(
+                                            template_span
+                                                .from_inner(InnerSpan::new(span.start, span.end)),
+                                            msg,
+                                        )
+                                        .emit();
                                     None
                                 }
                             }
@@ -645,7 +646,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                             .ty_span
                             .map(|sp| template_sp.from_inner(InnerSpan::new(sp.start, sp.end)))
                             .unwrap_or(template_sp);
-                        ecx.emit_err(errors::AsmModifierInvalid { span });
+                        ecx.dcx().emit_err(errors::AsmModifierInvalid { span });
                         modifier = None;
                     }
 
@@ -692,7 +693,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
         0 => {}
         1 => {
             let (sp, msg) = unused_operands.into_iter().next().unwrap();
-            let mut err = ecx.struct_span_err(sp, msg);
+            let mut err = ecx.dcx().struct_span_err(sp, msg);
             err.span_label(sp, msg);
             err.help(format!(
                 "if this argument is intentionally unused, \
@@ -701,7 +702,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
             err.emit();
         }
         _ => {
-            let mut err = ecx.struct_span_err(
+            let mut err = ecx.dcx().struct_span_err(
                 unused_operands.iter().map(|&(sp, _)| sp).collect::<Vec<Span>>(),
                 "multiple unused asm arguments",
             );
