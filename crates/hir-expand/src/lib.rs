@@ -14,7 +14,7 @@ pub mod builtin_fn_macro;
 pub mod db;
 pub mod eager;
 pub mod files;
-pub mod fixture;
+pub mod change;
 pub mod hygiene;
 pub mod mod_path;
 pub mod name;

@@ -1,5 +1,6 @@
-use hir::{PrefixKind, WithFixture};
+use hir::PrefixKind;
 use stdx::trim_indent;
+use test_fixture::WithFixture;
 use test_utils::{assert_eq_text, CURSOR_MARKER};
 
 use super::*;

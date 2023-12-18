@@ -77,7 +77,6 @@ dependencies = [
  "span",
  "stdx",
  "syntax",
- "test-utils",
  "triomphe",
  "vfs",
 ]
@@ -519,6 +518,7 @@ dependencies = [
  "span",
  "stdx",
  "syntax",
+ "test-fixture",
  "test-utils",
  "tracing",
  "triomphe",
@@ -546,7 +546,6 @@ dependencies = [
  "span",
  "stdx",
  "syntax",
- "test-utils",
  "tracing",
  "triomphe",
  "tt",
@@ -584,6 +583,7 @@ dependencies = [
  "smallvec",
  "stdx",
  "syntax",
+ "test-fixture",
  "test-utils",
  "tracing",
  "tracing-subscriber",
@@ -627,6 +627,7 @@ dependencies = [
  "smallvec",
  "stdx",
  "syntax",
+ "test-fixture",
  "test-utils",
  "text-edit",
  "toolchain",
@@ -650,6 +651,7 @@ dependencies = [
  "sourcegen",
  "stdx",
  "syntax",
+ "test-fixture",
  "test-utils",
  "text-edit",
 ]
@@ -669,6 +671,7 @@ dependencies = [
  "smallvec",
  "stdx",
  "syntax",
+ "test-fixture",
  "test-utils",
  "text-edit",
 ]
@@ -700,6 +703,7 @@ dependencies = [
  "span",
  "stdx",
  "syntax",
+ "test-fixture",
  "test-utils",
  "text-edit",
  "tracing",
@@ -724,6 +728,7 @@ dependencies = [
  "sourcegen",
  "stdx",
  "syntax",
+ "test-fixture",
  "test-utils",
  "text-edit",
 ]
@@ -741,6 +746,7 @@ dependencies = [
  "parser",
  "stdx",
  "syntax",
+ "test-fixture",
  "test-utils",
  "text-edit",
  "triomphe",
@@ -1543,6 +1549,7 @@ dependencies = [
  "sourcegen",
  "stdx",
  "syntax",
+ "test-fixture",
  "test-utils",
  "tikv-jemallocator",
  "toolchain",
@@ -1813,6 +1820,20 @@ dependencies = [
  "text-edit",
  "triomphe",
  "ungrammar",
+]
+
+[[package]]
+name = "test-fixture"
+version = "0.0.0"
+dependencies = [
+ "base-db",
+ "cfg",
+ "hir-expand",
+ "rustc-hash",
+ "span",
+ "stdx",
+ "test-utils",
+ "tt",
 ]
 
 [[package]]

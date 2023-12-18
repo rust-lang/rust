@@ -23,13 +23,14 @@ use hir_def::{
     src::HasSource,
     AssocItemId, DefWithBodyId, HasModule, LocalModuleId, Lookup, ModuleDefId,
 };
-use hir_expand::{db::ExpandDatabase, fixture::WithFixture, InFile};
+use hir_expand::{db::ExpandDatabase, InFile};
 use once_cell::race::OnceBool;
 use stdx::format_to;
 use syntax::{
     ast::{self, AstNode, HasName},
     SyntaxNode,
 };
+use test_fixture::WithFixture;
 use tracing_subscriber::{layer::SubscriberExt, Registry};
 use tracing_tree::HierarchicalLayer;
 use triomphe::Arc;

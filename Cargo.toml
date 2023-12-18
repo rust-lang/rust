@@ -70,11 +70,9 @@ proc-macro-srv = { path = "./crates/proc-macro-srv", version = "0.0.0" }
 proc-macro-srv-cli = { path = "./crates/proc-macro-srv-cli", version = "0.0.0" }
 profile = { path = "./crates/profile", version = "0.0.0" }
 project-model = { path = "./crates/project-model", version = "0.0.0" }
-sourcegen = { path = "./crates/sourcegen", version = "0.0.0" }
 span = { path = "./crates/span", version = "0.0.0" }
 stdx = { path = "./crates/stdx", version = "0.0.0" }
 syntax = { path = "./crates/syntax", version = "0.0.0" }
-test-utils = { path = "./crates/test-utils", version = "0.0.0" }
 text-edit = { path = "./crates/text-edit", version = "0.0.0" }
 toolchain = { path = "./crates/toolchain", version = "0.0.0" }
 tt = { path = "./crates/tt", version = "0.0.0" }
@@ -84,6 +82,9 @@ rustc-dependencies = { path = "./crates/rustc-dependencies", version = "0.0.0" }
 
 # local crates that aren't published to crates.io. These should not have versions.
 proc-macro-test = { path = "./crates/proc-macro-test" }
+sourcegen = { path = "./crates/sourcegen" }
+test-fixture = { path = "./crates/test-fixture" }
+test-utils = { path = "./crates/test-utils" }
 
 # In-tree crates that are published separately and follow semver. See lib/README.md
 line-index = { version = "0.1.1" }
@@ -94,8 +95,11 @@ lsp-server = { version = "0.7.4" }
 anyhow = "1.0.75"
 bitflags = "2.4.1"
 cargo_metadata = "0.18.1"
+command-group = "2.0.1"
+crossbeam-channel = "0.5.8"
 dissimilar = "1.0.7"
 either = "1.9.0"
+expect-test = "1.4.0"
 hashbrown = { version = "0.14", features = [
   "inline-more",
 ], default-features = false }
@@ -124,6 +128,7 @@ tracing-subscriber = { version = "0.3.18", default-features = false, features = 
 ] }
 triomphe = { version = "0.1.10", default-features = false, features = ["std"] }
 xshell = "0.2.5"
+
 
 # We need to freeze the version of the crate, as the raw-api feature is considered unstable
 dashmap = { version = "=5.5.3", features = ["raw-api"] }

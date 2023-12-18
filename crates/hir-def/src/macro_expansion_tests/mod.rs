@@ -20,7 +20,6 @@ use base_db::SourceDatabase;
 use expect_test::Expect;
 use hir_expand::{
     db::ExpandDatabase,
-    fixture::WithFixture,
     proc_macro::{ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind},
     span_map::SpanMapRef,
     InFile, MacroFileId, MacroFileIdExt,
@@ -33,6 +32,7 @@ use syntax::{
     SyntaxKind::{COMMENT, EOF, IDENT, LIFETIME_IDENT},
     SyntaxNode, T,
 };
+use test_fixture::WithFixture;
 
 use crate::{
     db::DefDatabase,

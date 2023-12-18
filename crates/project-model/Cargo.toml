@@ -14,7 +14,7 @@ doctest = false
 [dependencies]
 anyhow.workspace = true
 cargo_metadata.workspace = true
-rustc-hash = "1.1.0"
+rustc-hash.workspace = true
 semver = "1.0.14"
 serde_json.workspace = true
 serde.workspace = true

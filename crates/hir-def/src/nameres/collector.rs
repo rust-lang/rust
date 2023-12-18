@@ -2370,7 +2370,7 @@ impl ModCollector<'_, '_> {
 #[cfg(test)]
 mod tests {
     use base_db::SourceDatabase;
-    use hir_expand::fixture::WithFixture;
+    use test_fixture::WithFixture;
 
     use crate::{db::DefDatabase, test_db::TestDB};
 

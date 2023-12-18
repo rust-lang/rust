@@ -22,6 +22,5 @@ cfg.workspace = true
 profile.workspace = true
 stdx.workspace = true
 syntax.workspace = true
-test-utils.workspace = true
 vfs.workspace = true
 span.workspace = true

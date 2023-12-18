@@ -475,7 +475,7 @@ pub fn search_dependencies(
 mod tests {
     use base_db::{SourceDatabase, Upcast};
     use expect_test::{expect, Expect};
-    use hir_expand::fixture::WithFixture;
+    use test_fixture::WithFixture;
 
     use crate::{db::DefDatabase, test_db::TestDB, ItemContainerId, Lookup};
 

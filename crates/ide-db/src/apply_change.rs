@@ -11,7 +11,7 @@ use profile::{memory_usage, Bytes};
 use rustc_hash::FxHashSet;
 use triomphe::Arc;
 
-use crate::{fixture::Change, symbol_index::SymbolsDatabase, RootDatabase};
+use crate::{symbol_index::SymbolsDatabase, Change, RootDatabase};
 
 impl RootDatabase {
     pub fn request_cancellation(&mut self) {

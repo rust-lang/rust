@@ -6,7 +6,7 @@ mod primitives;
 
 use base_db::SourceDatabase;
 use expect_test::{expect, Expect};
-use hir_expand::fixture::WithFixture;
+use test_fixture::WithFixture;
 use triomphe::Arc;
 
 use crate::{db::DefDatabase, nameres::DefMap, test_db::TestDB};
