@@ -978,7 +978,7 @@ impl DiagCtxt {
     }
 
     pub fn span_bug(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
-        self.inner.borrow_mut().span_bug(span, msg)
+        self.struct_span_bug(span, msg).emit()
     }
 
     /// For documentation on this, see `Session::span_delayed_bug`.
@@ -991,14 +991,14 @@ impl DiagCtxt {
         sp: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> ErrorGuaranteed {
-        let mut inner = self.inner.borrow_mut();
-        if inner.treat_next_err_as_bug() {
+        let treat_next_err_as_bug = self.inner.borrow().treat_next_err_as_bug();
+        if treat_next_err_as_bug {
             // FIXME: don't abort here if report_delayed_bugs is off
-            inner.span_bug(sp, msg);
+            self.span_bug(sp, msg);
         }
         let mut diagnostic = Diagnostic::new(Level::DelayedBug, msg);
         diagnostic.set_span(sp);
-        inner.emit_diagnostic(diagnostic).unwrap()
+        self.emit_diagnostic(diagnostic).unwrap()
     }
 
     // FIXME(eddyb) note the comment inside `impl Drop for DiagCtxtInner`, that's
@@ -1526,14 +1526,6 @@ impl DiagCtxtInner {
 
     fn has_errors(&self) -> bool {
         self.err_count > 0
-    }
-
-    #[track_caller]
-    fn span_bug(&mut self, sp: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
-        let mut diag = Diagnostic::new(Bug, msg);
-        diag.set_span(sp);
-        self.emit_diagnostic(diag);
-        panic::panic_any(ExplicitBug);
     }
 
     fn failure_note(&mut self, msg: impl Into<DiagnosticMessage>) {
