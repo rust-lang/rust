@@ -10,8 +10,7 @@ use crate::convert::Infallible;
 use crate::error::Error;
 use crate::fmt;
 use crate::hash::{self, Hash};
-use crate::intrinsics::transmute_unchecked;
-use crate::iter::UncheckedIterator;
+use crate::iter::{repeat_n, UncheckedIterator};
 use crate::mem::{self, MaybeUninit};
 use crate::ops::{
     ChangeOutputType, ControlFlow, FromResidual, Index, IndexMut, NeverShortCircuit, Residual, Try,
@@ -30,12 +29,16 @@ pub use iter::IntoIter;
 
 /// Creates an array of type `[T; N]` by repeatedly cloning a value.
 ///
-/// The value will be used as the last element of the resulting array, so it
-/// will be cloned N - 1 times. If N is zero, the value will be dropped.
+/// This is the same as `[val; N]`, but it also works for types that do not
+/// implement [`Copy`].
+///
+/// The provided value will be used as an element of the resulting array and
+/// will be cloned N - 1 times to fill up the rest. If N is zero, the value
+/// will be dropped.
 ///
 /// # Example
 ///
-/// Creating muliple copies of a string:
+/// Creating muliple copies of a `String`:
 /// ```rust
 /// #![feature(array_repeat)]
 ///
@@ -48,19 +51,7 @@ pub use iter::IntoIter;
 #[inline]
 #[unstable(feature = "array_repeat", issue = "none")]
 pub fn repeat<T: Clone, const N: usize>(val: T) -> [T; N] {
-    match N {
-        // SAFETY: we know N to be 0 at this point.
-        0 => unsafe { transmute_unchecked::<[T; 0], [T; N]>([]) },
-        // SAFETY: we know N to be 1 at this point.
-        1 => unsafe { transmute_unchecked::<[T; 1], [T; N]>([val]) },
-        _ => {
-            let mut array = MaybeUninit::uninit_array::<N>();
-            try_from_fn_erased(&mut array[..N - 1], NeverShortCircuit::wrap_mut_1(|_| val.clone()));
-            array[N - 1].write(val);
-            // SAFETY: all elements were initialized.
-            unsafe { MaybeUninit::array_assume_init(array) }
-        }
-    }
+    from_trusted_iterator(repeat_n(val, N))
 }
 
 /// Creates an array of type [T; N], where each element `T` is the returned value from `cb`
