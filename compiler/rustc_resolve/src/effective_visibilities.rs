@@ -186,7 +186,7 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
     ) -> Option<Option<Visibility>> {
         match parent_id {
             ParentId::Def(def_id) => (nominal_vis != self.current_private_vis
-                && self.r.visibilities[&def_id] != self.current_private_vis)
+                && self.r.tcx.local_visibility(def_id) != self.current_private_vis)
                 .then_some(Some(self.current_private_vis)),
             ParentId::Import(_) => Some(None),
         }
@@ -222,7 +222,7 @@ impl<'r, 'a, 'tcx> EffectiveVisibilitiesVisitor<'r, 'a, 'tcx> {
     }
 
     fn update_field(&mut self, def_id: LocalDefId, parent_id: LocalDefId) {
-        self.update_def(def_id, self.r.visibilities[&def_id], ParentId::Def(parent_id));
+        self.update_def(def_id, self.r.tcx.local_visibility(def_id), ParentId::Def(parent_id));
     }
 }
 

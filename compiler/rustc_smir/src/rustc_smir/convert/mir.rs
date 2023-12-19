@@ -36,6 +36,7 @@ impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
                 .collect(),
             self.arg_count,
             self.var_debug_info.iter().map(|info| info.stable(tables)).collect(),
+            self.spread_arg.stable(tables),
         )
     }
 }

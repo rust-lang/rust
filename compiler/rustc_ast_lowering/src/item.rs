@@ -421,8 +421,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             ItemKind::MacroDef(MacroDef { body, macro_rules }) => {
                 let body = P(self.lower_delim_args(body));
-                let DefKind::Macro(macro_kind) = self.tcx.def_kind(self.local_def_id(id)) else {
-                    unreachable!()
+                let def_id = self.local_def_id(id);
+                let def_kind = self.tcx.def_kind(def_id);
+                let DefKind::Macro(macro_kind) = def_kind else {
+                    unreachable!(
+                        "expected DefKind::Macro for macro item, found {}",
+                        def_kind.descr(def_id.to_def_id())
+                    );
                 };
                 let macro_def = self.arena.alloc(ast::MacroDef { body, macro_rules: *macro_rules });
                 hir::ItemKind::Macro(macro_def, macro_kind)

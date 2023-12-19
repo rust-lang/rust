@@ -184,22 +184,6 @@ fn clean_generic_bound<'tcx>(
 ) -> Option<GenericBound> {
     Some(match *bound {
         hir::GenericBound::Outlives(lt) => GenericBound::Outlives(clean_lifetime(lt, cx)),
-        hir::GenericBound::LangItemTrait(lang_item, span, _, generic_args) => {
-            let def_id = cx.tcx.require_lang_item(lang_item, Some(span));
-
-            let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(cx.tcx, def_id));
-
-            let generic_args = clean_generic_args(generic_args, cx);
-            let GenericArgs::AngleBracketed { bindings, .. } = generic_args else {
-                bug!("clean: parenthesized `GenericBound::LangItemTrait`");
-            };
-
-            let trait_ = clean_trait_ref_with_bindings(cx, trait_ref, bindings);
-            GenericBound::TraitBound(
-                PolyTrait { trait_, generic_params: vec![] },
-                hir::TraitBoundModifier::None,
-            )
-        }
         hir::GenericBound::Trait(ref t, modifier) => {
             // `T: ~const Destruct` is hidden because `T: Destruct` is a no-op.
             if modifier == hir::TraitBoundModifier::MaybeConst
@@ -743,7 +727,7 @@ pub(crate) fn clean_generics<'tcx>(
                     .into_iter()
                     .map(|(lifetime, bounds)| WherePredicate::RegionPredicate { lifetime, bounds }),
             )
-            .chain(eq_predicates.into_iter())
+            .chain(eq_predicates)
             .collect(),
     }
 }
@@ -2646,6 +2630,40 @@ fn filter_tokens_from_list(
     tokens
 }
 
+fn filter_doc_attr_ident(ident: Symbol, is_inline: bool) -> bool {
+    if is_inline {
+        ident == sym::hidden || ident == sym::inline || ident == sym::no_inline
+    } else {
+        ident == sym::cfg
+    }
+}
+
+/// Remove attributes from `normal` that should not be inherited by `use` re-export.
+/// Before calling this function, make sure `normal` is a `#[doc]` attribute.
+fn filter_doc_attr(normal: &mut ast::NormalAttr, is_inline: bool) {
+    match normal.item.args {
+        ast::AttrArgs::Delimited(ref mut args) => {
+            let tokens = filter_tokens_from_list(&args.tokens, |token| {
+                !matches!(
+                    token,
+                    TokenTree::Token(
+                        Token {
+                            kind: TokenKind::Ident(
+                                ident,
+                                _,
+                            ),
+                            ..
+                        },
+                        _,
+                    ) if filter_doc_attr_ident(*ident, is_inline),
+                )
+            });
+            args.tokens = TokenStream::new(tokens);
+        }
+        ast::AttrArgs::Empty | ast::AttrArgs::Eq(..) => {}
+    }
+}
+
 /// When inlining items, we merge their attributes (and all the reexports attributes too) with the
 /// final reexport. For example:
 ///
@@ -2672,13 +2690,6 @@ fn add_without_unwanted_attributes<'hir>(
     is_inline: bool,
     import_parent: Option<DefId>,
 ) {
-    // If it's not `#[doc(inline)]`, we don't want all attributes, otherwise we keep everything.
-    if !is_inline {
-        for attr in new_attrs {
-            attrs.push((Cow::Borrowed(attr), import_parent));
-        }
-        return;
-    }
     for attr in new_attrs {
         if matches!(attr.kind, ast::AttrKind::DocComment(..)) {
             attrs.push((Cow::Borrowed(attr), import_parent));
@@ -2687,33 +2698,14 @@ fn add_without_unwanted_attributes<'hir>(
         let mut attr = attr.clone();
         match attr.kind {
             ast::AttrKind::Normal(ref mut normal) => {
-                if let [ident] = &*normal.item.path.segments
-                    && let ident = ident.ident.name
-                    && ident == sym::doc
-                {
-                    match normal.item.args {
-                        ast::AttrArgs::Delimited(ref mut args) => {
-                            let tokens = filter_tokens_from_list(&args.tokens, |token| {
-                                !matches!(
-                                    token,
-                                    TokenTree::Token(
-                                        Token {
-                                            kind: TokenKind::Ident(
-                                                sym::hidden | sym::inline | sym::no_inline,
-                                                _,
-                                            ),
-                                            ..
-                                        },
-                                        _,
-                                    ),
-                                )
-                            });
-                            args.tokens = TokenStream::new(tokens);
-                            attrs.push((Cow::Owned(attr), import_parent));
-                        }
-                        ast::AttrArgs::Empty | ast::AttrArgs::Eq(..) => {
-                            attrs.push((Cow::Owned(attr), import_parent));
-                        }
+                if let [ident] = &*normal.item.path.segments {
+                    let ident = ident.ident.name;
+                    if ident == sym::doc {
+                        filter_doc_attr(normal, is_inline);
+                        attrs.push((Cow::Owned(attr), import_parent));
+                    } else if ident != sym::cfg {
+                        // If it's not a `cfg()` attribute, we keep it.
+                        attrs.push((Cow::Owned(attr), import_parent));
                     }
                 }
             }

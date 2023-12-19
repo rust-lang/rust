@@ -227,7 +227,7 @@ impl<'a> StringReader<'a> {
                         let string = self.str_from(suffix_start);
                         if string == "_" {
                             self.sess
-                                .span_diagnostic
+                                .dcx
                                 .emit_err(errors::UnderscoreLiteralSuffix { span: self.mk_sp(suffix_start, self.pos) });
                             None
                         } else {
@@ -346,7 +346,7 @@ impl<'a> StringReader<'a> {
         c: char,
     ) -> DiagnosticBuilder<'a, !> {
         self.sess
-            .span_diagnostic
+            .dcx
             .struct_span_fatal(self.mk_sp(from_pos, to_pos), format!("{}: {}", m, escaped_char(c)))
     }
 
@@ -403,7 +403,7 @@ impl<'a> StringReader<'a> {
         match kind {
             rustc_lexer::LiteralKind::Char { terminated } => {
                 if !terminated {
-                    self.sess.span_diagnostic.span_fatal_with_code(
+                    self.sess.dcx.span_fatal_with_code(
                         self.mk_sp(start, end),
                         "unterminated character literal",
                         error_code!(E0762),
@@ -413,7 +413,7 @@ impl<'a> StringReader<'a> {
             }
             rustc_lexer::LiteralKind::Byte { terminated } => {
                 if !terminated {
-                    self.sess.span_diagnostic.span_fatal_with_code(
+                    self.sess.dcx.span_fatal_with_code(
                         self.mk_sp(start + BytePos(1), end),
                         "unterminated byte constant",
                         error_code!(E0763),
@@ -423,7 +423,7 @@ impl<'a> StringReader<'a> {
             }
             rustc_lexer::LiteralKind::Str { terminated } => {
                 if !terminated {
-                    self.sess.span_diagnostic.span_fatal_with_code(
+                    self.sess.dcx.span_fatal_with_code(
                         self.mk_sp(start, end),
                         "unterminated double quote string",
                         error_code!(E0765),
@@ -433,7 +433,7 @@ impl<'a> StringReader<'a> {
             }
             rustc_lexer::LiteralKind::ByteStr { terminated } => {
                 if !terminated {
-                    self.sess.span_diagnostic.span_fatal_with_code(
+                    self.sess.dcx.span_fatal_with_code(
                         self.mk_sp(start + BytePos(1), end),
                         "unterminated double quote byte string",
                         error_code!(E0766),
@@ -443,7 +443,7 @@ impl<'a> StringReader<'a> {
             }
             rustc_lexer::LiteralKind::CStr { terminated } => {
                 if !terminated {
-                    self.sess.span_diagnostic.span_fatal_with_code(
+                    self.sess.dcx.span_fatal_with_code(
                         self.mk_sp(start + BytePos(1), end),
                         "unterminated C string",
                         error_code!(E0767),
@@ -578,7 +578,7 @@ impl<'a> StringReader<'a> {
         possible_offset: Option<u32>,
         found_terminators: u32,
     ) -> ! {
-        let mut err = self.sess.span_diagnostic.struct_span_fatal_with_code(
+        let mut err = self.sess.dcx.struct_span_fatal_with_code(
             self.mk_sp(start, start),
             "unterminated raw string",
             error_code!(E0748),
@@ -614,7 +614,7 @@ impl<'a> StringReader<'a> {
             None => "unterminated block comment",
         };
         let last_bpos = self.pos;
-        let mut err = self.sess.span_diagnostic.struct_span_fatal_with_code(
+        let mut err = self.sess.dcx.struct_span_fatal_with_code(
             self.mk_sp(start, last_bpos),
             msg,
             error_code!(E0758),
@@ -719,7 +719,7 @@ impl<'a> StringReader<'a> {
                     has_fatal_err = true;
                 }
                 emit_unescape_error(
-                    &self.sess.span_diagnostic,
+                    &self.sess.dcx,
                     lit_content,
                     span_with_quotes,
                     span,

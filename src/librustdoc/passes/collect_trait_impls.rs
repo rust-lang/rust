@@ -22,7 +22,7 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
     let tcx = cx.tcx;
     // We need to check if there are errors before running this pass because it would crash when
     // we try to get auto and blanket implementations.
-    if tcx.sess.diagnostic().has_errors_or_lint_errors().is_some() {
+    if tcx.sess.dcx().has_errors_or_lint_errors().is_some() {
         return krate;
     }
 

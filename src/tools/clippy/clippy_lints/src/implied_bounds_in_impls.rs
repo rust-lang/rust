@@ -194,7 +194,12 @@ fn is_same_generics<'tcx>(
         .enumerate()
         .skip(1) // skip `Self` implicit arg
         .all(|(arg_index, arg)| {
-            if [implied_by_generics.host_effect_index, implied_generics.host_effect_index].contains(&Some(arg_index)) {
+            if [
+                implied_by_generics.host_effect_index,
+                implied_generics.host_effect_index,
+            ]
+            .contains(&Some(arg_index))
+            {
                 // skip host effect params in determining whether generics are same
                 return true;
             }

@@ -440,7 +440,6 @@ TrivialTypeTraversalImpls! {
 // interners).
 TrivialTypeTraversalAndLiftImpls! {
     ::rustc_hir::def_id::DefId,
-    ::rustc_hir::Mutability,
     ::rustc_hir::Unsafety,
     ::rustc_target::spec::abi::Abi,
     crate::ty::ClosureKind,

@@ -2845,6 +2845,28 @@ impl Item {
     pub fn span_with_attributes(&self) -> Span {
         self.attrs.iter().fold(self.span, |acc, attr| acc.to(attr.span))
     }
+
+    pub fn opt_generics(&self) -> Option<&Generics> {
+        match &self.kind {
+            ItemKind::ExternCrate(_)
+            | ItemKind::Use(_)
+            | ItemKind::Mod(_, _)
+            | ItemKind::ForeignMod(_)
+            | ItemKind::GlobalAsm(_)
+            | ItemKind::MacCall(_)
+            | ItemKind::MacroDef(_) => None,
+            ItemKind::Static(_) => None,
+            ItemKind::Const(i) => Some(&i.generics),
+            ItemKind::Fn(i) => Some(&i.generics),
+            ItemKind::TyAlias(i) => Some(&i.generics),
+            ItemKind::TraitAlias(generics, _)
+            | ItemKind::Enum(_, generics)
+            | ItemKind::Struct(_, generics)
+            | ItemKind::Union(_, generics) => Some(&generics),
+            ItemKind::Trait(i) => Some(&i.generics),
+            ItemKind::Impl(i) => Some(&i.generics),
+        }
+    }
 }
 
 /// `extern` qualifier on a function item or function type.

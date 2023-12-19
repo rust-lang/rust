@@ -1,5 +1,5 @@
 use rustc_errors::{
-    DiagnosticArgValue, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee, Handler,
+    DiagCtxt, DiagnosticArgValue, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee,
     IntoDiagnostic,
 };
 use rustc_hir::ConstContext;
@@ -432,11 +432,7 @@ pub struct UndefinedBehavior {
 pub trait ReportErrorExt {
     /// Returns the diagnostic message for this error.
     fn diagnostic_message(&self) -> DiagnosticMessage;
-    fn add_args<G: EmissionGuarantee>(
-        self,
-        handler: &Handler,
-        builder: &mut DiagnosticBuilder<'_, G>,
-    );
+    fn add_args<G: EmissionGuarantee>(self, dcx: &DiagCtxt, builder: &mut DiagnosticBuilder<'_, G>);
 
     fn debug(self) -> String
     where
@@ -444,17 +440,17 @@ pub trait ReportErrorExt {
     {
         ty::tls::with(move |tcx| {
             let mut builder = tcx.sess.struct_allow(DiagnosticMessage::Str(String::new().into()));
-            let handler = tcx.sess.diagnostic();
+            let dcx = tcx.sess.dcx();
             let message = self.diagnostic_message();
-            self.add_args(handler, &mut builder);
-            let s = handler.eagerly_translate_to_string(message, builder.args());
+            self.add_args(dcx, &mut builder);
+            let s = dcx.eagerly_translate_to_string(message, builder.args());
             builder.cancel();
             s
         })
     }
 }
 
-fn bad_pointer_message(msg: CheckInAllocMsg, handler: &Handler) -> String {
+fn bad_pointer_message(msg: CheckInAllocMsg, dcx: &DiagCtxt) -> String {
     use crate::fluent_generated::*;
 
     let msg = match msg {
@@ -464,7 +460,7 @@ fn bad_pointer_message(msg: CheckInAllocMsg, handler: &Handler) -> String {
         CheckInAllocMsg::InboundsTest => const_eval_in_bounds_test,
     };
 
-    handler.eagerly_translate_to_string(msg, [].into_iter())
+    dcx.eagerly_translate_to_string(msg, [].into_iter())
 }
 
 impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
@@ -514,7 +510,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
 
     fn add_args<G: EmissionGuarantee>(
         self,
-        handler: &Handler,
+        dcx: &DiagCtxt,
         builder: &mut DiagnosticBuilder<'_, G>,
     ) {
         use UndefinedBehaviorInfo::*;
@@ -525,7 +521,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                     builder.set_arg(name, value);
                 });
             }
-            ValidationError(e) => e.add_args(handler, builder),
+            ValidationError(e) => e.add_args(dcx, builder),
 
             Unreachable
             | DivisionByZero
@@ -549,7 +545,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             PointerUseAfterFree(alloc_id, msg) => {
                 builder
                     .set_arg("alloc_id", alloc_id)
-                    .set_arg("bad_pointer_message", bad_pointer_message(msg, handler));
+                    .set_arg("bad_pointer_message", bad_pointer_message(msg, dcx));
             }
             PointerOutOfBounds { alloc_id, alloc_size, ptr_offset, ptr_size, msg } => {
                 builder
@@ -557,14 +553,14 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                     .set_arg("alloc_size", alloc_size.bytes())
                     .set_arg("ptr_offset", ptr_offset)
                     .set_arg("ptr_size", ptr_size.bytes())
-                    .set_arg("bad_pointer_message", bad_pointer_message(msg, handler));
+                    .set_arg("bad_pointer_message", bad_pointer_message(msg, dcx));
             }
             DanglingIntPointer(ptr, msg) => {
                 if ptr != 0 {
                     builder.set_arg("pointer", format!("{ptr:#x}[noalloc]"));
                 }
 
-                builder.set_arg("bad_pointer_message", bad_pointer_message(msg, handler));
+                builder.set_arg("bad_pointer_message", bad_pointer_message(msg, dcx));
             }
             AlignmentCheckFailed(Misalignment { required, has }, msg) => {
                 builder.set_arg("required", required.bytes());
@@ -678,7 +674,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
         }
     }
 
-    fn add_args<G: EmissionGuarantee>(self, handler: &Handler, err: &mut DiagnosticBuilder<'_, G>) {
+    fn add_args<G: EmissionGuarantee>(self, dcx: &DiagCtxt, err: &mut DiagnosticBuilder<'_, G>) {
         use crate::fluent_generated as fluent;
         use rustc_middle::mir::interpret::ValidationErrorKind::*;
 
@@ -688,12 +684,12 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
         }
 
         let message = if let Some(path) = self.path {
-            handler.eagerly_translate_to_string(
+            dcx.eagerly_translate_to_string(
                 fluent::const_eval_validation_front_matter_invalid_value_with_path,
                 [("path".into(), DiagnosticArgValue::Str(path.into()))].iter().map(|(a, b)| (a, b)),
             )
         } else {
-            handler.eagerly_translate_to_string(
+            dcx.eagerly_translate_to_string(
                 fluent::const_eval_validation_front_matter_invalid_value,
                 [].into_iter(),
             )
@@ -704,7 +700,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
         fn add_range_arg<G: EmissionGuarantee>(
             r: WrappingRange,
             max_hi: u128,
-            handler: &Handler,
+            dcx: &DiagCtxt,
             err: &mut DiagnosticBuilder<'_, G>,
         ) {
             let WrappingRange { start: lo, end: hi } = r;
@@ -728,7 +724,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                 ("hi".into(), DiagnosticArgValue::Str(hi.to_string().into())),
             ];
             let args = args.iter().map(|(a, b)| (a, b));
-            let message = handler.eagerly_translate_to_string(msg, args);
+            let message = dcx.eagerly_translate_to_string(msg, args);
             err.set_arg("in_range", message);
         }
 
@@ -750,7 +746,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                     ExpectedKind::EnumTag => fluent::const_eval_validation_expected_enum_tag,
                     ExpectedKind::Str => fluent::const_eval_validation_expected_str,
                 };
-                let msg = handler.eagerly_translate_to_string(msg, [].into_iter());
+                let msg = dcx.eagerly_translate_to_string(msg, [].into_iter());
                 err.set_arg("expected", msg);
             }
             InvalidEnumTag { value }
@@ -761,11 +757,11 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
                 err.set_arg("value", value);
             }
             NullablePtrOutOfRange { range, max_value } | PtrOutOfRange { range, max_value } => {
-                add_range_arg(range, max_value, handler, err)
+                add_range_arg(range, max_value, dcx, err)
             }
             OutOfRange { range, max_value, value } => {
                 err.set_arg("value", value);
-                add_range_arg(range, max_value, handler, err);
+                add_range_arg(range, max_value, dcx, err);
             }
             UnalignedPtr { required_bytes, found_bytes, .. } => {
                 err.set_arg("required_bytes", required_bytes);
@@ -804,7 +800,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
             UnsupportedOpInfo::ReadExternStatic(_) => const_eval_read_extern_static,
         }
     }
-    fn add_args<G: EmissionGuarantee>(self, _: &Handler, builder: &mut DiagnosticBuilder<'_, G>) {
+    fn add_args<G: EmissionGuarantee>(self, _: &DiagCtxt, builder: &mut DiagnosticBuilder<'_, G>) {
         use crate::fluent_generated::*;
 
         use UnsupportedOpInfo::*;
@@ -839,14 +835,14 @@ impl<'tcx> ReportErrorExt for InterpError<'tcx> {
     }
     fn add_args<G: EmissionGuarantee>(
         self,
-        handler: &Handler,
+        dcx: &DiagCtxt,
         builder: &mut DiagnosticBuilder<'_, G>,
     ) {
         match self {
-            InterpError::UndefinedBehavior(ub) => ub.add_args(handler, builder),
-            InterpError::Unsupported(e) => e.add_args(handler, builder),
-            InterpError::InvalidProgram(e) => e.add_args(handler, builder),
-            InterpError::ResourceExhaustion(e) => e.add_args(handler, builder),
+            InterpError::UndefinedBehavior(ub) => ub.add_args(dcx, builder),
+            InterpError::Unsupported(e) => e.add_args(dcx, builder),
+            InterpError::InvalidProgram(e) => e.add_args(dcx, builder),
+            InterpError::ResourceExhaustion(e) => e.add_args(dcx, builder),
             InterpError::MachineStop(e) => e.add_args(&mut |name, value| {
                 builder.set_arg(name, value);
             }),
@@ -871,7 +867,7 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
     }
     fn add_args<G: EmissionGuarantee>(
         self,
-        handler: &Handler,
+        dcx: &DiagCtxt,
         builder: &mut DiagnosticBuilder<'_, G>,
     ) {
         match self {
@@ -879,7 +875,7 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
             | InvalidProgramInfo::AlreadyReported(_)
             | InvalidProgramInfo::ConstPropNonsense => {}
             InvalidProgramInfo::Layout(e) => {
-                let diag: DiagnosticBuilder<'_, ()> = e.into_diagnostic().into_diagnostic(handler);
+                let diag: DiagnosticBuilder<'_, ()> = e.into_diagnostic().into_diagnostic(dcx);
                 for (name, val) in diag.args() {
                     builder.set_arg(name.clone(), val.clone());
                 }
@@ -904,5 +900,5 @@ impl ReportErrorExt for ResourceExhaustionInfo {
             ResourceExhaustionInfo::AddressSpaceFull => const_eval_address_space_full,
         }
     }
-    fn add_args<G: EmissionGuarantee>(self, _: &Handler, _: &mut DiagnosticBuilder<'_, G>) {}
+    fn add_args<G: EmissionGuarantee>(self, _: &DiagCtxt, _: &mut DiagnosticBuilder<'_, G>) {}
 }

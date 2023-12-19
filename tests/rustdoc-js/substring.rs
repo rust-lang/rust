@@ -19,3 +19,5 @@ impl SuperWakerTask {
     pub fn waker_non_local() {}
     pub fn from_non_local() {}
 }
+
+pub fn m_y_substringmatching() {}

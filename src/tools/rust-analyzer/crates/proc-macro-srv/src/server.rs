@@ -58,6 +58,10 @@ impl server::Types for RustAnalyzer {
 }
 
 impl server::FreeFunctions for RustAnalyzer {
+    fn injected_env_var(&mut self, _var: &str) -> Option<String> {
+        None
+    }
+
     fn track_env_var(&mut self, _var: &str, _value: Option<&str>) {
         // FIXME: track env var accesses
         // https://github.com/rust-lang/rust/pull/71858

@@ -499,6 +499,7 @@ function initSearch(rawSearchIndex) {
                 fullPath: ["never"],
                 pathWithoutLast: [],
                 pathLast: "never",
+                normalizedPathLast: "never",
                 generics: [],
                 bindings: new Map(),
                 typeFilter: "primitive",
@@ -537,12 +538,14 @@ function initSearch(rawSearchIndex) {
         const bindingName = parserState.isInBinding;
         parserState.isInBinding = null;
         const bindings = new Map();
+        const pathLast = pathSegments[pathSegments.length - 1];
         return {
             name: name.trim(),
             id: null,
             fullPath: pathSegments,
             pathWithoutLast: pathSegments.slice(0, pathSegments.length - 1),
-            pathLast: pathSegments[pathSegments.length - 1],
+            pathLast,
+            normalizedPathLast: pathLast.replace(/_/g, ""),
             generics: generics.filter(gen => {
                 // Syntactically, bindings are parsed as generics,
                 // but the query engine treats them differently.
@@ -689,6 +692,7 @@ function initSearch(rawSearchIndex) {
                 fullPath: ["[]"],
                 pathWithoutLast: [],
                 pathLast: "[]",
+                normalizedPathLast: "[]",
                 generics,
                 typeFilter: "primitive",
                 bindingName: isInBinding,
@@ -1168,13 +1172,12 @@ function initSearch(rawSearchIndex) {
      * Executes the parsed query and builds a {ResultsTable}.
      *
      * @param  {ParsedQuery} parsedQuery - The parsed user query
-     * @param  {Object} searchWords      - The list of search words to query against
      * @param  {Object} [filterCrates]   - Crate to search in if defined
      * @param  {Object} [currentCrate]   - Current crate, to rank results from this crate higher
      *
      * @return {ResultsTable}
      */
-    function execQuery(parsedQuery, searchWords, filterCrates, currentCrate) {
+    function execQuery(parsedQuery, filterCrates, currentCrate) {
         const results_others = new Map(), results_in_args = new Map(),
             results_returned = new Map();
 
@@ -1232,8 +1235,8 @@ function initSearch(rawSearchIndex) {
             const userQuery = parsedQuery.userQuery;
             const result_list = [];
             for (const result of results.values()) {
-                result.word = searchWords[result.id];
-                result.item = searchIndex[result.id] || {};
+                result.item = searchIndex[result.id];
+                result.word = searchIndex[result.id].word;
                 result_list.push(result);
             }
 
@@ -1928,7 +1931,7 @@ function initSearch(rawSearchIndex) {
          * The `results` map contains information which will be used to sort the search results:
          *
          * * `fullId` is a `string`` used as the key of the object we use for the `results` map.
-         * * `id` is the index in both `searchWords` and `searchIndex` arrays for this element.
+         * * `id` is the index in the `searchIndex` array for this element.
          * * `index` is an `integer`` used to sort by the position of the word in the item's name.
          * * `dist` is the main metric used to sort the search results.
          * * `path_dist` is zero if a single-component search query is used, otherwise it's the
@@ -1986,9 +1989,8 @@ function initSearch(rawSearchIndex) {
             if (!row || (filterCrates !== null && row.crate !== filterCrates)) {
                 return;
             }
-            let index = -1, path_dist = 0;
+            let path_dist = 0;
             const fullId = row.id;
-            const searchWord = searchWords[pos];
 
             // fpDist is a minimum possible type distance, where "type distance" is the number of
             // atoms in the function not present in the query
@@ -2021,19 +2023,10 @@ function initSearch(rawSearchIndex) {
                 return;
             }
 
-            const row_index = row.normalizedName.indexOf(elem.pathLast);
-            const word_index = searchWord.indexOf(elem.pathLast);
-
-            // lower indexes are "better" matches
-            // rank based on the "best" match
-            if (row_index === -1) {
-                index = word_index;
-            } else if (word_index === -1) {
-                index = row_index;
-            } else if (word_index < row_index) {
-                index = word_index;
-            } else {
-                index = row_index;
+            let index = row.word.indexOf(elem.pathLast);
+            const normalizedIndex = row.normalizedName.indexOf(elem.pathLast);
+            if (index === -1 || (index > normalizedIndex && normalizedIndex !== -1)) {
+                index = normalizedIndex;
             }
 
             if (elem.fullPath.length > 1) {
@@ -2044,13 +2037,13 @@ function initSearch(rawSearchIndex) {
             }
 
             if (parsedQuery.literalSearch) {
-                if (searchWord === elem.name) {
+                if (row.word === elem.pathLast) {
                     addIntoResults(results_others, fullId, pos, index, 0, path_dist);
                 }
                 return;
             }
 
-            const dist = editDistance(searchWord, elem.pathLast, maxEditDistance);
+            const dist = editDistance(row.normalizedName, elem.normalizedPathLast, maxEditDistance);
 
             if (index === -1 && dist + path_dist > maxEditDistance) {
                 return;
@@ -2135,15 +2128,15 @@ function initSearch(rawSearchIndex) {
              * @param {boolean} isAssocType
              */
             function convertNameToId(elem, isAssocType) {
-                if (typeNameIdMap.has(elem.pathLast) &&
-                    (isAssocType || !typeNameIdMap.get(elem.pathLast).assocOnly)) {
-                    elem.id = typeNameIdMap.get(elem.pathLast).id;
+                if (typeNameIdMap.has(elem.normalizedPathLast) &&
+                    (isAssocType || !typeNameIdMap.get(elem.normalizedPathLast).assocOnly)) {
+                    elem.id = typeNameIdMap.get(elem.normalizedPathLast).id;
                 } else if (!parsedQuery.literalSearch) {
                     let match = null;
                     let matchDist = maxEditDistance + 1;
                     let matchName = "";
                     for (const [name, {id, assocOnly}] of typeNameIdMap) {
-                        const dist = editDistance(name, elem.pathLast, maxEditDistance);
+                        const dist = editDistance(name, elem.normalizedPathLast, maxEditDistance);
                         if (dist <= matchDist && dist <= maxEditDistance &&
                             (isAssocType || !assocOnly)) {
                             if (dist === matchDist && matchName > name) {
@@ -2236,7 +2229,7 @@ function initSearch(rawSearchIndex) {
             if (parsedQuery.foundElems === 1 && parsedQuery.returned.length === 0) {
                 if (parsedQuery.elems.length === 1) {
                     const elem = parsedQuery.elems[0];
-                    for (let i = 0, nSearchWords = searchWords.length; i < nSearchWords; ++i) {
+                    for (let i = 0, nSearchIndex = searchIndex.length; i < nSearchIndex; ++i) {
                         // It means we want to check for this element everywhere (in names, args and
                         // returned).
                         handleSingleArg(
@@ -2267,7 +2260,7 @@ function initSearch(rawSearchIndex) {
                 };
                 parsedQuery.elems.sort(sortQ);
                 parsedQuery.returned.sort(sortQ);
-                for (let i = 0, nSearchWords = searchWords.length; i < nSearchWords; ++i) {
+                for (let i = 0, nSearchIndex = searchIndex.length; i < nSearchIndex; ++i) {
                     handleArgs(searchIndex[i], i, results_others);
                 }
             }
@@ -2651,7 +2644,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         updateSearchHistory(buildUrl(query.original, filterCrates));
 
         showResults(
-            execQuery(query, searchWords, filterCrates, window.currentCrate),
+            execQuery(query, filterCrates, window.currentCrate),
             params.go_to_first,
             filterCrates);
     }
@@ -2920,12 +2913,6 @@ ${item.displayPath}<span class="${type}">${name}</span>\
 
     function buildIndex(rawSearchIndex) {
         searchIndex = [];
-        /**
-         * List of normalized search words (ASCII lowercased, and undescores removed).
-         *
-         * @type {Array<string>}
-         */
-        const searchWords = [];
         typeNameIdMap = new Map();
         const charA = "A".charCodeAt(0);
         let currentIndex = 0;
@@ -3004,7 +2991,6 @@ ${item.displayPath}<span class="${type}">${name}</span>\
          * }}
          */
         for (const [crate, crateCorpus] of rawSearchIndex) {
-            searchWords.push(crate);
             // This object should have exactly the same set of fields as the "row"
             // object defined below. Your JavaScript runtime will thank you.
             // https://mathiasbynens.be/notes/shapes-ics
@@ -3017,6 +3003,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 parent: undefined,
                 type: null,
                 id: id,
+                word: crate,
                 normalizedName: crate.indexOf("_") === -1 ? crate : crate.replace(/_/g, ""),
                 deprecated: null,
                 implDisambiguator: null,
@@ -3084,12 +3071,9 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             len = itemTypes.length;
             for (let i = 0; i < len; ++i) {
                 let word = "";
-                // This object should have exactly the same set of fields as the "crateRow"
-                // object defined above.
                 if (typeof itemNames[i] === "string") {
                     word = itemNames[i].toLowerCase();
                 }
-                searchWords.push(word);
                 const path = itemPaths.has(i) ? itemPaths.get(i) : lastPath;
                 let type = null;
                 if (itemFunctionSearchTypes[i] !== 0) {
@@ -3113,6 +3097,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                         }
                     }
                 }
+                // This object should have exactly the same set of fields as the "crateRow"
+                // object defined above.
                 const row = {
                     crate: crate,
                     ty: itemTypes.charCodeAt(i) - charA,
@@ -3122,6 +3108,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                     parent: itemParentIdxs[i] > 0 ? paths[itemParentIdxs[i] - 1] : undefined,
                     type,
                     id: id,
+                    word,
                     normalizedName: word.indexOf("_") === -1 ? word : word.replace(/_/g, ""),
                     deprecated: deprecatedItems.has(i),
                     implDisambiguator: implDisambiguator.has(i) ? implDisambiguator.get(i) : null,
@@ -3153,7 +3140,6 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             }
             currentIndex += itemTypes.length;
         }
-        return searchWords;
     }
 
     /**
@@ -3332,10 +3318,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         search(true);
     }
 
-    /**
-     *  @type {Array<string>}
-     */
-    const searchWords = buildIndex(rawSearchIndex);
+    buildIndex(rawSearchIndex);
     if (typeof window !== "undefined") {
         registerSearchEvents();
         // If there's a search term in the URL, execute the search now.
@@ -3349,7 +3332,6 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         exports.execQuery = execQuery;
         exports.parseQuery = parseQuery;
     }
-    return searchWords;
 }
 
 if (typeof window !== "undefined") {

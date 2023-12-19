@@ -49,7 +49,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             16 => InlineAsmType::I16,
             32 => InlineAsmType::I32,
             64 => InlineAsmType::I64,
-            _ => unreachable!(),
+            width => bug!("unsupported pointer width: {width}"),
         };
 
         match *ty.kind() {
@@ -101,7 +101,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                             16 => InlineAsmType::VecI16(size),
                             32 => InlineAsmType::VecI32(size),
                             64 => InlineAsmType::VecI64(size),
-                            _ => unreachable!(),
+                            width => bug!("unsupported pointer width: {width}"),
                         })
                     }
                     ty::Float(FloatTy::F32) => Some(InlineAsmType::VecF32(size)),
@@ -109,7 +109,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     _ => None,
                 }
             }
-            ty::Infer(_) => unreachable!(),
+            ty::Infer(_) => bug!("unexpected infer ty in asm operand"),
             _ => None,
         }
     }
@@ -136,8 +136,15 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             ty::Adt(adt, args) if Some(adt.did()) == self.tcx.lang_items().maybe_uninit() => {
                 let fields = &adt.non_enum_variant().fields;
                 let ty = fields[FieldIdx::from_u32(1)].ty(self.tcx, args);
-                let ty::Adt(ty, args) = ty.kind() else { unreachable!() };
-                assert!(ty.is_manually_drop());
+                // FIXME: Are we just trying to map to the `T` in `MaybeUninit<T>`?
+                // If so, just get it from the args.
+                let ty::Adt(ty, args) = ty.kind() else {
+                    unreachable!("expected first field of `MaybeUninit` to be an ADT")
+                };
+                assert!(
+                    ty.is_manually_drop(),
+                    "expected first field of `MaybeUnit` to be `ManuallyDrop`"
+                );
                 let fields = &ty.non_enum_variant().fields;
                 let ty = fields[FieldIdx::from_u32(0)].ty(self.tcx, args);
                 self.get_asm_ty(ty)
@@ -269,7 +276,6 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         lint.help(format!(
                             "or use `{{{idx}:{default_modifier}}}` to keep the default formatting of `{default_result}`",
                         ));
-                        lint
                     },
                 );
             }

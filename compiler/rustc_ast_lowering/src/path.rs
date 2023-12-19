@@ -9,6 +9,7 @@ use rustc_ast::{self as ast, *};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, PartialRes, Res};
 use rustc_hir::GenericArg;
+use rustc_middle::span_bug;
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span, DUMMY_SP};
 
@@ -139,7 +140,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // We should've returned in the for loop above.
 
-        self.tcx.sess.diagnostic().span_bug(
+        self.tcx.sess.dcx().span_bug(
             p.span,
             format!(
                 "lower_qpath: no final extension segment in {}..{}",
@@ -285,7 +286,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let (start, end) = match self.resolver.get_lifetime_res(segment_id) {
             Some(LifetimeRes::ElidedAnchor { start, end }) => (start, end),
             None => return,
-            Some(_) => panic!(),
+            Some(res) => {
+                span_bug!(path_span, "expected an elided lifetime to insert. found {res:?}")
+            }
         };
         let expected_lifetimes = end.as_usize() - start.as_usize();
         debug!(expected_lifetimes);

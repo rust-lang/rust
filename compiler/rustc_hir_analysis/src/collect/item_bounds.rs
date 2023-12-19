@@ -97,8 +97,10 @@ pub(super) fn explicit_item_bounds(
                 item.span,
             ));
         }
-        // These should have been fed!
-        Some(ty::ImplTraitInTraitData::Impl { .. }) => unreachable!(),
+        Some(ty::ImplTraitInTraitData::Impl { .. }) => span_bug!(
+            tcx.def_span(def_id),
+            "item bounds for RPITIT in impl to be fed on def-id creation"
+        ),
         None => {}
     }
 
@@ -128,7 +130,7 @@ pub(super) fn explicit_item_bounds(
             let (hir::OpaqueTyOrigin::FnReturn(fn_def_id)
             | hir::OpaqueTyOrigin::AsyncFn(fn_def_id)) = *origin
             else {
-                bug!()
+                span_bug!(*span, "RPITIT cannot be a TAIT, but got origin {origin:?}");
             };
             let args = GenericArgs::identity_for_item(tcx, def_id);
             let item_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);

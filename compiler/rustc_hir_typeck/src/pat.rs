@@ -1820,7 +1820,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fn joined_uncovered_patterns(witnesses: &[&Ident]) -> String {
             const LIMIT: usize = 3;
             match witnesses {
-                [] => bug!(),
+                [] => {
+                    unreachable!(
+                        "expected an uncovered pattern, otherwise why are we emitting an error?"
+                    )
+                }
                 [witness] => format!("`{witness}`"),
                 [head @ .., tail] if head.len() < LIMIT => {
                     let head: Vec<_> = head.iter().map(<_>::to_string).collect();
@@ -1845,8 +1849,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         lint.note(format!(
             "the pattern is of type `{ty}` and the `non_exhaustive_omitted_patterns` attribute was found",
         ));
-
-        lint
     });
     }
 

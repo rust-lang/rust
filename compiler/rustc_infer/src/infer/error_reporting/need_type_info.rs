@@ -232,7 +232,9 @@ fn ty_to_string<'tcx>(
 /// something users are familiar with. Directly printing the `fn_sig` of closures also
 /// doesn't work as they actually use the "rust-call" API.
 fn closure_as_fn_str<'tcx>(infcx: &InferCtxt<'tcx>, ty: Ty<'tcx>) -> String {
-    let ty::Closure(_, args) = ty.kind() else { unreachable!() };
+    let ty::Closure(_, args) = ty.kind() else {
+        bug!("cannot convert non-closure to fn str in `closure_as_fn_str`")
+    };
     let fn_sig = args.as_closure().sig();
     let args = fn_sig
         .inputs()
@@ -374,7 +376,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 multi_suggestions,
                 bad_label,
             }
-            .into_diagnostic(self.tcx.sess.diagnostic()),
+            .into_diagnostic(self.tcx.sess.dcx()),
             TypeAnnotationNeeded::E0283 => AmbiguousImpl {
                 span,
                 source_kind,
@@ -384,7 +386,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 multi_suggestions,
                 bad_label,
             }
-            .into_diagnostic(self.tcx.sess.diagnostic()),
+            .into_diagnostic(self.tcx.sess.dcx()),
             TypeAnnotationNeeded::E0284 => AmbiguousReturn {
                 span,
                 source_kind,
@@ -394,7 +396,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 multi_suggestions,
                 bad_label,
             }
-            .into_diagnostic(self.tcx.sess.diagnostic()),
+            .into_diagnostic(self.tcx.sess.dcx()),
         }
     }
 }
@@ -581,7 +583,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 multi_suggestions,
                 bad_label: None,
             }
-            .into_diagnostic(self.tcx.sess.diagnostic()),
+            .into_diagnostic(self.tcx.sess.dcx()),
             TypeAnnotationNeeded::E0283 => AmbiguousImpl {
                 span,
                 source_kind,
@@ -591,7 +593,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 multi_suggestions,
                 bad_label: None,
             }
-            .into_diagnostic(self.tcx.sess.diagnostic()),
+            .into_diagnostic(self.tcx.sess.dcx()),
             TypeAnnotationNeeded::E0284 => AmbiguousReturn {
                 span,
                 source_kind,
@@ -601,7 +603,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 multi_suggestions,
                 bad_label: None,
             }
-            .into_diagnostic(self.tcx.sess.diagnostic()),
+            .into_diagnostic(self.tcx.sess.dcx()),
         }
     }
 }

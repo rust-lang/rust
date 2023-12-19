@@ -435,8 +435,6 @@ pub enum TraitBoundModifier {
 #[derive(Clone, Copy, Debug, HashStable_Generic)]
 pub enum GenericBound<'hir> {
     Trait(PolyTraitRef<'hir>, TraitBoundModifier),
-    // FIXME(davidtwco): Introduce `PolyTraitRef::LangItem`
-    LangItemTrait(LangItem, Span, HirId, &'hir GenericArgs<'hir>),
     Outlives(&'hir Lifetime),
 }
 
@@ -451,7 +449,6 @@ impl GenericBound<'_> {
     pub fn span(&self) -> Span {
         match self {
             GenericBound::Trait(t, ..) => t.span,
-            GenericBound::LangItemTrait(_, span, ..) => *span,
             GenericBound::Outlives(l) => l.ident.span,
         }
     }
@@ -1560,7 +1557,7 @@ impl Expr<'_> {
             ExprKind::Call(..) => ExprPrecedence::Call,
             ExprKind::MethodCall(..) => ExprPrecedence::MethodCall,
             ExprKind::Tup(_) => ExprPrecedence::Tup,
-            ExprKind::Binary(op, ..) => ExprPrecedence::Binary(op.node.into()),
+            ExprKind::Binary(op, ..) => ExprPrecedence::Binary(op.node),
             ExprKind::Unary(..) => ExprPrecedence::Unary,
             ExprKind::Lit(_) => ExprPrecedence::Lit,
             ExprKind::Type(..) | ExprKind::Cast(..) => ExprPrecedence::Cast,
@@ -1700,11 +1697,9 @@ impl Expr<'_> {
                 // them being used only for its side-effects.
                 base.can_have_side_effects()
             }
-            ExprKind::Struct(_, fields, init) => fields
-                .iter()
-                .map(|field| field.expr)
-                .chain(init.into_iter())
-                .any(|e| e.can_have_side_effects()),
+            ExprKind::Struct(_, fields, init) => {
+                fields.iter().map(|field| field.expr).chain(init).any(|e| e.can_have_side_effects())
+            }
 
             ExprKind::Array(args)
             | ExprKind::Tup(args)
@@ -2815,7 +2810,7 @@ impl TraitRef<'_> {
         match self.path.res {
             Res::Def(DefKind::Trait | DefKind::TraitAlias, did) => Some(did),
             Res::Err => None,
-            _ => unreachable!(),
+            res => panic!("{res:?} did not resolve to a trait or trait alias"),
         }
     }
 }

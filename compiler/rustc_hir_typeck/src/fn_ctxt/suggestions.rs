@@ -825,9 +825,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && let hir::Node::Item(hir::Item {
                         kind: hir::ItemKind::OpaqueTy(op_ty), ..
                     }) = self.tcx.hir_node(item_id.hir_id())
-                    && let [
-                        hir::GenericBound::LangItemTrait(hir::LangItem::Future, _, _, generic_args),
-                    ] = op_ty.bounds
+                    && let [hir::GenericBound::Trait(trait_ref, _)] = op_ty.bounds
+                    && let Some(hir::PathSegment { args: Some(generic_args), .. }) =
+                        trait_ref.trait_ref.path.segments.last()
                     && let hir::GenericArgs { bindings: [ty_binding], .. } = generic_args
                     && let hir::TypeBindingKind::Equality { term: hir::Term::Ty(term) } =
                         ty_binding.kind
@@ -2072,8 +2072,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Some(CtorKind::Fn) => ("(".to_owned(), ")"),
                     None => (format!(" {{ {field_name}: "), " }"),
 
-                    // unit variants don't have fields
-                    Some(CtorKind::Const) => unreachable!(),
+                    Some(CtorKind::Const) => unreachable!("unit variants don't have fields"),
                 };
 
                 // Suggest constructor as deep into the block tree as possible.

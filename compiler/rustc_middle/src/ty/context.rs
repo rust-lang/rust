@@ -28,7 +28,7 @@ use crate::ty::{
     self, AdtDef, AdtDefData, AdtKind, Binder, Clause, Const, ConstData, GenericParamDefKind,
     ImplPolarity, List, ParamConst, ParamTy, PolyExistentialPredicate, PolyFnSig, Predicate,
     PredicateKind, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
-    TypeAndMut, Visibility,
+    Visibility,
 };
 use crate::ty::{GenericArg, GenericArgs, GenericArgsRef};
 use rustc_ast::{self as ast, attr};
@@ -88,7 +88,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type Term = ty::Term<'tcx>;
 
     type Binder<T> = Binder<'tcx, T>;
-    type TypeAndMut = TypeAndMut<'tcx>;
     type CanonicalVars = CanonicalVarInfos<'tcx>;
 
     type Ty = Ty<'tcx>;
@@ -127,12 +126,6 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type SubtypePredicate = ty::SubtypePredicate<'tcx>;
     type CoercePredicate = ty::CoercePredicate<'tcx>;
     type ClosureKind = ty::ClosureKind;
-
-    fn ty_and_mut_to_parts(
-        TypeAndMut { ty, mutbl }: TypeAndMut<'tcx>,
-    ) -> (Self::Ty, ty::Mutability) {
-        (ty, mutbl)
-    }
 
     fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars {
         self.mk_canonical_var_infos(infos)
@@ -2037,13 +2030,11 @@ impl<'tcx> TyCtxt<'tcx> {
         let msg = decorator.msg();
         let (level, src) = self.lint_level_at_node(lint, hir_id);
         struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg, |diag| {
-            decorator.decorate_lint(diag)
+            decorator.decorate_lint(diag);
         })
     }
 
     /// Emit a lint at the appropriate level for a hir node, with an associated span.
-    ///
-    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     #[rustc_lint_diagnostics]
@@ -2054,9 +2045,7 @@ impl<'tcx> TyCtxt<'tcx> {
         hir_id: HirId,
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(
-            &'b mut DiagnosticBuilder<'a, ()>,
-        ) -> &'b mut DiagnosticBuilder<'a, ()>,
+        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
         let (level, src) = self.lint_level_at_node(lint, hir_id);
         struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg, decorate);
@@ -2071,12 +2060,12 @@ impl<'tcx> TyCtxt<'tcx> {
         id: HirId,
         decorator: impl for<'a> DecorateLint<'a, ()>,
     ) {
-        self.struct_lint_node(lint, id, decorator.msg(), |diag| decorator.decorate_lint(diag))
+        self.struct_lint_node(lint, id, decorator.msg(), |diag| {
+            decorator.decorate_lint(diag);
+        })
     }
 
     /// Emit a lint at the appropriate level for a hir node.
-    ///
-    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     #[rustc_lint_diagnostics]
@@ -2086,9 +2075,7 @@ impl<'tcx> TyCtxt<'tcx> {
         lint: &'static Lint,
         id: HirId,
         msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(
-            &'b mut DiagnosticBuilder<'a, ()>,
-        ) -> &'b mut DiagnosticBuilder<'a, ()>,
+        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
         let (level, src) = self.lint_level_at_node(lint, id);
         struct_lint_level(self.sess, lint, level, src, None, msg, decorate);

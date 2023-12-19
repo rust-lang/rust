@@ -278,7 +278,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         let secondary_errors = mem::take(&mut self.secondary_errors);
         if self.error_emitted.is_none() {
             for error in secondary_errors {
-                self.tcx.sess.diagnostic().emit_diagnostic(error);
+                self.tcx.sess.dcx().emit_diagnostic(error);
             }
         } else {
             assert!(self.tcx.sess.has_errors().is_some());

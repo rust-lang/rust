@@ -353,7 +353,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let new_kind = match ty.kind() {
             Int(t @ Isize) => Int(t.normalize(self.tcx.sess.target.pointer_width)),
             Uint(t @ Usize) => Uint(t.normalize(self.tcx.sess.target.pointer_width)),
-            t @ (Uint(_) | Int(_)) => t.clone(),
+            t @ (Uint(_) | Int(_)) => *t,
             _ => panic!("tried to get overflow intrinsic for op applied to non-int type"),
         };
 

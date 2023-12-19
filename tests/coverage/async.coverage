@@ -1,6 +1,8 @@
+   LL|       |#![feature(coverage_attribute)]
+   LL|       |#![feature(noop_waker)]
    LL|       |#![allow(unused_assignments, dead_code)]
-   LL|       |
-   LL|       |// compile-flags: --edition=2018 -C opt-level=1
+   LL|       |// edition: 2018
+   LL|       |// compile-flags: -Copt-level=1
    LL|       |
    LL|      1|async fn c(x: u8) -> u8 {
    LL|      1|    if x == 8 {
@@ -108,32 +110,21 @@
    LL|      1|}
    LL|       |
    LL|       |mod executor {
-   LL|       |    use core::{
-   LL|       |        future::Future,
-   LL|       |        pin::Pin,
-   LL|       |        task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
-   LL|       |    };
+   LL|       |    use core::future::Future;
+   LL|       |    use core::pin::pin;
+   LL|       |    use core::task::{Context, Poll, Waker};
    LL|       |
-   LL|      1|    pub fn block_on<F: Future>(mut future: F) -> F::Output {
-   LL|      1|        let mut future = unsafe { Pin::new_unchecked(&mut future) };
-   LL|      1|        use std::hint::unreachable_unchecked;
-   LL|      1|        static VTABLE: RawWakerVTable = RawWakerVTable::new(
-   LL|      1|            |_| unsafe { unreachable_unchecked() }, // clone
-                              ^0
-   LL|      1|            |_| unsafe { unreachable_unchecked() }, // wake
-                              ^0
-   LL|      1|            |_| unsafe { unreachable_unchecked() }, // wake_by_ref
-                              ^0
-   LL|      1|            |_| (),
-   LL|      1|        );
-   LL|      1|        let waker = unsafe { Waker::from_raw(RawWaker::new(core::ptr::null(), &VTABLE)) };
-   LL|      1|        let mut context = Context::from_waker(&waker);
+   LL|       |    #[coverage(off)]
+   LL|       |    pub fn block_on<F: Future>(mut future: F) -> F::Output {
+   LL|       |        let mut future = pin!(future);
+   LL|       |        let waker = Waker::noop();
+   LL|       |        let mut context = Context::from_waker(&waker);
    LL|       |
    LL|       |        loop {
-   LL|      1|            if let Poll::Ready(val) = future.as_mut().poll(&mut context) {
-   LL|      1|                break val;
-   LL|      0|            }
+   LL|       |            if let Poll::Ready(val) = future.as_mut().poll(&mut context) {
+   LL|       |                break val;
+   LL|       |            }
    LL|       |        }
-   LL|      1|    }
+   LL|       |    }
    LL|       |}
 

@@ -1152,6 +1152,44 @@ impl<'a> Builder<'a> {
         self.ensure(tool::Rustdoc { compiler })
     }
 
+    pub fn cargo_clippy_cmd(&self, run_compiler: Compiler) -> Command {
+        let initial_sysroot_bin = self.initial_rustc.parent().unwrap();
+        // Set PATH to include the sysroot bin dir so clippy can find cargo.
+        // FIXME: once rust-clippy#11944 lands on beta, set `CARGO` directly instead.
+        let path = t!(env::join_paths(
+            // The sysroot comes first in PATH to avoid using rustup's cargo.
+            std::iter::once(PathBuf::from(initial_sysroot_bin))
+                .chain(env::split_paths(&t!(env::var("PATH"))))
+        ));
+
+        if run_compiler.stage == 0 {
+            // `ensure(Clippy { stage: 0 })` *builds* clippy with stage0, it doesn't use the beta clippy.
+            let cargo_clippy = self.build.config.download_clippy();
+            let mut cmd = Command::new(cargo_clippy);
+            cmd.env("PATH", &path);
+            return cmd;
+        }
+
+        let build_compiler = self.compiler(run_compiler.stage - 1, self.build.build);
+        self.ensure(tool::Clippy {
+            compiler: build_compiler,
+            target: self.build.build,
+            extra_features: vec![],
+        });
+        let cargo_clippy = self.ensure(tool::CargoClippy {
+            compiler: build_compiler,
+            target: self.build.build,
+            extra_features: vec![],
+        });
+        let mut dylib_path = helpers::dylib_path();
+        dylib_path.insert(0, self.sysroot(run_compiler).join("lib"));
+
+        let mut cmd = Command::new(cargo_clippy.unwrap());
+        cmd.env(helpers::dylib_path_var(), env::join_paths(&dylib_path).unwrap());
+        cmd.env("PATH", path);
+        cmd
+    }
+
     pub fn rustdoc_cmd(&self, compiler: Compiler) -> Command {
         let mut cmd = Command::new(&self.bootstrap_out.join("rustdoc"));
         cmd.env("RUSTC_STAGE", compiler.stage.to_string())
@@ -1200,7 +1238,12 @@ impl<'a> Builder<'a> {
         target: TargetSelection,
         cmd: &str,
     ) -> Command {
-        let mut cargo = Command::new(&self.initial_cargo);
+        let mut cargo = if cmd == "clippy" {
+            self.cargo_clippy_cmd(compiler)
+        } else {
+            Command::new(&self.initial_cargo)
+        };
+
         // Run cargo from the source root so it can find .cargo/config.
         // This matters when using vendoring and the working directory is outside the repository.
         cargo.current_dir(&self.src);
@@ -1324,6 +1367,23 @@ impl<'a> Builder<'a> {
             compiler.stage
         };
 
+        // We synthetically interpret a stage0 compiler used to build tools as a
+        // "raw" compiler in that it's the exact snapshot we download. Normally
+        // the stage0 build means it uses libraries build by the stage0
+        // compiler, but for tools we just use the precompiled libraries that
+        // we've downloaded
+        let use_snapshot = mode == Mode::ToolBootstrap;
+        assert!(!use_snapshot || stage == 0 || self.local_rebuild);
+
+        let maybe_sysroot = self.sysroot(compiler);
+        let sysroot = if use_snapshot { self.rustc_snapshot_sysroot() } else { &maybe_sysroot };
+        let libdir = self.rustc_libdir(compiler);
+
+        let sysroot_str = sysroot.as_os_str().to_str().expect("sysroot should be UTF-8");
+        if !matches!(self.config.dry_run, DryRun::SelfCheck) {
+            self.verbose_than(0, &format!("using sysroot {sysroot_str}"));
+        }
+
         let mut rustflags = Rustflags::new(target);
         if stage != 0 {
             if let Ok(s) = env::var("CARGOFLAGS_NOT_BOOTSTRAP") {
@@ -1335,41 +1395,16 @@ impl<'a> Builder<'a> {
                 cargo.args(s.split_whitespace());
             }
             rustflags.env("RUSTFLAGS_BOOTSTRAP");
-            if cmd == "clippy" {
-                // clippy overwrites sysroot if we pass it to cargo.
-                // Pass it directly to clippy instead.
-                // NOTE: this can't be fixed in clippy because we explicitly don't set `RUSTC`,
-                // so it has no way of knowing the sysroot.
-                rustflags.arg("--sysroot");
-                rustflags.arg(
-                    self.sysroot(compiler)
-                        .as_os_str()
-                        .to_str()
-                        .expect("sysroot must be valid UTF-8"),
-                );
-                // Only run clippy on a very limited subset of crates (in particular, not build scripts).
-                cargo.arg("-Zunstable-options");
-                // Explicitly does *not* set `--cfg=bootstrap`, since we're using a nightly clippy.
-                let host_version = Command::new("rustc").arg("--version").output().map_err(|_| ());
-                let output = host_version.and_then(|output| {
-                    if output.status.success() {
-                        Ok(output)
-                    } else {
-                        Err(())
-                    }
-                }).unwrap_or_else(|_| {
-                    eprintln!(
-                        "ERROR: `x.py clippy` requires a host `rustc` toolchain with the `clippy` component"
-                    );
-                    eprintln!("HELP: try `rustup component add clippy`");
-                    crate::exit!(1);
-                });
-                if !t!(std::str::from_utf8(&output.stdout)).contains("nightly") {
-                    rustflags.arg("--cfg=bootstrap");
-                }
-            } else {
-                rustflags.arg("--cfg=bootstrap");
-            }
+            rustflags.arg("--cfg=bootstrap");
+        }
+
+        if cmd == "clippy" {
+            // clippy overwrites sysroot if we pass it to cargo.
+            // Pass it directly to clippy instead.
+            // NOTE: this can't be fixed in clippy because we explicitly don't set `RUSTC`,
+            // so it has no way of knowing the sysroot.
+            rustflags.arg("--sysroot");
+            rustflags.arg(sysroot_str);
         }
 
         let use_new_symbol_mangling = match self.config.rust_new_symbol_mangling {
@@ -1564,18 +1599,6 @@ impl<'a> Builder<'a> {
 
         let want_rustdoc = self.doc_tests != DocTests::No;
 
-        // We synthetically interpret a stage0 compiler used to build tools as a
-        // "raw" compiler in that it's the exact snapshot we download. Normally
-        // the stage0 build means it uses libraries build by the stage0
-        // compiler, but for tools we just use the precompiled libraries that
-        // we've downloaded
-        let use_snapshot = mode == Mode::ToolBootstrap;
-        assert!(!use_snapshot || stage == 0 || self.local_rebuild);
-
-        let maybe_sysroot = self.sysroot(compiler);
-        let sysroot = if use_snapshot { self.rustc_snapshot_sysroot() } else { &maybe_sysroot };
-        let libdir = self.rustc_libdir(compiler);
-
         // Clear the output directory if the real rustc we're using has changed;
         // Cargo cannot detect this as it thinks rustc is bootstrap/debug/rustc.
         //
@@ -1611,10 +1634,19 @@ impl<'a> Builder<'a> {
             )
             .env("RUSTC_ERROR_METADATA_DST", self.extended_error_dir())
             .env("RUSTC_BREAK_ON_ICE", "1");
-        // Clippy support is a hack and uses the default `cargo-clippy` in path.
-        // Don't override RUSTC so that the `cargo-clippy` in path will be run.
-        if cmd != "clippy" {
-            cargo.env("RUSTC", self.bootstrap_out.join("rustc"));
+
+        // Set RUSTC_WRAPPER to the bootstrap shim, which switches between beta and in-tree
+        // sysroot depending on whether we're building build scripts.
+        // NOTE: we intentionally use RUSTC_WRAPPER so that we can support clippy - RUSTC is not
+        // respected by clippy-driver; RUSTC_WRAPPER happens earlier, before clippy runs.
+        cargo.env("RUSTC_WRAPPER", self.bootstrap_out.join("rustc"));
+        // NOTE: we also need to set RUSTC so cargo can run `rustc -vV`; apparently that ignores RUSTC_WRAPPER >:(
+        cargo.env("RUSTC", self.bootstrap_out.join("rustc"));
+
+        // Someone might have set some previous rustc wrapper (e.g.
+        // sccache) before bootstrap overrode it. Respect that variable.
+        if let Some(existing_wrapper) = env::var_os("RUSTC_WRAPPER") {
+            cargo.env("RUSTC_WRAPPER_REAL", existing_wrapper);
         }
 
         // Dealing with rpath here is a little special, so let's go into some
@@ -1991,7 +2023,11 @@ impl<'a> Builder<'a> {
         // Environment variables *required* throughout the build
         //
         // FIXME: should update code to not require this env var
+
+        // The host this new compiler will *run* on.
         cargo.env("CFG_COMPILER_HOST_TRIPLE", target.triple);
+        // The host this new compiler is being *built* on.
+        cargo.env("CFG_COMPILER_BUILD_TRIPLE", compiler.host.triple);
 
         // Set this for all builds to make sure doc builds also get it.
         cargo.env("CFG_RELEASE_CHANNEL", &self.config.channel);

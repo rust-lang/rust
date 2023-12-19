@@ -1007,8 +1007,7 @@ pub struct Resolver<'a, 'tcx> {
 
     /// Maps glob imports to the names of items actually imported.
     glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
-    /// Visibilities in "lowered" form, for all entities that have them.
-    visibilities: FxHashMap<LocalDefId, ty::Visibility>,
+    visibilities_for_hashing: Vec<(LocalDefId, ty::Visibility)>,
     used_imports: FxHashSet<NodeId>,
     maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
 
@@ -1295,9 +1294,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             &mut FxHashMap::default(),
         );
 
-        let mut visibilities = FxHashMap::default();
-        visibilities.insert(CRATE_DEF_ID, ty::Visibility::Public);
-
         let mut def_id_to_node_id = IndexVec::default();
         assert_eq!(def_id_to_node_id.push(CRATE_NODE_ID), CRATE_DEF_ID);
         let mut node_id_to_def_id = FxHashMap::default();
@@ -1363,7 +1359,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ast_transform_scopes: FxHashMap::default(),
 
             glob_map: Default::default(),
-            visibilities,
+            visibilities_for_hashing: Default::default(),
             used_imports: FxHashSet::default(),
             maybe_unused_trait_imports: Default::default(),
 
@@ -1450,6 +1446,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
         resolver.invocation_parent_scopes.insert(LocalExpnId::ROOT, root_parent_scope);
+        resolver.feed_visibility(CRATE_DEF_ID, ty::Visibility::Public);
 
         resolver
     }
@@ -1497,10 +1494,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         Default::default()
     }
 
+    fn feed_visibility(&mut self, def_id: LocalDefId, vis: ty::Visibility) {
+        self.tcx.feed_local_def_id(def_id).visibility(vis.to_def_id());
+        self.visibilities_for_hashing.push((def_id, vis));
+    }
+
     pub fn into_outputs(self) -> ResolverOutputs {
         let proc_macros = self.proc_macros.iter().map(|id| self.local_def_id(*id)).collect();
         let expn_that_defined = self.expn_that_defined;
-        let visibilities = self.visibilities;
         let extern_crate_map = self.extern_crate_map;
         let maybe_unused_trait_imports = self.maybe_unused_trait_imports;
         let glob_map = self.glob_map;
@@ -1517,7 +1518,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let global_ctxt = ResolverGlobalCtxt {
             expn_that_defined,
-            visibilities,
+            visibilities_for_hashing: self.visibilities_for_hashing,
             effective_visibilities,
             extern_crate_map,
             module_children: self.module_children,

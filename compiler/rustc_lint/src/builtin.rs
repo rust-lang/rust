@@ -2800,7 +2800,7 @@ impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
                             NAMED_ASM_LABELS,
                             Some(target_spans),
                             fluent::lint_builtin_asm_labels,
-                            |lint| lint,
+                            |_| {},
                             BuiltinLintDiagnostics::NamedAsmLabel(
                                 "only local labels of the form `<number>:` should be used in inline asm"
                                     .to_string(),

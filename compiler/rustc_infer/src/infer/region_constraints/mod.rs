@@ -623,11 +623,6 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         }
     }
 
-    pub fn root_var(&mut self, vid: ty::RegionVid) -> ty::RegionVid {
-        let mut ut = self.unification_table_mut(); // FIXME(rust-lang/ena#42): unnecessary mut
-        ut.find(vid).vid
-    }
-
     fn combine_map(&mut self, t: CombineMapType) -> &mut CombineMap<'tcx> {
         match t {
             Glb => &mut self.glbs,

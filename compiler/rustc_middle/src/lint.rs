@@ -253,29 +253,10 @@ pub fn explain_lint_level_source(
 /// - [`TyCtxt::struct_lint_node`]
 /// - `LintContext::lookup`
 ///
-/// ## `decorate` signature
+/// ## `decorate`
 ///
-/// The return value of `decorate` is ignored by this function. So what is the
-/// point of returning `&'b mut DiagnosticBuilder<'a, ()>`?
-///
-/// There are 2 reasons for this signature.
-///
-/// First of all, it prevents accidental use of `.emit()` -- it's clear that the
-/// builder will be later used and shouldn't be emitted right away (this is
-/// especially important because the old API expected you to call `.emit()` in
-/// the closure).
-///
-/// Second of all, it makes the most common case of adding just a single label
-/// /suggestion much nicer, since [`DiagnosticBuilder`] methods return
-/// `&mut DiagnosticBuilder`, you can just chain methods, without needed
-/// awkward `{ ...; }`:
-/// ```ignore pseudo-code
-/// struct_lint_level(
-///     ...,
-///     |lint| lint.span_label(sp, "lbl")
-///     //          ^^^^^^^^^^^^^^^^^^^^^ returns `&mut DiagnosticBuilder` by default
-/// )
-/// ```
+/// It is not intended to call `emit`/`cancel` on the `DiagnosticBuilder` passed
+/// in the `decorate` callback.
 #[track_caller]
 pub fn struct_lint_level(
     sess: &Session,
@@ -284,9 +265,7 @@ pub fn struct_lint_level(
     src: LintLevelSource,
     span: Option<MultiSpan>,
     msg: impl Into<DiagnosticMessage>,
-    decorate: impl for<'a, 'b> FnOnce(
-        &'b mut DiagnosticBuilder<'a, ()>,
-    ) -> &'b mut DiagnosticBuilder<'a, ()>,
+    decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
 ) {
     // Avoid codegen bloat from monomorphization by immediately doing dyn dispatch of `decorate` to
     // the "real" work.
@@ -298,12 +277,7 @@ pub fn struct_lint_level(
         src: LintLevelSource,
         span: Option<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
-        decorate: Box<
-            dyn '_
-                + for<'a, 'b> FnOnce(
-                    &'b mut DiagnosticBuilder<'a, ()>,
-                ) -> &'b mut DiagnosticBuilder<'a, ()>,
-        >,
+        decorate: Box<dyn '_ + for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>)>,
     ) {
         // Check for future incompatibility lints and issue a stronger warning.
         let future_incompatible = lint.future_incompatible;
@@ -334,7 +308,7 @@ pub fn struct_lint_level(
             (Level::Expect(expect_id), _) => {
                 // This case is special as we actually allow the lint itself in this context, but
                 // we can't return early like in the case for `Level::Allow` because we still
-                // need the lint diagnostic to be emitted to `rustc_error::HandlerInner`.
+                // need the lint diagnostic to be emitted to `rustc_error::DiagCtxtInner`.
                 //
                 // We can also not mark the lint expectation as fulfilled here right away, as it
                 // can still be cancelled in the decorate function. All of this means that we simply
@@ -350,11 +324,11 @@ pub fn struct_lint_level(
             (Level::Warn | Level::ForceWarn(None), Some(span)) => sess.struct_span_warn(span, ""),
             (Level::Warn | Level::ForceWarn(None), None) => sess.struct_warn(""),
             (Level::Deny | Level::Forbid, Some(span)) => {
-                let mut builder = sess.diagnostic().struct_err_lint("");
+                let mut builder = sess.dcx().struct_err_lint("");
                 builder.set_span(span);
                 builder
             }
-            (Level::Deny | Level::Forbid, None) => sess.diagnostic().struct_err_lint(""),
+            (Level::Deny | Level::Forbid, None) => sess.dcx().struct_err_lint(""),
         };
 
         err.set_is_lint();

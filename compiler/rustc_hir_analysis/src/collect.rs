@@ -672,7 +672,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
 
         hir::TraitItemKind::Const(ty, body_id) => {
             tcx.ensure().type_of(def_id);
-            if !tcx.sess.diagnostic().has_stashed_diagnostic(ty.span, StashKey::ItemNoType)
+            if !tcx.sess.dcx().has_stashed_diagnostic(ty.span, StashKey::ItemNoType)
                 && !(is_suggestable_infer_ty(ty) && body_id.is_some())
             {
                 // Account for `const C: _;`.
@@ -836,7 +836,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
     use rustc_hir::*;
 
     let Node::Item(item) = tcx.hir_node_by_def_id(def_id) else {
-        bug!();
+        bug!("expected ADT to be an item");
     };
 
     let repr = tcx.repr_options_of_def(def_id.to_def_id());
@@ -887,7 +887,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
 
             (adt_kind, variants)
         }
-        _ => bug!(),
+        _ => bug!("{:?} is not an ADT", item.owner_id.def_id),
     };
     tcx.mk_adt_def(def_id.to_def_id(), kind, variants, repr)
 }

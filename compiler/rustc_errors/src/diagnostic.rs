@@ -91,10 +91,7 @@ where
 #[rustc_diagnostic_item = "DecorateLint"]
 pub trait DecorateLint<'a, G: EmissionGuarantee> {
     /// Decorate and emit a lint.
-    fn decorate_lint<'b>(
-        self,
-        diag: &'b mut DiagnosticBuilder<'a, G>,
-    ) -> &'b mut DiagnosticBuilder<'a, G>;
+    fn decorate_lint<'b>(self, diag: &'b mut DiagnosticBuilder<'a, G>);
 
     fn msg(&self) -> DiagnosticMessage;
 }
@@ -889,13 +886,13 @@ impl Diagnostic {
     /// interpolated variables).
     pub fn eager_subdiagnostic(
         &mut self,
-        handler: &crate::Handler,
+        dcx: &crate::DiagCtxt,
         subdiagnostic: impl AddToDiagnostic,
     ) -> &mut Self {
         subdiagnostic.add_to_diagnostic_with(self, |diag, msg| {
             let args = diag.args();
             let msg = diag.subdiagnostic_message_to_diagnostic_message(msg);
-            handler.eagerly_translate(msg, args)
+            dcx.eagerly_translate(msg, args)
         });
         self
     }

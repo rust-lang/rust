@@ -3,11 +3,28 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, Mutability, TyKind};
+use rustc_hir::{Expr, ExprKind, Mutability, QPath, TyKind};
+use rustc_hir_pretty::qpath_to_string;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, TypeAndMut};
+use rustc_span::sym;
 
 use super::PTR_AS_PTR;
+
+enum OmitFollowedCastReason<'a> {
+    None,
+    Null(&'a QPath<'a>),
+    NullMut(&'a QPath<'a>),
+}
+
+impl OmitFollowedCastReason<'_> {
+    fn corresponding_item(&self) -> Option<&QPath<'_>> {
+        match self {
+            OmitFollowedCastReason::None => None,
+            OmitFollowedCastReason::Null(x) | OmitFollowedCastReason::NullMut(x) => Some(*x),
+        }
+    }
+}
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: &Msrv) {
     if !msrv.meets(msrvs::POINTER_CAST) {
@@ -25,7 +42,6 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: &Msrv) {
         && to_pointee_ty.is_sized(cx.tcx, cx.param_env)
     {
         let mut app = Applicability::MachineApplicable;
-        let cast_expr_sugg = Sugg::hir_with_applicability(cx, cast_expr, "_", &mut app);
         let turbofish = match &cast_to_hir_ty.kind {
             TyKind::Infer => String::new(),
             TyKind::Ptr(mut_ty) => {
@@ -41,13 +57,44 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: &Msrv) {
             _ => return,
         };
 
+        // following `cast` does not compile because it fails to infer what type is expected
+        // as type argument to `std::ptr::ptr_null` or `std::ptr::ptr_null_mut`, so
+        // we omit following `cast`:
+        let omit_cast = if let ExprKind::Call(func, []) = cast_expr.kind
+            && let ExprKind::Path(ref qpath @ QPath::Resolved(None, path)) = func.kind
+        {
+            let method_defid = path.res.def_id();
+            if cx.tcx.is_diagnostic_item(sym::ptr_null, method_defid) {
+                OmitFollowedCastReason::Null(qpath)
+            } else if cx.tcx.is_diagnostic_item(sym::ptr_null_mut, method_defid) {
+                OmitFollowedCastReason::NullMut(qpath)
+            } else {
+                OmitFollowedCastReason::None
+            }
+        } else {
+            OmitFollowedCastReason::None
+        };
+
+        let (help, final_suggestion) = if let Some(method) = omit_cast.corresponding_item() {
+            // don't force absolute path
+            let method = qpath_to_string(method);
+            ("try call directly", format!("{method}{turbofish}()"))
+        } else {
+            let cast_expr_sugg = Sugg::hir_with_applicability(cx, cast_expr, "_", &mut app);
+
+            (
+                "try `pointer::cast`, a safer alternative",
+                format!("{}.cast{turbofish}()", cast_expr_sugg.maybe_par()),
+            )
+        };
+
         span_lint_and_sugg(
             cx,
             PTR_AS_PTR,
             expr.span,
             "`as` casting between raw pointers without changing its mutability",
-            "try `pointer::cast`, a safer alternative",
-            format!("{}.cast{turbofish}()", cast_expr_sugg.maybe_par()),
+            help,
+            final_suggestion,
             app,
         );
     }

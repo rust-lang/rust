@@ -1436,12 +1436,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let hir::ArrayLen::Body(hir::AnonConst { hir_id, .. }) = length
             && let Some(span) = self.tcx.hir().opt_span(hir_id)
         {
-            match self
-                .tcx
-                .sess
-                .diagnostic()
-                .steal_diagnostic(span, StashKey::UnderscoreForArrayLengths)
-            {
+            match self.tcx.sess.dcx().steal_diagnostic(span, StashKey::UnderscoreForArrayLengths) {
                 Some(mut err) => {
                     err.span_suggestion(
                         span,
@@ -2002,11 +1997,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 != range_def_id
         {
             // Suppress any range expr type mismatches
-            if let Some(mut diag) = self
-                .tcx
-                .sess
-                .diagnostic()
-                .steal_diagnostic(last_expr_field.span, StashKey::MaybeFruTypo)
+            if let Some(mut diag) =
+                self.tcx.sess.dcx().steal_diagnostic(last_expr_field.span, StashKey::MaybeFruTypo)
             {
                 diag.delay_as_bug();
             }
@@ -2087,7 +2079,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let names = names.iter().map(|name| format!("`{name}`")).collect::<Vec<_>>();
                     format!("{} and `{last}` ", names.join(", "))
                 }
-                [] => unreachable!(),
+                [] => bug!("expected at least one private field to report"),
             };
             err.note(format!(
                 "{}private field{s} {names}that {were} not provided",

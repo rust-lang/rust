@@ -1597,7 +1597,9 @@ impl<'a> State<'a> {
             }
             match bound {
                 ast::GenericBound::Outlives(lt) => self.print_lifetime(*lt),
-                _ => panic!(),
+                _ => {
+                    panic!("expected a lifetime bound, found a trait bound")
+                }
             }
         }
     }

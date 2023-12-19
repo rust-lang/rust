@@ -194,6 +194,18 @@ note: this impl is not `const`, so it cannot have `~const` trait bounds
 LL | impl<T: ~const Trait> Trait for T {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: `~const` is not allowed here
+  --> $DIR/tilde-const-invalid-places.rs:56:9
+   |
+LL | impl<T: ~const Trait> Struct<T> {}
+   |         ^^^^^^
+   |
+note: inherent impls cannot have `~const` trait bounds
+  --> $DIR/tilde-const-invalid-places.rs:56:1
+   |
+LL | impl<T: ~const Trait> Struct<T> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0658]: generic const items are experimental
   --> $DIR/tilde-const-invalid-places.rs:19:15
    |
@@ -239,6 +251,6 @@ LL |     type Type<T: ~const Trait> = ();
    = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
    = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
 
-error: aborting due to 26 previous errors
+error: aborting due to 27 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

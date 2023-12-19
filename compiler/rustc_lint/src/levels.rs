@@ -144,7 +144,7 @@ fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExp
     builder.add_id(hir::CRATE_HIR_ID);
     tcx.hir().walk_toplevel_module(&mut builder);
 
-    tcx.sess.diagnostic().update_unstable_expectation_id(&builder.provider.unstable_to_stable_ids);
+    tcx.sess.dcx().update_unstable_expectation_id(&builder.provider.unstable_to_stable_ids);
 
     builder.provider.expectations
 }
@@ -1077,7 +1077,6 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                             GateIssue::Language,
                             lint_from_cli,
                         );
-                        lint
                     },
                 );
                 return false;
@@ -1094,8 +1093,6 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     /// Used to emit a lint-related diagnostic based on the current state of
     /// this lint context.
     ///
-    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
-    ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     #[rustc_lint_diagnostics]
     #[track_caller]
@@ -1104,9 +1101,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         lint: &'static Lint,
         span: Option<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(
-            &'b mut DiagnosticBuilder<'a, ()>,
-        ) -> &'b mut DiagnosticBuilder<'a, ()>,
+        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
         let (level, src) = self.lint_level(lint);
         struct_lint_level(self.sess, lint, level, src, span, msg, decorate)
@@ -1121,7 +1116,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     ) {
         let (level, src) = self.lint_level(lint);
         struct_lint_level(self.sess, lint, level, src, Some(span), decorate.msg(), |lint| {
-            decorate.decorate_lint(lint)
+            decorate.decorate_lint(lint);
         });
     }
 
@@ -1129,7 +1124,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     pub fn emit_lint(&self, lint: &'static Lint, decorate: impl for<'a> DecorateLint<'a, ()>) {
         let (level, src) = self.lint_level(lint);
         struct_lint_level(self.sess, lint, level, src, None, decorate.msg(), |lint| {
-            decorate.decorate_lint(lint)
+            decorate.decorate_lint(lint);
         });
     }
 }

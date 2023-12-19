@@ -102,7 +102,7 @@ impl<'a> PostExpansionVisitor<'a> {
             }
             Err(abi::AbiDisabled::Unrecognized) => {
                 if self.sess.opts.pretty.map_or(true, |ppm| ppm.needs_hir()) {
-                    self.sess.diagnostic().span_delayed_bug(
+                    self.sess.dcx().span_delayed_bug(
                         span,
                         format!(
                             "unrecognized ABI not caught in lowering: {}",
@@ -654,7 +654,7 @@ fn maybe_stage_features(sess: &Session, features: &Features, krate: &ast::Crate)
             if all_stable {
                 err.sugg = Some(attr.span);
             }
-            sess.diagnostic().emit_err(err);
+            sess.dcx().emit_err(err);
         }
     }
 }

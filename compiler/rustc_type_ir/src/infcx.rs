@@ -18,14 +18,14 @@ pub trait InferCtxtLike {
         lt: <Self::Interner as Interner>::InferRegion,
     ) -> Option<UniverseIndex>;
 
-    /// Resolve `InferRegion` to its root `InferRegion`.
-    fn root_lt_var(
-        &self,
-        vid: <Self::Interner as Interner>::InferRegion,
-    ) -> <Self::Interner as Interner>::InferRegion;
-
-    /// Resolve `InferRegion` to its inferred region, if it has been equated with a non-infer region.
-    fn probe_lt_var(
+    /// Resolve `InferRegion` to its inferred region, if it has been equated with
+    /// a non-infer region.
+    ///
+    /// FIXME: This has slightly different semantics than `{probe,resolve}_{ty,ct}_var`,
+    /// that has to do with the fact unlike `Ty` or `Const` vars, in rustc, we may
+    /// not always be able to *name* the root region var from the universe of the
+    /// var we're trying to resolve. That's why it's called *opportunistic*.
+    fn opportunistic_resolve_lt_var(
         &self,
         vid: <Self::Interner as Interner>::InferRegion,
     ) -> Option<<Self::Interner as Interner>::Region>;

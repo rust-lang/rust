@@ -116,12 +116,13 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
     fn register_predicate_obligation(
         &mut self,
         infcx: &InferCtxt<'tcx>,
-        obligation: PredicateObligation<'tcx>,
+        mut obligation: PredicateObligation<'tcx>,
     ) {
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
         // this helps to reduce duplicate errors, as well as making
         // debug output much nicer to read and so on.
-        let obligation = infcx.resolve_vars_if_possible(obligation);
+        debug_assert!(!obligation.param_env.has_non_region_infer());
+        obligation.predicate = infcx.resolve_vars_if_possible(obligation.predicate);
 
         debug!(?obligation, "register_predicate_obligation");
 

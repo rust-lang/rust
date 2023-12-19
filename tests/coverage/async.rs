@@ -1,6 +1,8 @@
+#![feature(coverage_attribute)]
+#![feature(noop_waker)]
 #![allow(unused_assignments, dead_code)]
-
-// compile-flags: --edition=2018 -C opt-level=1
+// edition: 2018
+// compile-flags: -Copt-level=1
 
 async fn c(x: u8) -> u8 {
     if x == 8 {
@@ -101,22 +103,14 @@ fn main() {
 }
 
 mod executor {
-    use core::{
-        future::Future,
-        pin::Pin,
-        task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
-    };
+    use core::future::Future;
+    use core::pin::pin;
+    use core::task::{Context, Poll, Waker};
 
+    #[coverage(off)]
     pub fn block_on<F: Future>(mut future: F) -> F::Output {
-        let mut future = unsafe { Pin::new_unchecked(&mut future) };
-        use std::hint::unreachable_unchecked;
-        static VTABLE: RawWakerVTable = RawWakerVTable::new(
-            |_| unsafe { unreachable_unchecked() }, // clone
-            |_| unsafe { unreachable_unchecked() }, // wake
-            |_| unsafe { unreachable_unchecked() }, // wake_by_ref
-            |_| (),
-        );
-        let waker = unsafe { Waker::from_raw(RawWaker::new(core::ptr::null(), &VTABLE)) };
+        let mut future = pin!(future);
+        let waker = Waker::noop();
         let mut context = Context::from_waker(&waker);
 
         loop {

@@ -923,7 +923,7 @@ impl ConstructorSet {
             }
             ConstructorSet::Integers { range_1, range_2 } => {
                 let seen_ranges: Vec<_> =
-                    seen.iter().map(|ctor| ctor.as_int_range().unwrap().clone()).collect();
+                    seen.iter().map(|ctor| *ctor.as_int_range().unwrap()).collect();
                 for (seen, splitted_range) in range_1.split(seen_ranges.iter().cloned()) {
                     match seen {
                         Presence::Unseen => missing.push(IntRange(splitted_range)),

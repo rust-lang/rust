@@ -441,6 +441,14 @@ cc = ["@rust-lang/miri"]
 message = "Some changes occurred in need_type_info.rs"
 cc = ["@lcnr"]
 
+[mentions."compiler/rustc_middle/src/ty/relate.rs"]
+message = "Type relation code was changed"
+cc = ["@compiler-errors", "@lcnr"]
+
+[mentions."compiler/rustc_infer/src/infer/relate"]
+message = "Type relation code was changed"
+cc = ["@compiler-errors", "@lcnr"]
+
 [mentions."compiler/rustc_middle/src/mir/interpret"]
 message = "Some changes occurred to the CTFE / Miri engine"
 cc = ["@rust-lang/miri"]
@@ -555,15 +563,15 @@ cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@davidtwco", "@celinval", "@vakar
 
 [mentions."compiler/rustc_error_messages"]
 message = "`rustc_error_messages` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@TaKO8Ki"]
+cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_errors/src/translation.rs"]
 message = "`rustc_errors::translation` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@TaKO8Ki"]
+cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_macros/src/diagnostics"]
 message = "`rustc_macros::diagnostics` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@TaKO8Ki"]
+cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
 
 [mentions."compiler/stable_mir"]
 message = "This PR changes Stable MIR"
@@ -597,19 +605,19 @@ cc = ["@davidtwco", "@wesleywiser"]
 message = """
 This PR modifies `src/bootstrap/src/core/config`.
 
-If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs` and `change-id` in `config.example.toml`.
+If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs`.
 """
 [mentions."src/bootstrap/defaults"]
 message = """
 This PR modifies `src/bootstrap/defaults`.
 
-If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs` and `change-id` in `config.example.toml`.
+If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs`.
 """
 [mentions."config.example.toml"]
 message = """
 This PR modifies `config.example.toml`.
 
-If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs` and `change-id` in `config.example.toml`.
+If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs`.
 """
 
 [mentions."src/bootstrap/defaults/config.compiler.toml"]

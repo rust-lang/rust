@@ -945,7 +945,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
     assert!(attr.has_name(sym::repr), "expected `#[repr(..)]`, found: {attr:?}");
     use ReprAttr::*;
     let mut acc = Vec::new();
-    let diagnostic = sess.diagnostic();
+    let diagnostic = sess.dcx();
 
     if let Some(items) = attr.meta_item_list() {
         for item in items {

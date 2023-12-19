@@ -5,7 +5,7 @@ use std::iter::Peekable;
 use std::path::Path;
 use std::str::Chars;
 
-use rustc_errors::Handler;
+use rustc_errors::DiagCtxt;
 
 #[cfg(test)]
 mod tests;
@@ -236,7 +236,7 @@ pub(crate) fn get_differences(
 pub(crate) fn test_theme_against<P: AsRef<Path>>(
     f: &P,
     origin: &FxHashMap<String, CssPath>,
-    diag: &Handler,
+    dcx: &DiagCtxt,
 ) -> (bool, Vec<String>) {
     let against = match fs::read_to_string(f)
         .map_err(|e| e.to_string())
@@ -244,7 +244,7 @@ pub(crate) fn test_theme_against<P: AsRef<Path>>(
     {
         Ok(c) => c,
         Err(e) => {
-            diag.struct_err(e).emit();
+            dcx.struct_err(e).emit();
             return (false, vec![]);
         }
     };

@@ -279,7 +279,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                             param.hir_id,
                             param.span,
                             TYPE_DEFAULT_NOT_ALLOWED,
-                            |lint| lint,
+                            |_| {},
                         );
                     }
                     Defaults::Deny => {

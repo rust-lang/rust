@@ -34,6 +34,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "CONST",
@@ -61,6 +62,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "CONST_WITH_INNER",
@@ -88,6 +90,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "Enum",
@@ -117,6 +120,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "ItemLikeMacro",
@@ -146,6 +150,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "Macro",
@@ -175,6 +180,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "STATIC",
@@ -202,6 +208,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "Struct",
@@ -231,6 +238,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "StructFromMacro",
@@ -260,6 +268,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "StructInFn",
@@ -291,6 +300,7 @@
                     "main",
                 ),
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "StructInNamedConst",
@@ -322,6 +332,7 @@
                     "CONST_WITH_INNER",
                 ),
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "StructInUnnamedConst",
@@ -351,6 +362,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "Trait",
@@ -378,6 +390,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "Trait",
@@ -407,6 +420,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "Union",
@@ -436,6 +450,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "a_mod",
@@ -465,6 +480,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "b_mod",
@@ -494,6 +510,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "define_struct",
@@ -523,6 +540,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "impl_fn",
@@ -550,6 +568,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: true,
             },
             FileSymbol {
                 name: "macro_rules_macro",
@@ -579,6 +598,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "main",
@@ -606,6 +626,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "really_define_struct",
@@ -635,6 +656,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "trait_fn",
@@ -664,6 +686,7 @@
                     "Trait",
                 ),
                 is_alias: false,
+                is_assoc: true,
             },
         ],
     ),
@@ -704,6 +727,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
         ],
     ),
@@ -744,6 +768,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "StructInModB",
@@ -773,6 +798,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "SuperItemLikeMacro",
@@ -802,6 +828,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "ThisStruct",
@@ -831,6 +858,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "ThisStruct",
@@ -860,6 +888,7 @@
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
         ],
     ),

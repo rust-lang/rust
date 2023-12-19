@@ -5,7 +5,7 @@ pub use self::BoundRegionConversionTime::*;
 pub use self::RegionVariableOrigin::*;
 pub use self::SubregionOrigin::*;
 pub use self::ValuePairs::*;
-pub use combine::ObligationEmittingRelation;
+pub use relate::combine::ObligationEmittingRelation;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::infer::unify_key::{ConstVidKey, EffectVidKey};
@@ -43,7 +43,6 @@ use rustc_span::{Span, DUMMY_SP};
 use std::cell::{Cell, RefCell};
 use std::fmt;
 
-use self::combine::CombineFields;
 use self::error_reporting::TypeErrCtxt;
 use self::free_regions::RegionRelations;
 use self::lexical_region_resolve::LexicalRegionResolutions;
@@ -51,29 +50,23 @@ use self::region_constraints::{GenericKind, VarInfos, VerifyBound};
 use self::region_constraints::{
     RegionConstraintCollector, RegionConstraintStorage, RegionSnapshot,
 };
+pub use self::relate::combine::CombineFields;
+pub use self::relate::nll as nll_relate;
 use self::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 
 pub mod at;
 pub mod canonical;
-mod combine;
-mod equate;
 pub mod error_reporting;
 pub mod free_regions;
 mod freshen;
 mod fudge;
-mod generalize;
-mod glb;
-mod higher_ranked;
-pub mod lattice;
 mod lexical_region_resolve;
-mod lub;
-pub mod nll_relate;
 pub mod opaque_types;
 pub mod outlives;
 mod projection;
 pub mod region_constraints;
+mod relate;
 pub mod resolve;
-mod sub;
 pub mod type_variable;
 mod undo_log;
 
@@ -381,17 +374,13 @@ impl<'tcx> ty::InferCtxtLike for InferCtxt<'tcx> {
         self.probe_ty_var(vid).ok()
     }
 
-    fn root_lt_var(&self, vid: ty::RegionVid) -> ty::RegionVid {
-        self.root_region_var(vid)
-    }
-
-    fn probe_lt_var(&self, vid: ty::RegionVid) -> Option<ty::Region<'tcx>> {
+    fn opportunistic_resolve_lt_var(&self, vid: ty::RegionVid) -> Option<ty::Region<'tcx>> {
         let re = self
             .inner
             .borrow_mut()
             .unwrap_region_constraints()
             .opportunistic_resolve_var(self.tcx, vid);
-        if re.is_var() { None } else { Some(re) }
+        if *re == ty::ReVar(vid) { None } else { Some(re) }
     }
 
     fn root_ct_var(&self, vid: ConstVid) -> ConstVid {
@@ -724,10 +713,6 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
 }
 
 impl<'tcx, T> InferOk<'tcx, T> {
-    pub fn unit(self) -> InferOk<'tcx, ()> {
-        InferOk { value: (), obligations: self.obligations }
-    }
-
     /// Extracts `value`, registering any obligations into `fulfill_cx`.
     pub fn into_value_registering_obligations(
         self,
@@ -1036,15 +1021,10 @@ impl<'tcx> InferCtxt<'tcx> {
             _ => {}
         }
 
-        Ok(self.commit_if_ok(|_snapshot| {
-            let ty::SubtypePredicate { a_is_expected, a, b } =
-                self.instantiate_binder_with_placeholders(predicate);
+        let ty::SubtypePredicate { a_is_expected, a, b } =
+            self.instantiate_binder_with_placeholders(predicate);
 
-            let ok =
-                self.at(cause, param_env).sub_exp(DefineOpaqueTypes::No, a_is_expected, a, b)?;
-
-            Ok(ok.unit())
-        }))
+        Ok(self.at(cause, param_env).sub_exp(DefineOpaqueTypes::No, a_is_expected, a, b))
     }
 
     pub fn region_outlives_predicate(
@@ -1365,10 +1345,6 @@ impl<'tcx> InferCtxt<'tcx> {
 
     pub fn root_var(&self, var: ty::TyVid) -> ty::TyVid {
         self.inner.borrow_mut().type_variables().root_var(var)
-    }
-
-    pub fn root_region_var(&self, var: ty::RegionVid) -> ty::RegionVid {
-        self.inner.borrow_mut().unwrap_region_constraints().root_var(var)
     }
 
     pub fn root_const_var(&self, var: ty::ConstVid) -> ty::ConstVid {

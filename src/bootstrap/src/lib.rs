@@ -34,6 +34,7 @@ use filetime::FileTime;
 use sha2::digest::Digest;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
 use utils::channel::GitInfo;
+use utils::helpers::hex_encode;
 
 use crate::core::builder;
 use crate::core::builder::Kind;
@@ -1871,7 +1872,7 @@ pub fn generate_smart_stamp_hash(dir: &Path, additional_input: &str) -> String {
     hasher.update(status);
     hasher.update(additional_input);
 
-    hex::encode(hasher.finalize().as_slice())
+    hex_encode(hasher.finalize().as_slice())
 }
 
 /// Ensures that the behavior dump directory is properly initialized.

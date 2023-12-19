@@ -16,7 +16,7 @@ fn check_expectations(tcx: TyCtxt<'_>, tool_filter: Option<Symbol>) {
     }
 
     let lint_expectations = tcx.lint_expectations(());
-    let fulfilled_expectations = tcx.sess.diagnostic().steal_fulfilled_expectation_ids();
+    let fulfilled_expectations = tcx.sess.dcx().steal_fulfilled_expectation_ids();
 
     tracing::debug!(?lint_expectations, ?fulfilled_expectations);
 

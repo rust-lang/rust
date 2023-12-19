@@ -1,5 +1,5 @@
 // Local js definitions:
-/* global addClass, getSettingValue, hasClass, searchState */
+/* global addClass, getSettingValue, hasClass, searchState, updateLocalStorage */
 /* global onEach, onEachLazy, removeClass, getVar */
 
 "use strict";
@@ -495,7 +495,7 @@ function preLoadCss(cssUrl) {
                 }
                 const link = document.createElement("a");
                 link.href = path;
-                if (link.href === current_page) {
+                if (path === current_page) {
                     link.className = "current";
                 }
                 link.textContent = name;
@@ -857,12 +857,12 @@ function preLoadCss(cssUrl) {
         for (const crate of window.ALL_CRATES) {
             const link = document.createElement("a");
             link.href = window.rootPath + crate + "/index.html";
-            if (window.rootPath !== "./" && crate === window.currentCrate) {
-                link.className = "current";
-            }
             link.textContent = crate;
 
             const li = document.createElement("li");
+            if (window.rootPath !== "./" && crate === window.currentCrate) {
+                li.className = "current";
+            }
             li.appendChild(link);
             ul.appendChild(li);
         }
@@ -1473,6 +1473,264 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
     searchState.setup();
 }());
 
+// Hide, show, and resize the sidebar
+//
+// The body class and CSS variable are initially set up in storage.js,
+// but in this file, we implement:
+//
+//   * the show sidebar button, which appears if the sidebar is hidden
+//     and, by clicking on it, will bring it back
+//   * the sidebar resize handle, which appears only on large viewports
+//     with a [fine precision pointer] to allow the user to change
+//     the size of the sidebar
+//
+// [fine precision pointer]: https://developer.mozilla.org/en-US/docs/Web/CSS/@media/pointer
+(function() {
+    // 100 is the size of the logo
+    // don't let the sidebar get smaller than that, or it'll get squished
+    const SIDEBAR_MIN = 100;
+    // Don't let the sidebar get bigger than this
+    const SIDEBAR_MAX = 500;
+    // Don't let the body (including the gutter) get smaller than this
+    //
+    // WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
+    // Acceptable values for BODY_MIN are constrained by the mobile breakpoint
+    // (which is the minimum size of the whole page where the sidebar exists)
+    // and the default sidebar width:
+    //
+    //     BODY_MIN <= RUSTDOC_MOBILE_BREAKPOINT - DEFAULT_SIDEBAR_WIDTH
+    //
+    // At the time of this writing, the DEFAULT_SIDEBAR_WIDTH on src pages is
+    // 300px, and the RUSTDOC_MOBILE_BREAKPOINT is 700px, so BODY_MIN must be
+    // at most 400px. Otherwise, it would start out at the default size, then
+    // grabbing the resize handle would suddenly cause it to jank to
+    // its contraint-generated maximum.
+    const RUSTDOC_MOBILE_BREAKPOINT = 700;
+    const BODY_MIN = 400;
+    // At half-way past the minimum size, vanish the sidebar entirely
+    const SIDEBAR_VANISH_THRESHOLD = SIDEBAR_MIN / 2;
+
+    // Toolbar button to show the sidebar.
+    //
+    // On small, "mobile-sized" viewports, it's not persistent and it
+    // can only be activated by going into Settings and hiding the nav bar.
+    // On larger, "desktop-sized" viewports (though that includes many
+    // tablets), it's fixed-position, appears in the left side margin,
+    // and it can be activated by resizing the sidebar into nothing.
+    const sidebarButton = document.getElementById("sidebar-button");
+    if (sidebarButton) {
+        sidebarButton.addEventListener("click", e => {
+            removeClass(document.documentElement, "hide-sidebar");
+            updateLocalStorage("hide-sidebar", "false");
+            e.preventDefault();
+        });
+    }
+
+    // Pointer capture.
+    //
+    // Resizing is a single-pointer gesture. Any secondary pointer is ignored
+    let currentPointerId = null;
+
+    // "Desired" sidebar size.
+    //
+    // This is stashed here for window resizing. If the sidebar gets
+    // shrunk to maintain BODY_MIN, and then the user grows the window again,
+    // it gets the sidebar to restore its size.
+    let desiredSidebarSize = null;
+
+    // Sidebar resize debouncer.
+    //
+    // The sidebar itself is resized instantly, but the body HTML can be too
+    // big for that, causing reflow jank. To reduce this, we queue up a separate
+    // animation frame and throttle it.
+    let pendingSidebarResizingFrame = false;
+
+    // If this page has no sidebar at all, bail out.
+    const resizer = document.querySelector(".sidebar-resizer");
+    const sidebar = document.querySelector(".sidebar");
+    if (!resizer || !sidebar) {
+        return;
+    }
+
+    // src page and docs page use different variables, because the contents of
+    // the sidebar are so different that it's reasonable to thing the user
+    // would want them to have different sizes
+    const isSrcPage = hasClass(document.body, "src");
+
+    // Call this function to hide the sidebar when using the resize handle
+    //
+    // This function also nulls out the sidebar width CSS variable and setting,
+    // causing it to return to its default. This does not happen if you do it
+    // from settings.js, which uses a separate function. It's done here because
+    // the minimum sidebar size is rather uncomfortable, and it must pass
+    // through that size when using the shrink-to-nothing gesture.
+    function hideSidebar() {
+        if (isSrcPage) {
+            window.rustdocCloseSourceSidebar();
+            updateLocalStorage("src-sidebar-width", null);
+            // [RUSTDOCIMPL] CSS variable fast path
+            //
+            // The sidebar width variable is attached to the <html> element by
+            // storage.js, because the sidebar and resizer don't exist yet.
+            // But the resize code, in `resize()`, sets the property on the
+            // sidebar and resizer elements (which are the only elements that
+            // use the variable) to avoid recalculating CSS on the entire
+            // document on every frame.
+            //
+            // So, to clear it, we need to clear all three.
+            document.documentElement.style.removeProperty("--src-sidebar-width");
+            sidebar.style.removeProperty("--src-sidebar-width");
+            resizer.style.removeProperty("--src-sidebar-width");
+        } else {
+            addClass(document.documentElement, "hide-sidebar");
+            updateLocalStorage("hide-sidebar", "true");
+            updateLocalStorage("desktop-sidebar-width", null);
+            document.documentElement.style.removeProperty("--desktop-sidebar-width");
+            sidebar.style.removeProperty("--desktop-sidebar-width");
+            resizer.style.removeProperty("--desktop-sidebar-width");
+        }
+    }
+
+    // Call this function to show the sidebar from the resize handle.
+    // On docs pages, this can only happen if the user has grabbed the resize
+    // handle, shrunk the sidebar down to nothing, and then pulls back into
+    // the visible range without releasing it. You can, however, grab the
+    // resize handle on a source page with the sidebar closed, because it
+    // remains visible all the time on there.
+    function showSidebar() {
+        if (isSrcPage) {
+            window.rustdocShowSourceSidebar();
+        } else {
+            removeClass(document.documentElement, "hide-sidebar");
+            updateLocalStorage("hide-sidebar", "false");
+        }
+    }
+
+    /**
+     * Call this to set the correct CSS variable and setting.
+     * This function doesn't enforce size constraints. Do that before calling it!
+     *
+     * @param {number} size - CSS px width of the sidebar.
+     */
+    function changeSidebarSize(size) {
+        if (isSrcPage) {
+            updateLocalStorage("src-sidebar-width", size);
+            // [RUSTDOCIMPL] CSS variable fast path
+            //
+            // While this property is set on the HTML element at load time,
+            // because the sidebar isn't actually loaded yet,
+            // we scope this update to the sidebar to avoid hitting a slow
+            // path in WebKit.
+            sidebar.style.setProperty("--src-sidebar-width", size + "px");
+            resizer.style.setProperty("--src-sidebar-width", size + "px");
+        } else {
+            updateLocalStorage("desktop-sidebar-width", size);
+            sidebar.style.setProperty("--desktop-sidebar-width", size + "px");
+            resizer.style.setProperty("--desktop-sidebar-width", size + "px");
+        }
+    }
+
+    // Check if the sidebar is hidden. Since src pages and doc pages have
+    // different settings, this function has to check that.
+    function isSidebarHidden() {
+        return isSrcPage ?
+            !hasClass(document.documentElement, "src-sidebar-expanded") :
+            hasClass(document.documentElement, "hide-sidebar");
+    }
+
+    // Respond to the resize handle event.
+    // This function enforces size constraints, and implements the
+    // shrink-to-nothing gesture based on thresholds defined above.
+    function resize(e) {
+        if (currentPointerId === null || currentPointerId !== e.pointerId) {
+            return;
+        }
+        e.preventDefault();
+        const pos = e.clientX - sidebar.offsetLeft - 3;
+        if (pos < SIDEBAR_VANISH_THRESHOLD) {
+            hideSidebar();
+        } else if (pos >= SIDEBAR_MIN) {
+            if (isSidebarHidden()) {
+                showSidebar();
+            }
+            // don't let the sidebar get wider than SIDEBAR_MAX, or the body narrower
+            // than BODY_MIN
+            const constrainedPos = Math.min(pos, window.innerWidth - BODY_MIN, SIDEBAR_MAX);
+            changeSidebarSize(constrainedPos);
+            desiredSidebarSize = constrainedPos;
+            if (pendingSidebarResizingFrame !== false) {
+                clearTimeout(pendingSidebarResizingFrame);
+            }
+            pendingSidebarResizingFrame = setTimeout(() => {
+                if (currentPointerId === null || pendingSidebarResizingFrame === false) {
+                    return;
+                }
+                pendingSidebarResizingFrame = false;
+                document.documentElement.style.setProperty(
+                    "--resizing-sidebar-width",
+                    desiredSidebarSize + "px"
+                );
+            }, 100);
+        }
+    }
+    // Respond to the window resize event.
+    window.addEventListener("resize", () => {
+        if (window.innerWidth < RUSTDOC_MOBILE_BREAKPOINT) {
+            return;
+        }
+        stopResize();
+        if (desiredSidebarSize >= (window.innerWidth - BODY_MIN)) {
+            changeSidebarSize(window.innerWidth - BODY_MIN);
+        } else if (desiredSidebarSize !== null && desiredSidebarSize > SIDEBAR_MIN) {
+            changeSidebarSize(desiredSidebarSize);
+        }
+    });
+    function stopResize(e) {
+        if (currentPointerId === null) {
+            return;
+        }
+        if (e) {
+            e.preventDefault();
+        }
+        desiredSidebarSize = sidebar.getBoundingClientRect().width;
+        removeClass(resizer, "active");
+        window.removeEventListener("pointermove", resize, false);
+        window.removeEventListener("pointerup", stopResize, false);
+        removeClass(document.documentElement, "sidebar-resizing");
+        document.documentElement.style.removeProperty( "--resizing-sidebar-width");
+        if (resizer.releasePointerCapture) {
+            resizer.releasePointerCapture(currentPointerId);
+            currentPointerId = null;
+        }
+    }
+    function initResize(e) {
+        if (currentPointerId !== null || e.altKey || e.ctrlKey || e.metaKey || e.button !== 0) {
+            return;
+        }
+        if (resizer.setPointerCapture) {
+            resizer.setPointerCapture(e.pointerId);
+            if (!resizer.hasPointerCapture(e.pointerId)) {
+                // unable to capture pointer; something else has it
+                // on iOS, this usually means you long-clicked a link instead
+                resizer.releasePointerCapture(e.pointerId);
+                return;
+            }
+            currentPointerId = e.pointerId;
+        }
+        e.preventDefault();
+        window.addEventListener("pointermove", resize, false);
+        window.addEventListener("pointercancel", stopResize, false);
+        window.addEventListener("pointerup", stopResize, false);
+        addClass(resizer, "active");
+        addClass(document.documentElement, "sidebar-resizing");
+        const pos = e.clientX - sidebar.offsetLeft - 3;
+        document.documentElement.style.setProperty( "--resizing-sidebar-width", pos + "px");
+        desiredSidebarSize = null;
+    }
+    resizer.addEventListener("pointerdown", initResize, false);
+}());
+
+// This section handles the copy button that appears next to the path breadcrumbs
 (function() {
     let reset_button_timeout = null;
 

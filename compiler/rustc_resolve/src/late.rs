@@ -3112,6 +3112,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             | (DefKind::AssocFn, AssocItemKind::Fn(..))
             | (DefKind::AssocConst, AssocItemKind::Const(..)) => {
                 self.r.record_partial_res(id, PartialRes::new(res));
+                let vis = self.r.tcx.visibility(id_in_trait).expect_local();
+                self.r.feed_visibility(self.r.local_def_id(id), vis);
                 return;
             }
             _ => {}

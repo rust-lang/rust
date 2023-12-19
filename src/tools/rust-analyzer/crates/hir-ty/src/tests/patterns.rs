@@ -1153,3 +1153,41 @@ fn main() {
 "#,
     );
 }
+
+#[test]
+fn type_mismatch_pat_const_reference() {
+    check_no_mismatches(
+        r#"
+const TEST_STR: &'static str = "abcd";
+
+fn main() {
+    let s = "abcd";
+    match s {
+        TEST_STR => (),
+        _ => (),
+    }
+}
+
+            "#,
+    );
+    check(
+        r#"
+struct Foo<T>(T);
+
+impl<T> Foo<T> {
+    const TEST_I32_REF: &'static i32 = &3;
+    const TEST_I32: i32 = 3;
+}
+
+fn main() {
+    match &6 {
+        Foo::<i32>::TEST_I32_REF => (),
+        Foo::<i32>::TEST_I32 => (),
+      //^^^^^^^^^^^^^^^^^^^^ expected &i32, got i32
+        _ => (),
+    }
+}
+
+            "#,
+    );
+}

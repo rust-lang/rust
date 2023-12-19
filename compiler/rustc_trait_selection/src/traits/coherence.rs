@@ -273,7 +273,6 @@ fn overlap<'tcx>(
                                     causing the impls to overlap",
                                 infcx.resolve_vars_if_possible(failing_obligation.predicate)
                             ));
-                            lint
                         },
                     );
                 }
@@ -487,7 +486,7 @@ fn plug_infer_with_placeholders<'tcx>(
                         ),
                     )
                 else {
-                    bug!()
+                    bug!("we always expect to be able to plug an infer var with placeholder")
                 };
                 assert_eq!(obligations, &[]);
                 ControlFlow::Continue(())
@@ -510,7 +509,7 @@ fn plug_infer_with_placeholders<'tcx>(
                         ),
                     )
                 else {
-                    bug!()
+                    bug!("we always expect to be able to plug an infer var with placeholder")
                 };
                 assert_eq!(obligations, &[]);
                 ControlFlow::Continue(())
@@ -544,7 +543,7 @@ fn plug_infer_with_placeholders<'tcx>(
                             ),
                         )
                     else {
-                        bug!()
+                        bug!("we always expect to be able to plug an infer var with placeholder")
                     };
                     assert_eq!(obligations, &[]);
                 }

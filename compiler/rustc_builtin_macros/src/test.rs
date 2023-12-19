@@ -389,16 +389,16 @@ pub fn expand_test_or_bench(
 }
 
 fn not_testable_error(cx: &ExtCtxt<'_>, attr_sp: Span, item: Option<&ast::Item>) {
-    let diag = cx.sess.diagnostic();
+    let dcx = cx.sess.dcx();
     let msg = "the `#[test]` attribute may only be used on a non-associated function";
     let mut err = match item.map(|i| &i.kind) {
         // These were a warning before #92959 and need to continue being that to avoid breaking
         // stable user code (#94508).
-        Some(ast::ItemKind::MacCall(_)) => diag.struct_span_warn(attr_sp, msg),
+        Some(ast::ItemKind::MacCall(_)) => dcx.struct_span_warn(attr_sp, msg),
         // `.forget_guarantee()` needed to get these two arms to match types. Because of how
         // locally close the `.emit()` call is I'm comfortable with it, but if it can be
         // reworked in the future to not need it, it'd be nice.
-        _ => diag.struct_span_err(attr_sp, msg).forget_guarantee(),
+        _ => dcx.struct_span_err(attr_sp, msg).forget_guarantee(),
     };
     if let Some(item) = item {
         err.span_label(
@@ -466,7 +466,7 @@ fn should_ignore_message(i: &ast::Item) -> Option<Symbol> {
 fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
     match attr::find_by_name(&i.attrs, sym::should_panic) {
         Some(attr) => {
-            let sd = cx.sess.diagnostic();
+            let dcx = cx.sess.dcx();
 
             match attr.meta_item_list() {
                 // Handle #[should_panic(expected = "foo")]
@@ -477,7 +477,7 @@ fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
                         .and_then(|mi| mi.meta_item())
                         .and_then(|mi| mi.value_str());
                     if list.len() != 1 || msg.is_none() {
-                        sd.struct_span_warn(
+                        dcx.struct_span_warn(
                             attr.span,
                             "argument must be of the form: \
                              `expected = \"error message\"`",
@@ -535,30 +535,30 @@ fn check_test_signature(
     f: &ast::Fn,
 ) -> Result<(), ErrorGuaranteed> {
     let has_should_panic_attr = attr::contains_name(&i.attrs, sym::should_panic);
-    let sd = cx.sess.diagnostic();
+    let dcx = cx.sess.dcx();
 
     if let ast::Unsafe::Yes(span) = f.sig.header.unsafety {
-        return Err(sd.emit_err(errors::TestBadFn { span: i.span, cause: span, kind: "unsafe" }));
+        return Err(dcx.emit_err(errors::TestBadFn { span: i.span, cause: span, kind: "unsafe" }));
     }
 
     if let Some(coroutine_kind) = f.sig.header.coroutine_kind {
         match coroutine_kind {
             ast::CoroutineKind::Async { span, .. } => {
-                return Err(sd.emit_err(errors::TestBadFn {
+                return Err(dcx.emit_err(errors::TestBadFn {
                     span: i.span,
                     cause: span,
                     kind: "async",
                 }));
             }
             ast::CoroutineKind::Gen { span, .. } => {
-                return Err(sd.emit_err(errors::TestBadFn {
+                return Err(dcx.emit_err(errors::TestBadFn {
                     span: i.span,
                     cause: span,
                     kind: "gen",
                 }));
             }
             ast::CoroutineKind::AsyncGen { span, .. } => {
-                return Err(sd.emit_err(errors::TestBadFn {
+                return Err(dcx.emit_err(errors::TestBadFn {
                     span: i.span,
                     cause: span,
                     kind: "async gen",
@@ -576,15 +576,15 @@ fn check_test_signature(
     };
 
     if !f.sig.decl.inputs.is_empty() {
-        return Err(sd.span_err(i.span, "functions used as tests can not have any arguments"));
+        return Err(dcx.span_err(i.span, "functions used as tests can not have any arguments"));
     }
 
     if has_should_panic_attr && has_output {
-        return Err(sd.span_err(i.span, "functions using `#[should_panic]` must return `()`"));
+        return Err(dcx.span_err(i.span, "functions using `#[should_panic]` must return `()`"));
     }
 
     if f.generics.params.iter().any(|param| !matches!(param.kind, GenericParamKind::Lifetime)) {
-        return Err(sd.span_err(
+        return Err(dcx.span_err(
             i.span,
             "functions used as tests can not have any non-lifetime generic parameters",
         ));
@@ -601,7 +601,7 @@ fn check_bench_signature(
     // N.B., inadequate check, but we're running
     // well before resolve, can't get too deep.
     if f.sig.decl.inputs.len() != 1 {
-        return Err(cx.sess.diagnostic().emit_err(errors::BenchSig { span: i.span }));
+        return Err(cx.sess.dcx().emit_err(errors::BenchSig { span: i.span }));
     }
     Ok(())
 }

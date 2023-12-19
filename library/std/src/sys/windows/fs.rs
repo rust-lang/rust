@@ -309,14 +309,16 @@ impl File {
                 && unsafe { c::GetLastError() } == c::ERROR_ALREADY_EXISTS
             {
                 unsafe {
-                    // Setting the allocation size to zero also sets the
-                    // EOF position to zero.
-                    let alloc = c::FILE_ALLOCATION_INFO { AllocationSize: 0 };
+                    // This originally used `FileAllocationInfo` instead of
+                    // `FileEndOfFileInfo` but that wasn't supported by WINE.
+                    // It's arguable which fits the semantics of `OpenOptions`
+                    // better so let's just use the more widely supported method.
+                    let eof = c::FILE_END_OF_FILE_INFO { EndOfFile: 0 };
                     let result = c::SetFileInformationByHandle(
                         handle.as_raw_handle(),
-                        c::FileAllocationInfo,
-                        ptr::addr_of!(alloc).cast::<c_void>(),
-                        mem::size_of::<c::FILE_ALLOCATION_INFO>() as u32,
+                        c::FileEndOfFileInfo,
+                        ptr::addr_of!(eof).cast::<c_void>(),
+                        mem::size_of::<c::FILE_END_OF_FILE_INFO>() as u32,
                     );
                     if result == 0 {
                         return Err(io::Error::last_os_error());

@@ -76,9 +76,6 @@ pub trait HasDocComments: HasAttrs {
     fn doc_comments(&self) -> DocCommentIter {
         DocCommentIter { iter: self.syntax().children_with_tokens() }
     }
-    fn doc_comments_and_attrs(&self) -> AttrDocCommentIter {
-        AttrDocCommentIter { iter: self.syntax().children_with_tokens() }
-    }
 }
 
 impl DocCommentIter {

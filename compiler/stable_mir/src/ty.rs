@@ -22,9 +22,7 @@ impl Debug for Ty {
 /// Constructors for `Ty`.
 impl Ty {
     /// Create a new type from a given kind.
-    ///
-    /// Note that not all types may be supported at this point.
-    fn from_rigid_kind(kind: RigidTy) -> Ty {
+    pub fn from_rigid_kind(kind: RigidTy) -> Ty {
         with(|cx| cx.new_rigid_ty(kind))
     }
 
@@ -76,6 +74,16 @@ impl Ty {
     /// Create a type representing `bool`.
     pub fn bool_ty() -> Ty {
         Ty::from_rigid_kind(RigidTy::Bool)
+    }
+
+    /// Create a type representing a signed integer.
+    pub fn signed_ty(inner: IntTy) -> Ty {
+        Ty::from_rigid_kind(RigidTy::Int(inner))
+    }
+
+    /// Create a type representing an unsigned integer.
+    pub fn unsigned_ty(inner: UintTy) -> Ty {
+        Ty::from_rigid_kind(RigidTy::Uint(inner))
     }
 }
 
@@ -306,6 +314,12 @@ impl TyKind {
     #[inline]
     pub fn is_str(&self) -> bool {
         *self == TyKind::RigidTy(RigidTy::Str)
+    }
+
+    #[inline]
+    pub fn is_cstr(&self) -> bool {
+        let TyKind::RigidTy(RigidTy::Adt(def, _)) = self else { return false };
+        with(|cx| cx.adt_is_cstr(*def))
     }
 
     #[inline]

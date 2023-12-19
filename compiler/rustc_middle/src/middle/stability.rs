@@ -223,7 +223,6 @@ fn late_report_deprecation(
             let kind = tcx.def_descr(def_id);
             deprecation_suggestion(diag, kind, suggestion, method_span);
         }
-        diag
     });
 }
 
@@ -587,7 +586,7 @@ impl<'tcx> TyCtxt<'tcx> {
         unmarked: impl FnOnce(Span, DefId),
     ) -> bool {
         let soft_handler = |lint, span, msg: String| {
-            self.struct_span_lint_hir(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, msg, |lint| lint)
+            self.struct_span_lint_hir(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, msg, |_| {})
         };
         let eval_result =
             self.eval_stability_allow_unstable(def_id, id, span, method_span, allow_unstable);

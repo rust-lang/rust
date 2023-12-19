@@ -278,6 +278,10 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
 
     let mir_opaque_ty = tcx.mir_borrowck(owner_def_id).concrete_opaque_types.get(&def_id).copied();
     if let Some(mir_opaque_ty) = mir_opaque_ty {
+        if mir_opaque_ty.references_error() {
+            return mir_opaque_ty.ty;
+        }
+
         let scope = tcx.local_def_id_to_hir_id(owner_def_id);
         debug!(?scope);
         let mut locator = RpitConstraintChecker { def_id, tcx, found: mir_opaque_ty };

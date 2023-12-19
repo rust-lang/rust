@@ -3,7 +3,7 @@ use std::fmt;
 use std::fs;
 use std::io;
 
-use rustc_session::EarlyErrorHandler;
+use rustc_session::EarlyDiagCtxt;
 
 fn arg_expand(arg: String) -> Result<Vec<String>, Error> {
     if let Some(path) = arg.strip_prefix('@') {
@@ -23,12 +23,12 @@ fn arg_expand(arg: String) -> Result<Vec<String>, Error> {
 /// **Note:** This function doesn't interpret argument 0 in any special way.
 /// If this function is intended to be used with command line arguments,
 /// `argv[0]` must be removed prior to calling it manually.
-pub fn arg_expand_all(handler: &EarlyErrorHandler, at_args: &[String]) -> Vec<String> {
+pub fn arg_expand_all(early_dcx: &EarlyDiagCtxt, at_args: &[String]) -> Vec<String> {
     let mut args = Vec::new();
     for arg in at_args {
         match arg_expand(arg.clone()) {
             Ok(arg) => args.extend(arg),
-            Err(err) => handler.early_error(format!("Failed to load argument file: {err}")),
+            Err(err) => early_dcx.early_error(format!("Failed to load argument file: {err}")),
         }
     }
     args
