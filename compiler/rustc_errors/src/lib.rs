@@ -992,13 +992,7 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
     ) -> ErrorGuaranteed {
         let mut inner = self.inner.borrow_mut();
-
-        // This is technically `self.treat_err_as_bug()` but `span_delayed_bug` is called before
-        // incrementing `err_count` by one, so we need to +1 the comparing.
-        // FIXME: Would be nice to increment err_count in a more coherent way.
-        if inner.flags.treat_err_as_bug.is_some_and(|c| {
-            inner.err_count + inner.lint_err_count + inner.delayed_bug_count() + 1 >= c.get()
-        }) {
+        if inner.treat_next_err_as_bug() {
             // FIXME: don't abort here if report_delayed_bugs is off
             inner.span_bug(sp, msg);
         }
@@ -1516,6 +1510,13 @@ impl DiagCtxtInner {
     fn treat_err_as_bug(&self) -> bool {
         self.flags.treat_err_as_bug.is_some_and(|c| {
             self.err_count + self.lint_err_count + self.delayed_bug_count() >= c.get()
+        })
+    }
+
+    // Use this one before incrementing `err_count`.
+    fn treat_next_err_as_bug(&self) -> bool {
+        self.flags.treat_err_as_bug.is_some_and(|c| {
+            self.err_count + self.lint_err_count + self.delayed_bug_count() + 1 >= c.get()
         })
     }
 
