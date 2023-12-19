@@ -54,7 +54,8 @@ pub(crate) enum Op<S> {
     Var { name: SmolStr, kind: Option<MetaVarKind>, id: S },
     Ignore { name: SmolStr, id: S },
     Index { depth: usize },
-    Count { name: SmolStr, depth: Option<usize> },
+    Length { depth: usize },
+    Count { name: SmolStr, depth: usize },
     Repeat { tokens: MetaTemplate<S>, kind: RepeatKind, separator: Option<Separator<S>> },
     Subtree { tokens: MetaTemplate<S>, delimiter: tt::Delimiter<S> },
     Literal(tt::Literal<S>),
@@ -299,15 +300,16 @@ fn parse_metavar_expr<S: Span>(src: &mut TtIter<'_, S>) -> Result<Op<S>, ()> {
 
     let op = match &*func.text {
         "ignore" => {
+            args.expect_dollar()?;
             let ident = args.expect_ident()?;
             Op::Ignore { name: ident.text.clone(), id: ident.span }
         }
         "index" => Op::Index { depth: parse_depth(&mut args)? },
+        "length" => Op::Length { depth: parse_depth(&mut args)? },
         "count" => {
+            args.expect_dollar()?;
             let ident = args.expect_ident()?;
-            // `${count(t)}` and `${count(t,)}` have different meanings. Not sure if this is a bug
-            // but that's how it's implemented in rustc as of this writing. See rust-lang/rust#111904.
-            let depth = if try_eat_comma(&mut args) { Some(parse_depth(&mut args)?) } else { None };
+            let depth = if try_eat_comma(&mut args) { parse_depth(&mut args)? } else { 0 };
             Op::Count { name: ident.text.clone(), depth }
         }
         _ => return Err(()),

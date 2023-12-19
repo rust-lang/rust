@@ -232,6 +232,21 @@ fn expand_subtree<S: Span>(
                     .into(),
                 );
             }
+            Op::Length { depth } => {
+                let length = ctx.nesting.get(ctx.nesting.len() - 1 - depth).map_or(0, |_nest| {
+                    // FIXME: to be implemented
+                    0
+                });
+                arena.push(
+                    tt::Leaf::Literal(tt::Literal {
+                        text: length.to_string().into(),
+                        // FIXME
+                        #[allow(deprecated)]
+                        span: S::DUMMY,
+                    })
+                    .into(),
+                );
+            }
             Op::Count { name, depth } => {
                 let mut binding = match ctx.bindings.get(name.as_str()) {
                     Ok(b) => b,
@@ -518,28 +533,18 @@ fn fix_up_and_push_path_tt<S: Span>(buf: &mut Vec<tt::TokenTree<S>>, subtree: tt
 fn count<S>(
     ctx: &ExpandCtx<'_, S>,
     binding: &Binding<S>,
-    our_depth: usize,
-    count_depth: Option<usize>,
+    depth_curr: usize,
+    depth_max: usize,
 ) -> Result<usize, CountError> {
     match binding {
-        Binding::Nested(bs) => match count_depth {
-            None => bs.iter().map(|b| count(ctx, b, our_depth + 1, None)).sum(),
-            Some(0) => Ok(bs.len()),
-            Some(d) => bs.iter().map(|b| count(ctx, b, our_depth + 1, Some(d - 1))).sum(),
-        },
-        Binding::Empty => Ok(0),
-        Binding::Fragment(_) | Binding::Missing(_) => {
-            if our_depth == 0 {
-                // `${count(t)}` is placed inside the innermost repetition. This includes cases
-                // where `t` is not a repeated fragment.
-                Err(CountError::Misplaced)
-            } else if count_depth.is_none() {
-                Ok(1)
+        Binding::Nested(bs) => {
+            if depth_curr == depth_max {
+                Ok(bs.len())
             } else {
-                // We've reached at the innermost repeated fragment, but the user wants us to go
-                // further!
-                Err(CountError::OutOfBounds)
+                bs.iter().map(|b| count(ctx, b, depth_curr + 1, depth_max)).sum()
             }
         }
+        Binding::Empty => Ok(0),
+        Binding::Fragment(_) | Binding::Missing(_) => Ok(1),
     }
 }

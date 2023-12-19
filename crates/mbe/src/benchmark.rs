@@ -199,7 +199,7 @@ fn invocation_fixtures(
                 });
                 parent.token_trees.push(subtree.into());
             }
-            Op::Ignore { .. } | Op::Index { .. } | Op::Count { .. } => {}
+            Op::Ignore { .. } | Op::Index { .. } | Op::Count { .. } | Op::Length { .. } => {}
         };
 
         // Simple linear congruential generator for deterministic result
