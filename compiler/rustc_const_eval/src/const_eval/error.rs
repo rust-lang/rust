@@ -6,7 +6,7 @@ use rustc_middle::mir::AssertKind;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::{layout::LayoutError, ConstInt};
-use rustc_span::{ErrorGuaranteed, Span, Symbol, DUMMY_SP};
+use rustc_span::{Span, Symbol, DUMMY_SP};
 
 use super::{CompileTimeInterpreter, InterpCx};
 use crate::errors::{self, FrameNote, ReportErrorExt};
@@ -133,7 +133,7 @@ pub(super) fn report<'tcx, C, F, E>(
 where
     C: FnOnce() -> (Span, Vec<FrameNote>),
     F: FnOnce(Span, Vec<FrameNote>) -> E,
-    E: IntoDiagnostic<'tcx, ErrorGuaranteed>,
+    E: IntoDiagnostic<'tcx>,
 {
     // Special handling for certain errors
     match error {
