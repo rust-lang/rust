@@ -693,7 +693,7 @@ impl<'a> CompletionContext<'a> {
         let krate = scope.krate();
         let module = scope.module();
 
-        let toolchain = db.crate_graph()[krate.into()].channel;
+        let toolchain = db.crate_graph()[krate.into()].channel();
         // `toolchain == None` means we're in some detached files. Since we have no information on
         // the toolchain being used, let's just allow unstable items to be listed.
         let is_nightly = matches!(toolchain, Some(base_db::ReleaseChannel::Nightly) | None);

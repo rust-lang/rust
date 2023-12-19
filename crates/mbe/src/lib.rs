@@ -147,7 +147,12 @@ impl<S: Span> DeclarativeMacro<S> {
     }
 
     /// The old, `macro_rules! m {}` flavor.
-    pub fn parse_macro_rules(tt: &tt::Subtree<S>, is_2021: bool) -> DeclarativeMacro<S> {
+    pub fn parse_macro_rules(
+        tt: &tt::Subtree<S>,
+        is_2021: bool,
+        // FIXME: Remove this once we drop support for rust 1.76 (defaults to true then)
+        new_meta_vars: bool,
+    ) -> DeclarativeMacro<S> {
         // Note: this parsing can be implemented using mbe machinery itself, by
         // matching against `$($lhs:tt => $rhs:tt);*` pattern, but implementing
         // manually seems easier.
@@ -156,7 +161,7 @@ impl<S: Span> DeclarativeMacro<S> {
         let mut err = None;
 
         while src.len() > 0 {
-            let rule = match Rule::parse(&mut src, true) {
+            let rule = match Rule::parse(&mut src, true, new_meta_vars) {
                 Ok(it) => it,
                 Err(e) => {
                     err = Some(Box::new(e));
@@ -183,7 +188,12 @@ impl<S: Span> DeclarativeMacro<S> {
     }
 
     /// The new, unstable `macro m {}` flavor.
-    pub fn parse_macro2(tt: &tt::Subtree<S>, is_2021: bool) -> DeclarativeMacro<S> {
+    pub fn parse_macro2(
+        tt: &tt::Subtree<S>,
+        is_2021: bool,
+        // FIXME: Remove this once we drop support for rust 1.76 (defaults to true then)
+        new_meta_vars: bool,
+    ) -> DeclarativeMacro<S> {
         let mut src = TtIter::new(tt);
         let mut rules = Vec::new();
         let mut err = None;
@@ -191,7 +201,7 @@ impl<S: Span> DeclarativeMacro<S> {
         if tt::DelimiterKind::Brace == tt.delimiter.kind {
             cov_mark::hit!(parse_macro_def_rules);
             while src.len() > 0 {
-                let rule = match Rule::parse(&mut src, true) {
+                let rule = match Rule::parse(&mut src, true, new_meta_vars) {
                     Ok(it) => it,
                     Err(e) => {
                         err = Some(Box::new(e));
@@ -210,7 +220,7 @@ impl<S: Span> DeclarativeMacro<S> {
             }
         } else {
             cov_mark::hit!(parse_macro_def_simple);
-            match Rule::parse(&mut src, false) {
+            match Rule::parse(&mut src, false, new_meta_vars) {
                 Ok(rule) => {
                     if src.len() != 0 {
                         err = Some(Box::new(ParseError::expected("remaining tokens in macro def")));
@@ -241,13 +251,18 @@ impl<S: Span> DeclarativeMacro<S> {
         &self,
         tt: &tt::Subtree<S>,
         marker: impl Fn(&mut S) + Copy,
+        new_meta_vars: bool,
     ) -> ExpandResult<tt::Subtree<S>> {
-        expander::expand_rules(&self.rules, &tt, marker, self.is_2021)
+        expander::expand_rules(&self.rules, &tt, marker, self.is_2021, new_meta_vars)
     }
 }
 
 impl<S: Span> Rule<S> {
-    fn parse(src: &mut TtIter<'_, S>, expect_arrow: bool) -> Result<Self, ParseError> {
+    fn parse(
+        src: &mut TtIter<'_, S>,
+        expect_arrow: bool,
+        new_meta_vars: bool,
+    ) -> Result<Self, ParseError> {
         let lhs = src.expect_subtree().map_err(|()| ParseError::expected("expected subtree"))?;
         if expect_arrow {
             src.expect_char('=').map_err(|()| ParseError::expected("expected `=`"))?;
@@ -256,7 +271,7 @@ impl<S: Span> Rule<S> {
         let rhs = src.expect_subtree().map_err(|()| ParseError::expected("expected subtree"))?;
 
         let lhs = MetaTemplate::parse_pattern(lhs)?;
-        let rhs = MetaTemplate::parse_template(rhs)?;
+        let rhs = MetaTemplate::parse_template(rhs, new_meta_vars)?;
 
         Ok(crate::Rule { lhs, rhs })
     }

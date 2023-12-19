@@ -74,6 +74,7 @@ dependencies = [
  "profile",
  "rust-analyzer-salsa",
  "rustc-hash",
+ "semver",
  "span",
  "stdx",
  "syntax",

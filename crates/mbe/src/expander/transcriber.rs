@@ -131,8 +131,9 @@ pub(super) fn transcribe<S: Span>(
     template: &MetaTemplate<S>,
     bindings: &Bindings<S>,
     marker: impl Fn(&mut S) + Copy,
+    new_meta_vars: bool,
 ) -> ExpandResult<tt::Subtree<S>> {
-    let mut ctx = ExpandCtx { bindings, nesting: Vec::new() };
+    let mut ctx = ExpandCtx { bindings, nesting: Vec::new(), new_meta_vars };
     let mut arena: Vec<tt::TokenTree<S>> = Vec::new();
     expand_subtree(&mut ctx, template, None, &mut arena, marker)
 }
@@ -152,6 +153,7 @@ struct NestingState {
 struct ExpandCtx<'a, S> {
     bindings: &'a Bindings<S>,
     nesting: Vec<NestingState>,
+    new_meta_vars: bool,
 }
 
 fn expand_subtree<S: Span>(
@@ -284,7 +286,13 @@ fn expand_subtree<S: Span>(
                     }
                 }
 
-                let c = match count(ctx, binding, 0, *depth) {
+                let res = if ctx.new_meta_vars {
+                    count(ctx, binding, 0, depth.unwrap_or(0))
+                } else {
+                    count_old(ctx, binding, 0, *depth)
+                };
+
+                let c = match res {
                     Ok(c) => c,
                     Err(e) => {
                         // XXX: It *might* make sense to emit a dummy integer value like `0` here.
@@ -546,5 +554,34 @@ fn count<S>(
         }
         Binding::Empty => Ok(0),
         Binding::Fragment(_) | Binding::Missing(_) => Ok(1),
+    }
+}
+
+fn count_old<S>(
+    ctx: &ExpandCtx<'_, S>,
+    binding: &Binding<S>,
+    our_depth: usize,
+    count_depth: Option<usize>,
+) -> Result<usize, CountError> {
+    match binding {
+        Binding::Nested(bs) => match count_depth {
+            None => bs.iter().map(|b| count_old(ctx, b, our_depth + 1, None)).sum(),
+            Some(0) => Ok(bs.len()),
+            Some(d) => bs.iter().map(|b| count_old(ctx, b, our_depth + 1, Some(d - 1))).sum(),
+        },
+        Binding::Empty => Ok(0),
+        Binding::Fragment(_) | Binding::Missing(_) => {
+            if our_depth == 0 {
+                // `${count(t)}` is placed inside the innermost repetition. This includes cases
+                // where `t` is not a repeated fragment.
+                Err(CountError::Misplaced)
+            } else if count_depth.is_none() {
+                Ok(1)
+            } else {
+                // We've reached at the innermost repeated fragment, but the user wants us to go
+                // further!
+                Err(CountError::OutOfBounds)
+            }
+        }
     }
 }

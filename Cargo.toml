@@ -110,6 +110,7 @@ nohash-hasher = "0.2.0"
 rayon = "1.8.0"
 rust-analyzer-salsa = "0.17.0-pre.4"
 rustc-hash = "1.1.0"
+semver = "1.0.14"
 serde = { version = "1.0.192", features = ["derive"] }
 serde_json = "1.0.108"
 smallvec = { version = "1.10.0", features = [

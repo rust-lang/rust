@@ -16,6 +16,7 @@ la-arena.workspace = true
 rust-analyzer-salsa.workspace = true
 rustc-hash.workspace = true
 triomphe.workspace = true
+semver.workspace = true
 
 # local deps
 cfg.workspace = true

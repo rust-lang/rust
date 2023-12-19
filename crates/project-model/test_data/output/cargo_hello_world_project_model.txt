@@ -62,7 +62,7 @@
         target_layout: Err(
             "target_data_layout not loaded",
         ),
-        channel: None,
+        toolchain: None,
     },
     1: CrateData {
         root_file_id: FileId(
@@ -135,7 +135,7 @@
         target_layout: Err(
             "target_data_layout not loaded",
         ),
-        channel: None,
+        toolchain: None,
     },
     2: CrateData {
         root_file_id: FileId(
@@ -208,7 +208,7 @@
         target_layout: Err(
             "target_data_layout not loaded",
         ),
-        channel: None,
+        toolchain: None,
     },
     3: CrateData {
         root_file_id: FileId(
@@ -281,7 +281,7 @@
         target_layout: Err(
             "target_data_layout not loaded",
         ),
-        channel: None,
+        toolchain: None,
     },
     4: CrateData {
         root_file_id: FileId(
@@ -350,6 +350,6 @@
         target_layout: Err(
             "target_data_layout not loaded",
         ),
-        channel: None,
+        toolchain: None,
     },
 }

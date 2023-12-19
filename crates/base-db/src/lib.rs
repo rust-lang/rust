@@ -23,6 +23,8 @@ pub use salsa::{self, Cancelled};
 pub use span::{FilePosition, FileRange};
 pub use vfs::{file_set::FileSet, AnchoredPath, AnchoredPathBuf, FileId, VfsPath};
 
+pub use semver::{BuildMetadata, Prerelease, Version, VersionReq};
+
 #[macro_export]
 macro_rules! impl_intern_key {
     ($name:ident) => {
