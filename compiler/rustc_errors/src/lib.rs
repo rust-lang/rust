@@ -1160,14 +1160,12 @@ impl DiagCtxt {
                         if error_codes.len() > 9 { "..." } else { "." }
                     ));
                     inner.failure_note(format!(
-                        "For more information about an error, try \
-                         `rustc --explain {}`.",
+                        "For more information about an error, try `rustc --explain {}`.",
                         &error_codes[0]
                     ));
                 } else {
                     inner.failure_note(format!(
-                        "For more information about this error, try \
-                         `rustc --explain {}`.",
+                        "For more information about this error, try `rustc --explain {}`.",
                         &error_codes[0]
                     ));
                 }
