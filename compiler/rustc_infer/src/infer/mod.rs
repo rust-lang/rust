@@ -713,10 +713,6 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
 }
 
 impl<'tcx, T> InferOk<'tcx, T> {
-    pub fn unit(self) -> InferOk<'tcx, ()> {
-        InferOk { value: (), obligations: self.obligations }
-    }
-
     /// Extracts `value`, registering any obligations into `fulfill_cx`.
     pub fn into_value_registering_obligations(
         self,
@@ -1025,15 +1021,10 @@ impl<'tcx> InferCtxt<'tcx> {
             _ => {}
         }
 
-        Ok(self.commit_if_ok(|_snapshot| {
-            let ty::SubtypePredicate { a_is_expected, a, b } =
-                self.instantiate_binder_with_placeholders(predicate);
+        let ty::SubtypePredicate { a_is_expected, a, b } =
+            self.instantiate_binder_with_placeholders(predicate);
 
-            let ok =
-                self.at(cause, param_env).sub_exp(DefineOpaqueTypes::No, a_is_expected, a, b)?;
-
-            Ok(ok.unit())
-        }))
+        Ok(self.at(cause, param_env).sub_exp(DefineOpaqueTypes::No, a_is_expected, a, b))
     }
 
     pub fn region_outlives_predicate(
