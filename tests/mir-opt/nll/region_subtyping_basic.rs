@@ -4,7 +4,7 @@
 // including) the call to `use_x`. The `else` branch is not included.
 
 // compile-flags:-Zverbose-internals
-//               ^^^^^^^^^ force compiler to dump more region information
+//                ^^^^^^^^^^^^^^^^^^^ force compiler to dump more region information
 
 #![allow(warnings)]
 

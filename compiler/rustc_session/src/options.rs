@@ -223,6 +223,8 @@ top_level_options!(
         /// The (potentially remapped) working directory
         working_dir: RealFileName [TRACKED],
         color: ColorConfig [UNTRACKED],
+
+        verbose: bool [UNTRACKED],
     }
 );
 
