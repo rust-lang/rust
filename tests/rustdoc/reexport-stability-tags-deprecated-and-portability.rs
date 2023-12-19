@@ -27,7 +27,7 @@ pub mod mod1 {
 pub mod mod2 {
     // @has - '//code' 'pub use tag::Portability;'
     // @!has - '//span' 'Deprecated'
-    // @has - '//span' 'sync'
+    // @!has - '//span' 'sync'
     pub use tag::Portability;
 }
 
@@ -35,7 +35,7 @@ pub mod mod2 {
 pub mod mod3 {
     // @has - '//code' 'pub use tag::Both;'
     // @has - '//span' 'Deprecated'
-    // @has - '//span' 'sync'
+    // @!has - '//span' 'sync'
     pub use tag::Both;
 }
 

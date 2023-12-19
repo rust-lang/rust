@@ -331,13 +331,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty_op: |ty| {
                 if let ty::Infer(infer) = ty.kind() {
                     match infer {
-                        ty::InferTy::TyVar(_) => self.next_ty_var(TypeVariableOrigin {
+                        ty::TyVar(_) => self.next_ty_var(TypeVariableOrigin {
                             kind: TypeVariableOriginKind::MiscVariable,
                             span: DUMMY_SP,
                         }),
-                        ty::InferTy::IntVar(_) => self.next_int_var(),
-                        ty::InferTy::FloatVar(_) => self.next_float_var(),
-                        _ => bug!(),
+                        ty::IntVar(_) => self.next_int_var(),
+                        ty::FloatVar(_) => self.next_float_var(),
+                        ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {
+                            bug!("unexpected fresh ty outside of the trait solver")
+                        }
                     }
                 } else {
                     ty

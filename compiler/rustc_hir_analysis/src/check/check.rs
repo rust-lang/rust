@@ -51,7 +51,7 @@ pub fn check_abi(tcx: TyCtxt<'_>, hir_id: hir::HirId, span: Span, abi: Abi) {
                 hir_id,
                 span,
                 "use of calling convention not supported on this target",
-                |lint| lint,
+                |_| {},
             );
         }
     }
@@ -190,7 +190,7 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             "static of uninhabited type",
             |lint| {
                 lint
-                .note("uninhabited statics cannot be initialized, and any access would be an immediate error")
+                .note("uninhabited statics cannot be initialized, and any access would be an immediate error");
             },
         );
     }
@@ -1093,7 +1093,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
                             "this {descr} contains `{field_ty}`, which {note}, \
                                 and makes it not a breaking change to become \
                                 non-zero-sized in the future."
-                        ))
+                        ));
                     },
                 )
             } else {

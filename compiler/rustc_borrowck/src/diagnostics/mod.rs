@@ -124,7 +124,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         let did = did.expect_local();
                         if let Some((span, hir_place)) = self.infcx.tcx.closure_kind_origin(did) {
                             diag.eager_subdiagnostic(
-                                self.infcx.tcx.sess.diagnostic(),
+                                self.infcx.tcx.sess.dcx(),
                                 OnClosureNote::InvokedTwice {
                                     place_name: &ty::place_to_string_for_capture(
                                         self.infcx.tcx,
@@ -146,7 +146,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let did = did.expect_local();
                 if let Some((span, hir_place)) = self.infcx.tcx.closure_kind_origin(did) {
                     diag.eager_subdiagnostic(
-                        self.infcx.tcx.sess.diagnostic(),
+                        self.infcx.tcx.sess.dcx(),
                         OnClosureNote::MovedTwice {
                             place_name: &ty::place_to_string_for_capture(self.infcx.tcx, hir_place),
                             span: *span,
@@ -624,7 +624,7 @@ impl UseSpans<'_> {
     /// Add a subdiagnostic to the use of the captured variable, if it exists.
     pub(super) fn var_subdiag(
         self,
-        handler: Option<&rustc_errors::Handler>,
+        dcx: Option<&rustc_errors::DiagCtxt>,
         err: &mut Diagnostic,
         kind: Option<rustc_middle::mir::BorrowKind>,
         f: impl FnOnce(Option<CoroutineKind>, Span) -> CaptureVarCause,
@@ -646,7 +646,7 @@ impl UseSpans<'_> {
                 });
             };
             let diag = f(coroutine_kind, path_span);
-            match handler {
+            match dcx {
                 Some(hd) => err.eager_subdiagnostic(hd, diag),
                 None => err.subdiagnostic(diag),
             };
@@ -1150,7 +1150,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             && self.infcx.can_eq(self.param_env, ty, self_ty)
                         {
                             err.eager_subdiagnostic(
-                                self.infcx.tcx.sess.diagnostic(),
+                                self.infcx.tcx.sess.dcx(),
                                 CaptureReasonSuggest::FreshReborrow {
                                     span: move_span.shrink_to_hi(),
                                 },

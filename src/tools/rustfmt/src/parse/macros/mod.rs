@@ -28,8 +28,8 @@ fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
             let mut cloned_parser = (*parser).clone();
             match $parser(&mut cloned_parser) {
                 Ok(x) => {
-                    if parser.sess.span_diagnostic.has_errors().is_some() {
-                        parser.sess.span_diagnostic.reset_err_count();
+                    if parser.sess.dcx.has_errors().is_some() {
+                        parser.sess.dcx.reset_err_count();
                     } else {
                         // Parsing succeeded.
                         *parser = cloned_parser;
@@ -38,7 +38,7 @@ fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
                 }
                 Err(e) => {
                     e.cancel();
-                    parser.sess.span_diagnostic.reset_err_count();
+                    parser.sess.dcx.reset_err_count();
                 }
             }
         };

@@ -72,6 +72,9 @@ pub trait Context {
     /// Returns whether this ADT is simd.
     fn adt_is_simd(&self, def: AdtDef) -> bool;
 
+    /// Returns whether this definition is a C string.
+    fn adt_is_cstr(&self, def: AdtDef) -> bool;
+
     /// Retrieve the function signature for the given generic arguments.
     fn fn_sig(&self, def: FnDef, args: &GenericArgs) -> PolyFnSig;
 

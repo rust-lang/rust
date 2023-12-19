@@ -16,12 +16,12 @@ pub struct TestOutput {
 impl IntoDiagnostic<'_> for TestOutput {
     fn into_diagnostic(
         self,
-        handler: &'_ rustc_errors::Handler,
+        dcx: &'_ rustc_errors::DiagCtxt,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
         let TestOutput { span, kind, content } = self;
 
         #[allow(rustc::untranslatable_diagnostic)]
-        let mut diag = handler.struct_err(format!("{kind}({content})"));
+        let mut diag = dcx.struct_err(format!("{kind}({content})"));
         diag.set_span(span);
         diag
     }

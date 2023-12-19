@@ -2311,7 +2311,7 @@ pub fn id() -> u32 {
 /// of the `main` function, this trait is likely to be available only on
 /// standard library's runtime for convenience. Other runtimes are not required
 /// to provide similar functionality.
-#[cfg_attr(not(test), lang = "termination")]
+#[cfg_attr(not(any(test, doctest)), lang = "termination")]
 #[stable(feature = "termination_trait_lib", since = "1.61.0")]
 #[rustc_on_unimplemented(on(
     cause = "MainFunctionType",

@@ -1680,7 +1680,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         self.wrap_binder(&sig, |sig, cx| {
             define_scoped_cx!(cx);
 
-            p!(print(kind), "(");
+            p!(write("{kind}("));
             for (i, arg) in sig.inputs()[0].tuple_fields().iter().enumerate() {
                 if i > 0 {
                     p!(", ");
@@ -2754,6 +2754,10 @@ forward_display_to_print! {
 define_print! {
     (self, cx):
 
+    ty::TypeAndMut<'tcx> {
+        p!(write("{}", self.mutbl.prefix_str()), print(self.ty))
+    }
+
     ty::ClauseKind<'tcx> {
         match *self {
             ty::ClauseKind::Trait(ref data) => {
@@ -2797,10 +2801,6 @@ define_print_and_forward_display! {
 
     &'tcx ty::List<Ty<'tcx>> {
         p!("{{", comma_sep(self.iter()), "}}")
-    }
-
-    ty::TypeAndMut<'tcx> {
-        p!(write("{}", self.mutbl.prefix_str()), print(self.ty))
     }
 
     ty::ExistentialTraitRef<'tcx> {
@@ -2941,10 +2941,6 @@ define_print_and_forward_display! {
         } else {
             p!(print_def_path(self.def_id, self.args));
         }
-    }
-
-    ty::ClosureKind {
-        p!(write("{}", self.as_str()))
     }
 
     ty::Predicate<'tcx> {

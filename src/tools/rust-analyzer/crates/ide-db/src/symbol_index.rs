@@ -50,7 +50,7 @@ enum SearchMode {
     Prefix,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Query {
     query: String,
     lowercased: String,

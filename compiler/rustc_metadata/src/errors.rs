@@ -498,9 +498,9 @@ pub(crate) struct MultipleCandidates {
 impl IntoDiagnostic<'_> for MultipleCandidates {
     fn into_diagnostic(
         self,
-        handler: &'_ rustc_errors::Handler,
+        dcx: &'_ rustc_errors::DiagCtxt,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(fluent::metadata_multiple_candidates);
+        let mut diag = dcx.struct_err(fluent::metadata_multiple_candidates);
         diag.set_arg("crate_name", self.crate_name);
         diag.set_arg("flavor", self.flavor);
         diag.code(error_code!(E0464));
@@ -597,9 +597,9 @@ impl IntoDiagnostic<'_> for InvalidMetadataFiles {
     #[track_caller]
     fn into_diagnostic(
         self,
-        handler: &'_ rustc_errors::Handler,
+        dcx: &'_ rustc_errors::DiagCtxt,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(fluent::metadata_invalid_meta_files);
+        let mut diag = dcx.struct_err(fluent::metadata_invalid_meta_files);
         diag.set_arg("crate_name", self.crate_name);
         diag.set_arg("add_info", self.add_info);
         diag.code(error_code!(E0786));
@@ -627,9 +627,9 @@ impl IntoDiagnostic<'_> for CannotFindCrate {
     #[track_caller]
     fn into_diagnostic(
         self,
-        handler: &'_ rustc_errors::Handler,
+        dcx: &'_ rustc_errors::DiagCtxt,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(fluent::metadata_cannot_find_crate);
+        let mut diag = dcx.struct_err(fluent::metadata_cannot_find_crate);
         diag.set_arg("crate_name", self.crate_name);
         diag.set_arg("current_crate", self.current_crate);
         diag.set_arg("add_info", self.add_info);

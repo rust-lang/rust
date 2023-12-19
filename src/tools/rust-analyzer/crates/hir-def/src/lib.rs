@@ -569,6 +569,8 @@ pub struct ConstBlockLoc {
     pub root: hir::ExprId,
 }
 
+/// Something that holds types, required for the current const arg lowering implementation as they
+/// need to be able to query where they are defined.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum TypeOwnerId {
     FunctionId(FunctionId),
@@ -581,9 +583,6 @@ pub enum TypeOwnerId {
     TypeAliasId(TypeAliasId),
     ImplId(ImplId),
     EnumVariantId(EnumVariantId),
-    // FIXME(const-generic-body): ModuleId should not be a type owner. This needs to be fixed to make `TypeOwnerId` actually
-    // useful for assigning ids to in type consts.
-    ModuleId(ModuleId),
 }
 
 impl TypeOwnerId {
@@ -597,9 +596,7 @@ impl TypeOwnerId {
             TypeOwnerId::TypeAliasId(it) => GenericDefId::TypeAliasId(it),
             TypeOwnerId::ImplId(it) => GenericDefId::ImplId(it),
             TypeOwnerId::EnumVariantId(it) => GenericDefId::EnumVariantId(it),
-            TypeOwnerId::InTypeConstId(_) | TypeOwnerId::ModuleId(_) | TypeOwnerId::StaticId(_) => {
-                return None
-            }
+            TypeOwnerId::InTypeConstId(_) | TypeOwnerId::StaticId(_) => return None,
         })
     }
 }
@@ -614,8 +611,7 @@ impl_from!(
     TraitAliasId,
     TypeAliasId,
     ImplId,
-    EnumVariantId,
-    ModuleId
+    EnumVariantId
     for TypeOwnerId
 );
 
@@ -713,12 +709,15 @@ pub struct InTypeConstLoc {
     pub id: AstId<ast::ConstArg>,
     /// The thing this const arg appears in
     pub owner: TypeOwnerId,
-    pub thing: Box<dyn OpaqueInternableThing>,
+    // FIXME(const-generic-body): The expected type should not be
+    pub expected_ty: Box<dyn OpaqueInternableThing>,
 }
 
 impl PartialEq for InTypeConstLoc {
     fn eq(&self, other: &Self) -> bool {
-        self.id == other.id && self.owner == other.owner && &*self.thing == &*other.thing
+        self.id == other.id
+            && self.owner == other.owner
+            && &*self.expected_ty == &*other.expected_ty
     }
 }
 
@@ -1041,7 +1040,6 @@ impl HasModule for TypeOwnerId {
             TypeOwnerId::TypeAliasId(it) => it.lookup(db).module(db),
             TypeOwnerId::ImplId(it) => it.lookup(db).container,
             TypeOwnerId::EnumVariantId(it) => it.parent.lookup(db).container,
-            TypeOwnerId::ModuleId(it) => *it,
         }
     }
 }

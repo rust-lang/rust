@@ -75,7 +75,7 @@ pub use self::binding::BindingMode;
 pub use self::binding::BindingMode::*;
 pub use self::closure::{
     is_ancestor_or_same_capture, place_to_string_for_capture, BorrowKind, CaptureInfo,
-    CapturedPlace, ClosureKind, ClosureTypeInfo, MinCaptureInformationMap, MinCaptureList,
+    CapturedPlace, ClosureTypeInfo, MinCaptureInformationMap, MinCaptureList,
     RootVariableMinCaptureList, UpvarCapture, UpvarId, UpvarPath, CAPTURE_STRUCT_LOCAL,
 };
 pub use self::consts::{Const, ConstData, ConstInt, Expr, ScalarInt, UnevaluatedConst, ValTree};
@@ -152,7 +152,7 @@ pub struct ResolverOutputs {
 
 #[derive(Debug)]
 pub struct ResolverGlobalCtxt {
-    pub visibilities: FxHashMap<LocalDefId, Visibility>,
+    pub visibilities_for_hashing: Vec<(LocalDefId, Visibility)>,
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     pub expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
     pub effective_visibilities: EffectiveVisibilities,
@@ -473,7 +473,7 @@ impl<'tcx> IntoKind for Ty<'tcx> {
     type Kind = TyKind<'tcx>;
 
     fn kind(self) -> TyKind<'tcx> {
-        self.kind().clone()
+        *self.kind()
     }
 }
 
@@ -1484,7 +1484,7 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         if let Some(diag) = tcx
             .sess
-            .diagnostic()
+            .dcx()
             .steal_diagnostic(tcx.def_span(opaque_def_id), StashKey::OpaqueHiddenTypeMismatch)
         {
             diag.cancel();

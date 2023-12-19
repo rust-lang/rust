@@ -33,6 +33,7 @@ use std::ascii::Char;
 use std::assert_matches::assert_matches;
 use std::cmp::{max, min};
 use std::collections::HashMap;
+use std::ffi::CStr;
 use std::io::Write;
 use std::ops::ControlFlow;
 
@@ -45,6 +46,7 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     check_foo(*get_item(&items, (ItemKind::Static, "FOO")).unwrap());
     check_bar(*get_item(&items, (ItemKind::Static, "BAR")).unwrap());
     check_len(*get_item(&items, (ItemKind::Static, "LEN")).unwrap());
+    check_cstr(*get_item(&items, (ItemKind::Static, "C_STR")).unwrap());
     check_other_consts(*get_item(&items, (ItemKind::Fn, "other_consts")).unwrap());
     check_type_id(*get_item(&items, (ItemKind::Fn, "check_type_id")).unwrap());
     ControlFlow::Continue(())
@@ -84,6 +86,24 @@ fn check_bar(item: CrateItem) {
     assert_eq!(allocation.bytes[1].unwrap(), Char::SmallA.to_u8());
     assert_eq!(allocation.bytes[2].unwrap(), Char::SmallR.to_u8());
     assert_eq!(std::str::from_utf8(&allocation.raw_bytes().unwrap()), Ok("Bar"));
+}
+
+/// Check the allocation data for static `C_STR`.
+///
+/// ```no_run
+/// static C_STR: &core::ffi::cstr = c"cstr";
+/// ```
+fn check_cstr(item: CrateItem) {
+    let def = StaticDef::try_from(item).unwrap();
+    let alloc = def.eval_initializer().unwrap();
+    assert_eq!(alloc.provenance.ptrs.len(), 1);
+    let deref = item.ty().kind().builtin_deref(true).unwrap();
+    assert!(deref.ty.kind().is_cstr(), "Expected CStr, but got: {:?}", item.ty());
+
+    let alloc_id_0 = alloc.provenance.ptrs[0].1.0;
+    let GlobalAlloc::Memory(allocation) = GlobalAlloc::from(alloc_id_0) else { unreachable!() };
+    assert_eq!(allocation.bytes.len(), 5);
+    assert_eq!(CStr::from_bytes_until_nul(&allocation.raw_bytes().unwrap()), Ok(c"cstr"));
 }
 
 /// Check the allocation data for constants used in `other_consts` function.
@@ -206,6 +226,7 @@ fn main() {
     generate_input(&path).unwrap();
     let args = vec![
         "rustc".to_string(),
+        "--edition=2021".to_string(),
         "--crate-name".to_string(),
         CRATE_NAME.to_string(),
         path.to_string(),
@@ -224,6 +245,7 @@ fn generate_input(path: &str) -> std::io::Result<()> {
     static LEN: usize = 2;
     static FOO: [&str; 2] = ["hi", "there"];
     static BAR: &str = "Bar";
+    static C_STR: &std::ffi::CStr = c"cstr";
     const NULL: *const u8 = std::ptr::null();
     const TUPLE: (u32, u32) = (10, u32::MAX);
 

@@ -280,7 +280,7 @@ pub(super) fn dump_annotation<'tcx>(
 
     let def_span = tcx.def_span(body.source.def_id());
     let mut err = if let Some(closure_region_requirements) = closure_region_requirements {
-        let mut err = tcx.sess.diagnostic().struct_span_note(def_span, "external requirements");
+        let mut err = tcx.sess.dcx().struct_span_note(def_span, "external requirements");
 
         regioncx.annotate(tcx, &mut err);
 
@@ -299,7 +299,7 @@ pub(super) fn dump_annotation<'tcx>(
 
         err
     } else {
-        let mut err = tcx.sess.diagnostic().struct_span_note(def_span, "no external requirements");
+        let mut err = tcx.sess.dcx().struct_span_note(def_span, "no external requirements");
         regioncx.annotate(tcx, &mut err);
 
         err

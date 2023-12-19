@@ -92,24 +92,6 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
 
     let mut error = false;
     let main_diagnostics_def_id = main_fn_diagnostics_def_id(tcx, main_def_id, main_span);
-    let main_fn_generics = tcx.generics_of(main_def_id);
-    let main_fn_predicates = tcx.predicates_of(main_def_id);
-    if main_fn_generics.count() != 0 || !main_fnsig.bound_vars().is_empty() {
-        let generics_param_span = main_fn_generics_params_span(tcx, main_def_id);
-        tcx.sess.emit_err(errors::MainFunctionGenericParameters {
-            span: generics_param_span.unwrap_or(main_span),
-            label_span: generics_param_span,
-        });
-        error = true;
-    } else if !main_fn_predicates.predicates.is_empty() {
-        // generics may bring in implicit predicates, so we skip this check if generics is present.
-        let generics_where_clauses_span = main_fn_where_clauses_span(tcx, main_def_id);
-        tcx.sess.emit_err(errors::WhereClauseOnMain {
-            span: generics_where_clauses_span.unwrap_or(main_span),
-            generics_span: generics_where_clauses_span,
-        });
-        error = true;
-    }
 
     let main_asyncness = tcx.asyncness(main_def_id);
     if main_asyncness.is_async() {
@@ -142,10 +124,6 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     if let Some(term_did) = tcx.lang_items().termination() {
         let return_ty = main_fnsig.output();
         let return_ty_span = main_fn_return_type_span(tcx, main_def_id).unwrap_or(main_span);
-        if !return_ty.bound_vars().is_empty() {
-            tcx.sess.emit_err(errors::MainFunctionReturnTypeGeneric { span: return_ty_span });
-            error = true;
-        }
         let return_ty = return_ty.skip_binder();
         let infcx = tcx.infer_ctxt().build();
         let cause = traits::ObligationCause::new(
@@ -180,7 +158,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         Abi::Rust,
     ));
 
-    check_function_signature(
+    if check_function_signature(
         tcx,
         ObligationCause::new(
             main_span,
@@ -189,7 +167,28 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         ),
         main_def_id,
         expected_sig,
-    );
+    )
+    .is_err()
+    {
+        return;
+    }
+
+    let main_fn_generics = tcx.generics_of(main_def_id);
+    let main_fn_predicates = tcx.predicates_of(main_def_id);
+    if main_fn_generics.count() != 0 || !main_fnsig.bound_vars().is_empty() {
+        let generics_param_span = main_fn_generics_params_span(tcx, main_def_id);
+        tcx.sess.emit_err(errors::MainFunctionGenericParameters {
+            span: generics_param_span.unwrap_or(main_span),
+            label_span: generics_param_span,
+        });
+    } else if !main_fn_predicates.predicates.is_empty() {
+        // generics may bring in implicit predicates, so we skip this check if generics is present.
+        let generics_where_clauses_span = main_fn_where_clauses_span(tcx, main_def_id);
+        tcx.sess.emit_err(errors::WhereClauseOnMain {
+            span: generics_where_clauses_span.unwrap_or(main_span),
+            generics_span: generics_where_clauses_span,
+        });
+    }
 }
 
 fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
@@ -255,7 +254,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                 Abi::Rust,
             ));
 
-            check_function_signature(
+            let _ = check_function_signature(
                 tcx,
                 ObligationCause::new(
                     start_span,

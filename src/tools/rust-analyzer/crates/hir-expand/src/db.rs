@@ -10,17 +10,17 @@ use limit::Limit;
 use mbe::{syntax_node_to_token_tree, ValueResult};
 use rustc_hash::FxHashSet;
 use syntax::{
-    ast::{self, HasAttrs, HasDocComments},
+    ast::{self, HasAttrs},
     AstNode, Parse, SyntaxError, SyntaxNode, SyntaxToken, T,
 };
 use triomphe::Arc;
 
 use crate::{
     ast_id_map::AstIdMap,
-    attrs::RawAttrs,
+    attrs::{collect_attrs, RawAttrs},
     builtin_attr_macro::pseudo_derive_attr_expansion,
     builtin_fn_macro::EagerExpander,
-    fixup::{self, SyntaxFixupUndoInfo},
+    fixup::{self, reverse_fixups, SyntaxFixupUndoInfo},
     hygiene::{apply_mark, SyntaxContextData, Transparency},
     span::{RealSpanMap, SpanMap, SpanMapRef},
     tt, AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallInfo,
@@ -216,9 +216,9 @@ pub fn expand_speculative(
                 // Attributes may have an input token tree, build the subtree and map for this as well
                 // then try finding a token id for our token if it is inside this input subtree.
                 let item = ast::Item::cast(speculative_args.clone())?;
-                item.doc_comments_and_attrs()
+                collect_attrs(&item)
                     .nth(invoc_attr_index.ast_index())
-                    .and_then(Either::left)
+                    .and_then(|x| Either::left(x.1))
             }?;
             match attr.token_tree() {
                 Some(token_tree) => {
@@ -421,6 +421,15 @@ fn macro_arg(
                     syntax::NodeOrToken::Token(_) => true,
                 });
                 fixups.remove.extend(censor);
+                {
+                    let mut tt = mbe::syntax_node_to_token_tree_modified(
+                        &syntax,
+                        map.as_ref(),
+                        fixups.append.clone(),
+                        fixups.remove.clone(),
+                    );
+                    reverse_fixups(&mut tt, &fixups.undo_info);
+                }
                 (
                     mbe::syntax_node_to_token_tree_modified(
                         &syntax,
@@ -479,10 +488,9 @@ fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> FxHashSet<Sy
             MacroCallKind::Attr { .. } if loc.def.is_attribute_derive() => return None,
             MacroCallKind::Attr { invoc_attr_index, .. } => {
                 cov_mark::hit!(attribute_macro_attr_censoring);
-                ast::Item::cast(node.clone())?
-                    .doc_comments_and_attrs()
+                collect_attrs(&ast::Item::cast(node.clone())?)
                     .nth(invoc_attr_index.ast_index())
-                    .and_then(Either::left)
+                    .and_then(|x| Either::left(x.1))
                     .map(|attr| attr.syntax().clone())
                     .into_iter()
                     .collect()

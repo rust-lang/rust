@@ -115,5 +115,11 @@ error: useless use of `vec!`
 LL |     for a in vec![String::new(), String::new()] {
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can use an array directly: `[String::new(), String::new()]`
 
-error: aborting due to 19 previous errors
+error: useless use of `vec!`
+  --> $DIR/vec.rs:196:33
+   |
+LL |     this_macro_doesnt_need_vec!(vec![1]);
+   |                                 ^^^^^^^ help: you can use an array directly: `[1]`
+
+error: aborting due to 20 previous errors
 

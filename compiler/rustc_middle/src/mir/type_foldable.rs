@@ -15,7 +15,6 @@ TrivialTypeTraversalImpls! {
     UserTypeAnnotationIndex,
     BorrowKind,
     CastKind,
-    hir::Movability,
     BasicBlock,
     SwitchTargets,
     CoroutineKind,

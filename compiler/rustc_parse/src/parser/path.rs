@@ -123,7 +123,7 @@ impl<'a> Parser<'a> {
 
         self.bump(); // colon
 
-        self.diagnostic()
+        self.dcx()
             .struct_span_err(
                 self.prev_token.span,
                 "found single colon before projection in qualified path",
@@ -326,7 +326,7 @@ impl<'a> Parser<'a> {
                                     .is_nightly_build()
                                     .then_some(()),
                             }
-                            .into_diagnostic(self.diagnostic());
+                            .into_diagnostic(self.dcx());
                         }
                         // Attempt to find places where a missing `>` might belong.
                         else if let Some(arg) = args

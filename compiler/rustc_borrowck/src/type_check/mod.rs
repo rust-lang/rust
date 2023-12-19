@@ -268,7 +268,7 @@ fn mirbug(tcx: TyCtxt<'_>, span: Span, msg: String) {
     // We sometimes see MIR failures (notably predicate failures) due to
     // the fact that we check rvalue sized predicates here. So use `span_delayed_bug`
     // to avoid reporting bugs in those cases.
-    tcx.sess.diagnostic().span_delayed_bug(span, msg);
+    tcx.sess.dcx().span_delayed_bug(span, msg);
 }
 
 enum FieldAccessError {

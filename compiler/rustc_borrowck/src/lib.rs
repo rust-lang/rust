@@ -2503,7 +2503,7 @@ mod error {
                 self.errors.buffered.sort_by_key(|diag| diag.sort_span);
 
                 for diag in self.errors.buffered.drain(..) {
-                    self.infcx.tcx.sess.diagnostic().emit_diagnostic(diag);
+                    self.infcx.tcx.sess.dcx().emit_diagnostic(diag);
                 }
             }
 

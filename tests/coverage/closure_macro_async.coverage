@@ -1,5 +1,6 @@
-   LL|       |// compile-flags: --edition=2018
    LL|       |#![feature(coverage_attribute)]
+   LL|       |#![feature(noop_waker)]
+   LL|       |// edition: 2018
    LL|       |
    LL|       |macro_rules! bail {
    LL|       |    ($msg:literal $(,)?) => {
@@ -46,27 +47,14 @@
    LL|       |}
    LL|       |
    LL|       |mod executor {
-   LL|       |    use core::{
-   LL|       |        future::Future,
-   LL|       |        pin::Pin,
-   LL|       |        task::{Context, Poll, RawWaker, RawWakerVTable, Waker},
-   LL|       |    };
+   LL|       |    use core::future::Future;
+   LL|       |    use core::pin::pin;
+   LL|       |    use core::task::{Context, Poll, Waker};
    LL|       |
    LL|       |    #[coverage(off)]
    LL|       |    pub fn block_on<F: Future>(mut future: F) -> F::Output {
-   LL|       |        let mut future = unsafe { Pin::new_unchecked(&mut future) };
-   LL|       |        use std::hint::unreachable_unchecked;
-   LL|       |        static VTABLE: RawWakerVTable = RawWakerVTable::new(
-   LL|       |            #[coverage(off)]
-   LL|       |            |_| unsafe { unreachable_unchecked() }, // clone
-   LL|       |            #[coverage(off)]
-   LL|       |            |_| unsafe { unreachable_unchecked() }, // wake
-   LL|       |            #[coverage(off)]
-   LL|       |            |_| unsafe { unreachable_unchecked() }, // wake_by_ref
-   LL|       |            #[coverage(off)]
-   LL|       |            |_| (),
-   LL|       |        );
-   LL|       |        let waker = unsafe { Waker::from_raw(RawWaker::new(core::ptr::null(), &VTABLE)) };
+   LL|       |        let mut future = pin!(future);
+   LL|       |        let waker = Waker::noop();
    LL|       |        let mut context = Context::from_waker(&waker);
    LL|       |
    LL|       |        loop {

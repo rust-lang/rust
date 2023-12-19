@@ -183,11 +183,38 @@ if (getSettingValue("use-system-theme") !== "false" && window.matchMedia) {
 
 updateTheme();
 
+// Hide, show, and resize the sidebar at page load time
+//
+// This needs to be done here because this JS is render-blocking,
+// so that the sidebar doesn't "jump" after appearing on screen.
+// The user interaction to change this is set up in main.js.
 if (getSettingValue("source-sidebar-show") === "true") {
     // At this point in page load, `document.body` is not available yet.
     // Set a class on the `<html>` element instead.
     addClass(document.documentElement, "src-sidebar-expanded");
 }
+if (getSettingValue("hide-sidebar") === "true") {
+    // At this point in page load, `document.body` is not available yet.
+    // Set a class on the `<html>` element instead.
+    addClass(document.documentElement, "hide-sidebar");
+}
+function updateSidebarWidth() {
+    const desktopSidebarWidth = getSettingValue("desktop-sidebar-width");
+    if (desktopSidebarWidth && desktopSidebarWidth !== "null") {
+        document.documentElement.style.setProperty(
+            "--desktop-sidebar-width",
+            desktopSidebarWidth + "px"
+        );
+    }
+    const srcSidebarWidth = getSettingValue("src-sidebar-width");
+    if (srcSidebarWidth && srcSidebarWidth !== "null") {
+        document.documentElement.style.setProperty(
+            "--src-sidebar-width",
+            srcSidebarWidth + "px"
+        );
+    }
+}
+updateSidebarWidth();
 
 // If we navigate away (for example to a settings page), and then use the back or
 // forward button to get back to a page, the theme may have changed in the meantime.
@@ -201,5 +228,6 @@ if (getSettingValue("source-sidebar-show") === "true") {
 window.addEventListener("pageshow", ev => {
     if (ev.persisted) {
         setTimeout(updateTheme, 0);
+        setTimeout(updateSidebarWidth, 0);
     }
 });

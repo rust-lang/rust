@@ -22,9 +22,9 @@ use rustc_errors::emitter::{DynEmitter, EmitterWriter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
-    error_code, fallback_fluent_bundle, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
-    ErrorGuaranteed, FluentBundle, Handler, IntoDiagnostic, LazyFallbackBundle, MultiSpan, Noted,
-    TerminalUrl,
+    error_code, fallback_fluent_bundle, DiagCtxt, DiagnosticBuilder, DiagnosticId,
+    DiagnosticMessage, ErrorGuaranteed, FluentBundle, IntoDiagnostic, LazyFallbackBundle,
+    MultiSpan, Noted, TerminalUrl,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -289,7 +289,7 @@ impl Session {
     /// Invoked all the way at the end to finish off diagnostics printing.
     pub fn finish_diagnostics(&self, registry: &Registry) {
         self.check_miri_unleashed_features();
-        self.diagnostic().print_error_count(registry);
+        self.dcx().print_error_count(registry);
         self.emit_future_breakage();
     }
 
@@ -298,11 +298,11 @@ impl Session {
             return;
         }
 
-        let diags = self.diagnostic().take_future_breakage_diagnostics();
+        let diags = self.dcx().take_future_breakage_diagnostics();
         if diags.is_empty() {
             return;
         }
-        self.diagnostic().emit_future_breakage_report(diags);
+        self.dcx().emit_future_breakage_report(diags);
     }
 
     /// Returns true if the crate is a testing one.
@@ -317,7 +317,7 @@ impl Session {
         sp: S,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
-        self.diagnostic().struct_span_warn(sp, msg)
+        self.dcx().struct_span_warn(sp, msg)
     }
     #[rustc_lint_diagnostics]
     #[track_caller]
@@ -327,7 +327,7 @@ impl Session {
         msg: impl Into<DiagnosticMessage>,
         id: lint::LintExpectationId,
     ) -> DiagnosticBuilder<'_, ()> {
-        self.diagnostic().struct_span_warn_with_expectation(sp, msg, id)
+        self.dcx().struct_span_warn_with_expectation(sp, msg, id)
     }
     #[rustc_lint_diagnostics]
     #[track_caller]
@@ -337,12 +337,12 @@ impl Session {
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> DiagnosticBuilder<'_, ()> {
-        self.diagnostic().struct_span_warn_with_code(sp, msg, code)
+        self.dcx().struct_span_warn_with_code(sp, msg, code)
     }
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
-        self.diagnostic().struct_warn(msg)
+        self.dcx().struct_warn(msg)
     }
     #[rustc_lint_diagnostics]
     #[track_caller]
@@ -351,7 +351,7 @@ impl Session {
         msg: impl Into<DiagnosticMessage>,
         id: lint::LintExpectationId,
     ) -> DiagnosticBuilder<'_, ()> {
-        self.diagnostic().struct_warn_with_expectation(msg, id)
+        self.dcx().struct_warn_with_expectation(msg, id)
     }
     #[rustc_lint_diagnostics]
     #[track_caller]
@@ -360,12 +360,12 @@ impl Session {
         sp: S,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
-        self.diagnostic().struct_span_allow(sp, msg)
+        self.dcx().struct_span_allow(sp, msg)
     }
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_allow(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
-        self.diagnostic().struct_allow(msg)
+        self.dcx().struct_allow(msg)
     }
     #[rustc_lint_diagnostics]
     #[track_caller]
@@ -374,7 +374,7 @@ impl Session {
         msg: impl Into<DiagnosticMessage>,
         id: lint::LintExpectationId,
     ) -> DiagnosticBuilder<'_, ()> {
-        self.diagnostic().struct_expect(msg, id)
+        self.dcx().struct_expect(msg, id)
     }
     #[rustc_lint_diagnostics]
     #[track_caller]
@@ -383,7 +383,7 @@ impl Session {
         sp: S,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        self.diagnostic().struct_span_err(sp, msg)
+        self.dcx().struct_span_err(sp, msg)
     }
     #[rustc_lint_diagnostics]
     #[track_caller]
@@ -393,7 +393,7 @@ impl Session {
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        self.diagnostic().struct_span_err_with_code(sp, msg, code)
+        self.dcx().struct_span_err_with_code(sp, msg, code)
     }
     // FIXME: This method should be removed (every error should have an associated error code).
     #[rustc_lint_diagnostics]
@@ -411,7 +411,7 @@ impl Session {
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
-        self.diagnostic().struct_err_with_code(msg, code)
+        self.dcx().struct_err_with_code(msg, code)
     }
     #[rustc_lint_diagnostics]
     #[track_caller]
@@ -420,7 +420,7 @@ impl Session {
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> DiagnosticBuilder<'_, ()> {
-        self.diagnostic().struct_warn_with_code(msg, code)
+        self.dcx().struct_warn_with_code(msg, code)
     }
     #[rustc_lint_diagnostics]
     #[track_caller]
@@ -429,7 +429,7 @@ impl Session {
         sp: S,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, !> {
-        self.diagnostic().struct_span_fatal(sp, msg)
+        self.dcx().struct_span_fatal(sp, msg)
     }
     #[rustc_lint_diagnostics]
     pub fn struct_span_fatal_with_code<S: Into<MultiSpan>>(
@@ -438,17 +438,17 @@ impl Session {
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> DiagnosticBuilder<'_, !> {
-        self.diagnostic().struct_span_fatal_with_code(sp, msg, code)
+        self.dcx().struct_span_fatal_with_code(sp, msg, code)
     }
     #[rustc_lint_diagnostics]
     pub fn struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, !> {
-        self.diagnostic().struct_fatal(msg)
+        self.dcx().struct_fatal(msg)
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn span_fatal<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) -> ! {
-        self.diagnostic().span_fatal(sp, msg)
+        self.dcx().span_fatal(sp, msg)
     }
     #[rustc_lint_diagnostics]
     pub fn span_fatal_with_code<S: Into<MultiSpan>>(
@@ -457,11 +457,11 @@ impl Session {
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> ! {
-        self.diagnostic().span_fatal_with_code(sp, msg, code)
+        self.dcx().span_fatal_with_code(sp, msg, code)
     }
     #[rustc_lint_diagnostics]
     pub fn fatal(&self, msg: impl Into<DiagnosticMessage>) -> ! {
-        self.diagnostic().fatal(msg)
+        self.dcx().fatal(msg)
     }
     #[rustc_lint_diagnostics]
     #[track_caller]
@@ -470,7 +470,7 @@ impl Session {
         sp: S,
         msg: impl Into<DiagnosticMessage>,
     ) -> ErrorGuaranteed {
-        self.diagnostic().span_err(sp, msg)
+        self.dcx().span_err(sp, msg)
     }
     #[rustc_lint_diagnostics]
     pub fn span_err_with_code<S: Into<MultiSpan>>(
@@ -479,13 +479,13 @@ impl Session {
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> ErrorGuaranteed {
-        self.diagnostic().span_err_with_code(sp, msg, code)
+        self.dcx().span_err_with_code(sp, msg, code)
     }
     #[rustc_lint_diagnostics]
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn err(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
-        self.diagnostic().err(msg)
+        self.dcx().err(msg)
     }
     #[track_caller]
     pub fn create_err<'a>(
@@ -546,23 +546,23 @@ impl Session {
     }
     #[inline]
     pub fn err_count(&self) -> usize {
-        self.diagnostic().err_count()
+        self.dcx().err_count()
     }
     pub fn has_errors(&self) -> Option<ErrorGuaranteed> {
-        self.diagnostic().has_errors()
+        self.dcx().has_errors()
     }
     pub fn has_errors_or_span_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
-        self.diagnostic().has_errors_or_span_delayed_bugs()
+        self.dcx().has_errors_or_span_delayed_bugs()
     }
     pub fn is_compilation_going_to_fail(&self) -> Option<ErrorGuaranteed> {
-        self.diagnostic().is_compilation_going_to_fail()
+        self.dcx().is_compilation_going_to_fail()
     }
     pub fn abort_if_errors(&self) {
-        self.diagnostic().abort_if_errors();
+        self.dcx().abort_if_errors();
     }
     pub fn compile_status(&self) -> Result<(), ErrorGuaranteed> {
-        if let Some(reported) = self.diagnostic().has_errors_or_lint_errors() {
-            let _ = self.diagnostic().emit_stashed_diagnostics();
+        if let Some(reported) = self.dcx().has_errors_or_lint_errors() {
+            let _ = self.dcx().emit_stashed_diagnostics();
             Err(reported)
         } else {
             Ok(())
@@ -590,7 +590,7 @@ impl Session {
     #[allow(rustc::diagnostic_outside_of_impl)]
     #[track_caller]
     pub fn span_warn<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) {
-        self.diagnostic().span_warn(sp, msg)
+        self.dcx().span_warn(sp, msg)
     }
 
     #[rustc_lint_diagnostics]
@@ -602,14 +602,14 @@ impl Session {
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) {
-        self.diagnostic().span_warn_with_code(sp, msg, code)
+        self.dcx().span_warn_with_code(sp, msg, code)
     }
 
     #[rustc_lint_diagnostics]
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn warn(&self, msg: impl Into<DiagnosticMessage>) {
-        self.diagnostic().warn(msg)
+        self.dcx().warn(msg)
     }
 
     /// Ensures that compilation cannot succeed.
@@ -634,7 +634,7 @@ impl Session {
         sp: S,
         msg: impl Into<DiagnosticMessage>,
     ) -> ErrorGuaranteed {
-        self.diagnostic().span_delayed_bug(sp, msg)
+        self.dcx().span_delayed_bug(sp, msg)
     }
 
     /// Used for code paths of expensive computations that should only take place when
@@ -651,14 +651,14 @@ impl Session {
             return;
         }
 
-        self.diagnostic().good_path_delayed_bug(msg)
+        self.dcx().good_path_delayed_bug(msg)
     }
 
     #[rustc_lint_diagnostics]
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn note(&self, msg: impl Into<DiagnosticMessage>) {
-        self.diagnostic().note(msg)
+        self.dcx().note(msg)
     }
 
     #[track_caller]
@@ -666,19 +666,19 @@ impl Session {
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn span_note<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) {
-        self.diagnostic().span_note(sp, msg)
+        self.dcx().span_note(sp, msg)
     }
 
     #[rustc_lint_diagnostics]
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn struct_note(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
-        self.diagnostic().struct_note(msg)
+        self.dcx().struct_note(msg)
     }
 
     #[inline]
-    pub fn diagnostic(&self) -> &Handler {
-        &self.parse_sess.span_diagnostic
+    pub fn dcx(&self) -> &DiagCtxt {
+        &self.parse_sess.dcx
     }
 
     #[inline]
@@ -881,7 +881,7 @@ impl Session {
                 let mut fuel = self.optimization_fuel.lock();
                 ret = fuel.remaining != 0;
                 if fuel.remaining == 0 && !fuel.out_of_fuel {
-                    if self.diagnostic().can_emit_warnings() {
+                    if self.dcx().can_emit_warnings() {
                         // We only call `msg` in case we can actually emit warnings.
                         // Otherwise, this could cause a `good_path_delayed_bug` to
                         // trigger (issue #79546).
@@ -1221,7 +1221,7 @@ impl Session {
     }
 
     pub fn teach(&self, code: &DiagnosticId) -> bool {
-        self.opts.unstable_opts.teach && self.diagnostic().must_teach(code)
+        self.opts.unstable_opts.teach && self.dcx().must_teach(code)
     }
 
     pub fn edition(&self) -> Edition {
@@ -1357,7 +1357,7 @@ fn default_emitter(
 // JUSTIFICATION: literally session construction
 #[allow(rustc::bad_opt_access)]
 pub fn build_session(
-    early_handler: EarlyErrorHandler,
+    early_dcx: EarlyDiagCtxt,
     sopts: config::Options,
     io: CompilerIO,
     bundle: Option<Lrc<rustc_errors::FluentBundle>>,
@@ -1387,13 +1387,13 @@ pub fn build_session(
         None => filesearch::get_or_default_sysroot().expect("Failed finding sysroot"),
     };
 
-    let target_cfg = config::build_target_config(&early_handler, &sopts, target_override, &sysroot);
+    let target_cfg = config::build_target_config(&early_dcx, &sopts, target_override, &sysroot);
     let host_triple = TargetTriple::from_triple(config::host_triple());
     let (host, target_warnings) = Target::search(&host_triple, &sysroot).unwrap_or_else(|e| {
-        early_handler.early_error(format!("Error loading host specification: {e}"))
+        early_dcx.early_error(format!("Error loading host specification: {e}"))
     });
     for warning in target_warnings.warning_messages() {
-        early_handler.early_warn(warning)
+        early_dcx.early_warn(warning)
     }
 
     let loader = file_loader.unwrap_or_else(|| Box::new(RealFileLoader));
@@ -1416,15 +1416,15 @@ pub fn build_session(
     );
     let emitter = default_emitter(&sopts, registry, source_map.clone(), bundle, fallback_bundle);
 
-    let mut span_diagnostic = Handler::with_emitter(emitter)
-        .with_flags(sopts.unstable_opts.diagnostic_handler_flags(can_emit_warnings));
+    let mut dcx = DiagCtxt::with_emitter(emitter)
+        .with_flags(sopts.unstable_opts.dcx_flags(can_emit_warnings));
     if let Some(ice_file) = ice_file {
-        span_diagnostic = span_diagnostic.with_ice_file(ice_file);
+        dcx = dcx.with_ice_file(ice_file);
     }
 
-    // Now that the proper handler has been constructed, drop the early handler
-    // to prevent accidental use.
-    drop(early_handler);
+    // Now that the proper handler has been constructed, drop early_dcx to
+    // prevent accidental use.
+    drop(early_dcx);
 
     let self_profiler = if let SwitchWithOptPath::Enabled(ref d) = sopts.unstable_opts.self_profile
     {
@@ -1440,7 +1440,7 @@ pub fn build_session(
         match profiler {
             Ok(profiler) => Some(Arc::new(profiler)),
             Err(e) => {
-                span_diagnostic.emit_warning(errors::FailedToCreateProfiler { err: e.to_string() });
+                dcx.emit_warning(errors::FailedToCreateProfiler { err: e.to_string() });
                 None
             }
         }
@@ -1448,7 +1448,7 @@ pub fn build_session(
         None
     };
 
-    let mut parse_sess = ParseSess::with_span_handler(span_diagnostic, source_map);
+    let mut parse_sess = ParseSess::with_dcx(dcx, source_map);
     parse_sess.assume_incomplete_release = sopts.unstable_opts.assume_incomplete_release;
 
     let host_triple = config::host_triple();
@@ -1725,54 +1725,54 @@ enum IncrCompSession {
     InvalidBecauseOfErrors { session_directory: PathBuf },
 }
 
-/// A wrapper around an [`Handler`] that is used for early error emissions.
-pub struct EarlyErrorHandler {
-    handler: Handler,
+/// A wrapper around an [`DiagCtxt`] that is used for early error emissions.
+pub struct EarlyDiagCtxt {
+    dcx: DiagCtxt,
 }
 
-impl EarlyErrorHandler {
+impl EarlyDiagCtxt {
     pub fn new(output: ErrorOutputType) -> Self {
         let emitter = mk_emitter(output);
-        Self { handler: Handler::with_emitter(emitter) }
+        Self { dcx: DiagCtxt::with_emitter(emitter) }
     }
 
     pub fn abort_if_errors(&self) {
-        self.handler.abort_if_errors()
+        self.dcx.abort_if_errors()
     }
 
-    /// Swap out the underlying handler once we acquire the user's preference on error emission
+    /// Swap out the underlying dcx once we acquire the user's preference on error emission
     /// format. Any errors prior to that will cause an abort and all stashed diagnostics of the
-    /// previous handler will be emitted.
+    /// previous dcx will be emitted.
     pub fn abort_if_error_and_set_error_format(&mut self, output: ErrorOutputType) {
-        self.handler.abort_if_errors();
+        self.dcx.abort_if_errors();
 
         let emitter = mk_emitter(output);
-        self.handler = Handler::with_emitter(emitter);
+        self.dcx = DiagCtxt::with_emitter(emitter);
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_note(&self, msg: impl Into<DiagnosticMessage>) {
-        self.handler.struct_note(msg).emit()
+        self.dcx.struct_note(msg).emit()
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_help(&self, msg: impl Into<DiagnosticMessage>) {
-        self.handler.struct_help(msg).emit()
+        self.dcx.struct_help(msg).emit()
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     #[must_use = "ErrorGuaranteed must be returned from `run_compiler` in order to exit with a non-zero status code"]
     pub fn early_error_no_abort(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
-        self.handler.struct_err(msg).emit()
+        self.dcx.struct_err(msg).emit()
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_error(&self, msg: impl Into<DiagnosticMessage>) -> ! {
-        self.handler.struct_fatal(msg).emit()
+        self.dcx.struct_fatal(msg).emit()
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
@@ -1781,13 +1781,13 @@ impl EarlyErrorHandler {
         &self,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, !> {
-        self.handler.struct_fatal(msg)
+        self.dcx.struct_fatal(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_warn(&self, msg: impl Into<DiagnosticMessage>) {
-        self.handler.struct_warn(msg).emit()
+        self.dcx.struct_warn(msg).emit()
     }
 
     pub fn initialize_checked_jobserver(&self) {
@@ -1795,10 +1795,7 @@ impl EarlyErrorHandler {
         jobserver::initialize_checked(|err| {
             #[allow(rustc::untranslatable_diagnostic)]
             #[allow(rustc::diagnostic_outside_of_impl)]
-            self.handler
-                .struct_warn(err)
-                .note("the build environment is likely misconfigured")
-                .emit()
+            self.dcx.struct_warn(err).note("the build environment is likely misconfigured").emit()
         });
     }
 }

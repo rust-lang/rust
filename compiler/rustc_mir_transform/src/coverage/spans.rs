@@ -15,12 +15,16 @@ pub(super) struct CoverageSpans {
 }
 
 impl CoverageSpans {
+    /// Extracts coverage-relevant spans from MIR, and associates them with
+    /// their corresponding BCBs.
+    ///
+    /// Returns `None` if no coverage-relevant spans could be extracted.
     pub(super) fn generate_coverage_spans(
         mir_body: &mir::Body<'_>,
         fn_sig_span: Span,
         body_span: Span,
         basic_coverage_blocks: &CoverageGraph,
-    ) -> Self {
+    ) -> Option<Self> {
         let coverage_spans = CoverageSpansGenerator::generate_coverage_spans(
             mir_body,
             fn_sig_span,
@@ -28,13 +32,17 @@ impl CoverageSpans {
             basic_coverage_blocks,
         );
 
+        if coverage_spans.is_empty() {
+            return None;
+        }
+
         // Group the coverage spans by BCB, with the BCBs in sorted order.
         let mut bcb_to_spans = IndexVec::from_elem_n(Vec::new(), basic_coverage_blocks.num_nodes());
         for CoverageSpan { bcb, span, .. } in coverage_spans {
             bcb_to_spans[bcb].push(span);
         }
 
-        Self { bcb_to_spans }
+        Some(Self { bcb_to_spans })
     }
 
     pub(super) fn bcb_has_coverage_spans(&self, bcb: BasicCoverageBlock) -> bool {

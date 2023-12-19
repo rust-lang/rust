@@ -113,7 +113,9 @@ pub struct TyLoweringContext<'a> {
     pub db: &'a dyn HirDatabase,
     resolver: &'a Resolver,
     in_binders: DebruijnIndex,
-    owner: TypeOwnerId,
+    // FIXME: Should not be an `Option` but `Resolver` currently does not return owners in all cases
+    // where expected
+    owner: Option<TypeOwnerId>,
     /// Note: Conceptually, it's thinkable that we could be in a location where
     /// some type params should be represented as placeholders, and others
     /// should be converted to variables. I think in practice, this isn't
@@ -127,6 +129,14 @@ pub struct TyLoweringContext<'a> {
 
 impl<'a> TyLoweringContext<'a> {
     pub fn new(db: &'a dyn HirDatabase, resolver: &'a Resolver, owner: TypeOwnerId) -> Self {
+        Self::new_maybe_unowned(db, resolver, Some(owner))
+    }
+
+    pub fn new_maybe_unowned(
+        db: &'a dyn HirDatabase,
+        resolver: &'a Resolver,
+        owner: Option<TypeOwnerId>,
+    ) -> Self {
         let impl_trait_mode = ImplTraitLoweringState::Disallowed;
         let type_param_mode = ParamLoweringMode::Placeholder;
         let in_binders = DebruijnIndex::INNERMOST;
@@ -213,10 +223,11 @@ impl<'a> TyLoweringContext<'a> {
     }
 
     pub fn lower_const(&self, const_ref: &ConstRef, const_type: Ty) -> Const {
+        let Some(owner) = self.owner else { return unknown_const(const_type) };
         const_or_path_to_chalk(
             self.db,
             self.resolver,
-            self.owner,
+            owner,
             const_type,
             const_ref,
             self.type_param_mode,
@@ -1768,10 +1779,11 @@ fn type_for_type_alias(db: &dyn HirDatabase, t: TypeAliasId) -> Binders<Ty> {
     let resolver = t.resolver(db.upcast());
     let ctx = TyLoweringContext::new(db, &resolver, t.into())
         .with_type_param_mode(ParamLoweringMode::Variable);
-    if db.type_alias_data(t).is_extern {
+    let type_alias_data = db.type_alias_data(t);
+    if type_alias_data.is_extern {
         Binders::empty(Interner, TyKind::Foreign(crate::to_foreign_def_id(t)).intern(Interner))
     } else {
-        let type_ref = &db.type_alias_data(t).type_ref;
+        let type_ref = &type_alias_data.type_ref;
         let inner = ctx.lower_ty(type_ref.as_deref().unwrap_or(&TypeRef::Error));
         make_binders(db, &generics, inner)
     }
@@ -2042,7 +2054,7 @@ pub(crate) fn const_or_path_to_chalk(
                 .intern_in_type_const(InTypeConstLoc {
                     id: it,
                     owner,
-                    thing: Box::new(InTypeConstIdMetadata(expected_ty.clone())),
+                    expected_ty: Box::new(InTypeConstIdMetadata(expected_ty.clone())),
                 })
                 .into();
             intern_const_scalar(

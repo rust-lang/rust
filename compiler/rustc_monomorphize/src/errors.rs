@@ -51,9 +51,9 @@ impl IntoDiagnostic<'_> for UnusedGenericParamsHint {
     #[track_caller]
     fn into_diagnostic(
         self,
-        handler: &'_ rustc_errors::Handler,
+        dcx: &'_ rustc_errors::DiagCtxt,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(fluent::monomorphize_unused_generic_params);
+        let mut diag = dcx.struct_err(fluent::monomorphize_unused_generic_params);
         diag.set_span(self.span);
         for (span, name) in self.param_spans.into_iter().zip(self.param_names) {
             // FIXME: I can figure out how to do a label with a fluent string with a fixed message,

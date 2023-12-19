@@ -3,8 +3,8 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 use crate::{
-    BoundVar, CanonicalVarInfo, ConstKind, DebruijnIndex, DebugWithInfcx, Mutability, RegionKind,
-    TyKind, UniverseIndex,
+    BoundVar, CanonicalVarInfo, ConstKind, DebruijnIndex, DebugWithInfcx, RegionKind, TyKind,
+    UniverseIndex,
 };
 
 pub trait Interner: Sized {
@@ -20,7 +20,6 @@ pub trait Interner: Sized {
     type Term: Copy + Debug + Hash + Ord;
 
     type Binder<T>;
-    type TypeAndMut: Copy + Debug + Hash + Ord;
     type CanonicalVars: Copy + Debug + Hash + Eq + IntoIterator<Item = CanonicalVarInfo<Self>>;
 
     // Kinds of tys
@@ -80,8 +79,6 @@ pub trait Interner: Sized {
     type SubtypePredicate: Copy + Debug + Hash + Eq;
     type CoercePredicate: Copy + Debug + Hash + Eq;
     type ClosureKind: Copy + Debug + Hash + Eq;
-
-    fn ty_and_mut_to_parts(ty_and_mut: Self::TypeAndMut) -> (Self::Ty, Mutability);
 
     fn mk_canonical_var_infos(self, infos: &[CanonicalVarInfo<Self>]) -> Self::CanonicalVars;
 

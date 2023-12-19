@@ -297,7 +297,10 @@ pub(super) fn write_shared(
                     .replace("\\\"", "\\\\\"")
             ));
             all_sources.sort();
-            let mut v = String::from("const srcIndex = new Map(JSON.parse('[\\\n");
+            // This needs to be `var`, not `const`.
+            // This variable needs declared in the current global scope so that if
+            // src-script.js loads first, it can pick it up.
+            let mut v = String::from("var srcIndex = new Map(JSON.parse('[\\\n");
             v.push_str(&all_sources.join(",\\\n"));
             v.push_str("\\\n]'));\ncreateSrcSidebar();\n");
             Ok(v.into_bytes())
@@ -317,13 +320,16 @@ pub(super) fn write_shared(
     // with rustdoc running in parallel.
     all_indexes.sort();
     write_invocation_specific("search-index.js", &|| {
-        let mut v = String::from("const searchIndex = new Map(JSON.parse('[\\\n");
+        // This needs to be `var`, not `const`.
+        // This variable needs declared in the current global scope so that if
+        // search.js loads first, it can pick it up.
+        let mut v = String::from("var searchIndex = new Map(JSON.parse('[\\\n");
         v.push_str(&all_indexes.join(",\\\n"));
         v.push_str(
             r#"\
 ]'));
-if (typeof window !== 'undefined' && window.initSearch) {window.initSearch(searchIndex)};
-if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
+if (typeof exports !== 'undefined') exports.searchIndex = searchIndex;
+else if (window.initSearch) window.initSearch(searchIndex);
 "#,
         );
         Ok(v.into_bytes())

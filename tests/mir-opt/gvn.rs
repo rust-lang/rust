@@ -609,6 +609,22 @@ fn indirect_static() {
     })
 }
 
+/// Verify that having constant index `u64::MAX` does not yield to an overflow in rustc.
+fn constant_index_overflow<T: Copy>(x: &[T]) {
+    // CHECK-LABEL: fn constant_index_overflow(
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: debug b => [[b:_.*]];
+    // CHECK: [[a]] = const usize::MAX;
+    // CHECK-NOT: = (*_1)[{{.*}} of 0];
+    // CHECK: [[b]] = (*_1)[[[a]]];
+    // CHECK-NOT: = (*_1)[{{.*}} of 0];
+    // CHECK: [[b]] = (*_1)[0 of 1];
+    // CHECK-NOT: = (*_1)[{{.*}} of 0];
+    let a = u64::MAX as usize;
+    let b = if a < x.len() { x[a] } else { x[0] };
+    opaque(b)
+}
+
 fn main() {
     subexpression_elimination(2, 4, 5);
     wrap_unwrap(5);
@@ -627,6 +643,7 @@ fn main() {
     repeat();
     fn_pointers();
     indirect_static();
+    constant_index_overflow(&[5, 3]);
 }
 
 #[inline(never)]
@@ -653,3 +670,4 @@ fn identity<T>(x: T) -> T {
 // EMIT_MIR gvn.repeat.GVN.diff
 // EMIT_MIR gvn.fn_pointers.GVN.diff
 // EMIT_MIR gvn.indirect_static.GVN.diff
+// EMIT_MIR gvn.constant_index_overflow.GVN.diff

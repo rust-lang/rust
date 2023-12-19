@@ -341,13 +341,13 @@ impl<'tcx> CanonicalParamEnvCache<'tcx> {
             Entry::Occupied(e) => {
                 let (canonical, var_values) = e.get();
                 state.var_values.extend_from_slice(var_values);
-                canonical.clone()
+                *canonical
             }
             Entry::Vacant(e) => {
                 let canonical = canonicalize_op(tcx, key, state);
                 let OriginalQueryValues { var_values, universe_map } = state;
                 assert_eq!(universe_map.len(), 1);
-                e.insert((canonical.clone(), tcx.arena.alloc_slice(var_values)));
+                e.insert((canonical, tcx.arena.alloc_slice(var_values)));
                 canonical
             }
         }

@@ -450,7 +450,6 @@ fn report_conflicting_impls<'tcx>(
                 msg,
                 |err| {
                     decorate(tcx, &overlap, impl_span, err);
-                    err
                 },
             );
         }

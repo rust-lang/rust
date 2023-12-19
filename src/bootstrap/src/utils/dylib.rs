@@ -25,3 +25,16 @@ pub fn dylib_path() -> Vec<std::path::PathBuf> {
     };
     std::env::split_paths(&var).collect()
 }
+
+/// Given an executable called `name`, return the filename for the
+/// executable for a particular target.
+#[allow(dead_code)]
+pub fn exe(name: &str, target: &str) -> String {
+    if target.contains("windows") {
+        format!("{name}.exe")
+    } else if target.contains("uefi") {
+        format!("{name}.efi")
+    } else {
+        name.to_string()
+    }
+}

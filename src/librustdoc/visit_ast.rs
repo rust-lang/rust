@@ -163,15 +163,16 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     .iter()
                     .filter_map(|attr| {
                         Cfg::parse(attr.meta_item()?)
-                            .map_err(|e| self.cx.sess().diagnostic().span_err(e.span, e.msg))
+                            .map_err(|e| self.cx.sess().dcx().span_err(e.span, e.msg))
                             .ok()
                     })
                     .collect::<Vec<_>>()
             })
-            .chain(
-                [Cfg::Cfg(sym::test, None), Cfg::Cfg(sym::doc, None), Cfg::Cfg(sym::doctest, None)]
-                    .into_iter(),
-            )
+            .chain([
+                Cfg::Cfg(sym::test, None),
+                Cfg::Cfg(sym::doc, None),
+                Cfg::Cfg(sym::doctest, None),
+            ])
             .collect();
 
         self.cx.cache.exact_paths = self.exact_paths;

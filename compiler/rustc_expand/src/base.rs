@@ -790,7 +790,7 @@ impl SyntaxExtension {
             .map(|attr| {
                 // Override `helper_attrs` passed above if it's a built-in macro,
                 // marking `proc_macro_derive` macros as built-in is not a realistic use case.
-                parse_macro_name_and_helper_attrs(sess.diagnostic(), attr, "built-in").map_or_else(
+                parse_macro_name_and_helper_attrs(sess.dcx(), attr, "built-in").map_or_else(
                     || (Some(name), Vec::new()),
                     |(name, helper_attrs)| (Some(name), helper_attrs),
                 )
@@ -1119,7 +1119,7 @@ impl<'a> ExtCtxt<'a> {
         sp: S,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        self.sess.diagnostic().struct_span_err(sp, msg)
+        self.sess.dcx().struct_span_err(sp, msg)
     }
 
     #[track_caller]
@@ -1143,10 +1143,10 @@ impl<'a> ExtCtxt<'a> {
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) {
-        self.sess.diagnostic().span_err(sp, msg);
+        self.sess.dcx().span_err(sp, msg);
     }
     pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) -> ! {
-        self.sess.diagnostic().span_bug(sp, msg);
+        self.sess.dcx().span_bug(sp, msg);
     }
     pub fn trace_macros_diag(&mut self) {
         for (span, notes) in self.expansions.iter() {
@@ -1160,7 +1160,7 @@ impl<'a> ExtCtxt<'a> {
         self.expansions.clear();
     }
     pub fn bug(&self, msg: &'static str) -> ! {
-        self.sess.diagnostic().bug(msg);
+        self.sess.dcx().bug(msg);
     }
     pub fn trace_macros(&self) -> bool {
         self.ecfg.trace_mac
@@ -1208,7 +1208,7 @@ pub fn resolve_path(
                     span,
                     path: parse_sess.source_map().filename_for_diagnostics(&other).to_string(),
                 }
-                .into_diagnostic(&parse_sess.span_diagnostic));
+                .into_diagnostic(&parse_sess.dcx));
             }
         };
         result.pop();
@@ -1350,7 +1350,7 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt<'_>, tts: TokenStream) -> Option<Vec<
 }
 
 pub fn parse_macro_name_and_helper_attrs(
-    diag: &rustc_errors::Handler,
+    dcx: &rustc_errors::DiagCtxt,
     attr: &Attribute,
     macro_type: &str,
 ) -> Option<(Symbol, Vec<Symbol>)> {
@@ -1359,23 +1359,23 @@ pub fn parse_macro_name_and_helper_attrs(
     // `#[proc_macro_derive(Foo, attributes(A, ..))]`
     let list = attr.meta_item_list()?;
     if list.len() != 1 && list.len() != 2 {
-        diag.emit_err(errors::AttrNoArguments { span: attr.span });
+        dcx.emit_err(errors::AttrNoArguments { span: attr.span });
         return None;
     }
     let Some(trait_attr) = list[0].meta_item() else {
-        diag.emit_err(errors::NotAMetaItem { span: list[0].span() });
+        dcx.emit_err(errors::NotAMetaItem { span: list[0].span() });
         return None;
     };
     let trait_ident = match trait_attr.ident() {
         Some(trait_ident) if trait_attr.is_word() => trait_ident,
         _ => {
-            diag.emit_err(errors::OnlyOneWord { span: trait_attr.span });
+            dcx.emit_err(errors::OnlyOneWord { span: trait_attr.span });
             return None;
         }
     };
 
     if !trait_ident.name.can_be_raw() {
-        diag.emit_err(errors::CannotBeNameOfMacro {
+        dcx.emit_err(errors::CannotBeNameOfMacro {
             span: trait_attr.span,
             trait_ident,
             macro_type,
@@ -1385,29 +1385,29 @@ pub fn parse_macro_name_and_helper_attrs(
     let attributes_attr = list.get(1);
     let proc_attrs: Vec<_> = if let Some(attr) = attributes_attr {
         if !attr.has_name(sym::attributes) {
-            diag.emit_err(errors::ArgumentNotAttributes { span: attr.span() });
+            dcx.emit_err(errors::ArgumentNotAttributes { span: attr.span() });
         }
         attr.meta_item_list()
             .unwrap_or_else(|| {
-                diag.emit_err(errors::AttributesWrongForm { span: attr.span() });
+                dcx.emit_err(errors::AttributesWrongForm { span: attr.span() });
                 &[]
             })
             .iter()
             .filter_map(|attr| {
                 let Some(attr) = attr.meta_item() else {
-                    diag.emit_err(errors::AttributeMetaItem { span: attr.span() });
+                    dcx.emit_err(errors::AttributeMetaItem { span: attr.span() });
                     return None;
                 };
 
                 let ident = match attr.ident() {
                     Some(ident) if attr.is_word() => ident,
                     _ => {
-                        diag.emit_err(errors::AttributeSingleWord { span: attr.span });
+                        dcx.emit_err(errors::AttributeSingleWord { span: attr.span });
                         return None;
                     }
                 };
                 if !ident.name.can_be_raw() {
-                    diag.emit_err(errors::HelperAttributeNameInvalid {
+                    dcx.emit_err(errors::HelperAttributeNameInvalid {
                         span: attr.span,
                         name: ident,
                     });

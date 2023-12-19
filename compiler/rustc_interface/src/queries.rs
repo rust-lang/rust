@@ -228,7 +228,7 @@ impl<'tcx> Queries<'tcx> {
 
             // If we have any delayed bugs, for example because we created TyKind::Error earlier,
             // it's likely that codegen will only cause more ICEs, obscuring the original problem
-            self.compiler.sess.diagnostic().flush_delayed();
+            self.compiler.sess.dcx().flush_delayed();
 
             // Hook for UI tests.
             Self::check_for_rustc_errors_attr(tcx);

@@ -16,8 +16,8 @@ use crate::snippet::{
 use crate::styled_buffer::StyledBuffer;
 use crate::translation::{to_fluent_args, Translate};
 use crate::{
-    diagnostic::DiagnosticLocation, CodeSuggestion, Diagnostic, DiagnosticId, DiagnosticMessage,
-    FluentBundle, Handler, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic,
+    diagnostic::DiagnosticLocation, CodeSuggestion, DiagCtxt, Diagnostic, DiagnosticId,
+    DiagnosticMessage, FluentBundle, LazyFallbackBundle, Level, MultiSpan, SubDiagnostic,
     SubstitutionHighlight, SuggestionStyle, TerminalUrl,
 };
 use rustc_lint_defs::pluralize;
@@ -553,10 +553,10 @@ impl Emitter for EmitterWriter {
 }
 
 /// An emitter that does nothing when emitting a non-fatal diagnostic.
-/// Fatal diagnostics are forwarded to `fatal_handler` to avoid silent
+/// Fatal diagnostics are forwarded to `fatal_dcx` to avoid silent
 /// failures of rustc, as witnessed e.g. in issue #89358.
 pub struct SilentEmitter {
-    pub fatal_handler: Handler,
+    pub fatal_dcx: DiagCtxt,
     pub fatal_note: Option<String>,
 }
 
@@ -581,7 +581,7 @@ impl Emitter for SilentEmitter {
             if let Some(ref note) = self.fatal_note {
                 d.note(note.clone());
             }
-            self.fatal_handler.emit_diagnostic(d);
+            self.fatal_dcx.emit_diagnostic(d);
         }
     }
 }
@@ -2677,10 +2677,7 @@ fn from_stderr(color: ColorConfig) -> Destination {
 /// On Windows, BRIGHT_BLUE is hard to read on black. Use cyan instead.
 ///
 /// See #36178.
-#[cfg(windows)]
-const BRIGHT_BLUE: Color = Color::Cyan;
-#[cfg(not(windows))]
-const BRIGHT_BLUE: Color = Color::Blue;
+const BRIGHT_BLUE: Color = if cfg!(windows) { Color::Cyan } else { Color::Blue };
 
 impl Style {
     fn color_spec(&self, lvl: Level) -> ColorSpec {

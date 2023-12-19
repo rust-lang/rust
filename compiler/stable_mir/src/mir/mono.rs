@@ -1,6 +1,6 @@
 use crate::crate_def::CrateDef;
 use crate::mir::Body;
-use crate::ty::{Allocation, ClosureDef, ClosureKind, FnDef, FnSig, GenericArgs, IndexedVal, Ty};
+use crate::ty::{Allocation, ClosureDef, ClosureKind, FnDef, GenericArgs, IndexedVal, Ty};
 use crate::{with, CrateItem, DefId, Error, ItemKind, Opaque, Symbol};
 use std::fmt::{Debug, Formatter};
 
@@ -113,11 +113,6 @@ impl Instance {
                 crate::Error::new(format!("Failed to resolve `{def:?}` with `{args:?}`"))
             })
         })
-    }
-
-    /// Get this function signature with all types already instantiated.
-    pub fn fn_sig(&self) -> FnSig {
-        self.ty().kind().fn_sig().unwrap().skip_binder()
     }
 
     /// Check whether this instance is an empty shim.

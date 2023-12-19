@@ -134,12 +134,8 @@ pub struct BuiltinMissingDebugImpl<'a> {
 
 // Needed for def_path_str
 impl<'a> DecorateLint<'a, ()> for BuiltinMissingDebugImpl<'_> {
-    fn decorate_lint<'b>(
-        self,
-        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
-    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
+    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
         diag.set_arg("debug", self.tcx.def_path_str(self.def_id));
-        diag
     }
 
     fn msg(&self) -> DiagnosticMessage {
@@ -243,17 +239,13 @@ pub struct BuiltinUngatedAsyncFnTrackCaller<'a> {
 }
 
 impl<'a> DecorateLint<'a, ()> for BuiltinUngatedAsyncFnTrackCaller<'_> {
-    fn decorate_lint<'b>(
-        self,
-        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
-    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
+    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
         diag.span_label(self.label, fluent::lint_label);
         rustc_session::parse::add_feature_diagnostics(
             diag,
             self.parse_sess,
             sym::async_fn_track_caller,
         );
-        diag
     }
 
     fn msg(&self) -> DiagnosticMessage {
@@ -433,10 +425,7 @@ pub struct BuiltinUnpermittedTypeInit<'a> {
 }
 
 impl<'a> DecorateLint<'a, ()> for BuiltinUnpermittedTypeInit<'_> {
-    fn decorate_lint<'b>(
-        self,
-        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
-    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
+    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
         diag.set_arg("ty", self.ty);
         diag.span_label(self.label, fluent::lint_builtin_unpermitted_type_init_label);
         if let InhabitedPredicate::True = self.ty.inhabited_predicate(self.tcx) {
@@ -447,7 +436,6 @@ impl<'a> DecorateLint<'a, ()> for BuiltinUnpermittedTypeInit<'_> {
             );
         }
         self.sub.add_to_diagnostic(diag);
-        diag
     }
 
     fn msg(&self) -> rustc_errors::DiagnosticMessage {
@@ -1159,10 +1147,7 @@ pub struct NonFmtPanicUnused {
 
 // Used because of two suggestions based on one Option<Span>
 impl<'a> DecorateLint<'a, ()> for NonFmtPanicUnused {
-    fn decorate_lint<'b>(
-        self,
-        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
-    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
+    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
         diag.set_arg("count", self.count);
         diag.note(fluent::lint_note);
         if let Some(span) = self.suggestion {
@@ -1179,7 +1164,6 @@ impl<'a> DecorateLint<'a, ()> for NonFmtPanicUnused {
                 Applicability::MachineApplicable,
             );
         }
-        diag
     }
 
     fn msg(&self) -> rustc_errors::DiagnosticMessage {
@@ -1358,12 +1342,9 @@ pub struct DropTraitConstraintsDiag<'a> {
 
 // Needed for def_path_str
 impl<'a> DecorateLint<'a, ()> for DropTraitConstraintsDiag<'_> {
-    fn decorate_lint<'b>(
-        self,
-        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
-    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
+    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
         diag.set_arg("predicate", self.predicate);
-        diag.set_arg("needs_drop", self.tcx.def_path_str(self.def_id))
+        diag.set_arg("needs_drop", self.tcx.def_path_str(self.def_id));
     }
 
     fn msg(&self) -> rustc_errors::DiagnosticMessage {
@@ -1378,11 +1359,8 @@ pub struct DropGlue<'a> {
 
 // Needed for def_path_str
 impl<'a> DecorateLint<'a, ()> for DropGlue<'_> {
-    fn decorate_lint<'b>(
-        self,
-        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
-    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
-        diag.set_arg("needs_drop", self.tcx.def_path_str(self.def_id))
+    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
+        diag.set_arg("needs_drop", self.tcx.def_path_str(self.def_id));
     }
 
     fn msg(&self) -> rustc_errors::DiagnosticMessage {
@@ -1655,10 +1633,7 @@ pub struct ImproperCTypes<'a> {
 
 // Used because of the complexity of Option<DiagnosticMessage>, DiagnosticMessage, and Option<Span>
 impl<'a> DecorateLint<'a, ()> for ImproperCTypes<'_> {
-    fn decorate_lint<'b>(
-        self,
-        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
-    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
+    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
         diag.set_arg("ty", self.ty);
         diag.set_arg("desc", self.desc);
         diag.span_label(self.label, fluent::lint_label);
@@ -1669,7 +1644,6 @@ impl<'a> DecorateLint<'a, ()> for ImproperCTypes<'_> {
         if let Some(note) = self.span_note {
             diag.span_note(note, fluent::lint_note);
         }
-        diag
     }
 
     fn msg(&self) -> rustc_errors::DiagnosticMessage {
@@ -1802,10 +1776,7 @@ pub enum UnusedDefSuggestion {
 
 // Needed because of def_path_str
 impl<'a> DecorateLint<'a, ()> for UnusedDef<'_, '_> {
-    fn decorate_lint<'b>(
-        self,
-        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
-    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
+    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
         diag.set_arg("pre", self.pre);
         diag.set_arg("post", self.post);
         diag.set_arg("def", self.cx.tcx.def_path_str(self.def_id));
@@ -1816,7 +1787,6 @@ impl<'a> DecorateLint<'a, ()> for UnusedDef<'_, '_> {
         if let Some(sugg) = self.suggestion {
             diag.subdiagnostic(sugg);
         }
-        diag
     }
 
     fn msg(&self) -> rustc_errors::DiagnosticMessage {
@@ -1889,15 +1859,11 @@ pub struct AsyncFnInTraitDiag {
 }
 
 impl<'a> DecorateLint<'a, ()> for AsyncFnInTraitDiag {
-    fn decorate_lint<'b>(
-        self,
-        diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>,
-    ) -> &'b mut rustc_errors::DiagnosticBuilder<'a, ()> {
+    fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
         diag.note(fluent::lint_note);
         if let Some(sugg) = self.sugg {
             diag.multipart_suggestion(fluent::lint_suggestion, sugg, Applicability::MaybeIncorrect);
         }
-        diag
     }
 
     fn msg(&self) -> rustc_errors::DiagnosticMessage {

@@ -77,6 +77,7 @@ use std::num::NonZeroU32;
 
 use check::check_mod_item_types;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::ErrorGuaranteed;
 use rustc_errors::{pluralize, struct_span_err, Diagnostic, DiagnosticBuilder};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
@@ -570,7 +571,26 @@ pub fn check_function_signature<'tcx>(
     mut cause: ObligationCause<'tcx>,
     fn_id: DefId,
     expected_sig: ty::PolyFnSig<'tcx>,
-) {
+) -> Result<(), ErrorGuaranteed> {
+    fn extract_span_for_error_reporting<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        err: TypeError<'_>,
+        cause: &ObligationCause<'tcx>,
+        fn_id: LocalDefId,
+    ) -> rustc_span::Span {
+        let mut args = {
+            let node = tcx.hir().expect_owner(fn_id);
+            let decl = node.fn_decl().unwrap_or_else(|| bug!("expected fn decl, found {:?}", node));
+            decl.inputs.iter().map(|t| t.span).chain(std::iter::once(decl.output.span()))
+        };
+
+        match err {
+            TypeError::ArgumentMutability(i)
+            | TypeError::ArgumentSorts(ExpectedFound { .. }, i) => args.nth(i).unwrap(),
+            _ => cause.span(),
+        }
+    }
+
     let local_id = fn_id.as_local().unwrap_or(CRATE_DEF_ID);
 
     let param_env = ty::ParamEnv::empty();
@@ -587,8 +607,7 @@ pub fn check_function_signature<'tcx>(
         Ok(()) => {
             let errors = ocx.select_all_or_error();
             if !errors.is_empty() {
-                infcx.err_ctxt().report_fulfillment_errors(errors);
-                return;
+                return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
             }
         }
         Err(err) => {
@@ -610,30 +629,14 @@ pub fn check_function_signature<'tcx>(
                 false,
                 false,
             );
-            diag.emit();
-            return;
+            return Err(diag.emit());
         }
     }
 
     let outlives_env = OutlivesEnvironment::new(param_env);
-    let _ = ocx.resolve_regions_and_report_errors(local_id, &outlives_env);
-
-    fn extract_span_for_error_reporting<'tcx>(
-        tcx: TyCtxt<'tcx>,
-        err: TypeError<'_>,
-        cause: &ObligationCause<'tcx>,
-        fn_id: LocalDefId,
-    ) -> rustc_span::Span {
-        let mut args = {
-            let node = tcx.hir().expect_owner(fn_id);
-            let decl = node.fn_decl().unwrap_or_else(|| bug!("expected fn decl, found {:?}", node));
-            decl.inputs.iter().map(|t| t.span).chain(std::iter::once(decl.output.span()))
-        };
-
-        match err {
-            TypeError::ArgumentMutability(i)
-            | TypeError::ArgumentSorts(ExpectedFound { .. }, i) => args.nth(i).unwrap(),
-            _ => cause.span(),
-        }
+    if let Err(e) = ocx.resolve_regions_and_report_errors(local_id, &outlives_env) {
+        return Err(e);
     }
+
+    Ok(())
 }

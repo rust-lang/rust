@@ -59,10 +59,8 @@ use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{ConstArg, GenericArg, ItemLocalId, ParamName, TraitCandidate};
 use rustc_index::{Idx, IndexSlice, IndexVec};
-use rustc_middle::{
-    span_bug,
-    ty::{ResolverAstLowering, TyCtxt},
-};
+use rustc_middle::span_bug;
+use rustc_middle::ty::{ResolverAstLowering, TyCtxt, Visibility};
 use rustc_session::parse::{add_feature_diagnostics, feature_err};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{DesugaringKind, Span, DUMMY_SP};
@@ -453,6 +451,7 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
     tcx.ensure_with_value().output_filenames(());
     tcx.ensure_with_value().early_lint_checks(());
     tcx.ensure_with_value().debugger_visualizers(LOCAL_CRATE);
+    tcx.ensure_with_value().get_lang_items(());
     let (mut resolver, krate) = tcx.resolver_for_lowering(()).steal();
 
     let ast_index = index_crate(&resolver.node_id_to_def_id, &krate);
@@ -763,6 +762,28 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn expect_full_res_from_use(&mut self, id: NodeId) -> impl Iterator<Item = Res<NodeId>> {
         self.resolver.get_import_res(id).present_items()
+    }
+
+    fn make_lang_item_path(
+        &mut self,
+        lang_item: hir::LangItem,
+        span: Span,
+        args: Option<&'hir hir::GenericArgs<'hir>>,
+    ) -> &'hir hir::Path<'hir> {
+        let def_id = self.tcx.require_lang_item(lang_item, Some(span));
+        let def_kind = self.tcx.def_kind(def_id);
+        let res = Res::Def(def_kind, def_id);
+        self.arena.alloc(hir::Path {
+            span,
+            res,
+            segments: self.arena.alloc_from_iter([hir::PathSegment {
+                ident: Ident::new(lang_item.name(), span),
+                hir_id: self.next_id(),
+                res,
+                args,
+                infer_args: false,
+            }]),
+        })
     }
 
     /// Reuses the span but adds information like the kind of the desugaring and features that are
@@ -1630,6 +1651,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         );
         debug!(?opaque_ty_def_id);
 
+        // Meaningless, but provided so that all items have visibilities.
+        let parent_mod = self.tcx.parent_module_from_def_id(opaque_ty_def_id).to_def_id();
+        self.tcx.feed_local_def_id(opaque_ty_def_id).visibility(Visibility::Restricted(parent_mod));
+
         // Map from captured (old) lifetime to synthetic (new) lifetime.
         // Used to resolve lifetimes in the bounds of the opaque.
         let mut captured_to_synthesized_mapping = FxHashMap::default();
@@ -1976,18 +2001,27 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             CoroutineKind::AsyncGen { .. } => (sym::Item, hir::LangItem::AsyncIterator),
         };
 
-        let future_args = self.arena.alloc(hir::GenericArgs {
+        let bound_args = self.arena.alloc(hir::GenericArgs {
             args: &[],
             bindings: arena_vec![self; self.assoc_ty_binding(assoc_ty_name, opaque_ty_span, output_ty)],
             parenthesized: hir::GenericArgsParentheses::No,
             span_ext: DUMMY_SP,
         });
 
-        hir::GenericBound::LangItemTrait(
-            trait_lang_item,
-            opaque_ty_span,
-            self.next_id(),
-            future_args,
+        hir::GenericBound::Trait(
+            hir::PolyTraitRef {
+                bound_generic_params: &[],
+                trait_ref: hir::TraitRef {
+                    path: self.make_lang_item_path(
+                        trait_lang_item,
+                        opaque_ty_span,
+                        Some(bound_args),
+                    ),
+                    hir_ref_id: self.next_id(),
+                },
+                span: opaque_ty_span,
+            },
+            hir::TraitBoundModifier::None,
         )
     }
 

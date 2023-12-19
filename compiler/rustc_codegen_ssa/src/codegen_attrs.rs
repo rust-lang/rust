@@ -386,7 +386,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                                 [sym::arm, sym::a32] | [sym::arm, sym::t32] => {
                                     if !tcx.sess.target.has_thumb_interworking {
                                         struct_span_err!(
-                                            tcx.sess.diagnostic(),
+                                            tcx.sess.dcx(),
                                             attr.span,
                                             E0779,
                                             "target does not support `#[instruction_set]`"
@@ -403,7 +403,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                                 }
                                 _ => {
                                     struct_span_err!(
-                                        tcx.sess.diagnostic(),
+                                        tcx.sess.dcx(),
                                         attr.span,
                                         E0779,
                                         "invalid instruction set specified",
@@ -415,7 +415,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         }
                         [] => {
                             struct_span_err!(
-                                tcx.sess.diagnostic(),
+                                tcx.sess.dcx(),
                                 attr.span,
                                 E0778,
                                 "`#[instruction_set]` requires an argument"
@@ -425,7 +425,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         }
                         _ => {
                             struct_span_err!(
-                                tcx.sess.diagnostic(),
+                                tcx.sess.dcx(),
                                 attr.span,
                                 E0779,
                                 "cannot specify more than one instruction set"
@@ -443,7 +443,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     rustc_attr::parse_alignment(&literal.kind)
                         .map_err(|msg| {
                             struct_span_err!(
-                                tcx.sess.diagnostic(),
+                                tcx.sess.dcx(),
                                 attr.span,
                                 E0589,
                                 "invalid `repr(align)` attribute: {}",
@@ -469,27 +469,17 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             Some(MetaItemKind::List(ref items)) => {
                 inline_span = Some(attr.span);
                 if items.len() != 1 {
-                    struct_span_err!(
-                        tcx.sess.diagnostic(),
-                        attr.span,
-                        E0534,
-                        "expected one argument"
-                    )
-                    .emit();
+                    struct_span_err!(tcx.sess.dcx(), attr.span, E0534, "expected one argument")
+                        .emit();
                     InlineAttr::None
                 } else if list_contains_name(items, sym::always) {
                     InlineAttr::Always
                 } else if list_contains_name(items, sym::never) {
                     InlineAttr::Never
                 } else {
-                    struct_span_err!(
-                        tcx.sess.diagnostic(),
-                        items[0].span(),
-                        E0535,
-                        "invalid argument"
-                    )
-                    .help("valid inline arguments are `always` and `never`")
-                    .emit();
+                    struct_span_err!(tcx.sess.dcx(), items[0].span(), E0535, "invalid argument")
+                        .help("valid inline arguments are `always` and `never`")
+                        .emit();
 
                     InlineAttr::None
                 }
@@ -503,7 +493,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         if !attr.has_name(sym::optimize) {
             return ia;
         }
-        let err = |sp, s| struct_span_err!(tcx.sess.diagnostic(), sp, E0722, "{}", s).emit();
+        let err = |sp, s| struct_span_err!(tcx.sess.dcx(), sp, E0722, "{}", s).emit();
         match attr.meta_kind() {
             Some(MetaItemKind::Word) => {
                 err(attr.span, "expected one argument");
@@ -578,7 +568,9 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     hir_id,
                     no_sanitize_span,
                     "`no_sanitize` will have no effect after inlining",
-                    |lint| lint.span_note(inline_span, "inlining requested here"),
+                    |lint| {
+                        lint.span_note(inline_span, "inlining requested here");
+                    },
                 )
             }
         }

@@ -250,7 +250,12 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         err.emit();
 
         self.tcx.sess.abort_if_errors();
-        bug!();
+        // FIXME: this should be something like `build_overflow_error_fatal`, which returns
+        // `DiagnosticBuilder<', !>`. Then we don't even need anything after that `emit()`.
+        unreachable!(
+            "did not expect compilation to continue after `abort_if_errors`, \
+            since an error was definitely emitted!"
+        );
     }
 
     fn build_overflow_error<T>(
@@ -3390,7 +3395,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         };
 
         if let Some(diag) =
-            self.tcx.sess.diagnostic().steal_diagnostic(self.tcx.def_span(def_id), StashKey::Cycle)
+            self.tcx.sess.dcx().steal_diagnostic(self.tcx.def_span(def_id), StashKey::Cycle)
         {
             diag.cancel();
         }

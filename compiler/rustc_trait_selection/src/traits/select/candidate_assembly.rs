@@ -154,10 +154,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .infcx
             .probe(|_| self.match_projection_obligation_against_definition_bounds(obligation));
 
-        // FIXME(effects) proper constness needed?
-        candidates.vec.extend(
-            result.into_iter().map(|idx| ProjectionCandidate(idx, ty::BoundConstness::NotConst)),
-        );
+        candidates.vec.extend(result.into_iter().map(|idx| ProjectionCandidate(idx)));
     }
 
     /// Given an obligation like `<SomeTrait for T>`, searches the obligations that the caller
@@ -358,17 +355,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // Provide an impl, but only for suitable `fn` pointers.
             ty::FnPtr(sig) => {
                 if sig.is_fn_trait_compatible() {
-                    candidates.vec.push(FnPointerCandidate { is_const: false });
+                    candidates
+                        .vec
+                        .push(FnPointerCandidate { fn_host_effect: self.tcx().consts.true_ });
                 }
             }
             // Provide an impl for suitable functions, rejecting `#[target_feature]` functions (RFC 2396).
-            ty::FnDef(def_id, _) => {
-                if self.tcx().fn_sig(def_id).skip_binder().is_fn_trait_compatible()
-                    && self.tcx().codegen_fn_attrs(def_id).target_features.is_empty()
+            ty::FnDef(def_id, args) => {
+                let tcx = self.tcx();
+                if tcx.fn_sig(def_id).skip_binder().is_fn_trait_compatible()
+                    && tcx.codegen_fn_attrs(def_id).target_features.is_empty()
                 {
-                    candidates
-                        .vec
-                        .push(FnPointerCandidate { is_const: self.tcx().is_const_fn(def_id) });
+                    candidates.vec.push(FnPointerCandidate {
+                        fn_host_effect: tcx
+                            .generics_of(def_id)
+                            .host_effect_index
+                            .map_or(tcx.consts.true_, |idx| args.const_at(idx)),
+                    });
                 }
             }
             _ => {}
@@ -585,7 +588,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::Alias(ty::Opaque, _) => {
-                    if candidates.vec.iter().any(|c| matches!(c, ProjectionCandidate(..))) {
+                    if candidates.vec.iter().any(|c| matches!(c, ProjectionCandidate(_))) {
                         // We do not generate an auto impl candidate for `impl Trait`s which already
                         // reference our auto trait.
                         //

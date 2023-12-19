@@ -203,7 +203,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                     )
                     .into(),
                     ty::AssocKind::Type => Ty::new_error(tcx, guar).into(),
-                    ty::AssocKind::Fn => unreachable!(),
+                    // This makes no sense...
+                    ty::AssocKind::Fn => span_bug!(
+                        tcx.def_span(assoc_def.item.def_id),
+                        "cannot project to an associated function"
+                    ),
                 };
                 ecx.eq(goal.param_env, goal.predicate.term, error_term)
                     .expect("expected goal term to be fully unconstrained");

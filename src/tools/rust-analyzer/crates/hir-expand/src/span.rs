@@ -75,27 +75,40 @@ pub struct RealSpanMap {
     /// Invariant: Sorted vec over TextSize
     // FIXME: SortedVec<(TextSize, ErasedFileAstId)>?
     pairs: Box<[(TextSize, ErasedFileAstId)]>,
+    end: TextSize,
 }
 
 impl RealSpanMap {
     /// Creates a real file span map that returns absolute ranges (relative ranges to the root ast id).
     pub fn absolute(file_id: FileId) -> Self {
-        RealSpanMap { file_id, pairs: Box::from([(TextSize::new(0), ROOT_ERASED_FILE_AST_ID)]) }
+        RealSpanMap {
+            file_id,
+            pairs: Box::from([(TextSize::new(0), ROOT_ERASED_FILE_AST_ID)]),
+            end: TextSize::new(!0),
+        }
     }
 
     pub fn from_file(db: &dyn ExpandDatabase, file_id: FileId) -> Self {
         let mut pairs = vec![(TextSize::new(0), ROOT_ERASED_FILE_AST_ID)];
         let ast_id_map = db.ast_id_map(file_id.into());
-        pairs.extend(
-            db.parse(file_id)
-                .tree()
-                .items()
-                .map(|item| (item.syntax().text_range().start(), ast_id_map.ast_id(&item).erase())),
-        );
-        RealSpanMap { file_id, pairs: pairs.into_boxed_slice() }
+        let tree = db.parse(file_id).tree();
+        pairs
+            .extend(tree.items().map(|item| {
+                (item.syntax().text_range().start(), ast_id_map.ast_id(&item).erase())
+            }));
+        RealSpanMap {
+            file_id,
+            pairs: pairs.into_boxed_slice(),
+            end: tree.syntax().text_range().end(),
+        }
     }
 
     pub fn span_for_range(&self, range: TextRange) -> SpanData {
+        assert!(
+            range.end() <= self.end,
+            "range {range:?} goes beyond the end of the file {:?}",
+            self.end
+        );
         let start = range.start();
         let idx = self
             .pairs
