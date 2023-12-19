@@ -152,7 +152,8 @@ store-property: (".src-sidebar-title", {
 })
 call-function: ("check-sidebar-dir-entry", {
     "x": 0,
-    "y": |source_sidebar_title_y| + |source_sidebar_title_height|,
+    // margin = 7px
+    "y": |source_sidebar_title_y| + |source_sidebar_title_height| + 7,
 })
 
 // Check the search form
@@ -180,7 +181,8 @@ store-property: (".src-sidebar-title", {
 })
 call-function: ("check-sidebar-dir-entry", {
     "x": 0,
-    "y": |source_sidebar_title_y| + |source_sidebar_title_height|,
+    // margin = 7px
+    "y": |source_sidebar_title_y| + |source_sidebar_title_height| + 7,
 })
 
 // Tiny, phone mobile gets a different display where the logo is stacked on top.
@@ -194,5 +196,6 @@ store-property: (".src-sidebar-title", {
 })
 call-function: ("check-sidebar-dir-entry", {
     "x": 0,
-    "y": |source_sidebar_title_y| + |source_sidebar_title_height|,
+    // margin = 7px
+    "y": |source_sidebar_title_y| + |source_sidebar_title_height| + 7,
 })

@@ -1531,9 +1531,8 @@ a.tooltip:hover::after {
 	position: sticky;
 	top: 0;
 	display: flex;
-	padding: 8px;
-	padding-left: 48px;
-	padding-bottom: 7px;
+	padding: 8px 8px 0 48px;
+	margin-bottom: 7px;
 	background: var(--sidebar-background-color);
 	border-bottom: 1px solid var(--border-color);
 }
@@ -1793,6 +1792,30 @@ However, it's not needed with smaller screen width because the doc/code block is
 	margin-top: 16px;
 }
 
+/* sidebar button opens modal
+	use hamburger button */
+.src #sidebar-button > a:before, .sidebar-menu-toggle:before {
+	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
+		viewBox="0 0 22 22" fill="none" stroke="black">\
+		<path d="M3,5h16M3,11h16M3,17h16" stroke-width="2.75"/></svg>');
+	opacity: 0.75;
+}
+.sidebar-menu-toggle:hover:before,
+.sidebar-menu-toggle:active:before,
+.sidebar-menu-toggle:focus:before {
+	opacity: 1;
+}
+
+/* src sidebar button opens a folder view */
+.src #sidebar-button > a:before {
+	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
+		viewBox="0 0 22 22" fill="none" stroke="black">\
+		<path d="M16,9v-4h-6v-1l-2,-2h-4l-2,2v16h13L21,9h-15L2,19" stroke-width="1.25"/>\
+		<path d="M15,7h-11v3" stroke-width="0.75"/>\
+		<path d="M3.75,10v1.25" stroke-width="0.375"/></svg>');
+	opacity: 0.75;
+}
+
 /* Media Queries */
 
 /* Make sure all the buttons line wrap at the same time */
@@ -1963,20 +1986,6 @@ in src-script.js and main.js
 	}
 	.sidebar-menu-toggle:hover {
 		background: var(--main-background-color);
-	}
-
-	/* sidebar button opens modal
-		use hamburger button */
-	.src #sidebar-button > a:before, .sidebar-menu-toggle:before {
-		content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
-			viewBox="0 0 22 22" fill="none" stroke="black">\
-			<path d="M3,5h16M3,11h16M3,17h16" stroke-width="2.75"/></svg>');
-		opacity: 0.75;
-	}
-	.src #sidebar-button > a:hover:before, .sidebar-menu-toggle:hover:before,
-	.src #sidebar-button > a:active:before, .sidebar-menu-toggle:active:before,
-	.src #sidebar-button > a:focus:before, .sidebar-menu-toggle:focus:before {
-		opacity: 1;
 	}
 
 	/* Display an alternating layout on tablets and phones */
