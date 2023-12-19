@@ -13,10 +13,7 @@ pub(crate) fn remove_markdown(markdown: &str) -> String {
             Event::Text(text) | Event::Code(text) => out.push_str(&text),
             Event::SoftBreak => out.push(' '),
             Event::HardBreak | Event::Rule | Event::End(Tag::CodeBlock(_)) => out.push('\n'),
-            Event::End(Tag::Paragraph) => {
-                out.push('\n');
-                out.push('\n');
-            }
+            Event::End(Tag::Paragraph) => out.push_str("\n\n"),
             Event::Start(_)
             | Event::End(_)
             | Event::Html(_)
