@@ -395,6 +395,20 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
         original_values: Vec<ty::GenericArg<'tcx>>,
         response: CanonicalResponse<'tcx>,
     ) -> Result<(Certainty, bool, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), NoSolution> {
+        // The old solver did not evaluate nested goals when normalizing.
+        // It returned the selection constraints allowing a `Projection`
+        // obligation to not hold in coherence while avoiding the fatal error
+        // from overflow.
+        //
+        // We match this behavior here by considering all constraints
+        // from nested goals which are not from where-bounds. We will already
+        // need to track which nested goals are required by impl where-bounds
+        // for coinductive cycles, so we simply reuse that here.
+        //
+        // While we could consider overflow constraints in more cases, this should
+        // not be necessary for backcompat and results in better perf. It also
+        // avoids a potential inconsistency which would otherwise require some
+        // tracking for root goals as well. See #119071 for an example.
         let keep_overflow_constraints = || {
             self.search_graph.current_goal_is_normalizes_to()
                 && source != GoalSource::ImplWhereBound
