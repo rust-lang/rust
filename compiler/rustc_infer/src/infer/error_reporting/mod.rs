@@ -2653,11 +2653,6 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
         self.0.tcx
     }
 
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        // Unused, only for consts which we treat as always equal
-        ty::ParamEnv::empty()
-    }
-
     fn tag(&self) -> &'static str {
         "SameTypeModuloInfer"
     }

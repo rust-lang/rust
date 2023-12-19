@@ -182,10 +182,6 @@ where
         self.infcx.tcx
     }
 
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.delegate.param_env()
-    }
-
     fn tag(&self) -> &'static str {
         "Generalizer"
     }
