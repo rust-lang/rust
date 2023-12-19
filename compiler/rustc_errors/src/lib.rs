@@ -741,37 +741,6 @@ impl DiagCtxt {
     }
 
     /// Construct a builder at the `Warning` level at the given `span` and with the `msg`.
-    /// The `id` is used for lint emissions which should also fulfill a lint expectation.
-    ///
-    /// Attempting to `.emit()` the builder will only emit if either:
-    /// * `can_emit_warnings` is `true`
-    /// * `is_force_warn` was set in `DiagnosticId::Lint`
-    #[track_caller]
-    pub fn struct_span_warn_with_expectation(
-        &self,
-        span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
-        id: LintExpectationId,
-    ) -> DiagnosticBuilder<'_, ()> {
-        let mut result = self.struct_warn_with_expectation(msg, id);
-        result.set_span(span);
-        result
-    }
-
-    /// Construct a builder at the `Allow` level at the given `span` and with the `msg`.
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn struct_span_allow(
-        &self,
-        span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, ()> {
-        let mut result = self.struct_allow(msg);
-        result.set_span(span);
-        result
-    }
-
-    /// Construct a builder at the `Warning` level at the given `span` and with the `msg`.
     /// Also include a code.
     #[rustc_lint_diagnostics]
     #[track_caller]
@@ -795,21 +764,6 @@ impl DiagCtxt {
     #[track_caller]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Level::Warning(None), msg)
-    }
-
-    /// Construct a builder at the `Warning` level with the `msg`. The `id` is used for
-    /// lint emissions which should also fulfill a lint expectation.
-    ///
-    /// Attempting to `.emit()` the builder will only emit if either:
-    /// * `can_emit_warnings` is `true`
-    /// * `is_force_warn` was set in `DiagnosticId::Lint`
-    #[track_caller]
-    pub fn struct_warn_with_expectation(
-        &self,
-        msg: impl Into<DiagnosticMessage>,
-        id: LintExpectationId,
-    ) -> DiagnosticBuilder<'_, ()> {
-        DiagnosticBuilder::new(self, Level::Warning(Some(id)), msg)
     }
 
     /// Construct a builder at the `Allow` level with the `msg`.
@@ -866,13 +820,6 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
         DiagnosticBuilder::new(self, Level::Error { lint: false }, msg)
-    }
-
-    /// This should only be used by `rustc_middle::lint::struct_lint_level`. Do not use it for hard errors.
-    #[doc(hidden)]
-    #[track_caller]
-    pub fn struct_err_lint(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
-        DiagnosticBuilder::new(self, Level::Error { lint: true }, msg)
     }
 
     /// Construct a builder at the `Error` level with the `msg` and the `code`.

@@ -321,16 +321,6 @@ impl Session {
     }
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_span_warn_with_expectation<S: Into<MultiSpan>>(
-        &self,
-        sp: S,
-        msg: impl Into<DiagnosticMessage>,
-        id: lint::LintExpectationId,
-    ) -> DiagnosticBuilder<'_, ()> {
-        self.dcx().struct_span_warn_with_expectation(sp, msg, id)
-    }
-    #[rustc_lint_diagnostics]
-    #[track_caller]
     pub fn struct_span_warn_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -343,24 +333,6 @@ impl Session {
     #[track_caller]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         self.dcx().struct_warn(msg)
-    }
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn struct_warn_with_expectation(
-        &self,
-        msg: impl Into<DiagnosticMessage>,
-        id: lint::LintExpectationId,
-    ) -> DiagnosticBuilder<'_, ()> {
-        self.dcx().struct_warn_with_expectation(msg, id)
-    }
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn struct_span_allow<S: Into<MultiSpan>>(
-        &self,
-        sp: S,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, ()> {
-        self.dcx().struct_span_allow(sp, msg)
     }
     #[rustc_lint_diagnostics]
     #[track_caller]
