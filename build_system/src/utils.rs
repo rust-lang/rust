@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fmt::Debug;
@@ -52,18 +51,12 @@ fn check_exit_status(
         let stdout = String::from_utf8_lossy(&output.stdout);
         if !stdout.is_empty() {
             error.push_str("\n==== STDOUT ====\n");
-            match stdout {
-                Cow::Owned(s) => error.push_str(&s),
-                Cow::Borrowed(s) => error.push_str(s),
-            }
+            error.push_str(&*stdout);
         }
         let stderr = String::from_utf8_lossy(&output.stderr);
         if !stderr.is_empty() {
             error.push_str("\n==== STDERR ====\n");
-            match stderr {
-                Cow::Owned(s) => error.push_str(&s),
-                Cow::Borrowed(s) => error.push_str(s),
-            }
+            error.push_str(&*stderr);
         }
     }
     Err(error)
