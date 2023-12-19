@@ -1803,7 +1803,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     arena_vec![self; head],
                 )
             }
-            ForLoopKind::ForAwait => self.arena.alloc(head),
+            // ` unsafe { Pin::new_unchecked(&mut into_async_iter(<head>)) }`
+            ForLoopKind::ForAwait => {
+                // `::core::async_iter::IntoAsyncIterator::into_async_iter(<head>)`
+                let iter = self.expr_call_lang_item_fn(
+                    head_span,
+                    hir::LangItem::IntoAsyncIterIntoIter,
+                    arena_vec![self; head],
+                );
+                let iter = self.expr_mut_addr_of(head_span, iter);
+                // `Pin::new_unchecked(...)`
+                let iter = self.arena.alloc(self.expr_call_lang_item_fn_mut(
+                    head_span,
+                    hir::LangItem::PinNewUnchecked,
+                    arena_vec![self; iter],
+                ));
+                // `unsafe { ... }`
+                let iter = self.arena.alloc(self.expr_unsafe(iter));
+                iter
+            }
         };
 
         let match_expr = self.arena.alloc(self.expr_match(

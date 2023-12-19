@@ -145,6 +145,7 @@ pub trait IntoAsyncIterator {
     type IntoAsyncIter: AsyncIterator<Item = Self::Item>;
 
     /// Converts `self` into an async iterator
+    #[cfg_attr(not(bootstrap), lang = "into_async_iter_into_iter")]
     fn into_async_iter(self) -> Self::IntoAsyncIter;
 }
 
