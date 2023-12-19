@@ -176,10 +176,10 @@ pub(crate) fn compile_fn(
         match module.define_function(codegened_func.func_id, context) {
             Ok(()) => {}
             Err(ModuleError::Compilation(CodegenError::ImplLimitExceeded)) => {
-                let handler = rustc_session::EarlyErrorHandler::new(
+                let early_dcx = rustc_session::EarlyDiagCtxt::new(
                     rustc_session::config::ErrorOutputType::default(),
                 );
-                handler.early_error(format!(
+                early_dcx.early_error(format!(
                     "backend implementation limit exceeded while compiling {name}",
                     name = codegened_func.symbol_name
                 ));
