@@ -7,7 +7,7 @@
 //!
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
-use rustc_hir::def::DefKind;
+use rustc_hir::def::{CtorKind, DefKind};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
@@ -88,14 +88,17 @@ pub(crate) fn new_item_kind(kind: DefKind) -> ItemKind {
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::Impl { .. }
-        | DefKind::Ctor(_, _)
         | DefKind::GlobalAsm => {
             unreachable!("Not a valid item kind: {kind:?}");
         }
-        DefKind::Closure | DefKind::AssocFn | DefKind::Fn => ItemKind::Fn,
-        DefKind::Const | DefKind::InlineConst | DefKind::AssocConst | DefKind::AnonConst => {
-            ItemKind::Const
+        DefKind::Ctor(_, CtorKind::Fn) | DefKind::Closure | DefKind::AssocFn | DefKind::Fn => {
+            ItemKind::Fn
         }
+        DefKind::Ctor(_, CtorKind::Const)
+        | DefKind::Const
+        | DefKind::InlineConst
+        | DefKind::AssocConst
+        | DefKind::AnonConst => ItemKind::Const,
         DefKind::Static(_) => ItemKind::Static,
     }
 }
