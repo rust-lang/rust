@@ -492,6 +492,13 @@ cc = ["@Nadrieril"]
 message = "Some changes might have occurred in exhaustiveness checking"
 cc = ["@Nadrieril"]
 
+[mentions."library/core/src/intrinsics/simd.rs"]
+message = """
+Some changes occurred to the platform-builtins intrinsics. Make sure all
+codegen backends as well as portable-simd get adapted for the changes.
+"""
+cc = ["@antoyo", "@GuillaumeGomez", "@bjorn3", "@calebzulawski", "@programmerjake"]
+
 [mentions."library/portable-simd"]
 message = """
 Portable SIMD is developed in its own repository. If possible, consider \
