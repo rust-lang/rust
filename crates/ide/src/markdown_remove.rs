@@ -6,6 +6,7 @@ use pulldown_cmark::{Event, Parser, Tag};
 /// Currently limited in styling, i.e. no ascii tables or lists
 pub(crate) fn remove_markdown(markdown: &str) -> String {
     let mut out = String::new();
+    out.reserve_exact(markdown.len());
     let parser = Parser::new(markdown);
 
     for event in parser {
