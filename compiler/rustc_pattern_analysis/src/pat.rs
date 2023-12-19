@@ -160,7 +160,8 @@ impl<'p, Cx: TypeCx> fmt::Debug for DeconstructedPat<'p, Cx> {
 
 /// Same idea as `DeconstructedPat`, except this is a fictitious pattern built up for diagnostics
 /// purposes. As such they don't use interning and can be cloned.
-#[derive(Debug, Clone)]
+#[derive(derivative::Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 pub struct WitnessPat<Cx: TypeCx> {
     ctor: Constructor<Cx>,
     pub(crate) fields: Vec<WitnessPat<Cx>>,

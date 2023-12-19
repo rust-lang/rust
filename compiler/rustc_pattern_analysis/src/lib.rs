@@ -49,7 +49,7 @@ impl<'a, T: ?Sized> Captures<'a> for T {}
 /// Context that provides type information about constructors.
 ///
 /// Most of the crate is parameterized on a type that implements this trait.
-pub trait TypeCx: Sized + Clone + fmt::Debug {
+pub trait TypeCx: Sized + fmt::Debug {
     /// The type of a pattern.
     type Ty: Copy + Clone + fmt::Debug; // FIXME: remove Copy
     /// The index of an enum variant.
@@ -86,7 +86,8 @@ pub trait TypeCx: Sized + Clone + fmt::Debug {
 }
 
 /// Context that provides information global to a match.
-#[derive(Clone)]
+#[derive(derivative::Derivative)]
+#[derivative(Clone(bound = ""), Copy(bound = ""))]
 pub struct MatchCtxt<'a, 'p, Cx: TypeCx> {
     /// The context for type information.
     pub tycx: &'a Cx,
@@ -94,17 +95,15 @@ pub struct MatchCtxt<'a, 'p, Cx: TypeCx> {
     pub wildcard_arena: &'a TypedArena<DeconstructedPat<'p, Cx>>,
 }
 
-impl<'a, 'p, Cx: TypeCx> Copy for MatchCtxt<'a, 'p, Cx> {}
-
 /// The arm of a match expression.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
+#[derive(derivative::Derivative)]
+#[derivative(Clone(bound = ""), Copy(bound = ""))]
 pub struct MatchArm<'p, Cx: TypeCx> {
     pub pat: &'p DeconstructedPat<'p, Cx>,
     pub has_guard: bool,
     pub arm_data: Cx::ArmData,
 }
-
-impl<'p, Cx: TypeCx> Copy for MatchArm<'p, Cx> {}
 
 /// The entrypoint for this crate. Computes whether a match is exhaustive and which of its arms are
 /// useful, and runs some lints.
