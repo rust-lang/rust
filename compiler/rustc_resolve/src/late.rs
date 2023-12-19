@@ -3078,17 +3078,25 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             binding = self.r.resolution(module, key).try_borrow().ok().and_then(|r| r.binding);
             debug!(?binding);
         }
+
+        let feed_visibility = |this: &mut Self, def_id| {
+            let vis = this.r.tcx.visibility(def_id).expect_local();
+            this.r.feed_visibility(this.r.local_def_id(id), vis);
+        };
+
         let Some(binding) = binding else {
             // We could not find the method: report an error.
             let candidate = self.find_similarly_named_assoc_item(ident.name, kind);
             let path = &self.current_trait_ref.as_ref().unwrap().1.path;
             let path_names = path_names_to_string(path);
             self.report_error(span, err(ident, path_names, candidate));
+            feed_visibility(self, module.def_id());
             return;
         };
 
         let res = binding.res();
         let Res::Def(def_kind, id_in_trait) = res else { bug!() };
+        feed_visibility(self, id_in_trait);
 
         match seen_trait_items.entry(id_in_trait) {
             Entry::Occupied(entry) => {
@@ -3112,8 +3120,6 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             | (DefKind::AssocFn, AssocItemKind::Fn(..))
             | (DefKind::AssocConst, AssocItemKind::Const(..)) => {
                 self.r.record_partial_res(id, PartialRes::new(res));
-                let vis = self.r.tcx.visibility(id_in_trait).expect_local();
-                self.r.feed_visibility(self.r.local_def_id(id), vis);
                 return;
             }
             _ => {}
