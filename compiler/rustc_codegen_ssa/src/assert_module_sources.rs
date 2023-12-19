@@ -278,13 +278,13 @@ impl CguReuseTracker {
 
                     if error {
                         let at_least = if at_least { 1 } else { 0 };
-                        errors::IncorrectCguReuseType {
+                        sess.emit_err(errors::IncorrectCguReuseType {
                             span: *error_span,
                             cgu_user_name,
                             actual_reuse,
                             expected_reuse,
                             at_least,
-                        };
+                        });
                     }
                 } else {
                     sess.emit_fatal(errors::CguNotRecorded { cgu_user_name, cgu_name });
