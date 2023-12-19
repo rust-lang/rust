@@ -1,10 +1,10 @@
 //! Conversion of internal Rust compiler items to stable ones.
 
 use rustc_target::abi::FieldIdx;
-use stable_mir::ty::{IndexedVal, VariantIdx};
 
 use crate::rustc_smir::{Stable, Tables};
 
+mod abi;
 mod error;
 mod mir;
 mod ty;
@@ -23,13 +23,6 @@ impl<'tcx> Stable<'tcx> for FieldIdx {
     type T = usize;
     fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
         self.as_usize()
-    }
-}
-
-impl<'tcx> Stable<'tcx> for rustc_target::abi::VariantIdx {
-    type T = VariantIdx;
-    fn stable(&self, _: &mut Tables<'tcx>) -> Self::T {
-        VariantIdx::to_val(self.as_usize())
     }
 }
 
@@ -77,16 +70,5 @@ impl<'tcx> Stable<'tcx> for rustc_span::Span {
 
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         tables.create_span(*self)
-    }
-}
-
-impl<'tcx> Stable<'tcx> for rustc_abi::Endian {
-    type T = stable_mir::target::Endian;
-
-    fn stable(&self, _tables: &mut Tables<'tcx>) -> Self::T {
-        match self {
-            rustc_abi::Endian::Little => stable_mir::target::Endian::Little,
-            rustc_abi::Endian::Big => stable_mir::target::Endian::Big,
-        }
     }
 }

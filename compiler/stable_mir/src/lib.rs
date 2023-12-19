@@ -33,6 +33,7 @@ use crate::mir::Body;
 use crate::mir::Mutability;
 use crate::ty::{ImplDef, ImplTrait, IndexedVal, Span, TraitDecl, TraitDef, Ty};
 
+pub mod abi;
 #[macro_use]
 pub mod crate_def;
 pub mod compiler_interface;
