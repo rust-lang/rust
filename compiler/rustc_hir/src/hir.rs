@@ -2848,7 +2848,9 @@ pub enum VariantData<'hir> {
     /// A struct variant.
     ///
     /// E.g., `Bar { .. }` as in `enum Foo { Bar { .. } }`.
-    Struct(&'hir [FieldDef<'hir>], /* recovered */ bool),
+    ///
+    /// The `bool` is whether it was recovered by the parser.
+    Struct(&'hir [FieldDef<'hir>], bool),
     /// A tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.

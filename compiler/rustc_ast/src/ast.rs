@@ -2788,6 +2788,8 @@ pub enum VariantData {
     /// Struct variant.
     ///
     /// E.g., `Bar { .. }` as in `enum Foo { Bar { .. } }`.
+    ///
+    /// The `bool` is whether it was recovered by the parser.
     Struct(ThinVec<FieldDef>, bool),
     /// Tuple variant.
     ///
