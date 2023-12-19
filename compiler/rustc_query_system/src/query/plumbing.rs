@@ -50,7 +50,7 @@ impl QueryResult {
         match self {
             Self::Started(job) => job,
             Self::Poisoned => {
-                panic!("job for query {} failed to start and was poisoned", query_name)
+                panic!("job for query '{}' failed to start and was poisoned", query_name)
             }
         }
     }
@@ -166,15 +166,12 @@ where
 {
     /// Completes the query by updating the query cache with the `result`,
     /// signals the waiter and forgets the JobOwner, so it won't poison the query
-    fn complete<C, Q>(self, cache: &C, result: C::Value, dep_node_index: DepNodeIndex)
+    fn complete<C>(self, cache: &C, result: C::Value, dep_node_index: DepNodeIndex)
     where
         C: QueryCache<Key = K>,
     {
         let key = self.key;
         let state = self.state;
-
-        // Forget ourself so our destructor won't poison the query
-        mem::forget(self);
 
         // Mark as complete before we remove the job from the active state
         // so no other thread can re-execute this query.
@@ -184,6 +181,9 @@ where
             let mut lock = state.active.lock_shard_by_value(&key);
             lock.remove(&key).unwrap().expect_job(self.query_name)
         };
+
+        // Forget ourself so our destructor won't poison the query
+        mem::forget(self);
 
         job.signal_complete();
     }
@@ -285,12 +285,14 @@ where
                     // We didn't find the query result in the query cache. Check if it was
                     // poisoned due to a panic instead.
                     let lock = query.query_state(qcx).active.get_shard_by_value(&key).lock();
-                    match lock.get(&key) {
-                        Some(poisoned @ QueryResult::Poisoned) => poisoned.expect_job(query.name()),
-                        _ => panic!(
-                            "query result must in the cache or the query must be poisoned after a wait"
-                        ),
+
+                    if let Some(QueryResult::Poisoned) = lock.get(&key) {
+                        panic!("query '{}' not cached due to poisoning", query.name())
                     }
+                    panic!(
+                        "query '{}' result must in the cache or the query must be poisoned after a wait",
+                        query.name()
+                    )
                 })
             };
 
@@ -368,7 +370,7 @@ where
                     cycle_error(query, qcx, id, span)
                 }
                 QueryResult::Poisoned => {
-                    panic!("job for query {} failed to start and was poisoned", query.name())
+                    panic!("job for query '{}' failed to start and was poisoned", query.name())
                 }
             }
         }
