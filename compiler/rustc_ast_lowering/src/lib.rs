@@ -60,7 +60,7 @@ use rustc_hir::def_id::{LocalDefId, LocalDefIdMap, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{ConstArg, GenericArg, ItemLocalMap, ParamName, TraitCandidate};
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_middle::span_bug;
-use rustc_middle::ty::{ResolverAstLowering, TyCtxt, Visibility};
+use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::parse::{add_feature_diagnostics, feature_err};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{DesugaringKind, Span, DUMMY_SP};
@@ -1650,10 +1650,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             opaque_ty_span,
         );
         debug!(?opaque_ty_def_id);
-
-        // Meaningless, but provided so that all items have visibilities.
-        let parent_mod = self.tcx.parent_module_from_def_id(opaque_ty_def_id).to_def_id();
-        self.tcx.feed_local_def_id(opaque_ty_def_id).visibility(Visibility::Restricted(parent_mod));
 
         // Map from captured (old) lifetime to synthetic (new) lifetime.
         // Used to resolve lifetimes in the bounds of the opaque.
