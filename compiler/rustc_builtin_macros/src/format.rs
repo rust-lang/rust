@@ -8,9 +8,7 @@ use rustc_ast::{
     FormatDebugHex, FormatOptions, FormatPlaceholder, FormatSign, FormatTrait,
 };
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{
-    Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan, PResult, SingleLabelManySpans,
-};
+use rustc_errors::{Applicability, DiagnosticBuilder, MultiSpan, PResult, SingleLabelManySpans};
 use rustc_expand::base::{self, *};
 use rustc_parse_format as parse;
 use rustc_span::symbol::{Ident, Symbol};
@@ -726,7 +724,7 @@ fn report_redundant_format_arguments<'a>(
     args: &FormatArguments,
     used: &[bool],
     placeholders: Vec<(Span, &str)>,
-) -> Option<DiagnosticBuilder<'a, ErrorGuaranteed>> {
+) -> Option<DiagnosticBuilder<'a>> {
     let mut fmt_arg_indices = vec![];
     let mut args_spans = vec![];
     let mut fmt_spans = vec![];

@@ -35,7 +35,7 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
     pluralize, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
-    DiagnosticMessage, ErrorGuaranteed, FatalError, MultiSpan, PResult,
+    DiagnosticMessage, FatalError, MultiSpan, PResult,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
@@ -245,7 +245,7 @@ impl<'a> Parser<'a> {
         &self,
         sp: S,
         m: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'a> {
         self.dcx().struct_span_err(sp, m)
     }
 
@@ -413,7 +413,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn expected_ident_found_err(&mut self) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    pub(super) fn expected_ident_found_err(&mut self) -> DiagnosticBuilder<'a> {
         self.expected_ident_found(false).unwrap_err()
     }
 
@@ -958,7 +958,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn recover_closure_body(
         &mut self,
-        mut err: DiagnosticBuilder<'a, ErrorGuaranteed>,
+        mut err: DiagnosticBuilder<'a>,
         before: token::Token,
         prev: token::Token,
         token: token::Token,
@@ -1189,7 +1189,7 @@ impl<'a> Parser<'a> {
     /// encounter a parse error when encountering the first `,`.
     pub(super) fn check_mistyped_turbofish_with_multiple_type_params(
         &mut self,
-        mut e: DiagnosticBuilder<'a, ErrorGuaranteed>,
+        mut e: DiagnosticBuilder<'a>,
         expr: &mut P<Expr>,
     ) -> PResult<'a, ()> {
         if let ExprKind::Binary(binop, _, _) = &expr.kind
@@ -1234,10 +1234,7 @@ impl<'a> Parser<'a> {
 
     /// Suggest add the missing `let` before the identifier in stmt
     /// `a: Ty = 1` -> `let a: Ty = 1`
-    pub(super) fn suggest_add_missing_let_for_stmt(
-        &mut self,
-        err: &mut DiagnosticBuilder<'a, ErrorGuaranteed>,
-    ) {
+    pub(super) fn suggest_add_missing_let_for_stmt(&mut self, err: &mut DiagnosticBuilder<'a>) {
         if self.token == token::Colon {
             let prev_span = self.prev_token.span.shrink_to_lo();
             let snapshot = self.create_snapshot_for_diagnostic();
@@ -2320,7 +2317,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn expected_expression_found(&self) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    pub(super) fn expected_expression_found(&self) -> DiagnosticBuilder<'a> {
         let (span, msg) = match (&self.token.kind, self.subparser_name) {
             (&token::Eof, Some(origin)) => {
                 let sp = self.prev_token.span.shrink_to_hi();
@@ -2572,7 +2569,7 @@ impl<'a> Parser<'a> {
     pub fn recover_const_arg(
         &mut self,
         start: Span,
-        mut err: DiagnosticBuilder<'a, ErrorGuaranteed>,
+        mut err: DiagnosticBuilder<'a>,
     ) -> PResult<'a, GenericArg> {
         let is_op_or_dot = AssocOp::from_token(&self.token)
             .and_then(|op| {
@@ -2674,7 +2671,7 @@ impl<'a> Parser<'a> {
     /// Creates a dummy const argument, and reports that the expression must be enclosed in braces
     pub fn dummy_const_arg_needs_braces(
         &self,
-        mut err: DiagnosticBuilder<'a, ErrorGuaranteed>,
+        mut err: DiagnosticBuilder<'a>,
         span: Span,
     ) -> GenericArg {
         err.multipart_suggestion(

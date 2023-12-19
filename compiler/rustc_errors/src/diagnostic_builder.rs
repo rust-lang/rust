@@ -43,7 +43,7 @@ where
 /// extending `DiagCtxtFlags`.
 #[must_use]
 #[derive(Clone)]
-pub struct DiagnosticBuilder<'a, G: EmissionGuarantee> {
+pub struct DiagnosticBuilder<'a, G: EmissionGuarantee = ErrorGuaranteed> {
     inner: DiagnosticBuilderInner<'a>,
     _marker: PhantomData<G>,
 }
@@ -128,7 +128,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     }
 }
 
-impl<'a> DiagnosticBuilder<'a, ErrorGuaranteed> {
+impl<'a> DiagnosticBuilder<'a> {
     /// Discard the guarantee `.emit()` would return, in favor of having the
     /// type `DiagnosticBuilder<'a, ()>`. This may be necessary whenever there
     /// is a common codepath handling both errors and warnings.

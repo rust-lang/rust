@@ -3,7 +3,7 @@
 //! Error reporting machinery for lifetime errors.
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::Res::Def;
 use rustc_hir::def_id::DefId;
@@ -202,7 +202,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     // and the span which bounded to the trait for adding 'static lifetime suggestion
     fn suggest_static_lifetime_for_gat_from_hrtb(
         &self,
-        diag: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+        diag: &mut DiagnosticBuilder<'_>,
         lower_bound: RegionVid,
     ) {
         let mut suggestions = vec![];
@@ -573,7 +573,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         &self,
         errci: &ErrorConstraintInfo<'tcx>,
         kind: ReturnConstraint,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'tcx> {
         let ErrorConstraintInfo { outlived_fr, span, .. } = errci;
 
         let mut output_ty = self.regioncx.universal_regions().unnormalized_output_ty;
@@ -645,7 +645,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     fn report_escaping_data_error(
         &self,
         errci: &ErrorConstraintInfo<'tcx>,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'tcx> {
         let ErrorConstraintInfo { span, category, .. } = errci;
 
         let fr_name_and_span = self.regioncx.get_var_name_and_span_for_region(
@@ -744,10 +744,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     ///    |     ^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'a` but it
     ///    |                    is returning data with lifetime `'b`
     /// ```
-    fn report_general_error(
-        &self,
-        errci: &ErrorConstraintInfo<'tcx>,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    fn report_general_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> DiagnosticBuilder<'tcx> {
         let ErrorConstraintInfo {
             fr,
             fr_is_local,

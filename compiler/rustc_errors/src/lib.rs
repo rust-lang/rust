@@ -91,7 +91,7 @@ mod styled_buffer;
 mod tests;
 pub mod translation;
 
-pub type PErr<'a> = DiagnosticBuilder<'a, ErrorGuaranteed>;
+pub type PErr<'a> = DiagnosticBuilder<'a>;
 pub type PResult<'a, T> = Result<T, PErr<'a>>;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
@@ -788,7 +788,7 @@ impl DiagCtxt {
         &self,
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'_> {
         let mut result = self.struct_err(msg);
         result.set_span(span);
         result
@@ -802,7 +802,7 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'_> {
         let mut result = self.struct_span_err(span, msg);
         result.code(code);
         result
@@ -812,10 +812,7 @@ impl DiagCtxt {
     // FIXME: This method should be removed (every error should have an associated error code).
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_err(
-        &self,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    pub fn struct_err(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_> {
         DiagnosticBuilder::new(self, Level::Error { lint: false }, msg)
     }
 
@@ -826,7 +823,7 @@ impl DiagCtxt {
         &self,
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'_> {
         let mut result = self.struct_err(msg);
         result.code(code);
         result
@@ -1221,10 +1218,7 @@ impl DiagCtxt {
     }
 
     #[track_caller]
-    pub fn create_err<'a>(
-        &'a self,
-        err: impl IntoDiagnostic<'a>,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    pub fn create_err<'a>(&'a self, err: impl IntoDiagnostic<'a>) -> DiagnosticBuilder<'a> {
         err.into_diagnostic(self, Level::Error { lint: false })
     }
 

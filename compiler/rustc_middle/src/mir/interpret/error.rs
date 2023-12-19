@@ -90,10 +90,7 @@ pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
 /// This is needed in `thir::pattern::lower_inline_const`.
 pub type EvalToValTreeResult<'tcx> = Result<Option<ValTree<'tcx>>, ErrorHandled>;
 
-pub fn struct_error<'tcx>(
-    tcx: TyCtxtAt<'tcx>,
-    msg: &str,
-) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+pub fn struct_error<'tcx>(tcx: TyCtxtAt<'tcx>, msg: &str) -> DiagnosticBuilder<'tcx> {
     struct_span_err!(tcx.sess, tcx.span, E0080, "{}", msg)
 }
 

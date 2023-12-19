@@ -1258,7 +1258,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
         provided_ty: Ty<'tcx>,
         arg: &hir::Expr<'tcx>,
-        err: &mut rustc_errors::DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+        err: &mut rustc_errors::DiagnosticBuilder<'tcx>,
     ) {
         if let ty::RawPtr(ty::TypeAndMut { mutbl: hir::Mutability::Mut, .. }) = expected_ty.kind()
             && let ty::RawPtr(ty::TypeAndMut { mutbl: hir::Mutability::Not, .. }) =

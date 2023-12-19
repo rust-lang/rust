@@ -354,7 +354,7 @@ impl Session {
         &self,
         sp: S,
         msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'_> {
         self.dcx().struct_span_err(sp, msg)
     }
     #[rustc_lint_diagnostics]
@@ -364,16 +364,13 @@ impl Session {
         sp: S,
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'_> {
         self.dcx().struct_span_err_with_code(sp, msg, code)
     }
     // FIXME: This method should be removed (every error should have an associated error code).
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_err(
-        &self,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    pub fn struct_err(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_> {
         self.parse_sess.struct_err(msg)
     }
     #[track_caller]
@@ -382,7 +379,7 @@ impl Session {
         &self,
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'_> {
         self.dcx().struct_err_with_code(msg, code)
     }
     #[rustc_lint_diagnostics]
@@ -463,10 +460,7 @@ impl Session {
         self.dcx().err(msg)
     }
     #[track_caller]
-    pub fn create_err<'a>(
-        &'a self,
-        err: impl IntoDiagnostic<'a>,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    pub fn create_err<'a>(&'a self, err: impl IntoDiagnostic<'a>) -> DiagnosticBuilder<'a> {
         self.parse_sess.create_err(err)
     }
     #[track_caller]
@@ -474,7 +468,7 @@ impl Session {
         &'a self,
         err: impl IntoDiagnostic<'a>,
         feature: Symbol,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'a> {
         let mut err = self.parse_sess.create_err(err);
         if err.code.is_none() {
             err.code = std::option::Option::Some(error_code!(E0658));
