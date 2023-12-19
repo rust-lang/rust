@@ -21,12 +21,9 @@ pub struct FnAbi {
 
     /// The ABI convention.
     pub conv: CallConvention,
-}
 
-impl FnAbi {
-    pub fn is_c_variadic(&self) -> bool {
-        self.args.len() > self.fixed_count as usize
-    }
+    /// Whether this is a variadic C function,
+    pub c_variadic: bool,
 }
 
 /// Information about the ABI of a function's argument, or return value.
@@ -47,15 +44,15 @@ pub enum PassMode {
     /// Pass the argument directly.
     ///
     /// The argument has a layout abi of `Scalar` or `Vector`.
-    Direct,
+    Direct(Opaque),
     /// Pass a pair's elements directly in two arguments.
     ///
     /// The argument has a layout abi of `ScalarPair`.
-    Pair,
+    Pair(Opaque, Opaque),
     /// Pass the argument after casting it.
-    Cast,
+    Cast { pad_i32: bool, cast: Opaque },
     /// Pass the argument indirectly via a hidden pointer.
-    Indirect,
+    Indirect { attrs: Opaque, meta_attrs: Opaque, on_stack: bool },
 }
 
 /// The layout of a type, alongside the type itself.

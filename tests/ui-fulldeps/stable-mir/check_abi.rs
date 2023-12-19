@@ -23,7 +23,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_smir::rustc_internal;
 use stable_mir::abi::{ArgAbi, CallConvention, FieldsShape, PassMode, VariantsShape};
 use stable_mir::mir::mono::Instance;
-use stable_mir::{CrateDef, CrateItems, ItemKind};
+use stable_mir::{CrateDef, CrateItem, CrateItems, ItemKind};
 use std::assert_matches::assert_matches;
 use std::convert::TryFrom;
 use std::io::Write;
@@ -35,6 +35,8 @@ const CRATE_NAME: &str = "input";
 fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     // Find items in the local crate.
     let items = stable_mir::all_local_items();
+
+    // Test fn_abi
     let target_fn = *get_item(&items, (ItemKind::Fn, "fn_abi")).unwrap();
     let instance = Instance::try_from(target_fn).unwrap();
     let fn_abi = instance.fn_abi().unwrap();
@@ -45,7 +47,24 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     check_primitive(&fn_abi.args[1]);
     check_result(fn_abi.ret);
 
+    // Test variadic function.
+    let variadic_fn = *get_item(&items, (ItemKind::Fn, "variadic_fn")).unwrap();
+    check_variadic(variadic_fn);
+
     ControlFlow::Continue(())
+}
+
+/// Check the variadic function ABI:
+/// ```no_run
+/// pub unsafe extern "C" fn variadic_fn(n: usize, mut args: ...) -> usize {
+///     0
+/// }
+/// ```
+fn check_variadic(variadic_fn: CrateItem) {
+    let instance = Instance::try_from(variadic_fn).unwrap();
+    let abi = instance.fn_abi().unwrap();
+    assert!(abi.c_variadic);
+    assert_eq!(abi.args.len(), 1);
 }
 
 /// Check the argument to be ignored: `ignore: [u8; 0]`.
@@ -60,7 +79,7 @@ fn check_ignore(abi: &ArgAbi) {
 /// Check the primitive argument: `primitive: char`.
 fn check_primitive(abi: &ArgAbi) {
     assert!(abi.ty.kind().is_char());
-    assert_eq!(abi.mode, PassMode::Direct);
+    assert_matches!(abi.mode, PassMode::Direct(_));
     let layout = abi.layout.shape();
     assert!(layout.is_sized());
     assert!(!layout.is_1zst());
@@ -70,7 +89,7 @@ fn check_primitive(abi: &ArgAbi) {
 /// Check the return value: `Result<usize, &str>`.
 fn check_result(abi: ArgAbi) {
     assert!(abi.ty.kind().is_enum());
-    assert_eq!(abi.mode, PassMode::Indirect);
+    assert_matches!(abi.mode, PassMode::Indirect { .. });
     let layout = abi.layout.shape();
     assert!(layout.is_sized());
     assert_matches!(layout.fields, FieldsShape::Arbitrary { .. });
@@ -106,10 +125,17 @@ fn generate_input(path: &str) -> std::io::Result<()> {
     write!(
         file,
         r#"
-        #[allow(unused_variables)]
+        #![feature(c_variadic)]
+        #![allow(unused_variables)]
+
         pub fn fn_abi(ignore: [u8; 0], primitive: char) -> Result<usize, &'static str> {{
             // We only care about the signature.
             todo!()
+        }}
+
+
+        pub unsafe extern "C" fn variadic_fn(n: usize, mut args: ...) -> usize {{
+            0
         }}
         "#
     )?;

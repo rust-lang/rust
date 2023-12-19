@@ -66,11 +66,14 @@ impl<'tcx> Stable<'tcx> for rustc_target::abi::call::FnAbi<'tcx, ty::Ty<'tcx>> {
     type T = FnAbi;
 
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        assert!(self.args.len() >= self.fixed_count as usize);
+        assert!(!self.c_variadic || matches!(self.conv, Conv::C));
         FnAbi {
             args: self.args.as_ref().stable(tables),
             ret: self.ret.stable(tables),
             fixed_count: self.fixed_count,
             conv: self.conv.stable(tables),
+            c_variadic: self.c_variadic,
         }
     }
 }
@@ -122,10 +125,20 @@ impl<'tcx> Stable<'tcx> for rustc_target::abi::call::PassMode {
     fn stable(&self, _tables: &mut Tables<'tcx>) -> Self::T {
         match self {
             rustc_target::abi::call::PassMode::Ignore => PassMode::Ignore,
-            rustc_target::abi::call::PassMode::Direct(_) => PassMode::Direct,
-            rustc_target::abi::call::PassMode::Pair(_, _) => PassMode::Pair,
-            rustc_target::abi::call::PassMode::Cast { .. } => PassMode::Cast,
-            rustc_target::abi::call::PassMode::Indirect { .. } => PassMode::Indirect,
+            rustc_target::abi::call::PassMode::Direct(attr) => PassMode::Direct(opaque(attr)),
+            rustc_target::abi::call::PassMode::Pair(first, second) => {
+                PassMode::Pair(opaque(first), opaque(second))
+            }
+            rustc_target::abi::call::PassMode::Cast { pad_i32, cast } => {
+                PassMode::Cast { pad_i32: *pad_i32, cast: opaque(cast) }
+            }
+            rustc_target::abi::call::PassMode::Indirect { attrs, meta_attrs, on_stack } => {
+                PassMode::Indirect {
+                    attrs: opaque(attrs),
+                    meta_attrs: opaque(meta_attrs),
+                    on_stack: *on_stack,
+                }
+            }
         }
     }
 }
