@@ -27,26 +27,43 @@ extern crate tracing;
 
 extern crate self as rustc_errors;
 
+pub use diagnostic::{
+    AddToDiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgValue, DiagnosticId,
+    DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
+};
+pub use diagnostic_builder::{
+    BugAbort, DiagnosticBuilder, EmissionGuarantee, FatalAbort, IntoDiagnostic,
+};
+pub use diagnostic_impls::{
+    DiagnosticArgFromDisplay, DiagnosticSymbolList, ExpectedLifetimeParameter,
+    IndicateAnonymousLifetime, InvalidFlushedDelayedDiagnosticLevel, LabelKind,
+    SingleLabelManySpans,
+};
 pub use emitter::ColorConfig;
+pub use rustc_error_messages::{
+    fallback_fluent_bundle, fluent_bundle, DelayDm, DiagnosticMessage, FluentBundle,
+    LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagnosticMessage,
+};
+pub use rustc_lint_defs::{pluralize, Applicability};
+pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
+pub use rustc_span::ErrorGuaranteed;
+pub use snippet::Style;
 
-use rustc_lint_defs::LintExpectationId;
-use Level::*;
+// Used by external projects such as `rust-gpu`.
+// See https://github.com/rust-lang/rust/pull/115393.
+pub use termcolor::{Color, ColorSpec, WriteColor};
 
+use crate::diagnostic_impls::{DelayedAtWithNewline, DelayedAtWithoutNewline};
 use emitter::{is_case_difference, DynEmitter, Emitter, EmitterWriter};
 use registry::Registry;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_data_structures::AtomicRef;
-pub use rustc_error_messages::{
-    fallback_fluent_bundle, fluent_bundle, DelayDm, DiagnosticMessage, FluentBundle,
-    LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagnosticMessage,
-};
-pub use rustc_lint_defs::{pluralize, Applicability};
+use rustc_lint_defs::LintExpectationId;
 use rustc_span::source_map::SourceMap;
-pub use rustc_span::ErrorGuaranteed;
 use rustc_span::{Loc, Span, DUMMY_SP};
-
+use std::backtrace::{Backtrace, BacktraceStatus};
 use std::borrow::Cow;
 use std::error::Report;
 use std::fmt;
@@ -56,9 +73,7 @@ use std::num::NonZeroUsize;
 use std::panic;
 use std::path::{Path, PathBuf};
 
-// Used by external projects such as `rust-gpu`.
-// See https://github.com/rust-lang/rust/pull/115393.
-pub use termcolor::{Color, ColorSpec, WriteColor};
+use Level::*;
 
 pub mod annotate_snippet_emitter_writer;
 mod diagnostic;
@@ -75,9 +90,6 @@ mod styled_buffer;
 #[cfg(test)]
 mod tests;
 pub mod translation;
-
-pub use diagnostic_builder::IntoDiagnostic;
-pub use snippet::Style;
 
 pub type PErr<'a> = DiagnosticBuilder<'a, ErrorGuaranteed>;
 pub type PResult<'a, T> = Result<T, PErr<'a>>;
@@ -387,8 +399,6 @@ impl CodeSuggestion {
     }
 }
 
-pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
-
 /// Signifies that the compiler died with an explicit call to `.bug`
 /// or `.span_bug` rather than a failed assertion, etc.
 pub struct ExplicitBug;
@@ -396,19 +406,6 @@ pub struct ExplicitBug;
 /// Signifies that the compiler died with an explicit call to `.delay_*_bug`
 /// rather than a failed assertion, etc.
 pub struct DelayedBugPanic;
-
-use crate::diagnostic_impls::{DelayedAtWithNewline, DelayedAtWithoutNewline};
-pub use diagnostic::{
-    AddToDiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgValue, DiagnosticId,
-    DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
-};
-pub use diagnostic_builder::{BugAbort, DiagnosticBuilder, EmissionGuarantee, FatalAbort};
-pub use diagnostic_impls::{
-    DiagnosticArgFromDisplay, DiagnosticSymbolList, ExpectedLifetimeParameter,
-    IndicateAnonymousLifetime, InvalidFlushedDelayedDiagnosticLevel, LabelKind,
-    SingleLabelManySpans,
-};
-use std::backtrace::{Backtrace, BacktraceStatus};
 
 /// A handler deals with errors and other compiler output.
 /// Certain errors (fatal, bug, unimpl) may cause immediate exit,
