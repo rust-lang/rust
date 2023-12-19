@@ -165,6 +165,8 @@ impl ConfigInfo {
                 }
                 _ => {}
             }
+            // This should not be needed, but is necessary for the CI in the rust repository.
+            // FIXME: Remove when the rust CI switches to the master version of libgccjit.
             rustflags.push("-Cpanic=abort".to_string());
         } else {
             self.cg_backend_path = current_dir
