@@ -563,6 +563,8 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
 }
 
 pub trait ObligationEmittingRelation<'tcx>: TypeRelation<'tcx> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx>;
+
     /// Register obligations that must hold in order for this relation to hold
     fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>);
 

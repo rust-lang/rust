@@ -23,8 +23,6 @@ pub enum Cause {
 pub trait TypeRelation<'tcx>: Sized {
     fn tcx(&self) -> TyCtxt<'tcx>;
 
-    fn param_env(&self) -> ty::ParamEnv<'tcx>;
-
     /// Returns a static string we can use for printouts.
     fn tag(&self) -> &'static str;
 

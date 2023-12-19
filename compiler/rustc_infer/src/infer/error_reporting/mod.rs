@@ -2653,10 +2653,6 @@ impl<'tcx> TypeRelation<'tcx> for SameTypeModuloInfer<'_, 'tcx> {
         self.0.tcx
     }
 
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        unreachable!("purely structural relation should not need a param-env")
-    }
-
     fn tag(&self) -> &'static str {
         "SameTypeModuloInfer"
     }

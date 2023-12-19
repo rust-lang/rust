@@ -37,10 +37,6 @@ impl<'tcx> TypeRelation<'tcx> for MatchAgainstFreshVars<'tcx> {
         self.tcx
     }
 
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        panic!("relation should not need a param-env")
-    }
-
     fn a_is_expected(&self) -> bool {
         true
     } // irrelevant

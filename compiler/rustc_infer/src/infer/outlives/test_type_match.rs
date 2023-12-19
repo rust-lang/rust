@@ -144,10 +144,6 @@ impl<'tcx> TypeRelation<'tcx> for MatchAgainstHigherRankedOutlives<'tcx> {
         self.tcx
     }
 
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        unreachable!("purely structural relation should not need a param-env")
-    }
-
     fn a_is_expected(&self) -> bool {
         true
     } // irrelevant
