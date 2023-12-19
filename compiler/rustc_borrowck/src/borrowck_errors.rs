@@ -1,6 +1,4 @@
-use rustc_errors::{
-    struct_span_err, DiagCtxt, DiagnosticBuilder, DiagnosticId, DiagnosticMessage, MultiSpan,
-};
+use rustc_errors::{struct_span_err, DiagCtxt, DiagnosticBuilder};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
 
@@ -260,11 +258,11 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         is_arg: bool,
     ) -> DiagnosticBuilder<'cx> {
         let msg = if is_arg { "to immutable argument" } else { "twice to immutable variable" };
-        struct_span_err!(self, span, E0384, "cannot assign {} {}", msg, desc)
+        struct_span_err!(self.dcx(), span, E0384, "cannot assign {} {}", msg, desc)
     }
 
     pub(crate) fn cannot_assign(&self, span: Span, desc: &str) -> DiagnosticBuilder<'tcx> {
-        struct_span_err!(self, span, E0594, "cannot assign to {}", desc)
+        struct_span_err!(self.dcx(), span, E0594, "cannot assign to {}", desc)
     }
 
     pub(crate) fn cannot_move_out_of(
@@ -272,7 +270,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         move_from_span: Span,
         move_from_desc: &str,
     ) -> DiagnosticBuilder<'cx> {
-        struct_span_err!(self, move_from_span, E0507, "cannot move out of {}", move_from_desc)
+        struct_span_err!(self.dcx(), move_from_span, E0507, "cannot move out of {}", move_from_desc)
     }
 
     /// Signal an error due to an attempt to move out of the interior
@@ -343,7 +341,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         path: &str,
         reason: &str,
     ) -> DiagnosticBuilder<'tcx> {
-        struct_span_err!(self, span, E0596, "cannot borrow {} as mutable{}", path, reason,)
+        struct_span_err!(self.dcx(), span, E0596, "cannot borrow {} as mutable{}", path, reason)
     }
 
     pub(crate) fn cannot_mutate_in_immutable_section(
@@ -401,7 +399,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         span: Span,
         path: &str,
     ) -> DiagnosticBuilder<'tcx> {
-        struct_span_err!(self, span, E0597, "{} does not live long enough", path,)
+        struct_span_err!(self.dcx(), span, E0597, "{} does not live long enough", path,)
     }
 
     pub(crate) fn cannot_return_reference_to_local(
@@ -453,25 +451,19 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         span: Span,
     ) -> DiagnosticBuilder<'tcx> {
-        struct_span_err!(self, span, E0712, "thread-local variable borrowed past end of function",)
+        struct_span_err!(
+            self.dcx(),
+            span,
+            E0712,
+            "thread-local variable borrowed past end of function",
+        )
     }
 
     pub(crate) fn temporary_value_borrowed_for_too_long(
         &self,
         span: Span,
     ) -> DiagnosticBuilder<'tcx> {
-        struct_span_err!(self, span, E0716, "temporary value dropped while borrowed",)
-    }
-
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub(crate) fn struct_span_err_with_code<S: Into<MultiSpan>>(
-        &self,
-        sp: S,
-        msg: impl Into<DiagnosticMessage>,
-        code: DiagnosticId,
-    ) -> DiagnosticBuilder<'tcx> {
-        self.dcx().struct_span_err_with_code(sp, msg, code)
+        struct_span_err!(self.dcx(), span, E0716, "temporary value dropped while borrowed",)
     }
 }
 
