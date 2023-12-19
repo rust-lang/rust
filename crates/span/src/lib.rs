@@ -12,7 +12,7 @@ pub use crate::map::{RealSpanMap, SpanMap};
 pub use syntax::{TextRange, TextSize};
 pub use vfs::FileId;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct FilePosition {
     pub file_id: FileId,
     pub offset: TextSize,
