@@ -299,6 +299,7 @@ fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 #[derive(Debug)]
 struct ExtractedHirInfo {
     function_source_hash: u64,
+    is_async_fn: bool,
     fn_sig_span: Span,
     body_span: Span,
 }
@@ -312,6 +313,7 @@ fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHir
         hir::map::associated_body(hir_node).expect("HIR node is a function with body");
     let hir_body = tcx.hir().body(fn_body_id);
 
+    let is_async_fn = hir_node.fn_sig().is_some_and(|fn_sig| fn_sig.header.is_async());
     let body_span = get_body_span(tcx, hir_body, def_id);
 
     // The actual signature span is only used if it has the same context and
@@ -333,7 +335,7 @@ fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHir
 
     let function_source_hash = hash_mir_source(tcx, hir_body);
 
-    ExtractedHirInfo { function_source_hash, fn_sig_span, body_span }
+    ExtractedHirInfo { function_source_hash, is_async_fn, fn_sig_span, body_span }
 }
 
 fn get_body_span<'tcx>(
