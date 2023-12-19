@@ -37,13 +37,13 @@ impl<T> Ready<T> {
     /// use std::future;
     ///
     /// let a = future::ready(1);
-    /// assert_eq!(a.into_inner(), 1);
+    /// assert_eq!(a.unwrap(), 1);
     /// ```
     #[stable(feature = "ready_into_inner", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
-    pub fn into_inner(self) -> T {
-        self.0.expect("Called `into_inner()` on `Ready` after completion")
+    pub fn unwrap(self) -> T {
+        self.0.expect("Called `unwrap()` on `Ready` after completion")
     }
 }
 
