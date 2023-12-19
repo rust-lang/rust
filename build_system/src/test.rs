@@ -97,6 +97,7 @@ fn show_usage() {
     );
     ConfigInfo::show_usage();
     for (option, (doc, _)) in get_runners() {
+        // FIXME: Instead of using the hard-coded `23` value, better to compute it instead.
         let needed_spaces = 23_usize.saturating_sub(option.len());
         let spaces: String = std::iter::repeat(' ').take(needed_spaces).collect();
         println!("    {}{}: {}", option, spaces, doc);
@@ -109,7 +110,6 @@ struct TestArg {
     no_default_features: bool,
     build_only: bool,
     gcc_path: String,
-    use_backend: bool,
     runners: BTreeSet<String>,
     flags: Vec<String>,
     backend: Option<String>,
@@ -207,7 +207,7 @@ impl TestArg {
 }
 
 fn build_if_no_backend(env: &Env, args: &TestArg) -> Result<(), String> {
-    if args.use_backend {
+    if args.backend.is_some() {
         return Ok(());
     }
     let mut command: Vec<&dyn AsRef<OsStr>> = vec![&"cargo", &"rustc"];
@@ -504,8 +504,6 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<(), String> {
         None => return Err("Couldn't retrieve rustc commit hash".to_string()),
     };
     run_command_with_output_and_env(&[&"git", &"checkout", &rustc_commit], rust_dir, Some(env))?;
-    // FIXME: Is it really needed to empty `RUSTFLAGS` here?
-    // env.insert("RUSTFLAGS".to_string(), String::new());
     let cargo = String::from_utf8(
         run_command_with_env(&[&"rustup", &"which", &"cargo"], rust_dir, Some(env))?.stdout,
     )
@@ -684,6 +682,7 @@ fn test_libcore(env: &Env, args: &TestArg) -> Result<(), String> {
 
 fn extended_rand_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     if !args.is_using_gcc_master_branch() {
+        println!("Not using GCC master branch. Skipping `extended_rand_tests`.");
         return Ok(());
     }
     let path = Path::new("rand");
@@ -696,6 +695,7 @@ fn extended_rand_tests(env: &Env, args: &TestArg) -> Result<(), String> {
 
 fn extended_regex_example_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     if !args.is_using_gcc_master_branch() {
+        println!("Not using GCC master branch. Skipping `extended_regex_example_tests`.");
         return Ok(());
     }
     let path = Path::new("regex");
@@ -750,6 +750,7 @@ fn extended_regex_example_tests(env: &Env, args: &TestArg) -> Result<(), String>
 
 fn extended_regex_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     if !args.is_using_gcc_master_branch() {
+        println!("Not using GCC master branch. Skipping `extended_regex_tests`.");
         return Ok(());
     }
     // FIXME: create a function "display_if_not_quiet" or something along the line.
