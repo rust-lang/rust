@@ -304,7 +304,7 @@ fn maybe_run_command_in_vm(
     args: &TestArg,
 ) -> Result<(), String> {
     if !args.config_info.run_in_vm {
-        run_command_with_env(command, None, Some(env))?;
+        run_command_with_output_and_env(command, None, Some(env))?;
         return Ok(());
     }
     let vm_parent_dir = match env.get("CG_GCC_VM_DIR") {
@@ -330,7 +330,7 @@ fn maybe_run_command_in_vm(
         &inside_vm_exe_path,
     ];
     vm_command.extend_from_slice(command);
-    run_command_with_env(&vm_command, Some(&vm_parent_dir), Some(env))?;
+    run_command_with_output_and_env(&vm_command, Some(&vm_parent_dir), Some(env))?;
     Ok(())
 }
 
