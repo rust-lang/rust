@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 type Env = HashMap<String, String>;
-type Runner = &'static dyn Fn(&Env, &TestArg) -> Result<(), String>;
+type Runner = fn(&Env, &TestArg) -> Result<(), String>;
 type Runners = HashMap<&'static str, (&'static str, Runner)>;
 
 fn get_runners() -> Runners {
@@ -21,42 +21,42 @@ fn get_runners() -> Runners {
 
     runners.insert(
         "--test-rustc",
-        ("Run all rustc tests", &test_rustc as Runner),
+        ("Run all rustc tests", test_rustc as Runner),
     );
     runners.insert(
         "--test-successful-rustc",
-        ("Run successful rustc tests", &test_successful_rustc),
+        ("Run successful rustc tests", test_successful_rustc),
     );
     runners.insert(
         "--test-failing-rustc",
-        ("Run failing rustc tests", &test_failing_rustc),
+        ("Run failing rustc tests", test_failing_rustc),
     );
-    runners.insert("--test-libcore", ("Run libcore tests", &test_libcore));
-    runners.insert("--clean-ui-tests", ("Clean ui tests", &clean_ui_tests));
-    runners.insert("--clean", ("Empty cargo target directory", &clean));
-    runners.insert("--build-sysroot", ("Build sysroot", &build_sysroot));
-    runners.insert("--std-tests", ("Run std tests", &std_tests));
-    runners.insert("--asm-tests", ("Run asm tests", &asm_tests));
+    runners.insert("--test-libcore", ("Run libcore tests", test_libcore));
+    runners.insert("--clean-ui-tests", ("Clean ui tests", clean_ui_tests));
+    runners.insert("--clean", ("Empty cargo target directory", clean));
+    runners.insert("--build-sysroot", ("Build sysroot", build_sysroot));
+    runners.insert("--std-tests", ("Run std tests", std_tests));
+    runners.insert("--asm-tests", ("Run asm tests", asm_tests));
     runners.insert(
         "--extended-tests",
-        ("Run extended sysroot tests", &extended_sysroot_tests),
+        ("Run extended sysroot tests", extended_sysroot_tests),
     );
     runners.insert(
         "--extended-rand-tests",
-        ("Run extended rand tests", &extended_rand_tests),
+        ("Run extended rand tests", extended_rand_tests),
     );
     runners.insert(
         "--extended-regex-example-tests",
         (
             "Run extended regex example tests",
-            &extended_regex_example_tests,
+            extended_regex_example_tests,
         ),
     );
     runners.insert(
         "--extended-regex-tests",
-        ("Run extended regex tests", &extended_regex_tests),
+        ("Run extended regex tests", extended_regex_tests),
     );
-    runners.insert("--mini-tests", ("Run mini tests", &mini_tests));
+    runners.insert("--mini-tests", ("Run mini tests", mini_tests));
 
     runners
 }
