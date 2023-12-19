@@ -29,22 +29,37 @@ fn check_exit_status(
     input: &[&dyn AsRef<OsStr>],
     cwd: Option<&Path>,
     exit_status: ExitStatus,
+    output: Option<&Output>,
 ) -> Result<(), String> {
     if exit_status.success() {
-        Ok(())
-    } else {
-        Err(format!(
-            "Command `{}`{} exited with status {:?}",
-            input
-                .iter()
-                .map(|s| s.as_ref().to_str().unwrap())
-                .collect::<Vec<_>>()
-                .join(" "),
-            cwd.map(|cwd| format!(" (running in folder `{}`)", cwd.display()))
-                .unwrap_or_default(),
-            exit_status.code(),
-        ))
+        return Ok(());
     }
+    let mut error = format!(
+        "Command `{}`{} exited with status {:?}",
+        input
+            .iter()
+            .map(|s| s.as_ref().to_str().unwrap())
+            .collect::<Vec<_>>()
+            .join(" "),
+        cwd.map(|cwd| format!(" (running in folder `{}`)", cwd.display()))
+            .unwrap_or_default(),
+        exit_status.code()
+    );
+    let input = input.iter().map(|i| i.as_ref()).collect::<Vec<&OsStr>>();
+    eprintln!("Command `{:?}` failed", input);
+    if let Some(output) = output {
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        if !stdout.is_empty() {
+            error.push_str("\n==== STDOUT ====\n");
+            error.push_str(&*stdout);
+        }
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        if !stderr.is_empty() {
+            error.push_str("\n==== STDERR ====\n");
+            error.push_str(&*stderr);
+        }
+    }
+    Err(error)
 }
 
 fn command_error<D: Debug>(input: &[&dyn AsRef<OsStr>], cwd: &Option<&Path>, error: D) -> String {
@@ -73,7 +88,7 @@ pub fn run_command_with_env(
     let output = get_command_inner(input, cwd, env)
         .output()
         .map_err(|e| command_error(input, &cwd, e))?;
-    check_exit_status(input, cwd, output.status)?;
+    check_exit_status(input, cwd, output.status, Some(&output))?;
     Ok(output)
 }
 
@@ -86,7 +101,7 @@ pub fn run_command_with_output(
         .map_err(|e| command_error(input, &cwd, e))?
         .wait()
         .map_err(|e| command_error(input, &cwd, e))?;
-    check_exit_status(input, cwd, exit_status)?;
+    check_exit_status(input, cwd, exit_status, None)?;
     Ok(())
 }
 
@@ -100,7 +115,7 @@ pub fn run_command_with_output_and_env(
         .map_err(|e| command_error(input, &cwd, e))?
         .wait()
         .map_err(|e| command_error(input, &cwd, e))?;
-    check_exit_status(input, cwd, exit_status)?;
+    check_exit_status(input, cwd, exit_status, None)?;
     Ok(())
 }
 
@@ -143,17 +158,56 @@ pub fn get_os_name() -> Result<String, String> {
     }
 }
 
-pub fn get_rustc_host_triple() -> Result<String, String> {
-    let output = run_command(&[&"rustc", &"-vV"], None)?;
+#[derive(Default)]
+pub struct RustcVersionInfo {
+    pub version: String,
+    pub host: Option<String>,
+    pub commit_hash: Option<String>,
+    pub commit_date: Option<String>,
+}
+
+pub fn rustc_version_info(rustc: Option<&str>) -> Result<RustcVersionInfo, String> {
+    let output = run_command(&[&rustc.unwrap_or("rustc"), &"-vV"], None)?;
     let content = std::str::from_utf8(&output.stdout).unwrap_or("");
 
+    let mut info = RustcVersionInfo::default();
+
     for line in content.split('\n').map(|line| line.trim()) {
-        if !line.starts_with("host:") {
-            continue;
+        match line.split_once(':') {
+            Some(("host", data)) => info.host = Some(data.trim().to_string()),
+            Some(("release", data)) => info.version = data.trim().to_string(),
+            Some(("commit-hash", data)) => info.commit_hash = Some(data.trim().to_string()),
+            Some(("commit-date", data)) => info.commit_date = Some(data.trim().to_string()),
+            _ => {}
         }
-        return Ok(line.split(':').nth(1).unwrap().trim().to_string());
     }
-    Err("Cannot find host triple".to_string())
+    if info.version.is_empty() {
+        Err("failed to retrieve rustc version".to_string())
+    } else {
+        Ok(info)
+    }
+}
+
+pub fn get_toolchain() -> Result<String, String> {
+    let content = match fs::read_to_string("rust-toolchain") {
+        Ok(content) => content,
+        Err(_) => return Err("No `rust-toolchain` file found".to_string()),
+    };
+    match content
+        .split('\n')
+        .map(|line| line.trim())
+        .filter(|line| !line.is_empty())
+        .filter_map(|line| {
+            if !line.starts_with("channel") {
+                return None;
+            }
+            line.split('"').skip(1).next()
+        })
+        .next()
+    {
+        Some(toolchain) => Ok(toolchain.to_string()),
+        None => Err("Couldn't find `channel` in `rust-toolchain` file".to_string()),
+    }
 }
 
 pub fn get_gcc_path() -> Result<String, String> {
@@ -237,4 +291,90 @@ where
         }
     }
     Ok(())
+}
+
+pub fn split_args(args: &str) -> Result<Vec<String>, String> {
+    let mut out = Vec::new();
+    let mut start = 0;
+    let args = args.trim();
+    let mut iter = args.char_indices().peekable();
+
+    while let Some((pos, c)) = iter.next() {
+        if c == ' ' {
+            out.push(args[start..pos].to_string());
+            let mut found_start = false;
+            while let Some((pos, c)) = iter.peek() {
+                if *c != ' ' {
+                    start = *pos;
+                    found_start = true;
+                    break;
+                } else {
+                    iter.next();
+                }
+            }
+            if !found_start {
+                return Ok(out);
+            }
+        } else if c == '"' || c == '\'' {
+            let end = c;
+            let mut found_end = false;
+            while let Some((_, c)) = iter.next() {
+                if c == end {
+                    found_end = true;
+                    break;
+                } else if c == '\\' {
+                    // We skip the escaped character.
+                    iter.next();
+                }
+            }
+            if !found_end {
+                return Err(format!(
+                    "Didn't find `{}` at the end of `{}`",
+                    end,
+                    &args[start..]
+                ));
+            }
+        } else if c == '\\' {
+            // We skip the escaped character.
+            iter.next();
+        }
+    }
+    let s = args[start..].trim();
+    if !s.is_empty() {
+        out.push(s.to_string());
+    }
+    Ok(out)
+}
+
+pub fn remove_file<P: AsRef<Path>>(file_path: &P) -> Result<(), String> {
+    std::fs::remove_file(file_path).map_err(|error| {
+        format!(
+            "Failed to remove `{}`: {:?}",
+            file_path.as_ref().display(),
+            error
+        )
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_split_args() {
+        // Missing `"` at the end.
+        assert!(split_args("\"tada").is_err());
+        // Missing `'` at the end.
+        assert!(split_args("\'tada").is_err());
+
+        assert_eq!(
+            split_args("a \"b\" c"),
+            Ok(vec!["a".to_string(), "\"b\"".to_string(), "c".to_string()])
+        );
+        // Trailing whitespace characters.
+        assert_eq!(
+            split_args("    a    \"b\" c    "),
+            Ok(vec!["a".to_string(), "\"b\"".to_string(), "c".to_string()])
+        );
+    }
 }

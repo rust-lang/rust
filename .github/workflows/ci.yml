@@ -124,10 +124,19 @@ jobs:
     - name: Run tests
       run: |
         # TODO: remove --features master when it is back to the default.
-        ./test.sh --features master --release --clean --build-sysroot ${{ matrix.commands }}
+        ./y.sh test --features master --release --clean --build-sysroot ${{ matrix.commands }}
 
   duplicates:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - run: python tools/check_intrinsics_duplicates.py
+
+  build_system:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Test build system
+        run: |
+          cd build_system
+          cargo test

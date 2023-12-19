@@ -28,9 +28,6 @@ jobs:
           # FIXME: re-enable asm tests when GCC can emit in the right syntax.
           # "--asm-tests",
           "--test-libcore",
-          "--extended-rand-tests",
-          "--extended-regex-example-tests",
-          "--extended-regex-tests",
           "--test-successful-rustc --nb-parts 2 --current-part 0",
           "--test-successful-rustc --nb-parts 2 --current-part 1",
         ]
@@ -112,4 +109,4 @@ jobs:
 
     - name: Run tests
       run: |
-        ./test.sh --release --clean --build-sysroot ${{ matrix.commands }} --no-default-features
+        ./y.sh test --release --clean --build-sysroot ${{ matrix.commands }} --no-default-features

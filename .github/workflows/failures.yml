@@ -128,5 +128,5 @@ jobs:
     - name: Run tests
       id: tests
       run: |
-        ${{ matrix.libgccjit_version.env_extra }} ./test.sh --release --clean --build-sysroot --test-failing-rustc ${{ matrix.libgccjit_version.extra }} | tee output_log
+        ${{ matrix.libgccjit_version.env_extra }} ./y.sh test --release --clean --build-sysroot --test-failing-rustc ${{ matrix.libgccjit_version.extra }} | tee output_log
         rg --text "test result" output_log >> $GITHUB_STEP_SUMMARY
