@@ -1543,13 +1543,16 @@ impl DiagCtxtInner {
 
     fn flush_delayed(
         &mut self,
-        bugs: impl IntoIterator<Item = DelayedDiagnostic>,
+        bugs: Vec<DelayedDiagnostic>,
         explanation: impl Into<DiagnosticMessage> + Copy,
     ) {
-        let mut no_bugs = true;
+        if bugs.is_empty() {
+            return;
+        }
+
         // If backtraces are enabled, also print the query stack
         let backtrace = std::env::var_os("RUST_BACKTRACE").map_or(true, |x| &x != "0");
-        for bug in bugs {
+        for (i, bug) in bugs.into_iter().enumerate() {
             if let Some(file) = self.ice_file.as_ref()
                 && let Ok(mut out) = std::fs::File::options().create(true).append(true).open(file)
             {
@@ -1564,15 +1567,15 @@ impl DiagCtxtInner {
                     &bug.note
                 );
             }
-            let mut bug =
-                if backtrace || self.ice_file.is_none() { bug.decorate() } else { bug.inner };
 
-            if no_bugs {
+            if i == 0 {
                 // Put the overall explanation before the `DelayedBug`s, to
                 // frame them better (e.g. separate warnings from them).
                 self.emit_diagnostic(Diagnostic::new(Bug, explanation));
-                no_bugs = false;
             }
+
+            let mut bug =
+                if backtrace || self.ice_file.is_none() { bug.decorate() } else { bug.inner };
 
             // "Undelay" the `DelayedBug`s (into plain `Bug`s).
             if bug.level != Level::DelayedBug {
@@ -1589,9 +1592,7 @@ impl DiagCtxtInner {
         }
 
         // Panic with `DelayedBugPanic` to avoid "unexpected panic" messages.
-        if !no_bugs {
-            panic::panic_any(DelayedBugPanic);
-        }
+        panic::panic_any(DelayedBugPanic);
     }
 
     fn bump_lint_err_count(&mut self) {
