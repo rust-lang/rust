@@ -40,7 +40,7 @@
 //! - That have no non-trivial intersection with any of the constructors in the column (i.e. they're
 //!     each either disjoint with or covered by any given column constructor).
 //!
-//! We compute this in two steps: first [`crate::cx::MatchCheckCtxt::ctors_for_ty`] determines the
+//! We compute this in two steps: first [`TypeCx::ctors_for_ty`] determines the
 //! set of all possible constructors for the type. Then [`ConstructorSet::split`] looks at the
 //! column of constructors and splits the set into groups accordingly. The precise invariants of
 //! [`ConstructorSet::split`] is described in [`SplitConstructorSet`].
@@ -136,7 +136,7 @@
 //! the algorithm can't distinguish them from a nonempty constructor. The only known case where this
 //! could happen is the `[..]` pattern on `[!; N]` with `N > 0` so we must take care to not emit it.
 //!
-//! This is all handled by [`crate::cx::MatchCheckCtxt::ctors_for_ty`] and
+//! This is all handled by [`TypeCx::ctors_for_ty`] and
 //! [`ConstructorSet::split`]. The invariants of [`SplitConstructorSet`] are also of interest.
 //!
 //!
@@ -155,23 +155,36 @@ use std::iter::once;
 use smallvec::SmallVec;
 
 use rustc_apfloat::ieee::{DoubleS, IeeeFloat, SingleS};
-use rustc_data_structures::fx::FxHashSet;
-use rustc_hir::RangeEnd;
+use rustc_index::bit_set::{BitSet, GrowableBitSet};
 use rustc_index::IndexVec;
-use rustc_middle::mir::Const;
-use rustc_target::abi::VariantIdx;
 
 use self::Constructor::*;
 use self::MaybeInfiniteInt::*;
 use self::SliceKind::*;
 
-use crate::usefulness::PatCtxt;
+use crate::usefulness::PlaceCtxt;
+use crate::TypeCx;
 
 /// Whether we have seen a constructor in the column or not.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum Presence {
     Unseen,
     Seen,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum RangeEnd {
+    Included,
+    Excluded,
+}
+
+impl fmt::Display for RangeEnd {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            RangeEnd::Included => "..=",
+            RangeEnd::Excluded => "..",
+        })
+    }
 }
 
 /// A possibly infinite integer. Values are encoded such that the ordering on `u128` matches the
@@ -221,7 +234,7 @@ impl MaybeInfiniteInt {
         match self {
             Finite(n) => match n.checked_sub(1) {
                 Some(m) => Finite(m),
-                None => bug!(),
+                None => panic!("Called `MaybeInfiniteInt::minus_one` on 0"),
             },
             JustAfterMax => Finite(u128::MAX),
             x => x,
@@ -234,7 +247,7 @@ impl MaybeInfiniteInt {
                 Some(m) => Finite(m),
                 None => JustAfterMax,
             },
-            JustAfterMax => bug!(),
+            JustAfterMax => panic!("Called `MaybeInfiniteInt::plus_one` on u128::MAX+1"),
             x => x,
         }
     }
@@ -253,7 +266,7 @@ pub struct IntRange {
 
 impl IntRange {
     /// Best effort; will not know that e.g. `255u8..` is a singleton.
-    pub(crate) fn is_singleton(&self) -> bool {
+    pub fn is_singleton(&self) -> bool {
         // Since `lo` and `hi` can't be the same `Infinity` and `plus_one` never changes from finite
         // to infinite, this correctly only detects ranges that contain exacly one `Finite(x)`.
         self.lo.plus_one() == self.hi
@@ -271,7 +284,7 @@ impl IntRange {
         }
         if lo >= hi {
             // This should have been caught earlier by E0030.
-            bug!("malformed range pattern: {lo:?}..{hi:?}");
+            panic!("malformed range pattern: {lo:?}..{hi:?}");
         }
         IntRange { lo, hi }
     }
@@ -432,7 +445,7 @@ impl Slice {
         let kind = match (array_len, kind) {
             // If the middle `..` has length 0, we effectively have a fixed-length pattern.
             (Some(len), VarLen(prefix, suffix)) if prefix + suffix == len => FixedLen(len),
-            (Some(len), VarLen(prefix, suffix)) if prefix + suffix > len => bug!(
+            (Some(len), VarLen(prefix, suffix)) if prefix + suffix > len => panic!(
                 "Slice pattern of length {} longer than its array length {len}",
                 prefix + suffix
             ),
@@ -532,7 +545,7 @@ impl Slice {
         // therefore `Presence::Seen` in the column.
         let mut min_var_len = usize::MAX;
         // Tracks the fixed-length slices we've seen, to mark them as `Presence::Seen`.
-        let mut seen_fixed_lens = FxHashSet::default();
+        let mut seen_fixed_lens = GrowableBitSet::new_empty();
         match &mut max_slice {
             VarLen(max_prefix_len, max_suffix_len) => {
                 // A length larger than any fixed-length slice encountered.
@@ -600,7 +613,7 @@ impl Slice {
 
         smaller_lengths.map(FixedLen).chain(once(max_slice)).map(move |kind| {
             let arity = kind.arity();
-            let seen = if min_var_len <= arity || seen_fixed_lens.contains(&arity) {
+            let seen = if min_var_len <= arity || seen_fixed_lens.contains(arity) {
                 Presence::Seen
             } else {
                 Presence::Unseen
@@ -630,12 +643,17 @@ impl OpaqueId {
 /// constructor. `Constructor::apply` reconstructs the pattern from a pair of `Constructor` and
 /// `Fields`.
 #[derive(Clone, Debug, PartialEq)]
-pub enum Constructor<'tcx> {
-    /// The constructor for patterns that have a single constructor, like tuples, struct patterns,
-    /// and references. Fixed-length arrays are treated separately with `Slice`.
-    Single,
+pub enum Constructor<Cx: TypeCx> {
+    /// Tuples and structs.
+    Struct,
     /// Enum variants.
-    Variant(VariantIdx),
+    Variant(Cx::VariantIdx),
+    /// References
+    Ref,
+    /// Array and slice patterns.
+    Slice(Slice),
+    /// Union field accesses.
+    UnionField,
     /// Booleans
     Bool(bool),
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
@@ -644,9 +662,7 @@ pub enum Constructor<'tcx> {
     F32Range(IeeeFloat<SingleS>, IeeeFloat<SingleS>, RangeEnd),
     F64Range(IeeeFloat<DoubleS>, IeeeFloat<DoubleS>, RangeEnd),
     /// String literals. Strings are not quite the same as `&[u8]` so we treat them separately.
-    Str(Const<'tcx>),
-    /// Array and slice patterns.
-    Slice(Slice),
+    Str(Cx::StrLit),
     /// Constants that must not be matched structurally. They are treated as black boxes for the
     /// purposes of exhaustiveness: we must not inspect them, and they don't count towards making a
     /// match exhaustive.
@@ -669,12 +685,12 @@ pub enum Constructor<'tcx> {
     Missing,
 }
 
-impl<'tcx> Constructor<'tcx> {
+impl<Cx: TypeCx> Constructor<Cx> {
     pub(crate) fn is_non_exhaustive(&self) -> bool {
         matches!(self, NonExhaustive)
     }
 
-    pub(crate) fn as_variant(&self) -> Option<VariantIdx> {
+    pub(crate) fn as_variant(&self) -> Option<Cx::VariantIdx> {
         match self {
             Variant(i) => Some(*i),
             _ => None,
@@ -701,8 +717,8 @@ impl<'tcx> Constructor<'tcx> {
 
     /// The number of fields for this constructor. This must be kept in sync with
     /// `Fields::wildcards`.
-    pub(crate) fn arity(&self, pcx: &PatCtxt<'_, '_, 'tcx>) -> usize {
-        pcx.cx.ctor_arity(self, pcx.ty)
+    pub(crate) fn arity(&self, pcx: &PlaceCtxt<'_, '_, Cx>) -> usize {
+        pcx.ctor_arity(self)
     }
 
     /// Returns whether `self` is covered by `other`, i.e. whether `self` is a subset of `other`.
@@ -710,20 +726,20 @@ impl<'tcx> Constructor<'tcx> {
     /// this checks for inclusion.
     // We inline because this has a single call site in `Matrix::specialize_constructor`.
     #[inline]
-    pub(crate) fn is_covered_by<'p>(&self, pcx: &PatCtxt<'_, 'p, 'tcx>, other: &Self) -> bool {
+    pub(crate) fn is_covered_by<'p>(&self, pcx: &PlaceCtxt<'_, 'p, Cx>, other: &Self) -> bool {
         match (self, other) {
-            (Wildcard, _) => {
-                span_bug!(
-                    pcx.cx.scrut_span,
-                    "Constructor splitting should not have returned `Wildcard`"
-                )
-            }
+            (Wildcard, _) => pcx
+                .mcx
+                .tycx
+                .bug(format_args!("Constructor splitting should not have returned `Wildcard`")),
             // Wildcards cover anything
             (_, Wildcard) => true,
             // Only a wildcard pattern can match these special constructors.
             (Missing { .. } | NonExhaustive | Hidden, _) => false,
 
-            (Single, Single) => true,
+            (Struct, Struct) => true,
+            (Ref, Ref) => true,
+            (UnionField, UnionField) => true,
             (Variant(self_id), Variant(other_id)) => self_id == other_id,
             (Bool(self_b), Bool(other_b)) => self_b == other_b,
 
@@ -756,12 +772,9 @@ impl<'tcx> Constructor<'tcx> {
             (Opaque(self_id), Opaque(other_id)) => self_id == other_id,
             (Opaque(..), _) | (_, Opaque(..)) => false,
 
-            _ => span_bug!(
-                pcx.cx.scrut_span,
-                "trying to compare incompatible constructors {:?} and {:?}",
-                self,
-                other
-            ),
+            _ => pcx.mcx.tycx.bug(format_args!(
+                "trying to compare incompatible constructors {self:?} and {other:?}"
+            )),
         }
     }
 }
@@ -785,13 +798,16 @@ pub enum VariantVisibility {
 /// In terms of division of responsibility, [`ConstructorSet::split`] handles all of the
 /// `exhaustive_patterns` feature.
 #[derive(Debug)]
-pub enum ConstructorSet {
-    /// The type has a single constructor, e.g. `&T` or a struct. `empty` tracks whether the
-    /// constructor is empty.
-    Single { empty: bool },
+pub enum ConstructorSet<Cx: TypeCx> {
+    /// The type is a tuple or struct. `empty` tracks whether the type is empty.
+    Struct { empty: bool },
     /// This type has the following list of constructors. If `variants` is empty and
     /// `non_exhaustive` is false, don't use this; use `NoConstructors` instead.
-    Variants { variants: IndexVec<VariantIdx, VariantVisibility>, non_exhaustive: bool },
+    Variants { variants: IndexVec<Cx::VariantIdx, VariantVisibility>, non_exhaustive: bool },
+    /// The type is `&T`.
+    Ref,
+    /// The type is a union.
+    Union,
     /// Booleans.
     Bool,
     /// The type is spanned by integer values. The range or ranges give the set of allowed values.
@@ -830,25 +846,25 @@ pub enum ConstructorSet {
 /// of the `ConstructorSet` for the type, yet if we forgot to include them in `present` we would be
 /// ignoring any row with `Opaque`s in the algorithm. Hence the importance of point 4.
 #[derive(Debug)]
-pub(crate) struct SplitConstructorSet<'tcx> {
-    pub(crate) present: SmallVec<[Constructor<'tcx>; 1]>,
-    pub(crate) missing: Vec<Constructor<'tcx>>,
-    pub(crate) missing_empty: Vec<Constructor<'tcx>>,
+pub(crate) struct SplitConstructorSet<Cx: TypeCx> {
+    pub(crate) present: SmallVec<[Constructor<Cx>; 1]>,
+    pub(crate) missing: Vec<Constructor<Cx>>,
+    pub(crate) missing_empty: Vec<Constructor<Cx>>,
 }
 
-impl ConstructorSet {
+impl<Cx: TypeCx> ConstructorSet<Cx> {
     /// This analyzes a column of constructors to 1/ determine which constructors of the type (if
     /// any) are missing; 2/ split constructors to handle non-trivial intersections e.g. on ranges
     /// or slices. This can get subtle; see [`SplitConstructorSet`] for details of this operation
     /// and its invariants.
     #[instrument(level = "debug", skip(self, pcx, ctors), ret)]
-    pub(crate) fn split<'a, 'tcx>(
+    pub(crate) fn split<'a>(
         &self,
-        pcx: &PatCtxt<'_, '_, 'tcx>,
-        ctors: impl Iterator<Item = &'a Constructor<'tcx>> + Clone,
-    ) -> SplitConstructorSet<'tcx>
+        pcx: &PlaceCtxt<'_, '_, Cx>,
+        ctors: impl Iterator<Item = &'a Constructor<Cx>> + Clone,
+    ) -> SplitConstructorSet<Cx>
     where
-        'tcx: 'a,
+        Cx: 'a,
     {
         let mut present: SmallVec<[_; 1]> = SmallVec::new();
         // Empty constructors found missing.
@@ -866,22 +882,39 @@ impl ConstructorSet {
         }
 
         match self {
-            ConstructorSet::Single { empty } => {
+            ConstructorSet::Struct { empty } => {
                 if !seen.is_empty() {
-                    present.push(Single);
+                    present.push(Struct);
                 } else if *empty {
-                    missing_empty.push(Single);
+                    missing_empty.push(Struct);
                 } else {
-                    missing.push(Single);
+                    missing.push(Struct);
+                }
+            }
+            ConstructorSet::Ref => {
+                if !seen.is_empty() {
+                    present.push(Ref);
+                } else {
+                    missing.push(Ref);
+                }
+            }
+            ConstructorSet::Union => {
+                if !seen.is_empty() {
+                    present.push(UnionField);
+                } else {
+                    missing.push(UnionField);
                 }
             }
             ConstructorSet::Variants { variants, non_exhaustive } => {
-                let seen_set: FxHashSet<_> = seen.iter().map(|c| c.as_variant().unwrap()).collect();
+                let mut seen_set: BitSet<_> = BitSet::new_empty(variants.len());
+                for idx in seen.iter().map(|c| c.as_variant().unwrap()) {
+                    seen_set.insert(idx);
+                }
                 let mut skipped_a_hidden_variant = false;
 
                 for (idx, visibility) in variants.iter_enumerated() {
                     let ctor = Variant(idx);
-                    if seen_set.contains(&idx) {
+                    if seen_set.contains(idx) {
                         present.push(ctor);
                     } else {
                         // We only put visible variants directly into `missing`.
@@ -975,8 +1008,8 @@ impl ConstructorSet {
         // We have now grouped all the constructors into 3 buckets: present, missing, missing_empty.
         // In the absence of the `exhaustive_patterns` feature however, we don't count nested empty
         // types as empty. Only non-nested `!` or `enum Foo {}` are considered empty.
-        if !pcx.cx.tcx.features().exhaustive_patterns
-            && !(pcx.is_top_level && matches!(self, Self::NoConstructors))
+        if !pcx.mcx.tycx.is_exhaustive_patterns_feature_on()
+            && !(pcx.is_scrutinee && matches!(self, Self::NoConstructors))
         {
             // Treat all missing constructors as nonempty.
             // This clears `missing_empty`.
