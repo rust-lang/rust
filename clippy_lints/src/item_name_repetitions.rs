@@ -436,7 +436,7 @@ impl LateLintPass<'_> for ItemNameRepetitions {
         {
             match item.kind {
                 ItemKind::Enum(def, _) => check_variant(cx, self.enum_threshold, &def, item_name, item.span),
-                ItemKind::Struct(VariantData::Struct(fields, _), _) => {
+                ItemKind::Struct(VariantData::Struct { fields, .. }, _) => {
                     check_fields(cx, self.struct_threshold, item, fields);
                 },
                 _ => (),
