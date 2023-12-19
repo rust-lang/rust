@@ -814,7 +814,7 @@ fn convert_variant(
         })
         .collect();
     let recovered = match def {
-        hir::VariantData::Struct(_, r) => *r,
+        hir::VariantData::Struct { recovered, .. } => *recovered,
         _ => false,
     };
     ty::VariantDef::new(

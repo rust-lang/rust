@@ -188,7 +188,7 @@ fn cs_clone(
     }
 
     let expr = match *vdata {
-        VariantData::Struct(..) => {
+        VariantData::Struct { .. } => {
             let fields = all_fields
                 .iter()
                 .map(|field| {
