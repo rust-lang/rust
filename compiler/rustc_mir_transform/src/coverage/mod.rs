@@ -68,32 +68,21 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
 struct Instrumentor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     mir_body: &'a mut mir::Body<'tcx>,
-    fn_sig_span: Span,
-    body_span: Span,
-    function_source_hash: u64,
+    hir_info: ExtractedHirInfo,
     basic_coverage_blocks: CoverageGraph,
     coverage_counters: CoverageCounters,
 }
 
 impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     fn new(tcx: TyCtxt<'tcx>, mir_body: &'a mut mir::Body<'tcx>) -> Self {
-        let hir_info @ ExtractedHirInfo { function_source_hash, fn_sig_span, body_span } =
-            extract_hir_info(tcx, mir_body.source.def_id().expect_local());
+        let hir_info = extract_hir_info(tcx, mir_body.source.def_id().expect_local());
 
         debug!(?hir_info, "instrumenting {:?}", mir_body.source.def_id());
 
         let basic_coverage_blocks = CoverageGraph::from_mir(mir_body);
         let coverage_counters = CoverageCounters::new(&basic_coverage_blocks);
 
-        Self {
-            tcx,
-            mir_body,
-            fn_sig_span,
-            body_span,
-            function_source_hash,
-            basic_coverage_blocks,
-            coverage_counters,
-        }
+        Self { tcx, mir_body, hir_info, basic_coverage_blocks, coverage_counters }
     }
 
     fn inject_counters(&'a mut self) {
@@ -101,8 +90,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         // Compute coverage spans from the `CoverageGraph`.
         let Some(coverage_spans) = CoverageSpans::generate_coverage_spans(
             self.mir_body,
-            self.fn_sig_span,
-            self.body_span,
+            &self.hir_info,
             &self.basic_coverage_blocks,
         ) else {
             // No relevant spans were found in MIR, so skip instrumenting this function.
@@ -121,7 +109,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let mappings = self.create_mappings_and_inject_coverage_statements(&coverage_spans);
 
         self.mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
-            function_source_hash: self.function_source_hash,
+            function_source_hash: self.hir_info.function_source_hash,
             num_counters: self.coverage_counters.num_counters(),
             expressions: self.coverage_counters.take_expressions(),
             mappings,
@@ -136,7 +124,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         coverage_spans: &CoverageSpans,
     ) -> Vec<Mapping> {
         let source_map = self.tcx.sess.source_map();
-        let body_span = self.body_span;
+        let body_span = self.hir_info.body_span;
 
         let source_file = source_map.lookup_source_file(body_span.lo());
         use rustc_session::RemapFileNameExt;

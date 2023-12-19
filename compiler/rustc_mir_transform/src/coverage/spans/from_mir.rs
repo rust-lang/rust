@@ -7,13 +7,15 @@ use rustc_span::Span;
 
 use crate::coverage::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
 use crate::coverage::spans::CoverageSpan;
+use crate::coverage::ExtractedHirInfo;
 
 pub(super) fn mir_to_initial_sorted_coverage_spans(
     mir_body: &mir::Body<'_>,
-    fn_sig_span: Span,
-    body_span: Span,
+    hir_info: &ExtractedHirInfo,
     basic_coverage_blocks: &CoverageGraph,
 ) -> Vec<CoverageSpan> {
+    let &ExtractedHirInfo { fn_sig_span, body_span, .. } = hir_info;
+
     let mut initial_spans = Vec::with_capacity(mir_body.basic_blocks.len() * 2);
     for (bcb, bcb_data) in basic_coverage_blocks.iter_enumerated() {
         initial_spans.extend(bcb_to_initial_coverage_spans(mir_body, body_span, bcb, bcb_data));
