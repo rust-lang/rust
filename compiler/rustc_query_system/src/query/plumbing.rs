@@ -46,11 +46,11 @@ enum QueryResult {
 
 impl QueryResult {
     /// Unwraps the query job expecting that it has started.
-    fn expect_job(self, query_name: &'static str) -> QueryJob {
+    fn expect_job(self) -> QueryJob {
         match self {
             Self::Started(job) => job,
             Self::Poisoned => {
-                panic!("job for query '{}' failed to start and was poisoned", query_name)
+                panic!("job for query failed to start and was poisoned")
             }
         }
     }
@@ -107,7 +107,6 @@ where
 {
     state: &'tcx QueryState<K>,
     key: K,
-    query_name: &'static str,
 }
 
 #[cold]
@@ -173,17 +172,17 @@ where
         let key = self.key;
         let state = self.state;
 
+        // Forget ourself so our destructor won't poison the query
+        mem::forget(self);
+
         // Mark as complete before we remove the job from the active state
         // so no other thread can re-execute this query.
         cache.complete(key, result, dep_node_index);
 
         let job = {
             let mut lock = state.active.lock_shard_by_value(&key);
-            lock.remove(&key).unwrap().expect_job(self.query_name)
+            lock.remove(&key).unwrap().expect_job()
         };
-
-        // Forget ourself so our destructor won't poison the query
-        mem::forget(self);
 
         job.signal_complete();
     }
@@ -200,7 +199,7 @@ where
         let state = self.state;
         let job = {
             let mut shard = state.active.lock_shard_by_value(&self.key);
-            let job = shard.remove(&self.key).unwrap().expect_job(self.query_name);
+            let job = shard.remove(&self.key).unwrap().expect_job();
 
             shard.insert(self.key, QueryResult::Poisoned);
             job
@@ -286,13 +285,15 @@ where
                     // poisoned due to a panic instead.
                     let lock = query.query_state(qcx).active.get_shard_by_value(&key).lock();
 
-                    if let Some(QueryResult::Poisoned) = lock.get(&key) {
-                        panic!("query '{}' not cached due to poisoning", query.name())
+                    match lock.get(&key) {
+                        Some(QueryResult::Poisoned) => {
+                            panic!("query '{}' not cached due to poisoning", query.name())
+                        }
+                        _ => panic!(
+                            "query '{}' result must be in the cache or the query must be poisoned after a wait",
+                            query.name()
+                        ),
                     }
-                    panic!(
-                        "query '{}' result must in the cache or the query must be poisoned after a wait",
-                        query.name()
-                    )
                 })
             };
 
@@ -391,7 +392,7 @@ where
     Qcx: QueryContext,
 {
     // Use `JobOwner` so the query will be poisoned if executing it panics.
-    let job_owner = JobOwner { state, key, query_name: query.name() };
+    let job_owner = JobOwner { state, key };
 
     debug_assert_eq!(qcx.dep_context().dep_graph().is_fully_enabled(), INCR);
 
