@@ -627,7 +627,11 @@ where
                 w,
                 "{:A$} // {}{}",
                 indented_body,
-                if tcx.sess.verbose() { format!("{current_location:?}: ") } else { String::new() },
+                if tcx.sess.verbose_internals() {
+                    format!("{current_location:?}: ")
+                } else {
+                    String::new()
+                },
                 comment(tcx, statement.source_info),
                 A = ALIGN,
             )?;
@@ -652,7 +656,11 @@ where
             w,
             "{:A$} // {}{}",
             indented_terminator,
-            if tcx.sess.verbose() { format!("{current_location:?}: ") } else { String::new() },
+            if tcx.sess.verbose_internals() {
+                format!("{current_location:?}: ")
+            } else {
+                String::new()
+            },
             comment(tcx, data.terminator().source_info),
             A = ALIGN,
         )?;
@@ -943,7 +951,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                 // When printing regions, add trailing space if necessary.
                 let print_region = ty::tls::with(|tcx| {
-                    tcx.sess.verbose() || tcx.sess.opts.unstable_opts.identify_regions
+                    tcx.sess.verbose_internals() || tcx.sess.opts.unstable_opts.identify_regions
                 });
                 let region = if print_region {
                     let mut region = region.to_string();
@@ -1668,7 +1676,7 @@ fn pretty_print_const_value_tcx<'tcx>(
 ) -> fmt::Result {
     use crate::ty::print::PrettyPrinter;
 
-    if tcx.sess.verbose() {
+    if tcx.sess.verbose_internals() {
         fmt.write_str(&format!("ConstValue({ct:?}: {ty})"))?;
         return Ok(());
     }

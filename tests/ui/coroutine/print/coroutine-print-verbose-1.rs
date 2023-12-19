@@ -1,4 +1,4 @@
-// compile-flags: -Zverbose
+// compile-flags: -Zverbose-internals
 
 // Same as: tests/ui/coroutine/issue-68112.stderr
 

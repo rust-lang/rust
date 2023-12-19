@@ -315,8 +315,11 @@ pub(crate) fn create_query_frame<
             ty::print::with_forced_impl_filename_line!(do_describe(tcx, key))
         )
     );
-    let description =
-        if tcx.sess.verbose() { format!("{description} [{name:?}]") } else { description };
+    let description = if tcx.sess.verbose_internals() {
+        format!("{description} [{name:?}]")
+    } else {
+        description
+    };
     let span = if kind == dep_graph::dep_kinds::def_span || with_no_queries() {
         // The `def_span` query is used to calculate `default_span`,
         // so exit to avoid infinite recursion.

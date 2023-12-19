@@ -1323,7 +1323,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     let num_display_types = consts_offset - regions_len;
                     for (i, (ta1, ta2)) in type_arguments.take(num_display_types).enumerate() {
                         let i = i + regions_len;
-                        if ta1 == ta2 && !self.tcx.sess.verbose() {
+                        if ta1 == ta2 && !self.tcx.sess.verbose_internals() {
                             values.0.push_normal("_");
                             values.1.push_normal("_");
                         } else {
@@ -1337,7 +1337,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     let const_arguments = sub1.consts().zip(sub2.consts());
                     for (i, (ca1, ca2)) in const_arguments.enumerate() {
                         let i = i + consts_offset;
-                        if ca1 == ca2 && !self.tcx.sess.verbose() {
+                        if ca1 == ca2 && !self.tcx.sess.verbose_internals() {
                             values.0.push_normal("_");
                             values.1.push_normal("_");
                         } else {
@@ -1507,7 +1507,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             (ty::FnPtr(sig1), ty::FnPtr(sig2)) => self.cmp_fn_sig(sig1, sig2),
 
             _ => {
-                if t1 == t2 && !self.tcx.sess.verbose() {
+                if t1 == t2 && !self.tcx.sess.verbose_internals() {
                     // The two types are the same, elide and don't highlight.
                     (DiagnosticStyledString::normal("_"), DiagnosticStyledString::normal("_"))
                 } else {

@@ -974,8 +974,8 @@ impl Session {
 // JUSTIFICATION: defn of the suggested wrapper fns
 #[allow(rustc::bad_opt_access)]
 impl Session {
-    pub fn verbose(&self) -> bool {
-        self.opts.unstable_opts.verbose
+    pub fn verbose_internals(&self) -> bool {
+        self.opts.unstable_opts.verbose_internals
     }
 
     pub fn print_llvm_stats(&self) -> bool {

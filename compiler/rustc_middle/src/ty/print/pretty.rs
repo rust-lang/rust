@@ -744,7 +744,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 // only affect certain debug messages (e.g. messages printed
                 // from `rustc_middle::ty` during the computation of `tcx.predicates_of`),
                 // and should have no effect on any compiler output.
-                // [Unless `-Zverbose` is used, e.g. in the output of
+                // [Unless `-Zverbose-internals` is used, e.g. in the output of
                 // `tests/ui/nll/ty-outlives/impl-trait-captures.rs`, for
                 // example.]
                 if self.should_print_verbose() {
@@ -829,7 +829,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             ty::CoroutineWitness(did, args) => {
                 p!(write("{{"));
-                if !self.tcx().sess.verbose() {
+                if !self.tcx().sess.verbose_internals() {
                     p!("coroutine witness");
                     // FIXME(eddyb) should use `def_span`.
                     if let Some(did) = did.as_local() {
@@ -1698,7 +1698,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     }
 
     fn should_print_verbose(&self) -> bool {
-        self.tcx().sess.verbose()
+        self.tcx().sess.verbose_internals()
     }
 }
 
