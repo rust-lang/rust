@@ -27,6 +27,9 @@ pub struct Body {
     ///
     /// This is used for the "rust-call" ABI such as closures.
     pub(super) spread_arg: Option<Local>,
+
+    /// The span that covers the entire function body.
+    pub span: Span,
 }
 
 pub type BasicBlockIdx = usize;
@@ -42,6 +45,7 @@ impl Body {
         arg_count: usize,
         var_debug_info: Vec<VarDebugInfo>,
         spread_arg: Option<Local>,
+        span: Span,
     ) -> Self {
         // If locals doesn't contain enough entries, it can lead to panics in
         // `ret_local`, `arg_locals`, and `inner_locals`.
@@ -49,7 +53,7 @@ impl Body {
             locals.len() > arg_count,
             "A Body must contain at least a local for the return value and each of the function's arguments"
         );
-        Self { blocks, locals, arg_count, var_debug_info, spread_arg }
+        Self { blocks, locals, arg_count, var_debug_info, spread_arg, span }
     }
 
     /// Return local that holds this function's return value.
