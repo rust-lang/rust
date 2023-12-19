@@ -91,6 +91,13 @@ pub enum ItemKind {
     Fn,
     Static,
     Const,
+    Ctor(CtorKind),
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]
+pub enum CtorKind {
+    Const,
+    Fn,
 }
 
 pub type Filename = String;

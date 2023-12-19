@@ -29,12 +29,13 @@ const CRATE_NAME: &str = "input";
 /// This function uses the Stable MIR APIs to get information about the test crate.
 fn test_item_kind(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     let items = stable_mir::all_local_items();
-    assert_eq!(items.len(), 3);
+    assert_eq!(items.len(), 4);
     // Constructor item.
     for item in items {
         let expected_kind = match item.name().as_str() {
-            "Dummy" => ItemKind::Fn,
+            "Dummy" => ItemKind::Ctor(CtorKind::Fn),
             "dummy" => ItemKind::Fn,
+            "unit" => ItemKind::Fn,
             "DUMMY_CONST" => ItemKind::Const,
             name => unreachable!("Unexpected item {name}"),
         };
@@ -68,9 +69,14 @@ fn generate_input(path: &str) -> std::io::Result<()> {
         r#"
         pub struct Dummy(u32);
         pub const DUMMY_CONST: Dummy = Dummy(0);
+        pub struct DummyUnit;
 
         pub fn dummy() -> Dummy {{
             Dummy(5)
+        }}
+
+        pub fn unit() -> DummyUnit {{
+            DummyUnit
         }}
         "#
     )?;

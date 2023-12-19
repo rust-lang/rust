@@ -7,7 +7,7 @@
 //!
 //! For now, we are developing everything inside `rustc`, thus, we keep this module private.
 
-use rustc_hir::def::{CtorKind, DefKind};
+use rustc_hir::def::DefKind;
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
@@ -15,7 +15,7 @@ use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use stable_mir::abi::Layout;
 use stable_mir::mir::mono::InstanceDef;
 use stable_mir::ty::{ConstId, Span};
-use stable_mir::ItemKind;
+use stable_mir::{CtorKind, ItemKind};
 use std::ops::RangeInclusive;
 use tracing::debug;
 
@@ -91,15 +91,13 @@ pub(crate) fn new_item_kind(kind: DefKind) -> ItemKind {
         | DefKind::GlobalAsm => {
             unreachable!("Not a valid item kind: {kind:?}");
         }
-        DefKind::Ctor(_, CtorKind::Fn) | DefKind::Closure | DefKind::AssocFn | DefKind::Fn => {
-            ItemKind::Fn
+        DefKind::Closure | DefKind::AssocFn | DefKind::Fn => ItemKind::Fn,
+        DefKind::Const | DefKind::InlineConst | DefKind::AssocConst | DefKind::AnonConst => {
+            ItemKind::Const
         }
-        DefKind::Ctor(_, CtorKind::Const)
-        | DefKind::Const
-        | DefKind::InlineConst
-        | DefKind::AssocConst
-        | DefKind::AnonConst => ItemKind::Const,
         DefKind::Static(_) => ItemKind::Static,
+        DefKind::Ctor(_, rustc_hir::def::CtorKind::Const) => ItemKind::Ctor(CtorKind::Const),
+        DefKind::Ctor(_, rustc_hir::def::CtorKind::Fn) => ItemKind::Ctor(CtorKind::Fn),
     }
 }
 
