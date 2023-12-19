@@ -407,7 +407,7 @@ pub struct ExplicitBug;
 /// rather than a failed assertion, etc.
 pub struct DelayedBugPanic;
 
-/// A handler deals with errors and other compiler output.
+/// A `DiagCtxt` deals with errors and other compiler output.
 /// Certain errors (fatal, bug, unimpl) may cause immediate exit,
 /// others log errors for later reporting.
 pub struct DiagCtxt {
@@ -444,7 +444,7 @@ struct DiagCtxtInner {
     emitted_diagnostic_codes: FxIndexSet<DiagnosticId>,
 
     /// This set contains a hash of every diagnostic that has been emitted by
-    /// this handler. These hashes is used to avoid emitting the same error
+    /// this `DiagCtxt`. These hashes is used to avoid emitting the same error
     /// twice.
     emitted_diagnostics: FxHashSet<Hash128>,
 
