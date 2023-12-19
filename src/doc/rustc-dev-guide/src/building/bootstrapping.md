@@ -66,7 +66,8 @@ which `x.py` will download for you.
 (You can also configure `x.py` to use something else.)
 
 The stage0 compiler is then used only to compile `src/bootstrap`, `std`, and `rustc`.
-When compiling `rustc`, the stage0 compiler uses the freshly compiled `std`.
+When assembling the libraries and binaries that will become the stage1 `rustc`
+compiler, the freshly compiled `std` and `rustc` are used.
 There are two concepts at play here:
 a compiler (with its set of dependencies)
 and its 'target' or 'object' libraries (`std` and `rustc`).
