@@ -8,8 +8,8 @@ pub use crate::def_id::DefPathHash;
 use crate::def_id::{CrateNum, DefIndex, LocalDefId, StableCrateId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::def_path_hash_map::DefPathHashMap;
 
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{Hash64, StableHasher};
+use rustc_data_structures::unord::UnordMap;
 use rustc_index::IndexVec;
 use rustc_span::symbol::{kw, sym, Symbol};
 
@@ -95,7 +95,7 @@ impl DefPathTable {
 #[derive(Debug)]
 pub struct Definitions {
     table: DefPathTable,
-    next_disambiguator: FxHashMap<(LocalDefId, DefPathData), u32>,
+    next_disambiguator: UnordMap<(LocalDefId, DefPathData), u32>,
 
     /// The [StableCrateId] of the local crate.
     stable_crate_id: StableCrateId,

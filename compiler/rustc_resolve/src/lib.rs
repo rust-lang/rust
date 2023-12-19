@@ -1084,7 +1084,7 @@ pub struct Resolver<'a, 'tcx> {
 
     next_node_id: NodeId,
 
-    node_id_to_def_id: FxHashMap<ast::NodeId, LocalDefId>,
+    node_id_to_def_id: NodeMap<LocalDefId>,
     def_id_to_node_id: IndexVec<LocalDefId, ast::NodeId>,
 
     /// Indices of unnamed struct or variant fields with unresolved attributes.
@@ -1296,7 +1296,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let mut def_id_to_node_id = IndexVec::default();
         assert_eq!(def_id_to_node_id.push(CRATE_NODE_ID), CRATE_DEF_ID);
-        let mut node_id_to_def_id = FxHashMap::default();
+        let mut node_id_to_def_id = NodeMap::default();
         node_id_to_def_id.insert(CRATE_NODE_ID, CRATE_DEF_ID);
 
         let mut invocation_parents = FxHashMap::default();

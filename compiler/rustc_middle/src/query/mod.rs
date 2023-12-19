@@ -69,7 +69,7 @@ use rustc_hir::def_id::{
     CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId, LocalDefIdMap, LocalDefIdSet, LocalModDefId,
 };
 use rustc_hir::lang_items::{LangItem, LanguageItems};
-use rustc_hir::{Crate, ItemLocalId, TraitCandidate};
+use rustc_hir::{Crate, ItemLocalId, ItemLocalMap, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{try_get_cached, CacheSelector, QueryCache, QueryMode, QueryState};
@@ -1490,7 +1490,7 @@ rustc_queries! {
         desc { "computing whether impls specialize one another" }
     }
     query in_scope_traits_map(_: hir::OwnerId)
-        -> Option<&'tcx FxHashMap<ItemLocalId, Box<[TraitCandidate]>>> {
+        -> Option<&'tcx ItemLocalMap<Box<[TraitCandidate]>>> {
         desc { "getting traits in scope at a block" }
     }
 
