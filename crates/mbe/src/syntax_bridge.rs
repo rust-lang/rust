@@ -406,9 +406,20 @@ fn doc_comment_text(comment: &ast::Comment) -> SmolStr {
         text = &text[0..text.len() - 2];
     }
 
-    // Quote the string
+    let mut num_of_hashes = 0;
+    let mut count = 0;
+    for ch in text.chars() {
+        count = match ch {
+            '"' => 1,
+            '#' if count > 0 => count + 1,
+            _ => 0,
+        };
+        num_of_hashes = num_of_hashes.max(count);
+    }
+
+    // Quote raw string with delimiters
     // Note that `tt::Literal` expect an escaped string
-    let text = format!("\"{}\"", text.escape_debug());
+    let text = format!("r{delim}\"{text}\"{delim}", delim = "#".repeat(num_of_hashes));
     text.into()
 }
 
