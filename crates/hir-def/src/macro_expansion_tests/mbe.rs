@@ -1219,7 +1219,7 @@ macro_rules! m {
     ($(#[$m:meta])+) => ( $(#[$m])+ fn bar() {} )
 }
 #[doc = r" Single Line Doc 1"]
-#[doc = "
+#[doc = r"
         MultiLines Doc
     "] fn bar() {}
 "##]],
