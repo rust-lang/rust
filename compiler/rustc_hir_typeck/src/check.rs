@@ -261,7 +261,7 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
         bounds,
     );
 
-    check_function_signature(
+    let _ = check_function_signature(
         tcx,
         ObligationCause::new(
             tcx.def_span(fn_id),
@@ -300,7 +300,7 @@ fn check_lang_start_fn<'tcx>(tcx: TyCtxt<'tcx>, fn_sig: ty::FnSig<'tcx>, def_id:
         Abi::Rust,
     ));
 
-    check_function_signature(
+    let _ = check_function_signature(
         tcx,
         ObligationCause::new(
             tcx.def_span(def_id),
