@@ -512,8 +512,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     /// Descend the token into its macro call if it is part of one, returning the tokens in the
-    /// expansion that it is associated with. If `offset` points into the token's range, it will
-    /// be considered for the mapping in case of inline format args.
+    /// expansion that it is associated with.
     pub fn descend_into_macros(
         &self,
         mode: DescendPreference,
@@ -850,7 +849,7 @@ impl<'db> SemanticsImpl<'db> {
     /// Attempts to map the node out of macro expanded files.
     /// This only work for attribute expansions, as other ones do not have nodes as input.
     pub fn original_ast_node<N: AstNode>(&self, node: N) -> Option<N> {
-        self.wrap_node_infile(node).original_ast_node(self.db.upcast()).map(
+        self.wrap_node_infile(node).original_ast_node_rooted(self.db.upcast()).map(
             |InRealFile { file_id, value }| {
                 self.cache(find_root(value.syntax()), file_id.into());
                 value

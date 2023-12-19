@@ -516,7 +516,7 @@ fn source_edit_from_def(
     if let Definition::Local(local) = def {
         let mut file_id = None;
         for source in local.sources(sema.db) {
-            let source = match source.source.clone().original_ast_node(sema.db) {
+            let source = match source.source.clone().original_ast_node_rooted(sema.db) {
                 Some(source) => source,
                 None => match source
                     .source
@@ -560,7 +560,7 @@ fn source_edit_from_def(
                         }
                     } else {
                         // Foo { ref mut field } -> Foo { field: ref mut new_name }
-                        //      ^ insert `field: `
+                        //   original_ast_node_rootedd: `
                         //               ^^^^^ replace this with `new_name`
                         edit.insert(
                             pat.syntax().text_range().start(),
