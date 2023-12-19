@@ -23,7 +23,10 @@ pub(crate) fn remove_markdown(markdown: &str) -> String {
         }
     }
 
-    if let Some(p) = out.rfind(|c| c != '\n') {
+    if let Some(mut p) = out.rfind(|c| c != '\n') {
+        while !out.is_char_boundary(p + 1) {
+            p += 1;
+        }
         out.drain(p + 1..);
     }
 
@@ -150,5 +153,11 @@ book] or the [Reference].
             Along with being made public via pub, fn can also have an extern added for use in FFI.
 
             For more information on the various types of functions and how they're used, consult the Rust book or the Reference."#]].assert_eq(&res);
+    }
+
+    #[test]
+    fn on_char_boundary() {
+        expect!["a┘"].assert_eq(&remove_markdown("```text\na┘\n```"));
+        expect!["وقار"].assert_eq(&remove_markdown("```\nوقار\n```\n"));
     }
 }
