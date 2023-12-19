@@ -930,6 +930,14 @@ impl<'ll> CodegenCx<'ll, '_> {
         ifn!("llvm.va_end", fn(ptr) -> void);
         ifn!("llvm.va_copy", fn(ptr, ptr) -> void);
 
+        // pointer authentication intrinsics
+        ifn!("llvm.ptrauth.sign.i64", fn(t_i64, t_i32, t_i64) -> t_i64);
+        ifn!("llvm.ptrauth.auth.i64", fn(t_i64, t_i32, t_i64) -> t_i64);
+        ifn!("llvm.ptrauth.strip.i64", fn(t_i64, t_i32) -> t_i64);
+        ifn!("llvm.ptrauth.resign.i64", fn(t_i64, t_i32, t_i64, t_i32, t_i64) -> t_i64);
+        ifn!("llvm.ptrauth.sign_generic.i64", fn(t_i64, t_i64) -> t_i64);
+        ifn!("llvm.ptrauth.blend.i64", fn(t_i64, t_i64) -> t_i64);
+
         if self.sess().instrument_coverage() {
             ifn!("llvm.instrprof.increment", fn(ptr, t_i64, t_i32, t_i32) -> void);
         }
