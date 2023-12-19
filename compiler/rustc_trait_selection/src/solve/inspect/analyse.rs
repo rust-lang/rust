@@ -119,7 +119,7 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
     ) {
         for step in &probe.steps {
             match step {
-                &inspect::ProbeStep::AddGoal(goal) => nested_goals.push(goal),
+                &inspect::ProbeStep::AddGoal(_source, goal) => nested_goals.push(goal),
                 inspect::ProbeStep::NestedProbe(ref probe) => {
                     // Nested probes have to prove goals added in their parent
                     // but do not leak them, so we truncate the added goals
