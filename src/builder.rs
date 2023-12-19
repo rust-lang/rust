@@ -606,12 +606,29 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         //     ../../../gcc/gcc/cfgexpand.cc:6069
         // 0x7f0101bf9194 execute
         //     ../../../gcc/gcc/cfgexpand.cc:6795
-        if a.get_type().is_compatible_with(self.cx.float_type) {
+        let a_type = a.get_type();
+        let a_type_unqualified = a_type.unqualified();
+        if a_type.is_compatible_with(self.cx.float_type) {
             let fmodf = self.context.get_builtin_function("fmodf");
             // FIXME(antoyo): this seems to produce the wrong result.
             return self.context.new_call(None, fmodf, &[a, b]);
         }
-        assert_eq!(a.get_type().unqualified(), self.cx.double_type);
+        else if let Some(vector_type) = a_type_unqualified.dyncast_vector() {
+            assert_eq!(a_type_unqualified, b.get_type().unqualified());
+
+            let num_units = vector_type.get_num_units();
+            let new_elements: Vec<_> = (0..num_units)
+                .map(|i| {
+                    let index = self.context.new_rvalue_from_long(self.cx.type_u32(), i as _);
+                    let x = self.extract_element(a, index).to_rvalue();
+                    let y = self.extract_element(b, index).to_rvalue();
+                    self.frem(x, y)
+                })
+                .collect();
+
+            return self.context.new_rvalue_from_vector(None, a_type, &new_elements)
+        }
+        assert_eq!(a_type_unqualified, self.cx.double_type);
 
         let fmod = self.context.get_builtin_function("fmod");
         return self.context.new_call(None, fmod, &[a, b]);

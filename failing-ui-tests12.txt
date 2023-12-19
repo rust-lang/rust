@@ -9,6 +9,7 @@ tests/ui/packed/packed-struct-vec.rs
 tests/ui/packed/packed-tuple-struct-layout.rs
 tests/ui/simd/array-type.rs
 tests/ui/simd/intrinsic/float-minmax-pass.rs
+tests/ui/simd/intrinsic/generic-arithmetic-pass.rs
 tests/ui/simd/intrinsic/generic-arithmetic-saturating-pass.rs
 tests/ui/simd/intrinsic/generic-as.rs
 tests/ui/simd/intrinsic/generic-cast-pass.rs
