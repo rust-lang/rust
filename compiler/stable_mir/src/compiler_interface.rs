@@ -5,6 +5,7 @@
 
 use std::cell::Cell;
 
+use crate::abi::{FnAbi, Layout, LayoutShape};
 use crate::mir::alloc::{AllocId, GlobalAlloc};
 use crate::mir::mono::{Instance, InstanceDef, StaticDef};
 use crate::mir::Body;
@@ -173,6 +174,15 @@ pub trait Context {
 
     /// Return information about the target machine.
     fn target_info(&self) -> MachineInfo;
+
+    /// Get an instance ABI.
+    fn instance_abi(&self, def: InstanceDef) -> Result<FnAbi, Error>;
+
+    /// Get the layout of a type.
+    fn ty_layout(&self, ty: Ty) -> Result<Layout, Error>;
+
+    /// Get the layout shape.
+    fn layout_shape(&self, id: Layout) -> LayoutShape;
 }
 
 // A thread local variable that stores a pointer to the tables mapping between TyCtxt
