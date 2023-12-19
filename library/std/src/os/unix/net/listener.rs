@@ -74,7 +74,11 @@ impl UnixListener {
             let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
             let (addr, len) = sockaddr_un(path.as_ref())?;
             const backlog: libc::c_int =
-                if cfg!(any(target_os = "linux", target_os = "freebsd")) { -1 } else { 128 };
+                if cfg!(any(target_os = "linux", target_os = "freebsd", target_os = "openbsd")) {
+                    -1
+                } else {
+                    libc::SOMAXCONN
+                };
 
             cvt(libc::bind(inner.as_inner().as_raw_fd(), &addr as *const _ as *const _, len as _))?;
             cvt(libc::listen(inner.as_inner().as_raw_fd(), backlog))?;
