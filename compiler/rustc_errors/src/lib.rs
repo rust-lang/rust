@@ -1731,25 +1731,80 @@ impl DelayedDiagnostic {
 
 #[derive(Copy, PartialEq, Eq, Clone, Hash, Debug, Encodable, Decodable)]
 pub enum Level {
+    /// For bugs in the compiler. Manifests as an ICE (internal compiler error) panic.
+    ///
+    /// Its `EmissionGuarantee` is `BugAbort`.
     Bug,
+
+    /// This is a strange one: lets you register an error without emitting it. If compilation ends
+    /// without any other errors occurring, this will be emitted as a bug. Otherwise, it will be
+    /// silently dropped. I.e. "expect other errors are emitted" semantics. Useful on code paths
+    /// that should only be reached when compiling erroneous code.
+    ///
+    /// Its `EmissionGuarantee` is `ErrorGuaranteed`.
     DelayedBug,
+
+    /// An error that causes an immediate abort. Used for things like configuration errors,
+    /// internal overflows, some file operation errors.
+    ///
+    /// Its `EmissionGuarantee` is `FatalAbort`, except in the non-aborting "almost fatal" case
+    /// that is occasionaly used, where it is `FatalError`.
     Fatal,
+
+    /// An error in the code being compiled, which prevents compilation from finishing. This is the
+    /// most common case.
+    ///
+    /// Its `EmissionGuarantee` is `ErrorGuaranteed`.
     Error {
-        /// If this error comes from a lint, don't abort compilation even when abort_if_errors() is called.
+        /// If this error comes from a lint, don't abort compilation even when abort_if_errors() is
+        /// called.
         lint: bool,
     },
+
+    /// A warning about the code being compiled. Does not prevent compilation from finishing.
+    ///
     /// This [`LintExpectationId`] is used for expected lint diagnostics, which should
     /// also emit a warning due to the `force-warn` flag. In all other cases this should
     /// be `None`.
+    ///
+    /// Its `EmissionGuarantee` is `()`.
     Warning(Option<LintExpectationId>),
+
+    /// A message giving additional context. Rare, because notes are more commonly attached to other
+    /// diagnostics such as errors.
+    ///
+    /// Its `EmissionGuarantee` is `()`.
     Note,
-    /// A note that is only emitted once.
+
+    /// A note that is only emitted once. Rare, mostly used in circumstances relating to lints.
+    ///
+    /// Its `EmissionGuarantee` is `()`.
     OnceNote,
+
+    /// A message suggesting how to fix something. Rare, because help messages are more commonly
+    /// attached to other diagnostics such as errors.
+    ///
+    /// Its `EmissionGuarantee` is `()`.
     Help,
-    /// A help that is only emitted once.
+
+    /// A help that is only emitted once. Rare.
+    ///
+    /// Its `EmissionGuarantee` is `()`.
     OnceHelp,
+
+    /// Similar to `Note`, but used in cases where compilation has failed. Rare.
+    ///
+    /// Its `EmissionGuarantee` is `()`.
     FailureNote,
+
+    /// Only used for lints.
+    ///
+    /// Its `EmissionGuarantee` is `()`.
     Allow,
+
+    /// Only used for lints.
+    ///
+    /// Its `EmissionGuarantee` is `()`.
     Expect(LintExpectationId),
 }
 
@@ -1789,8 +1844,7 @@ impl Level {
             Note | OnceNote => "note",
             Help | OnceHelp => "help",
             FailureNote => "failure-note",
-            Allow => panic!("Shouldn't call on allowed error"),
-            Expect(_) => panic!("Shouldn't call on expected error"),
+            Allow | Expect(_) => unreachable!(),
         }
     }
 
