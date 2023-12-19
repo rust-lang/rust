@@ -323,6 +323,7 @@ change-id = 118703
 #    "rustdoc",
 #    "rustfmt",
 #    "rust-analyzer",
+#    "rust-analyzer-proc-macro-srv",
 #    "analysis",
 #    "src",
 #    "rust-demangler",  # if profiler = true
