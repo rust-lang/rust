@@ -341,6 +341,12 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         instance.ty(tables.tcx, ParamEnv::reveal_all()).stable(&mut *tables)
     }
 
+    fn instance_args(&self, def: InstanceDef) -> GenericArgs {
+        let mut tables = self.0.borrow_mut();
+        let instance = tables.instances[def];
+        instance.args.stable(&mut *tables)
+    }
+
     fn instance_abi(&self, def: InstanceDef) -> Result<FnAbi, Error> {
         let mut tables = self.0.borrow_mut();
         let instance = tables.instances[def];
