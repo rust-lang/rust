@@ -423,7 +423,7 @@ mod z {
 struct X();
 struct Y();
 mod z {
-    use super::{X};
+    use super::X;
 
     fn w() {
         let x = X();
@@ -495,7 +495,7 @@ struct X();
 mod y {
     struct Y();
     mod z {
-        use crate::{X};
+        use crate::X;
         fn f() {
             let x = X();
         }
@@ -526,10 +526,83 @@ struct X();
 mod y {
     struct Y();
     mod z {
-        use crate::{y::Y};
+        use crate::y::Y;
         fn f() {
             let y = Y();
         }
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn remove_unused_auto_remove_brace_nested() {
+        check_assist(
+            remove_unused_imports,
+            r#"
+mod a {
+    pub struct A();
+}
+mod b {
+    struct F();
+    mod c {
+        $0use {{super::{{
+            {d::{{{{{{{S, U}}}}}}}},
+            {{{{e::{H, L, {{{R}}}}}}}},
+            F, super::a::A
+        }}}};$0
+        fn f() {
+            let f = F();
+            let l = L();
+            let a = A();
+            let s = S();
+            let h = H();
+        }
+    }
+
+    mod d {
+        pub struct S();
+        pub struct U();
+    }
+
+    mod e {
+        pub struct H();
+        pub struct L();
+        pub struct R();
+    }
+}
+"#,
+            r#"
+mod a {
+    pub struct A();
+}
+mod b {
+    struct F();
+    mod c {
+        use super::{
+            d::S,
+            e::{H, L},
+            F, super::a::A
+        };
+        fn f() {
+            let f = F();
+            let l = L();
+            let a = A();
+            let s = S();
+            let h = H();
+        }
+    }
+
+    mod d {
+        pub struct S();
+        pub struct U();
+    }
+
+    mod e {
+        pub struct H();
+        pub struct L();
+        pub struct R();
     }
 }
 "#,
