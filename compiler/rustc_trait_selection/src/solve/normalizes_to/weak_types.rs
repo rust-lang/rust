@@ -3,10 +3,10 @@
 //!
 //! Since a weak alias is not ambiguous, this just computes the `type_of` of
 //! the alias and registers the where-clauses of the type alias.
-use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
+use rustc_middle::traits::solve::{Certainty, Goal, GoalSource, QueryResult};
 use rustc_middle::ty;
 
-use super::EvalCtxt;
+use crate::solve::EvalCtxt;
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     pub(super) fn normalize_weak_type(
@@ -22,6 +22,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
 
         // Check where clauses
         self.add_goals(
+            GoalSource::Misc,
             tcx.predicates_of(weak_ty.def_id)
                 .instantiate(tcx, weak_ty.args)
                 .predicates

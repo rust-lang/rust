@@ -11,7 +11,7 @@
 //! * bidirectional-normalizes-to: If `A` and `B` are both projections, and both
 //!   may apply, then we can compute the "intersection" of both normalizes-to by
 //!   performing them together. This is used specifically to resolve ambiguities.
-use super::EvalCtxt;
+use super::{EvalCtxt, GoalSource};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::traits::solve::{Certainty, Goal, QueryResult};
@@ -89,11 +89,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ty::TermKind::Const(_) => {
                 if let Some(alias) = term.to_alias_ty(self.tcx()) {
                     let term = self.next_term_infer_of_kind(term);
-                    self.add_goal(Goal::new(
-                        self.tcx(),
-                        param_env,
-                        ty::NormalizesTo { alias, term },
-                    ));
+                    self.add_goal(
+                        GoalSource::Misc,
+                        Goal::new(self.tcx(), param_env, ty::NormalizesTo { alias, term }),
+                    );
                     self.try_evaluate_added_goals()?;
                     Ok(Some(self.resolve_vars_if_possible(term)))
                 } else {
@@ -109,7 +108,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         opaque: ty::AliasTy<'tcx>,
         term: ty::Term<'tcx>,
     ) -> QueryResult<'tcx> {
-        self.add_goal(Goal::new(self.tcx(), param_env, ty::NormalizesTo { alias: opaque, term }));
+        self.add_goal(
+            GoalSource::Misc,
+            Goal::new(self.tcx(), param_env, ty::NormalizesTo { alias: opaque, term }),
+        );
         self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 

@@ -262,7 +262,7 @@ pub fn create_args_for_parent_generic_args<'tcx, 'a>(
                             // impl const PartialEq for () {}
                             // ```
                             //
-                            // Since this is a const impl, we need to insert `<false>` at the end of
+                            // Since this is a const impl, we need to insert a host arg at the end of
                             // `PartialEq`'s generics, but this errors since `Rhs` isn't specified.
                             // To work around this, we infer all arguments until we reach the host param.
                             args.push(ctx.inferred_kind(Some(&args), param, infer_args));
