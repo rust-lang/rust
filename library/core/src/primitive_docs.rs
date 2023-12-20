@@ -1575,8 +1575,6 @@ mod prim_ref {}
 /// Furthermore, ABI compatibility satisfies the following general properties:
 ///
 /// - Every type is ABI-compatible with itself.
-/// - If `T1` and `T2` are ABI-compatible, then two `repr(C)` types that only differ because one
-///   field type was changed from `T1` to `T2` are ABI-compatible.
 /// - If `T1` and `T2` are ABI-compatible and `T2` and `T3` are ABI-compatible, then so are `T1` and
 ///   `T3` (i.e., ABI-compatibility is transitive).
 /// - If `T1` and `T2` are ABI-compatible, then so are `T2` and `T1` (i.e., ABI-compatibility is
