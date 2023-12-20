@@ -154,7 +154,7 @@ fn line_expand(
     // Note that `line!` and `column!` will never be implemented properly, as they are by definition
     // not incremental
     ExpandResult::ok(tt::Subtree {
-        delimiter: tt::Delimiter::dummy_invisible(),
+        delimiter: tt::Delimiter::invisible_spanned(span),
         token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
             text: "0u32".into(),
             span,
@@ -206,7 +206,7 @@ fn assert_expand(
     let expanded = match &*args {
         [cond, panic_args @ ..] => {
             let comma = tt::Subtree {
-                delimiter: tt::Delimiter::dummy_invisible(),
+                delimiter: tt::Delimiter::invisible_spanned(span),
                 token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
                     char: ',',
                     spacing: tt::Spacing::Alone,
@@ -631,7 +631,7 @@ fn include_bytes_expand(
 ) -> ExpandResult<tt::Subtree> {
     // FIXME: actually read the file here if the user asked for macro expansion
     let res = tt::Subtree {
-        delimiter: tt::Delimiter::dummy_invisible(),
+        delimiter: tt::Delimiter::invisible_spanned(span),
         token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
             text: r#"b"""#.into(),
             span,

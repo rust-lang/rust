@@ -318,7 +318,7 @@ fn expand_subtree<S: Span>(
     let tts = arena.drain(start_elements..).collect();
     ExpandResult {
         value: tt::Subtree {
-            delimiter: delimiter.unwrap_or_else(tt::Delimiter::dummy_invisible),
+            delimiter: delimiter.unwrap_or_else(|| tt::Delimiter::invisible_spanned(ctx.call_site)),
             token_trees: tts,
         },
         err,
@@ -408,7 +408,7 @@ fn expand_repeat<S: Span>(
             return ExpandResult {
                 value: Fragment::Tokens(
                     tt::Subtree {
-                        delimiter: tt::Delimiter::dummy_invisible(),
+                        delimiter: tt::Delimiter::invisible_spanned(ctx.call_site),
                         token_trees: vec![],
                     }
                     .into(),

@@ -797,7 +797,7 @@ fn match_meta_var<S: Span>(
             return input.expect_fragment(parser::PrefixEntryPoint::Expr).map(|tt| {
                 tt.map(|tt| match tt {
                     tt::TokenTree::Leaf(leaf) => tt::Subtree {
-                        delimiter: tt::Delimiter::dummy_invisible(),
+                        delimiter: tt::Delimiter::invisible_spanned(*leaf.span()),
                         token_trees: vec![leaf.into()],
                     },
                     tt::TokenTree::Subtree(mut s) => {
@@ -831,7 +831,7 @@ fn match_meta_var<S: Span>(
                             match neg {
                                 None => lit.into(),
                                 Some(neg) => tt::TokenTree::Subtree(tt::Subtree {
-                                    delimiter: tt::Delimiter::dummy_invisible(),
+                                    delimiter: tt::Delimiter::invisible_spanned(*literal.span()),
                                     token_trees: vec![neg, lit.into()],
                                 }),
                             }
@@ -960,11 +960,13 @@ impl<S: Span> TtIter<'_, S> {
                 self.expect_lifetime()
             } else {
                 let puncts = self.expect_glued_punct()?;
+                let delimiter = tt::Delimiter {
+                    open: puncts.first().unwrap().span,
+                    close: puncts.last().unwrap().span,
+                    kind: tt::DelimiterKind::Invisible,
+                };
                 let token_trees = puncts.into_iter().map(|p| tt::Leaf::Punct(p).into()).collect();
-                Ok(tt::TokenTree::Subtree(tt::Subtree {
-                    delimiter: tt::Delimiter::dummy_invisible(),
-                    token_trees,
-                }))
+                Ok(tt::TokenTree::Subtree(tt::Subtree { delimiter, token_trees }))
             }
         } else {
             self.next().ok_or(()).cloned()
@@ -979,7 +981,11 @@ impl<S: Span> TtIter<'_, S> {
         let ident = self.expect_ident_or_underscore()?;
 
         Ok(tt::Subtree {
-            delimiter: tt::Delimiter::dummy_invisible(),
+            delimiter: tt::Delimiter {
+                open: punct.span,
+                close: ident.span,
+                kind: tt::DelimiterKind::Invisible,
+            },
             token_trees: vec![
                 tt::Leaf::Punct(*punct).into(),
                 tt::Leaf::Ident(ident.clone()).into(),

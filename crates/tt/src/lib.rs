@@ -62,13 +62,11 @@ impl<S: Span> TokenTree<S> {
             TokenTree::Subtree(s) => s,
         }
     }
-    pub fn subtree_or_wrap2(self, span: DelimSpan<S>) -> Subtree<S> {
+
+    pub fn first_span(&self) -> S {
         match self {
-            TokenTree::Leaf(_) => Subtree {
-                delimiter: Delimiter::invisible_delim_spanned(span),
-                token_trees: vec![self],
-            },
-            TokenTree::Subtree(s) => s,
+            TokenTree::Leaf(l) => *l.span(),
+            TokenTree::Subtree(s) => s.delimiter.open,
         }
     }
 }
@@ -140,11 +138,6 @@ impl<S: Span> Delimiter<S> {
     #[allow(deprecated)]
     pub const DUMMY_INVISIBLE: Self =
         Self { open: S::DUMMY, close: S::DUMMY, kind: DelimiterKind::Invisible };
-
-    // FIXME should not exist
-    pub const fn dummy_invisible() -> Self {
-        Self::DUMMY_INVISIBLE
-    }
 
     pub const fn invisible_spanned(span: S) -> Self {
         Delimiter { open: span, close: span, kind: DelimiterKind::Invisible }
