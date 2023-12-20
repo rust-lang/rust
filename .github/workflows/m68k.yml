@@ -118,7 +118,7 @@ jobs:
         ./y.sh build --target-triple m68k-unknown-linux-gnu --features master
         # TODO: remove --features master when it is back to the default.
         CG_GCC_TEST_TARGET=m68k-unknown-linux-gnu cargo test --features master
-        ./clean_all.sh
+        ./y.sh clean all
 
     - name: Prepare dependencies
       run: |

@@ -82,7 +82,7 @@ jobs:
         EMBED_LTO_BITCODE=1 ./y.sh build --release --release-sysroot --features master
         # TODO: remove --features master when it is back to the default.
         cargo test --features master
-        ./clean_all.sh
+        ./y.sh clean all
 
     - name: Prepare dependencies
       run: |

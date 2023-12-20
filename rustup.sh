@@ -15,7 +15,7 @@ case $1 in
             rustup toolchain uninstall $nightly
         done
 
-        ./clean_all.sh
+        ./y.sh clean all
         ./y.sh prepare
         ;;
     "commit")

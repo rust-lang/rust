@@ -2,6 +2,7 @@ use std::env;
 use std::process;
 
 mod build;
+mod clean;
 mod config;
 mod prepare;
 mod rustc_info;
@@ -22,6 +23,7 @@ fn usage() {
         "\
 Available commands for build_system:
 
+    clean    : Run clean command
     prepare  : Run prepare command
     build    : Run build command
     test     : Run test command
@@ -30,6 +32,7 @@ Available commands for build_system:
 }
 
 pub enum Command {
+    Clean,
     Prepare,
     Build,
     Test,
@@ -41,6 +44,7 @@ fn main() {
     }
 
     let command = match env::args().nth(1).as_deref() {
+        Some("clean") => Command::Clean,
         Some("prepare") => Command::Prepare,
         Some("build") => Command::Build,
         Some("test") => Command::Test,
@@ -57,6 +61,7 @@ fn main() {
     };
 
     if let Err(e) = match command {
+        Command::Clean => clean::run(),
         Command::Prepare => prepare::run(),
         Command::Build => build::run(),
         Command::Test => test::run(),
