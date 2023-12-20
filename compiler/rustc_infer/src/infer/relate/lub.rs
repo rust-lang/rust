@@ -32,10 +32,6 @@ impl<'tcx> TypeRelation<'tcx> for Lub<'_, '_, 'tcx> {
         self.fields.tcx()
     }
 
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.fields.param_env
-    }
-
     fn a_is_expected(&self) -> bool {
         self.a_is_expected
     }
@@ -138,6 +134,10 @@ impl<'combine, 'infcx, 'tcx> LatticeDir<'infcx, 'tcx> for Lub<'combine, 'infcx, 
 }
 
 impl<'tcx> ObligationEmittingRelation<'tcx> for Lub<'_, '_, 'tcx> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.fields.param_env
+    }
+
     fn register_predicates(&mut self, obligations: impl IntoIterator<Item: ty::ToPredicate<'tcx>>) {
         self.fields.register_predicates(obligations);
     }

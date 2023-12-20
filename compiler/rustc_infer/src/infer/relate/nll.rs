@@ -431,10 +431,6 @@ where
         self.infcx.tcx
     }
 
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.delegate.param_env()
-    }
-
     fn tag(&self) -> &'static str {
         "nll::subtype"
     }
@@ -670,6 +666,10 @@ impl<'tcx, D> ObligationEmittingRelation<'tcx> for TypeRelating<'_, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.delegate.param_env()
+    }
+
     fn register_predicates(&mut self, obligations: impl IntoIterator<Item: ty::ToPredicate<'tcx>>) {
         self.delegate.register_obligations(
             obligations

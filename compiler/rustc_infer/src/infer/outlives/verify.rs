@@ -322,14 +322,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     ) -> impl Iterator<Item = ty::Binder<'tcx, ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>>
     {
         let tcx = self.tcx;
-        let param_env = self.param_env;
         clauses.filter_map(|p| p.as_type_outlives_clause()).filter(move |outlives_predicate| {
-            super::test_type_match::can_match_erased_ty(
-                tcx,
-                param_env,
-                *outlives_predicate,
-                erased_ty,
-            )
+            super::test_type_match::can_match_erased_ty(tcx, *outlives_predicate, erased_ty)
         })
     }
 }
