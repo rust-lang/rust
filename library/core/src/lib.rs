@@ -227,6 +227,7 @@
 #![feature(fundamental)]
 #![feature(generic_arg_infer)]
 #![feature(if_let_guard)]
+#![feature(impl_trait_in_assoc_type)]
 #![feature(inline_const)]
 #![feature(intra_doc_pointers)]
 #![feature(intrinsics)]
