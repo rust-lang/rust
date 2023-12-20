@@ -2530,6 +2530,7 @@ impl Step for Crate {
             }
             _ => panic!("can only test libraries"),
         };
+        cargo.arg("-Zdoctest-xcompile");
 
         run_cargo_test(
             cargo,
