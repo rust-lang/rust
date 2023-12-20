@@ -346,7 +346,7 @@ pub fn split_args(args: &str) -> Result<Vec<String>, String> {
     Ok(out)
 }
 
-pub fn remove_file<P: AsRef<Path>>(file_path: &P) -> Result<(), String> {
+pub fn remove_file<P: AsRef<Path> + ?Sized>(file_path: &P) -> Result<(), String> {
     std::fs::remove_file(file_path).map_err(|error| {
         format!(
             "Failed to remove `{}`: {:?}",
