@@ -11,7 +11,7 @@ use syntax::{
 };
 use tt::{
     buffer::{Cursor, TokenBuffer},
-    Span, SyntaxContext,
+    Span,
 };
 
 use crate::{to_parser_input::to_parser_input, tt_iter::TtIter};
@@ -37,7 +37,6 @@ impl<S: Span, SM: SpanMapper<S>> SpanMapper<S> for &SM {
 
 /// Dummy things for testing where spans don't matter.
 pub(crate) mod dummy_test_span_utils {
-    use tt::SyntaxContext;
 
     use super::*;
 
@@ -53,9 +52,6 @@ pub(crate) mod dummy_test_span_utils {
 
     #[derive(Debug, Copy, Clone, PartialEq, Eq)]
     pub struct DummyTestSyntaxContext;
-    impl SyntaxContext for DummyTestSyntaxContext {
-        const DUMMY: Self = DummyTestSyntaxContext;
-    }
 
     pub struct DummyTestSpanMap;
 
@@ -82,7 +78,7 @@ pub fn syntax_node_to_token_tree<Ctx, SpanMap>(
 ) -> tt::Subtree<SpanData<Ctx>>
 where
     SpanData<Ctx>: Span,
-    Ctx: SyntaxContext,
+    Ctx: Copy,
     SpanMap: SpanMapper<SpanData<Ctx>>,
 {
     let mut c = Converter::new(node, map, Default::default(), Default::default(), span);
@@ -102,7 +98,7 @@ pub fn syntax_node_to_token_tree_modified<Ctx, SpanMap>(
 where
     SpanMap: SpanMapper<SpanData<Ctx>>,
     SpanData<Ctx>: Span,
-    Ctx: SyntaxContext,
+    Ctx: Copy,
 {
     let mut c = Converter::new(node, map, append, remove, call_site);
     convert_tokens(&mut c)
@@ -128,7 +124,7 @@ pub fn token_tree_to_syntax_node<Ctx>(
 ) -> (Parse<SyntaxNode>, SpanMap<SpanData<Ctx>>)
 where
     SpanData<Ctx>: Span,
-    Ctx: SyntaxContext,
+    Ctx: Copy,
 {
     let buffer = match tt {
         tt::Subtree {
@@ -165,7 +161,7 @@ pub fn parse_to_token_tree<Ctx>(
 ) -> Option<tt::Subtree<SpanData<Ctx>>>
 where
     SpanData<Ctx>: Span,
-    Ctx: SyntaxContext,
+    Ctx: Copy,
 {
     let lexed = parser::LexedStr::new(text);
     if lexed.errors().next().is_some() {
@@ -531,7 +527,7 @@ impl<S: Span> SrcToken<StaticRawConverter<'_, S>, S> for usize {
     }
 }
 
-impl<Ctx: SyntaxContext> TokenConverter<SpanData<Ctx>> for RawConverter<'_, Ctx>
+impl<Ctx: Copy> TokenConverter<SpanData<Ctx>> for RawConverter<'_, Ctx>
 where
     SpanData<Ctx>: Span,
 {

@@ -54,9 +54,7 @@ impl std::fmt::Debug for TokenId {
     }
 }
 
-impl tt::Span for TokenId {
-    const DUMMY: Self = TokenId(!0);
-}
+impl tt::Span for TokenId {}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FlatTree {

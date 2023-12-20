@@ -11,34 +11,10 @@ use stdx::impl_from;
 pub use smol_str::SmolStr;
 pub use text_size::{TextRange, TextSize};
 
-pub trait Span: std::fmt::Debug + Copy + Sized + Eq {
-    // FIXME: Should not exist. Dummy spans will always be wrong if they leak somewhere. Instead,
-    // the call site or def site spans should be used in relevant places, its just that we don't
-    // expose those everywhere in the yet.
-    #[deprecated = "dummy spans will panic if surfaced incorrectly, as such they should be replaced appropriately"]
-    const DUMMY: Self;
-}
+pub trait Span: std::fmt::Debug + Copy + Sized + Eq {}
 
-pub trait SyntaxContext: std::fmt::Debug + Copy + Sized + Eq {
-    #[deprecated = "dummy spans will panic if surfaced incorrectly, as such they should be replaced appropriately"]
-    const DUMMY: Self;
-}
-
-impl<Ctx: SyntaxContext> Span for span::SpanData<Ctx> {
-    #[allow(deprecated)]
-    const DUMMY: Self = span::SpanData {
-        range: TextRange::empty(TextSize::new(0)),
-        anchor: span::SpanAnchor {
-            file_id: span::FileId::BOGUS,
-            ast_id: span::ROOT_ERASED_FILE_AST_ID,
-        },
-        ctx: Ctx::DUMMY,
-    };
-}
-
-impl SyntaxContext for span::SyntaxContextId {
-    const DUMMY: Self = Self::ROOT;
-}
+impl<Ctx> Span for span::SpanData<Ctx> where span::SpanData<Ctx>: std::fmt::Debug + Copy + Sized + Eq
+{}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TokenTree<S> {
