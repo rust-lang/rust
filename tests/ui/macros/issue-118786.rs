@@ -5,9 +5,7 @@
 macro_rules! make_macro {
     ($macro_name:tt) => {
         macro_rules! $macro_name {
-        //~^ ERROR macros that expand to items must be delimited with braces or followed by a semicolon
-        //~| ERROR macro expansion ignores token `{` and any following
-        //~| ERROR cannot find macro `macro_rules` in this scope
+            //~^ ERROR: expected identifier, found `(`
             () => {}
         }
     }

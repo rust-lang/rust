@@ -1,0 +1,10 @@
+error: expected identifier, found `{`
+  --> $DIR/mbe-missing-ident-error.rs:3:14
+   |
+LL | macro_rules! {
+   |              ^ expected identifier
+   |
+   = help: maybe you have forgotten to define a name for this `macro_rules!`
+
+error: aborting due to 1 previous error
+

@@ -1,0 +1,16 @@
+error: user-defined macros may not be named `macro_rules`
+  --> $DIR/user-defined-macro-rules.rs:3:14
+   |
+LL | macro_rules! macro_rules { () => {} }
+   |              ^^^^^^^^^^^
+
+error: expected identifier, found `{`
+  --> $DIR/user-defined-macro-rules.rs:6:14
+   |
+LL | macro_rules! {}
+   |              ^ expected identifier
+   |
+   = help: maybe you have forgotten to define a name for this `macro_rules!`
+
+error: aborting due to 2 previous errors
+

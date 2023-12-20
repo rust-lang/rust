@@ -28,7 +28,7 @@ use rustc_span::{BytePos, Span, SyntaxContext};
 use thin_vec::{thin_vec, ThinVec};
 
 use crate::errors::{AddedMacroUse, ChangeImportBinding, ChangeImportBindingSuggestion};
-use crate::errors::{ConsiderAddingADerive, ExplicitUnsafeTraits, MaybeMissingMacroRulesName};
+use crate::errors::{ConsiderAddingADerive, ExplicitUnsafeTraits};
 use crate::imports::{Import, ImportKind};
 use crate::late::{PatternSource, Rib};
 use crate::path_names_to_string;
@@ -1418,11 +1418,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             vec![],
             "",
         );
-
-        if macro_kind == MacroKind::Bang && ident.name == sym::macro_rules {
-            err.subdiagnostic(MaybeMissingMacroRulesName { span: ident.span });
-            return;
-        }
 
         if macro_kind == MacroKind::Derive && (ident.name == sym::Send || ident.name == sym::Sync) {
             err.subdiagnostic(ExplicitUnsafeTraits { span: ident.span, ident });

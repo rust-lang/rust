@@ -1,47 +1,13 @@
-error: macros that expand to items must be delimited with braces or followed by a semicolon
+error: expected identifier, found `(`
   --> $DIR/issue-118786.rs:7:22
    |
 LL |         macro_rules! $macro_name {
-   |                      ^^^^^^^^^^^
+   |                      ^^^^^^^^^^^ expected identifier
    |
-help: change the delimiters to curly braces
+help: try removing the parenthesis around the name for this `macro_rules!`
    |
-LL |         macro_rules! {} {
-   |                      ~          +
-help: add a semicolon
-   |
-LL |         macro_rules! $macro_name; {
-   |                                 +
+LL |         macro_rules! meow {
+   |                      ~~~~
 
-error: macro expansion ignores token `{` and any following
-  --> $DIR/issue-118786.rs:7:34
-   |
-LL |         macro_rules! $macro_name {
-   |                                  ^
-...
-LL | make_macro!((meow));
-   | ------------------- caused by the macro expansion here
-   |
-   = note: the usage of `make_macro!` is likely invalid in item context
-
-error: cannot find macro `macro_rules` in this scope
-  --> $DIR/issue-118786.rs:7:9
-   |
-LL |         macro_rules! $macro_name {
-   |         ^^^^^^^^^^^
-...
-LL | make_macro!((meow));
-   | ------------------- in this macro invocation
-   |
-note: maybe you have forgotten to define a name for this `macro_rules!`
-  --> $DIR/issue-118786.rs:7:9
-   |
-LL |         macro_rules! $macro_name {
-   |         ^^^^^^^^^^^
-...
-LL | make_macro!((meow));
-   | ------------------- in this macro invocation
-   = note: this error originates in the macro `make_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: aborting due to 3 previous errors
+error: aborting due to 1 previous error
 

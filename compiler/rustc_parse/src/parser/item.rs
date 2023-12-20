@@ -2036,23 +2036,26 @@ impl<'a> Parser<'a> {
 
     /// Is this a possibly malformed start of a `macro_rules! foo` item definition?
     fn is_macro_rules_item(&mut self) -> IsMacroRulesItem {
-        if self.check_keyword(kw::MacroRules) {
-            let macro_rules_span = self.token.span;
-
-            if self.look_ahead(1, |t| *t == token::Not) && self.look_ahead(2, |t| t.is_ident()) {
-                return IsMacroRulesItem::Yes { has_bang: true };
-            } else if self.look_ahead(1, |t| (t.is_ident())) {
-                // macro_rules foo
-                self.sess.emit_err(errors::MacroRulesMissingBang {
-                    span: macro_rules_span,
-                    hi: macro_rules_span.shrink_to_hi(),
-                });
-
-                return IsMacroRulesItem::Yes { has_bang: false };
-            }
+        if !self.check_keyword(kw::MacroRules) {
+            return IsMacroRulesItem::No;
         }
 
-        IsMacroRulesItem::No
+        let macro_rules_span = self.token.span;
+        let has_bang = self.look_ahead(1, |t| *t == token::Not);
+
+        // macro_rules foo
+        if !has_bang {
+            if !self.look_ahead(1, |t| (t.is_ident())) {
+                return IsMacroRulesItem::No;
+            }
+
+            self.sess.emit_err(errors::MacroRulesMissingBang {
+                span: macro_rules_span,
+                hi: macro_rules_span.shrink_to_hi(),
+            });
+        }
+
+        IsMacroRulesItem::Yes { has_bang }
     }
 
     /// Parses a `macro_rules! foo { ... }` declarative macro.
@@ -2066,7 +2069,34 @@ impl<'a> Parser<'a> {
         if has_bang {
             self.expect(&token::Not)?; // `!`
         }
-        let ident = self.parse_ident()?;
+
+        let ident = match self.parse_ident() {
+            Ok(ident) => ident,
+            Err(mut err) => {
+                if let TokenKind::OpenDelim(Delimiter::Parenthesis) = self.token.kind
+                    && let Some((Ident { name, .. }, _)) = self.look_ahead(1, |token| token.ident())
+                    && let Some(closing_span) = self.look_ahead(2, |token| {
+                        (token.kind == TokenKind::CloseDelim(Delimiter::Parenthesis))
+                            .then_some(token.span)
+                    })
+                {
+                    err.span_suggestion(
+                        self.token.span.with_hi(closing_span.hi()),
+                        "try removing the parenthesis around the name for this `macro_rules!`",
+                        name,
+                        Applicability::MachineApplicable,
+                    );
+                } else {
+                    err.help(fluent::parse_maybe_missing_macro_rules_name);
+                }
+
+                return Err(err);
+            }
+        };
+
+        if ident.name == sym::macro_rules {
+            self.sess.emit_err(errors::MacroRulesNamedMacroRules { span: ident.span });
+        }
 
         if self.eat(&token::Not) {
             // Handle macro_rules! foo!

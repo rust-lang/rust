@@ -2665,6 +2665,13 @@ pub(crate) struct MacroRulesMissingBang {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_macro_rules_named_macro_rules)]
+pub(crate) struct MacroRulesNamedMacroRules {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_macro_name_remove_bang)]
 pub(crate) struct MacroNameRemoveBang {
     #[primary_span]

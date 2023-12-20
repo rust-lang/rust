@@ -468,6 +468,8 @@ parse_macro_name_remove_bang = macro names aren't followed by a `!`
 parse_macro_rules_missing_bang = expected `!` after `macro_rules`
     .suggestion = add a `!`
 
+parse_macro_rules_named_macro_rules = user-defined macros may not be named `macro_rules`
+
 parse_macro_rules_visibility = can't qualify macro_rules invocation with `{$vis}`
     .suggestion = try exporting the macro
 
@@ -496,6 +498,8 @@ parse_maybe_fn_typo_with_impl = you might have meant to write `impl` instead of 
     .suggestion = replace `fn` with `impl` here
 
 parse_maybe_missing_let = you might have meant to continue the let-chain
+
+parse_maybe_missing_macro_rules_name = maybe you have forgotten to define a name for this `macro_rules!`
 
 parse_maybe_recover_from_bad_qpath_stage_2 =
     missing angle brackets in associated item path
