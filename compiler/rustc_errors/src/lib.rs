@@ -1551,7 +1551,7 @@ impl DiagCtxtInner {
                     &mut out,
                     "delayed span bug: {}\n{}\n",
                     bug.inner
-                        .styled_message()
+                        .messages()
                         .iter()
                         .filter_map(|(msg, _)| msg.as_str())
                         .collect::<String>(),

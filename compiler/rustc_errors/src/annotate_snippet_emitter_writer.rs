@@ -60,7 +60,7 @@ impl Emitter for AnnotateSnippetEmitterWriter {
 
         self.emit_messages_default(
             &diag.level,
-            &diag.message,
+            &diag.messages,
             &fluent_args,
             &diag.code,
             &primary_span,

@@ -398,7 +398,7 @@ impl Diagnostic {
         let output = Arc::try_unwrap(output.0).unwrap().into_inner().unwrap();
         let output = String::from_utf8(output).unwrap();
 
-        let translated_message = je.translate_messages(&diag.message, &args);
+        let translated_message = je.translate_messages(&diag.messages, &args);
         Diagnostic {
             message: translated_message.to_string(),
             code: DiagnosticCode::map_opt_string(diag.code.clone(), je),
@@ -419,7 +419,7 @@ impl Diagnostic {
         args: &FluentArgs<'_>,
         je: &JsonEmitter,
     ) -> Diagnostic {
-        let translated_message = je.translate_messages(&diag.message, args);
+        let translated_message = je.translate_messages(&diag.messages, args);
         Diagnostic {
             message: translated_message.to_string(),
             code: None,

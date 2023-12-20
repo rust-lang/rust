@@ -986,7 +986,7 @@ pub struct CguMessage;
 type DiagnosticArgName<'source> = Cow<'source, str>;
 
 struct Diagnostic {
-    msg: Vec<(DiagnosticMessage, Style)>,
+    msgs: Vec<(DiagnosticMessage, Style)>,
     args: FxHashMap<DiagnosticArgName<'static>, rustc_errors::DiagnosticArgValue<'static>>,
     code: Option<DiagnosticId>,
     lvl: Level,
@@ -1799,14 +1799,14 @@ impl Emitter for SharedEmitter {
         let args: FxHashMap<Cow<'_, str>, rustc_errors::DiagnosticArgValue<'_>> =
             diag.args().map(|(name, arg)| (name.clone(), arg.clone())).collect();
         drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
-            msg: diag.message.clone(),
+            msgs: diag.messages.clone(),
             args: args.clone(),
             code: diag.code.clone(),
             lvl: diag.level(),
         })));
         for child in &diag.children {
             drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
-                msg: child.message.clone(),
+                msgs: child.messages.clone(),
                 args: args.clone(),
                 code: None,
                 lvl: child.level,
@@ -1838,7 +1838,7 @@ impl SharedEmitterMain {
             match message {
                 Ok(SharedEmitterMessage::Diagnostic(diag)) => {
                     let dcx = sess.dcx();
-                    let mut d = rustc_errors::Diagnostic::new_with_messages(diag.lvl, diag.msg);
+                    let mut d = rustc_errors::Diagnostic::new_with_messages(diag.lvl, diag.msgs);
                     if let Some(code) = diag.code {
                         d.code(code);
                     }

@@ -1384,7 +1384,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     if has_custom_message {
                         err.note(msg);
                     } else {
-                        err.message =
+                        err.messages =
                             vec![(rustc_errors::DiagnosticMessage::from(msg), Style::NoStyle)];
                     }
                     let mut file = None;
