@@ -8,7 +8,7 @@ use std::ops::AsyncFn;
 async fn foo() {}
 
 async fn call_asyncly(f: impl AsyncFn(i32) -> i32) -> i32 {
-    f.async_call((1i32,)).await
+    f(1).await
 }
 
 fn main() {

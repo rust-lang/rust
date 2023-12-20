@@ -220,6 +220,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (self.tcx.lang_items().fn_trait(), Ident::with_dummy_span(sym::call), true),
             (self.tcx.lang_items().fn_mut_trait(), Ident::with_dummy_span(sym::call_mut), true),
             (self.tcx.lang_items().fn_once_trait(), Ident::with_dummy_span(sym::call_once), false),
+            (self.tcx.lang_items().async_fn_trait(), Ident::with_dummy_span(sym::async_call), true),
+            (
+                self.tcx.lang_items().async_fn_mut_trait(),
+                Ident::with_dummy_span(sym::async_call_mut),
+                true,
+            ),
+            (
+                self.tcx.lang_items().async_fn_once_trait(),
+                Ident::with_dummy_span(sym::async_call_once),
+                false,
+            ),
         ] {
             let Some(trait_def_id) = opt_trait_def_id else { continue };
 
