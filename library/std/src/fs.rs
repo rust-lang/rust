@@ -411,8 +411,6 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(file_create_new)]
-    ///
     /// use std::fs::File;
     /// use std::io::Write;
     ///
@@ -422,7 +420,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[unstable(feature = "file_create_new", issue = "105135")]
+    #[stable(feature = "file_create_new", since = "CURRENT_RUSTC_VERSION")]
     pub fn create_new<P: AsRef<Path>>(path: P) -> io::Result<File> {
         OpenOptions::new().read(true).write(true).create_new(true).open(path.as_ref())
     }
