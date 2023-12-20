@@ -131,8 +131,9 @@ pub(super) fn transcribe<S: Span>(
     template: &MetaTemplate<S>,
     bindings: &Bindings<S>,
     marker: impl Fn(&mut S) + Copy,
+    new_meta_vars: bool,
 ) -> ExpandResult<tt::Subtree<S>> {
-    let mut ctx = ExpandCtx { bindings, nesting: Vec::new() };
+    let mut ctx = ExpandCtx { bindings, nesting: Vec::new(), new_meta_vars };
     let mut arena: Vec<tt::TokenTree<S>> = Vec::new();
     expand_subtree(&mut ctx, template, None, &mut arena, marker)
 }
@@ -152,6 +153,7 @@ struct NestingState {
 struct ExpandCtx<'a, S> {
     bindings: &'a Bindings<S>,
     nesting: Vec<NestingState>,
+    new_meta_vars: bool,
 }
 
 fn expand_subtree<S: Span>(
@@ -232,6 +234,21 @@ fn expand_subtree<S: Span>(
                     .into(),
                 );
             }
+            Op::Length { depth } => {
+                let length = ctx.nesting.get(ctx.nesting.len() - 1 - depth).map_or(0, |_nest| {
+                    // FIXME: to be implemented
+                    0
+                });
+                arena.push(
+                    tt::Leaf::Literal(tt::Literal {
+                        text: length.to_string().into(),
+                        // FIXME
+                        #[allow(deprecated)]
+                        span: S::DUMMY,
+                    })
+                    .into(),
+                );
+            }
             Op::Count { name, depth } => {
                 let mut binding = match ctx.bindings.get(name.as_str()) {
                     Ok(b) => b,
@@ -269,7 +286,13 @@ fn expand_subtree<S: Span>(
                     }
                 }
 
-                let c = match count(ctx, binding, 0, *depth) {
+                let res = if ctx.new_meta_vars {
+                    count(ctx, binding, 0, depth.unwrap_or(0))
+                } else {
+                    count_old(ctx, binding, 0, *depth)
+                };
+
+                let c = match res {
                     Ok(c) => c,
                     Err(e) => {
                         // XXX: It *might* make sense to emit a dummy integer value like `0` here.
@@ -518,14 +541,33 @@ fn fix_up_and_push_path_tt<S: Span>(buf: &mut Vec<tt::TokenTree<S>>, subtree: tt
 fn count<S>(
     ctx: &ExpandCtx<'_, S>,
     binding: &Binding<S>,
+    depth_curr: usize,
+    depth_max: usize,
+) -> Result<usize, CountError> {
+    match binding {
+        Binding::Nested(bs) => {
+            if depth_curr == depth_max {
+                Ok(bs.len())
+            } else {
+                bs.iter().map(|b| count(ctx, b, depth_curr + 1, depth_max)).sum()
+            }
+        }
+        Binding::Empty => Ok(0),
+        Binding::Fragment(_) | Binding::Missing(_) => Ok(1),
+    }
+}
+
+fn count_old<S>(
+    ctx: &ExpandCtx<'_, S>,
+    binding: &Binding<S>,
     our_depth: usize,
     count_depth: Option<usize>,
 ) -> Result<usize, CountError> {
     match binding {
         Binding::Nested(bs) => match count_depth {
-            None => bs.iter().map(|b| count(ctx, b, our_depth + 1, None)).sum(),
+            None => bs.iter().map(|b| count_old(ctx, b, our_depth + 1, None)).sum(),
             Some(0) => Ok(bs.len()),
-            Some(d) => bs.iter().map(|b| count(ctx, b, our_depth + 1, Some(d - 1))).sum(),
+            Some(d) => bs.iter().map(|b| count_old(ctx, b, our_depth + 1, Some(d - 1))).sum(),
         },
         Binding::Empty => Ok(0),
         Binding::Fragment(_) | Binding::Missing(_) => {

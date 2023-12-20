@@ -51,6 +51,13 @@ impl<'a, S: Span> TtIter<'a, S> {
         }
     }
 
+    pub(crate) fn expect_dollar(&mut self) -> Result<(), ()> {
+        match self.expect_leaf()? {
+            tt::Leaf::Punct(tt::Punct { char: '$', .. }) => Ok(()),
+            _ => Err(()),
+        }
+    }
+
     pub(crate) fn expect_ident(&mut self) -> Result<&'a tt::Ident<S>, ()> {
         match self.expect_leaf()? {
             tt::Leaf::Ident(it) if it.text != "_" => Ok(it),

@@ -3,8 +3,8 @@ use std::{mem, ops::Not, str::FromStr, sync};
 
 use base_db::{
     CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, DependencyKind,
-    Edition, Env, FileChange, FileSet, LangCrateOrigin, ReleaseChannel, SourceDatabaseExt,
-    SourceRoot, VfsPath,
+    Edition, Env, FileChange, FileSet, LangCrateOrigin, SourceDatabaseExt, SourceRoot, Version,
+    VfsPath,
 };
 use cfg::CfgOptions;
 use hir_expand::{
@@ -120,12 +120,10 @@ impl ChangeFixture {
     ) -> ChangeFixture {
         let FixtureWithProjectMeta { fixture, mini_core, proc_macro_names, toolchain } =
             FixtureWithProjectMeta::parse(ra_fixture);
-        let toolchain = toolchain
-            .map(|it| {
-                ReleaseChannel::from_str(&it)
-                    .unwrap_or_else(|| panic!("unknown release channel found: {it}"))
-            })
-            .unwrap_or(ReleaseChannel::Stable);
+        let toolchain = Some({
+            let channel = toolchain.as_deref().unwrap_or("stable");
+            Version::parse(&format!("1.76.0-{channel}")).unwrap()
+        });
         let mut source_change = FileChange::new();
 
         let mut files = Vec::new();
@@ -193,7 +191,7 @@ impl ChangeFixture {
                         .as_deref()
                         .map(From::from)
                         .ok_or_else(|| "target_data_layout unset".into()),
-                    Some(toolchain),
+                    toolchain.clone(),
                 );
                 let prev = crates.insert(crate_name.clone(), crate_id);
                 assert!(prev.is_none(), "multiple crates with same name: {}", crate_name);
@@ -233,7 +231,7 @@ impl ChangeFixture {
                 default_target_data_layout
                     .map(|it| it.into())
                     .ok_or_else(|| "target_data_layout unset".into()),
-                Some(toolchain),
+                toolchain.clone(),
             );
         } else {
             for (from, to, prelude) in crate_deps {
@@ -280,7 +278,7 @@ impl ChangeFixture {
                 false,
                 CrateOrigin::Lang(LangCrateOrigin::Core),
                 target_layout.clone(),
-                Some(toolchain),
+                toolchain.clone(),
             );
 
             for krate in all_crates {
@@ -325,7 +323,7 @@ impl ChangeFixture {
                 true,
                 CrateOrigin::Local { repo: None, name: None },
                 target_layout,
-                Some(toolchain),
+                toolchain,
             );
             proc_macros.insert(proc_macros_crate, Ok(proc_macro));
 

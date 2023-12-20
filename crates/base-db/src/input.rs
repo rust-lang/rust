@@ -11,6 +11,7 @@ use std::{fmt, mem, ops, str::FromStr};
 use cfg::CfgOptions;
 use la_arena::{Arena, Idx};
 use rustc_hash::{FxHashMap, FxHashSet};
+use semver::Version;
 use syntax::SmolStr;
 use triomphe::Arc;
 use vfs::{file_set::FileSet, AbsPathBuf, AnchoredPath, FileId, VfsPath};
@@ -258,7 +259,7 @@ impl ReleaseChannel {
 
     pub fn from_str(str: &str) -> Option<Self> {
         Some(match str {
-            "" => ReleaseChannel::Stable,
+            "" | "stable" => ReleaseChannel::Stable,
             "nightly" => ReleaseChannel::Nightly,
             _ if str.starts_with("beta") => ReleaseChannel::Beta,
             _ => return None,
@@ -289,7 +290,7 @@ pub struct CrateData {
     // things. This info does need to be somewhat present though as to prevent deduplication from
     // happening across different workspaces with different layouts.
     pub target_layout: TargetLayoutLoadResult,
-    pub channel: Option<ReleaseChannel>,
+    pub toolchain: Option<Version>,
 }
 
 impl CrateData {
@@ -345,6 +346,10 @@ impl CrateData {
         }
 
         slf_deps.eq(other_deps)
+    }
+
+    pub fn channel(&self) -> Option<ReleaseChannel> {
+        self.toolchain.as_ref().and_then(|v| ReleaseChannel::from_str(&v.pre))
     }
 }
 
@@ -428,7 +433,7 @@ impl CrateGraph {
         is_proc_macro: bool,
         origin: CrateOrigin,
         target_layout: Result<Arc<str>, Arc<str>>,
-        channel: Option<ReleaseChannel>,
+        toolchain: Option<Version>,
     ) -> CrateId {
         let data = CrateData {
             root_file_id,
@@ -442,7 +447,7 @@ impl CrateGraph {
             origin,
             target_layout,
             is_proc_macro,
-            channel,
+            toolchain,
         };
         self.arena.alloc(data)
     }
