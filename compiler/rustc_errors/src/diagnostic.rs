@@ -163,7 +163,6 @@ pub struct SubDiagnostic {
     pub level: Level,
     pub messages: Vec<(DiagnosticMessage, Style)>,
     pub span: MultiSpan,
-    pub render_span: Option<MultiSpan>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -960,7 +959,6 @@ impl Diagnostic {
                 Style::NoStyle,
             )],
             span,
-            render_span: None,
         };
         self.children.push(sub);
     }
@@ -977,7 +975,7 @@ impl Diagnostic {
             .into_iter()
             .map(|m| (self.subdiagnostic_message_to_diagnostic_message(m.0), m.1))
             .collect();
-        let sub = SubDiagnostic { level, messages, span, render_span: None };
+        let sub = SubDiagnostic { level, messages, span };
         self.children.push(sub);
     }
 

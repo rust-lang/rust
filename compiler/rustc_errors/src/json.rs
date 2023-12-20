@@ -424,11 +424,7 @@ impl Diagnostic {
             message: translated_message.to_string(),
             code: None,
             level: diag.level.to_str(),
-            spans: diag
-                .render_span
-                .as_ref()
-                .map(|sp| DiagnosticSpan::from_multispan(sp, args, je))
-                .unwrap_or_else(|| DiagnosticSpan::from_multispan(&diag.span, args, je)),
+            spans: DiagnosticSpan::from_multispan(&diag.span, args, je),
             children: vec![],
             rendered: None,
         }

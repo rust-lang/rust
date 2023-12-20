@@ -352,7 +352,6 @@ pub trait Emitter: Translate {
                     level: Level::Note,
                     messages: vec![(DiagnosticMessage::from(msg), Style::NoStyle)],
                     span: MultiSpan::new(),
-                    render_span: None,
                 });
             }
         }
@@ -2118,7 +2117,7 @@ impl EmitterWriter {
                 }
                 if !self.short_message {
                     for child in children {
-                        let span = child.render_span.as_ref().unwrap_or(&child.span);
+                        let span = &child.span;
                         if let Err(err) = self.emit_messages_default_inner(
                             span,
                             &child.messages,
