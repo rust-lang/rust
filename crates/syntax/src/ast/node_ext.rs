@@ -11,7 +11,7 @@ use rowan::{GreenNodeData, GreenTokenData};
 
 use crate::{
     ast::{self, support, AstNode, AstToken, HasAttrs, HasGenericParams, HasName, SyntaxNode},
-    NodeOrToken, SmolStr, SyntaxElement, SyntaxToken, TokenText, T,
+    ted, NodeOrToken, SmolStr, SyntaxElement, SyntaxToken, TokenText, T,
 };
 
 impl ast::Lifetime {
@@ -310,6 +310,10 @@ impl ast::UseTree {
     pub fn is_simple_path(&self) -> bool {
         self.use_tree_list().is_none() && self.star_token().is_none()
     }
+
+    pub fn parent_use_tree_list(&self) -> Option<ast::UseTreeList> {
+        self.syntax().parent().and_then(ast::UseTreeList::cast)
+    }
 }
 
 impl ast::UseTreeList {
@@ -326,6 +330,27 @@ impl ast::UseTreeList {
             .filter_map(|it| it.into_token())
             .find_map(ast::Comment::cast)
             .is_some()
+    }
+
+    /// Remove the unnecessary braces in current `UseTreeList`
+    pub fn remove_unnecessary_braces(mut self) {
+        let remove_brace_in_use_tree_list = |u: &ast::UseTreeList| {
+            let use_tree_count = u.use_trees().count();
+            if use_tree_count == 1 {
+                u.l_curly_token().map(ted::remove);
+                u.r_curly_token().map(ted::remove);
+            }
+        };
+
+        // take `use crate::{{{{A}}}}` for example
+        // the below remove the innermost {}, got `use crate::{{{A}}}`
+        remove_brace_in_use_tree_list(&self);
+
+        // the below remove othe unnecessary {}, got `use crate::A`
+        while let Some(parent_use_tree_list) = self.parent_use_tree().parent_use_tree_list() {
+            remove_brace_in_use_tree_list(&parent_use_tree_list);
+            self = parent_use_tree_list;
+        }
     }
 }
 
