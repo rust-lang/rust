@@ -8,7 +8,8 @@ This option flag allows to specify environment variables value at compile time t
 used by `env!` and `option_env!` macros. It also impacts `tracked_env::var` function
 from the `proc_macro` crate.
 
-This information will be stored in the dep-info files.
+This information will be stored in the dep-info files. For more information about
+dep-info files, take a look [here](https://doc.rust-lang.org/cargo/guide/build-cache.html#dep-info-files).
 
 When retrieving an environment variable value, the one specified by `--env` will take
 precedence. For example, if you want have `PATH=a` in your environment and pass:
