@@ -125,6 +125,9 @@ pub trait Context {
     /// Get the instance type with generic substitutions applied and lifetimes erased.
     fn instance_ty(&self, instance: InstanceDef) -> Ty;
 
+    /// Get the instantiation types.
+    fn instance_args(&self, def: InstanceDef) -> GenericArgs;
+
     /// Get the instance.
     fn instance_def_id(&self, instance: InstanceDef) -> DefId;
 
