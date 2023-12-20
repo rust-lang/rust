@@ -10,7 +10,7 @@ use either::Either;
 use limit::Limit;
 use mbe::{syntax_node_to_token_tree, ValueResult};
 use rustc_hash::FxHashSet;
-use span::SyntaxContextId;
+use span::{Span, SyntaxContextId};
 use syntax::{
     ast::{self, HasAttrs},
     AstNode, Parse, SyntaxError, SyntaxNode, SyntaxToken, T,
@@ -57,7 +57,8 @@ impl DeclarativeMacroExpander {
         tt: tt::Subtree,
         call_id: MacroCallId,
     ) -> ExpandResult<tt::Subtree> {
-        let toolchain = &db.crate_graph()[db.lookup_intern_macro_call(call_id).def.krate].toolchain;
+        let loc = db.lookup_intern_macro_call(call_id);
+        let toolchain = &db.crate_graph()[loc.def.krate].toolchain;
         let new_meta_vars = toolchain.as_ref().map_or(false, |version| {
             REQUIREMENT.get_or_init(|| VersionReq::parse(">=1.76").unwrap()).matches(
                 &base_db::Version {
@@ -80,6 +81,7 @@ impl DeclarativeMacroExpander {
                     &tt,
                     |s| s.ctx = apply_mark(db, s.ctx, call_id, self.transparency),
                     new_meta_vars,
+                    loc.call_site,
                 )
                 .map_err(Into::into),
         }
@@ -90,6 +92,7 @@ impl DeclarativeMacroExpander {
         db: &dyn ExpandDatabase,
         tt: tt::Subtree,
         krate: CrateId,
+        call_site: Span,
     ) -> ExpandResult<tt::Subtree> {
         let toolchain = &db.crate_graph()[krate].toolchain;
         let new_meta_vars = toolchain.as_ref().map_or(false, |version| {
@@ -108,7 +111,7 @@ impl DeclarativeMacroExpander {
                 tt::Subtree::empty(tt::DelimSpan::DUMMY),
                 ExpandError::other(format!("invalid macro definition: {e}")),
             ),
-            None => self.mac.expand(&tt, |_| (), new_meta_vars).map_err(Into::into),
+            None => self.mac.expand(&tt, |_| (), new_meta_vars, call_site).map_err(Into::into),
         }
     }
 }
@@ -315,9 +318,12 @@ pub fn expand_speculative(
             let adt = ast::Adt::cast(speculative_args.clone()).unwrap();
             expander.expand(db, actual_macro_call, &adt, span_map)
         }
-        MacroDefKind::Declarative(it) => {
-            db.decl_macro_expander(loc.krate, it).expand_unhygienic(db, tt, loc.def.krate)
-        }
+        MacroDefKind::Declarative(it) => db.decl_macro_expander(loc.krate, it).expand_unhygienic(
+            db,
+            tt,
+            loc.def.krate,
+            loc.call_site,
+        ),
         MacroDefKind::BuiltIn(it, _) => it.expand(db, actual_macro_call, &tt).map_err(Into::into),
         MacroDefKind::BuiltInEager(it, _) => {
             it.expand(db, actual_macro_call, &tt).map_err(Into::into)

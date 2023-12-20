@@ -228,13 +228,13 @@ enum MacroDirectiveKind {
     FnLike {
         ast_id: AstIdWithPath<ast::MacroCall>,
         expand_to: ExpandTo,
-        call_site: SyntaxContextId,
+        call_site: Span,
     },
     Derive {
         ast_id: AstIdWithPath<ast::Adt>,
         derive_attr: AttrId,
         derive_pos: usize,
-        call_site: SyntaxContextId,
+        call_site: Span,
     },
     Attr {
         ast_id: AstIdWithPath<ast::Item>,
@@ -1305,14 +1305,13 @@ impl DefCollector<'_> {
                     // Not resolved to a derive helper or the derive attribute, so try to treat as a normal attribute.
                     let call_id =
                         attr_macro_as_call_id(self.db, file_ast_id, attr, self.def_map.krate, def);
-                    let loc: MacroCallLoc = self.db.lookup_intern_macro_call(call_id);
 
                     // If proc attribute macro expansion is disabled, skip expanding it here
                     if !self.db.expand_proc_attr_macros() {
                         self.def_map.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
                             directive.module_id,
-                            loc.kind,
-                            loc.def.krate,
+                            self.db.lookup_intern_macro_call(call_id).kind,
+                            def.krate,
                         ));
                         return recollect_without(self);
                     }
@@ -1320,14 +1319,14 @@ impl DefCollector<'_> {
                     // Skip #[test]/#[bench] expansion, which would merely result in more memory usage
                     // due to duplicating functions into macro expansions
                     if matches!(
-                        loc.def.kind,
+                        def.kind,
                         MacroDefKind::BuiltInAttr(expander, _)
                         if expander.is_test() || expander.is_bench()
                     ) {
                         return recollect_without(self);
                     }
 
-                    if let MacroDefKind::ProcMacro(exp, ..) = loc.def.kind {
+                    if let MacroDefKind::ProcMacro(exp, ..) = def.kind {
                         if exp.is_dummy() {
                             // If there's no expander for the proc macro (e.g.
                             // because proc macros are disabled, or building the
@@ -1335,8 +1334,8 @@ impl DefCollector<'_> {
                             // expansion like we would if it was disabled
                             self.def_map.diagnostics.push(DefDiagnostic::unresolved_proc_macro(
                                 directive.module_id,
-                                loc.kind,
-                                loc.def.krate,
+                                self.db.lookup_intern_macro_call(call_id).kind,
+                                def.krate,
                             ));
 
                             return recollect_without(self);

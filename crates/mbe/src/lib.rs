@@ -252,8 +252,9 @@ impl<S: Span> DeclarativeMacro<S> {
         tt: &tt::Subtree<S>,
         marker: impl Fn(&mut S) + Copy,
         new_meta_vars: bool,
+        call_site: S,
     ) -> ExpandResult<tt::Subtree<S>> {
-        expander::expand_rules(&self.rules, &tt, marker, self.is_2021, new_meta_vars)
+        expander::expand_rules(&self.rules, &tt, marker, self.is_2021, new_meta_vars, call_site)
     }
 }
 

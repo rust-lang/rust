@@ -17,6 +17,7 @@ pub(crate) fn expand_rules<S: Span>(
     marker: impl Fn(&mut S) + Copy,
     is_2021: bool,
     new_meta_vars: bool,
+    call_site: S,
 ) -> ExpandResult<tt::Subtree<S>> {
     let mut match_: Option<(matcher::Match<S>, &crate::Rule<S>)> = None;
     for rule in rules {
@@ -26,8 +27,13 @@ pub(crate) fn expand_rules<S: Span>(
             // If we find a rule that applies without errors, we're done.
             // Unconditionally returning the transcription here makes the
             // `test_repeat_bad_var` test fail.
-            let ExpandResult { value, err: transcribe_err } =
-                transcriber::transcribe(&rule.rhs, &new_match.bindings, marker, new_meta_vars);
+            let ExpandResult { value, err: transcribe_err } = transcriber::transcribe(
+                &rule.rhs,
+                &new_match.bindings,
+                marker,
+                new_meta_vars,
+                call_site,
+            );
             if transcribe_err.is_none() {
                 return ExpandResult::ok(value);
             }
@@ -46,7 +52,7 @@ pub(crate) fn expand_rules<S: Span>(
     if let Some((match_, rule)) = match_ {
         // if we got here, there was no match without errors
         let ExpandResult { value, err: transcribe_err } =
-            transcriber::transcribe(&rule.rhs, &match_.bindings, marker, new_meta_vars);
+            transcriber::transcribe(&rule.rhs, &match_.bindings, marker, new_meta_vars, call_site);
         ExpandResult { value, err: match_.err.or(transcribe_err) }
     } else {
         ExpandResult::new(

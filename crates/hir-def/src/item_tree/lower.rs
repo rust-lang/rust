@@ -549,7 +549,7 @@ impl<'a> Ctx<'a> {
             path,
             ast_id,
             expand_to,
-            call_site: span_map.span_for_range(m.syntax().text_range()).ctx,
+            call_site: span_map.span_for_range(m.syntax().text_range()),
         };
         Some(id(self.data().macro_calls.alloc(res)))
     }

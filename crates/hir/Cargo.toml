@@ -14,7 +14,7 @@ doctest = false
 [dependencies]
 rustc-hash.workspace = true
 either.workspace = true
-arrayvec = "0.7.2"
+arrayvec.workspace = true
 itertools.workspace = true
 smallvec.workspace = true
 triomphe.workspace = true

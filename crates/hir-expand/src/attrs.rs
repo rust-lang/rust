@@ -7,7 +7,7 @@ use either::Either;
 use intern::Interned;
 use mbe::{syntax_node_to_token_tree, DelimiterKind, Punct};
 use smallvec::{smallvec, SmallVec};
-use span::SyntaxContextId;
+use span::Span;
 use syntax::{ast, match_ast, AstNode, AstToken, SmolStr, SyntaxNode};
 use triomphe::Arc;
 
@@ -53,7 +53,7 @@ impl RawAttrs {
                 id,
                 input: Some(Interned::new(AttrInput::Literal(SmolStr::new(doc)))),
                 path: Interned::new(ModPath::from(crate::name!(doc))),
-                ctxt: span_map.span_for_range(comment.syntax().text_range()).ctx,
+                span: span_map.span_for_range(comment.syntax().text_range()),
             }),
         });
         let entries: Arc<[Attr]> = Arc::from_iter(entries);
@@ -177,7 +177,7 @@ pub struct Attr {
     pub id: AttrId,
     pub path: Interned<ModPath>,
     pub input: Option<Interned<AttrInput>>,
-    pub ctxt: SyntaxContextId,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -218,7 +218,7 @@ impl Attr {
         } else {
             None
         };
-        Some(Attr { id, path, input, ctxt: span_map.span_for_range(ast.syntax().text_range()).ctx })
+        Some(Attr { id, path, input, span: span_map.span_for_range(ast.syntax().text_range()) })
     }
 
     fn from_tt(db: &dyn ExpandDatabase, tt: &tt::Subtree, id: AttrId) -> Option<Attr> {
@@ -266,7 +266,7 @@ impl Attr {
     pub fn parse_path_comma_token_tree<'a>(
         &'a self,
         db: &'a dyn ExpandDatabase,
-    ) -> Option<impl Iterator<Item = (ModPath, SyntaxContextId)> + 'a> {
+    ) -> Option<impl Iterator<Item = (ModPath, Span)> + 'a> {
         let args = self.token_tree_value()?;
 
         if args.delimiter.kind != DelimiterKind::Parenthesis {
@@ -294,7 +294,7 @@ impl Attr {
                     return None;
                 }
                 let path = meta.path()?;
-                let call_site = span_map.span_at(path.syntax().text_range().start()).ctx;
+                let call_site = span_map.span_at(path.syntax().text_range().start());
                 Some((
                     ModPath::from_src(db, path, SpanMapRef::ExpansionSpanMap(&span_map))?,
                     call_site,
