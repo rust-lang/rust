@@ -1560,6 +1560,9 @@ a.tooltip:hover::after {
 	left: 8px;
 	z-index: 101;
 }
+.hide-sidebar .src #sidebar-button {
+	position: static;
+}
 #settings-menu > a, #help-button > a, #sidebar-button > a {
 	display: flex;
 	align-items: center;
@@ -1896,6 +1899,12 @@ in src-script.js and main.js
 	.src .search-form {
 		margin-left: 40px;
 	}
+	.hide-sidebar .search-form {
+		margin-left: 32px;
+	}
+	.hide-sidebar .src .search-form {
+		margin-left: 0;
+	}
 
 	.sidebar.shown,
 	.src-sidebar-expanded .src .sidebar,
@@ -2019,12 +2028,6 @@ in src-script.js and main.js
 	}
 	.src .src-sidebar-title {
 		padding-top: 0;
-	}
-	.hide-sidebar #sidebar-button {
-		position: static;
-	}
-	.src #sidebar-button {
-		position: fixed;
 	}
 
 	/* Position of the "[-]" element. */

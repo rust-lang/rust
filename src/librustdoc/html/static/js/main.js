@@ -1519,18 +1519,14 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
     // and it can be activated by resizing the sidebar into nothing.
     const sidebarButton = document.getElementById("sidebar-button");
     if (sidebarButton) {
-        if (document.querySelector(".rustdoc.src")) {
-            sidebarButton.addEventListener("click", e => {
+        sidebarButton.addEventListener("click", e => {
+            removeClass(document.documentElement, "hide-sidebar");
+            updateLocalStorage("hide-sidebar", "false");
+            if (document.querySelector(".rustdoc.src")) {
                 window.rustdocToggleSrcSidebar();
-                e.preventDefault();
-            });
-        } else {
-            sidebarButton.addEventListener("click", e => {
-                removeClass(document.documentElement, "hide-sidebar");
-                updateLocalStorage("hide-sidebar", "false");
-                e.preventDefault();
-            });
-        }
+            }
+            e.preventDefault();
+        });
     }
 
     // Pointer capture.
