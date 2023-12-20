@@ -1359,7 +1359,7 @@ pub fn build_session(
     let target_cfg = config::build_target_config(&early_dcx, &sopts, target_override, &sysroot);
     let host_triple = TargetTriple::from_triple(config::host_triple());
     let (host, target_warnings) = Target::search(&host_triple, &sysroot).unwrap_or_else(|e| {
-        early_dcx.early_error(format!("Error loading host specification: {e}"))
+        early_dcx.early_fatal(format!("Error loading host specification: {e}"))
     });
     for warning in target_warnings.warning_messages() {
         early_dcx.early_warn(warning)
@@ -1734,19 +1734,19 @@ impl EarlyDiagCtxt {
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     #[must_use = "ErrorGuaranteed must be returned from `run_compiler` in order to exit with a non-zero status code"]
-    pub fn early_error_no_abort(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
+    pub fn early_err(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
         self.dcx.struct_err(msg).emit()
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub fn early_error(&self, msg: impl Into<DiagnosticMessage>) -> ! {
+    pub fn early_fatal(&self, msg: impl Into<DiagnosticMessage>) -> ! {
         self.dcx.struct_fatal(msg).emit()
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub fn early_struct_error(
+    pub fn early_struct_fatal(
         &self,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, FatalAbort> {

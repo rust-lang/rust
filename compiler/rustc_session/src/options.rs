@@ -337,12 +337,12 @@ fn build_options<O: Default>(
             Some((_, setter, type_desc, _)) => {
                 if !setter(&mut op, value) {
                     match value {
-                        None => early_dcx.early_error(
+                        None => early_dcx.early_fatal(
                             format!(
                                 "{outputname} option `{key}` requires {type_desc} ({prefix} {key}=<value>)"
                             ),
                         ),
-                        Some(value) => early_dcx.early_error(
+                        Some(value) => early_dcx.early_fatal(
                             format!(
                                 "incorrect value `{value}` for {outputname} option `{key}` - {type_desc} was expected"
                             ),
@@ -350,7 +350,7 @@ fn build_options<O: Default>(
                     }
                 }
             }
-            None => early_dcx.early_error(format!("unknown {outputname} option: `{key}`")),
+            None => early_dcx.early_fatal(format!("unknown {outputname} option: `{key}`")),
         }
     }
     return op;
