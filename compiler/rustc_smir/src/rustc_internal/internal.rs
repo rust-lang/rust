@@ -7,6 +7,7 @@
 use crate::rustc_smir::Tables;
 use rustc_middle::ty::{self as rustc_ty, Ty as InternalTy};
 use rustc_span::Symbol;
+use stable_mir::abi::Layout;
 use stable_mir::mir::alloc::AllocId;
 use stable_mir::mir::mono::{Instance, MonoItem, StaticDef};
 use stable_mir::mir::{Mutability, Safety};
@@ -457,6 +458,14 @@ impl<'tcx> RustcInternal<'tcx> for Span {
 
     fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T {
         tables[*self]
+    }
+}
+
+impl<'tcx> RustcInternal<'tcx> for Layout {
+    type T = rustc_target::abi::Layout<'tcx>;
+
+    fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T {
+        tables.layouts[*self]
     }
 }
 
