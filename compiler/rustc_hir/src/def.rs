@@ -603,7 +603,7 @@ impl CtorKind {
         match *vdata {
             ast::VariantData::Tuple(_, node_id) => Some((CtorKind::Fn, node_id)),
             ast::VariantData::Unit(node_id) => Some((CtorKind::Const, node_id)),
-            ast::VariantData::Struct(..) => None,
+            ast::VariantData::Struct { .. } => None,
         }
     }
 }

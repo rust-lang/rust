@@ -1484,7 +1484,7 @@ impl<'a> Parser<'a> {
                                 (thin_vec![], true)
                             }
                         };
-                    VariantData::Struct(fields, recovered)
+                    VariantData::Struct { fields, recovered }
                 } else if this.check(&token::OpenDelim(Delimiter::Parenthesis)) {
                     let body = match this.parse_tuple_struct_body() {
                         Ok(body) => body,
@@ -1569,7 +1569,7 @@ impl<'a> Parser<'a> {
                     class_name.span,
                     generics.where_clause.has_where_token,
                 )?;
-                VariantData::Struct(fields, recovered)
+                VariantData::Struct { fields, recovered }
             }
         // No `where` so: `struct Foo<T>;`
         } else if self.eat(&token::Semi) {
@@ -1581,7 +1581,7 @@ impl<'a> Parser<'a> {
                 class_name.span,
                 generics.where_clause.has_where_token,
             )?;
-            VariantData::Struct(fields, recovered)
+            VariantData::Struct { fields, recovered }
         // Tuple-style struct definition with optional where-clause.
         } else if self.token == token::OpenDelim(Delimiter::Parenthesis) {
             let body = VariantData::Tuple(self.parse_tuple_struct_body()?, DUMMY_NODE_ID);
@@ -1610,14 +1610,14 @@ impl<'a> Parser<'a> {
                 class_name.span,
                 generics.where_clause.has_where_token,
             )?;
-            VariantData::Struct(fields, recovered)
+            VariantData::Struct { fields, recovered }
         } else if self.token == token::OpenDelim(Delimiter::Brace) {
             let (fields, recovered) = self.parse_record_struct_body(
                 "union",
                 class_name.span,
                 generics.where_clause.has_where_token,
             )?;
-            VariantData::Struct(fields, recovered)
+            VariantData::Struct { fields, recovered }
         } else {
             let token_str = super::token_descr(&self.token);
             let msg = format!("expected `where` or `{{` after union name, found {token_str}");
