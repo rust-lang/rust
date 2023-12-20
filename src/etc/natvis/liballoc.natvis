@@ -4,7 +4,7 @@
     <DisplayString>{{ len={len} }}</DisplayString>
     <Expand>
       <Item Name="[len]" ExcludeView="simple">len</Item>
-      <Item Name="[capacity]" ExcludeView="simple">buf.cap</Item>
+      <Item Name="[capacity]" ExcludeView="simple">buf.cap.__0</Item>
       <ArrayItems>
         <Size>len</Size>
         <ValuePointer>buf.ptr.pointer.pointer</ValuePointer>
@@ -15,7 +15,7 @@
     <DisplayString>{{ len={len} }}</DisplayString>
     <Expand>
       <Item Name="[len]" ExcludeView="simple">len</Item>
-      <Item Name="[capacity]" ExcludeView="simple">buf.cap</Item>
+      <Item Name="[capacity]" ExcludeView="simple">buf.cap.__0</Item>
       <CustomListItems>
         <Variable Name="i" InitialValue="0" />
         <Size>len</Size>
@@ -23,7 +23,7 @@
           <If Condition="i == len">
             <Break/>
           </If>
-          <Item>buf.ptr.pointer.pointer[(i + head) % buf.cap]</Item>
+          <Item>buf.ptr.pointer.pointer[(i + head) % buf.cap.__0]</Item>
           <Exec>i = i + 1</Exec>
         </Loop>
       </CustomListItems>
@@ -45,7 +45,7 @@
     <StringView>(char*)vec.buf.ptr.pointer.pointer,[vec.len]s8</StringView>
     <Expand>
       <Item Name="[len]" ExcludeView="simple">vec.len</Item>
-      <Item Name="[capacity]" ExcludeView="simple">vec.buf.cap</Item>
+      <Item Name="[capacity]" ExcludeView="simple">vec.buf.cap.__0</Item>
       <Synthetic Name="[chars]">
         <DisplayString>{(char*)vec.buf.ptr.pointer.pointer,[vec.len]s8}</DisplayString>
         <Expand>
