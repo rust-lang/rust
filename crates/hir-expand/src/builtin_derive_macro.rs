@@ -246,7 +246,7 @@ fn parse_adt(
                 match this {
                     Some(it) => {
                         param_type_set.insert(it.as_name());
-                        mbe::syntax_node_to_token_tree(it.syntax(), tm)
+                        mbe::syntax_node_to_token_tree(it.syntax(), tm, call_site)
                     }
                     None => {
                         tt::Subtree::empty(::tt::DelimSpan { open: call_site, close: call_site })
@@ -254,15 +254,15 @@ fn parse_adt(
                 }
             };
             let bounds = match &param {
-                ast::TypeOrConstParam::Type(it) => {
-                    it.type_bound_list().map(|it| mbe::syntax_node_to_token_tree(it.syntax(), tm))
-                }
+                ast::TypeOrConstParam::Type(it) => it
+                    .type_bound_list()
+                    .map(|it| mbe::syntax_node_to_token_tree(it.syntax(), tm, call_site)),
                 ast::TypeOrConstParam::Const(_) => None,
             };
             let ty = if let ast::TypeOrConstParam::Const(param) = param {
                 let ty = param
                     .ty()
-                    .map(|ty| mbe::syntax_node_to_token_tree(ty.syntax(), tm))
+                    .map(|ty| mbe::syntax_node_to_token_tree(ty.syntax(), tm, call_site))
                     .unwrap_or_else(|| {
                         tt::Subtree::empty(::tt::DelimSpan { open: call_site, close: call_site })
                     });
@@ -298,7 +298,7 @@ fn parse_adt(
             let name = p.path()?.qualifier()?.as_single_name_ref()?.as_name();
             param_type_set.contains(&name).then_some(p)
         })
-        .map(|it| mbe::syntax_node_to_token_tree(it.syntax(), tm))
+        .map(|it| mbe::syntax_node_to_token_tree(it.syntax(), tm, call_site))
         .collect();
     let name_token = name_to_token(tm, name)?;
     Ok(BasicAdtInfo { name: name_token, shape, param_types, associated_types })

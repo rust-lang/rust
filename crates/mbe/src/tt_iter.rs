@@ -176,10 +176,10 @@ impl<'a, S: Span> TtIter<'a, S> {
         }
 
         self.inner = self.inner.as_slice()[res.len()..].iter();
-        let res = match res.len() {
-            0 | 1 => res.pop(),
-            _ => Some(tt::TokenTree::Subtree(tt::Subtree {
-                delimiter: tt::Delimiter::DUMMY_INVISIBLE,
+        let res = match &*res {
+            [] | [_] => res.pop(),
+            [first, ..] => Some(tt::TokenTree::Subtree(tt::Subtree {
+                delimiter: tt::Delimiter::invisible_spanned(first.first_span()),
                 token_trees: res,
             })),
         };

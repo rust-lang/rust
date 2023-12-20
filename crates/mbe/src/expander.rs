@@ -56,7 +56,10 @@ pub(crate) fn expand_rules<S: Span>(
         ExpandResult { value, err: match_.err.or(transcribe_err) }
     } else {
         ExpandResult::new(
-            tt::Subtree { delimiter: tt::Delimiter::DUMMY_INVISIBLE, token_trees: vec![] },
+            tt::Subtree {
+                delimiter: tt::Delimiter::invisible_spanned(call_site),
+                token_trees: vec![],
+            },
             ExpandError::NoMatchingRule,
         )
     }
@@ -128,6 +131,7 @@ enum Binding<S> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Fragment<S> {
+    Empty,
     /// token fragments are just copy-pasted into the output
     Tokens(tt::TokenTree<S>),
     /// Expr ast fragments are surrounded with `()` on insertion to preserve

@@ -59,12 +59,12 @@ impl<S: Span> Bindings<S> {
                     token_trees: token_trees.clone(),
                 };
                 Ok(match f {
-                    Fragment::Tokens(_) => unreachable!(),
+                    Fragment::Tokens(_) | Fragment::Empty => unreachable!(),
                     Fragment::Expr(_) => Fragment::Expr,
                     Fragment::Path(_) => Fragment::Path,
                 }(subtree))
             }
-            Binding::Fragment(it @ Fragment::Tokens(_)) => Ok(it.clone()),
+            Binding::Fragment(it @ (Fragment::Tokens(_) | Fragment::Empty)) => Ok(it.clone()),
             // emit some reasonable default expansion for missing bindings,
             // this gives better recovery than emitting the `$fragment-name` verbatim
             Binding::Missing(it) => Ok({
@@ -87,10 +87,7 @@ impl<S: Span> Bindings<S> {
                     })),
                     // FIXME: Meta and Item should get proper defaults
                     MetaVarKind::Meta | MetaVarKind::Item | MetaVarKind::Tt | MetaVarKind::Vis => {
-                        Fragment::Tokens(tt::TokenTree::Subtree(tt::Subtree {
-                            delimiter: tt::Delimiter::DUMMY_INVISIBLE,
-                            token_trees: vec![],
-                        }))
+                        Fragment::Empty
                     }
                     MetaVarKind::Path
                     | MetaVarKind::Ty
@@ -351,7 +348,7 @@ fn expand_var<S: Span>(
             // ```
             // We just treat it a normal tokens
             let tt = tt::Subtree {
-                delimiter: tt::Delimiter::DUMMY_INVISIBLE,
+                delimiter: tt::Delimiter::invisible_spanned(id),
                 token_trees: vec![
                     tt::Leaf::from(tt::Punct { char: '$', spacing: tt::Spacing::Alone, span: id })
                         .into(),
@@ -422,7 +419,7 @@ fn expand_repeat<S: Span>(
             continue;
         }
 
-        t.delimiter = tt::Delimiter::DUMMY_INVISIBLE;
+        t.delimiter.kind = tt::DelimiterKind::Invisible;
         push_subtree(&mut buf, t);
 
         if let Some(sep) = separator {
@@ -456,7 +453,11 @@ fn expand_repeat<S: Span>(
 
     // Check if it is a single token subtree without any delimiter
     // e.g {Delimiter:None> ['>'] /Delimiter:None>}
-    let tt = tt::Subtree { delimiter: tt::Delimiter::DUMMY_INVISIBLE, token_trees: buf }.into();
+    let tt = tt::Subtree {
+        delimiter: tt::Delimiter::invisible_spanned(ctx.call_site),
+        token_trees: buf,
+    }
+    .into();
 
     if RepeatKind::OneOrMore == kind && counter == 0 {
         return ExpandResult {
@@ -479,6 +480,7 @@ fn push_fragment<S: Span>(
         }
         Fragment::Path(tt) => fix_up_and_push_path_tt(ctx, buf, tt),
         Fragment::Tokens(tt) => buf.push(tt),
+        Fragment::Empty => (),
     }
 }
 

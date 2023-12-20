@@ -201,7 +201,7 @@ fn assert_expand(
     tt: &tt::Subtree,
     span: Span,
 ) -> ExpandResult<tt::Subtree> {
-    let args = parse_exprs_with_sep(tt, ',');
+    let args = parse_exprs_with_sep(tt, ',', span);
     let dollar_crate = tt::Ident { text: SmolStr::new_inline("$crate"), span };
     let expanded = match &*args {
         [cond, panic_args @ ..] => {

@@ -719,7 +719,7 @@ impl ExpansionInfo {
         let (macro_arg, _) = db.macro_arg(macro_file.macro_call_id).value.unwrap_or_else(|| {
             (
                 Arc::new(tt::Subtree {
-                    delimiter: tt::Delimiter::DUMMY_INVISIBLE,
+                    delimiter: tt::Delimiter::invisible_spanned(loc.call_site),
                     token_trees: Vec::new(),
                 }),
                 SyntaxFixupUndoInfo::NONE,

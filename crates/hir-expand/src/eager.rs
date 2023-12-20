@@ -82,9 +82,9 @@ pub fn expand_eager_macro_input(
         return ExpandResult { value: None, err };
     };
 
-    let mut subtree = mbe::syntax_node_to_token_tree(&expanded_eager_input, arg_map);
+    let mut subtree = mbe::syntax_node_to_token_tree(&expanded_eager_input, arg_map, call_site);
 
-    subtree.delimiter = crate::tt::Delimiter::DUMMY_INVISIBLE;
+    subtree.delimiter.kind = crate::tt::DelimiterKind::Invisible;
 
     let loc = MacroCallLoc {
         def,

@@ -101,7 +101,12 @@ fn derive_attr_expand(
         MacroCallKind::Attr { attr_args: Some(attr_args), .. } if loc.def.is_attribute_derive() => {
             attr_args
         }
-        _ => return ExpandResult::ok(tt::Subtree::empty(tt::DelimSpan::DUMMY)),
+        _ => {
+            return ExpandResult::ok(tt::Subtree::empty(tt::DelimSpan {
+                open: loc.call_site,
+                close: loc.call_site,
+            }))
+        }
     };
     pseudo_derive_attr_expansion(tt, derives, loc.call_site)
 }

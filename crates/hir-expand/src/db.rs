@@ -72,7 +72,7 @@ impl DeclarativeMacroExpander {
         });
         match self.mac.err() {
             Some(e) => ExpandResult::new(
-                tt::Subtree::empty(tt::DelimSpan::DUMMY),
+                tt::Subtree::empty(tt::DelimSpan { open: loc.call_site, close: loc.call_site }),
                 ExpandError::other(format!("invalid macro definition: {e}")),
             ),
             None => self
@@ -108,7 +108,7 @@ impl DeclarativeMacroExpander {
         });
         match self.mac.err() {
             Some(e) => ExpandResult::new(
-                tt::Subtree::empty(tt::DelimSpan::DUMMY),
+                tt::Subtree::empty(tt::DelimSpan { open: call_site, close: call_site }),
                 ExpandError::other(format!("invalid macro definition: {e}")),
             ),
             None => self.mac.expand(&tt, |_| (), new_meta_vars, call_site).map_err(Into::into),
@@ -244,12 +244,13 @@ pub fn expand_speculative(
 
     // Build the subtree and token mapping for the speculative args
     let (mut tt, undo_info) = match loc.kind {
-        MacroCallKind::FnLike { .. } => {
-            (mbe::syntax_node_to_token_tree(speculative_args, span_map), SyntaxFixupUndoInfo::NONE)
-        }
+        MacroCallKind::FnLike { .. } => (
+            mbe::syntax_node_to_token_tree(speculative_args, span_map, loc.call_site),
+            SyntaxFixupUndoInfo::NONE,
+        ),
         MacroCallKind::Derive { .. } | MacroCallKind::Attr { .. } => {
             let censor = censor_for_macro_input(&loc, speculative_args);
-            let mut fixups = fixup::fixup_syntax(span_map, speculative_args);
+            let mut fixups = fixup::fixup_syntax(span_map, speculative_args, loc.call_site);
             fixups.append.retain(|it, _| match it {
                 syntax::NodeOrToken::Node(it) => !censor.contains(it),
                 syntax::NodeOrToken::Token(_) => true,
@@ -261,6 +262,7 @@ pub fn expand_speculative(
                     span_map,
                     fixups.append,
                     fixups.remove,
+                    loc.call_site,
                 ),
                 fixups.undo_info,
             )
@@ -282,8 +284,9 @@ pub fn expand_speculative(
             }?;
             match attr.token_tree() {
                 Some(token_tree) => {
-                    let mut tree = syntax_node_to_token_tree(token_tree.syntax(), span_map);
-                    tree.delimiter = tt::Delimiter::DUMMY_INVISIBLE;
+                    let mut tree =
+                        syntax_node_to_token_tree(token_tree.syntax(), span_map, loc.call_site);
+                    tree.delimiter = tt::Delimiter::invisible_spanned(loc.call_site);
 
                     Some(tree)
                 }
@@ -297,7 +300,7 @@ pub fn expand_speculative(
     // Otherwise the expand query will fetch the non speculative attribute args and pass those instead.
     let mut speculative_expansion = match loc.def.kind {
         MacroDefKind::ProcMacro(expander, ..) => {
-            tt.delimiter = tt::Delimiter::DUMMY_INVISIBLE;
+            tt.delimiter = tt::Delimiter::invisible_spanned(loc.call_site);
             let call_site = loc.span(db);
             expander.expand(
                 db,
@@ -473,12 +476,13 @@ fn macro_arg(
             MacroCallKind::Attr { ast_id, .. } => ast_id.to_ptr(db).to_node(&root).syntax().clone(),
         };
         let (mut tt, undo_info) = match loc.kind {
-            MacroCallKind::FnLike { .. } => {
-                (mbe::syntax_node_to_token_tree(&syntax, map.as_ref()), SyntaxFixupUndoInfo::NONE)
-            }
+            MacroCallKind::FnLike { .. } => (
+                mbe::syntax_node_to_token_tree(&syntax, map.as_ref(), loc.call_site),
+                SyntaxFixupUndoInfo::NONE,
+            ),
             MacroCallKind::Derive { .. } | MacroCallKind::Attr { .. } => {
                 let censor = censor_for_macro_input(&loc, &syntax);
-                let mut fixups = fixup::fixup_syntax(map.as_ref(), &syntax);
+                let mut fixups = fixup::fixup_syntax(map.as_ref(), &syntax, loc.call_site);
                 fixups.append.retain(|it, _| match it {
                     syntax::NodeOrToken::Node(it) => !censor.contains(it),
                     syntax::NodeOrToken::Token(_) => true,
@@ -490,6 +494,7 @@ fn macro_arg(
                         map.as_ref(),
                         fixups.append.clone(),
                         fixups.remove.clone(),
+                        loc.call_site,
                     );
                     reverse_fixups(&mut tt, &fixups.undo_info);
                 }
@@ -499,6 +504,7 @@ fn macro_arg(
                         map,
                         fixups.append,
                         fixups.remove,
+                        loc.call_site,
                     ),
                     fixups.undo_info,
                 )
@@ -507,7 +513,7 @@ fn macro_arg(
 
         if loc.def.is_proc_macro() {
             // proc macros expect their inputs without parentheses, MBEs expect it with them included
-            tt.delimiter = tt::Delimiter::DUMMY_INVISIBLE;
+            tt.delimiter.kind = tt::DelimiterKind::Invisible;
         }
 
         if matches!(loc.def.kind, MacroDefKind::BuiltInEager(..)) {
@@ -611,7 +617,11 @@ fn decl_macro_expander(
         ast::Macro::MacroRules(macro_rules) => (
             match macro_rules.token_tree() {
                 Some(arg) => {
-                    let tt = mbe::syntax_node_to_token_tree(arg.syntax(), map.as_ref());
+                    let tt = mbe::syntax_node_to_token_tree(
+                        arg.syntax(),
+                        map.as_ref(),
+                        map.span_for_range(macro_rules.macro_rules_token().unwrap().text_range()),
+                    );
                     let mac = mbe::DeclarativeMacro::parse_macro_rules(&tt, is_2021, new_meta_vars);
                     mac
                 }
@@ -625,7 +635,11 @@ fn decl_macro_expander(
         ast::Macro::MacroDef(macro_def) => (
             match macro_def.body() {
                 Some(arg) => {
-                    let tt = mbe::syntax_node_to_token_tree(arg.syntax(), map.as_ref());
+                    let tt = mbe::syntax_node_to_token_tree(
+                        arg.syntax(),
+                        map.as_ref(),
+                        map.span_for_range(macro_def.macro_token().unwrap().text_range()),
+                    );
                     let mac = mbe::DeclarativeMacro::parse_macro2(&tt, is_2021, new_meta_vars);
                     mac
                 }
@@ -677,7 +691,7 @@ fn macro_expand(
             let Some((macro_arg, undo_info)) = value else {
                 return ExpandResult {
                     value: Arc::new(tt::Subtree {
-                        delimiter: tt::Delimiter::DUMMY_INVISIBLE,
+                        delimiter: tt::Delimiter::invisible_spanned(loc.call_site),
                         token_trees: Vec::new(),
                     }),
                     // FIXME: We should make sure to enforce an invariant that invalid macro
@@ -736,7 +750,7 @@ fn macro_expand(
     // Skip checking token tree limit for include! macro call
     if !loc.def.is_include() {
         // Set a hard limit for the expanded tt
-        if let Err(value) = check_tt_count(&tt) {
+        if let Err(value) = check_tt_count(&tt, loc.call_site) {
             return value;
         }
     }
@@ -749,7 +763,7 @@ fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<A
     let Some((macro_arg, undo_info)) = db.macro_arg(id).value else {
         return ExpandResult {
             value: Arc::new(tt::Subtree {
-                delimiter: tt::Delimiter::DUMMY_INVISIBLE,
+                delimiter: tt::Delimiter::invisible_spanned(loc.call_site),
                 token_trees: Vec::new(),
             }),
             // FIXME: We should make sure to enforce an invariant that invalid macro
@@ -783,7 +797,7 @@ fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<A
     );
 
     // Set a hard limit for the expanded tt
-    if let Err(value) = check_tt_count(&tt) {
+    if let Err(value) = check_tt_count(&tt, loc.call_site) {
         return value;
     }
 
@@ -806,12 +820,12 @@ fn token_tree_to_syntax_node(
     mbe::token_tree_to_syntax_node(tt, entry_point)
 }
 
-fn check_tt_count(tt: &tt::Subtree) -> Result<(), ExpandResult<Arc<tt::Subtree>>> {
+fn check_tt_count(tt: &tt::Subtree, call_site: Span) -> Result<(), ExpandResult<Arc<tt::Subtree>>> {
     let count = tt.count();
     if TOKEN_LIMIT.check(count).is_err() {
         Err(ExpandResult {
             value: Arc::new(tt::Subtree {
-                delimiter: tt::Delimiter::DUMMY_INVISIBLE,
+                delimiter: tt::Delimiter::invisible_spanned(call_site),
                 token_trees: vec![],
             }),
             err: Some(ExpandError::other(format!(

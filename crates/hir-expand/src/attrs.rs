@@ -206,6 +206,7 @@ impl Attr {
         id: AttrId,
     ) -> Option<Attr> {
         let path = Interned::new(ModPath::from_src(db, ast.path()?, span_map)?);
+        let span = span_map.span_for_range(ast.syntax().text_range());
         let input = if let Some(ast::Expr::Literal(lit)) = ast.expr() {
             let value = match lit.kind() {
                 ast::LiteralKind::String(string) => string.value()?.into(),
@@ -213,12 +214,12 @@ impl Attr {
             };
             Some(Interned::new(AttrInput::Literal(value)))
         } else if let Some(tt) = ast.token_tree() {
-            let tree = syntax_node_to_token_tree(tt.syntax(), span_map);
+            let tree = syntax_node_to_token_tree(tt.syntax(), span_map, span);
             Some(Interned::new(AttrInput::TokenTree(Box::new(tree))))
         } else {
             None
         };
-        Some(Attr { id, path, input, span: span_map.span_for_range(ast.syntax().text_range()) })
+        Some(Attr { id, path, input, span })
     }
 
     fn from_tt(db: &dyn ExpandDatabase, tt: &tt::Subtree, id: AttrId) -> Option<Attr> {

@@ -1350,7 +1350,7 @@ fn attr_macro_as_call_id(
     let arg = match macro_attr.input.as_deref() {
         Some(AttrInput::TokenTree(tt)) => {
             let mut tt = tt.as_ref().clone();
-            tt.delimiter = tt::Delimiter::DUMMY_INVISIBLE;
+            tt.delimiter = tt::Delimiter::invisible_spanned(macro_attr.span);
             Some(tt)
         }
 

@@ -67,8 +67,11 @@ fn macro_rules_fixtures_tt() -> FxHashMap<String, tt::Subtree<DummyTestSpanData>
         .filter_map(ast::MacroRules::cast)
         .map(|rule| {
             let id = rule.name().unwrap().to_string();
-            let def_tt =
-                syntax_node_to_token_tree(rule.token_tree().unwrap().syntax(), DummyTestSpanMap);
+            let def_tt = syntax_node_to_token_tree(
+                rule.token_tree().unwrap().syntax(),
+                DummyTestSpanMap,
+                DUMMY,
+            );
             (id, def_tt)
         })
         .collect()

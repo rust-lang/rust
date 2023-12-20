@@ -78,13 +78,14 @@ pub(crate) mod dummy_test_span_utils {
 pub fn syntax_node_to_token_tree<Ctx, SpanMap>(
     node: &SyntaxNode,
     map: SpanMap,
+    span: SpanData<Ctx>,
 ) -> tt::Subtree<SpanData<Ctx>>
 where
     SpanData<Ctx>: Span,
     Ctx: SyntaxContext,
     SpanMap: SpanMapper<SpanData<Ctx>>,
 {
-    let mut c = Converter::new(node, map, Default::default(), Default::default());
+    let mut c = Converter::new(node, map, Default::default(), Default::default(), span);
     convert_tokens(&mut c)
 }
 
@@ -96,13 +97,14 @@ pub fn syntax_node_to_token_tree_modified<Ctx, SpanMap>(
     map: SpanMap,
     append: FxHashMap<SyntaxElement, Vec<tt::Leaf<SpanData<Ctx>>>>,
     remove: FxHashSet<SyntaxNode>,
+    call_site: SpanData<Ctx>,
 ) -> tt::Subtree<SpanData<Ctx>>
 where
     SpanMap: SpanMapper<SpanData<Ctx>>,
     SpanData<Ctx>: Span,
     Ctx: SyntaxContext,
 {
-    let mut c = Converter::new(node, map, append, remove);
+    let mut c = Converter::new(node, map, append, remove, call_site);
     convert_tokens(&mut c)
 }
 
@@ -187,7 +189,11 @@ where
 }
 
 /// Split token tree with separate expr: $($e:expr)SEP*
-pub fn parse_exprs_with_sep<S: Span>(tt: &tt::Subtree<S>, sep: char) -> Vec<tt::Subtree<S>> {
+pub fn parse_exprs_with_sep<S: Span>(
+    tt: &tt::Subtree<S>,
+    sep: char,
+    span: S,
+) -> Vec<tt::Subtree<S>> {
     if tt.token_trees.is_empty() {
         return Vec::new();
     }
@@ -200,7 +206,7 @@ pub fn parse_exprs_with_sep<S: Span>(tt: &tt::Subtree<S>, sep: char) -> Vec<tt::
 
         res.push(match expanded.value {
             None => break,
-            Some(tt) => tt.subtree_or_wrap(),
+            Some(tt) => tt.subtree_or_wrap(tt::DelimSpan { open: span, close: span }),
         });
 
         let mut fork = iter.clone();
@@ -212,7 +218,7 @@ pub fn parse_exprs_with_sep<S: Span>(tt: &tt::Subtree<S>, sep: char) -> Vec<tt::
 
     if iter.peek_n(0).is_some() {
         res.push(tt::Subtree {
-            delimiter: tt::Delimiter::DUMMY_INVISIBLE,
+            delimiter: tt::Delimiter::invisible_spanned(span),
             token_trees: iter.cloned().collect(),
         });
     }
@@ -225,7 +231,10 @@ where
     C: TokenConverter<S>,
     S: Span,
 {
-    let entry = tt::Subtree { delimiter: tt::Delimiter::DUMMY_INVISIBLE, token_trees: vec![] };
+    let entry = tt::Subtree {
+        delimiter: tt::Delimiter::invisible_spanned(conv.call_site()),
+        token_trees: vec![],
+    };
     let mut stack = NonEmptyVec::new(entry);
 
     while let Some((token, abs_range)) = conv.bump() {
@@ -490,6 +499,8 @@ trait TokenConverter<S>: Sized {
     fn peek(&self) -> Option<Self::Token>;
 
     fn span_for(&self, range: TextRange) -> S;
+
+    fn call_site(&self) -> S;
 }
 
 impl<S, Ctx> SrcToken<RawConverter<'_, Ctx>, S> for usize {
@@ -557,6 +568,10 @@ where
     fn span_for(&self, range: TextRange) -> SpanData<Ctx> {
         SpanData { range, anchor: self.anchor, ctx: self.ctx }
     }
+
+    fn call_site(&self) -> SpanData<Ctx> {
+        SpanData { range: TextRange::empty(0.into()), anchor: self.anchor, ctx: self.ctx }
+    }
 }
 
 impl<S> TokenConverter<S> for StaticRawConverter<'_, S>
@@ -592,6 +607,10 @@ where
     fn span_for(&self, _: TextRange) -> S {
         self.span
     }
+
+    fn call_site(&self) -> S {
+        self.span
+    }
 }
 
 struct Converter<SpanMap, S> {
@@ -604,6 +623,7 @@ struct Converter<SpanMap, S> {
     map: SpanMap,
     append: FxHashMap<SyntaxElement, Vec<tt::Leaf<S>>>,
     remove: FxHashSet<SyntaxNode>,
+    call_site: S,
 }
 
 impl<SpanMap, S> Converter<SpanMap, S> {
@@ -612,6 +632,7 @@ impl<SpanMap, S> Converter<SpanMap, S> {
         map: SpanMap,
         append: FxHashMap<SyntaxElement, Vec<tt::Leaf<S>>>,
         remove: FxHashSet<SyntaxNode>,
+        call_site: S,
     ) -> Self {
         let mut this = Converter {
             current: None,
@@ -621,6 +642,7 @@ impl<SpanMap, S> Converter<SpanMap, S> {
             map,
             append,
             remove,
+            call_site,
             current_leafs: vec![],
         };
         let first = this.next_token();
@@ -779,6 +801,9 @@ where
 
     fn span_for(&self, range: TextRange) -> S {
         self.map.span_for(range)
+    }
+    fn call_site(&self) -> S {
+        self.call_site
     }
 }
 
