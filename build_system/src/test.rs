@@ -503,7 +503,15 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<(), String> {
         Some(commit_hash) => commit_hash,
         None => return Err("Couldn't retrieve rustc commit hash".to_string()),
     };
-    run_command_with_output_and_env(&[&"git", &"checkout", &rustc_commit], rust_dir, Some(env))?;
+    if rustc_commit != "unknown" {
+        run_command_with_output_and_env(
+            &[&"git", &"checkout", &rustc_commit],
+            rust_dir,
+            Some(env),
+        )?;
+    } else {
+        run_command_with_output_and_env(&[&"git", &"checkout"], rust_dir, Some(env))?;
+    }
     let cargo = String::from_utf8(
         run_command_with_env(&[&"rustup", &"which", &"cargo"], rust_dir, Some(env))?.stdout,
     )
