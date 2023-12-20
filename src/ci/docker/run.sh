@@ -36,6 +36,11 @@ root_dir="`dirname $src_dir`"
 objdir=$root_dir/obj
 dist=$objdir/build/dist
 
+
+if [ -d "$root_dir/.git" ]; then
+    IS_GIT_SOURCE=1
+fi
+
 source "$ci_dir/shared.sh"
 
 CACHE_DOMAIN="${CACHE_DOMAIN:-ci-caches.rust-lang.org}"
@@ -249,9 +254,13 @@ if [ "$dev" = "1" ]
 then
   # Interactive + TTY
   args="$args -it"
-  command="/bin/bash"
+  if [ $IS_GIT_SOURCE -eq 1 ]; then
+    command=(/bin/bash -c 'git config --global --add safe.directory /checkout;bash')
+  else
+    command=(/bin/bash)
+  fi
 else
-  command="/checkout/src/ci/run.sh"
+  command=(/checkout/src/ci/run.sh)
 fi
 
 if [ "$CI" != "" ]; then
@@ -301,7 +310,7 @@ docker \
   --init \
   --rm \
   rust-ci \
-  $command
+  "${command[@]}"
 
 cat $objdir/${SUMMARY_FILE} >> "${GITHUB_STEP_SUMMARY}"
 
