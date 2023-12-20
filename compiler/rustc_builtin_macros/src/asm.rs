@@ -10,7 +10,6 @@ use rustc_index::bit_set::GrowableBitSet;
 use rustc_parse::parser::Parser;
 use rustc_parse_format as parse;
 use rustc_session::lint;
-use rustc_session::parse::ParseSess;
 use rustc_span::symbol::Ident;
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::{ErrorGuaranteed, InnerSpan, Span};
@@ -36,19 +35,17 @@ fn parse_args<'a>(
     is_global_asm: bool,
 ) -> PResult<'a, AsmArgs> {
     let mut p = ecx.new_parser_from_tts(tts);
-    let sess = &ecx.sess.parse_sess;
-    parse_asm_args(&mut p, sess, sp, is_global_asm)
+    parse_asm_args(&mut p, sp, is_global_asm)
 }
 
 // Primarily public for rustfmt consumption.
 // Internal consumers should continue to leverage `expand_asm`/`expand__global_asm`
 pub fn parse_asm_args<'a>(
     p: &mut Parser<'a>,
-    sess: &'a ParseSess,
     sp: Span,
     is_global_asm: bool,
 ) -> PResult<'a, AsmArgs> {
-    let dcx = &sess.dcx;
+    let dcx = &p.sess.dcx;
 
     if p.token == token::Eof {
         return Err(dcx.create_err(errors::AsmRequiresTemplate { span: sp }));
