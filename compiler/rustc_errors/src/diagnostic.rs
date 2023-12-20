@@ -216,7 +216,7 @@ impl StringPart {
 impl Diagnostic {
     #[track_caller]
     pub fn new<M: Into<DiagnosticMessage>>(level: Level, message: M) -> Self {
-        Diagnostic::new_with_code(level, None, message)
+        Diagnostic::new_with_messages(level, vec![(message.into(), Style::NoStyle)])
     }
 
     #[track_caller]
@@ -225,26 +225,6 @@ impl Diagnostic {
             level,
             message: messages,
             code: None,
-            span: MultiSpan::new(),
-            children: vec![],
-            suggestions: Ok(vec![]),
-            args: Default::default(),
-            sort_span: DUMMY_SP,
-            is_lint: false,
-            emitted_at: DiagnosticLocation::caller(),
-        }
-    }
-
-    #[track_caller]
-    pub(crate) fn new_with_code<M: Into<DiagnosticMessage>>(
-        level: Level,
-        code: Option<DiagnosticId>,
-        message: M,
-    ) -> Self {
-        Diagnostic {
-            level,
-            message: vec![(message.into(), Style::NoStyle)],
-            code,
             span: MultiSpan::new(),
             children: vec![],
             suggestions: Ok(vec![]),
