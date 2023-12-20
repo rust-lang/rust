@@ -17,7 +17,7 @@ use rustc_ast::util::comments::{gather_comments, Comment, CommentStyle};
 use rustc_ast::util::parser;
 use rustc_ast::{self as ast, AttrArgs, AttrArgsEq, BlockCheckMode, PatKind};
 use rustc_ast::{attr, BindingAnnotation, ByRef, DelimArgs, RangeEnd, RangeSyntax, Term};
-use rustc_ast::{GenericArg, GenericBound, SelfKind, TraitBoundModifier};
+use rustc_ast::{GenericArg, GenericBound, SelfKind};
 use rustc_ast::{InlineAsmOperand, InlineAsmRegOrRegClass};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_span::edition::Edition;
@@ -1559,26 +1559,20 @@ impl<'a> State<'a> {
 
             match bound {
                 GenericBound::Trait(tref, modifier) => {
-                    match modifier {
-                        TraitBoundModifier::None => {}
-                        TraitBoundModifier::Negative => {
-                            self.word("!");
-                        }
-                        TraitBoundModifier::Maybe => {
-                            self.word("?");
-                        }
-                        TraitBoundModifier::MaybeConst(_) => {
-                            self.word_space("~const");
-                        }
-                        TraitBoundModifier::MaybeConstNegative => {
-                            self.word_space("~const");
-                            self.word("!");
-                        }
-                        TraitBoundModifier::MaybeConstMaybe => {
-                            self.word_space("~const");
-                            self.word("?");
+                    match modifier.constness {
+                        ast::BoundConstness::Never => {}
+                        ast::BoundConstness::Maybe(_) => {
+                            self.word_space(modifier.constness.as_str());
                         }
                     }
+
+                    match modifier.polarity {
+                        ast::BoundPolarity::Positive => {}
+                        ast::BoundPolarity::Negative(_) | ast::BoundPolarity::Maybe(_) => {
+                            self.word(modifier.polarity.as_str());
+                        }
+                    }
+
                     self.print_poly_trait_ref(tref);
                 }
                 GenericBound::Outlives(lt) => self.print_lifetime(*lt),

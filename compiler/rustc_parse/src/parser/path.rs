@@ -841,7 +841,7 @@ impl<'a> Parser<'a> {
             {
                 return Ok((false, seg.ident, seg.args.as_deref().cloned()));
             } else if let ast::TyKind::TraitObject(bounds, ast::TraitObjectSyntax::None) = &ty.kind
-                && let [ast::GenericBound::Trait(trait_ref, ast::TraitBoundModifier::None)] =
+                && let [ast::GenericBound::Trait(trait_ref, ast::TraitBoundModifiers::NONE)] =
                     bounds.as_slice()
                 && let [seg] = trait_ref.trait_ref.path.segments.as_slice()
             {
