@@ -3202,9 +3202,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             ObligationCauseCode::SizedArgumentType(ty_span) => {
                 if let Some(span) = ty_span {
-                    if let ty::PredicateKind::Clause(clause) = predicate.kind().skip_binder()
+                    let trait_len = if let ty::PredicateKind::Clause(clause) =
+                        predicate.kind().skip_binder()
                         && let ty::ClauseKind::Trait(trait_pred) = clause
-                        && let ty::Dynamic(..) = trait_pred.self_ty().kind()
+                        && let ty::Dynamic(preds, ..) = trait_pred.self_ty().kind()
                     {
                         let span = if let Ok(snippet) =
                             self.tcx.sess.source_map().span_to_snippet(span)
@@ -3221,12 +3222,39 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             "impl ".to_string(),
                             Applicability::MaybeIncorrect,
                         );
-                    }
-                    err.span_suggestion_verbose(
-                        span.shrink_to_lo(),
+                        preds
+                            .iter()
+                            .filter(|pred| {
+                                // We only want to count `dyn Foo + Bar`, not `dyn Foo<Bar>`,
+                                // because the later doesn't need parentheses.
+                                matches!(
+                                    pred.skip_binder(),
+                                    ty::ExistentialPredicate::Trait(_)
+                                        | ty::ExistentialPredicate::AutoTrait(_)
+                                )
+                            })
+                            .count()
+                    } else {
+                        1
+                    };
+                    let sugg = if trait_len == 1 {
+                        vec![(span.shrink_to_lo(), "&".to_string())]
+                    } else if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
+                        && snippet.starts_with('(')
+                    {
+                        // We don't want to suggest `&((dyn Foo + Bar))` when we have
+                        // `(dyn Foo + Bar)`.
+                        vec![(span.shrink_to_lo(), "&".to_string())]
+                    } else {
+                        vec![
+                            (span.shrink_to_lo(), "&(".to_string()),
+                            (span.shrink_to_hi(), ")".to_string()),
+                        ]
+                    };
+                    err.multipart_suggestion_verbose(
                         "function arguments must have a statically known size, borrowed types \
                          always have a known size",
-                        "&",
+                        sugg,
                         Applicability::MachineApplicable,
                     );
                 } else {
