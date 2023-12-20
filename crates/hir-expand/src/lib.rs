@@ -116,18 +116,20 @@ pub struct MacroCallLoc {
     pub krate: CrateId,
     /// Some if this is a macro call for an eager macro. Note that this is `None`
     /// for the eager input macro file.
+    // FIXME: This seems bad to save in an interned structure
     eager: Option<Arc<EagerCallInfo>>,
     pub kind: MacroCallKind,
-    pub call_site: SyntaxContextId,
+    pub call_site: Span,
 }
 
+// FIXME: Might make sense to intern this? Given it's gonna be the same for a bunch of macro calls
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroDefId {
     pub krate: CrateId,
     pub kind: MacroDefKind,
     pub local_inner: bool,
     pub allow_internal_unsafe: bool,
-    // pub def_site: SyntaxContextId,
+    // pub def_site: Span,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -348,7 +350,7 @@ impl MacroDefId {
         db: &dyn db::ExpandDatabase,
         krate: CrateId,
         kind: MacroCallKind,
-        call_site: SyntaxContextId,
+        call_site: Span,
     ) -> MacroCallId {
         db.intern_macro_call(MacroCallLoc { def: self, krate, eager: None, kind, call_site })
     }
@@ -717,7 +719,7 @@ impl ExpansionInfo {
         let (macro_arg, _) = db.macro_arg(macro_file.macro_call_id).value.unwrap_or_else(|| {
             (
                 Arc::new(tt::Subtree {
-                    delimiter: tt::Delimiter::DUMMY_INVISIBLE,
+                    delimiter: tt::Delimiter::invisible_spanned(loc.call_site),
                     token_trees: Vec::new(),
                 }),
                 SyntaxFixupUndoInfo::NONE,

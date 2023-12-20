@@ -59,12 +59,12 @@ impl<S: Span> Bindings<S> {
                     token_trees: token_trees.clone(),
                 };
                 Ok(match f {
-                    Fragment::Tokens(_) => unreachable!(),
+                    Fragment::Tokens(_) | Fragment::Empty => unreachable!(),
                     Fragment::Expr(_) => Fragment::Expr,
                     Fragment::Path(_) => Fragment::Path,
                 }(subtree))
             }
-            Binding::Fragment(it @ Fragment::Tokens(_)) => Ok(it.clone()),
+            Binding::Fragment(it @ (Fragment::Tokens(_) | Fragment::Empty)) => Ok(it.clone()),
             // emit some reasonable default expansion for missing bindings,
             // this gives better recovery than emitting the `$fragment-name` verbatim
             Binding::Missing(it) => Ok({
@@ -87,10 +87,7 @@ impl<S: Span> Bindings<S> {
                     })),
                     // FIXME: Meta and Item should get proper defaults
                     MetaVarKind::Meta | MetaVarKind::Item | MetaVarKind::Tt | MetaVarKind::Vis => {
-                        Fragment::Tokens(tt::TokenTree::Subtree(tt::Subtree {
-                            delimiter: tt::Delimiter::DUMMY_INVISIBLE,
-                            token_trees: vec![],
-                        }))
+                        Fragment::Empty
                     }
                     MetaVarKind::Path
                     | MetaVarKind::Ty
@@ -132,8 +129,9 @@ pub(super) fn transcribe<S: Span>(
     bindings: &Bindings<S>,
     marker: impl Fn(&mut S) + Copy,
     new_meta_vars: bool,
+    call_site: S,
 ) -> ExpandResult<tt::Subtree<S>> {
-    let mut ctx = ExpandCtx { bindings, nesting: Vec::new(), new_meta_vars };
+    let mut ctx = ExpandCtx { bindings, nesting: Vec::new(), new_meta_vars, call_site };
     let mut arena: Vec<tt::TokenTree<S>> = Vec::new();
     expand_subtree(&mut ctx, template, None, &mut arena, marker)
 }
@@ -154,6 +152,7 @@ struct ExpandCtx<'a, S> {
     bindings: &'a Bindings<S>,
     nesting: Vec<NestingState>,
     new_meta_vars: bool,
+    call_site: S,
 }
 
 fn expand_subtree<S: Span>(
@@ -208,13 +207,13 @@ fn expand_subtree<S: Span>(
             Op::Var { name, id, .. } => {
                 let ExpandResult { value: fragment, err: e } = expand_var(ctx, name, *id, marker);
                 err = err.or(e);
-                push_fragment(arena, fragment);
+                push_fragment(ctx, arena, fragment);
             }
             Op::Repeat { tokens: subtree, kind, separator } => {
                 let ExpandResult { value: fragment, err: e } =
                     expand_repeat(ctx, subtree, *kind, separator, arena, marker);
                 err = err.or(e);
-                push_fragment(arena, fragment)
+                push_fragment(ctx, arena, fragment)
             }
             Op::Ignore { name, id } => {
                 // Expand the variable, but ignore the result. This registers the repetition count.
@@ -227,9 +226,7 @@ fn expand_subtree<S: Span>(
                 arena.push(
                     tt::Leaf::Literal(tt::Literal {
                         text: index.to_string().into(),
-                        // FIXME
-                        #[allow(deprecated)]
-                        span: S::DUMMY,
+                        span: ctx.call_site,
                     })
                     .into(),
                 );
@@ -242,9 +239,7 @@ fn expand_subtree<S: Span>(
                 arena.push(
                     tt::Leaf::Literal(tt::Literal {
                         text: length.to_string().into(),
-                        // FIXME
-                        #[allow(deprecated)]
-                        span: S::DUMMY,
+                        span: ctx.call_site,
                     })
                     .into(),
                 );
@@ -309,9 +304,7 @@ fn expand_subtree<S: Span>(
                 arena.push(
                     tt::Leaf::Literal(tt::Literal {
                         text: c.to_string().into(),
-                        // FIXME
-                        #[allow(deprecated)]
-                        span: S::DUMMY,
+                        span: ctx.call_site,
                     })
                     .into(),
                 );
@@ -322,7 +315,7 @@ fn expand_subtree<S: Span>(
     let tts = arena.drain(start_elements..).collect();
     ExpandResult {
         value: tt::Subtree {
-            delimiter: delimiter.unwrap_or_else(tt::Delimiter::dummy_invisible),
+            delimiter: delimiter.unwrap_or_else(|| tt::Delimiter::invisible_spanned(ctx.call_site)),
             token_trees: tts,
         },
         err,
@@ -355,7 +348,7 @@ fn expand_var<S: Span>(
             // ```
             // We just treat it a normal tokens
             let tt = tt::Subtree {
-                delimiter: tt::Delimiter::DUMMY_INVISIBLE,
+                delimiter: tt::Delimiter::invisible_spanned(id),
                 token_trees: vec![
                     tt::Leaf::from(tt::Punct { char: '$', spacing: tt::Spacing::Alone, span: id })
                         .into(),
@@ -367,12 +360,8 @@ fn expand_var<S: Span>(
         }
         Err(e) => ExpandResult {
             value: Fragment::Tokens(tt::TokenTree::Subtree(tt::Subtree::empty(tt::DelimSpan {
-                // FIXME
-                #[allow(deprecated)]
-                open: S::DUMMY,
-                // FIXME
-                #[allow(deprecated)]
-                close: S::DUMMY,
+                open: ctx.call_site,
+                close: ctx.call_site,
             }))),
             err: Some(e),
         },
@@ -416,7 +405,7 @@ fn expand_repeat<S: Span>(
             return ExpandResult {
                 value: Fragment::Tokens(
                     tt::Subtree {
-                        delimiter: tt::Delimiter::dummy_invisible(),
+                        delimiter: tt::Delimiter::invisible_spanned(ctx.call_site),
                         token_trees: vec![],
                     }
                     .into(),
@@ -430,7 +419,7 @@ fn expand_repeat<S: Span>(
             continue;
         }
 
-        t.delimiter = tt::Delimiter::DUMMY_INVISIBLE;
+        t.delimiter.kind = tt::DelimiterKind::Invisible;
         push_subtree(&mut buf, t);
 
         if let Some(sep) = separator {
@@ -464,7 +453,11 @@ fn expand_repeat<S: Span>(
 
     // Check if it is a single token subtree without any delimiter
     // e.g {Delimiter:None> ['>'] /Delimiter:None>}
-    let tt = tt::Subtree { delimiter: tt::Delimiter::DUMMY_INVISIBLE, token_trees: buf }.into();
+    let tt = tt::Subtree {
+        delimiter: tt::Delimiter::invisible_spanned(ctx.call_site),
+        token_trees: buf,
+    }
+    .into();
 
     if RepeatKind::OneOrMore == kind && counter == 0 {
         return ExpandResult {
@@ -475,14 +468,19 @@ fn expand_repeat<S: Span>(
     ExpandResult { value: Fragment::Tokens(tt), err }
 }
 
-fn push_fragment<S: Span>(buf: &mut Vec<tt::TokenTree<S>>, fragment: Fragment<S>) {
+fn push_fragment<S: Span>(
+    ctx: &ExpandCtx<'_, S>,
+    buf: &mut Vec<tt::TokenTree<S>>,
+    fragment: Fragment<S>,
+) {
     match fragment {
         Fragment::Tokens(tt::TokenTree::Subtree(tt)) => push_subtree(buf, tt),
         Fragment::Expr(sub) => {
             push_subtree(buf, sub);
         }
-        Fragment::Path(tt) => fix_up_and_push_path_tt(buf, tt),
+        Fragment::Path(tt) => fix_up_and_push_path_tt(ctx, buf, tt),
         Fragment::Tokens(tt) => buf.push(tt),
+        Fragment::Empty => (),
     }
 }
 
@@ -496,7 +494,11 @@ fn push_subtree<S>(buf: &mut Vec<tt::TokenTree<S>>, tt: tt::Subtree<S>) {
 /// Inserts the path separator `::` between an identifier and its following generic
 /// argument list, and then pushes into the buffer. See [`Fragment::Path`] for why
 /// we need this fixup.
-fn fix_up_and_push_path_tt<S: Span>(buf: &mut Vec<tt::TokenTree<S>>, subtree: tt::Subtree<S>) {
+fn fix_up_and_push_path_tt<S: Span>(
+    ctx: &ExpandCtx<'_, S>,
+    buf: &mut Vec<tt::TokenTree<S>>,
+    subtree: tt::Subtree<S>,
+) {
     stdx::always!(matches!(subtree.delimiter.kind, tt::DelimiterKind::Invisible));
     let mut prev_was_ident = false;
     // Note that we only need to fix up the top-level `TokenTree`s because the
@@ -513,9 +515,7 @@ fn fix_up_and_push_path_tt<S: Span>(buf: &mut Vec<tt::TokenTree<S>>, subtree: tt
                     tt::Leaf::Punct(tt::Punct {
                         char: ':',
                         spacing: tt::Spacing::Joint,
-                        // FIXME
-                        #[allow(deprecated)]
-                        span: S::DUMMY,
+                        span: ctx.call_site,
                     })
                     .into(),
                 );
@@ -523,9 +523,7 @@ fn fix_up_and_push_path_tt<S: Span>(buf: &mut Vec<tt::TokenTree<S>>, subtree: tt
                     tt::Leaf::Punct(tt::Punct {
                         char: ':',
                         spacing: tt::Spacing::Alone,
-                        // FIXME
-                        #[allow(deprecated)]
-                        span: S::DUMMY,
+                        span: ctx.call_site,
                     })
                     .into(),
                 );

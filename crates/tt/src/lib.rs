@@ -11,34 +11,10 @@ use stdx::impl_from;
 pub use smol_str::SmolStr;
 pub use text_size::{TextRange, TextSize};
 
-pub trait Span: std::fmt::Debug + Copy + Sized + Eq {
-    // FIXME: Should not exist. Dummy spans will always be wrong if they leak somewhere. Instead,
-    // the call site or def site spans should be used in relevant places, its just that we don't
-    // expose those everywhere in the yet.
-    #[deprecated = "dummy spans will panic if surfaced incorrectly, as such they should be replaced appropriately"]
-    const DUMMY: Self;
-}
+pub trait Span: std::fmt::Debug + Copy + Sized + Eq {}
 
-pub trait SyntaxContext: std::fmt::Debug + Copy + Sized + Eq {
-    #[deprecated = "dummy spans will panic if surfaced incorrectly, as such they should be replaced appropriately"]
-    const DUMMY: Self;
-}
-
-impl<Ctx: SyntaxContext> Span for span::SpanData<Ctx> {
-    #[allow(deprecated)]
-    const DUMMY: Self = span::SpanData {
-        range: TextRange::empty(TextSize::new(0)),
-        anchor: span::SpanAnchor {
-            file_id: span::FileId::BOGUS,
-            ast_id: span::ROOT_ERASED_FILE_AST_ID,
-        },
-        ctx: Ctx::DUMMY,
-    };
-}
-
-impl SyntaxContext for span::SyntaxContextId {
-    const DUMMY: Self = Self::ROOT;
-}
+impl<Ctx> Span for span::SpanData<Ctx> where span::SpanData<Ctx>: std::fmt::Debug + Copy + Sized + Eq
+{}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TokenTree<S> {
@@ -54,21 +30,20 @@ impl<S: Span> TokenTree<S> {
         })
     }
 
-    pub fn subtree_or_wrap(self) -> Subtree<S> {
-        match self {
-            TokenTree::Leaf(_) => {
-                Subtree { delimiter: Delimiter::DUMMY_INVISIBLE, token_trees: vec![self] }
-            }
-            TokenTree::Subtree(s) => s,
-        }
-    }
-    pub fn subtree_or_wrap2(self, span: DelimSpan<S>) -> Subtree<S> {
+    pub fn subtree_or_wrap(self, span: DelimSpan<S>) -> Subtree<S> {
         match self {
             TokenTree::Leaf(_) => Subtree {
                 delimiter: Delimiter::invisible_delim_spanned(span),
                 token_trees: vec![self],
             },
             TokenTree::Subtree(s) => s,
+        }
+    }
+
+    pub fn first_span(&self) -> S {
+        match self {
+            TokenTree::Leaf(l) => *l.span(),
+            TokenTree::Subtree(s) => s.delimiter.open,
         }
     }
 }
@@ -122,12 +97,6 @@ pub struct DelimSpan<S> {
     pub close: S,
 }
 
-impl<S: Span> DelimSpan<S> {
-    // FIXME should not exist
-    #[allow(deprecated)]
-    pub const DUMMY: Self = Self { open: S::DUMMY, close: S::DUMMY };
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Delimiter<S> {
     pub open: S,
@@ -136,16 +105,6 @@ pub struct Delimiter<S> {
 }
 
 impl<S: Span> Delimiter<S> {
-    // FIXME should not exist
-    #[allow(deprecated)]
-    pub const DUMMY_INVISIBLE: Self =
-        Self { open: S::DUMMY, close: S::DUMMY, kind: DelimiterKind::Invisible };
-
-    // FIXME should not exist
-    pub const fn dummy_invisible() -> Self {
-        Self::DUMMY_INVISIBLE
-    }
-
     pub const fn invisible_spanned(span: S) -> Self {
         Delimiter { open: span, close: span, kind: DelimiterKind::Invisible }
     }

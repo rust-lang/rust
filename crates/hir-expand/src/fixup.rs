@@ -4,7 +4,7 @@
 use la_arena::RawIdx;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
-use span::{ErasedFileAstId, FileId, SpanAnchor, SpanData};
+use span::{ErasedFileAstId, FileId, Span, SpanAnchor, SpanData};
 use stdx::never;
 use syntax::{
     ast::{self, AstNode, HasLoopBody},
@@ -48,7 +48,11 @@ const FIXUP_DUMMY_AST_ID: ErasedFileAstId = ErasedFileAstId::from_raw(RawIdx::fr
 const FIXUP_DUMMY_RANGE: TextRange = TextRange::empty(TextSize::new(0));
 const FIXUP_DUMMY_RANGE_END: TextSize = TextSize::new(!0);
 
-pub(crate) fn fixup_syntax(span_map: SpanMapRef<'_>, node: &SyntaxNode) -> SyntaxFixups {
+pub(crate) fn fixup_syntax(
+    span_map: SpanMapRef<'_>,
+    node: &SyntaxNode,
+    call_site: Span,
+) -> SyntaxFixups {
     let mut append = FxHashMap::<SyntaxElement, _>::default();
     let mut remove = FxHashSet::<SyntaxNode>::default();
     let mut preorder = node.preorder();
@@ -69,7 +73,7 @@ pub(crate) fn fixup_syntax(span_map: SpanMapRef<'_>, node: &SyntaxNode) -> Synta
         if can_handle_error(&node) && has_error_to_handle(&node) {
             remove.insert(node.clone().into());
             // the node contains an error node, we have to completely replace it by something valid
-            let original_tree = mbe::syntax_node_to_token_tree(&node, span_map);
+            let original_tree = mbe::syntax_node_to_token_tree(&node, span_map, call_site);
             let idx = original.len() as u32;
             original.push(original_tree);
             let replacement = Leaf::Ident(Ident {
@@ -358,6 +362,7 @@ fn reverse_fixups_(tt: &mut Subtree, undo_info: &[Subtree]) {
 mod tests {
     use base_db::FileId;
     use expect_test::{expect, Expect};
+    use syntax::TextRange;
     use triomphe::Arc;
 
     use crate::{
@@ -395,12 +400,17 @@ mod tests {
     fn check(ra_fixture: &str, mut expect: Expect) {
         let parsed = syntax::SourceFile::parse(ra_fixture);
         let span_map = SpanMap::RealSpanMap(Arc::new(RealSpanMap::absolute(FileId::from_raw(0))));
-        let fixups = super::fixup_syntax(span_map.as_ref(), &parsed.syntax_node());
+        let fixups = super::fixup_syntax(
+            span_map.as_ref(),
+            &parsed.syntax_node(),
+            span_map.span_for_range(TextRange::empty(0.into())),
+        );
         let mut tt = mbe::syntax_node_to_token_tree_modified(
             &parsed.syntax_node(),
             span_map.as_ref(),
             fixups.append,
             fixups.remove,
+            span_map.span_for_range(TextRange::empty(0.into())),
         );
 
         let actual = format!("{tt}\n");
@@ -420,8 +430,11 @@ mod tests {
 
         // the fixed-up + reversed version should be equivalent to the original input
         // modulo token IDs and `Punct`s' spacing.
-        let original_as_tt =
-            mbe::syntax_node_to_token_tree(&parsed.syntax_node(), span_map.as_ref());
+        let original_as_tt = mbe::syntax_node_to_token_tree(
+            &parsed.syntax_node(),
+            span_map.as_ref(),
+            span_map.span_for_range(TextRange::empty(0.into())),
+        );
         assert!(
             check_subtree_eq(&tt, &original_as_tt),
             "different token tree:\n{tt:?}\n\n{original_as_tt:?}"

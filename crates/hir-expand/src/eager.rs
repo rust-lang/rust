@@ -19,7 +19,7 @@
 //!
 //! See the full discussion : <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Eager.20expansion.20of.20built-in.20macros>
 use base_db::CrateId;
-use span::SyntaxContextId;
+use span::Span;
 use syntax::{ted, Parse, SyntaxElement, SyntaxNode, TextSize, WalkEvent};
 use triomphe::Arc;
 
@@ -37,7 +37,7 @@ pub fn expand_eager_macro_input(
     krate: CrateId,
     macro_call: InFile<ast::MacroCall>,
     def: MacroDefId,
-    call_site: SyntaxContextId,
+    call_site: Span,
     resolver: &dyn Fn(ModPath) -> Option<MacroDefId>,
 ) -> ExpandResult<Option<MacroCallId>> {
     let ast_map = db.ast_id_map(macro_call.file_id);
@@ -82,9 +82,9 @@ pub fn expand_eager_macro_input(
         return ExpandResult { value: None, err };
     };
 
-    let mut subtree = mbe::syntax_node_to_token_tree(&expanded_eager_input, arg_map);
+    let mut subtree = mbe::syntax_node_to_token_tree(&expanded_eager_input, arg_map, call_site);
 
-    subtree.delimiter = crate::tt::Delimiter::DUMMY_INVISIBLE;
+    subtree.delimiter.kind = crate::tt::DelimiterKind::Invisible;
 
     let loc = MacroCallLoc {
         def,
@@ -102,7 +102,7 @@ fn lazy_expand(
     def: &MacroDefId,
     macro_call: InFile<ast::MacroCall>,
     krate: CrateId,
-    call_site: SyntaxContextId,
+    call_site: Span,
 ) -> ExpandResult<(InFile<Parse<SyntaxNode>>, Arc<ExpansionSpanMap>)> {
     let ast_id = db.ast_id_map(macro_call.file_id).ast_id(&macro_call.value);
 
@@ -122,7 +122,7 @@ fn eager_macro_recur(
     mut offset: TextSize,
     curr: InFile<SyntaxNode>,
     krate: CrateId,
-    call_site: SyntaxContextId,
+    call_site: Span,
     macro_resolver: &dyn Fn(ModPath) -> Option<MacroDefId>,
 ) -> ExpandResult<Option<(SyntaxNode, TextSize)>> {
     let original = curr.value.clone_for_update();

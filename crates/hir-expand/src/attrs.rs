@@ -7,7 +7,7 @@ use either::Either;
 use intern::Interned;
 use mbe::{syntax_node_to_token_tree, DelimiterKind, Punct};
 use smallvec::{smallvec, SmallVec};
-use span::SyntaxContextId;
+use span::Span;
 use syntax::{ast, match_ast, AstNode, AstToken, SmolStr, SyntaxNode};
 use triomphe::Arc;
 
@@ -53,7 +53,7 @@ impl RawAttrs {
                 id,
                 input: Some(Interned::new(AttrInput::Literal(SmolStr::new(doc)))),
                 path: Interned::new(ModPath::from(crate::name!(doc))),
-                ctxt: span_map.span_for_range(comment.syntax().text_range()).ctx,
+                span: span_map.span_for_range(comment.syntax().text_range()),
             }),
         });
         let entries: Arc<[Attr]> = Arc::from_iter(entries);
@@ -120,7 +120,7 @@ impl RawAttrs {
             let attrs =
                 parts.enumerate().take(1 << AttrId::CFG_ATTR_BITS).filter_map(|(idx, attr)| {
                     let tree = Subtree {
-                        delimiter: tt::Delimiter::dummy_invisible(),
+                        delimiter: tt::Delimiter::invisible_spanned(attr.first()?.first_span()),
                         token_trees: attr.to_vec(),
                     };
                     Attr::from_tt(db, &tree, index.with_cfg_attr(idx))
@@ -177,7 +177,7 @@ pub struct Attr {
     pub id: AttrId,
     pub path: Interned<ModPath>,
     pub input: Option<Interned<AttrInput>>,
-    pub ctxt: SyntaxContextId,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -206,6 +206,7 @@ impl Attr {
         id: AttrId,
     ) -> Option<Attr> {
         let path = Interned::new(ModPath::from_src(db, ast.path()?, span_map)?);
+        let span = span_map.span_for_range(ast.syntax().text_range());
         let input = if let Some(ast::Expr::Literal(lit)) = ast.expr() {
             let value = match lit.kind() {
                 ast::LiteralKind::String(string) => string.value()?.into(),
@@ -213,12 +214,12 @@ impl Attr {
             };
             Some(Interned::new(AttrInput::Literal(value)))
         } else if let Some(tt) = ast.token_tree() {
-            let tree = syntax_node_to_token_tree(tt.syntax(), span_map);
+            let tree = syntax_node_to_token_tree(tt.syntax(), span_map, span);
             Some(Interned::new(AttrInput::TokenTree(Box::new(tree))))
         } else {
             None
         };
-        Some(Attr { id, path, input, ctxt: span_map.span_for_range(ast.syntax().text_range()).ctx })
+        Some(Attr { id, path, input, span })
     }
 
     fn from_tt(db: &dyn ExpandDatabase, tt: &tt::Subtree, id: AttrId) -> Option<Attr> {
@@ -266,7 +267,7 @@ impl Attr {
     pub fn parse_path_comma_token_tree<'a>(
         &'a self,
         db: &'a dyn ExpandDatabase,
-    ) -> Option<impl Iterator<Item = (ModPath, SyntaxContextId)> + 'a> {
+    ) -> Option<impl Iterator<Item = (ModPath, Span)> + 'a> {
         let args = self.token_tree_value()?;
 
         if args.delimiter.kind != DelimiterKind::Parenthesis {
@@ -282,7 +283,7 @@ impl Attr {
                 // FIXME: This is necessarily a hack. It'd be nice if we could avoid allocation
                 // here or maybe just parse a mod path from a token tree directly
                 let subtree = tt::Subtree {
-                    delimiter: tt::Delimiter::dummy_invisible(),
+                    delimiter: tt::Delimiter::invisible_spanned(tts.first()?.first_span()),
                     token_trees: tts.to_vec(),
                 };
                 let (parse, span_map) =
@@ -294,7 +295,7 @@ impl Attr {
                     return None;
                 }
                 let path = meta.path()?;
-                let call_site = span_map.span_at(path.syntax().text_range().start()).ctx;
+                let call_site = span_map.span_at(path.syntax().text_range().start());
                 Some((
                     ModPath::from_src(db, path, SpanMapRef::ExpansionSpanMap(&span_map))?,
                     call_site,

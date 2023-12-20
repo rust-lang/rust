@@ -80,7 +80,7 @@ use hir_expand::{
 use item_tree::ExternBlock;
 use la_arena::Idx;
 use nameres::DefMap;
-use span::SyntaxContextId;
+use span::Span;
 use stdx::impl_from;
 use syntax::{ast, AstNode};
 
@@ -1172,7 +1172,7 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
             return Ok(ExpandResult::only_err(ExpandError::other("malformed macro invocation")));
         };
 
-        let call_site = span_map.span_for_range(self.value.syntax().text_range()).ctx;
+        let call_site = span_map.span_for_range(self.value.syntax().text_range());
 
         macro_call_as_call_id_with_eager(
             db,
@@ -1202,7 +1202,7 @@ impl<T: AstIdNode> AstIdWithPath<T> {
 fn macro_call_as_call_id(
     db: &dyn ExpandDatabase,
     call: &AstIdWithPath<ast::MacroCall>,
-    call_site: SyntaxContextId,
+    call_site: Span,
     expand_to: ExpandTo,
     krate: CrateId,
     resolver: impl Fn(path::ModPath) -> Option<MacroDefId> + Copy,
@@ -1214,7 +1214,7 @@ fn macro_call_as_call_id(
 fn macro_call_as_call_id_with_eager(
     db: &dyn ExpandDatabase,
     call: &AstIdWithPath<ast::MacroCall>,
-    call_site: SyntaxContextId,
+    call_site: Span,
     expand_to: ExpandTo,
     krate: CrateId,
     resolver: impl FnOnce(path::ModPath) -> Option<MacroDefId>,
@@ -1320,7 +1320,7 @@ fn derive_macro_as_call_id(
     item_attr: &AstIdWithPath<ast::Adt>,
     derive_attr_index: AttrId,
     derive_pos: u32,
-    call_site: SyntaxContextId,
+    call_site: Span,
     krate: CrateId,
     resolver: impl Fn(path::ModPath) -> Option<(MacroId, MacroDefId)>,
 ) -> Result<(MacroId, MacroDefId, MacroCallId), UnresolvedMacro> {
@@ -1350,7 +1350,7 @@ fn attr_macro_as_call_id(
     let arg = match macro_attr.input.as_deref() {
         Some(AttrInput::TokenTree(tt)) => {
             let mut tt = tt.as_ref().clone();
-            tt.delimiter = tt::Delimiter::DUMMY_INVISIBLE;
+            tt.delimiter = tt::Delimiter::invisible_spanned(macro_attr.span);
             Some(tt)
         }
 
@@ -1365,7 +1365,7 @@ fn attr_macro_as_call_id(
             attr_args: arg.map(Arc::new),
             invoc_attr_index: macro_attr.id,
         },
-        macro_attr.ctxt,
+        macro_attr.span,
     )
 }
 
