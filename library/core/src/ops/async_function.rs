@@ -70,10 +70,10 @@ mod impls {
     where
         <F as FnOnce<A>>::Output: Future,
     {
-        type CallFuture<'a> = impl Future<Output = Self::Output> where Self: 'a;
+        type CallFuture<'a> = <F as FnOnce<A>>::Output where Self: 'a;
 
         extern "rust-call" fn async_call(&self, args: A) -> Self::CallFuture<'_> {
-            async { self.call(args).await }
+            self.call(args)
         }
     }
 
@@ -82,10 +82,10 @@ mod impls {
     where
         <F as FnOnce<A>>::Output: Future,
     {
-        type CallMutFuture<'a> = impl Future<Output = Self::Output> where Self: 'a;
+        type CallMutFuture<'a> = <F as FnOnce<A>>::Output where Self: 'a;
 
         extern "rust-call" fn async_call_mut(&mut self, args: A) -> Self::CallMutFuture<'_> {
-            async { self.call_mut(args).await }
+            self.call_mut(args)
         }
     }
 
@@ -94,12 +94,12 @@ mod impls {
     where
         <F as FnOnce<A>>::Output: Future,
     {
-        type CallOnceFuture = impl Future<Output = Self::Output>;
+        type CallOnceFuture = <F as FnOnce<A>>::Output;
 
         type Output = <<F as FnOnce<A>>::Output as Future>::Output;
 
         extern "rust-call" fn async_call_once(self, args: A) -> Self::CallOnceFuture {
-            async { self.call_once(args).await }
+            self.call_once(args)
         }
     }
 }
