@@ -98,6 +98,8 @@ pub(crate) struct ImportSuggestion {
     pub descr: &'static str,
     pub path: Path,
     pub accessible: bool,
+    // false if the path traverses a foreign `#[doc(hidden)]` item.
+    pub doc_visible: bool,
     pub via_import: bool,
     /// An extra note that should be issued if this item is suggested
     pub note: Option<String>,
@@ -1153,10 +1155,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     {
         let mut candidates = Vec::new();
         let mut seen_modules = FxHashSet::default();
-        let mut worklist = vec![(start_module, ThinVec::<ast::PathSegment>::new(), true)];
+        let start_did = start_module.def_id();
+        let mut worklist = vec![(
+            start_module,
+            ThinVec::<ast::PathSegment>::new(),
+            true,
+            start_did.is_local() || !self.tcx.is_doc_hidden(start_did),
+        )];
         let mut worklist_via_import = vec![];
 
-        while let Some((in_module, path_segments, accessible)) = match worklist.pop() {
+        while let Some((in_module, path_segments, accessible, doc_visible)) = match worklist.pop() {
             None => worklist_via_import.pop(),
             Some(x) => Some(x),
         } {
@@ -1199,6 +1207,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 }
 
+                let res = name_binding.res();
+                let did = match res {
+                    Res::Def(DefKind::Ctor(..), did) => this.tcx.opt_parent(did),
+                    _ => res.opt_def_id(),
+                };
+                let child_doc_visible = doc_visible
+                    && (did.map_or(true, |did| did.is_local() || !this.tcx.is_doc_hidden(did)));
+
                 // collect results based on the filter function
                 // avoid suggesting anything from the same module in which we are resolving
                 // avoid suggesting anything with a hygienic name
@@ -1207,7 +1223,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     && in_module != parent_scope.module
                     && !ident.span.normalize_to_macros_2_0().from_expansion()
                 {
-                    let res = name_binding.res();
                     if filter_fn(res) {
                         // create the path
                         let mut segms = if lookup_ident.span.at_least_rust_2018() {
@@ -1221,10 +1236,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                         segms.push(ast::PathSegment::from_ident(ident));
                         let path = Path { span: name_binding.span, segments: segms, tokens: None };
-                        let did = match res {
-                            Res::Def(DefKind::Ctor(..), did) => this.tcx.opt_parent(did),
-                            _ => res.opt_def_id(),
-                        };
 
                         if child_accessible {
                             // Remove invisible match if exists
@@ -1264,6 +1275,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 descr: res.descr(),
                                 path,
                                 accessible: child_accessible,
+                                doc_visible: child_doc_visible,
                                 note,
                                 via_import,
                             });
@@ -1284,7 +1296,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         // add the module to the lookup
                         if seen_modules.insert(module.def_id()) {
                             if via_import { &mut worklist_via_import } else { &mut worklist }
-                                .push((module, path_segments, child_accessible));
+                                .push((module, path_segments, child_accessible, child_doc_visible));
                         }
                     }
                 }
@@ -2694,8 +2706,26 @@ fn show_candidates(
         Vec::new();
 
     candidates.iter().for_each(|c| {
-        (if c.accessible { &mut accessible_path_strings } else { &mut inaccessible_path_strings })
-            .push((pprust::path_to_string(&c.path), c.descr, c.did, &c.note, c.via_import))
+        if c.accessible {
+            // Don't suggest `#[doc(hidden)]` items from other crates
+            if c.doc_visible {
+                accessible_path_strings.push((
+                    pprust::path_to_string(&c.path),
+                    c.descr,
+                    c.did,
+                    &c.note,
+                    c.via_import,
+                ))
+            }
+        } else {
+            inaccessible_path_strings.push((
+                pprust::path_to_string(&c.path),
+                c.descr,
+                c.did,
+                &c.note,
+                c.via_import,
+            ))
+        }
     });
 
     // we want consistent results across executions, but candidates are produced
@@ -2794,9 +2824,7 @@ fn show_candidates(
             err.help(msg);
         }
         true
-    } else if !matches!(mode, DiagnosticMode::Import) {
-        assert!(!inaccessible_path_strings.is_empty());
-
+    } else if !(inaccessible_path_strings.is_empty() || matches!(mode, DiagnosticMode::Import)) {
         let prefix = if let DiagnosticMode::Pattern = mode {
             "you might have meant to match on "
         } else {
