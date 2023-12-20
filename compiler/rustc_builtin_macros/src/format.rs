@@ -883,7 +883,6 @@ fn report_invalid_references(
             highlight: SingleLabelManySpans {
                 spans: args.explicit_args().iter().map(|arg| arg.expr.span).collect(),
                 label: "",
-                kind: rustc_errors::LabelKind::Label,
             },
         });
         // Point out `{:.*}` placeholders: those take an extra argument.

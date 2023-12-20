@@ -36,8 +36,7 @@ pub use diagnostic_builder::{
 };
 pub use diagnostic_impls::{
     DiagnosticArgFromDisplay, DiagnosticSymbolList, ExpectedLifetimeParameter,
-    IndicateAnonymousLifetime, InvalidFlushedDelayedDiagnosticLevel, LabelKind,
-    SingleLabelManySpans,
+    IndicateAnonymousLifetime, InvalidFlushedDelayedDiagnosticLevel, SingleLabelManySpans,
 };
 pub use emitter::ColorConfig;
 pub use rustc_error_messages::{
