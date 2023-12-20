@@ -1,0 +1,8 @@
+#![warn(clippy::iter_filter_is_ok)]
+
+fn main() {
+    let _ = vec![Ok(1), Err(2), Ok(3)].into_iter().flatten();
+    //~^ HELP: consider using `flatten` instead
+    let _ = vec![Ok(1), Err(2), Ok(3)].into_iter().flatten();
+    //~^ HELP: consider using `flatten` instead
+}

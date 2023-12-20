@@ -22,6 +22,7 @@ fn is_method(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_name: Symbol) ->
         hir::ExprKind::Path(QPath::Resolved(_, segments)) => {
             segments.segments.last().unwrap().ident.name == method_name
         },
+        hir::ExprKind::MethodCall(segment, _, _, _) => segment.ident.name == method_name,
         hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
             let body = cx.tcx.hir().body(body);
             let closure_expr = peel_blocks(body.value);
