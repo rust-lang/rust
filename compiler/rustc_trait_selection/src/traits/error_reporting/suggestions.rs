@@ -19,11 +19,10 @@ use rustc_errors::{
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::Visitor;
+use rustc_hir::intravisit::{Map, Visitor};
 use rustc_hir::is_range_literal;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Node};
-use rustc_hir::{Expr, HirId};
+use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, HirId, Node};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk};
@@ -3200,63 +3199,80 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     err.help("unsized locals are gated as an unstable feature");
                 }
             }
-            ObligationCauseCode::SizedArgumentType(ty_span) => {
-                if let Some(span) = ty_span {
-                    let trait_len = if let ty::PredicateKind::Clause(clause) =
-                        predicate.kind().skip_binder()
-                        && let ty::ClauseKind::Trait(trait_pred) = clause
-                        && let ty::Dynamic(preds, ..) = trait_pred.self_ty().kind()
-                    {
-                        let span = if let Ok(snippet) =
-                            self.tcx.sess.source_map().span_to_snippet(span)
-                            && snippet.starts_with("dyn ")
-                        {
-                            let pos = snippet.len() - snippet[3..].trim_start().len();
-                            span.with_hi(span.lo() + BytePos(pos as u32))
-                        } else {
-                            span.shrink_to_lo()
-                        };
-                        err.span_suggestion_verbose(
-                            span,
-                            "you can use `impl Trait` as the argument type",
-                            "impl ".to_string(),
-                            Applicability::MaybeIncorrect,
-                        );
-                        preds
-                            .iter()
-                            .filter(|pred| {
-                                // We only want to count `dyn Foo + Bar`, not `dyn Foo<Bar>`,
-                                // because the later doesn't need parentheses.
-                                matches!(
-                                    pred.skip_binder(),
-                                    ty::ExistentialPredicate::Trait(_)
-                                        | ty::ExistentialPredicate::AutoTrait(_)
-                                )
-                            })
-                            .count()
-                    } else {
-                        1
-                    };
-                    let sugg = if trait_len == 1 {
-                        vec![(span.shrink_to_lo(), "&".to_string())]
-                    } else if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
-                        && snippet.starts_with('(')
-                    {
-                        // We don't want to suggest `&((dyn Foo + Bar))` when we have
-                        // `(dyn Foo + Bar)`.
-                        vec![(span.shrink_to_lo(), "&".to_string())]
-                    } else {
-                        vec![
-                            (span.shrink_to_lo(), "&(".to_string()),
-                            (span.shrink_to_hi(), ")".to_string()),
-                        ]
-                    };
-                    err.multipart_suggestion_verbose(
-                        "function arguments must have a statically known size, borrowed types \
-                         always have a known size",
-                        sugg,
-                        Applicability::MachineApplicable,
-                    );
+            ObligationCauseCode::SizedArgumentType(hir_id) => {
+                let mut ty = None;
+                let borrowed_msg = "function arguments must have a statically known size, borrowed \
+                                    types always have a known size";
+                if let Some(hir_id) = hir_id
+                    && let Some(hir::Node::Param(param)) = self.tcx.hir().find(hir_id)
+                    && let Some(item) = self.tcx.hir().find_parent(hir_id)
+                    && let Some(decl) = item.fn_decl()
+                    && let Some(t) = decl.inputs.iter().find(|t| param.ty_span.contains(t.span))
+                {
+                    // We use `contains` because the type might be surrounded by parentheses,
+                    // which makes `ty_span` and `t.span` disagree with each other, but one
+                    // fully contains the other: `foo: (dyn Foo + Bar)`
+                    //                                 ^-------------^
+                    //                                 ||
+                    //                                 |t.span
+                    //                                 param._ty_span
+                    ty = Some(t);
+                } else if let Some(hir_id) = hir_id
+                    && let Some(hir::Node::Ty(t)) = self.tcx.hir().find(hir_id)
+                {
+                    ty = Some(t);
+                }
+                if let Some(ty) = ty {
+                    match ty.kind {
+                        hir::TyKind::TraitObject(traits, _, _) => {
+                            let (span, kw) = match traits {
+                                [first, ..] if first.span.lo() == ty.span.lo() => {
+                                    // Missing `dyn` in front of trait object.
+                                    (ty.span.shrink_to_lo(), "dyn ")
+                                }
+                                [first, ..] => (ty.span.until(first.span), ""),
+                                [] => span_bug!(ty.span, "trait object with no traits: {ty:?}"),
+                            };
+                            let needs_parens = traits.len() != 1;
+                            err.span_suggestion_verbose(
+                                span,
+                                "you can use `impl Trait` as the argument type",
+                                "impl ".to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
+                            let sugg = if !needs_parens {
+                                vec![(span.shrink_to_lo(), format!("&{kw}"))]
+                            } else {
+                                vec![
+                                    (span.shrink_to_lo(), format!("&({kw}")),
+                                    (ty.span.shrink_to_hi(), ")".to_string()),
+                                ]
+                            };
+                            err.multipart_suggestion_verbose(
+                                borrowed_msg,
+                                sugg,
+                                Applicability::MachineApplicable,
+                            );
+                        }
+                        hir::TyKind::Slice(_ty) => {
+                            err.span_suggestion_verbose(
+                                ty.span.shrink_to_lo(),
+                                "function arguments must have a statically known size, borrowed \
+                                 slices always have a known size",
+                                "&",
+                                Applicability::MachineApplicable,
+                            );
+                        }
+                        hir::TyKind::Path(_) => {
+                            err.span_suggestion_verbose(
+                                ty.span.shrink_to_lo(),
+                                borrowed_msg,
+                                "&",
+                                Applicability::MachineApplicable,
+                            );
+                        }
+                        _ => {}
+                    }
                 } else {
                     err.note("all function arguments must have a statically known size");
                 }
