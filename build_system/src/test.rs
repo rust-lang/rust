@@ -524,23 +524,25 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<(), String> {
             Ok(cargo)
         }
     })?;
-    let llvm_filecheck = String::from_utf8(
-        run_command_with_env(
-            &[
-                &"bash",
-                &"-c",
-                &"which FileCheck-10 || \
+    let llvm_filecheck = match run_command_with_env(
+        &[
+            &"bash",
+            &"-c",
+            &"which FileCheck-10 || \
           which FileCheck-11 || \
           which FileCheck-12 || \
           which FileCheck-13 || \
           which FileCheck-14",
-            ],
-            rust_dir,
-            Some(env),
-        )?
-        .stdout,
-    )
-    .map_err(|error| format!("Failed to retrieve LLVM FileCheck: {:?}", error))?;
+        ],
+        rust_dir,
+        Some(env),
+    ) {
+        Ok(cmd) => String::from_utf8_lossy(&cmd.stdout).to_string(),
+        Err(_) => {
+            eprintln!("Failed to retrieve LLVM FileCheck, ignoring...");
+            String::new()
+        }
+    };
     std::fs::write(
         "rust/config.toml",
         &format!(
