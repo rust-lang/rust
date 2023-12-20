@@ -2786,9 +2786,13 @@ impl AsAssocItem for DefWithBody {
     }
 }
 
-fn as_assoc_item<ID, DEF, CTOR, AST>(db: &dyn HirDatabase, ctor: CTOR, id: ID) -> Option<AssocItem>
+fn as_assoc_item<'db, ID, DEF, CTOR, AST>(
+    db: &(dyn HirDatabase + 'db),
+    ctor: CTOR,
+    id: ID,
+) -> Option<AssocItem>
 where
-    ID: Lookup<Data = AssocItemLoc<AST>>,
+    ID: Lookup<Database<'db> = dyn DefDatabase + 'db, Data = AssocItemLoc<AST>>,
     DEF: From<ID>,
     CTOR: FnOnce(DEF) -> AssocItem,
     AST: ItemTreeNode,
@@ -3522,7 +3526,7 @@ impl Impl {
         let src = self.source(db)?;
 
         let macro_file = src.file_id.macro_file()?;
-        let loc = db.lookup_intern_macro_call(macro_file.macro_call_id);
+        let loc = macro_file.macro_call_id.lookup(db.upcast());
         let (derive_attr, derive_index) = match loc.kind {
             MacroCallKind::Derive { ast_id, derive_attr_index, derive_index } => {
                 let module_id = self.id.lookup(db.upcast()).container;
