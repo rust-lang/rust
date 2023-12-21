@@ -2176,7 +2176,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Dynamic(..)
             | ty::Str
             | ty::Slice(..)
-            | ty::Coroutine(_, _, hir::Movability::Static)
             | ty::Foreign(..)
             | ty::Ref(_, _, hir::Mutability::Mut) => None,
 
@@ -2185,26 +2184,31 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 Where(obligation.predicate.rebind(tys.iter().collect()))
             }
 
-            ty::Coroutine(_, args, hir::Movability::Movable) => {
-                if self.tcx().features().coroutine_clone {
-                    let resolved_upvars =
-                        self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
-                    let resolved_witness =
-                        self.infcx.shallow_resolve(args.as_coroutine().witness());
-                    if resolved_upvars.is_ty_var() || resolved_witness.is_ty_var() {
-                        // Not yet resolved.
-                        Ambiguous
-                    } else {
-                        let all = args
-                            .as_coroutine()
-                            .upvar_tys()
-                            .iter()
-                            .chain([args.as_coroutine().witness()])
-                            .collect::<Vec<_>>();
-                        Where(obligation.predicate.rebind(all))
+            ty::Coroutine(coroutine_def_id, args) => {
+                match self.tcx().movability(coroutine_def_id) {
+                    hir::Movability::Static => None,
+                    hir::Movability::Movable => {
+                        if self.tcx().features().coroutine_clone {
+                            let resolved_upvars =
+                                self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
+                            let resolved_witness =
+                                self.infcx.shallow_resolve(args.as_coroutine().witness());
+                            if resolved_upvars.is_ty_var() || resolved_witness.is_ty_var() {
+                                // Not yet resolved.
+                                Ambiguous
+                            } else {
+                                let all = args
+                                    .as_coroutine()
+                                    .upvar_tys()
+                                    .iter()
+                                    .chain([args.as_coroutine().witness()])
+                                    .collect::<Vec<_>>();
+                                Where(obligation.predicate.rebind(all))
+                            }
+                        } else {
+                            None
+                        }
                     }
-                } else {
-                    None
                 }
             }
 
@@ -2307,7 +2311,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 t.rebind(vec![ty])
             }
 
-            ty::Coroutine(_, args, _) => {
+            ty::Coroutine(_, args) => {
                 let ty = self.infcx.shallow_resolve(args.as_coroutine().tupled_upvars_ty());
                 let witness = args.as_coroutine().witness();
                 t.rebind([ty].into_iter().chain(iter::once(witness)).collect())

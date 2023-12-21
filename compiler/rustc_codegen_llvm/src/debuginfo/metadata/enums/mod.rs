@@ -336,7 +336,7 @@ pub fn build_coroutine_variant_struct_type_di_node<'ll, 'tcx>(
     let variant_layout = coroutine_type_and_layout.for_variant(cx, variant_index);
 
     let coroutine_args = match coroutine_type_and_layout.ty.kind() {
-        ty::Coroutine(_, args, _) => args.as_coroutine(),
+        ty::Coroutine(_, args) => args.as_coroutine(),
         _ => unreachable!(),
     };
 

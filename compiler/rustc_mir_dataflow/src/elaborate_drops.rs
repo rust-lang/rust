@@ -862,7 +862,7 @@ where
             // This should only happen for the self argument on the resume function.
             // It effectively only contains upvars until the coroutine transformation runs.
             // See librustc_body/transform/coroutine.rs for more details.
-            ty::Coroutine(_, args, _) => self.open_drop_for_tuple(args.as_coroutine().upvar_tys()),
+            ty::Coroutine(_, args) => self.open_drop_for_tuple(args.as_coroutine().upvar_tys()),
             ty::Tuple(fields) => self.open_drop_for_tuple(fields),
             ty::Adt(def, args) => self.open_drop_for_adt(*def, args),
             ty::Dynamic(..) => self.complete_drop(self.succ, self.unwind),

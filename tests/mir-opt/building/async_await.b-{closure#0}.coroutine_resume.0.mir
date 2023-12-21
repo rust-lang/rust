@@ -11,7 +11,6 @@
                 CoroutineWitness(DefId(0:4 ~ async_await[ccf8]::a::{closure#0}), []),
                 (),
                 ],
-                Static,
             ),
             source_info: SourceInfo {
                 span: $DIR/async_await.rs:16:5: 16:14 (#9),
@@ -29,7 +28,6 @@
                 CoroutineWitness(DefId(0:4 ~ async_await[ccf8]::a::{closure#0}), []),
                 (),
                 ],
-                Static,
             ),
             source_info: SourceInfo {
                 span: $DIR/async_await.rs:17:5: 17:14 (#11),

@@ -850,7 +850,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 assert!(!fields.is_empty());
                 (AggregateTy::Tuple, FIRST_VARIANT)
             }
-            AggregateKind::Closure(did, substs) | AggregateKind::Coroutine(did, substs, _) => {
+            AggregateKind::Closure(did, substs) | AggregateKind::Coroutine(did, substs) => {
                 (AggregateTy::Def(did, substs), FIRST_VARIANT)
             }
             AggregateKind::Adt(did, variant_index, substs, _, None) => {

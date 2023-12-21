@@ -2083,7 +2083,7 @@ fn confirm_coroutine_candidate<'cx, 'tcx>(
     nested: Vec<PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
     let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
-    let ty::Coroutine(_, args, _) = self_ty.kind() else {
+    let ty::Coroutine(_, args) = self_ty.kind() else {
         unreachable!(
             "expected coroutine self type for built-in coroutine candidate, found {self_ty}"
         )
@@ -2138,7 +2138,7 @@ fn confirm_future_candidate<'cx, 'tcx>(
     nested: Vec<PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
     let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
-    let ty::Coroutine(_, args, _) = self_ty.kind() else {
+    let ty::Coroutine(_, args) = self_ty.kind() else {
         unreachable!(
             "expected coroutine self type for built-in async future candidate, found {self_ty}"
         )
@@ -2182,7 +2182,7 @@ fn confirm_iterator_candidate<'cx, 'tcx>(
     nested: Vec<PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
     let self_ty = selcx.infcx.shallow_resolve(obligation.predicate.self_ty());
-    let ty::Coroutine(_, args, _) = self_ty.kind() else {
+    let ty::Coroutine(_, args) = self_ty.kind() else {
         unreachable!("expected coroutine self type for built-in gen candidate, found {self_ty}")
     };
     let gen_sig = args.as_coroutine().sig();
@@ -2223,8 +2223,7 @@ fn confirm_async_iterator_candidate<'cx, 'tcx>(
     obligation: &ProjectionTyObligation<'tcx>,
     nested: Vec<PredicateObligation<'tcx>>,
 ) -> Progress<'tcx> {
-    let ty::Coroutine(_, args, _) =
-        selcx.infcx.shallow_resolve(obligation.predicate.self_ty()).kind()
+    let ty::Coroutine(_, args) = selcx.infcx.shallow_resolve(obligation.predicate.self_ty()).kind()
     else {
         unreachable!()
     };

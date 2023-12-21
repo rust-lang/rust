@@ -783,14 +783,14 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 }
             }
             ty::Str => p!("str"),
-            ty::Coroutine(did, args, movability) => {
+            ty::Coroutine(did, args) => {
                 p!(write("{{"));
                 let coroutine_kind = self.tcx().coroutine_kind(did).unwrap();
                 let should_print_movability = self.should_print_verbose()
                     || matches!(coroutine_kind, hir::CoroutineKind::Coroutine(_));
 
                 if should_print_movability {
-                    match movability {
+                    match self.tcx().movability(did) {
                         hir::Movability::Movable => {}
                         hir::Movability::Static => p!("static "),
                     }
@@ -1055,7 +1055,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             && assoc.trait_container(tcx) == tcx.lang_items().coroutine_trait()
                             && assoc.name == rustc_span::sym::Return
                         {
-                            if let ty::Coroutine(_, args, _) = args.type_at(0).kind() {
+                            if let ty::Coroutine(_, args) = args.type_at(0).kind() {
                                 let return_ty = args.as_coroutine().return_ty();
                                 if !return_ty.is_ty_var() {
                                     return_ty.into()

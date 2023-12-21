@@ -259,7 +259,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             })?
         }
 
-        ty::Coroutine(_, args, _movability) => {
+        ty::Coroutine(_, args) => {
             // rust-lang/rust#49918: types can be constructed, stored
             // in the interior, and sit idle when coroutine yields
             // (and is subsequently dropped).

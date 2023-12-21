@@ -455,14 +455,12 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             Ok(Ty::new_dynamic(tcx, relation.relate(a_obj, b_obj)?, region_bound, a_repr))
         }
 
-        (&ty::Coroutine(a_id, a_args, movability), &ty::Coroutine(b_id, b_args, _))
-            if a_id == b_id =>
-        {
+        (&ty::Coroutine(a_id, a_args), &ty::Coroutine(b_id, b_args)) if a_id == b_id => {
             // All Coroutine types with the same id represent
             // the (anonymous) type of the same coroutine expression. So
             // all of their regions should be equated.
             let args = relate_args_invariantly(relation, a_args, b_args)?;
-            Ok(Ty::new_coroutine(tcx, a_id, args, movability))
+            Ok(Ty::new_coroutine(tcx, a_id, args))
         }
 
         (&ty::CoroutineWitness(a_id, a_args), &ty::CoroutineWitness(b_id, b_args))

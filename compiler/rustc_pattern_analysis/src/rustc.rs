@@ -366,7 +366,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
             | ty::FnPtr(_)
             | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)
-            | ty::Coroutine(_, _, _)
+            | ty::Coroutine(_, _)
             | ty::Alias(_, _)
             | ty::Param(_)
             | ty::Error(_) => ConstructorSet::Unlistable,

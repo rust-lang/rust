@@ -906,7 +906,7 @@ where
                     i,
                 ),
 
-                ty::Coroutine(def_id, args, _) => match this.variants {
+                ty::Coroutine(def_id, args) => match this.variants {
                     Variants::Single { index } => TyMaybeWithLayout::Ty(
                         args.as_coroutine()
                             .state_tys(def_id, tcx)

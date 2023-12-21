@@ -531,11 +531,10 @@ impl<'tcx> Stable<'tcx> for mir::AggregateKind<'tcx> {
                     generic_arg.stable(tables),
                 )
             }
-            mir::AggregateKind::Coroutine(def_id, generic_arg, movability) => {
+            mir::AggregateKind::Coroutine(def_id, generic_arg) => {
                 stable_mir::mir::AggregateKind::Coroutine(
                     tables.coroutine_def(*def_id),
                     generic_arg.stable(tables),
-                    movability.stable(tables),
                 )
             }
         }

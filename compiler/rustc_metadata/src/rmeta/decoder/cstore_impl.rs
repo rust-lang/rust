@@ -240,6 +240,7 @@ provide! { tcx, def_id, other, cdata,
     mir_const_qualif => { table }
     rendered_const => { table }
     asyncness => { table_direct }
+    movability => { table_direct }
     fn_arg_names => { table }
     coroutine_kind => { table_direct }
     trait_def => { table }

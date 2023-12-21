@@ -1565,7 +1565,7 @@ pub(crate) fn mir_coroutine_witnesses<'tcx>(
     let coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
 
     let movable = match *coroutine_ty.kind() {
-        ty::Coroutine(_, _, movability) => movability == hir::Movability::Movable,
+        ty::Coroutine(def_id, _) => tcx.movability(def_id) == hir::Movability::Movable,
         ty::Error(_) => return None,
         _ => span_bug!(body.span, "unexpected coroutine type {}", coroutine_ty),
     };
@@ -1600,9 +1600,9 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 
         // Get the discriminant type and args which typeck computed
         let (discr_ty, movable) = match *coroutine_ty.kind() {
-            ty::Coroutine(_, args, movability) => {
+            ty::Coroutine(def_id, args) => {
                 let args = args.as_coroutine();
-                (args.discr_ty(tcx), movability == hir::Movability::Movable)
+                (args.discr_ty(tcx), tcx.movability(def_id) == hir::Movability::Movable)
             }
             _ => {
                 tcx.dcx().span_delayed_bug(

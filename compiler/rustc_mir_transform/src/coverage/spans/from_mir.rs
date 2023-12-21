@@ -91,7 +91,7 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
 fn is_closure(statement: &Statement<'_>) -> bool {
     match statement.kind {
         StatementKind::Assign(box (_, Rvalue::Aggregate(box ref agg_kind, _))) => match agg_kind {
-            AggregateKind::Closure(_, _) | AggregateKind::Coroutine(_, _, _) => true,
+            AggregateKind::Closure(_, _) | AggregateKind::Coroutine(_, _) => true,
             _ => false,
         },
         _ => false,
