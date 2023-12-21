@@ -114,13 +114,13 @@ fn fn_sig_for_fn_abi<'tcx>(
             let pin_adt_ref = tcx.adt_def(pin_did);
             let pin_args = tcx.mk_args(&[env_ty.into()]);
             let env_ty = match coroutine_kind {
-                hir::CoroutineKind::Gen(_) => {
+                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _) => {
                     // Iterator::next doesn't accept a pinned argument,
                     // unlike for all other coroutine kinds.
                     env_ty
                 }
-                hir::CoroutineKind::Async(_)
-                | hir::CoroutineKind::AsyncGen(_)
+                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)
+                | hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)
                 | hir::CoroutineKind::Coroutine => Ty::new_adt(tcx, pin_adt_ref, pin_args),
             };
 
@@ -131,7 +131,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             // or the `Iterator::next(...) -> Option` function in case this is a
             // special coroutine backing a gen construct.
             let (resume_ty, ret_ty) = match coroutine_kind {
-                hir::CoroutineKind::Async(_) => {
+                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _) => {
                     // The signature should be `Future::poll(_, &mut Context<'_>) -> Poll<Output>`
                     assert_eq!(sig.yield_ty, tcx.types.unit);
 
@@ -156,7 +156,7 @@ fn fn_sig_for_fn_abi<'tcx>(
 
                     (Some(context_mut_ref), ret_ty)
                 }
-                hir::CoroutineKind::Gen(_) => {
+                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _) => {
                     // The signature should be `Iterator::next(_) -> Option<Yield>`
                     let option_did = tcx.require_lang_item(LangItem::Option, None);
                     let option_adt_ref = tcx.adt_def(option_did);
@@ -168,7 +168,7 @@ fn fn_sig_for_fn_abi<'tcx>(
 
                     (None, ret_ty)
                 }
-                hir::CoroutineKind::AsyncGen(_) => {
+                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _) => {
                     // The signature should be
                     // `AsyncIterator::poll_next(_, &mut Context<'_>) -> Poll<Option<Output>>`
                     assert_eq!(sig.return_ty, tcx.types.unit);

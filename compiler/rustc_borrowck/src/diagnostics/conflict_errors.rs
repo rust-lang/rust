@@ -1,5 +1,4 @@
 use either::Either;
-use hir::PatField;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
@@ -8,6 +7,7 @@ use rustc_errors::{
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
+use rustc_hir::{CoroutineDesugaring, PatField};
 use rustc_hir::{CoroutineKind, CoroutineSource, LangItem};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter::OnlyBodies;
@@ -2516,27 +2516,29 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         };
         let kind = match use_span.coroutine_kind() {
             Some(coroutine_kind) => match coroutine_kind {
-                CoroutineKind::Gen(kind) => match kind {
+                CoroutineKind::Desugared(CoroutineDesugaring::Gen, kind) => match kind {
                     CoroutineSource::Block => "gen block",
                     CoroutineSource::Closure => "gen closure",
                     CoroutineSource::Fn => {
                         bug!("gen block/closure expected, but gen function found.")
                     }
                 },
-                CoroutineKind::AsyncGen(kind) => match kind {
+                CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, kind) => match kind {
                     CoroutineSource::Block => "async gen block",
                     CoroutineSource::Closure => "async gen closure",
                     CoroutineSource::Fn => {
                         bug!("gen block/closure expected, but gen function found.")
                     }
                 },
-                CoroutineKind::Async(async_kind) => match async_kind {
-                    CoroutineSource::Block => "async block",
-                    CoroutineSource::Closure => "async closure",
-                    CoroutineSource::Fn => {
-                        bug!("async block/closure expected, but async function found.")
+                CoroutineKind::Desugared(CoroutineDesugaring::Async, async_kind) => {
+                    match async_kind {
+                        CoroutineSource::Block => "async block",
+                        CoroutineSource::Closure => "async closure",
+                        CoroutineSource::Fn => {
+                            bug!("async block/closure expected, but async function found.")
+                        }
                     }
-                },
+                }
                 CoroutineKind::Coroutine => "coroutine",
             },
             None => "closure",
@@ -2566,7 +2568,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
             ConstraintCategory::CallArgument(_) => {
                 fr_name.highlight_region_name(&mut err);
-                if matches!(use_span.coroutine_kind(), Some(CoroutineKind::Async(_))) {
+                if matches!(
+                    use_span.coroutine_kind(),
+                    Some(CoroutineKind::Desugared(CoroutineDesugaring::Async, _))
+                ) {
                     err.note(
                         "async blocks are not executed immediately and must either take a \
                          reference or ownership of outside variables they use",

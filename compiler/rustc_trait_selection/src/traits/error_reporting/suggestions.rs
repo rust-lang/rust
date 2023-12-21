@@ -22,7 +22,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::is_range_literal;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::{CoroutineKind, CoroutineSource, Node};
+use rustc_hir::{CoroutineDesugaring, CoroutineKind, CoroutineSource, Node};
 use rustc_hir::{Expr, HirId};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -2578,7 +2578,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 .and_then(|coroutine_did| {
                     Some(match self.tcx.coroutine_kind(coroutine_did).unwrap() {
                         CoroutineKind::Coroutine => format!("coroutine is not {trait_name}"),
-                        CoroutineKind::Async(CoroutineSource::Fn) => self
+                        CoroutineKind::Desugared(
+                            CoroutineDesugaring::Async,
+                            CoroutineSource::Fn,
+                        ) => self
                             .tcx
                             .parent(coroutine_did)
                             .as_local()
@@ -2587,13 +2590,22 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             .map(|name| {
                                 format!("future returned by `{name}` is not {trait_name}")
                             })?,
-                        CoroutineKind::Async(CoroutineSource::Block) => {
+                        CoroutineKind::Desugared(
+                            CoroutineDesugaring::Async,
+                            CoroutineSource::Block,
+                        ) => {
                             format!("future created by async block is not {trait_name}")
                         }
-                        CoroutineKind::Async(CoroutineSource::Closure) => {
+                        CoroutineKind::Desugared(
+                            CoroutineDesugaring::Async,
+                            CoroutineSource::Closure,
+                        ) => {
                             format!("future created by async closure is not {trait_name}")
                         }
-                        CoroutineKind::AsyncGen(CoroutineSource::Fn) => self
+                        CoroutineKind::Desugared(
+                            CoroutineDesugaring::AsyncGen,
+                            CoroutineSource::Fn,
+                        ) => self
                             .tcx
                             .parent(coroutine_did)
                             .as_local()
@@ -2602,27 +2614,40 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             .map(|name| {
                                 format!("async iterator returned by `{name}` is not {trait_name}")
                             })?,
-                        CoroutineKind::AsyncGen(CoroutineSource::Block) => {
+                        CoroutineKind::Desugared(
+                            CoroutineDesugaring::AsyncGen,
+                            CoroutineSource::Block,
+                        ) => {
                             format!("async iterator created by async gen block is not {trait_name}")
                         }
-                        CoroutineKind::AsyncGen(CoroutineSource::Closure) => {
+                        CoroutineKind::Desugared(
+                            CoroutineDesugaring::AsyncGen,
+                            CoroutineSource::Closure,
+                        ) => {
                             format!(
                                 "async iterator created by async gen closure is not {trait_name}"
                             )
                         }
-                        CoroutineKind::Gen(CoroutineSource::Fn) => self
-                            .tcx
-                            .parent(coroutine_did)
-                            .as_local()
-                            .map(|parent_did| self.tcx.local_def_id_to_hir_id(parent_did))
-                            .and_then(|parent_hir_id| hir.opt_name(parent_hir_id))
-                            .map(|name| {
-                                format!("iterator returned by `{name}` is not {trait_name}")
-                            })?,
-                        CoroutineKind::Gen(CoroutineSource::Block) => {
+                        CoroutineKind::Desugared(CoroutineDesugaring::Gen, CoroutineSource::Fn) => {
+                            self.tcx
+                                .parent(coroutine_did)
+                                .as_local()
+                                .map(|parent_did| self.tcx.local_def_id_to_hir_id(parent_did))
+                                .and_then(|parent_hir_id| hir.opt_name(parent_hir_id))
+                                .map(|name| {
+                                    format!("iterator returned by `{name}` is not {trait_name}")
+                                })?
+                        }
+                        CoroutineKind::Desugared(
+                            CoroutineDesugaring::Gen,
+                            CoroutineSource::Block,
+                        ) => {
                             format!("iterator created by gen block is not {trait_name}")
                         }
-                        CoroutineKind::Gen(CoroutineSource::Closure) => {
+                        CoroutineKind::Desugared(
+                            CoroutineDesugaring::Gen,
+                            CoroutineSource::Closure,
+                        ) => {
                             format!("iterator created by gen closure is not {trait_name}")
                         }
                     })
@@ -3145,9 +3170,15 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 let what = match self.tcx.coroutine_kind(coroutine_def_id) {
                     None
                     | Some(hir::CoroutineKind::Coroutine)
-                    | Some(hir::CoroutineKind::Gen(_)) => "yield",
-                    Some(hir::CoroutineKind::Async(..)) => "await",
-                    Some(hir::CoroutineKind::AsyncGen(_)) => "yield`/`await",
+                    | Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)) => {
+                        "yield"
+                    }
+                    Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) => {
+                        "await"
+                    }
+                    Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)) => {
+                        "yield`/`await"
+                    }
                 };
                 err.note(format!(
                     "all values live across `{what}` must have a statically known size"
@@ -3535,7 +3566,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     ) {
         if let Some(body_id) = self.tcx.hir().maybe_body_owned_by(obligation.cause.body_id) {
             let body = self.tcx.hir().body(body_id);
-            if let Some(hir::CoroutineKind::Async(_)) = body.coroutine_kind {
+            if let Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) =
+                body.coroutine_kind
+            {
                 let future_trait = self.tcx.require_lang_item(LangItem::Future, None);
 
                 let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());

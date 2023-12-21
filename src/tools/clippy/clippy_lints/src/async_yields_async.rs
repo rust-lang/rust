@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::implements_trait;
 use rustc_errors::Applicability;
-use rustc_hir::{Body, BodyId, CoroutineKind, CoroutineSource, ExprKind, QPath};
+use rustc_hir::{Body, BodyId, CoroutineKind, CoroutineSource, CoroutineDesugaring, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 
@@ -45,10 +45,9 @@ declare_lint_pass!(AsyncYieldsAsync => [ASYNC_YIELDS_ASYNC]);
 
 impl<'tcx> LateLintPass<'tcx> for AsyncYieldsAsync {
     fn check_body(&mut self, cx: &LateContext<'tcx>, body: &'tcx Body<'_>) {
-        use CoroutineSource::{Block, Closure};
         // For functions, with explicitly defined types, don't warn.
         // XXXkhuey maybe we should?
-        if let Some(CoroutineKind::Async(Block | Closure)) = body.coroutine_kind {
+        if let Some(CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Block | CoroutineSource::Closure)) = body.coroutine_kind {
             if let Some(future_trait_def_id) = cx.tcx.lang_items().future_trait() {
                 let body_id = BodyId {
                     hir_id: body.value.hir_id,

@@ -1049,7 +1049,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 ..
             }) => {
                 let body = map.body(*body);
-                if !matches!(body.coroutine_kind, Some(hir::CoroutineKind::Async(..))) {
+                if !matches!(
+                    body.coroutine_kind,
+                    Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _))
+                ) {
                     closure_span = Some(expr.span.shrink_to_lo());
                 }
             }
