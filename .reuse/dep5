@@ -18,6 +18,7 @@ Files: compiler/*
        configure
        CONTRIBUTING.md
        COPYRIGHT
+       INSTALL.md
        LICENSE-APACHE
        LICENSE-MIT
        README.md
