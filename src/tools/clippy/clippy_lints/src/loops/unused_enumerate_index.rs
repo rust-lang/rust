@@ -9,7 +9,7 @@ use rustc_middle::ty;
 
 /// Checks for the `UNUSED_ENUMERATE_INDEX` lint.
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, arg: &'tcx Expr<'_>, body: &'tcx Expr<'_>) {
-    let PatKind::Tuple(tuple, _) = pat.kind else {
+    let PatKind::Tuple([index, elem], _) = pat.kind else {
         return;
     };
 
@@ -19,7 +19,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, arg: &'tcx
 
     let ty = cx.typeck_results().expr_ty(arg);
 
-    if !pat_is_wild(cx, &tuple[0].kind, body) {
+    if !pat_is_wild(cx, &index.kind, body) {
         return;
     }
 
@@ -53,7 +53,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, arg: &'tcx
                 diag,
                 "remove the `.enumerate()` call",
                 vec![
-                    (pat.span, snippet(cx, tuple[1].span, "..").into_owned()),
+                    (pat.span, snippet(cx, elem.span, "..").into_owned()),
                     (arg.span, base_iter.to_string()),
                 ],
             );
