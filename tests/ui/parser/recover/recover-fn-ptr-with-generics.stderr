@@ -100,7 +100,7 @@ error[E0412]: cannot find type `T` in this scope
 LL |     type Identity = fn<T>(T) -> T;
    |                                 ^ not found in this scope
 
-error: lifetime bounds cannot be used in this context
+error: bounds cannot be used in this context
   --> $DIR/recover-fn-ptr-with-generics.rs:22:26
    |
 LL |     let _: extern fn<'a: 'static>();
