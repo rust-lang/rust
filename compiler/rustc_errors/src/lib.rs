@@ -174,7 +174,7 @@ pub struct SubstitutionPart {
 /// Used to translate between `Span`s and byte positions within a single output line in highlighted
 /// code of structured suggestions.
 #[derive(Debug, Clone, Copy)]
-pub struct SubstitutionHighlight {
+pub(crate) struct SubstitutionHighlight {
     start: usize,
     end: usize,
 }
@@ -201,7 +201,7 @@ impl SubstitutionPart {
 impl CodeSuggestion {
     /// Returns the assembled code suggestions, whether they should be shown with an underline
     /// and whether the substitution only differs in capitalization.
-    pub fn splice_lines(
+    pub(crate) fn splice_lines(
         &self,
         sm: &SourceMap,
     ) -> Vec<(String, Vec<SubstitutionPart>, Vec<Vec<SubstitutionHighlight>>, bool)> {
