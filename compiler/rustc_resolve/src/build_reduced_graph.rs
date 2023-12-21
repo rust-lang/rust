@@ -394,6 +394,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         id: NodeId,
         parent_prefix: &[Segment],
         nested: bool,
+        list_stem: bool,
         // The whole `use` item
         item: &Item,
         vis: ty::Visibility,
@@ -404,7 +405,9 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             parent_prefix, use_tree, nested
         );
 
-        if nested {
+        // Top level use tree reuses the item's id and list stems reuse their parent
+        // use tree's ids, so in both cases their visibilities are already filled.
+        if nested && !list_stem {
             self.r.feed_visibility(self.r.local_def_id(id), vis);
         }
 
@@ -592,7 +595,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 for &(ref tree, id) in items {
                     self.build_reduced_graph_for_use_tree(
                         // This particular use tree
-                        tree, id, &prefix, true, // The whole `use` item
+                        tree, id, &prefix, true, false, // The whole `use` item
                         item, vis, root_span,
                     );
                 }
@@ -612,6 +615,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                         &tree,
                         id,
                         &prefix,
+                        true,
                         true,
                         // The whole `use` item
                         item,
@@ -647,6 +651,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     use_tree,
                     item.id,
                     &[],
+                    false,
                     false,
                     // The whole `use` item
                     item,

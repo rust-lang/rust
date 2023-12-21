@@ -15,7 +15,7 @@ use rustc_span::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use stable_mir::abi::Layout;
 use stable_mir::mir::mono::InstanceDef;
 use stable_mir::ty::{ConstId, Span};
-use stable_mir::ItemKind;
+use stable_mir::{CtorKind, ItemKind};
 use std::ops::RangeInclusive;
 use tracing::debug;
 
@@ -88,7 +88,6 @@ pub(crate) fn new_item_kind(kind: DefKind) -> ItemKind {
         | DefKind::Field
         | DefKind::LifetimeParam
         | DefKind::Impl { .. }
-        | DefKind::Ctor(_, _)
         | DefKind::GlobalAsm => {
             unreachable!("Not a valid item kind: {kind:?}");
         }
@@ -97,6 +96,8 @@ pub(crate) fn new_item_kind(kind: DefKind) -> ItemKind {
             ItemKind::Const
         }
         DefKind::Static(_) => ItemKind::Static,
+        DefKind::Ctor(_, rustc_hir::def::CtorKind::Const) => ItemKind::Ctor(CtorKind::Const),
+        DefKind::Ctor(_, rustc_hir::def::CtorKind::Fn) => ItemKind::Ctor(CtorKind::Fn),
     }
 }
 

@@ -1000,7 +1000,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
             }
             ItemKind::Struct(vdata, generics) => match vdata {
-                VariantData::Struct(fields, ..) => {
+                VariantData::Struct { fields, .. } => {
                     self.visit_vis(&item.vis);
                     self.visit_ident(item.ident);
                     self.visit_generics(generics);
@@ -1016,7 +1016,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     self.dcx().emit_err(errors::FieldlessUnion { span: item.span });
                 }
                 match vdata {
-                    VariantData::Struct(fields, ..) => {
+                    VariantData::Struct { fields, .. } => {
                         self.visit_vis(&item.vis);
                         self.visit_ident(item.ident);
                         self.visit_generics(generics);

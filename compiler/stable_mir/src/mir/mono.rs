@@ -35,6 +35,11 @@ pub enum InstanceKind {
 }
 
 impl Instance {
+    /// Get the arguments this instance was instantiated with.
+    pub fn args(&self) -> GenericArgs {
+        with(|cx| cx.instance_args(self.def))
+    }
+
     /// Get the body of an Instance. The body will be eagerly monomorphized.
     pub fn body(&self) -> Option<Body> {
         with(|context| context.instance_body(self.def))
@@ -148,6 +153,7 @@ impl Debug for Instance {
         f.debug_struct("Instance")
             .field("kind", &self.kind)
             .field("def", &self.mangled_name())
+            .field("args", &self.args())
             .finish()
     }
 }

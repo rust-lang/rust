@@ -2848,7 +2848,11 @@ pub enum VariantData<'hir> {
     /// A struct variant.
     ///
     /// E.g., `Bar { .. }` as in `enum Foo { Bar { .. } }`.
-    Struct(&'hir [FieldDef<'hir>], /* recovered */ bool),
+    Struct {
+        fields: &'hir [FieldDef<'hir>],
+        // FIXME: investigate making this a `Option<ErrorGuaranteed>`
+        recovered: bool,
+    },
     /// A tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
@@ -2863,7 +2867,7 @@ impl<'hir> VariantData<'hir> {
     /// Return the fields of this variant.
     pub fn fields(&self) -> &'hir [FieldDef<'hir>] {
         match *self {
-            VariantData::Struct(ref fields, ..) | VariantData::Tuple(ref fields, ..) => fields,
+            VariantData::Struct { fields, .. } | VariantData::Tuple(fields, ..) => fields,
             _ => &[],
         }
     }
@@ -2872,7 +2876,7 @@ impl<'hir> VariantData<'hir> {
         match *self {
             VariantData::Tuple(_, hir_id, def_id) => Some((CtorKind::Fn, hir_id, def_id)),
             VariantData::Unit(hir_id, def_id) => Some((CtorKind::Const, hir_id, def_id)),
-            VariantData::Struct(..) => None,
+            VariantData::Struct { .. } => None,
         }
     }
 

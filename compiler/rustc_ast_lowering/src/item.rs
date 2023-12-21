@@ -661,11 +661,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         vdata: &VariantData,
     ) -> hir::VariantData<'hir> {
         match vdata {
-            VariantData::Struct(fields, recovered) => hir::VariantData::Struct(
-                self.arena
+            VariantData::Struct { fields, recovered } => hir::VariantData::Struct {
+                fields: self
+                    .arena
                     .alloc_from_iter(fields.iter().enumerate().map(|f| self.lower_field_def(f))),
-                *recovered,
-            ),
+                recovered: *recovered,
+            },
             VariantData::Tuple(fields, id) => {
                 let ctor_id = self.lower_node_id(*id);
                 self.alias_attrs(ctor_id, parent_id);

@@ -500,7 +500,7 @@ impl<'a> State<'a> {
                 self.end();
                 self.end(); // Close the outer-box.
             }
-            ast::VariantData::Struct(fields, ..) => {
+            ast::VariantData::Struct { fields, .. } => {
                 self.print_where_clause(&generics.where_clause);
                 self.print_record_struct_body(fields, span);
             }
