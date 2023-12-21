@@ -204,7 +204,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         metadata: EncodedMetadata,
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
-        tcx.sess.abort_if_errors();
+        tcx.dcx().abort_if_errors();
         let config = self.config.borrow().clone().unwrap();
         match config.codegen_mode {
             CodegenMode::Aot => driver::aot::run_aot(tcx, config, metadata, need_metadata_module),

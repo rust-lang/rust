@@ -151,7 +151,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
         tcx.dcx().fatal("Inline asm is not supported in JIT mode");
     }
 
-    tcx.sess.abort_if_errors();
+    tcx.dcx().abort_if_errors();
 
     jit_module.finalize_definitions().unwrap();
     unsafe { cx.unwind_context.register_jit(&jit_module) };
@@ -338,7 +338,7 @@ fn dep_symbol_lookup_fn(
             .collect::<Box<[_]>>(),
     );
 
-    sess.abort_if_errors();
+    sess.dcx().abort_if_errors();
 
     Box::new(move |sym_name| {
         for dylib in &*imported_dylibs {

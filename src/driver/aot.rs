@@ -108,7 +108,7 @@ impl OngoingCodegen {
 
         self.concurrency_limiter.finished();
 
-        sess.abort_if_errors();
+        sess.dcx().abort_if_errors();
 
         (
             CodegenResults {
