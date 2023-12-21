@@ -57,7 +57,7 @@ use rustc_ast as ast;
 use rustc_ast::expand::{allocator::AllocatorKind, StrippedCfgItem};
 use rustc_attr as attr;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
@@ -264,7 +264,7 @@ rustc_queries! {
     }
 
     query collect_return_position_impl_trait_in_trait_tys(key: DefId)
-        -> Result<&'tcx FxHashMap<DefId, ty::EarlyBinder<Ty<'tcx>>>, ErrorGuaranteed>
+        -> Result<&'tcx DefIdMap<ty::EarlyBinder<Ty<'tcx>>>, ErrorGuaranteed>
     {
         desc { "comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process" }
         cache_on_disk_if { key.is_local() }
