@@ -1700,6 +1700,16 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             && let hir::ExprKind::Block(block, _) = hir.body(body_id).value.kind
             && !ty.is_never()
         {
+            for stmt in block.stmts {
+                if let hir::StmtKind::Local(local) = stmt.kind {
+                    if let hir::PatKind::Binding(_, _, _, None) = local.pat.kind {
+                        err.span_note(
+                            stmt.span,
+                            "This pattern has a single binding, which might cause issues if the loop doesn't execute. Consider handling the case where the loop might not run.",
+                        );
+                    }
+                }
+            }
             let indentation = if let None = block.expr
                 && let [.., last] = &block.stmts
             {
