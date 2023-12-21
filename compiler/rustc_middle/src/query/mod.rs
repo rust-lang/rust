@@ -1791,7 +1791,7 @@ rustc_queries! {
     }
     /// Collects the "trimmed", shortest accessible paths to all items for diagnostics.
     /// See the [provider docs](`rustc_middle::ty::print::trimmed_def_paths`) for more info.
-    query trimmed_def_paths(_: ()) -> &'tcx FxHashMap<DefId, Symbol> {
+    query trimmed_def_paths(_: ()) -> &'tcx DefIdMap<Symbol> {
         arena_cache
         desc { "calculating trimmed def paths" }
     }
