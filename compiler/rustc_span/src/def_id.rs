@@ -1,6 +1,8 @@
 use crate::{HashStableContext, Symbol};
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::stable_hasher::{Hash64, HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{
+    Hash64, HashStable, StableHasher, StableOrd, ToStableHashKey,
+};
 use rustc_data_structures::unhash::Unhasher;
 use rustc_data_structures::AtomicRef;
 use rustc_index::Idx;
@@ -130,6 +132,11 @@ impl Default for DefPathHash {
     fn default() -> Self {
         DefPathHash(Fingerprint::ZERO)
     }
+}
+
+// Safety: `DefPathHash` sort order is not affected (de)serialization.
+unsafe impl StableOrd for DefPathHash {
+    const CAN_USE_UNSTABLE_SORT: bool = true;
 }
 
 /// A [`StableCrateId`] is a 64-bit hash of a crate name, together with all
@@ -487,6 +494,15 @@ impl<CTX: HashStableContext> ToStableHashKey<CTX> for CrateNum {
     #[inline]
     fn to_stable_hash_key(&self, hcx: &CTX) -> DefPathHash {
         self.as_def_id().to_stable_hash_key(hcx)
+    }
+}
+
+impl<CTX: HashStableContext> ToStableHashKey<CTX> for DefPathHash {
+    type KeyType = DefPathHash;
+
+    #[inline]
+    fn to_stable_hash_key(&self, _: &CTX) -> DefPathHash {
+        *self
     }
 }
 
