@@ -1768,7 +1768,7 @@ impl<T: Clone, A: Allocator + Clone> Rc<T, A> {
     /// assert!(ptr::eq(ptr, inner.as_ptr()));
     /// ```
     #[inline]
-    #[stable(feature = "arc_unwrap_or_clone", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "arc_unwrap_or_clone", since = "1.76.0")]
     pub fn unwrap_or_clone(this: Self) -> T {
         Rc::try_unwrap(this).unwrap_or_else(|rc| (*rc).clone())
     }
