@@ -9,6 +9,7 @@ use rustc_attr::{
     self as attr, ConstStability, DefaultBodyStability, DeprecatedSince, Deprecation, Stability,
 };
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_feature::GateIssue;
 use rustc_hir::def::DefKind;
@@ -77,7 +78,7 @@ pub struct Index {
     /// to know that the feature implies another feature. If it were reversed, and the `#[stable]`
     /// attribute had an `implies` meta item, then a map would be necessary when avoiding a "use of
     /// unstable feature" error for a feature that was implied.
-    pub implications: FxHashMap<Symbol, Symbol>,
+    pub implications: UnordMap<Symbol, Symbol>,
 }
 
 impl Index {

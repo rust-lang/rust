@@ -1914,14 +1914,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
         let lib_features = tcx.lib_features(LOCAL_CRATE);
-        self.lazy_array(lib_features.to_vec())
+        self.lazy_array(lib_features.to_sorted_vec())
     }
 
     fn encode_stability_implications(&mut self) -> LazyArray<(Symbol, Symbol)> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
         let implications = tcx.stability_implications(LOCAL_CRATE);
-        self.lazy_array(implications.iter().map(|(k, v)| (*k, *v)))
+        let sorted = implications.to_sorted_stable_ord();
+        self.lazy_array(sorted.into_iter().map(|(k, v)| (*k, *v)))
     }
 
     fn encode_diagnostic_items(&mut self) -> LazyArray<(Symbol, DefIndex)> {

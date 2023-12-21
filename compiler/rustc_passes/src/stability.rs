@@ -6,7 +6,8 @@ use rustc_attr::{
     self as attr, ConstStability, DeprecatedSince, Stability, StabilityLevel, StableSince,
     Unstable, UnstableReason, VERSION_PLACEHOLDER,
 };
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{LocalDefId, LocalModDefId, CRATE_DEF_ID, LOCAL_CRATE};
@@ -923,7 +924,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     }
 
     let declared_lang_features = &tcx.features().declared_lang_features;
-    let mut lang_features = FxHashSet::default();
+    let mut lang_features = UnordSet::default();
     for &(feature, span, since) in declared_lang_features {
         if let Some(since) = since {
             // Warn if the user has enabled an already-stable lang feature.
@@ -980,11 +981,11 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     fn check_features<'tcx>(
         tcx: TyCtxt<'tcx>,
         remaining_lib_features: &mut FxIndexMap<&Symbol, Span>,
-        remaining_implications: &mut FxHashMap<Symbol, Symbol>,
+        remaining_implications: &mut UnordMap<Symbol, Symbol>,
         defined_features: &LibFeatures,
-        all_implications: &FxHashMap<Symbol, Symbol>,
+        all_implications: &UnordMap<Symbol, Symbol>,
     ) {
-        for (feature, since) in defined_features.to_vec() {
+        for (feature, since) in defined_features.to_sorted_vec() {
             if let FeatureStability::AcceptedSince(since) = since
                 && let Some(span) = remaining_lib_features.get(&feature)
             {
@@ -1021,7 +1022,8 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
         // `remaining_lib_features`.
         let mut all_implications = remaining_implications.clone();
         for &cnum in tcx.crates(()) {
-            all_implications.extend(tcx.stability_implications(cnum));
+            all_implications
+                .extend_unord(tcx.stability_implications(cnum).items().map(|(k, v)| (*k, *v)));
         }
 
         check_features(
@@ -1052,8 +1054,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
 
     // We only use the hash map contents to emit errors, and the order of
     // emitted errors do not affect query stability.
-    #[allow(rustc::potential_query_instability)]
-    for (implied_by, feature) in remaining_implications {
+    for (&implied_by, &feature) in remaining_implications.to_sorted_stable_ord() {
         let local_defined_features = tcx.lib_features(LOCAL_CRATE);
         let span = local_defined_features
             .stability
