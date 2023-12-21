@@ -158,21 +158,42 @@ pub fn get_os_name() -> Result<String, String> {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, PartialEq)]
 pub struct RustcVersionInfo {
+    pub short: String,
     pub version: String,
     pub host: Option<String>,
     pub commit_hash: Option<String>,
     pub commit_date: Option<String>,
 }
 
+pub fn rustc_toolchain_version_info(toolchain: &str) -> Result<RustcVersionInfo, String> {
+    rustc_version_info_inner(None, Some(toolchain))
+}
+
 pub fn rustc_version_info(rustc: Option<&str>) -> Result<RustcVersionInfo, String> {
-    let output = run_command(&[&rustc.unwrap_or("rustc"), &"-vV"], None)?;
+    rustc_version_info_inner(rustc, None)
+}
+
+fn rustc_version_info_inner(
+    rustc: Option<&str>,
+    toolchain: Option<&str>,
+) -> Result<RustcVersionInfo, String> {
+    let output = if let Some(toolchain) = toolchain {
+        run_command(&[&rustc.unwrap_or("rustc"), &toolchain, &"-vV"], None)
+    } else {
+        run_command(&[&rustc.unwrap_or("rustc"), &"-vV"], None)
+    }?;
     let content = std::str::from_utf8(&output.stdout).unwrap_or("");
 
     let mut info = RustcVersionInfo::default();
+    let mut lines = content.split('\n');
+    info.short = match lines.next() {
+        Some(s) => s.to_string(),
+        None => return Err("failed to retrieve rustc version".to_string()),
+    };
 
-    for line in content.split('\n').map(|line| line.trim()) {
+    for line in lines.map(|line| line.trim()) {
         match line.split_once(':') {
             Some(("host", data)) => info.host = Some(data.trim().to_string()),
             Some(("release", data)) => info.version = data.trim().to_string(),

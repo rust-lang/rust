@@ -796,7 +796,7 @@ fn extended_sysroot_tests(env: &Env, args: &TestArg) -> Result<(), String> {
     // echo "[BENCH COMPILE] ebobby/simple-raytracer"
     // hyperfine --runs "${RUN_RUNS:-10}" --warmup 1 --prepare "cargo clean" \
     // "RUSTC=rustc RUSTFLAGS='' cargo build" \
-    // "../cargo.sh build"
+    // "../y.sh cargo build"
 
     // echo "[BENCH RUN] ebobby/simple-raytracer"
     // cp ./target/debug/main ./raytracer_cg_gcc
