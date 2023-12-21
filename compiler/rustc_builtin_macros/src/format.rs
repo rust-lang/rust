@@ -529,7 +529,7 @@ fn make_format_args(
 
     // Only check for unused named argument names if there are no other errors to avoid causing
     // too much noise in output errors, such as when a named argument is entirely unused.
-    if invalid_refs.is_empty() && ecx.sess.err_count() == 0 {
+    if invalid_refs.is_empty() && ecx.dcx().err_count() == 0 {
         for &(index, span, used_as) in &numeric_refences_to_named_arg {
             let (position_sp_to_replace, position_sp_for_msg) = match used_as {
                 Placeholder(pspan) => (span, pspan),

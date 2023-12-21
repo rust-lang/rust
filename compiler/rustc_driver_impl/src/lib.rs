@@ -150,7 +150,7 @@ pub const DEFAULT_BUG_REPORT_URL: &str = "https://github.com/rust-lang/rust/issu
 pub fn abort_on_err<T>(result: Result<T, ErrorGuaranteed>, sess: &Session) -> T {
     match result {
         Err(..) => {
-            sess.abort_if_errors();
+            sess.dcx().abort_if_errors();
             panic!("error reported but abort_if_errors didn't abort???");
         }
         Ok(x) => x,

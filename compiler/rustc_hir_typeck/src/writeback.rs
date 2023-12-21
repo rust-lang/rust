@@ -753,7 +753,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
     }
 
     fn report_error(&self, p: impl Into<ty::GenericArg<'tcx>>) -> ErrorGuaranteed {
-        match self.fcx.tcx.sess.has_errors() {
+        match self.fcx.dcx().has_errors() {
             Some(e) => e,
             None => self
                 .fcx

@@ -119,7 +119,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         FnCtxt {
             body_id,
             param_env,
-            err_count_on_creation: inh.tcx.sess.err_count(),
+            err_count_on_creation: inh.tcx.dcx().err_count(),
             ret_coercion: None,
             ret_coercion_span: Cell::new(None),
             resume_yield_tys: None,
@@ -188,7 +188,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn errors_reported_since_creation(&self) -> bool {
-        self.tcx.sess.err_count() > self.err_count_on_creation
+        self.dcx().err_count() > self.err_count_on_creation
     }
 
     pub fn next_root_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {

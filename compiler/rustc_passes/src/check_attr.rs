@@ -2579,7 +2579,7 @@ fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
         check_invalid_crate_level_attr(tcx, tcx.hir().krate_attrs());
     }
     if check_attr_visitor.abort.get() {
-        tcx.sess.abort_if_errors()
+        tcx.dcx().abort_if_errors()
     }
 }
 

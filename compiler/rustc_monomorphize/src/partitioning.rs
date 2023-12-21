@@ -1110,7 +1110,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
 
     let (items, usage_map) = collector::collect_crate_mono_items(tcx, collection_mode);
 
-    tcx.sess.abort_if_errors();
+    tcx.dcx().abort_if_errors();
 
     let (codegen_units, _) = tcx.sess.time("partition_and_assert_distinct_symbols", || {
         sync::join(

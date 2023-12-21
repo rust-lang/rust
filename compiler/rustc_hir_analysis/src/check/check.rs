@@ -1284,7 +1284,7 @@ pub(super) fn check_type_params_are_used<'tcx>(
     if ty.references_error() {
         // If there is already another error, do not emit
         // an error for not using a type parameter.
-        assert!(tcx.sess.has_errors().is_some());
+        assert!(tcx.dcx().has_errors().is_some());
         return;
     }
 

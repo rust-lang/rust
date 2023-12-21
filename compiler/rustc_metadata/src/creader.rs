@@ -925,7 +925,7 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         // don't perform this validation if the session has errors, as one of
         // those errors may indicate a circular dependency which could cause
         // this to stack overflow.
-        if self.sess.has_errors().is_some() {
+        if self.dcx().has_errors().is_some() {
             return;
         }
 

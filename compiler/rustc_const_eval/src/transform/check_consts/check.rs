@@ -279,7 +279,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
                 self.tcx.dcx().emit_diagnostic(error);
             }
         } else {
-            assert!(self.tcx.sess.has_errors().is_some());
+            assert!(self.tcx.dcx().has_errors().is_some());
         }
     }
 

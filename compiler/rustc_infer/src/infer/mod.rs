@@ -704,7 +704,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             reported_trait_errors: Default::default(),
             reported_closure_mismatch: Default::default(),
             tainted_by_errors: Cell::new(None),
-            err_count_on_creation: tcx.sess.err_count(),
+            err_count_on_creation: tcx.dcx().err_count(),
             universe: Cell::new(ty::UniverseIndex::ROOT),
             intercrate,
             next_trait_solver,
@@ -1262,7 +1262,7 @@ impl<'tcx> InferCtxt<'tcx> {
         debug!(
             "is_tainted_by_errors(err_count={}, err_count_on_creation={}, \
              tainted_by_errors={})",
-            self.tcx.sess.err_count(),
+            self.dcx().err_count(),
             self.err_count_on_creation,
             self.tainted_by_errors.get().is_some()
         );
@@ -1271,9 +1271,9 @@ impl<'tcx> InferCtxt<'tcx> {
             return Some(e);
         }
 
-        if self.tcx.sess.err_count() > self.err_count_on_creation {
+        if self.dcx().err_count() > self.err_count_on_creation {
             // errors reported since this infcx was made
-            let e = self.tcx.sess.has_errors().unwrap();
+            let e = self.dcx().has_errors().unwrap();
             self.set_tainted_by_errors(e);
             return Some(e);
         }

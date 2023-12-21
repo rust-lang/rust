@@ -448,8 +448,9 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let Some(llfn) = cx.declare_c_main(llfty) else {
             // FIXME: We should be smart and show a better diagnostic here.
             let span = cx.tcx().def_span(rust_main_def_id);
-            cx.sess().dcx().emit_err(errors::MultipleMainFunctions { span });
-            cx.sess().abort_if_errors();
+            let dcx = cx.tcx().dcx();
+            dcx.emit_err(errors::MultipleMainFunctions { span });
+            dcx.abort_if_errors();
             bug!();
         };
 
@@ -752,7 +753,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                 // This will unwind if there are errors, which triggers our `AbortCodegenOnDrop`
                 // guard. Unfortunately, just skipping the `submit_codegened_module_to_llvm` makes
                 // compilation hang on post-monomorphization errors.
-                tcx.sess.abort_if_errors();
+                tcx.dcx().abort_if_errors();
 
                 submit_codegened_module_to_llvm(
                     &backend,

@@ -115,7 +115,7 @@ pub fn validate_crate_name(sess: &Session, s: Symbol, sp: Option<Span>) {
     }
 
     if err_count > 0 {
-        sess.abort_if_errors();
+        sess.dcx().abort_if_errors();
     }
 }
 

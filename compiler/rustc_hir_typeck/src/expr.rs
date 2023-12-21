@@ -690,7 +690,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // else an error would have been flagged by the
                 // `loops` pass for using break with an expression
                 // where you are not supposed to.
-                assert!(expr_opt.is_none() || self.tcx.sess.has_errors().is_some());
+                assert!(expr_opt.is_none() || self.dcx().has_errors().is_some());
             }
 
             // If we encountered a `break`, then (no surprise) it may be possible to break from the

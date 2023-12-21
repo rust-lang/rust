@@ -216,7 +216,7 @@ fn configure_and_expand(
         // If we hit a recursion limit, exit early to avoid later passes getting overwhelmed
         // with a large AST
         if ecx.reduced_recursion_limit.is_some() {
-            sess.abort_if_errors();
+            sess.dcx().abort_if_errors();
             unreachable!();
         }
 
@@ -776,7 +776,7 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
     // lot of annoying errors in the ui tests (basically,
     // lint warnings and so on -- kindck used to do this abort, but
     // kindck is gone now). -nmatsakis
-    if let Some(reported) = sess.has_errors() {
+    if let Some(reported) = sess.dcx().has_errors() {
         return Err(reported);
     }
 
@@ -937,8 +937,9 @@ pub fn start_codegen<'tcx>(
 
     if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
         if let Err(error) = rustc_mir_transform::dump_mir::emit_mir(tcx) {
-            tcx.dcx().emit_err(errors::CantEmitMIR { error });
-            tcx.sess.abort_if_errors();
+            let dcx = tcx.dcx();
+            dcx.emit_err(errors::CantEmitMIR { error });
+            dcx.abort_if_errors();
         }
     }
 

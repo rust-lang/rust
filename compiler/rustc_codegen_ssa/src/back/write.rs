@@ -1883,7 +1883,7 @@ impl SharedEmitterMain {
                     err.emit();
                 }
                 Ok(SharedEmitterMessage::AbortIfErrors) => {
-                    sess.abort_if_errors();
+                    sess.dcx().abort_if_errors();
                 }
                 Ok(SharedEmitterMessage::Fatal(msg)) => {
                     sess.dcx().fatal(msg);
@@ -1939,7 +1939,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
         let compiled_modules = sess.time("join_worker_thread", || match self.coordinator.join() {
             Ok(Ok(compiled_modules)) => compiled_modules,
             Ok(Err(())) => {
-                sess.abort_if_errors();
+                sess.dcx().abort_if_errors();
                 panic!("expected abort due to worker thread errors")
             }
             Err(_) => {
@@ -1947,7 +1947,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
             }
         });
 
-        sess.abort_if_errors();
+        sess.dcx().abort_if_errors();
 
         let work_products =
             copy_all_cgu_workproducts_to_incr_comp_cache_dir(sess, &compiled_modules);

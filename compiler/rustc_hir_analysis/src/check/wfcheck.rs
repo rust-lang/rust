@@ -115,7 +115,7 @@ where
     let errors = wfcx.select_all_or_error();
     if !errors.is_empty() {
         let err = infcx.err_ctxt().report_fulfillment_errors(errors);
-        if tcx.sess.err_count() > 0 {
+        if tcx.dcx().err_count() > 0 {
             return Err(err);
         } else {
             // HACK(oli-obk): tests/ui/specialization/min_specialization/specialize_on_type_error.rs

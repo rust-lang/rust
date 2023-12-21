@@ -716,7 +716,7 @@ fn link_dwarf_object<'a>(
         Ok(()) => {}
         Err(e) => {
             sess.dcx().emit_err(errors::ThorinErrorWrapper(e));
-            sess.abort_if_errors();
+            sess.dcx().abort_if_errors();
         }
     }
 }
@@ -765,7 +765,7 @@ fn link_natively<'a>(
     }
 
     // May have not found libraries in the right formats.
-    sess.abort_if_errors();
+    sess.dcx().abort_if_errors();
 
     // Invoke the system linker
     info!("{:?}", &cmd);
@@ -970,7 +970,7 @@ fn link_natively<'a>(
                     }
                 }
 
-                sess.abort_if_errors();
+                sess.dcx().abort_if_errors();
             }
             info!("linker stderr:\n{}", escape_string(&prog.stderr));
             info!("linker stdout:\n{}", escape_string(&prog.stdout));
@@ -993,7 +993,7 @@ fn link_natively<'a>(
                 sess.dcx().emit_note(errors::CheckInstalledVisualStudio);
                 sess.dcx().emit_note(errors::InsufficientVSCodeProduct);
             }
-            sess.abort_if_errors();
+            sess.dcx().abort_if_errors();
         }
     }
 

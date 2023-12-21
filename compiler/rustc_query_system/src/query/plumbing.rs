@@ -126,7 +126,7 @@ where
         }
         Fatal => {
             error.emit();
-            qcx.dep_context().sess().abort_if_errors();
+            qcx.dep_context().sess().dcx().abort_if_errors();
             unreachable!()
         }
         DelayBug => {

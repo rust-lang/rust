@@ -55,7 +55,7 @@ pub trait TypeVisitableExt<'tcx>: TypeVisitable<TyCtxt<'tcx>> {
     }
     fn error_reported(&self) -> Result<(), ErrorGuaranteed> {
         if self.references_error() {
-            if let Some(reported) = ty::tls::with(|tcx| tcx.sess.is_compilation_going_to_fail()) {
+            if let Some(reported) = ty::tls::with(|tcx| tcx.dcx().is_compilation_going_to_fail()) {
                 Err(reported)
             } else {
                 bug!("expect tcx.sess.is_compilation_going_to_fail return `Some`");

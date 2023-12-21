@@ -279,7 +279,7 @@ impl Session {
             });
 
             // If we should err, make sure we did.
-            if must_err && self.has_errors().is_none() {
+            if must_err && self.dcx().has_errors().is_none() {
                 // We have skipped a feature gate, and not run into other errors... reject.
                 self.dcx().emit_err(errors::NotCircumventFeature);
             }
@@ -323,22 +323,7 @@ impl Session {
         add_feature_diagnostics(&mut err, &self.parse_sess, feature);
         err
     }
-    #[inline]
-    pub fn err_count(&self) -> usize {
-        self.dcx().err_count()
-    }
-    pub fn has_errors(&self) -> Option<ErrorGuaranteed> {
-        self.dcx().has_errors()
-    }
-    pub fn has_errors_or_span_delayed_bugs(&self) -> Option<ErrorGuaranteed> {
-        self.dcx().has_errors_or_span_delayed_bugs()
-    }
-    pub fn is_compilation_going_to_fail(&self) -> Option<ErrorGuaranteed> {
-        self.dcx().is_compilation_going_to_fail()
-    }
-    pub fn abort_if_errors(&self) {
-        self.dcx().abort_if_errors();
-    }
+
     pub fn compile_status(&self) -> Result<(), ErrorGuaranteed> {
         if let Some(reported) = self.dcx().has_errors_or_lint_errors() {
             let _ = self.dcx().emit_stashed_diagnostics();
@@ -347,14 +332,15 @@ impl Session {
             Ok(())
         }
     }
+
     // FIXME(matthewjasper) Remove this method, it should never be needed.
     pub fn track_errors<F, T>(&self, f: F) -> Result<T, ErrorGuaranteed>
     where
         F: FnOnce() -> T,
     {
-        let old_count = self.err_count();
+        let old_count = self.dcx().err_count();
         let result = f();
-        if self.err_count() == old_count {
+        if self.dcx().err_count() == old_count {
             Ok(result)
         } else {
             Err(self.dcx().span_delayed_bug(

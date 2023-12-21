@@ -110,7 +110,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                     i32::try_from(return_code).expect("Return value was too large!"),
                 );
             }
-            tcx.sess.abort_if_errors();
+            tcx.dcx().abort_if_errors();
         });
 
         Compilation::Stop

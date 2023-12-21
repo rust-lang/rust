@@ -51,7 +51,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
         {
             sig.decl.inputs.len() + sig.decl.implicit_self.has_implicit_self() as usize
         } else {
-            tcx.sess.abort_if_errors();
+            tcx.dcx().abort_if_errors();
             unreachable!()
         };
 

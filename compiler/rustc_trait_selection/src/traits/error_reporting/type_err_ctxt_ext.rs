@@ -251,7 +251,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         mutate(&mut err);
         err.emit();
 
-        self.tcx.sess.abort_if_errors();
+        self.dcx().abort_if_errors();
         // FIXME: this should be something like `build_overflow_error_fatal`, which returns
         // `DiagnosticBuilder<', !>`. Then we don't even need anything after that `emit()`.
         unreachable!(
@@ -443,7 +443,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         // FIXME(effects)
                         let predicate_is_const = false;
 
-                        if self.tcx.sess.has_errors().is_some()
+                        if self.dcx().has_errors().is_some()
                             && trait_predicate.references_error()
                         {
                             return;
@@ -2606,7 +2606,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // Same hacky approach as above to avoid deluging user
                 // with error messages.
                 if arg.references_error()
-                    || self.tcx.sess.has_errors().is_some()
+                    || self.dcx().has_errors().is_some()
                     || self.tainted_by_errors().is_some()
                 {
                     return;
@@ -2623,7 +2623,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
             ty::PredicateKind::Subtype(data) => {
                 if data.references_error()
-                    || self.tcx.sess.has_errors().is_some()
+                    || self.dcx().has_errors().is_some()
                     || self.tainted_by_errors().is_some()
                 {
                     // no need to overload user in such cases
@@ -2702,7 +2702,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
             }
             _ => {
-                if self.tcx.sess.has_errors().is_some() || self.tainted_by_errors().is_some() {
+                if self.dcx().has_errors().is_some() || self.tainted_by_errors().is_some() {
                     return;
                 }
                 let mut err = struct_span_err!(
