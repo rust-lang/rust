@@ -959,20 +959,29 @@ impl ExprCollector<'_> {
         // File containing the macro call. Expansion errors will be attached here.
         let outer_file = self.expander.current_file_id;
 
-        let macro_call_ptr = self.expander.to_source(AstPtr::new(&mcall));
+        let macro_call_ptr = self.expander.to_source(syntax_ptr);
         let module = self.expander.module.local_id;
-        let res = self.expander.enter_expand(self.db, mcall, |path| {
-            self.def_map
-                .resolve_path(
-                    self.db,
-                    module,
-                    &path,
-                    crate::item_scope::BuiltinShadowMode::Other,
-                    Some(MacroSubNs::Bang),
-                )
-                .0
-                .take_macros()
-        });
+
+        let res = match self.def_map.modules[module]
+            .scope
+            .macro_invocations
+            .get(&InFile::new(outer_file, self.ast_id_map.ast_id_for_ptr(syntax_ptr)))
+        {
+            // fast path, macro call is in a block module
+            Some(&call) => Ok(self.expander.enter_expand_id(self.db, call)),
+            None => self.expander.enter_expand(self.db, mcall, |path| {
+                self.def_map
+                    .resolve_path(
+                        self.db,
+                        module,
+                        &path,
+                        crate::item_scope::BuiltinShadowMode::Other,
+                        Some(MacroSubNs::Bang),
+                    )
+                    .0
+                    .take_macros()
+            }),
+        };
 
         let res = match res {
             Ok(res) => res,
@@ -986,7 +995,6 @@ impl ExprCollector<'_> {
                 return collector(self, None);
             }
         };
-
         if record_diagnostics {
             match &res.err {
                 Some(ExpandError::UnresolvedProcMacro(krate)) => {

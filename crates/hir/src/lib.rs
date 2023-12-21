@@ -47,7 +47,6 @@ use hir_def::{
     item_tree::ItemTreeNode,
     lang_item::LangItemTarget,
     layout::{self, ReprOptions, TargetDataLayout},
-    macro_id_to_def_id,
     nameres::{self, diagnostics::DefDiagnostic},
     path::ImportAlias,
     per_ns::PerNs,
@@ -810,7 +809,7 @@ impl Module {
 }
 
 fn emit_macro_def_diagnostics(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>, m: Macro) {
-    let id = macro_id_to_def_id(db.upcast(), m.id);
+    let id = db.macro_def(m.id);
     if let hir_expand::db::TokenExpander::DeclarativeMacro(expander) = db.macro_expander(id) {
         if let Some(e) = expander.mac.err() {
             let Some(ast) = id.ast_id().left() else {
@@ -2786,9 +2785,13 @@ impl AsAssocItem for DefWithBody {
     }
 }
 
-fn as_assoc_item<ID, DEF, CTOR, AST>(db: &dyn HirDatabase, ctor: CTOR, id: ID) -> Option<AssocItem>
+fn as_assoc_item<'db, ID, DEF, CTOR, AST>(
+    db: &(dyn HirDatabase + 'db),
+    ctor: CTOR,
+    id: ID,
+) -> Option<AssocItem>
 where
-    ID: Lookup<Data = AssocItemLoc<AST>>,
+    ID: Lookup<Database<'db> = dyn DefDatabase + 'db, Data = AssocItemLoc<AST>>,
     DEF: From<ID>,
     CTOR: FnOnce(DEF) -> AssocItem,
     AST: ItemTreeNode,
@@ -3522,7 +3525,7 @@ impl Impl {
         let src = self.source(db)?;
 
         let macro_file = src.file_id.macro_file()?;
-        let loc = db.lookup_intern_macro_call(macro_file.macro_call_id);
+        let loc = macro_file.macro_call_id.lookup(db.upcast());
         let (derive_attr, derive_index) = match loc.kind {
             MacroCallKind::Derive { ast_id, derive_attr_index, derive_index } => {
                 let module_id = self.id.lookup(db.upcast()).container;

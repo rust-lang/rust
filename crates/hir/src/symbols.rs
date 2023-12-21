@@ -2,6 +2,7 @@
 
 use base_db::FileRange;
 use hir_def::{
+    db::DefDatabase,
     item_scope::ItemInNs,
     src::{HasChildSource, HasSource},
     AdtId, AssocItemId, DefWithBodyId, HasModule, ImplId, Lookup, MacroId, ModuleDefId, ModuleId,
@@ -274,9 +275,9 @@ impl<'a> SymbolCollector<'a> {
         }
     }
 
-    fn push_decl<L>(&mut self, id: L, is_assoc: bool)
+    fn push_decl<'db, L>(&mut self, id: L, is_assoc: bool)
     where
-        L: Lookup + Into<ModuleDefId>,
+        L: Lookup<Database<'db> = dyn DefDatabase + 'db> + Into<ModuleDefId>,
         <L as Lookup>::Data: HasSource,
         <<L as Lookup>::Data as HasSource>::Value: HasName,
     {

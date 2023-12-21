@@ -23,7 +23,10 @@ use crate::{
     builtin_attr_macro::pseudo_derive_attr_expansion,
     builtin_fn_macro::EagerExpander,
     fixup::{self, reverse_fixups, SyntaxFixupUndoInfo},
-    hygiene::{apply_mark, SyntaxContextData, Transparency},
+    hygiene::{
+        apply_mark, span_with_call_site_ctxt, span_with_def_site_ctxt, span_with_mixed_site_ctxt,
+        SyntaxContextData, Transparency,
+    },
     proc_macro::ProcMacros,
     span_map::{RealSpanMap, SpanMap, SpanMapRef},
     tt, AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander,
@@ -301,16 +304,15 @@ pub fn expand_speculative(
     let mut speculative_expansion = match loc.def.kind {
         MacroDefKind::ProcMacro(expander, ..) => {
             tt.delimiter = tt::Delimiter::invisible_spanned(loc.call_site);
-            let call_site = loc.span(db);
             expander.expand(
                 db,
                 loc.def.krate,
                 loc.krate,
                 &tt,
                 attr_arg.as_ref(),
-                call_site,
-                call_site,
-                call_site,
+                span_with_def_site_ctxt(db, loc.def.span, actual_macro_call),
+                span_with_call_site_ctxt(db, loc.def.span, actual_macro_call),
+                span_with_mixed_site_ctxt(db, loc.def.span, actual_macro_call),
             )
         }
         MacroDefKind::BuiltInAttr(BuiltinAttrExpander::Derive, _) => {
@@ -782,18 +784,15 @@ fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<A
         _ => None,
     };
 
-    let call_site = loc.span(db);
     let ExpandResult { value: mut tt, err } = expander.expand(
         db,
         loc.def.krate,
         loc.krate,
         &macro_arg,
         attr_arg,
-        // FIXME
-        call_site,
-        call_site,
-        // FIXME
-        call_site,
+        span_with_def_site_ctxt(db, loc.def.span, id),
+        span_with_call_site_ctxt(db, loc.def.span, id),
+        span_with_mixed_site_ctxt(db, loc.def.span, id),
     );
 
     // Set a hard limit for the expanded tt

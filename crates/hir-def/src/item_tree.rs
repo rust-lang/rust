@@ -29,6 +29,9 @@
 //!
 //! In general, any item in the `ItemTree` stores its `AstId`, which allows mapping it back to its
 //! surface syntax.
+//!
+//! Note that we cannot store [`span::Span`]s inside of this, as typing in an item invalidates its
+//! encompassing span!
 
 mod lower;
 mod pretty;
@@ -281,7 +284,7 @@ struct ItemTreeData {
     mods: Arena<Mod>,
     macro_calls: Arena<MacroCall>,
     macro_rules: Arena<MacroRules>,
-    macro_defs: Arena<MacroDef>,
+    macro_defs: Arena<Macro2>,
 
     vis: ItemVisibilities,
 }
@@ -514,7 +517,7 @@ mod_items! {
     Mod in mods -> ast::Module,
     MacroCall in macro_calls -> ast::MacroCall,
     MacroRules in macro_rules -> ast::MacroRules,
-    MacroDef in macro_defs -> ast::MacroDef,
+    Macro2 in macro_defs -> ast::MacroDef,
 }
 
 macro_rules! impl_index {
@@ -747,6 +750,7 @@ pub struct MacroCall {
     pub path: Interned<ModPath>,
     pub ast_id: FileAstId<ast::MacroCall>,
     pub expand_to: ExpandTo,
+    // FIXME: We need to move this out. It invalidates the item tree when typing inside the macro call.
     pub call_site: Span,
 }
 
@@ -759,7 +763,7 @@ pub struct MacroRules {
 
 /// "Macros 2.0" macro definition.
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct MacroDef {
+pub struct Macro2 {
     pub name: Name,
     pub visibility: RawVisibilityId,
     pub ast_id: FileAstId<ast::MacroDef>,
@@ -918,7 +922,7 @@ impl ModItem {
             | ModItem::Impl(_)
             | ModItem::Mod(_)
             | ModItem::MacroRules(_)
-            | ModItem::MacroDef(_) => None,
+            | ModItem::Macro2(_) => None,
             ModItem::MacroCall(call) => Some(AssocItem::MacroCall(*call)),
             ModItem::Const(konst) => Some(AssocItem::Const(*konst)),
             ModItem::TypeAlias(alias) => Some(AssocItem::TypeAlias(*alias)),
@@ -944,7 +948,7 @@ impl ModItem {
             ModItem::Mod(it) => tree[it.index()].ast_id().upcast(),
             ModItem::MacroCall(it) => tree[it.index()].ast_id().upcast(),
             ModItem::MacroRules(it) => tree[it.index()].ast_id().upcast(),
-            ModItem::MacroDef(it) => tree[it.index()].ast_id().upcast(),
+            ModItem::Macro2(it) => tree[it.index()].ast_id().upcast(),
         }
     }
 }

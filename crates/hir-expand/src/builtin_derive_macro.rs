@@ -36,7 +36,7 @@ macro_rules! register_builtin {
                     $( BuiltinDeriveExpander::$trait => $expand, )*
                 };
 
-                let span = db.lookup_intern_macro_call(id).span(db);
+                let span = db.lookup_intern_macro_call(id).call_site;
                 let span = span_with_def_site_ctxt(db, span, id);
                 expander(db, id, span, tt, token_map)
             }

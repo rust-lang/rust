@@ -36,7 +36,6 @@ use test_fixture::WithFixture;
 
 use crate::{
     db::DefDatabase,
-    macro_id_to_def_id,
     nameres::{DefMap, MacroSubNs, ModuleSource},
     resolver::HasResolver,
     src::HasSource,
@@ -97,7 +96,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
             .as_call_id_with_errors(&db, krate, |path| {
                 resolver
                     .resolve_path_as_macro(&db, &path, Some(MacroSubNs::Bang))
-                    .map(|(it, _)| macro_id_to_def_id(&db, it))
+                    .map(|(it, _)| db.macro_def(it))
             })
             .unwrap();
         let macro_call_id = res.value.unwrap();
