@@ -15,7 +15,7 @@ use std::ops::{Deref, DerefMut};
 use std::panic;
 use std::thread::panicking;
 
-/// Trait implemented by error types. This should not be implemented manually. Instead, use
+/// Trait implemented by error types. This is rarely implemented manually. Instead, use
 /// `#[derive(Diagnostic)]` -- see [rustc_macros::Diagnostic].
 #[rustc_diagnostic_item = "IntoDiagnostic"]
 pub trait IntoDiagnostic<'a, G: EmissionGuarantee = ErrorGuaranteed> {
