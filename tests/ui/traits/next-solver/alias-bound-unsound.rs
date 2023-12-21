@@ -23,7 +23,7 @@ fn main() {
     let x = String::from("hello, world");
     drop(<() as Foo>::copy_me(&x));
     //~^ ERROR overflow evaluating the requirement `<() as Foo>::Item: Sized`
-    //~| ERROR overflow evaluating the requirement `<() as Foo>::Item normalizes-to _`
+    //~| ERROR overflow evaluating the requirement `<() as Foo>::Item == _`
     //~| ERROR overflow evaluating the requirement `<() as Foo>::Item well-formed`
     //~| ERROR overflow evaluating the requirement `String <: <() as Foo>::Item`
     //~| ERROR overflow evaluating the requirement `&<() as Foo>::Item well-formed`

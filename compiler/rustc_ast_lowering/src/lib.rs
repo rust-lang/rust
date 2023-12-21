@@ -44,23 +44,23 @@ extern crate tracing;
 
 use crate::errors::{AssocTyParentheses, AssocTyParenthesesSub, MisplacedImplTrait};
 
+use rustc_ast::node_id::NodeMap;
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, *};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{DiagnosticArgFromDisplay, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
-use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_hir::{ConstArg, GenericArg, ItemLocalId, ParamName, TraitCandidate};
+use rustc_hir::def_id::{LocalDefId, LocalDefIdMap, CRATE_DEF_ID, LOCAL_CRATE};
+use rustc_hir::{ConstArg, GenericArg, ItemLocalMap, ParamName, TraitCandidate};
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_middle::span_bug;
-use rustc_middle::ty::{ResolverAstLowering, TyCtxt, Visibility};
+use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::parse::{add_feature_diagnostics, feature_err};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{DesugaringKind, Span, DUMMY_SP};
@@ -119,13 +119,13 @@ struct LoweringContext<'a, 'hir> {
 
     current_hir_id_owner: hir::OwnerId,
     item_local_id_counter: hir::ItemLocalId,
-    trait_map: FxHashMap<ItemLocalId, Box<[TraitCandidate]>>,
+    trait_map: ItemLocalMap<Box<[TraitCandidate]>>,
 
     impl_trait_defs: Vec<hir::GenericParam<'hir>>,
     impl_trait_bounds: Vec<hir::WherePredicate<'hir>>,
 
     /// NodeIds that are lowered inside the current HIR owner.
-    node_id_to_local_id: FxHashMap<NodeId, hir::ItemLocalId>,
+    node_id_to_local_id: NodeMap<hir::ItemLocalId>,
 
     allow_try_trait: Lrc<[Symbol]>,
     allow_gen_future: Lrc<[Symbol]>,
@@ -135,7 +135,7 @@ struct LoweringContext<'a, 'hir> {
     /// For each captured lifetime (e.g., 'a), we create a new lifetime parameter that is a generic
     /// defined on the TAIT, so we have type Foo<'a1> = ... and we establish a mapping in this
     /// field from the original parameter 'a to the new parameter 'a1.
-    generics_def_id_map: Vec<FxHashMap<LocalDefId, LocalDefId>>,
+    generics_def_id_map: Vec<LocalDefIdMap<LocalDefId>>,
 
     host_param_id: Option<LocalDefId>,
 }
@@ -380,7 +380,7 @@ enum AstOwner<'a> {
 }
 
 fn index_crate<'a>(
-    node_id_to_def_id: &FxHashMap<NodeId, LocalDefId>,
+    node_id_to_def_id: &NodeMap<LocalDefId>,
     krate: &'a Crate,
 ) -> IndexVec<LocalDefId, AstOwner<'a>> {
     let mut indexer = Indexer { node_id_to_def_id, index: IndexVec::new() };
@@ -390,7 +390,7 @@ fn index_crate<'a>(
     return indexer.index;
 
     struct Indexer<'s, 'a> {
-        node_id_to_def_id: &'s FxHashMap<NodeId, LocalDefId>,
+        node_id_to_def_id: &'s NodeMap<LocalDefId>,
         index: IndexVec<LocalDefId, AstOwner<'a>>,
     }
 
@@ -642,7 +642,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// `'a` declared on the TAIT, instead of the function.
     fn with_remapping<R>(
         &mut self,
-        remap: FxHashMap<LocalDefId, LocalDefId>,
+        remap: LocalDefIdMap<LocalDefId>,
         f: impl FnOnce(&mut Self) -> R,
     ) -> R {
         self.generics_def_id_map.push(remap);
@@ -1651,13 +1651,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         );
         debug!(?opaque_ty_def_id);
 
-        // Meaningless, but provided so that all items have visibilities.
-        let parent_mod = self.tcx.parent_module_from_def_id(opaque_ty_def_id).to_def_id();
-        self.tcx.feed_local_def_id(opaque_ty_def_id).visibility(Visibility::Restricted(parent_mod));
-
         // Map from captured (old) lifetime to synthetic (new) lifetime.
         // Used to resolve lifetimes in the bounds of the opaque.
-        let mut captured_to_synthesized_mapping = FxHashMap::default();
+        let mut captured_to_synthesized_mapping = LocalDefIdMap::default();
         // List of (early-bound) synthetic lifetimes that are owned by the opaque.
         // This is used to create the `hir::Generics` owned by the opaque.
         let mut synthesized_lifetime_definitions = vec![];

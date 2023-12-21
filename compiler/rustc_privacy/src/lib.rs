@@ -1765,15 +1765,6 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'tcx, '_> {
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
-        visibility: |tcx, def_id| {
-            // Unique types created for closures participate in type privacy checking.
-            // They have visibilities inherited from the module they are defined in.
-            // FIXME: Consider evaluating visibilities for closures eagerly, like for all
-            // other nodes. However, unlike for others, for closures it may cause a perf
-            // regression, because closure visibilities are not commonly queried.
-            assert_eq!(tcx.def_kind(def_id), DefKind::Closure);
-            ty::Visibility::Restricted(tcx.parent_module_from_def_id(def_id).to_def_id())
-        },
         effective_visibilities,
         check_private_in_public,
         check_mod_privacy,

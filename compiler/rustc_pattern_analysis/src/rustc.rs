@@ -1,15 +1,15 @@
 use std::fmt;
 use std::iter::once;
 
-use rustc_arena::TypedArena;
+use rustc_arena::{DroplessArena, TypedArena};
 use rustc_data_structures::captures::Captures;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{HirId, RangeEnd};
+use rustc_hir::HirId;
 use rustc_index::Idx;
 use rustc_index::IndexVec;
 use rustc_middle::middle::stability::EvalResult;
-use rustc_middle::mir;
 use rustc_middle::mir::interpret::Scalar;
+use rustc_middle::mir::{self, Const};
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
@@ -18,14 +18,31 @@ use rustc_target::abi::{FieldIdx, Integer, VariantIdx, FIRST_VARIANT};
 use smallvec::SmallVec;
 
 use crate::constructor::{
-    Constructor, ConstructorSet, IntRange, MaybeInfiniteInt, OpaqueId, Slice, SliceKind,
-    VariantVisibility,
+    IntRange, MaybeInfiniteInt, OpaqueId, RangeEnd, Slice, SliceKind, VariantVisibility,
 };
-use crate::pat::{DeconstructedPat, WitnessPat};
+use crate::TypeCx;
 
-use Constructor::*;
+use crate::constructor::Constructor::*;
 
-pub struct MatchCheckCtxt<'p, 'tcx> {
+// Re-export rustc-specific versions of all these types.
+pub type Constructor<'p, 'tcx> = crate::constructor::Constructor<RustcMatchCheckCtxt<'p, 'tcx>>;
+pub type ConstructorSet<'p, 'tcx> =
+    crate::constructor::ConstructorSet<RustcMatchCheckCtxt<'p, 'tcx>>;
+pub type DeconstructedPat<'p, 'tcx> =
+    crate::pat::DeconstructedPat<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
+pub type MatchArm<'p, 'tcx> = crate::MatchArm<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
+pub type MatchCtxt<'a, 'p, 'tcx> = crate::MatchCtxt<'a, 'p, RustcMatchCheckCtxt<'p, 'tcx>>;
+pub(crate) type PlaceCtxt<'a, 'p, 'tcx> =
+    crate::usefulness::PlaceCtxt<'a, 'p, RustcMatchCheckCtxt<'p, 'tcx>>;
+pub(crate) type SplitConstructorSet<'p, 'tcx> =
+    crate::constructor::SplitConstructorSet<RustcMatchCheckCtxt<'p, 'tcx>>;
+pub type Usefulness<'p, 'tcx> = crate::usefulness::Usefulness<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
+pub type UsefulnessReport<'p, 'tcx> =
+    crate::usefulness::UsefulnessReport<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
+pub type WitnessPat<'p, 'tcx> = crate::pat::WitnessPat<RustcMatchCheckCtxt<'p, 'tcx>>;
+
+#[derive(Clone)]
+pub struct RustcMatchCheckCtxt<'p, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
     /// The module in which the match occurs. This is necessary for
     /// checking inhabited-ness of types because whether a type is (visibly)
@@ -35,6 +52,7 @@ pub struct MatchCheckCtxt<'p, 'tcx> {
     pub module: DefId,
     pub param_env: ty::ParamEnv<'tcx>,
     pub pattern_arena: &'p TypedArena<DeconstructedPat<'p, 'tcx>>,
+    pub dropless_arena: &'p DroplessArena,
     /// Lint level at the match.
     pub match_lint_level: HirId,
     /// The span of the whole match, if applicable.
@@ -48,8 +66,14 @@ pub struct MatchCheckCtxt<'p, 'tcx> {
     pub known_valid_scrutinee: bool,
 }
 
-impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
-    pub(super) fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
+impl<'p, 'tcx> fmt::Debug for RustcMatchCheckCtxt<'p, 'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RustcMatchCheckCtxt").finish()
+    }
+}
+
+impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
+    pub(crate) fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
         !ty.is_inhabited_from(self.tcx, self.module, self.param_env)
     }
 
@@ -63,12 +87,18 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
         }
     }
 
-    pub(crate) fn alloc_wildcard_slice(
-        &self,
-        tys: impl IntoIterator<Item = Ty<'tcx>>,
-    ) -> &'p [DeconstructedPat<'p, 'tcx>] {
-        self.pattern_arena
-            .alloc_from_iter(tys.into_iter().map(|ty| DeconstructedPat::wildcard(ty, DUMMY_SP)))
+    /// Whether the range denotes the fictitious values before `isize::MIN` or after
+    /// `usize::MAX`/`isize::MAX` (see doc of [`IntRange::split`] for why these exist).
+    pub fn is_range_beyond_boundaries(&self, range: &IntRange, ty: Ty<'tcx>) -> bool {
+        ty.is_ptr_sized_integral() && {
+            // The two invalid ranges are `NegInfinity..isize::MIN` (represented as
+            // `NegInfinity..0`), and `{u,i}size::MAX+1..PosInfinity`. `hoist_pat_range_bdy`
+            // converts `MAX+1` to `PosInfinity`, and we couldn't have `PosInfinity` in `range.lo`
+            // otherwise.
+            let lo = self.hoist_pat_range_bdy(range.lo, ty);
+            matches!(lo, PatRangeBoundary::PosInfinity)
+                || matches!(range.hi, MaybeInfiniteInt::Finite(0))
+        }
     }
 
     // In the cases of either a `#[non_exhaustive]` field list or a non-public field, we hide
@@ -100,12 +130,12 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
     }
 
     pub(crate) fn variant_index_for_adt(
-        ctor: &Constructor<'tcx>,
+        ctor: &Constructor<'p, 'tcx>,
         adt: ty::AdtDef<'tcx>,
     ) -> VariantIdx {
         match *ctor {
             Variant(idx) => idx,
-            Single => {
+            Struct | UnionField => {
                 assert!(!adt.is_enum());
                 FIRST_VARIANT
             }
@@ -113,37 +143,36 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
         }
     }
 
-    /// Creates a new list of wildcard fields for a given constructor. The result must have a length
-    /// of `ctor.arity()`.
+    /// Returns the types of the fields for a given constructor. The result must have a length of
+    /// `ctor.arity()`.
     #[instrument(level = "trace", skip(self))]
-    pub(crate) fn ctor_wildcard_fields(
-        &self,
-        ctor: &Constructor<'tcx>,
-        ty: Ty<'tcx>,
-    ) -> &'p [DeconstructedPat<'p, 'tcx>] {
+    pub(crate) fn ctor_sub_tys(&self, ctor: &Constructor<'p, 'tcx>, ty: Ty<'tcx>) -> &[Ty<'tcx>] {
         let cx = self;
         match ctor {
-            Single | Variant(_) => match ty.kind() {
-                ty::Tuple(fs) => cx.alloc_wildcard_slice(fs.iter()),
-                ty::Ref(_, rty, _) => cx.alloc_wildcard_slice(once(*rty)),
+            Struct | Variant(_) | UnionField => match ty.kind() {
+                ty::Tuple(fs) => cx.dropless_arena.alloc_from_iter(fs.iter()),
                 ty::Adt(adt, args) => {
                     if adt.is_box() {
                         // The only legal patterns of type `Box` (outside `std`) are `_` and box
                         // patterns. If we're here we can assume this is a box pattern.
-                        cx.alloc_wildcard_slice(once(args.type_at(0)))
+                        cx.dropless_arena.alloc_from_iter(once(args.type_at(0)))
                     } else {
                         let variant =
-                            &adt.variant(MatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
+                            &adt.variant(RustcMatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
                         let tys = cx.list_variant_nonhidden_fields(ty, variant).map(|(_, ty)| ty);
-                        cx.alloc_wildcard_slice(tys)
+                        cx.dropless_arena.alloc_from_iter(tys)
                     }
                 }
-                _ => bug!("Unexpected type for `Single` constructor: {:?}", ty),
+                _ => bug!("Unexpected type for constructor `{ctor:?}`: {ty:?}"),
+            },
+            Ref => match ty.kind() {
+                ty::Ref(_, rty, _) => cx.dropless_arena.alloc_from_iter(once(*rty)),
+                _ => bug!("Unexpected type for `Ref` constructor: {ty:?}"),
             },
             Slice(slice) => match *ty.kind() {
                 ty::Slice(ty) | ty::Array(ty, _) => {
                     let arity = slice.arity();
-                    cx.alloc_wildcard_slice((0..arity).map(|_| ty))
+                    cx.dropless_arena.alloc_from_iter((0..arity).map(|_| ty))
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", ctor, ty),
             },
@@ -163,13 +192,11 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
         }
     }
 
-    /// The number of fields for this constructor. This must be kept in sync with
-    /// `Fields::wildcards`.
-    pub(crate) fn ctor_arity(&self, ctor: &Constructor<'tcx>, ty: Ty<'tcx>) -> usize {
+    /// The number of fields for this constructor.
+    pub(crate) fn ctor_arity(&self, ctor: &Constructor<'p, 'tcx>, ty: Ty<'tcx>) -> usize {
         match ctor {
-            Single | Variant(_) => match ty.kind() {
+            Struct | Variant(_) | UnionField => match ty.kind() {
                 ty::Tuple(fs) => fs.len(),
-                ty::Ref(..) => 1,
                 ty::Adt(adt, ..) => {
                     if adt.is_box() {
                         // The only legal patterns of type `Box` (outside `std`) are `_` and box
@@ -177,12 +204,13 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                         1
                     } else {
                         let variant =
-                            &adt.variant(MatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
+                            &adt.variant(RustcMatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
                         self.list_variant_nonhidden_fields(ty, variant).count()
                     }
                 }
-                _ => bug!("Unexpected type for `Single` constructor: {:?}", ty),
+                _ => bug!("Unexpected type for constructor `{ctor:?}`: {ty:?}"),
             },
+            Ref => 1,
             Slice(slice) => slice.arity(),
             Bool(..)
             | IntRange(..)
@@ -202,7 +230,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
     ///
     /// See [`crate::constructor`] for considerations of emptiness.
     #[instrument(level = "debug", skip(self), ret)]
-    pub fn ctors_for_ty(&self, ty: Ty<'tcx>) -> ConstructorSet {
+    pub fn ctors_for_ty(&self, ty: Ty<'tcx>) -> ConstructorSet<'p, 'tcx> {
         let cx = self;
         let make_uint_range = |start, end| {
             IntRange::from_range(
@@ -298,9 +326,9 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                     ConstructorSet::Variants { variants, non_exhaustive: is_declared_nonexhaustive }
                 }
             }
-            ty::Adt(..) | ty::Tuple(..) | ty::Ref(..) => {
-                ConstructorSet::Single { empty: cx.is_uninhabited(ty) }
-            }
+            ty::Adt(def, _) if def.is_union() => ConstructorSet::Union,
+            ty::Adt(..) | ty::Tuple(..) => ConstructorSet::Struct { empty: cx.is_uninhabited(ty) },
+            ty::Ref(..) => ConstructorSet::Ref,
             ty::Never => ConstructorSet::NoConstructors,
             // This type is one for which we cannot list constructors, like `str` or `f64`.
             // FIXME(Nadrieril): which of these are actually allowed?
@@ -359,13 +387,18 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                 fields = &[];
             }
             PatKind::Deref { subpattern } => {
-                ctor = Single;
                 fields = singleton(self.lower_pat(subpattern));
+                ctor = match pat.ty.kind() {
+                    // This is a box pattern.
+                    ty::Adt(adt, ..) if adt.is_box() => Struct,
+                    ty::Ref(..) => Ref,
+                    _ => bug!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, pat.ty),
+                };
             }
             PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
                 match pat.ty.kind() {
                     ty::Tuple(fs) => {
-                        ctor = Single;
+                        ctor = Struct;
                         let mut wilds: SmallVec<[_; 2]> =
                             fs.iter().map(|ty| DeconstructedPat::wildcard(ty, pat.span)).collect();
                         for pat in subpatterns {
@@ -380,7 +413,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                         // _)` or a box pattern. As a hack to avoid an ICE with the former, we
                         // ignore other fields than the first one. This will trigger an error later
                         // anyway.
-                        // See https://github.com/rust-lang/rust/issues/82772 ,
+                        // See https://github.com/rust-lang/rust/issues/82772,
                         // explanation: https://github.com/rust-lang/rust/pull/82789#issuecomment-796921977
                         // The problem is that we can't know from the type whether we'll match
                         // normally or through box-patterns. We'll have to figure out a proper
@@ -392,17 +425,18 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                         } else {
                             DeconstructedPat::wildcard(args.type_at(0), pat.span)
                         };
-                        ctor = Single;
+                        ctor = Struct;
                         fields = singleton(pat);
                     }
                     ty::Adt(adt, _) => {
                         ctor = match pat.kind {
-                            PatKind::Leaf { .. } => Single,
+                            PatKind::Leaf { .. } if adt.is_union() => UnionField,
+                            PatKind::Leaf { .. } => Struct,
                             PatKind::Variant { variant_index, .. } => Variant(variant_index),
                             _ => bug!(),
                         };
                         let variant =
-                            &adt.variant(MatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
+                            &adt.variant(RustcMatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
                         // For each field in the variant, we store the relevant index into `self.fields` if any.
                         let mut field_id_to_id: Vec<Option<usize>> =
                             (0..variant.fields.len()).map(|_| None).collect();
@@ -477,11 +511,11 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                         // with other `Deref` patterns. This could have been done in `const_to_pat`,
                         // but that causes issues with the rest of the matching code.
                         // So here, the constructor for a `"foo"` pattern is `&` (represented by
-                        // `Single`), and has one field. That field has constructor `Str(value)` and no
-                        // fields.
+                        // `Ref`), and has one field. That field has constructor `Str(value)` and no
+                        // subfields.
                         // Note: `t` is `str`, not `&str`.
                         let subpattern = DeconstructedPat::new(Str(*value), &[], *t, pat.span);
-                        ctor = Single;
+                        ctor = Ref;
                         fields = singleton(subpattern)
                     }
                     // All constants that can be structurally matched have already been expanded
@@ -495,12 +529,16 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
             }
             PatKind::Range(patrange) => {
                 let PatRange { lo, hi, end, .. } = patrange.as_ref();
+                let end = match end {
+                    rustc_hir::RangeEnd::Included => RangeEnd::Included,
+                    rustc_hir::RangeEnd::Excluded => RangeEnd::Excluded,
+                };
                 let ty = pat.ty;
                 ctor = match ty.kind() {
                     ty::Char | ty::Int(_) | ty::Uint(_) => {
                         let lo = cx.lower_pat_range_bdy(*lo, ty);
                         let hi = cx.lower_pat_range_bdy(*hi, ty);
-                        IntRange(IntRange::from_range(lo, hi, *end))
+                        IntRange(IntRange::from_range(lo, hi, end))
                     }
                     ty::Float(fty) => {
                         use rustc_apfloat::Float;
@@ -511,13 +549,13 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                                 use rustc_apfloat::ieee::Single;
                                 let lo = lo.map(Single::from_bits).unwrap_or(-Single::INFINITY);
                                 let hi = hi.map(Single::from_bits).unwrap_or(Single::INFINITY);
-                                F32Range(lo, hi, *end)
+                                F32Range(lo, hi, end)
                             }
                             ty::FloatTy::F64 => {
                                 use rustc_apfloat::ieee::Double;
                                 let lo = lo.map(Double::from_bits).unwrap_or(-Double::INFINITY);
                                 let hi = hi.map(Double::from_bits).unwrap_or(Double::INFINITY);
-                                F64Range(lo, hi, *end)
+                                F64Range(lo, hi, end)
                             }
                         }
                     }
@@ -597,20 +635,6 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
         }
     }
 
-    /// Whether the range denotes the fictitious values before `isize::MIN` or after
-    /// `usize::MAX`/`isize::MAX` (see doc of [`IntRange::split`] for why these exist).
-    pub fn is_range_beyond_boundaries(&self, range: &IntRange, ty: Ty<'tcx>) -> bool {
-        ty.is_ptr_sized_integral() && {
-            // The two invalid ranges are `NegInfinity..isize::MIN` (represented as
-            // `NegInfinity..0`), and `{u,i}size::MAX+1..PosInfinity`. `hoist_pat_range_bdy`
-            // converts `MAX+1` to `PosInfinity`, and we couldn't have `PosInfinity` in `range.lo`
-            // otherwise.
-            let lo = self.hoist_pat_range_bdy(range.lo, ty);
-            matches!(lo, PatRangeBoundary::PosInfinity)
-                || matches!(range.hi, MaybeInfiniteInt::Finite(0))
-        }
-    }
-
     /// Convert back to a `thir::Pat` for diagnostic purposes.
     pub(crate) fn hoist_pat_range(&self, range: &IntRange, ty: Ty<'tcx>) -> Pat<'tcx> {
         use MaybeInfiniteInt::*;
@@ -623,7 +647,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
             PatKind::Constant { value }
         } else {
             // We convert to an inclusive range for diagnostics.
-            let mut end = RangeEnd::Included;
+            let mut end = rustc_hir::RangeEnd::Included;
             let mut lo = cx.hoist_pat_range_bdy(range.lo, ty);
             if matches!(lo, PatRangeBoundary::PosInfinity) {
                 // The only reason to get `PosInfinity` here is the special case where
@@ -637,7 +661,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
             }
             let hi = if matches!(range.hi, Finite(0)) {
                 // The range encodes `..ty::MIN`, so we can't convert it to an inclusive range.
-                end = RangeEnd::Excluded;
+                end = rustc_hir::RangeEnd::Excluded;
                 range.hi
             } else {
                 range.hi.minus_one()
@@ -650,14 +674,14 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
     }
     /// Convert back to a `thir::Pat` for diagnostic purposes. This panics for patterns that don't
     /// appear in diagnostics, like float ranges.
-    pub fn hoist_witness_pat(&self, pat: &WitnessPat<'tcx>) -> Pat<'tcx> {
+    pub fn hoist_witness_pat(&self, pat: &WitnessPat<'p, 'tcx>) -> Pat<'tcx> {
         let cx = self;
         let is_wildcard = |pat: &Pat<'_>| matches!(pat.kind, PatKind::Wild);
         let mut subpatterns = pat.iter_fields().map(|p| Box::new(cx.hoist_witness_pat(p)));
         let kind = match pat.ctor() {
             Bool(b) => PatKind::Constant { value: mir::Const::from_bool(cx.tcx, *b) },
             IntRange(range) => return self.hoist_pat_range(range, pat.ty()),
-            Single | Variant(_) => match pat.ty().kind() {
+            Struct | Variant(_) | UnionField => match pat.ty().kind() {
                 ty::Tuple(..) => PatKind::Leaf {
                     subpatterns: subpatterns
                         .enumerate()
@@ -672,7 +696,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                 }
                 ty::Adt(adt_def, args) => {
                     let variant_index =
-                        MatchCheckCtxt::variant_index_for_adt(&pat.ctor(), *adt_def);
+                        RustcMatchCheckCtxt::variant_index_for_adt(&pat.ctor(), *adt_def);
                     let variant = &adt_def.variant(variant_index);
                     let subpatterns = cx
                         .list_variant_nonhidden_fields(pat.ty(), variant)
@@ -686,13 +710,13 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                         PatKind::Leaf { subpatterns }
                     }
                 }
-                // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
-                // be careful to reconstruct the correct constant pattern here. However a string
-                // literal pattern will never be reported as a non-exhaustiveness witness, so we
-                // ignore this issue.
-                ty::Ref(..) => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
                 _ => bug!("unexpected ctor for type {:?} {:?}", pat.ctor(), pat.ty()),
             },
+            // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
+            // be careful to reconstruct the correct constant pattern here. However a string
+            // literal pattern will never be reported as a non-exhaustiveness witness, so we
+            // ignore this issue.
+            Ref => PatKind::Deref { subpattern: subpatterns.next().unwrap() },
             Slice(slice) => {
                 match slice.kind {
                     SliceKind::FixedLen(_) => PatKind::Slice {
@@ -744,7 +768,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
     /// Best-effort `Debug` implementation.
     pub(crate) fn debug_pat(
         f: &mut fmt::Formatter<'_>,
-        pat: &DeconstructedPat<'p, 'tcx>,
+        pat: &crate::pat::DeconstructedPat<'_, Self>,
     ) -> fmt::Result {
         let mut first = true;
         let mut start_or_continue = |s| {
@@ -758,7 +782,7 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
         let mut start_or_comma = || start_or_continue(", ");
 
         match pat.ctor() {
-            Single | Variant(_) => match pat.ty().kind() {
+            Struct | Variant(_) | UnionField => match pat.ty().kind() {
                 ty::Adt(def, _) if def.is_box() => {
                     // Without `box_patterns`, the only legal pattern of type `Box` is `_` (outside
                     // of `std`). So this branch is only reachable when the feature is enabled and
@@ -767,13 +791,14 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                     write!(f, "box {subpattern:?}")
                 }
                 ty::Adt(..) | ty::Tuple(..) => {
-                    let variant = match pat.ty().kind() {
-                        ty::Adt(adt, _) => Some(
-                            adt.variant(MatchCheckCtxt::variant_index_for_adt(pat.ctor(), *adt)),
-                        ),
-                        ty::Tuple(_) => None,
-                        _ => unreachable!(),
-                    };
+                    let variant =
+                        match pat.ty().kind() {
+                            ty::Adt(adt, _) => Some(adt.variant(
+                                RustcMatchCheckCtxt::variant_index_for_adt(pat.ctor(), *adt),
+                            )),
+                            ty::Tuple(_) => None,
+                            _ => unreachable!(),
+                        };
 
                     if let Some(variant) = variant {
                         write!(f, "{}", variant.name)?;
@@ -789,15 +814,15 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
                     }
                     write!(f, ")")
                 }
-                // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
-                // be careful to detect strings here. However a string literal pattern will never
-                // be reported as a non-exhaustiveness witness, so we can ignore this issue.
-                ty::Ref(_, _, mutbl) => {
-                    let subpattern = pat.iter_fields().next().unwrap();
-                    write!(f, "&{}{:?}", mutbl.prefix_str(), subpattern)
-                }
                 _ => write!(f, "_"),
             },
+            // Note: given the expansion of `&str` patterns done in `expand_pattern`, we should
+            // be careful to detect strings here. However a string literal pattern will never
+            // be reported as a non-exhaustiveness witness, so we can ignore this issue.
+            Ref => {
+                let subpattern = pat.iter_fields().next().unwrap();
+                write!(f, "&{:?}", subpattern)
+            }
             Slice(slice) => {
                 let mut subpatterns = pat.iter_fields();
                 write!(f, "[")?;
@@ -835,6 +860,45 @@ impl<'p, 'tcx> MatchCheckCtxt<'p, 'tcx> {
             }
             Wildcard | Missing { .. } | NonExhaustive | Hidden => write!(f, "_ : {:?}", pat.ty()),
         }
+    }
+}
+
+impl<'p, 'tcx> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
+    type Ty = Ty<'tcx>;
+    type VariantIdx = VariantIdx;
+    type StrLit = Const<'tcx>;
+    type ArmData = HirId;
+    type PatData = Span;
+
+    fn is_exhaustive_patterns_feature_on(&self) -> bool {
+        self.tcx.features().exhaustive_patterns
+    }
+    fn is_opaque_ty(ty: Self::Ty) -> bool {
+        matches!(ty.kind(), ty::Alias(ty::Opaque, ..))
+    }
+
+    fn ctor_arity(&self, ctor: &crate::constructor::Constructor<Self>, ty: Self::Ty) -> usize {
+        self.ctor_arity(ctor, ty)
+    }
+    fn ctor_sub_tys(
+        &self,
+        ctor: &crate::constructor::Constructor<Self>,
+        ty: Self::Ty,
+    ) -> &[Self::Ty] {
+        self.ctor_sub_tys(ctor, ty)
+    }
+    fn ctors_for_ty(&self, ty: Self::Ty) -> crate::constructor::ConstructorSet<Self> {
+        self.ctors_for_ty(ty)
+    }
+
+    fn debug_pat(
+        f: &mut fmt::Formatter<'_>,
+        pat: &crate::pat::DeconstructedPat<'_, Self>,
+    ) -> fmt::Result {
+        Self::debug_pat(f, pat)
+    }
+    fn bug(&self, fmt: fmt::Arguments<'_>) -> ! {
+        span_bug!(self.scrut_span, "{}", fmt)
     }
 }
 

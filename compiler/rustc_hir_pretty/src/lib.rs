@@ -741,7 +741,7 @@ impl<'a> State<'a> {
                 self.end();
                 self.end() // close the outer-box
             }
-            hir::VariantData::Struct(..) => {
+            hir::VariantData::Struct { .. } => {
                 self.print_where_clause(generics);
                 self.nbsp();
                 self.bopen();

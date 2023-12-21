@@ -8,6 +8,7 @@ use rustc_index::IndexVec;
 use rustc_middle::dep_graph::dep_kinds;
 use rustc_middle::traits::solve::CacheData;
 use rustc_middle::traits::solve::{CanonicalInput, Certainty, EvaluationCache, QueryResult};
+use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Limit;
 use std::collections::hash_map::Entry;
@@ -109,6 +110,15 @@ impl<'tcx> SearchGraph<'tcx> {
 
     pub(super) fn is_empty(&self) -> bool {
         self.stack.is_empty()
+    }
+
+    pub(super) fn current_goal_is_normalizes_to(&self) -> bool {
+        self.stack.raw.last().map_or(false, |e| {
+            matches!(
+                e.input.value.goal.predicate.kind().skip_binder(),
+                ty::PredicateKind::NormalizesTo(..)
+            )
+        })
     }
 
     /// Returns the remaining depth allowed for nested goals.

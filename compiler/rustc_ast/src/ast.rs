@@ -2788,7 +2788,11 @@ pub enum VariantData {
     /// Struct variant.
     ///
     /// E.g., `Bar { .. }` as in `enum Foo { Bar { .. } }`.
-    Struct(ThinVec<FieldDef>, bool),
+    Struct {
+        fields: ThinVec<FieldDef>,
+        // FIXME: investigate making this a `Option<ErrorGuaranteed>`
+        recovered: bool,
+    },
     /// Tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
@@ -2803,7 +2807,7 @@ impl VariantData {
     /// Return the fields of this variant.
     pub fn fields(&self) -> &[FieldDef] {
         match self {
-            VariantData::Struct(fields, ..) | VariantData::Tuple(fields, _) => fields,
+            VariantData::Struct { fields, .. } | VariantData::Tuple(fields, _) => fields,
             _ => &[],
         }
     }
@@ -2811,7 +2815,7 @@ impl VariantData {
     /// Return the `NodeId` of this variant's constructor, if it has one.
     pub fn ctor_node_id(&self) -> Option<NodeId> {
         match *self {
-            VariantData::Struct(..) => None,
+            VariantData::Struct { .. } => None,
             VariantData::Tuple(_, id) | VariantData::Unit(id) => Some(id),
         }
     }

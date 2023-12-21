@@ -289,6 +289,18 @@ impl PathSet {
     }
 }
 
+const PATH_REMAP: &[(&str, &str)] = &[("rust-analyzer-proc-macro-srv", "proc-macro-srv-cli")];
+
+fn remap_paths(paths: &mut Vec<&Path>) {
+    for path in paths.iter_mut() {
+        for &(search, replace) in PATH_REMAP {
+            if path.to_str() == Some(search) {
+                *path = Path::new(replace)
+            }
+        }
+    }
+}
+
 impl StepDescription {
     fn from<S: Step>(kind: Kind) -> StepDescription {
         StepDescription {
@@ -360,6 +372,8 @@ impl StepDescription {
         // strip CurDir prefix if present
         let mut paths: Vec<_> =
             paths.into_iter().map(|p| p.strip_prefix(".").unwrap_or(p)).collect();
+
+        remap_paths(&mut paths);
 
         // Handle all test suite paths.
         // (This is separate from the loop below to avoid having to handle multiple paths in `is_suite_path` somehow.)

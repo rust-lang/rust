@@ -71,7 +71,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
             (false, 0)
         }
         ast::VariantData::Tuple(..) => (false, 1),
-        ast::VariantData::Struct(..) => (true, 2),
+        ast::VariantData::Struct { .. } => (true, 2),
     };
 
     // The number of fields that can be handled without an array.
@@ -226,7 +226,7 @@ fn show_fieldless_enum(
                     debug_assert!(fields.is_empty());
                     cx.pat_tuple_struct(span, variant_path, ThinVec::new())
                 }
-                ast::VariantData::Struct(fields, _) => {
+                ast::VariantData::Struct { fields, .. } => {
                     debug_assert!(fields.is_empty());
                     cx.pat_struct(span, variant_path, ThinVec::new())
                 }

@@ -31,13 +31,12 @@ use super::outlives::test_type_match;
 /// all the variables as well as a set of errors that must be reported.
 #[instrument(level = "debug", skip(region_rels, var_infos, data))]
 pub(crate) fn resolve<'tcx>(
-    param_env: ty::ParamEnv<'tcx>,
     region_rels: &RegionRelations<'_, 'tcx>,
     var_infos: VarInfos,
     data: RegionConstraintData<'tcx>,
 ) -> (LexicalRegionResolutions<'tcx>, Vec<RegionResolutionError<'tcx>>) {
     let mut errors = vec![];
-    let mut resolver = LexicalResolver { param_env, region_rels, var_infos, data };
+    let mut resolver = LexicalResolver { region_rels, var_infos, data };
     let values = resolver.infer_variable_values(&mut errors);
     (values, errors)
 }
@@ -120,7 +119,6 @@ struct RegionAndOrigin<'tcx> {
 type RegionGraph<'tcx> = Graph<(), Constraint<'tcx>>;
 
 struct LexicalResolver<'cx, 'tcx> {
-    param_env: ty::ParamEnv<'tcx>,
     region_rels: &'cx RegionRelations<'cx, 'tcx>,
     var_infos: VarInfos,
     data: RegionConstraintData<'tcx>,
@@ -914,12 +912,8 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         match bound {
             VerifyBound::IfEq(verify_if_eq_b) => {
                 let verify_if_eq_b = var_values.normalize(self.region_rels.tcx, *verify_if_eq_b);
-                match test_type_match::extract_verify_if_eq(
-                    self.tcx(),
-                    self.param_env,
-                    &verify_if_eq_b,
-                    generic_ty,
-                ) {
+                match test_type_match::extract_verify_if_eq(self.tcx(), &verify_if_eq_b, generic_ty)
+                {
                     Some(r) => {
                         self.bound_is_met(&VerifyBound::OutlivedBy(r), var_values, generic_ty, min)
                     }

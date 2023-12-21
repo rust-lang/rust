@@ -200,7 +200,7 @@ fn item_search_pat(item: &Item<'_>) -> (Pat, Pat) {
         ItemKind::ForeignMod { .. } => (Pat::Str("extern"), Pat::Str("}")),
         ItemKind::TyAlias(..) | ItemKind::OpaqueTy(_) => (Pat::Str("type"), Pat::Str(";")),
         ItemKind::Enum(..) => (Pat::Str("enum"), Pat::Str("}")),
-        ItemKind::Struct(VariantData::Struct(..), _) => (Pat::Str("struct"), Pat::Str("}")),
+        ItemKind::Struct(VariantData::Struct { .. }, _) => (Pat::Str("struct"), Pat::Str("}")),
         ItemKind::Struct(..) => (Pat::Str("struct"), Pat::Str(";")),
         ItemKind::Union(..) => (Pat::Str("union"), Pat::Str("}")),
         ItemKind::Trait(_, Unsafety::Unsafe, ..)
@@ -255,7 +255,7 @@ fn field_def_search_pat(def: &FieldDef<'_>) -> (Pat, Pat) {
 
 fn variant_search_pat(v: &Variant<'_>) -> (Pat, Pat) {
     match v.data {
-        VariantData::Struct(..) => (Pat::Sym(v.ident.name), Pat::Str("}")),
+        VariantData::Struct { .. } => (Pat::Sym(v.ident.name), Pat::Str("}")),
         VariantData::Tuple(..) => (Pat::Sym(v.ident.name), Pat::Str("")),
         VariantData::Unit(..) => (Pat::Sym(v.ident.name), Pat::Sym(v.ident.name)),
     }

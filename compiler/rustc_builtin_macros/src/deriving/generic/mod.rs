@@ -1485,7 +1485,7 @@ impl<'a> TraitDef<'a> {
 
                 let struct_path = struct_path.clone();
                 match *struct_def {
-                    VariantData::Struct(..) => {
+                    VariantData::Struct { .. } => {
                         let field_pats = pieces_iter
                             .map(|(sp, ident, pat)| {
                                 if ident.is_none() {

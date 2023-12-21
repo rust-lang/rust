@@ -12,6 +12,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::Span;
 use scoped_tls::scoped_thread_local;
+use stable_mir::abi::Layout;
 use stable_mir::ty::IndexedVal;
 use stable_mir::Error;
 use std::cell::Cell;
@@ -136,6 +137,10 @@ impl<'tcx> Tables<'tcx> {
     pub(crate) fn static_def(&mut self, did: DefId) -> stable_mir::mir::mono::StaticDef {
         stable_mir::mir::mono::StaticDef(self.create_def_id(did))
     }
+
+    pub(crate) fn layout_id(&mut self, layout: rustc_target::abi::Layout<'tcx>) -> Layout {
+        self.layouts.create_or_fetch(layout)
+    }
 }
 
 pub fn crate_num(item: &stable_mir::Crate) -> CrateNum {
@@ -180,6 +185,7 @@ where
         types: IndexMap::default(),
         instances: IndexMap::default(),
         constants: IndexMap::default(),
+        layouts: IndexMap::default(),
     }));
     stable_mir::compiler_interface::run(&tables, || init(&tables, f))
 }

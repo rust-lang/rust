@@ -12,7 +12,7 @@ use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
 use rustc_hir::def::Res;
-use rustc_hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::def_id::{DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_index::Idx;
@@ -1200,7 +1200,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     /// Iterates over the diagnostic items in the given crate.
     fn get_diagnostic_items(self) -> DiagnosticItems {
-        let mut id_to_name = FxHashMap::default();
+        let mut id_to_name = DefIdMap::default();
         let name_to_id = self
             .root
             .diagnostic_items

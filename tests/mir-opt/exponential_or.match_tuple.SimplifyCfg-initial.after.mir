@@ -38,22 +38,22 @@ fn match_tuple(_1: (u32, bool, Option<i32>, u32)) -> u32 {
 
     bb4: {
         _5 = Le(const 6_u32, (_1.3: u32));
-        switchInt(move _5) -> [0: bb6, otherwise: bb5];
+        switchInt(move _5) -> [0: bb5, otherwise: bb7];
     }
 
     bb5: {
-        _6 = Le((_1.3: u32), const 9_u32);
-        switchInt(move _6) -> [0: bb6, otherwise: bb8];
+        _3 = Le(const 13_u32, (_1.3: u32));
+        switchInt(move _3) -> [0: bb1, otherwise: bb6];
     }
 
     bb6: {
-        _3 = Le(const 13_u32, (_1.3: u32));
-        switchInt(move _3) -> [0: bb1, otherwise: bb7];
+        _4 = Le((_1.3: u32), const 16_u32);
+        switchInt(move _4) -> [0: bb1, otherwise: bb8];
     }
 
     bb7: {
-        _4 = Le((_1.3: u32), const 16_u32);
-        switchInt(move _4) -> [0: bb1, otherwise: bb8];
+        _6 = Le((_1.3: u32), const 9_u32);
+        switchInt(move _6) -> [0: bb5, otherwise: bb8];
     }
 
     bb8: {
