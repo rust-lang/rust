@@ -521,7 +521,7 @@ impl<'tcx> OnUnimplementedDirective {
     pub fn of_item(tcx: TyCtxt<'tcx>, item_def_id: DefId) -> Result<Option<Self>, ErrorGuaranteed> {
         if let Some(attr) = tcx.get_attr(item_def_id, sym::rustc_on_unimplemented) {
             return Self::parse_attribute(attr, false, tcx, item_def_id);
-        } else if tcx.features().diagnostic_namespace {
+        } else {
             tcx.get_attrs_by_path(item_def_id, &[sym::diagnostic, sym::on_unimplemented])
                 .filter_map(|attr| Self::parse_attribute(attr, true, tcx, item_def_id).transpose())
                 .try_fold(None, |aggr: Option<Self>, directive| {
@@ -592,8 +592,6 @@ impl<'tcx> OnUnimplementedDirective {
                         Ok(Some(directive))
                     }
                 })
-        } else {
-            Ok(None)
         }
     }
 
