@@ -729,7 +729,7 @@ pub const fn type_name<T: ?Sized>() -> &'static str {
 /// assert!(type_name_of_val(&y).contains("f32"));
 /// ```
 #[must_use]
-#[stable(feature = "type_name_of_val", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "type_name_of_val", since = "1.76.0")]
 #[rustc_const_unstable(feature = "const_type_name", issue = "63084")]
 pub const fn type_name_of_val<T: ?Sized>(_val: &T) -> &'static str {
     type_name::<T>()

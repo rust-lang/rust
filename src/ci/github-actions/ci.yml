@@ -471,6 +471,11 @@ jobs:
             <<: *job-linux-4c
 
           - name: x86_64-gnu-integration
+            env:
+              # Only run this job on the nightly channel. Fuchsia requires
+              # nightly features to compile, and this job would fail if
+              # executed on beta and stable.
+              CI_ONLY_WHEN_CHANNEL: nightly
             <<: *job-linux-16c
 
           - name: x86_64-gnu-debug

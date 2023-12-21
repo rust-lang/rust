@@ -87,5 +87,5 @@ pub(crate) mod random;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::hash::*;
 
-#[stable(feature = "std_hash_exports", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "std_hash_exports", since = "1.76.0")]
 pub use self::random::{DefaultHasher, RandomState};

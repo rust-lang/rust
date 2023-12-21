@@ -720,8 +720,8 @@ where
 /// type or mutability, in particular if the code is refactored.
 #[inline(always)]
 #[must_use]
-#[stable(feature = "ptr_from_ref", since = "CURRENT_RUSTC_VERSION")]
-#[rustc_const_stable(feature = "ptr_from_ref", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "ptr_from_ref", since = "1.76.0")]
+#[rustc_const_stable(feature = "ptr_from_ref", since = "1.76.0")]
 #[rustc_never_returns_null_ptr]
 #[rustc_diagnostic_item = "ptr_from_ref"]
 pub const fn from_ref<T: ?Sized>(r: &T) -> *const T {
@@ -734,8 +734,8 @@ pub const fn from_ref<T: ?Sized>(r: &T) -> *const T {
 /// type or mutability, in particular if the code is refactored.
 #[inline(always)]
 #[must_use]
-#[stable(feature = "ptr_from_ref", since = "CURRENT_RUSTC_VERSION")]
-#[rustc_const_stable(feature = "ptr_from_ref", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "ptr_from_ref", since = "1.76.0")]
+#[rustc_const_stable(feature = "ptr_from_ref", since = "1.76.0")]
 #[rustc_allow_const_fn_unstable(const_mut_refs)]
 #[rustc_never_returns_null_ptr]
 pub const fn from_mut<T: ?Sized>(r: &mut T) -> *mut T {
@@ -1922,7 +1922,7 @@ pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
 /// assert!(ptr::addr_eq(whole, first));
 /// assert!(!ptr::eq::<dyn std::fmt::Debug>(whole, first));
 /// ```
-#[stable(feature = "ptr_addr_eq", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "ptr_addr_eq", since = "1.76.0")]
 #[inline(always)]
 #[must_use = "pointer comparison produces a value"]
 pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {

@@ -1088,7 +1088,7 @@ impl<T> Option<T> {
     /// let x: Option<&usize> = v.get(5).inspect(|x| println!("got: {x}"));
     /// ```
     #[inline]
-    #[stable(feature = "result_option_inspect", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "result_option_inspect", since = "1.76.0")]
     pub fn inspect<F: FnOnce(&T)>(self, f: F) -> Self {
         if let Some(ref x) = self {
             f(x);
