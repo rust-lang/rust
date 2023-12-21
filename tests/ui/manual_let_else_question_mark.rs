@@ -65,3 +65,18 @@ fn foo() -> Option<()> {
 
     Some(())
 }
+
+// lint not just `return None`, but also `return None;` (note the semicolon)
+fn issue11993(y: Option<i32>) -> Option<i32> {
+    let Some(x) = y else {
+        return None;
+    };
+
+    // don't lint: more than one statement in the else body
+    let Some(x) = y else {
+        todo!();
+        return None;
+    };
+
+    None
+}

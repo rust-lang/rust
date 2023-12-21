@@ -128,9 +128,7 @@ fn find_method_and_type<'tcx>(
 
             if is_wildcard || is_rest {
                 let res = cx.typeck_results().qpath_res(qpath, check_pat.hir_id);
-                let Some(id) = res.opt_def_id().map(|ctor_id| cx.tcx.parent(ctor_id)) else {
-                    return None;
-                };
+                let id = res.opt_def_id().map(|ctor_id| cx.tcx.parent(ctor_id))?;
                 let lang_items = cx.tcx.lang_items();
                 if Some(id) == lang_items.result_ok_variant() {
                     Some(("is_ok()", try_get_generic_ty(op_ty, 0).unwrap_or(op_ty)))

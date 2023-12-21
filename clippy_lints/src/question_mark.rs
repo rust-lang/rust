@@ -96,6 +96,24 @@ enum IfBlockType<'hir> {
     ),
 }
 
+fn find_let_else_ret_expression<'hir>(block: &'hir Block<'hir>) -> Option<&'hir Expr<'hir>> {
+    if let Block {
+        stmts: &[],
+        expr: Some(els),
+        ..
+    } = block
+    {
+        Some(els)
+    } else if let [stmt] = block.stmts
+        && let StmtKind::Semi(expr) = stmt.kind
+        && let ExprKind::Ret(..) = expr.kind
+    {
+        Some(expr)
+    } else {
+        None
+    }
+}
+
 fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
     if let StmtKind::Local(Local {
         pat,
@@ -103,11 +121,7 @@ fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
         els: Some(els),
         ..
     }) = stmt.kind
-        && let Block {
-            stmts: &[],
-            expr: Some(els),
-            ..
-        } = els
+        && let Some(els) = find_let_else_ret_expression(els)
         && let Some(inner_pat) = pat_and_expr_can_be_question_mark(cx, pat, els)
     {
         let mut applicability = Applicability::MaybeIncorrect;
