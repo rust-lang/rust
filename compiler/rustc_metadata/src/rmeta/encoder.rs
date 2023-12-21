@@ -2,10 +2,8 @@ use crate::errors::{FailCreateFileEncoder, FailWriteFile};
 use crate::rmeta::*;
 
 use rustc_ast::Attribute;
-use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::memmap::{Mmap, MmapMut};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{join, par_for_each_in, Lrc};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_hir as hir;
@@ -2034,14 +2032,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_incoherent_impls(&mut self) -> LazyArray<IncoherentImpls> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
-        let mut all_impls: Vec<_> = tcx.crate_inherent_impls(()).incoherent_impls.iter().collect();
-        tcx.with_stable_hashing_context(|mut ctx| {
-            all_impls.sort_by_cached_key(|&(&simp, _)| {
-                let mut hasher = StableHasher::new();
-                simp.hash_stable(&mut ctx, &mut hasher);
-                hasher.finish::<Fingerprint>()
-            })
+        let all_impls = tcx.with_stable_hashing_context(|hcx| {
+            tcx.crate_inherent_impls(()).incoherent_impls.to_sorted(&hcx, true)
         });
+
         let all_impls: Vec<_> = all_impls
             .into_iter()
             .map(|(&simp, impls)| {
