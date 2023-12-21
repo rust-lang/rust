@@ -335,7 +335,7 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
                 kind: kind(loc.expander, loc.id.file_id(), makro.ast_id.upcast()),
                 local_inner: false,
                 allow_internal_unsafe: loc.allow_internal_unsafe,
-                def_site: db
+                span: db
                     .span_map(loc.id.file_id())
                     .span_for_range(db.ast_id_map(loc.id.file_id()).get(makro.ast_id).text_range()),
             }
@@ -350,7 +350,7 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
                 kind: kind(loc.expander, loc.id.file_id(), makro.ast_id.upcast()),
                 local_inner: loc.local_inner,
                 allow_internal_unsafe: loc.allow_internal_unsafe,
-                def_site: db
+                span: db
                     .span_map(loc.id.file_id())
                     .span_for_range(db.ast_id_map(loc.id.file_id()).get(makro.ast_id).text_range()),
             }
@@ -369,7 +369,7 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
                 ),
                 local_inner: false,
                 allow_internal_unsafe: false,
-                def_site: db
+                span: db
                     .span_map(loc.id.file_id())
                     .span_for_range(db.ast_id_map(loc.id.file_id()).get(makro.ast_id).text_range()),
             }

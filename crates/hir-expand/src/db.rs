@@ -23,7 +23,10 @@ use crate::{
     builtin_attr_macro::pseudo_derive_attr_expansion,
     builtin_fn_macro::EagerExpander,
     fixup::{self, reverse_fixups, SyntaxFixupUndoInfo},
-    hygiene::{apply_mark, SyntaxContextData, Transparency},
+    hygiene::{
+        apply_mark, span_with_call_site_ctxt, span_with_def_site_ctxt, span_with_mixed_site_ctxt,
+        SyntaxContextData, Transparency,
+    },
     proc_macro::ProcMacros,
     span_map::{RealSpanMap, SpanMap, SpanMapRef},
     tt, AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander,
@@ -307,9 +310,9 @@ pub fn expand_speculative(
                 loc.krate,
                 &tt,
                 attr_arg.as_ref(),
-                loc.call_site,
-                loc.call_site,
-                loc.call_site,
+                span_with_def_site_ctxt(db, loc.def.span, actual_macro_call),
+                span_with_call_site_ctxt(db, loc.def.span, actual_macro_call),
+                span_with_mixed_site_ctxt(db, loc.def.span, actual_macro_call),
             )
         }
         MacroDefKind::BuiltInAttr(BuiltinAttrExpander::Derive, _) => {
@@ -787,11 +790,9 @@ fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<A
         loc.krate,
         &macro_arg,
         attr_arg,
-        // FIXME
-        loc.call_site,
-        loc.call_site,
-        // FIXME
-        loc.call_site,
+        span_with_def_site_ctxt(db, loc.def.span, id),
+        span_with_call_site_ctxt(db, loc.def.span, id),
+        span_with_mixed_site_ctxt(db, loc.def.span, id),
     );
 
     // Set a hard limit for the expanded tt
