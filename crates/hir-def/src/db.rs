@@ -326,7 +326,7 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
 
     match id {
         MacroId::Macro2Id(it) => {
-            let loc = it.lookup(db);
+            let loc: Macro2Loc = it.lookup(db);
 
             let item_tree = loc.id.item_tree(db);
             let makro = &item_tree[loc.id.value];
@@ -335,10 +335,13 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
                 kind: kind(loc.expander, loc.id.file_id(), makro.ast_id.upcast()),
                 local_inner: false,
                 allow_internal_unsafe: loc.allow_internal_unsafe,
+                def_site: db
+                    .span_map(loc.id.file_id())
+                    .span_for_range(db.ast_id_map(loc.id.file_id()).get(makro.ast_id).text_range()),
             }
         }
         MacroId::MacroRulesId(it) => {
-            let loc = it.lookup(db);
+            let loc: MacroRulesLoc = it.lookup(db);
 
             let item_tree = loc.id.item_tree(db);
             let makro = &item_tree[loc.id.value];
@@ -347,6 +350,9 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
                 kind: kind(loc.expander, loc.id.file_id(), makro.ast_id.upcast()),
                 local_inner: loc.local_inner,
                 allow_internal_unsafe: loc.allow_internal_unsafe,
+                def_site: db
+                    .span_map(loc.id.file_id())
+                    .span_for_range(db.ast_id_map(loc.id.file_id()).get(makro.ast_id).text_range()),
             }
         }
         MacroId::ProcMacroId(it) => {
@@ -363,6 +369,9 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
                 ),
                 local_inner: false,
                 allow_internal_unsafe: false,
+                def_site: db
+                    .span_map(loc.id.file_id())
+                    .span_for_range(db.ast_id_map(loc.id.file_id()).get(makro.ast_id).text_range()),
             }
         }
     }
