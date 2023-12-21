@@ -656,7 +656,7 @@ fn maybe_emutls_symbol_name<'tcx>(
     }
 }
 
-fn wasm_import_module_map(tcx: TyCtxt<'_>, cnum: CrateNum) -> FxHashMap<DefId, String> {
+fn wasm_import_module_map(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<String> {
     // Build up a map from DefId to a `NativeLib` structure, where
     // `NativeLib` internally contains information about
     // `#[link(wasm_import_module = "...")]` for example.
@@ -665,9 +665,9 @@ fn wasm_import_module_map(tcx: TyCtxt<'_>, cnum: CrateNum) -> FxHashMap<DefId, S
     let def_id_to_native_lib = native_libs
         .iter()
         .filter_map(|lib| lib.foreign_module.map(|id| (id, lib)))
-        .collect::<FxHashMap<_, _>>();
+        .collect::<DefIdMap<_>>();
 
-    let mut ret = FxHashMap::default();
+    let mut ret = DefIdMap::default();
     for (def_id, lib) in tcx.foreign_modules(cnum).iter() {
         let module = def_id_to_native_lib.get(def_id).and_then(|s| s.wasm_import_module());
         let Some(module) = module else { continue };

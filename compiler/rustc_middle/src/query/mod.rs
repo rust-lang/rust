@@ -611,7 +611,7 @@ rustc_queries! {
         desc { "erasing regions from `{}`", ty }
     }
 
-    query wasm_import_module_map(_: CrateNum) -> &'tcx FxHashMap<DefId, String> {
+    query wasm_import_module_map(_: CrateNum) -> &'tcx DefIdMap<String> {
         arena_cache
         desc { "getting wasm import module map" }
     }
