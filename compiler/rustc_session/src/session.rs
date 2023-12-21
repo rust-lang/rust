@@ -471,7 +471,7 @@ impl Session {
     ) -> DiagnosticBuilder<'a> {
         let mut err = self.parse_sess.create_err(err);
         if err.code.is_none() {
-            err.code = std::option::Option::Some(error_code!(E0658));
+            err.code(error_code!(E0658));
         }
         add_feature_diagnostics(&mut err, &self.parse_sess, feature);
         err
