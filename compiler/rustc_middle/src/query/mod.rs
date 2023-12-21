@@ -2082,7 +2082,7 @@ rustc_queries! {
         desc { "computing autoderef types for `{}`", goal.value.value }
     }
 
-    query supported_target_features(_: CrateNum) -> &'tcx FxHashMap<String, Option<Symbol>> {
+    query supported_target_features(_: CrateNum) -> &'tcx UnordMap<String, Option<Symbol>> {
         arena_cache
         eval_always
         desc { "looking up supported target features" }
