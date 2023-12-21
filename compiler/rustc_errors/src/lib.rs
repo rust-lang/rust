@@ -673,7 +673,7 @@ impl DiagCtxt {
         let key = (span.with_parent(None), key);
 
         if diag.is_error() {
-            if matches!(diag.level, Level::Error { lint: true }) {
+            if matches!(diag.level, Error { lint: true }) {
                 inner.lint_err_count += 1;
             } else {
                 inner.err_count += 1;
@@ -697,7 +697,7 @@ impl DiagCtxt {
         let key = (span.with_parent(None), key);
         let diag = inner.stashed_diagnostics.remove(&key)?;
         if diag.is_error() {
-            if matches!(diag.level, Level::Error { lint: true }) {
+            if matches!(diag.level, Error { lint: true }) {
                 inner.lint_err_count -= 1;
             } else {
                 inner.err_count -= 1;
@@ -759,14 +759,14 @@ impl DiagCtxt {
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
-        DiagnosticBuilder::new(self, Level::Warning(None), msg)
+        DiagnosticBuilder::new(self, Warning(None), msg)
     }
 
     /// Construct a builder at the `Allow` level with the `msg`.
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_allow(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
-        DiagnosticBuilder::new(self, Level::Allow, msg)
+        DiagnosticBuilder::new(self, Allow, msg)
     }
 
     /// Construct a builder at the `Expect` level with the `msg`.
@@ -777,7 +777,7 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
         id: LintExpectationId,
     ) -> DiagnosticBuilder<'_, ()> {
-        DiagnosticBuilder::new(self, Level::Expect(id), msg)
+        DiagnosticBuilder::new(self, Expect(id), msg)
     }
 
     /// Construct a builder at the `Error` level at the given `span` and with the `msg`.
@@ -812,7 +812,7 @@ impl DiagCtxt {
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_err(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_> {
-        DiagnosticBuilder::new(self, Level::Error { lint: false }, msg)
+        DiagnosticBuilder::new(self, Error { lint: false }, msg)
     }
 
     /// Construct a builder at the `Error` level with the `msg` and the `code`.
@@ -875,7 +875,7 @@ impl DiagCtxt {
         &self,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, FatalAbort> {
-        DiagnosticBuilder::new(self, Level::Fatal, msg)
+        DiagnosticBuilder::new(self, Fatal, msg)
     }
 
     /// Construct a builder at the `Fatal` level with the `msg`, that doesn't abort.
@@ -885,27 +885,27 @@ impl DiagCtxt {
         &self,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, FatalError> {
-        DiagnosticBuilder::new(self, Level::Fatal, msg)
+        DiagnosticBuilder::new(self, Fatal, msg)
     }
 
     /// Construct a builder at the `Help` level with the `msg`.
     #[rustc_lint_diagnostics]
     pub fn struct_help(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
-        DiagnosticBuilder::new(self, Level::Help, msg)
+        DiagnosticBuilder::new(self, Help, msg)
     }
 
     /// Construct a builder at the `Note` level with the `msg`.
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_note(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
-        DiagnosticBuilder::new(self, Level::Note, msg)
+        DiagnosticBuilder::new(self, Note, msg)
     }
 
     /// Construct a builder at the `Bug` level with the `msg`.
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_bug(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, BugAbort> {
-        DiagnosticBuilder::new(self, Level::Bug, msg)
+        DiagnosticBuilder::new(self, Bug, msg)
     }
 
     /// Construct a builder at the `Bug` level at the given `span` with the `msg`.
@@ -995,7 +995,7 @@ impl DiagCtxt {
             // FIXME: don't abort here if report_delayed_bugs is off
             self.span_bug(sp, msg);
         }
-        let mut diagnostic = Diagnostic::new(Level::DelayedBug, msg);
+        let mut diagnostic = Diagnostic::new(DelayedBug, msg);
         diagnostic.set_span(sp);
         self.emit_diagnostic(diagnostic).unwrap()
     }
@@ -1005,7 +1005,7 @@ impl DiagCtxt {
     pub fn good_path_delayed_bug(&self, msg: impl Into<DiagnosticMessage>) {
         let mut inner = self.inner.borrow_mut();
 
-        let mut diagnostic = Diagnostic::new(Level::DelayedBug, msg);
+        let mut diagnostic = Diagnostic::new(DelayedBug, msg);
         if inner.flags.report_delayed_bugs {
             inner.emit_diagnostic_without_consuming(&mut diagnostic);
         }
@@ -1118,10 +1118,9 @@ impl DiagCtxt {
 
         match (errors.len(), warnings.len()) {
             (0, 0) => return,
-            (0, _) => inner.emitter.emit_diagnostic(&Diagnostic::new(
-                Level::Warning(None),
-                DiagnosticMessage::Str(warnings),
-            )),
+            (0, _) => inner
+                .emitter
+                .emit_diagnostic(&Diagnostic::new(Warning(None), DiagnosticMessage::Str(warnings))),
             (_, 0) => {
                 inner.emit_diagnostic(Diagnostic::new(Fatal, errors));
             }
@@ -1210,14 +1209,14 @@ impl DiagCtxt {
 
     #[track_caller]
     pub fn create_err<'a>(&'a self, err: impl IntoDiagnostic<'a>) -> DiagnosticBuilder<'a> {
-        err.into_diagnostic(self, Level::Error { lint: false })
+        err.into_diagnostic(self, Error { lint: false })
     }
 
     pub fn create_warning<'a>(
         &'a self,
         warning: impl IntoDiagnostic<'a, ()>,
     ) -> DiagnosticBuilder<'a, ()> {
-        warning.into_diagnostic(self, Level::Warning(None))
+        warning.into_diagnostic(self, Warning(None))
     }
 
     pub fn emit_warning<'a>(&'a self, warning: impl IntoDiagnostic<'a, ()>) {
@@ -1228,7 +1227,7 @@ impl DiagCtxt {
         &'a self,
         fatal: impl IntoDiagnostic<'a, FatalError>,
     ) -> DiagnosticBuilder<'a, FatalError> {
-        fatal.into_diagnostic(self, Level::Fatal)
+        fatal.into_diagnostic(self, Fatal)
     }
 
     pub fn emit_almost_fatal<'a>(
@@ -1242,7 +1241,7 @@ impl DiagCtxt {
         &'a self,
         fatal: impl IntoDiagnostic<'a, FatalAbort>,
     ) -> DiagnosticBuilder<'a, FatalAbort> {
-        fatal.into_diagnostic(self, Level::Fatal)
+        fatal.into_diagnostic(self, Fatal)
     }
 
     pub fn emit_fatal<'a>(&'a self, fatal: impl IntoDiagnostic<'a, FatalAbort>) -> ! {
@@ -1253,7 +1252,7 @@ impl DiagCtxt {
         &'a self,
         bug: impl IntoDiagnostic<'a, BugAbort>,
     ) -> DiagnosticBuilder<'a, BugAbort> {
-        bug.into_diagnostic(self, Level::Bug)
+        bug.into_diagnostic(self, Bug)
     }
 
     pub fn emit_bug<'a>(&'a self, bug: impl IntoDiagnostic<'a, BugAbort>) -> ! {
@@ -1268,7 +1267,7 @@ impl DiagCtxt {
         &'a self,
         note: impl IntoDiagnostic<'a, ()>,
     ) -> DiagnosticBuilder<'a, ()> {
-        note.into_diagnostic(self, Level::Note)
+        note.into_diagnostic(self, Note)
     }
 
     pub fn emit_artifact_notification(&self, path: &Path, artifact_type: &str) {
@@ -1355,7 +1354,7 @@ impl DiagCtxtInner {
         for diag in diags {
             // Decrement the count tracking the stash; emitting will increment it.
             if diag.is_error() {
-                if matches!(diag.level, Level::Error { lint: true }) {
+                if matches!(diag.level, Error { lint: true }) {
                     self.lint_err_count -= 1;
                 } else {
                     self.err_count -= 1;
@@ -1386,9 +1385,8 @@ impl DiagCtxtInner {
         &mut self,
         diagnostic: &mut Diagnostic,
     ) -> Option<ErrorGuaranteed> {
-        if matches!(diagnostic.level, Level::Error { .. } | Level::Fatal) && self.treat_err_as_bug()
-        {
-            diagnostic.level = Level::Bug;
+        if matches!(diagnostic.level, Error { .. } | Fatal) && self.treat_err_as_bug() {
+            diagnostic.level = Bug;
         }
 
         // The `LintExpectationId` can be stable or unstable depending on when it was created.
@@ -1400,7 +1398,7 @@ impl DiagCtxtInner {
             return None;
         }
 
-        if diagnostic.level == Level::DelayedBug {
+        if diagnostic.level == DelayedBug {
             // FIXME(eddyb) this should check for `has_errors` and stop pushing
             // once *any* errors were emitted (and truncate `span_delayed_bugs`
             // when an error is first emitted, also), but maybe there's a case
@@ -1416,7 +1414,7 @@ impl DiagCtxtInner {
         }
 
         if diagnostic.has_future_breakage() {
-            // Future breakages aren't emitted if they're Level::Allowed,
+            // Future breakages aren't emitted if they're Level::Allow,
             // but they still need to be constructed and stashed below,
             // so they'll trigger the good-path bug check.
             self.suppressed_expected_diag = true;
@@ -1438,7 +1436,7 @@ impl DiagCtxtInner {
             return None;
         }
 
-        if matches!(diagnostic.level, Level::Expect(_) | Level::Allow) {
+        if matches!(diagnostic.level, Expect(_) | Allow) {
             (*TRACK_DIAGNOSTICS)(diagnostic, &mut |_| {});
             return None;
         }
@@ -1463,7 +1461,7 @@ impl DiagCtxtInner {
                 debug!(?self.emitted_diagnostics);
                 let already_emitted_sub = |sub: &mut SubDiagnostic| {
                     debug!(?sub);
-                    if sub.level != Level::OnceNote && sub.level != Level::OnceHelp {
+                    if sub.level != OnceNote && sub.level != OnceHelp {
                         return false;
                     }
                     let mut hasher = StableHasher::new();
@@ -1488,7 +1486,7 @@ impl DiagCtxtInner {
                 }
             }
             if diagnostic.is_error() {
-                if matches!(diagnostic.level, Level::Error { lint: true }) {
+                if matches!(diagnostic.level, Error { lint: true }) {
                     self.bump_lint_err_count();
                 } else {
                     self.bump_err_count();
@@ -1568,7 +1566,7 @@ impl DiagCtxtInner {
                 if backtrace || self.ice_file.is_none() { bug.decorate() } else { bug.inner };
 
             // "Undelay" the `DelayedBug`s (into plain `Bug`s).
-            if bug.level != Level::DelayedBug {
+            if bug.level != DelayedBug {
                 // NOTE(eddyb) not panicking here because we're already producing
                 // an ICE, and the more information the merrier.
                 bug.subdiagnostic(InvalidFlushedDelayedDiagnosticLevel {
@@ -1576,7 +1574,7 @@ impl DiagCtxtInner {
                     level: bug.level,
                 });
             }
-            bug.level = Level::Bug;
+            bug.level = Bug;
 
             self.emit_diagnostic(bug);
         }
@@ -1783,7 +1781,7 @@ impl Level {
 
     pub fn get_expectation_id(&self) -> Option<LintExpectationId> {
         match self {
-            Level::Expect(id) | Level::Warning(Some(id)) => Some(*id),
+            Expect(id) | Warning(Some(id)) => Some(*id),
             _ => None,
         }
     }
