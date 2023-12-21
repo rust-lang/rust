@@ -1,7 +1,7 @@
 use crate::traits::{check_args_compatible, specialization_graph};
 
 use super::assembly::{self, structural_traits, Candidate};
-use super::EvalCtxt;
+use super::{EvalCtxt, GoalSource};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::LangItem;
@@ -128,6 +128,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
 
                     // Add GAT where clauses from the trait's definition
                     ecx.add_goals(
+                        GoalSource::Misc,
                         tcx.predicates_of(goal.predicate.def_id())
                             .instantiate_own(tcx, goal.predicate.alias.args)
                             .map(|(pred, _)| goal.with(tcx, pred)),
@@ -169,10 +170,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 .predicates
                 .into_iter()
                 .map(|pred| goal.with(tcx, pred));
-            ecx.add_goals(where_clause_bounds);
+            ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds);
 
             // Add GAT where clauses from the trait's definition
             ecx.add_goals(
+                GoalSource::Misc,
                 tcx.predicates_of(goal.predicate.def_id())
                     .instantiate_own(tcx, goal.predicate.alias.args)
                     .map(|(pred, _)| goal.with(tcx, pred)),
@@ -413,7 +415,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                         DUMMY_SP,
                         [ty::GenericArg::from(goal.predicate.self_ty())],
                     );
-                    ecx.add_goal(goal.with(tcx, sized_predicate));
+                    // FIXME(-Znext-solver=coinductive): Should this be `GoalSource::ImplWhereBound`?
+                    ecx.add_goal(GoalSource::Misc, goal.with(tcx, sized_predicate));
                     tcx.types.unit
                 }
 
@@ -421,7 +424,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                     None => tcx.types.unit,
                     Some(field_def) => {
                         let self_ty = field_def.ty(tcx, args);
-                        ecx.add_goal(goal.with(tcx, goal.predicate.with_self_ty(tcx, self_ty)));
+                        // FIXME(-Znext-solver=coinductive): Should this be `GoalSource::ImplWhereBound`?
+                        ecx.add_goal(
+                            GoalSource::Misc,
+                            goal.with(tcx, goal.predicate.with_self_ty(tcx, self_ty)),
+                        );
                         return ecx
                             .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                     }
@@ -431,7 +438,11 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
                 ty::Tuple(elements) => match elements.last() {
                     None => tcx.types.unit,
                     Some(&self_ty) => {
-                        ecx.add_goal(goal.with(tcx, goal.predicate.with_self_ty(tcx, self_ty)));
+                        // FIXME(-Znext-solver=coinductive): Should this be `GoalSource::ImplWhereBound`?
+                        ecx.add_goal(
+                            GoalSource::Misc,
+                            goal.with(tcx, goal.predicate.with_self_ty(tcx, self_ty)),
+                        );
                         return ecx
                             .evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                     }

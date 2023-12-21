@@ -546,7 +546,9 @@ pub fn eq_variant_data(l: &VariantData, r: &VariantData) -> bool {
     use VariantData::*;
     match (l, r) {
         (Unit(_), Unit(_)) => true,
-        (Struct(l, _), Struct(r, _)) | (Tuple(l, _), Tuple(r, _)) => over(l, r, eq_struct_field),
+        (Struct { fields: l, .. }, Struct { fields: r, .. }) | (Tuple(l, _), Tuple(r, _)) => {
+            over(l, r, eq_struct_field)
+        },
         _ => false,
     }
 }

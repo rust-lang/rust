@@ -1,3 +1,5 @@
+// ignore-compare-mode-next-solver (hangs)
+
 #![feature(type_alias_impl_trait)]
 
 type Bar<'a, 'b> = impl PartialEq<Bar<'b, 'a>> + std::fmt::Debug;

@@ -6,6 +6,7 @@ use rustc_middle::mir;
 use rustc_span::{BytePos, ExpnKind, MacroKind, Span, Symbol, DUMMY_SP};
 
 use super::graph::{BasicCoverageBlock, CoverageGraph, START_BCB};
+use crate::coverage::ExtractedHirInfo;
 
 mod from_mir;
 
@@ -21,14 +22,12 @@ impl CoverageSpans {
     /// Returns `None` if no coverage-relevant spans could be extracted.
     pub(super) fn generate_coverage_spans(
         mir_body: &mir::Body<'_>,
-        fn_sig_span: Span,
-        body_span: Span,
+        hir_info: &ExtractedHirInfo,
         basic_coverage_blocks: &CoverageGraph,
     ) -> Option<Self> {
         let coverage_spans = CoverageSpansGenerator::generate_coverage_spans(
             mir_body,
-            fn_sig_span,
-            body_span,
+            hir_info,
             basic_coverage_blocks,
         );
 
@@ -230,19 +229,17 @@ impl<'a> CoverageSpansGenerator<'a> {
     /// to be).
     pub(super) fn generate_coverage_spans(
         mir_body: &mir::Body<'_>,
-        fn_sig_span: Span, // Ensured to be same SourceFile and SyntaxContext as `body_span`
-        body_span: Span,
+        hir_info: &ExtractedHirInfo,
         basic_coverage_blocks: &'a CoverageGraph,
     ) -> Vec<CoverageSpan> {
         let sorted_spans = from_mir::mir_to_initial_sorted_coverage_spans(
             mir_body,
-            fn_sig_span,
-            body_span,
+            hir_info,
             basic_coverage_blocks,
         );
 
         let coverage_spans = Self {
-            body_span,
+            body_span: hir_info.body_span,
             basic_coverage_blocks,
             sorted_spans_iter: sorted_spans.into_iter(),
             some_curr: None,

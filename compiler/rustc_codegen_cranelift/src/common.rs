@@ -98,11 +98,15 @@ fn clif_pair_type_from_ty<'tcx>(
 
 /// Is a pointer to this type a fat ptr?
 pub(crate) fn has_ptr_meta<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    let ptr_ty = Ty::new_ptr(tcx, TypeAndMut { ty, mutbl: rustc_hir::Mutability::Not });
-    match &tcx.layout_of(ParamEnv::reveal_all().and(ptr_ty)).unwrap().abi {
-        Abi::Scalar(_) => false,
-        Abi::ScalarPair(_, _) => true,
-        abi => unreachable!("Abi of ptr to {:?} is {:?}???", ty, abi),
+    if ty.is_sized(tcx, ParamEnv::reveal_all()) {
+        return false;
+    }
+
+    let tail = tcx.struct_tail_erasing_lifetimes(ty, ParamEnv::reveal_all());
+    match tail.kind() {
+        ty::Foreign(..) => false,
+        ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
+        _ => bug!("unexpected unsized tail: {:?}", tail),
     }
 }
 

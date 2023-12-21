@@ -1,10 +1,10 @@
-use crate::{cx::MatchCheckCtxt, pat::WitnessPat};
-
 use rustc_errors::{AddToDiagnostic, Diagnostic, SubdiagnosticMessage};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::thir::Pat;
 use rustc_middle::ty::Ty;
 use rustc_span::Span;
+
+use crate::rustc::{RustcMatchCheckCtxt, WitnessPat};
 
 #[derive(Subdiagnostic)]
 #[label(pattern_analysis_uncovered)]
@@ -21,8 +21,8 @@ pub struct Uncovered<'tcx> {
 impl<'tcx> Uncovered<'tcx> {
     pub fn new<'p>(
         span: Span,
-        cx: &MatchCheckCtxt<'p, 'tcx>,
-        witnesses: Vec<WitnessPat<'tcx>>,
+        cx: &RustcMatchCheckCtxt<'p, 'tcx>,
+        witnesses: Vec<WitnessPat<'p, 'tcx>>,
     ) -> Self {
         let witness_1 = cx.hoist_witness_pat(witnesses.get(0).unwrap());
         Self {

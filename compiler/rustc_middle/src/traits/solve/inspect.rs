@@ -19,8 +19,8 @@
 //! [canonicalized]: https://rustc-dev-guide.rust-lang.org/solve/canonicalization.html
 
 use super::{
-    CandidateSource, Canonical, CanonicalInput, Certainty, Goal, IsNormalizesToHack, NoSolution,
-    QueryInput, QueryResult,
+    CandidateSource, Canonical, CanonicalInput, Certainty, Goal, GoalSource, IsNormalizesToHack,
+    NoSolution, QueryInput, QueryResult,
 };
 use crate::{infer::canonical::CanonicalVarValues, ty};
 use format::ProofTreeFormatter;
@@ -115,7 +115,7 @@ impl Debug for Probe<'_> {
 pub enum ProbeStep<'tcx> {
     /// We added a goal to the `EvalCtxt` which will get proven
     /// the next time `EvalCtxt::try_evaluate_added_goals` is called.
-    AddGoal(CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>),
+    AddGoal(GoalSource, CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>),
     /// The inside of a `EvalCtxt::try_evaluate_added_goals` call.
     EvaluateGoals(AddedGoalsEvaluation<'tcx>),
     /// A call to `probe` while proving the current goal. This is

@@ -20,34 +20,36 @@ fn codegen_field<'tcx>(
         (base.offset_i64(fx, i64::try_from(field_offset.bytes()).unwrap()), field_layout)
     };
 
-    if let Some(extra) = extra {
-        if field_layout.is_sized() {
-            return simple(fx);
-        }
-        match field_layout.ty.kind() {
-            ty::Slice(..) | ty::Str | ty::Foreign(..) => simple(fx),
-            ty::Adt(def, _) if def.repr().packed() => {
-                assert_eq!(layout.align.abi.bytes(), 1);
-                simple(fx)
-            }
-            _ => {
-                // We have to align the offset for DST's
-                let unaligned_offset = field_offset.bytes();
-                let (_, unsized_align) =
-                    crate::unsize::size_and_align_of_dst(fx, field_layout, extra);
+    if field_layout.is_sized() {
+        return simple(fx);
+    }
+    match field_layout.ty.kind() {
+        ty::Slice(..) | ty::Str => simple(fx),
+        _ => {
+            let unaligned_offset = field_offset.bytes();
 
-                let one = fx.bcx.ins().iconst(fx.pointer_type, 1);
-                let align_sub_1 = fx.bcx.ins().isub(unsized_align, one);
-                let and_lhs = fx.bcx.ins().iadd_imm(align_sub_1, unaligned_offset as i64);
-                let zero = fx.bcx.ins().iconst(fx.pointer_type, 0);
-                let and_rhs = fx.bcx.ins().isub(zero, unsized_align);
-                let offset = fx.bcx.ins().band(and_lhs, and_rhs);
+            // Get the alignment of the field
+            let (_, mut unsized_align) = crate::unsize::size_and_align_of(fx, field_layout, extra);
 
-                (base.offset_value(fx, offset), field_layout)
+            // For packed types, we need to cap alignment.
+            if let ty::Adt(def, _) = layout.ty.kind() {
+                if let Some(packed) = def.repr().pack {
+                    let packed = fx.bcx.ins().iconst(fx.pointer_type, packed.bytes() as i64);
+                    let cmp = fx.bcx.ins().icmp(IntCC::UnsignedLessThan, unsized_align, packed);
+                    unsized_align = fx.bcx.ins().select(cmp, unsized_align, packed);
+                }
             }
+
+            // Bump the unaligned offset up to the appropriate alignment
+            let one = fx.bcx.ins().iconst(fx.pointer_type, 1);
+            let align_sub_1 = fx.bcx.ins().isub(unsized_align, one);
+            let and_lhs = fx.bcx.ins().iadd_imm(align_sub_1, unaligned_offset as i64);
+            let zero = fx.bcx.ins().iconst(fx.pointer_type, 0);
+            let and_rhs = fx.bcx.ins().isub(zero, unsized_align);
+            let offset = fx.bcx.ins().band(and_lhs, and_rhs);
+
+            (base.offset_value(fx, offset), field_layout)
         }
-    } else {
-        simple(fx)
     }
 }
 
@@ -731,13 +733,8 @@ impl<'tcx> CPlace<'tcx> {
         };
 
         let (field_ptr, field_layout) = codegen_field(fx, base, extra, layout, field);
-        if field_layout.is_unsized() {
-            if let ty::Foreign(_) = field_layout.ty.kind() {
-                assert!(extra.is_none());
-                CPlace::for_ptr(field_ptr, field_layout)
-            } else {
-                CPlace::for_ptr_with_extra(field_ptr, extra.unwrap(), field_layout)
-            }
+        if has_ptr_meta(fx.tcx, field_layout.ty) {
+            CPlace::for_ptr_with_extra(field_ptr, extra.unwrap(), field_layout)
         } else {
             CPlace::for_ptr(field_ptr, field_layout)
         }

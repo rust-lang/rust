@@ -1039,17 +1039,34 @@ impl<'tcx> TyCtxtAt<'tcx> {
         // This is fine because:
         // - those queries are `eval_always` so we won't miss their result changing;
         // - this write will have happened before these queries are called.
-        let data = def_kind.def_path_data(name);
-        let key = self.untracked.definitions.write().create_def(parent, data);
+        let def_id = self.tcx.create_def(parent, name, def_kind);
 
-        let feed = TyCtxtFeed { tcx: self.tcx, key };
-        feed.def_kind(def_kind);
+        let feed = self.tcx.feed_local_def_id(def_id);
         feed.def_span(self.span);
         feed
     }
 }
 
 impl<'tcx> TyCtxt<'tcx> {
+    /// `tcx`-dependent operations performed for every created definition.
+    pub fn create_def(self, parent: LocalDefId, name: Symbol, def_kind: DefKind) -> LocalDefId {
+        let data = def_kind.def_path_data(name);
+        let def_id = self.untracked.definitions.write().create_def(parent, data);
+
+        let feed = self.feed_local_def_id(def_id);
+        feed.def_kind(def_kind);
+        // Unique types created for closures participate in type privacy checking.
+        // They have visibilities inherited from the module they are defined in.
+        // Visibilities for opaque types are meaningless, but still provided
+        // so that all items have visibilities.
+        if matches!(def_kind, DefKind::Closure | DefKind::OpaqueTy) {
+            let parent_mod = self.parent_module_from_def_id(def_id).to_def_id();
+            feed.visibility(ty::Visibility::Restricted(parent_mod));
+        }
+
+        def_id
+    }
+
     pub fn iter_local_def_id(self) -> impl Iterator<Item = LocalDefId> + 'tcx {
         // Create a dependency to the red node to be sure we re-execute this when the amount of
         // definitions change.

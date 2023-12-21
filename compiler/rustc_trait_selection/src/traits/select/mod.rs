@@ -1226,11 +1226,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if unbound_input_types
             && stack.iter().skip(1).any(|prev| {
                 stack.obligation.param_env == prev.obligation.param_env
-                    && self.match_fresh_trait_refs(
-                        stack.fresh_trait_pred,
-                        prev.fresh_trait_pred,
-                        prev.obligation.param_env,
-                    )
+                    && self.match_fresh_trait_refs(stack.fresh_trait_pred, prev.fresh_trait_pred)
             })
         {
             debug!("evaluate_stack --> unbound argument, recursive --> giving up",);
@@ -2632,9 +2628,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         &self,
         previous: ty::PolyTraitPredicate<'tcx>,
         current: ty::PolyTraitPredicate<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
-        let mut matcher = MatchAgainstFreshVars::new(self.tcx(), param_env);
+        let mut matcher = MatchAgainstFreshVars::new(self.tcx());
         matcher.relate(previous, current).is_ok()
     }
 

@@ -481,7 +481,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
         },
 
         Node::Ctor(def) | Node::Variant(Variant { data: def, .. }) => match def {
-            VariantData::Unit(..) | VariantData::Struct(..) => {
+            VariantData::Unit(..) | VariantData::Struct { .. } => {
                 tcx.type_of(tcx.hir().get_parent_item(hir_id)).instantiate_identity()
             }
             VariantData::Tuple(..) => {

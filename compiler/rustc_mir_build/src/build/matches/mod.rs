@@ -1699,59 +1699,51 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         debug!("tested_candidates: {}", total_candidate_count - candidates.len());
         debug!("untested_candidates: {}", candidates.len());
 
-        // HACK(matthewjasper) This is a closure so that we can let the test
-        // create its blocks before the rest of the match. This currently
-        // improves the speed of llvm when optimizing long string literal
-        // matches
-        let make_target_blocks = move |this: &mut Self| -> Vec<BasicBlock> {
-            // The block that we should branch to if none of the
-            // `target_candidates` match. This is either the block where we
-            // start matching the untested candidates if there are any,
-            // otherwise it's the `otherwise_block`.
-            let remainder_start = &mut None;
-            let remainder_start =
-                if candidates.is_empty() { &mut *otherwise_block } else { remainder_start };
+        // The block that we should branch to if none of the
+        // `target_candidates` match. This is either the block where we
+        // start matching the untested candidates if there are any,
+        // otherwise it's the `otherwise_block`.
+        let remainder_start = &mut None;
+        let remainder_start =
+            if candidates.is_empty() { &mut *otherwise_block } else { remainder_start };
 
-            // For each outcome of test, process the candidates that still
-            // apply. Collect a list of blocks where control flow will
-            // branch if one of the `target_candidate` sets is not
-            // exhaustive.
-            let target_blocks: Vec<_> = target_candidates
-                .into_iter()
-                .map(|mut candidates| {
-                    if !candidates.is_empty() {
-                        let candidate_start = this.cfg.start_new_block();
-                        this.match_candidates(
-                            span,
-                            scrutinee_span,
-                            candidate_start,
-                            remainder_start,
-                            &mut *candidates,
-                            fake_borrows,
-                        );
-                        candidate_start
-                    } else {
-                        *remainder_start.get_or_insert_with(|| this.cfg.start_new_block())
-                    }
-                })
-                .collect();
+        // For each outcome of test, process the candidates that still
+        // apply. Collect a list of blocks where control flow will
+        // branch if one of the `target_candidate` sets is not
+        // exhaustive.
+        let target_blocks: Vec<_> = target_candidates
+            .into_iter()
+            .map(|mut candidates| {
+                if !candidates.is_empty() {
+                    let candidate_start = self.cfg.start_new_block();
+                    self.match_candidates(
+                        span,
+                        scrutinee_span,
+                        candidate_start,
+                        remainder_start,
+                        &mut *candidates,
+                        fake_borrows,
+                    );
+                    candidate_start
+                } else {
+                    *remainder_start.get_or_insert_with(|| self.cfg.start_new_block())
+                }
+            })
+            .collect();
 
-            if !candidates.is_empty() {
-                let remainder_start = remainder_start.unwrap_or_else(|| this.cfg.start_new_block());
-                this.match_candidates(
-                    span,
-                    scrutinee_span,
-                    remainder_start,
-                    otherwise_block,
-                    candidates,
-                    fake_borrows,
-                );
-            };
+        if !candidates.is_empty() {
+            let remainder_start = remainder_start.unwrap_or_else(|| self.cfg.start_new_block());
+            self.match_candidates(
+                span,
+                scrutinee_span,
+                remainder_start,
+                otherwise_block,
+                candidates,
+                fake_borrows,
+            );
+        }
 
-            target_blocks
-        };
-
-        self.perform_test(span, scrutinee_span, block, &match_place, &test, make_target_blocks);
+        self.perform_test(span, scrutinee_span, block, &match_place, &test, target_blocks);
     }
 
     /// Determine the fake borrows that are needed from a set of places that

@@ -33,10 +33,6 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
         self.fields.tcx()
     }
 
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.fields.param_env
-    }
-
     fn a_is_expected(&self) -> bool {
         self.a_is_expected
     }
@@ -174,6 +170,10 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
 }
 
 impl<'tcx> ObligationEmittingRelation<'tcx> for Equate<'_, '_, 'tcx> {
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.fields.param_env
+    }
+
     fn register_predicates(&mut self, obligations: impl IntoIterator<Item: ty::ToPredicate<'tcx>>) {
         self.fields.register_predicates(obligations);
     }

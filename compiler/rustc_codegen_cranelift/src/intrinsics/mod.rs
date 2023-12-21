@@ -487,13 +487,12 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let layout = fx.layout_of(generic_args.type_at(0));
             // Note: Can't use is_unsized here as truly unsized types need to take the fixed size
             // branch
-            let size = if let Abi::ScalarPair(_, _) = ptr.layout().abi {
-                let (_ptr, info) = ptr.load_scalar_pair(fx);
-                let (size, _align) = crate::unsize::size_and_align_of_dst(fx, layout, info);
-                size
+            let meta = if let Abi::ScalarPair(_, _) = ptr.layout().abi {
+                Some(ptr.load_scalar_pair(fx).1)
             } else {
-                fx.bcx.ins().iconst(fx.pointer_type, layout.size.bytes() as i64)
+                None
             };
+            let (size, _align) = crate::unsize::size_and_align_of(fx, layout, meta);
             ret.write_cvalue(fx, CValue::by_val(size, usize_layout));
         }
         sym::min_align_of_val => {
@@ -502,13 +501,12 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let layout = fx.layout_of(generic_args.type_at(0));
             // Note: Can't use is_unsized here as truly unsized types need to take the fixed size
             // branch
-            let align = if let Abi::ScalarPair(_, _) = ptr.layout().abi {
-                let (_ptr, info) = ptr.load_scalar_pair(fx);
-                let (_size, align) = crate::unsize::size_and_align_of_dst(fx, layout, info);
-                align
+            let meta = if let Abi::ScalarPair(_, _) = ptr.layout().abi {
+                Some(ptr.load_scalar_pair(fx).1)
             } else {
-                fx.bcx.ins().iconst(fx.pointer_type, layout.align.abi.bytes() as i64)
+                None
             };
+            let (_size, align) = crate::unsize::size_and_align_of(fx, layout, meta);
             ret.write_cvalue(fx, CValue::by_val(align, usize_layout));
         }
 
@@ -688,7 +686,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                             }
                         })
                     });
-                    crate::base::codegen_panic_nounwind(fx, &msg_str, source_info);
+                    crate::base::codegen_panic_nounwind(fx, &msg_str, Some(source_info.span));
                     return;
                 }
             }

@@ -69,9 +69,9 @@ fn extract_elem_ty(ty: Ty) -> Ty {
 
 /// Check signature and type of `Vec::<u8>::new` and its generic version.
 fn test_vec_new(instance: mir::mono::Instance) {
-    let sig = instance.ty().kind().fn_sig().unwrap().skip_binder();
-    assert_matches!(sig.inputs(), &[]);
-    let elem_ty = extract_elem_ty(sig.output());
+    let sig = instance.fn_abi().unwrap();
+    assert_eq!(&sig.args, &[]);
+    let elem_ty = extract_elem_ty(sig.ret.ty);
     assert_matches!(elem_ty.kind(), TyKind::RigidTy(RigidTy::Uint(UintTy::U8)));
 
     // Get the signature for Vec::<T>::new.

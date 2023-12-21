@@ -59,6 +59,7 @@ use crate::marker::Tuple;
 use crate::mem;
 
 pub mod mir;
+pub mod simd;
 
 // These imports are used for simplifying intra-doc links
 #[allow(unused_imports)]

@@ -1,6 +1,7 @@
 //! Code shared by trait and projection goals for candidate assembly.
 
 use super::{EvalCtxt, SolverMode};
+use crate::solve::GoalSource;
 use crate::traits::coherence;
 use rustc_hir::def_id::DefId;
 use rustc_infer::traits::query::NoSolution;
@@ -62,7 +63,9 @@ pub(super) trait GoalKind<'tcx>:
         requirements: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
     ) -> QueryResult<'tcx> {
         Self::probe_and_match_goal_against_assumption(ecx, goal, assumption, |ecx| {
-            ecx.add_goals(requirements);
+            // FIXME(-Znext-solver=coinductive): check whether this should be
+            // `GoalSource::ImplWhereBound` for any caller.
+            ecx.add_goals(GoalSource::Misc, requirements);
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -94,12 +97,16 @@ pub(super) trait GoalKind<'tcx>:
             let ty::Dynamic(bounds, _, _) = *goal.predicate.self_ty().kind() else {
                 bug!("expected object type in `consider_object_bound_candidate`");
             };
-            ecx.add_goals(structural_traits::predicates_for_object_candidate(
-                ecx,
-                goal.param_env,
-                goal.predicate.trait_ref(tcx),
-                bounds,
-            ));
+            // FIXME(-Znext-solver=coinductive): Should this be `GoalSource::ImplWhereBound`?
+            ecx.add_goals(
+                GoalSource::Misc,
+                structural_traits::predicates_for_object_candidate(
+                    ecx,
+                    goal.param_env,
+                    goal.predicate.trait_ref(tcx),
+                    bounds,
+                ),
+            );
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
     }
@@ -364,7 +371,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
                 let normalized_ty = ecx.next_ty_infer();
                 let normalizes_to_goal =
                     goal.with(tcx, ty::NormalizesTo { alias, term: normalized_ty.into() });
-                ecx.add_goal(normalizes_to_goal);
+                ecx.add_goal(GoalSource::Misc, normalizes_to_goal);
                 if let Err(NoSolution) = ecx.try_evaluate_added_goals() {
                     debug!("self type normalization failed");
                     return vec![];

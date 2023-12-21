@@ -2479,8 +2479,8 @@ fn clean_variant_data<'tcx>(
         .map(|disr| Discriminant { expr: Some(disr.body), value: disr.def_id.to_def_id() });
 
     let kind = match variant {
-        hir::VariantData::Struct(..) => VariantKind::Struct(VariantStruct {
-            fields: variant.fields().iter().map(|x| clean_field(x, cx)).collect(),
+        hir::VariantData::Struct { fields, .. } => VariantKind::Struct(VariantStruct {
+            fields: fields.iter().map(|x| clean_field(x, cx)).collect(),
         }),
         hir::VariantData::Tuple(..) => {
             VariantKind::Tuple(variant.fields().iter().map(|x| clean_field(x, cx)).collect())

@@ -117,12 +117,12 @@ ast_passes_fn_without_body =
     free function without a body
     .suggestion = provide a definition for the function
 
+ast_passes_forbidden_bound =
+    bounds cannot be used in this context
+
 ast_passes_forbidden_default =
     `default` is only allowed on items in trait impls
     .label = `default` because of this
-
-ast_passes_forbidden_lifetime_bound =
-    lifetime bounds cannot be used in this context
 
 ast_passes_forbidden_non_lifetime_param =
     only lifetime parameters can be used in this context

@@ -14,7 +14,6 @@
 )]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 
-#[cfg(feature = "nightly")]
 pub mod bit_set;
 #[cfg(feature = "nightly")]
 pub mod interval;

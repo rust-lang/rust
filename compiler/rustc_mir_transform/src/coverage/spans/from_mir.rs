@@ -7,13 +7,22 @@ use rustc_span::Span;
 
 use crate::coverage::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
 use crate::coverage::spans::CoverageSpan;
+use crate::coverage::ExtractedHirInfo;
 
 pub(super) fn mir_to_initial_sorted_coverage_spans(
     mir_body: &mir::Body<'_>,
-    fn_sig_span: Span,
-    body_span: Span,
+    hir_info: &ExtractedHirInfo,
     basic_coverage_blocks: &CoverageGraph,
 ) -> Vec<CoverageSpan> {
+    let &ExtractedHirInfo { is_async_fn, fn_sig_span, body_span, .. } = hir_info;
+    if is_async_fn {
+        // An async function desugars into a function that returns a future,
+        // with the user code wrapped in a closure. Any spans in the desugared
+        // outer function will be unhelpful, so just produce a single span
+        // associating the function signature with its entry BCB.
+        return vec![CoverageSpan::for_fn_sig(fn_sig_span)];
+    }
+
     let mut initial_spans = Vec::with_capacity(mir_body.basic_blocks.len() * 2);
     for (bcb, bcb_data) in basic_coverage_blocks.iter_enumerated() {
         initial_spans.extend(bcb_to_initial_coverage_spans(mir_body, body_span, bcb, bcb_data));
@@ -43,16 +52,6 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
             // as this seems to be what the refinement step expects.
             .then_with(|| Ord::cmp(&a.is_closure, &b.is_closure).reverse())
     });
-
-    // The desugaring of an async function includes a closure containing the
-    // original function body, and a terminator that returns the `impl Future`.
-    // That terminator will cause a confusing coverage count for the function's
-    // closing brace, so discard everything after the body closure span.
-    if let Some(body_closure_index) =
-        initial_spans.iter().rposition(|covspan| covspan.is_closure && covspan.span == body_span)
-    {
-        initial_spans.truncate(body_closure_index + 1);
-    }
 
     initial_spans
 }
