@@ -251,32 +251,9 @@ impl<'a> CoverageSpansGenerator<'a> {
             } else if curr.is_closure {
                 self.carve_out_span_for_closure();
             } else if self.prev_original_span == curr.span {
-                // Note that this compares the new (`curr`) span to `prev_original_span`.
-                // In this branch, the actual span byte range of `prev_original_span` is not
-                // important. What is important is knowing whether the new `curr` span was
-                // **originally** the same as the original span of `prev()`. The original spans
-                // reflect their original sort order, and for equal spans, conveys a partial
-                // ordering based on CFG dominator priority.
-                if prev.visible_macro.is_some() && curr.visible_macro.is_some() {
-                    // Macros that expand to include branching (such as
-                    // `assert_eq!()`, `assert_ne!()`, `info!()`, `debug!()`, or
-                    // `trace!()`) typically generate callee spans with identical
-                    // ranges (typically the full span of the macro) for all
-                    // `BasicBlocks`. This makes it impossible to distinguish
-                    // the condition (`if val1 != val2`) from the optional
-                    // branched statements (such as the call to `panic!()` on
-                    // assert failure). In this case it is better (or less
-                    // worse) to drop the optional branch bcbs and keep the
-                    // non-conditional statements, to count when reached.
-                    debug!(
-                        "  curr and prev are part of a macro expansion, and curr has the same span \
-                        as prev, but is in a different bcb. Drop curr and keep prev for next iter. \
-                        prev={prev:?}",
-                    );
-                    self.take_curr(); // Discards curr.
-                } else {
-                    self.update_pending_dups();
-                }
+                // `prev` and `curr` have the same span, or would have had the
+                // same span before `prev` was modified by other spans.
+                self.update_pending_dups();
             } else {
                 self.cutoff_prev_at_overlapping_curr();
                 self.maybe_push_macro_name_span();

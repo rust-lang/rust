@@ -1,4 +1,5 @@
 use rustc_data_structures::captures::Captures;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::{
     self, AggregateKind, FakeReadCause, Rvalue, Statement, StatementKind, Terminator,
     TerminatorKind,
@@ -35,6 +36,9 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
         }
     }
 
+    initial_spans.sort_by(|a, b| basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb));
+    remove_unwanted_macro_spans(&mut initial_spans);
+
     initial_spans.sort_by(|a, b| {
         // First sort by span start.
         Ord::cmp(&a.span.lo(), &b.span.lo())
@@ -53,6 +57,26 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
     });
 
     initial_spans
+}
+
+/// Macros that expand into branches (e.g. `assert!`, `trace!`) tend to generate
+/// multiple condition/consequent blocks that have the span of the whole macro
+/// invocation, which is unhelpful. Keeping only the first such span seems to
+/// give better mappings, so remove the others.
+///
+/// (The input spans should be sorted in BCB dominator order, so that the
+/// retained "first" span is likely to dominate the others.)
+fn remove_unwanted_macro_spans(initial_spans: &mut Vec<CoverageSpan>) {
+    let mut seen_macro_spans = FxHashSet::default();
+    initial_spans.retain(|covspan| {
+        // Ignore (retain) closure spans and non-macro-expansion spans.
+        if covspan.is_closure || covspan.visible_macro.is_none() {
+            return true;
+        }
+
+        // Retain only the first macro-expanded covspan with this span.
+        seen_macro_spans.insert(covspan.span)
+    });
 }
 
 // Generate a set of `CoverageSpan`s from the filtered set of `Statement`s and `Terminator`s of
