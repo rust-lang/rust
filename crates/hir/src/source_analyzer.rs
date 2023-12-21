@@ -16,7 +16,6 @@ use hir_def::{
     hir::{BindingId, ExprId, Pat, PatId},
     lang_item::LangItem,
     lower::LowerCtx,
-    macro_id_to_def_id,
     nameres::MacroSubNs,
     path::{ModPath, Path, PathKind},
     resolver::{resolver_for_scope, Resolver, TypeNs, ValueNs},
@@ -773,7 +772,7 @@ impl SourceAnalyzer {
         let macro_call_id = macro_call.as_call_id(db.upcast(), krate, |path| {
             self.resolver
                 .resolve_path_as_macro(db.upcast(), &path, Some(MacroSubNs::Bang))
-                .map(|(it, _)| macro_id_to_def_id(db.upcast(), it))
+                .map(|(it, _)| db.macro_def(it))
         })?;
         // why the 64?
         Some(macro_call_id.as_macro_file()).filter(|it| it.expansion_level(db.upcast()) < 64)

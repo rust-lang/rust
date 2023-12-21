@@ -1,7 +1,7 @@
 //! Defines database & queries for name resolution.
 use base_db::{salsa, CrateId, SourceDatabase, Upcast};
 use either::Either;
-use hir_expand::{db::ExpandDatabase, HirFileId};
+use hir_expand::{db::ExpandDatabase, HirFileId, MacroDefId};
 use intern::Interned;
 use la_arena::ArenaMap;
 use syntax::{ast, AstPtr};
@@ -24,9 +24,9 @@ use crate::{
     AttrDefId, BlockId, BlockLoc, ConstBlockId, ConstBlockLoc, ConstId, ConstLoc, DefWithBodyId,
     EnumId, EnumLoc, ExternBlockId, ExternBlockLoc, ExternCrateId, ExternCrateLoc, FunctionId,
     FunctionLoc, GenericDefId, ImplId, ImplLoc, InTypeConstId, InTypeConstLoc, LocalEnumVariantId,
-    LocalFieldId, Macro2Id, Macro2Loc, MacroRulesId, MacroRulesLoc, ProcMacroId, ProcMacroLoc,
-    StaticId, StaticLoc, StructId, StructLoc, TraitAliasId, TraitAliasLoc, TraitId, TraitLoc,
-    TypeAliasId, TypeAliasLoc, UnionId, UnionLoc, UseId, UseLoc, VariantId,
+    LocalFieldId, Macro2Id, Macro2Loc, MacroId, MacroRulesId, MacroRulesLoc, ProcMacroId,
+    ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc, TraitAliasId, TraitAliasLoc, TraitId,
+    TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc, UseId, UseLoc, VariantId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
@@ -109,6 +109,8 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     /// return a `DefMap` containing `inner`.
     #[salsa::invoke(DefMap::block_def_map_query)]
     fn block_def_map(&self, block: BlockId) -> Arc<DefMap>;
+
+    fn macro_def(&self, m: MacroId) -> MacroDefId;
 
     // region:data
 
@@ -304,4 +306,64 @@ fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: CrateId) -> bool {
     }
 
     false
+}
+
+fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
+    use hir_expand::InFile;
+
+    use crate::{Lookup, MacroDefKind, MacroExpander};
+
+    let kind = |expander, file_id, m| {
+        let in_file = InFile::new(file_id, m);
+        match expander {
+            MacroExpander::Declarative => MacroDefKind::Declarative(in_file),
+            MacroExpander::BuiltIn(it) => MacroDefKind::BuiltIn(it, in_file),
+            MacroExpander::BuiltInAttr(it) => MacroDefKind::BuiltInAttr(it, in_file),
+            MacroExpander::BuiltInDerive(it) => MacroDefKind::BuiltInDerive(it, in_file),
+            MacroExpander::BuiltInEager(it) => MacroDefKind::BuiltInEager(it, in_file),
+        }
+    };
+
+    match id {
+        MacroId::Macro2Id(it) => {
+            let loc = it.lookup(db);
+
+            let item_tree = loc.id.item_tree(db);
+            let makro = &item_tree[loc.id.value];
+            MacroDefId {
+                krate: loc.container.krate,
+                kind: kind(loc.expander, loc.id.file_id(), makro.ast_id.upcast()),
+                local_inner: false,
+                allow_internal_unsafe: loc.allow_internal_unsafe,
+            }
+        }
+        MacroId::MacroRulesId(it) => {
+            let loc = it.lookup(db);
+
+            let item_tree = loc.id.item_tree(db);
+            let makro = &item_tree[loc.id.value];
+            MacroDefId {
+                krate: loc.container.krate,
+                kind: kind(loc.expander, loc.id.file_id(), makro.ast_id.upcast()),
+                local_inner: loc.local_inner,
+                allow_internal_unsafe: loc.allow_internal_unsafe,
+            }
+        }
+        MacroId::ProcMacroId(it) => {
+            let loc = it.lookup(db);
+
+            let item_tree = loc.id.item_tree(db);
+            let makro = &item_tree[loc.id.value];
+            MacroDefId {
+                krate: loc.container.krate,
+                kind: MacroDefKind::ProcMacro(
+                    loc.expander,
+                    loc.kind,
+                    InFile::new(loc.id.file_id(), makro.ast_id),
+                ),
+                local_inner: false,
+                allow_internal_unsafe: false,
+            }
+        }
+    }
 }

@@ -11,8 +11,8 @@ use limit::Limit;
 use syntax::{ast, Parse, SyntaxNode};
 
 use crate::{
-    attr::Attrs, db::DefDatabase, lower::LowerCtx, macro_id_to_def_id, path::Path, AsMacroCall,
-    MacroId, ModuleId, UnresolvedMacro,
+    attr::Attrs, db::DefDatabase, lower::LowerCtx, path::Path, AsMacroCall, MacroId, ModuleId,
+    UnresolvedMacro,
 };
 
 #[derive(Debug)]
@@ -58,7 +58,7 @@ impl Expander {
         let result = self.within_limit(db, |this| {
             let macro_call = InFile::new(this.current_file_id, &macro_call);
             match macro_call.as_call_id_with_errors(db.upcast(), this.module.krate(), |path| {
-                resolver(path).map(|it| macro_id_to_def_id(db, it))
+                resolver(path).map(|it| db.macro_def(it))
             }) {
                 Ok(call_id) => call_id,
                 Err(resolve_err) => {

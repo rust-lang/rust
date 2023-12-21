@@ -92,7 +92,7 @@ use crate::{
     data::adt::VariantData,
     db::DefDatabase,
     item_tree::{
-        Const, Enum, ExternCrate, Function, Impl, ItemTreeId, ItemTreeNode, MacroDef, MacroRules,
+        Const, Enum, ExternCrate, Function, Impl, ItemTreeId, ItemTreeNode, Macro2, MacroRules,
         Static, Struct, Trait, TraitAlias, TypeAlias, Union, Use,
     },
 };
@@ -366,7 +366,7 @@ pub struct Macro2Id(salsa::InternId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Macro2Loc {
     pub container: ModuleId,
-    pub id: ItemTreeId<MacroDef>,
+    pub id: ItemTreeId<Macro2>,
     pub expander: MacroExpander,
     pub allow_internal_unsafe: bool,
 }
@@ -1221,77 +1221,6 @@ fn macro_call_as_call_id_with_eager(
         _ => return Err(UnresolvedMacro { path: call.path.clone() }),
     };
     Ok(res)
-}
-
-pub fn macro_id_to_def_id(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
-    match id {
-        MacroId::Macro2Id(it) => {
-            let loc = it.lookup(db);
-
-            let item_tree = loc.id.item_tree(db);
-            let makro = &item_tree[loc.id.value];
-            let in_file = |m: FileAstId<ast::MacroDef>| InFile::new(loc.id.file_id(), m.upcast());
-            MacroDefId {
-                krate: loc.container.krate,
-                kind: match loc.expander {
-                    MacroExpander::Declarative => MacroDefKind::Declarative(in_file(makro.ast_id)),
-                    MacroExpander::BuiltIn(it) => MacroDefKind::BuiltIn(it, in_file(makro.ast_id)),
-                    MacroExpander::BuiltInAttr(it) => {
-                        MacroDefKind::BuiltInAttr(it, in_file(makro.ast_id))
-                    }
-                    MacroExpander::BuiltInDerive(it) => {
-                        MacroDefKind::BuiltInDerive(it, in_file(makro.ast_id))
-                    }
-                    MacroExpander::BuiltInEager(it) => {
-                        MacroDefKind::BuiltInEager(it, in_file(makro.ast_id))
-                    }
-                },
-                local_inner: false,
-                allow_internal_unsafe: loc.allow_internal_unsafe,
-            }
-        }
-        MacroId::MacroRulesId(it) => {
-            let loc = it.lookup(db);
-
-            let item_tree = loc.id.item_tree(db);
-            let makro = &item_tree[loc.id.value];
-            let in_file = |m: FileAstId<ast::MacroRules>| InFile::new(loc.id.file_id(), m.upcast());
-            MacroDefId {
-                krate: loc.container.krate,
-                kind: match loc.expander {
-                    MacroExpander::Declarative => MacroDefKind::Declarative(in_file(makro.ast_id)),
-                    MacroExpander::BuiltIn(it) => MacroDefKind::BuiltIn(it, in_file(makro.ast_id)),
-                    MacroExpander::BuiltInAttr(it) => {
-                        MacroDefKind::BuiltInAttr(it, in_file(makro.ast_id))
-                    }
-                    MacroExpander::BuiltInDerive(it) => {
-                        MacroDefKind::BuiltInDerive(it, in_file(makro.ast_id))
-                    }
-                    MacroExpander::BuiltInEager(it) => {
-                        MacroDefKind::BuiltInEager(it, in_file(makro.ast_id))
-                    }
-                },
-                local_inner: loc.local_inner,
-                allow_internal_unsafe: loc.allow_internal_unsafe,
-            }
-        }
-        MacroId::ProcMacroId(it) => {
-            let loc = it.lookup(db);
-
-            let item_tree = loc.id.item_tree(db);
-            let makro = &item_tree[loc.id.value];
-            MacroDefId {
-                krate: loc.container.krate,
-                kind: MacroDefKind::ProcMacro(
-                    loc.expander,
-                    loc.kind,
-                    InFile::new(loc.id.file_id(), makro.ast_id),
-                ),
-                local_inner: false,
-                allow_internal_unsafe: false,
-            }
-        }
-    }
 }
 
 fn derive_macro_as_call_id(

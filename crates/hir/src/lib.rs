@@ -47,7 +47,6 @@ use hir_def::{
     item_tree::ItemTreeNode,
     lang_item::LangItemTarget,
     layout::{self, ReprOptions, TargetDataLayout},
-    macro_id_to_def_id,
     nameres::{self, diagnostics::DefDiagnostic},
     path::ImportAlias,
     per_ns::PerNs,
@@ -810,7 +809,7 @@ impl Module {
 }
 
 fn emit_macro_def_diagnostics(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>, m: Macro) {
-    let id = macro_id_to_def_id(db.upcast(), m.id);
+    let id = db.macro_def(m.id);
     if let hir_expand::db::TokenExpander::DeclarativeMacro(expander) = db.macro_expander(id) {
         if let Some(e) = expander.mac.err() {
             let Some(ast) = id.ast_id().left() else {

@@ -42,7 +42,7 @@ macro_rules! register_builtin {
                     $( BuiltinFnLikeExpander::$kind => $expand, )*
                 };
 
-                let span = db.lookup_intern_macro_call(id).span(db);
+                let span = db.lookup_intern_macro_call(id).call_site;
                 let span = span_with_def_site_ctxt(db, span, id);
                 expander(db, id, tt, span)
             }
@@ -59,7 +59,7 @@ macro_rules! register_builtin {
                     $( EagerExpander::$e_kind => $e_expand, )*
                 };
 
-                let span = db.lookup_intern_macro_call(id).span(db);
+                let span = db.lookup_intern_macro_call(id).call_site;
                 let span = span_with_def_site_ctxt(db, span, id);
                 expander(db, id, tt, span)
             }

@@ -100,7 +100,7 @@ pub struct DefMap {
     /// contains this block.
     block: Option<BlockInfo>,
     /// The modules and their data declared in this crate.
-    modules: Arena<ModuleData>,
+    pub modules: Arena<ModuleData>,
     krate: CrateId,
     /// The prelude module for this crate. This either comes from an import
     /// marked with the `prelude_import` attribute, or (in the normal case) from

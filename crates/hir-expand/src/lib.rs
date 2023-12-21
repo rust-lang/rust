@@ -173,7 +173,6 @@ pub struct MacroCallLoc {
     pub call_site: Span,
 }
 
-// FIXME: Might make sense to intern this? Given it's gonna be the same for a bunch of macro calls
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroDefId {
     pub krate: CrateId,
@@ -467,18 +466,6 @@ impl MacroDefId {
 }
 
 impl MacroCallLoc {
-    pub fn span(&self, db: &dyn ExpandDatabase) -> Span {
-        let ast_id = self.kind.erased_ast_id();
-        let file_id = self.kind.file_id();
-        let range = db.ast_id_map(file_id).get_erased(ast_id).text_range();
-        match file_id.repr() {
-            HirFileIdRepr::FileId(file_id) => db.real_span_map(file_id).span_for_range(range),
-            HirFileIdRepr::MacroFile(m) => {
-                db.parse_macro_expansion(m).value.1.span_at(range.start())
-            }
-        }
-    }
-
     pub fn to_node(&self, db: &dyn ExpandDatabase) -> InFile<SyntaxNode> {
         match self.kind {
             MacroCallKind::FnLike { ast_id, .. } => {
@@ -546,7 +533,7 @@ impl MacroCallKind {
         }
     }
 
-    fn erased_ast_id(&self) -> ErasedFileAstId {
+    pub fn erased_ast_id(&self) -> ErasedFileAstId {
         match *self {
             MacroCallKind::FnLike { ast_id: InFile { value, .. }, .. } => value.erase(),
             MacroCallKind::Derive { ast_id: InFile { value, .. }, .. } => value.erase(),

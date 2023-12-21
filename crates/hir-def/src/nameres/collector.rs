@@ -36,9 +36,9 @@ use crate::{
     item_scope::{ImportId, ImportOrExternCrate, ImportType, PerNsGlobImports},
     item_tree::{
         self, ExternCrate, Fields, FileItemTreeId, ImportKind, ItemTree, ItemTreeId, ItemTreeNode,
-        MacroCall, MacroDef, MacroRules, Mod, ModItem, ModKind, TreeId,
+        Macro2, MacroCall, MacroRules, Mod, ModItem, ModKind, TreeId,
     },
-    macro_call_as_call_id, macro_call_as_call_id_with_eager, macro_id_to_def_id,
+    macro_call_as_call_id, macro_call_as_call_id_with_eager,
     nameres::{
         diagnostics::DefDiagnostic,
         mod_resolution::ModDir,
@@ -618,9 +618,7 @@ impl DefCollector<'_> {
         self.define_proc_macro(def.name.clone(), proc_macro_id);
         let crate_data = Arc::get_mut(&mut self.def_map.data).unwrap();
         if let ProcMacroKind::CustomDerive { helpers } = def.kind {
-            crate_data
-                .exported_derives
-                .insert(macro_id_to_def_id(self.db, proc_macro_id.into()), helpers);
+            crate_data.exported_derives.insert(self.db.macro_def(proc_macro_id.into()), helpers);
         }
         crate_data.fn_proc_macro_mapping.insert(fn_id, proc_macro_id);
     }
@@ -1131,10 +1129,7 @@ impl DefCollector<'_> {
                     BuiltinShadowMode::Module,
                     Some(subns),
                 );
-                resolved_res
-                    .resolved_def
-                    .take_macros()
-                    .map(|it| (it, macro_id_to_def_id(self.db, it)))
+                resolved_res.resolved_def.take_macros().map(|it| (it, self.db.macro_def(it)))
             };
             let resolver_def_id = |path| resolver(path).map(|(_, it)| it);
 
@@ -1149,6 +1144,9 @@ impl DefCollector<'_> {
                         resolver_def_id,
                     );
                     if let Ok(Some(call_id)) = call_id {
+                        self.def_map.modules[directive.module_id]
+                            .scope
+                            .add_macro_invoc(ast_id.ast_id, call_id);
                         push_resolved(directive, call_id);
 
                         res = ReachedFixedPoint::No;
@@ -1441,10 +1439,7 @@ impl DefCollector<'_> {
                                 BuiltinShadowMode::Module,
                                 Some(MacroSubNs::Bang),
                             );
-                            resolved_res
-                                .resolved_def
-                                .take_macros()
-                                .map(|it| macro_id_to_def_id(self.db, it))
+                            resolved_res.resolved_def.take_macros().map(|it| self.db.macro_def(it))
                         },
                     );
                     if let Err(UnresolvedMacro { path }) = macro_call_as_call_id {
@@ -1650,7 +1645,7 @@ impl ModCollector<'_, '_> {
                 ),
                 ModItem::MacroCall(mac) => self.collect_macro_call(&self.item_tree[mac], container),
                 ModItem::MacroRules(id) => self.collect_macro_rules(id, module),
-                ModItem::MacroDef(id) => self.collect_macro_def(id, module),
+                ModItem::Macro2(id) => self.collect_macro_def(id, module),
                 ModItem::Impl(imp) => {
                     let impl_id =
                         ImplLoc { container: module, id: ItemTreeId::new(self.tree_id, imp) }
@@ -2157,7 +2152,7 @@ impl ModCollector<'_, '_> {
         );
     }
 
-    fn collect_macro_def(&mut self, id: FileItemTreeId<MacroDef>, module: ModuleId) {
+    fn collect_macro_def(&mut self, id: FileItemTreeId<Macro2>, module: ModuleId) {
         let krate = self.def_collector.def_map.krate;
         let mac = &self.item_tree[id];
         let ast_id = InFile::new(self.file_id(), mac.ast_id.upcast());
@@ -2225,7 +2220,7 @@ impl ModCollector<'_, '_> {
                 Arc::get_mut(&mut self.def_collector.def_map.data)
                     .unwrap()
                     .exported_derives
-                    .insert(macro_id_to_def_id(self.def_collector.db, macro_id.into()), helpers);
+                    .insert(self.def_collector.db.macro_def(macro_id.into()), helpers);
             }
         }
     }
@@ -2264,7 +2259,7 @@ impl ModCollector<'_, '_> {
                                 Some(MacroSubNs::Bang),
                             )
                         })
-                        .map(|it| macro_id_to_def_id(self.def_collector.db, it))
+                        .map(|it| self.def_collector.db.macro_def(it))
                 })
             },
             |path| {
@@ -2276,7 +2271,7 @@ impl ModCollector<'_, '_> {
                     BuiltinShadowMode::Module,
                     Some(MacroSubNs::Bang),
                 );
-                resolved_res.resolved_def.take_macros().map(|it| macro_id_to_def_id(db, it))
+                resolved_res.resolved_def.take_macros().map(|it| db.macro_def(it))
             },
         ) {
             // FIXME: if there were errors, this mightve been in the eager expansion from an
@@ -2284,10 +2279,13 @@ impl ModCollector<'_, '_> {
             if res.err.is_none() {
                 // Legacy macros need to be expanded immediately, so that any macros they produce
                 // are in scope.
-                if let Some(val) = res.value {
+                if let Some(call_id) = res.value {
+                    self.def_collector.def_map.modules[self.module_id]
+                        .scope
+                        .add_macro_invoc(ast_id.ast_id, call_id);
                     self.def_collector.collect_macro_expansion(
                         self.module_id,
-                        val,
+                        call_id,
                         self.macro_depth + 1,
                         container,
                     );
@@ -2301,7 +2299,7 @@ impl ModCollector<'_, '_> {
         self.def_collector.unresolved_macros.push(MacroDirective {
             module_id: self.module_id,
             depth: self.macro_depth + 1,
-            kind: MacroDirectiveKind::FnLike { ast_id, expand_to: expand_to, call_site },
+            kind: MacroDirectiveKind::FnLike { ast_id, expand_to, call_site },
             container,
         });
     }

@@ -301,16 +301,15 @@ pub fn expand_speculative(
     let mut speculative_expansion = match loc.def.kind {
         MacroDefKind::ProcMacro(expander, ..) => {
             tt.delimiter = tt::Delimiter::invisible_spanned(loc.call_site);
-            let call_site = loc.span(db);
             expander.expand(
                 db,
                 loc.def.krate,
                 loc.krate,
                 &tt,
                 attr_arg.as_ref(),
-                call_site,
-                call_site,
-                call_site,
+                loc.call_site,
+                loc.call_site,
+                loc.call_site,
             )
         }
         MacroDefKind::BuiltInAttr(BuiltinAttrExpander::Derive, _) => {
@@ -782,7 +781,6 @@ fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<A
         _ => None,
     };
 
-    let call_site = loc.span(db);
     let ExpandResult { value: mut tt, err } = expander.expand(
         db,
         loc.def.krate,
@@ -790,10 +788,10 @@ fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<A
         &macro_arg,
         attr_arg,
         // FIXME
-        call_site,
-        call_site,
+        loc.call_site,
+        loc.call_site,
         // FIXME
-        call_site,
+        loc.call_site,
     );
 
     // Set a hard limit for the expanded tt
