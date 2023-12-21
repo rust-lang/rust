@@ -14,7 +14,7 @@ use std::{
 
 use crate::{
     fingerprint::Fingerprint,
-    stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey},
+    stable_hasher::{HashStable, StableCompare, StableHasher, ToStableHashKey},
 };
 
 /// `UnordItems` is the order-less version of `Iterator`. It only contains methods
@@ -134,7 +134,7 @@ impl<'a, T: Copy + 'a, I: Iterator<Item = &'a T>> UnordItems<&'a T, I> {
     }
 }
 
-impl<T: Ord, I: Iterator<Item = T>> UnordItems<T, I> {
+impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
     pub fn into_sorted<HCX>(self, hcx: &HCX) -> Vec<T>
     where
         T: ToStableHashKey<HCX>,
@@ -147,13 +147,36 @@ impl<T: Ord, I: Iterator<Item = T>> UnordItems<T, I> {
     #[inline]
     pub fn into_sorted_stable_ord(self) -> Vec<T>
     where
-        T: Ord + StableOrd,
+        T: StableCompare,
     {
         let mut items: Vec<T> = self.0.collect();
         if !T::CAN_USE_UNSTABLE_SORT {
-            items.sort();
+            items.sort_by(T::stable_cmp);
         } else {
-            items.sort_unstable()
+            items.sort_unstable_by(T::stable_cmp)
+        }
+        items
+    }
+
+    #[inline]
+    pub fn into_sorted_stable_ord_by_key<K, C>(self, project_to_key: C) -> Vec<T>
+    where
+        K: StableCompare,
+        C: for<'a> Fn(&'a T) -> &'a K,
+    {
+        let mut items: Vec<T> = self.0.collect();
+        if !K::CAN_USE_UNSTABLE_SORT {
+            items.sort_by(|a, b| {
+                let a_key = project_to_key(a);
+                let b_key = project_to_key(b);
+                a_key.stable_cmp(b_key)
+            });
+        } else {
+            items.sort_unstable_by(|a, b| {
+                let a_key = project_to_key(a);
+                let b_key = project_to_key(b);
+                a_key.stable_cmp(b_key)
+            });
         }
         items
     }
@@ -268,16 +291,30 @@ impl<V: Eq + Hash> UnordSet<V> {
     }
 
     /// Returns the items of this set in stable sort order (as defined by
-    /// `StableOrd`). This method is much more efficient than
+    /// `StableCompare`). This method is much more efficient than
     /// `into_sorted` because it does not need to transform keys to their
     /// `ToStableHashKey` equivalent.
     #[inline]
-    pub fn to_sorted_stable_ord(&self) -> Vec<V>
+    pub fn to_sorted_stable_ord(&self) -> Vec<&V>
     where
-        V: Ord + StableOrd + Clone,
+        V: StableCompare,
     {
-        let mut items: Vec<V> = self.inner.iter().cloned().collect();
-        items.sort_unstable();
+        let mut items: Vec<&V> = self.inner.iter().collect();
+        items.sort_unstable_by(|a, b| a.stable_cmp(*b));
+        items
+    }
+
+    /// Returns the items of this set in stable sort order (as defined by
+    /// `StableCompare`). This method is much more efficient than
+    /// `into_sorted` because it does not need to transform keys to their
+    /// `ToStableHashKey` equivalent.
+    #[inline]
+    pub fn into_sorted_stable_ord(self) -> Vec<V>
+    where
+        V: StableCompare,
+    {
+        let mut items: Vec<V> = self.inner.into_iter().collect();
+        items.sort_unstable_by(V::stable_cmp);
         items
     }
 
@@ -483,16 +520,16 @@ impl<K: Eq + Hash, V> UnordMap<K, V> {
         to_sorted_vec(hcx, self.inner.iter(), cache_sort_key, |&(k, _)| k)
     }
 
-    /// Returns the entries of this map in stable sort order (as defined by `StableOrd`).
+    /// Returns the entries of this map in stable sort order (as defined by `StableCompare`).
     /// This method can be much more efficient than `into_sorted` because it does not need
     /// to transform keys to their `ToStableHashKey` equivalent.
     #[inline]
-    pub fn to_sorted_stable_ord(&self) -> Vec<(K, &V)>
+    pub fn to_sorted_stable_ord(&self) -> Vec<(&K, &V)>
     where
-        K: Ord + StableOrd + Copy,
+        K: StableCompare,
     {
-        let mut items: Vec<(K, &V)> = self.inner.iter().map(|(&k, v)| (k, v)).collect();
-        items.sort_unstable_by_key(|&(k, _)| k);
+        let mut items: Vec<_> = self.inner.iter().collect();
+        items.sort_unstable_by(|(a, _), (b, _)| a.stable_cmp(*b));
         items
     }
 
@@ -508,6 +545,19 @@ impl<K: Eq + Hash, V> UnordMap<K, V> {
         K: ToStableHashKey<HCX>,
     {
         to_sorted_vec(hcx, self.inner.into_iter(), cache_sort_key, |(k, _)| k)
+    }
+
+    /// Returns the entries of this map in stable sort order (as defined by `StableCompare`).
+    /// This method can be much more efficient than `into_sorted` because it does not need
+    /// to transform keys to their `ToStableHashKey` equivalent.
+    #[inline]
+    pub fn into_sorted_stable_ord(self) -> Vec<(K, V)>
+    where
+        K: StableCompare,
+    {
+        let mut items: Vec<(K, V)> = self.inner.into_iter().collect();
+        items.sort_unstable_by(|a, b| a.0.stable_cmp(&b.0));
+        items
     }
 
     /// Returns the values of this map in stable sort order (as defined by K's
