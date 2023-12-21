@@ -15,7 +15,7 @@ use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::Emitter;
 use rustc_errors::{translation::Translate, DiagCtxt, DiagnosticId, FatalError, Level};
-use rustc_errors::{DiagnosticMessage, Style};
+use rustc_errors::{DiagnosticBuilder, DiagnosticMessage, Style};
 use rustc_fs_util::link_or_copy;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_incremental::{
@@ -1846,14 +1846,14 @@ impl SharedEmitterMain {
                     dcx.emit_diagnostic(d);
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)) => {
-                    let msg = msg.strip_prefix("error: ").unwrap_or(&msg).to_string();
-
-                    let mut err = match level {
-                        Level::Error { lint: false } => sess.struct_err(msg).forget_guarantee(),
-                        Level::Warning(_) => sess.struct_warn(msg),
-                        Level::Note => sess.struct_note(msg),
+                    let err_level = match level {
+                        Level::Error { lint: false } => rustc_errors::Level::Error { lint: false },
+                        Level::Warning(_) => rustc_errors::Level::Warning(None),
+                        Level::Note => rustc_errors::Level::Note,
                         _ => bug!("Invalid inline asm diagnostic level"),
                     };
+                    let msg = msg.strip_prefix("error: ").unwrap_or(&msg).to_string();
+                    let mut err = DiagnosticBuilder::<()>::new(sess.dcx(), err_level, msg);
 
                     // If the cookie is 0 then we don't have span information.
                     if cookie != 0 {
