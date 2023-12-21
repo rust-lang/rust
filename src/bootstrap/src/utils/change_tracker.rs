@@ -96,4 +96,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Removed rust.run_dsymutil and dist.gpg_password_file config options, as they were unused.",
     },
+    ChangeInfo {
+        change_id: 119124,
+        severity: ChangeSeverity::Warning,
+        summary: "rust-analyzer-proc-macro-srv is no longer enabled by default. To build it, you must either enable it in the configuration or explicitly invoke it with x.py.",
+    },
 ];
