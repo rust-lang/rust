@@ -24,6 +24,7 @@ Compiler
 - [Bump `COINDUCTIVE_OVERLAP_IN_COHERENCE` to deny, and warn in dependencies.](https://github.com/rust-lang/rust/pull/116493/)
 - [Consider alias bounds when computing liveness in NLL.](https://github.com/rust-lang/rust/pull/116733/)
 - [Add the V (vector) extension to the `riscv64-linux-android` target spec.](https://github.com/rust-lang/rust/pull/116618/)
+- [Automatically enable cross-crate inlining for small functions](https://github.com/rust-lang/rust/pull/116505)
 - Add several new tier 3 targets:
     - [`csky-unknown-linux-gnuabiv2hf`](https://github.com/rust-lang/rust/pull/117049/)
     - [`i586-unknown-netbsd`](https://github.com/rust-lang/rust/pull/117170/)
@@ -43,7 +44,6 @@ Libraries
 - [Implement `Not, Bit{And,Or}{,Assign}` for IP addresses.](https://github.com/rust-lang/rust/pull/113747/)
 - [Implement `Default` for `ExitCode`.](https://github.com/rust-lang/rust/pull/114589/)
 - [Guarantee representation of None in NPO](https://github.com/rust-lang/rust/pull/115333/)
-- [Don't panic in `<BorrowedCursor as io::Write>::write`](https://github.com/rust-lang/rust/pull/115460/)
 - [Document when atomic loads are guaranteed read-only.](https://github.com/rust-lang/rust/pull/115577/)
 - [Broaden the consequences of recursive TLS initialization.](https://github.com/rust-lang/rust/pull/116172/)
 - [Windows: Support sub-millisecond sleep.](https://github.com/rust-lang/rust/pull/116461/)
