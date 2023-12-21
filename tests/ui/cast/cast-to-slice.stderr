@@ -1,7 +1,7 @@
 error[E0620]: cast to unsized type: `&[u8]` as `[char]`
   --> $DIR/cast-to-slice.rs:2:5
    |
-LL |     "example".as_bytes() as [char]; 
+LL |     "example".as_bytes() as [char];
    |     ^^^^^^^^^^^^^^^^^^^^^^^^------
    |                             |
    |                             help: try casting to a reference instead: `&[char]`
