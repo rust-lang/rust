@@ -1667,7 +1667,7 @@ rustc_queries! {
         desc { "resolving lifetimes" }
     }
     query named_variable_map(_: hir::OwnerId) ->
-        Option<&'tcx FxHashMap<ItemLocalId, ResolvedArg>> {
+        Option<&'tcx FxIndexMap<ItemLocalId, ResolvedArg>> {
         desc { "looking up a named region" }
     }
     query is_late_bound_map(_: hir::OwnerId) -> Option<&'tcx FxIndexSet<ItemLocalId>> {
@@ -1683,7 +1683,7 @@ rustc_queries! {
         separate_provide_extern
     }
     query late_bound_vars_map(_: hir::OwnerId)
-        -> Option<&'tcx FxHashMap<ItemLocalId, Vec<ty::BoundVariableKind>>> {
+        -> Option<&'tcx FxIndexMap<ItemLocalId, Vec<ty::BoundVariableKind>>> {
         desc { "looking up late bound vars" }
     }
 
