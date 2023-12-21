@@ -19,7 +19,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lock;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::{outline, sync};
-use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, StashKey};
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError, StashKey};
 use rustc_span::{Span, DUMMY_SP};
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
@@ -370,9 +370,7 @@ where
                     // so we just return the error.
                     cycle_error(query, qcx, id, span)
                 }
-                QueryResult::Poisoned => {
-                    panic!("job for query '{}' failed to start and was poisoned", query.name())
-                }
+                QueryResult::Poisoned => FatalError.raise(),
             }
         }
     }
