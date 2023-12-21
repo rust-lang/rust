@@ -63,7 +63,7 @@ use std::{
     panic::{RefUnwindSafe, UnwindSafe},
 };
 
-use base_db::{impl_intern_key, salsa, CrateId};
+use base_db::{impl_intern_key, salsa, CrateId, Edition};
 use hir_expand::{
     ast_id_map::{AstIdNode, FileAstId},
     attrs::{Attr, AttrId, AttrInput},
@@ -369,6 +369,7 @@ pub struct Macro2Loc {
     pub id: ItemTreeId<Macro2>,
     pub expander: MacroExpander,
     pub allow_internal_unsafe: bool,
+    pub edition: Edition,
 }
 impl_intern!(Macro2Id, Macro2Loc, intern_macro2, lookup_intern_macro2);
 
@@ -379,10 +380,18 @@ pub struct MacroRulesLoc {
     pub container: ModuleId,
     pub id: ItemTreeId<MacroRules>,
     pub expander: MacroExpander,
-    pub allow_internal_unsafe: bool,
-    pub local_inner: bool,
+    pub flags: MacroRulesLocFlags,
+    pub edition: Edition,
 }
 impl_intern!(MacroRulesId, MacroRulesLoc, intern_macro_rules, lookup_intern_macro_rules);
+
+bitflags::bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub struct MacroRulesLocFlags: u8 {
+        const ALLOW_INTERNAL_UNSAFE = 1 << 0;
+        const LOCAL_INNER = 1 << 1;
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct ProcMacroId(salsa::InternId);
@@ -392,6 +401,7 @@ pub struct ProcMacroLoc {
     pub id: ItemTreeId<Function>,
     pub expander: CustomProcMacroExpander,
     pub kind: ProcMacroKind,
+    pub edition: Edition,
 }
 impl_intern!(ProcMacroId, ProcMacroLoc, intern_proc_macro, lookup_intern_proc_macro);
 

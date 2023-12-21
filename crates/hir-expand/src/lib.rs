@@ -28,7 +28,7 @@ use triomphe::Arc;
 
 use std::{fmt, hash::Hash};
 
-use base_db::{CrateId, FileId};
+use base_db::{CrateId, Edition, FileId};
 use either::Either;
 use span::{FileRange, HirFileIdRepr, Span, SyntaxContextId};
 use syntax::{
@@ -176,6 +176,7 @@ pub struct MacroCallLoc {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroDefId {
     pub krate: CrateId,
+    pub edition: Edition,
     pub kind: MacroDefKind,
     pub local_inner: bool,
     pub allow_internal_unsafe: bool,
