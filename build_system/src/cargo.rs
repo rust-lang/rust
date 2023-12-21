@@ -6,6 +6,7 @@ use crate::utils::{
 
 use std::collections::HashMap;
 use std::ffi::OsStr;
+use std::path::PathBuf;
 
 fn args() -> Result<Option<Vec<String>>, String> {
     // We skip the binary and the "cargo" option.
@@ -42,18 +43,31 @@ pub fn run() -> Result<(), String> {
     // We first need to go to the original location to ensure that the config setup will go as
     // expected.
     let current_dir = std::env::current_dir()
+        .and_then(|path| path.canonicalize())
         .map_err(|error| format!("Failed to get current directory path: {:?}", error))?;
     let current_exe = std::env::current_exe()
+        .and_then(|path| path.canonicalize())
         .map_err(|error| format!("Failed to get current exe path: {:?}", error))?;
-    let parent_dir = match current_exe.parent() {
-        Some(parent) => parent,
-        None => {
+    let mut parent_dir = current_exe
+        .components()
+        .map(|comp| comp.as_os_str())
+        .collect::<Vec<_>>();
+    // We run this script from "build_system/target/release/y", so we need to remove these elements.
+    for to_remove in &["y", "release", "target", "build_system"] {
+        if parent_dir
+            .last()
+            .map(|part| part == to_remove)
+            .unwrap_or(false)
+        {
+            parent_dir.pop();
+        } else {
             return Err(format!(
-                "Cannot get parent of current executable path `{}`",
-                current_exe.display()
+                "Build script not executed from `build_system/target/release/y` (in path {})",
+                current_exe.display(),
             ));
         }
-    };
+    }
+    let parent_dir = PathBuf::from(parent_dir.join(&OsStr::new("/")));
     std::env::set_current_dir(&parent_dir).map_err(|error| {
         format!(
             "Failed to go to `{}` folder: {:?}",
