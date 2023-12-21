@@ -8,12 +8,11 @@ use rustc_ast::NodeId;
 use rustc_attr::{
     self as attr, ConstStability, DefaultBodyStability, DeprecatedSince, Deprecation, Stability,
 };
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Applicability, Diagnostic};
 use rustc_feature::GateIssue;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
 use rustc_hir::{self as hir, HirId};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::lint::builtin::{DEPRECATED, DEPRECATED_IN_FUTURE, SOFT_UNSTABLE};
@@ -62,10 +61,10 @@ impl DeprecationEntry {
 pub struct Index {
     /// This is mostly a cache, except the stabilities of local items
     /// are filled by the annotator.
-    pub stab_map: FxHashMap<LocalDefId, Stability>,
-    pub const_stab_map: FxHashMap<LocalDefId, ConstStability>,
-    pub default_body_stab_map: FxHashMap<LocalDefId, DefaultBodyStability>,
-    pub depr_map: FxHashMap<LocalDefId, DeprecationEntry>,
+    pub stab_map: LocalDefIdMap<Stability>,
+    pub const_stab_map: LocalDefIdMap<ConstStability>,
+    pub default_body_stab_map: LocalDefIdMap<DefaultBodyStability>,
+    pub depr_map: LocalDefIdMap<DeprecationEntry>,
     /// Mapping from feature name to feature name based on the `implied_by` field of `#[unstable]`
     /// attributes. If a `#[unstable(feature = "implier", implied_by = "impliee")]` attribute
     /// exists, then this map will have a `impliee -> implier` entry.
