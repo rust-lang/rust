@@ -24,9 +24,10 @@ use crate::{
     AttrDefId, BlockId, BlockLoc, ConstBlockId, ConstBlockLoc, ConstId, ConstLoc, DefWithBodyId,
     EnumId, EnumLoc, ExternBlockId, ExternBlockLoc, ExternCrateId, ExternCrateLoc, FunctionId,
     FunctionLoc, GenericDefId, ImplId, ImplLoc, InTypeConstId, InTypeConstLoc, LocalEnumVariantId,
-    LocalFieldId, Macro2Id, Macro2Loc, MacroId, MacroRulesId, MacroRulesLoc, ProcMacroId,
-    ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc, TraitAliasId, TraitAliasLoc, TraitId,
-    TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc, UseId, UseLoc, VariantId,
+    LocalFieldId, Macro2Id, Macro2Loc, MacroId, MacroRulesId, MacroRulesLoc, MacroRulesLocFlags,
+    ProcMacroId, ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc, TraitAliasId,
+    TraitAliasLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc, UseId, UseLoc,
+    VariantId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
@@ -338,8 +339,10 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
                 span: db
                     .span_map(loc.id.file_id())
                     .span_for_range(db.ast_id_map(loc.id.file_id()).get(makro.ast_id).text_range()),
+                edition: loc.edition,
             }
         }
+
         MacroId::MacroRulesId(it) => {
             let loc: MacroRulesLoc = it.lookup(db);
 
@@ -348,11 +351,14 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
             MacroDefId {
                 krate: loc.container.krate,
                 kind: kind(loc.expander, loc.id.file_id(), makro.ast_id.upcast()),
-                local_inner: loc.local_inner,
-                allow_internal_unsafe: loc.allow_internal_unsafe,
+                local_inner: loc.flags.contains(MacroRulesLocFlags::LOCAL_INNER),
+                allow_internal_unsafe: loc
+                    .flags
+                    .contains(MacroRulesLocFlags::ALLOW_INTERNAL_UNSAFE),
                 span: db
                     .span_map(loc.id.file_id())
                     .span_for_range(db.ast_id_map(loc.id.file_id()).get(makro.ast_id).text_range()),
+                edition: loc.edition,
             }
         }
         MacroId::ProcMacroId(it) => {
@@ -372,6 +378,7 @@ fn macro_def(db: &dyn DefDatabase, id: MacroId) -> MacroDefId {
                 span: db
                     .span_map(loc.id.file_id())
                     .span_for_range(db.ast_id_map(loc.id.file_id()).get(makro.ast_id).text_range()),
+                edition: loc.edition,
             }
         }
     }

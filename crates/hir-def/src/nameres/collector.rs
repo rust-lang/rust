@@ -54,8 +54,9 @@ use crate::{
     AdtId, AstId, AstIdWithPath, ConstLoc, CrateRootModuleId, EnumLoc, EnumVariantId,
     ExternBlockLoc, ExternCrateId, ExternCrateLoc, FunctionId, FunctionLoc, ImplLoc, Intern,
     ItemContainerId, LocalModuleId, Lookup, Macro2Id, Macro2Loc, MacroExpander, MacroId,
-    MacroRulesId, MacroRulesLoc, ModuleDefId, ModuleId, ProcMacroId, ProcMacroLoc, StaticLoc,
-    StructLoc, TraitAliasLoc, TraitLoc, TypeAliasLoc, UnionLoc, UnresolvedMacro, UseId, UseLoc,
+    MacroRulesId, MacroRulesLoc, MacroRulesLocFlags, ModuleDefId, ModuleId, ProcMacroId,
+    ProcMacroLoc, StaticLoc, StructLoc, TraitAliasLoc, TraitLoc, TypeAliasLoc, UnionLoc,
+    UnresolvedMacro, UseId, UseLoc,
 };
 
 static GLOB_RECURSION_LIMIT: Limit = Limit::new(100);
@@ -614,9 +615,14 @@ impl DefCollector<'_> {
                 _ => (CustomProcMacroExpander::dummy(), kind),
             };
 
-        let proc_macro_id =
-            ProcMacroLoc { container: self.def_map.crate_root(), id, expander, kind }
-                .intern(self.db);
+        let proc_macro_id = ProcMacroLoc {
+            container: self.def_map.crate_root(),
+            id,
+            expander,
+            kind,
+            edition: self.def_map.data.edition,
+        }
+        .intern(self.db);
         self.define_proc_macro(def.name.clone(), proc_macro_id);
         let crate_data = Arc::get_mut(&mut self.def_map.data).unwrap();
         if let ProcMacroKind::CustomDerive { helpers } = def.kind {
@@ -2138,12 +2144,16 @@ impl ModCollector<'_, '_> {
         };
         let allow_internal_unsafe = attrs.by_key("allow_internal_unsafe").exists();
 
+        let mut flags = MacroRulesLocFlags::empty();
+        flags.set(MacroRulesLocFlags::LOCAL_INNER, local_inner);
+        flags.set(MacroRulesLocFlags::ALLOW_INTERNAL_UNSAFE, allow_internal_unsafe);
+
         let macro_id = MacroRulesLoc {
             container: module,
             id: ItemTreeId::new(self.tree_id, id),
-            local_inner,
-            allow_internal_unsafe,
+            flags,
             expander,
+            edition: self.def_collector.def_map.data.edition,
         }
         .intern(self.def_collector.db);
         self.def_collector.define_macro_rules(
@@ -2209,6 +2219,7 @@ impl ModCollector<'_, '_> {
             id: ItemTreeId::new(self.tree_id, id),
             expander,
             allow_internal_unsafe,
+            edition: self.def_collector.def_map.data.edition,
         }
         .intern(self.def_collector.db);
         self.def_collector.define_macro_def(

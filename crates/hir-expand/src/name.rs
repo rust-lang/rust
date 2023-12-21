@@ -318,6 +318,10 @@ pub mod known {
         new_lower_hex,
         new_upper_hex,
         from_usize,
+        panic_2015,
+        panic_2021,
+        unreachable_2015,
+        unreachable_2021,
         // Components of known path (type name)
         Iterator,
         IntoIterator,

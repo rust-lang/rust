@@ -363,6 +363,7 @@ pub enum Edition {
 
 impl Edition {
     pub const CURRENT: Edition = Edition::Edition2021;
+    pub const DEFAULT: Edition = Edition::Edition2015;
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]

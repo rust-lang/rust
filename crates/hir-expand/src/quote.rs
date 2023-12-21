@@ -2,6 +2,8 @@
 
 use span::Span;
 
+use crate::name::Name;
+
 // A helper macro quote macro
 // FIXME:
 // 1. Not all puncts are handled
@@ -180,7 +182,7 @@ impl ToTokenTree for crate::tt::Subtree {
 }
 
 macro_rules! impl_to_to_tokentrees {
-    ($($span:ident: $ty:ty => $this:ident $im:block);*) => {
+    ($($span:ident: $ty:ty => $this:ident $im:block;)*) => {
         $(
             impl ToTokenTree for $ty {
                 fn to_token($this, $span: Span) -> crate::tt::TokenTree {
@@ -209,7 +211,8 @@ impl_to_to_tokentrees! {
     _span: crate::tt::Ident => self { self };
     _span: crate::tt::Punct => self { self };
     span: &str => self { crate::tt::Literal{text: format!("\"{}\"", self.escape_default()).into(), span}};
-    span: String => self { crate::tt::Literal{text: format!("\"{}\"", self.escape_default()).into(), span}}
+    span: String => self { crate::tt::Literal{text: format!("\"{}\"", self.escape_default()).into(), span}};
+    span: Name => self { crate::tt::Ident{text: self.to_smol_str(), span}};
 }
 
 #[cfg(test)]

@@ -13,10 +13,11 @@ use syntax::{
 
 use crate::{
     db::ExpandDatabase,
-    hygiene::span_with_def_site_ctxt,
-    name, quote,
+    hygiene::{span_with_call_site_ctxt, span_with_def_site_ctxt},
+    name::{self, known},
+    quote,
     tt::{self, DelimSpan},
-    ExpandError, ExpandResult, HirFileIdExt, MacroCallId, MacroCallLoc,
+    ExpandError, ExpandResult, HirFileIdExt, MacroCallId,
 };
 
 macro_rules! register_builtin {
@@ -196,32 +197,38 @@ fn stringify_expand(
 }
 
 fn assert_expand(
-    _db: &dyn ExpandDatabase,
-    _id: MacroCallId,
+    db: &dyn ExpandDatabase,
+    id: MacroCallId,
     tt: &tt::Subtree,
     span: Span,
 ) -> ExpandResult<tt::Subtree> {
-    let args = parse_exprs_with_sep(tt, ',', span);
+    let call_site_span = span_with_call_site_ctxt(db, span, id);
+    let args = parse_exprs_with_sep(tt, ',', call_site_span);
     let dollar_crate = tt::Ident { text: SmolStr::new_inline("$crate"), span };
     let expanded = match &*args {
         [cond, panic_args @ ..] => {
             let comma = tt::Subtree {
-                delimiter: tt::Delimiter::invisible_spanned(span),
+                delimiter: tt::Delimiter::invisible_spanned(call_site_span),
                 token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
                     char: ',',
                     spacing: tt::Spacing::Alone,
-                    span,
+                    span: call_site_span,
                 }))],
             };
             let cond = cond.clone();
             let panic_args = itertools::Itertools::intersperse(panic_args.iter().cloned(), comma);
-            quote! {span =>{
+            let mac = if use_panic_2021(db, span) {
+                quote! {call_site_span => #dollar_crate::panic::panic_2021!(##panic_args) }
+            } else {
+                quote! {call_site_span => #dollar_crate::panic!(##panic_args) }
+            };
+            quote! {call_site_span =>{
                 if !(#cond) {
-                    #dollar_crate::panic!(##panic_args);
+                    #mac;
                 }
             }}
         }
-        [] => quote! {span =>{}},
+        [] => quote! {call_site_span =>{}},
     };
 
     ExpandResult::ok(expanded)
@@ -337,17 +344,23 @@ fn panic_expand(
     tt: &tt::Subtree,
     span: Span,
 ) -> ExpandResult<tt::Subtree> {
-    let loc: MacroCallLoc = db.lookup_intern_macro_call(id);
     let dollar_crate = tt::Ident { text: SmolStr::new_inline("$crate"), span };
+    let call_site_span = span_with_call_site_ctxt(db, span, id);
+
+    let mac =
+        if use_panic_2021(db, call_site_span) { known::panic_2021 } else { known::panic_2015 };
+
     // Expand to a macro call `$crate::panic::panic_{edition}`
-    let mut call = if db.crate_graph()[loc.krate].edition >= Edition::Edition2021 {
-        quote!(span =>#dollar_crate::panic::panic_2021!)
-    } else {
-        quote!(span =>#dollar_crate::panic::panic_2015!)
-    };
+    let mut call = quote!(call_site_span =>#dollar_crate::panic::#mac!);
 
     // Pass the original arguments
-    call.token_trees.push(tt::TokenTree::Subtree(tt.clone()));
+    let mut subtree = tt.clone();
+    subtree.delimiter = tt::Delimiter {
+        open: call_site_span,
+        close: call_site_span,
+        kind: tt::DelimiterKind::Parenthesis,
+    };
+    call.token_trees.push(tt::TokenTree::Subtree(subtree));
     ExpandResult::ok(call)
 }
 
@@ -357,18 +370,48 @@ fn unreachable_expand(
     tt: &tt::Subtree,
     span: Span,
 ) -> ExpandResult<tt::Subtree> {
-    let loc: MacroCallLoc = db.lookup_intern_macro_call(id);
-    // Expand to a macro call `$crate::panic::unreachable_{edition}`
     let dollar_crate = tt::Ident { text: SmolStr::new_inline("$crate"), span };
-    let mut call = if db.crate_graph()[loc.krate].edition >= Edition::Edition2021 {
-        quote!(span =>#dollar_crate::panic::unreachable_2021!)
+    let call_site_span = span_with_call_site_ctxt(db, span, id);
+
+    let mac = if use_panic_2021(db, call_site_span) {
+        known::unreachable_2021
     } else {
-        quote!(span =>#dollar_crate::panic::unreachable_2015!)
+        known::unreachable_2015
     };
 
+    // Expand to a macro call `$crate::panic::panic_{edition}`
+    let mut call = quote!(call_site_span =>#dollar_crate::panic::#mac!);
+
     // Pass the original arguments
-    call.token_trees.push(tt::TokenTree::Subtree(tt.clone()));
+    let mut subtree = tt.clone();
+    subtree.delimiter = tt::Delimiter {
+        open: call_site_span,
+        close: call_site_span,
+        kind: tt::DelimiterKind::Parenthesis,
+    };
+    call.token_trees.push(tt::TokenTree::Subtree(subtree));
     ExpandResult::ok(call)
+}
+
+fn use_panic_2021(db: &dyn ExpandDatabase, span: Span) -> bool {
+    // To determine the edition, we check the first span up the expansion
+    // stack that does not have #[allow_internal_unstable(edition_panic)].
+    // (To avoid using the edition of e.g. the assert!() or debug_assert!() definition.)
+    loop {
+        let Some(expn) = db.lookup_intern_syntax_context(span.ctx).outer_expn else {
+            break false;
+        };
+        let expn = db.lookup_intern_macro_call(expn);
+        // FIXME: Record allow_internal_unstable in the macro def (not been done yet because it
+        // would consume quite a bit extra memory for all call locs...)
+        // if let Some(features) = expn.def.allow_internal_unstable {
+        //     if features.iter().any(|&f| f == sym::edition_panic) {
+        //         span = expn.call_site;
+        //         continue;
+        //     }
+        // }
+        break expn.def.edition >= Edition::Edition2021;
+    }
 }
 
 fn unquote_str(lit: &tt::Literal) -> Option<String> {
