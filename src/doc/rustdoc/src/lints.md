@@ -415,7 +415,7 @@ warning: 1 warning emitted
 
 ## `redundant_explicit_links`
 
-This lint is **warn-by-default**. It detects explicit links that are same
+This lint is **warn-by-default**. It detects explicit links that are the same
 as computed automatic links.
 This usually means the explicit links are removeable. For example:
 
