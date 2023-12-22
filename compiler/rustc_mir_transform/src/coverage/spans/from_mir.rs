@@ -38,6 +38,7 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
 
     initial_spans.sort_by(|a, b| basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb));
     remove_unwanted_macro_spans(&mut initial_spans);
+    split_visible_macro_spans(&mut initial_spans);
 
     initial_spans.sort_by(|a, b| {
         // First sort by span start.
@@ -77,6 +78,41 @@ fn remove_unwanted_macro_spans(initial_spans: &mut Vec<CoverageSpan>) {
         // Retain only the first macro-expanded covspan with this span.
         seen_macro_spans.insert(covspan.span)
     });
+}
+
+/// When a span corresponds to a macro invocation that is visible from the
+/// function body, split it into two parts. The first part covers just the
+/// macro name plus `!`, and the second part covers the rest of the macro
+/// invocation. This seems to give better results for code that uses macros.
+fn split_visible_macro_spans(initial_spans: &mut Vec<CoverageSpan>) {
+    let mut extra_spans = vec![];
+
+    initial_spans.retain(|covspan| {
+        if covspan.is_closure {
+            return true;
+        }
+
+        let Some(visible_macro) = covspan.visible_macro else { return true };
+
+        let split_len = visible_macro.as_str().len() as u32 + 1;
+        let (before, after) = covspan.span.split_at(split_len);
+        if !covspan.span.contains(before) || !covspan.span.contains(after) {
+            // Something is unexpectedly wrong with the split point.
+            // The debug assertion in `split_at` will have already caught this,
+            // but in release builds it's safer to do nothing and maybe get a
+            // bug report for unexpected coverage, rather than risk an ICE.
+            return true;
+        }
+
+        assert!(!covspan.is_closure);
+        extra_spans.push(CoverageSpan::new(before, covspan.visible_macro, covspan.bcb, false));
+        extra_spans.push(CoverageSpan::new(after, covspan.visible_macro, covspan.bcb, false));
+        false // Discard the original covspan that we just split.
+    });
+
+    // The newly-split spans are added at the end, so any previous sorting
+    // is not preserved.
+    initial_spans.extend(extra_spans);
 }
 
 // Generate a set of `CoverageSpan`s from the filtered set of `Statement`s and `Terminator`s of

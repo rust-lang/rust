@@ -220,7 +220,6 @@ impl<'a> CoverageSpansGenerator<'a> {
             // span-processing steps don't make sense yet.
             if self.some_prev.is_none() {
                 debug!("  initial span");
-                self.maybe_push_macro_name_span();
                 continue;
             }
 
@@ -232,7 +231,6 @@ impl<'a> CoverageSpansGenerator<'a> {
                 debug!("  same bcb (and neither is a closure), merge with prev={prev:?}");
                 let prev = self.take_prev();
                 self.curr_mut().merge_from(&prev);
-                self.maybe_push_macro_name_span();
             // Note that curr.span may now differ from curr_original_span
             } else if prev.span.hi() <= curr.span.lo() {
                 debug!(
@@ -240,7 +238,6 @@ impl<'a> CoverageSpansGenerator<'a> {
                 );
                 let prev = self.take_prev();
                 self.refined_spans.push(prev);
-                self.maybe_push_macro_name_span();
             } else if prev.is_closure {
                 // drop any equal or overlapping span (`curr`) and keep `prev` to test again in the
                 // next iter
@@ -256,7 +253,6 @@ impl<'a> CoverageSpansGenerator<'a> {
                 self.update_pending_dups();
             } else {
                 self.cutoff_prev_at_overlapping_curr();
-                self.maybe_push_macro_name_span();
             }
         }
 
@@ -289,36 +285,6 @@ impl<'a> CoverageSpansGenerator<'a> {
         // (injected separately, from the closure's own MIR).
         self.refined_spans.retain(|covspan| !covspan.is_closure);
         self.refined_spans
-    }
-
-    /// If `curr` is part of a new macro expansion, carve out and push a separate
-    /// span that ends just after the macro name and its subsequent `!`.
-    fn maybe_push_macro_name_span(&mut self) {
-        let curr = self.curr();
-
-        let Some(visible_macro) = curr.visible_macro else { return };
-
-        // The split point is relative to `curr_original_span`,
-        // because `curr.span` may have been merged with preceding spans.
-        let split_point_after_macro_bang = self.curr_original_span.lo()
-            + BytePos(visible_macro.as_str().len() as u32)
-            + BytePos(1); // add 1 for the `!`
-        debug_assert!(split_point_after_macro_bang <= curr.span.hi());
-        if split_point_after_macro_bang > curr.span.hi() {
-            // Something is wrong with the macro name span;
-            // return now to avoid emitting malformed mappings (e.g. #117788).
-            return;
-        }
-
-        let mut macro_name_cov = curr.clone();
-        macro_name_cov.span = macro_name_cov.span.with_hi(split_point_after_macro_bang);
-        self.curr_mut().span = curr.span.with_lo(split_point_after_macro_bang);
-
-        debug!(
-            "  and curr starts a new macro expansion, so add a new span just for \
-            the macro `{visible_macro}!`, new span={macro_name_cov:?}",
-        );
-        self.refined_spans.push(macro_name_cov);
     }
 
     #[track_caller]
