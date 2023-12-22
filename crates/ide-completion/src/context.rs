@@ -371,6 +371,7 @@ pub(super) enum CompletionAnalysis {
     UnexpandedAttrTT {
         colon_prefix: bool,
         fake_attribute_under_caret: Option<ast::Attr>,
+        extern_crate: Option<ast::ExternCrate>,
     },
 }
 

@@ -254,11 +254,13 @@ fn analyze(
             {
                 let colon_prefix = previous_non_trivia_token(self_token.clone())
                     .map_or(false, |it| T![:] == it.kind());
+
                 CompletionAnalysis::UnexpandedAttrTT {
                     fake_attribute_under_caret: fake_ident_token
                         .parent_ancestors()
                         .find_map(ast::Attr::cast),
                     colon_prefix,
+                    extern_crate: p.ancestors().find_map(ast::ExternCrate::cast),
                 }
             } else {
                 return None;
