@@ -51,9 +51,9 @@ fn run() -> io::Result<()> {
             msg::Request::ApiVersionCheck {} => {
                 msg::Response::ApiVersionCheck(proc_macro_api::msg::CURRENT_API_VERSION)
             }
-            msg::Request::SetSpanMode(span_mode) => {
-                srv.set_span_mode(span_mode);
-                msg::Response::SetSpanMode(span_mode)
+            msg::Request::SetConfig(config) => {
+                srv.set_span_mode(config.span_mode);
+                msg::Response::SetConfig(config)
             }
         };
         write_response(res)?

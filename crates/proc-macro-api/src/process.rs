@@ -79,11 +79,13 @@ impl ProcMacroProcessSrv {
     }
 
     fn enable_rust_analyzer_spans(&mut self) -> Result<SpanMode, ServerError> {
-        let request = Request::SetSpanMode(crate::msg::SpanMode::RustAnalyzer);
+        let request = Request::SetConfig(crate::msg::ServerConfig {
+            span_mode: crate::msg::SpanMode::RustAnalyzer,
+        });
         let response = self.send_task(request)?;
 
         match response {
-            Response::SetSpanMode(span_mode) => Ok(span_mode),
+            Response::SetConfig(crate::msg::ServerConfig { span_mode }) => Ok(span_mode),
             _ => Err(ServerError { message: "unexpected response".to_string(), io: None }),
         }
     }

@@ -33,7 +33,7 @@ pub enum Request {
     /// Since [`VERSION_CHECK_VERSION`]
     ApiVersionCheck {},
     /// Since [`RUST_ANALYZER_SPAN_SUPPORT`]
-    SetSpanMode(SpanMode),
+    SetConfig(ServerConfig),
 }
 
 #[derive(Copy, Clone, Default, Debug, Serialize, Deserialize)]
@@ -52,9 +52,15 @@ pub enum Response {
     /// Since [`NO_VERSION_CHECK_VERSION`]
     ApiVersionCheck(u32),
     /// Since [`RUST_ANALYZER_SPAN_SUPPORT`]
-    SetSpanMode(SpanMode),
+    SetConfig(ServerConfig),
     /// Since [`RUST_ANALYZER_SPAN_SUPPORT`]
     ExpandMacroExtended(Result<ExpandMacroExtended, PanicMessage>),
+}
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct ServerConfig {
+    pub span_mode: SpanMode,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
