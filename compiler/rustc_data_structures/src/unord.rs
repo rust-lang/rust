@@ -3,9 +3,8 @@
 //! as required by the query system.
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use smallvec::SmallVec;
 use std::{
-    borrow::Borrow,
+    borrow::{Borrow, BorrowMut},
     collections::hash_map::Entry,
     hash::Hash,
     iter::{Product, Sum},
@@ -135,13 +134,12 @@ impl<'a, T: Copy + 'a, I: Iterator<Item = &'a T>> UnordItems<&'a T, I> {
 }
 
 impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
+    #[inline]
     pub fn into_sorted<HCX>(self, hcx: &HCX) -> Vec<T>
     where
         T: ToStableHashKey<HCX>,
     {
-        let mut items: Vec<T> = self.0.collect();
-        items.sort_by_cached_key(|x| x.to_stable_hash_key(hcx));
-        items
+        self.collect_sorted(hcx, true)
     }
 
     #[inline]
@@ -149,13 +147,7 @@ impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
     where
         T: StableCompare,
     {
-        let mut items: Vec<T> = self.0.collect();
-        if !T::CAN_USE_UNSTABLE_SORT {
-            items.sort_by(T::stable_cmp);
-        } else {
-            items.sort_unstable_by(T::stable_cmp)
-        }
-        items
+        self.collect_stable_ord_by_key(|x| x)
     }
 
     #[inline]
@@ -164,29 +156,53 @@ impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
         K: StableCompare,
         C: for<'a> Fn(&'a T) -> &'a K,
     {
-        let mut items: Vec<T> = self.0.collect();
-        if !K::CAN_USE_UNSTABLE_SORT {
-            items.sort_by(|a, b| {
-                let a_key = project_to_key(a);
-                let b_key = project_to_key(b);
-                a_key.stable_cmp(b_key)
-            });
-        } else {
-            items.sort_unstable_by(|a, b| {
-                let a_key = project_to_key(a);
-                let b_key = project_to_key(b);
-                a_key.stable_cmp(b_key)
-            });
+        self.collect_stable_ord_by_key(project_to_key)
+    }
+
+    pub fn collect_sorted<HCX, C>(self, hcx: &HCX, cache_sort_key: bool) -> C
+    where
+        T: ToStableHashKey<HCX>,
+        C: FromIterator<T> + BorrowMut<[T]>,
+    {
+        let mut items: C = self.0.collect();
+
+        let slice = items.borrow_mut();
+        if slice.len() > 1 {
+            if cache_sort_key {
+                slice.sort_by_cached_key(|x| x.to_stable_hash_key(hcx));
+            } else {
+                slice.sort_by_key(|x| x.to_stable_hash_key(hcx));
+            }
         }
+
         items
     }
 
-    pub fn into_sorted_small_vec<HCX, const LEN: usize>(self, hcx: &HCX) -> SmallVec<[T; LEN]>
+    pub fn collect_stable_ord_by_key<K, C, P>(self, project_to_key: P) -> C
     where
-        T: ToStableHashKey<HCX>,
+        K: StableCompare,
+        P: for<'a> Fn(&'a T) -> &'a K,
+        C: FromIterator<T> + BorrowMut<[T]>,
     {
-        let mut items: SmallVec<[T; LEN]> = self.0.collect();
-        items.sort_by_cached_key(|x| x.to_stable_hash_key(hcx));
+        let mut items: C = self.0.collect();
+
+        let slice = items.borrow_mut();
+        if slice.len() > 1 {
+            if !K::CAN_USE_UNSTABLE_SORT {
+                slice.sort_by(|a, b| {
+                    let a_key = project_to_key(a);
+                    let b_key = project_to_key(b);
+                    a_key.stable_cmp(b_key)
+                });
+            } else {
+                slice.sort_unstable_by(|a, b| {
+                    let a_key = project_to_key(a);
+                    let b_key = project_to_key(b);
+                    a_key.stable_cmp(b_key)
+                });
+            }
+        }
+
         items
     }
 }
