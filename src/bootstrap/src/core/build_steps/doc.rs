@@ -1001,6 +1001,7 @@ tool_doc!(
         "cargo-test-macro",
         "cargo-test-support",
         "cargo-util",
+        "cargo-util-schemas",
         "crates-io",
         "mdman",
         "rustfix",
