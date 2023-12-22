@@ -308,7 +308,6 @@
 //
 // Library features (core):
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(c_str_literals))]
 #![feature(char_internals)]
 #![feature(core_intrinsics)]
 #![feature(core_io_borrowed_buf)]

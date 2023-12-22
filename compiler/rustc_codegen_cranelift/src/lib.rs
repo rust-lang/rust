@@ -1,6 +1,6 @@
-#![cfg_attr(all(doc, not(bootstrap)), allow(internal_features))]
-#![cfg_attr(all(doc, not(bootstrap)), feature(rustdoc_internals))]
-#![cfg_attr(all(doc, not(bootstrap)), doc(rust_logo))]
+#![cfg_attr(doc, allow(internal_features))]
+#![cfg_attr(doc, feature(rustdoc_internals))]
+#![cfg_attr(doc, doc(rust_logo))]
 #![feature(rustc_private)]
 // Note: please avoid adding other feature gates where possible
 #![warn(rust_2018_idioms)]

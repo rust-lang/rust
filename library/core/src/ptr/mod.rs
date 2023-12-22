@@ -1900,7 +1900,7 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
 #[inline(always)]
 #[must_use = "pointer comparison produces a value"]
 #[rustc_diagnostic_item = "ptr_eq"]
-#[cfg_attr(not(bootstrap), allow(ambiguous_wide_pointer_comparisons))] // it's actually clear here
+#[allow(ambiguous_wide_pointer_comparisons)] // it's actually clear here
 pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
     a == b
 }
