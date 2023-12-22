@@ -1,0 +1,19 @@
+error[E0658]: `impl Trait` in type aliases is unstable
+  --> $DIR/return-ty-has-bound-vars.rs:3:16
+   |
+LL | type Foo<'a> = impl PartialEq;
+   |                ^^^^^^^^^^^^^^
+   |
+   = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
+error[E0131]: `main` function return type is not allowed to have generic parameters
+  --> $DIR/return-ty-has-bound-vars.rs:5:28
+   |
+LL | fn main<'a>(_: &'a i32) -> Foo<'a> {}
+   |                            ^^^^^^^
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0131, E0658.
+For more information about an error, try `rustc --explain E0131`.
