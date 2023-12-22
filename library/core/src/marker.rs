@@ -75,7 +75,7 @@ macro marker_impls {
 /// [ub]: ../../reference/behavior-considered-undefined.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Send")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "`{Self}` cannot be sent between threads safely",
     label = "`{Self}` cannot be sent between threads safely"
 )]
@@ -134,7 +134,7 @@ unsafe impl<T: Sync + ?Sized> Send for &T {}
 #[doc(alias = "?", alias = "?Sized")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sized"]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "the size for values of type `{Self}` cannot be known at compilation time",
     label = "doesn't have a size known at compile-time"
 )]
@@ -205,7 +205,7 @@ pub trait Unsize<T: ?Sized> {
 /// [RFC1445]: https://github.com/rust-lang/rfcs/blob/master/text/1445-restrict-constants-in-patterns.md
 /// [issue 63438]: https://github.com/rust-lang/rust/issues/63438
 #[unstable(feature = "structural_match", issue = "31434")]
-#[rustc_on_unimplemented(message = "the type `{Self}` does not `#[derive(PartialEq)]`")]
+#[diagnostic::on_unimplemented(message = "the type `{Self}` does not `#[derive(PartialEq)]`")]
 #[lang = "structural_peq"]
 pub trait StructuralPartialEq {
     // Empty.
@@ -273,7 +273,7 @@ marker_impls! {
 /// of the two derives (`#[derive(PartialEq)]` and `#[derive(Eq)]`) and check
 /// that both of them are present as part of structural-match checking.
 #[unstable(feature = "structural_match", issue = "31434")]
-#[rustc_on_unimplemented(message = "the type `{Self}` does not `#[derive(Eq)]`")]
+#[diagnostic::on_unimplemented(message = "the type `{Self}` does not `#[derive(Eq)]`")]
 #[lang = "structural_teq"]
 pub trait StructuralEq {
     // Empty.
@@ -941,7 +941,7 @@ marker_impls! {
 /// [Pin]: crate::pin::Pin
 /// [`pin` module]: crate::pin
 #[stable(feature = "pin", since = "1.33.0")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     note = "consider using the `pin!` macro\nconsider using `Box::pin` if you need to access the pinned value outside of the current scope",
     message = "`{Self}` cannot be unpinned"
 )]
@@ -989,7 +989,7 @@ pub trait Destruct {}
 /// for any user type.
 #[unstable(feature = "tuple_trait", issue = "none")]
 #[lang = "tuple_trait"]
-#[rustc_on_unimplemented(message = "`{Self}` is not a tuple")]
+#[diagnostic::on_unimplemented(message = "`{Self}` is not a tuple")]
 #[rustc_deny_explicit_impl(implement_via_object = false)]
 pub trait Tuple {}
 
@@ -999,7 +999,7 @@ pub trait Tuple {}
 /// `*const ()` automatically implement this trait.
 #[unstable(feature = "pointer_like_trait", issue = "none")]
 #[lang = "pointer_like"]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "`{Self}` needs to have the same ABI as a pointer",
     label = "`{Self}` needs to be a pointer-like type"
 )]
@@ -1013,7 +1013,7 @@ pub trait PointerLike {}
 /// are `StructuralPartialEq`.
 #[lang = "const_param_ty"]
 #[unstable(feature = "adt_const_params", issue = "95174")]
-#[rustc_on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
+#[diagnostic::on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
 #[allow(multiple_supertrait_upcastable)]
 pub trait ConstParamTy: StructuralEq + StructuralPartialEq + Eq {}
 
