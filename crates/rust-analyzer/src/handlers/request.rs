@@ -453,7 +453,7 @@ pub(crate) fn handle_document_symbol(
 pub(crate) fn handle_workspace_symbol(
     snap: GlobalStateSnapshot,
     params: WorkspaceSymbolParams,
-) -> anyhow::Result<Option<Vec<SymbolInformation>>> {
+) -> anyhow::Result<Option<lsp_types::WorkspaceSymbolResponse>> {
     let _p = profile::span("handle_workspace_symbol");
 
     let config = snap.config.workspace_symbol();
@@ -479,7 +479,7 @@ pub(crate) fn handle_workspace_symbol(
         res = exec_query(&snap, query)?;
     }
 
-    return Ok(Some(res));
+    return Ok(Some(lsp_types::WorkspaceSymbolResponse::Nested(res)));
 
     fn decide_search_scope_and_kind(
         params: &WorkspaceSymbolParams,
@@ -519,13 +519,12 @@ pub(crate) fn handle_workspace_symbol(
     fn exec_query(
         snap: &GlobalStateSnapshot,
         query: Query,
-    ) -> anyhow::Result<Vec<SymbolInformation>> {
+    ) -> anyhow::Result<Vec<lsp_types::WorkspaceSymbol>> {
         let mut res = Vec::new();
         for nav in snap.analysis.symbol_search(query)? {
             let container_name = nav.container_name.as_ref().map(|v| v.to_string());
 
-            #[allow(deprecated)]
-            let info = SymbolInformation {
+            let info = lsp_types::WorkspaceSymbol {
                 name: match &nav.alias {
                     Some(alias) => format!("{} (alias for {})", alias, nav.name),
                     None => format!("{}", nav.name),
@@ -534,10 +533,11 @@ pub(crate) fn handle_workspace_symbol(
                     .kind
                     .map(to_proto::symbol_kind)
                     .unwrap_or(lsp_types::SymbolKind::VARIABLE),
+                // FIXME: Set deprecation
                 tags: None,
-                location: to_proto::location_from_nav(snap, nav)?,
                 container_name,
-                deprecated: None,
+                location: lsp_types::OneOf::Left(to_proto::location_from_nav(snap, nav)?),
+                data: None,
             };
             res.push(info);
         }
