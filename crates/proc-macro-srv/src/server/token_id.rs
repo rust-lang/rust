@@ -53,6 +53,9 @@ impl server::Types for TokenIdServer {
 }
 
 impl server::FreeFunctions for TokenIdServer {
+    fn injected_env_var(&mut self, _: &str) -> Option<std::string::String> {
+        None
+    }
     fn track_env_var(&mut self, _var: &str, _value: Option<&str>) {}
     fn track_path(&mut self, _path: &str) {}
     fn literal_from_str(

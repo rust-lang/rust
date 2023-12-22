@@ -776,7 +776,7 @@ fn quote_expand(
     _db: &dyn ExpandDatabase,
     _arg_id: MacroCallId,
     _tt: &tt::Subtree,
-    span: SpanData,
+    span: Span,
 ) -> ExpandResult<tt::Subtree> {
     ExpandResult::new(
         tt::Subtree::empty(tt::DelimSpan { open: span, close: span }),

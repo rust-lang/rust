@@ -12,7 +12,7 @@ use std::{
 
 use ::tt::{TextRange, TextSize};
 use proc_macro::bridge::{self, server};
-use span::Span;
+use span::{Span, FIXUP_ERASED_FILE_AST_ID_MARKER};
 
 use crate::server::{
     delim_to_external, delim_to_internal, token_stream::TokenStreamBuilder, LiteralFormatter,
@@ -55,6 +55,10 @@ impl server::Types for RaSpanServer {
 }
 
 impl server::FreeFunctions for RaSpanServer {
+    fn injected_env_var(&mut self, _: &str) -> Option<std::string::String> {
+        None
+    }
+
     fn track_env_var(&mut self, var: &str, value: Option<&str>) {
         self.tracked_env_vars.insert(var.into(), value.map(Into::into));
     }
@@ -124,9 +128,7 @@ impl server::TokenStream for RaSpanServer {
                 });
 
                 let literal = tt::Literal { text, span: literal.0.span };
-                let leaf: ::tt::Leaf<
-                    ::tt::SpanData<base_db::span::SpanAnchor, base_db::span::SyntaxContextId>,
-                > = tt::Leaf::from(literal);
+                let leaf: tt::Leaf = tt::Leaf::from(literal);
                 let tree = tt::TokenTree::from(leaf);
                 Self::TokenStream::from_iter(iter::once(tree))
             }
@@ -246,6 +248,7 @@ impl server::Span for RaSpanServer {
         format!("{:?}", span)
     }
     fn source_file(&mut self, _span: Self::Span) -> Self::SourceFile {
+        // FIXME stub, requires db
         SourceFile {}
     }
     fn save_span(&mut self, _span: Self::Span) -> usize {
@@ -261,7 +264,7 @@ impl server::Span for RaSpanServer {
     /// See PR:
     /// https://github.com/rust-lang/rust/pull/55780
     fn source_text(&mut self, _span: Self::Span) -> Option<String> {
-        // FIXME requires db
+        // FIXME requires db, needs special handling wrt fixup spans
         None
     }
 
@@ -278,9 +281,20 @@ impl server::Span for RaSpanServer {
         Range { start: span.range.start().into(), end: span.range.end().into() }
     }
     fn join(&mut self, first: Self::Span, second: Self::Span) -> Option<Self::Span> {
+        // We can't modify the span range for fixup spans, those are meaningful to fixup, so just
+        // prefer the non-fixup span.
+        if first.anchor.ast_id == FIXUP_ERASED_FILE_AST_ID_MARKER {
+            return Some(second);
+        }
+        if second.anchor.ast_id == FIXUP_ERASED_FILE_AST_ID_MARKER {
+            return Some(first);
+        }
+        // FIXME: Once we can talk back to the client, implement a "long join" request for anchors
+        // that differ in [AstId]s as joining those spans requires resolving the AstIds.
         if first.anchor != second.anchor {
             return None;
         }
+        // Differing context, we can't merge these so prefer the one that's root
         if first.ctx != second.ctx {
             if first.ctx.is_root() {
                 return Some(second);
@@ -300,8 +314,10 @@ impl server::Span for RaSpanServer {
         start: Bound<usize>,
         end: Bound<usize>,
     ) -> Option<Self::Span> {
-        // FIXME requires db to resolve the ast id, THIS IS NOT INCREMENTAL as it works on absolute
-        // ranges
+        // We can't modify the span range for fixup spans, those are meaningful to fixup.
+        if span.anchor.ast_id == FIXUP_ERASED_FILE_AST_ID_MARKER {
+            return Some(span);
+        }
         let length = span.range.len().into();
 
         let start: u32 = match start {
@@ -341,10 +357,18 @@ impl server::Span for RaSpanServer {
     }
 
     fn end(&mut self, span: Self::Span) -> Self::Span {
+        // We can't modify the span range for fixup spans, those are meaningful to fixup.
+        if span.anchor.ast_id == FIXUP_ERASED_FILE_AST_ID_MARKER {
+            return span;
+        }
         Span { range: TextRange::empty(span.range.end()), ..span }
     }
 
     fn start(&mut self, span: Self::Span) -> Self::Span {
+        // We can't modify the span range for fixup spans, those are meaningful to fixup.
+        if span.anchor.ast_id == FIXUP_ERASED_FILE_AST_ID_MARKER {
+            return span;
+        }
         Span { range: TextRange::empty(span.range.start()), ..span }
     }
 

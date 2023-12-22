@@ -1,11 +1,8 @@
 //! utils used in proc-macro tests
 
-use base_db::{
-    span::{ErasedFileAstId, SpanAnchor, SpanData, SyntaxContextId},
-    FileId,
-};
 use expect_test::Expect;
 use proc_macro_api::msg::TokenId;
+use span::{ErasedFileAstId, FileId, Span, SpanAnchor, SyntaxContextId};
 use tt::TextRange;
 
 use crate::{dylib, proc_macro_test_dylib_path, ProcMacroSrv};
@@ -20,7 +17,7 @@ fn parse_string_spanned(
     anchor: SpanAnchor,
     call_site: SyntaxContextId,
     src: &str,
-) -> crate::server::TokenStream<SpanData> {
+) -> crate::server::TokenStream<Span> {
     crate::server::TokenStream::with_subtree(
         mbe::parse_to_token_tree(anchor, call_site, src).unwrap(),
     )
@@ -68,7 +65,7 @@ fn assert_expand_impl(
         .unwrap();
     expect.assert_eq(&format!("{res:?}"));
 
-    let def_site = SpanData {
+    let def_site = Span {
         range: TextRange::new(0.into(), 150.into()),
         anchor: SpanAnchor {
             file_id: FileId::from_raw(41),
@@ -76,7 +73,7 @@ fn assert_expand_impl(
         },
         ctx: SyntaxContextId::ROOT,
     };
-    let call_site = SpanData {
+    let call_site = Span {
         range: TextRange::new(0.into(), 100.into()),
         anchor: SpanAnchor {
             file_id: FileId::from_raw(42),
