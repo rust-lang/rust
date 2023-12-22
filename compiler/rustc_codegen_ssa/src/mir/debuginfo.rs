@@ -350,10 +350,23 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 if attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
                     return;
                 }
-                // FIXME: Don't spill scalable simd, this works for most of them however,
-                // some intermediate types can't be spilled e.g. `<vscale x 4 x i1>`
-                if operand.layout.ty.is_scalable_simd() {
-                    return;
+
+                // LLVM doesn't handle stores on some of the internal SVE types that we are required
+                // to use. Spilling to the stack here to create debug info for them will cause
+                // errors during instruction selection. The types that can't be spilled are an
+                // internal implementation detail to the intrinsic, the user should never see these
+                // types, and therefore shouldn't need any debug info for them.
+                if operand.layout.ty.is_scalable_simd() && bx.sess().target.arch == "aarch64" {
+                    if let ty::Adt(adt, args) = &operand.layout.ty.kind() {
+                        if let Some(f0) = adt.non_enum_variant().fields.get(FieldIdx::from_u32(0)) {
+                            let f0_ty = f0.ty(bx.tcx(), args);
+                            if let ty::Slice(e_ty) = f0_ty.kind() {
+                                if e_ty.is_bool() && adt.repr().scalable != Some(16) {
+                                    return;
+                                }
+                            }
+                        }
+                    }
                 }
 
                 Self::spill_operand_to_stack(*operand, name, bx)
