@@ -58,9 +58,8 @@ pub trait TypeCx: Sized + fmt::Debug {
     type StrLit: Clone + PartialEq + fmt::Debug;
     /// Extra data to store in a match arm.
     type ArmData: Copy + Clone + fmt::Debug;
-    /// Extra data to store in a pattern. `Default` needed when we create fictitious wildcard
-    /// patterns during analysis.
-    type PatData: Clone + Default;
+    /// Extra data to store in a pattern.
+    type PatData: Clone;
 
     /// FIXME(Nadrieril): `Cx` should only give us revealed types.
     fn reveal_opaque_ty(&self, ty: Self::Ty) -> Self::Ty;

@@ -840,8 +840,7 @@ impl<'a, 'p, Cx: TypeCx> Matrix<'a, 'p, Cx> {
         scrut_ty: Cx::Ty,
         scrut_validity: ValidityConstraint,
     ) -> Self {
-        let wild_pattern =
-            wildcard_arena.alloc(DeconstructedPat::wildcard(scrut_ty, Default::default()));
+        let wild_pattern = wildcard_arena.alloc(DeconstructedPat::wildcard(scrut_ty));
         let wildcard_row = PatStack::from_pattern(wild_pattern);
         let mut matrix = Matrix {
             rows: Vec::with_capacity(arms.len()),
