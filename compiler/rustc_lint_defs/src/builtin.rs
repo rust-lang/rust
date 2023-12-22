@@ -89,6 +89,7 @@ declare_lint_pass! {
         SINGLE_USE_LIFETIMES,
         SOFT_UNSTABLE,
         STABLE_FEATURES,
+        STATIC_MUT_REF,
         SUSPICIOUS_AUTO_TRAIT_IMPLS,
         TEST_UNSTABLE_LINT,
         TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
@@ -1764,6 +1765,57 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2021),
         reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>",
+    };
+}
+
+declare_lint! {
+    /// The `static_mut_ref` lint checks for shared or mutable references
+    /// of mutable static inside `unsafe` blocks and `unsafe` functions.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,edition2021
+    /// fn main() {
+    ///     static mut X: i32 = 23;
+    ///     static mut Y: i32 = 24;
+    ///
+    ///     unsafe {
+    ///         let y = &X;
+    ///         let ref x = X;
+    ///         let (x, y) = (&X, &Y);
+    ///         foo(&X);
+    ///     }
+    /// }
+    ///
+    /// unsafe fn _foo() {
+    ///     static mut X: i32 = 23;
+    ///     static mut Y: i32 = 24;
+    ///
+    ///     let y = &X;
+    ///     let ref x = X;
+    ///     let (x, y) = (&X, &Y);
+    ///     foo(&X);
+    /// }
+    ///
+    /// fn foo<'a>(_x: &'a i32) {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Shared or mutable references of mutable static are almost always a mistake and
+    /// can lead to undefined behavior and various other problems in your code.
+    ///
+    /// This lint is "warn" by default on editions up to 2021, from 2024 there is
+    /// a hard error instead.
+    pub STATIC_MUT_REF,
+    Warn,
+    "shared references or mutable references of mutable static is discouraged",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
+        reference: "issue #114447 <https://github.com/rust-lang/rust/issues/114447>",
+        explain_reason: false,
     };
 }
 
