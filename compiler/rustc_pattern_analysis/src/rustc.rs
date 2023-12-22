@@ -540,7 +540,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                         // `Ref`), and has one field. That field has constructor `Str(value)` and no
                         // subfields.
                         // Note: `t` is `str`, not `&str`.
-                        let subpattern = DeconstructedPat::new(Str(*value), &[], *t, pat.span);
+                        let subpattern = DeconstructedPat::new(Str(*value), &[], *t, pat);
                         ctor = Ref;
                         fields = singleton(subpattern)
                     }
@@ -624,7 +624,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                 fields = &[];
             }
         }
-        DeconstructedPat::new(ctor, fields, pat.ty, pat.span)
+        DeconstructedPat::new(ctor, fields, pat.ty, pat)
     }
 
     /// Convert back to a `thir::PatRangeBoundary` for diagnostic purposes.
@@ -894,7 +894,7 @@ impl<'p, 'tcx> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
     type VariantIdx = VariantIdx;
     type StrLit = Const<'tcx>;
     type ArmData = HirId;
-    type PatData = Span;
+    type PatData = &'p Pat<'tcx>;
 
     fn is_exhaustive_patterns_feature_on(&self) -> bool {
         self.tcx.features().exhaustive_patterns
