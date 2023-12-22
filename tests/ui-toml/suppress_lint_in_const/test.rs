@@ -7,7 +7,8 @@
     unconditional_panic,
     clippy::no_effect,
     clippy::unnecessary_operation,
-    clippy::useless_vec
+    clippy::useless_vec,
+    clippy::out_of_bounds_indexing
 )]
 
 const ARR: [i32; 2] = [1, 2];
