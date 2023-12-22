@@ -357,6 +357,8 @@ declare_features! (
     (unstable, async_closure, "1.37.0", Some(62290)),
     /// Allows `#[track_caller]` on async functions.
     (unstable, async_fn_track_caller, "1.73.0", Some(110011)),
+    /// Allows `for await` loops.
+    (unstable, async_for_loop, "CURRENT_RUSTC_VERSION", Some(118898)),
     /// Allows builtin # foo() syntax
     (unstable, builtin_syntax, "1.71.0", Some(110680)),
     /// Treat `extern "C"` function as nounwind.

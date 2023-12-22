@@ -56,12 +56,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     return ex;
                 }
                 // Desugar `ExprForLoop`
-                // from: `[opt_ident]: for <pat> in <head> <body>`
+                // from: `[opt_ident]: for await? <pat> in <iter> <body>`
                 //
                 // This also needs special handling because the HirId of the returned `hir::Expr` will not
                 // correspond to the `e.id`, so `lower_expr_for` handles attribute lowering itself.
-                ExprKind::ForLoop(pat, head, body, opt_label) => {
-                    return self.lower_expr_for(e, pat, head, body, *opt_label);
+                ExprKind::ForLoop { pat, iter, body, label, kind } => {
+                    return self.lower_expr_for(e, pat, iter, body, *label, *kind);
                 }
                 _ => (),
             }
@@ -337,7 +337,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 ),
                 ExprKind::Try(sub_expr) => self.lower_expr_try(e.span, sub_expr),
 
-                ExprKind::Paren(_) | ExprKind::ForLoop(..) => {
+                ExprKind::Paren(_) | ExprKind::ForLoop { .. } => {
                     unreachable!("already handled")
                 }
 
@@ -874,6 +874,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// }
     /// ```
     fn lower_expr_await(&mut self, await_kw_span: Span, expr: &Expr) -> hir::ExprKind<'hir> {
+        let expr = self.arena.alloc(self.lower_expr_mut(expr));
+        self.make_lowered_await(await_kw_span, expr, FutureKind::Future)
+    }
+
+    /// Takes an expr that has already been lowered and generates a desugared await loop around it
+    fn make_lowered_await(
+        &mut self,
+        await_kw_span: Span,
+        expr: &'hir hir::Expr<'hir>,
+        await_kind: FutureKind,
+    ) -> hir::ExprKind<'hir> {
         let full_span = expr.span.to(await_kw_span);
 
         let is_async_gen = match self.coroutine_kind {
@@ -887,13 +898,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
         };
 
-        let span = self.mark_span_with_reason(DesugaringKind::Await, await_kw_span, None);
+        let features = match await_kind {
+            FutureKind::Future => None,
+            FutureKind::AsyncIterator => Some(self.allow_for_await.clone()),
+        };
+        let span = self.mark_span_with_reason(DesugaringKind::Await, await_kw_span, features);
         let gen_future_span = self.mark_span_with_reason(
             DesugaringKind::Await,
             full_span,
             Some(self.allow_gen_future.clone()),
         );
-        let expr = self.lower_expr_mut(expr);
         let expr_hir_id = expr.hir_id;
 
         // Note that the name of this binding must not be changed to something else because
@@ -934,11 +948,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::LangItem::GetContext,
                 arena_vec![self; task_context],
             );
-            let call = self.expr_call_lang_item_fn(
-                span,
-                hir::LangItem::FuturePoll,
-                arena_vec![self; new_unchecked, get_context],
-            );
+            let call = match await_kind {
+                FutureKind::Future => self.expr_call_lang_item_fn(
+                    span,
+                    hir::LangItem::FuturePoll,
+                    arena_vec![self; new_unchecked, get_context],
+                ),
+                FutureKind::AsyncIterator => self.expr_call_lang_item_fn(
+                    span,
+                    hir::LangItem::AsyncIteratorPollNext,
+                    arena_vec![self; new_unchecked, get_context],
+                ),
+            };
             self.arena.alloc(self.expr_unsafe(call))
         };
 
@@ -1020,11 +1041,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let awaitee_arm = self.arm(awaitee_pat, loop_expr);
 
         // `match ::std::future::IntoFuture::into_future(<expr>) { ... }`
-        let into_future_expr = self.expr_call_lang_item_fn(
-            span,
-            hir::LangItem::IntoFutureIntoFuture,
-            arena_vec![self; expr],
-        );
+        let into_future_expr = match await_kind {
+            FutureKind::Future => self.expr_call_lang_item_fn(
+                span,
+                hir::LangItem::IntoFutureIntoFuture,
+                arena_vec![self; *expr],
+            ),
+            // Not needed for `for await` because we expect to have already called
+            // `IntoAsyncIterator::into_async_iter` on it.
+            FutureKind::AsyncIterator => expr,
+        };
 
         // match <into_future_expr> {
         //     mut __awaitee => loop { .. }
@@ -1685,6 +1711,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         head: &Expr,
         body: &Block,
         opt_label: Option<Label>,
+        loop_kind: ForLoopKind,
     ) -> hir::Expr<'hir> {
         let head = self.lower_expr_mut(head);
         let pat = self.lower_pat(pat);
@@ -1713,17 +1740,41 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let (iter_pat, iter_pat_nid) =
             self.pat_ident_binding_mode(head_span, iter, hir::BindingAnnotation::MUT);
 
-        // `match Iterator::next(&mut iter) { ... }`
         let match_expr = {
             let iter = self.expr_ident(head_span, iter, iter_pat_nid);
-            let ref_mut_iter = self.expr_mut_addr_of(head_span, iter);
-            let next_expr = self.expr_call_lang_item_fn(
-                head_span,
-                hir::LangItem::IteratorNext,
-                arena_vec![self; ref_mut_iter],
-            );
+            let next_expr = match loop_kind {
+                ForLoopKind::For => {
+                    // `Iterator::next(&mut iter)`
+                    let ref_mut_iter = self.expr_mut_addr_of(head_span, iter);
+                    self.expr_call_lang_item_fn(
+                        head_span,
+                        hir::LangItem::IteratorNext,
+                        arena_vec![self; ref_mut_iter],
+                    )
+                }
+                ForLoopKind::ForAwait => {
+                    // we'll generate `unsafe { Pin::new_unchecked(&mut iter) })` and then pass this
+                    // to make_lowered_await with `FutureKind::AsyncIterator` which will generator
+                    // calls to `poll_next`. In user code, this would probably be a call to
+                    // `Pin::as_mut` but here it's easy enough to do `new_unchecked`.
+
+                    // `&mut iter`
+                    let iter = self.expr_mut_addr_of(head_span, iter);
+                    // `Pin::new_unchecked(...)`
+                    let iter = self.arena.alloc(self.expr_call_lang_item_fn_mut(
+                        head_span,
+                        hir::LangItem::PinNewUnchecked,
+                        arena_vec![self; iter],
+                    ));
+                    // `unsafe { ... }`
+                    let iter = self.arena.alloc(self.expr_unsafe(iter));
+                    let kind = self.make_lowered_await(head_span, iter, FutureKind::AsyncIterator);
+                    self.arena.alloc(hir::Expr { hir_id: self.next_id(), kind, span: head_span })
+                }
+            };
             let arms = arena_vec![self; none_arm, some_arm];
 
+            // `match $next_expr { ... }`
             self.expr_match(head_span, next_expr, arms, hir::MatchSource::ForLoopDesugar)
         };
         let match_stmt = self.stmt_expr(for_span, match_expr);
@@ -1743,13 +1794,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // `mut iter => { ... }`
         let iter_arm = self.arm(iter_pat, loop_expr);
 
-        // `match ::std::iter::IntoIterator::into_iter(<head>) { ... }`
-        let into_iter_expr = {
-            self.expr_call_lang_item_fn(
-                head_span,
-                hir::LangItem::IntoIterIntoIter,
-                arena_vec![self; head],
-            )
+        let into_iter_expr = match loop_kind {
+            ForLoopKind::For => {
+                // `::std::iter::IntoIterator::into_iter(<head>)`
+                self.expr_call_lang_item_fn(
+                    head_span,
+                    hir::LangItem::IntoIterIntoIter,
+                    arena_vec![self; head],
+                )
+            }
+            ForLoopKind::ForAwait => self.arena.alloc(head),
         };
 
         let match_expr = self.arena.alloc(self.expr_match(
@@ -2151,4 +2205,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
             body: expr,
         }
     }
+}
+
+/// Used by [`LoweringContext::make_lowered_await`] to customize the desugaring based on what kind
+/// of future we are awaiting.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum FutureKind {
+    /// We are awaiting a normal future
+    Future,
+    /// We are awaiting something that's known to be an AsyncIterator (i.e. we are in the header of
+    /// a `for await` loop)
+    AsyncIterator,
 }

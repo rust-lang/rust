@@ -47,6 +47,7 @@ pub trait AsyncIterator {
     /// Rust's usual rules apply: calls must never cause undefined behavior
     /// (memory corruption, incorrect use of `unsafe` functions, or the like),
     /// regardless of the async iterator's state.
+    #[cfg_attr(not(bootstrap), lang = "async_iterator_poll_next")]
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>>;
 
     /// Returns the bounds on the remaining length of the async iterator.

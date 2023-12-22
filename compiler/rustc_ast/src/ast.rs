@@ -1249,7 +1249,7 @@ impl Expr {
             ExprKind::Let(..) => ExprPrecedence::Let,
             ExprKind::If(..) => ExprPrecedence::If,
             ExprKind::While(..) => ExprPrecedence::While,
-            ExprKind::ForLoop(..) => ExprPrecedence::ForLoop,
+            ExprKind::ForLoop { .. } => ExprPrecedence::ForLoop,
             ExprKind::Loop(..) => ExprPrecedence::Loop,
             ExprKind::Match(..) => ExprPrecedence::Match,
             ExprKind::Closure(..) => ExprPrecedence::Closure,
@@ -1411,10 +1411,10 @@ pub enum ExprKind {
     While(P<Expr>, P<Block>, Option<Label>),
     /// A `for` loop, with an optional label.
     ///
-    /// `'label: for pat in expr { block }`
+    /// `'label: for await? pat in iter { block }`
     ///
     /// This is desugared to a combination of `loop` and `match` expressions.
-    ForLoop(P<Pat>, P<Expr>, P<Block>, Option<Label>),
+    ForLoop { pat: P<Pat>, iter: P<Expr>, body: P<Block>, label: Option<Label>, kind: ForLoopKind },
     /// Conditionless loop (can be exited with `break`, `continue`, or `return`).
     ///
     /// `'label: loop { block }`
@@ -1515,6 +1515,13 @@ pub enum ExprKind {
 
     /// Placeholder for an expression that wasn't syntactically well formed in some way.
     Err,
+}
+
+/// Used to differentiate between `for` loops and `for await` loops.
+#[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq, Eq)]
+pub enum ForLoopKind {
+    For,
+    ForAwait,
 }
 
 /// Used to differentiate between `async {}` blocks and `gen {}` blocks.

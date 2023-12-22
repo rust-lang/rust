@@ -1,0 +1,27 @@
+error[E0382]: use of moved value: `iter`
+  --> $DIR/for-await-consumes-iter.rs:14:20
+   |
+LL |     let iter = core::async_iter::from_iter(0..3);
+   |         ---- move occurs because `iter` has type `FromIter<std::ops::Range<i32>>`, which does not implement the `Copy` trait
+LL |     let mut count = 0;
+LL |     for await i in iter {
+   |     -------------------
+   |     |              |
+   |     |              value moved here
+   |     inside of this loop
+...
+LL |     for await i in iter {
+   |                    ^^^^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     for await i in iter.clone() {
+   |                        ++++++++
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |     for await i in ref iter {
+   |                    +++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0382`.
