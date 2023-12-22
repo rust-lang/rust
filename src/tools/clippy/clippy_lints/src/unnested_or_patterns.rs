@@ -293,7 +293,7 @@ fn extend_with_struct_pat(
     qself1: &Option<P<ast::QSelf>>,
     path1: &ast::Path,
     fps1: &mut [ast::PatField],
-    rest1: bool,
+    rest1: ast::PatFieldsRest,
     start: usize,
     alternatives: &mut ThinVec<P<Pat>>,
 ) -> bool {
