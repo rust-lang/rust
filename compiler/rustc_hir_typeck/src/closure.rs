@@ -79,7 +79,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!(?expr_def_id);
 
         let ClosureSignatures { bound_sig, liberated_sig } =
-            self.sig_of_closure(expr_def_id, closure.fn_decl, body.coroutine_kind, expected_sig);
+            self.sig_of_closure(expr_def_id, closure.fn_decl, closure.kind, expected_sig);
 
         debug!(?bound_sig, ?liberated_sig);
 
@@ -90,7 +90,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             closure.fn_decl,
             expr_def_id,
             body,
-            closure.movability,
+            Some(closure.kind),
             // Closure "rust-call" ABI doesn't support unsized params
             false,
         );
@@ -352,13 +352,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr_def_id: LocalDefId,
         decl: &hir::FnDecl<'_>,
-        coroutine_kind: Option<hir::CoroutineKind>,
+        closure_kind: hir::ClosureKind,
         expected_sig: Option<ExpectedSig<'tcx>>,
     ) -> ClosureSignatures<'tcx> {
         if let Some(e) = expected_sig {
-            self.sig_of_closure_with_expectation(expr_def_id, decl, coroutine_kind, e)
+            self.sig_of_closure_with_expectation(expr_def_id, decl, closure_kind, e)
         } else {
-            self.sig_of_closure_no_expectation(expr_def_id, decl, coroutine_kind)
+            self.sig_of_closure_no_expectation(expr_def_id, decl, closure_kind)
         }
     }
 
@@ -369,9 +369,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr_def_id: LocalDefId,
         decl: &hir::FnDecl<'_>,
-        coroutine_kind: Option<hir::CoroutineKind>,
+        closure_kind: hir::ClosureKind,
     ) -> ClosureSignatures<'tcx> {
-        let bound_sig = self.supplied_sig_of_closure(expr_def_id, decl, coroutine_kind);
+        let bound_sig = self.supplied_sig_of_closure(expr_def_id, decl, closure_kind);
 
         self.closure_sigs(expr_def_id, bound_sig)
     }
@@ -428,14 +428,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr_def_id: LocalDefId,
         decl: &hir::FnDecl<'_>,
-        coroutine_kind: Option<hir::CoroutineKind>,
+        closure_kind: hir::ClosureKind,
         expected_sig: ExpectedSig<'tcx>,
     ) -> ClosureSignatures<'tcx> {
         // Watch out for some surprises and just ignore the
         // expectation if things don't see to match up with what we
         // expect.
         if expected_sig.sig.c_variadic() != decl.c_variadic {
-            return self.sig_of_closure_no_expectation(expr_def_id, decl, coroutine_kind);
+            return self.sig_of_closure_no_expectation(expr_def_id, decl, closure_kind);
         } else if expected_sig.sig.skip_binder().inputs_and_output.len() != decl.inputs.len() + 1 {
             return self.sig_of_closure_with_mismatched_number_of_arguments(
                 expr_def_id,
@@ -473,11 +473,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match self.merge_supplied_sig_with_expectation(
             expr_def_id,
             decl,
-            coroutine_kind,
+            closure_kind,
             closure_sigs,
         ) {
             Ok(infer_ok) => self.register_infer_ok_obligations(infer_ok),
-            Err(_) => self.sig_of_closure_no_expectation(expr_def_id, decl, coroutine_kind),
+            Err(_) => self.sig_of_closure_no_expectation(expr_def_id, decl, closure_kind),
         }
     }
 
@@ -526,14 +526,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr_def_id: LocalDefId,
         decl: &hir::FnDecl<'_>,
-        coroutine_kind: Option<hir::CoroutineKind>,
+        closure_kind: hir::ClosureKind,
         mut expected_sigs: ClosureSignatures<'tcx>,
     ) -> InferResult<'tcx, ClosureSignatures<'tcx>> {
         // Get the signature S that the user gave.
         //
         // (See comment on `sig_of_closure_with_expectation` for the
         // meaning of these letters.)
-        let supplied_sig = self.supplied_sig_of_closure(expr_def_id, decl, coroutine_kind);
+        let supplied_sig = self.supplied_sig_of_closure(expr_def_id, decl, closure_kind);
 
         debug!(?supplied_sig);
 
@@ -620,12 +620,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr_def_id: LocalDefId,
         decl: &hir::FnDecl<'_>,
-        coroutine_kind: Option<hir::CoroutineKind>,
+        closure_kind: hir::ClosureKind,
     ) -> ty::PolyFnSig<'tcx> {
         let astconv: &dyn AstConv<'_> = self;
 
         trace!("decl = {:#?}", decl);
-        debug!(?coroutine_kind);
+        debug!(?closure_kind);
 
         let hir_id = self.tcx.local_def_id_to_hir_id(expr_def_id);
         let bound_vars = self.tcx.late_bound_vars(hir_id);
@@ -634,14 +634,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let supplied_arguments = decl.inputs.iter().map(|a| astconv.ast_ty_to_ty(a));
         let supplied_return = match decl.output {
             hir::FnRetTy::Return(ref output) => astconv.ast_ty_to_ty(output),
-            hir::FnRetTy::DefaultReturn(_) => match coroutine_kind {
+            hir::FnRetTy::DefaultReturn(_) => match closure_kind {
                 // In the case of the async block that we create for a function body,
                 // we expect the return type of the block to match that of the enclosing
                 // function.
-                Some(hir::CoroutineKind::Desugared(
-                    hir::CoroutineDesugaring::Async,
-                    hir::CoroutineSource::Fn,
-                )) => {
+                hir::ClosureKind::Coroutine(
+                    hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::Async,
+                        hir::CoroutineSource::Fn,
+                    ),
+                    _,
+                ) => {
                     debug!("closure is async fn body");
                     self.deduce_future_output_from_obligations(expr_def_id).unwrap_or_else(|| {
                         // AFAIK, deducing the future output
@@ -655,12 +658,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     })
                 }
                 // All `gen {}` and `async gen {}` must return unit.
-                Some(
+                hir::ClosureKind::Coroutine(
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)
                     | hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _),
+                    _,
                 ) => self.tcx.types.unit,
 
-                _ => astconv.ty_infer(None, decl.output.span()),
+                // For async blocks, we just fall back to `_` here.
+                // For closures/coroutines, we know nothing about the return
+                // type unless it was supplied.
+                hir::ClosureKind::Coroutine(
+                    hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _),
+                    _,
+                )
+                | hir::ClosureKind::Coroutine(hir::CoroutineKind::Coroutine, _)
+                | hir::ClosureKind::Closure => astconv.ty_infer(None, decl.output.span()),
             },
         };
 

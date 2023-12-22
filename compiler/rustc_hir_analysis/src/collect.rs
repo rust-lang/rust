@@ -1551,10 +1551,14 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
 
 fn coroutine_kind(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<hir::CoroutineKind> {
     match tcx.hir_node_by_def_id(def_id) {
-        Node::Expr(&rustc_hir::Expr {
-            kind: rustc_hir::ExprKind::Closure(&rustc_hir::Closure { body, .. }),
+        Node::Expr(&hir::Expr {
+            kind:
+                hir::ExprKind::Closure(&rustc_hir::Closure {
+                    kind: hir::ClosureKind::Coroutine(kind, _),
+                    ..
+                }),
             ..
-        }) => tcx.hir().body(body).coroutine_kind(),
+        }) => Some(kind),
         _ => None,
     }
 }

@@ -1030,8 +1030,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let hir = self.infcx.tcx.hir();
         if let InstanceDef::Item(def_id) = source.instance
             && let Some(Node::Expr(hir::Expr { hir_id, kind, .. })) = hir.get_if_local(def_id)
-            && let ExprKind::Closure(closure) = kind
-            && closure.movability == None
+            && let ExprKind::Closure(hir::Closure { kind: hir::ClosureKind::Closure, .. }) = kind
             && let Some(Node::Expr(expr)) = hir.find_parent(*hir_id)
         {
             let mut cur_expr = expr;

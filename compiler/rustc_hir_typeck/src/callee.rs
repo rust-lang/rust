@@ -298,17 +298,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let parent_node = self.tcx.hir_node(parent_hir_id);
         if let (
             hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, body, .. }),
+                kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, kind, .. }),
                 ..
             }),
             hir::ExprKind::Block(..),
         ) = (parent_node, callee_node)
         {
-            let fn_decl_span = if hir.body(body).coroutine_kind
-                == Some(hir::CoroutineKind::Desugared(
-                    hir::CoroutineDesugaring::Async,
-                    hir::CoroutineSource::Closure,
-                )) {
+            let fn_decl_span = if matches!(
+                kind,
+                hir::ClosureKind::Coroutine(
+                    hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::Async,
+                        hir::CoroutineSource::Closure
+                    ),
+                    _
+                )
+            ) {
                 // Actually need to unwrap one more layer of HIR to get to
                 // the _real_ closure...
                 let async_closure = hir.parent_id(parent_hir_id);

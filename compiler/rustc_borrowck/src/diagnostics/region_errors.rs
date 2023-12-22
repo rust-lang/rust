@@ -1042,13 +1042,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
             hir::ExprKind::Closure(hir::Closure {
                 capture_clause: hir::CaptureBy::Ref,
-                body,
+                kind,
                 ..
             }) => {
-                let body = map.body(*body);
                 if !matches!(
-                    body.coroutine_kind,
-                    Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _))
+                    kind,
+                    hir::ClosureKind::Coroutine(
+                        hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _),
+                        _
+                    )
                 ) {
                     closure_span = Some(expr.span.shrink_to_lo());
                 }

@@ -338,14 +338,14 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     // cares about anything but the length is instantiation,
     // and we don't do that for closures.
     if let Node::Expr(&hir::Expr {
-        kind: hir::ExprKind::Closure(hir::Closure { movability: gen, .. }),
-        ..
+        kind: hir::ExprKind::Closure(hir::Closure { kind, .. }), ..
     }) = node
     {
-        let dummy_args = if gen.is_some() {
-            &["<resume_ty>", "<yield_ty>", "<return_ty>", "<witness>", "<upvars>"][..]
-        } else {
-            &["<closure_kind>", "<closure_signature>", "<upvars>"][..]
+        let dummy_args = match kind {
+            ClosureKind::Closure => &["<closure_kind>", "<closure_signature>", "<upvars>"][..],
+            ClosureKind::Coroutine(_, _) => {
+                &["<resume_ty>", "<yield_ty>", "<return_ty>", "<witness>", "<upvars>"][..]
+            }
         };
 
         params.extend(dummy_args.iter().map(|&arg| ty::GenericParamDef {
