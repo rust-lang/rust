@@ -417,8 +417,7 @@ pub enum GenericArgsParentheses {
     ParenSugar,
 }
 
-/// A modifier on a bound, currently this is only used for `?Sized`, where the
-/// modifier is `Maybe`. Negative bounds should also be handled here.
+/// A modifier on a trait bound.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum TraitBoundModifier {
     None,

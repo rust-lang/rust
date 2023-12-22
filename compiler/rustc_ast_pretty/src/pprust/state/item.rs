@@ -339,13 +339,15 @@ impl<'a> State<'a> {
                 self.print_ident(item.ident);
                 self.print_generic_params(&generics.params);
                 let mut real_bounds = Vec::with_capacity(bounds.len());
-                for b in bounds.iter() {
-                    if let GenericBound::Trait(ptr, ast::TraitBoundModifier::Maybe) = b {
+                for bound in bounds.iter() {
+                    if let GenericBound::Trait(ptr, modifiers) = bound
+                        && let ast::BoundPolarity::Maybe(_) = modifiers.polarity
+                    {
                         self.space();
                         self.word_space("for ?");
                         self.print_trait_ref(&ptr.trait_ref);
                     } else {
-                        real_bounds.push(b.clone());
+                        real_bounds.push(bound.clone());
                     }
                 }
                 if !real_bounds.is_empty() {

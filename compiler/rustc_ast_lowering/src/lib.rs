@@ -1425,19 +1425,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         this.arena.alloc_from_iter(bounds.iter().filter_map(|bound| match bound {
                             GenericBound::Trait(
                                 ty,
-                                modifier @ (TraitBoundModifier::None
-                                | TraitBoundModifier::MaybeConst(_)
-                                | TraitBoundModifier::Negative),
-                            ) => {
-                                Some(this.lower_poly_trait_ref(ty, itctx, modifier.to_constness()))
-                            }
-                            // `~const ?Bound` will cause an error during AST validation
-                            // anyways, so treat it like `?Bound` as compilation proceeds.
+                                TraitBoundModifiers {
+                                    polarity: BoundPolarity::Positive | BoundPolarity::Negative(_),
+                                    constness,
+                                },
+                            ) => Some(this.lower_poly_trait_ref(ty, itctx, (*constness).into())),
+                            // We can safely ignore constness here, since AST validation
+                            // will take care of invalid modifier combinations.
                             GenericBound::Trait(
                                 _,
-                                TraitBoundModifier::Maybe
-                                | TraitBoundModifier::MaybeConstMaybe
-                                | TraitBoundModifier::MaybeConstNegative,
+                                TraitBoundModifiers { polarity: BoundPolarity::Maybe(_), .. },
                             ) => None,
                             GenericBound::Outlives(lifetime) => {
                                 if lifetime_bound.is_none() {
@@ -2028,9 +2025,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         itctx: &ImplTraitContext,
     ) -> hir::GenericBound<'hir> {
         match tpb {
-            GenericBound::Trait(p, modifier) => hir::GenericBound::Trait(
-                self.lower_poly_trait_ref(p, itctx, modifier.to_constness()),
-                self.lower_trait_bound_modifier(*modifier),
+            GenericBound::Trait(p, modifiers) => hir::GenericBound::Trait(
+                self.lower_poly_trait_ref(p, itctx, modifiers.constness.into()),
+                self.lower_trait_bound_modifiers(*modifiers),
             ),
             GenericBound::Outlives(lifetime) => {
                 hir::GenericBound::Outlives(self.lower_lifetime(lifetime))
@@ -2316,25 +2313,29 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_trait_bound_modifier(&mut self, f: TraitBoundModifier) -> hir::TraitBoundModifier {
-        match f {
-            TraitBoundModifier::None => hir::TraitBoundModifier::None,
-            TraitBoundModifier::MaybeConst(_) => hir::TraitBoundModifier::MaybeConst,
-
-            TraitBoundModifier::Negative => {
+    fn lower_trait_bound_modifiers(
+        &mut self,
+        modifiers: TraitBoundModifiers,
+    ) -> hir::TraitBoundModifier {
+        match (modifiers.constness, modifiers.polarity) {
+            (BoundConstness::Never, BoundPolarity::Positive) => hir::TraitBoundModifier::None,
+            (BoundConstness::Never, BoundPolarity::Maybe(_)) => hir::TraitBoundModifier::Maybe,
+            (BoundConstness::Never, BoundPolarity::Negative(_)) => {
                 if self.tcx.features().negative_bounds {
                     hir::TraitBoundModifier::Negative
                 } else {
                     hir::TraitBoundModifier::None
                 }
             }
-
-            // `MaybeConstMaybe` will cause an error during AST validation, but we need to pick a
-            // placeholder for compilation to proceed.
-            TraitBoundModifier::MaybeConstMaybe | TraitBoundModifier::Maybe => {
-                hir::TraitBoundModifier::Maybe
+            (BoundConstness::Maybe(_), BoundPolarity::Positive) => {
+                hir::TraitBoundModifier::MaybeConst
             }
-            TraitBoundModifier::MaybeConstNegative => hir::TraitBoundModifier::MaybeConst,
+            // Invalid modifier combinations will cause an error during AST validation.
+            // Arbitrarily pick a placeholder for compilation to proceed.
+            (BoundConstness::Maybe(_), BoundPolarity::Maybe(_)) => hir::TraitBoundModifier::Maybe,
+            (BoundConstness::Maybe(_), BoundPolarity::Negative(_)) => {
+                hir::TraitBoundModifier::MaybeConst
+            }
         }
     }
 
