@@ -18,7 +18,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map;
 use rustc_span::Span;
 
-use super::errs::maybe_expr_static_mut;
+use super::errs::{maybe_expr_static_mut, maybe_stmt_static_mut};
 
 use std::mem;
 
@@ -225,6 +225,8 @@ fn resolve_pat<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, pat: &'tcx hir
 fn resolve_stmt<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, stmt: &'tcx hir::Stmt<'tcx>) {
     let stmt_id = stmt.hir_id.local_id;
     debug!("resolve_stmt(stmt.id={:?})", stmt_id);
+
+    maybe_stmt_static_mut(visitor.tcx, *stmt);
 
     // Every statement will clean up the temporaries created during
     // execution of that statement. Therefore each statement has an
