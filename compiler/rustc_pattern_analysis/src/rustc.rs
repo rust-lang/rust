@@ -44,6 +44,7 @@ pub type WitnessPat<'p, 'tcx> = crate::pat::WitnessPat<RustcMatchCheckCtxt<'p, '
 #[derive(Clone)]
 pub struct RustcMatchCheckCtxt<'p, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
+    pub typeck_results: &'tcx ty::TypeckResults<'tcx>,
     /// The module in which the match occurs. This is necessary for
     /// checking inhabited-ness of types because whether a type is (visibly)
     /// inhabited can depend on whether it was defined in the current module or
@@ -99,6 +100,21 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
             matches!(lo, PatRangeBoundary::PosInfinity)
                 || matches!(range.hi, MaybeInfiniteInt::Finite(0))
         }
+    }
+
+    /// Type inference occasionally gives us opaque types in places where corresponding patterns
+    /// have more specific types. To avoid inconsistencies as well as detect opaque uninhabited
+    /// types, we use the corresponding concrete type if possible.
+    fn reveal_opaque_ty(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if let ty::Alias(ty::Opaque, alias_ty) = ty.kind() {
+            if let Some(local_def_id) = alias_ty.def_id.as_local() {
+                let key = ty::OpaqueTypeKey { def_id: local_def_id, args: alias_ty.args };
+                if let Some(real_ty) = self.typeck_results.concrete_opaque_types.get(&key) {
+                    return real_ty.ty;
+                }
+            }
+        }
+        ty
     }
 
     // In the cases of either a `#[non_exhaustive]` field list or a non-public field, we hide
@@ -873,8 +889,9 @@ impl<'p, 'tcx> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
     fn is_exhaustive_patterns_feature_on(&self) -> bool {
         self.tcx.features().exhaustive_patterns
     }
-    fn is_opaque_ty(ty: Self::Ty) -> bool {
-        matches!(ty.kind(), ty::Alias(ty::Opaque, ..))
+
+    fn reveal_opaque_ty(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.reveal_opaque_ty(ty)
     }
 
     fn ctor_arity(&self, ctor: &crate::constructor::Constructor<Self>, ty: Self::Ty) -> usize {

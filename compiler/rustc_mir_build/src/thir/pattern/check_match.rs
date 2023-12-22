@@ -28,6 +28,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::Span;
 
 pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
+    let typeck_results = tcx.typeck(def_id);
     let (thir, expr) = tcx.thir_body(def_id)?;
     let thir = thir.borrow();
     let pattern_arena = TypedArena::default();
@@ -35,6 +36,7 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
     let mut visitor = MatchVisitor {
         tcx,
         thir: &*thir,
+        typeck_results,
         param_env: tcx.param_env(def_id),
         lint_level: tcx.local_def_id_to_hir_id(def_id),
         let_source: LetSource::None,
@@ -80,6 +82,7 @@ enum LetSource {
 struct MatchVisitor<'thir, 'p, 'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
+    typeck_results: &'tcx ty::TypeckResults<'tcx>,
     thir: &'thir Thir<'tcx>,
     lint_level: HirId,
     let_source: LetSource,
@@ -382,6 +385,7 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
             scrutinee.map(|scrut| self.is_known_valid_scrutinee(scrut)).unwrap_or(true);
         MatchCheckCtxt {
             tcx: self.tcx,
+            typeck_results: self.typeck_results,
             param_env: self.param_env,
             module: self.tcx.parent_module(self.lint_level).to_def_id(),
             pattern_arena: self.pattern_arena,

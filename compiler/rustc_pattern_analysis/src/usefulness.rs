@@ -865,24 +865,14 @@ impl<'a, 'p, Cx: TypeCx> Matrix<'a, 'p, Cx> {
         matrix
     }
 
-    fn head_ty(&self) -> Option<Cx::Ty> {
+    fn head_ty(&self, mcx: MatchCtxt<'a, 'p, Cx>) -> Option<Cx::Ty> {
         if self.column_count() == 0 {
             return None;
         }
 
-        let mut ty = self.wildcard_row.head().ty();
-        // If the type is opaque and it is revealed anywhere in the column, we take the revealed
-        // version. Otherwise we could encounter constructors for the revealed type and crash.
-        if Cx::is_opaque_ty(ty) {
-            for pat in self.heads() {
-                let pat_ty = pat.ty();
-                if !Cx::is_opaque_ty(pat_ty) {
-                    ty = pat_ty;
-                    break;
-                }
-            }
-        }
-        Some(ty)
+        let ty = self.wildcard_row.head().ty();
+        // FIXME(Nadrieril): `Cx` should only give us revealed types.
+        Some(mcx.tycx.reveal_opaque_ty(ty))
     }
     fn column_count(&self) -> usize {
         self.wildcard_row.len()
@@ -1181,7 +1171,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
 ) -> WitnessMatrix<Cx> {
     debug_assert!(matrix.rows().all(|r| r.len() == matrix.column_count()));
 
-    let Some(ty) = matrix.head_ty() else {
+    let Some(ty) = matrix.head_ty(mcx) else {
         // The base case: there are no columns in the matrix. We are morally pattern-matching on ().
         // A row is useful iff it has no (unguarded) rows above it.
         for row in matrix.rows_mut() {
