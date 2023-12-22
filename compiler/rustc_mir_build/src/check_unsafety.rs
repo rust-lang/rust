@@ -175,7 +175,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for LayoutConstrainedPlaceVisitor<'a, 'tcx> {
         self.thir
     }
 
-    fn visit_expr(&mut self, expr: &Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'a Expr<'tcx>) {
         match expr.kind {
             ExprKind::Field { lhs, .. } => {
                 if let ty::Adt(adt_def, _) = self.thir[lhs].ty.kind() {
@@ -206,7 +206,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
         self.thir
     }
 
-    fn visit_block(&mut self, block: &Block) {
+    fn visit_block(&mut self, block: &'a Block) {
         match block.safety_mode {
             // compiler-generated unsafe code should not count towards the usefulness of
             // an outer unsafe block
@@ -234,7 +234,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_pat(&mut self, pat: &Pat<'tcx>) {
+    fn visit_pat(&mut self, pat: &'a Pat<'tcx>) {
         if self.in_union_destructure {
             match pat.kind {
                 // binding to a variable allows getting stuff out of variable
@@ -319,7 +319,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_expr(&mut self, expr: &Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'a Expr<'tcx>) {
         // could we be in the LHS of an assignment to a field?
         match expr.kind {
             ExprKind::Field { .. }

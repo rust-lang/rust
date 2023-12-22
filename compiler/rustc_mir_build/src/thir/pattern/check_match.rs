@@ -98,7 +98,7 @@ impl<'thir, 'tcx> Visitor<'thir, 'tcx> for MatchVisitor<'thir, '_, 'tcx> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn visit_arm(&mut self, arm: &Arm<'tcx>) {
+    fn visit_arm(&mut self, arm: &'thir Arm<'tcx>) {
         self.with_lint_level(arm.lint_level, |this| {
             match arm.guard {
                 Some(Guard::If(expr)) => {
@@ -121,7 +121,7 @@ impl<'thir, 'tcx> Visitor<'thir, 'tcx> for MatchVisitor<'thir, '_, 'tcx> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn visit_expr(&mut self, ex: &Expr<'tcx>) {
+    fn visit_expr(&mut self, ex: &'thir Expr<'tcx>) {
         match ex.kind {
             ExprKind::Scope { value, lint_level, .. } => {
                 self.with_lint_level(lint_level, |this| {
@@ -174,7 +174,7 @@ impl<'thir, 'tcx> Visitor<'thir, 'tcx> for MatchVisitor<'thir, '_, 'tcx> {
         self.with_let_source(LetSource::None, |this| visit::walk_expr(this, ex));
     }
 
-    fn visit_stmt(&mut self, stmt: &Stmt<'tcx>) {
+    fn visit_stmt(&mut self, stmt: &'thir Stmt<'tcx>) {
         match stmt.kind {
             StmtKind::Let {
                 box ref pattern, initializer, else_block, lint_level, span, ..
@@ -224,7 +224,7 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
     /// subexpressions we are not handling ourselves.
     fn visit_land(
         &mut self,
-        ex: &Expr<'tcx>,
+        ex: &'thir Expr<'tcx>,
         accumulator: &mut Vec<Option<(Span, RefutableFlag)>>,
     ) -> Result<(), ErrorGuaranteed> {
         match ex.kind {
@@ -251,7 +251,7 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
     /// expression. This must call `visit_expr` on the subexpressions we are not handling ourselves.
     fn visit_land_rhs(
         &mut self,
-        ex: &Expr<'tcx>,
+        ex: &'thir Expr<'tcx>,
     ) -> Result<Option<(Span, RefutableFlag)>, ErrorGuaranteed> {
         match ex.kind {
             ExprKind::Scope { value, lint_level, .. } => {
@@ -276,7 +276,7 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
     fn lower_pattern(
         &mut self,
         cx: &MatchCheckCtxt<'p, 'tcx>,
-        pat: &Pat<'tcx>,
+        pat: &'thir Pat<'tcx>,
     ) -> Result<&'p DeconstructedPat<'p, 'tcx>, ErrorGuaranteed> {
         if let Err(err) = pat.pat_error_reported() {
             self.error = Err(err);
@@ -395,7 +395,7 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
     }
 
     #[instrument(level = "trace", skip(self))]
-    fn check_let(&mut self, pat: &Pat<'tcx>, scrutinee: Option<ExprId>, span: Span) {
+    fn check_let(&mut self, pat: &'thir Pat<'tcx>, scrutinee: Option<ExprId>, span: Span) {
         assert!(self.let_source != LetSource::None);
         let scrut = scrutinee.map(|id| &self.thir[id]);
         if let LetSource::PlainLet = self.let_source {
@@ -547,7 +547,7 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
 
     fn analyze_binding(
         &mut self,
-        pat: &Pat<'tcx>,
+        pat: &'thir Pat<'tcx>,
         refutability: RefutableFlag,
         scrut: Option<&Expr<'tcx>>,
     ) -> Result<(MatchCheckCtxt<'p, 'tcx>, UsefulnessReport<'p, 'tcx>), ErrorGuaranteed> {
@@ -560,7 +560,7 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
 
     fn is_let_irrefutable(
         &mut self,
-        pat: &Pat<'tcx>,
+        pat: &'thir Pat<'tcx>,
         scrut: Option<&Expr<'tcx>>,
     ) -> Result<RefutableFlag, ErrorGuaranteed> {
         let (cx, report) = self.analyze_binding(pat, Refutable, scrut)?;
@@ -575,7 +575,7 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
     #[instrument(level = "trace", skip(self))]
     fn check_binding_is_irrefutable(
         &mut self,
-        pat: &Pat<'tcx>,
+        pat: &'thir Pat<'tcx>,
         origin: &str,
         scrut: Option<&Expr<'tcx>>,
         sp: Option<Span>,
