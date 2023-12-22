@@ -307,11 +307,6 @@ pub struct ScopeTree {
     /// the values are still owned by their containing expressions. So
     /// we'll see that `&x`.
     pub yield_in_scope: FxHashMap<Scope, Vec<YieldData>>,
-
-    /// The number of visit_expr and visit_pat calls done in the body.
-    /// Used to sanity check visit_expr/visit_pat call count when
-    /// calculating coroutine interiors.
-    pub body_expr_count: FxHashMap<hir::BodyId, usize>,
 }
 
 /// Identifies the reason that a given expression is an rvalue candidate
@@ -408,20 +403,12 @@ impl ScopeTree {
     pub fn yield_in_scope(&self, scope: Scope) -> Option<&[YieldData]> {
         self.yield_in_scope.get(&scope).map(Deref::deref)
     }
-
-    /// Gives the number of expressions visited in a body.
-    /// Used to sanity check visit_expr call count when
-    /// calculating coroutine interiors.
-    pub fn body_expr_count(&self, body_id: hir::BodyId) -> Option<usize> {
-        self.body_expr_count.get(&body_id).copied()
-    }
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for ScopeTree {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let ScopeTree {
             root_body,
-            ref body_expr_count,
             ref parent_map,
             ref var_map,
             ref destruction_scopes,
@@ -430,7 +417,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for ScopeTree {
         } = *self;
 
         root_body.hash_stable(hcx, hasher);
-        body_expr_count.hash_stable(hcx, hasher);
         parent_map.hash_stable(hcx, hasher);
         var_map.hash_stable(hcx, hasher);
         destruction_scopes.hash_stable(hcx, hasher);
