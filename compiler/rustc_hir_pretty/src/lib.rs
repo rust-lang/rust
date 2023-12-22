@@ -553,17 +553,7 @@ impl<'a> State<'a> {
             }
             hir::ItemKind::OpaqueTy(opaque_ty) => {
                 self.print_item_type(item, opaque_ty.generics, |state| {
-                    let mut real_bounds = Vec::with_capacity(opaque_ty.bounds.len());
-                    for b in opaque_ty.bounds {
-                        if let GenericBound::Trait(ptr, hir::TraitBoundModifier::Maybe) = b {
-                            state.space();
-                            state.word_space("for ?");
-                            state.print_trait_ref(&ptr.trait_ref);
-                        } else {
-                            real_bounds.push(b);
-                        }
-                    }
-                    state.print_bounds("= impl", real_bounds);
+                    state.print_bounds("= impl", opaque_ty.bounds)
                 });
             }
             hir::ItemKind::Enum(ref enum_definition, params) => {
@@ -625,17 +615,7 @@ impl<'a> State<'a> {
                 self.word_nbsp("trait");
                 self.print_ident(item.ident);
                 self.print_generic_params(generics.params);
-                let mut real_bounds = Vec::with_capacity(bounds.len());
-                for b in bounds {
-                    if let GenericBound::Trait(ptr, hir::TraitBoundModifier::Maybe) = b {
-                        self.space();
-                        self.word_space("for ?");
-                        self.print_trait_ref(&ptr.trait_ref);
-                    } else {
-                        real_bounds.push(b);
-                    }
-                }
-                self.print_bounds(":", real_bounds);
+                self.print_bounds(":", bounds);
                 self.print_where_clause(generics);
                 self.word(" ");
                 self.bopen();

@@ -5,7 +5,6 @@ use crate::pprust::state::{AnnNode, PrintState, State, INDENT_UNIT};
 use ast::StaticItem;
 use itertools::{Itertools, Position};
 use rustc_ast as ast;
-use rustc_ast::GenericBound;
 use rustc_ast::ModKind;
 use rustc_span::symbol::Ident;
 
@@ -338,21 +337,9 @@ impl<'a> State<'a> {
                 self.word_nbsp("trait");
                 self.print_ident(item.ident);
                 self.print_generic_params(&generics.params);
-                let mut real_bounds = Vec::with_capacity(bounds.len());
-                for bound in bounds.iter() {
-                    if let GenericBound::Trait(ptr, modifiers) = bound
-                        && let ast::BoundPolarity::Maybe(_) = modifiers.polarity
-                    {
-                        self.space();
-                        self.word_space("for ?");
-                        self.print_trait_ref(&ptr.trait_ref);
-                    } else {
-                        real_bounds.push(bound.clone());
-                    }
-                }
-                if !real_bounds.is_empty() {
+                if !bounds.is_empty() {
                     self.word_nbsp(":");
-                    self.print_type_bounds(&real_bounds);
+                    self.print_type_bounds(bounds);
                 }
                 self.print_where_clause(&generics.where_clause);
                 self.word(" ");
