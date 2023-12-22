@@ -8,7 +8,7 @@ use either::Either;
 use hir_expand::{
     ast_id_map::AstIdMap,
     name::{name, AsName, Name},
-    AstId, ExpandError, InFile,
+    ExpandError, InFile,
 };
 use intern::Interned;
 use profile::Count;
@@ -66,7 +66,7 @@ pub(super) fn lower(
         krate,
         def_map: expander.module.def_map(db),
         source_map: BodySourceMap::default(),
-        ast_id_map: db.ast_id_map(expander.current_file_id),
+        ast_id_map: db.ast_id_map(expander.current_file_id()),
         body: Body {
             exprs: Default::default(),
             pats: Default::default(),
@@ -408,7 +408,7 @@ impl ExprCollector<'_> {
             ast::Expr::ParenExpr(e) => {
                 let inner = self.collect_expr_opt(e.expr());
                 // make the paren expr point to the inner expression as well
-                let src = self.expander.to_source(syntax_ptr);
+                let src = self.expander.in_file(syntax_ptr);
                 self.source_map.expr_map.insert(src, inner);
                 inner
             }
@@ -441,7 +441,7 @@ impl ExprCollector<'_> {
                                 Some(e) => self.collect_expr(e),
                                 None => self.missing_expr(),
                             };
-                            let src = self.expander.to_source(AstPtr::new(&field));
+                            let src = self.expander.in_file(AstPtr::new(&field));
                             self.source_map.field_map_back.insert(expr, src);
                             Some(RecordLitField { name, expr })
                         })
@@ -644,7 +644,7 @@ impl ExprCollector<'_> {
                     Some(id) => {
                         // Make the macro-call point to its expanded expression so we can query
                         // semantics on syntax pointers to the macro
-                        let src = self.expander.to_source(syntax_ptr);
+                        let src = self.expander.in_file(syntax_ptr);
                         self.source_map.expr_map.insert(src, id);
                         id
                     }
@@ -957,9 +957,9 @@ impl ExprCollector<'_> {
         T: ast::AstNode,
     {
         // File containing the macro call. Expansion errors will be attached here.
-        let outer_file = self.expander.current_file_id;
+        let outer_file = self.expander.current_file_id();
 
-        let macro_call_ptr = self.expander.to_source(syntax_ptr);
+        let macro_call_ptr = self.expander.in_file(syntax_ptr);
         let module = self.expander.module.local_id;
 
         let res = match self.def_map.modules[module]
@@ -1021,10 +1021,10 @@ impl ExprCollector<'_> {
             Some((mark, expansion)) => {
                 // Keep collecting even with expansion errors so we can provide completions and
                 // other services in incomplete macro expressions.
-                self.source_map.expansions.insert(macro_call_ptr, self.expander.current_file_id);
+                self.source_map.expansions.insert(macro_call_ptr, self.expander.current_file_id());
                 let prev_ast_id_map = mem::replace(
                     &mut self.ast_id_map,
-                    self.db.ast_id_map(self.expander.current_file_id),
+                    self.db.ast_id_map(self.expander.current_file_id()),
                 );
 
                 if record_diagnostics {
@@ -1074,7 +1074,7 @@ impl ExprCollector<'_> {
             Some(tail) => {
                 // Make the macro-call point to its expanded expression so we can query
                 // semantics on syntax pointers to the macro
-                let src = self.expander.to_source(syntax_ptr);
+                let src = self.expander.in_file(syntax_ptr);
                 self.source_map.expr_map.insert(src, tail);
                 Some(tail)
             }
@@ -1148,7 +1148,7 @@ impl ExprCollector<'_> {
 
         let block_id = if block_has_items {
             let file_local_id = self.ast_id_map.ast_id(&block);
-            let ast_id = AstId::new(self.expander.current_file_id, file_local_id);
+            let ast_id = self.expander.in_file(file_local_id);
             Some(self.db.intern_block(BlockLoc { ast_id, module: self.expander.module }))
         } else {
             None
@@ -1341,7 +1341,7 @@ impl ExprCollector<'_> {
                         let ast_pat = f.pat()?;
                         let pat = self.collect_pat(ast_pat, binding_list);
                         let name = f.field_name()?.as_name();
-                        let src = self.expander.to_source(AstPtr::new(&f));
+                        let src = self.expander.in_file(AstPtr::new(&f));
                         self.source_map.pat_field_map_back.insert(pat, src);
                         Some(RecordFieldPat { name, pat })
                     })
@@ -1399,7 +1399,7 @@ impl ExprCollector<'_> {
             ast::Pat::MacroPat(mac) => match mac.macro_call() {
                 Some(call) => {
                     let macro_ptr = AstPtr::new(&call);
-                    let src = self.expander.to_source(AstPtr::new(&Either::Left(pat)));
+                    let src = self.expander.in_file(AstPtr::new(&Either::Left(pat)));
                     let pat =
                         self.collect_macro_call(call, macro_ptr, true, |this, expanded_pat| {
                             this.collect_pat_opt(expanded_pat, binding_list)
@@ -1480,10 +1480,7 @@ impl ExprCollector<'_> {
                 }
 
                 self.source_map.diagnostics.push(BodyDiagnostic::InactiveCode {
-                    node: InFile::new(
-                        self.expander.current_file_id,
-                        SyntaxNodePtr::new(owner.syntax()),
-                    ),
+                    node: self.expander.in_file(SyntaxNodePtr::new(owner.syntax())),
                     cfg,
                     opts: self.expander.cfg_options().clone(),
                 });
@@ -1522,10 +1519,7 @@ impl ExprCollector<'_> {
                     } else {
                         Err(BodyDiagnostic::UnreachableLabel {
                             name,
-                            node: InFile::new(
-                                self.expander.current_file_id,
-                                AstPtr::new(&lifetime),
-                            ),
+                            node: self.expander.in_file(AstPtr::new(&lifetime)),
                         })
                     };
                 }
@@ -1534,7 +1528,7 @@ impl ExprCollector<'_> {
 
         Err(BodyDiagnostic::UndeclaredLabel {
             name,
-            node: InFile::new(self.expander.current_file_id, AstPtr::new(&lifetime)),
+            node: self.expander.in_file(AstPtr::new(&lifetime)),
         })
     }
 
@@ -1998,7 +1992,7 @@ fn pat_literal_to_hir(lit: &ast::LiteralPat) -> Option<(Literal, ast::Literal)> 
 
 impl ExprCollector<'_> {
     fn alloc_expr(&mut self, expr: Expr, ptr: ExprPtr) -> ExprId {
-        let src = self.expander.to_source(ptr);
+        let src = self.expander.in_file(ptr);
         let id = self.body.exprs.alloc(expr);
         self.source_map.expr_map_back.insert(id, src.clone());
         self.source_map.expr_map.insert(src, id);
@@ -2026,7 +2020,7 @@ impl ExprCollector<'_> {
     }
 
     fn alloc_pat(&mut self, pat: Pat, ptr: PatPtr) -> PatId {
-        let src = self.expander.to_source(ptr);
+        let src = self.expander.in_file(ptr);
         let id = self.body.pats.alloc(pat);
         self.source_map.pat_map_back.insert(id, src.clone());
         self.source_map.pat_map.insert(src, id);
@@ -2041,7 +2035,7 @@ impl ExprCollector<'_> {
     }
 
     fn alloc_label(&mut self, label: Label, ptr: LabelPtr) -> LabelId {
-        let src = self.expander.to_source(ptr);
+        let src = self.expander.in_file(ptr);
         let id = self.body.labels.alloc(label);
         self.source_map.label_map_back.insert(id, src.clone());
         self.source_map.label_map.insert(src, id);

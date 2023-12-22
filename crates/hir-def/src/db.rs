@@ -242,36 +242,12 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     #[salsa::invoke(LangItems::crate_lang_items_query)]
     fn crate_lang_items(&self, krate: CrateId) -> Arc<LangItems>;
 
-    #[salsa::transparent]
-    fn crate_limits(&self, crate_id: CrateId) -> CrateLimits;
-
-    #[salsa::transparent]
-    fn recursion_limit(&self, crate_id: CrateId) -> u32;
-
     fn crate_supports_no_std(&self, crate_id: CrateId) -> bool;
 }
 
 fn crate_def_map_wait(db: &dyn DefDatabase, krate: CrateId) -> Arc<DefMap> {
     let _p = profile::span("crate_def_map:wait");
     db.crate_def_map_query(krate)
-}
-
-pub struct CrateLimits {
-    /// The maximum depth for potentially infinitely-recursive compile-time operations like macro expansion or auto-dereference.
-    pub recursion_limit: u32,
-}
-
-fn crate_limits(db: &dyn DefDatabase, crate_id: CrateId) -> CrateLimits {
-    let def_map = db.crate_def_map(crate_id);
-
-    CrateLimits {
-        // 128 is the default in rustc.
-        recursion_limit: def_map.recursion_limit().unwrap_or(128),
-    }
-}
-
-fn recursion_limit(db: &dyn DefDatabase, crate_id: CrateId) -> u32 {
-    db.crate_limits(crate_id).recursion_limit
 }
 
 fn crate_supports_no_std(db: &dyn DefDatabase, crate_id: CrateId) -> bool {
