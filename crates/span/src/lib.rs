@@ -30,6 +30,13 @@ pub type ErasedFileAstId = la_arena::Idx<syntax::SyntaxNodePtr>;
 pub const ROOT_ERASED_FILE_AST_ID: ErasedFileAstId =
     la_arena::Idx::from_raw(la_arena::RawIdx::from_u32(0));
 
+/// FileId used as the span for syntax node fixups. Any Span containing this file id is to be
+/// considered fake.
+pub const FIXUP_ERASED_FILE_AST_ID_MARKER: ErasedFileAstId =
+    // we pick the second to last for this in case we every consider making this a NonMaxU32, this
+    // is required to be stable for the proc-macro-server
+    la_arena::Idx::from_raw(la_arena::RawIdx::from_u32(!0 - 1));
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct SpanData<Ctx> {
     /// The text range of this span, relative to the anchor.
@@ -96,6 +103,14 @@ impl SyntaxContextId {
 
     pub fn is_root(self) -> bool {
         self == Self::ROOT
+    }
+
+    pub fn into_u32(self) -> u32 {
+        self.0.as_u32()
+    }
+
+    pub fn from_u32(u32: u32) -> Self {
+        Self(InternId::from(u32))
     }
 }
 

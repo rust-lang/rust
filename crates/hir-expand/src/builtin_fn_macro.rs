@@ -108,6 +108,7 @@ register_builtin! {
     (format_args, FormatArgs) => format_args_expand,
     (const_format_args, ConstFormatArgs) => format_args_expand,
     (format_args_nl, FormatArgsNl) => format_args_nl_expand,
+    (quote, Quote) => quote_expand,
 
     EAGER:
     (compile_error, CompileError) => compile_error_expand,
@@ -769,4 +770,16 @@ fn option_env_expand(
     };
 
     ExpandResult::ok(expanded)
+}
+
+fn quote_expand(
+    _db: &dyn ExpandDatabase,
+    _arg_id: MacroCallId,
+    _tt: &tt::Subtree,
+    span: Span,
+) -> ExpandResult<tt::Subtree> {
+    ExpandResult::new(
+        tt::Subtree::empty(tt::DelimSpan { open: span, close: span }),
+        ExpandError::other("quote! is not implemented"),
+    )
 }

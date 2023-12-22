@@ -20,7 +20,10 @@ use triomphe::Arc;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    msg::{ExpandMacro, ExpnGlobals, FlatTree, PanicMessage, HAS_GLOBAL_SPANS},
+    msg::{
+        deserialize_span_data_index_map, flat::serialize_span_data_index_map, ExpandMacro,
+        ExpnGlobals, FlatTree, PanicMessage, HAS_GLOBAL_SPANS, RUST_ANALYZER_SPAN_SUPPORT,
+    },
     process::ProcMacroProcessSrv,
 };
 
@@ -166,6 +169,11 @@ impl ProcMacro {
                 call_site,
                 mixed_site,
             },
+            span_data_table: if version >= RUST_ANALYZER_SPAN_SUPPORT {
+                serialize_span_data_index_map(&span_data_table)
+            } else {
+                Vec::new()
+            },
         };
 
         let response = self
@@ -178,9 +186,14 @@ impl ProcMacro {
             msg::Response::ExpandMacro(it) => {
                 Ok(it.map(|tree| FlatTree::to_subtree_resolved(tree, version, &span_data_table)))
             }
-            msg::Response::ListMacros(..) | msg::Response::ApiVersionCheck(..) => {
-                Err(ServerError { message: "unexpected response".to_string(), io: None })
-            }
+            msg::Response::ExpandMacroExtended(it) => Ok(it.map(|resp| {
+                FlatTree::to_subtree_resolved(
+                    resp.tree,
+                    version,
+                    &deserialize_span_data_index_map(&resp.span_data_table),
+                )
+            })),
+            _ => Err(ServerError { message: "unexpected response".to_string(), io: None }),
         }
     }
 }

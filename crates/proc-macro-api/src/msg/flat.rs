@@ -38,12 +38,45 @@
 use std::collections::{HashMap, VecDeque};
 
 use indexmap::IndexSet;
+use la_arena::RawIdx;
 use serde::{Deserialize, Serialize};
-use span::Span;
+use span::{ErasedFileAstId, FileId, Span, SpanAnchor, SyntaxContextId};
+use text_size::TextRange;
 
 use crate::msg::ENCODE_CLOSE_SPAN_VERSION;
 
-type SpanIndexMap = IndexSet<Span>;
+pub type SpanDataIndexMap = IndexSet<Span>;
+
+pub fn serialize_span_data_index_map(map: &SpanDataIndexMap) -> Vec<u32> {
+    map.iter()
+        .flat_map(|span| {
+            [
+                span.anchor.file_id.index(),
+                span.anchor.ast_id.into_raw().into_u32(),
+                span.range.start().into(),
+                span.range.end().into(),
+                span.ctx.into_u32(),
+            ]
+        })
+        .collect()
+}
+
+pub fn deserialize_span_data_index_map(map: &[u32]) -> SpanDataIndexMap {
+    debug_assert!(map.len() % 5 == 0);
+    map.chunks_exact(5)
+        .map(|span| {
+            let &[file_id, ast_id, start, end, e] = span else { unreachable!() };
+            Span {
+                anchor: SpanAnchor {
+                    file_id: FileId::from_raw(file_id),
+                    ast_id: ErasedFileAstId::from_raw(RawIdx::from_u32(ast_id)),
+                },
+                range: TextRange::new(start.into(), end.into()),
+                ctx: SyntaxContextId::from_u32(e),
+            }
+        })
+        .collect()
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TokenId(pub u32);
@@ -93,7 +126,7 @@ impl FlatTree {
     pub fn new(
         subtree: &tt::Subtree<Span>,
         version: u32,
-        span_data_table: &mut SpanIndexMap,
+        span_data_table: &mut SpanDataIndexMap,
     ) -> FlatTree {
         let mut w = Writer {
             string_table: HashMap::new(),
@@ -155,7 +188,7 @@ impl FlatTree {
     pub fn to_subtree_resolved(
         self,
         version: u32,
-        span_data_table: &SpanIndexMap,
+        span_data_table: &SpanDataIndexMap,
     ) -> tt::Subtree<Span> {
         Reader {
             subtree: if version >= ENCODE_CLOSE_SPAN_VERSION {

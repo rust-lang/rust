@@ -1,6 +1,6 @@
 [workspace]
 members = ["xtask/", "lib/*", "crates/*"]
-exclude = ["crates/proc-macro-test/imp"]
+exclude = ["crates/proc-macro-srv/proc-macro-test/"]
 resolver = "2"
 
 [workspace.package]
@@ -81,7 +81,6 @@ vfs = { path = "./crates/vfs", version = "0.0.0" }
 rustc-dependencies = { path = "./crates/rustc-dependencies", version = "0.0.0" }
 
 # local crates that aren't published to crates.io. These should not have versions.
-proc-macro-test = { path = "./crates/proc-macro-test" }
 sourcegen = { path = "./crates/sourcegen" }
 test-fixture = { path = "./crates/test-fixture" }
 test-utils = { path = "./crates/test-utils" }

@@ -388,6 +388,7 @@ pub mod known {
         log_syntax,
         module_path,
         option_env,
+        quote,
         std_panic,
         stringify,
         trace_macros,
