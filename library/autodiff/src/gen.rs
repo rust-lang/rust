@@ -107,11 +107,11 @@ pub(crate) fn adjoint_fnc(item: &DiffItem) -> TokenStream {
         res_inputs.push(input.clone());
 
         match (item.header.mode, activity, is_ref_mut(&input)) {
-            (Mode::Forward, Activity::Duplicated|Activity::DuplicatedNoNeed, Some(true)) => {
+            (Mode::Forward, Activity::Duplicated | Activity::DuplicatedNoNeed, Some(true)) => {
                 res_inputs.push(as_ref_mut(&input, "grad", true));
                 add_inputs.push(as_ref_mut(&input, "grad", true));
             }
-            (Mode::Forward, Activity::Duplicated|Activity::DuplicatedNoNeed, Some(false)) => {
+            (Mode::Forward, Activity::Duplicated | Activity::DuplicatedNoNeed, Some(false)) => {
                 res_inputs.push(as_ref_mut(&input, "dual", false));
                 add_inputs.push(as_ref_mut(&input, "dual", false));
                 out_type.clone().map(|x| outputs.push(x));
@@ -203,9 +203,9 @@ pub(crate) fn adjoint_fnc(item: &DiffItem) -> TokenStream {
     };
 
     let body = quote!({
-        std::hint::black_box((#call_ident(#(#inputs,)*), #(#add_inputs,)*));
+        core::hint::black_box((#call_ident(#(#inputs,)*), #(#add_inputs,)*));
 
-        std::hint::black_box(unsafe { std::mem::zeroed() })
+        core::hint::black_box(unsafe { core::mem::zeroed() })
     });
     let header = generate_header(&item);
 

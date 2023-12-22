@@ -5,6 +5,6 @@ fn array(arr: &[[[f32; 2]; 2]; 2]) -> f32 {
 }
 #[autodiff_into(Reverse, Active, Duplicated)]
 fn d_array(arr: &[[[f32; 2]; 2]; 2], grad_arr: &mut [[[f32; 2]; 2]; 2], tang_y: f32) {
-    std::hint::black_box((array(arr), grad_arr, tang_y));
-    std::hint::black_box(unsafe { std::mem::zeroed() })
+    core::hint::black_box((array(arr), grad_arr, tang_y));
+    core::hint::black_box(unsafe { core::mem::zeroed() })
 }

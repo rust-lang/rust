@@ -10,6 +10,6 @@ fn d_square2(
     b: &Vec<f32>,
     dual_b: &Vec<f32>,
 ) -> (f32, f32, f32) {
-    std::hint::black_box((square2(a, b), dual_a, dual_b));
-    std::hint::black_box(unsafe { std::mem::zeroed() })
+    core::hint::black_box((square2(a, b), dual_a, dual_b));
+    core::hint::black_box(unsafe { core::mem::zeroed() })
 }
