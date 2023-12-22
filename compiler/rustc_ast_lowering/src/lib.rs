@@ -702,7 +702,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// properly. Calling the method twice with the same `NodeId` is fine though.
     #[instrument(level = "debug", skip(self), ret)]
     fn lower_node_id(&mut self, ast_node_id: NodeId) -> hir::HirId {
-        assert_ne!(ast_node_id, DUMMY_NODE_ID);
+        debug_assert_ne!(ast_node_id, DUMMY_NODE_ID);
 
         match self.node_id_to_local_id.entry(ast_node_id) {
             Entry::Occupied(o) => {
@@ -717,7 +717,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 v.insert(local_id);
                 self.item_local_id_counter.increment_by(1);
 
-                assert_ne!(local_id, hir::ItemLocalId::new(0));
+                debug_assert_ne!(local_id, hir::ItemLocalId::new(0));
                 if let Some(def_id) = self.opt_local_def_id(ast_node_id) {
                     self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
                 }
