@@ -14,10 +14,10 @@ LL |     let _x = addr_of!(X);
    |              ~~~~~~~~~~~
 
 error[E0133]: use of mutable static is unsafe and requires unsafe function or block
-  --> $DIR/reference-of-mut-static-safe.rs:9:14
+  --> $DIR/reference-of-mut-static-safe.rs:9:15
    |
 LL |     let _x = &X;
-   |              ^^ use of mutable static
+   |               ^ use of mutable static
    |
    = note: mutable statics can be mutated by multiple threads: aliasing violations or data races will cause undefined behavior
 
