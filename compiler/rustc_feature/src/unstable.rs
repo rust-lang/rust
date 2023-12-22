@@ -369,6 +369,8 @@ declare_features! (
     (unstable, cfg_relocation_model, "1.73.0", Some(114929)),
     /// Allows the use of `#[cfg(sanitize = "option")]`; set when -Zsanitizer is used.
     (unstable, cfg_sanitize, "1.41.0", Some(39699)),
+    /// Allows `cfg(sanitizer_cfi_generalize_pointers)` and `cfg(sanitizer_cfi_normalize_integers)`.
+    (unstable, cfg_sanitizer_cfi, "CURRENT_RUSTC_VERSION", Some(89653)),
     /// Allows `cfg(target_abi = "...")`.
     (unstable, cfg_target_abi, "1.55.0", Some(80970)),
     /// Allows `cfg(target(abi = "..."))`.
