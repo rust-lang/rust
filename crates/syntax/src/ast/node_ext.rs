@@ -345,6 +345,12 @@ impl ast::UseTreeList {
             .is_some()
     }
 
+    pub fn comma(&self) -> impl Iterator<Item = SyntaxToken> {
+        self.syntax()
+            .children_with_tokens()
+            .filter_map(|it| it.into_token().filter(|it| it.kind() == T![,]))
+    }
+
     /// Remove the unnecessary braces in current `UseTreeList`
     pub fn remove_unnecessary_braces(mut self) {
         let remove_brace_in_use_tree_list = |u: &ast::UseTreeList| {
@@ -352,6 +358,7 @@ impl ast::UseTreeList {
             if use_tree_count == 1 {
                 u.l_curly_token().map(ted::remove);
                 u.r_curly_token().map(ted::remove);
+                u.comma().for_each(ted::remove);
             }
         };
 
