@@ -1130,7 +1130,7 @@ fn collect_non_exhaustive_tys<'tcx>(
         non_exhaustive_tys.insert(pat.ty().inner());
     }
     if let Constructor::IntRange(range) = pat.ctor() {
-        if cx.is_range_beyond_boundaries(range, pat.ty()) {
+        if cx.is_range_beyond_boundaries(range, *pat.ty()) {
             // The range denotes the values before `isize::MIN` or the values after `usize::MAX`/`isize::MAX`.
             non_exhaustive_tys.insert(pat.ty().inner());
         }
