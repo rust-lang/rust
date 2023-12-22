@@ -79,6 +79,7 @@ rm -r tests/run-make/codegen-options-parsing
 rm -r tests/run-make/lto-*
 rm -r tests/run-make/reproducible-build-2
 rm -r tests/run-make/issue-109934-lto-debuginfo
+rm -r tests/run-make/no-builtins-lto
 
 # optimization tests
 # ==================
