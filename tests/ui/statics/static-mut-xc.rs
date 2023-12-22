@@ -7,7 +7,6 @@
 
 // aux-build:static_mut_xc.rs
 
-
 extern crate static_mut_xc;
 
 unsafe fn static_bound(_: &'static isize) {}
@@ -27,7 +26,9 @@ unsafe fn run() {
     static_mut_xc::a = -3;
     assert_eq!(static_mut_xc::a, -3);
     static_bound(&static_mut_xc::a);
+    //~^ WARN shared reference of mutable static is discouraged [static_mut_ref]
     static_bound_set(&mut static_mut_xc::a);
+    //~^ WARN mutable reference of mutable static is discouraged [static_mut_ref]
 }
 
 pub fn main() {

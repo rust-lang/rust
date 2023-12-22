@@ -3,7 +3,8 @@ const C1: &'static mut [usize] = &mut [];
 
 static mut S: usize = 3;
 const C2: &'static mut usize = unsafe { &mut S };
-//~^ ERROR: constants cannot refer to statics
+//~^ WARN mutable reference of mutable static is discouraged [static_mut_ref]
+//~^^ ERROR: constants cannot refer to statics
 //~| ERROR: constants cannot refer to statics
 
 fn main() {}

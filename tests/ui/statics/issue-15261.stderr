@@ -1,0 +1,17 @@
+warning: shared reference of mutable static is discouraged
+  --> $DIR/issue-15261.rs:9:37
+   |
+LL | static n: &'static usize = unsafe { &n_mut };
+   |                                     ^^^^^^ shared reference of mutable static
+   |
+   = note: for more information, see issue #114447 <https://github.com/rust-lang/rust/issues/114447>
+   = note: reference of mutable static is a hard error from 2024 edition
+   = note: mutable statics can be written to by multiple threads: aliasing violations or data races will cause undefined behavior
+   = note: `#[warn(static_mut_ref)]` on by default
+help: shared references are dangerous since if there's any kind of mutation of that static while the reference lives, that's UB; use `addr_of!` instead to create a raw pointer
+   |
+LL | static n: &'static usize = unsafe { addr_of!(n_mut) };
+   |                                     ~~~~~~~~~~~~~~~
+
+warning: 1 warning emitted
+
