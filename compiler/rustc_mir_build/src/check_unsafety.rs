@@ -144,11 +144,17 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
             let hir_context = self.tcx.local_def_id_to_hir_id(def);
             let safety_context = mem::replace(&mut self.safety_context, SafetyContext::Safe);
             let mut inner_visitor = UnsafetyVisitor {
+                tcx: self.tcx,
                 thir: inner_thir,
                 hir_context,
                 safety_context,
+                body_target_features: self.body_target_features,
+                assignment_info: self.assignment_info,
+                in_union_destructure: false,
+                param_env: self.param_env,
+                inside_adt: false,
                 warnings: self.warnings,
-                ..*self
+                suggest_unsafe_block: self.suggest_unsafe_block,
             };
             inner_visitor.visit_expr(&inner_thir[expr]);
             // Unsafe blocks can be used in the inner body, make sure to take it into account
