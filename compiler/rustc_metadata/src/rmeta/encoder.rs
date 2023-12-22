@@ -1607,7 +1607,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.optimized_mir[def_id.to_def_id()] <- tcx.optimized_mir(def_id));
                 self.tables
                     .cross_crate_inlinable
-                    .set(def_id.to_def_id().index, Some(self.tcx.cross_crate_inlinable(def_id)));
+                    .set(def_id.to_def_id().index, self.tcx.cross_crate_inlinable(def_id));
                 record!(self.tables.closure_saved_names_of_captured_variables[def_id.to_def_id()]
                     <- tcx.closure_saved_names_of_captured_variables(def_id));
 
