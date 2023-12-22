@@ -15,26 +15,25 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
     basic_coverage_blocks: &CoverageGraph,
 ) -> Vec<CoverageSpan> {
     let &ExtractedHirInfo { is_async_fn, fn_sig_span, body_span, .. } = hir_info;
+
+    let mut initial_spans = vec![CoverageSpan::for_fn_sig(fn_sig_span)];
+
     if is_async_fn {
         // An async function desugars into a function that returns a future,
         // with the user code wrapped in a closure. Any spans in the desugared
-        // outer function will be unhelpful, so just produce a single span
-        // associating the function signature with its entry BCB.
-        return vec![CoverageSpan::for_fn_sig(fn_sig_span)];
-    }
+        // outer function will be unhelpful, so just keep the signature span
+        // and ignore all of the spans in the MIR body.
+    } else {
+        for (bcb, bcb_data) in basic_coverage_blocks.iter_enumerated() {
+            initial_spans.extend(bcb_to_initial_coverage_spans(mir_body, body_span, bcb, bcb_data));
+        }
 
-    let mut initial_spans = Vec::with_capacity(mir_body.basic_blocks.len() * 2);
-    for (bcb, bcb_data) in basic_coverage_blocks.iter_enumerated() {
-        initial_spans.extend(bcb_to_initial_coverage_spans(mir_body, body_span, bcb, bcb_data));
+        // If no spans were extracted from the body, discard the signature span.
+        // FIXME: This preserves existing behavior; consider getting rid of it.
+        if initial_spans.len() == 1 {
+            initial_spans.clear();
+        }
     }
-
-    if initial_spans.is_empty() {
-        // This can happen if, for example, the function is unreachable (contains only a
-        // `BasicBlock`(s) with an `Unreachable` terminator).
-        return initial_spans;
-    }
-
-    initial_spans.push(CoverageSpan::for_fn_sig(fn_sig_span));
 
     initial_spans.sort_by(|a, b| {
         // First sort by span start.
