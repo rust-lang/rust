@@ -1,7 +1,7 @@
 //! Module responsible for analyzing the code surrounding the cursor for completion.
 use std::iter;
 
-use hir::{HasSource, Semantics, Type, TypeInfo, Variant};
+use hir::{Semantics, Type, TypeInfo, Variant};
 use ide_db::{active_parameter::ActiveParameter, RootDatabase};
 use syntax::{
     algo::{find_node_at_offset, non_trivia_sibling},
@@ -740,13 +740,13 @@ fn classify_name_ref(
                             match sema.resolve_path(&segment.parent_path().top_path())? {
                                 hir::PathResolution::Def(def) => match def {
                                     hir::ModuleDef::Function(func) => {
-                                        func.source(sema.db)?.value.generic_param_list()
+                                         sema.source(func)?.value.generic_param_list()
                                     }
                                     hir::ModuleDef::Adt(adt) => {
-                                        adt.source(sema.db)?.value.generic_param_list()
+                                        sema.source(adt)?.value.generic_param_list()
                                     }
                                     hir::ModuleDef::Variant(variant) => {
-                                        variant.parent_enum(sema.db).source(sema.db)?.value.generic_param_list()
+                                        sema.source(variant.parent_enum(sema.db))?.value.generic_param_list()
                                     }
                                     hir::ModuleDef::Trait(trait_) => {
                                         if let ast::GenericArg::AssocTypeArg(arg) = &arg {
@@ -772,14 +772,14 @@ fn classify_name_ref(
                                             return None;
                                         } else {
                                             in_trait = Some(trait_);
-                                            trait_.source(sema.db)?.value.generic_param_list()
+                                            sema.source(trait_)?.value.generic_param_list()
                                         }
                                     }
                                     hir::ModuleDef::TraitAlias(trait_) => {
-                                        trait_.source(sema.db)?.value.generic_param_list()
+                                        sema.source(trait_)?.value.generic_param_list()
                                     }
                                     hir::ModuleDef::TypeAlias(ty_) => {
-                                        ty_.source(sema.db)?.value.generic_param_list()
+                                        sema.source(ty_)?.value.generic_param_list()
                                     }
                                     _ => None,
                                 },
@@ -788,7 +788,7 @@ fn classify_name_ref(
                         },
                         ast::MethodCallExpr(call) => {
                             let func = sema.resolve_method_call(&call)?;
-                            func.source(sema.db)?.value.generic_param_list()
+                            sema.source(func)?.value.generic_param_list()
                         },
                         ast::AssocTypeArg(arg) => {
                             let trait_ = ast::PathSegment::cast(arg.syntax().parent()?.parent()?)?;
@@ -805,7 +805,7 @@ fn classify_name_ref(
                                             },
                                             _ => None,
                                         })?;
-                                        assoc_ty.source(sema.db)?.value.generic_param_list()
+                                        sema.source(*assoc_ty)?.value.generic_param_list()
                                     }
                                     _ => None,
                                 },
