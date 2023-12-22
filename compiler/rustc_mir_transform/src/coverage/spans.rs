@@ -1,9 +1,9 @@
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_index::IndexVec;
 use rustc_middle::mir;
-use rustc_span::{BytePos, Span, Symbol, DUMMY_SP};
+use rustc_span::{BytePos, Span, DUMMY_SP};
 
-use super::graph::{BasicCoverageBlock, CoverageGraph, START_BCB};
+use super::graph::{BasicCoverageBlock, CoverageGraph};
 use crate::coverage::ExtractedHirInfo;
 
 mod from_mir;
@@ -69,7 +69,6 @@ impl CoverageSpans {
 #[derive(Debug, Clone)]
 struct CoverageSpan {
     pub span: Span,
-    pub visible_macro: Option<Symbol>,
     pub bcb: BasicCoverageBlock,
     /// List of all the original spans from MIR that have been merged into this
     /// span. Mainly used to precisely skip over gaps when truncating a span.
@@ -78,17 +77,8 @@ struct CoverageSpan {
 }
 
 impl CoverageSpan {
-    pub fn for_fn_sig(fn_sig_span: Span) -> Self {
-        Self::new(fn_sig_span, None, START_BCB, false)
-    }
-
-    pub(super) fn new(
-        span: Span,
-        visible_macro: Option<Symbol>,
-        bcb: BasicCoverageBlock,
-        is_closure: bool,
-    ) -> Self {
-        Self { span, visible_macro, bcb, merged_spans: vec![span], is_closure }
+    fn new(span: Span, bcb: BasicCoverageBlock, is_closure: bool) -> Self {
+        Self { span, bcb, merged_spans: vec![span], is_closure }
     }
 
     pub fn merge_from(&mut self, other: &Self) {
