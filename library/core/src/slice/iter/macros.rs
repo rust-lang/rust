@@ -133,6 +133,18 @@ macro_rules! iterator {
                     },
                 )
             }
+
+            #[inline]
+            fn via_indices(self) -> impl DoubleEndedIterator<Item = $elem> {
+                let len = len!(self);
+                let ptr = self.ptr;
+                IndexRange::zero_to(len)
+                    .map(move |i| {
+                        // SAFETY: the loop iterates `i in 0..len`, which always
+                        // is in bounds of the slice allocation
+                        unsafe { ptr.add(i).$into_ref() }
+                    })
+            }
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -209,50 +221,24 @@ macro_rules! iterator {
             }
 
             #[inline]
-            fn fold<B, F>(self, init: B, mut f: F) -> B
+            fn fold<B, F>(self, init: B, f: F) -> B
                 where
                     F: FnMut(B, Self::Item) -> B,
             {
-                // this implementation consists of the following optimizations compared to the
-                // default implementation:
-                // - do-while loop, as is llvm's preferred loop shape,
-                //   see https://releases.llvm.org/16.0.0/docs/LoopTerminology.html#more-canonical-loops
-                // - bumps an index instead of a pointer since the latter case inhibits
-                //   some optimizations, see #111603
-                // - avoids Option wrapping/matching
-                if is_empty!(self) {
-                    return init;
-                }
-                let mut acc = init;
-                let mut i = 0;
-                let len = len!(self);
-                loop {
-                    // SAFETY: the loop iterates `i in 0..len`, which always is in bounds of
-                    // the slice allocation
-                    acc = f(acc, unsafe { & $( $mut_ )? *self.ptr.add(i).as_ptr() });
-                    // SAFETY: `i` can't overflow since it'll only reach usize::MAX if the
-                    // slice had that length, in which case we'll break out of the loop
-                    // after the increment
-                    i = unsafe { i.unchecked_add(1) };
-                    if i == len {
-                        break;
-                    }
-                }
-                acc
+                // Apparently it's better to loop over indexes instead of
+                // pointers, see #111603.  Maybe it's easier on SCEV?
+                // This also makes sure we're never doing `Option` checks.
+                self.via_indices().fold(init, f)
             }
 
-            // We override the default implementation, which uses `try_fold`,
-            // because this simple implementation generates less LLVM IR and is
-            // faster to compile.
             #[inline]
-            fn for_each<F>(mut self, mut f: F)
+            fn for_each<F>(self, f: F)
             where
                 Self: Sized,
                 F: FnMut(Self::Item),
             {
-                while let Some(x) = self.next() {
-                    f(x);
-                }
+                // See `fold`.
+                self.via_indices().for_each(f)
             }
 
             // We override the default implementation, which uses `try_fold`,
@@ -426,6 +412,15 @@ macro_rules! iterator {
                 // SAFETY: By construction, `advance` does not exceed `self.len()`.
                 unsafe { self.pre_dec_end(advance) };
                 NonZeroUsize::new(n - advance).map_or(Ok(()), Err)
+            }
+
+            #[inline]
+            fn rfold<B, F>(self, init: B, f: F) -> B
+                where
+                    F: FnMut(B, Self::Item) -> B,
+            {
+                // See `fold`.
+                self.via_indices().rfold(init, f)
             }
         }
 

@@ -134,6 +134,32 @@ impl Iterator for IndexRange {
         let taken = self.take_prefix(n);
         NonZeroUsize::new(n - taken.len()).map_or(Ok(()), Err)
     }
+
+    #[inline]
+    fn fold<B, F>(self, mut init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        // Manually canonicalize, as in #106343.
+        // It's not clear why it's needed -- maybe avoiding the `Option`
+        // checks simplifies something? -- but it does seem to help, as without
+        // this override the `slice_iter_fold` codegen test no longer passes.
+        let Self { mut start, end } = self;
+        if start < end {
+            loop {
+                init = f(init, start);
+                // SAFETY: The if above ensures this is in-range for the first
+                // iteration, then we break below on getting to end which will
+                // ensure it never tries to go above usize::MAX.
+                start = unsafe { unchecked_add(start, 1) };
+                if start == end {
+                    break;
+                }
+            }
+        }
+        init
+    }
 }
 
 impl DoubleEndedIterator for IndexRange {
