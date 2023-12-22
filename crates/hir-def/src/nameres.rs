@@ -626,8 +626,9 @@ impl DefMap {
         self.diagnostics.as_slice()
     }
 
-    pub fn recursion_limit(&self) -> Option<u32> {
-        self.data.recursion_limit
+    pub fn recursion_limit(&self) -> u32 {
+        // 128 is the default in rustc
+        self.data.recursion_limit.unwrap_or(128)
     }
 }
 
