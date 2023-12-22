@@ -94,7 +94,6 @@ impl SubdiagnosticDeriveBuilder {
                         rustc_errors::SubdiagnosticMessage
                     ) -> rustc_errors::SubdiagnosticMessage,
                 {
-                    use rustc_errors::{Applicability, IntoDiagnosticArg};
                     #implementation
                 }
             }

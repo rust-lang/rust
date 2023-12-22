@@ -6,6 +6,7 @@
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
 #![feature(array_windows)]
+#![feature(associated_type_defaults)]
 #![feature(extract_if)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
@@ -401,7 +402,7 @@ pub use diagnostic::{
     AddToDiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgValue, DiagnosticId,
     DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
 };
-pub use diagnostic_builder::{DiagnosticBuilder, EmissionGuarantee, Noted};
+pub use diagnostic_builder::{BugAbort, DiagnosticBuilder, EmissionGuarantee, FatalAbort};
 pub use diagnostic_impls::{
     DiagnosticArgFromDisplay, DiagnosticSymbolList, ExpectedLifetimeParameter,
     IndicateAnonymousLifetime, InvalidFlushedDelayedDiagnosticLevel, LabelKind,
@@ -722,21 +723,6 @@ impl DiagCtxt {
         self.inner.borrow_mut().emit_stashed_diagnostics()
     }
 
-    /// Construct a builder with the `msg` at the level appropriate for the
-    /// specific `EmissionGuarantee`.
-    ///
-    /// Note: this is necessary for `derive(Diagnostic)`, but shouldn't be used
-    /// outside of that. Instead use `struct_err`, `struct_warn`, etc., which
-    /// make the diagnostic kind clearer.
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn struct_diagnostic<G: EmissionGuarantee>(
-        &self,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, G> {
-        G::make_diagnostic_builder(self, msg)
-    }
-
     /// Construct a builder at the `Warning` level at the given `span` and with the `msg`.
     ///
     /// Attempting to `.emit()` the builder will only emit if either:
@@ -922,7 +908,7 @@ impl DiagCtxt {
         &self,
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, !> {
+    ) -> DiagnosticBuilder<'_, FatalAbort> {
         let mut result = self.struct_fatal(msg);
         result.set_span(span);
         result
@@ -936,7 +922,7 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_, !> {
+    ) -> DiagnosticBuilder<'_, FatalAbort> {
         let mut result = self.struct_span_fatal(span, msg);
         result.code(code);
         result
@@ -945,7 +931,10 @@ impl DiagCtxt {
     /// Construct a builder at the `Fatal` level with the `msg`.
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, !> {
+    pub fn struct_fatal(
+        &self,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, FatalAbort> {
         DiagnosticBuilder::new(self, Level::Fatal, msg)
     }
 
@@ -970,6 +959,26 @@ impl DiagCtxt {
     #[track_caller]
     pub fn struct_note(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         DiagnosticBuilder::new(self, Level::Note, msg)
+    }
+
+    /// Construct a builder at the `Bug` level with the `msg`.
+    #[rustc_lint_diagnostics]
+    #[track_caller]
+    pub fn struct_bug(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, BugAbort> {
+        DiagnosticBuilder::new(self, Level::Bug, msg)
+    }
+
+    /// Construct a builder at the `Bug` level at the given `span` with the `msg`.
+    #[rustc_lint_diagnostics]
+    #[track_caller]
+    pub fn struct_span_bug(
+        &self,
+        span: impl Into<MultiSpan>,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, BugAbort> {
+        let mut result = self.struct_bug(msg);
+        result.set_span(span);
+        result
     }
 
     #[rustc_lint_diagnostics]
@@ -1071,13 +1080,6 @@ impl DiagCtxt {
     }
 
     #[track_caller]
-    pub fn span_bug_no_panic(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) {
-        let mut diag = Diagnostic::new(Bug, msg);
-        diag.set_span(span);
-        self.emit_diagnostic(diag);
-    }
-
-    #[track_caller]
     #[rustc_lint_diagnostics]
     pub fn span_note(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) {
         self.struct_span_note(span, msg).emit()
@@ -1115,9 +1117,9 @@ impl DiagCtxt {
         self.struct_note(msg).emit()
     }
 
+    #[rustc_lint_diagnostics]
     pub fn bug(&self, msg: impl Into<DiagnosticMessage>) -> ! {
-        DiagnosticBuilder::<diagnostic_builder::Bug>::new(self, Bug, msg).emit();
-        panic::panic_any(ExplicitBug);
+        self.struct_bug(msg).emit()
     }
 
     #[inline]
@@ -1274,18 +1276,19 @@ impl DiagCtxt {
         self.create_err(err).emit()
     }
 
+    #[track_caller]
     pub fn create_err<'a>(
         &'a self,
         err: impl IntoDiagnostic<'a>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        err.into_diagnostic(self)
+        err.into_diagnostic(self, Level::Error { lint: false })
     }
 
     pub fn create_warning<'a>(
         &'a self,
         warning: impl IntoDiagnostic<'a, ()>,
     ) -> DiagnosticBuilder<'a, ()> {
-        warning.into_diagnostic(self)
+        warning.into_diagnostic(self, Level::Warning(None))
     }
 
     pub fn emit_warning<'a>(&'a self, warning: impl IntoDiagnostic<'a, ()>) {
@@ -1296,7 +1299,7 @@ impl DiagCtxt {
         &'a self,
         fatal: impl IntoDiagnostic<'a, FatalError>,
     ) -> DiagnosticBuilder<'a, FatalError> {
-        fatal.into_diagnostic(self)
+        fatal.into_diagnostic(self, Level::Fatal)
     }
 
     pub fn emit_almost_fatal<'a>(
@@ -1308,38 +1311,35 @@ impl DiagCtxt {
 
     pub fn create_fatal<'a>(
         &'a self,
-        fatal: impl IntoDiagnostic<'a, !>,
-    ) -> DiagnosticBuilder<'a, !> {
-        fatal.into_diagnostic(self)
+        fatal: impl IntoDiagnostic<'a, FatalAbort>,
+    ) -> DiagnosticBuilder<'a, FatalAbort> {
+        fatal.into_diagnostic(self, Level::Fatal)
     }
 
-    pub fn emit_fatal<'a>(&'a self, fatal: impl IntoDiagnostic<'a, !>) -> ! {
+    pub fn emit_fatal<'a>(&'a self, fatal: impl IntoDiagnostic<'a, FatalAbort>) -> ! {
         self.create_fatal(fatal).emit()
     }
 
     pub fn create_bug<'a>(
         &'a self,
-        bug: impl IntoDiagnostic<'a, diagnostic_builder::Bug>,
-    ) -> DiagnosticBuilder<'a, diagnostic_builder::Bug> {
-        bug.into_diagnostic(self)
+        bug: impl IntoDiagnostic<'a, BugAbort>,
+    ) -> DiagnosticBuilder<'a, BugAbort> {
+        bug.into_diagnostic(self, Level::Bug)
     }
 
-    pub fn emit_bug<'a>(
-        &'a self,
-        bug: impl IntoDiagnostic<'a, diagnostic_builder::Bug>,
-    ) -> diagnostic_builder::Bug {
+    pub fn emit_bug<'a>(&'a self, bug: impl IntoDiagnostic<'a, BugAbort>) -> ! {
         self.create_bug(bug).emit()
     }
 
-    pub fn emit_note<'a>(&'a self, note: impl IntoDiagnostic<'a, Noted>) -> Noted {
+    pub fn emit_note<'a>(&'a self, note: impl IntoDiagnostic<'a, ()>) {
         self.create_note(note).emit()
     }
 
     pub fn create_note<'a>(
         &'a self,
-        note: impl IntoDiagnostic<'a, Noted>,
-    ) -> DiagnosticBuilder<'a, Noted> {
-        note.into_diagnostic(self)
+        note: impl IntoDiagnostic<'a, ()>,
+    ) -> DiagnosticBuilder<'a, ()> {
+        note.into_diagnostic(self, Level::Note)
     }
 
     pub fn emit_artifact_notification(&self, path: &Path, artifact_type: &str) {

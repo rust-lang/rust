@@ -35,7 +35,7 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
     pluralize, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
-    DiagnosticMessage, ErrorGuaranteed, FatalError, IntoDiagnostic, MultiSpan, PResult,
+    DiagnosticMessage, ErrorGuaranteed, FatalError, MultiSpan, PResult,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
@@ -280,11 +280,10 @@ impl<'a> Parser<'a> {
         recover: bool,
     ) -> PResult<'a, (Ident, /* is_raw */ bool)> {
         if let TokenKind::DocComment(..) = self.prev_token.kind {
-            return Err(DocCommentDoesNotDocumentAnything {
+            return Err(self.dcx().create_err(DocCommentDoesNotDocumentAnything {
                 span: self.prev_token.span,
                 missing_comma: None,
-            }
-            .into_diagnostic(self.dcx()));
+            }));
         }
 
         let valid_follow = &[
@@ -347,7 +346,7 @@ impl<'a> Parser<'a> {
             suggest_remove_comma,
             help_cannot_start_number,
         };
-        let mut err = err.into_diagnostic(self.dcx());
+        let mut err = self.dcx().create_err(err);
 
         // if the token we have is a `<`
         // it *might* be a misplaced generic
@@ -1432,7 +1431,7 @@ impl<'a> Parser<'a> {
                                 // Not entirely sure now, but we bubble the error up with the
                                 // suggestion.
                                 self.restore_snapshot(snapshot);
-                                Err(err.into_diagnostic(self.dcx()))
+                                Err(self.dcx().create_err(err))
                             }
                         }
                     } else if token::OpenDelim(Delimiter::Parenthesis) == self.token.kind {
@@ -1447,7 +1446,7 @@ impl<'a> Parser<'a> {
                         }
                         // Consume the fn call arguments.
                         match self.consume_fn_args() {
-                            Err(()) => Err(err.into_diagnostic(self.dcx())),
+                            Err(()) => Err(self.dcx().create_err(err)),
                             Ok(()) => {
                                 self.sess.emit_err(err);
                                 // FIXME: actually check that the two expressions in the binop are
@@ -1473,7 +1472,7 @@ impl<'a> Parser<'a> {
                             mk_err_expr(self, inner_op.span.to(self.prev_token.span))
                         } else {
                             // These cases cause too many knock-down errors, bail out (#61329).
-                            Err(err.into_diagnostic(self.dcx()))
+                            Err(self.dcx().create_err(err))
                         }
                     };
                 }
@@ -2561,7 +2560,7 @@ impl<'a> Parser<'a> {
             Ok(Some(GenericArg::Const(self.parse_const_arg()?)))
         } else {
             let after_kw_const = self.token.span;
-            self.recover_const_arg(after_kw_const, err.into_diagnostic(self.dcx())).map(Some)
+            self.recover_const_arg(after_kw_const, self.dcx().create_err(err)).map(Some)
         }
     }
 
@@ -2915,11 +2914,10 @@ impl<'a> Parser<'a> {
                 let (a_span, b_span) = (a.span(), b.span());
                 let between_span = a_span.shrink_to_hi().to(b_span.shrink_to_lo());
                 if self.span_to_snippet(between_span).as_deref() == Ok(":: ") {
-                    return Err(DoubleColonInBound {
+                    return Err(self.dcx().create_err(DoubleColonInBound {
                         span: path.span.shrink_to_hi(),
                         between: between_span,
-                    }
-                    .into_diagnostic(self.dcx()));
+                    }));
                 }
             }
         }

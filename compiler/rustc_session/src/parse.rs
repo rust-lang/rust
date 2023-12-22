@@ -14,7 +14,7 @@ use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc};
 use rustc_errors::{emitter::SilentEmitter, DiagCtxt};
 use rustc_errors::{
     fallback_fluent_bundle, Diagnostic, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
-    ErrorGuaranteed, IntoDiagnostic, MultiSpan, Noted, StashKey,
+    ErrorGuaranteed, FatalAbort, IntoDiagnostic, Level, MultiSpan, StashKey,
 };
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
@@ -322,7 +322,7 @@ impl ParseSess {
         &'a self,
         err: impl IntoDiagnostic<'a>,
     ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        err.into_diagnostic(&self.dcx)
+        err.into_diagnostic(&self.dcx, Level::Error { lint: false })
     }
 
     #[track_caller]
@@ -335,7 +335,7 @@ impl ParseSess {
         &'a self,
         warning: impl IntoDiagnostic<'a, ()>,
     ) -> DiagnosticBuilder<'a, ()> {
-        warning.into_diagnostic(&self.dcx)
+        warning.into_diagnostic(&self.dcx, Level::Warning(None))
     }
 
     #[track_caller]
@@ -346,26 +346,26 @@ impl ParseSess {
     #[track_caller]
     pub fn create_note<'a>(
         &'a self,
-        note: impl IntoDiagnostic<'a, Noted>,
-    ) -> DiagnosticBuilder<'a, Noted> {
-        note.into_diagnostic(&self.dcx)
+        note: impl IntoDiagnostic<'a, ()>,
+    ) -> DiagnosticBuilder<'a, ()> {
+        note.into_diagnostic(&self.dcx, Level::Note)
     }
 
     #[track_caller]
-    pub fn emit_note<'a>(&'a self, note: impl IntoDiagnostic<'a, Noted>) -> Noted {
+    pub fn emit_note<'a>(&'a self, note: impl IntoDiagnostic<'a, ()>) {
         self.create_note(note).emit()
     }
 
     #[track_caller]
     pub fn create_fatal<'a>(
         &'a self,
-        fatal: impl IntoDiagnostic<'a, !>,
-    ) -> DiagnosticBuilder<'a, !> {
-        fatal.into_diagnostic(&self.dcx)
+        fatal: impl IntoDiagnostic<'a, FatalAbort>,
+    ) -> DiagnosticBuilder<'a, FatalAbort> {
+        fatal.into_diagnostic(&self.dcx, Level::Fatal)
     }
 
     #[track_caller]
-    pub fn emit_fatal<'a>(&'a self, fatal: impl IntoDiagnostic<'a, !>) -> ! {
+    pub fn emit_fatal<'a>(&'a self, fatal: impl IntoDiagnostic<'a, FatalAbort>) -> ! {
         self.create_fatal(fatal).emit()
     }
 
@@ -386,7 +386,10 @@ impl ParseSess {
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, !> {
+    pub fn struct_fatal(
+        &self,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, FatalAbort> {
         self.dcx.struct_fatal(msg)
     }
 }

@@ -23,8 +23,8 @@ use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
     error_code, fallback_fluent_bundle, DiagCtxt, DiagnosticBuilder, DiagnosticId,
-    DiagnosticMessage, ErrorGuaranteed, FluentBundle, IntoDiagnostic, LazyFallbackBundle,
-    MultiSpan, Noted, TerminalUrl,
+    DiagnosticMessage, ErrorGuaranteed, FatalAbort, FluentBundle, IntoDiagnostic,
+    LazyFallbackBundle, MultiSpan, TerminalUrl,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -428,7 +428,7 @@ impl Session {
         &self,
         sp: S,
         msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, !> {
+    ) -> DiagnosticBuilder<'_, FatalAbort> {
         self.dcx().struct_span_fatal(sp, msg)
     }
     #[rustc_lint_diagnostics]
@@ -437,11 +437,14 @@ impl Session {
         sp: S,
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_, !> {
+    ) -> DiagnosticBuilder<'_, FatalAbort> {
         self.dcx().struct_span_fatal_with_code(sp, msg, code)
     }
     #[rustc_lint_diagnostics]
-    pub fn struct_fatal(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, !> {
+    pub fn struct_fatal(
+        &self,
+        msg: impl Into<DiagnosticMessage>,
+    ) -> DiagnosticBuilder<'_, FatalAbort> {
         self.dcx().struct_fatal(msg)
     }
 
@@ -525,23 +528,23 @@ impl Session {
     #[track_caller]
     pub fn create_note<'a>(
         &'a self,
-        note: impl IntoDiagnostic<'a, Noted>,
-    ) -> DiagnosticBuilder<'a, Noted> {
+        note: impl IntoDiagnostic<'a, ()>,
+    ) -> DiagnosticBuilder<'a, ()> {
         self.parse_sess.create_note(note)
     }
     #[track_caller]
-    pub fn emit_note<'a>(&'a self, note: impl IntoDiagnostic<'a, Noted>) -> Noted {
+    pub fn emit_note<'a>(&'a self, note: impl IntoDiagnostic<'a, ()>) {
         self.parse_sess.emit_note(note)
     }
     #[track_caller]
     pub fn create_fatal<'a>(
         &'a self,
-        fatal: impl IntoDiagnostic<'a, !>,
-    ) -> DiagnosticBuilder<'a, !> {
+        fatal: impl IntoDiagnostic<'a, FatalAbort>,
+    ) -> DiagnosticBuilder<'a, FatalAbort> {
         self.parse_sess.create_fatal(fatal)
     }
     #[track_caller]
-    pub fn emit_fatal<'a>(&'a self, fatal: impl IntoDiagnostic<'a, !>) -> ! {
+    pub fn emit_fatal<'a>(&'a self, fatal: impl IntoDiagnostic<'a, FatalAbort>) -> ! {
         self.parse_sess.emit_fatal(fatal)
     }
     #[inline]
@@ -1780,7 +1783,7 @@ impl EarlyDiagCtxt {
     pub fn early_struct_error(
         &self,
         msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, !> {
+    ) -> DiagnosticBuilder<'_, FatalAbort> {
         self.dcx.struct_fatal(msg)
     }
 

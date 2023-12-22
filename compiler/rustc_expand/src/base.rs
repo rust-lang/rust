@@ -1159,6 +1159,7 @@ impl<'a> ExtCtxt<'a> {
         // Fixme: does this result in errors?
         self.expansions.clear();
     }
+    #[rustc_lint_diagnostics]
     pub fn bug(&self, msg: &'static str) -> ! {
         self.sess.dcx().bug(msg);
     }
@@ -1204,11 +1205,10 @@ pub fn resolve_path(
                 .expect("attempting to resolve a file path in an external file"),
             FileName::DocTest(path, _) => path,
             other => {
-                return Err(errors::ResolveRelativePath {
+                return Err(parse_sess.dcx.create_err(errors::ResolveRelativePath {
                     span,
                     path: parse_sess.source_map().filename_for_diagnostics(&other).to_string(),
-                }
-                .into_diagnostic(&parse_sess.dcx));
+                }));
             }
         };
         result.pop();

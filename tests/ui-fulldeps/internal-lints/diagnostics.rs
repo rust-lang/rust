@@ -13,8 +13,8 @@ extern crate rustc_session;
 extern crate rustc_span;
 
 use rustc_errors::{
-    AddToDiagnostic, DiagCtxt, Diagnostic, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed,
-    IntoDiagnostic, SubdiagnosticMessage,
+    AddToDiagnostic, Diagnostic, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee, DiagCtxt,
+    IntoDiagnostic, Level, SubdiagnosticMessage,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
@@ -37,18 +37,18 @@ struct Note {
 
 pub struct UntranslatableInIntoDiagnostic;
 
-impl<'a> IntoDiagnostic<'a, ErrorGuaranteed> for UntranslatableInIntoDiagnostic {
-    fn into_diagnostic(self, dcx: &'a DiagCtxt) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        dcx.struct_err("untranslatable diagnostic")
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for UntranslatableInIntoDiagnostic {
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
+        DiagnosticBuilder::new(dcx, level, "untranslatable diagnostic")
         //~^ ERROR diagnostics should be created using translatable messages
     }
 }
 
 pub struct TranslatableInIntoDiagnostic;
 
-impl<'a> IntoDiagnostic<'a, ErrorGuaranteed> for TranslatableInIntoDiagnostic {
-    fn into_diagnostic(self, dcx: &'a DiagCtxt) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        dcx.struct_err(crate::fluent_generated::no_crate_example)
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for TranslatableInIntoDiagnostic {
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
+        DiagnosticBuilder::new(dcx, level, crate::fluent_generated::no_crate_example)
     }
 }
 

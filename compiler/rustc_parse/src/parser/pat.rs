@@ -18,7 +18,7 @@ use rustc_ast::{
     PatField, PatKind, Path, QSelf, RangeEnd, RangeSyntax,
 };
 use rustc_ast_pretty::pprust;
-use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, PResult};
+use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
@@ -872,8 +872,9 @@ impl<'a> Parser<'a> {
         // binding mode then we do not end up here, because the lookahead
         // will direct us over to `parse_enum_variant()`.
         if self.token == token::OpenDelim(Delimiter::Parenthesis) {
-            return Err(EnumPatternInsteadOfIdentifier { span: self.prev_token.span }
-                .into_diagnostic(self.dcx()));
+            return Err(self
+                .dcx()
+                .create_err(EnumPatternInsteadOfIdentifier { span: self.prev_token.span }));
         }
 
         Ok(PatKind::Ident(binding_annotation, ident, sub))
@@ -986,8 +987,8 @@ impl<'a> Parser<'a> {
 
             // check that a comma comes after every field
             if !ate_comma {
-                let mut err = ExpectedCommaAfterPatternField { span: self.token.span }
-                    .into_diagnostic(self.dcx());
+                let mut err =
+                    self.dcx().create_err(ExpectedCommaAfterPatternField { span: self.token.span });
                 if let Some(mut delayed) = delayed_err {
                     delayed.emit();
                 }
