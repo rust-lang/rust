@@ -1428,9 +1428,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
             }
             if def_kind == DefKind::Closure
-                && let Some(data) = self.tcx.coroutine_kind(def_id)
+                && let Some(coroutine_kind) = self.tcx.coroutine_kind(def_id)
             {
-                record!(self.tables.coroutine_kind[def_id] <- data);
+                self.tables.coroutine_kind.set(def_id.index, Some(coroutine_kind));
             }
             if let DefKind::Enum | DefKind::Struct | DefKind::Union = def_kind {
                 self.encode_info_for_adt(local_id);

@@ -241,7 +241,7 @@ provide! { tcx, def_id, other, cdata,
     rendered_const => { table }
     asyncness => { table_direct }
     fn_arg_names => { table }
-    coroutine_kind => { table }
+    coroutine_kind => { table_direct }
     trait_def => { table }
     deduced_param_attrs => { table }
     is_type_alias_impl_trait => {

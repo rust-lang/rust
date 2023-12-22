@@ -205,6 +205,21 @@ fixed_size_enum! {
 }
 
 fixed_size_enum! {
+    hir::CoroutineKind {
+        ( Coroutine                               )
+        ( Gen(hir::CoroutineSource::Block)        )
+        ( Gen(hir::CoroutineSource::Fn)           )
+        ( Gen(hir::CoroutineSource::Closure)      )
+        ( Async(hir::CoroutineSource::Block)      )
+        ( Async(hir::CoroutineSource::Fn)         )
+        ( Async(hir::CoroutineSource::Closure)    )
+        ( AsyncGen(hir::CoroutineSource::Block)   )
+        ( AsyncGen(hir::CoroutineSource::Fn)      )
+        ( AsyncGen(hir::CoroutineSource::Closure) )
+    }
+}
+
+fixed_size_enum! {
     ty::AssocItemContainer {
         ( TraitContainer )
         ( ImplContainer  )
