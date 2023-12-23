@@ -300,71 +300,163 @@
 //!
 //!
 //!
-//! # `Missing` and relevant constructors
+//! # `Missing` and relevancy
+//!
+//! ## Relevant values
 //!
 //! Take the following example:
+//!
+//! ```compile_fail,E0004
+//! # let foo = (true, true);
+//! match foo {
+//!     (true, _) => 1,
+//!     (_, true) => 2,
+//! };
+//! ```
+//!
+//! Consider the value `(true, true)`:
+//! - Row 2 does not distinguish `(true, true)` and `(false, true)`;
+//! - `false` does not show up in the first column of the match, so without knowing anything else we
+//!     can deduce that `(false, true)` matches the same or fewer rows than `(true, true)`.
+//!
+//! Using those two facts together, we deduce that `(true, true)` will not give us more usefulness
+//! information about row 2 than `(false, true)` would. We say that "`(true, true)` is made
+//! irrelevant for row 2 by `(false, true)`". We will use this idea to prune the search tree.
+//!
+//!
+//! ## Computing relevancy
+//!
+//! We now generalize from the above example to approximate relevancy in a simple way. Note that we
+//! will only compute an approximation: we can sometimes determine when a case is irrelevant, but
+//! computing this precisely is at least as hard as computing usefulness.
+//!
+//! Our computation of relevancy relies on the `Missing` constructor. As explained in
+//! [`crate::constructor`], `Missing` represents the constructors not present in a given column. For
+//! example in the following:
 //!
 //! ```compile_fail,E0004
 //! enum Direction { North, South, East, West }
 //! # let wind = (Direction::North, 0u8);
 //! match wind {
-//!     (Direction::North, _) => {} // arm 1
-//!     (_, 50..) => {} // arm 2
-//! }
+//!     (Direction::North, _) => 1,
+//!     (_, 50..) => 2,
+//! };
 //! ```
 //!
-//! Remember that we represent the "everything else" cases with [`Constructor::Missing`]. When we
-//! specialize with `Missing` in the first column, we have one arm left:
+//! Here `South`, `East` and `West` are missing in the first column, and `0..50`  is missing in the
+//! second. Both of these sets are represented by `Constructor::Missing` in their corresponding
+//! column.
 //!
-//! ```ignore(partial code)
-//!     (50..) => {} // arm 2
-//! ```
+//! We then compute relevancy as follows: during the course of the algorithm, for a row `r`:
+//! - if `r` has a wildcard in the first column;
+//! - and some constructors are missing in that column;
+//! - then any `c != Missing` is considered irrelevant for row `r`.
 //!
-//! We then conclude that arm 2 is useful, and that the match is non-exhaustive with witness
-//! `(Missing, 0..50)` (which we would display to the user as `(_, 0..50)`).
+//! By this we mean that continuing the algorithm by specializing with `c` is guaranteed not to
+//! contribute more information about the usefulness of row `r` than what we would get by
+//! specializing with `Missing`. The argument is the same as in the previous subsection.
 //!
-//! When we then specialize with `North`, we have two arms left:
+//! Once we've specialized by a constructor `c` that is irrelevant for row `r`, we're guaranteed to
+//! only explore values irrelevant for `r`. If we then ever reach a point where we're only exploring
+//! values that are irrelevant to all of the rows (including the virtual wildcard row used for
+//! exhaustiveness), we skip that case entirely.
 //!
-//! ```ignore(partial code)
-//!     (_) => {} // arm 1
-//!     (50..) => {} // arm 2
-//! ```
 //!
-//! Because `Missing` only matches wildcard rows, specializing with `Missing` is guaranteed to
-//! result in a subset of the rows obtained from specializing with anything else. This means that
-//! any row with a wildcard found useful when specializing with anything else would also be found
-//! useful in the `Missing` case. In our example, after specializing with `North` here we will not
-//! gain new information regarding the usefulness of arm 2 or of the fake wildcard row used for
-//! exhaustiveness. This allows us to skip cases.
+//! ## Example
 //!
-//! When specializing, if there is a `Missing` case we call the other constructors "irrelevant".
-//! When there is no `Missing` case there are no irrelevant constructors.
-//!
-//! What happens then is: when we specialize a wildcard with an irrelevant constructor, we know we
-//! won't get new info for this row; we consider that row "irrelevant". Whenever all the rows are
-//! found irrelevant, we can safely skip the case entirely.
-//!
-//! In the example above, we will entirely skip the `(North, 50..)` case. This skipping was
-//! developped as a solution to #118437. It doesn't look like much but it can save us from
-//! exponential blowup.
-//!
-//! There's a subtlety regarding exhaustiveness: while this shortcutting doesn't affect correctness,
-//! it can affect which witnesses are reported. For example, in the following:
+//! Let's go through a variation on the first example:
 //!
 //! ```compile_fail,E0004
 //! # let foo = (true, true, true);
 //! match foo {
-//!     (true, _, true) => {}
-//!     (_, true, _) => {}
+//!     (true, _, true) => 1,
+//!     (_, true, _) => 2,
+//! };
+//! ```
+//!
+//! ```text
+//!  ┐ Patterns:
+//!  │   1. `[(true, _, true)]`
+//!  │   2. `[(_, true, _)]`
+//!  │   3. `[_]` // virtual extra wildcard row
+//!  │
+//!  │ Specialize with `(,,)`:
+//!  ├─┐ Patterns:
+//!  │ │   1. `[true, _, true]`
+//!  │ │   2. `[_, true, _]`
+//!  │ │   3. `[_, _, _]`
+//!  │ │
+//!  │ │ There are missing constructors in the first column (namely `false`), hence
+//!  │ │ `true` is irrelevant for rows 2 and 3.
+//!  │ │
+//!  │ │ Specialize with `true`:
+//!  │ ├─┐ Patterns:
+//!  │ │ │   1. `[_, true]`
+//!  │ │ │   2. `[true, _]` // now exploring irrelevant cases
+//!  │ │ │   3. `[_, _]`    // now exploring irrelevant cases
+//!  │ │ │
+//!  │ │ │ There are missing constructors in the first column (namely `false`), hence
+//!  │ │ │ `true` is irrelevant for rows 1 and 3.
+//!  │ │ │
+//!  │ │ │ Specialize with `true`:
+//!  │ │ ├─┐ Patterns:
+//!  │ │ │ │   1. `[true]` // now exploring irrelevant cases
+//!  │ │ │ │   2. `[_]`    // now exploring irrelevant cases
+//!  │ │ │ │   3. `[_]`    // now exploring irrelevant cases
+//!  │ │ │ │
+//!  │ │ │ │ The current case is irrelevant for all rows: we backtrack immediately.
+//!  │ │ ├─┘
+//!  │ │ │
+//!  │ │ │ Specialize with `false`:
+//!  │ │ ├─┐ Patterns:
+//!  │ │ │ │   1. `[true]`
+//!  │ │ │ │   3. `[_]`    // now exploring irrelevant cases
+//!  │ │ │ │
+//!  │ │ │ │ Specialize with `true`:
+//!  │ │ │ ├─┐ Patterns:
+//!  │ │ │ │ │   1. `[]`
+//!  │ │ │ │ │   3. `[]`    // now exploring irrelevant cases
+//!  │ │ │ │ │
+//!  │ │ │ │ │ Row 1 is therefore useful.
+//!  │ │ │ ├─┘
+//! <etc...>
+//! ```
+//!
+//! Relevancy allowed us to skip the case `(true, true, _)` entirely. In some cases this pruning can
+//! give drastic speedups. The case this was built for is the following (#118437):
+//!
+//! ```ignore(illustrative)
+//! match foo {
+//!     (true, _, _, _, ..) => 1,
+//!     (_, true, _, _, ..) => 2,
+//!     (_, _, true, _, ..) => 3,
+//!     (_, _, _, true, ..) => 4,
+//!     ...
 //! }
 //! ```
 //!
-//! In this example we will skip the `(true, true, _)` case entirely. Thus `(true, true, false)`
-//! will not be reported as missing. In fact we go further than this: we deliberately do not report
-//! any cases that are irrelevant for the fake wildcard row. For example, in `match ... { (true,
-//! true) => {} }` we will not report `(true, false)` as missing. This was a deliberate choice made
-//! early in the development of rust; it so happens that it is beneficial for performance reasons
-//! too.
+//! Without considering relevancy, we would explore all 2^n combinations of the `true` and `Missing`
+//! constructors. Relevancy tells us that e.g. `(true, true, false, false, false, ...)` is
+//! irrelevant for all the rows. This allows us to skip all cases with more than one `true`
+//! constructor, changing the runtime from exponential to linear.
+//!
+//!
+//! ## Relevancy and exhaustiveness
+//!
+//! For exhaustiveness, we do something slightly different w.r.t relevancy: we do not report
+//! witnesses of non-exhaustiveness that are irrelevant for the virtual wildcard row. For example,
+//! in:
+//!
+//! ```ignore(illustrative)
+//! match foo {
+//!     (true, true) => {}
+//! }
+//! ```
+//!
+//! we only report `(false, _)` as missing. This was a deliberate choice made early in the
+//! development of rust, for diagnostic and performance purposes. As showed in the previous section,
+//! ignoring irrelevant cases preserves usefulness, so this choice still correctly computes whether
+//! a match is exhaustive.
 //!
 //!
 //!
@@ -743,8 +835,8 @@ struct PatStack<'a, 'p, Cx: TypeCx> {
     // Rows of len 1 are very common, which is why `SmallVec[_; 2]` works well.
     pats: SmallVec<[&'a DeconstructedPat<'p, Cx>; 2]>,
     /// Sometimes we know that as far as this row is concerned, the current case is already handled
-    /// by a different, more general, case. When all rows are irrelevant this allows us to skip many
-    /// branches. This is purely an optimization. See at the top for details.
+    /// by a different, more general, case. When the case is irrelevant for all rows this allows us
+    /// to skip a case entirely. This is purely an optimization. See at the top for details.
     relevant: bool,
 }
 
@@ -1265,10 +1357,8 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
 
     if !matrix.wildcard_row.relevant && matrix.rows().all(|r| !r.pats.relevant) {
         // Here we know that nothing will contribute further to exhaustiveness or usefulness. This
-        // is purely an optimization: skipping this check doesn't affect correctness. This check
-        // does change runtime behavior from exponential to quadratic on some matches found in the
-        // wild, so it's pretty important. It also affects which missing patterns will be reported.
-        // See the top of the file for details.
+        // is purely an optimization: skipping this check doesn't affect correctness. See the top of
+        // the file for details.
         return WitnessMatrix::empty();
     }
 
@@ -1289,7 +1379,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
         return if matrix.wildcard_row.relevant {
             WitnessMatrix::unit_witness()
         } else {
-            // We can omit the witness without affecting correctness, so we do.
+            // We choose to not report anything here; see at the top for details.
             WitnessMatrix::empty()
         };
     };
