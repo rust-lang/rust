@@ -259,9 +259,15 @@ impl Rewrite for Pat {
                 None,
                 None,
             ),
-            PatKind::Struct(ref qself, ref path, ref fields, ellipsis) => {
-                rewrite_struct_pat(qself, path, fields, ellipsis, self.span, context, shape)
-            }
+            PatKind::Struct(ref qself, ref path, ref fields, rest) => rewrite_struct_pat(
+                qself,
+                path,
+                fields,
+                rest == ast::PatFieldsRest::Rest,
+                self.span,
+                context,
+                shape,
+            ),
             PatKind::MacCall(ref mac) => {
                 rewrite_macro(mac, None, context, shape, MacroPosition::Pat)
             }
