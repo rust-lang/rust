@@ -680,9 +680,7 @@ fn text_has_safety_comment(src: &str, line_starts: &[RelativeBytePos], start_pos
         })
         .filter(|(_, text)| !text.is_empty());
 
-    let Some((line_start, line)) = lines.next() else {
-        return None;
-    };
+    let (line_start, line) = lines.next()?;
     // Check for a sequence of line comments.
     if line.starts_with("//") {
         let (mut line, mut line_start) = (line, line_start);
