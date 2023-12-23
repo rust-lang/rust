@@ -212,6 +212,9 @@ impl StringPart {
     }
 }
 
+// Note: most of these methods are setters that return `&mut Self`. The small
+// number of simple getter functions all have `get_` prefixes to distinguish
+// them from the setters.
 impl Diagnostic {
     #[track_caller]
     pub fn new<M: Into<DiagnosticMessage>>(level: Level, message: M) -> Self {
@@ -344,7 +347,7 @@ impl Diagnostic {
 
     pub fn replace_span_with(&mut self, after: Span, keep_label: bool) -> &mut Self {
         let before = self.span.clone();
-        self.set_span(after);
+        self.span(after);
         for span_label in before.span_labels() {
             if let Some(label) = span_label.label {
                 if span_label.is_primary && keep_label {
@@ -876,7 +879,7 @@ impl Diagnostic {
         self
     }
 
-    pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self {
+    pub fn span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self {
         self.span = sp.into();
         if let Some(span) = self.span.primary_span() {
             self.sort_span = span;
@@ -884,7 +887,7 @@ impl Diagnostic {
         self
     }
 
-    pub fn set_is_lint(&mut self) -> &mut Self {
+    pub fn is_lint(&mut self) -> &mut Self {
         self.is_lint = true;
         self
     }
@@ -903,7 +906,7 @@ impl Diagnostic {
         self.code.clone()
     }
 
-    pub fn set_primary_message(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self {
+    pub fn primary_message(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self {
         self.messages[0] = (msg.into(), Style::NoStyle);
         self
     }
@@ -915,7 +918,7 @@ impl Diagnostic {
         self.args.iter()
     }
 
-    pub fn set_arg(
+    pub fn arg(
         &mut self,
         name: impl Into<Cow<'static, str>>,
         arg: impl IntoDiagnosticArg,

@@ -319,10 +319,10 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for MissingTypeParams {
     #[track_caller]
     fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
         let mut err = DiagnosticBuilder::new(dcx, level, fluent::hir_analysis_missing_type_params);
-        err.set_span(self.span);
+        err.span(self.span);
         err.code(error_code!(E0393));
-        err.set_arg("parameterCount", self.missing_type_params.len());
-        err.set_arg(
+        err.arg("parameterCount", self.missing_type_params.len());
+        err.arg(
             "parameters",
             self.missing_type_params
                 .iter()

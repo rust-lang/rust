@@ -459,7 +459,7 @@ pub fn report_msg<'tcx>(
         DiagLevel::Note => Level::Note,
     };
     let mut err = DiagnosticBuilder::<()>::new(sess.dcx(), level, title);
-    err.set_span(span);
+    err.span(span);
 
     // Show main message.
     if span != DUMMY_SP {

@@ -107,7 +107,7 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for ParseTargetMachineConfig<'_
 
         let mut diag =
             DiagnosticBuilder::new(dcx, level, fluent::codegen_llvm_parse_target_machine_config);
-        diag.set_arg("error", message);
+        diag.arg("error", message);
         diag
     }
 }
@@ -130,12 +130,12 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for TargetFeatureDisableOrEnabl
             fluent::codegen_llvm_target_feature_disable_or_enable,
         );
         if let Some(span) = self.span {
-            diag.set_span(span);
+            diag.span(span);
         };
         if let Some(missing_features) = self.missing_features {
             diag.subdiagnostic(missing_features);
         }
-        diag.set_arg("features", self.features.join(", "));
+        diag.arg("features", self.features.join(", "));
         diag
     }
 }
@@ -205,8 +205,8 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for WithLlvmError<'_> {
             ParseBitcode => fluent::codegen_llvm_parse_bitcode_with_llvm_err,
         };
         let mut diag = self.0.into_diagnostic(dcx, level);
-        diag.set_primary_message(msg_with_llvm_err);
-        diag.set_arg("llvm_err", self.1);
+        diag.primary_message(msg_with_llvm_err);
+        diag.arg("llvm_err", self.1);
         diag
     }
 }

@@ -252,7 +252,7 @@ impl<'a> StringReader<'a> {
                     if starts_with_number {
                         let span = self.mk_sp(start, self.pos);
                         let mut diag = self.dcx().struct_err("lifetimes cannot start with a number");
-                        diag.set_span(span);
+                        diag.span(span);
                         diag.stash(span, StashKey::LifetimeIsChar);
                     }
                     let ident = Symbol::intern(lifetime_name);

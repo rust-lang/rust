@@ -135,7 +135,7 @@ pub struct BuiltinMissingDebugImpl<'a> {
 // Needed for def_path_str
 impl<'a> DecorateLint<'a, ()> for BuiltinMissingDebugImpl<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
-        diag.set_arg("debug", self.tcx.def_path_str(self.def_id));
+        diag.arg("debug", self.tcx.def_path_str(self.def_id));
     }
 
     fn msg(&self) -> DiagnosticMessage {
@@ -426,7 +426,7 @@ pub struct BuiltinUnpermittedTypeInit<'a> {
 
 impl<'a> DecorateLint<'a, ()> for BuiltinUnpermittedTypeInit<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
-        diag.set_arg("ty", self.ty);
+        diag.arg("ty", self.ty);
         diag.span_label(self.label, fluent::lint_builtin_unpermitted_type_init_label);
         if let InhabitedPredicate::True = self.ty.inhabited_predicate(self.tcx) {
             // Only suggest late `MaybeUninit::assume_init` initialization if the type is inhabited.
@@ -830,7 +830,7 @@ impl AddToDiagnostic for HiddenUnicodeCodepointsDiagSub {
                 // FIXME: in other suggestions we've reversed the inner spans of doc comments. We
                 // should do the same here to provide the same good suggestions as we do for
                 // literals above.
-                diag.set_arg(
+                diag.arg(
                     "escaped",
                     spans
                         .into_iter()
@@ -1148,7 +1148,7 @@ pub struct NonFmtPanicUnused {
 // Used because of two suggestions based on one Option<Span>
 impl<'a> DecorateLint<'a, ()> for NonFmtPanicUnused {
     fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
-        diag.set_arg("count", self.count);
+        diag.arg("count", self.count);
         diag.note(fluent::lint_note);
         if let Some(span) = self.suggestion {
             diag.span_suggestion(
@@ -1343,8 +1343,8 @@ pub struct DropTraitConstraintsDiag<'a> {
 // Needed for def_path_str
 impl<'a> DecorateLint<'a, ()> for DropTraitConstraintsDiag<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
-        diag.set_arg("predicate", self.predicate);
-        diag.set_arg("needs_drop", self.tcx.def_path_str(self.def_id));
+        diag.arg("predicate", self.predicate);
+        diag.arg("needs_drop", self.tcx.def_path_str(self.def_id));
     }
 
     fn msg(&self) -> rustc_errors::DiagnosticMessage {
@@ -1360,7 +1360,7 @@ pub struct DropGlue<'a> {
 // Needed for def_path_str
 impl<'a> DecorateLint<'a, ()> for DropGlue<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
-        diag.set_arg("needs_drop", self.tcx.def_path_str(self.def_id));
+        diag.arg("needs_drop", self.tcx.def_path_str(self.def_id));
     }
 
     fn msg(&self) -> rustc_errors::DiagnosticMessage {
@@ -1634,8 +1634,8 @@ pub struct ImproperCTypes<'a> {
 // Used because of the complexity of Option<DiagnosticMessage>, DiagnosticMessage, and Option<Span>
 impl<'a> DecorateLint<'a, ()> for ImproperCTypes<'_> {
     fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
-        diag.set_arg("ty", self.ty);
-        diag.set_arg("desc", self.desc);
+        diag.arg("ty", self.ty);
+        diag.arg("desc", self.desc);
         diag.span_label(self.label, fluent::lint_label);
         if let Some(help) = self.help {
             diag.help(help);
@@ -1777,9 +1777,9 @@ pub enum UnusedDefSuggestion {
 // Needed because of def_path_str
 impl<'a> DecorateLint<'a, ()> for UnusedDef<'_, '_> {
     fn decorate_lint<'b>(self, diag: &'b mut rustc_errors::DiagnosticBuilder<'a, ()>) {
-        diag.set_arg("pre", self.pre);
-        diag.set_arg("post", self.post);
-        diag.set_arg("def", self.cx.tcx.def_path_str(self.def_id));
+        diag.arg("pre", self.pre);
+        diag.arg("post", self.post);
+        diag.arg("def", self.cx.tcx.def_path_str(self.def_id));
         // check for #[must_use = "..."]
         if let Some(note) = self.note {
             diag.note(note.to_string());

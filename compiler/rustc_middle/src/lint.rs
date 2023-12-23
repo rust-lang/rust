@@ -318,10 +318,10 @@ pub fn struct_lint_level(
         };
         let mut err = DiagnosticBuilder::new(sess.dcx(), err_level, "");
         if let Some(span) = span {
-            err.set_span(span);
+            err.span(span);
         }
 
-        err.set_is_lint();
+        err.is_lint();
 
         // If this code originates in a foreign macro, aka something that this crate
         // did not itself author, then it's likely that there's nothing this crate
@@ -348,7 +348,7 @@ pub fn struct_lint_level(
 
         // Delay evaluating and setting the primary message until after we've
         // suppressed the lint due to macros.
-        err.set_primary_message(msg);
+        err.primary_message(msg);
 
         // Lint diagnostics that are covered by the expect level will not be emitted outside
         // the compiler. It is therefore not necessary to add any information for the user.

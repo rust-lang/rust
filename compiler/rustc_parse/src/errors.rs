@@ -1065,8 +1065,8 @@ impl<'a> IntoDiagnostic<'a> for ExpectedIdentifier {
                 None => fluent::parse_expected_identifier_found_str,
             },
         );
-        diag.set_span(self.span);
-        diag.set_arg("token", self.token);
+        diag.span(self.span);
+        diag.arg("token", self.token);
 
         if let Some(sugg) = self.suggest_raw {
             sugg.add_to_diagnostic(&mut diag);
@@ -1123,8 +1123,8 @@ impl<'a> IntoDiagnostic<'a> for ExpectedSemi {
                 None => fluent::parse_expected_semi_found_str,
             },
         );
-        diag.set_span(self.span);
-        diag.set_arg("token", self.token);
+        diag.span(self.span);
+        diag.arg("token", self.token);
 
         if let Some(unexpected_token_label) = self.unexpected_token_label {
             diag.span_label(unexpected_token_label, fluent::parse_label_unexpected_token);

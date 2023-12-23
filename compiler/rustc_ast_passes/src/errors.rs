@@ -707,8 +707,8 @@ impl AddToDiagnostic for StableFeature {
             rustc_errors::SubdiagnosticMessage,
         ) -> rustc_errors::SubdiagnosticMessage,
     {
-        diag.set_arg("name", self.name);
-        diag.set_arg("since", self.since);
+        diag.arg("name", self.name);
+        diag.arg("since", self.since);
         diag.help(fluent::ast_passes_stable_since);
     }
 }

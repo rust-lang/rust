@@ -732,7 +732,7 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
         let mut result = self.struct_warn(msg);
-        result.set_span(span);
+        result.span(span);
         result
     }
 
@@ -789,7 +789,7 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_> {
         let mut result = self.struct_err(msg);
-        result.set_span(span);
+        result.span(span);
         result
     }
 
@@ -850,7 +850,7 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, FatalAbort> {
         let mut result = self.struct_fatal(msg);
-        result.set_span(span);
+        result.span(span);
         result
     }
 
@@ -917,7 +917,7 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, BugAbort> {
         let mut result = self.struct_bug(msg);
-        result.set_span(span);
+        result.span(span);
         result
     }
 
@@ -1008,7 +1008,7 @@ impl DiagCtxt {
             self.span_bug(sp, msg);
         }
         let mut diagnostic = Diagnostic::new(DelayedBug, msg);
-        diagnostic.set_span(sp);
+        diagnostic.span(sp);
         self.emit_diagnostic(diagnostic).unwrap()
     }
 
@@ -1039,7 +1039,7 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
         let mut db = DiagnosticBuilder::new(self, Note, msg);
-        db.set_span(span);
+        db.span(span);
         db
     }
 

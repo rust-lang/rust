@@ -154,7 +154,7 @@ fn try_file_to_source_file(
         let msg = format!("couldn't read {}: {}", path.display(), e);
         let mut diag = Diagnostic::new(Level::Fatal, msg);
         if let Some(sp) = spanopt {
-            diag.set_span(sp);
+            diag.span(sp);
         }
         diag
     })

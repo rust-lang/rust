@@ -31,7 +31,7 @@ where
 {
     fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
         let mut diag = self.node.into_diagnostic(dcx, level);
-        diag.set_span(self.span);
+        diag.span(self.span);
         diag
     }
 }
@@ -428,7 +428,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         sp: impl Into<MultiSpan>,
         msg: impl Into<SubdiagnosticMessage>,
     ) -> &mut Self);
-    forward!(pub fn set_is_lint(&mut self,) -> &mut Self);
+    forward!(pub fn is_lint(&mut self,) -> &mut Self);
 
     forward!(pub fn disable_suggestions(&mut self,) -> &mut Self);
 
@@ -499,10 +499,10 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         applicability: Applicability,
     ) -> &mut Self);
 
-    forward!(pub fn set_primary_message(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self);
-    forward!(pub fn set_span(&mut self, sp: impl Into<MultiSpan>) -> &mut Self);
+    forward!(pub fn primary_message(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self);
+    forward!(pub fn span(&mut self, sp: impl Into<MultiSpan>) -> &mut Self);
     forward!(pub fn code(&mut self, s: DiagnosticId) -> &mut Self);
-    forward!(pub fn set_arg(
+    forward!(pub fn arg(
         &mut self,
         name: impl Into<Cow<'static, str>>,
         arg: impl IntoDiagnosticArg,

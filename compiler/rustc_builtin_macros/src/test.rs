@@ -398,7 +398,7 @@ fn not_testable_error(cx: &ExtCtxt<'_>, attr_sp: Span, item: Option<&ast::Item>)
         _ => Level::Error { lint: false },
     };
     let mut err = DiagnosticBuilder::<()>::new(dcx, level, msg);
-    err.set_span(attr_sp);
+    err.span(attr_sp);
     if let Some(item) = item {
         err.span_label(
             item.span,
