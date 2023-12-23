@@ -174,6 +174,8 @@ impl EarlyLintPass for NonAsciiIdents {
 
         // Sort by `Span` so that error messages make sense with respect to the
         // order of identifier locations in the code.
+        // We will soon sort, so the initial order does not matter.
+        #[allow(rustc::potential_query_instability)]
         let mut symbols: Vec<_> = symbols.iter().collect();
         symbols.sort_by_key(|k| k.1);
 
@@ -287,6 +289,8 @@ impl EarlyLintPass for NonAsciiIdents {
             }
 
             if has_suspicious {
+                // The end result is put in `lint_reports` which is sorted.
+                #[allow(rustc::potential_query_instability)]
                 let verified_augmented_script_sets = script_states
                     .iter()
                     .flat_map(|(k, v)| match v {
@@ -299,6 +303,8 @@ impl EarlyLintPass for NonAsciiIdents {
                 let mut lint_reports: BTreeMap<(Span, Vec<char>), AugmentedScriptSet> =
                     BTreeMap::new();
 
+                // The end result is put in `lint_reports` which is sorted.
+                #[allow(rustc::potential_query_instability)]
                 'outerloop: for (augment_script_set, usage) in script_states {
                     let ScriptSetUsage::Suspicious(mut ch_list, sp) = usage else { continue };
 

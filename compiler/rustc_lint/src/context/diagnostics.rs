@@ -197,6 +197,8 @@ pub(super) fn builtin(
                 if let Some(ExpectedValues::Some(best_match_values)) =
                     sess.parse_sess.check_config.expecteds.get(&best_match)
                 {
+                    // We will soon sort, so the initial order does not matter.
+                    #[allow(rustc::potential_query_instability)]
                     let mut possibilities =
                         best_match_values.iter().flatten().map(Symbol::as_str).collect::<Vec<_>>();
                     possibilities.sort();
@@ -298,6 +300,9 @@ pub(super) fn builtin(
                 );
             };
             let mut have_none_possibility = false;
+            // We later sort possibilities if it is not empty, so the
+            // order here does not matter.
+            #[allow(rustc::potential_query_instability)]
             let possibilities: Vec<Symbol> = values
                 .iter()
                 .inspect(|a| have_none_possibility |= a.is_none())
