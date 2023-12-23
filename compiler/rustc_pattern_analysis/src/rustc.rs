@@ -12,7 +12,7 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::{self, Const};
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::{self, Ty, TyCtxt, VariantDef};
+use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt, VariantDef};
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, Integer, VariantIdx, FIRST_VARIANT};
 use smallvec::SmallVec;
@@ -74,8 +74,16 @@ impl<'p, 'tcx> fmt::Debug for RustcMatchCheckCtxt<'p, 'tcx> {
 }
 
 impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
-    pub(crate) fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
-        !ty.is_inhabited_from(self.tcx, self.module, self.param_env)
+    fn reveal_opaque(&self, key: OpaqueTypeKey<'tcx>) -> Option<Ty<'tcx>> {
+        self.typeck_results.concrete_opaque_types.get(&key).map(|x| x.ty)
+    }
+    pub fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
+        !ty.inhabited_predicate(self.tcx).apply_revealing_opaque(
+            self.tcx,
+            self.param_env,
+            self.module,
+            &|key| self.reveal_opaque(key),
+        )
     }
 
     /// Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
@@ -319,7 +327,9 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                         let is_inhabited = v
                             .inhabited_predicate(cx.tcx, *def)
                             .instantiate(cx.tcx, args)
-                            .apply(cx.tcx, cx.param_env, cx.module);
+                            .apply_revealing_opaque(cx.tcx, cx.param_env, cx.module, &|key| {
+                                cx.reveal_opaque(key)
+                            });
                         // Variants that depend on a disabled unstable feature.
                         let is_unstable = matches!(
                             cx.tcx.eval_stability(variant_def_id, None, DUMMY_SP, None),

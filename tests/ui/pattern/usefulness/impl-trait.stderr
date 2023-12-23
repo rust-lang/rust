@@ -23,25 +23,31 @@ LL |             Some(_) => {}
    |             ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/impl-trait.rs:61:13
-   |
-LL |             Some(_) => {}
-   |             ^^^^^^^
-
-error: unreachable pattern
-  --> $DIR/impl-trait.rs:65:13
+  --> $DIR/impl-trait.rs:49:13
    |
 LL |             _ => {}
    |             ^
 
 error: unreachable pattern
-  --> $DIR/impl-trait.rs:78:9
+  --> $DIR/impl-trait.rs:59:13
+   |
+LL |             Some(_) => {}
+   |             ^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/impl-trait.rs:63:13
+   |
+LL |             _ => {}
+   |             ^
+
+error: unreachable pattern
+  --> $DIR/impl-trait.rs:76:9
    |
 LL |         _ => {}
    |         ^
 
 error: unreachable pattern
-  --> $DIR/impl-trait.rs:88:9
+  --> $DIR/impl-trait.rs:86:9
    |
 LL |         _ => {}
    |         - matches any value
@@ -49,24 +55,36 @@ LL |         Some((a, b)) => {}
    |         ^^^^^^^^^^^^ unreachable pattern
 
 error: unreachable pattern
-  --> $DIR/impl-trait.rs:96:13
+  --> $DIR/impl-trait.rs:94:13
    |
 LL |             _ => {}
    |             ^
 
 error: unreachable pattern
-  --> $DIR/impl-trait.rs:107:9
+  --> $DIR/impl-trait.rs:105:9
    |
 LL |         Some((mut x, mut y)) => {
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/impl-trait.rs:126:13
+  --> $DIR/impl-trait.rs:124:13
    |
 LL |             _ => {}
    |             - matches any value
 LL |             Rec { n: 0, w: Some(Rec { n: 0, w: _ }) } => {}
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unreachable pattern
+
+error: unreachable pattern
+  --> $DIR/impl-trait.rs:138:13
+   |
+LL |             _ => {}
+   |             ^
+
+error: unreachable pattern
+  --> $DIR/impl-trait.rs:151:13
+   |
+LL |             _ => {}
+   |             ^
 
 error[E0004]: non-exhaustive patterns: type `impl Copy` is non-empty
   --> $DIR/impl-trait.rs:23:11
@@ -96,6 +114,6 @@ LL +         _ => todo!(),
 LL +     }
    |
 
-error: aborting due to 12 previous errors
+error: aborting due to 15 previous errors
 
 For more information about this error, try `rustc --explain E0004`.
