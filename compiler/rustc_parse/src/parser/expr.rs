@@ -483,7 +483,11 @@ impl<'a> Parser<'a> {
         cur_op_span: Span,
     ) -> PResult<'a, P<Expr>> {
         let rhs = if self.is_at_start_of_range_notation_rhs() {
-            Some(self.parse_expr_assoc_with(prec + 1, LhsExpr::NotYetParsed)?)
+            let maybe_lt = self.token.clone();
+            Some(
+                self.parse_expr_assoc_with(prec + 1, LhsExpr::NotYetParsed)
+                    .map_err(|err| self.maybe_err_dotdotlt_syntax(maybe_lt, err))?,
+            )
         } else {
             None
         };
@@ -532,11 +536,13 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_or_use_outer_attributes(attrs)?;
         self.collect_tokens_for_expr(attrs, |this, attrs| {
             let lo = this.token.span;
+            let maybe_lt = this.look_ahead(1, |t| t.clone());
             this.bump();
             let (span, opt_end) = if this.is_at_start_of_range_notation_rhs() {
                 // RHS must be parsed with more associativity than the dots.
                 this.parse_expr_assoc_with(op.unwrap().precedence() + 1, LhsExpr::NotYetParsed)
-                    .map(|x| (lo.to(x.span), Some(x)))?
+                    .map(|x| (lo.to(x.span), Some(x)))
+                    .map_err(|err| this.maybe_err_dotdotlt_syntax(maybe_lt, err))?
             } else {
                 (lo, None)
             };
