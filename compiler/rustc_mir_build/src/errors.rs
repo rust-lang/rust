@@ -2,7 +2,7 @@ use crate::fluent_generated as fluent;
 use rustc_errors::DiagnosticArgValue;
 use rustc_errors::{
     error_code, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
-    ErrorGuaranteed, IntoDiagnostic, Level, MultiSpan, SubdiagnosticMessage,
+    IntoDiagnostic, Level, MultiSpan, SubdiagnosticMessage,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
@@ -461,11 +461,7 @@ pub(crate) struct NonExhaustivePatternsTypeNotEmpty<'p, 'tcx, 'm> {
 }
 
 impl<'a> IntoDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
-    fn into_diagnostic(
-        self,
-        dcx: &'a DiagCtxt,
-        level: Level,
-    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'_> {
         let mut diag = DiagnosticBuilder::new(
             dcx,
             level,

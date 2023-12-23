@@ -1118,15 +1118,12 @@ impl<'a> ExtCtxt<'a> {
         &self,
         sp: S,
         msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'a> {
         self.sess.dcx().struct_span_err(sp, msg)
     }
 
     #[track_caller]
-    pub fn create_err(
-        &self,
-        err: impl IntoDiagnostic<'a>,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    pub fn create_err(&self, err: impl IntoDiagnostic<'a>) -> DiagnosticBuilder<'a> {
         self.sess.create_err(err)
     }
 
@@ -1230,7 +1227,7 @@ pub fn expr_to_spanned_string<'a>(
     cx: &'a mut ExtCtxt<'_>,
     expr: P<ast::Expr>,
     err_msg: &'static str,
-) -> Result<(Symbol, ast::StrStyle, Span), Option<(DiagnosticBuilder<'a, ErrorGuaranteed>, bool)>> {
+) -> Result<(Symbol, ast::StrStyle, Span), Option<(DiagnosticBuilder<'a>, bool)>> {
     // Perform eager expansion on the expression.
     // We want to be able to handle e.g., `concat!("foo", "bar")`.
     let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();

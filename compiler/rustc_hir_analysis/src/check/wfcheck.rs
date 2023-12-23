@@ -1912,11 +1912,7 @@ fn check_mod_type_wf(tcx: TyCtxt<'_>, module: LocalModDefId) -> Result<(), Error
     res.and(items.par_foreign_items(|item| tcx.ensure().check_well_formed(item.owner_id)))
 }
 
-fn error_392(
-    tcx: TyCtxt<'_>,
-    span: Span,
-    param_name: Symbol,
-) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+fn error_392(tcx: TyCtxt<'_>, span: Span, param_name: Symbol) -> DiagnosticBuilder<'_> {
     let mut err = struct_span_err!(tcx.sess, span, E0392, "parameter `{param_name}` is never used");
     err.span_label(span, "unused parameter");
     err

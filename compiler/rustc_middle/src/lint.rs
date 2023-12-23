@@ -293,19 +293,16 @@ pub fn struct_lint_level(
             },
         );
 
-        let mut err = match (level, span) {
-            (Level::Allow, span) => {
+        // Convert lint level to error level.
+        let err_level = match level {
+            Level::Allow => {
                 if has_future_breakage {
-                    if let Some(span) = span {
-                        sess.struct_span_allow(span, "")
-                    } else {
-                        sess.struct_allow("")
-                    }
+                    rustc_errors::Level::Allow
                 } else {
                     return;
                 }
             }
-            (Level::Expect(expect_id), _) => {
+            Level::Expect(expect_id) => {
                 // This case is special as we actually allow the lint itself in this context, but
                 // we can't return early like in the case for `Level::Allow` because we still
                 // need the lint diagnostic to be emitted to `rustc_error::DiagCtxtInner`.
@@ -313,23 +310,16 @@ pub fn struct_lint_level(
                 // We can also not mark the lint expectation as fulfilled here right away, as it
                 // can still be cancelled in the decorate function. All of this means that we simply
                 // create a `DiagnosticBuilder` and continue as we would for warnings.
-                sess.struct_expect("", expect_id)
+                rustc_errors::Level::Expect(expect_id)
             }
-            (Level::ForceWarn(Some(expect_id)), Some(span)) => {
-                sess.struct_span_warn_with_expectation(span, "", expect_id)
-            }
-            (Level::ForceWarn(Some(expect_id)), None) => {
-                sess.struct_warn_with_expectation("", expect_id)
-            }
-            (Level::Warn | Level::ForceWarn(None), Some(span)) => sess.struct_span_warn(span, ""),
-            (Level::Warn | Level::ForceWarn(None), None) => sess.struct_warn(""),
-            (Level::Deny | Level::Forbid, Some(span)) => {
-                let mut builder = sess.dcx().struct_err_lint("");
-                builder.set_span(span);
-                builder
-            }
-            (Level::Deny | Level::Forbid, None) => sess.dcx().struct_err_lint(""),
+            Level::ForceWarn(Some(expect_id)) => rustc_errors::Level::Warning(Some(expect_id)),
+            Level::Warn | Level::ForceWarn(None) => rustc_errors::Level::Warning(None),
+            Level::Deny | Level::Forbid => rustc_errors::Level::Error { lint: true },
         };
+        let mut err = DiagnosticBuilder::new(sess.dcx(), err_level, "");
+        if let Some(span) = span {
+            err.set_span(span);
+        }
 
         err.set_is_lint();
 

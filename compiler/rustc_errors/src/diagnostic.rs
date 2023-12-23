@@ -103,7 +103,7 @@ pub struct Diagnostic {
     // outside of what methods in this crate themselves allow.
     pub(crate) level: Level,
 
-    pub message: Vec<(DiagnosticMessage, Style)>,
+    pub messages: Vec<(DiagnosticMessage, Style)>,
     pub code: Option<DiagnosticId>,
     pub span: MultiSpan,
     pub children: Vec<SubDiagnostic>,
@@ -161,9 +161,8 @@ pub enum DiagnosticId {
 #[derive(Clone, Debug, PartialEq, Hash, Encodable, Decodable)]
 pub struct SubDiagnostic {
     pub level: Level,
-    pub message: Vec<(DiagnosticMessage, Style)>,
+    pub messages: Vec<(DiagnosticMessage, Style)>,
     pub span: MultiSpan,
-    pub render_span: Option<MultiSpan>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -216,35 +215,15 @@ impl StringPart {
 impl Diagnostic {
     #[track_caller]
     pub fn new<M: Into<DiagnosticMessage>>(level: Level, message: M) -> Self {
-        Diagnostic::new_with_code(level, None, message)
+        Diagnostic::new_with_messages(level, vec![(message.into(), Style::NoStyle)])
     }
 
     #[track_caller]
     pub fn new_with_messages(level: Level, messages: Vec<(DiagnosticMessage, Style)>) -> Self {
         Diagnostic {
             level,
-            message: messages,
+            messages,
             code: None,
-            span: MultiSpan::new(),
-            children: vec![],
-            suggestions: Ok(vec![]),
-            args: Default::default(),
-            sort_span: DUMMY_SP,
-            is_lint: false,
-            emitted_at: DiagnosticLocation::caller(),
-        }
-    }
-
-    #[track_caller]
-    pub(crate) fn new_with_code<M: Into<DiagnosticMessage>>(
-        level: Level,
-        code: Option<DiagnosticId>,
-        message: M,
-    ) -> Self {
-        Diagnostic {
-            level,
-            message: vec![(message.into(), Style::NoStyle)],
-            code,
             span: MultiSpan::new(),
             children: vec![],
             suggestions: Ok(vec![]),
@@ -445,7 +424,7 @@ impl Diagnostic {
     /// Add a note attached to this diagnostic.
     #[rustc_lint_diagnostics]
     pub fn note(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self {
-        self.sub(Level::Note, msg, MultiSpan::new(), None);
+        self.sub(Level::Note, msg, MultiSpan::new());
         self
     }
 
@@ -453,14 +432,14 @@ impl Diagnostic {
         &mut self,
         msg: Vec<(M, Style)>,
     ) -> &mut Self {
-        self.sub_with_highlights(Level::Note, msg, MultiSpan::new(), None);
+        self.sub_with_highlights(Level::Note, msg, MultiSpan::new());
         self
     }
 
     /// Prints the span with a note above it.
     /// This is like [`Diagnostic::note()`], but it gets its own span.
     pub fn note_once(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self {
-        self.sub(Level::OnceNote, msg, MultiSpan::new(), None);
+        self.sub(Level::OnceNote, msg, MultiSpan::new());
         self
     }
 
@@ -472,7 +451,7 @@ impl Diagnostic {
         sp: S,
         msg: impl Into<SubdiagnosticMessage>,
     ) -> &mut Self {
-        self.sub(Level::Note, msg, sp.into(), None);
+        self.sub(Level::Note, msg, sp.into());
         self
     }
 
@@ -483,14 +462,14 @@ impl Diagnostic {
         sp: S,
         msg: impl Into<SubdiagnosticMessage>,
     ) -> &mut Self {
-        self.sub(Level::OnceNote, msg, sp.into(), None);
+        self.sub(Level::OnceNote, msg, sp.into());
         self
     }
 
     /// Add a warning attached to this diagnostic.
     #[rustc_lint_diagnostics]
     pub fn warn(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self {
-        self.sub(Level::Warning(None), msg, MultiSpan::new(), None);
+        self.sub(Level::Warning(None), msg, MultiSpan::new());
         self
     }
 
@@ -502,27 +481,27 @@ impl Diagnostic {
         sp: S,
         msg: impl Into<SubdiagnosticMessage>,
     ) -> &mut Self {
-        self.sub(Level::Warning(None), msg, sp.into(), None);
+        self.sub(Level::Warning(None), msg, sp.into());
         self
     }
 
     /// Add a help message attached to this diagnostic.
     #[rustc_lint_diagnostics]
     pub fn help(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self {
-        self.sub(Level::Help, msg, MultiSpan::new(), None);
+        self.sub(Level::Help, msg, MultiSpan::new());
         self
     }
 
     /// Prints the span with a help above it.
     /// This is like [`Diagnostic::help()`], but it gets its own span.
     pub fn help_once(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self {
-        self.sub(Level::OnceHelp, msg, MultiSpan::new(), None);
+        self.sub(Level::OnceHelp, msg, MultiSpan::new());
         self
     }
 
     /// Add a help message attached to this diagnostic with a customizable highlighted message.
     pub fn highlighted_help(&mut self, msg: Vec<(String, Style)>) -> &mut Self {
-        self.sub_with_highlights(Level::Help, msg, MultiSpan::new(), None);
+        self.sub_with_highlights(Level::Help, msg, MultiSpan::new());
         self
     }
 
@@ -534,7 +513,7 @@ impl Diagnostic {
         sp: S,
         msg: impl Into<SubdiagnosticMessage>,
     ) -> &mut Self {
-        self.sub(Level::Help, msg, sp.into(), None);
+        self.sub(Level::Help, msg, sp.into());
         self
     }
 
@@ -925,7 +904,7 @@ impl Diagnostic {
     }
 
     pub fn set_primary_message(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self {
-        self.message[0] = (msg.into(), Style::NoStyle);
+        self.messages[0] = (msg.into(), Style::NoStyle);
         self
     }
 
@@ -952,8 +931,8 @@ impl Diagnostic {
         self.args = args;
     }
 
-    pub fn styled_message(&self) -> &[(DiagnosticMessage, Style)] {
-        &self.message
+    pub fn messages(&self) -> &[(DiagnosticMessage, Style)] {
+        &self.messages
     }
 
     /// Helper function that takes a `SubdiagnosticMessage` and returns a `DiagnosticMessage` by
@@ -964,7 +943,7 @@ impl Diagnostic {
         attr: impl Into<SubdiagnosticMessage>,
     ) -> DiagnosticMessage {
         let msg =
-            self.message.iter().map(|(msg, _)| msg).next().expect("diagnostic with no messages");
+            self.messages.iter().map(|(msg, _)| msg).next().expect("diagnostic with no messages");
         msg.with_subdiagnostic_message(attr.into())
     }
 
@@ -972,21 +951,14 @@ impl Diagnostic {
     /// public methods above.
     ///
     /// Used by `proc_macro_server` for implementing `server::Diagnostic`.
-    pub fn sub(
-        &mut self,
-        level: Level,
-        message: impl Into<SubdiagnosticMessage>,
-        span: MultiSpan,
-        render_span: Option<MultiSpan>,
-    ) {
+    pub fn sub(&mut self, level: Level, message: impl Into<SubdiagnosticMessage>, span: MultiSpan) {
         let sub = SubDiagnostic {
             level,
-            message: vec![(
+            messages: vec![(
                 self.subdiagnostic_message_to_diagnostic_message(message),
                 Style::NoStyle,
             )],
             span,
-            render_span,
         };
         self.children.push(sub);
     }
@@ -996,15 +968,14 @@ impl Diagnostic {
     fn sub_with_highlights<M: Into<SubdiagnosticMessage>>(
         &mut self,
         level: Level,
-        message: Vec<(M, Style)>,
+        messages: Vec<(M, Style)>,
         span: MultiSpan,
-        render_span: Option<MultiSpan>,
     ) {
-        let message = message
+        let messages = messages
             .into_iter()
             .map(|m| (self.subdiagnostic_message_to_diagnostic_message(m.0), m.1))
             .collect();
-        let sub = SubDiagnostic { level, message, span, render_span };
+        let sub = SubDiagnostic { level, messages, span };
         self.children.push(sub);
     }
 
@@ -1022,7 +993,7 @@ impl Diagnostic {
     ) {
         (
             &self.level,
-            &self.message,
+            &self.messages,
             self.args().collect(),
             &self.code,
             &self.span,

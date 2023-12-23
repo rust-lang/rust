@@ -321,16 +321,6 @@ impl Session {
     }
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_span_warn_with_expectation<S: Into<MultiSpan>>(
-        &self,
-        sp: S,
-        msg: impl Into<DiagnosticMessage>,
-        id: lint::LintExpectationId,
-    ) -> DiagnosticBuilder<'_, ()> {
-        self.dcx().struct_span_warn_with_expectation(sp, msg, id)
-    }
-    #[rustc_lint_diagnostics]
-    #[track_caller]
     pub fn struct_span_warn_with_code<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -343,24 +333,6 @@ impl Session {
     #[track_caller]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
         self.dcx().struct_warn(msg)
-    }
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn struct_warn_with_expectation(
-        &self,
-        msg: impl Into<DiagnosticMessage>,
-        id: lint::LintExpectationId,
-    ) -> DiagnosticBuilder<'_, ()> {
-        self.dcx().struct_warn_with_expectation(msg, id)
-    }
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn struct_span_allow<S: Into<MultiSpan>>(
-        &self,
-        sp: S,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, ()> {
-        self.dcx().struct_span_allow(sp, msg)
     }
     #[rustc_lint_diagnostics]
     #[track_caller]
@@ -382,7 +354,7 @@ impl Session {
         &self,
         sp: S,
         msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'_> {
         self.dcx().struct_span_err(sp, msg)
     }
     #[rustc_lint_diagnostics]
@@ -392,16 +364,13 @@ impl Session {
         sp: S,
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'_> {
         self.dcx().struct_span_err_with_code(sp, msg, code)
     }
     // FIXME: This method should be removed (every error should have an associated error code).
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_err(
-        &self,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    pub fn struct_err(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_> {
         self.parse_sess.struct_err(msg)
     }
     #[track_caller]
@@ -410,7 +379,7 @@ impl Session {
         &self,
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'_> {
         self.dcx().struct_err_with_code(msg, code)
     }
     #[rustc_lint_diagnostics]
@@ -491,10 +460,7 @@ impl Session {
         self.dcx().err(msg)
     }
     #[track_caller]
-    pub fn create_err<'a>(
-        &'a self,
-        err: impl IntoDiagnostic<'a>,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    pub fn create_err<'a>(&'a self, err: impl IntoDiagnostic<'a>) -> DiagnosticBuilder<'a> {
         self.parse_sess.create_err(err)
     }
     #[track_caller]
@@ -502,10 +468,10 @@ impl Session {
         &'a self,
         err: impl IntoDiagnostic<'a>,
         feature: Symbol,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'a> {
         let mut err = self.parse_sess.create_err(err);
         if err.code.is_none() {
-            err.code = std::option::Option::Some(error_code!(E0658));
+            err.code(error_code!(E0658));
         }
         add_feature_diagnostics(&mut err, &self.parse_sess, feature);
         err
@@ -1393,7 +1359,7 @@ pub fn build_session(
     let target_cfg = config::build_target_config(&early_dcx, &sopts, target_override, &sysroot);
     let host_triple = TargetTriple::from_triple(config::host_triple());
     let (host, target_warnings) = Target::search(&host_triple, &sysroot).unwrap_or_else(|e| {
-        early_dcx.early_error(format!("Error loading host specification: {e}"))
+        early_dcx.early_fatal(format!("Error loading host specification: {e}"))
     });
     for warning in target_warnings.warning_messages() {
         early_dcx.early_warn(warning)
@@ -1768,19 +1734,19 @@ impl EarlyDiagCtxt {
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     #[must_use = "ErrorGuaranteed must be returned from `run_compiler` in order to exit with a non-zero status code"]
-    pub fn early_error_no_abort(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
+    pub fn early_err(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
         self.dcx.struct_err(msg).emit()
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub fn early_error(&self, msg: impl Into<DiagnosticMessage>) -> ! {
+    pub fn early_fatal(&self, msg: impl Into<DiagnosticMessage>) -> ! {
         self.dcx.struct_fatal(msg).emit()
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
-    pub fn early_struct_error(
+    pub fn early_struct_fatal(
         &self,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, FatalAbort> {

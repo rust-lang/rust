@@ -312,23 +312,11 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for TargetDataLayoutErrors<'_> 
 pub struct SingleLabelManySpans {
     pub spans: Vec<Span>,
     pub label: &'static str,
-    pub kind: LabelKind,
 }
 impl AddToDiagnostic for SingleLabelManySpans {
     fn add_to_diagnostic_with<F>(self, diag: &mut crate::Diagnostic, _: F) {
-        match self.kind {
-            LabelKind::Note => diag.span_note(self.spans, self.label),
-            LabelKind::Label => diag.span_labels(self.spans, self.label),
-            LabelKind::Help => diag.span_help(self.spans, self.label),
-        };
+        diag.span_labels(self.spans, self.label);
     }
-}
-
-/// The kind of label to attach when using [`SingleLabelManySpans`]
-pub enum LabelKind {
-    Note,
-    Label,
-    Help,
 }
 
 #[derive(Subdiagnostic)]

@@ -3,8 +3,8 @@ use std::borrow::Cow;
 use rustc_ast::token::Token;
 use rustc_ast::{Path, Visibility};
 use rustc_errors::{
-    AddToDiagnostic, Applicability, DiagCtxt, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic,
-    Level, SubdiagnosticMessage,
+    AddToDiagnostic, Applicability, DiagCtxt, DiagnosticBuilder, IntoDiagnostic, Level,
+    SubdiagnosticMessage,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -1043,11 +1043,7 @@ pub(crate) struct ExpectedIdentifier {
 
 impl<'a> IntoDiagnostic<'a> for ExpectedIdentifier {
     #[track_caller]
-    fn into_diagnostic(
-        self,
-        dcx: &'a DiagCtxt,
-        level: Level,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a> {
         let token_descr = TokenDescription::from_token(&self.token);
 
         let mut diag = DiagnosticBuilder::new(
@@ -1107,11 +1103,7 @@ pub(crate) struct ExpectedSemi {
 
 impl<'a> IntoDiagnostic<'a> for ExpectedSemi {
     #[track_caller]
-    fn into_diagnostic(
-        self,
-        dcx: &'a DiagCtxt,
-        level: Level,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a> {
         let token_descr = TokenDescription::from_token(&self.token);
 
         let mut diag = DiagnosticBuilder::new(

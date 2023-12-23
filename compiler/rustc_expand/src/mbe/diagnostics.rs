@@ -215,7 +215,7 @@ impl<'matcher> Tracker<'matcher> for FailureForwarder {
 }
 
 pub(super) fn emit_frag_parse_err(
-    mut e: DiagnosticBuilder<'_, rustc_errors::ErrorGuaranteed>,
+    mut e: DiagnosticBuilder<'_>,
     parser: &Parser<'_>,
     orig_parser: &mut Parser<'_>,
     site_span: Span,
@@ -224,11 +224,11 @@ pub(super) fn emit_frag_parse_err(
 ) {
     // FIXME(davidtwco): avoid depending on the error message text
     if parser.token == token::Eof
-        && let DiagnosticMessage::Str(message) = &e.message[0].0
+        && let DiagnosticMessage::Str(message) = &e.messages[0].0
         && message.ends_with(", found `<eof>`")
     {
-        let msg = &e.message[0];
-        e.message[0] = (
+        let msg = &e.messages[0];
+        e.messages[0] = (
             DiagnosticMessage::from(format!(
                 "macro expansion ends with an incomplete expression: {}",
                 message.replace(", found `<eof>`", ""),

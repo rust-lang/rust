@@ -3,7 +3,7 @@ use std::num::NonZeroU64;
 
 use log::trace;
 
-use rustc_errors::DiagnosticMessage;
+use rustc_errors::{DiagnosticBuilder, DiagnosticMessage, Level};
 use rustc_span::{SpanData, Symbol, DUMMY_SP};
 use rustc_target::abi::{Align, Size};
 
@@ -453,11 +453,13 @@ pub fn report_msg<'tcx>(
 ) {
     let span = stacktrace.first().map_or(DUMMY_SP, |fi| fi.span);
     let sess = machine.tcx.sess;
-    let mut err = match diag_level {
-        DiagLevel::Error => sess.struct_span_err(span, title).forget_guarantee(),
-        DiagLevel::Warning => sess.struct_span_warn(span, title),
-        DiagLevel::Note => sess.dcx().struct_span_note(span, title),
+    let level = match diag_level {
+        DiagLevel::Error => Level::Error { lint: false },
+        DiagLevel::Warning => Level::Warning(None),
+        DiagLevel::Note => Level::Note,
     };
+    let mut err = DiagnosticBuilder::<()>::new(sess.dcx(), level, title);
+    err.set_span(span);
 
     // Show main message.
     if span != DUMMY_SP {

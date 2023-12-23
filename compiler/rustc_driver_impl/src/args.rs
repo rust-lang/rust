@@ -28,7 +28,7 @@ pub fn arg_expand_all(early_dcx: &EarlyDiagCtxt, at_args: &[String]) -> Vec<Stri
     for arg in at_args {
         match arg_expand(arg.clone()) {
             Ok(arg) => args.extend(arg),
-            Err(err) => early_dcx.early_error(format!("Failed to load argument file: {err}")),
+            Err(err) => early_dcx.early_fatal(format!("Failed to load argument file: {err}")),
         }
     }
     args

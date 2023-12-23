@@ -551,7 +551,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         &mut self,
         span: Span,
         resolution_error: ResolutionError<'a>,
-    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'_> {
         match resolution_error {
             ResolutionError::GenericParamsFromOuterItem(outer_res, has_generic_params) => {
                 use errs::GenericParamsFromOuterItemLabel as Label;
