@@ -3,7 +3,7 @@ use clippy_utils::source::{position_before_rarrow, snippet_block, snippet_opt};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    Block, Body, Closure, CoroutineKind, CoroutineSource, Expr, ExprKind, FnDecl, FnRetTy, GenericArg, GenericBound,
+    Block, Body, Closure, CoroutineKind, CoroutineSource, CoroutineDesugaring, Expr, ExprKind, FnDecl, FnRetTy, GenericArg, GenericBound,
     ImplItem, Item, ItemKind, LifetimeName, Node, Term, TraitRef, Ty, TyKind, TypeBindingKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
@@ -178,7 +178,7 @@ fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>)
             ..
         } = block_expr
         && let closure_body = cx.tcx.hir().body(body)
-        && closure_body.coroutine_kind == Some(CoroutineKind::Async(CoroutineSource::Block))
+        && closure_body.coroutine_kind == Some(CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Block))
     {
         return Some(closure_body);
     }

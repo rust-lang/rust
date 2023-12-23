@@ -670,7 +670,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let params = arena_vec![self; param];
 
         let body = self.lower_body(move |this| {
-            this.coroutine_kind = Some(hir::CoroutineKind::Async(async_coroutine_source));
+            this.coroutine_kind = Some(hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Async,
+                async_coroutine_source,
+            ));
 
             let old_ctx = this.task_context;
             this.task_context = Some(task_context_hid);
@@ -724,7 +727,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
 
         let body = self.lower_body(move |this| {
-            this.coroutine_kind = Some(hir::CoroutineKind::Gen(coroutine_source));
+            this.coroutine_kind = Some(hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Gen,
+                coroutine_source,
+            ));
 
             let res = body(this);
             (&[], res)
@@ -802,7 +808,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let params = arena_vec![self; param];
 
         let body = self.lower_body(move |this| {
-            this.coroutine_kind = Some(hir::CoroutineKind::AsyncGen(async_coroutine_source));
+            this.coroutine_kind = Some(hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::AsyncGen,
+                async_coroutine_source,
+            ));
 
             let old_ctx = this.task_context;
             this.task_context = Some(task_context_hid);
@@ -888,9 +897,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let full_span = expr.span.to(await_kw_span);
 
         let is_async_gen = match self.coroutine_kind {
-            Some(hir::CoroutineKind::Async(_)) => false,
-            Some(hir::CoroutineKind::AsyncGen(_)) => true,
-            Some(hir::CoroutineKind::Coroutine) | Some(hir::CoroutineKind::Gen(_)) | None => {
+            Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) => false,
+            Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)) => true,
+            Some(hir::CoroutineKind::Coroutine)
+            | Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _))
+            | None => {
                 return hir::ExprKind::Err(self.tcx.sess.emit_err(AwaitOnlyInAsyncFnAndBlocks {
                     await_kw_span,
                     item_span: self.current_item,
@@ -1123,9 +1134,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 Some(movability)
             }
             Some(
-                hir::CoroutineKind::Gen(_)
-                | hir::CoroutineKind::Async(_)
-                | hir::CoroutineKind::AsyncGen(_),
+                hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)
+                | hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)
+                | hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _),
             ) => {
                 panic!("non-`async`/`gen` closure body turned `async`/`gen` during lowering");
             }
@@ -1638,9 +1649,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_expr_yield(&mut self, span: Span, opt_expr: Option<&Expr>) -> hir::ExprKind<'hir> {
         let is_async_gen = match self.coroutine_kind {
-            Some(hir::CoroutineKind::Gen(_)) => false,
-            Some(hir::CoroutineKind::AsyncGen(_)) => true,
-            Some(hir::CoroutineKind::Async(_)) => {
+            Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)) => false,
+            Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)) => true,
+            Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) => {
                 return hir::ExprKind::Err(
                     self.tcx.sess.emit_err(AsyncCoroutinesNotSupported { span }),
                 );
@@ -1803,7 +1814,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     arena_vec![self; head],
                 )
             }
-            ForLoopKind::ForAwait => self.arena.alloc(head),
+            // ` unsafe { Pin::new_unchecked(&mut into_async_iter(<head>)) }`
+            ForLoopKind::ForAwait => {
+                // `::core::async_iter::IntoAsyncIterator::into_async_iter(<head>)`
+                let iter = self.expr_call_lang_item_fn(
+                    head_span,
+                    hir::LangItem::IntoAsyncIterIntoIter,
+                    arena_vec![self; head],
+                );
+                let iter = self.expr_mut_addr_of(head_span, iter);
+                // `Pin::new_unchecked(...)`
+                let iter = self.arena.alloc(self.expr_call_lang_item_fn_mut(
+                    head_span,
+                    hir::LangItem::PinNewUnchecked,
+                    arena_vec![self; iter],
+                ));
+                // `unsafe { ... }`
+                let iter = self.arena.alloc(self.expr_unsafe(iter));
+                iter
+            }
         };
 
         let match_expr = self.arena.alloc(self.expr_match(

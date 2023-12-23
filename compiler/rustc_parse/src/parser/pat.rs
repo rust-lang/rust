@@ -18,7 +18,7 @@ use rustc_ast::{
     PatField, PatKind, Path, QSelf, RangeEnd, RangeSyntax,
 };
 use rustc_ast_pretty::pprust;
-use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
+use rustc_errors::{Applicability, DiagnosticBuilder, PResult};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
@@ -687,7 +687,7 @@ impl<'a> Parser<'a> {
 
     fn fatal_unexpected_non_pat(
         &mut self,
-        err: DiagnosticBuilder<'a, ErrorGuaranteed>,
+        err: DiagnosticBuilder<'a>,
         expected: Option<Expected>,
     ) -> PResult<'a, P<Pat>> {
         err.cancel();
@@ -969,7 +969,7 @@ impl<'a> Parser<'a> {
         let mut fields = ThinVec::new();
         let mut etc = false;
         let mut ate_comma = true;
-        let mut delayed_err: Option<DiagnosticBuilder<'a, ErrorGuaranteed>> = None;
+        let mut delayed_err: Option<DiagnosticBuilder<'a>> = None;
         let mut first_etc_and_maybe_comma_span = None;
         let mut last_non_comma_dotdot_span = None;
 
@@ -1135,7 +1135,7 @@ impl<'a> Parser<'a> {
     fn recover_misplaced_pattern_modifiers(
         &self,
         fields: &ThinVec<PatField>,
-        err: &mut DiagnosticBuilder<'a, ErrorGuaranteed>,
+        err: &mut DiagnosticBuilder<'a>,
     ) {
         if let Some(last) = fields.iter().last()
             && last.is_shorthand

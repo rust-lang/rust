@@ -54,11 +54,7 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
     visitor.error
 }
 
-fn create_e0004(
-    sess: &Session,
-    sp: Span,
-    error_message: String,
-) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+fn create_e0004(sess: &Session, sp: Span, error_message: String) -> DiagnosticBuilder<'_> {
     struct_span_err!(sess, sp, E0004, "{}", &error_message)
 }
 
@@ -860,7 +856,7 @@ fn report_arm_reachability<'p, 'tcx>(
     for (arm, is_useful) in report.arm_usefulness.iter() {
         match is_useful {
             Usefulness::Redundant => {
-                report_unreachable_pattern(*arm.pat.data(), arm.arm_data, catchall)
+                report_unreachable_pattern(*arm.pat.data().unwrap(), arm.arm_data, catchall)
             }
             Usefulness::Useful(redundant_subpats) if redundant_subpats.is_empty() => {}
             // The arm is reachable, but contains redundant subpatterns (from or-patterns).
@@ -869,12 +865,12 @@ fn report_arm_reachability<'p, 'tcx>(
                 // Emit lints in the order in which they occur in the file.
                 redundant_subpats.sort_unstable_by_key(|pat| pat.data());
                 for pat in redundant_subpats {
-                    report_unreachable_pattern(*pat.data(), arm.arm_data, None);
+                    report_unreachable_pattern(*pat.data().unwrap(), arm.arm_data, None);
                 }
             }
         }
         if !arm.has_guard && catchall.is_none() && pat_is_catchall(arm.pat) {
-            catchall = Some(*arm.pat.data());
+            catchall = Some(*arm.pat.data().unwrap());
         }
     }
 }

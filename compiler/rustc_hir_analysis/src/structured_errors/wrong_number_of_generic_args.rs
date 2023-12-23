@@ -1,7 +1,6 @@
 use crate::structured_errors::StructuredDiagnostic;
 use rustc_errors::{
-    pluralize, Applicability, Diagnostic, DiagnosticBuilder, DiagnosticId, ErrorGuaranteed,
-    MultiSpan,
+    pluralize, Applicability, Diagnostic, DiagnosticBuilder, DiagnosticId, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_middle::ty::{self as ty, AssocItems, AssocKind, TyCtxt};
@@ -521,7 +520,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         }
     }
 
-    fn start_diagnostics(&self) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    fn start_diagnostics(&self) -> DiagnosticBuilder<'tcx> {
         let span = self.path_segment.ident.span;
         let msg = self.create_error_message();
 
@@ -1113,7 +1112,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for WrongNumberOfGenericArgs<'_, 'tcx> {
         rustc_errors::error_code!(E0107)
     }
 
-    fn diagnostic_common(&self) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    fn diagnostic_common(&self) -> DiagnosticBuilder<'tcx> {
         let mut err = self.start_diagnostics();
 
         self.notify(&mut err);

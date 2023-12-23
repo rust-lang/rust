@@ -569,8 +569,10 @@ pub fn ensure_sufficient_stack<R>(f: impl FnOnce() -> R) -> R {
 }
 
 /// Context that provides information local to a place under investigation.
-#[derive(Clone)]
+#[derive(derivative::Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""), Copy(bound = ""))]
 pub(crate) struct PlaceCtxt<'a, 'p, Cx: TypeCx> {
+    #[derivative(Debug = "ignore")]
     pub(crate) mcx: MatchCtxt<'a, 'p, Cx>,
     /// Type of the place under investigation.
     pub(crate) ty: Cx::Ty,
@@ -593,14 +595,6 @@ impl<'a, 'p, Cx: TypeCx> PlaceCtxt<'a, 'p, Cx> {
     }
     pub(crate) fn ctors_for_ty(&self) -> ConstructorSet<Cx> {
         self.mcx.tycx.ctors_for_ty(self.ty)
-    }
-}
-
-impl<'a, 'p, Cx: TypeCx> Copy for PlaceCtxt<'a, 'p, Cx> {}
-
-impl<'a, 'p, Cx: TypeCx> fmt::Debug for PlaceCtxt<'a, 'p, Cx> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("PlaceCtxt").field("ty", &self.ty).finish()
     }
 }
 
@@ -670,7 +664,8 @@ impl fmt::Display for ValidityConstraint {
 // - 'a allocated by us
 // - 'p coming from the input
 // - Cx global compilation context
-#[derive(Clone)]
+#[derive(derivative::Derivative)]
+#[derivative(Clone(bound = ""))]
 struct PatStack<'a, 'p, Cx: TypeCx> {
     // Rows of len 1 are very common, which is why `SmallVec[_; 2]` works well.
     pats: SmallVec<[&'a DeconstructedPat<'p, Cx>; 2]>,
@@ -845,8 +840,7 @@ impl<'a, 'p, Cx: TypeCx> Matrix<'a, 'p, Cx> {
         scrut_ty: Cx::Ty,
         scrut_validity: ValidityConstraint,
     ) -> Self {
-        let wild_pattern =
-            wildcard_arena.alloc(DeconstructedPat::wildcard(scrut_ty, Default::default()));
+        let wild_pattern = wildcard_arena.alloc(DeconstructedPat::wildcard(scrut_ty));
         let wildcard_row = PatStack::from_pattern(wild_pattern);
         let mut matrix = Matrix {
             rows: Vec::with_capacity(arms.len()),
@@ -1022,7 +1016,8 @@ impl<'a, 'p, Cx: TypeCx> fmt::Debug for Matrix<'a, 'p, Cx> {
 /// The final `Pair(Some(_), true)` is then the resulting witness.
 ///
 /// See the top of the file for more detailed explanations and examples.
-#[derive(Debug, Clone)]
+#[derive(derivative::Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 struct WitnessStack<Cx: TypeCx>(Vec<WitnessPat<Cx>>);
 
 impl<Cx: TypeCx> WitnessStack<Cx> {
@@ -1069,7 +1064,8 @@ impl<Cx: TypeCx> WitnessStack<Cx> {
 ///
 /// Just as the `Matrix` starts with a single column, by the end of the algorithm, this has a single
 /// column, which contains the patterns that are missing for the match to be exhaustive.
-#[derive(Debug, Clone)]
+#[derive(derivative::Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 struct WitnessMatrix<Cx: TypeCx>(Vec<WitnessStack<Cx>>);
 
 impl<Cx: TypeCx> WitnessMatrix<Cx> {

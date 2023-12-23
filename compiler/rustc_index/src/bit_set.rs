@@ -502,6 +502,7 @@ impl<T: Idx> ChunkedBitSet<T> {
                     };
                     #[cfg(not(feature = "nightly"))]
                     let mut words = {
+                        // FIXME: unconditionally use `Rc::new_zeroed` once it is stable (#63291).
                         let words = mem::MaybeUninit::<[Word; CHUNK_WORDS]>::zeroed();
                         // SAFETY: `words` can safely be all zeroes.
                         let words = unsafe { words.assume_init() };
@@ -567,6 +568,7 @@ impl<T: Idx> ChunkedBitSet<T> {
                     };
                     #[cfg(not(feature = "nightly"))]
                     let mut words = {
+                        // FIXME: unconditionally use `Rc::new_zeroed` once it is stable (#63291).
                         let words = mem::MaybeUninit::<[Word; CHUNK_WORDS]>::zeroed();
                         // SAFETY: `words` can safely be all zeroes.
                         let words = unsafe { words.assume_init() };

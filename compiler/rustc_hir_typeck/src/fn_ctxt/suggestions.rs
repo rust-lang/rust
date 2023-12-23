@@ -17,8 +17,8 @@ use rustc_hir::def::Res;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
-    CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId, Node, Path, QPath, Stmt,
-    StmtKind, TyKind, WherePredicate,
+    CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId, Node,
+    Path, QPath, Stmt, StmtKind, TyKind, WherePredicate,
 };
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::traits::{self, StatementAsExpression};
@@ -549,7 +549,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Coroutine(def_id, ..)
                     if matches!(
                         self.tcx.coroutine_kind(def_id),
-                        Some(CoroutineKind::Async(CoroutineSource::Closure))
+                        Some(CoroutineKind::Desugared(
+                            CoroutineDesugaring::Async,
+                            CoroutineSource::Closure
+                        ))
                     ) =>
                 {
                     errors::SuggestBoxing::AsyncBody

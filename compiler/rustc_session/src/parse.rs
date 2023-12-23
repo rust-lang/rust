@@ -83,7 +83,7 @@ pub fn feature_err(
     feature: Symbol,
     span: impl Into<MultiSpan>,
     explain: impl Into<DiagnosticMessage>,
-) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+) -> DiagnosticBuilder<'_> {
     feature_err_issue(sess, feature, span, GateIssue::Language, explain)
 }
 
@@ -98,7 +98,7 @@ pub fn feature_err_issue(
     span: impl Into<MultiSpan>,
     issue: GateIssue,
     explain: impl Into<DiagnosticMessage>,
-) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+) -> DiagnosticBuilder<'_> {
     let span = span.into();
 
     // Cancel an earlier warning for this same error, if it exists.
@@ -318,10 +318,7 @@ impl ParseSess {
     }
 
     #[track_caller]
-    pub fn create_err<'a>(
-        &'a self,
-        err: impl IntoDiagnostic<'a>,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    pub fn create_err<'a>(&'a self, err: impl IntoDiagnostic<'a>) -> DiagnosticBuilder<'a> {
         err.into_diagnostic(&self.dcx, Level::Error { lint: false })
     }
 
@@ -371,10 +368,7 @@ impl ParseSess {
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_err(
-        &self,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+    pub fn struct_err(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_> {
         self.dcx.struct_err(msg)
     }
 

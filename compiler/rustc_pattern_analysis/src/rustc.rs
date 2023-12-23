@@ -416,7 +416,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                     ty::Tuple(fs) => {
                         ctor = Struct;
                         let mut wilds: SmallVec<[_; 2]> =
-                            fs.iter().map(|ty| DeconstructedPat::wildcard(ty, pat.span)).collect();
+                            fs.iter().map(|ty| DeconstructedPat::wildcard(ty)).collect();
                         for pat in subpatterns {
                             wilds[pat.field.index()] = self.lower_pat(&pat.pattern);
                         }
@@ -439,7 +439,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                         let pat = if let Some(pat) = pattern {
                             self.lower_pat(&pat.pattern)
                         } else {
-                            DeconstructedPat::wildcard(args.type_at(0), pat.span)
+                            DeconstructedPat::wildcard(args.type_at(0))
                         };
                         ctor = Struct;
                         fields = singleton(pat);
@@ -464,7 +464,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                                 ty
                             });
                         let mut wilds: SmallVec<[_; 2]> =
-                            tys.map(|ty| DeconstructedPat::wildcard(ty, pat.span)).collect();
+                            tys.map(|ty| DeconstructedPat::wildcard(ty)).collect();
                         for pat in subpatterns {
                             if let Some(i) = field_id_to_id[pat.field.index()] {
                                 wilds[i] = self.lower_pat(&pat.pattern);

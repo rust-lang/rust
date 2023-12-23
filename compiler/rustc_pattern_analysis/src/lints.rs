@@ -203,7 +203,7 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
                 };
 
                 use rustc_errors::DecorateLint;
-                let mut err = rcx.tcx.sess.struct_span_warn(*arm.pat.data(), "");
+                let mut err = rcx.tcx.sess.struct_span_warn(*arm.pat.data().unwrap(), "");
                 err.set_primary_message(decorator.msg());
                 decorator.decorate_lint(&mut err);
                 err.emit();
@@ -253,8 +253,8 @@ pub(crate) fn lint_overlapping_range_endpoints<'a, 'p, 'tcx>(
                 let mut suffixes: SmallVec<[_; 1]> = Default::default();
                 // Iterate on patterns that contained `overlap`.
                 for pat in column.iter() {
-                    let this_span = *pat.data();
                     let Constructor::IntRange(this_range) = pat.ctor() else { continue };
+                    let this_span = *pat.data().unwrap();
                     if this_range.is_singleton() {
                         // Don't lint when one of the ranges is a singleton.
                         continue;

@@ -345,7 +345,7 @@ fn run_compiler(
         Ok(None) => match matches.free.len() {
             0 => false, // no input: we will exit early
             1 => panic!("make_input should have provided valid inputs"),
-            _ => default_early_dcx.early_error(format!(
+            _ => default_early_dcx.early_fatal(format!(
                 "multiple input filenames provided (first two filenames are `{}` and `{}`)",
                 matches.free[0], matches.free[1],
             )),
@@ -376,7 +376,7 @@ fn run_compiler(
         }
 
         if !has_input {
-            early_dcx.early_error("no input filename given"); // this is fatal
+            early_dcx.early_fatal("no input filename given"); // this is fatal
         }
 
         if !sess.opts.unstable_opts.ls.is_empty() {
@@ -505,9 +505,8 @@ fn make_input(
             if io::stdin().read_to_string(&mut src).is_err() {
                 // Immediately stop compilation if there was an issue reading
                 // the input (for example if the input stream is not UTF-8).
-                let reported = early_dcx.early_error_no_abort(
-                    "couldn't read from stdin, as it did not contain valid UTF-8",
-                );
+                let reported = early_dcx
+                    .early_err("couldn't read from stdin, as it did not contain valid UTF-8");
                 return Err(reported);
             }
             if let Ok(path) = env::var("UNSTABLE_RUSTDOC_TEST_PATH") {
@@ -567,7 +566,7 @@ fn handle_explain(early_dcx: &EarlyDiagCtxt, registry: Registry, code: &str, col
             }
         }
         Err(InvalidErrorCode) => {
-            early_dcx.early_error(format!("{code} is not a valid error code"));
+            early_dcx.early_fatal(format!("{code} is not a valid error code"));
         }
     }
 }
@@ -685,7 +684,7 @@ fn list_metadata(early_dcx: &EarlyDiagCtxt, sess: &Session, metadata_loader: &dy
             safe_println!("{}", String::from_utf8(v).unwrap());
         }
         Input::Str { .. } => {
-            early_dcx.early_error("cannot list metadata for stdin");
+            early_dcx.early_fatal("cannot list metadata for stdin");
         }
     }
 }
@@ -839,7 +838,7 @@ fn print_crate_info(
                     println_info!("deployment_target={}", format!("{major}.{minor}"))
                 } else {
                     early_dcx
-                        .early_error("only Apple targets currently support deployment version info")
+                        .early_fatal("only Apple targets currently support deployment version info")
                 }
             }
         }
@@ -1182,7 +1181,7 @@ pub fn handle_options(early_dcx: &EarlyDiagCtxt, args: &[String]) -> Option<geto
                 .map(|(flag, _)| format!("{e}. Did you mean `-{flag} {opt}`?")),
             _ => None,
         };
-        early_dcx.early_error(msg.unwrap_or_else(|| e.to_string()));
+        early_dcx.early_fatal(msg.unwrap_or_else(|| e.to_string()));
     });
 
     // For all options we just parsed, we check a few aspects:
@@ -1333,7 +1332,7 @@ pub fn install_ice_hook(
                 {
                     // the error code is already going to be reported when the panic unwinds up the stack
                     let early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
-                    let _ = early_dcx.early_error_no_abort(msg.clone());
+                    let _ = early_dcx.early_err(msg.clone());
                     return;
                 }
             };
@@ -1481,7 +1480,7 @@ pub fn init_rustc_env_logger(early_dcx: &EarlyDiagCtxt) {
 /// the values directly rather than having to set an environment variable.
 pub fn init_logger(early_dcx: &EarlyDiagCtxt, cfg: rustc_log::LoggerConfig) {
     if let Err(error) = rustc_log::init_logger(cfg) {
-        early_dcx.early_error(error.to_string());
+        early_dcx.early_fatal(error.to_string());
     }
 }
 
@@ -1500,7 +1499,7 @@ pub fn main() -> ! {
             .enumerate()
             .map(|(i, arg)| {
                 arg.into_string().unwrap_or_else(|arg| {
-                    early_dcx.early_error(format!("argument {i} is not valid Unicode: {arg:?}"))
+                    early_dcx.early_fatal(format!("argument {i} is not valid Unicode: {arg:?}"))
                 })
             })
             .collect::<Vec<_>>();

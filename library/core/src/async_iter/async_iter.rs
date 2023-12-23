@@ -135,3 +135,26 @@ impl<T> Poll<Option<T>> {
     #[lang = "AsyncGenFinished"]
     pub const FINISHED: Self = Poll::Ready(None);
 }
+
+/// Convert something into an async iterator
+#[unstable(feature = "async_iterator", issue = "79024")]
+pub trait IntoAsyncIterator {
+    /// The type of the item yielded by the iterator
+    type Item;
+    /// The type of the resulting iterator
+    type IntoAsyncIter: AsyncIterator<Item = Self::Item>;
+
+    /// Converts `self` into an async iterator
+    #[cfg_attr(not(bootstrap), lang = "into_async_iter_into_iter")]
+    fn into_async_iter(self) -> Self::IntoAsyncIter;
+}
+
+#[unstable(feature = "async_iterator", issue = "79024")]
+impl<I: AsyncIterator> IntoAsyncIterator for I {
+    type Item = I::Item;
+    type IntoAsyncIter = I;
+
+    fn into_async_iter(self) -> Self::IntoAsyncIter {
+        self
+    }
+}
