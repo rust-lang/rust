@@ -107,7 +107,7 @@ fn poke_platypus() {}
 fn tame_lion() {}
 
 // This is UNEXPECTED, because 'windows' is a well known condition name,
-// and because 'windows' doens't take any values,
+// and because 'windows' doesn't take any values,
 // and will cause a compiler warning (by default).
 #[cfg(windows = "unix")]
 fn tame_windows() {}

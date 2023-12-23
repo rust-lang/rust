@@ -1427,7 +1427,7 @@ impl<'a> State<'a> {
                 }
                 self.nbsp();
                 self.word("{");
-                let empty = fields.is_empty() && !etc;
+                let empty = fields.is_empty() && *etc == ast::PatFieldsRest::None;
                 if !empty {
                     self.space();
                 }
@@ -1445,7 +1445,7 @@ impl<'a> State<'a> {
                     },
                     |f| f.pat.span,
                 );
-                if *etc {
+                if *etc == ast::PatFieldsRest::Rest {
                     if !fields.is_empty() {
                         self.word_space(",");
                     }
