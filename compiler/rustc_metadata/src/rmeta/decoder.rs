@@ -88,8 +88,6 @@ pub(crate) struct CrateMetadata {
     alloc_decoding_state: AllocDecodingState,
     /// Caches decoded `DefKey`s.
     def_key_cache: Lock<FxHashMap<DefIndex, DefKey>>,
-    /// Caches decoded `DefPathHash`es.
-    def_path_hash_cache: Lock<FxHashMap<DefIndex, DefPathHash>>,
 
     // --- Other significant crate properties ---
     /// ID of this crate, from the current compilation session's point of view.
@@ -1485,27 +1483,16 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         DefPath::make(self.cnum, id, |parent| self.def_key(parent))
     }
 
-    fn def_path_hash_unlocked(
-        self,
-        index: DefIndex,
-        def_path_hashes: &mut FxHashMap<DefIndex, DefPathHash>,
-    ) -> DefPathHash {
-        *def_path_hashes.entry(index).or_insert_with(|| {
-            // This is a hack to workaround the fact that we can't easily encode/decode a Hash64
-            // into the FixedSizeEncoding, as Hash64 lacks a Default impl. A future refactor to
-            // relax the Default restriction will likely fix this.
-            let fingerprint = Fingerprint::new(
-                self.root.stable_crate_id.as_u64(),
-                self.root.tables.def_path_hashes.get(self, index),
-            );
-            DefPathHash::new(self.root.stable_crate_id, fingerprint.split().1)
-        })
-    }
-
     #[inline]
     fn def_path_hash(self, index: DefIndex) -> DefPathHash {
-        let mut def_path_hashes = self.def_path_hash_cache.lock();
-        self.def_path_hash_unlocked(index, &mut def_path_hashes)
+        // This is a hack to workaround the fact that we can't easily encode/decode a Hash64
+        // into the FixedSizeEncoding, as Hash64 lacks a Default impl. A future refactor to
+        // relax the Default restriction will likely fix this.
+        let fingerprint = Fingerprint::new(
+            self.root.stable_crate_id.as_u64(),
+            self.root.tables.def_path_hashes.get(self, index),
+        );
+        DefPathHash::new(self.root.stable_crate_id, fingerprint.split().1)
     }
 
     #[inline]
@@ -1832,7 +1819,6 @@ impl CrateMetadata {
             extern_crate: Lock::new(None),
             hygiene_context: Default::default(),
             def_key_cache: Default::default(),
-            def_path_hash_cache: Default::default(),
         };
 
         // Need `CrateMetadataRef` to decode `DefId`s in simplified types.
