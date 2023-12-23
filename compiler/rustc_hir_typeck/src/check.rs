@@ -59,7 +59,8 @@ pub(super) fn check_fn<'a, 'tcx>(
         && can_be_coroutine.is_some()
     {
         let yield_ty = match kind {
-            hir::CoroutineKind::Gen(..) | hir::CoroutineKind::Coroutine => {
+            hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)
+            | hir::CoroutineKind::Coroutine => {
                 let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::TypeInference,
                     span,
@@ -71,7 +72,7 @@ pub(super) fn check_fn<'a, 'tcx>(
             // guide inference on the yield type so that we can handle `AsyncIterator`
             // in this block in projection correctly. In the new trait solver, it is
             // not a problem.
-            hir::CoroutineKind::AsyncGen(..) => {
+            hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _) => {
                 let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::TypeInference,
                     span,
@@ -89,7 +90,7 @@ pub(super) fn check_fn<'a, 'tcx>(
                     .into()]),
                 )
             }
-            hir::CoroutineKind::Async(..) => Ty::new_unit(tcx),
+            hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _) => Ty::new_unit(tcx),
         };
 
         // Resume type defaults to `()` if the coroutine has no argument.

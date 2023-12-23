@@ -206,16 +206,16 @@ fixed_size_enum! {
 
 fixed_size_enum! {
     hir::CoroutineKind {
-        ( Coroutine                               )
-        ( Gen(hir::CoroutineSource::Block)        )
-        ( Gen(hir::CoroutineSource::Fn)           )
-        ( Gen(hir::CoroutineSource::Closure)      )
-        ( Async(hir::CoroutineSource::Block)      )
-        ( Async(hir::CoroutineSource::Fn)         )
-        ( Async(hir::CoroutineSource::Closure)    )
-        ( AsyncGen(hir::CoroutineSource::Block)   )
-        ( AsyncGen(hir::CoroutineSource::Fn)      )
-        ( AsyncGen(hir::CoroutineSource::Closure) )
+        ( Coroutine                                                                    )
+        ( Desugared(hir::CoroutineDesugaring::Gen, hir::CoroutineSource::Block)        )
+        ( Desugared(hir::CoroutineDesugaring::Gen, hir::CoroutineSource::Fn)           )
+        ( Desugared(hir::CoroutineDesugaring::Gen, hir::CoroutineSource::Closure)      )
+        ( Desugared(hir::CoroutineDesugaring::Async, hir::CoroutineSource::Block)      )
+        ( Desugared(hir::CoroutineDesugaring::Async, hir::CoroutineSource::Fn)         )
+        ( Desugared(hir::CoroutineDesugaring::Async, hir::CoroutineSource::Closure)    )
+        ( Desugared(hir::CoroutineDesugaring::AsyncGen, hir::CoroutineSource::Block)   )
+        ( Desugared(hir::CoroutineDesugaring::AsyncGen, hir::CoroutineSource::Fn)      )
+        ( Desugared(hir::CoroutineDesugaring::AsyncGen, hir::CoroutineSource::Closure) )
     }
 }
 

@@ -1,3 +1,5 @@
+// ignore-tidy-filelength :(
+
 use super::on_unimplemented::{AppendConstMessage, OnUnimplementedNote, TypeErrCtxtExt as _};
 use super::suggestions::{get_explanation_based_on_obligation, TypeErrCtxtExt as _};
 use crate::errors::{ClosureFnMutLabel, ClosureFnOnceLabel, ClosureKindMismatch};
@@ -1926,15 +1928,42 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn describe_coroutine(&self, body_id: hir::BodyId) -> Option<&'static str> {
         self.tcx.hir().body(body_id).coroutine_kind.map(|coroutine_source| match coroutine_source {
             hir::CoroutineKind::Coroutine => "a coroutine",
-            hir::CoroutineKind::Async(hir::CoroutineSource::Block) => "an async block",
-            hir::CoroutineKind::Async(hir::CoroutineSource::Fn) => "an async function",
-            hir::CoroutineKind::Async(hir::CoroutineSource::Closure) => "an async closure",
-            hir::CoroutineKind::AsyncGen(hir::CoroutineSource::Block) => "an async gen block",
-            hir::CoroutineKind::AsyncGen(hir::CoroutineSource::Fn) => "an async gen function",
-            hir::CoroutineKind::AsyncGen(hir::CoroutineSource::Closure) => "an async gen closure",
-            hir::CoroutineKind::Gen(hir::CoroutineSource::Block) => "a gen block",
-            hir::CoroutineKind::Gen(hir::CoroutineSource::Fn) => "a gen function",
-            hir::CoroutineKind::Gen(hir::CoroutineSource::Closure) => "a gen closure",
+            hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Async,
+                hir::CoroutineSource::Block,
+            ) => "an async block",
+            hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Async,
+                hir::CoroutineSource::Fn,
+            ) => "an async function",
+            hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Async,
+                hir::CoroutineSource::Closure,
+            ) => "an async closure",
+            hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::AsyncGen,
+                hir::CoroutineSource::Block,
+            ) => "an async gen block",
+            hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::AsyncGen,
+                hir::CoroutineSource::Fn,
+            ) => "an async gen function",
+            hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::AsyncGen,
+                hir::CoroutineSource::Closure,
+            ) => "an async gen closure",
+            hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Gen,
+                hir::CoroutineSource::Block,
+            ) => "a gen block",
+            hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Gen,
+                hir::CoroutineSource::Fn,
+            ) => "a gen function",
+            hir::CoroutineKind::Desugared(
+                hir::CoroutineDesugaring::Gen,
+                hir::CoroutineSource::Closure,
+            ) => "a gen closure",
         })
     }
 

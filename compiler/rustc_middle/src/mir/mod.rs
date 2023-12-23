@@ -17,7 +17,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_errors::{DiagnosticArgValue, DiagnosticMessage, ErrorGuaranteed, IntoDiagnosticArg};
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_ID};
-use rustc_hir::{self, CoroutineKind, ImplicitSelfKind};
+use rustc_hir::{self, CoroutineDesugaring, CoroutineKind, ImplicitSelfKind};
 use rustc_hir::{self as hir, HirId};
 use rustc_session::Session;
 use rustc_target::abi::{FieldIdx, VariantIdx};

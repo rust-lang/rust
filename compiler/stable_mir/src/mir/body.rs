@@ -288,27 +288,33 @@ impl AssertMessage {
             AssertMessage::ResumedAfterReturn(CoroutineKind::Coroutine) => {
                 Ok("coroutine resumed after completion")
             }
-            AssertMessage::ResumedAfterReturn(CoroutineKind::Async(_)) => {
-                Ok("`async fn` resumed after completion")
-            }
-            AssertMessage::ResumedAfterReturn(CoroutineKind::Gen(_)) => {
-                Ok("`async gen fn` resumed after completion")
-            }
-            AssertMessage::ResumedAfterReturn(CoroutineKind::AsyncGen(_)) => {
-                Ok("`gen fn` should just keep returning `AssertMessage::None` after completion")
-            }
+            AssertMessage::ResumedAfterReturn(CoroutineKind::Desugared(
+                CoroutineDesugaring::Async,
+                _,
+            )) => Ok("`async fn` resumed after completion"),
+            AssertMessage::ResumedAfterReturn(CoroutineKind::Desugared(
+                CoroutineDesugaring::Gen,
+                _,
+            )) => Ok("`async gen fn` resumed after completion"),
+            AssertMessage::ResumedAfterReturn(CoroutineKind::Desugared(
+                CoroutineDesugaring::AsyncGen,
+                _,
+            )) => Ok("`gen fn` should just keep returning `AssertMessage::None` after completion"),
             AssertMessage::ResumedAfterPanic(CoroutineKind::Coroutine) => {
                 Ok("coroutine resumed after panicking")
             }
-            AssertMessage::ResumedAfterPanic(CoroutineKind::Async(_)) => {
-                Ok("`async fn` resumed after panicking")
-            }
-            AssertMessage::ResumedAfterPanic(CoroutineKind::Gen(_)) => {
-                Ok("`async gen fn` resumed after panicking")
-            }
-            AssertMessage::ResumedAfterPanic(CoroutineKind::AsyncGen(_)) => {
-                Ok("`gen fn` should just keep returning `AssertMessage::None` after panicking")
-            }
+            AssertMessage::ResumedAfterPanic(CoroutineKind::Desugared(
+                CoroutineDesugaring::Async,
+                _,
+            )) => Ok("`async fn` resumed after panicking"),
+            AssertMessage::ResumedAfterPanic(CoroutineKind::Desugared(
+                CoroutineDesugaring::Gen,
+                _,
+            )) => Ok("`async gen fn` resumed after panicking"),
+            AssertMessage::ResumedAfterPanic(CoroutineKind::Desugared(
+                CoroutineDesugaring::AsyncGen,
+                _,
+            )) => Ok("`gen fn` should just keep returning `AssertMessage::None` after panicking"),
 
             AssertMessage::BoundsCheck { .. } => Ok("index out of bounds"),
             AssertMessage::MisalignedPointerDereference { .. } => {
@@ -392,10 +398,8 @@ pub enum UnOp {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CoroutineKind {
-    Async(CoroutineSource),
+    Desugared(CoroutineDesugaring, CoroutineSource),
     Coroutine,
-    Gen(CoroutineSource),
-    AsyncGen(CoroutineSource),
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -403,6 +407,15 @@ pub enum CoroutineSource {
     Block,
     Closure,
     Fn,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum CoroutineDesugaring {
+    Async,
+
+    Gen,
+
+    AsyncGen,
 }
 
 pub(crate) type LocalDefId = Opaque;

@@ -634,7 +634,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // In the case of the async block that we create for a function body,
                 // we expect the return type of the block to match that of the enclosing
                 // function.
-                Some(hir::CoroutineKind::Async(hir::CoroutineSource::Fn)) => {
+                Some(hir::CoroutineKind::Desugared(
+                    hir::CoroutineDesugaring::Async,
+                    hir::CoroutineSource::Fn,
+                )) => {
                     debug!("closure is async fn body");
                     let def_id = self.tcx.hir().body_owner_def_id(body.id());
                     self.deduce_future_output_from_obligations(expr_def_id, def_id).unwrap_or_else(
@@ -651,9 +654,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     )
                 }
                 // All `gen {}` and `async gen {}` must return unit.
-                Some(hir::CoroutineKind::Gen(_) | hir::CoroutineKind::AsyncGen(_)) => {
-                    self.tcx.types.unit
-                }
+                Some(
+                    hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)
+                    | hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _),
+                ) => self.tcx.types.unit,
 
                 _ => astconv.ty_infer(None, decl.output.span()),
             },
