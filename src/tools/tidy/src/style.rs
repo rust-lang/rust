@@ -494,7 +494,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             let mut err = |_| {
                 tidy_error!(bad, "{}: leading newline", file.display());
             };
-            suppressible_tidy_err!(err, skip_leading_newlines, "mising leading newline");
+            suppressible_tidy_err!(err, skip_leading_newlines, "missing leading newline");
         }
         let mut err = |msg: &str| {
             tidy_error!(bad, "{}: {}", file.display(), msg);
