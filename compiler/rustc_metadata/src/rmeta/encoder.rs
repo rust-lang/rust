@@ -467,13 +467,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let def_key = self.lazy(table.def_key(def_index));
                 let def_path_hash = table.def_path_hash(def_index);
                 self.tables.def_keys.set_some(def_index, def_key);
-                self.tables.def_path_hashes.set(def_index, def_path_hash);
+                self.tables.def_path_hashes.set(def_index, def_path_hash.local_hash().as_u64());
             }
         } else {
             for (def_index, def_key, def_path_hash) in table.enumerated_keys_and_path_hashes() {
                 let def_key = self.lazy(def_key);
                 self.tables.def_keys.set_some(def_index, def_key);
-                self.tables.def_path_hashes.set(def_index, *def_path_hash);
+                self.tables.def_path_hashes.set(def_index, def_path_hash.local_hash().as_u64());
             }
         }
     }

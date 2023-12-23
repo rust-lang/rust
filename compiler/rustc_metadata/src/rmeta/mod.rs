@@ -386,7 +386,12 @@ define_tables! {
     is_type_alias_impl_trait: Table<DefIndex, bool>,
     type_alias_is_lazy: Table<DefIndex, bool>,
     attr_flags: Table<DefIndex, AttrFlags>,
-    def_path_hashes: Table<DefIndex, DefPathHash>,
+    // The u64 is the crate-local part of the DefPathHash. All hashes in this crate have the same
+    // StableCrateId, so we omit encoding those into the table.
+    //
+    // Note also that this table is fully populated (no gaps) as every DefIndex should have a
+    // corresponding DefPathHash.
+    def_path_hashes: Table<DefIndex, u64>,
     explicit_item_bounds: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
