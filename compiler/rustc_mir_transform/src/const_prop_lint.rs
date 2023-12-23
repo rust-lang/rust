@@ -670,6 +670,8 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
         // This loop can get very hot for some bodies: it check each local in each bb.
         // To avoid this quadratic behaviour, we only clear the locals that were modified inside
         // the current block.
+        // The order in which we remove consts does not matter.
+        #[allow(rustc::potential_query_instability)]
         for local in written_only_inside_own_block_locals.drain() {
             debug_assert_eq!(
                 self.ecx.machine.can_const_prop[local],
