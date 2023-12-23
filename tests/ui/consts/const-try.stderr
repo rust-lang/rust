@@ -10,6 +10,7 @@ note: impl defined here, but it is not `const`
 LL | impl const Try for TryMe {
    | ^^^^^^^^^^^^^^^^^^^^^^^^
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(effects)]` to the crate attributes to enable
 
 error[E0015]: `?` cannot convert from residual of `TryMe` in constant functions
   --> $DIR/const-try.rs:33:5
@@ -23,6 +24,7 @@ note: impl defined here, but it is not `const`
 LL | impl const FromResidual<Error> for TryMe {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+   = help: add `#![feature(effects)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors
 
