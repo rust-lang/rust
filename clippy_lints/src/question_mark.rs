@@ -8,7 +8,7 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{
     eq_expr_value, get_parent_node, higher, in_constant, is_else_clause, is_lint_allowed, is_path_lang_item,
     is_res_lang_ctor, pat_and_expr_can_be_question_mark, path_to_local, path_to_local_id, peel_blocks,
-    peel_blocks_with_stmt,
+    peel_blocks_with_stmt, span_contains_comment,
 };
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
@@ -121,8 +121,9 @@ fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
         els: Some(els),
         ..
     }) = stmt.kind
-        && let Some(els) = find_let_else_ret_expression(els)
-        && let Some(inner_pat) = pat_and_expr_can_be_question_mark(cx, pat, els)
+        && let Some(ret) = find_let_else_ret_expression(els)
+        && let Some(inner_pat) = pat_and_expr_can_be_question_mark(cx, pat, ret)
+        && !span_contains_comment(cx.tcx.sess.source_map(), els.span)
     {
         let mut applicability = Applicability::MaybeIncorrect;
         let init_expr_str = snippet_with_applicability(cx, init_expr.span, "..", &mut applicability);

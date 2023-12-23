@@ -71,5 +71,13 @@ fn issue11993(y: Option<i32>) -> Option<i32> {
         return None;
     };
 
+    let Some(x) = y else {
+        // Roses are red,
+        // violets are blue,
+        // please keep this comment,
+        // it's art, you know?
+        return None;
+    };
+
     None
 }
