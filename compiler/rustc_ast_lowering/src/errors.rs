@@ -395,3 +395,10 @@ pub enum BadReturnTypeNotation {
         span: Span,
     },
 }
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_default_parameter_in_binder)]
+pub(crate) struct UnexpectedDefaultParameterInBinder {
+    #[primary_span]
+    pub span: Span,
+}
