@@ -754,8 +754,7 @@ pub enum PatKind {
     Ident(BindingAnnotation, Ident, Option<P<Pat>>),
 
     /// A struct or struct variant pattern (e.g., `Variant {x, y, ..}`).
-    /// The `bool` is `true` in the presence of a `..`.
-    Struct(Option<P<QSelf>>, Path, ThinVec<PatField>, /* recovered */ bool),
+    Struct(Option<P<QSelf>>, Path, ThinVec<PatField>, PatFieldsRest),
 
     /// A tuple struct/variant pattern (`Variant(x, y, .., z)`).
     TupleStruct(Option<P<QSelf>>, Path, ThinVec<P<Pat>>),
@@ -810,6 +809,15 @@ pub enum PatKind {
 
     /// A macro pattern; pre-expansion.
     MacCall(P<MacCall>),
+}
+
+/// Whether the `..` is present in a struct fields pattern.
+#[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq)]
+pub enum PatFieldsRest {
+    /// `module::StructName { field, ..}`
+    Rest,
+    /// `module::StructName { field }`
+    None,
 }
 
 /// The kind of borrow in an `AddrOf` expression,
