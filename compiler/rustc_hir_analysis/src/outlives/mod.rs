@@ -4,7 +4,6 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::{self, CratePredicatesMap, ToPredicate, TyCtxt};
-use rustc_span::symbol::sym;
 use rustc_span::Span;
 
 mod explicit;
@@ -48,25 +47,6 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[(ty::Clau
 
                 let predicates =
                     crate_map.predicates.get(&item_def_id.to_def_id()).copied().unwrap_or(&[]);
-
-                if tcx.has_attr(item_def_id, sym::rustc_outlives) {
-                    let mut pred: Vec<String> = predicates
-                        .iter()
-                        .map(|(out_pred, _)| match out_pred.kind().skip_binder() {
-                            ty::ClauseKind::RegionOutlives(p) => p.to_string(),
-                            ty::ClauseKind::TypeOutlives(p) => p.to_string(),
-                            err => bug!("unexpected clause {:?}", err),
-                        })
-                        .collect();
-                    pred.sort();
-
-                    let span = tcx.def_span(item_def_id);
-                    let mut err = tcx.sess.struct_span_err(span, "rustc_outlives");
-                    for p in pred {
-                        err.note(p);
-                    }
-                    err.emit();
-                }
 
                 debug!("inferred_outlives_of({:?}) = {:?}", item_def_id, predicates);
 
