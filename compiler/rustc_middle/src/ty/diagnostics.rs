@@ -628,11 +628,3 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
         c.try_super_fold_with(self)
     }
 }
-
-#[derive(Diagnostic)]
-#[diag(middle_const_not_used_in_type_alias)]
-pub(super) struct ConstNotUsedTraitAlias {
-    pub ct: String,
-    #[primary_span]
-    pub span: Span,
-}
