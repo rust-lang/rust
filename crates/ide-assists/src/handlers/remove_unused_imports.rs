@@ -610,6 +610,111 @@ mod b {
     }
 
     #[test]
+    fn remove_comma_after_auto_remove_brace() {
+        check_assist(
+            remove_unused_imports,
+            r#"
+mod m {
+    pub mod x {
+        pub struct A;
+        pub struct B;
+    }
+    pub mod y {
+        pub struct C;
+    }
+}
+
+$0use m::{
+    x::{A, B},
+    y::C,
+};$0
+
+fn main() {
+    B;
+}
+"#,
+            r#"
+mod m {
+    pub mod x {
+        pub struct A;
+        pub struct B;
+    }
+    pub mod y {
+        pub struct C;
+    }
+}
+
+use m::
+    x::B
+;
+
+fn main() {
+    B;
+}
+"#,
+        );
+        check_assist(
+            remove_unused_imports,
+            r#"
+mod m {
+    pub mod x {
+        pub struct A;
+        pub struct B;
+    }
+    pub mod y {
+        pub struct C;
+        pub struct D;
+    }
+    pub mod z {
+        pub struct E;
+        pub struct F;
+    }
+}
+
+$0use m::{
+    x::{A, B},
+    y::{C, D,},
+    z::{E, F},
+};$0
+
+fn main() {
+    B;
+    C;
+    F;
+}
+"#,
+            r#"
+mod m {
+    pub mod x {
+        pub struct A;
+        pub struct B;
+    }
+    pub mod y {
+        pub struct C;
+        pub struct D;
+    }
+    pub mod z {
+        pub struct E;
+        pub struct F;
+    }
+}
+
+use m::{
+    x::B,
+    y::C,
+    z::F,
+};
+
+fn main() {
+    B;
+    C;
+    F;
+}
+"#,
+        );
+    }
+
+    #[test]
     fn remove_nested_all_unused() {
         check_assist(
             remove_unused_imports,
