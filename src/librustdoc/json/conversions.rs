@@ -648,10 +648,12 @@ impl FromWithTcx<clean::Trait> for Trait {
     fn from_tcx(trait_: clean::Trait, tcx: TyCtxt<'_>) -> Self {
         let is_auto = trait_.is_auto(tcx);
         let is_unsafe = trait_.unsafety(tcx) == rustc_hir::Unsafety::Unsafe;
+        let is_object_safe = trait_.is_object_safe(tcx);
         let clean::Trait { items, generics, bounds, .. } = trait_;
         Trait {
             is_auto,
             is_unsafe,
+            is_object_safe,
             items: ids(items, tcx),
             generics: generics.into_tcx(tcx),
             bounds: bounds.into_tcx(tcx),
