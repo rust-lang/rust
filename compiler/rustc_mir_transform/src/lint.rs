@@ -1,6 +1,8 @@
 //! This pass statically detects code which has undefined behaviour or is likely to be erroneous.
 //! It can be used to locate problems in MIR building or optimizations. It assumes that all code
 //! can be executed, so it has false positives.
+
+use rustc_hir::{HirId, CRATE_HIR_ID};
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -8,6 +10,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::{MaybeStorageDead, MaybeStorageLive};
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
+use rustc_session::lint::builtin::BROKEN_MIR;
 use std::borrow::Cow;
 
 pub fn lint_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, when: String) {
@@ -28,6 +31,11 @@ pub fn lint_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, when: String) {
         tcx,
         when,
         body,
+        lint_id: body
+            .source
+            .def_id()
+            .as_local()
+            .map_or(CRATE_HIR_ID, |def_id| tcx.local_def_id_to_hir_id(def_id)),
         is_fn_like: tcx.def_kind(body.source.def_id()).is_fn_like(),
         always_live_locals,
         reachable_blocks,
@@ -41,6 +49,7 @@ struct Lint<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     when: String,
     body: &'a Body<'tcx>,
+    lint_id: HirId,
     is_fn_like: bool,
     always_live_locals: &'a BitSet<Local>,
     reachable_blocks: BitSet<BasicBlock>,
@@ -49,10 +58,13 @@ struct Lint<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Lint<'a, 'tcx> {
-    #[track_caller]
+    #[allow(rustc::untranslatable_diagnostic)]
+    #[allow(rustc::diagnostic_outside_of_impl)]
     fn fail(&self, location: Location, msg: impl AsRef<str>) {
         let span = self.body.source_info(location).span;
-        self.tcx.sess.dcx().span_delayed_bug(
+        self.tcx.struct_span_lint_hir(
+            BROKEN_MIR,
+            self.lint_id,
             span,
             format!(
                 "broken MIR in {:?} ({}) at {:?}:\n{}",
@@ -61,6 +73,7 @@ impl<'a, 'tcx> Lint<'a, 'tcx> {
                 location,
                 msg.as_ref()
             ),
+            |_| {},
         );
     }
 }
