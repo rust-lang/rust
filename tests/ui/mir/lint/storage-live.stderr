@@ -5,15 +5,11 @@ error: internal compiler error: broken MIR in Item(DefId(0:8 ~ storage_live[HASH
 LL |             StorageLive(a);
    |             ^^^^^^^^^^^^^^
    |
-note: delayed at compiler/rustc_mir_transform/src/lint.rs:LL:CC - disabled backtrace
-  --> $DIR/storage-live.rs:21:13
-   |
-LL |             StorageLive(a);
-   |             ^^^^^^^^^^^^^^
-
-
+   = 
 aborting due to `-Z treat-err-as-bug=1`
 error: the compiler unexpectedly panicked. this is a bug.
 
 query stack during panic:
-end of query stack
+#0 [mir_built] building MIR for `multiple_storage`
+#1 [has_ffi_unwind_calls] checking if `multiple_storage` contains FFI-unwind calls
+... and 3 other queries... use `env RUST_BACKTRACE=1` to see the full query stack
