@@ -20,22 +20,36 @@ use std::hash::Hash;
 /// Internally the `DefPathTable` holds a tree of `DefKey`s, where each `DefKey`
 /// stores the `DefIndex` of its parent.
 /// There is one `DefPathTable` for each crate.
-#[derive(Clone, Default, Debug)]
+#[derive(Debug)]
 pub struct DefPathTable {
+    stable_crate_id: StableCrateId,
     index_to_key: IndexVec<DefIndex, DefKey>,
-    def_path_hashes: IndexVec<DefIndex, DefPathHash>,
+    // We do only store the local hash, as all the definitions are from the current crate.
+    def_path_hashes: IndexVec<DefIndex, Hash64>,
     def_path_hash_to_index: DefPathHashMap,
 }
 
 impl DefPathTable {
+    fn new(stable_crate_id: StableCrateId) -> DefPathTable {
+        DefPathTable {
+            stable_crate_id,
+            index_to_key: Default::default(),
+            def_path_hashes: Default::default(),
+            def_path_hash_to_index: Default::default(),
+        }
+    }
+
     fn allocate(&mut self, key: DefKey, def_path_hash: DefPathHash) -> DefIndex {
+        // Assert that all DefPathHashes correctly contain the local crate's StableCrateId.
+        debug_assert_eq!(self.stable_crate_id, def_path_hash.stable_crate_id());
+
         let index = {
             let index = DefIndex::from(self.index_to_key.len());
             debug!("DefPathTable::insert() - {:?} <-> {:?}", key, index);
             self.index_to_key.push(key);
             index
         };
-        self.def_path_hashes.push(def_path_hash);
+        self.def_path_hashes.push(def_path_hash.local_hash());
         debug_assert!(self.def_path_hashes.len() == self.index_to_key.len());
 
         // Check for hash collisions of DefPathHashes. These should be
@@ -58,13 +72,6 @@ impl DefPathTable {
             );
         }
 
-        // Assert that all DefPathHashes correctly contain the local crate's
-        // StableCrateId
-        #[cfg(debug_assertions)]
-        if let Some(root) = self.def_path_hashes.get(CRATE_DEF_INDEX) {
-            assert!(def_path_hash.stable_crate_id() == root.stable_crate_id());
-        }
-
         index
     }
 
@@ -73,19 +80,19 @@ impl DefPathTable {
         self.index_to_key[index]
     }
 
+    #[instrument(level = "trace", skip(self), ret)]
     #[inline(always)]
     pub fn def_path_hash(&self, index: DefIndex) -> DefPathHash {
         let hash = self.def_path_hashes[index];
-        debug!("def_path_hash({:?}) = {:?}", index, hash);
-        hash
+        DefPathHash::new(self.stable_crate_id, hash)
     }
 
     pub fn enumerated_keys_and_path_hashes(
         &self,
-    ) -> impl Iterator<Item = (DefIndex, &DefKey, &DefPathHash)> + ExactSizeIterator + '_ {
+    ) -> impl Iterator<Item = (DefIndex, &DefKey, DefPathHash)> + ExactSizeIterator + '_ {
         self.index_to_key
             .iter_enumerated()
-            .map(move |(index, key)| (index, key, &self.def_path_hashes[index]))
+            .map(move |(index, key)| (index, key, self.def_path_hash(index)))
     }
 }
 
@@ -329,7 +336,7 @@ impl Definitions {
         let def_path_hash = key.compute_stable_hash(parent_hash);
 
         // Create the root definition.
-        let mut table = DefPathTable::default();
+        let mut table = DefPathTable::new(stable_crate_id);
         let root = LocalDefId { local_def_index: table.allocate(key, def_path_hash) };
         assert_eq!(root.local_def_index, CRATE_DEF_INDEX);
 
