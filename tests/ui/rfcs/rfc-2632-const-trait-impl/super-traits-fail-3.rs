@@ -1,8 +1,7 @@
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, effects)]
 
 // revisions: yy yn ny nn
-//[yy] known-bug: #110395
-//FIXME [yy] check-pass
+//[yy] check-pass
 
 #[cfg_attr(any(yy, yn), const_trait)]
 trait Foo {

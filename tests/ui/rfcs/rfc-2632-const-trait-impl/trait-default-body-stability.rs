@@ -1,7 +1,7 @@
 // known-bug: #110395
 
 #![feature(staged_api)]
-#![feature(const_trait_impl)]
+#![feature(const_trait_impl, effects)]
 #![feature(const_t_try)]
 #![feature(const_try)]
 #![feature(try_trait_v2)]
