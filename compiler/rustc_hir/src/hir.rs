@@ -2071,12 +2071,6 @@ pub enum YieldSource {
     Yield,
 }
 
-impl YieldSource {
-    pub fn is_await(&self) -> bool {
-        matches!(self, YieldSource::Await { .. })
-    }
-}
-
 impl fmt::Display for YieldSource {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {

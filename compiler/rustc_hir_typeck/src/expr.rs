@@ -349,7 +349,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Index(base, idx, brackets_span) => {
                 self.check_expr_index(base, idx, expr, brackets_span)
             }
-            ExprKind::Yield(value, ref src) => self.check_expr_yield(value, expr, src),
+            ExprKind::Yield(value, _) => self.check_expr_yield(value, expr),
             hir::ExprKind::Err(guar) => Ty::new_error(tcx, guar),
         }
     }
@@ -3155,21 +3155,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         value: &'tcx hir::Expr<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
-        src: &'tcx hir::YieldSource,
     ) -> Ty<'tcx> {
         match self.resume_yield_tys {
             Some((resume_ty, yield_ty)) => {
                 self.check_expr_coercible_to_type(value, yield_ty, None);
 
                 resume_ty
-            }
-            // Given that this `yield` expression was generated as a result of lowering a `.await`,
-            // we know that the yield type must be `()`; however, the context won't contain this
-            // information. Hence, we check the source of the yield expression here and check its
-            // value's type against `()` (this check should always hold).
-            None if src.is_await() => {
-                self.check_expr_coercible_to_type(value, Ty::new_unit(self.tcx), None);
-                Ty::new_unit(self.tcx)
             }
             _ => {
                 self.tcx.sess.emit_err(YieldExprOutsideOfCoroutine { span: expr.span });
