@@ -204,7 +204,7 @@ declare_features! (
     /// Allows using `#[lang = ".."]` attribute for linking items to special compiler logic.
     (internal, lang_items, "1.0.0", None),
     /// Changes `impl Trait` to capture all lifetimes in scope.
-    (unstable, lifetime_capture_rules_2024, "CURRENT_RUSTC_VERSION", None),
+    (unstable, lifetime_capture_rules_2024, "1.76.0", None),
     /// Allows `#[link(..., cfg(..))]`; perma-unstable per #37406
     (unstable, link_cfg, "1.14.0", None),
     /// Allows the `multiple_supertrait_upcastable` lint.
@@ -470,7 +470,7 @@ declare_features! (
     /// Allows using `#[repr(align(...))]` on function items
     (unstable, fn_align, "1.53.0", Some(82232)),
     /// Support delegating implementation of functions to other already implemented functions.
-    (incomplete, fn_delegation, "CURRENT_RUSTC_VERSION", Some(118212)),
+    (incomplete, fn_delegation, "1.76.0", Some(118212)),
     /// Allows defining gen blocks and `gen fn`.
     (unstable, gen_blocks, "1.75.0", Some(117078)),
     /// Infer generic args for both consts and types.
@@ -507,7 +507,7 @@ declare_features! (
     (unstable, let_chains, "1.37.0", Some(53667)),
     /// Allows using `#[link(kind = "link-arg", name = "...")]`
     /// to pass custom arguments to the linker.
-    (unstable, link_arg_attribute, "CURRENT_RUSTC_VERSION", Some(99427)),
+    (unstable, link_arg_attribute, "1.76.0", Some(99427)),
     /// Allows using `reason` in lint attributes and the `#[expect(lint)]` lint check.
     (unstable, lint_reasons, "1.31.0", Some(54503)),
     /// Give access to additional metadata about declarative macro meta-variables.
@@ -529,7 +529,7 @@ declare_features! (
     /// Allow negative trait implementations.
     (unstable, negative_impls, "1.44.0", Some(68318)),
     /// Allows the `!` pattern.
-    (incomplete, never_patterns, "CURRENT_RUSTC_VERSION", Some(118155)),
+    (incomplete, never_patterns, "1.76.0", Some(118155)),
     /// Allows the `!` type. Does not imply 'exhaustive_patterns' (below) any more.
     (unstable, never_type, "1.13.0", Some(35121)),
     /// Allows diverging expressions to fall back to `!` rather than `()`.
