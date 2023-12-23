@@ -2445,6 +2445,7 @@ impl<'test> TestCx<'test> {
                     "-Copt-level=1",
                     &zdump_arg,
                     "-Zvalidate-mir",
+                    "-Zlint-mir",
                     "-Zdump-mir-exclude-pass-number",
                 ]);
                 if let Some(pass) = &self.props.mir_unit_test {
