@@ -339,8 +339,40 @@ jobs:
               ENABLE_GCC_CODEGEN: "1"
             <<: *job-linux-16c
 
+          # added for testing purposes
+          # REMOVE BEFORE MERGE
+
+          - name: aarch64-gnu
+            <<: *job-aarch64-linux
+
           - name: x86_64-gnu-tools
             <<: *job-linux-16c
+
+          - name: dist-x86_64-freebsd
+            <<: *job-linux-8c
+
+          - name: dist-x86_64-illumos
+            <<: *job-linux-8c
+
+          - name: dist-x86_64-apple
+            env:
+              SCRIPT: ./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin
+              RUST_CONFIGURE_ARGS: --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false --set rust.lto=thin
+              RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              MACOSX_DEPLOYMENT_TARGET: 10.12
+              SELECT_XCODE: /Applications/Xcode_13.4.1.app
+              NO_LLVM_ASSERTIONS: 1
+              NO_DEBUG_ASSERTIONS: 1
+              NO_OVERFLOW_CHECKS: 1
+              DIST_REQUIRE_ALL_TOOLS: 1
+              CODEGEN_BACKENDS: llvm,cranelift
+            <<: *job-macos-xl
+
+          - name: x86_64-msvc
+            env:
+              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+              SCRIPT: make ci-msvc
+            <<: *job-windows-8c
 
   auto:
     <<: *base-ci-job
