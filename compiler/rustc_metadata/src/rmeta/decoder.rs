@@ -6,6 +6,7 @@ use crate::rmeta::*;
 
 use rustc_ast as ast;
 use rustc_data_structures::captures::Captures;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::owned_slice::OwnedSlice;
 use rustc_data_structures::sync::{AppendOnlyVec, AtomicBool, Lock, Lrc, OnceLock};
 use rustc_data_structures::unhash::UnhashMap;
@@ -1489,9 +1490,16 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         index: DefIndex,
         def_path_hashes: &mut FxHashMap<DefIndex, DefPathHash>,
     ) -> DefPathHash {
-        *def_path_hashes
-            .entry(index)
-            .or_insert_with(|| self.root.tables.def_path_hashes.get(self, index))
+        *def_path_hashes.entry(index).or_insert_with(|| {
+            // This is a hack to workaround the fact that we can't easily encode/decode a Hash64
+            // into the FixedSizeEncoding, as Hash64 lacks a Default impl. A future refactor to
+            // relax the Default restriction will likely fix this.
+            let fingerprint = Fingerprint::new(
+                self.root.stable_crate_id.as_u64(),
+                self.root.tables.def_path_hashes.get(self, index),
+            );
+            DefPathHash::new(self.root.stable_crate_id, fingerprint.split().1)
+        })
     }
 
     #[inline]

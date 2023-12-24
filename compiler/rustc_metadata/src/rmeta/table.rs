@@ -1,6 +1,5 @@
 use crate::rmeta::*;
 
-use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_hir::def::CtorOf;
 use rustc_index::Idx;
 
@@ -41,12 +40,6 @@ impl IsDefault for u64 {
 impl<T> IsDefault for LazyArray<T> {
     fn is_default(&self) -> bool {
         self.num_elems == 0
-    }
-}
-
-impl IsDefault for DefPathHash {
-    fn is_default(&self) -> bool {
-        self.0 == Fingerprint::ZERO
     }
 }
 
@@ -231,22 +224,6 @@ fixed_size_enum! {
         ( Attr   )
         ( Bang   )
         ( Derive )
-    }
-}
-
-// We directly encode `DefPathHash` because a `LazyValue` would incur a 25% cost.
-impl FixedSizeEncoding for DefPathHash {
-    type ByteArray = [u8; 16];
-
-    #[inline]
-    fn from_bytes(b: &[u8; 16]) -> Self {
-        DefPathHash(Fingerprint::from_le_bytes(*b))
-    }
-
-    #[inline]
-    fn write_to_bytes(self, b: &mut [u8; 16]) {
-        debug_assert!(!self.is_default());
-        *b = self.0.to_le_bytes();
     }
 }
 
