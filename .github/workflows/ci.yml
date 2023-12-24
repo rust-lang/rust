@@ -63,6 +63,14 @@ jobs:
           - name: x86_64-gnu-tools
             os: ubuntu-20.04-16core-64gb
             env: {}
+          - name: dist-x86_64-mingw
+            env:
+              SCRIPT: python x.py dist bootstrap --include-default-paths
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-full-tools --enable-profiler"
+              NO_DOWNLOAD_CI_LLVM: 1
+              CUSTOM_MINGW: 1
+              DIST_REQUIRE_ALL_TOOLS: 1
+            os: windows-2019-8core-32gb
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:

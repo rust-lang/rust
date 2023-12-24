@@ -341,6 +341,20 @@ jobs:
 
           - name: x86_64-gnu-tools
             <<: *job-linux-16c
+          
+          - name: dist-x86_64-mingw
+            env:
+              SCRIPT: python x.py dist bootstrap --include-default-paths
+              RUST_CONFIGURE_ARGS: >-
+                --build=x86_64-pc-windows-gnu
+                --enable-full-tools
+                --enable-profiler
+              # We are intentionally allowing an old toolchain on this builder (and that's
+              # incompatible with LLVM downloads today).
+              NO_DOWNLOAD_CI_LLVM: 1
+              CUSTOM_MINGW: 1
+              DIST_REQUIRE_ALL_TOOLS: 1
+            <<: *job-windows-8c
 
   auto:
     <<: *base-ci-job
