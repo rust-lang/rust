@@ -407,7 +407,7 @@ pub(crate) unsafe fn map_memory<T>(
 pub(crate) unsafe fn unmap_memory<T>(range: *mut [T]) -> Result<(), Error> {
     let mut a0 = Syscall::UnmapMemory as usize;
     let mut a1 = range.as_mut_ptr() as usize;
-    let a2 = range.len();
+    let a2 = range.len() * core::mem::size_of::<T>();
     let a3 = 0;
     let a4 = 0;
     let a5 = 0;
