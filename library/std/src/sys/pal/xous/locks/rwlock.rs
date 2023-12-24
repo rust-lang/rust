@@ -1,5 +1,5 @@
-use crate::os::xous::ffi::do_yield;
-use crate::sync::atomic::{AtomicIsize, Ordering::SeqCst};
+use crate::sync::atomic::{AtomicIsize, Ordering::Acquire};
+use crate::thread::yield_now;
 
 pub struct RwLock {
     /// The "mode" value indicates how many threads are waiting on this
@@ -14,6 +14,9 @@ pub struct RwLock {
     mode: AtomicIsize,
 }
 
+const RWLOCK_WRITING: isize = -1;
+const RWLOCK_FREE: isize = 0;
+
 unsafe impl Send for RwLock {}
 unsafe impl Sync for RwLock {}
 
@@ -21,52 +24,51 @@ impl RwLock {
     #[inline]
     #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
     pub const fn new() -> RwLock {
-        RwLock { mode: AtomicIsize::new(0) }
+        RwLock { mode: AtomicIsize::new(RWLOCK_FREE) }
     }
 
     #[inline]
     pub unsafe fn read(&self) {
         while !unsafe { self.try_read() } {
-            do_yield();
+            yield_now();
         }
     }
 
     #[inline]
     pub unsafe fn try_read(&self) -> bool {
-        // Non-atomically determine the current value.
-        let current = self.mode.load(SeqCst);
-
-        // If it's currently locked for writing, then we cannot read.
-        if current < 0 {
-            return false;
-        }
-
-        // Attempt to lock. If the `current` value has changed, then this
-        // operation will fail and we will not obtain the lock even if we
-        // could potentially keep it.
-        let new = current + 1;
-        self.mode.compare_exchange(current, new, SeqCst, SeqCst).is_ok()
+        self.mode
+            .fetch_update(
+                Acquire,
+                Acquire,
+                |v| if v == RWLOCK_WRITING { None } else { Some(v + 1) },
+            )
+            .is_ok()
     }
 
     #[inline]
     pub unsafe fn write(&self) {
         while !unsafe { self.try_write() } {
-            do_yield();
+            yield_now();
         }
     }
 
     #[inline]
     pub unsafe fn try_write(&self) -> bool {
-        self.mode.compare_exchange(0, -1, SeqCst, SeqCst).is_ok()
+        self.mode.compare_exchange(RWLOCK_FREE, RWLOCK_WRITING, Acquire, Acquire).is_ok()
     }
 
     #[inline]
     pub unsafe fn read_unlock(&self) {
-        self.mode.fetch_sub(1, SeqCst);
+        let previous = self.mode.fetch_sub(1, Acquire);
+        assert!(previous != RWLOCK_FREE);
+        assert!(previous != RWLOCK_WRITING);
     }
 
     #[inline]
     pub unsafe fn write_unlock(&self) {
-        assert_eq!(self.mode.compare_exchange(-1, 0, SeqCst, SeqCst), Ok(-1));
+        assert_eq!(
+            self.mode.compare_exchange(RWLOCK_WRITING, RWLOCK_FREE, Acquire, Acquire),
+            Ok(RWLOCK_WRITING)
+        );
     }
 }
