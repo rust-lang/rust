@@ -173,10 +173,7 @@ pub(crate) fn combine_strs_with_missing_comments(
 ) -> Option<String> {
     trace!(
         "combine_strs_with_missing_comments `{}` `{}` {:?} {:?}",
-        prev_str,
-        next_str,
-        span,
-        shape
+        prev_str, next_str, span, shape
     );
 
     let mut result =
