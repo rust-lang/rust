@@ -962,6 +962,37 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             }
         }
 
+        sym::simd_masked_store => {
+            intrinsic_args!(fx, args => (mask, ptr, val); intrinsic);
+
+            let (val_lane_count, val_lane_ty) = val.layout().ty.simd_size_and_type(fx.tcx);
+            let (mask_lane_count, _mask_lane_ty) = mask.layout().ty.simd_size_and_type(fx.tcx);
+            assert_eq!(val_lane_count, mask_lane_count);
+            let lane_clif_ty = fx.clif_type(val_lane_ty).unwrap();
+            let ptr_val = ptr.load_scalar(fx);
+
+            for lane_idx in 0..val_lane_count {
+                let val_lane = val.value_lane(fx, lane_idx).load_scalar(fx);
+                let mask_lane = mask.value_lane(fx, lane_idx).load_scalar(fx);
+
+                let if_enabled = fx.bcx.create_block();
+                let next = fx.bcx.create_block();
+
+                fx.bcx.ins().brif(mask_lane, if_enabled, &[], next, &[]);
+                fx.bcx.seal_block(if_enabled);
+
+                fx.bcx.switch_to_block(if_enabled);
+                let offset = lane_idx as i32 * lane_clif_ty.bytes() as i32;
+                fx.bcx.ins().store(MemFlags::trusted(), val_lane, ptr_val, Offset32::new(offset));
+                fx.bcx.ins().jump(next, &[]);
+
+                fx.bcx.seal_block(next);
+                fx.bcx.switch_to_block(next);
+
+                fx.bcx.ins().nop();
+            }
+        }
+
         sym::simd_gather => {
             intrinsic_args!(fx, args => (val, ptr, mask); intrinsic);
 
