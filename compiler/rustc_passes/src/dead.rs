@@ -805,11 +805,17 @@ impl<'tcx> DeadVisitor<'tcx> {
         };
         let tcx = self.tcx;
 
+        let lint = if is_positional {
+            lint::builtin::UNUSED_TUPLE_STRUCT_FIELDS
+        } else {
+            lint::builtin::DEAD_CODE
+        };
+
         let first_hir_id = tcx.local_def_id_to_hir_id(first_id);
-        let first_lint_level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, first_hir_id).0;
+        let first_lint_level = tcx.lint_level_at_node(lint, first_hir_id).0;
         assert!(dead_codes.iter().skip(1).all(|id| {
             let hir_id = tcx.local_def_id_to_hir_id(*id);
-            let level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).0;
+            let level = tcx.lint_level_at_node(lint, hir_id).0;
             level == first_lint_level
         }));
 
@@ -834,12 +840,6 @@ impl<'tcx> DeadVisitor<'tcx> {
         let num = dead_codes.len();
         let multiple = num > 6;
         let name_list = names.into();
-
-        let lint = if is_positional {
-            lint::builtin::UNUSED_TUPLE_STRUCT_FIELDS
-        } else {
-            lint::builtin::DEAD_CODE
-        };
 
         let parent_info = if let Some(parent_item) = parent_item {
             let parent_descr = tcx.def_descr(parent_item.to_def_id());
