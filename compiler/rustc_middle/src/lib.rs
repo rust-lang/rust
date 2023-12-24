@@ -49,7 +49,6 @@
 #![feature(associated_type_bounds)]
 #![feature(rustc_attrs)]
 #![feature(control_flow_enum)]
-#![cfg_attr(bootstrap, feature(trait_upcasting))]
 #![feature(trusted_step)]
 #![feature(try_blocks)]
 #![feature(try_reserve_kind)]

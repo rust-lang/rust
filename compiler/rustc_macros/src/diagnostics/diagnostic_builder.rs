@@ -17,28 +17,18 @@ use synstructure::{BindingInfo, Structure, VariantInfo};
 use super::utils::SubdiagnosticVariant;
 
 /// What kind of diagnostic is being derived - a fatal/error/warning or a lint?
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum DiagnosticDeriveKind {
-    Diagnostic { dcx: syn::Ident },
+    Diagnostic,
     LintDiagnostic,
-}
-
-/// Tracks persistent information required for the entire type when building up individual calls to
-/// diagnostic methods for generated diagnostic derives - both `Diagnostic` for
-/// fatal/errors/warnings and `LintDiagnostic` for lints.
-pub(crate) struct DiagnosticDeriveBuilder {
-    /// The identifier to use for the generated `DiagnosticBuilder` instance.
-    pub diag: syn::Ident,
-    /// Kind of diagnostic that should be derived.
-    pub kind: DiagnosticDeriveKind,
 }
 
 /// Tracks persistent information required for a specific variant when building up individual calls
 /// to diagnostic methods for generated diagnostic derives - both `Diagnostic` for
 /// fatal/errors/warnings and `LintDiagnostic` for lints.
-pub(crate) struct DiagnosticDeriveVariantBuilder<'parent> {
-    /// The parent builder for the entire type.
-    pub parent: &'parent DiagnosticDeriveBuilder,
+pub(crate) struct DiagnosticDeriveVariantBuilder {
+    /// The kind for the entire type.
+    pub kind: DiagnosticDeriveKind,
 
     /// Initialization of format strings for code suggestions.
     pub formatting_init: TokenStream,
@@ -59,19 +49,19 @@ pub(crate) struct DiagnosticDeriveVariantBuilder<'parent> {
     pub code: SpannedOption<()>,
 }
 
-impl<'a> HasFieldMap for DiagnosticDeriveVariantBuilder<'a> {
+impl HasFieldMap for DiagnosticDeriveVariantBuilder {
     fn get_field_binding(&self, field: &String) -> Option<&TokenStream> {
         self.field_map.get(field)
     }
 }
 
-impl DiagnosticDeriveBuilder {
+impl DiagnosticDeriveKind {
     /// Call `f` for the struct or for each variant of the enum, returning a `TokenStream` with the
     /// tokens from `f` wrapped in an `match` expression. Emits errors for use of derive on unions
     /// or attributes on the type itself when input is an enum.
-    pub(crate) fn each_variant<'s, F>(&mut self, structure: &mut Structure<'s>, f: F) -> TokenStream
+    pub(crate) fn each_variant<'s, F>(self, structure: &mut Structure<'s>, f: F) -> TokenStream
     where
-        F: for<'a, 'v> Fn(DiagnosticDeriveVariantBuilder<'a>, &VariantInfo<'v>) -> TokenStream,
+        F: for<'v> Fn(DiagnosticDeriveVariantBuilder, &VariantInfo<'v>) -> TokenStream,
     {
         let ast = structure.ast();
         let span = ast.span().unwrap();
@@ -101,7 +91,7 @@ impl DiagnosticDeriveBuilder {
                 _ => variant.ast().ident.span().unwrap(),
             };
             let builder = DiagnosticDeriveVariantBuilder {
-                parent: self,
+                kind: self,
                 span,
                 field_map: build_field_mapping(variant),
                 formatting_init: TokenStream::new(),
@@ -119,7 +109,7 @@ impl DiagnosticDeriveBuilder {
     }
 }
 
-impl<'a> DiagnosticDeriveVariantBuilder<'a> {
+impl DiagnosticDeriveVariantBuilder {
     /// Generates calls to `code` and similar functions based on the attributes on the type or
     /// variant.
     pub(crate) fn preamble(&mut self, variant: &VariantInfo<'_>) -> TokenStream {
@@ -184,8 +174,6 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
         &mut self,
         attr: &Attribute,
     ) -> Result<TokenStream, DiagnosticDeriveError> {
-        let diag = &self.parent.diag;
-
         // Always allow documentation comments.
         if is_doc_comment(attr) {
             return Ok(quote! {});
@@ -223,7 +211,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
 
                     let code = nested.parse::<syn::LitStr>()?;
                     tokens.extend(quote! {
-                        #diag.code(rustc_errors::DiagnosticId::Error(#code.to_string()));
+                        diag.code(rustc_errors::DiagnosticId::Error(#code.to_string()));
                     });
                 } else {
                     span_err(path.span().unwrap(), "unknown argument")
@@ -257,8 +245,6 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
     }
 
     fn generate_field_code(&mut self, binding_info: &BindingInfo<'_>) -> TokenStream {
-        let diag = &self.parent.diag;
-
         let field = binding_info.ast();
         let mut field_binding = binding_info.binding.clone();
         field_binding.set_span(field.ty.span());
@@ -267,7 +253,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
         let ident = format_ident!("{}", ident); // strip `r#` prefix, if present
 
         quote! {
-            #diag.set_arg(
+            diag.set_arg(
                 stringify!(#ident),
                 #field_binding
             );
@@ -322,8 +308,6 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
         info: FieldInfo<'_>,
         binding: TokenStream,
     ) -> Result<TokenStream, DiagnosticDeriveError> {
-        let diag = &self.parent.diag;
-
         let ident = &attr.path().segments.last().unwrap().ident;
         let name = ident.to_string();
         match (&attr.meta, name.as_str()) {
@@ -331,12 +315,12 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
             // `set_arg` call will not be generated.
             (Meta::Path(_), "skip_arg") => return Ok(quote! {}),
             (Meta::Path(_), "primary_span") => {
-                match self.parent.kind {
-                    DiagnosticDeriveKind::Diagnostic { .. } => {
+                match self.kind {
+                    DiagnosticDeriveKind::Diagnostic => {
                         report_error_if_not_applied_to_span(attr, &info)?;
 
                         return Ok(quote! {
-                            #diag.set_span(#binding);
+                            diag.set_span(#binding);
                         });
                     }
                     DiagnosticDeriveKind::LintDiagnostic => {
@@ -348,13 +332,13 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
             }
             (Meta::Path(_), "subdiagnostic") => {
                 if FieldInnerTy::from_type(&info.binding.ast().ty).will_iterate() {
-                    let DiagnosticDeriveKind::Diagnostic { dcx } = &self.parent.kind else {
+                    let DiagnosticDeriveKind::Diagnostic = self.kind else {
                         // No eager translation for lints.
-                        return Ok(quote! { #diag.subdiagnostic(#binding); });
+                        return Ok(quote! { diag.subdiagnostic(#binding); });
                     };
-                    return Ok(quote! { #diag.eager_subdiagnostic(#dcx, #binding); });
+                    return Ok(quote! { diag.eager_subdiagnostic(dcx, #binding); });
                 } else {
-                    return Ok(quote! { #diag.subdiagnostic(#binding); });
+                    return Ok(quote! { diag.subdiagnostic(#binding); });
                 }
             }
             (Meta::List(meta_list), "subdiagnostic") => {
@@ -376,15 +360,15 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                     return Ok(quote! {});
                 }
 
-                let dcx = match &self.parent.kind {
-                    DiagnosticDeriveKind::Diagnostic { dcx } => dcx,
+                match &self.kind {
+                    DiagnosticDeriveKind::Diagnostic => {}
                     DiagnosticDeriveKind::LintDiagnostic => {
                         throw_invalid_attr!(attr, |diag| {
                             diag.help("eager subdiagnostics are not supported on lints")
                         })
                     }
                 };
-                return Ok(quote! { #diag.eager_subdiagnostic(#dcx, #binding); });
+                return Ok(quote! { diag.eager_subdiagnostic(dcx, #binding); });
             }
             _ => (),
         }
@@ -442,7 +426,7 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
 
                 self.formatting_init.extend(code_init);
                 Ok(quote! {
-                    #diag.span_suggestions_with_style(
+                    diag.span_suggestions_with_style(
                         #span_field,
                         crate::fluent_generated::#slug,
                         #code_field,
@@ -463,10 +447,9 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
         kind: &Ident,
         fluent_attr_identifier: Path,
     ) -> TokenStream {
-        let diag = &self.parent.diag;
         let fn_name = format_ident!("span_{}", kind);
         quote! {
-            #diag.#fn_name(
+            diag.#fn_name(
                 #field_binding,
                 crate::fluent_generated::#fluent_attr_identifier
             );
@@ -476,9 +459,8 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
     /// Adds a subdiagnostic by generating a `diag.span_$kind` call with the current slug
     /// and `fluent_attr_identifier`.
     fn add_subdiagnostic(&self, kind: &Ident, fluent_attr_identifier: Path) -> TokenStream {
-        let diag = &self.parent.diag;
         quote! {
-            #diag.#kind(crate::fluent_generated::#fluent_attr_identifier);
+            diag.#kind(crate::fluent_generated::#fluent_attr_identifier);
         }
     }
 

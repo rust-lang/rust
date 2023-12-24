@@ -1196,18 +1196,18 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_param_bound(&mut self, bound: &'a GenericBound, ctxt: BoundKind) {
-        if let GenericBound::Trait(poly, modify) = bound {
-            match (ctxt, modify) {
-                (BoundKind::SuperTraits, TraitBoundModifier::Maybe) => {
+        if let GenericBound::Trait(poly, modifiers) = bound {
+            match (ctxt, modifiers.constness, modifiers.polarity) {
+                (BoundKind::SuperTraits, BoundConstness::Never, BoundPolarity::Maybe(_)) => {
                     self.dcx().emit_err(errors::OptionalTraitSupertrait {
                         span: poly.span,
                         path_str: pprust::path_to_string(&poly.trait_ref.path),
                     });
                 }
-                (BoundKind::TraitObject, TraitBoundModifier::Maybe) => {
+                (BoundKind::TraitObject, BoundConstness::Never, BoundPolarity::Maybe(_)) => {
                     self.dcx().emit_err(errors::OptionalTraitObject { span: poly.span });
                 }
-                (_, &TraitBoundModifier::MaybeConst(span))
+                (_, BoundConstness::Maybe(span), BoundPolarity::Positive)
                     if let Some(reason) = &self.disallow_tilde_const =>
                 {
                     let reason = match reason {
@@ -1235,16 +1235,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     };
                     self.dcx().emit_err(errors::TildeConstDisallowed { span, reason });
                 }
-                (_, TraitBoundModifier::MaybeConstMaybe) => {
-                    self.dcx().emit_err(errors::OptionalConstExclusive {
+                (
+                    _,
+                    BoundConstness::Maybe(_),
+                    BoundPolarity::Maybe(_) | BoundPolarity::Negative(_),
+                ) => {
+                    self.dcx().emit_err(errors::IncompatibleTraitBoundModifiers {
                         span: bound.span(),
-                        modifier: "?",
-                    });
-                }
-                (_, TraitBoundModifier::MaybeConstNegative) => {
-                    self.dcx().emit_err(errors::OptionalConstExclusive {
-                        span: bound.span(),
-                        modifier: "!",
+                        left: modifiers.constness.as_str(),
+                        right: modifiers.polarity.as_str(),
                     });
                 }
                 _ => {}
@@ -1252,7 +1251,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         }
 
         // Negative trait bounds are not allowed to have associated constraints
-        if let GenericBound::Trait(trait_ref, TraitBoundModifier::Negative) = bound
+        if let GenericBound::Trait(trait_ref, modifiers) = bound
+            && let BoundPolarity::Negative(_) = modifiers.polarity
             && let Some(segment) = trait_ref.trait_ref.path.segments.last()
             && let Some(ast::GenericArgs::AngleBracketed(args)) = segment.args.as_deref()
         {
@@ -1494,7 +1494,8 @@ fn deny_equality_constraints(
             for param in &generics.params {
                 if param.ident == potential_param.ident {
                     for bound in &param.bounds {
-                        if let ast::GenericBound::Trait(trait_ref, TraitBoundModifier::None) = bound
+                        if let ast::GenericBound::Trait(trait_ref, TraitBoundModifiers::NONE) =
+                            bound
                         {
                             if let [trait_segment] = &trait_ref.trait_ref.path.segments[..] {
                                 let assoc = pprust::path_to_string(&ast::Path::from_ident(

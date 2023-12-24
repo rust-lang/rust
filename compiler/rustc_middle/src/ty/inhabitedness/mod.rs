@@ -45,7 +45,7 @@
 
 use crate::query::Providers;
 use crate::ty::context::TyCtxt;
-use crate::ty::{self, DefId, Ty, VariantDef, Visibility};
+use crate::ty::{self, DefId, Ty, TypeVisitableExt, VariantDef, Visibility};
 
 use rustc_type_ir::TyKind::*;
 
@@ -105,6 +105,7 @@ impl<'tcx> VariantDef {
 impl<'tcx> Ty<'tcx> {
     #[instrument(level = "debug", skip(tcx), ret)]
     pub fn inhabited_predicate(self, tcx: TyCtxt<'tcx>) -> InhabitedPredicate<'tcx> {
+        debug_assert!(!self.has_infer());
         match self.kind() {
             // For now, unions are always considered inhabited
             Adt(adt, _) if adt.is_union() => InhabitedPredicate::True,
@@ -113,7 +114,18 @@ impl<'tcx> Ty<'tcx> {
                 InhabitedPredicate::True
             }
             Never => InhabitedPredicate::False,
-            Param(_) | Alias(ty::Projection, _) => InhabitedPredicate::GenericType(self),
+            Param(_) | Alias(ty::Projection | ty::Weak, _) => InhabitedPredicate::GenericType(self),
+            Alias(ty::Opaque, alias_ty) => {
+                match alias_ty.def_id.as_local() {
+                    // Foreign opaque is considered inhabited.
+                    None => InhabitedPredicate::True,
+                    // Local opaque type may possibly be revealed.
+                    Some(local_def_id) => {
+                        let key = ty::OpaqueTypeKey { def_id: local_def_id, args: alias_ty.args };
+                        InhabitedPredicate::OpaqueType(key)
+                    }
+                }
+            }
             // FIXME(inherent_associated_types): Most likely we can just map to `GenericType` like above.
             // However it's unclear if the args passed to `InhabitedPredicate::instantiate` are of the correct
             // format, i.e. don't contain parent args. If you hit this case, please verify this beforehand.

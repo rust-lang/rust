@@ -13,36 +13,14 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
-    self as ast, BareFnTy, BoundPolarity, FnRetTy, GenericBound, GenericBounds, GenericParam,
-    Generics, Lifetime, MacCall, MutTy, Mutability, PolyTraitRef, TraitBoundModifier,
-    TraitObjectSyntax, Ty, TyKind,
+    self as ast, BareFnTy, BoundConstness, BoundPolarity, FnRetTy, GenericBound, GenericBounds,
+    GenericParam, Generics, Lifetime, MacCall, MutTy, Mutability, PolyTraitRef,
+    TraitBoundModifiers, TraitObjectSyntax, Ty, TyKind,
 };
 use rustc_errors::{Applicability, PResult};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{Span, Symbol};
 use thin_vec::{thin_vec, ThinVec};
-
-/// Any `?`, `!`, or `~const` modifiers that appear at the start of a bound.
-struct BoundModifiers {
-    /// `?Trait`.
-    bound_polarity: BoundPolarity,
-
-    /// `~const Trait`.
-    maybe_const: Option<Span>,
-}
-
-impl BoundModifiers {
-    fn to_trait_bound_modifier(&self) -> TraitBoundModifier {
-        match (self.bound_polarity, self.maybe_const) {
-            (BoundPolarity::Positive, None) => TraitBoundModifier::None,
-            (BoundPolarity::Negative(_), None) => TraitBoundModifier::Negative,
-            (BoundPolarity::Maybe(_), None) => TraitBoundModifier::Maybe,
-            (BoundPolarity::Positive, Some(sp)) => TraitBoundModifier::MaybeConst(sp),
-            (BoundPolarity::Negative(_), Some(_)) => TraitBoundModifier::MaybeConstNegative,
-            (BoundPolarity::Maybe(_), Some(_)) => TraitBoundModifier::MaybeConstMaybe,
-        }
-    }
-}
 
 #[derive(Copy, Clone, PartialEq)]
 pub(super) enum AllowPlus {
@@ -461,7 +439,7 @@ impl<'a> Parser<'a> {
         parse_plus: bool,
     ) -> PResult<'a, TyKind> {
         let poly_trait_ref = PolyTraitRef::new(generic_params, path, lo.to(self.prev_token.span));
-        let bounds = vec![GenericBound::Trait(poly_trait_ref, TraitBoundModifier::None)];
+        let bounds = vec![GenericBound::Trait(poly_trait_ref, TraitBoundModifiers::NONE)];
         self.parse_remaining_bounds(bounds, parse_plus)
     }
 
@@ -800,7 +778,7 @@ impl<'a> Parser<'a> {
         let has_parens = self.eat(&token::OpenDelim(Delimiter::Parenthesis));
         let inner_lo = self.token.span;
 
-        let modifiers = self.parse_ty_bound_modifiers()?;
+        let modifiers = self.parse_trait_bound_modifiers()?;
         let bound = if self.token.is_lifetime() {
             self.error_lt_bound_with_modifiers(modifiers);
             self.parse_generic_lt_bound(lo, inner_lo, has_parens)?
@@ -831,18 +809,21 @@ impl<'a> Parser<'a> {
     }
 
     /// Emits an error if any trait bound modifiers were present.
-    fn error_lt_bound_with_modifiers(&self, modifiers: BoundModifiers) {
-        if let Some(span) = modifiers.maybe_const {
-            self.sess.emit_err(errors::TildeConstLifetime { span });
+    fn error_lt_bound_with_modifiers(&self, modifiers: TraitBoundModifiers) {
+        match modifiers.constness {
+            BoundConstness::Never => {}
+            BoundConstness::Maybe(span) => {
+                self.sess.emit_err(errors::TildeConstLifetime { span });
+            }
         }
 
-        match modifiers.bound_polarity {
+        match modifiers.polarity {
             BoundPolarity::Positive => {}
-            BoundPolarity::Negative(span) => {
-                self.sess.emit_err(errors::ModifierLifetime { span, sigil: "!" });
-            }
-            BoundPolarity::Maybe(span) => {
-                self.sess.emit_err(errors::ModifierLifetime { span, sigil: "?" });
+            BoundPolarity::Negative(span) | BoundPolarity::Maybe(span) => {
+                self.sess.emit_err(errors::ModifierLifetime {
+                    span,
+                    sigil: modifiers.polarity.as_str(),
+                });
             }
         }
     }
@@ -867,26 +848,26 @@ impl<'a> Parser<'a> {
     /// If no modifiers are present, this does not consume any tokens.
     ///
     /// ```ebnf
-    /// TY_BOUND_MODIFIERS = ["~const"] ["?"]
+    /// TRAIT_BOUND_MODIFIERS = ["~const"] ["?" | "!"]
     /// ```
-    fn parse_ty_bound_modifiers(&mut self) -> PResult<'a, BoundModifiers> {
-        let maybe_const = if self.eat(&token::Tilde) {
+    fn parse_trait_bound_modifiers(&mut self) -> PResult<'a, TraitBoundModifiers> {
+        let constness = if self.eat(&token::Tilde) {
             let tilde = self.prev_token.span;
             self.expect_keyword(kw::Const)?;
             let span = tilde.to(self.prev_token.span);
             self.sess.gated_spans.gate(sym::const_trait_impl, span);
-            Some(span)
+            BoundConstness::Maybe(span)
         } else if self.eat_keyword(kw::Const) {
             let span = self.prev_token.span;
             self.sess.gated_spans.gate(sym::const_trait_impl, span);
             self.sess.emit_err(errors::ConstMissingTilde { span, start: span.shrink_to_lo() });
 
-            Some(span)
+            BoundConstness::Maybe(span)
         } else {
-            None
+            BoundConstness::Never
         };
 
-        let bound_polarity = if self.eat(&token::Question) {
+        let polarity = if self.eat(&token::Question) {
             BoundPolarity::Maybe(self.prev_token.span)
         } else if self.eat(&token::Not) {
             self.sess.gated_spans.gate(sym::negative_bounds, self.prev_token.span);
@@ -895,13 +876,13 @@ impl<'a> Parser<'a> {
             BoundPolarity::Positive
         };
 
-        Ok(BoundModifiers { bound_polarity, maybe_const })
+        Ok(TraitBoundModifiers { constness, polarity })
     }
 
     /// Parses a type bound according to:
     /// ```ebnf
     /// TY_BOUND = TY_BOUND_NOPAREN | (TY_BOUND_NOPAREN)
-    /// TY_BOUND_NOPAREN = [TY_BOUND_MODIFIERS] [for<LT_PARAM_DEFS>] SIMPLE_PATH
+    /// TY_BOUND_NOPAREN = [TRAIT_BOUND_MODIFIERS] [for<LT_PARAM_DEFS>] SIMPLE_PATH
     /// ```
     ///
     /// For example, this grammar accepts `~const ?for<'a: 'b> m::Trait<'a>`.
@@ -909,7 +890,7 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         has_parens: bool,
-        modifiers: BoundModifiers,
+        modifiers: TraitBoundModifiers,
         leading_token: &Token,
     ) -> PResult<'a, GenericBound> {
         let mut lifetime_defs = self.parse_late_bound_lifetime_defs()?;
@@ -991,9 +972,8 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let modifier = modifiers.to_trait_bound_modifier();
         let poly_trait = PolyTraitRef::new(lifetime_defs, path, lo.to(self.prev_token.span));
-        Ok(GenericBound::Trait(poly_trait, modifier))
+        Ok(GenericBound::Trait(poly_trait, modifiers))
     }
 
     // recovers a `Fn(..)` parenthesized-style path from `fn(..)`

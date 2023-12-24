@@ -306,7 +306,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
     hidden_ty: Ty<'tcx>,
     hidden_region: ty::Region<'tcx>,
     opaque_ty_key: ty::OpaqueTypeKey<'tcx>,
-) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+) -> DiagnosticBuilder<'tcx> {
     let mut err = tcx.sess.create_err(errors::OpaqueCapturesLifetime {
         span,
         opaque_ty: Ty::new_opaque(tcx, opaque_ty_key.def_id.to_def_id(), opaque_ty_key.args),
@@ -2171,7 +2171,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         trace: TypeTrace<'tcx>,
         terr: TypeError<'tcx>,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'tcx> {
         debug!("report_and_explain_type_error(trace={:?}, terr={:?})", trace, terr);
 
         let span = trace.cause.span();
@@ -2319,7 +2319,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         origin: Option<SubregionOrigin<'tcx>>,
         bound_kind: GenericKind<'tcx>,
         sub: Region<'tcx>,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'tcx> {
         if let Some(SubregionOrigin::CompareImplItemObligation {
             span,
             impl_item_def_id,
@@ -2732,7 +2732,7 @@ impl<'tcx> InferCtxt<'tcx> {
     fn report_inference_failure(
         &self,
         var_origin: RegionVariableOrigin,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'tcx> {
         let br_string = |br: ty::BoundRegionKind| {
             let mut s = match br {
                 ty::BrNamed(_, name) => name.to_string(),

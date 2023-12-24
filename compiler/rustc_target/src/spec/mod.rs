@@ -1493,6 +1493,7 @@ supported_targets! {
     ("mips64-unknown-linux-muslabi64", mips64_unknown_linux_muslabi64),
     ("mips64el-unknown-linux-muslabi64", mips64el_unknown_linux_muslabi64),
     ("hexagon-unknown-linux-musl", hexagon_unknown_linux_musl),
+    ("hexagon-unknown-none-elf", hexagon_unknown_none_elf),
 
     ("mips-unknown-linux-uclibc", mips_unknown_linux_uclibc),
     ("mipsel-unknown-linux-uclibc", mipsel_unknown_linux_uclibc),
@@ -1590,6 +1591,7 @@ supported_targets! {
     ("sparcv9-sun-solaris", sparcv9_sun_solaris),
 
     ("x86_64-unknown-illumos", x86_64_unknown_illumos),
+    ("aarch64-unknown-illumos", aarch64_unknown_illumos),
 
     ("x86_64-pc-windows-gnu", x86_64_pc_windows_gnu),
     ("i686-pc-windows-gnu", i686_pc_windows_gnu),

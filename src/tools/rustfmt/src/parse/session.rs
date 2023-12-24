@@ -370,7 +370,7 @@ mod tests {
 
         fn build_diagnostic(level: DiagnosticLevel, span: Option<MultiSpan>) -> Diagnostic {
             let mut diag = Diagnostic::new(level, "");
-            diag.message.clear();
+            diag.messages.clear();
             if let Some(span) = span {
                 diag.span = span;
             }

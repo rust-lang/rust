@@ -4340,6 +4340,7 @@ dependencies = [
 name = "rustc_pattern_analysis"
 version = "0.0.0"
 dependencies = [
+ "derivative",
  "rustc_apfloat",
  "rustc_arena",
  "rustc_data_structures",

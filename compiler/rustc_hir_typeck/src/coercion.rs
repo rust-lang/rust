@@ -36,9 +36,7 @@
 //! ```
 
 use crate::FnCtxt;
-use rustc_errors::{
-    struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
-};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{self, Visitor};
@@ -1772,7 +1770,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         id: hir::HirId,
         expression: Option<&'tcx hir::Expr<'tcx>>,
         blk_id: Option<hir::HirId>,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'a> {
         let mut err = fcx.err_ctxt().report_mismatched_types(cause, expected, found, ty_err);
 
         let parent_id = fcx.tcx.hir().parent_id(id);

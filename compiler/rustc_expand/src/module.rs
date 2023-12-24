@@ -43,7 +43,7 @@ pub enum ModError<'a> {
     ModInBlock(Option<Ident>),
     FileNotFound(Ident, PathBuf, PathBuf),
     MultipleCandidates(Ident, PathBuf, PathBuf),
-    ParserError(DiagnosticBuilder<'a, ErrorGuaranteed>),
+    ParserError(DiagnosticBuilder<'a>),
 }
 
 pub(crate) fn parse_external_mod(

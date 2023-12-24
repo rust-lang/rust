@@ -39,7 +39,6 @@
 #![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
-#![cfg_attr(bootstrap, feature(trait_upcasting))]
 #![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]

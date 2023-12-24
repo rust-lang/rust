@@ -499,12 +499,7 @@ impl server::FreeFunctions for Rustc<'_, '_> {
             rustc_errors::Diagnostic::new(diagnostic.level.to_internal(), diagnostic.message);
         diag.set_span(MultiSpan::from_spans(diagnostic.spans));
         for child in diagnostic.children {
-            diag.sub(
-                child.level.to_internal(),
-                child.message,
-                MultiSpan::from_spans(child.spans),
-                None,
-            );
+            diag.sub(child.level.to_internal(), child.message, MultiSpan::from_spans(child.spans));
         }
         self.sess().dcx.emit_diagnostic(diag);
     }

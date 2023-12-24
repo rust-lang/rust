@@ -1481,7 +1481,7 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         other: &Self,
         opaque_def_id: LocalDefId,
         tcx: TyCtxt<'tcx>,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'tcx> {
         if let Some(diag) = tcx
             .sess
             .dcx()

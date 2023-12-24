@@ -48,22 +48,14 @@ impl<'a, 'p, 'tcx> PatternColumn<'a, 'p, 'tcx> {
     fn is_empty(&self) -> bool {
         self.patterns.is_empty()
     }
-    fn head_ty(&self) -> Option<Ty<'tcx>> {
+    fn head_ty(&self, cx: MatchCtxt<'a, 'p, 'tcx>) -> Option<Ty<'tcx>> {
         if self.patterns.len() == 0 {
             return None;
         }
-        // If the type is opaque and it is revealed anywhere in the column, we take the revealed
-        // version. Otherwise we could encounter constructors for the revealed type and crash.
-        let first_ty = self.patterns[0].ty();
-        if RustcMatchCheckCtxt::is_opaque_ty(first_ty) {
-            for pat in &self.patterns {
-                let ty = pat.ty();
-                if !RustcMatchCheckCtxt::is_opaque_ty(ty) {
-                    return Some(ty);
-                }
-            }
-        }
-        Some(first_ty)
+
+        let ty = self.patterns[0].ty();
+        // FIXME(Nadrieril): `Cx` should only give us revealed types.
+        Some(cx.tycx.reveal_opaque_ty(ty))
     }
 
     /// Do constructor splitting on the constructors of the column.
@@ -125,7 +117,7 @@ fn collect_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
     cx: MatchCtxt<'a, 'p, 'tcx>,
     column: &PatternColumn<'a, 'p, 'tcx>,
 ) -> Vec<WitnessPat<'p, 'tcx>> {
-    let Some(ty) = column.head_ty() else {
+    let Some(ty) = column.head_ty(cx) else {
         return Vec::new();
     };
     let pcx = &PlaceCtxt::new_dummy(cx, ty);
@@ -211,7 +203,7 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
                 };
 
                 use rustc_errors::DecorateLint;
-                let mut err = rcx.tcx.sess.struct_span_warn(*arm.pat.data(), "");
+                let mut err = rcx.tcx.sess.struct_span_warn(*arm.pat.data().unwrap(), "");
                 err.set_primary_message(decorator.msg());
                 decorator.decorate_lint(&mut err);
                 err.emit();
@@ -226,7 +218,7 @@ pub(crate) fn lint_overlapping_range_endpoints<'a, 'p, 'tcx>(
     cx: MatchCtxt<'a, 'p, 'tcx>,
     column: &PatternColumn<'a, 'p, 'tcx>,
 ) {
-    let Some(ty) = column.head_ty() else {
+    let Some(ty) = column.head_ty(cx) else {
         return;
     };
     let pcx = &PlaceCtxt::new_dummy(cx, ty);
@@ -261,8 +253,8 @@ pub(crate) fn lint_overlapping_range_endpoints<'a, 'p, 'tcx>(
                 let mut suffixes: SmallVec<[_; 1]> = Default::default();
                 // Iterate on patterns that contained `overlap`.
                 for pat in column.iter() {
-                    let this_span = *pat.data();
                     let Constructor::IntRange(this_range) = pat.ctor() else { continue };
+                    let this_span = *pat.data().unwrap();
                     if this_range.is_singleton() {
                         // Don't lint when one of the ranges is a singleton.
                         continue;

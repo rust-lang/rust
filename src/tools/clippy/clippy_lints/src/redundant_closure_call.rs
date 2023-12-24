@@ -5,7 +5,7 @@ use clippy_utils::sugg::Sugg;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::intravisit::{Visitor as HirVisitor, Visitor};
-use rustc_hir::{intravisit as hir_visit, CoroutineKind, CoroutineSource, Node};
+use rustc_hir::{intravisit as hir_visit, CoroutineKind, CoroutineSource, CoroutineDesugaring, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
@@ -67,7 +67,7 @@ fn is_async_closure(cx: &LateContext<'_>, body: &hir::Body<'_>) -> bool {
     if let hir::ExprKind::Closure(innermost_closure_generated_by_desugar) = body.value.kind
         && let desugared_inner_closure_body = cx.tcx.hir().body(innermost_closure_generated_by_desugar.body)
         // checks whether it is `async || whatever_expression`
-        && let Some(CoroutineKind::Async(CoroutineSource::Closure)) = desugared_inner_closure_body.coroutine_kind
+        && let Some(CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Closure)) = desugared_inner_closure_body.coroutine_kind
     {
         true
     } else {

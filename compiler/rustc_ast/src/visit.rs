@@ -844,11 +844,11 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(subexpression);
             visitor.visit_block(block);
         }
-        ExprKind::ForLoop(pattern, subexpression, block, opt_label) => {
-            walk_list!(visitor, visit_label, opt_label);
-            visitor.visit_pat(pattern);
-            visitor.visit_expr(subexpression);
-            visitor.visit_block(block);
+        ExprKind::ForLoop { pat, iter, body, label, kind: _ } => {
+            walk_list!(visitor, visit_label, label);
+            visitor.visit_pat(pat);
+            visitor.visit_expr(iter);
+            visitor.visit_block(body);
         }
         ExprKind::Loop(block, opt_label, _) => {
             walk_list!(visitor, visit_label, opt_label);

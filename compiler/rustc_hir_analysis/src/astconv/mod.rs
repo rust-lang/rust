@@ -378,7 +378,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             assert!(self_ty.is_none());
         }
 
-        let arg_count = check_generic_arg_count(
+        let mut arg_count = check_generic_arg_count(
             tcx,
             span,
             def_id,
@@ -560,6 +560,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             inferred_params: vec![],
             infer_args,
         };
+        if let ty::BoundConstness::ConstIfConst = constness
+            && generics.has_self
+            && !tcx.has_attr(def_id, sym::const_trait)
+        {
+            let e = tcx.sess.emit_err(crate::errors::ConstBoundForNonConstTrait { span });
+            arg_count.correct =
+                Err(GenericArgCountMismatch { reported: Some(e), invalid_args: vec![] });
+        }
         let args = create_args_for_parent_generic_args(
             tcx,
             def_id,
@@ -569,13 +577,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             &arg_count,
             &mut args_ctx,
         );
-
-        if let ty::BoundConstness::ConstIfConst = constness
-            && generics.has_self
-            && !tcx.has_attr(def_id, sym::const_trait)
-        {
-            tcx.sess.emit_err(crate::errors::ConstBoundForNonConstTrait { span });
-        }
 
         (args, arg_count)
     }
@@ -2686,7 +2687,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         constrained_regions: FxHashSet<ty::BoundRegionKind>,
         referenced_regions: FxHashSet<ty::BoundRegionKind>,
-        generate_err: impl Fn(&str) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+        generate_err: impl Fn(&str) -> DiagnosticBuilder<'tcx>,
     ) {
         for br in referenced_regions.difference(&constrained_regions) {
             let br_name = match *br {

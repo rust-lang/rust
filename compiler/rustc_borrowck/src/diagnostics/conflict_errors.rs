@@ -1,13 +1,11 @@
 use either::Either;
-use hir::PatField;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{
-    struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
-};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
+use rustc_hir::{CoroutineDesugaring, PatField};
 use rustc_hir::{CoroutineKind, CoroutineSource, LangItem};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::hir::nested_filter::OnlyBodies;
@@ -324,7 +322,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &mut self,
         mpi: MovePathIndex,
         move_span: Span,
-        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
+        err: &mut DiagnosticBuilder<'_>,
         in_pattern: &mut bool,
         move_spans: UseSpans<'_>,
     ) {
@@ -483,7 +481,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         desired_action: InitializationRequiringAction,
         span: Span,
         use_spans: UseSpans<'tcx>,
-    ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'cx> {
         // We need all statements in the body where the binding was assigned to to later find all
         // the branching code paths where the binding *wasn't* assigned to.
         let inits = &self.move_data.init_path_map[mpi];
@@ -873,7 +871,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         location: Location,
         (place, _span): (Place<'tcx>, Span),
         borrow: &BorrowData<'tcx>,
-    ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'cx> {
         let borrow_spans = self.retrieve_borrow_spans(borrow);
         let borrow_span = borrow_spans.args_or_use();
 
@@ -921,7 +919,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         (place, span): (Place<'tcx>, Span),
         gen_borrow_kind: BorrowKind,
         issued_borrow: &BorrowData<'tcx>,
-    ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'cx> {
         let issued_spans = self.retrieve_borrow_spans(issued_borrow);
         let issued_span = issued_spans.args_or_use();
 
@@ -2025,7 +2023,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         drop_span: Span,
         borrow_spans: UseSpans<'tcx>,
         explanation: BorrowExplanation<'tcx>,
-    ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'cx> {
         debug!(
             "report_local_value_does_not_live_long_enough(\
              {:?}, {:?}, {:?}, {:?}, {:?}\
@@ -2200,7 +2198,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &mut self,
         drop_span: Span,
         borrow_span: Span,
-    ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'cx> {
         debug!(
             "report_thread_local_value_does_not_live_long_enough(\
              {:?}, {:?}\
@@ -2228,7 +2226,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         borrow_spans: UseSpans<'tcx>,
         proper_span: Span,
         explanation: BorrowExplanation<'tcx>,
-    ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'cx> {
         if let BorrowExplanation::MustBeValidFor { category, span, from_closure: false, .. } =
             explanation
         {
@@ -2395,7 +2393,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         return_span: Span,
         category: ConstraintCategory<'tcx>,
         opt_place_desc: Option<&String>,
-    ) -> Option<DiagnosticBuilder<'cx, ErrorGuaranteed>> {
+    ) -> Option<DiagnosticBuilder<'cx>> {
         let return_kind = match category {
             ConstraintCategory::Return(_) => "return",
             ConstraintCategory::Yield => "yield",
@@ -2490,7 +2488,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         constraint_span: Span,
         captured_var: &str,
         scope: &str,
-    ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'cx> {
         let tcx = self.infcx.tcx;
         let args_span = use_span.args_or_use();
 
@@ -2516,27 +2514,29 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         };
         let kind = match use_span.coroutine_kind() {
             Some(coroutine_kind) => match coroutine_kind {
-                CoroutineKind::Gen(kind) => match kind {
+                CoroutineKind::Desugared(CoroutineDesugaring::Gen, kind) => match kind {
                     CoroutineSource::Block => "gen block",
                     CoroutineSource::Closure => "gen closure",
                     CoroutineSource::Fn => {
                         bug!("gen block/closure expected, but gen function found.")
                     }
                 },
-                CoroutineKind::AsyncGen(kind) => match kind {
+                CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, kind) => match kind {
                     CoroutineSource::Block => "async gen block",
                     CoroutineSource::Closure => "async gen closure",
                     CoroutineSource::Fn => {
                         bug!("gen block/closure expected, but gen function found.")
                     }
                 },
-                CoroutineKind::Async(async_kind) => match async_kind {
-                    CoroutineSource::Block => "async block",
-                    CoroutineSource::Closure => "async closure",
-                    CoroutineSource::Fn => {
-                        bug!("async block/closure expected, but async function found.")
+                CoroutineKind::Desugared(CoroutineDesugaring::Async, async_kind) => {
+                    match async_kind {
+                        CoroutineSource::Block => "async block",
+                        CoroutineSource::Closure => "async closure",
+                        CoroutineSource::Fn => {
+                            bug!("async block/closure expected, but async function found.")
+                        }
                     }
-                },
+                }
                 CoroutineKind::Coroutine => "coroutine",
             },
             None => "closure",
@@ -2566,7 +2566,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
             ConstraintCategory::CallArgument(_) => {
                 fr_name.highlight_region_name(&mut err);
-                if matches!(use_span.coroutine_kind(), Some(CoroutineKind::Async(_))) {
+                if matches!(
+                    use_span.coroutine_kind(),
+                    Some(CoroutineKind::Desugared(CoroutineDesugaring::Async, _))
+                ) {
                     err.note(
                         "async blocks are not executed immediately and must either take a \
                          reference or ownership of outside variables they use",
@@ -2593,7 +2596,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         upvar_span: Span,
         upvar_name: Symbol,
         escape_span: Span,
-    ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'cx> {
         let tcx = self.infcx.tcx;
 
         let escapes_from = tcx.def_descr(self.mir_def_id().to_def_id());

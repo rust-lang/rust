@@ -35,7 +35,7 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
     pluralize, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
-    DiagnosticMessage, ErrorGuaranteed, FatalError, IntoDiagnostic, MultiSpan, PResult,
+    DiagnosticMessage, FatalError, MultiSpan, PResult,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
@@ -245,7 +245,7 @@ impl<'a> Parser<'a> {
         &self,
         sp: S,
         m: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'a> {
         self.dcx().struct_span_err(sp, m)
     }
 
@@ -280,11 +280,10 @@ impl<'a> Parser<'a> {
         recover: bool,
     ) -> PResult<'a, (Ident, /* is_raw */ bool)> {
         if let TokenKind::DocComment(..) = self.prev_token.kind {
-            return Err(DocCommentDoesNotDocumentAnything {
+            return Err(self.dcx().create_err(DocCommentDoesNotDocumentAnything {
                 span: self.prev_token.span,
                 missing_comma: None,
-            }
-            .into_diagnostic(self.dcx()));
+            }));
         }
 
         let valid_follow = &[
@@ -347,7 +346,7 @@ impl<'a> Parser<'a> {
             suggest_remove_comma,
             help_cannot_start_number,
         };
-        let mut err = err.into_diagnostic(self.dcx());
+        let mut err = self.dcx().create_err(err);
 
         // if the token we have is a `<`
         // it *might* be a misplaced generic
@@ -414,7 +413,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn expected_ident_found_err(&mut self) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    pub(super) fn expected_ident_found_err(&mut self) -> DiagnosticBuilder<'a> {
         self.expected_ident_found(false).unwrap_err()
     }
 
@@ -959,7 +958,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn recover_closure_body(
         &mut self,
-        mut err: DiagnosticBuilder<'a, ErrorGuaranteed>,
+        mut err: DiagnosticBuilder<'a>,
         before: token::Token,
         prev: token::Token,
         token: token::Token,
@@ -1190,7 +1189,7 @@ impl<'a> Parser<'a> {
     /// encounter a parse error when encountering the first `,`.
     pub(super) fn check_mistyped_turbofish_with_multiple_type_params(
         &mut self,
-        mut e: DiagnosticBuilder<'a, ErrorGuaranteed>,
+        mut e: DiagnosticBuilder<'a>,
         expr: &mut P<Expr>,
     ) -> PResult<'a, ()> {
         if let ExprKind::Binary(binop, _, _) = &expr.kind
@@ -1235,10 +1234,7 @@ impl<'a> Parser<'a> {
 
     /// Suggest add the missing `let` before the identifier in stmt
     /// `a: Ty = 1` -> `let a: Ty = 1`
-    pub(super) fn suggest_add_missing_let_for_stmt(
-        &mut self,
-        err: &mut DiagnosticBuilder<'a, ErrorGuaranteed>,
-    ) {
+    pub(super) fn suggest_add_missing_let_for_stmt(&mut self, err: &mut DiagnosticBuilder<'a>) {
         if self.token == token::Colon {
             let prev_span = self.prev_token.span.shrink_to_lo();
             let snapshot = self.create_snapshot_for_diagnostic();
@@ -1432,7 +1428,7 @@ impl<'a> Parser<'a> {
                                 // Not entirely sure now, but we bubble the error up with the
                                 // suggestion.
                                 self.restore_snapshot(snapshot);
-                                Err(err.into_diagnostic(self.dcx()))
+                                Err(self.dcx().create_err(err))
                             }
                         }
                     } else if token::OpenDelim(Delimiter::Parenthesis) == self.token.kind {
@@ -1447,7 +1443,7 @@ impl<'a> Parser<'a> {
                         }
                         // Consume the fn call arguments.
                         match self.consume_fn_args() {
-                            Err(()) => Err(err.into_diagnostic(self.dcx())),
+                            Err(()) => Err(self.dcx().create_err(err)),
                             Ok(()) => {
                                 self.sess.emit_err(err);
                                 // FIXME: actually check that the two expressions in the binop are
@@ -1473,7 +1469,7 @@ impl<'a> Parser<'a> {
                             mk_err_expr(self, inner_op.span.to(self.prev_token.span))
                         } else {
                             // These cases cause too many knock-down errors, bail out (#61329).
-                            Err(err.into_diagnostic(self.dcx()))
+                            Err(self.dcx().create_err(err))
                         }
                     };
                 }
@@ -2321,7 +2317,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn expected_expression_found(&self) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    pub(super) fn expected_expression_found(&self) -> DiagnosticBuilder<'a> {
         let (span, msg) = match (&self.token.kind, self.subparser_name) {
             (&token::Eof, Some(origin)) => {
                 let sp = self.prev_token.span.shrink_to_hi();
@@ -2561,7 +2557,7 @@ impl<'a> Parser<'a> {
             Ok(Some(GenericArg::Const(self.parse_const_arg()?)))
         } else {
             let after_kw_const = self.token.span;
-            self.recover_const_arg(after_kw_const, err.into_diagnostic(self.dcx())).map(Some)
+            self.recover_const_arg(after_kw_const, self.dcx().create_err(err)).map(Some)
         }
     }
 
@@ -2573,7 +2569,7 @@ impl<'a> Parser<'a> {
     pub fn recover_const_arg(
         &mut self,
         start: Span,
-        mut err: DiagnosticBuilder<'a, ErrorGuaranteed>,
+        mut err: DiagnosticBuilder<'a>,
     ) -> PResult<'a, GenericArg> {
         let is_op_or_dot = AssocOp::from_token(&self.token)
             .and_then(|op| {
@@ -2675,7 +2671,7 @@ impl<'a> Parser<'a> {
     /// Creates a dummy const argument, and reports that the expression must be enclosed in braces
     pub fn dummy_const_arg_needs_braces(
         &self,
-        mut err: DiagnosticBuilder<'a, ErrorGuaranteed>,
+        mut err: DiagnosticBuilder<'a>,
         span: Span,
     ) -> GenericArg {
         err.multipart_suggestion(
@@ -2915,11 +2911,10 @@ impl<'a> Parser<'a> {
                 let (a_span, b_span) = (a.span(), b.span());
                 let between_span = a_span.shrink_to_hi().to(b_span.shrink_to_lo());
                 if self.span_to_snippet(between_span).as_deref() == Ok(":: ") {
-                    return Err(DoubleColonInBound {
+                    return Err(self.dcx().create_err(DoubleColonInBound {
                         span: path.span.shrink_to_hi(),
                         between: between_span,
-                    }
-                    .into_diagnostic(self.dcx()));
+                    }));
                 }
             }
         }

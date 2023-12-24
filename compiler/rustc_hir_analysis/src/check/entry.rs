@@ -124,7 +124,10 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     if let Some(term_did) = tcx.lang_items().termination() {
         let return_ty = main_fnsig.output();
         let return_ty_span = main_fn_return_type_span(tcx, main_def_id).unwrap_or(main_span);
-        let return_ty = return_ty.skip_binder();
+        let Some(return_ty) = return_ty.no_bound_vars() else {
+            tcx.sess.emit_err(errors::MainFunctionReturnTypeGeneric { span: return_ty_span });
+            return;
+        };
         let infcx = tcx.infer_ctxt().build();
         let cause = traits::ObligationCause::new(
             return_ty_span,

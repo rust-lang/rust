@@ -8,7 +8,6 @@
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![cfg_attr(bootstrap, feature(c_str_literals))]
 #![feature(exact_size_is_empty)]
 #![feature(extern_types)]
 #![feature(hash_raw_entry)]

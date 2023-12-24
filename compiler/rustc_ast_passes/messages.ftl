@@ -152,6 +152,8 @@ ast_passes_impl_trait_path = `impl Trait` is not allowed in path parameters
 ast_passes_incompatible_features = `{$f1}` and `{$f2}` are incompatible, using them at the same time is not allowed
     .help = remove one of these features
 
+ast_passes_incompatible_trait_bound_modifiers = `{$left}` and `{$right}` are mutually exclusive
+
 ast_passes_inherent_cannot_be = inherent impls cannot be {$annotation}
     .because = {$annotation} because of this
     .type = inherent impl for this type
@@ -194,8 +196,6 @@ ast_passes_nomangle_ascii = `#[no_mangle]` requires ASCII identifier
 
 ast_passes_obsolete_auto = `impl Trait for .. {"{}"}` is an obsolete syntax
     .help = use `auto trait Trait {"{}"}` instead
-
-ast_passes_optional_const_exclusive = `~const` and `{$modifier}` are mutually exclusive
 
 ast_passes_optional_trait_object = `?Trait` is not permitted in trait object types
 

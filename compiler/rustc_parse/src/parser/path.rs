@@ -9,7 +9,7 @@ use rustc_ast::{
     AssocConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
     Path, PathSegment, QSelf,
 };
-use rustc_errors::{Applicability, IntoDiagnostic, PResult};
+use rustc_errors::{Applicability, PResult};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span};
 use std::mem;
@@ -318,15 +318,14 @@ impl<'a> Parser<'a> {
                             })
                         {
                             err.cancel();
-                            err = PathSingleColon {
+                            err = self.dcx().create_err(PathSingleColon {
                                 span: self.token.span,
                                 type_ascription: self
                                     .sess
                                     .unstable_features
                                     .is_nightly_build()
                                     .then_some(()),
-                            }
-                            .into_diagnostic(self.dcx());
+                            });
                         }
                         // Attempt to find places where a missing `>` might belong.
                         else if let Some(arg) = args
@@ -841,7 +840,7 @@ impl<'a> Parser<'a> {
             {
                 return Ok((false, seg.ident, seg.args.as_deref().cloned()));
             } else if let ast::TyKind::TraitObject(bounds, ast::TraitObjectSyntax::None) = &ty.kind
-                && let [ast::GenericBound::Trait(trait_ref, ast::TraitBoundModifier::None)] =
+                && let [ast::GenericBound::Trait(trait_ref, ast::TraitBoundModifiers::NONE)] =
                     bounds.as_slice()
                 && let [seg] = trait_ref.trait_ref.path.segments.as_slice()
             {

@@ -77,7 +77,7 @@ declare_features! (
     /// Allows empty structs and enum variants with braces.
     (accepted, braced_empty_structs, "1.8.0", Some(29720)),
     /// Allows `c"foo"` literals.
-    (accepted, c_str_literals, "CURRENT_RUSTC_VERSION", Some(105723)),
+    (accepted, c_str_literals, "1.76.0", Some(105723)),
     /// Allows `#[cfg_attr(predicate, multiple, attributes, here)]`.
     (accepted, cfg_attr_multi, "1.33.0", Some(54881)),
     /// Allows the use of `#[cfg(doctest)]`, set when rustdoc is collecting doctests.
@@ -341,7 +341,7 @@ declare_features! (
     (accepted, track_caller, "1.46.0", Some(47809)),
     /// Allows dyn upcasting trait objects via supertraits.
     /// Dyn upcasting is casting, e.g., `dyn Foo -> dyn Bar` where `Foo: Bar`.
-    (accepted, trait_upcasting, "CURRENT_RUSTC_VERSION", Some(65991)),
+    (accepted, trait_upcasting, "1.76.0", Some(65991)),
     /// Allows #[repr(transparent)] on univariant enums (RFC 2645).
     (accepted, transparent_enums, "1.42.0", Some(60405)),
     /// Allows indexing tuples.

@@ -347,7 +347,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             ) {
                 Ok(bundle) => bundle,
                 Err(e) => {
-                    early_dcx.early_error(format!("failed to load fluent bundle: {e}"));
+                    early_dcx.early_fatal(format!("failed to load fluent bundle: {e}"));
                 }
             };
 

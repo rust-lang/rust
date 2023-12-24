@@ -267,6 +267,22 @@ you can wrap it like this:
 /// more documentation
 ```
 
+Please note that if you want to put markdown in the HTML tag and for it to
+be interpreted as such, you need to have an empty line between the HTML tags
+and your markdown content. For example if you want to use a link:
+
+```md
+/// documentation
+///
+/// <div class="warning">
+///
+/// Go to [this link](https://rust-lang.org)!
+///
+/// </div>
+///
+/// more documentation
+```
+
 [`backtrace`]: https://docs.rs/backtrace/0.3.50/backtrace/
 [commonmark markdown specification]: https://commonmark.org/
 [commonmark quick reference]: https://commonmark.org/help/

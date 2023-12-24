@@ -426,7 +426,9 @@ symbols! {
         async_closure,
         async_fn_in_trait,
         async_fn_track_caller,
+        async_for_loop,
         async_iterator,
+        async_iterator_poll_next,
         atomic,
         atomic_mod,
         atomics,
@@ -893,6 +895,7 @@ symbols! {
         instruction_set,
         integer_: "integer", // underscore to avoid clashing with the function `sym::integer` below
         integral,
+        into_async_iter_into_iter,
         into_future,
         into_iter,
         intra_doc_pointers,

@@ -424,7 +424,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         span: Span,
         source: PathSource<'_>,
         res: Option<Res>,
-    ) -> (DiagnosticBuilder<'tcx, ErrorGuaranteed>, Vec<ImportSuggestion>) {
+    ) -> (DiagnosticBuilder<'tcx>, Vec<ImportSuggestion>) {
         debug!(?res, ?source);
         let base_error = self.make_base_error(path, span, source, res);
 
@@ -520,7 +520,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     continue;
                 };
                 for bound in bounds {
-                    let ast::GenericBound::Trait(trait_ref, ast::TraitBoundModifier::None) = bound
+                    let ast::GenericBound::Trait(trait_ref, ast::TraitBoundModifiers::NONE) = bound
                     else {
                         continue;
                     };
@@ -1242,7 +1242,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             }
             if let (
                 [ast::PathSegment { args: None, .. }],
-                [ast::GenericBound::Trait(poly_trait_ref, ast::TraitBoundModifier::None)],
+                [ast::GenericBound::Trait(poly_trait_ref, ast::TraitBoundModifiers::NONE)],
             ) = (&type_param_path.segments[..], &bounds[..])
             {
                 if let [ast::PathSegment { ident, args: None, .. }] =
@@ -1409,7 +1409,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                             | ExprKind::Unary(..)
                             | ExprKind::If(..)
                             | ExprKind::While(..)
-                            | ExprKind::ForLoop(..)
+                            | ExprKind::ForLoop { .. }
                             | ExprKind::Match(..),
                         ..
                     }),
@@ -3276,7 +3276,7 @@ fn mk_where_bound_predicate(
                 },
                 span: DUMMY_SP,
             },
-            ast::TraitBoundModifier::None,
+            ast::TraitBoundModifiers::NONE,
         )],
     };
 

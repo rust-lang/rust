@@ -194,10 +194,10 @@ fn init_logging(early_dcx: &EarlyDiagCtxt) {
         Ok("always") => true,
         Ok("never") => false,
         Ok("auto") | Err(VarError::NotPresent) => io::stdout().is_terminal(),
-        Ok(value) => early_dcx.early_error(format!(
+        Ok(value) => early_dcx.early_fatal(format!(
             "invalid log color value '{value}': expected one of always, never, or auto",
         )),
-        Err(VarError::NotUnicode(value)) => early_dcx.early_error(format!(
+        Err(VarError::NotUnicode(value)) => early_dcx.early_fatal(format!(
             "invalid log color value '{}': expected one of always, never, or auto",
             value.to_string_lossy()
         )),
@@ -727,7 +727,7 @@ fn main_args(
     let matches = match options.parse(&args) {
         Ok(m) => m,
         Err(err) => {
-            early_dcx.early_error(err.to_string());
+            early_dcx.early_fatal(err.to_string());
         }
     };
 
