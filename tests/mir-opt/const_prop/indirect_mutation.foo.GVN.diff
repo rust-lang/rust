@@ -17,13 +17,11 @@
       bb0: {
           StorageLive(_1);
 -         _1 = (const 1_i32,);
--         StorageLive(_2);
 +         _1 = const (1_i32,);
-+         nop;
+          StorageLive(_2);
           _2 = &mut (_1.0: i32);
           (*_2) = const 5_i32;
--         StorageDead(_2);
-+         nop;
+          StorageDead(_2);
           StorageLive(_3);
           StorageLive(_4);
           _4 = (_1.0: i32);

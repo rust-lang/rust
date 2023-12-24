@@ -637,6 +637,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         if place.is_indirect()
             && let Some(base) = self.locals[place.local]
             && let Some(new_local) = self.try_as_local(base, location)
+            && place.local != new_local
         {
             place.local = new_local;
             self.reused_locals.insert(new_local);
@@ -646,8 +647,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         for i in 0..projection.len() {
             let elem = projection[i];
-            if let ProjectionElem::Index(idx) = elem
-                && let Some(idx) = self.locals[idx]
+            if let ProjectionElem::Index(idx_local) = elem
+                && let Some(idx) = self.locals[idx_local]
             {
                 if let Some(offset) = self.evaluated[idx].as_ref()
                     && let Ok(offset) = self.ecx.read_target_usize(offset)
@@ -655,9 +656,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 {
                     projection.to_mut()[i] =
                         ProjectionElem::ConstantIndex { offset, min_length, from_end: false };
-                } else if let Some(new_idx) = self.try_as_local(idx, location) {
-                    projection.to_mut()[i] = ProjectionElem::Index(new_idx);
-                    self.reused_locals.insert(new_idx);
+                } else if let Some(new_idx_local) = self.try_as_local(idx, location)
+                    && idx_local != new_idx_local
+                {
+                    projection.to_mut()[i] = ProjectionElem::Index(new_idx_local);
+                    self.reused_locals.insert(new_idx_local);
                 }
             }
         }

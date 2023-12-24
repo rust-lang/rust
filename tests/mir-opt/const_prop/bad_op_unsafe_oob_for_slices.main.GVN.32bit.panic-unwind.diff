@@ -22,18 +22,15 @@
       }
   
       bb0: {
--         StorageLive(_1);
-+         nop;
+          StorageLive(_1);
           StorageLive(_2);
--         StorageLive(_3);
-+         nop;
+          StorageLive(_3);
           _9 = const _;
           _3 = &(*_9);
           _2 = &raw const (*_3);
           _1 = move _2 as *const [i32] (PointerCoercion(Unsize));
           StorageDead(_2);
--         StorageDead(_3);
-+         nop;
+          StorageDead(_3);
           StorageLive(_5);
           StorageLive(_6);
           _6 = const 3_usize;
@@ -50,8 +47,7 @@
           StorageDead(_6);
           _0 = const ();
           StorageDead(_5);
--         StorageDead(_1);
-+         nop;
+          StorageDead(_1);
           return;
       }
   }

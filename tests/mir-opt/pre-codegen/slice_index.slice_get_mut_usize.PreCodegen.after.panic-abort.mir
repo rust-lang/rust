@@ -50,6 +50,7 @@ fn slice_get_mut_usize(_1: &mut [u32], _2: usize) -> Option<&mut u32> {
     }
 
     bb0: {
+        StorageLive(_7);
         StorageLive(_4);
         StorageLive(_3);
         _3 = Len((*_1));
@@ -85,6 +86,7 @@ fn slice_get_mut_usize(_1: &mut [u32], _2: usize) -> Option<&mut u32> {
 
     bb3: {
         StorageDead(_4);
+        StorageDead(_7);
         return;
     }
 }

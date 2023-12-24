@@ -16,14 +16,12 @@
 -         StorageLive(_1);
 +         nop;
           StorageLive(_2);
--         StorageLive(_3);
-+         nop;
+          StorageLive(_3);
           _3 = const _;
           _2 = &raw const (*_3);
           _1 = move _2 as usize (PointerExposeAddress);
           StorageDead(_2);
--         StorageDead(_3);
-+         nop;
+          StorageDead(_3);
           StorageLive(_4);
           StorageLive(_5);
           _5 = _1;
