@@ -4325,7 +4325,6 @@ impl Methods {
                         );
                     }
                     if self.msrv.meets(msrvs::ITER_FLATTEN) {
-
                         // use the sourcemap to get the span of the closure
                         iter_filter::check(cx, expr, arg, span);
                     }

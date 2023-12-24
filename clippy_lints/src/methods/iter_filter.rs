@@ -57,10 +57,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, filter_arg: &hir
     if is_iterator
         && parent_is_not_map
         && is_method(cx, filter_arg, sym!(is_some))
-        && !span_contains_comment(
-            cx.sess().source_map(), 
-            filter_span.with_hi(expr.span.hi())
-        )
+        && !span_contains_comment(cx.sess().source_map(), filter_span.with_hi(expr.span.hi()))
     {
         span_lint_and_sugg(
             cx,
@@ -75,10 +72,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, filter_arg: &hir
     if is_iterator
         && parent_is_not_map
         && is_method(cx, filter_arg, sym!(is_ok))
-        && !span_contains_comment(
-            cx.sess().source_map(), 
-            filter_span.with_hi(expr.span.hi())
-        )
+        && !span_contains_comment(cx.sess().source_map(), filter_span.with_hi(expr.span.hi()))
     {
         span_lint_and_sugg(
             cx,
