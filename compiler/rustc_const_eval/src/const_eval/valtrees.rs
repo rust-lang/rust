@@ -341,7 +341,7 @@ fn valtree_into_mplace<'tcx>(
         ty::FnDef(_, _) => {
             // Zero-sized type, nothing to do.
         }
-        ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char => {
+        ty::Bool | ty::Int(_) | ty::Uint(_) | ty::Float(_) | ty::Char | ty::RawPtr(..) => {
             let scalar_int = valtree.unwrap_leaf();
             debug!("writing trivial valtree {:?} to place {:?}", scalar_int, place);
             ecx.write_immediate(Immediate::Scalar(scalar_int.into()), place).unwrap();
