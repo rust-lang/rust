@@ -2407,8 +2407,8 @@ mod error {
         /// when errors in the map are being re-added to the error buffer so that errors with the
         /// same primary span come out in a consistent order.
         buffered_move_errors:
-            BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx>, DiagnosticBuilder<'tcx, ErrorGuaranteed>)>,
-        buffered_mut_errors: FxIndexMap<Span, (DiagnosticBuilder<'tcx, ErrorGuaranteed>, usize)>,
+            BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx>, DiagnosticBuilder<'tcx>)>,
+        buffered_mut_errors: FxIndexMap<Span, (DiagnosticBuilder<'tcx>, usize)>,
         /// Diagnostics to be reported buffer.
         buffered: Vec<Diagnostic>,
         /// Set to Some if we emit an error during borrowck
@@ -2426,7 +2426,7 @@ mod error {
             }
         }
 
-        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_, ErrorGuaranteed>) {
+        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_>) {
             if let None = self.tainted_by_errors {
                 self.tainted_by_errors = Some(self.tcx.sess.span_delayed_bug(
                     t.span.clone_ignoring_labels(),
@@ -2446,7 +2446,7 @@ mod error {
     }
 
     impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
-        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_, ErrorGuaranteed>) {
+        pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_>) {
             self.errors.buffer_error(t);
         }
 
@@ -2457,7 +2457,7 @@ mod error {
         pub fn buffer_move_error(
             &mut self,
             move_out_indices: Vec<MoveOutIndex>,
-            place_and_err: (PlaceRef<'tcx>, DiagnosticBuilder<'tcx, ErrorGuaranteed>),
+            place_and_err: (PlaceRef<'tcx>, DiagnosticBuilder<'tcx>),
         ) -> bool {
             if let Some((_, diag)) =
                 self.errors.buffered_move_errors.insert(move_out_indices, place_and_err)
@@ -2473,16 +2473,11 @@ mod error {
         pub fn get_buffered_mut_error(
             &mut self,
             span: Span,
-        ) -> Option<(DiagnosticBuilder<'tcx, ErrorGuaranteed>, usize)> {
+        ) -> Option<(DiagnosticBuilder<'tcx>, usize)> {
             self.errors.buffered_mut_errors.remove(&span)
         }
 
-        pub fn buffer_mut_error(
-            &mut self,
-            span: Span,
-            t: DiagnosticBuilder<'tcx, ErrorGuaranteed>,
-            count: usize,
-        ) {
+        pub fn buffer_mut_error(&mut self, span: Span, t: DiagnosticBuilder<'tcx>, count: usize) {
             self.errors.buffered_mut_errors.insert(span, (t, count));
         }
 
@@ -2517,7 +2512,7 @@ mod error {
         pub fn has_move_error(
             &self,
             move_out_indices: &[MoveOutIndex],
-        ) -> Option<&(PlaceRef<'tcx>, DiagnosticBuilder<'cx, ErrorGuaranteed>)> {
+        ) -> Option<&(PlaceRef<'tcx>, DiagnosticBuilder<'cx>)> {
             self.errors.buffered_move_errors.get(move_out_indices)
         }
     }

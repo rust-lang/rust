@@ -3693,7 +3693,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             let mut parent_err = this.r.into_struct_error(parent_err.span, parent_err.node);
 
             // overwrite all properties with the parent's error message
-            err.message = take(&mut parent_err.message);
+            err.messages = take(&mut parent_err.messages);
             err.code = take(&mut parent_err.code);
             swap(&mut err.span, &mut parent_err.span);
             err.children = take(&mut parent_err.children);
@@ -4258,11 +4258,11 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 });
             }
 
-            ExprKind::ForLoop(ref pat, ref iter_expr, ref block, label) => {
-                self.visit_expr(iter_expr);
+            ExprKind::ForLoop { ref pat, ref iter, ref body, label, kind: _ } => {
+                self.visit_expr(iter);
                 self.with_rib(ValueNS, RibKind::Normal, |this| {
                     this.resolve_pattern_top(pat, PatternSource::For);
-                    this.resolve_labeled_block(label, expr.id, block);
+                    this.resolve_labeled_block(label, expr.id, body);
                 });
             }
 

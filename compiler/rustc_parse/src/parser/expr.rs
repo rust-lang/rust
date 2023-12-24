@@ -10,7 +10,7 @@ use super::{
 use crate::errors;
 use crate::maybe_recover_from_interpolated_ty_qpath;
 use ast::mut_visit::{noop_visit_expr, MutVisitor};
-use ast::{CoroutineKind, GenBlockKind, Pat, Path, PathSegment};
+use ast::{CoroutineKind, ForLoopKind, GenBlockKind, Pat, Path, PathSegment};
 use core::mem;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
@@ -26,8 +26,7 @@ use rustc_ast::{ClosureBinder, MetaItemLit, StmtKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
-    AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic,
-    PResult, StashKey,
+    AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, PResult, StashKey,
 };
 use rustc_macros::Subdiagnostic;
 use rustc_session::errors::{report_lit_error, ExprParenthesesNeeded};
@@ -1255,21 +1254,21 @@ impl<'a> Parser<'a> {
                             // that of the open delim in `TokenTreesReader::parse_token_tree`, even if they are different.
                             self.span_to_snippet(close_paren).is_ok_and(|snippet| snippet == ")")
                         {
-                            let mut replacement_err = errors::ParenthesesWithStructFields {
-                                span,
-                                r#type: path,
-                                braces_for_struct: errors::BracesForStructLiteral {
-                                    first: open_paren,
-                                    second: close_paren,
-                                },
-                                no_fields_for_fn: errors::NoFieldsForFnCall {
-                                    fields: fields
-                                        .into_iter()
-                                        .map(|field| field.span.until(field.expr.span))
-                                        .collect(),
-                                },
-                            }
-                            .into_diagnostic(self.dcx());
+                            let mut replacement_err =
+                                self.dcx().create_err(errors::ParenthesesWithStructFields {
+                                    span,
+                                    r#type: path,
+                                    braces_for_struct: errors::BracesForStructLiteral {
+                                        first: open_paren,
+                                        second: close_paren,
+                                    },
+                                    no_fields_for_fn: errors::NoFieldsForFnCall {
+                                        fields: fields
+                                            .into_iter()
+                                            .map(|field| field.span.until(field.expr.span))
+                                            .collect(),
+                                    },
+                                });
                             replacement_err.emit();
 
                             let old_err = mem::replace(err, replacement_err);
@@ -1691,7 +1690,7 @@ impl<'a> Parser<'a> {
         &self,
         lifetime: Ident,
         mk_lit_char: impl FnOnce(Symbol, Span) -> L,
-        err: impl FnOnce(&Self) -> DiagnosticBuilder<'a, ErrorGuaranteed>,
+        err: impl FnOnce(&Self) -> DiagnosticBuilder<'a>,
     ) -> L {
         if let Some(mut diag) = self.dcx().steal_diagnostic(lifetime.span, StashKey::LifetimeIsChar)
         {
@@ -1801,7 +1800,7 @@ impl<'a> Parser<'a> {
                     && matches!(
                         expr.kind,
                         ExprKind::While(_, _, None)
-                            | ExprKind::ForLoop(_, _, _, None)
+                            | ExprKind::ForLoop { label: None, .. }
                             | ExprKind::Loop(_, None, _)
                             | ExprKind::Block(_, None)
                     )
@@ -1883,8 +1882,7 @@ impl<'a> Parser<'a> {
         self.bump(); // `#`
 
         let Some((ident, false)) = self.token.ident() else {
-            let err =
-                errors::ExpectedBuiltinIdent { span: self.token.span }.into_diagnostic(self.dcx());
+            let err = self.dcx().create_err(errors::ExpectedBuiltinIdent { span: self.token.span });
             return Err(err);
         };
         self.sess.gated_spans.gate(sym::builtin_syntax, ident.span);
@@ -1894,8 +1892,10 @@ impl<'a> Parser<'a> {
         let ret = if let Some(res) = parse(self, lo, ident)? {
             Ok(res)
         } else {
-            let err = errors::UnknownBuiltinConstruct { span: lo.to(ident.span), name: ident.name }
-                .into_diagnostic(self.dcx());
+            let err = self.dcx().create_err(errors::UnknownBuiltinConstruct {
+                span: lo.to(ident.span),
+                name: ident.name,
+            });
             return Err(err);
         };
         self.expect(&TokenKind::CloseDelim(Delimiter::Parenthesis))?;
@@ -1958,8 +1958,9 @@ impl<'a> Parser<'a> {
             && let token::NtExpr(e) | token::NtLiteral(e) = &nt.0
             && matches!(e.kind, ExprKind::Err)
         {
-            let mut err = errors::InvalidInterpolatedExpression { span: self.token.span }
-                .into_diagnostic(self.dcx());
+            let mut err = self
+                .dcx()
+                .create_err(errors::InvalidInterpolatedExpression { span: self.token.span });
             err.downgrade_to_delayed_bug();
             return Err(err);
         }
@@ -2168,10 +2169,10 @@ impl<'a> Parser<'a> {
                         .span_to_snippet(snapshot.token.span)
                         .is_ok_and(|snippet| snippet == "]") =>
                 {
-                    return Err(errors::MissingSemicolonBeforeArray {
+                    return Err(self.dcx().create_err(errors::MissingSemicolonBeforeArray {
                         open_delim: open_delim_span,
                         semicolon: prev_span.shrink_to_hi(),
-                    }.into_diagnostic(self.dcx()));
+                    }));
                 }
                 Ok(_) => (),
                 Err(err) => err.cancel(),
@@ -2318,8 +2319,9 @@ impl<'a> Parser<'a> {
             // Check for `move async` and recover
             if self.check_keyword(kw::Async) {
                 let move_async_span = self.token.span.with_lo(self.prev_token.span.data().lo);
-                Err(errors::AsyncMoveOrderIncorrect { span: move_async_span }
-                    .into_diagnostic(self.dcx()))
+                Err(self
+                    .dcx()
+                    .create_err(errors::AsyncMoveOrderIncorrect { span: move_async_span }))
             } else {
                 Ok(CaptureBy::Value { move_kw: move_kw_span })
             }
@@ -2509,7 +2511,7 @@ impl<'a> Parser<'a> {
             };
             if self.prev_token.kind == token::BinOp(token::Or) {
                 // This was part of a closure, the that part of the parser recover.
-                return Err(err.into_diagnostic(self.dcx()));
+                return Err(self.dcx().create_err(err));
             } else {
                 Some(self.sess.emit_err(err))
             }
@@ -2682,8 +2684,17 @@ impl<'a> Parser<'a> {
         Ok((pat, expr))
     }
 
-    /// Parses `for <src_pat> in <src_expr> <src_loop_block>` (`for` token already eaten).
+    /// Parses `for await? <src_pat> in <src_expr> <src_loop_block>` (`for` token already eaten).
     fn parse_expr_for(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, P<Expr>> {
+        let is_await =
+            self.token.uninterpolated_span().at_least_rust_2018() && self.eat_keyword(kw::Await);
+
+        if is_await {
+            self.sess.gated_spans.gate(sym::async_for_loop, self.prev_token.span);
+        }
+
+        let kind = if is_await { ForLoopKind::ForAwait } else { ForLoopKind::For };
+
         let (pat, expr) = self.parse_for_head()?;
         // Recover from missing expression in `for` loop
         if matches!(expr.kind, ExprKind::Block(..))
@@ -2696,13 +2707,13 @@ impl<'a> Parser<'a> {
             let block = self.mk_block(thin_vec![], BlockCheckMode::Default, self.prev_token.span);
             return Ok(self.mk_expr(
                 lo.to(self.prev_token.span),
-                ExprKind::ForLoop(pat, err_expr, block, opt_label),
+                ExprKind::ForLoop { pat, iter: err_expr, body: block, label: opt_label, kind },
             ));
         }
 
         let (attrs, loop_block) = self.parse_inner_attrs_and_block()?;
 
-        let kind = ExprKind::ForLoop(pat, expr, loop_block, opt_label);
+        let kind = ExprKind::ForLoop { pat, iter: expr, body: loop_block, label: opt_label, kind };
 
         self.recover_loop_else("for", lo)?;
 
@@ -3193,7 +3204,7 @@ impl<'a> Parser<'a> {
     fn parse_try_block(&mut self, span_lo: Span) -> PResult<'a, P<Expr>> {
         let (attrs, body) = self.parse_inner_attrs_and_block()?;
         if self.eat_keyword(kw::Catch) {
-            Err(errors::CatchAfterTry { span: self.prev_token.span }.into_diagnostic(self.dcx()))
+            Err(self.dcx().create_err(errors::CatchAfterTry { span: self.prev_token.span }))
         } else {
             let span = span_lo.to(body.span);
             self.sess.gated_spans.gate(sym::try_blocks, span);
@@ -3530,12 +3541,11 @@ impl<'a> Parser<'a> {
                         || t == &token::CloseDelim(Delimiter::Parenthesis)
                 });
             if is_wrong {
-                return Err(errors::ExpectedStructField {
+                return Err(this.dcx().create_err(errors::ExpectedStructField {
                     span: this.look_ahead(1, |t| t.span),
                     ident_span: this.token.span,
                     token: this.look_ahead(1, |t| t.clone()),
-                }
-                .into_diagnostic(&self.sess.dcx));
+                }));
             }
             let (ident, expr) = if is_shorthand {
                 // Mimic `x: x` for the `x` field shorthand.
@@ -3798,7 +3808,7 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::Lit(_)
             | ExprKind::If(_, _, _)
             | ExprKind::While(_, _, _)
-            | ExprKind::ForLoop(_, _, _, _)
+            | ExprKind::ForLoop { .. }
             | ExprKind::Loop(_, _, _)
             | ExprKind::Match(_, _)
             | ExprKind::Closure(_)

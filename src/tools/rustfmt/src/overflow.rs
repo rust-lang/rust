@@ -409,7 +409,7 @@ impl<'a> Context<'a> {
                     // When overflowing the expressions which consists of a control flow
                     // expression, avoid condition to use multi line.
                     ast::ExprKind::If(..)
-                    | ast::ExprKind::ForLoop(..)
+                    | ast::ExprKind::ForLoop { .. }
                     | ast::ExprKind::Loop(..)
                     | ast::ExprKind::While(..)
                     | ast::ExprKind::Match(..) => {

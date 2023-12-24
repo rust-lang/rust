@@ -5,7 +5,7 @@ use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle
 use rustc_ast as ast;
 use rustc_ast::attr;
 use rustc_ast::token::{self, Delimiter, Nonterminal};
-use rustc_errors::{error_code, Diagnostic, IntoDiagnostic, PResult};
+use rustc_errors::{error_code, Diagnostic, PResult};
 use rustc_span::{sym, BytePos, Span};
 use thin_vec::ThinVec;
 use tracing::debug;
@@ -416,8 +416,9 @@ impl<'a> Parser<'a> {
             Err(err) => err.cancel(),
         }
 
-        Err(InvalidMetaItem { span: self.token.span, token: self.token.clone() }
-            .into_diagnostic(self.dcx()))
+        Err(self
+            .dcx()
+            .create_err(InvalidMetaItem { span: self.token.span, token: self.token.clone() }))
     }
 }
 

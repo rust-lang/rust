@@ -3,7 +3,9 @@ use std::num::NonZeroU32;
 use crate::parse::ParseSess;
 use rustc_ast::token;
 use rustc_ast::util::literal::LitError;
-use rustc_errors::{error_code, DiagnosticMessage, ErrorGuaranteed, IntoDiagnostic, MultiSpan};
+use rustc_errors::{
+    error_code, DiagCtxt, DiagnosticBuilder, DiagnosticMessage, IntoDiagnostic, Level, MultiSpan,
+};
 use rustc_macros::Diagnostic;
 use rustc_span::{BytePos, Span, Symbol};
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
@@ -15,11 +17,8 @@ pub struct FeatureGateError {
 
 impl<'a> IntoDiagnostic<'a> for FeatureGateError {
     #[track_caller]
-    fn into_diagnostic(
-        self,
-        dcx: &'a rustc_errors::DiagCtxt,
-    ) -> rustc_errors::DiagnosticBuilder<'a, ErrorGuaranteed> {
-        let mut diag = dcx.struct_err(self.explain);
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a> {
+        let mut diag = DiagnosticBuilder::new(dcx, level, self.explain);
         diag.set_span(self.span);
         diag.code(error_code!(E0658));
         diag

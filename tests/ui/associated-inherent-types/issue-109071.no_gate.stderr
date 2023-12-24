@@ -33,7 +33,14 @@ error[E0223]: ambiguous associated type
   --> $DIR/issue-109071.rs:15:22
    |
 LL |     fn T() -> Option<Self::Item> {}
-   |                      ^^^^^^^^^^ help: use fully-qualified syntax: `<Windows<T> as IntoIterator>::Item`
+   |                      ^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL |     fn T() -> Option<<Windows<T> as IntoAsyncIterator>::Item> {}
+   |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     fn T() -> Option<<Windows<T> as IntoIterator>::Item> {}
+   |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 4 previous errors
 

@@ -728,10 +728,16 @@ impl<'tcx> TyCtxt<'tcx> {
             DefKind::AssocFn if self.associated_item(def_id).fn_has_self_parameter => "method",
             DefKind::Closure if let Some(coroutine_kind) = self.coroutine_kind(def_id) => {
                 match coroutine_kind {
-                    rustc_hir::CoroutineKind::Async(..) => "async closure",
-                    rustc_hir::CoroutineKind::AsyncGen(..) => "async gen closure",
-                    rustc_hir::CoroutineKind::Coroutine => "coroutine",
-                    rustc_hir::CoroutineKind::Gen(..) => "gen closure",
+                    hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _) => {
+                        "async closure"
+                    }
+                    hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _) => {
+                        "async gen closure"
+                    }
+                    hir::CoroutineKind::Coroutine => "coroutine",
+                    hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _) => {
+                        "gen closure"
+                    }
                 }
             }
             _ => def_kind.descr(def_id),
@@ -749,10 +755,10 @@ impl<'tcx> TyCtxt<'tcx> {
             DefKind::AssocFn if self.associated_item(def_id).fn_has_self_parameter => "a",
             DefKind::Closure if let Some(coroutine_kind) = self.coroutine_kind(def_id) => {
                 match coroutine_kind {
-                    rustc_hir::CoroutineKind::Async(..) => "an",
-                    rustc_hir::CoroutineKind::AsyncGen(..) => "an",
-                    rustc_hir::CoroutineKind::Coroutine => "a",
-                    rustc_hir::CoroutineKind::Gen(..) => "a",
+                    hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, ..) => "an",
+                    hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, ..) => "an",
+                    hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, ..) => "a",
+                    hir::CoroutineKind::Coroutine => "a",
                 }
             }
             _ => def_kind.article(),

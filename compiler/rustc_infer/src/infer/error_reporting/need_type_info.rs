@@ -5,8 +5,7 @@ use crate::errors::{
 use crate::infer::error_reporting::TypeErrCtxt;
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::InferCtxt;
-use rustc_errors::IntoDiagnostic;
-use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, IntoDiagnosticArg};
+use rustc_errors::{DiagnosticBuilder, IntoDiagnosticArg};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
@@ -359,7 +358,7 @@ impl<'tcx> InferCtxt<'tcx> {
         span: Span,
         arg_data: InferenceDiagnosticsData,
         error_code: TypeAnnotationNeeded,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'tcx> {
         let source_kind = "other";
         let source_name = "";
         let failure_span = None;
@@ -367,7 +366,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let multi_suggestions = Vec::new();
         let bad_label = Some(arg_data.make_bad_error(span));
         match error_code {
-            TypeAnnotationNeeded::E0282 => AnnotationRequired {
+            TypeAnnotationNeeded::E0282 => self.tcx.sess.dcx().create_err(AnnotationRequired {
                 span,
                 source_kind,
                 source_name,
@@ -375,9 +374,8 @@ impl<'tcx> InferCtxt<'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
-            }
-            .into_diagnostic(self.tcx.sess.dcx()),
-            TypeAnnotationNeeded::E0283 => AmbiguousImpl {
+            }),
+            TypeAnnotationNeeded::E0283 => self.tcx.sess.dcx().create_err(AmbiguousImpl {
                 span,
                 source_kind,
                 source_name,
@@ -385,9 +383,8 @@ impl<'tcx> InferCtxt<'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
-            }
-            .into_diagnostic(self.tcx.sess.dcx()),
-            TypeAnnotationNeeded::E0284 => AmbiguousReturn {
+            }),
+            TypeAnnotationNeeded::E0284 => self.tcx.sess.dcx().create_err(AmbiguousReturn {
                 span,
                 source_kind,
                 source_name,
@@ -395,8 +392,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
-            }
-            .into_diagnostic(self.tcx.sess.dcx()),
+            }),
         }
     }
 }
@@ -410,7 +406,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         arg: GenericArg<'tcx>,
         error_code: TypeAnnotationNeeded,
         should_label_span: bool,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'tcx> {
         let arg = self.resolve_vars_if_possible(arg);
         let arg_data = self.extract_inference_diagnostics_data(arg, None);
 
@@ -574,7 +570,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
         match error_code {
-            TypeAnnotationNeeded::E0282 => AnnotationRequired {
+            TypeAnnotationNeeded::E0282 => self.tcx.sess.dcx().create_err(AnnotationRequired {
                 span,
                 source_kind,
                 source_name: &name,
@@ -582,9 +578,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
-            }
-            .into_diagnostic(self.tcx.sess.dcx()),
-            TypeAnnotationNeeded::E0283 => AmbiguousImpl {
+            }),
+            TypeAnnotationNeeded::E0283 => self.tcx.sess.dcx().create_err(AmbiguousImpl {
                 span,
                 source_kind,
                 source_name: &name,
@@ -592,9 +587,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
-            }
-            .into_diagnostic(self.tcx.sess.dcx()),
-            TypeAnnotationNeeded::E0284 => AmbiguousReturn {
+            }),
+            TypeAnnotationNeeded::E0284 => self.tcx.sess.dcx().create_err(AmbiguousReturn {
                 span,
                 source_kind,
                 source_name: &name,
@@ -602,8 +596,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
-            }
-            .into_diagnostic(self.tcx.sess.dcx()),
+            }),
         }
     }
 }

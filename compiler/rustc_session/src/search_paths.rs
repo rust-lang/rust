@@ -61,7 +61,7 @@ impl SearchPath {
             (PathKind::All, path)
         };
         if path.is_empty() {
-            early_dcx.early_error("empty search path given via `-L`");
+            early_dcx.early_fatal("empty search path given via `-L`");
         }
 
         let dir = PathBuf::from(path);

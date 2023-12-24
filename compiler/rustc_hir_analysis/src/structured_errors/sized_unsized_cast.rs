@@ -1,5 +1,5 @@
 use crate::{errors, structured_errors::StructuredDiagnostic};
-use rustc_errors::{DiagnosticBuilder, DiagnosticId, ErrorGuaranteed};
+use rustc_errors::{DiagnosticBuilder, DiagnosticId};
 use rustc_middle::ty::{Ty, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::Span;
@@ -20,7 +20,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for SizedUnsizedCast<'tcx> {
         rustc_errors::error_code!(E0607)
     }
 
-    fn diagnostic_common(&self) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    fn diagnostic_common(&self) -> DiagnosticBuilder<'tcx> {
         let mut err = self.sess.create_err(errors::CastThinPointerToFatPointer {
             span: self.span,
             expr_ty: self.expr_ty,
@@ -34,10 +34,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for SizedUnsizedCast<'tcx> {
         err
     }
 
-    fn diagnostic_extended(
-        &self,
-        mut err: DiagnosticBuilder<'tcx, ErrorGuaranteed>,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    fn diagnostic_extended(&self, mut err: DiagnosticBuilder<'tcx>) -> DiagnosticBuilder<'tcx> {
         err.help(
             "Thin pointers are \"simple\" pointers: they are purely a reference to a
 memory address.

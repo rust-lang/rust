@@ -2,7 +2,8 @@ use std::num::IntErrorKind;
 
 use rustc_ast as ast;
 use rustc_errors::{
-    error_code, Applicability, DiagCtxt, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic,
+    error_code, Applicability, DiagCtxt, DiagnosticBuilder, EmissionGuarantee, IntoDiagnostic,
+    Level,
 };
 use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
@@ -50,14 +51,12 @@ pub(crate) struct UnknownMetaItem<'a> {
 }
 
 // Manual implementation to be able to format `expected` items correctly.
-impl<'a> IntoDiagnostic<'a> for UnknownMetaItem<'_> {
-    fn into_diagnostic(self, dcx: &'a DiagCtxt) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for UnknownMetaItem<'_> {
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
         let expected = self.expected.iter().map(|name| format!("`{name}`")).collect::<Vec<_>>();
-        let mut diag = dcx.struct_span_err_with_code(
-            self.span,
-            fluent::attr_unknown_meta_item,
-            error_code!(E0541),
-        );
+        let mut diag = DiagnosticBuilder::new(dcx, level, fluent::attr_unknown_meta_item);
+        diag.set_span(self.span);
+        diag.code(error_code!(E0541));
         diag.set_arg("item", self.item);
         diag.set_arg("expected", expected.join(", "));
         diag.span_label(self.span, fluent::attr_label);
@@ -200,10 +199,11 @@ pub(crate) struct UnsupportedLiteral {
     pub start_point_span: Span,
 }
 
-impl<'a> IntoDiagnostic<'a> for UnsupportedLiteral {
-    fn into_diagnostic(self, dcx: &'a DiagCtxt) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        let mut diag = dcx.struct_span_err_with_code(
-            self.span,
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for UnsupportedLiteral {
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
+        let mut diag = DiagnosticBuilder::new(
+            dcx,
+            level,
             match self.reason {
                 UnsupportedLiteralReason::Generic => fluent::attr_unsupported_literal_generic,
                 UnsupportedLiteralReason::CfgString => fluent::attr_unsupported_literal_cfg_string,
@@ -214,8 +214,9 @@ impl<'a> IntoDiagnostic<'a> for UnsupportedLiteral {
                     fluent::attr_unsupported_literal_deprecated_kv_pair
                 }
             },
-            error_code!(E0565),
         );
+        diag.set_span(self.span);
+        diag.code(error_code!(E0565));
         if self.is_bytestr {
             diag.span_suggestion(
                 self.start_point_span,

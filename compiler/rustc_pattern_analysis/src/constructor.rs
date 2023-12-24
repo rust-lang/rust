@@ -642,7 +642,8 @@ impl OpaqueId {
 /// `specialize_constructor` returns the list of fields corresponding to a pattern, given a
 /// constructor. `Constructor::apply` reconstructs the pattern from a pair of `Constructor` and
 /// `Fields`.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(derivative::Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""), PartialEq(bound = ""))]
 pub enum Constructor<Cx: TypeCx> {
     /// Tuples and structs.
     Struct,

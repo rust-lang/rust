@@ -114,8 +114,6 @@ impl DefPathHash {
     }
 
     /// Returns the crate-local part of the [DefPathHash].
-    ///
-    /// Used for tests.
     #[inline]
     pub fn local_hash(&self) -> Hash64 {
         self.0.split().1

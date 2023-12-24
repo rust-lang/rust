@@ -1389,7 +1389,7 @@ pub fn noop_visit_expr<T: MutVisitor>(
             vis.visit_block(body);
             visit_opt(label, |label| vis.visit_label(label));
         }
-        ExprKind::ForLoop(pat, iter, body, label) => {
+        ExprKind::ForLoop { pat, iter, body, label, kind: _ } => {
             vis.visit_pat(pat);
             vis.visit_expr(iter);
             vis.visit_block(body);

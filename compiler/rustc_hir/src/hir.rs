@@ -417,8 +417,7 @@ pub enum GenericArgsParentheses {
     ParenSugar,
 }
 
-/// A modifier on a bound, currently this is only used for `?Sized`, where the
-/// modifier is `Maybe`. Negative bounds should also be handled here.
+/// A modifier on a trait bound.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum TraitBoundModifier {
     None,
@@ -1352,15 +1351,8 @@ impl<'hir> Body<'hir> {
 /// The type of source expression that caused this coroutine to be created.
 #[derive(Clone, PartialEq, Eq, Debug, Copy, Hash, HashStable_Generic, Encodable, Decodable)]
 pub enum CoroutineKind {
-    /// An explicit `async` block or the body of an `async` function.
-    Async(CoroutineSource),
-
-    /// An explicit `gen` block or the body of a `gen` function.
-    Gen(CoroutineSource),
-
-    /// An explicit `async gen` block or the body of an `async gen` function,
-    /// which is able to both `yield` and `.await`.
-    AsyncGen(CoroutineSource),
+    /// A coroutine that comes from a desugaring.
+    Desugared(CoroutineDesugaring, CoroutineSource),
 
     /// A coroutine literal created via a `yield` inside a closure.
     Coroutine,
@@ -1369,31 +1361,11 @@ pub enum CoroutineKind {
 impl fmt::Display for CoroutineKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            CoroutineKind::Async(k) => {
-                if f.alternate() {
-                    f.write_str("`async` ")?;
-                } else {
-                    f.write_str("async ")?
-                }
+            CoroutineKind::Desugared(d, k) => {
+                d.fmt(f)?;
                 k.fmt(f)
             }
             CoroutineKind::Coroutine => f.write_str("coroutine"),
-            CoroutineKind::Gen(k) => {
-                if f.alternate() {
-                    f.write_str("`gen` ")?;
-                } else {
-                    f.write_str("gen ")?
-                }
-                k.fmt(f)
-            }
-            CoroutineKind::AsyncGen(k) => {
-                if f.alternate() {
-                    f.write_str("`async gen` ")?;
-                } else {
-                    f.write_str("async gen ")?
-                }
-                k.fmt(f)
-            }
         }
     }
 }
@@ -1423,6 +1395,49 @@ impl fmt::Display for CoroutineSource {
             CoroutineSource::Fn => "fn body",
         }
         .fmt(f)
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Copy, Hash, HashStable_Generic, Encodable, Decodable)]
+pub enum CoroutineDesugaring {
+    /// An explicit `async` block or the body of an `async` function.
+    Async,
+
+    /// An explicit `gen` block or the body of a `gen` function.
+    Gen,
+
+    /// An explicit `async gen` block or the body of an `async gen` function,
+    /// which is able to both `yield` and `.await`.
+    AsyncGen,
+}
+
+impl fmt::Display for CoroutineDesugaring {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CoroutineDesugaring::Async => {
+                if f.alternate() {
+                    f.write_str("`async` ")?;
+                } else {
+                    f.write_str("async ")?
+                }
+            }
+            CoroutineDesugaring::Gen => {
+                if f.alternate() {
+                    f.write_str("`gen` ")?;
+                } else {
+                    f.write_str("gen ")?
+                }
+            }
+            CoroutineDesugaring::AsyncGen => {
+                if f.alternate() {
+                    f.write_str("`async gen` ")?;
+                } else {
+                    f.write_str("async gen ")?
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 

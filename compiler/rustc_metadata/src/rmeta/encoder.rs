@@ -467,13 +467,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let def_key = self.lazy(table.def_key(def_index));
                 let def_path_hash = table.def_path_hash(def_index);
                 self.tables.def_keys.set_some(def_index, def_key);
-                self.tables.def_path_hashes.set(def_index, def_path_hash);
+                self.tables.def_path_hashes.set(def_index, def_path_hash.local_hash().as_u64());
             }
         } else {
             for (def_index, def_key, def_path_hash) in table.enumerated_keys_and_path_hashes() {
                 let def_key = self.lazy(def_key);
                 self.tables.def_keys.set_some(def_index, def_key);
-                self.tables.def_path_hashes.set(def_index, *def_path_hash);
+                self.tables.def_path_hashes.set(def_index, def_path_hash.local_hash().as_u64());
             }
         }
     }
@@ -1428,9 +1428,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 }
             }
             if def_kind == DefKind::Closure
-                && let Some(data) = self.tcx.coroutine_kind(def_id)
+                && let Some(coroutine_kind) = self.tcx.coroutine_kind(def_id)
             {
-                record!(self.tables.coroutine_kind[def_id] <- data);
+                self.tables.coroutine_kind.set(def_id.index, Some(coroutine_kind));
             }
             if let DefKind::Enum | DefKind::Struct | DefKind::Union = def_kind {
                 self.encode_info_for_adt(local_id);
@@ -1607,7 +1607,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.optimized_mir[def_id.to_def_id()] <- tcx.optimized_mir(def_id));
                 self.tables
                     .cross_crate_inlinable
-                    .set(def_id.to_def_id().index, Some(self.tcx.cross_crate_inlinable(def_id)));
+                    .set(def_id.to_def_id().index, self.tcx.cross_crate_inlinable(def_id));
                 record!(self.tables.closure_saved_names_of_captured_variables[def_id.to_def_id()]
                     <- tcx.closure_saved_names_of_captured_variables(def_id));
 

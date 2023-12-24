@@ -28,6 +28,7 @@ use rustc_span::hygiene::DesugaringKind;
 use rustc_span::Span;
 
 pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), ErrorGuaranteed> {
+    let typeck_results = tcx.typeck(def_id);
     let (thir, expr) = tcx.thir_body(def_id)?;
     let thir = thir.borrow();
     let pattern_arena = TypedArena::default();
@@ -35,6 +36,7 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
     let mut visitor = MatchVisitor {
         tcx,
         thir: &*thir,
+        typeck_results,
         param_env: tcx.param_env(def_id),
         lint_level: tcx.local_def_id_to_hir_id(def_id),
         let_source: LetSource::None,
@@ -52,11 +54,7 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
     visitor.error
 }
 
-fn create_e0004(
-    sess: &Session,
-    sp: Span,
-    error_message: String,
-) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
+fn create_e0004(sess: &Session, sp: Span, error_message: String) -> DiagnosticBuilder<'_> {
     struct_span_err!(sess, sp, E0004, "{}", &error_message)
 }
 
@@ -80,6 +78,7 @@ enum LetSource {
 struct MatchVisitor<'thir, 'p, 'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
+    typeck_results: &'tcx ty::TypeckResults<'tcx>,
     thir: &'thir Thir<'tcx>,
     lint_level: HirId,
     let_source: LetSource,
@@ -382,6 +381,7 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
             scrutinee.map(|scrut| self.is_known_valid_scrutinee(scrut)).unwrap_or(true);
         MatchCheckCtxt {
             tcx: self.tcx,
+            typeck_results: self.typeck_results,
             param_env: self.param_env,
             module: self.tcx.parent_module(self.lint_level).to_def_id(),
             pattern_arena: self.pattern_arena,
@@ -856,7 +856,7 @@ fn report_arm_reachability<'p, 'tcx>(
     for (arm, is_useful) in report.arm_usefulness.iter() {
         match is_useful {
             Usefulness::Redundant => {
-                report_unreachable_pattern(*arm.pat.data(), arm.arm_data, catchall)
+                report_unreachable_pattern(*arm.pat.data().unwrap(), arm.arm_data, catchall)
             }
             Usefulness::Useful(redundant_subpats) if redundant_subpats.is_empty() => {}
             // The arm is reachable, but contains redundant subpatterns (from or-patterns).
@@ -865,12 +865,12 @@ fn report_arm_reachability<'p, 'tcx>(
                 // Emit lints in the order in which they occur in the file.
                 redundant_subpats.sort_unstable_by_key(|pat| pat.data());
                 for pat in redundant_subpats {
-                    report_unreachable_pattern(*pat.data(), arm.arm_data, None);
+                    report_unreachable_pattern(*pat.data().unwrap(), arm.arm_data, None);
                 }
             }
         }
         if !arm.has_guard && catchall.is_none() && pat_is_catchall(arm.pat) {
-            catchall = Some(*arm.pat.data());
+            catchall = Some(*arm.pat.data().unwrap());
         }
     }
 }

@@ -1,3 +1,4 @@
+// compile-flags: -Zlint-mir=no
 // unit-test: ReferencePropagation
 // needs-unwind
 

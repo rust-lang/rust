@@ -82,7 +82,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 span: self.lower_span(f.span),
                             }
                         }));
-                        break hir::PatKind::Struct(qpath, fs, *etc);
+                        break hir::PatKind::Struct(qpath, fs, *etc == ast::PatFieldsRest::Rest);
                     }
                     PatKind::Tuple(pats) => {
                         let (pats, ddpos) = self.lower_pat_tuple(pats, "tuple");

@@ -26,14 +26,16 @@ pub struct DeconstructedPat<'p, Cx: TypeCx> {
     ctor: Constructor<Cx>,
     fields: &'p [DeconstructedPat<'p, Cx>],
     ty: Cx::Ty,
-    data: Cx::PatData,
+    /// Extra data to store in a pattern. `None` if the pattern is a wildcard that does not
+    /// correspond to a user-supplied pattern.
+    data: Option<Cx::PatData>,
     /// Whether removing this arm would change the behavior of the match expression.
     useful: Cell<bool>,
 }
 
 impl<'p, Cx: TypeCx> DeconstructedPat<'p, Cx> {
-    pub fn wildcard(ty: Cx::Ty, data: Cx::PatData) -> Self {
-        Self::new(Wildcard, &[], ty, data)
+    pub fn wildcard(ty: Cx::Ty) -> Self {
+        DeconstructedPat { ctor: Wildcard, fields: &[], ty, data: None, useful: Cell::new(false) }
     }
 
     pub fn new(
@@ -42,7 +44,7 @@ impl<'p, Cx: TypeCx> DeconstructedPat<'p, Cx> {
         ty: Cx::Ty,
         data: Cx::PatData,
     ) -> Self {
-        DeconstructedPat { ctor, fields, ty, data, useful: Cell::new(false) }
+        DeconstructedPat { ctor, fields, ty, data: Some(data), useful: Cell::new(false) }
     }
 
     pub(crate) fn is_or_pat(&self) -> bool {
@@ -63,8 +65,10 @@ impl<'p, Cx: TypeCx> DeconstructedPat<'p, Cx> {
     pub fn ty(&self) -> Cx::Ty {
         self.ty
     }
-    pub fn data(&self) -> &Cx::PatData {
-        &self.data
+    /// Returns the extra data stored in a pattern. Returns `None` if the pattern is a wildcard that
+    /// does not correspond to a user-supplied pattern.
+    pub fn data(&self) -> Option<&Cx::PatData> {
+        self.data.as_ref()
     }
 
     pub fn iter_fields<'a>(
@@ -83,7 +87,7 @@ impl<'p, Cx: TypeCx> DeconstructedPat<'p, Cx> {
         let wildcard_sub_tys = || {
             let tys = pcx.ctor_sub_tys(other_ctor);
             tys.iter()
-                .map(|ty| DeconstructedPat::wildcard(*ty, Cx::PatData::default()))
+                .map(|ty| DeconstructedPat::wildcard(*ty))
                 .map(|pat| pcx.mcx.wildcard_arena.alloc(pat) as &_)
                 .collect()
         };
@@ -160,7 +164,8 @@ impl<'p, Cx: TypeCx> fmt::Debug for DeconstructedPat<'p, Cx> {
 
 /// Same idea as `DeconstructedPat`, except this is a fictitious pattern built up for diagnostics
 /// purposes. As such they don't use interning and can be cloned.
-#[derive(Debug, Clone)]
+#[derive(derivative::Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 pub struct WitnessPat<Cx: TypeCx> {
     ctor: Constructor<Cx>,
     pub(crate) fields: Vec<WitnessPat<Cx>>,
