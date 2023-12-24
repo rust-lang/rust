@@ -3163,8 +3163,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         };
         if self.can_eq(self.param_env, expected_ty, ty) {
+            let span = stmt
+                .span
+                .from_expansion()
+                .then(|| {
+                    let mac_call = rustc_span::source_map::original_sp(stmt.span, block.span);
+                    self.tcx.sess.source_map().mac_call_stmt_semi_span(mac_call)
+                })
+                .flatten()
+                .unwrap_or_else(|| stmt.span.with_lo(tail_expr.span.hi()));
             err.span_suggestion_short(
-                stmt.span.with_lo(tail_expr.span.hi()),
+                span,
                 "remove this semicolon",
                 "",
                 Applicability::MachineApplicable,
