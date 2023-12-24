@@ -1088,7 +1088,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         }
 
         sym::simd_scatter => {
-            intrinsic_args!(fx, args => (mask, ptr, val); intrinsic);
+            intrinsic_args!(fx, args => (val, ptr, mask); intrinsic);
 
             let (val_lane_count, _val_lane_ty) = val.layout().ty.simd_size_and_type(fx.tcx);
             let (ptr_lane_count, _ptr_lane_ty) = ptr.layout().ty.simd_size_and_type(fx.tcx);
