@@ -140,7 +140,9 @@ impl DefKey {
     pub(crate) fn compute_stable_hash(&self, parent: DefPathHash) -> DefPathHash {
         let mut hasher = StableHasher::new();
 
-        parent.hash(&mut hasher);
+        // The new path is in the same crate as `parent`, and will contain the stable_crate_id.
+        // Therefore, we only need to include information of the parent's local hash.
+        parent.local_hash().hash(&mut hasher);
 
         let DisambiguatedDefPathData { ref data, disambiguator } = self.disambiguated_data;
 
@@ -361,8 +363,16 @@ impl Definitions {
             },
         };
 
-        let parent_hash = DefPathHash::new(stable_crate_id, Hash64::ZERO);
-        let def_path_hash = key.compute_stable_hash(parent_hash);
+        // We want *both* halves of a DefPathHash to depend on the crate-id of the defining crate.
+        // The crate-id can be more easily changed than the DefPath of an item, so, in the case of
+        // a crate-local DefPathHash collision, the user can simply "roll the dice again" for all
+        // DefPathHashes in the crate by changing the crate disambiguator (e.g. via bumping the
+        // crate's version number).
+        //
+        // Children paths will only hash the local portion, and still inherit the change to the
+        // root hash.
+        let def_path_hash =
+            DefPathHash::new(stable_crate_id, Hash64::new(stable_crate_id.as_u64()));
 
         // Create the root definition.
         let mut table = DefPathTable::new(stable_crate_id);
