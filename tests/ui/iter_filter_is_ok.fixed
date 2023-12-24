@@ -6,6 +6,10 @@ fn main() {
     let _ = vec![Ok(1), Err(2), Ok(3)].into_iter().flatten();
     //~^ HELP: consider using `flatten` instead
 
+    #[rustfmt::skip]
+    let _ = vec![Ok(1), Err(2)].into_iter().flatten();
+    //~^ HELP: consider using `flatten` instead
+
     // Don't lint below
     let mut counter = 0;
     let _ = vec![Ok(1), Err(2)].into_iter().filter(|o| {
