@@ -103,9 +103,6 @@ impl DefPathTable {
 pub struct Definitions {
     table: DefPathTable,
     next_disambiguator: UnordMap<(LocalDefId, DefPathData), u32>,
-
-    /// The [StableCrateId] of the local crate.
-    stable_crate_id: StableCrateId,
 }
 
 /// A unique identifier that we can use to lookup a definition
@@ -340,7 +337,7 @@ impl Definitions {
         let root = LocalDefId { local_def_index: table.allocate(key, def_path_hash) };
         assert_eq!(root.local_def_index, CRATE_DEF_INDEX);
 
-        Definitions { table, next_disambiguator: Default::default(), stable_crate_id }
+        Definitions { table, next_disambiguator: Default::default() }
     }
 
     /// Adds a definition with a parent definition.
@@ -382,7 +379,7 @@ impl Definitions {
         hash: DefPathHash,
         err: &mut dyn FnMut() -> !,
     ) -> LocalDefId {
-        debug_assert!(hash.stable_crate_id() == self.stable_crate_id);
+        debug_assert!(hash.stable_crate_id() == self.table.stable_crate_id);
         self.table
             .def_path_hash_to_index
             .get(&hash)
