@@ -1671,7 +1671,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     multibyte_chars,
                     non_narrow_chars,
                     normalized_pos,
-                    name_hash,
+                    stable_id,
                     ..
                 } = source_file_to_import;
 
@@ -1716,7 +1716,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 let local_version = sess.source_map().new_imported_source_file(
                     name,
                     src_hash,
-                    name_hash,
+                    stable_id,
                     source_len.to_u32(),
                     self.cnum,
                     lines,
