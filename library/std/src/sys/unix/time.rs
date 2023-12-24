@@ -28,8 +28,8 @@ pub struct SystemTime {
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub(crate) struct Timespec {
-    tv_sec: i64,
-    tv_nsec: Nanoseconds,
+    pub(in crate::sys::unix) tv_sec: i64,
+    pub(in crate::sys::unix) tv_nsec: Nanoseconds,
 }
 
 impl SystemTime {
