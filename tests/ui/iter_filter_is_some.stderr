@@ -1,5 +1,5 @@
 error: `filter` for `is_some` on iterator over `Option`
-  --> $DIR/iter_filter_is_some.rs:8:39
+  --> $DIR/iter_filter_is_some.rs:4:39
    |
 LL |     let _ = vec![Some(1)].into_iter().filter(Option::is_some);
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
@@ -8,7 +8,7 @@ LL |     let _ = vec![Some(1)].into_iter().filter(Option::is_some);
    = help: to override `-D warnings` add `#[allow(clippy::iter_filter_is_some)]`
 
 error: `filter` for `is_some` on iterator over `Option`
-  --> $DIR/iter_filter_is_some.rs:10:39
+  --> $DIR/iter_filter_is_some.rs:6:39
    |
 LL |     let _ = vec![Some(1)].into_iter().filter(|o| o.is_some());
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`

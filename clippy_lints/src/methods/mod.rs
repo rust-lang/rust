@@ -3779,8 +3779,8 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `.filter(Optional::is_some)` that may be replaced with a `.flatten()` call.
-    /// This lint is potentially incorrect as it affects the type of follow-up calls.
+    /// Checks for usage of `.filter(Option::is_some)` that may be replaced with a `.flatten()` call.
+    /// This lint will require additional changes to the follow-up calls as it appects the type.
     ///
     /// ### Why is this bad?
     /// This pattern is often followed by manual unwrapping of the `Option`. The simplification
@@ -3799,14 +3799,14 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.76.0"]
     pub ITER_FILTER_IS_SOME,
-    complexity,
+    pedantic,
     "filtering an iterator over `Option`s for `Some` can be achieved with `flatten`"
 }
 
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of `.filter(Result::is_ok)` that may be replaced with a `.flatten()` call.
-    /// This lint is potentially incorrect as it affects the type of follow-up calls.
+    /// This lint will require additional changes to the follow-up calls as it appects the type.
     ///
     /// ### Why is this bad?
     /// This pattern is often followed by manual unwrapping of `Result`. The simplification
@@ -3825,7 +3825,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.76.0"]
     pub ITER_FILTER_IS_OK,
-    complexity,
+    pedantic,
     "filtering an iterator over `Result`s for `Ok` can be achieved with `flatten`"
 }
 
@@ -4324,8 +4324,11 @@ impl Methods {
                             false,
                         );
                     }
+                    if self.msrv.meets(msrvs::ITER_FLATTEN) {
 
-                    iter_filter::check(cx, expr, arg, span);
+                        // use the sourcemap to get the span of the closure
+                        iter_filter::check(cx, expr, arg, span);
+                    }
                 },
                 ("find", [arg]) => {
                     if let Some(("cloned", recv2, [], _span2, _)) = method_call(recv) {
