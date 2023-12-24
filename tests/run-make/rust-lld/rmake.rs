@@ -14,10 +14,10 @@ fn main() {
     // Opt-in to lld and the self-contained linker, to link with rust-lld. We'll check that by
     // asking the linker to display its version number with a link-arg.
     let output = rustc()
-        .env("RUSTC_LOG", "rustc_codegen_ssa::back::link=info")
         .arg("-Zlinker-features=+lld")
         .arg("-Clink-self-contained=+linker")
         .arg("-Zunstable-options")
+        .verbose()
         .link_arg(linker_version_flag)
         .input("main.rs")
         .run();
@@ -29,8 +29,8 @@ fn main() {
 
     // It should not be used when we explicitly opt-out of lld.
     let output = rustc()
-        .env("RUSTC_LOG", "rustc_codegen_ssa::back::link=info")
         .link_arg(linker_version_flag)
+        .verbose()
         .arg("-Zlinker-features=-lld")
         .input("main.rs")
         .run();
@@ -43,8 +43,8 @@ fn main() {
     // While we're here, also check that the last linker feature flag "wins" when passed multiple
     // times to rustc.
     let output = rustc()
-        .env("RUSTC_LOG", "rustc_codegen_ssa::back::link=info")
         .link_arg(linker_version_flag)
+        .verbose()
         .arg("-Clink-self-contained=+linker")
         .arg("-Zunstable-options")
         .arg("-Zlinker-features=-lld")
@@ -60,6 +60,7 @@ fn main() {
 }
 
 fn find_lld_version_in_logs(stderr: String) -> bool {
-    let lld_version_re = Regex::new(r"^LLD [0-9]+\.[0-9]+\.[0-9]+").unwrap();
+    let lld_version_re =
+        Regex::new(r"^warning: linker stdout: LLD [0-9]+\.[0-9]+\.[0-9]+").unwrap();
     stderr.lines().any(|line| lld_version_re.is_match(line.trim()))
 }

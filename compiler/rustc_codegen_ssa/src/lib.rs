@@ -200,6 +200,7 @@ pub struct CrateInfo {
     pub dependency_formats: Lrc<Dependencies>,
     pub windows_subsystem: Option<String>,
     pub natvis_debugger_visualizers: BTreeSet<DebuggerVisualizerFile>,
+    pub lint_levels: CodegenLintLevels,
 }
 
 #[derive(Encodable, Decodable)]

@@ -18,6 +18,7 @@ use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::DiagCtxtHandle;
 use rustc_fs_util::{fix_windows_verbatim_for_gcc, try_canonicalize};
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
+use rustc_macros::Diagnostic;
 use rustc_metadata::fs::{METADATA_FILENAME, copy_to_stdout, emit_wrapper_file};
 use rustc_metadata::{find_native_static_library, walk_native_lib_search_dirs};
 use rustc_middle::bug;
@@ -749,6 +750,14 @@ fn link_dwarf_object(sess: &Session, cg_results: &CodegenResults, executable_out
     }
 }
 
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_linker_output)]
+/// Translating this is kind of useless. We don't pass translation flags to the linker, so we'd just
+/// end up with inconsistent languages within the same diagnostic.
+struct LinkerOutput {
+    inner: String,
+}
+
 /// Create a dynamic library or executable.
 ///
 /// This will invoke the system linker/cc to create the resulting file. This links to all upstream
@@ -1028,8 +1037,22 @@ fn link_natively(
 
                 sess.dcx().abort_if_errors();
             }
-            info!("linker stderr:\n{}", escape_string(&prog.stderr));
-            info!("linker stdout:\n{}", escape_string(&prog.stdout));
+
+            if !prog.stderr.is_empty() {
+                // We already print `warning:` at the start of the diagnostic. Remove it from the linker output if present.
+                let stderr = escape_string(&prog.stderr);
+                debug!("original stderr: {stderr}");
+                let stderr = stderr
+                    .strip_prefix("warning: ")
+                    .unwrap_or(&stderr)
+                    .replace(": warning: ", ": ");
+                sess.dcx().emit_warn(LinkerOutput { inner: format!("linker stderr: {stderr}") });
+            }
+            if !prog.stdout.is_empty() && sess.opts.verbose {
+                sess.dcx().emit_warn(LinkerOutput {
+                    inner: format!("linker stdout: {}", escape_string(&prog.stdout)),
+                });
+            }
         }
         Err(e) => {
             let linker_not_found = e.kind() == io::ErrorKind::NotFound;
