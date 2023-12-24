@@ -458,8 +458,8 @@ where
         match self.v.iter().position(|x| (self.pred)(x)) {
             None => self.finish(),
             Some(idx) => {
-                let ret = Some(&self.v[..idx]);
-                self.v = &self.v[idx + 1..];
+                let ret = Some(unsafe { self.v.get_unchecked(..idx) });
+                self.v = unsafe { self.v.get_unchecked(idx + 1..) };
                 ret
             }
         }
@@ -491,8 +491,8 @@ where
         match self.v.iter().rposition(|x| (self.pred)(x)) {
             None => self.finish(),
             Some(idx) => {
-                let ret = Some(&self.v[idx + 1..]);
-                self.v = &self.v[..idx];
+                let ret = Some(unsafe { self.v.get_unchecked(idx + 1..) });
+                self.v = unsafe { self.v.get_unchecked(..idx) };
                 ret
             }
         }
