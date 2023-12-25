@@ -443,7 +443,7 @@ pub fn pretty_ty(ty: TyKind) -> String {
             RigidTy::FnDef(_, _) => format!("{:#?}", rigid_ty),
             RigidTy::FnPtr(_) => format!("{:#?}", rigid_ty),
             RigidTy::Closure(_, _) => format!("{:#?}", rigid_ty),
-            RigidTy::Coroutine(_, _) => format!("{:#?}", rigid_ty),
+            RigidTy::Coroutine(_, _, _) => format!("{:#?}", rigid_ty),
             RigidTy::Dynamic(data, region, repr) => {
                 // FIXME: Fix binder printing, it looks ugly now
                 pretty.push_str("(");

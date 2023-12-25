@@ -1,6 +1,7 @@
 use crate::mir::pretty::{function_body, pretty_statement, pretty_terminator};
 use crate::ty::{
-    AdtDef, ClosureDef, Const, CoroutineDef, GenericArgs, Region, RigidTy, Ty, TyKind, VariantIdx,
+    AdtDef, ClosureDef, Const, CoroutineDef, GenericArgs, Movability, Region, RigidTy, Ty, TyKind,
+    VariantIdx,
 };
 use crate::{Error, Opaque, Span, Symbol};
 use std::io;
@@ -645,7 +646,9 @@ impl Rvalue {
                 )),
                 AggregateKind::Adt(def, _, ref args, _, _) => Ok(def.ty_with_args(args)),
                 AggregateKind::Closure(def, ref args) => Ok(Ty::new_closure(def, args.clone())),
-                AggregateKind::Coroutine(def, ref args) => Ok(Ty::new_coroutine(def, args.clone())),
+                AggregateKind::Coroutine(def, ref args, mov) => {
+                    Ok(Ty::new_coroutine(def, args.clone(), mov))
+                }
             },
             Rvalue::ShallowInitBox(_, ty) => Ok(Ty::new_box(*ty)),
             Rvalue::CopyForDeref(place) => place.ty(locals),
@@ -659,7 +662,8 @@ pub enum AggregateKind {
     Tuple,
     Adt(AdtDef, VariantIdx, GenericArgs, Option<UserTypeAnnotationIndex>, Option<FieldIdx>),
     Closure(ClosureDef, GenericArgs),
-    Coroutine(CoroutineDef, GenericArgs),
+    // FIXME(stable_mir): Movability here is redundant
+    Coroutine(CoroutineDef, GenericArgs, Movability),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
