@@ -139,4 +139,6 @@ ENV RUST_CONFIGURE_ARGS --enable-extended --enable-lld --disable-docs \
   --set target.wasm32-wasi-preview1-threads.wasi-root=/wasm32-wasi-preview1-threads \
   --musl-root-armv7=/musl-armv7
 
+ENV EXTERNAL_LLVM 1
+
 ENV SCRIPT python3 ../x.py dist --host='' --target $TARGETS
