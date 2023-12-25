@@ -80,6 +80,15 @@ fi
 # space required for CI artifacts.
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --dist-compression-formats=xz"
 
+# Enable the `c` feature for compiler_builtins, but only when the `compiler-rt` source is available
+# (to avoid spending a lot of time cloning llvm)
+if [ "$EXTERNAL_LLVM" = "" ]; then
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.optimized-compiler-builtins"
+elif [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
+    echo "error: dist builds should always use optimized compiler-rt!" >&2
+    exit 1
+fi
+
 if [ "$DIST_SRC" = "" ]; then
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-dist-src"
 fi
