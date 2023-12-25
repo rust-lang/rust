@@ -1810,7 +1810,14 @@ impl Config {
                     }
                     target.llvm_config = Some(config.src.join(s));
                 }
-                target.llvm_has_rust_patches = cfg.llvm_has_rust_patches;
+                if let Some(patches) = cfg.llvm_has_rust_patches {
+                    assert_eq!(
+                        config.submodules,
+                        Some(false),
+                        "cannot set `llvm-has-rust-patches` for a managed submodule (set `build.submodules = false` if you want to apply patches)"
+                    );
+                    target.llvm_has_rust_patches = Some(patches);
+                }
                 if let Some(ref s) = cfg.llvm_filecheck {
                     target.llvm_filecheck = Some(config.src.join(s));
                 }
