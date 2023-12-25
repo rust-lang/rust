@@ -31,15 +31,19 @@ fn run() -> io::Result<()> {
 
     let write_response = |msg: msg::Response| msg.write(&mut io::stdout().lock());
 
-    let mut srv = proc_macro_srv::ProcMacroSrv::default();
+    let mut _srv = proc_macro_srv::ProcMacroSrv::default();
     let mut buf = String::new();
 
     while let Some(req) = read_request(&mut buf)? {
         let res = match req {
-            msg::Request::ListMacros { dylib_path } => {
-                msg::Response::ListMacros(srv.list_macros(&dylib_path))
+            msg::Request::ListMacros { .. } => {
+                // msg::Response::ListMacros(srv.list_macros(&dylib_path))
+                todo!()
             }
-            msg::Request::ExpandMacro(task) => msg::Response::ExpandMacro(srv.expand(task)),
+            msg::Request::ExpandMacro(_task) => {
+                // msg::Response::ExpandMacro(srv.expand(task))
+                todo!()
+            },
             msg::Request::ApiVersionCheck {} => {
                 msg::Response::ApiVersionCheck(proc_macro_api::msg::CURRENT_API_VERSION)
             }
