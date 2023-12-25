@@ -255,6 +255,9 @@ fn never_loop_expr<'tcx>(
             InlineAsmOperand::Const { .. } | InlineAsmOperand::SymFn { .. } | InlineAsmOperand::SymStatic { .. } => {
                 NeverLoopResult::Normal
             },
+            InlineAsmOperand::Label { block } => {
+                never_loop_block(cx, block, local_labels, main_loop_id)
+            }
         })),
         ExprKind::OffsetOf(_, _)
         | ExprKind::Yield(_, _)
