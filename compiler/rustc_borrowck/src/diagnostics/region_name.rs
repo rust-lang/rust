@@ -686,59 +686,79 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                 let mir_description = match kind {
                     hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
                         hir::CoroutineDesugaring::Async,
-                        src,
-                    )) => match src {
-                        hir::CoroutineSource::Block => " of async block",
-                        hir::CoroutineSource::Closure => " of async closure",
-                        hir::CoroutineSource::Fn => {
-                            let parent_item =
-                                tcx.hir_node_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
-                            let output = &parent_item
-                                .fn_decl()
-                                .expect("coroutine lowered from async fn should be in fn")
-                                .output;
-                            span = output.span();
-                            if let hir::FnRetTy::Return(ret) = output {
-                                hir_ty = Some(self.get_future_inner_return_ty(*ret));
-                            }
-                            " of async function"
+                        hir::CoroutineSource::Block,
+                    )) => " of async block",
+
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::Async,
+                        hir::CoroutineSource::Closure,
+                    )) => " of async closure",
+
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::Async,
+                        hir::CoroutineSource::Fn,
+                    )) => {
+                        let parent_item =
+                            tcx.hir_node_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
+                        let output = &parent_item
+                            .fn_decl()
+                            .expect("coroutine lowered from async fn should be in fn")
+                            .output;
+                        span = output.span();
+                        if let hir::FnRetTy::Return(ret) = output {
+                            hir_ty = Some(self.get_future_inner_return_ty(*ret));
                         }
-                    },
+                        " of async function"
+                    }
+
                     hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
                         hir::CoroutineDesugaring::Gen,
-                        src,
-                    )) => match src {
-                        hir::CoroutineSource::Block => " of gen block",
-                        hir::CoroutineSource::Closure => " of gen closure",
-                        hir::CoroutineSource::Fn => {
-                            let parent_item =
-                                tcx.hir_node_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
-                            let output = &parent_item
-                                .fn_decl()
-                                .expect("coroutine lowered from gen fn should be in fn")
-                                .output;
-                            span = output.span();
-                            " of gen function"
-                        }
-                    },
+                        hir::CoroutineSource::Block,
+                    )) => " of gen block",
+
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::Gen,
+                        hir::CoroutineSource::Closure,
+                    )) => " of gen closure",
+
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::Gen,
+                        hir::CoroutineSource::Fn,
+                    )) => {
+                        let parent_item =
+                            tcx.hir_node_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
+                        let output = &parent_item
+                            .fn_decl()
+                            .expect("coroutine lowered from gen fn should be in fn")
+                            .output;
+                        span = output.span();
+                        " of gen function"
+                    }
 
                     hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
                         hir::CoroutineDesugaring::AsyncGen,
-                        src,
-                    )) => match src {
-                        hir::CoroutineSource::Block => " of async gen block",
-                        hir::CoroutineSource::Closure => " of async gen closure",
-                        hir::CoroutineSource::Fn => {
-                            let parent_item =
-                                tcx.hir_node_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
-                            let output = &parent_item
-                                .fn_decl()
-                                .expect("coroutine lowered from async gen fn should be in fn")
-                                .output;
-                            span = output.span();
-                            " of async gen function"
-                        }
-                    },
+                        hir::CoroutineSource::Block,
+                    )) => " of async gen block",
+
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::AsyncGen,
+                        hir::CoroutineSource::Closure,
+                    )) => " of async gen closure",
+
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::AsyncGen,
+                        hir::CoroutineSource::Fn,
+                    )) => {
+                        let parent_item =
+                            tcx.hir_node_by_def_id(hir.get_parent_item(mir_hir_id).def_id);
+                        let output = &parent_item
+                            .fn_decl()
+                            .expect("coroutine lowered from async gen fn should be in fn")
+                            .output;
+                        span = output.span();
+                        " of async gen function"
+                    }
+
                     hir::ClosureKind::Coroutine(hir::CoroutineKind::Coroutine(_)) => {
                         " of coroutine"
                     }
