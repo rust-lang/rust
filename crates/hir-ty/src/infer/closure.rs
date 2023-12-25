@@ -51,7 +51,7 @@ impl InferenceContext<'_> {
         let _ = self.coerce(Some(closure_expr), closure_ty, &expected_ty);
 
         // Coroutines are not Fn* so return early.
-        if matches!(closure_ty.kind(Interner), TyKind::Generator(..)) {
+        if matches!(closure_ty.kind(Interner), TyKind::Coroutine(..)) {
             return;
         }
 

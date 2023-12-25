@@ -250,7 +250,7 @@ impl InferenceContext<'_> {
                             .build();
 
                         let coroutine_id = self.db.intern_coroutine((self.owner, tgt_expr)).into();
-                        let coroutine_ty = TyKind::Generator(coroutine_id, subst).intern(Interner);
+                        let coroutine_ty = TyKind::Coroutine(coroutine_id, subst).intern(Interner);
 
                         (None, coroutine_ty, Some((resume_ty, yield_ty)))
                     }

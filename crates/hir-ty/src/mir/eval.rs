@@ -2147,8 +2147,8 @@ impl Evaluator<'_> {
             | TyKind::Str
             | TyKind::Never
             | TyKind::Closure(_, _)
-            | TyKind::Generator(_, _)
-            | TyKind::GeneratorWitness(_, _)
+            | TyKind::Coroutine(_, _)
+            | TyKind::CoroutineWitness(_, _)
             | TyKind::Foreign(_)
             | TyKind::Error
             | TyKind::Placeholder(_)
@@ -2635,8 +2635,8 @@ impl Evaluator<'_> {
             | TyKind::Str
             | TyKind::Never
             | TyKind::Closure(_, _)
-            | TyKind::Generator(_, _)
-            | TyKind::GeneratorWitness(_, _)
+            | TyKind::Coroutine(_, _)
+            | TyKind::CoroutineWitness(_, _)
             | TyKind::Foreign(_)
             | TyKind::Error
             | TyKind::Placeholder(_)

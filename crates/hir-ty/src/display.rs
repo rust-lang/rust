@@ -659,8 +659,8 @@ fn render_const_scalar(
         }
         TyKind::Never => f.write_str("!"),
         TyKind::Closure(_, _) => f.write_str("<closure>"),
-        TyKind::Generator(_, _) => f.write_str("<coroutine>"),
-        TyKind::GeneratorWitness(_, _) => f.write_str("<coroutine-witness>"),
+        TyKind::Coroutine(_, _) => f.write_str("<coroutine>"),
+        TyKind::CoroutineWitness(_, _) => f.write_str("<coroutine-witness>"),
         // The below arms are unreachable, since const eval will bail out before here.
         TyKind::Foreign(_) => f.write_str("<extern-type>"),
         TyKind::Error
@@ -1205,7 +1205,7 @@ impl HirDisplay for Ty {
                 write!(f, "{{unknown}}")?;
             }
             TyKind::InferenceVar(..) => write!(f, "_")?,
-            TyKind::Generator(_, subst) => {
+            TyKind::Coroutine(_, subst) => {
                 if f.display_target.is_source_code() {
                     return Err(HirDisplayError::DisplaySourceCodeError(
                         DisplaySourceCodeError::Coroutine,
@@ -1232,7 +1232,7 @@ impl HirDisplay for Ty {
                     write!(f, "{{coroutine}}")?;
                 }
             }
-            TyKind::GeneratorWitness(..) => write!(f, "{{coroutine witness}}")?,
+            TyKind::CoroutineWitness(..) => write!(f, "{{coroutine witness}}")?,
         }
         Ok(())
     }
