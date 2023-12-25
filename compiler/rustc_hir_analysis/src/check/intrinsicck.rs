@@ -470,6 +470,8 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         }
                     };
                 }
+                // No special checking is needed for labels.
+                hir::InlineAsmOperand::Label { .. } => {}
             }
         }
     }

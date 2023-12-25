@@ -293,6 +293,9 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                         | hir::InlineAsmOperand::Const { .. }
                         | hir::InlineAsmOperand::SymFn { .. }
                         | hir::InlineAsmOperand::SymStatic { .. } => {}
+                        hir::InlineAsmOperand::Label { block } => {
+                            self.walk_block(block);
+                        }
                     }
                 }
             }

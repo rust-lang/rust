@@ -656,6 +656,9 @@ impl<'tcx> Cx<'tcx> {
                         hir::InlineAsmOperand::SymStatic { path: _, def_id } => {
                             InlineAsmOperand::SymStatic { def_id }
                         }
+                        hir::InlineAsmOperand::Label { .. } => {
+                            todo!()
+                        }
                     })
                     .collect(),
                 options: asm.options,

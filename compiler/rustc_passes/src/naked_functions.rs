@@ -237,7 +237,8 @@ impl<'tcx> CheckInlineAssembly<'tcx> {
                 InlineAsmOperand::In { .. }
                 | InlineAsmOperand::Out { .. }
                 | InlineAsmOperand::InOut { .. }
-                | InlineAsmOperand::SplitInOut { .. } => Some(op_sp),
+                | InlineAsmOperand::SplitInOut { .. }
+                | InlineAsmOperand::Label { .. } => Some(op_sp),
             })
             .collect();
         if !unsupported_operands.is_empty() {

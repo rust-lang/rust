@@ -3264,6 +3264,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // be well-formed.
                 hir::InlineAsmOperand::Const { .. } | hir::InlineAsmOperand::SymFn { .. } => {}
                 hir::InlineAsmOperand::SymStatic { .. } => {}
+                hir::InlineAsmOperand::Label { block } => {
+                    self.check_block_no_value(block);
+                }
             }
         }
         if asm.options.contains(ast::InlineAsmOptions::NORETURN) {

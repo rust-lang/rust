@@ -2294,6 +2294,9 @@ pub enum InlineAsmOperand {
     Sym {
         sym: InlineAsmSym,
     },
+    Label {
+        block: P<Block>,
+    },
 }
 
 impl InlineAsmOperand {
@@ -2303,7 +2306,7 @@ impl InlineAsmOperand {
             | Self::Out { reg, .. }
             | Self::InOut { reg, .. }
             | Self::SplitInOut { reg, .. } => Some(reg),
-            Self::Const { .. } | Self::Sym { .. } => None,
+            Self::Const { .. } | Self::Sym { .. } | Self::Label { .. } => None,
         }
     }
 }

@@ -88,6 +88,9 @@ ast_lowering_invalid_abi_suggestion = did you mean
 ast_lowering_invalid_asm_template_modifier_const =
     asm template modifiers are not allowed for `const` arguments
 
+ast_lowering_invalid_asm_template_modifier_label =
+    asm template modifiers are not allowed for `label` arguments
+
 ast_lowering_invalid_asm_template_modifier_reg_class =
     invalid asm template modifier for this register class
 

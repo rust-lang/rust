@@ -76,7 +76,8 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                             hir::InlineAsmOperand::In { .. }
                             | hir::InlineAsmOperand::Out { .. }
                             | hir::InlineAsmOperand::InOut { .. }
-                            | hir::InlineAsmOperand::SplitInOut { .. } => {
+                            | hir::InlineAsmOperand::SplitInOut { .. }
+                            | hir::InlineAsmOperand::Label { .. } => {
                                 span_bug!(*op_sp, "invalid operand type for global_asm!")
                             }
                         })

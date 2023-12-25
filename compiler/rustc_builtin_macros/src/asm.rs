@@ -166,6 +166,9 @@ pub fn parse_asm_args<'a>(
                 path: path.clone(),
             };
             ast::InlineAsmOperand::Sym { sym }
+        } else if !is_global_asm && p.eat_keyword(sym::label) {
+            let block = p.parse_block()?;
+            ast::InlineAsmOperand::Label { block }
         } else if allow_templates {
             let template = p.parse_expr()?;
             // If it can't possibly expand to a string, provide diagnostics here to include other
