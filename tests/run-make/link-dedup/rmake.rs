@@ -14,13 +14,13 @@ fn main() {
     rustc().input("depb.rs").run();
     rustc().input("depc.rs").run();
 
-    let output = rustc().input("empty.rs").cfg("bar").run_fail();
-    output.assert_stderr_contains(needle_from_libs(&["testa", "testb", "testa"]));
+    let output = rustc().input("empty.rs").cfg("bar").arg("--print=link-args").run_fail();
+    output.assert_stdout_contains(needle_from_libs(&["testa", "testb", "testa"]));
 
-    let output = rustc().input("empty.rs").run_fail();
-    output.assert_stderr_contains(needle_from_libs(&["testa"]));
-    output.assert_stderr_not_contains(needle_from_libs(&["testb"]));
-    output.assert_stderr_not_contains(needle_from_libs(&["testa", "testa", "testa"]));
+    let output = rustc().input("empty.rs").arg("--print=link-args").run_fail();
+    output.assert_stdout_contains(needle_from_libs(&["testa"]));
+    output.assert_stdout_not_contains(needle_from_libs(&["testb"]));
+    output.assert_stdout_not_contains(needle_from_libs(&["testa", "testa", "testa"]));
     // Adjacent identical native libraries are no longer deduplicated if
     // they come from different crates (https://github.com/rust-lang/rust/pull/103311)
     // so the following will fail:
