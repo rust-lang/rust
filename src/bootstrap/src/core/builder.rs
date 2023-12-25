@@ -1221,11 +1221,6 @@ impl<'a> Builder<'a> {
             cmd.arg("-Dwarnings");
         }
         cmd.arg("-Znormalize-docs");
-
-        // Remove make-related flags that can cause jobserver problems.
-        cmd.env_remove("MAKEFLAGS");
-        cmd.env_remove("MFLAGS");
-
         cmd.args(linker_args(self, compiler.host, LldThreads::Yes));
         cmd
     }
