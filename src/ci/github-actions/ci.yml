@@ -34,6 +34,7 @@ x--expand-yaml-anchors--remove:
     CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
     # commit of PR sha or commit sha. `GITHUB_SHA` is not accurate for PRs.
     HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    DOCKER_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   - &public-variables
     SCCACHE_BUCKET: rust-lang-ci-sccache2
@@ -84,7 +85,7 @@ x--expand-yaml-anchors--remove:
     <<: *base-job
 
   - &job-linux-16c
-    os: ubuntu-20.04-16core-64gb
+    os: ubuntu-20.04
     <<: *base-job
 
   - &job-macos-xl
@@ -328,23 +329,16 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            <<: *job-linux-4c
-
-          - name: mingw-check-tidy
-            <<: *job-linux-4c
-
-          - name: x86_64-gnu-llvm-16
+          - name: quick
             env:
               ENABLE_GCC_CODEGEN: "1"
-            <<: *job-linux-16c
-
-          - name: x86_64-gnu-tools
             <<: *job-linux-16c
 
   auto:
     <<: *base-ci-job
     name: auto - ${{ matrix.name }}
+    permissions:
+      packages: write
     env:
       <<: [*shared-ci-variables, *prod-variables]
     if: github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'
@@ -725,6 +719,8 @@ jobs:
   try:
     <<: *base-ci-job
     name: try - ${{ matrix.name }}
+    permissions:
+      packages: write
     env:
       DIST_TRY_BUILD: 1
       <<: [*shared-ci-variables, *prod-variables]
@@ -733,7 +729,7 @@ jobs:
       matrix:
         include:
           - &dist-x86_64-linux
-            name: dist-x86_64-linux
+            name: quick
             env:
               CODEGEN_BACKENDS: llvm,cranelift
             <<: *job-linux-16c

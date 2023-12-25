@@ -42,6 +42,7 @@ jobs:
       CI_JOB_NAME: "${{ matrix.name }}"
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       HEAD_SHA: "${{ github.event.pull_request.head.sha || github.sha }}"
+      DOCKER_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
       SCCACHE_BUCKET: rust-lang-ci-sccache2
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
       CACHE_DOMAIN: ci-caches.rust-lang.org
@@ -50,19 +51,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mingw-check
-            os: ubuntu-20.04-4core-16gb
-            env: {}
-          - name: mingw-check-tidy
-            os: ubuntu-20.04-4core-16gb
-            env: {}
-          - name: x86_64-gnu-llvm-16
+          - name: quick
             env:
               ENABLE_GCC_CODEGEN: "1"
-            os: ubuntu-20.04-16core-64gb
-          - name: x86_64-gnu-tools
-            os: ubuntu-20.04-16core-64gb
-            env: {}
+            os: ubuntu-20.04
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
@@ -168,10 +160,13 @@ jobs:
         if: "success() && !env.SKIP_JOB && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')"
   auto:
     name: "auto - ${{ matrix.name }}"
+    permissions:
+      packages: write
     env:
       CI_JOB_NAME: "${{ matrix.name }}"
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       HEAD_SHA: "${{ github.event.pull_request.head.sha || github.sha }}"
+      DOCKER_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
       SCCACHE_BUCKET: rust-lang-ci-sccache2
       DEPLOY_BUCKET: rust-lang-ci2
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
@@ -204,7 +199,7 @@ jobs:
             os: ubuntu-20.04-8core-32gb
             env: {}
           - name: dist-arm-linux
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04
             env: {}
           - name: dist-armhf-linux
             os: ubuntu-20.04-8core-32gb
@@ -251,12 +246,12 @@ jobs:
           - name: dist-x86_64-linux
             env:
               CODEGEN_BACKENDS: "llvm,cranelift"
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04
           - name: dist-x86_64-linux-alt
             env:
               IMAGE: dist-x86_64-linux
               CODEGEN_BACKENDS: "llvm,cranelift"
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04
           - name: dist-x86_64-musl
             env:
               CODEGEN_BACKENDS: "llvm,cranelift"
@@ -291,7 +286,7 @@ jobs:
           - name: x86_64-gnu-integration
             env:
               CI_ONLY_WHEN_CHANNEL: nightly
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04
           - name: x86_64-gnu-debug
             os: ubuntu-20.04-8core-32gb
             env: {}
@@ -561,11 +556,14 @@ jobs:
         if: "success() && !env.SKIP_JOB && (github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1')"
   try:
     name: "try - ${{ matrix.name }}"
+    permissions:
+      packages: write
     env:
       DIST_TRY_BUILD: 1
       CI_JOB_NAME: "${{ matrix.name }}"
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       HEAD_SHA: "${{ github.event.pull_request.head.sha || github.sha }}"
+      DOCKER_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
       SCCACHE_BUCKET: rust-lang-ci-sccache2
       DEPLOY_BUCKET: rust-lang-ci2
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
@@ -579,10 +577,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: dist-x86_64-linux
+          - name: quick
             env:
               CODEGEN_BACKENDS: "llvm,cranelift"
-            os: ubuntu-20.04-16core-64gb
+            os: ubuntu-20.04
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:

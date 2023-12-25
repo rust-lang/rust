@@ -74,25 +74,6 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
 
       cksum=$(sha512sum $hash_key | \
         awk '{print $1}')
-
-      url="https://$CACHE_DOMAIN/docker/$cksum"
-
-      echo "Attempting to download $url"
-      rm -f /tmp/rustci_docker_cache
-      set +e
-      retry curl --max-time 600 -y 30 -Y 10 --connect-timeout 30 -f -L -C - \
-        -o /tmp/rustci_docker_cache "$url"
-
-      docker_archive_hash=$(sha512sum /tmp/rustci_docker_cache | awk '{print $1}')
-      echo "Downloaded archive hash: ${docker_archive_hash}"
-
-      echo "Loading images into docker"
-      # docker load sometimes hangs in the CI, so time out after 10 minutes with TERM,
-      # KILL after 12 minutes
-      loaded_images=$(/usr/bin/timeout -k 720 600 docker load -i /tmp/rustci_docker_cache \
-        | sed 's/.* sha/sha/')
-      set -e
-      printf "Downloaded containers:\n$loaded_images\n"
     fi
 
     dockerfile="$docker_dir/$image/Dockerfile"
@@ -103,44 +84,48 @@ if [ -f "$docker_dir/$image/Dockerfile" ]; then
         context="$script_dir"
     fi
     echo "::group::Building docker image for $image"
+    echo "Image checksum ${cksum}"
 
-    # As of August 2023, Github Actions have updated Docker to 23.X,
-    # which uses the BuildKit by default. It currently throws aways all
-    # intermediate layers, which breaks our usage of S3 layer caching.
-    # Therefore we opt-in to the old build backend for now.
-    export DOCKER_BUILDKIT=0
-    retry docker \
-      build \
-      --rm \
-      -t rust-ci \
-      -f "$dockerfile" \
-      "$context"
+    # On PR jobs, we don't have permissions to write to the cache, so we should not use
+    # `docker login` nor caching.
+    if [ "$PR_CI_JOB" -eq 1 ]
+    then
+         docker pull ghcr.io/rust-lang-ci/rust-ci:e933e07d88a3a99bf4260cfb60899ada91f8df72a6588179fcf65ebe7ce824675eb8f2c985515ca3c51f2d0f5c006cb1d9e2fa66af562cdc91537385af559d59
+#        docker buildx create --use --driver docker-container
+#        retry docker buildx build --rm -t rust-ci \
+#            --output=type=docker \
+#            --cache-from type=registry,ref=ghcr.io/rust-lang-ci/rust-ci:${cksum} \
+#            -f "$dockerfile" "$context"
+    else
+        docker pull ghcr.io/rust-lang-ci/rust-ci:e933e07d88a3a99bf4260cfb60899ada91f8df72a6588179fcf65ebe7ce824675eb8f2c985515ca3c51f2d0f5c006cb1d9e2fa66af562cdc91537385af559d59
+
+        docker buildx create --use --driver docker-container
+
+        # Login to Docker registry
+        echo ${DOCKER_TOKEN} | docker login ghcr.io --username rust-lang-ci --password-stdin
+
+        dest="type=registry,ref=ghcr.io/rust-lang-ci/rust-ci:${cksum},compression=zstd,mode=max"
+
+        retry docker \
+              buildx \
+              build \
+              --rm \
+              -t rust-ci \
+              -f "$dockerfile" \
+              --cache-from type=registry,ref=ghcr.io/rust-lang-ci/rust-ci:${cksum} \
+              --cache-to ${dest} \
+              --output=type=docker \
+              "$context"
+        docker manifest inspect rust-ci
+    fi
     echo "::endgroup::"
 
     if [ "$CI" != "" ]; then
-      s3url="s3://$SCCACHE_BUCKET/docker/$cksum"
-      upload="aws s3 cp - $s3url"
       digest=$(docker inspect rust-ci --format '{{.Id}}')
-      echo "Built container $digest"
-      if ! grep -q "$digest" <(echo "$loaded_images"); then
-        echo "Uploading finished image $digest to $url"
-        set +e
-        # Print image history for easier debugging of layer SHAs
-        docker history rust-ci
-        docker history -q rust-ci | \
-          grep -v missing | \
-          xargs docker save | \
-          gzip | \
-          $upload
-        set -e
-      else
-        echo "Looks like docker image is the same as before, not uploading"
-      fi
       # Record the container image for reuse, e.g. by rustup.rs builds
       info="$dist/image-$image.txt"
       mkdir -p "$dist"
-      echo "$url" >"$info"
-      echo "$digest" >>"$info"
+      echo "${cksum}" > "$info"
       cat "$info"
     fi
 elif [ -f "$docker_dir/disabled/$image/Dockerfile" ]; then
