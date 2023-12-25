@@ -1367,6 +1367,9 @@ documentation. */
 	font-weight: bold;
 	font-size: 1.25rem;
 }
+.top-doc > .docblock >.warning:first-child::before {
+	top: 20px;
+}
 
 a.test-arrow {
 	visibility: hidden;
