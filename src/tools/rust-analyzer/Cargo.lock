@@ -74,11 +74,11 @@ dependencies = [
  "profile",
  "rust-analyzer-salsa",
  "rustc-hash",
+ "semver",
+ "span",
  "stdx",
  "syntax",
- "test-utils",
  "triomphe",
- "tt",
  "vfs",
 ]
 
@@ -516,8 +516,10 @@ dependencies = [
  "rustc-dependencies",
  "rustc-hash",
  "smallvec",
+ "span",
  "stdx",
  "syntax",
+ "test-fixture",
  "test-utils",
  "tracing",
  "triomphe",
@@ -542,6 +544,7 @@ dependencies = [
  "profile",
  "rustc-hash",
  "smallvec",
+ "span",
  "stdx",
  "syntax",
  "tracing",
@@ -581,6 +584,7 @@ dependencies = [
  "smallvec",
  "stdx",
  "syntax",
+ "test-fixture",
  "test-utils",
  "tracing",
  "tracing-subscriber",
@@ -624,6 +628,7 @@ dependencies = [
  "smallvec",
  "stdx",
  "syntax",
+ "test-fixture",
  "test-utils",
  "text-edit",
  "toolchain",
@@ -647,6 +652,7 @@ dependencies = [
  "sourcegen",
  "stdx",
  "syntax",
+ "test-fixture",
  "test-utils",
  "text-edit",
 ]
@@ -666,6 +672,7 @@ dependencies = [
  "smallvec",
  "stdx",
  "syntax",
+ "test-fixture",
  "test-utils",
  "text-edit",
 ]
@@ -694,8 +701,10 @@ dependencies = [
  "rayon",
  "rustc-hash",
  "sourcegen",
+ "span",
  "stdx",
  "syntax",
+ "test-fixture",
  "test-utils",
  "text-edit",
  "tracing",
@@ -720,6 +729,7 @@ dependencies = [
  "sourcegen",
  "stdx",
  "syntax",
+ "test-fixture",
  "test-utils",
  "text-edit",
 ]
@@ -737,6 +747,7 @@ dependencies = [
  "parser",
  "stdx",
  "syntax",
+ "test-fixture",
  "test-utils",
  "text-edit",
  "triomphe",
@@ -903,11 +914,13 @@ version = "0.0.0"
 dependencies = [
  "anyhow",
  "crossbeam-channel",
+ "hir-expand",
  "ide",
  "ide-db",
  "itertools",
  "proc-macro-api",
  "project-model",
+ "span",
  "tracing",
  "tt",
  "vfs",
@@ -956,9 +969,9 @@ dependencies = [
 
 [[package]]
 name = "lsp-types"
-version = "0.94.0"
+version = "0.95.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b63735a13a1f9cd4f4835223d828ed9c2e35c8c5e61837774399f558b6a1237"
+checksum = "158c1911354ef73e8fe42da6b10c0484cb65c7f1007f28022e847706c1ab6984"
 dependencies = [
  "bitflags 1.3.2",
  "serde",
@@ -975,6 +988,7 @@ dependencies = [
  "parser",
  "rustc-hash",
  "smallvec",
+ "span",
  "stdx",
  "syntax",
  "test-utils",
@@ -1251,6 +1265,7 @@ dependencies = [
  "serde",
  "serde_json",
  "snap",
+ "span",
  "stdx",
  "text-size",
  "tracing",
@@ -1262,6 +1277,7 @@ dependencies = [
 name = "proc-macro-srv"
 version = "0.0.0"
 dependencies = [
+ "base-db",
  "expect-test",
  "libloading",
  "mbe",
@@ -1270,6 +1286,7 @@ dependencies = [
  "paths",
  "proc-macro-api",
  "proc-macro-test",
+ "span",
  "stdx",
  "tt",
 ]
@@ -1287,13 +1304,8 @@ name = "proc-macro-test"
 version = "0.0.0"
 dependencies = [
  "cargo_metadata",
- "proc-macro-test-impl",
  "toolchain",
 ]
-
-[[package]]
-name = "proc-macro-test-impl"
-version = "0.0.0"
 
 [[package]]
 name = "proc-macro2"
@@ -1535,6 +1547,7 @@ dependencies = [
  "sourcegen",
  "stdx",
  "syntax",
+ "test-fixture",
  "test-utils",
  "tikv-jemallocator",
  "toolchain",
@@ -1727,6 +1740,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "span"
+version = "0.0.0"
+dependencies = [
+ "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rust-analyzer-salsa",
+ "stdx",
+ "syntax",
+ "vfs",
+]
+
+[[package]]
 name = "static_assertions"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1794,6 +1818,20 @@ dependencies = [
  "text-edit",
  "triomphe",
  "ungrammar",
+]
+
+[[package]]
+name = "test-fixture"
+version = "0.0.0"
+dependencies = [
+ "base-db",
+ "cfg",
+ "hir-expand",
+ "rustc-hash",
+ "span",
+ "stdx",
+ "test-utils",
+ "tt",
 ]
 
 [[package]]
@@ -1998,6 +2036,7 @@ name = "tt"
 version = "0.0.0"
 dependencies = [
  "smol_str",
+ "span",
  "stdx",
  "text-size",
 ]

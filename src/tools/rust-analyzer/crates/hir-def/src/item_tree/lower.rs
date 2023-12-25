@@ -2,7 +2,7 @@
 
 use std::collections::hash_map::Entry;
 
-use hir_expand::{ast_id_map::AstIdMap, span::SpanMapRef, HirFileId};
+use hir_expand::{ast_id_map::AstIdMap, span_map::SpanMapRef, HirFileId};
 use syntax::ast::{self, HasModuleItem, HasTypeBounds};
 
 use crate::{
@@ -549,7 +549,7 @@ impl<'a> Ctx<'a> {
             path,
             ast_id,
             expand_to,
-            call_site: span_map.span_for_range(m.syntax().text_range()).ctx,
+            call_site: span_map.span_for_range(m.syntax().text_range()),
         };
         Some(id(self.data().macro_calls.alloc(res)))
     }
@@ -562,13 +562,13 @@ impl<'a> Ctx<'a> {
         Some(id(self.data().macro_rules.alloc(res)))
     }
 
-    fn lower_macro_def(&mut self, m: &ast::MacroDef) -> Option<FileItemTreeId<MacroDef>> {
+    fn lower_macro_def(&mut self, m: &ast::MacroDef) -> Option<FileItemTreeId<Macro2>> {
         let name = m.name().map(|it| it.as_name())?;
 
         let ast_id = self.source_ast_id_map.ast_id(m);
         let visibility = self.lower_visibility(m);
 
-        let res = MacroDef { name, ast_id, visibility };
+        let res = Macro2 { name, ast_id, visibility };
         Some(id(self.data().macro_defs.alloc(res)))
     }
 

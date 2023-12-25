@@ -1,6 +1,7 @@
-use base_db::{fixture::WithFixture, FileId};
+use base_db::FileId;
 use hir_def::db::DefDatabase;
 use syntax::{TextRange, TextSize};
+use test_fixture::WithFixture;
 
 use crate::{db::HirDatabase, test_db::TestDB, Interner, Substitution};
 

@@ -26,12 +26,13 @@ mod visibility;
 use expect_test::Expect;
 use hir::PrefixKind;
 use ide_db::{
-    base_db::{fixture::ChangeFixture, FileLoader, FilePosition},
+    base_db::{FileLoader, FilePosition},
     imports::insert_use::{ImportGranularity, InsertUseConfig},
     RootDatabase, SnippetCap,
 };
 use itertools::Itertools;
 use stdx::{format_to, trim_indent};
+use test_fixture::ChangeFixture;
 use test_utils::assert_eq_text;
 
 use crate::{

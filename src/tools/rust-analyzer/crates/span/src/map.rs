@@ -1,18 +1,23 @@
-//! Mapping between `TokenId`s and the token's position in macro definitions or inputs.
+//! A map that maps a span to every position in a file. Usually maps a span to some range of positions.
+//! Allows bidirectional lookup.
 
 use std::hash::Hash;
 
 use stdx::{always, itertools::Itertools};
 use syntax::{TextRange, TextSize};
-use tt::Span;
+use vfs::FileId;
+
+use crate::{ErasedFileAstId, Span, SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
 
 /// Maps absolute text ranges for the corresponding file to the relevant span data.
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
-pub struct SpanMap<S: Span> {
+pub struct SpanMap<S> {
     spans: Vec<(TextSize, S)>,
+    // FIXME: Should be
+    // spans: Vec<(TextSize, crate::SyntaxContextId)>,
 }
 
-impl<S: Span> SpanMap<S> {
+impl<S: Copy> SpanMap<S> {
     /// Creates a new empty [`SpanMap`].
     pub fn empty() -> Self {
         Self { spans: Vec::new() }
@@ -44,7 +49,10 @@ impl<S: Span> SpanMap<S> {
     /// Returns all [`TextRange`]s that correspond to the given span.
     ///
     /// Note this does a linear search through the entire backing vector.
-    pub fn ranges_with_span(&self, span: S) -> impl Iterator<Item = TextRange> + '_ {
+    pub fn ranges_with_span(&self, span: S) -> impl Iterator<Item = TextRange> + '_
+    where
+        S: Eq,
+    {
         // FIXME: This should ignore the syntax context!
         self.spans.iter().enumerate().filter_map(move |(idx, &(end, s))| {
             if s != span {
@@ -72,5 +80,52 @@ impl<S: Span> SpanMap<S> {
 
     pub fn iter(&self) -> impl Iterator<Item = (TextSize, S)> + '_ {
         self.spans.iter().copied()
+    }
+}
+
+#[derive(PartialEq, Eq, Hash, Debug)]
+pub struct RealSpanMap {
+    file_id: FileId,
+    /// Invariant: Sorted vec over TextSize
+    // FIXME: SortedVec<(TextSize, ErasedFileAstId)>?
+    pairs: Box<[(TextSize, ErasedFileAstId)]>,
+    end: TextSize,
+}
+
+impl RealSpanMap {
+    /// Creates a real file span map that returns absolute ranges (relative ranges to the root ast id).
+    pub fn absolute(file_id: FileId) -> Self {
+        RealSpanMap {
+            file_id,
+            pairs: Box::from([(TextSize::new(0), ROOT_ERASED_FILE_AST_ID)]),
+            end: TextSize::new(!0),
+        }
+    }
+
+    pub fn from_file(
+        file_id: FileId,
+        pairs: Box<[(TextSize, ErasedFileAstId)]>,
+        end: TextSize,
+    ) -> Self {
+        Self { file_id, pairs, end }
+    }
+
+    pub fn span_for_range(&self, range: TextRange) -> Span {
+        assert!(
+            range.end() <= self.end,
+            "range {range:?} goes beyond the end of the file {:?}",
+            self.end
+        );
+        let start = range.start();
+        let idx = self
+            .pairs
+            .binary_search_by(|&(it, _)| it.cmp(&start).then(std::cmp::Ordering::Less))
+            .unwrap_err();
+        let (offset, ast_id) = self.pairs[idx - 1];
+        Span {
+            range: range - offset,
+            anchor: SpanAnchor { file_id: self.file_id, ast_id },
+            ctx: SyntaxContextId::ROOT,
+        }
     }
 }

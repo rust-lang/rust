@@ -13,7 +13,6 @@ use either::Either;
 use hir_def::{
     hir::Expr,
     lower::LowerCtx,
-    macro_id_to_def_id,
     nameres::MacroSubNs,
     resolver::{self, HasResolver, Resolver, TypeNs},
     type_ref::Mutability,
@@ -341,9 +340,7 @@ impl<'db> SemanticsImpl<'db> {
         let macro_call = InFile::new(file_id, actual_macro_call);
         let krate = resolver.krate();
         let macro_call_id = macro_call.as_call_id(self.db.upcast(), krate, |path| {
-            resolver
-                .resolve_path_as_macro(self.db.upcast(), &path, Some(MacroSubNs::Bang))
-                .map(|(it, _)| macro_id_to_def_id(self.db.upcast(), it))
+            resolver.resolve_path_as_macro_def(self.db.upcast(), &path, Some(MacroSubNs::Bang))
         })?;
         hir_expand::db::expand_speculative(
             self.db.upcast(),
@@ -512,8 +509,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     /// Descend the token into its macro call if it is part of one, returning the tokens in the
-    /// expansion that it is associated with. If `offset` points into the token's range, it will
-    /// be considered for the mapping in case of inline format args.
+    /// expansion that it is associated with.
     pub fn descend_into_macros(
         &self,
         mode: DescendPreference,
@@ -850,7 +846,7 @@ impl<'db> SemanticsImpl<'db> {
     /// Attempts to map the node out of macro expanded files.
     /// This only work for attribute expansions, as other ones do not have nodes as input.
     pub fn original_ast_node<N: AstNode>(&self, node: N) -> Option<N> {
-        self.wrap_node_infile(node).original_ast_node(self.db.upcast()).map(
+        self.wrap_node_infile(node).original_ast_node_rooted(self.db.upcast()).map(
             |InRealFile { file_id, value }| {
                 self.cache(find_root(value.syntax()), file_id.into());
                 value

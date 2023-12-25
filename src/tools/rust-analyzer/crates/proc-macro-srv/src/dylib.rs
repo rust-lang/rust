@@ -11,7 +11,10 @@ use libloading::Library;
 use memmap2::Mmap;
 use object::Object;
 use paths::AbsPath;
-use proc_macro_api::{msg::TokenId, read_dylib_info, ProcMacroKind};
+use proc_macro::bridge;
+use proc_macro_api::{read_dylib_info, ProcMacroKind};
+
+use crate::ProcMacroSrvSpan;
 
 const NEW_REGISTRAR_SYMBOL: &str = "_rustc_proc_macro_decls_";
 
@@ -147,15 +150,18 @@ impl Expander {
         Ok(Expander { inner: library })
     }
 
-    pub fn expand(
+    pub fn expand<S: ProcMacroSrvSpan>(
         &self,
         macro_name: &str,
-        macro_body: &crate::tt::Subtree,
-        attributes: Option<&crate::tt::Subtree>,
-        def_site: TokenId,
-        call_site: TokenId,
-        mixed_site: TokenId,
-    ) -> Result<crate::tt::Subtree, String> {
+        macro_body: tt::Subtree<S>,
+        attributes: Option<tt::Subtree<S>>,
+        def_site: S,
+        call_site: S,
+        mixed_site: S,
+    ) -> Result<tt::Subtree<S>, String>
+    where
+        <S::Server as bridge::server::Types>::TokenStream: Default,
+    {
         let result = self
             .inner
             .proc_macros

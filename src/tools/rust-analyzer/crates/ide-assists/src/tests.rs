@@ -5,13 +5,14 @@ mod sourcegen;
 use expect_test::expect;
 use hir::Semantics;
 use ide_db::{
-    base_db::{fixture::WithFixture, FileId, FileRange, SourceDatabaseExt},
+    base_db::{FileId, FileRange, SourceDatabaseExt},
     imports::insert_use::{ImportGranularity, InsertUseConfig},
     source_change::FileSystemEdit,
     RootDatabase, SnippetCap,
 };
 use stdx::{format_to, trim_indent};
 use syntax::TextRange;
+use test_fixture::WithFixture;
 use test_utils::{assert_eq_text, extract_offset};
 
 use crate::{

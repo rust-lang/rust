@@ -43,6 +43,8 @@ pub mod syntax_helpers {
     pub use parser::LexedStr;
 }
 
+pub use hir::Change;
+
 use std::{fmt, mem::ManuallyDrop};
 
 use base_db::{

@@ -414,6 +414,7 @@ impl ast::UseTree {
                     u.remove_recursive();
                 }
             }
+            u.remove_unnecessary_braces();
         }
     }
 

@@ -1,10 +1,28 @@
 //! File and span related types.
-// FIXME: This should probably be moved into its own crate.
+// FIXME: This should be moved into its own crate to get rid of the dependency inversion, base-db
+// has business depending on tt, tt should depend on a span crate only (which unforunately will have
+// to depend on salsa)
 use std::fmt;
 
 use salsa::InternId;
-use tt::SyntaxContext;
-use vfs::FileId;
+
+mod map;
+
+pub use crate::map::{RealSpanMap, SpanMap};
+pub use syntax::{TextRange, TextSize};
+pub use vfs::FileId;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct FilePosition {
+    pub file_id: FileId,
+    pub offset: TextSize,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+pub struct FileRange {
+    pub file_id: FileId,
+    pub range: TextRange,
+}
 
 pub type ErasedFileAstId = la_arena::Idx<syntax::SyntaxNodePtr>;
 
@@ -12,7 +30,33 @@ pub type ErasedFileAstId = la_arena::Idx<syntax::SyntaxNodePtr>;
 pub const ROOT_ERASED_FILE_AST_ID: ErasedFileAstId =
     la_arena::Idx::from_raw(la_arena::RawIdx::from_u32(0));
 
-pub type SpanData = tt::SpanData<SpanAnchor, SyntaxContextId>;
+/// FileId used as the span for syntax node fixups. Any Span containing this file id is to be
+/// considered fake.
+pub const FIXUP_ERASED_FILE_AST_ID_MARKER: ErasedFileAstId =
+    // we pick the second to last for this in case we every consider making this a NonMaxU32, this
+    // is required to be stable for the proc-macro-server
+    la_arena::Idx::from_raw(la_arena::RawIdx::from_u32(!0 - 1));
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub struct SpanData<Ctx> {
+    /// The text range of this span, relative to the anchor.
+    /// We need the anchor for incrementality, as storing absolute ranges will require
+    /// recomputation on every change in a file at all times.
+    pub range: TextRange,
+    pub anchor: SpanAnchor,
+    /// The syntax context of the span.
+    pub ctx: Ctx,
+}
+impl Span {
+    #[deprecated = "dummy spans will panic if surfaced incorrectly, as such they should be replaced appropriately"]
+    pub const DUMMY: Self = SpanData {
+        range: TextRange::empty(TextSize::new(0)),
+        anchor: SpanAnchor { file_id: FileId::BOGUS, ast_id: ROOT_ERASED_FILE_AST_ID },
+        ctx: SyntaxContextId::ROOT,
+    };
+}
+
+pub type Span = SpanData<SyntaxContextId>;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SyntaxContextId(InternId);
@@ -33,7 +77,15 @@ impl fmt::Debug for SyntaxContextId {
         }
     }
 }
-crate::impl_intern_key!(SyntaxContextId);
+
+impl salsa::InternKey for SyntaxContextId {
+    fn from_intern_id(v: salsa::InternId) -> Self {
+        SyntaxContextId(v)
+    }
+    fn as_intern_id(&self) -> salsa::InternId {
+        self.0
+    }
+}
 
 impl fmt::Display for SyntaxContextId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -41,9 +93,6 @@ impl fmt::Display for SyntaxContextId {
     }
 }
 
-impl SyntaxContext for SyntaxContextId {
-    const DUMMY: Self = Self::ROOT;
-}
 // inherent trait impls please tyvm
 impl SyntaxContextId {
     pub const ROOT: Self = SyntaxContextId(unsafe { InternId::new_unchecked(0) });
@@ -54,6 +103,14 @@ impl SyntaxContextId {
 
     pub fn is_root(self) -> bool {
         self == Self::ROOT
+    }
+
+    pub fn into_u32(self) -> u32 {
+        self.0.as_u32()
+    }
+
+    pub fn from_u32(u32: u32) -> Self {
+        Self(InternId::from(u32))
     }
 }
 
@@ -67,10 +124,6 @@ impl fmt::Debug for SpanAnchor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("SpanAnchor").field(&self.file_id).field(&self.ast_id.into_raw()).finish()
     }
-}
-
-impl tt::SpanAnchor for SpanAnchor {
-    const DUMMY: Self = SpanAnchor { file_id: FileId::BOGUS, ast_id: ROOT_ERASED_FILE_AST_ID };
 }
 
 /// Input to the analyzer is a set of files, where each file is identified by
@@ -90,6 +143,7 @@ impl tt::SpanAnchor for SpanAnchor {
 /// The two variants are encoded in a single u32 which are differentiated by the MSB.
 /// If the MSB is 0, the value represents a `FileId`, otherwise the remaining 31 bits represent a
 /// `MacroCallId`.
+// FIXME: Give this a better fitting name
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct HirFileId(u32);
 
@@ -120,7 +174,15 @@ pub struct MacroFileId {
 /// `println!("Hello, {}", world)`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MacroCallId(salsa::InternId);
-crate::impl_intern_key!(MacroCallId);
+
+impl salsa::InternKey for MacroCallId {
+    fn from_intern_id(v: salsa::InternId) -> Self {
+        MacroCallId(v)
+    }
+    fn as_intern_id(&self) -> salsa::InternId {
+        self.0
+    }
+}
 
 impl MacroCallId {
     pub fn as_file(self) -> HirFileId {
