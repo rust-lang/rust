@@ -455,6 +455,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         thir::InlineAsmOperand::SymStatic { def_id } => {
                             mir::InlineAsmOperand::SymStatic { def_id }
                         }
+                        thir::InlineAsmOperand::Label { .. } => {
+                            todo!()
+                        }
                     })
                     .collect();
 

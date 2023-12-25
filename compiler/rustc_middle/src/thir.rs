@@ -565,6 +565,9 @@ pub enum InlineAsmOperand<'tcx> {
     SymStatic {
         def_id: DefId,
     },
+    Label {
+        block: BlockId,
+    },
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, HashStable)]
