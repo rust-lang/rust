@@ -145,7 +145,25 @@ LL | |     }
    | |_____^ help: try replacing the loop by: `dst.copy_from_slice(&src);`
 
 error: it looks like you're manually copying between slices
-  --> tests/ui/manual_memcpy/without_loop_counters.rs:165:5
+  --> tests/ui/manual_memcpy/without_loop_counters.rs:204:5
+   |
+LL | /     for i in 0..5 {
+LL | |
+LL | |         dst[i] = src[0][i];
+LL | |     }
+   | |_____^ help: try replacing the loop by: `dst.copy_from_slice(&src[0]);`
+
+error: it looks like you're manually copying between slices
+  --> tests/ui/manual_memcpy/without_loop_counters.rs:210:5
+   |
+LL | /     for i in 0..5 {
+LL | |
+LL | |         dst[i] = src[0][1][i];
+LL | |     }
+   | |_____^ help: try replacing the loop by: `dst.copy_from_slice(&src[0][1]);`
+
+error: it looks like you're manually copying between slices
+  --> tests/ui/manual_memcpy/without_loop_counters.rs:218:5
    |
 LL | /     for i in 0..src.len() {
 LL | |
@@ -153,5 +171,5 @@ LL | |         dst[i] = src[i].clone();
 LL | |     }
    | |_____^ help: try replacing the loop by: `dst[..src.len()].clone_from_slice(&src[..]);`
 
-error: aborting due to 16 previous errors
+error: aborting due to 18 previous errors
 
