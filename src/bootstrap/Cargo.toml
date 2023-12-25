@@ -59,7 +59,7 @@ walkdir = "2"
 xz2 = "0.1"
 
 # Dependencies needed by the build-metrics feature
-sysinfo = { version = "0.30.0", optional = true }
+sysinfo = { version = "0.30", optional = true }
 
 # Solaris doesn't support flock() and thus fd-lock is not option now
 [target.'cfg(not(target_os = "solaris"))'.dependencies]
