@@ -276,7 +276,7 @@ impl DisplayTarget {
 pub enum DisplaySourceCodeError {
     PathNotFound,
     UnknownType,
-    Generator,
+    Coroutine,
     OpaqueType,
 }
 
@@ -659,8 +659,8 @@ fn render_const_scalar(
         }
         TyKind::Never => f.write_str("!"),
         TyKind::Closure(_, _) => f.write_str("<closure>"),
-        TyKind::Generator(_, _) => f.write_str("<generator>"),
-        TyKind::GeneratorWitness(_, _) => f.write_str("<generator-witness>"),
+        TyKind::Generator(_, _) => f.write_str("<coroutine>"),
+        TyKind::GeneratorWitness(_, _) => f.write_str("<coroutine-witness>"),
         // The below arms are unreachable, since const eval will bail out before here.
         TyKind::Foreign(_) => f.write_str("<extern-type>"),
         TyKind::Error
@@ -1208,7 +1208,7 @@ impl HirDisplay for Ty {
             TyKind::Generator(_, subst) => {
                 if f.display_target.is_source_code() {
                     return Err(HirDisplayError::DisplaySourceCodeError(
-                        DisplaySourceCodeError::Generator,
+                        DisplaySourceCodeError::Coroutine,
                     ));
                 }
                 let subst = subst.as_slice(Interner);
@@ -1229,10 +1229,10 @@ impl HirDisplay for Ty {
                     ret_ty.hir_fmt(f)?;
                 } else {
                     // This *should* be unreachable, but fallback just in case.
-                    write!(f, "{{generator}}")?;
+                    write!(f, "{{coroutine}}")?;
                 }
             }
-            TyKind::GeneratorWitness(..) => write!(f, "{{generator witness}}")?,
+            TyKind::GeneratorWitness(..) => write!(f, "{{coroutine witness}}")?,
         }
         Ok(())
     }

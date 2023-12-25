@@ -275,7 +275,7 @@ impl Filler<'_> {
                     | TerminatorKind::DropAndReplace { .. }
                     | TerminatorKind::Assert { .. }
                     | TerminatorKind::Yield { .. }
-                    | TerminatorKind::GeneratorDrop
+                    | TerminatorKind::CoroutineDrop
                     | TerminatorKind::FalseEdge { .. }
                     | TerminatorKind::FalseUnwind { .. } => (),
                 }

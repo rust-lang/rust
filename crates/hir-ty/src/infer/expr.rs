@@ -233,7 +233,7 @@ impl InferenceContext<'_> {
                 .intern(Interner);
 
                 let (id, ty, resume_yield_tys) = match closure_kind {
-                    ClosureKind::Generator(_) => {
+                    ClosureKind::Coroutine(_) => {
                         // FIXME: report error when there are more than 1 parameter.
                         let resume_ty = match sig_tys.first() {
                             // When `sig_tys.len() == 1` the first type is the return type, not the
@@ -243,16 +243,16 @@ impl InferenceContext<'_> {
                         };
                         let yield_ty = self.table.new_type_var();
 
-                        let subst = TyBuilder::subst_for_generator(self.db, self.owner)
+                        let subst = TyBuilder::subst_for_coroutine(self.db, self.owner)
                             .push(resume_ty.clone())
                             .push(yield_ty.clone())
                             .push(ret_ty.clone())
                             .build();
 
-                        let generator_id = self.db.intern_generator((self.owner, tgt_expr)).into();
-                        let generator_ty = TyKind::Generator(generator_id, subst).intern(Interner);
+                        let coroutine_id = self.db.intern_coroutine((self.owner, tgt_expr)).into();
+                        let coroutine_ty = TyKind::Generator(coroutine_id, subst).intern(Interner);
 
-                        (None, generator_ty, Some((resume_ty, yield_ty)))
+                        (None, coroutine_ty, Some((resume_ty, yield_ty)))
                     }
                     ClosureKind::Closure | ClosureKind::Async => {
                         let closure_id = self.db.intern_closure((self.owner, tgt_expr)).into();
@@ -503,7 +503,7 @@ impl InferenceContext<'_> {
                     }
                     resume_ty
                 } else {
-                    // FIXME: report error (yield expr in non-generator)
+                    // FIXME: report error (yield expr in non-coroutine)
                     self.result.standard_types.unknown.clone()
                 }
             }

@@ -328,7 +328,7 @@ fn foo() {
 }
 
 #[test]
-fn generator_yield_return_coerce() {
+fn coroutine_yield_return_coerce() {
     check_no_mismatches(
         r#"
 fn test() {

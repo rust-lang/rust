@@ -283,7 +283,7 @@ impl RootDatabase {
             // hir_db::InternImplTraitIdQuery
             // hir_db::InternTypeOrConstParamIdQuery
             // hir_db::InternClosureQuery
-            // hir_db::InternGeneratorQuery
+            // hir_db::InternCoroutineQuery
             hir_db::AssociatedTyDataQuery
             hir_db::TraitDatumQuery
             hir_db::StructDatumQuery

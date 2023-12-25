@@ -428,12 +428,12 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         &self,
         id: chalk_ir::GeneratorId<Interner>,
     ) -> Arc<chalk_solve::rust_ir::GeneratorDatum<Interner>> {
-        let (parent, expr) = self.db.lookup_intern_generator(id.into());
+        let (parent, expr) = self.db.lookup_intern_coroutine(id.into());
 
         // We fill substitution with unknown type, because we only need to know whether the generic
         // params are types or consts to build `Binders` and those being filled up are for
-        // `resume_type`, `yield_type`, and `return_type` of the generator in question.
-        let subst = TyBuilder::subst_for_generator(self.db, parent).fill_with_unknown().build();
+        // `resume_type`, `yield_type`, and `return_type` of the coroutine in question.
+        let subst = TyBuilder::subst_for_coroutine(self.db, parent).fill_with_unknown().build();
 
         let input_output = rust_ir::GeneratorInputOutputDatum {
             resume_type: TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0))
@@ -453,10 +453,10 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
 
         let movability = match self.db.body(parent)[expr] {
             hir_def::hir::Expr::Closure {
-                closure_kind: hir_def::hir::ClosureKind::Generator(movability),
+                closure_kind: hir_def::hir::ClosureKind::Coroutine(movability),
                 ..
             } => movability,
-            _ => unreachable!("non generator expression interned as generator"),
+            _ => unreachable!("non coroutine expression interned as coroutine"),
         };
         let movability = match movability {
             Movability::Static => rust_ir::Movability::Static,
@@ -473,9 +473,9 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         let inner_types =
             rust_ir::GeneratorWitnessExistential { types: wrap_empty_binders(vec![]) };
 
-        let (parent, _) = self.db.lookup_intern_generator(id.into());
+        let (parent, _) = self.db.lookup_intern_coroutine(id.into());
         // See the comment in `generator_datum()` for unknown types.
-        let subst = TyBuilder::subst_for_generator(self.db, parent).fill_with_unknown().build();
+        let subst = TyBuilder::subst_for_coroutine(self.db, parent).fill_with_unknown().build();
         let it = subst
             .iter(Interner)
             .map(|it| it.constant(Interner).map(|c| c.data(Interner).ty.clone()));
@@ -617,7 +617,7 @@ fn well_known_trait_from_lang_item(item: LangItem) -> Option<WellKnownTrait> {
         LangItem::Fn => WellKnownTrait::Fn,
         LangItem::FnMut => WellKnownTrait::FnMut,
         LangItem::FnOnce => WellKnownTrait::FnOnce,
-        LangItem::Generator => WellKnownTrait::Generator,
+        LangItem::Coroutine => WellKnownTrait::Generator,
         LangItem::Sized => WellKnownTrait::Sized,
         LangItem::Unpin => WellKnownTrait::Unpin,
         LangItem::Unsize => WellKnownTrait::Unsize,
@@ -639,7 +639,7 @@ fn lang_item_from_well_known_trait(trait_: WellKnownTrait) -> LangItem {
         WellKnownTrait::Fn => LangItem::Fn,
         WellKnownTrait::FnMut => LangItem::FnMut,
         WellKnownTrait::FnOnce => LangItem::FnOnce,
-        WellKnownTrait::Generator => LangItem::Generator,
+        WellKnownTrait::Generator => LangItem::Coroutine,
         WellKnownTrait::Sized => LangItem::Sized,
         WellKnownTrait::Tuple => LangItem::Tuple,
         WellKnownTrait::Unpin => LangItem::Unpin,

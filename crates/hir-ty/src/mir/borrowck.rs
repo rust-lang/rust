@@ -159,7 +159,7 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
                 | TerminatorKind::FalseUnwind { .. }
                 | TerminatorKind::Goto { .. }
                 | TerminatorKind::UnwindResume
-                | TerminatorKind::GeneratorDrop
+                | TerminatorKind::CoroutineDrop
                 | TerminatorKind::Abort
                 | TerminatorKind::Return
                 | TerminatorKind::Unreachable
@@ -314,7 +314,7 @@ fn ever_initialized_map(
             TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Yield { .. }
-            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::CoroutineDrop
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. } => {
                 never!("We don't emit these MIR terminators yet");
@@ -439,7 +439,7 @@ fn mutability_of_locals(
             | TerminatorKind::Unreachable
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
-            | TerminatorKind::GeneratorDrop
+            | TerminatorKind::CoroutineDrop
             | TerminatorKind::Drop { .. }
             | TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::Assert { .. }

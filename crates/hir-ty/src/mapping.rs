@@ -103,14 +103,14 @@ impl From<crate::db::InternedClosureId> for chalk_ir::ClosureId<Interner> {
     }
 }
 
-impl From<chalk_ir::GeneratorId<Interner>> for crate::db::InternedGeneratorId {
+impl From<chalk_ir::GeneratorId<Interner>> for crate::db::InternedCoroutineId {
     fn from(id: chalk_ir::GeneratorId<Interner>) -> Self {
         Self::from_intern_id(id.0)
     }
 }
 
-impl From<crate::db::InternedGeneratorId> for chalk_ir::GeneratorId<Interner> {
-    fn from(id: crate::db::InternedGeneratorId) -> Self {
+impl From<crate::db::InternedCoroutineId> for chalk_ir::GeneratorId<Interner> {
+    fn from(id: crate::db::InternedCoroutineId) -> Self {
         chalk_ir::GeneratorId(id.as_intern_id())
     }
 }
