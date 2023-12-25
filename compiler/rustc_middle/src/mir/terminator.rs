@@ -147,7 +147,7 @@ impl<O> AssertKind<O> {
             Overflow(op, _, _) => bug!("{:?} cannot overflow", op),
             DivisionByZero(_) => "attempt to divide by zero",
             RemainderByZero(_) => "attempt to calculate the remainder with a divisor of zero",
-            ResumedAfterReturn(CoroutineKind::Coroutine) => "coroutine resumed after completion",
+            ResumedAfterReturn(CoroutineKind::Coroutine(_)) => "coroutine resumed after completion",
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
                 "`async fn` resumed after completion"
             }
@@ -157,7 +157,7 @@ impl<O> AssertKind<O> {
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
                 "`gen fn` should just keep returning `None` after completion"
             }
-            ResumedAfterPanic(CoroutineKind::Coroutine) => "coroutine resumed after panicking",
+            ResumedAfterPanic(CoroutineKind::Coroutine(_)) => "coroutine resumed after panicking",
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
                 "`async fn` resumed after panicking"
             }
@@ -262,7 +262,7 @@ impl<O> AssertKind<O> {
             ResumedAfterReturn(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
                 bug!("gen blocks can be resumed after they return and will keep returning `None`")
             }
-            ResumedAfterReturn(CoroutineKind::Coroutine) => {
+            ResumedAfterReturn(CoroutineKind::Coroutine(_)) => {
                 middle_assert_coroutine_resume_after_return
             }
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Async, _)) => {
@@ -274,7 +274,7 @@ impl<O> AssertKind<O> {
             ResumedAfterPanic(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) => {
                 middle_assert_gen_resume_after_panic
             }
-            ResumedAfterPanic(CoroutineKind::Coroutine) => {
+            ResumedAfterPanic(CoroutineKind::Coroutine(_)) => {
                 middle_assert_coroutine_resume_after_panic
             }
 

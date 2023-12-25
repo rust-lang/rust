@@ -691,7 +691,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             body,
             fn_decl_span: self.lower_span(span),
             fn_arg_span: None,
-            kind: hir::ClosureKind::Coroutine(coroutine_kind, Movability::Static),
+            kind: hir::ClosureKind::Coroutine(coroutine_kind),
             constness: hir::Constness::NotConst,
         }))
     }
@@ -744,7 +744,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             body,
             fn_decl_span: self.lower_span(span),
             fn_arg_span: None,
-            kind: hir::ClosureKind::Coroutine(coroutine_kind, Movability::Movable),
+            kind: hir::ClosureKind::Coroutine(coroutine_kind),
             constness: hir::Constness::NotConst,
         }))
     }
@@ -829,7 +829,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             body,
             fn_decl_span: self.lower_span(span),
             fn_arg_span: None,
-            kind: hir::ClosureKind::Coroutine(coroutine_kind, Movability::Static),
+            kind: hir::ClosureKind::Coroutine(coroutine_kind),
             constness: hir::Constness::NotConst,
         }))
     }
@@ -898,7 +898,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let is_async_gen = match self.coroutine_kind {
             Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) => false,
             Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)) => true,
-            Some(hir::CoroutineKind::Coroutine)
+            Some(hir::CoroutineKind::Coroutine(_))
             | Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _))
             | None => {
                 return hir::ExprKind::Err(self.tcx.sess.emit_err(AwaitOnlyInAsyncFnAndBlocks {
@@ -1126,11 +1126,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         movability: Movability,
     ) -> hir::ClosureKind {
         match coroutine_kind {
-            Some(hir::CoroutineKind::Coroutine) => {
+            Some(hir::CoroutineKind::Coroutine(_)) => {
                 if decl.inputs.len() > 1 {
                     self.tcx.sess.emit_err(CoroutineTooManyParameters { fn_decl_span });
                 }
-                hir::ClosureKind::Coroutine(hir::CoroutineKind::Coroutine, movability)
+                hir::ClosureKind::Coroutine(hir::CoroutineKind::Coroutine(movability))
             }
             Some(
                 hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)
@@ -1655,7 +1655,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.tcx.sess.emit_err(AsyncCoroutinesNotSupported { span }),
                 );
             }
-            Some(hir::CoroutineKind::Coroutine) | None => {
+            Some(hir::CoroutineKind::Coroutine(_)) => {
                 if !self.tcx.features().coroutines {
                     rustc_session::parse::feature_err(
                         &self.tcx.sess.parse_sess,
@@ -1665,7 +1665,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     )
                     .emit();
                 }
-                self.coroutine_kind = Some(hir::CoroutineKind::Coroutine);
+                false
+            }
+            None => {
+                if !self.tcx.features().coroutines {
+                    rustc_session::parse::feature_err(
+                        &self.tcx.sess.parse_sess,
+                        sym::coroutines,
+                        span,
+                        "yield syntax is experimental",
+                    )
+                    .emit();
+                }
+                self.coroutine_kind = Some(hir::CoroutineKind::Coroutine(Movability::Movable));
                 false
             }
         };

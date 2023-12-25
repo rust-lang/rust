@@ -848,7 +848,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         move_spans.var_subdiag(None, &mut err, None, |kind, var_span| {
             use crate::session_diagnostics::CaptureVarCause::*;
             match kind {
-                hir::ClosureKind::Coroutine(_, _) => MoveUseInCoroutine { var_span },
+                hir::ClosureKind::Coroutine(_) => MoveUseInCoroutine { var_span },
                 hir::ClosureKind::Closure => MoveUseInClosure { var_span },
             }
         });
@@ -893,7 +893,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let place = &borrow.borrowed_place;
             let desc_place = self.describe_any_place(place.as_ref());
             match kind {
-                hir::ClosureKind::Coroutine(_, _) => {
+                hir::ClosureKind::Coroutine(_) => {
                     BorrowUsePlaceCoroutine { place: desc_place, var_span, is_single_var: true }
                 }
                 hir::ClosureKind::Closure => {
@@ -1042,7 +1042,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         |kind, var_span| {
                             use crate::session_diagnostics::CaptureVarCause::*;
                             match kind {
-                                hir::ClosureKind::Coroutine(_, _) => BorrowUsePlaceCoroutine {
+                                hir::ClosureKind::Coroutine(_) => BorrowUsePlaceCoroutine {
                                     place: desc_place,
                                     var_span,
                                     is_single_var: true,
@@ -1126,7 +1126,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             borrow_spans.var_subdiag(None, &mut err, Some(gen_borrow_kind), |kind, var_span| {
                 use crate::session_diagnostics::CaptureVarCause::*;
                 match kind {
-                    hir::ClosureKind::Coroutine(_, _) => BorrowUsePlaceCoroutine {
+                    hir::ClosureKind::Coroutine(_) => BorrowUsePlaceCoroutine {
                         place: desc_place,
                         var_span,
                         is_single_var: false,
@@ -1146,7 +1146,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     let borrow_place = &issued_borrow.borrowed_place;
                     let borrow_place_desc = self.describe_any_place(borrow_place.as_ref());
                     match kind {
-                        hir::ClosureKind::Coroutine(_, _) => {
+                        hir::ClosureKind::Coroutine(_) => {
                             FirstBorrowUsePlaceCoroutine { place: borrow_place_desc, var_span }
                         }
                         hir::ClosureKind::Closure => {
@@ -1163,7 +1163,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 |kind, var_span| {
                     use crate::session_diagnostics::CaptureVarCause::*;
                     match kind {
-                        hir::ClosureKind::Coroutine(_, _) => {
+                        hir::ClosureKind::Coroutine(_) => {
                             SecondBorrowUsePlaceCoroutine { place: desc_place, var_span }
                         }
                         hir::ClosureKind::Closure => {
@@ -2549,7 +2549,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         }
                     }
                 }
-                CoroutineKind::Coroutine => "coroutine",
+                CoroutineKind::Coroutine(_) => "coroutine",
             },
             None => "closure",
         };
@@ -2850,7 +2850,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 loan_spans.var_subdiag(None, &mut err, Some(loan.kind), |kind, var_span| {
                     use crate::session_diagnostics::CaptureVarCause::*;
                     match kind {
-                        hir::ClosureKind::Coroutine(_, _) => BorrowUseInCoroutine { var_span },
+                        hir::ClosureKind::Coroutine(_) => BorrowUseInCoroutine { var_span },
                         hir::ClosureKind::Closure => BorrowUseInClosure { var_span },
                     }
                 });
@@ -2866,7 +2866,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         loan_spans.var_subdiag(None, &mut err, Some(loan.kind), |kind, var_span| {
             use crate::session_diagnostics::CaptureVarCause::*;
             match kind {
-                hir::ClosureKind::Coroutine(_, _) => BorrowUseInCoroutine { var_span },
+                hir::ClosureKind::Coroutine(_) => BorrowUseInCoroutine { var_span },
                 hir::ClosureKind::Closure => BorrowUseInClosure { var_span },
             }
         });

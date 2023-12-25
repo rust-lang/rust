@@ -938,8 +938,17 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
             TerminatorKind::InlineAsm { .. } => self.check_op(ops::InlineAsm),
 
-            TerminatorKind::CoroutineDrop | TerminatorKind::Yield { .. } => {
-                self.check_op(ops::Coroutine(hir::CoroutineKind::Coroutine))
+            TerminatorKind::Yield { .. } => self.check_op(ops::Coroutine(
+                self.tcx
+                    .coroutine_kind(self.body.source.def_id())
+                    .expect("Only expected to have a yield in a coroutine"),
+            )),
+
+            TerminatorKind::CoroutineDrop => {
+                span_bug!(
+                    self.body.source_info(location).span,
+                    "We should not encounter TerminatorKind::CoroutineDrop after coroutine transform"
+                );
             }
 
             TerminatorKind::UnwindTerminate(_) => {

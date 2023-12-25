@@ -121,7 +121,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 }
                 hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)
                 | hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)
-                | hir::CoroutineKind::Coroutine => Ty::new_adt(tcx, pin_adt_ref, pin_args),
+                | hir::CoroutineKind::Coroutine(_) => Ty::new_adt(tcx, pin_adt_ref, pin_args),
             };
 
             // The `FnSig` and the `ret_ty` here is for a coroutines main
@@ -192,7 +192,7 @@ fn fn_sig_for_fn_abi<'tcx>(
 
                     (Some(context_mut_ref), ret_ty)
                 }
-                hir::CoroutineKind::Coroutine => {
+                hir::CoroutineKind::Coroutine(_) => {
                     // The signature should be `Coroutine::resume(_, Resume) -> CoroutineState<Yield, Return>`
                     let state_did = tcx.require_lang_item(LangItem::CoroutineState, None);
                     let state_adt_ref = tcx.adt_def(state_did);

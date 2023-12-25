@@ -1554,7 +1554,7 @@ fn coroutine_kind(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<hir::CoroutineK
         Node::Expr(&hir::Expr {
             kind:
                 hir::ExprKind::Closure(&rustc_hir::Closure {
-                    kind: hir::ClosureKind::Coroutine(kind, _),
+                    kind: hir::ClosureKind::Coroutine(kind),
                     ..
                 }),
             ..

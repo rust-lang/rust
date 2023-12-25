@@ -684,10 +684,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                     hir::FnRetTy::Return(hir_ty) => (fn_decl.output.span(), Some(hir_ty)),
                 };
                 let mir_description = match kind {
-                    hir::ClosureKind::Coroutine(
-                        hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, src),
-                        _,
-                    ) => match src {
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::Async,
+                        src,
+                    )) => match src {
                         hir::CoroutineSource::Block => " of async block",
                         hir::CoroutineSource::Closure => " of async closure",
                         hir::CoroutineSource::Fn => {
@@ -704,10 +704,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                             " of async function"
                         }
                     },
-                    hir::ClosureKind::Coroutine(
-                        hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, src),
-                        _,
-                    ) => match src {
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::Gen,
+                        src,
+                    )) => match src {
                         hir::CoroutineSource::Block => " of gen block",
                         hir::CoroutineSource::Closure => " of gen closure",
                         hir::CoroutineSource::Fn => {
@@ -722,10 +722,10 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                         }
                     },
 
-                    hir::ClosureKind::Coroutine(
-                        hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, src),
-                        _,
-                    ) => match src {
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::AsyncGen,
+                        src,
+                    )) => match src {
                         hir::CoroutineSource::Block => " of async gen block",
                         hir::CoroutineSource::Closure => " of async gen closure",
                         hir::CoroutineSource::Fn => {
@@ -739,7 +739,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
                             " of async gen function"
                         }
                     },
-                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Coroutine, _) => {
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Coroutine(_)) => {
                         " of coroutine"
                     }
                     hir::ClosureKind::Closure => " of closure",

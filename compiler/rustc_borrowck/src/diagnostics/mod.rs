@@ -576,7 +576,7 @@ impl UseSpans<'_> {
     pub(super) fn coroutine_kind(self) -> Option<CoroutineKind> {
         match self {
             UseSpans::ClosureUse {
-                closure_kind: hir::ClosureKind::Coroutine(coroutine_kind, _),
+                closure_kind: hir::ClosureKind::Coroutine(coroutine_kind),
                 ..
             } => Some(coroutine_kind),
             _ => None,
@@ -605,7 +605,7 @@ impl UseSpans<'_> {
         use CaptureVarPathUseCause::*;
         if let UseSpans::ClosureUse { closure_kind, path_span, .. } = self {
             match closure_kind {
-                hir::ClosureKind::Coroutine(_, _) => {
+                hir::ClosureKind::Coroutine(_) => {
                     err.subdiagnostic(match action {
                         Borrow => BorrowInCoroutine { path_span },
                         MatchOn | Use => UseInCoroutine { path_span },
@@ -1248,7 +1248,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // another message for the same span
             if !is_loop_message {
                 move_spans.var_subdiag(None, err, None, |kind, var_span| match kind {
-                    hir::ClosureKind::Coroutine(_, _) => {
+                    hir::ClosureKind::Coroutine(_) => {
                         CaptureVarCause::PartialMoveUseInCoroutine { var_span, is_partial }
                     }
                     hir::ClosureKind::Closure => {

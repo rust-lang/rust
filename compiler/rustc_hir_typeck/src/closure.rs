@@ -638,13 +638,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // In the case of the async block that we create for a function body,
                 // we expect the return type of the block to match that of the enclosing
                 // function.
-                hir::ClosureKind::Coroutine(
-                    hir::CoroutineKind::Desugared(
-                        hir::CoroutineDesugaring::Async,
-                        hir::CoroutineSource::Fn,
-                    ),
-                    _,
-                ) => {
+                hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                    hir::CoroutineDesugaring::Async,
+                    hir::CoroutineSource::Fn,
+                )) => {
                     debug!("closure is async fn body");
                     self.deduce_future_output_from_obligations(expr_def_id).unwrap_or_else(|| {
                         // AFAIK, deducing the future output
@@ -661,17 +658,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 hir::ClosureKind::Coroutine(
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)
                     | hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _),
-                    _,
                 ) => self.tcx.types.unit,
 
                 // For async blocks, we just fall back to `_` here.
                 // For closures/coroutines, we know nothing about the return
                 // type unless it was supplied.
-                hir::ClosureKind::Coroutine(
-                    hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _),
+                hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                    hir::CoroutineDesugaring::Async,
                     _,
-                )
-                | hir::ClosureKind::Coroutine(hir::CoroutineKind::Coroutine, _)
+                ))
+                | hir::ClosureKind::Coroutine(hir::CoroutineKind::Coroutine(_))
                 | hir::ClosureKind::Closure => astconv.ty_infer(None, decl.output.span()),
             },
         };

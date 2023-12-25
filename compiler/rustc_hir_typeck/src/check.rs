@@ -55,10 +55,10 @@ pub(super) fn check_fn<'a, 'tcx>(
 
     forbid_intrinsic_abi(tcx, span, fn_sig.abi);
 
-    if let Some(hir::ClosureKind::Coroutine(kind, _)) = closure_kind {
+    if let Some(hir::ClosureKind::Coroutine(kind)) = closure_kind {
         let yield_ty = match kind {
             hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)
-            | hir::CoroutineKind::Coroutine => {
+            | hir::CoroutineKind::Coroutine(_) => {
                 let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::TypeInference,
                     span,
@@ -149,9 +149,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     // We insert the deferred_coroutine_interiors entry after visiting the body.
     // This ensures that all nested coroutines appear before the entry of this coroutine.
     // resolve_coroutine_interiors relies on this property.
-    let coroutine_ty = if let Some(hir::ClosureKind::Coroutine(coroutine_kind, movability)) =
-        closure_kind
-    {
+    let coroutine_ty = if let Some(hir::ClosureKind::Coroutine(coroutine_kind)) = closure_kind {
         let interior = fcx
             .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::MiscVariable, span });
         fcx.deferred_coroutine_interiors.borrow_mut().push((
@@ -162,7 +160,12 @@ pub(super) fn check_fn<'a, 'tcx>(
         ));
 
         let (resume_ty, yield_ty) = fcx.resume_yield_tys.unwrap();
-        Some(CoroutineTypes { resume_ty, yield_ty, interior, movability: movability })
+        Some(CoroutineTypes {
+            resume_ty,
+            yield_ty,
+            interior,
+            movability: coroutine_kind.movability(),
+        })
     } else {
         None
     };

@@ -343,7 +343,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     {
         let dummy_args = match kind {
             ClosureKind::Closure => &["<closure_kind>", "<closure_signature>", "<upvars>"][..],
-            ClosureKind::Coroutine(_, _) => {
+            ClosureKind::Coroutine(_) => {
                 &["<resume_ty>", "<yield_ty>", "<return_ty>", "<witness>", "<upvars>"][..]
             }
         };

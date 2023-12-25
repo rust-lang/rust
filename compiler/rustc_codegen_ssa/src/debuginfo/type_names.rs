@@ -585,7 +585,7 @@ fn coroutine_kind_label(coroutine_kind: Option<CoroutineKind>) -> &'static str {
         Some(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, CoroutineSource::Fn)) => {
             "async_gen_fn"
         }
-        Some(CoroutineKind::Coroutine) => "coroutine",
+        Some(CoroutineKind::Coroutine(_)) => "coroutine",
         None => "closure",
     }
 }

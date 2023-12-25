@@ -90,13 +90,10 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
             }) => {
                 // FIXME(coroutines): This doesn't handle coroutines correctly
                 let cx = match kind {
-                    hir::ClosureKind::Coroutine(
-                        hir::CoroutineKind::Desugared(
-                            hir::CoroutineDesugaring::Async,
-                            hir::CoroutineSource::Block,
-                        ),
-                        _,
-                    ) => AsyncClosure(fn_decl_span),
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::Async,
+                        hir::CoroutineSource::Block,
+                    )) => AsyncClosure(fn_decl_span),
                     _ => Closure(fn_decl_span),
                 };
                 self.visit_fn_decl(fn_decl);

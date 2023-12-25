@@ -858,7 +858,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns `true` if the node pointed to by `def_id` is a general coroutine that implements `Coroutine`.
     /// This means it is neither an `async` or `gen` construct.
     pub fn is_general_coroutine(self, def_id: DefId) -> bool {
-        matches!(self.coroutine_kind(def_id), Some(hir::CoroutineKind::Coroutine))
+        matches!(self.coroutine_kind(def_id), Some(hir::CoroutineKind::Coroutine(_)))
     }
 
     /// Returns `true` if the node pointed to by `def_id` is a coroutine for a `gen` construct.

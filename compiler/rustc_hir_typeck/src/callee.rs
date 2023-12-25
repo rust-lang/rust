@@ -306,13 +306,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             let fn_decl_span = if matches!(
                 kind,
-                hir::ClosureKind::Coroutine(
-                    hir::CoroutineKind::Desugared(
-                        hir::CoroutineDesugaring::Async,
-                        hir::CoroutineSource::Closure
-                    ),
-                    _
-                )
+                hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                    hir::CoroutineDesugaring::Async,
+                    hir::CoroutineSource::Closure
+                ),)
             ) {
                 // Actually need to unwrap one more layer of HIR to get to
                 // the _real_ closure...

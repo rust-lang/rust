@@ -2577,7 +2577,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let message = outer_coroutine
                 .and_then(|coroutine_did| {
                     Some(match self.tcx.coroutine_kind(coroutine_did).unwrap() {
-                        CoroutineKind::Coroutine => format!("coroutine is not {trait_name}"),
+                        CoroutineKind::Coroutine(_) => format!("coroutine is not {trait_name}"),
                         CoroutineKind::Desugared(
                             CoroutineDesugaring::Async,
                             CoroutineSource::Fn,
@@ -3169,7 +3169,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             ObligationCauseCode::SizedCoroutineInterior(coroutine_def_id) => {
                 let what = match self.tcx.coroutine_kind(coroutine_def_id) {
                     None
-                    | Some(hir::CoroutineKind::Coroutine)
+                    | Some(hir::CoroutineKind::Coroutine(_))
                     | Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)) => {
                         "yield"
                     }

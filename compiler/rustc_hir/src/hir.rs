@@ -956,10 +956,7 @@ pub enum ClosureKind {
     /// we've found a `yield`. These can arise either from "plain" coroutine
     ///  usage (e.g. `let x = || { yield (); }`) or from a desugared expression
     /// (e.g. `async` and `gen` blocks).
-    // FIXME(coroutines): We could probably remove movability here -- it can be deduced
-    // from the `CoroutineKind` in all cases (except for "plain" coroutines, which could
-    // carry the movability in the variant).
-    Coroutine(CoroutineKind, Movability),
+    Coroutine(CoroutineKind),
 }
 
 /// A block of statements `{ .. }`, which may have a label (in this case the
@@ -1364,7 +1361,18 @@ pub enum CoroutineKind {
     Desugared(CoroutineDesugaring, CoroutineSource),
 
     /// A coroutine literal created via a `yield` inside a closure.
-    Coroutine,
+    Coroutine(Movability),
+}
+
+impl CoroutineKind {
+    pub fn movability(self) -> Movability {
+        match self {
+            CoroutineKind::Desugared(CoroutineDesugaring::Async, _)
+            | CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _) => Movability::Static,
+            CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => Movability::Movable,
+            CoroutineKind::Coroutine(mov) => mov,
+        }
+    }
 }
 
 impl fmt::Display for CoroutineKind {
@@ -1374,7 +1382,7 @@ impl fmt::Display for CoroutineKind {
                 d.fmt(f)?;
                 k.fmt(f)
             }
-            CoroutineKind::Coroutine => f.write_str("coroutine"),
+            CoroutineKind::Coroutine(_) => f.write_str("coroutine"),
         }
     }
 }

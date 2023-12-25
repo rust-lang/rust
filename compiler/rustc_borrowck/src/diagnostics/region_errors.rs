@@ -1047,10 +1047,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }) => {
                 if !matches!(
                     kind,
-                    hir::ClosureKind::Coroutine(
-                        hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _),
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::Async,
                         _
-                    )
+                    ),)
                 ) {
                     closure_span = Some(expr.span.shrink_to_lo());
                 }

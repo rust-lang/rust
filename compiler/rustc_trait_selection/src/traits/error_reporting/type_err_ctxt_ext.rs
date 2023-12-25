@@ -1928,8 +1928,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn describe_closure(&self, kind: hir::ClosureKind) -> &'static str {
         match kind {
             hir::ClosureKind::Closure => "a closure",
-            hir::ClosureKind::Coroutine(kind, _) => match kind {
-                hir::CoroutineKind::Coroutine => "a coroutine",
+            hir::ClosureKind::Coroutine(kind) => match kind {
+                hir::CoroutineKind::Coroutine(_) => "a coroutine",
                 hir::CoroutineKind::Desugared(
                     hir::CoroutineDesugaring::Async,
                     hir::CoroutineSource::Block,
