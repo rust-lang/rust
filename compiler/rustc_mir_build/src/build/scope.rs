@@ -89,7 +89,7 @@ use rustc_hir::HirId;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
-use rustc_middle::thir::{Expr, LintLevel};
+use rustc_middle::thir::{ExprId, LintLevel};
 use rustc_session::lint::Level;
 use rustc_span::{Span, DUMMY_SP};
 
@@ -592,7 +592,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn break_scope(
         &mut self,
         mut block: BasicBlock,
-        value: Option<&Expr<'tcx>>,
+        value: Option<ExprId>,
         target: BreakableTarget,
         source_info: SourceInfo,
     ) -> BlockAnd<()> {

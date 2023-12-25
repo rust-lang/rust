@@ -124,7 +124,7 @@ body:
                                                                         body: 
                                                                             Expr {
                                                                                 ty: bool
-                                                                                temp_lifetime: Some(Node(13))
+                                                                                temp_lifetime: Some(Node(12))
                                                                                 span: $DIR/thir-tree-match.rs:17:36: 17:40 (#0)
                                                                                 kind: 
                                                                                     Scope {
@@ -133,7 +133,7 @@ body:
                                                                                         value:
                                                                                             Expr {
                                                                                                 ty: bool
-                                                                                                temp_lifetime: Some(Node(13))
+                                                                                                temp_lifetime: Some(Node(12))
                                                                                                 span: $DIR/thir-tree-match.rs:17:36: 17:40 (#0)
                                                                                                 kind: 
                                                                                                     Literal( lit: Spanned { node: Bool(true), span: $DIR/thir-tree-match.rs:17:36: 17:40 (#0) }, neg: false)
@@ -176,7 +176,7 @@ body:
                                                                         body: 
                                                                             Expr {
                                                                                 ty: bool
-                                                                                temp_lifetime: Some(Node(19))
+                                                                                temp_lifetime: Some(Node(18))
                                                                                 span: $DIR/thir-tree-match.rs:18:27: 18:32 (#0)
                                                                                 kind: 
                                                                                     Scope {
@@ -185,7 +185,7 @@ body:
                                                                                         value:
                                                                                             Expr {
                                                                                                 ty: bool
-                                                                                                temp_lifetime: Some(Node(19))
+                                                                                                temp_lifetime: Some(Node(18))
                                                                                                 span: $DIR/thir-tree-match.rs:18:27: 18:32 (#0)
                                                                                                 kind: 
                                                                                                     Literal( lit: Spanned { node: Bool(false), span: $DIR/thir-tree-match.rs:18:27: 18:32 (#0) }, neg: false)
@@ -220,7 +220,7 @@ body:
                                                                         body: 
                                                                             Expr {
                                                                                 ty: bool
-                                                                                temp_lifetime: Some(Node(24))
+                                                                                temp_lifetime: Some(Node(23))
                                                                                 span: $DIR/thir-tree-match.rs:19:24: 19:28 (#0)
                                                                                 kind: 
                                                                                     Scope {
@@ -229,7 +229,7 @@ body:
                                                                                         value:
                                                                                             Expr {
                                                                                                 ty: bool
-                                                                                                temp_lifetime: Some(Node(24))
+                                                                                                temp_lifetime: Some(Node(23))
                                                                                                 span: $DIR/thir-tree-match.rs:19:24: 19:28 (#0)
                                                                                                 kind: 
                                                                                                     Literal( lit: Spanned { node: Bool(true), span: $DIR/thir-tree-match.rs:19:24: 19:28 (#0) }, neg: false)
