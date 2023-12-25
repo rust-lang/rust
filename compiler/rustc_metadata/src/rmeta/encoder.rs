@@ -169,7 +169,19 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for ExpnId {
 impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
     fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
         match s.span_shorthands.entry(*self) {
-            Entry::Occupied(o) => SpanEncodingMode::Shorthand(*o.get()).encode(s),
+            Entry::Occupied(o) => {
+                // If an offset is smaller than the absolute position, we encode with the offset.
+                // This saves space since smaller numbers encode in less bits.
+                let last_location = *o.get();
+                // This cannot underflow. Metadata is written with increasing position(), so any
+                // previously saved offset must be smaller than the current position.
+                let offset = s.opaque.position() - last_location;
+                if offset < last_location {
+                    SpanEncodingMode::RelativeOffset(offset).encode(s)
+                } else {
+                    SpanEncodingMode::AbsoluteOffset(last_location).encode(s)
+                }
+            }
             Entry::Vacant(v) => {
                 let position = s.opaque.position();
                 v.insert(position);

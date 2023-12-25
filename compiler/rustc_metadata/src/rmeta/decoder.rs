@@ -507,10 +507,18 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnId {
 
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Span {
+        let start = decoder.position();
         let mode = SpanEncodingMode::decode(decoder);
         let data = match mode {
             SpanEncodingMode::Direct => SpanData::decode(decoder),
-            SpanEncodingMode::Shorthand(position) => decoder.with_position(position, |decoder| {
+            SpanEncodingMode::RelativeOffset(offset) => {
+                decoder.with_position(start - offset, |decoder| {
+                    let mode = SpanEncodingMode::decode(decoder);
+                    debug_assert!(matches!(mode, SpanEncodingMode::Direct));
+                    SpanData::decode(decoder)
+                })
+            }
+            SpanEncodingMode::AbsoluteOffset(addr) => decoder.with_position(addr, |decoder| {
                 let mode = SpanEncodingMode::decode(decoder);
                 debug_assert!(matches!(mode, SpanEncodingMode::Direct));
                 SpanData::decode(decoder)

@@ -68,7 +68,8 @@ pub const METADATA_HEADER: &[u8] = &[b'r', b'u', b's', b't', 0, 0, 0, METADATA_V
 
 #[derive(Encodable, Decodable)]
 enum SpanEncodingMode {
-    Shorthand(usize),
+    RelativeOffset(usize),
+    AbsoluteOffset(usize),
     Direct,
 }
 
