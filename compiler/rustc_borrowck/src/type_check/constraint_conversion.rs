@@ -157,7 +157,8 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                     tcx,
                     region_bound_pairs,
                     Some(implicit_region_bound),
-                    param_env,
+                    // FIXME(-Znext-solver): These bounds are not normalized!
+                    param_env.caller_bounds(),
                 )
                 .type_must_outlive(origin, t1, r2, constraint_category);
             }

@@ -23,7 +23,7 @@ pub struct VerifyBoundCx<'cx, 'tcx> {
     /// Outside of borrowck the only way to prove `T: '?0` is by
     /// setting  `'?0` to `'empty`.
     implicit_region_bound: Option<ty::Region<'tcx>>,
-    param_env: ty::ParamEnv<'tcx>,
+    caller_bounds: &'cx [ty::Clause<'tcx>],
 }
 
 impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
@@ -31,9 +31,9 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         tcx: TyCtxt<'tcx>,
         region_bound_pairs: &'cx RegionBoundPairs<'tcx>,
         implicit_region_bound: Option<ty::Region<'tcx>>,
-        param_env: ty::ParamEnv<'tcx>,
+        caller_bounds: &'cx [ty::Clause<'tcx>],
     ) -> Self {
-        Self { tcx, region_bound_pairs, implicit_region_bound, param_env }
+        Self { tcx, region_bound_pairs, implicit_region_bound, caller_bounds }
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -219,8 +219,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // To start, collect bounds from user environment. Note that
         // parameter environments are already elaborated, so we don't
         // have to worry about that.
-        let c_b = self.param_env.caller_bounds();
-        let param_bounds = self.collect_outlives_from_clause_list(erased_ty, c_b.into_iter());
+        let param_bounds =
+            self.collect_outlives_from_clause_list(erased_ty, self.caller_bounds.iter().copied());
 
         // Next, collect regions we scraped from the well-formedness
         // constraints in the fn signature. To do that, we walk the list
