@@ -3,6 +3,7 @@ use std::ops::ControlFlow;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::peel_blocks;
 use clippy_utils::source::{snippet, walk_span_to_context};
+use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::for_each_expr;
 use rustc_errors::Applicability;
 use rustc_hir::{Closure, CoroutineKind, CoroutineSource, Expr, ExprKind, MatchSource};
@@ -49,6 +50,9 @@ impl<'tcx> LateLintPass<'tcx> for RedundantAsyncBlock {
             let Some(expr) = desugar_await(peel_blocks(body_expr)) &&
             // The await prefix must not come from a macro as its content could change in the future.
             expr.span.eq_ctxt(body_expr.span) &&
+            // The await prefix must implement Future, as implementing IntoFuture is not enough.
+            let Some(future_trait) = cx.tcx.lang_items().future_trait() &&
+            implements_trait(cx, cx.typeck_results().expr_ty(expr), future_trait, &[]) &&
             // An async block does not have immediate side-effects from a `.await` point-of-view.
             (!expr.can_have_side_effects() || desugar_async_block(cx, expr).is_some()) &&
             let Some(shortened_span) = walk_span_to_context(expr.span, span.ctxt())
