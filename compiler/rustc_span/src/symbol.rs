@@ -1040,6 +1040,7 @@ symbols! {
         mir_offset,
         mir_retag,
         mir_return,
+        mir_return_to,
         mir_set_discriminant,
         mir_static,
         mir_static_mut,
