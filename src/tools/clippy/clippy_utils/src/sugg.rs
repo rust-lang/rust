@@ -53,7 +53,7 @@ impl<'a> Sugg<'a> {
     /// Prepare a suggestion from an expression.
     pub fn hir_opt(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<Self> {
         let get_snippet = |span| snippet(cx, span, "");
-        snippet_opt(cx, expr.span).map(|_| Self::hir_from_snippet(expr, get_snippet))
+        snippet_opt(cx, expr.span).map(|_| Self::hir_from_snippet(cx, expr, get_snippet))
     }
 
     /// Convenience function around `hir_opt` for suggestions with a default
@@ -100,7 +100,7 @@ impl<'a> Sugg<'a> {
         applicability: &mut Applicability,
     ) -> Self {
         if expr.span.ctxt() == ctxt {
-            Self::hir_from_snippet(expr, |span| snippet(cx, span, default))
+            Self::hir_from_snippet(cx, expr, |span| snippet(cx, span, default))
         } else {
             let (snip, _) = snippet_with_context(cx, expr.span, ctxt, default, applicability);
             Sugg::NonParen(snip)
@@ -109,7 +109,11 @@ impl<'a> Sugg<'a> {
 
     /// Generate a suggestion for an expression with the given snippet. This is used by the `hir_*`
     /// function variants of `Sugg`, since these use different snippet functions.
-    fn hir_from_snippet(expr: &hir::Expr<'_>, get_snippet: impl Fn(Span) -> Cow<'a, str>) -> Self {
+    fn hir_from_snippet(
+        cx: &LateContext<'_>,
+        expr: &hir::Expr<'_>,
+        get_snippet: impl Fn(Span) -> Cow<'a, str>,
+    ) -> Self {
         if let Some(range) = higher::Range::hir(expr) {
             let op = match range.limits {
                 ast::RangeLimits::HalfOpen => AssocOp::DotDot,
@@ -148,8 +152,8 @@ impl<'a> Sugg<'a> {
             | ExprKind::Become(..)
             | ExprKind::Struct(..)
             | ExprKind::Tup(..)
-            | ExprKind::Err(_) => Sugg::NonParen(get_snippet(expr.span)),
-            ExprKind::DropTemps(inner) => Self::hir_from_snippet(inner, get_snippet),
+            | ExprKind::Err(_) => Sugg::NonParen(get_snippet(cx.tcx.hir().span_in_context(expr.hir_id))),
+            ExprKind::DropTemps(inner) => Self::hir_from_snippet(cx, inner, get_snippet),
             ExprKind::Assign(lhs, rhs, _) => {
                 Sugg::BinOp(AssocOp::Assign, get_snippet(lhs.span), get_snippet(rhs.span))
             },

@@ -230,8 +230,7 @@ impl<'a> Parser<'a> {
         let (mut ret, trailing) = ret?;
 
         // When we're not in `capture-cfg` mode, then bail out early if:
-        // 1. Our target doesn't support tokens at all (e.g we're parsing an `NtIdent`)
-        //    so there's nothing for us to do.
+        // 1. Our target doesn't support tokens at all, so there's nothing for us to do.
         // 2. Our target already has tokens set (e.g. we've parsed something
         // like `#[my_attr] $item`. The actual parsing code takes care of prepending
         // any attributes to the nonterminal, so we don't need to modify the

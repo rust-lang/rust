@@ -274,11 +274,6 @@ pub(super) fn transcribe<'a>(
                             // without wrapping them into groups.
                             maybe_use_metavar_location(psess, &stack, sp, tt, &mut marker)
                         }
-                        MatchedSingle(ParseNtResult::Ident(ident, is_raw)) => {
-                            marker.visit_span(&mut sp);
-                            let kind = token::NtIdent(*ident, *is_raw);
-                            TokenTree::token_alone(kind, sp)
-                        }
                         MatchedSingle(ParseNtResult::Lifetime(ident)) => {
                             marker.visit_span(&mut sp);
                             let kind = token::NtLifetime(*ident);
@@ -395,9 +390,22 @@ fn maybe_use_metavar_location(
         return orig_tt.clone();
     }
 
-    let insert = |mspans: &mut FxHashMap<_, _>, s, ms| match mspans.try_insert(s, ms) {
+    let insert = |mspans: &mut FxHashMap<_, _>, s, ms: Span| match mspans.try_insert(s, ms) {
         Ok(_) => true,
-        Err(err) => *err.entry.get() == ms, // Tried to insert the same span, still success
+        Err(mut err) => {
+            let old_ms = *err.entry.get();
+            if ms == old_ms {
+                // Tried to insert the same span, still success.
+                return true;
+            }
+            if !ms.eq_ctxt(old_ms) && ms.ctxt().outer_expn_data().call_site.eq_ctxt(old_ms) {
+                // This looks like a variable passed to an inner (possibly recursive) macro call.
+                // The innermost metavar span is the most useful, so override.
+                err.entry.insert(ms);
+                return true;
+            }
+            false
+        }
     };
     marker.visit_span(&mut metavar_span);
     let no_collision = match orig_tt {
@@ -411,16 +419,23 @@ fn maybe_use_metavar_location(
         }),
     };
     if no_collision || psess.source_map().is_imported(metavar_span) {
+        // Add a whitespace for backward compatibility.
+        // FIXME: assign spacing to tokens from metavars in a more systematic way (#127123).
+        if let TokenTree::Token(token, _) = orig_tt {
+            return TokenTree::Token(token.clone(), Spacing::Alone);
+        }
         return orig_tt.clone();
     }
 
     // Setting metavar spans for the heuristic spans gives better opportunities for combining them
     // with neighboring spans even despite their different syntactic contexts.
     match orig_tt {
-        TokenTree::Token(Token { kind, span }, spacing) => {
+        TokenTree::Token(Token { kind, span }, _spacing) => {
             let span = metavar_span.with_ctxt(span.ctxt());
             with_metavar_spans(|mspans| insert(mspans, span, metavar_span));
-            TokenTree::Token(Token { kind: kind.clone(), span }, *spacing)
+            // Add a whitespace for backward compatibility.
+            // FIXME: assign spacing to tokens from metavars in a more systematic way (#127123).
+            TokenTree::Token(Token { kind: kind.clone(), span }, Spacing::Alone)
         }
         TokenTree::Delimited(dspan, dspacing, delimiter, tts) => {
             let open = metavar_span.with_ctxt(dspan.open.ctxt());
@@ -735,12 +750,6 @@ fn extract_ident<'a>(
     interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
 ) -> PResult<'a, String> {
     if let NamedMatch::MatchedSingle(pnr) = matched_from_ident(dcx, ident, interp)? {
-        if let ParseNtResult::Ident(nt_ident, is_raw) = pnr {
-            if let IdentIsRaw::Yes = is_raw {
-                return Err(dcx.struct_span_err(ident.span, RAW_IDENT_ERR));
-            }
-            return Ok(nt_ident.to_string());
-        }
         if let ParseNtResult::Tt(TokenTree::Token(
             Token { kind: TokenKind::Ident(token_ident, is_raw), .. },
             _,

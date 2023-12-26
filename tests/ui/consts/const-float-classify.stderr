@@ -29,7 +29,7 @@ error[E0284]: type annotations needed
   --> $DIR/const-float-classify.rs:21:35
    |
 LL |               const _: () = assert!($a == $b);
-   |                                     ^^ cannot infer the value of the constant `_`
+   |                                     ^^^^^ cannot infer the value of the constant `_`
 ...
 LL | / suite! {
 LL | |                    [is_nan, is_infinite, is_finite, is_normal, is_sign_positive, is_sign_negative]
@@ -53,7 +53,7 @@ error[E0284]: type annotations needed
   --> $DIR/const-float-classify.rs:21:35
    |
 LL |               const _: () = assert!($a == $b);
-   |                                     ^^ cannot infer the value of the constant `_`
+   |                                     ^^^^^ cannot infer the value of the constant `_`
 ...
 LL | / suite! {
 LL | |                    [is_nan, is_infinite, is_finite, is_normal, is_sign_positive, is_sign_negative]
@@ -77,7 +77,7 @@ error[E0284]: type annotations needed
   --> $DIR/const-float-classify.rs:21:35
    |
 LL |               const _: () = assert!($a == $b);
-   |                                     ^^ cannot infer the value of the constant `_`
+   |                                     ^^^^^ cannot infer the value of the constant `_`
 ...
 LL | / suite! {
 LL | |                    [is_nan, is_infinite, is_finite, is_normal, is_sign_positive, is_sign_negative]
@@ -101,7 +101,7 @@ error[E0284]: type annotations needed
   --> $DIR/const-float-classify.rs:21:35
    |
 LL |               const _: () = assert!($a == $b);
-   |                                     ^^ cannot infer the value of the constant `_`
+   |                                     ^^^^^ cannot infer the value of the constant `_`
 ...
 LL | / suite! {
 LL | |                    [is_nan, is_infinite, is_finite, is_normal, is_sign_positive, is_sign_negative]
@@ -125,7 +125,7 @@ error[E0284]: type annotations needed
   --> $DIR/const-float-classify.rs:21:35
    |
 LL |               const _: () = assert!($a == $b);
-   |                                     ^^ cannot infer the value of the constant `_`
+   |                                     ^^^^^ cannot infer the value of the constant `_`
 ...
 LL | / suite! {
 LL | |                    [is_nan, is_infinite, is_finite, is_normal, is_sign_positive, is_sign_negative]
@@ -149,7 +149,7 @@ error[E0284]: type annotations needed
   --> $DIR/const-float-classify.rs:21:35
    |
 LL |               const _: () = assert!($a == $b);
-   |                                     ^^ cannot infer the value of the constant `_`
+   |                                     ^^^^^ cannot infer the value of the constant `_`
 ...
 LL | / suite! {
 LL | |                    [is_nan, is_infinite, is_finite, is_normal, is_sign_positive, is_sign_negative]
@@ -173,7 +173,7 @@ error[E0284]: type annotations needed
   --> $DIR/const-float-classify.rs:21:35
    |
 LL |               const _: () = assert!($a == $b);
-   |                                     ^^ cannot infer the value of the constant `_`
+   |                                     ^^^^^ cannot infer the value of the constant `_`
 ...
 LL | / suite! {
 LL | |                    [is_nan, is_infinite, is_finite, is_normal, is_sign_positive, is_sign_negative]
@@ -197,7 +197,7 @@ error[E0284]: type annotations needed
   --> $DIR/const-float-classify.rs:21:35
    |
 LL |               const _: () = assert!($a == $b);
-   |                                     ^^ cannot infer the value of the constant `_`
+   |                                     ^^^^^ cannot infer the value of the constant `_`
 ...
 LL | / suite! {
 LL | |                    [is_nan, is_infinite, is_finite, is_normal, is_sign_positive, is_sign_negative]

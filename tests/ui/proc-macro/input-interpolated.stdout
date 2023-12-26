@@ -13,7 +13,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
     },
     Ident {
         ident: "A",
-        span: #0 bytes(506..507),
+        span: #0 bytes(425..427),
     },
     Punct {
         ch: ':',
@@ -49,7 +49,7 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
     },
     Ident {
         ident: "A",
-        span: #0 bytes(506..507),
+        span: #0 bytes(478..480),
     },
     Group {
         delimiter: Brace,

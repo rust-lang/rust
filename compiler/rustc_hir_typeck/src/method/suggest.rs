@@ -2454,7 +2454,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ExprKind::Path(QPath::Resolved(_, path)) => {
                     // local binding
                     if let hir::def::Res::Local(hir_id) = path.res {
-                        let span = tcx.hir().span(hir_id);
+                        let span = tcx.hir().span_in_context(hir_id);
                         let filename = tcx.sess.source_map().span_to_filename(span);
 
                         let parent_node = self.tcx.parent_hir_node(hir_id);

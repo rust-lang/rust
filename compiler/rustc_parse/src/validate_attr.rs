@@ -37,8 +37,9 @@ pub fn check_attr(features: &Features, psess: &ParseSess, attr: &Attribute) {
                 // wrapping it in `unsafe(...)`. Otherwise, we suggest putting the
                 // `unsafe(`, `)` right after and right before the opening and closing
                 // square bracket respectively.
-                let diag_span = if attr_item.span().can_be_used_for_suggestions() {
-                    attr_item.span()
+                let diag_span = attr_item.span();
+                let diag_span = if diag_span.can_be_used_for_suggestions() {
+                    diag_span.with_neighbor(attr.span)
                 } else {
                     attr.span
                         .with_lo(attr.span.lo() + BytePos(2))

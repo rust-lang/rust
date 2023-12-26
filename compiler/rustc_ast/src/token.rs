@@ -317,14 +317,7 @@ pub enum TokenKind {
     Literal(Lit),
 
     /// Identifier token.
-    /// Do not forget about `NtIdent` when you want to match on identifiers.
-    /// It's recommended to use `Token::(ident,uninterpolate,uninterpolated_span)` to
-    /// treat regular and interpolated identifiers in the same way.
     Ident(Symbol, IdentIsRaw),
-    /// This identifier (and its span) is the identifier passed to the
-    /// declarative macro. The span in the surrounding `Token` is the span of
-    /// the `ident` metavariable in the macro's RHS.
-    NtIdent(Ident, IdentIsRaw),
 
     /// Lifetime identifier token.
     /// Do not forget about `NtLifetime` when you want to match on lifetime identifiers.
@@ -457,7 +450,7 @@ impl Token {
     /// if they keep spans or perform edition checks.
     pub fn uninterpolated_span(&self) -> Span {
         match self.kind {
-            NtIdent(ident, _) | NtLifetime(ident) => ident.span,
+            NtLifetime(ident) => ident.span,
             Interpolated(ref nt) => nt.use_span(),
             _ => self.span,
         }
@@ -476,7 +469,7 @@ impl Token {
             }
 
             OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) | Ident(..)
-            | NtIdent(..) | Lifetime(..) | NtLifetime(..) | Interpolated(..) | Eof => false,
+            | Lifetime(..) | NtLifetime(..) | Interpolated(..) | Eof => false,
         }
     }
 
@@ -644,7 +637,6 @@ impl Token {
     /// otherwise returns the original token.
     pub fn uninterpolate(&self) -> Cow<'_, Token> {
         match self.kind {
-            NtIdent(ident, is_raw) => Cow::Owned(Token::new(Ident(ident.name, is_raw), ident.span)),
             NtLifetime(ident) => Cow::Owned(Token::new(Lifetime(ident.name), ident.span)),
             _ => Cow::Borrowed(self),
         }
@@ -656,7 +648,6 @@ impl Token {
         // We avoid using `Token::uninterpolate` here because it's slow.
         match self.kind {
             Ident(name, is_raw) => Some((Ident::new(name, self.span), is_raw)),
-            NtIdent(ident, is_raw) => Some((ident, is_raw)),
             _ => None,
         }
     }
@@ -856,7 +847,7 @@ impl Token {
 
             Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot
             | DotDotEq | Comma | Semi | PathSep | RArrow | LArrow | FatArrow | Pound | Dollar
-            | Question | OpenDelim(..) | CloseDelim(..) | Literal(..) | Ident(..) | NtIdent(..)
+            | Question | OpenDelim(..) | CloseDelim(..) | Literal(..) | Ident(..)
             | Lifetime(..) | NtLifetime(..) | Interpolated(..) | DocComment(..) | Eof => {
                 return None;
             }

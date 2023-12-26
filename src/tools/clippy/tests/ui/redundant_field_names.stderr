@@ -55,10 +55,16 @@ LL |     internal!(v);
    = note: this error originates in the macro `internal` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: redundant field names in struct initialization
+  --> tests/ui/redundant_field_names.rs:74:25
+   |
+LL |             let _ = S { $i: $i };
+   |                         ^^^^^^ help: replace it with: `v`
+
+error: redundant field names in struct initialization
   --> tests/ui/redundant_field_names.rs:99:25
    |
 LL |     let _ = RangeFrom { start: start };
    |                         ^^^^^^^^^^^^ help: replace it with: `start`
 
-error: aborting due to 9 previous errors
+error: aborting due to 10 previous errors
 

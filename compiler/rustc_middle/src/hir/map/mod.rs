@@ -935,6 +935,16 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    /// Use regular `span` method when *showing* any diagnostics.
+    /// Use this method when suggesting *inserting* any code to the left or right from this node.
+    ///
+    /// If some piece of code is passed to a macro as an argument, then this method may move the
+    /// span from the argument into the macro body where that argument is emitted into the output.
+    pub fn span_in_context(self, hir_id: HirId) -> Span {
+        let parent_span = self.span(self.tcx.parent_hir_id(hir_id));
+        self.span(hir_id).with_neighbor(parent_span)
+    }
+
     /// Get a representation of this `id` for debugging purposes.
     /// NOTE: Do NOT use this in diagnostics!
     pub fn node_to_string(self, id: HirId) -> String {

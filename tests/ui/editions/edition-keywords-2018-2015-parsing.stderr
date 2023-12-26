@@ -45,15 +45,10 @@ LL |     (r#async) => (1)
    |      ^^^^^^^
 
 error: macro expansion ends with an incomplete expression: expected one of `move`, `|`, or `||`
-  --> $DIR/auxiliary/edition-kw-macro-2015.rs:27:23
+  --> $DIR/edition-keywords-2018-2015-parsing.rs:24:27
    |
-LL |     ($i: ident) => ($i)
-   |                       ^ expected one of `move`, `|`, or `||`
-   |
-  ::: $DIR/edition-keywords-2018-2015-parsing.rs:24:8
-   |
-LL |     if passes_ident!(async) == 1 {} // FIXME: Edition hygiene bug, async here is 2018 and reserved
-   |        -------------------- in this macro invocation
+LL |     if passes_ident!(async) == 1 {}
+   |                           ^ expected one of `move`, `|`, or `||`
 
 error: macro expansion ends with an incomplete expression: expected one of `move`, `|`, or `||`
   --> $DIR/edition-keywords-2018-2015-parsing.rs:26:24

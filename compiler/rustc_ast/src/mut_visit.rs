@@ -766,9 +766,6 @@ pub fn visit_token<T: MutVisitor>(t: &mut Token, vis: &mut T) {
             *span = ident.span;
             return; // Avoid visiting the span for the second time.
         }
-        token::NtIdent(ident, _is_raw) => {
-            vis.visit_ident(ident);
-        }
         token::NtLifetime(ident) => {
             vis.visit_ident(ident);
         }

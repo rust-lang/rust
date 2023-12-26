@@ -211,7 +211,8 @@ impl<'a> Parser<'a> {
         if self.eat(&token::PathSep) {
             segments.push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
         }
-        self.parse_path_segments(&mut segments, style, ty_generics)?;
+        let sep_span = self.parse_path_segments(&mut segments, style, ty_generics)?;
+        let lo = sep_span.map_or(lo, |sep_span| lo.with_neighbor(sep_span));
         Ok(Path { segments, span: lo.to(self.prev_token.span), tokens: None })
     }
 
@@ -220,7 +221,9 @@ impl<'a> Parser<'a> {
         segments: &mut ThinVec<PathSegment>,
         style: PathStyle,
         ty_generics: Option<&Generics>,
-    ) -> PResult<'a, ()> {
+    ) -> PResult<'a, Option<Span>> {
+        // An approximation to #126763.
+        let mut sep_span = None;
         loop {
             let segment = self.parse_path_segment(style, ty_generics)?;
             if style.has_generic_ambiguity() {
@@ -268,7 +271,9 @@ impl<'a> Parser<'a> {
                     continue;
                 }
 
-                return Ok(());
+                return Ok(sep_span);
+            } else {
+                sep_span = Some(self.prev_token.span);
             }
         }
     }

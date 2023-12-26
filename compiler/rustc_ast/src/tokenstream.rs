@@ -484,9 +484,6 @@ impl TokenStream {
 
     fn flatten_token(token: &Token, spacing: Spacing) -> TokenTree {
         match token.kind {
-            token::NtIdent(ident, is_raw) => {
-                TokenTree::Token(Token::new(token::Ident(ident.name, is_raw), ident.span), spacing)
-            }
             token::NtLifetime(ident) => TokenTree::Delimited(
                 DelimSpan::from_single(token.span),
                 DelimSpacing::new(Spacing::JointHidden, spacing),
@@ -516,10 +513,9 @@ impl TokenStream {
     pub fn flattened(&self) -> TokenStream {
         fn can_skip(stream: &TokenStream) -> bool {
             stream.trees().all(|tree| match tree {
-                TokenTree::Token(token, _) => !matches!(
-                    token.kind,
-                    token::NtIdent(..) | token::NtLifetime(..) | token::Interpolated(..)
-                ),
+                TokenTree::Token(token, _) => {
+                    !matches!(token.kind, token::NtLifetime(..) | token::Interpolated(..))
+                }
                 TokenTree::Delimited(.., inner) => can_skip(inner),
             })
         }

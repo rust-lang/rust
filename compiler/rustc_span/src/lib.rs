@@ -876,6 +876,9 @@ impl Span {
 
     /// Check if you can select metavar spans for the given spans to get matching contexts.
     fn try_metavars(a: SpanData, b: SpanData, a_orig: Span, b_orig: Span) -> (SpanData, SpanData) {
+        // `macro_rules` expansion fills the metavar span table with parentless spans as keys,
+        // but they may get parents later and we need to remove them before the table lookup.
+        let (a_orig, b_orig) = (a_orig.with_parent(None), b_orig.with_parent(None));
         let get = |mspans: &FxHashMap<_, _>, s| mspans.get(&s).copied();
         match with_metavar_spans(|mspans| (get(mspans, a_orig), get(mspans, b_orig))) {
             (None, None) => {}
@@ -938,7 +941,7 @@ impl Span {
     pub fn with_neighbor(self, neighbor: Span) -> Span {
         match Span::prepare_to_combine(self, neighbor) {
             Ok((this, ..)) => this.span(),
-            Err(_) => self,
+            Err(fallback) => self.with_ctxt(fallback.ctxt()),
         }
     }
 

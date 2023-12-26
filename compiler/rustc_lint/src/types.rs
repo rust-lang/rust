@@ -718,8 +718,9 @@ fn lint_wide_pointer<'tcx>(
         return;
     };
 
+    let (l_span, r_span) = (l.span.with_neighbor(e.span), r.span.with_neighbor(e.span));
     let (Some(l_span), Some(r_span)) =
-        (l.span.find_ancestor_inside(e.span), r.span.find_ancestor_inside(e.span))
+        (l_span.find_ancestor_inside(e.span), r_span.find_ancestor_inside(e.span))
     else {
         return cx.emit_span_lint(
             AMBIGUOUS_WIDE_POINTER_COMPARISONS,

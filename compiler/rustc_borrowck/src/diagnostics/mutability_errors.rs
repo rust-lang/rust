@@ -743,9 +743,11 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
         // or
         // `fn foo(&x: &i32)` -> `fn foo(&(mut x): &i32)`
         let def_id = self.body.source.def_id();
-        if let Some(local_def_id) = def_id.as_local()
-            && let Some(body) = self.infcx.tcx.hir().maybe_body_owned_by(local_def_id)
-            && let Some(hir_id) = (BindingFinder { span: pat_span }).visit_body(&body).break_value()
+        let hir_id = def_id
+            .as_local()
+            .and_then(|def_id| self.infcx.tcx.hir().maybe_body_owned_by(def_id))
+            .and_then(|body| (BindingFinder { span: pat_span }).visit_body(&body).break_value());
+        if let Some(hir_id) = hir_id
             && let node = self.infcx.tcx.hir_node(hir_id)
             && let hir::Node::LetStmt(hir::LetStmt {
                 pat: hir::Pat { kind: hir::PatKind::Ref(_, _), .. },
@@ -767,8 +769,11 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, '_, 'tcx> {
             return;
         }
 
+        let span = local_decl.source_info.span;
+        let span =
+            hir_id.map_or(span, |hir_id| span.with_neighbor(self.infcx.tcx.hir().span(hir_id)));
         err.span_suggestion_verbose(
-            local_decl.source_info.span.shrink_to_lo(),
+            span.shrink_to_lo(),
             "consider changing this to be mutable",
             "mut ",
             Applicability::MachineApplicable,

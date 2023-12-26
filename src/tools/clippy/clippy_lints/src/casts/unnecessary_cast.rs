@@ -144,7 +144,7 @@ pub(super) fn check<'tcx>(
 
     if cast_from.kind() == cast_to.kind() && !in_external_macro(cx.sess(), expr.span) {
         if let Some(id) = path_to_local(cast_expr)
-            && !cx.tcx.hir().span(id).eq_ctxt(cast_expr.span)
+            && !cx.tcx.hir().span_in_context(id).eq_ctxt(cast_expr.span)
         {
             // Binding context is different than the identifiers context.
             // Weird macro wizardry could be involved here.

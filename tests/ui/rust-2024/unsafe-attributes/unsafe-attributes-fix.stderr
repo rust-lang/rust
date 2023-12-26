@@ -1,5 +1,5 @@
 error: unsafe attribute used without unsafe
-  --> $DIR/unsafe-attributes-fix.rs:44:6
+  --> $DIR/unsafe-attributes-fix.rs:40:6
    |
 LL | tt!([no_mangle]);
    |      ^^^^^^^^^ usage of unsafe attribute
@@ -17,24 +17,20 @@ LL | tt!([unsafe(no_mangle)]);
    |      +++++++         +
 
 error: unsafe attribute used without unsafe
-  --> $DIR/unsafe-attributes-fix.rs:14:11
+  --> $DIR/unsafe-attributes-fix.rs:43:8
    |
-LL |         #[$e]
-   |           ^^ usage of unsafe attribute
-...
 LL | ident!(no_mangle);
-   | ----------------- in this macro invocation
+   |        ^^^^^^^^^ usage of unsafe attribute
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
    = note: for more information, see issue #123757 <https://github.com/rust-lang/rust/issues/123757>
-   = note: this error originates in the macro `ident` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: wrap the attribute in `unsafe(...)`
    |
 LL |         #[unsafe($e)]
    |           +++++++  +
 
 error: unsafe attribute used without unsafe
-  --> $DIR/unsafe-attributes-fix.rs:48:7
+  --> $DIR/unsafe-attributes-fix.rs:46:7
    |
 LL | meta!(no_mangle);
    |       ^^^^^^^^^ usage of unsafe attribute
@@ -47,7 +43,7 @@ LL | meta!(unsafe(no_mangle));
    |       +++++++         +
 
 error: unsafe attribute used without unsafe
-  --> $DIR/unsafe-attributes-fix.rs:51:8
+  --> $DIR/unsafe-attributes-fix.rs:49:8
    |
 LL | meta2!(export_name = "baw");
    |        ^^^^^^^^^^^ usage of unsafe attribute
@@ -60,17 +56,13 @@ LL | meta2!(unsafe(export_name = "baw"));
    |        +++++++                   +
 
 error: unsafe attribute used without unsafe
-  --> $DIR/unsafe-attributes-fix.rs:23:11
+  --> $DIR/unsafe-attributes-fix.rs:52:9
    |
-LL |         #[$e = $l]
-   |           ^^ usage of unsafe attribute
-...
 LL | ident2!(export_name, "bars");
-   | ---------------------------- in this macro invocation
+   |         ^^^^^^^^^^^ usage of unsafe attribute
    |
    = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2024!
    = note: for more information, see issue #123757 <https://github.com/rust-lang/rust/issues/123757>
-   = note: this error originates in the macro `ident2` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: wrap the attribute in `unsafe(...)`
    |
 LL |         #[unsafe($e = $l)]

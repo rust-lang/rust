@@ -114,7 +114,8 @@ impl<'tcx> LateLintPass<'tcx> for Shadow {
             return;
         };
 
-        if pat.span.desugaring_kind().is_some() || pat.span.from_expansion() {
+        let pat_span = cx.tcx.hir().span_in_context(pat.hir_id);
+        if pat_span.desugaring_kind().is_some() || pat_span.from_expansion() {
             return;
         }
 

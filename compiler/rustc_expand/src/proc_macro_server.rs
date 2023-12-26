@@ -221,11 +221,6 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                 Ident(sym, is_raw) => {
                     trees.push(TokenTree::Ident(Ident { sym, is_raw: is_raw.into(), span }))
                 }
-                NtIdent(ident, is_raw) => trees.push(TokenTree::Ident(Ident {
-                    sym: ident.name,
-                    is_raw: is_raw.into(),
-                    span: ident.span,
-                })),
 
                 Lifetime(name) => {
                     let ident = symbol::Ident::new(name, span).without_first_quote();

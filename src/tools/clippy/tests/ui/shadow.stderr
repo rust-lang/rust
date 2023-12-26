@@ -256,18 +256,6 @@ note: previous binding is here
 LL |     let y = Some(1);
    |         ^
 
-error: `_b` shadows a previous, unrelated binding
-  --> tests/ui/shadow.rs:112:9
-   |
-LL |     let _b = _a;
-   |         ^^
-   |
-note: previous binding is here
-  --> tests/ui/shadow.rs:111:28
-   |
-LL | pub async fn foo2(_a: i32, _b: i64) {
-   |                            ^^
-
 error: `x` shadows a previous, unrelated binding
   --> tests/ui/shadow.rs:118:21
    |
@@ -280,5 +268,5 @@ note: previous binding is here
 LL |         let x = 1;
    |             ^
 
-error: aborting due to 23 previous errors
+error: aborting due to 22 previous errors
 

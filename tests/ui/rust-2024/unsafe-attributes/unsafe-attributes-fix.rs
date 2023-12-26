@@ -12,8 +12,6 @@ macro_rules! tt {
 macro_rules! ident {
     ($e:ident) => {
         #[$e]
-        //~^ ERROR: unsafe attribute used without unsafe
-        //~| WARN this is accepted in the current edition
         extern fn bar() {}
     }
 }
@@ -21,8 +19,6 @@ macro_rules! ident {
 macro_rules! ident2 {
     ($e:ident, $l:literal) => {
         #[$e = $l]
-        //~^ ERROR: unsafe attribute used without unsafe
-        //~| WARN this is accepted in the current edition
         extern fn bars() {}
     }
 }
@@ -45,6 +41,8 @@ tt!([no_mangle]);
 //~^ ERROR: unsafe attribute used without unsafe
 //~| WARN this is accepted in the current edition
 ident!(no_mangle);
+//~^ ERROR: unsafe attribute used without unsafe
+//~| WARN this is accepted in the current edition
 meta!(no_mangle);
 //~^ ERROR: unsafe attribute used without unsafe
 //~| WARN this is accepted in the current edition
@@ -52,6 +50,8 @@ meta2!(export_name = "baw");
 //~^ ERROR: unsafe attribute used without unsafe
 //~| WARN this is accepted in the current edition
 ident2!(export_name, "bars");
+//~^ ERROR: unsafe attribute used without unsafe
+//~| WARN this is accepted in the current edition
 
 #[no_mangle]
 //~^ ERROR: unsafe attribute used without unsafe

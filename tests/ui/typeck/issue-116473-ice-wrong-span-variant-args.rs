@@ -71,12 +71,12 @@ macro_rules! nested2_tt_args_in_first_macro {
 // instead of the enum variant
 macro_rules! nested1_ident_args_in_first_macro {
     () => (nested2_ident_args_in_first_macro!(i32, u32));
+    //~^ ERROR type arguments are not allowed on this type
 }
 
 macro_rules! nested2_ident_args_in_first_macro {
     ($arg1:ident, $arg2:ident) => (if let EnumUnit::VariantB::<$arg1, $arg2> {}
-    //~^ ERROR type arguments are not allowed on this type
-    //~| ERROR mismatched types
+    //~^ ERROR mismatched types
         = 5 { true } else { false });
 }
 

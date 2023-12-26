@@ -2,9 +2,9 @@ warning: non-local `impl` definition, `impl` blocks should be written at the sam
   --> $DIR/cargo-update.rs:19:1
    |
 LL | non_local_macro::non_local_impl!(LocalStruct);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   | |
-   | `LocalStruct` is not local
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------^
+   | |                                |
+   | |                                `LocalStruct` is not local
    | `Debug` is not local
    | move the `impl` block outside of this constant `_IMPL_DEBUG`
    |

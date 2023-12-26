@@ -108,7 +108,7 @@ struct LocalAssign {
 impl LocalAssign {
     fn from_expr(expr: &Expr<'_>, span: Span) -> Option<Self> {
         if let ExprKind::Assign(lhs, rhs, _) = expr.kind {
-            if lhs.span.from_expansion() {
+            if lhs.span.with_neighbor(expr.span).from_expansion() {
                 return None;
             }
 
