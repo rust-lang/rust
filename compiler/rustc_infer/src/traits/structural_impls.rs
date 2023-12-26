@@ -17,7 +17,7 @@ impl<'tcx, T: fmt::Debug> fmt::Debug for Normalized<'tcx, T> {
 
 impl<'tcx, O: fmt::Debug> fmt::Debug for traits::Obligation<'tcx, O> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if ty::tls::with(|tcx| tcx.sess.verbose()) {
+        if ty::tls::with(|tcx| tcx.sess.verbose_internals()) {
             write!(
                 f,
                 "Obligation(predicate={:?}, cause={:?}, param_env={:?}, depth={})",

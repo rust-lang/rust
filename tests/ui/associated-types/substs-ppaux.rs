@@ -1,7 +1,7 @@
 //
 // revisions: verbose normal
 //
-//[verbose] compile-flags: -Z verbose
+//[verbose] compile-flags: -Z verbose-internals
 
 trait Foo<'b, 'c, S=u32> {
     fn bar<'a, T>() where T: 'a {}

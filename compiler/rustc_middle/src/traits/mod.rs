@@ -177,7 +177,7 @@ impl<'tcx> ObligationCause<'tcx> {
 
         // NOTE(flaper87): As of now, it keeps track of the whole error
         // chain. Ideally, we should have a way to configure this either
-        // by using -Z verbose or just a CLI argument.
+        // by using -Z verbose-internals or just a CLI argument.
         self.code =
             variant(DerivedObligationCause { parent_trait_pred, parent_code: self.code }).into();
         self

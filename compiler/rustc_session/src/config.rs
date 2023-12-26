@@ -1116,6 +1116,7 @@ impl Default for Options {
             working_dir: RealFileName::LocalPath(std::env::current_dir().unwrap()),
             color: ColorConfig::Auto,
             logical_env: FxIndexMap::default(),
+            verbose: false,
         }
     }
 }
@@ -2916,6 +2917,8 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         RealFileName::LocalPath(path.into_owned())
     };
 
+    let verbose = matches.opt_present("verbose") || unstable_opts.verbose_internals;
+
     Options {
         assert_incr_state,
         crate_types,
@@ -2957,6 +2960,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         working_dir,
         color,
         logical_env,
+        verbose,
     }
 }
 

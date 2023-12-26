@@ -187,8 +187,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
         args: &'tcx [hir::Expr<'tcx>],
     ) -> Ty<'tcx> {
-        if self.tcx().sess.verbose() {
-            // make this code only run with -Zverbose because it is probably slow
+        if self.tcx().sess.verbose_internals() {
+            // make this code only run with -Zverbose-internals because it is probably slow
             if let Ok(lint_str) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
                 if !lint_str.contains('\n') {
                     debug!("expr text: {lint_str}");
