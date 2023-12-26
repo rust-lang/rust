@@ -9,8 +9,7 @@ fn main() {
         let x = 1;
         // Should flatten to println!("a 123 b {x} xyz\n"):
         {
-                ::std::io::_print(<#[lang = "format_arguments"]>::new_v1(&["a 123 b ",
-                                    " xyz\n"],
-                        &[<#[lang = "format_argument"]>::new_display(&x)]));
+                ::std::io::_print(format_arguments::new_v1(&["a 123 b ",
+                                    " xyz\n"], &[format_argument::new_display(&x)]));
             };
     }

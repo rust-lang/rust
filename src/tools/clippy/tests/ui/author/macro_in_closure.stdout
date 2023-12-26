@@ -12,6 +12,7 @@ if let StmtKind::Local(local) = stmt.kind
     && args.len() == 1
     && let ExprKind::Call(func1, args1) = args[0].kind
     && let ExprKind::Path(ref qpath1) = func1.kind
+    && match_qpath(qpath1, &["format_arguments", "new_v1"])
     && args1.len() == 2
     && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner) = args1[0].kind
     && let ExprKind::Array(elements) = inner.kind
@@ -27,6 +28,7 @@ if let StmtKind::Local(local) = stmt.kind
     && elements1.len() == 1
     && let ExprKind::Call(func2, args2) = elements1[0].kind
     && let ExprKind::Path(ref qpath2) = func2.kind
+    && match_qpath(qpath2, &["format_argument", "new_display"])
     && args2.len() == 1
     && let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Not, inner2) = args2[0].kind
     && let ExprKind::Path(ref qpath3) = inner2.kind
