@@ -64,7 +64,7 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
         pcx.ctors_for_ty().split(pcx, column_ctors)
     }
 
-    fn iter<'b>(&'b self) -> impl Iterator<Item = &'p DeconstructedPat<'p, 'tcx>> + Captures<'b> {
+    fn iter(&self) -> impl Iterator<Item = &'p DeconstructedPat<'p, 'tcx>> + Captures<'_> {
         self.patterns.iter().copied()
     }
 

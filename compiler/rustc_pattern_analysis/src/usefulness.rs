@@ -851,13 +851,13 @@ impl<'p, Cx: TypeCx> PatStack<'p, Cx> {
         self.pats[0]
     }
 
-    fn iter<'b>(&'b self) -> impl Iterator<Item = &'p DeconstructedPat<'p, Cx>> + Captures<'b> {
+    fn iter(&self) -> impl Iterator<Item = &'p DeconstructedPat<'p, Cx>> + Captures<'_> {
         self.pats.iter().copied()
     }
 
     // Recursively expand the first or-pattern into its subpatterns. Only useful if the pattern is
     // an or-pattern. Panics if `self` is empty.
-    fn expand_or_pat<'b>(&'b self) -> impl Iterator<Item = PatStack<'p, Cx>> + Captures<'b> {
+    fn expand_or_pat(&self) -> impl Iterator<Item = PatStack<'p, Cx>> + Captures<'_> {
         self.head().flatten_or_pat().into_iter().map(move |pat| {
             let mut new = self.clone();
             new.pats[0] = pat;
@@ -926,13 +926,13 @@ impl<'p, Cx: TypeCx> MatrixRow<'p, Cx> {
         self.pats.head()
     }
 
-    fn iter<'b>(&'b self) -> impl Iterator<Item = &'p DeconstructedPat<'p, Cx>> + Captures<'b> {
+    fn iter(&self) -> impl Iterator<Item = &'p DeconstructedPat<'p, Cx>> + Captures<'_> {
         self.pats.iter()
     }
 
     // Recursively expand the first or-pattern into its subpatterns. Only useful if the pattern is
     // an or-pattern. Panics if `self` is empty.
-    fn expand_or_pat<'b>(&'b self) -> impl Iterator<Item = MatrixRow<'p, Cx>> + Captures<'b> {
+    fn expand_or_pat(&self) -> impl Iterator<Item = MatrixRow<'p, Cx>> + Captures<'_> {
         self.pats.expand_or_pat().map(|patstack| MatrixRow {
             pats: patstack,
             parent_row: self.parent_row,
@@ -1041,21 +1041,21 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
         self.wildcard_row.len()
     }
 
-    fn rows<'b>(
-        &'b self,
-    ) -> impl Iterator<Item = &'b MatrixRow<'p, Cx>> + Clone + DoubleEndedIterator + ExactSizeIterator
+    fn rows(
+        &self,
+    ) -> impl Iterator<Item = &MatrixRow<'p, Cx>> + Clone + DoubleEndedIterator + ExactSizeIterator
     {
         self.rows.iter()
     }
-    fn rows_mut<'b>(
-        &'b mut self,
-    ) -> impl Iterator<Item = &'b mut MatrixRow<'p, Cx>> + DoubleEndedIterator + ExactSizeIterator
+    fn rows_mut(
+        &mut self,
+    ) -> impl Iterator<Item = &mut MatrixRow<'p, Cx>> + DoubleEndedIterator + ExactSizeIterator
     {
         self.rows.iter_mut()
     }
 
     /// Iterate over the first pattern of each row.
-    fn heads<'b>(&'b self) -> impl Iterator<Item = &'b DeconstructedPat<'p, Cx>> + Clone {
+    fn heads(&self) -> impl Iterator<Item = &'p DeconstructedPat<'p, Cx>> + Clone + Captures<'_> {
         self.rows().map(|r| r.head())
     }
 
