@@ -23,7 +23,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{ExpnKind, Span, Symbol};
+use rustc_span::{Span, Symbol};
 
 /// Inserts `StatementKind::Coverage` statements that either instrument the binary with injected
 /// counters, via intrinsic `llvm.instrprof.increment`, and/or inject metadata used during codegen
@@ -346,21 +346,10 @@ fn get_body_span<'tcx>(
     let mut body_span = hir_body.value.span;
 
     if tcx.is_closure(def_id.to_def_id()) {
-        // If the MIR function is a closure, and if the closure body span
-        // starts from a macro, but it's content is not in that macro, try
-        // to find a non-macro callsite, and instrument the spans there
-        // instead.
-        loop {
-            let expn_data = body_span.ctxt().outer_expn_data();
-            if expn_data.is_root() {
-                break;
-            }
-            if let ExpnKind::Macro { .. } = expn_data.kind {
-                body_span = expn_data.call_site;
-            } else {
-                break;
-            }
-        }
+        // If the current function is a closure, and its "body" span was created
+        // by macro expansion or compiler desugaring, try to walk backwards to
+        // the pre-expansion call site or body.
+        body_span = body_span.source_callsite();
     }
 
     body_span
