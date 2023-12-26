@@ -45,7 +45,7 @@ Current stable, released 2023-12-28
 
 ### Enhancements
 
-* [`declare_interior_mutable_const`] and [`borrow_interior_mutable_const`]: Now follow check the
+* [`declare_interior_mutable_const`] and [`borrow_interior_mutable_const`]: Now check the
   [`ignore-interior-mutability`] config value
   [#11678](https://github.com/rust-lang/rust-clippy/pull/11678)
 
