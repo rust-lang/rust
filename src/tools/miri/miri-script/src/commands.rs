@@ -344,7 +344,7 @@ impl Command {
         println!(
             // Open PR with `subtree update` title to silence the `no-merges` triagebot check
             // See https://github.com/rust-lang/rust/pull/114157
-            "    https://github.com/rust-lang/rust/compare/{github_user}:{branch}?quick_pull=1&title=Miri+subtree+update"
+            "    https://github.com/rust-lang/rust/compare/{github_user}:{branch}?quick_pull=1&title=Miri+subtree+update&body=r?+@ghost"
         );
 
         drop(josh);
@@ -478,7 +478,11 @@ impl Command {
         // Scan for "--target" to overwrite the "MIRI_TEST_TARGET" env var so
         // that we set the MIRI_SYSROOT up the right way.
         use itertools::Itertools;
-        let target = flags.iter().tuple_windows().find(|(first, _)| first == &"--target");
+        let target = flags
+            .iter()
+            .take_while(|arg| *arg != "--")
+            .tuple_windows()
+            .find(|(first, _)| *first == "--target");
         if let Some((_, target)) = target {
             // Found it!
             e.sh.set_var("MIRI_TEST_TARGET", target);
@@ -487,6 +491,10 @@ impl Command {
             let miriflags = e.sh.var("MIRIFLAGS").unwrap_or_default();
             e.sh.set_var("MIRIFLAGS", format!("{miriflags} --target {target}"));
         }
+        // Scan for "--edition" (we'll set one ourselves if that flag is not present).
+        let have_edition =
+            flags.iter().take_while(|arg| *arg != "--").any(|arg| *arg == "--edition");
+
         // Prepare a sysroot.
         e.build_miri_sysroot(/* quiet */ true)?;
 
@@ -496,15 +504,16 @@ impl Command {
         let miri_flags = flagsplit(&miri_flags);
         let toolchain = &e.toolchain;
         let extra_flags = &e.cargo_extra_flags;
+        let edition_flags = (!have_edition).then_some("--edition=2021"); // keep in sync with `compiletest.rs`.`
         if dep {
             cmd!(
                 e.sh,
-                "cargo +{toolchain} --quiet test --test compiletest {extra_flags...} --manifest-path {miri_manifest} -- --miri-run-dep-mode {miri_flags...} {flags...}"
+                "cargo +{toolchain} --quiet test --test compiletest {extra_flags...} --manifest-path {miri_manifest} -- --miri-run-dep-mode {miri_flags...} {edition_flags...} {flags...}"
             ).quiet().run()?;
         } else {
             cmd!(
                 e.sh,
-                "cargo +{toolchain} --quiet run {extra_flags...} --manifest-path {miri_manifest} -- {miri_flags...} {flags...}"
+                "cargo +{toolchain} --quiet run {extra_flags...} --manifest-path {miri_manifest} -- {miri_flags...} {edition_flags...} {flags...}"
             ).quiet().run()?;
         }
         Ok(())

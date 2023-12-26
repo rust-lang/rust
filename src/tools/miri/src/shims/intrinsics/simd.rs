@@ -656,6 +656,54 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     }
                 }
             }
+            "masked_load" => {
+                let [mask, ptr, default] = check_arg_count(args)?;
+                let (mask, mask_len) = this.operand_to_simd(mask)?;
+                let ptr = this.read_pointer(ptr)?;
+                let (default, default_len) = this.operand_to_simd(default)?;
+                let (dest, dest_len) = this.place_to_simd(dest)?;
+
+                assert_eq!(dest_len, mask_len);
+                assert_eq!(dest_len, default_len);
+
+                for i in 0..dest_len {
+                    let mask = this.read_immediate(&this.project_index(&mask, i)?)?;
+                    let default = this.read_immediate(&this.project_index(&default, i)?)?;
+                    let dest = this.project_index(&dest, i)?;
+
+                    let val = if simd_element_to_bool(mask)? {
+                        // Size * u64 is implemented as always checked
+                        #[allow(clippy::arithmetic_side_effects)]
+                        let ptr = ptr.wrapping_offset(dest.layout.size * i, this);
+                        let place = this.ptr_to_mplace(ptr, dest.layout);
+                        this.read_immediate(&place)?
+                    } else {
+                        default
+                    };
+                    this.write_immediate(*val, &dest)?;
+                }
+            }
+            "masked_store" => {
+                let [mask, ptr, vals] = check_arg_count(args)?;
+                let (mask, mask_len) = this.operand_to_simd(mask)?;
+                let ptr = this.read_pointer(ptr)?;
+                let (vals, vals_len) = this.operand_to_simd(vals)?;
+
+                assert_eq!(mask_len, vals_len);
+
+                for i in 0..vals_len {
+                    let mask = this.read_immediate(&this.project_index(&mask, i)?)?;
+                    let val = this.read_immediate(&this.project_index(&vals, i)?)?;
+
+                    if simd_element_to_bool(mask)? {
+                        // Size * u64 is implemented as always checked
+                        #[allow(clippy::arithmetic_side_effects)]
+                        let ptr = ptr.wrapping_offset(val.layout.size * i, this);
+                        let place = this.ptr_to_mplace(ptr, val.layout);
+                        this.write_immediate(*val, &place)?
+                    };
+                }
+            }
 
             name => throw_unsup_format!("unimplemented intrinsic: `simd_{name}`"),
         }
