@@ -47,7 +47,7 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
                         }
                         InlineAsmOperand::SymFn { anon_const } => {
                             if cfg!(not(feature = "inline_asm_sym")) {
-                                tcx.sess.span_err(
+                                tcx.dcx().span_err(
                                     item.span,
                                     "asm! and global_asm! sym operands are not yet supported",
                                 );
@@ -65,7 +65,7 @@ pub(crate) fn codegen_global_asm_item(tcx: TyCtxt<'_>, global_asm: &mut String, 
                         }
                         InlineAsmOperand::SymStatic { path: _, def_id } => {
                             if cfg!(not(feature = "inline_asm_sym")) {
-                                tcx.sess.span_err(
+                                tcx.dcx().span_err(
                                     item.span,
                                     "asm! and global_asm! sym operands are not yet supported",
                                 );
