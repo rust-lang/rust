@@ -1,19 +1,17 @@
 error[E0507]: cannot move out of static item `D`
-  --> $DIR/move-error-snippets-ext.rs:5:17
+  --> $DIR/move-error-snippets.rs:16:18
    |
-LL |         let a = $c;
-   |                 ^^ move occurs because `D` has type `A`, which does not implement the `Copy` trait
-   |
-  ::: $DIR/move-error-snippets.rs:21:1
-   |
+LL |             aaa!(D);
+   |                  ^ move occurs because `D` has type `A`, which does not implement the `Copy` trait
+...
 LL | sss!();
    | ------ in this macro invocation
    |
-   = note: this error originates in the macro `aaa` which comes from the expansion of the macro `sss` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `sss` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider borrowing here
    |
-LL |         let a = &$c;
-   |                 +
+LL |             aaa!(&D);
+   |                  +
 
 error: aborting due to 1 previous error
 

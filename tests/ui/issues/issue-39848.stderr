@@ -1,11 +1,8 @@
-error: expected `{`, found identifier `foo`
-  --> $DIR/issue-39848.rs:3:21
+error: expected `{`, found `foo`
+  --> $DIR/issue-39848.rs:8:19
    |
-LL |         if $tgt.has_$field() {}
-   |                     ^^^^^^ expected `{`
-...
 LL |     get_opt!(bar, foo);
-   |     ------------------ in this macro invocation
+   |                   ^^^ expected `{`
    |
 note: the `if` expression is missing a block after this condition
   --> $DIR/issue-39848.rs:3:12

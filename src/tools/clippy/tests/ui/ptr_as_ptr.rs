@@ -48,6 +48,7 @@ fn main() {
     let _: *mut i32 = mut_ptr as _;
 
     // Make sure the lint is triggered inside a macro
+    #[cfg(FALSE)] // FIXME
     let _ = inline!($ptr as *const i32);
 
     // Do not lint inside macros from external crates

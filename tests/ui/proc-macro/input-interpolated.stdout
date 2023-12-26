@@ -5,7 +5,8 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
         span: #0 bytes(506..507),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): const A : u8 = 0;
+PRINT-ATTR INPUT (DISPLAY): const A: u8 = 0;
+PRINT-ATTR RE-COLLECTED (DISPLAY): const A : u8 = 0;
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "const",
@@ -13,7 +14,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
     },
     Ident {
         ident: "A",
-        span: #0 bytes(506..507),
+        span: #0 bytes(425..427),
     },
     Punct {
         ch: ':',
@@ -41,7 +42,8 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
         span: #3 bytes(435..436),
     },
 ]
-PRINT-DERIVE INPUT (DISPLAY): struct A {}
+PRINT-DERIVE INPUT (DISPLAY): struct A{}
+PRINT-DERIVE RE-COLLECTED (DISPLAY): struct A {}
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Ident {
         ident: "struct",
@@ -49,7 +51,7 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
     },
     Ident {
         ident: "A",
-        span: #0 bytes(506..507),
+        span: #0 bytes(478..480),
     },
     Group {
         delimiter: Brace,

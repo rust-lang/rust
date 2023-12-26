@@ -3,7 +3,7 @@ use rustc_ast::token::{self, Delimiter, Nonterminal::*, NonterminalKind, Token};
 use rustc_ast::HasTokens;
 use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
-use rustc_span::symbol::{kw, Ident};
+use rustc_span::symbol::kw;
 
 use crate::errors::UnexpectedNonterminal;
 use crate::parser::pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
@@ -24,7 +24,6 @@ impl<'a> Parser<'a> {
                 | NtPat(_)
                 | NtExpr(_)
                 | NtTy(_)
-                | NtIdent(..)
                 | NtLiteral(_) // `true`, `false`
                 | NtMeta(_)
                 | NtPath(_) => true,
@@ -45,7 +44,7 @@ impl<'a> Parser<'a> {
                 && !token.is_keyword(kw::Const)
             }
             NonterminalKind::Ty => token.can_begin_type(),
-            NonterminalKind::Ident => get_macro_ident(token).is_some(),
+            NonterminalKind::Ident => is_macro_ident(token),
             NonterminalKind::Literal => token.can_begin_literal_maybe_minus(),
             NonterminalKind::Vis => match token.kind {
                 // The follow-set of :vis + "priv" keyword + interpolated
@@ -56,8 +55,7 @@ impl<'a> Parser<'a> {
                 token::OpenDelim(Delimiter::Brace) => true,
                 token::Interpolated(nt) => match &nt.0 {
                     NtBlock(_) | NtLifetime(_) | NtStmt(_) | NtExpr(_) | NtLiteral(_) => true,
-                    NtItem(_) | NtPat(_) | NtTy(_) | NtIdent(..) | NtMeta(_) | NtPath(_)
-                    | NtVis(_) => false,
+                    NtItem(_) | NtPat(_) | NtTy(_) | NtMeta(_) | NtPath(_) | NtVis(_) => false,
                 },
                 _ => false,
             },
@@ -108,8 +106,17 @@ impl<'a> Parser<'a> {
         // in advance whether or not a proc-macro will be (transitively) invoked,
         // we always capture tokens for any `Nonterminal` which needs them.
         let mut nt = match kind {
-            // Note that TT is treated differently to all the others.
+            // Note that `tt` and `ident` are treated differently to all the others.
             NonterminalKind::TT => return Ok(ParseNtResult::Tt(self.parse_token_tree())),
+            NonterminalKind::Ident if is_macro_ident(&self.token) => {
+                return Ok(ParseNtResult::Tt(self.parse_token_tree()));
+            }
+            NonterminalKind::Ident => {
+                return Err(self.dcx().create_err(UnexpectedNonterminal::Ident {
+                    span: self.token.span,
+                    token: self.token.clone(),
+                }));
+            }
             NonterminalKind::Item => match self.parse_item(ForceCollect::Yes)? {
                 Some(item) => NtItem(item),
                 None => {
@@ -153,18 +160,6 @@ impl<'a> Parser<'a> {
             NonterminalKind::Ty => {
                 NtTy(self.collect_tokens_no_attrs(|this| this.parse_ty_no_question_mark_recover())?)
             }
-
-            // this could be handled like a token, since it is one
-            NonterminalKind::Ident if let Some((ident, is_raw)) = get_macro_ident(&self.token) => {
-                self.bump();
-                NtIdent(ident, is_raw)
-            }
-            NonterminalKind::Ident => {
-                return Err(self.dcx().create_err(UnexpectedNonterminal::Ident {
-                    span: self.token.span,
-                    token: self.token.clone(),
-                }));
-            }
             NonterminalKind::Path => {
                 NtPath(P(self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?))
             }
@@ -201,6 +196,6 @@ impl<'a> Parser<'a> {
 
 /// The token is an identifier, but not `_`.
 /// We prohibit passing `_` to macros expecting `ident` for now.
-fn get_macro_ident(token: &Token) -> Option<(Ident, token::IdentIsRaw)> {
-    token.ident().filter(|(ident, _)| ident.name != kw::Underscore)
+fn is_macro_ident(token: &Token) -> bool {
+    token.ident().map_or(false, |(ident, _)| ident.name != kw::Underscore)
 }

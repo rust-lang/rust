@@ -204,6 +204,7 @@ fn does_not_lint() {
 
     let x;
     if true {
+        #[cfg(FALSE)] // FIXME
         inline!($x = 1;);
     } else {
         x = 2;

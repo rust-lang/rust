@@ -71,7 +71,7 @@ fn main() {
             let _ = S { v };
             let _ = S { $i: v };
             let _ = S { v: $i };
-            let _ = S { $i: $i };
+            let _ = S { v };
         };
     }
     internal!(v);

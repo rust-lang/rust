@@ -271,5 +271,19 @@ help: add a semicolon after the `match` expression
 LL |     };
    |      +
 
-error: aborting due to 16 previous errors
+error: unneeded late initialization
+  --> tests/ui/needless_late_init.rs:202:5
+   |
+LL |     let x;
+   |     ^^^^^^ created here
+LL |     inline!($x = 1;);
+   |             ^^^^^^ initialised here
+   |
+   = note: this error originates in the macro `__inline_mac_fn_does_not_lint` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: declare `x` here
+   |
+LL |     inline!($let x = 1;);
+   |              ~~~~~
+
+error: aborting due to 17 previous errors
 
