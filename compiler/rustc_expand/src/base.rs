@@ -917,6 +917,8 @@ pub trait ResolverExpand {
 
     fn check_unused_macros(&mut self);
 
+    //fn autodiff() -> bool;
+
     // Resolver interfaces for specific built-in macros.
     /// Does `#[derive(...)]` attribute with the given `ExpnId` have built-in `Copy` inside it?
     fn has_derive_copy(&self, expn_id: LocalExpnId) -> bool;

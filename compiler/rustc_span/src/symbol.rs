@@ -69,6 +69,7 @@ symbols! {
 
         // Keywords that are used in unstable Rust or reserved for future use.
         Abstract:           "abstract",
+        //Autodiff:           "autodiff",
         Become:             "become",
         Box:                "box",
         Do:                 "do",
@@ -438,6 +439,7 @@ symbols! {
         attributes,
         augmented_assignments,
         auto_traits,
+        autodiff,
         automatically_derived,
         avx,
         avx512_target_feature,

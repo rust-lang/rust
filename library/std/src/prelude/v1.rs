@@ -67,6 +67,11 @@ pub use core::prelude::v1::{
 #[unstable(feature = "derive_const", issue = "none")]
 pub use core::prelude::v1::derive_const;
 
+#[unstable(feature = "autodiff", issue = "none")]
+#[cfg(not(bootstrap))]
+#[rustc_builtin_macro]
+pub use core::prelude::v1::autodiff;
+
 // Do not `doc(no_inline)` either.
 #[unstable(
     feature = "cfg_accessible",

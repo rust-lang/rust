@@ -255,6 +255,8 @@
 #![allow(unused_features)]
 //
 // Features:
+
+#![cfg_attr(not(bootstrap), feature(autodiff))]
 #![cfg_attr(test, feature(internal_output_capture, print_internals, update_panic_count, rt))]
 #![cfg_attr(
     all(target_vendor = "fortanix", target_env = "sgx"),
@@ -661,6 +663,17 @@ pub use core::{
     env, file, format_args, format_args_nl, include, include_bytes, include_str, line, log_syntax,
     module_path, option_env, stringify, trace_macros,
 };
+
+
+// #[unstable(
+//     feature = "autodiff",
+//     issue = "87555",
+//     reason = "`autodiff` is not stable enough for use and is subject to change"
+// )]
+// #[cfg(not(bootstrap))]
+// pub use core::autodiff;
+
+
 
 #[unstable(
     feature = "concat_bytes",

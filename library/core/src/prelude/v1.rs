@@ -83,6 +83,11 @@ pub use crate::macros::builtin::{
 #[unstable(feature = "derive_const", issue = "none")]
 pub use crate::macros::builtin::derive_const;
 
+#[cfg(not(bootstrap))]
+#[unstable(feature = "autodiff", issue = "none")]
+#[rustc_builtin_macro]
+pub use crate::macros::builtin::autodiff;
+
 #[unstable(
     feature = "cfg_accessible",
     issue = "64797",

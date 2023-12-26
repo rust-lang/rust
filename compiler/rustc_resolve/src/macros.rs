@@ -344,6 +344,8 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
         self.containers_deriving_copy.contains(&expn_id)
     }
 
+    // TODO: add autodiff?
+
     fn resolve_derives(
         &mut self,
         expn_id: LocalExpnId,
