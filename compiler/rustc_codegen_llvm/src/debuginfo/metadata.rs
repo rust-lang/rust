@@ -534,7 +534,7 @@ fn hex_encode(data: &[u8]) -> String {
 }
 
 pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> &'ll DIFile {
-    let cache_key = Some((source_file.name_hash, source_file.src_hash));
+    let cache_key = Some((source_file.stable_id, source_file.src_hash));
     return debug_context(cx)
         .created_files
         .borrow_mut()

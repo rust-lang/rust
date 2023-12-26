@@ -159,7 +159,7 @@ impl<'tcx> Const<'tcx> {
         span: S,
         msg: &'static str,
     ) -> Const<'tcx> {
-        let reported = tcx.sess.span_delayed_bug(span, msg);
+        let reported = tcx.dcx().span_delayed_bug(span, msg);
         Const::new_error(tcx, reported, ty)
     }
 
@@ -223,7 +223,7 @@ impl<'tcx> Const<'tcx> {
             match tcx.at(expr.span).lit_to_const(lit_input) {
                 Ok(c) => return Some(c),
                 Err(e) => {
-                    tcx.sess.span_delayed_bug(
+                    tcx.dcx().span_delayed_bug(
                         expr.span,
                         format!("Const::from_anon_const: couldn't lit_to_const {e:?}"),
                     );
@@ -322,7 +322,7 @@ impl<'tcx> Const<'tcx> {
                 let Some(c) = tcx.const_eval_resolve_for_typeck(param_env, unevaluated, span)?
                 else {
                     // This can happen when we run on ill-typed code.
-                    let e = tcx.sess.span_delayed_bug(
+                    let e = tcx.dcx().span_delayed_bug(
                         span.unwrap_or(DUMMY_SP),
                         "`ty::Const::eval` called on a non-valtree-compatible type",
                     );

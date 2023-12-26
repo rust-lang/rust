@@ -326,7 +326,7 @@ pub(crate) fn run_global_ctxt(
         tcx.hir().for_each_module(|module| tcx.ensure().check_mod_item_types(module))
     });
 
-    tcx.sess.abort_if_errors();
+    tcx.dcx().abort_if_errors();
     tcx.sess.time("missing_docs", || rustc_lint::check_crate(tcx));
     tcx.sess.time("check_mod_attrs", || {
         tcx.hir().for_each_module(|module| tcx.ensure().check_mod_attrs(module))
@@ -447,7 +447,7 @@ pub(crate) fn run_global_ctxt(
 
     tcx.sess.time("check_lint_expectations", || tcx.check_expectations(Some(sym::rustdoc)));
 
-    if tcx.sess.dcx().has_errors_or_lint_errors().is_some() {
+    if tcx.dcx().has_errors_or_lint_errors().is_some() {
         rustc_errors::FatalError.raise();
     }
 
@@ -494,7 +494,7 @@ impl<'tcx> Visitor<'tcx> for EmitIgnoredResolutionErrors<'tcx> {
                     .collect::<String>()
             );
             let mut err = rustc_errors::struct_span_err!(
-                self.tcx.sess,
+                self.tcx.dcx(),
                 path.span,
                 E0433,
                 "failed to resolve: {label}",

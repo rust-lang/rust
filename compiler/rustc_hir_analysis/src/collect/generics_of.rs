@@ -283,7 +283,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                         );
                     }
                     Defaults::Deny => {
-                        tcx.sess.span_err(param.span, TYPE_DEFAULT_NOT_ALLOWED);
+                        tcx.dcx().span_err(param.span, TYPE_DEFAULT_NOT_ALLOWED);
                     }
                 }
             }
@@ -304,7 +304,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 // `host` effect params are allowed to have defaults.
                 && !is_host_effect
             {
-                tcx.sess.span_err(
+                tcx.dcx().span_err(
                     param.span,
                     "defaults for const parameters are only allowed in \
                     `struct`, `enum`, `type`, or `trait` definitions",

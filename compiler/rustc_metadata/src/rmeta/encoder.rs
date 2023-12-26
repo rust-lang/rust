@@ -5,7 +5,7 @@ use rustc_ast::Attribute;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::memmap::{Mmap, MmapMut};
-use rustc_data_structures::stable_hasher::{Hash128, HashStable, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{join, par_for_each_in, Lrc};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_hir as hir;
@@ -26,11 +26,12 @@ use rustc_serialize::{opaque, Decodable, Decoder, Encodable, Encoder};
 use rustc_session::config::{CrateType, OptLevel};
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::symbol::sym;
-use rustc_span::{ExternalSource, FileName, SourceFile, SpanData, SyntaxContext};
+use rustc_span::{
+    ExternalSource, FileName, SourceFile, SpanData, StableSourceFileId, SyntaxContext,
+};
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
 use std::fs::File;
-use std::hash::Hash;
 use std::io::{Read, Seek, Write};
 use std::path::{Path, PathBuf};
 
@@ -495,6 +496,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let mut adapted = TableBuilder::default();
 
+        let local_crate_stable_id = self.tcx.stable_crate_id(LOCAL_CRATE);
+
         // Only serialize `SourceFile`s that were used during the encoding of a `Span`.
         //
         // The order in which we encode source files is important here: the on-disk format for
@@ -511,7 +514,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             //
             // At this point we also erase the actual on-disk path and only keep
             // the remapped version -- as is necessary for reproducible builds.
-            let mut source_file = match source_file.name {
+            let mut adapted_source_file = (**source_file).clone();
+
+            match source_file.name {
                 FileName::Real(ref original_file_name) => {
                     let adapted_file_name = if self.tcx.sess.should_prefer_remapped_for_codegen() {
                         source_map.path_mapping().to_embeddable_absolute_path(
@@ -525,22 +530,11 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                         )
                     };
 
-                    if adapted_file_name != *original_file_name {
-                        let mut adapted: SourceFile = (**source_file).clone();
-                        adapted.name = FileName::Real(adapted_file_name);
-                        adapted.name_hash = {
-                            let mut hasher: StableHasher = StableHasher::new();
-                            adapted.name.hash(&mut hasher);
-                            hasher.finish::<Hash128>()
-                        };
-                        Lrc::new(adapted)
-                    } else {
-                        // Nothing to adapt
-                        source_file.clone()
-                    }
+                    adapted_source_file.name = FileName::Real(adapted_file_name);
                 }
-                // expanded code, not from a file
-                _ => source_file.clone(),
+                _ => {
+                    // expanded code, not from a file
+                }
             };
 
             // We're serializing this `SourceFile` into our crate metadata,
@@ -550,12 +544,20 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             // dependencies aren't loaded when we deserialize a proc-macro,
             // trying to remap the `CrateNum` would fail.
             if self.is_proc_macro {
-                Lrc::make_mut(&mut source_file).cnum = LOCAL_CRATE;
+                adapted_source_file.cnum = LOCAL_CRATE;
             }
+
+            // Update the `StableSourceFileId` to make sure it incorporates the
+            // id of the current crate. This way it will be unique within the
+            // crate graph during downstream compilation sessions.
+            adapted_source_file.stable_id = StableSourceFileId::from_filename_for_export(
+                &adapted_source_file.name,
+                local_crate_stable_id,
+            );
 
             let on_disk_index: u32 =
                 on_disk_index.try_into().expect("cannot export more than U32_MAX files");
-            adapted.set_some(on_disk_index, self.lazy(source_file));
+            adapted.set_some(on_disk_index, self.lazy(adapted_source_file));
         }
 
         adapted.encode(&mut self.opaque)
@@ -2186,7 +2188,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
     }
 
     let mut encoder = opaque::FileEncoder::new(path)
-        .unwrap_or_else(|err| tcx.sess.emit_fatal(FailCreateFileEncoder { err }));
+        .unwrap_or_else(|err| tcx.dcx().emit_fatal(FailCreateFileEncoder { err }));
     encoder.emit_raw_bytes(METADATA_HEADER);
 
     // Will be filled with the root position after encoding everything.
@@ -2227,12 +2229,12 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
     // If we forget this, compilation can succeed with an incomplete rmeta file,
     // causing an ICE when the rmeta file is read by another compilation.
     if let Err((path, err)) = ecx.opaque.finish() {
-        tcx.sess.emit_err(FailWriteFile { path: &path, err });
+        tcx.dcx().emit_err(FailWriteFile { path: &path, err });
     }
 
     let file = ecx.opaque.file();
     if let Err(err) = encode_root_position(file, root.position.get()) {
-        tcx.sess.emit_err(FailWriteFile { path: ecx.opaque.path(), err });
+        tcx.dcx().emit_err(FailWriteFile { path: ecx.opaque.path(), err });
     }
 
     // Record metadata size for self-profiling

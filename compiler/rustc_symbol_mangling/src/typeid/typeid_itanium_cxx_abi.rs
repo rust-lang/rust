@@ -557,7 +557,7 @@ fn encode_ty<'tcx>(
                             rustc::diagnostic_outside_of_impl,
                             rustc::untranslatable_diagnostic
                         )]
-                        tcx.sess
+                        tcx.dcx()
                             .struct_span_err(
                                 cfi_encoding.span,
                                 format!("invalid `cfi_encoding` for `{:?}`", ty.kind()),
@@ -609,7 +609,7 @@ fn encode_ty<'tcx>(
                             rustc::diagnostic_outside_of_impl,
                             rustc::untranslatable_diagnostic
                         )]
-                        tcx.sess
+                        tcx.dcx()
                             .struct_span_err(
                                 cfi_encoding.span,
                                 format!("invalid `cfi_encoding` for `{:?}`", ty.kind()),

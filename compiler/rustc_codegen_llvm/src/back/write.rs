@@ -126,7 +126,7 @@ pub fn create_target_machine(tcx: TyCtxt<'_>, mod_name: &str) -> OwnedTargetMach
         tcx.backend_optimization_level(()),
         tcx.global_backend_features(()),
     )(config)
-    .unwrap_or_else(|err| llvm_err(tcx.sess.dcx(), err).raise())
+    .unwrap_or_else(|err| llvm_err(tcx.dcx(), err).raise())
 }
 
 pub fn to_llvm_opt_settings(
@@ -245,12 +245,12 @@ pub fn target_machine_factory(
     match sess.opts.debuginfo_compression {
         rustc_session::config::DebugInfoCompression::Zlib => {
             if !unsafe { LLVMRustLLVMHasZlibCompressionForDebugSymbols() } {
-                sess.emit_warning(UnknownCompression { algorithm: "zlib" });
+                sess.dcx().emit_warning(UnknownCompression { algorithm: "zlib" });
             }
         }
         rustc_session::config::DebugInfoCompression::Zstd => {
             if !unsafe { LLVMRustLLVMHasZstdCompressionForDebugSymbols() } {
-                sess.emit_warning(UnknownCompression { algorithm: "zstd" });
+                sess.dcx().emit_warning(UnknownCompression { algorithm: "zstd" });
             }
         }
         rustc_session::config::DebugInfoCompression::None => {}

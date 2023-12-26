@@ -601,7 +601,7 @@ impl<'a> Parser<'a> {
             && let Some((ident, /* is_raw */ false)) = self.token.ident()
             && ident.as_str().to_lowercase() == kw.as_str().to_lowercase()
         {
-            self.sess.emit_err(errors::KwBadCase { span: ident.span, kw: kw.as_str() });
+            self.dcx().emit_err(errors::KwBadCase { span: ident.span, kw: kw.as_str() });
             self.bump();
             return true;
         }
@@ -1423,7 +1423,8 @@ impl<'a> Parser<'a> {
         self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
 
         let path_str = pprust::path_to_string(&path);
-        self.sess.emit_err(IncorrectVisibilityRestriction { span: path.span, inner_str: path_str });
+        self.dcx()
+            .emit_err(IncorrectVisibilityRestriction { span: path.span, inner_str: path_str });
 
         Ok(())
     }
@@ -1449,7 +1450,7 @@ impl<'a> Parser<'a> {
             Err(Some(lit)) => match lit.kind {
                 ast::LitKind::Err => None,
                 _ => {
-                    self.sess.emit_err(NonStringAbiLiteral { span: lit.span });
+                    self.dcx().emit_err(NonStringAbiLiteral { span: lit.span });
                     None
                 }
             },

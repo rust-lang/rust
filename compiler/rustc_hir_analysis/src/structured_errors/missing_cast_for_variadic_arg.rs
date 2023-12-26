@@ -28,7 +28,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for MissingCastForVariadicArg<'tcx, '_> {
                 (None, "".to_string(), Some(()))
             };
 
-        let mut err = self.sess.create_err(errors::PassToVariadicFunction {
+        let mut err = self.sess.dcx().create_err(errors::PassToVariadicFunction {
             span: self.span,
             ty: self.ty,
             cast_ty: self.cast_ty,

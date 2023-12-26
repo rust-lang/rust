@@ -76,7 +76,7 @@ impl OverlapMode {
                     })
                     .find(|attr| attr.has_name(sym::rustc_strict_coherence))
                     .map(|attr| attr.span);
-                tcx.sess.emit_err(StrictCoherenceNeedsNegativeCoherence {
+                tcx.dcx().emit_err(StrictCoherenceNeedsNegativeCoherence {
                     span: tcx.def_span(trait_id),
                     attr_span,
                 });

@@ -14,10 +14,7 @@ use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind
 use rustc_attr::{self as attr, Deprecation, Stability};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::{self, Lrc};
-use rustc_errors::{
-    Applicability, DiagnosticBuilder, DiagnosticMessage, ErrorGuaranteed, IntoDiagnostic,
-    MultiSpan, PResult,
-};
+use rustc_errors::{Applicability, DiagCtxt, DiagnosticBuilder, ErrorGuaranteed, PResult};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, RegisteredTools};
@@ -800,13 +797,13 @@ impl SyntaxExtension {
         let const_stability = attr::find_const_stability(sess, attrs, span);
         let body_stability = attr::find_body_stability(sess, attrs);
         if let Some((_, sp)) = const_stability {
-            sess.emit_err(errors::MacroConstStability {
+            sess.dcx().emit_err(errors::MacroConstStability {
                 span: sp,
                 head_span: sess.source_map().guess_head_span(span),
             });
         }
         if let Some((_, sp)) = body_stability {
-            sess.emit_err(errors::MacroBodyStability {
+            sess.dcx().emit_err(errors::MacroBodyStability {
                 span: sp,
                 head_span: sess.source_map().guess_head_span(span),
             });
@@ -1058,6 +1055,10 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
+    pub fn dcx(&self) -> &'a DiagCtxt {
+        self.sess.dcx()
+    }
+
     /// Returns a `Folder` for deeply expanding all macros in an AST node.
     pub fn expander<'b>(&'b mut self) -> expand::MacroExpander<'b, 'a> {
         expand::MacroExpander::new(self, false)
@@ -1112,42 +1113,9 @@ impl<'a> ExtCtxt<'a> {
         self.current_expansion.id.expansion_cause()
     }
 
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn struct_span_err<S: Into<MultiSpan>>(
-        &self,
-        sp: S,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'a> {
-        self.sess.dcx().struct_span_err(sp, msg)
-    }
-
-    #[track_caller]
-    pub fn create_err(&self, err: impl IntoDiagnostic<'a>) -> DiagnosticBuilder<'a> {
-        self.sess.create_err(err)
-    }
-
-    #[track_caller]
-    pub fn emit_err(&self, err: impl IntoDiagnostic<'a>) -> ErrorGuaranteed {
-        self.sess.emit_err(err)
-    }
-
-    /// Emit `msg` attached to `sp`, without immediately stopping
-    /// compilation.
-    ///
-    /// Compilation will be stopped in the near future (at the end of
-    /// the macro expansion phase).
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn span_err<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) {
-        self.sess.dcx().span_err(sp, msg);
-    }
-    pub fn span_bug<S: Into<MultiSpan>>(&self, sp: S, msg: impl Into<DiagnosticMessage>) -> ! {
-        self.sess.dcx().span_bug(sp, msg);
-    }
     pub fn trace_macros_diag(&mut self) {
         for (span, notes) in self.expansions.iter() {
-            let mut db = self.sess.parse_sess.create_note(errors::TraceMacro { span: *span });
+            let mut db = self.dcx().create_note(errors::TraceMacro { span: *span });
             for note in notes {
                 db.note(note.clone());
             }
@@ -1155,10 +1123,6 @@ impl<'a> ExtCtxt<'a> {
         }
         // Fixme: does this result in errors?
         self.expansions.clear();
-    }
-    #[rustc_lint_diagnostics]
-    pub fn bug(&self, msg: &'static str) -> ! {
-        self.sess.dcx().bug(msg);
     }
     pub fn trace_macros(&self) -> bool {
         self.ecfg.trace_mac
@@ -1236,7 +1200,7 @@ pub fn expr_to_spanned_string<'a>(
         ast::ExprKind::Lit(token_lit) => match ast::LitKind::from_token_lit(token_lit) {
             Ok(ast::LitKind::Str(s, style)) => return Ok((s, style, expr.span)),
             Ok(ast::LitKind::ByteStr(..)) => {
-                let mut err = cx.struct_span_err(expr.span, err_msg);
+                let mut err = cx.dcx().struct_span_err(expr.span, err_msg);
                 let span = expr.span.shrink_to_lo();
                 err.span_suggestion(
                     span.with_hi(span.lo() + BytePos(1)),
@@ -1251,10 +1215,10 @@ pub fn expr_to_spanned_string<'a>(
                 report_lit_error(&cx.sess.parse_sess, err, token_lit, expr.span);
                 None
             }
-            _ => Some((cx.struct_span_err(expr.span, err_msg), false)),
+            _ => Some((cx.dcx().struct_span_err(expr.span, err_msg), false)),
         },
         ast::ExprKind::Err => None,
-        _ => Some((cx.struct_span_err(expr.span, err_msg), false)),
+        _ => Some((cx.dcx().struct_span_err(expr.span, err_msg), false)),
     })
 }
 
@@ -1282,7 +1246,7 @@ pub fn expr_to_string(
 /// (this should be done as rarely as possible).
 pub fn check_zero_tts(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream, name: &str) {
     if !tts.is_empty() {
-        cx.emit_err(errors::TakesNoArguments { span, name });
+        cx.dcx().emit_err(errors::TakesNoArguments { span, name });
     }
 }
 
@@ -1310,14 +1274,14 @@ pub fn get_single_str_from_tts(
 ) -> Option<Symbol> {
     let mut p = cx.new_parser_from_tts(tts);
     if p.token == token::Eof {
-        cx.emit_err(errors::OnlyOneArgument { span, name });
+        cx.dcx().emit_err(errors::OnlyOneArgument { span, name });
         return None;
     }
     let ret = parse_expr(&mut p)?;
     let _ = p.eat(&token::Comma);
 
     if p.token != token::Eof {
-        cx.emit_err(errors::OnlyOneArgument { span, name });
+        cx.dcx().emit_err(errors::OnlyOneArgument { span, name });
     }
     expr_to_string(cx, ret, "argument must be a string literal").map(|(s, _)| s)
 }
@@ -1339,7 +1303,7 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt<'_>, tts: TokenStream) -> Option<Vec<
             continue;
         }
         if p.token != token::Eof {
-            cx.emit_err(errors::ExpectedCommaInList { span: p.token.span });
+            cx.dcx().emit_err(errors::ExpectedCommaInList { span: p.token.span });
             return None;
         }
     }

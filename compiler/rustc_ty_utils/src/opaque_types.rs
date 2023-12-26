@@ -181,14 +181,14 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                         }
                     }
                     Err(NotUniqueParam::NotParam(arg)) => {
-                        self.tcx.sess.emit_err(NotParam {
+                        self.tcx.dcx().emit_err(NotParam {
                             arg,
                             span: self.span(),
                             opaque_span: self.tcx.def_span(alias_ty.def_id),
                         });
                     }
                     Err(NotUniqueParam::DuplicateParam(arg)) => {
-                        self.tcx.sess.emit_err(DuplicateArg {
+                        self.tcx.dcx().emit_err(DuplicateArg {
                             arg,
                             span: self.span(),
                             opaque_span: self.tcx.def_span(alias_ty.def_id),
@@ -238,7 +238,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                                     .instantiate(self.tcx, impl_args)
                                     .visit_with(self);
                             } else {
-                                self.tcx.sess.span_delayed_bug(
+                                self.tcx.dcx().span_delayed_bug(
                                     self.tcx.def_span(assoc.def_id),
                                     "item had incorrect args",
                                 );

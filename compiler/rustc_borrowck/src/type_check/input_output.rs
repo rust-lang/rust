@@ -76,7 +76,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         for (argument_index, &normalized_input_ty) in normalized_input_tys.iter().enumerate() {
             if argument_index + 1 >= body.local_decls.len() {
                 self.tcx()
-                    .sess
+                    .dcx()
                     .span_delayed_bug(body.span, "found more normalized_input_ty than local_decls");
                 break;
             }
@@ -104,7 +104,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // outside of a coroutine and return an `impl Trait`, so emit a span_delayed_bug
         // because we don't want to panic in an assert here if we've already got errors.
         if body.yield_ty().is_some() != universal_regions.yield_ty.is_some() {
-            self.tcx().sess.span_delayed_bug(
+            self.tcx().dcx().span_delayed_bug(
                 body.span,
                 format!(
                     "Expected body to have yield_ty ({:?}) iff we have a UR yield_ty ({:?})",

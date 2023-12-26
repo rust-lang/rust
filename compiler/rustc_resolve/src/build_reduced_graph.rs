@@ -524,12 +524,12 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                             ident.name = crate_name;
                         }
 
-                        self.r.tcx.sess.emit_err(errors::CrateImported { span: item.span });
+                        self.r.dcx().emit_err(errors::CrateImported { span: item.span });
                     }
                 }
 
                 if ident.name == kw::Crate {
-                    self.r.tcx.sess.span_err(
+                    self.r.dcx().span_err(
                         ident.span,
                         "crate root imports need to be explicitly named: \
                          `use crate as name;`",
@@ -816,8 +816,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
 
         let (used, module, binding) = if orig_name.is_none() && ident.name == kw::SelfLower {
             self.r
-                .tcx
-                .sess
+                .dcx()
                 .struct_span_err(item.span, "`extern crate self;` requires renaming")
                 .span_suggestion(
                     item.span,
@@ -867,7 +866,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 if expansion != LocalExpnId::ROOT && orig_name.is_some() && !entry.is_import() {
                     let msg = "macro-expanded `extern crate` items cannot \
                                        shadow names passed with `--extern`";
-                    self.r.tcx.sess.span_err(item.span, msg);
+                    self.r.dcx().span_err(item.span, msg);
                     // `return` is intended to discard this binding because it's an
                     // unregistered ambiguity error which would result in a panic
                     // caused by inconsistency `path_res`
@@ -1000,7 +999,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             let msg = format!("`{name}` is already in scope");
             let note =
                 "macro-expanded `#[macro_use]`s may not shadow existing macros (see RFC 1560)";
-            self.r.tcx.sess.struct_span_err(span, msg).note(note).emit();
+            self.r.dcx().struct_span_err(span, msg).note(note).emit();
         }
     }
 
@@ -1012,7 +1011,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             if attr.has_name(sym::macro_use) {
                 if self.parent_scope.module.parent.is_some() {
                     struct_span_err!(
-                        self.r.tcx.sess,
+                        self.r.dcx(),
                         item.span,
                         E0468,
                         "an `extern crate` loading macros must be at the crate root"
@@ -1021,14 +1020,11 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 }
                 if let ItemKind::ExternCrate(Some(orig_name)) = item.kind {
                     if orig_name == kw::SelfLower {
-                        self.r
-                            .tcx
-                            .sess
-                            .emit_err(errors::MacroUseExternCrateSelf { span: attr.span });
+                        self.r.dcx().emit_err(errors::MacroUseExternCrateSelf { span: attr.span });
                     }
                 }
                 let ill_formed = |span| {
-                    struct_span_err!(self.r.tcx.sess, span, E0466, "bad macro import").emit();
+                    struct_span_err!(self.r.dcx(), span, E0466, "bad macro import").emit();
                 };
                 match attr.meta() {
                     Some(meta) => match meta.kind {
@@ -1099,13 +1095,8 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                         allow_shadowing,
                     );
                 } else {
-                    struct_span_err!(
-                        self.r.tcx.sess,
-                        ident.span,
-                        E0469,
-                        "imported macro not found"
-                    )
-                    .emit();
+                    struct_span_err!(self.r.dcx(), ident.span, E0469, "imported macro not found")
+                        .emit();
                 }
             }
         }
@@ -1117,7 +1108,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         for attr in attrs {
             if attr.has_name(sym::macro_escape) {
                 let msg = "`#[macro_escape]` is a deprecated synonym for `#[macro_use]`";
-                let mut err = self.r.tcx.sess.struct_span_warn(attr.span, msg);
+                let mut err = self.r.dcx().struct_span_warn(attr.span, msg);
                 if let ast::AttrStyle::Inner = attr.style {
                     err.help("try an outer attribute: `#[macro_use]`").emit();
                 } else {
@@ -1128,10 +1119,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             }
 
             if !attr.is_word() {
-                self.r
-                    .tcx
-                    .sess
-                    .span_err(attr.span, "arguments to `macro_use` are not allowed here");
+                self.r.dcx().span_err(attr.span, "arguments to `macro_use` are not allowed here");
             }
             return true;
         }

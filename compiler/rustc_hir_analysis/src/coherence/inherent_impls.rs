@@ -62,14 +62,14 @@ impl<'tcx> InherentCollect<'tcx> {
 
             if !self.tcx.has_attr(ty_def_id, sym::rustc_has_incoherent_inherent_impls) {
                 let impl_span = self.tcx.def_span(impl_def_id);
-                self.tcx.sess.emit_err(errors::InherentTyOutside { span: impl_span });
+                self.tcx.dcx().emit_err(errors::InherentTyOutside { span: impl_span });
                 return;
             }
 
             for &impl_item in items {
                 if !self.tcx.has_attr(impl_item, sym::rustc_allow_incoherent_impl) {
                     let impl_span = self.tcx.def_span(impl_def_id);
-                    self.tcx.sess.emit_err(errors::InherentTyOutsideRelevant {
+                    self.tcx.dcx().emit_err(errors::InherentTyOutsideRelevant {
                         span: impl_span,
                         help_span: self.tcx.def_span(impl_item),
                     });
@@ -84,7 +84,7 @@ impl<'tcx> InherentCollect<'tcx> {
             }
         } else {
             let impl_span = self.tcx.def_span(impl_def_id);
-            self.tcx.sess.emit_err(errors::InherentTyOutsideNew { span: impl_span });
+            self.tcx.dcx().emit_err(errors::InherentTyOutsideNew { span: impl_span });
         }
     }
 
@@ -95,7 +95,7 @@ impl<'tcx> InherentCollect<'tcx> {
                 for &impl_item in items {
                     if !self.tcx.has_attr(impl_item, sym::rustc_allow_incoherent_impl) {
                         let span = self.tcx.def_span(impl_def_id);
-                        self.tcx.sess.emit_err(errors::InherentTyOutsidePrimitive {
+                        self.tcx.dcx().emit_err(errors::InherentTyOutsidePrimitive {
                             span,
                             help_span: self.tcx.def_span(impl_item),
                         });
@@ -108,7 +108,7 @@ impl<'tcx> InherentCollect<'tcx> {
                 if let ty::Ref(_, subty, _) = ty.kind() {
                     note = Some(errors::InherentPrimitiveTyNote { subty: *subty });
                 }
-                self.tcx.sess.emit_err(errors::InherentPrimitiveTy { span, note });
+                self.tcx.dcx().emit_err(errors::InherentPrimitiveTy { span, note });
                 return;
             }
         }
@@ -135,7 +135,7 @@ impl<'tcx> InherentCollect<'tcx> {
                 self.check_def_id(id, self_ty, data.principal_def_id().unwrap());
             }
             ty::Dynamic(..) => {
-                self.tcx.sess.emit_err(errors::InherentDyn { span: item_span });
+                self.tcx.dcx().emit_err(errors::InherentDyn { span: item_span });
             }
             ty::Bool
             | ty::Char
@@ -151,7 +151,7 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::FnPtr(_)
             | ty::Tuple(..) => self.check_primitive_impl(id, self_ty),
             ty::Alias(..) | ty::Param(_) => {
-                self.tcx.sess.emit_err(errors::InherentNominal { span: item_span });
+                self.tcx.dcx().emit_err(errors::InherentNominal { span: item_span });
             }
             ty::FnDef(..)
             | ty::Closure(..)

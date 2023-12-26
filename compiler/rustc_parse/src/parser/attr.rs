@@ -200,7 +200,7 @@ impl<'a> Parser<'a> {
         if let InnerAttrPolicy::Forbidden(reason) = policy {
             let mut diag = match reason.as_ref().copied() {
                 Some(InnerAttrForbiddenReason::AfterOuterDocComment { prev_doc_comment_span }) => {
-                    let mut diag = self.struct_span_err(
+                    let mut diag = self.dcx().struct_span_err(
                         attr_sp,
                         fluent::parse_inner_attr_not_permitted_after_outer_doc_comment,
                     );
@@ -209,7 +209,7 @@ impl<'a> Parser<'a> {
                     diag
                 }
                 Some(InnerAttrForbiddenReason::AfterOuterAttribute { prev_outer_attr_sp }) => {
-                    let mut diag = self.struct_span_err(
+                    let mut diag = self.dcx().struct_span_err(
                         attr_sp,
                         fluent::parse_inner_attr_not_permitted_after_outer_attr,
                     );
@@ -218,7 +218,7 @@ impl<'a> Parser<'a> {
                     diag
                 }
                 Some(InnerAttrForbiddenReason::InCodeBlock) | None => {
-                    self.struct_span_err(attr_sp, fluent::parse_inner_attr_not_permitted)
+                    self.dcx().struct_span_err(attr_sp, fluent::parse_inner_attr_not_permitted)
                 }
             };
 
@@ -323,7 +323,7 @@ impl<'a> Parser<'a> {
         debug!("checking if {:?} is unsuffixed", lit);
 
         if !lit.kind.is_unsuffixed() {
-            self.sess.emit_err(SuffixedLiteralInAttribute { span: lit.span });
+            self.dcx().emit_err(SuffixedLiteralInAttribute { span: lit.span });
         }
 
         Ok(lit)

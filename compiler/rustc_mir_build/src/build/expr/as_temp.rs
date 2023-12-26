@@ -14,13 +14,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         block: BasicBlock,
         temp_lifetime: Option<region::Scope>,
-        expr: &Expr<'tcx>,
+        expr_id: ExprId,
         mutability: Mutability,
     ) -> BlockAnd<Local> {
         // this is the only place in mir building that we need to truly need to worry about
         // infinite recursion. Everything else does recurse, too, but it always gets broken up
         // at some point by inserting an intermediate temporary
-        ensure_sufficient_stack(|| self.as_temp_inner(block, temp_lifetime, expr, mutability))
+        ensure_sufficient_stack(|| self.as_temp_inner(block, temp_lifetime, expr_id, mutability))
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -28,21 +28,26 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         mut block: BasicBlock,
         temp_lifetime: Option<region::Scope>,
-        expr: &Expr<'tcx>,
+        expr_id: ExprId,
         mutability: Mutability,
     ) -> BlockAnd<Local> {
         let this = self;
 
+        let expr = &this.thir[expr_id];
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
         if let ExprKind::Scope { region_scope, lint_level, value } = expr.kind {
             return this.in_scope((region_scope, source_info), lint_level, |this| {
-                this.as_temp(block, temp_lifetime, &this.thir[value], mutability)
+                this.as_temp(block, temp_lifetime, value, mutability)
             });
         }
 
         let expr_ty = expr.ty;
-        let temp = {
+        let deduplicate_temps =
+            this.fixed_temps_scope.is_some() && this.fixed_temps_scope == temp_lifetime;
+        let temp = if deduplicate_temps && let Some(temp_index) = this.fixed_temps.get(&expr_id) {
+            *temp_index
+        } else {
             let mut local_decl = LocalDecl::new(expr_ty, expr_span);
             if mutability.is_not() {
                 local_decl = local_decl.immutable();
@@ -71,6 +76,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             **local_decl.local_info.as_mut().assert_crate_local() = local_info;
             this.local_decls.push(local_decl)
         };
+        if deduplicate_temps {
+            this.fixed_temps.insert(expr_id, temp);
+        }
         let temp_place = Place::from(temp);
 
         match expr.kind {
@@ -103,7 +111,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        unpack!(block = this.expr_into_dest(temp_place, block, expr));
+        unpack!(block = this.expr_into_dest(temp_place, block, expr_id));
 
         if let Some(temp_lifetime) = temp_lifetime {
             this.schedule_drop(expr_span, temp_lifetime, temp, DropKind::Value);

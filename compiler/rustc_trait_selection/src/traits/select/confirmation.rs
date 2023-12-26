@@ -558,7 +558,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let defs: &ty::Generics = tcx.generics_of(assoc_type);
 
             if !defs.params.is_empty() && !tcx.features().generic_associated_types_extended {
-                tcx.sess.span_delayed_bug(
+                tcx.dcx().span_delayed_bug(
                     obligation.cause.span,
                     "GATs in trait object shouldn't have been considered",
                 );

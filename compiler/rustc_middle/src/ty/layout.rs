@@ -284,7 +284,7 @@ impl<'tcx> LayoutCalculator for LayoutCx<'tcx, TyCtxt<'tcx>> {
     type TargetDataLayoutRef = &'tcx TargetDataLayout;
 
     fn delayed_bug(&self, txt: String) {
-        self.tcx.sess.span_delayed_bug(DUMMY_SP, txt);
+        self.tcx.dcx().span_delayed_bug(DUMMY_SP, txt);
     }
 
     fn current_data_layout(&self) -> Self::TargetDataLayoutRef {

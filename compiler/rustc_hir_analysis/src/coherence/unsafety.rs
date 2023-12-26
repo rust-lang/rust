@@ -19,7 +19,7 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         match (trait_def.unsafety, unsafe_attr, impl_.unsafety, impl_.polarity) {
             (Unsafety::Normal, None, Unsafety::Unsafe, hir::ImplPolarity::Positive) => {
                 struct_span_err!(
-                    tcx.sess,
+                    tcx.dcx(),
                     tcx.def_span(def_id),
                     E0199,
                     "implementing the trait `{}` is not unsafe",
@@ -36,7 +36,7 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
             (Unsafety::Unsafe, _, Unsafety::Normal, hir::ImplPolarity::Positive) => {
                 struct_span_err!(
-                    tcx.sess,
+                    tcx.dcx(),
                     tcx.def_span(def_id),
                     E0200,
                     "the trait `{}` requires an `unsafe impl` declaration",
@@ -59,7 +59,7 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
             (Unsafety::Normal, Some(attr_name), Unsafety::Normal, hir::ImplPolarity::Positive) => {
                 struct_span_err!(
-                    tcx.sess,
+                    tcx.dcx(),
                     tcx.def_span(def_id),
                     E0569,
                     "requires an `unsafe impl` declaration due to `#[{}]` attribute",
@@ -82,7 +82,7 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
             (_, _, Unsafety::Unsafe, hir::ImplPolarity::Negative(_)) => {
                 // Reported in AST validation
-                tcx.sess.span_delayed_bug(item.span, "unsafe negative impl");
+                tcx.dcx().span_delayed_bug(item.span, "unsafe negative impl");
             }
             (_, _, Unsafety::Normal, hir::ImplPolarity::Negative(_))
             | (Unsafety::Unsafe, _, Unsafety::Unsafe, hir::ImplPolarity::Positive)

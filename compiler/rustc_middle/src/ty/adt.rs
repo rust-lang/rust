@@ -470,7 +470,7 @@ impl<'tcx> AdtDef<'tcx> {
                     Some(Discr { val: b, ty })
                 } else {
                     info!("invalid enum discriminant: {:#?}", val);
-                    tcx.sess.emit_err(crate::error::ConstEvalNonIntError {
+                    tcx.dcx().emit_err(crate::error::ConstEvalNonIntError {
                         span: tcx.def_span(expr_did),
                     });
                     None
@@ -481,7 +481,7 @@ impl<'tcx> AdtDef<'tcx> {
                     ErrorHandled::Reported(..) => "enum discriminant evaluation failed",
                     ErrorHandled::TooGeneric(..) => "enum discriminant depends on generics",
                 };
-                tcx.sess.span_delayed_bug(tcx.def_span(expr_did), msg);
+                tcx.dcx().span_delayed_bug(tcx.def_span(expr_did), msg);
                 None
             }
         }

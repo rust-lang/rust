@@ -138,8 +138,8 @@ impl Ty {
                 cx.path_all(span, false, vec![self_ty], params)
             }
             Path(p) => p.to_path(cx, span, self_ty, generics),
-            Ref(..) => cx.span_bug(span, "ref in a path in generic `derive`"),
-            Unit => cx.span_bug(span, "unit in a path in generic `derive`"),
+            Ref(..) => cx.dcx().span_bug(span, "ref in a path in generic `derive`"),
+            Unit => cx.dcx().span_bug(span, "unit in a path in generic `derive`"),
         }
     }
 }

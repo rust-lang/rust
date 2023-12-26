@@ -335,7 +335,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     // though this may happen when we call `poly_trait_ref_binder_info` with
                     // an (erroneous, #113423) associated return type bound in an impl header.
                     if !supertrait_bound_vars.is_empty() {
-                        self.tcx.sess.span_delayed_bug(
+                        self.tcx.dcx().span_delayed_bug(
                             DUMMY_SP,
                             format!(
                                 "found supertrait lifetimes without a binder to append \
@@ -461,7 +461,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
 
                 if !infer_spans.is_empty() {
                     self.tcx
-                        .sess
+                        .dcx()
                         .emit_err(errors::ClosureImplicitHrtb { spans: infer_spans, for_sp });
                 }
             }
@@ -738,7 +738,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     let parent_id = self.tcx.hir().parent_id(hir_id);
                     if !parent_id.is_owner() {
                         struct_span_err!(
-                            self.tcx.sess,
+                            self.tcx.dcx(),
                             lifetime.ident.span,
                             E0657,
                             "`impl Trait` can only capture lifetimes bound at the fn or impl level"
@@ -750,7 +750,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                         kind: hir::ItemKind::OpaqueTy { .. }, ..
                     }) = self.tcx.hir_node(parent_id)
                     {
-                        let mut err = self.tcx.sess.struct_span_err(
+                        let mut err = self.tcx.dcx().struct_span_err(
                             lifetime.ident.span,
                             "higher kinded lifetime bounds on nested opaque types are not supported yet",
                         );
@@ -1268,7 +1268,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 let def_span = self.tcx.def_span(param_def_id);
                 let guar = match self.tcx.def_kind(param_def_id) {
                     DefKind::LifetimeParam => {
-                        self.tcx.sess.emit_err(errors::CannotCaptureLateBound::Lifetime {
+                        self.tcx.dcx().emit_err(errors::CannotCaptureLateBound::Lifetime {
                             use_span,
                             def_span,
                             what,
@@ -1323,7 +1323,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 Scope::Binder {
                     where_bound_origin: Some(hir::PredicateOrigin::ImplTrait), ..
                 } => {
-                    self.tcx.sess.emit_err(errors::LateBoundInApit::Lifetime {
+                    self.tcx.dcx().emit_err(errors::LateBoundInApit::Lifetime {
                         span: lifetime_ref.ident.span,
                         param_span: self.tcx.def_span(region_def_id),
                     });
@@ -1341,7 +1341,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             }
         }
 
-        self.tcx.sess.span_delayed_bug(
+        self.tcx.dcx().span_delayed_bug(
             lifetime_ref.ident.span,
             format!("Could not resolve {:?} in scope {:#?}", lifetime_ref, self.scope,),
         );
@@ -1406,14 +1406,14 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 let def_span = self.tcx.def_span(param_def_id);
                 let guar = match self.tcx.def_kind(param_def_id) {
                     DefKind::ConstParam => {
-                        self.tcx.sess.emit_err(errors::CannotCaptureLateBound::Const {
+                        self.tcx.dcx().emit_err(errors::CannotCaptureLateBound::Const {
                             use_span,
                             def_span,
                             what,
                         })
                     }
                     DefKind::TyParam => {
-                        self.tcx.sess.emit_err(errors::CannotCaptureLateBound::Type {
+                        self.tcx.dcx().emit_err(errors::CannotCaptureLateBound::Type {
                             use_span,
                             def_span,
                             what,
@@ -1447,7 +1447,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 Scope::Binder {
                     where_bound_origin: Some(hir::PredicateOrigin::ImplTrait), ..
                 } => {
-                    let guar = self.tcx.sess.emit_err(match self.tcx.def_kind(param_def_id) {
+                    let guar = self.tcx.dcx().emit_err(match self.tcx.def_kind(param_def_id) {
                         DefKind::TyParam => errors::LateBoundInApit::Type {
                             span: self.tcx.hir().span(hir_id),
                             param_span: self.tcx.def_span(param_def_id),
@@ -1475,7 +1475,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             }
         }
 
-        self.tcx.sess.span_delayed_bug(
+        self.tcx.dcx().span_delayed_bug(
             self.tcx.hir().span(hir_id),
             format!("could not resolve {param_def_id:?}"),
         );
@@ -1705,7 +1705,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     bound_vars
                 } else {
                     self.tcx
-                        .sess
+                        .dcx()
                         .span_delayed_bug(binding.ident.span, "bad return type notation here");
                     vec![]
                 };
@@ -2039,7 +2039,7 @@ fn is_late_bound_map(
                                         Some(true) => Some(arg),
                                         Some(false) => None,
                                         None => {
-                                            tcx.sess.span_delayed_bug(
+                                            tcx.dcx().span_delayed_bug(
                                                 *span,
                                                 format!(
                                                     "Incorrect generic arg count for alias {alias_def:?}"
@@ -2114,7 +2114,7 @@ pub fn deny_non_region_late_bound(
             hir::GenericParamKind::Lifetime { .. } => continue,
         };
 
-        let mut diag = tcx.sess.struct_span_err(
+        let mut diag = tcx.dcx().struct_span_err(
             param.span,
             format!("late-bound {what} parameter not allowed on {where_}"),
         );

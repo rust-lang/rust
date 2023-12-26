@@ -260,14 +260,14 @@ impl ModError<'_> {
 
                 let modules = paths.join(" -> ");
 
-                sess.emit_err(ModuleCircular { span, modules })
+                sess.dcx().emit_err(ModuleCircular { span, modules })
             }
-            ModError::ModInBlock(ident) => sess.emit_err(ModuleInBlock {
+            ModError::ModInBlock(ident) => sess.dcx().emit_err(ModuleInBlock {
                 span,
                 name: ident.map(|name| ModuleInBlockName { span, name }),
             }),
             ModError::FileNotFound(name, default_path, secondary_path) => {
-                sess.emit_err(ModuleFileNotFound {
+                sess.dcx().emit_err(ModuleFileNotFound {
                     span,
                     name,
                     default_path: default_path.display().to_string(),
@@ -275,7 +275,7 @@ impl ModError<'_> {
                 })
             }
             ModError::MultipleCandidates(name, default_path, secondary_path) => {
-                sess.emit_err(ModuleMultipleCandidates {
+                sess.dcx().emit_err(ModuleMultipleCandidates {
                     span,
                     name,
                     default_path: default_path.display().to_string(),

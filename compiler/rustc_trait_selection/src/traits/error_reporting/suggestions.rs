@@ -2001,7 +2001,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             _ => "function",
         };
         let mut err = struct_span_err!(
-            self.tcx.sess,
+            self.dcx(),
             span,
             E0631,
             "type mismatch in {argument_kind} arguments",

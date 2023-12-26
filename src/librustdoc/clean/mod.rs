@@ -2996,7 +2996,7 @@ fn clean_use_statement_inner<'tcx>(
 
     if pub_underscore && let Some(ref inline) = inline_attr {
         rustc_errors::struct_span_err!(
-            cx.tcx.sess,
+            cx.tcx.dcx(),
             inline.span(),
             E0780,
             "anonymous imports cannot be inlined"

@@ -276,7 +276,7 @@ fn error(
     sub: GenericConstantTooComplexSub,
     root_span: Span,
 ) -> Result<!, ErrorGuaranteed> {
-    let reported = tcx.sess.emit_err(GenericConstantTooComplex {
+    let reported = tcx.dcx().emit_err(GenericConstantTooComplex {
         span: root_span,
         maybe_supported: None,
         sub,
@@ -290,7 +290,7 @@ fn maybe_supported_error(
     sub: GenericConstantTooComplexSub,
     root_span: Span,
 ) -> Result<!, ErrorGuaranteed> {
-    let reported = tcx.sess.emit_err(GenericConstantTooComplex {
+    let reported = tcx.dcx().emit_err(GenericConstantTooComplex {
         span: root_span,
         maybe_supported: Some(()),
         sub,

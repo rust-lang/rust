@@ -551,7 +551,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         let used = desired_action.as_general_verb_in_past_tense();
         let mut err =
-            struct_span_err!(self, span, E0381, "{used} binding {desc}{isnt_initialized}");
+            struct_span_err!(self.dcx(), span, E0381, "{used} binding {desc}{isnt_initialized}");
         use_spans.var_path_only_subdiag(&mut err, desired_action);
 
         if let InitializationRequiringAction::PartialAssignment
@@ -1136,7 +1136,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             });
         } else {
             issued_spans.var_subdiag(
-                Some(self.infcx.tcx.sess.dcx()),
+                Some(self.dcx()),
                 &mut err,
                 Some(issued_borrow.kind),
                 |kind, var_span| {
@@ -1153,7 +1153,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             );
 
             borrow_spans.var_subdiag(
-                Some(self.infcx.tcx.sess.dcx()),
+                Some(self.dcx()),
                 &mut err,
                 Some(gen_borrow_kind),
                 |kind, var_span| {

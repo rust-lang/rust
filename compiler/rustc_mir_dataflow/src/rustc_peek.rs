@@ -80,7 +80,7 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
         }
 
         if has_rustc_mir_with(tcx, def_id, sym::stop_after_dataflow).is_some() {
-            tcx.sess.emit_fatal(StopAfterDataFlowEndedCompilation);
+            tcx.dcx().emit_fatal(StopAfterDataFlowEndedCompilation);
         }
     }
 }
@@ -145,7 +145,7 @@ where
             }
 
             _ => {
-                tcx.sess.emit_err(PeekMustBePlaceOrRefPlace { span: call.span });
+                tcx.dcx().emit_err(PeekMustBePlaceOrRefPlace { span: call.span });
             }
         }
     }
@@ -214,12 +214,12 @@ impl PeekCall {
                         if let Some(local) = place.as_local() {
                             local
                         } else {
-                            tcx.sess.emit_err(PeekMustBeNotTemporary { span });
+                            tcx.dcx().emit_err(PeekMustBeNotTemporary { span });
                             return None;
                         }
                     }
                     _ => {
-                        tcx.sess.emit_err(PeekMustBeNotTemporary { span });
+                        tcx.dcx().emit_err(PeekMustBeNotTemporary { span });
                         return None;
                     }
                 };
@@ -259,12 +259,12 @@ where
                 let bit_state = flow_state.contains(peek_mpi);
                 debug!("rustc_peek({:?} = &{:?}) bit_state: {}", call.arg, place, bit_state);
                 if !bit_state {
-                    tcx.sess.emit_err(PeekBitNotSet { span: call.span });
+                    tcx.dcx().emit_err(PeekBitNotSet { span: call.span });
                 }
             }
 
             LookupResult::Parent(..) => {
-                tcx.sess.emit_err(PeekArgumentUntracked { span: call.span });
+                tcx.dcx().emit_err(PeekArgumentUntracked { span: call.span });
             }
         }
     }
@@ -280,12 +280,12 @@ impl<'tcx> RustcPeekAt<'tcx> for MaybeLiveLocals {
     ) {
         info!(?place, "peek_at");
         let Some(local) = place.as_local() else {
-            tcx.sess.emit_err(PeekArgumentNotALocal { span: call.span });
+            tcx.dcx().emit_err(PeekArgumentNotALocal { span: call.span });
             return;
         };
 
         if !flow_state.contains(local) {
-            tcx.sess.emit_err(PeekBitNotSet { span: call.span });
+            tcx.dcx().emit_err(PeekBitNotSet { span: call.span });
         }
     }
 }

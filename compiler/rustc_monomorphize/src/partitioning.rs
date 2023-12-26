@@ -1079,7 +1079,7 @@ where
                 (span1, span2) => span1.or(span2),
             };
 
-            tcx.sess.emit_fatal(SymbolAlreadyDefined { span, symbol: sym1.to_string() });
+            tcx.dcx().emit_fatal(SymbolAlreadyDefined { span, symbol: sym1.to_string() });
         }
     }
 }
@@ -1093,7 +1093,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
                 MonoItemCollectionMode::Eager
             } else {
                 if mode != "lazy" {
-                    tcx.sess.emit_warning(UnknownCguCollectionMode { mode });
+                    tcx.dcx().emit_warning(UnknownCguCollectionMode { mode });
                 }
 
                 MonoItemCollectionMode::Lazy
@@ -1110,7 +1110,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
 
     let (items, usage_map) = collector::collect_crate_mono_items(tcx, collection_mode);
 
-    tcx.sess.abort_if_errors();
+    tcx.dcx().abort_if_errors();
 
     let (codegen_units, _) = tcx.sess.time("partition_and_assert_distinct_symbols", || {
         sync::join(
@@ -1148,7 +1148,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
         if let Err(err) =
             dump_mono_items_stats(tcx, codegen_units, path, tcx.crate_name(LOCAL_CRATE))
         {
-            tcx.sess.emit_fatal(CouldntDumpMonoStats { error: err.to_string() });
+            tcx.dcx().emit_fatal(CouldntDumpMonoStats { error: err.to_string() });
         }
     }
 

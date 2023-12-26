@@ -11,7 +11,7 @@ pub fn test_variance(tcx: TyCtxt<'_>) {
             if matches!(tcx.def_kind(id.owner_id), DefKind::OpaqueTy) {
                 let variances_of = tcx.variances_of(id.owner_id);
 
-                tcx.sess.emit_err(errors::VariancesOf {
+                tcx.dcx().emit_err(errors::VariancesOf {
                     span: tcx.def_span(id.owner_id),
                     variances_of: format!("{variances_of:?}"),
                 });
@@ -25,7 +25,7 @@ pub fn test_variance(tcx: TyCtxt<'_>) {
         if tcx.has_attr(id.owner_id, sym::rustc_variance) {
             let variances_of = tcx.variances_of(id.owner_id);
 
-            tcx.sess.emit_err(errors::VariancesOf {
+            tcx.dcx().emit_err(errors::VariancesOf {
                 span: tcx.def_span(id.owner_id),
                 variances_of: format!("{variances_of:?}"),
             });

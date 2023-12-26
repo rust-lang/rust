@@ -249,7 +249,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.lower_expr_range(e.span, e1.as_deref(), e2.as_deref(), *lims)
                 }
                 ExprKind::Underscore => {
-                    let guar = self.tcx.sess.emit_err(UnderscoreExprLhsAssign { span: e.span });
+                    let guar = self.dcx().emit_err(UnderscoreExprLhsAssign { span: e.span });
                     hir::ExprKind::Err(guar)
                 }
                 ExprKind::Path(qself, path) => {
@@ -294,8 +294,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let rest = match &se.rest {
                         StructRest::Base(e) => Some(self.lower_expr(e)),
                         StructRest::Rest(sp) => {
-                            let guar =
-                                self.tcx.sess.emit_err(BaseExpressionDoubleDot { span: *sp });
+                            let guar = self.dcx().emit_err(BaseExpressionDoubleDot { span: *sp });
                             Some(&*self.arena.alloc(self.expr_err(*sp, guar)))
                         }
                         StructRest::None => None,
@@ -332,9 +331,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         |this| this.with_new_scopes(e.span, |this| this.lower_block_expr(block)),
                     ),
                 ExprKind::Yield(opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
-                ExprKind::Err => hir::ExprKind::Err(
-                    self.tcx.sess.span_delayed_bug(e.span, "lowered ExprKind::Err"),
-                ),
+                ExprKind::Err => {
+                    hir::ExprKind::Err(self.dcx().span_delayed_bug(e.span, "lowered ExprKind::Err"))
+                }
                 ExprKind::Try(sub_expr) => self.lower_expr_try(e.span, sub_expr),
 
                 ExprKind::Paren(_) | ExprKind::ForLoop { .. } => {
@@ -584,13 +583,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 if self.tcx.features().never_patterns {
                     // If the feature is off we already emitted the error after parsing.
                     let suggestion = span.shrink_to_hi();
-                    self.tcx.sess.emit_err(MatchArmWithNoBody { span, suggestion });
+                    self.dcx().emit_err(MatchArmWithNoBody { span, suggestion });
                 }
             } else if let Some(body) = &arm.body {
-                self.tcx.sess.emit_err(NeverPatternWithBody { span: body.span });
+                self.dcx().emit_err(NeverPatternWithBody { span: body.span });
                 guard = None;
             } else if let Some(g) = &arm.guard {
-                self.tcx.sess.emit_err(NeverPatternWithGuard { span: g.span });
+                self.dcx().emit_err(NeverPatternWithGuard { span: g.span });
                 guard = None;
             }
 
@@ -902,7 +901,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             Some(hir::CoroutineKind::Coroutine)
             | Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _))
             | None => {
-                return hir::ExprKind::Err(self.tcx.sess.emit_err(AwaitOnlyInAsyncFnAndBlocks {
+                return hir::ExprKind::Err(self.dcx().emit_err(AwaitOnlyInAsyncFnAndBlocks {
                     await_kw_span,
                     item_span: self.current_item,
                 }));
@@ -1129,7 +1128,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match coroutine_kind {
             Some(hir::CoroutineKind::Coroutine) => {
                 if decl.inputs.len() > 1 {
-                    self.tcx.sess.emit_err(CoroutineTooManyParameters { fn_decl_span });
+                    self.dcx().emit_err(CoroutineTooManyParameters { fn_decl_span });
                 }
                 Some(movability)
             }
@@ -1142,7 +1141,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             None => {
                 if movability == Movability::Static {
-                    self.tcx.sess.emit_err(ClosureCannotBeStatic { fn_decl_span });
+                    self.dcx().emit_err(ClosureCannotBeStatic { fn_decl_span });
                 }
                 None
             }
@@ -1181,7 +1180,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         if let &ClosureBinder::For { span, .. } = binder {
-            self.tcx.sess.emit_err(NotSupportedForLifetimeBinderAsyncClosure { span });
+            self.dcx().emit_err(NotSupportedForLifetimeBinderAsyncClosure { span });
         }
 
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
@@ -1192,7 +1191,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let body = self.with_new_scopes(fn_decl_span, |this| {
             // FIXME(cramertj): allow `async` non-`move` closures with arguments.
             if capture_clause == CaptureBy::Ref && !decl.inputs.is_empty() {
-                this.tcx.sess.emit_err(AsyncNonMoveClosureNotSupported { fn_decl_span });
+                this.dcx().emit_err(AsyncNonMoveClosureNotSupported { fn_decl_span });
             }
 
             // Transform `async |x: u8| -> X { ... }` into
@@ -1448,7 +1447,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 let fields_omitted = match &se.rest {
                     StructRest::Base(e) => {
-                        self.tcx.sess.emit_err(FunctionalRecordUpdateDestructuringAssignment {
+                        self.dcx().emit_err(FunctionalRecordUpdateDestructuringAssignment {
                             span: e.span,
                         });
                         true
@@ -1544,7 +1543,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             (None, Some(..), Closed) => hir::LangItem::RangeToInclusive,
             (Some(..), Some(..), Closed) => unreachable!(),
             (start, None, Closed) => {
-                self.tcx.sess.emit_err(InclusiveRangeWithNoEnd { span });
+                self.dcx().emit_err(InclusiveRangeWithNoEnd { span });
                 match start {
                     Some(..) => hir::LangItem::RangeFrom,
                     None => hir::LangItem::RangeFull,
@@ -1653,7 +1652,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)) => true,
             Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) => {
                 return hir::ExprKind::Err(
-                    self.tcx.sess.emit_err(AsyncCoroutinesNotSupported { span }),
+                    self.dcx().emit_err(AsyncCoroutinesNotSupported { span }),
                 );
             }
             Some(hir::CoroutineKind::Coroutine) | None => {

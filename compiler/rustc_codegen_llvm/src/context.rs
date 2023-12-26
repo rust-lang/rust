@@ -1014,9 +1014,9 @@ impl<'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
         if let LayoutError::SizeOverflow(_) | LayoutError::ReferencesError(_) = err {
-            self.sess().emit_fatal(Spanned { span, node: err.into_diagnostic() })
+            self.tcx.dcx().emit_fatal(Spanned { span, node: err.into_diagnostic() })
         } else {
-            self.tcx.sess.emit_fatal(ssa_errors::FailedToGetLayout { span, ty, err })
+            self.tcx.dcx().emit_fatal(ssa_errors::FailedToGetLayout { span, ty, err })
         }
     }
 }
@@ -1032,7 +1032,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
         if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
-            self.sess().emit_fatal(Spanned { span, node: err })
+            self.tcx.dcx().emit_fatal(Spanned { span, node: err })
         } else {
             match fn_abi_request {
                 FnAbiRequest::OfFnPtr { sig, extra_args } => {

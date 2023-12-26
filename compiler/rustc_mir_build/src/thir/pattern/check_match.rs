@@ -55,7 +55,7 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
 }
 
 fn create_e0004(sess: &Session, sp: Span, error_message: String) -> DiagnosticBuilder<'_> {
-    struct_span_err!(sess, sp, E0004, "{}", &error_message)
+    struct_span_err!(sess.dcx(), sp, E0004, "{}", &error_message)
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -650,7 +650,7 @@ impl<'thir, 'p, 'tcx> MatchVisitor<'thir, 'p, 'tcx> {
             false
         };
 
-        self.error = Err(self.tcx.sess.emit_err(PatternNotCovered {
+        self.error = Err(self.tcx.dcx().emit_err(PatternNotCovered {
             span: pat.span,
             origin,
             uncovered: Uncovered::new(pat.span, &cx, witnesses),
@@ -697,7 +697,7 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, '_, 'tcx>, 
                 BindingMode::ByRef(_) => conflicts_ref.push(span),
             });
             if !conflicts_ref.is_empty() {
-                sess.emit_err(BorrowOfMovedValue {
+                sess.dcx().emit_err(BorrowOfMovedValue {
                     binding_span: pat.span,
                     conflicts_ref,
                     name,
@@ -754,20 +754,20 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, '_, 'tcx>, 
     // Report errors if any.
     if report_mut_mut {
         // Report mutability conflicts for e.g. `ref mut x @ Some(ref mut y)`.
-        sess.emit_err(MultipleMutBorrows { span: pat.span, occurrences });
+        sess.dcx().emit_err(MultipleMutBorrows { span: pat.span, occurrences });
     } else if report_mut_ref {
         // Report mutability conflicts for e.g. `ref x @ Some(ref mut y)` or the converse.
         match mut_outer {
             Mutability::Mut => {
-                sess.emit_err(AlreadyMutBorrowed { span: pat.span, occurrences });
+                sess.dcx().emit_err(AlreadyMutBorrowed { span: pat.span, occurrences });
             }
             Mutability::Not => {
-                sess.emit_err(AlreadyBorrowed { span: pat.span, occurrences });
+                sess.dcx().emit_err(AlreadyBorrowed { span: pat.span, occurrences });
             }
         };
     } else if report_move_conflict {
         // Report by-ref and by-move conflicts, e.g. `ref x @ y`.
-        sess.emit_err(MovedWhileBorrowed { span: pat.span, occurrences });
+        sess.dcx().emit_err(MovedWhileBorrowed { span: pat.span, occurrences });
     }
 }
 
@@ -905,7 +905,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
     let pattern;
     let patterns_len;
     if is_empty_match && !non_empty_enum {
-        return cx.tcx.sess.emit_err(NonExhaustivePatternsTypeNotEmpty {
+        return cx.tcx.dcx().emit_err(NonExhaustivePatternsTypeNotEmpty {
             cx,
             expr_span,
             span: sp,

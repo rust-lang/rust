@@ -249,7 +249,7 @@ pub fn report_autoderef_recursion_limit_error<'tcx>(tcx: TyCtxt<'tcx>, span: Spa
         Limit(0) => Limit(2),
         limit => limit * 2,
     };
-    tcx.sess.emit_err(AutoDerefReachedRecursionLimit {
+    tcx.dcx().emit_err(AutoDerefReachedRecursionLimit {
         span,
         ty,
         suggested_limit,

@@ -21,7 +21,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for SizedUnsizedCast<'tcx> {
     }
 
     fn diagnostic_common(&self) -> DiagnosticBuilder<'tcx> {
-        let mut err = self.sess.create_err(errors::CastThinPointerToFatPointer {
+        let mut err = self.sess.dcx().create_err(errors::CastThinPointerToFatPointer {
             span: self.span,
             expr_ty: self.expr_ty,
             cast_ty: self.cast_ty.to_owned(),

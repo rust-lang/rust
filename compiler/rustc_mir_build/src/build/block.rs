@@ -15,7 +15,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) -> BlockAnd<()> {
         let Block { region_scope, span, ref stmts, expr, targeted_by_break, safety_mode } =
             self.thir[ast_block];
-        let expr = expr.map(|expr| &self.thir[expr]);
         self.in_scope((region_scope, source_info), LintLevel::Inherited, move |this| {
             if targeted_by_break {
                 this.in_breakable_scope(None, destination, span, |this| {
@@ -49,7 +48,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut block: BasicBlock,
         span: Span,
         stmts: &[StmtId],
-        expr: Option<&Expr<'tcx>>,
+        expr: Option<ExprId>,
         safety_mode: BlockSafety,
         region_scope: Scope,
     ) -> BlockAnd<()> {
@@ -90,7 +89,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let si = (*scope, source_info);
                     unpack!(
                         block = this.in_scope(si, LintLevel::Inherited, |this| {
-                            this.stmt_expr(block, &this.thir[*expr], Some(*scope))
+                            this.stmt_expr(block, *expr, Some(*scope))
                         })
                     );
                 }
@@ -205,8 +204,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let visibility_scope =
                         Some(this.new_source_scope(remainder_span, LintLevel::Inherited, None));
 
-                    let init = &this.thir[*initializer];
-                    let initializer_span = init.span;
+                    let initializer_span = this.thir[*initializer].span;
                     let scope = (*init_scope, source_info);
                     let failure = unpack!(
                         block = this.in_scope(scope, *lint_level, |this| {
@@ -232,7 +230,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             );
                             this.ast_let_else(
                                 block,
-                                init,
+                                *initializer,
                                 initializer_span,
                                 *else_block,
                                 &last_remainder_scope,
@@ -276,9 +274,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Some(this.new_source_scope(remainder_span, LintLevel::Inherited, None));
 
                     // Evaluate the initializer, if present.
-                    if let Some(init) = initializer {
-                        let init = &this.thir[*init];
-                        let initializer_span = init.span;
+                    if let Some(init) = *initializer {
+                        let initializer_span = this.thir[init].span;
                         let scope = (*init_scope, source_info);
 
                         unpack!(
@@ -334,13 +331,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // of the block, which is stored into `destination`.
         let tcx = this.tcx;
         let destination_ty = destination.ty(&this.local_decls, tcx).ty;
-        if let Some(expr) = expr {
+        if let Some(expr_id) = expr {
+            let expr = &this.thir[expr_id];
             let tail_result_is_ignored =
                 destination_ty.is_unit() || this.block_context.currently_ignores_tail_results();
             this.block_context
                 .push(BlockFrame::TailExpr { tail_result_is_ignored, span: expr.span });
 
-            unpack!(block = this.expr_into_dest(destination, block, expr));
+            unpack!(block = this.expr_into_dest(destination, block, expr_id));
             let popped = this.block_context.pop();
 
             assert!(popped.is_some_and(|bf| bf.is_tail_expr()));

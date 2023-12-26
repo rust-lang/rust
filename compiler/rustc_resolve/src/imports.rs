@@ -686,7 +686,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             .collect::<Vec<_>>();
         let msg = format!("unresolved import{} {}", pluralize!(paths.len()), paths.join(", "),);
 
-        let mut diag = struct_span_err!(self.tcx.sess, span, E0432, "{}", &msg);
+        let mut diag = struct_span_err!(self.dcx(), span, E0432, "{}", &msg);
 
         if let Some((_, UnresolvedImportError { note: Some(note), .. })) = errors.iter().last() {
             diag.note(note.clone());
@@ -826,8 +826,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                     source_binding @ (Ok(..) | Err(Determined)) => {
                         if source_binding.is_ok() {
-                            this.tcx
-                                .sess
+                            this.dcx()
                                 .create_err(IsNotDirectlyImportable { span: import.span, target })
                                 .emit();
                         }
@@ -877,8 +876,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         span_bug!(import.span, "inconsistent resolution for an import");
                     }
                 } else if self.privacy_errors.is_empty() {
-                    self.tcx
-                        .sess
+                    self.dcx()
                         .create_err(CannotDetermineImportResolution { span: import.span })
                         .emit();
                 }
@@ -1066,8 +1064,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         let has_ambiguity_error =
                             this.ambiguity_errors.iter().any(|error| !error.warning);
                         if res == Res::Err || has_ambiguity_error {
-                            this.tcx
-                                .sess
+                            this.dcx()
                                 .span_delayed_bug(import.span, "some error happened for an import");
                             return;
                         }
@@ -1076,8 +1073,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 span_bug!(import.span, "inconsistent resolution for an import");
                             }
                         } else if this.privacy_errors.is_empty() {
-                            this.tcx
-                                .sess
+                            this.dcx()
                                 .create_err(CannotDetermineImportResolution { span: import.span })
                                 .emit();
                         }
@@ -1238,24 +1234,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             } else {
                 if ns == TypeNS {
                     let mut err = if crate_private_reexport {
-                        self.tcx.sess.create_err(CannotBeReexportedCratePublicNS {
+                        self.dcx().create_err(CannotBeReexportedCratePublicNS {
                             span: import.span,
                             ident,
                         })
                     } else {
-                        self.tcx
-                            .sess
+                        self.dcx()
                             .create_err(CannotBeReexportedPrivateNS { span: import.span, ident })
                     };
                     err.emit();
                 } else {
                     let mut err = if crate_private_reexport {
-                        self.tcx
-                            .sess
+                        self.dcx()
                             .create_err(CannotBeReexportedCratePublic { span: import.span, ident })
                     } else {
-                        self.tcx
-                            .sess
+                        self.dcx()
                             .create_err(CannotBeReexportedPrivate { span: import.span, ident })
                     };
 
@@ -1378,12 +1371,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let ImportKind::Glob { id, is_prelude, .. } = import.kind else { unreachable!() };
 
         let ModuleOrUniformRoot::Module(module) = import.imported_module.get().unwrap() else {
-            self.tcx.sess.create_err(CannotGlobImportAllCrates { span: import.span }).emit();
+            self.dcx().create_err(CannotGlobImportAllCrates { span: import.span }).emit();
             return;
         };
 
         if module.is_trait() {
-            self.tcx.sess.create_err(ItemsInTraitsAreNotImportable { span: import.span }).emit();
+            self.dcx().create_err(ItemsInTraitsAreNotImportable { span: import.span }).emit();
             return;
         } else if module == import.parent_scope.module {
             return;

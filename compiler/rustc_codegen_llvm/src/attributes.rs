@@ -82,7 +82,7 @@ pub fn sanitize_attrs<'ll>(
         let mte_feature =
             features.iter().map(|s| &s[..]).rfind(|n| ["+mte", "-mte"].contains(&&n[..]));
         if let None | Some("-mte") = mte_feature {
-            cx.tcx.sess.emit_err(SanitizerMemtagRequiresMte);
+            cx.tcx.dcx().emit_err(SanitizerMemtagRequiresMte);
         }
 
         attrs.push(llvm::AttributeKind::SanitizeMemTag.create_attr(cx.llcx));
@@ -444,7 +444,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
             .next()
             .map_or_else(|| cx.tcx.def_span(instance.def_id()), |a| a.span);
         cx.tcx
-            .sess
+            .dcx()
             .create_err(TargetFeatureDisableOrEnable {
                 features: f,
                 span: Some(span),

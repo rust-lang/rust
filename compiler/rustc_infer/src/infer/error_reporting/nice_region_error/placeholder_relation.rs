@@ -81,7 +81,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                     }
                     _ => PlaceholderRelationLfNotSatisfied::OnlyPrimarySpan { span, note: () },
                 };
-                Some(self.tcx().sess.create_err(diag))
+                Some(self.tcx().dcx().create_err(diag))
             }
             _ => None,
         }

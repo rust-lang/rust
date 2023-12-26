@@ -440,7 +440,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
             ItemKind::Impl(hir::Impl { self_ty, .. }) => match self_ty.find_self_aliases() {
                 spans if spans.len() > 0 => {
                     let guar = tcx
-                        .sess
+                        .dcx()
                         .emit_err(crate::errors::SelfInImplSelf { span: spans.into(), note: () });
                     Ty::new_error(tcx, guar)
                 }
@@ -574,7 +574,7 @@ fn infer_placeholder_type<'a>(
     // then the user may have written e.g. `const A = 42;`.
     // In this case, the parser has stashed a diagnostic for
     // us to improve in typeck so we do that now.
-    match tcx.sess.dcx().steal_diagnostic(span, StashKey::ItemNoType) {
+    match tcx.dcx().steal_diagnostic(span, StashKey::ItemNoType) {
         Some(mut err) => {
             if !ty.references_error() {
                 // Only suggest adding `:` if it was missing (and suggested by parsing diagnostic)

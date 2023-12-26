@@ -34,12 +34,12 @@ pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), Erro
     match tcx.impl_polarity(drop_impl_did) {
         ty::ImplPolarity::Positive => {}
         ty::ImplPolarity::Negative => {
-            return Err(tcx.sess.emit_err(errors::DropImplPolarity::Negative {
+            return Err(tcx.dcx().emit_err(errors::DropImplPolarity::Negative {
                 span: tcx.def_span(drop_impl_did),
             }));
         }
         ty::ImplPolarity::Reservation => {
-            return Err(tcx.sess.emit_err(errors::DropImplPolarity::Reservation {
+            return Err(tcx.dcx().emit_err(errors::DropImplPolarity::Reservation {
                 span: tcx.def_span(drop_impl_did),
             }));
         }
@@ -66,7 +66,7 @@ pub fn check_drop_impl(tcx: TyCtxt<'_>, drop_impl_did: DefId) -> Result<(), Erro
             // already checked by coherence, but compilation may
             // not have been terminated.
             let span = tcx.def_span(drop_impl_did);
-            let reported = tcx.sess.span_delayed_bug(
+            let reported = tcx.dcx().span_delayed_bug(
                 span,
                 format!("should have been rejected by coherence check: {dtor_self_type}"),
             );
@@ -89,7 +89,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
     let item_span = tcx.def_span(self_type_did);
     let self_descr = tcx.def_descr(self_type_did);
     let mut err =
-        struct_span_err!(tcx.sess, drop_impl_span, E0366, "`Drop` impls cannot be specialized");
+        struct_span_err!(tcx.dcx(), drop_impl_span, E0366, "`Drop` impls cannot be specialized");
     match arg {
         ty::util::NotUniqueParam::DuplicateParam(arg) => {
             err.note(format!("`{arg}` is mentioned multiple times"))
@@ -155,7 +155,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
                 let self_descr = tcx.def_descr(adt_def_id.to_def_id());
                 guar = Some(
                     struct_span_err!(
-                        tcx.sess,
+                        tcx.dcx(),
                         error.root_obligation.cause.span,
                         E0367,
                         "`Drop` impl requires `{root_predicate}` \
@@ -187,7 +187,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
             };
             guar = Some(
                 struct_span_err!(
-                    tcx.sess,
+                    tcx.dcx(),
                     error.origin().span(),
                     E0367,
                     "`Drop` impl requires `{outlives}` \
