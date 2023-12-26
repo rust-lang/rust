@@ -1285,7 +1285,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 ref operands,
                 options,
                 line_spans,
-                destination,
+                ref targets,
                 unwind,
             } => self.codegen_asm_terminator(
                 helper,
@@ -1295,7 +1295,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 operands,
                 options,
                 line_spans,
-                destination,
+                targets.get(0).copied(),
                 unwind,
                 self.instance,
                 mergeable_succ(),

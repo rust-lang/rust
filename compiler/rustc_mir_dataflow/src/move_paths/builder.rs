@@ -491,7 +491,7 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
                 ref operands,
                 options: _,
                 line_spans: _,
-                destination: _,
+                targets: _,
                 unwind: _,
             } => {
                 for op in operands {

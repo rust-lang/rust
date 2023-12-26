@@ -299,7 +299,9 @@ where
                 })?;
             }
 
-            mir::TerminatorKind::InlineAsm { destination: Some(_), ref operands, .. } => {
+            mir::TerminatorKind::InlineAsm { ref targets, ref operands, .. }
+                if !targets.is_empty() =>
+            {
                 self.write_row(w, "", "(on successful return)", |this, w, fmt| {
                     let state_on_unwind = this.results.get().clone();
                     this.results.apply_custom_effect(|analysis, state| {

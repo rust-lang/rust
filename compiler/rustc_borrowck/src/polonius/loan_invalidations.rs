@@ -161,7 +161,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'cx, 'tcx> {
                 operands,
                 options: _,
                 line_spans: _,
-                destination: _,
+                targets: _,
                 unwind: _,
             } => {
                 for op in operands {

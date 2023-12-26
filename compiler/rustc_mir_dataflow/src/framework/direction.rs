@@ -242,9 +242,9 @@ impl Direction for Backward {
                     propagate(pred, &tmp);
                 }
 
-                mir::TerminatorKind::InlineAsm {
-                    destination: Some(dest), ref operands, ..
-                } if dest == bb => {
+                mir::TerminatorKind::InlineAsm { ref targets, ref operands, .. }
+                    if targets.contains(&bb) =>
+                {
                     let mut tmp = exit_state.clone();
                     analysis.apply_call_return_effect(
                         &mut tmp,
@@ -491,9 +491,12 @@ impl Direction for Forward {
                 if let Some(cleanup) = cleanup {
                     propagate(cleanup, exit_state);
                 }
-                if let Some(return_) = return_ {
+
+                if !return_.is_empty() {
                     analysis.apply_call_return_effect(exit_state, bb, place);
-                    propagate(return_, exit_state);
+                    for &target in return_ {
+                        propagate(target, exit_state);
+                    }
                 }
             }
             TerminatorEdges::SwitchInt { targets, discr } => {

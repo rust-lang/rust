@@ -88,7 +88,6 @@ impl<'tcx> MockBlocks<'tcx> {
             | TerminatorKind::FalseEdge { real_target: ref mut target, .. }
             | TerminatorKind::FalseUnwind { real_target: ref mut target, .. }
             | TerminatorKind::Goto { ref mut target }
-            | TerminatorKind::InlineAsm { destination: Some(ref mut target), .. }
             | TerminatorKind::Yield { resume: ref mut target, .. } => *target = to_block,
             ref invalid => bug!("Invalid from_block: {:?}", invalid),
         }
@@ -185,9 +184,11 @@ fn debug_basic_blocks(mir_body: &Body<'_>) -> String {
                     | TerminatorKind::FalseEdge { real_target: target, .. }
                     | TerminatorKind::FalseUnwind { real_target: target, .. }
                     | TerminatorKind::Goto { target }
-                    | TerminatorKind::InlineAsm { destination: Some(target), .. }
                     | TerminatorKind::Yield { resume: target, .. } => {
                         format!("{}{:?}:{} -> {:?}", sp, bb, kind.name(), target)
+                    }
+                    TerminatorKind::InlineAsm { targets, .. } => {
+                        format!("{}{:?}:{} -> {:?}", sp, bb, kind.name(), targets)
                     }
                     TerminatorKind::SwitchInt { targets, .. } => {
                         format!("{}{:?}:{} -> {:?}", sp, bb, kind.name(), targets)

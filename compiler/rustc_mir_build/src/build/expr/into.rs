@@ -474,10 +474,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         operands,
                         options,
                         line_spans,
-                        destination: if options.contains(InlineAsmOptions::NORETURN) {
-                            None
+                        targets: if options.contains(InlineAsmOptions::NORETURN) {
+                            Vec::new()
                         } else {
-                            Some(destination_block)
+                            vec![destination_block]
                         },
                         unwind: if options.contains(InlineAsmOptions::MAY_UNWIND) {
                             UnwindAction::Continue

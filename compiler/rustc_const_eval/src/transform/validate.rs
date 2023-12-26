@@ -471,9 +471,9 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 self.check_edge(location, *real_target, EdgeKind::Normal);
                 self.check_unwind_edge(location, *unwind);
             }
-            TerminatorKind::InlineAsm { destination, unwind, .. } => {
-                if let Some(destination) = destination {
-                    self.check_edge(location, *destination, EdgeKind::Normal);
+            TerminatorKind::InlineAsm { targets, unwind, .. } => {
+                for &target in targets {
+                    self.check_edge(location, target, EdgeKind::Normal);
                 }
                 self.check_unwind_edge(location, *unwind);
             }

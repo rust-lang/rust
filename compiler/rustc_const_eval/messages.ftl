@@ -232,9 +232,6 @@ const_eval_non_const_fn_call =
 const_eval_non_const_impl =
     impl defined here, but it is not `const`
 
-const_eval_noreturn_asm_returned =
-    returned from noreturn inline assembly
-
 const_eval_not_enough_caller_args =
     calling a function with fewer arguments than it requires
 
