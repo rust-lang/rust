@@ -445,7 +445,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 template,
                 operands,
                 options,
-                destination,
+                targets,
                 line_spans: _,
                 unwind: _,
             } => {
@@ -456,13 +456,25 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                     );
                 }
 
+                let have_labels = if options.contains(InlineAsmOptions::NORETURN) {
+                    !targets.is_empty()
+                } else {
+                    targets.len() > 1
+                };
+                if have_labels {
+                    fx.tcx.dcx().span_fatal(
+                        source_info.span,
+                        "cranelift doesn't support labels in inline assembly.",
+                    );
+                }
+
                 crate::inline_asm::codegen_inline_asm_terminator(
                     fx,
                     source_info.span,
                     template,
                     operands,
                     *options,
-                    *destination,
+                    targets.get(0).copied(),
                 );
             }
             TerminatorKind::UnwindTerminate(reason) => {
