@@ -165,6 +165,13 @@ pub(crate) struct AllocMustStatics {
 }
 
 #[derive(Diagnostic)]
+#[diag(builtin_macros_autodiff)]
+pub(crate) struct AutoDiffInvalidApplication {
+    #[primary_span]
+    pub(crate) span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(builtin_macros_concat_bytes_invalid)]
 pub(crate) struct ConcatBytesInvalid {
     #[primary_span]
