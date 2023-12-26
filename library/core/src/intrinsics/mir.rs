@@ -287,31 +287,33 @@ macro_rules! define {
 }
 
 // Unwind actions
+pub struct UnwindActionArg;
 define!(
     "mir_unwind_continue",
     /// An unwind action that continues unwinding.
-    fn UnwindContinue()
+    fn UnwindContinue() -> UnwindActionArg
 );
 define!(
     "mir_unwind_unreachable",
     /// An unwind action that triggers undefined behaviour.
-    fn UnwindUnreachable()
+    fn UnwindUnreachable() -> UnwindActionArg
 );
 define!(
     "mir_unwind_terminate",
     /// An unwind action that terminates the execution.
     ///
     /// `UnwindTerminate` can also be used as a terminator.
-    fn UnwindTerminate(reason: UnwindTerminateReason)
+    fn UnwindTerminate(reason: UnwindTerminateReason) -> UnwindActionArg
 );
 define!(
     "mir_unwind_cleanup",
     /// An unwind action that continues execution in a given basic blok.
-    fn UnwindCleanup(goto: BasicBlock)
+    fn UnwindCleanup(goto: BasicBlock) -> UnwindActionArg
 );
 
 // Return destination for `Call`
-define!("mir_return_to", fn ReturnTo(goto: BasicBlock));
+pub struct ReturnToArg;
+define!("mir_return_to", fn ReturnTo(goto: BasicBlock) -> ReturnToArg);
 
 // Terminators
 define!("mir_return", fn Return() -> BasicBlock);
@@ -330,7 +332,7 @@ define!("mir_drop",
     /// - [`UnwindUnreachable`]
     /// - [`UnwindTerminate`]
     /// - [`UnwindCleanup`]
-    fn Drop<T>(place: T, goto: (), unwind_action: ())
+    fn Drop<T>(place: T, goto: ReturnToArg, unwind_action: UnwindActionArg)
 );
 define!("mir_call",
     /// Call a function.
@@ -345,7 +347,7 @@ define!("mir_call",
     /// - [`UnwindUnreachable`]
     /// - [`UnwindTerminate`]
     /// - [`UnwindCleanup`]
-    fn Call(call: (), goto: (), unwind_action: ())
+    fn Call(call: (), goto: ReturnToArg, unwind_action: UnwindActionArg)
 );
 define!("mir_unwind_resume",
     /// A terminator that resumes the unwinding.
