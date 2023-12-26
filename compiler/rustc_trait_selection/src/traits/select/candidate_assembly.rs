@@ -567,7 +567,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::Coroutine(coroutine_def_id, _)
                     if self.tcx().lang_items().unpin_trait() == Some(def_id) =>
                 {
-                    match self.tcx().movability(coroutine_def_id) {
+                    match self.tcx().coroutine_movability(coroutine_def_id) {
                         hir::Movability::Static => {
                             // Immovable coroutines are never `Unpin`, so
                             // suppress the normal auto-impl candidate for it.

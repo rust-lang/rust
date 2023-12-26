@@ -448,7 +448,6 @@ define_tables! {
     mir_const_qualif: Table<DefIndex, LazyValue<mir::ConstQualifs>>,
     rendered_const: Table<DefIndex, LazyValue<String>>,
     asyncness: Table<DefIndex, ty::Asyncness>,
-    movability: Table<DefIndex, hir::Movability>,
     fn_arg_names: Table<DefIndex, LazyArray<Ident>>,
     coroutine_kind: Table<DefIndex, hir::CoroutineKind>,
     trait_def: Table<DefIndex, LazyValue<ty::TraitDef>>,

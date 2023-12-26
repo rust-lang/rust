@@ -214,13 +214,6 @@ fixed_size_enum! {
 }
 
 fixed_size_enum! {
-    ty::Movability {
-        ( Movable )
-        ( Static  )
-    }
-}
-
-fixed_size_enum! {
     ty::AssocItemContainer {
         ( TraitContainer )
         ( ImplContainer  )

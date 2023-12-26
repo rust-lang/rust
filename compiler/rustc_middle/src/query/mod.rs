@@ -721,11 +721,6 @@ rustc_queries! {
         desc { |tcx| "computing drop-check constraints for `{}`", tcx.def_path_str(key) }
     }
 
-    query movability(key: DefId) -> hir::Movability {
-        desc { |tcx| "checking if coroutine is movable: `{}`", tcx.def_path_str(key) }
-        separate_provide_extern
-    }
-
     /// Returns `true` if this is a const fn, use the `is_const_fn` to know whether your crate
     /// actually sees it as const fn (e.g., the const-fn-ness might be unstable and you might
     /// not have the feature gate active).

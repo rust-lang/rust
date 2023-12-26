@@ -790,7 +790,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     || matches!(coroutine_kind, hir::CoroutineKind::Coroutine(_));
 
                 if should_print_movability {
-                    match self.tcx().movability(did) {
+                    match coroutine_kind.movability() {
                         hir::Movability::Movable => {}
                         hir::Movability::Static => p!("static "),
                     }

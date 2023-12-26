@@ -307,16 +307,6 @@ fn asyncness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Asyncness {
     })
 }
 
-fn movability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Movability {
-    let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(closure), .. }) =
-        tcx.hir_node_by_def_id(def_id)
-    else {
-        bug!("expected query `movability` only called on coroutine def id");
-    };
-
-    closure.movability.expect("expected coroutine to have movability")
-}
-
 fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32> {
     let def = tcx.adt_def(def_id);
     let num_params = tcx.generics_of(def_id).count();
@@ -364,7 +354,6 @@ fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         asyncness,
-        movability,
         adt_sized_constraint,
         param_env,
         param_env_reveal_all_normalized,

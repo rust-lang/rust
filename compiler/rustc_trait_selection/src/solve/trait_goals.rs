@@ -930,7 +930,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ty::Coroutine(def_id, _)
                 if Some(goal.predicate.def_id()) == self.tcx().lang_items().unpin_trait() =>
             {
-                match self.tcx().movability(def_id) {
+                match self.tcx().coroutine_movability(def_id) {
                     Movability::Static => Some(Err(NoSolution)),
                     Movability::Movable => {
                         Some(self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))

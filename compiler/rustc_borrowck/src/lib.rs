@@ -275,7 +275,7 @@ fn do_mir_borrowck<'tcx>(
         if let Some(local) = body.local_decls.raw.get(1)
         // Get the interior types and args which typeck computed
         && let ty::Coroutine(def_id, _) = *local.ty.kind()
-        && tcx.movability(def_id) == hir::Movability::Movable
+        && tcx.coroutine_movability(def_id) == hir::Movability::Movable
     {
         true
     } else {

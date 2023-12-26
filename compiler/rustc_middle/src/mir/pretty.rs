@@ -1308,7 +1308,7 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                     self.push("coroutine");
                     self.push(&format!("+ def_id: {def_id:?}"));
                     self.push(&format!("+ args: {args:#?}"));
-                    self.push(&format!("+ movability: {:?}", self.tcx.movability(def_id)));
+                    self.push(&format!("+ kind: {:?}", self.tcx.coroutine_kind(def_id)));
                 }
 
                 AggregateKind::Adt(_, _, _, Some(user_ty), _) => {

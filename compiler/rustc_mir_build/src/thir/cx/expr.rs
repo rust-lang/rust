@@ -553,7 +553,7 @@ impl<'tcx> Cx<'tcx> {
                 let (def_id, args, movability) = match *closure_ty.kind() {
                     ty::Closure(def_id, args) => (def_id, UpvarArgs::Closure(args), None),
                     ty::Coroutine(def_id, args) => {
-                        (def_id, UpvarArgs::Coroutine(args), Some(tcx.movability(def_id)))
+                        (def_id, UpvarArgs::Coroutine(args), Some(tcx.coroutine_movability(def_id)))
                     }
                     _ => {
                         span_bug!(expr.span, "closure expr w/o closure type: {:?}", closure_ty);

@@ -86,7 +86,6 @@ trivially_parameterized_over_tcx! {
     rustc_hir::CoroutineKind,
     rustc_hir::IsAsync,
     rustc_hir::LangItem,
-    rustc_hir::Movability,
     rustc_hir::def::DefKind,
     rustc_hir::def::DocLinkResMap,
     rustc_hir::def_id::DefId,

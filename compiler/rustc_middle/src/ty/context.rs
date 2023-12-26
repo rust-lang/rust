@@ -847,6 +847,12 @@ impl<'tcx> TyCtxt<'tcx> {
         self.coroutine_kind(def_id).is_some()
     }
 
+    /// Returns the movability of the coroutine of `def_id`, or panics
+    /// if given a `def_id` that is not a coroutine.
+    pub fn coroutine_movability(self, def_id: DefId) -> hir::Movability {
+        self.coroutine_kind(def_id).expect("expected a coroutine").movability()
+    }
+
     /// Returns `true` if the node pointed to by `def_id` is a coroutine for an async construct.
     pub fn coroutine_is_async(self, def_id: DefId) -> bool {
         matches!(

@@ -2185,7 +2185,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             }
 
             ty::Coroutine(coroutine_def_id, args) => {
-                match self.tcx().movability(coroutine_def_id) {
+                match self.tcx().coroutine_movability(coroutine_def_id) {
                     hir::Movability::Static => None,
                     hir::Movability::Movable => {
                         if self.tcx().features().coroutine_clone {
