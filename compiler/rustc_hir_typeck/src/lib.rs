@@ -71,8 +71,8 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 #[macro_export]
 macro_rules! type_error_struct {
-    ($session:expr, $span:expr, $typ:expr, $code:ident, $($message:tt)*) => ({
-        let mut err = rustc_errors::struct_span_err!($session, $span, $code, $($message)*);
+    ($dcx:expr, $span:expr, $typ:expr, $code:ident, $($message:tt)*) => ({
+        let mut err = rustc_errors::struct_span_err!($dcx, $span, $code, $($message)*);
 
         if $typ.references_error() {
             err.downgrade_to_delayed_bug();
@@ -371,7 +371,7 @@ fn report_unexpected_variant_res(
         _ => res.descr(),
     };
     let path_str = rustc_hir_pretty::qpath_to_string(qpath);
-    let mut err = tcx.sess.struct_span_err_with_code(
+    let mut err = tcx.dcx().struct_span_err_with_code(
         span,
         format!("expected {expected}, found {res_descr} `{path_str}`"),
         DiagnosticId::Error(err_code.into()),
@@ -413,7 +413,7 @@ enum TupleArgumentsFlag {
 }
 
 fn fatally_break_rust(tcx: TyCtxt<'_>, span: Span) -> ! {
-    let dcx = tcx.sess.dcx();
+    let dcx = tcx.dcx();
     let mut diag = dcx.struct_span_bug(
         span,
         "It looks like you're trying to break rust; would you like some ICE?",

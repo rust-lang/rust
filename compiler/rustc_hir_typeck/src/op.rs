@@ -307,7 +307,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let (mut err, output_def_id) = match is_assign {
                     IsAssign::Yes => {
                         let mut err = struct_span_err!(
-                            self.tcx.sess,
+                            self.dcx(),
                             expr.span,
                             E0368,
                             "binary assignment operation `{}=` cannot be applied to type `{}`",
@@ -370,7 +370,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 })
                                 .cloned()
                         });
-                        let mut err = struct_span_err!(self.tcx.sess, op.span, E0369, "{message}");
+                        let mut err = struct_span_err!(self.dcx(), op.span, E0369, "{message}");
                         if !lhs_expr.span.eq(&rhs_expr.span) {
                             err.span_label(lhs_expr.span, lhs_ty.to_string());
                             err.span_label(rhs_expr.span, rhs_ty.to_string());
@@ -788,7 +788,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let actual = self.resolve_vars_if_possible(operand_ty);
                 let guar = actual.error_reported().err().unwrap_or_else(|| {
                     let mut err = struct_span_err!(
-                        self.tcx.sess,
+                        self.dcx(),
                         ex.span,
                         E0600,
                         "cannot apply unary operator `{}` to type `{}`",
@@ -898,8 +898,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Op::Unary(..) => 0,
             },
         ) {
-            self.tcx
-                .sess
+            self.dcx()
                 .span_delayed_bug(span, "operator didn't have the right number of generic args");
             return Err(vec![]);
         }
@@ -933,7 +932,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // This path may do some inference, so make sure we've really
                 // doomed compilation so as to not accidentally stabilize new
                 // inference or something here...
-                self.tcx.sess.span_delayed_bug(span, "this path really should be doomed...");
+                self.dcx().span_delayed_bug(span, "this path really should be doomed...");
                 // Guide inference for the RHS expression if it's provided --
                 // this will allow us to better error reporting, at the expense
                 // of making some error messages a bit more specific.

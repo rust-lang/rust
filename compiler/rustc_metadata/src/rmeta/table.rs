@@ -232,24 +232,30 @@ impl FixedSizeEncoding for Option<RawDefId> {
     type ByteArray = [u8; 8];
 
     #[inline]
-    fn from_bytes(b: &[u8; 8]) -> Self {
-        let krate = u32::from_le_bytes(b[0..4].try_into().unwrap());
+    fn from_bytes(encoded: &[u8; 8]) -> Self {
+        let (index, krate) = decode_interleaved(encoded);
+        let krate = u32::from_le_bytes(krate);
         if krate == 0 {
             return None;
         }
-        let index = u32::from_le_bytes(b[4..8].try_into().unwrap());
+        let index = u32::from_le_bytes(index);
+
         Some(RawDefId { krate: krate - 1, index })
     }
 
     #[inline]
-    fn write_to_bytes(self, b: &mut [u8; 8]) {
+    fn write_to_bytes(self, dest: &mut [u8; 8]) {
         match self {
             None => unreachable!(),
             Some(RawDefId { krate, index }) => {
-                // CrateNum is less than `CrateNum::MAX_AS_U32`.
                 debug_assert!(krate < u32::MAX);
-                b[0..4].copy_from_slice(&(1 + krate).to_le_bytes());
-                b[4..8].copy_from_slice(&index.to_le_bytes());
+                // CrateNum is less than `CrateNum::MAX_AS_U32`.
+                let krate = (krate + 1).to_le_bytes();
+                let index = index.to_le_bytes();
+
+                // CrateNum is usually much smaller than the index within the crate, so put it in
+                // the second slot.
+                encode_interleaved(index, krate, dest);
             }
         }
     }
@@ -351,20 +357,11 @@ impl<T> FixedSizeEncoding for Option<LazyValue<T>> {
 
 impl<T> LazyArray<T> {
     #[inline]
-    fn write_to_bytes_impl(self, b: &mut [u8; 16]) {
+    fn write_to_bytes_impl(self, dest: &mut [u8; 16]) {
         let position = (self.position.get() as u64).to_le_bytes();
         let len = (self.num_elems as u64).to_le_bytes();
 
-        // Element width is selected at runtime on a per-table basis by omitting trailing
-        // zero bytes in table elements. This works very naturally when table elements are
-        // simple numbers but `LazyArray` is a pair of integers. If naively encoded, the second
-        // element would shield the trailing zeroes in the first. Interleaving the bytes
-        // of the position and length exposes trailing zeroes in both to the optimization.
-        // We encode length second because we generally expect it to be smaller.
-        for i in 0..8 {
-            b[2 * i] = position[i];
-            b[2 * i + 1] = len[i];
-        }
+        encode_interleaved(position, len, dest)
     }
 
     fn from_bytes_impl(position: &[u8; 8], meta: &[u8; 8]) -> Option<LazyArray<T>> {
@@ -374,18 +371,34 @@ impl<T> LazyArray<T> {
     }
 }
 
-// Decoding helper for the encoding scheme used by `LazyArray`.
 // Interleaving the bytes of the two integers exposes trailing bytes in the first integer
 // to the varint scheme that we use for tables.
 #[inline]
-fn decode_interleaved(encoded: &[u8; 16]) -> ([u8; 8], [u8; 8]) {
-    let mut first = [0u8; 8];
-    let mut second = [0u8; 8];
-    for i in 0..8 {
+fn decode_interleaved<const N: usize, const M: usize>(encoded: &[u8; N]) -> ([u8; M], [u8; M]) {
+    assert_eq!(M * 2, N);
+    let mut first = [0u8; M];
+    let mut second = [0u8; M];
+    for i in 0..M {
         first[i] = encoded[2 * i];
         second[i] = encoded[2 * i + 1];
     }
     (first, second)
+}
+
+// Element width is selected at runtime on a per-table basis by omitting trailing
+// zero bytes in table elements. This works very naturally when table elements are
+// simple numbers but sometimes we have a pair of integers. If naively encoded, the second element
+// would shield the trailing zeroes in the first. Interleaving the bytes exposes trailing zeroes in
+// both to the optimization.
+//
+// Prefer passing a and b such that `b` is usually smaller.
+#[inline]
+fn encode_interleaved<const N: usize, const M: usize>(a: [u8; M], b: [u8; M], dest: &mut [u8; N]) {
+    assert_eq!(M * 2, N);
+    for i in 0..M {
+        dest[2 * i] = a[i];
+        dest[2 * i + 1] = b[i];
+    }
 }
 
 impl<T> FixedSizeEncoding for LazyArray<T> {

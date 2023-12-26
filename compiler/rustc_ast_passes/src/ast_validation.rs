@@ -228,13 +228,13 @@ impl<'a> AstValidator<'a> {
     fn check_lifetime(&self, ident: Ident) {
         let valid_names = [kw::UnderscoreLifetime, kw::StaticLifetime, kw::Empty];
         if !valid_names.contains(&ident.name) && ident.without_first_quote().is_reserved() {
-            self.session.emit_err(errors::KeywordLifetime { span: ident.span });
+            self.dcx().emit_err(errors::KeywordLifetime { span: ident.span });
         }
     }
 
     fn check_label(&self, ident: Ident) {
         if ident.without_first_quote().is_reserved() {
-            self.session.emit_err(errors::InvalidLabel { span: ident.span, name: ident.name });
+            self.dcx().emit_err(errors::InvalidLabel { span: ident.span, name: ident.name });
         }
     }
 
@@ -243,7 +243,7 @@ impl<'a> AstValidator<'a> {
             return;
         }
 
-        self.session.emit_err(errors::VisibilityNotPermitted { span: vis.span, note });
+        self.dcx().emit_err(errors::VisibilityNotPermitted { span: vis.span, note });
     }
 
     fn check_decl_no_pat(decl: &FnDecl, mut report_err: impl FnMut(Span, Option<Ident>, bool)) {
@@ -293,7 +293,7 @@ impl<'a> AstValidator<'a> {
 
     fn check_trait_fn_not_const(&self, constness: Const) {
         if let Const::Yes(span) = constness {
-            self.session.emit_err(errors::TraitFnConst { span });
+            self.dcx().emit_err(errors::TraitFnConst { span });
         }
     }
 
@@ -310,7 +310,7 @@ impl<'a> AstValidator<'a> {
         let max_num_args: usize = u16::MAX.into();
         if fn_decl.inputs.len() > max_num_args {
             let Param { span, .. } = fn_decl.inputs[0];
-            self.session.emit_fatal(errors::FnParamTooMany { span, max_num_args });
+            self.dcx().emit_fatal(errors::FnParamTooMany { span, max_num_args });
         }
     }
 
@@ -318,13 +318,13 @@ impl<'a> AstValidator<'a> {
         match &*fn_decl.inputs {
             [Param { ty, span, .. }] => {
                 if let TyKind::CVarArgs = ty.kind {
-                    self.session.emit_err(errors::FnParamCVarArgsOnly { span: *span });
+                    self.dcx().emit_err(errors::FnParamCVarArgsOnly { span: *span });
                 }
             }
             [ps @ .., _] => {
                 for Param { ty, span, .. } in ps {
                     if let TyKind::CVarArgs = ty.kind {
-                        self.session.emit_err(errors::FnParamCVarArgsNotLast { span: *span });
+                        self.dcx().emit_err(errors::FnParamCVarArgsNotLast { span: *span });
                     }
                 }
             }
@@ -351,9 +351,9 @@ impl<'a> AstValidator<'a> {
             })
             .for_each(|attr| {
                 if attr.is_doc_comment() {
-                    self.session.emit_err(errors::FnParamDocComment { span: attr.span });
+                    self.dcx().emit_err(errors::FnParamDocComment { span: attr.span });
                 } else {
-                    self.session.emit_err(errors::FnParamForbiddenAttr { span: attr.span });
+                    self.dcx().emit_err(errors::FnParamForbiddenAttr { span: attr.span });
                 }
             });
     }
@@ -361,7 +361,7 @@ impl<'a> AstValidator<'a> {
     fn check_decl_self_param(&self, fn_decl: &FnDecl, self_semantic: SelfSemantic) {
         if let (SelfSemantic::No, [param, ..]) = (self_semantic, &*fn_decl.inputs) {
             if param.is_self() {
-                self.session.emit_err(errors::FnParamForbiddenSelf { span: param.span });
+                self.dcx().emit_err(errors::FnParamForbiddenSelf { span: param.span });
             }
         }
     }
@@ -369,7 +369,7 @@ impl<'a> AstValidator<'a> {
     fn check_defaultness(&self, span: Span, defaultness: Defaultness) {
         if let Defaultness::Default(def_span) = defaultness {
             let span = self.session.source_map().guess_head_span(span);
-            self.session.emit_err(errors::ForbiddenDefault { span, def_span });
+            self.dcx().emit_err(errors::ForbiddenDefault { span, def_span });
         }
     }
 
@@ -532,24 +532,24 @@ impl<'a> AstValidator<'a> {
             return;
         }
         let span = self.session.source_map().guess_head_span(item_span);
-        self.session.emit_err(errors::NoMangleAscii { span });
+        self.dcx().emit_err(errors::NoMangleAscii { span });
     }
 
     fn check_mod_file_item_asciionly(&self, ident: Ident) {
         if ident.name.as_str().is_ascii() {
             return;
         }
-        self.session.emit_err(errors::ModuleNonAscii { span: ident.span, name: ident.name });
+        self.dcx().emit_err(errors::ModuleNonAscii { span: ident.span, name: ident.name });
     }
 
     fn deny_generic_params(&self, generics: &Generics, ident: Span) {
         if !generics.params.is_empty() {
-            self.session.emit_err(errors::AutoTraitGeneric { span: generics.span, ident });
+            self.dcx().emit_err(errors::AutoTraitGeneric { span: generics.span, ident });
         }
     }
 
     fn emit_e0568(&self, span: Span, ident: Span) {
-        self.session.emit_err(errors::AutoTraitBounds { span, ident });
+        self.dcx().emit_err(errors::AutoTraitBounds { span, ident });
     }
 
     fn deny_super_traits(&self, bounds: &GenericBounds, ident_span: Span) {
@@ -569,7 +569,7 @@ impl<'a> AstValidator<'a> {
         if !trait_items.is_empty() {
             let spans: Vec<_> = trait_items.iter().map(|i| i.ident.span).collect();
             let total = trait_items.first().unwrap().span.to(trait_items.last().unwrap().span);
-            self.session.emit_err(errors::AutoTraitItems { spans, total, ident });
+            self.dcx().emit_err(errors::AutoTraitItems { spans, total, ident });
         }
     }
 
@@ -633,7 +633,7 @@ impl<'a> AstValidator<'a> {
             TyKind::BareFn(bfty) => {
                 self.check_fn_decl(&bfty.decl, SelfSemantic::No);
                 Self::check_decl_no_pat(&bfty.decl, |span, _, _| {
-                    self.session.emit_err(errors::PatternFnPointer { span });
+                    self.dcx().emit_err(errors::PatternFnPointer { span });
                 });
                 if let Extern::Implicit(_) = bfty.ext {
                     let sig_span = self.session.source_map().next_point(ty.span.shrink_to_lo());
@@ -645,7 +645,7 @@ impl<'a> AstValidator<'a> {
                 for bound in bounds {
                     if let GenericBound::Outlives(lifetime) = bound {
                         if any_lifetime_bounds {
-                            self.session
+                            self.dcx()
                                 .emit_err(errors::TraitObjectBound { span: lifetime.ident.span });
                             break;
                         }
@@ -655,11 +655,11 @@ impl<'a> AstValidator<'a> {
             }
             TyKind::ImplTrait(_, bounds) => {
                 if self.is_impl_trait_banned {
-                    self.session.emit_err(errors::ImplTraitPath { span: ty.span });
+                    self.dcx().emit_err(errors::ImplTraitPath { span: ty.span });
                 }
 
                 if let Some(outer_impl_trait_sp) = self.outer_impl_trait {
-                    self.session.emit_err(errors::NestedImplTrait {
+                    self.dcx().emit_err(errors::NestedImplTrait {
                         span: ty.span,
                         outer: outer_impl_trait_sp,
                         inner: ty.span,
@@ -827,7 +827,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
                     if let (&Unsafe::Yes(span), &ImplPolarity::Negative(sp)) = (unsafety, polarity)
                     {
-                        this.session.emit_err(errors::UnsafeNegativeImpl {
+                        this.dcx().emit_err(errors::UnsafeNegativeImpl {
                             span: sp.to(t.path.span),
                             negative: sp,
                             r#unsafe: span,
@@ -902,7 +902,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_defaultness(item.span, *defaultness);
 
                 if body.is_none() {
-                    self.session.emit_err(errors::FnWithoutBody {
+                    self.dcx().emit_err(errors::FnWithoutBody {
                         span: item.span,
                         replace_span: self.ending_semi_or_hi(item.span),
                         extern_block_suggestion: match sig.header.ext {
@@ -1031,14 +1031,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ItemKind::Const(box ConstItem { defaultness, expr, .. }) => {
                 self.check_defaultness(item.span, *defaultness);
                 if expr.is_none() {
-                    self.session.emit_err(errors::ConstWithoutBody {
+                    self.dcx().emit_err(errors::ConstWithoutBody {
                         span: item.span,
                         replace_span: self.ending_semi_or_hi(item.span),
                     });
                 }
             }
             ItemKind::Static(box StaticItem { expr: None, .. }) => {
-                self.session.emit_err(errors::StaticWithoutBody {
+                self.dcx().emit_err(errors::StaticWithoutBody {
                     span: item.span,
                     replace_span: self.ending_semi_or_hi(item.span),
                 });
@@ -1048,7 +1048,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ) => {
                 self.check_defaultness(item.span, *defaultness);
                 if ty.is_none() {
-                    self.session.emit_err(errors::TyAliasWithoutBody {
+                    self.dcx().emit_err(errors::TyAliasWithoutBody {
                         span: item.span,
                         replace_span: self.ending_semi_or_hi(item.span),
                     });
@@ -1357,14 +1357,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         if ctxt == AssocCtxt::Impl {
             match &item.kind {
                 AssocItemKind::Const(box ConstItem { expr: None, .. }) => {
-                    self.session.emit_err(errors::AssocConstWithoutBody {
+                    self.dcx().emit_err(errors::AssocConstWithoutBody {
                         span: item.span,
                         replace_span: self.ending_semi_or_hi(item.span),
                     });
                 }
                 AssocItemKind::Fn(box Fn { body, .. }) => {
                     if body.is_none() {
-                        self.session.emit_err(errors::AssocFnWithoutBody {
+                        self.dcx().emit_err(errors::AssocFnWithoutBody {
                             span: item.span,
                             replace_span: self.ending_semi_or_hi(item.span),
                         });
@@ -1372,7 +1372,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 AssocItemKind::Type(box TyAlias { bounds, ty, .. }) => {
                     if ty.is_none() {
-                        self.session.emit_err(errors::AssocTypeWithoutBody {
+                        self.dcx().emit_err(errors::AssocTypeWithoutBody {
                             span: item.span,
                             replace_span: self.ending_semi_or_hi(item.span),
                         });

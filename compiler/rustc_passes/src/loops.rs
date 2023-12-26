@@ -126,7 +126,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                     Ok(loop_id) => Some(loop_id),
                     Err(hir::LoopIdError::OutsideLoopScope) => None,
                     Err(hir::LoopIdError::UnlabeledCfInWhileCondition) => {
-                        self.sess.emit_err(UnlabeledCfInWhileCondition {
+                        self.sess.dcx().emit_err(UnlabeledCfInWhileCondition {
                             span: e.span,
                             cf_type: "break",
                         });
@@ -161,7 +161,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                                     .label
                                     .map_or_else(String::new, |l| format!(" {}", l.ident))
                             );
-                            self.sess.emit_err(BreakNonLoop {
+                            self.sess.dcx().emit_err(BreakNonLoop {
                                 span: e.span,
                                 head,
                                 kind: kind.name(),
@@ -188,14 +188,14 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 match destination.target_id {
                     Ok(loop_id) => {
                         if let Node::Block(block) = self.tcx.opt_hir_node(loop_id).unwrap() {
-                            self.sess.emit_err(ContinueLabeledBlock {
+                            self.sess.dcx().emit_err(ContinueLabeledBlock {
                                 span: e.span,
                                 block_span: block.span,
                             });
                         }
                     }
                     Err(hir::LoopIdError::UnlabeledCfInWhileCondition) => {
-                        self.sess.emit_err(UnlabeledCfInWhileCondition {
+                        self.sess.dcx().emit_err(UnlabeledCfInWhileCondition {
                             span: e.span,
                             cf_type: "continue",
                         });
@@ -225,17 +225,17 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
         match self.cx {
             LabeledBlock | Loop(_) => {}
             Closure(closure_span) => {
-                self.sess.emit_err(BreakInsideClosure { span, closure_span, name });
+                self.sess.dcx().emit_err(BreakInsideClosure { span, closure_span, name });
             }
             AsyncClosure(closure_span) => {
-                self.sess.emit_err(BreakInsideAsyncBlock { span, closure_span, name });
+                self.sess.dcx().emit_err(BreakInsideAsyncBlock { span, closure_span, name });
             }
             UnlabeledBlock(block_span) if is_break && block_span.eq_ctxt(break_span) => {
                 let suggestion = Some(OutsideLoopSuggestion { block_span, break_span });
-                self.sess.emit_err(OutsideLoop { span, name, is_break, suggestion });
+                self.sess.dcx().emit_err(OutsideLoop { span, name, is_break, suggestion });
             }
             Normal | Constant | Fn | UnlabeledBlock(_) => {
-                self.sess.emit_err(OutsideLoop { span, name, is_break, suggestion: None });
+                self.sess.dcx().emit_err(OutsideLoop { span, name, is_break, suggestion: None });
             }
         }
     }
@@ -250,7 +250,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
             && self.cx == LabeledBlock
             && label.label.is_none()
         {
-            self.sess.emit_err(UnlabeledInLabeledBlock { span, cf_type });
+            self.sess.dcx().emit_err(UnlabeledInLabeledBlock { span, cf_type });
             return true;
         }
         false

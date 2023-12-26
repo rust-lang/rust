@@ -61,7 +61,7 @@ pub(crate) fn eval_to_valtree<'tcx>(
             match err {
                 ValTreeCreationError::NodesOverflow => {
                     let span = tcx.hir().span_if_local(did);
-                    tcx.sess.emit_err(MaxNumNodesInConstErr { span, global_const_id });
+                    tcx.dcx().emit_err(MaxNumNodesInConstErr { span, global_const_id });
 
                     Ok(None)
                 }

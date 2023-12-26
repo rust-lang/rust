@@ -180,7 +180,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 &mut OriginalQueryValues::default(),
             );
             self.tcx.check_tys_might_be_eq(canonical).map_err(|_| {
-                self.tcx.sess.span_delayed_bug(
+                self.tcx.dcx().span_delayed_bug(
                     DUMMY_SP,
                     format!("cannot relate consts of different types (a={a:?}, b={b:?})",),
                 )

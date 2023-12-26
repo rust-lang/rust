@@ -36,7 +36,7 @@ pub fn out_filename(
 /// read-only file. We should be consistent.
 pub fn check_file_is_writeable(file: &Path, sess: &Session) {
     if !is_writeable(file) {
-        sess.emit_fatal(FileIsNotWriteable { file });
+        sess.dcx().emit_fatal(FileIsNotWriteable { file });
     }
 }
 
@@ -64,7 +64,7 @@ pub fn find_crate_name(sess: &Session, attrs: &[ast::Attribute]) -> Symbol {
         let s = Symbol::intern(s);
         if let Some((attr, name)) = attr_crate_name {
             if name != s {
-                sess.emit_err(CrateNameDoesNotMatch { span: attr.span, s, name });
+                sess.dcx().emit_err(CrateNameDoesNotMatch { span: attr.span, s, name });
             }
         }
         return validate(s, None);
@@ -76,7 +76,7 @@ pub fn find_crate_name(sess: &Session, attrs: &[ast::Attribute]) -> Symbol {
     if let Input::File(ref path) = sess.io.input {
         if let Some(s) = path.file_stem().and_then(|s| s.to_str()) {
             if s.starts_with('-') {
-                sess.emit_err(CrateNameInvalid { s });
+                sess.dcx().emit_err(CrateNameInvalid { s });
             } else {
                 return validate(Symbol::intern(&s.replace('-', "_")), None);
             }
@@ -91,7 +91,7 @@ pub fn validate_crate_name(sess: &Session, s: Symbol, sp: Option<Span>) {
     {
         if s.is_empty() {
             err_count += 1;
-            sess.emit_err(CrateNameEmpty { span: sp });
+            sess.dcx().emit_err(CrateNameEmpty { span: sp });
         }
         for c in s.as_str().chars() {
             if c.is_alphanumeric() {
@@ -101,7 +101,7 @@ pub fn validate_crate_name(sess: &Session, s: Symbol, sp: Option<Span>) {
                 continue;
             }
             err_count += 1;
-            sess.emit_err(InvalidCharacterInCrateName {
+            sess.dcx().emit_err(InvalidCharacterInCrateName {
                 span: sp,
                 character: c,
                 crate_name: s,
@@ -115,7 +115,7 @@ pub fn validate_crate_name(sess: &Session, s: Symbol, sp: Option<Span>) {
     }
 
     if err_count > 0 {
-        sess.abort_if_errors();
+        sess.dcx().abort_if_errors();
     }
 }
 

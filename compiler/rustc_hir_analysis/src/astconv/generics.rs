@@ -28,7 +28,7 @@ fn generic_arg_mismatch_err(
 ) -> ErrorGuaranteed {
     let sess = tcx.sess;
     let mut err = struct_span_err!(
-        sess,
+        tcx.dcx(),
         arg.span(),
         E0747,
         "{} provided when a {} was expected",
@@ -650,7 +650,7 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
         if position == GenericArgPosition::Value
             && args.num_lifetime_params() != param_counts.lifetimes
         {
-            let mut err = struct_span_err!(tcx.sess, span, E0794, "{}", msg);
+            let mut err = struct_span_err!(tcx.dcx(), span, E0794, "{}", msg);
             err.span_note(span_late, note);
             err.emit();
         } else {

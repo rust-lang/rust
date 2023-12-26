@@ -153,7 +153,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         };
         let Some(asm_ty) = asm_ty else {
             let msg = format!("cannot use value of type `{ty}` for inline assembly");
-            let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
+            let mut err = self.tcx.dcx().struct_span_err(expr.span, msg);
             err.note(
                 "only integers, floats, SIMD vectors, pointers and function pointers \
                  can be used as arguments for inline assembly",
@@ -166,7 +166,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         // possibly fail is for SIMD types which don't #[derive(Copy)].
         if !ty.is_copy_modulo_regions(self.tcx, self.param_env) {
             let msg = "arguments for inline assembly must be copyable";
-            let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
+            let mut err = self.tcx.dcx().struct_span_err(expr.span, msg);
             err.note(format!("`{ty}` does not implement the Copy trait"));
             err.emit();
         }
@@ -183,7 +183,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         if let Some((in_expr, Some(in_asm_ty))) = tied_input {
             if in_asm_ty != asm_ty {
                 let msg = "incompatible types for asm inout argument";
-                let mut err = self.tcx.sess.struct_span_err(vec![in_expr.span, expr.span], msg);
+                let mut err = self.tcx.dcx().struct_span_err(vec![in_expr.span, expr.span], msg);
 
                 let in_expr_ty = (self.get_operand_ty)(in_expr);
                 err.span_label(in_expr.span, format!("type `{in_expr_ty}`"));
@@ -207,7 +207,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         let supported_tys = reg_class.supported_types(asm_arch);
         let Some((_, feature)) = supported_tys.iter().find(|&&(t, _)| t == asm_ty) else {
             let msg = format!("type `{ty}` cannot be used with this register class");
-            let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
+            let mut err = self.tcx.dcx().struct_span_err(expr.span, msg);
             let supported_tys: Vec<_> = supported_tys.iter().map(|(t, _)| t.to_string()).collect();
             err.note(format!(
                 "register class `{}` supports these types: {}",
@@ -234,7 +234,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         if let Some(feature) = feature {
             if !target_features.contains(feature) {
                 let msg = format!("`{feature}` target feature is not enabled");
-                let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
+                let mut err = self.tcx.dcx().struct_span_err(expr.span, msg);
                 err.note(format!(
                     "this is required to use type `{}` with register class `{}`",
                     ty,
@@ -287,7 +287,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
     pub fn check_asm(&self, asm: &hir::InlineAsm<'tcx>, enclosing_id: LocalDefId) {
         let target_features = self.tcx.asm_target_features(enclosing_id.to_def_id());
         let Some(asm_arch) = self.tcx.sess.asm_arch else {
-            self.tcx.sess.span_delayed_bug(DUMMY_SP, "target architecture does not support asm");
+            self.tcx.dcx().span_delayed_bug(DUMMY_SP, "target architecture does not support asm");
             return;
         };
         for (idx, (op, op_sp)) in asm.operands.iter().enumerate() {
@@ -318,7 +318,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         op.is_clobber(),
                     ) {
                         let msg = format!("cannot use register `{}`: {}", reg.name(), msg);
-                        self.tcx.sess.struct_span_err(*op_sp, msg).emit();
+                        self.tcx.dcx().struct_span_err(*op_sp, msg).emit();
                         continue;
                     }
                 }
@@ -357,7 +357,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                                 reg_class.name(),
                                 feature
                             );
-                            self.tcx.sess.struct_span_err(*op_sp, msg).emit();
+                            self.tcx.dcx().struct_span_err(*op_sp, msg).emit();
                             // register isn't enabled, don't do more checks
                             continue;
                         }
@@ -371,7 +371,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                                     .intersperse(", ")
                                     .collect::<String>(),
                             );
-                            self.tcx.sess.struct_span_err(*op_sp, msg).emit();
+                            self.tcx.dcx().struct_span_err(*op_sp, msg).emit();
                             // register isn't enabled, don't do more checks
                             continue;
                         }
@@ -450,7 +450,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         ty::FnDef(..) => {}
                         _ => {
                             let mut err =
-                                self.tcx.sess.struct_span_err(*op_sp, "invalid `sym` operand");
+                                self.tcx.dcx().struct_span_err(*op_sp, "invalid `sym` operand");
                             err.span_label(
                                 self.tcx.def_span(anon_const.def_id),
                                 format!("is {} `{}`", ty.kind().article(), ty),

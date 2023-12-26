@@ -429,7 +429,7 @@ fn compare_asyncness<'tcx>(
             }
             _ => {
                 return Err(tcx
-                    .sess
+                    .dcx()
                     .create_err(crate::errors::AsyncTraitImplShouldBeAsync {
                         span: tcx.def_span(impl_m.def_id),
                         method_name: trait_m.name,
@@ -626,7 +626,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         Ok(()) => {}
         Err(terr) => {
             let mut diag = struct_span_err!(
-                tcx.sess,
+                tcx.dcx(),
                 cause.span(),
                 E0053,
                 "method `{}` has an incompatible return type for trait",
@@ -759,7 +759,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
                 remapped_types.insert(def_id, ty::EarlyBinder::bind(ty));
             }
             Err(err) => {
-                let reported = tcx.sess.span_delayed_bug(
+                let reported = tcx.dcx().span_delayed_bug(
                     return_span,
                     format!("could not fully resolve: {ty} => {err:?}"),
                 );
@@ -929,7 +929,7 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
                         self.return_span
                     };
                     self.tcx
-                        .sess
+                        .dcx()
                         .struct_span_err(
                             return_span,
                             "return type captures more lifetimes than trait definition",
@@ -943,7 +943,7 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
                         .emit()
                 }
                 _ => {
-                    self.tcx.sess.span_delayed_bug(DUMMY_SP, "should've been able to remap region")
+                    self.tcx.dcx().span_delayed_bug(DUMMY_SP, "should've been able to remap region")
                 }
             };
             return Err(guar);
@@ -973,7 +973,7 @@ fn report_trait_method_mismatch<'tcx>(
         extract_spans_for_error_reporting(infcx, terr, &cause, impl_m, trait_m);
 
     let mut diag = struct_span_err!(
-        tcx.sess,
+        tcx.dcx(),
         impl_err_span,
         E0053,
         "method `{}` has an incompatible type for trait",
@@ -1134,7 +1134,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
             }
         }
         let reported = tcx
-            .sess
+            .dcx()
             .create_err(LifetimesOrBoundsMismatchOnTrait {
                 span,
                 item_kind: assoc_item_kind_str(&impl_m),
@@ -1218,7 +1218,7 @@ fn compare_self_type<'tcx>(
             let self_descr = self_string(impl_m);
             let impl_m_span = tcx.def_span(impl_m.def_id);
             let mut err = struct_span_err!(
-                tcx.sess,
+                tcx.dcx(),
                 impl_m_span,
                 E0185,
                 "method `{}` has a `{}` declaration in the impl, but not in the trait",
@@ -1238,7 +1238,7 @@ fn compare_self_type<'tcx>(
             let self_descr = self_string(trait_m);
             let impl_m_span = tcx.def_span(impl_m.def_id);
             let mut err = struct_span_err!(
-                tcx.sess,
+                tcx.dcx(),
                 impl_m_span,
                 E0186,
                 "method `{}` has a `{}` declaration in the trait, but not in the impl",
@@ -1303,7 +1303,7 @@ fn compare_number_of_generics<'tcx>(
     // inheriting the generics from will also have mismatched arguments, and
     // we'll report an error for that instead. Delay a bug for safety, though.
     if trait_.is_impl_trait_in_trait() {
-        return Err(tcx.sess.span_delayed_bug(
+        return Err(tcx.dcx().span_delayed_bug(
             rustc_span::DUMMY_SP,
             "errors comparing numbers of generics of trait/impl functions were not emitted",
         ));
@@ -1371,7 +1371,7 @@ fn compare_number_of_generics<'tcx>(
             let spans = arg_spans(impl_.kind, impl_item.generics);
             let span = spans.first().copied();
 
-            let mut err = tcx.sess.struct_span_err_with_code(
+            let mut err = tcx.dcx().struct_span_err_with_code(
                 spans,
                 format!(
                     "{} `{}` has {} {kind} parameter{} but its trait \
@@ -1464,7 +1464,7 @@ fn compare_number_of_method_arguments<'tcx>(
             .unwrap_or_else(|| tcx.def_span(impl_m.def_id));
 
         let mut err = struct_span_err!(
-            tcx.sess,
+            tcx.dcx(),
             impl_span,
             E0050,
             "method `{}` has {} but the declaration in trait `{}` has {}",
@@ -1531,7 +1531,7 @@ fn compare_synthetic_generics<'tcx>(
             let impl_span = tcx.def_span(impl_def_id);
             let trait_span = tcx.def_span(trait_def_id);
             let mut err = struct_span_err!(
-                tcx.sess,
+                tcx.dcx(),
                 impl_span,
                 E0643,
                 "method `{}` has incompatible signature for trait",
@@ -1690,7 +1690,7 @@ fn compare_generic_param_kinds<'tcx>(
             let param_trait_span = tcx.def_span(param_trait.def_id);
 
             let mut err = struct_span_err!(
-                tcx.sess,
+                tcx.dcx(),
                 param_impl_span,
                 E0053,
                 "{} `{}` has an incompatible generic parameter for trait `{}`",
@@ -1837,7 +1837,7 @@ fn compare_const_predicate_entailment<'tcx>(
         cause.span = ty.span;
 
         let mut diag = struct_span_err!(
-            tcx.sess,
+            tcx.dcx(),
             cause.span,
             E0326,
             "implemented const `{}` has an incompatible type for trait",

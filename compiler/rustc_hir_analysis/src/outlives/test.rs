@@ -18,7 +18,7 @@ pub fn test_inferred_outlives(tcx: TyCtxt<'_>) {
             pred.sort();
 
             let span = tcx.def_span(id.owner_id);
-            let mut err = tcx.sess.struct_span_err(span, "rustc_outlives");
+            let mut err = tcx.dcx().struct_span_err(span, "rustc_outlives");
             for p in pred {
                 err.note(p);
             }

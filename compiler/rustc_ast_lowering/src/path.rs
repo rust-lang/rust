@@ -140,7 +140,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // We should've returned in the for loop above.
 
-        self.tcx.sess.dcx().span_bug(
+        self.dcx().span_bug(
             p.span,
             format!(
                 "lower_qpath: no final extension segment in {}..{}",
@@ -214,7 +214,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         } else {
                             None
                         };
-                        self.tcx.sess.emit_err(GenericTypeWithParentheses { span: data.span, sub });
+                        self.dcx().emit_err(GenericTypeWithParentheses { span: data.span, sub });
                         (
                             self.lower_angle_bracketed_parameter_data(
                                 &data.as_angle_bracketed_args(),

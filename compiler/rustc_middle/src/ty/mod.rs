@@ -1495,7 +1495,7 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         } else {
             TypeMismatchReason::PreviousUse { span: self.span }
         };
-        tcx.sess.create_err(OpaqueHiddenTypeMismatch {
+        tcx.dcx().create_err(OpaqueHiddenTypeMismatch {
             self_ty: self.ty,
             other_ty: other.ty,
             other_span: other.span,

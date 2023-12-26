@@ -157,7 +157,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     if let Some(OpaqueTyOrigin::TyAlias { .. }) =
                         b_def_id.as_local().and_then(|b_def_id| self.opaque_type_origin(b_def_id))
                     {
-                        self.tcx.sess.emit_err(OpaqueHiddenTypeDiag {
+                        self.tcx.dcx().emit_err(OpaqueHiddenTypeDiag {
                             span: cause.span,
                             hidden_type: self.tcx.def_span(b_def_id),
                             opaque_type: self.tcx.def_span(def_id),

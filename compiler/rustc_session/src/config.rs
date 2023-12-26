@@ -883,7 +883,7 @@ impl OutFileName {
             OutFileName::Stdout => print!("{content}"),
             OutFileName::Real(path) => {
                 if let Err(e) = fs::write(path, content) {
-                    sess.emit_fatal(FileWriteFail { path, err: e.to_string() });
+                    sess.dcx().emit_fatal(FileWriteFail { path, err: e.to_string() });
                 }
             }
         }
@@ -1325,7 +1325,7 @@ fn default_configuration(sess: &Session) -> Cfg {
 
     // `target_has_atomic*`
     let layout = sess.target.parse_data_layout().unwrap_or_else(|err| {
-        sess.emit_fatal(err);
+        sess.dcx().emit_fatal(err);
     });
     let mut has_atomic = false;
     for (i, align) in [

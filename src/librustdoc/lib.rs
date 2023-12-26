@@ -690,10 +690,10 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
     tcx: TyCtxt<'tcx>,
 ) -> MainResult {
     match formats::run_format::<T>(krate, renderopts, cache, tcx) {
-        Ok(_) => tcx.sess.has_errors().map_or(Ok(()), Err),
+        Ok(_) => tcx.dcx().has_errors().map_or(Ok(()), Err),
         Err(e) => {
             let mut msg =
-                tcx.sess.struct_err(format!("couldn't generate documentation: {}", e.error));
+                tcx.dcx().struct_err(format!("couldn't generate documentation: {}", e.error));
             let file = e.file.display().to_string();
             if !file.is_empty() {
                 msg.note(format!("failed to create or modify \"{file}\""));
@@ -800,7 +800,7 @@ fn main_args(
         compiler.enter(|queries| {
             let mut gcx = abort_on_err(queries.global_ctxt(), sess);
             if sess.dcx().has_errors_or_lint_errors().is_some() {
-                sess.fatal("Compilation failed, aborting rustdoc");
+                sess.dcx().fatal("Compilation failed, aborting rustdoc");
             }
 
             gcx.enter(|tcx| {

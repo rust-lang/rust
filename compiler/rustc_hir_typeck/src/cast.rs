@@ -42,7 +42,6 @@ use rustc_middle::ty::cast::{CastKind, CastTy};
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, Ty, TypeAndMut, TypeVisitableExt, VariantDef};
 use rustc_session::lint;
-use rustc_session::Session;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -140,8 +139,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::Dynamic(_, _, ty::DynStar)
             | ty::Error(_) => {
                 let reported = self
-                    .tcx
-                    .sess
+                    .dcx()
                     .span_delayed_bug(span, format!("`{t:?}` should be sized but is not?"));
                 return Err(reported);
             }
@@ -182,14 +180,13 @@ impl From<ErrorGuaranteed> for CastError {
 }
 
 fn make_invalid_casting_error<'a, 'tcx>(
-    sess: &'a Session,
     span: Span,
     expr_ty: Ty<'tcx>,
     cast_ty: Ty<'tcx>,
     fcx: &FnCtxt<'a, 'tcx>,
 ) -> DiagnosticBuilder<'a> {
     type_error_struct!(
-        sess,
+        fcx.dcx(),
         span,
         expr_ty,
         E0606,
@@ -229,13 +226,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 // an error has already been reported
             }
             CastError::NeedDeref => {
-                let mut err = make_invalid_casting_error(
-                    fcx.tcx.sess,
-                    self.span,
-                    self.expr_ty,
-                    self.cast_ty,
-                    fcx,
-                );
+                let mut err =
+                    make_invalid_casting_error(self.span, self.expr_ty, self.cast_ty, fcx);
 
                 if matches!(self.expr.kind, ExprKind::AddrOf(..)) {
                     // get just the borrow part of the expression
@@ -258,13 +250,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 err.emit();
             }
             CastError::NeedViaThinPtr | CastError::NeedViaPtr => {
-                let mut err = make_invalid_casting_error(
-                    fcx.tcx.sess,
-                    self.span,
-                    self.expr_ty,
-                    self.cast_ty,
-                    fcx,
-                );
+                let mut err =
+                    make_invalid_casting_error(self.span, self.expr_ty, self.cast_ty, fcx);
                 if self.cast_ty.is_integral() {
                     err.help(format!(
                         "cast through {} first",
@@ -281,36 +268,17 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 err.emit();
             }
             CastError::NeedViaInt => {
-                make_invalid_casting_error(
-                    fcx.tcx.sess,
-                    self.span,
-                    self.expr_ty,
-                    self.cast_ty,
-                    fcx,
-                )
-                .help("cast through an integer first")
-                .emit();
+                make_invalid_casting_error(self.span, self.expr_ty, self.cast_ty, fcx)
+                    .help("cast through an integer first")
+                    .emit();
             }
             CastError::IllegalCast => {
-                make_invalid_casting_error(
-                    fcx.tcx.sess,
-                    self.span,
-                    self.expr_ty,
-                    self.cast_ty,
-                    fcx,
-                )
-                .emit();
+                make_invalid_casting_error(self.span, self.expr_ty, self.cast_ty, fcx).emit();
             }
             CastError::DifferingKinds => {
-                make_invalid_casting_error(
-                    fcx.tcx.sess,
-                    self.span,
-                    self.expr_ty,
-                    self.cast_ty,
-                    fcx,
-                )
-                .note("vtable kinds may not match")
-                .emit();
+                make_invalid_casting_error(self.span, self.expr_ty, self.cast_ty, fcx)
+                    .note("vtable kinds may not match")
+                    .emit();
             }
             CastError::CastToBool => {
                 let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
@@ -321,11 +289,11 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 } else {
                     errors::CannotCastToBoolHelp::Unsupported(self.span)
                 };
-                fcx.tcx.sess.emit_err(errors::CannotCastToBool { span: self.span, expr_ty, help });
+                fcx.tcx.dcx().emit_err(errors::CannotCastToBool { span: self.span, expr_ty, help });
             }
             CastError::CastToChar => {
                 let mut err = type_error_struct!(
-                    fcx.tcx.sess,
+                    fcx.dcx(),
                     self.span,
                     self.expr_ty,
                     E0604,
@@ -355,7 +323,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             }
             CastError::NonScalar => {
                 let mut err = type_error_struct!(
-                    fcx.tcx.sess,
+                    fcx.dcx(),
                     self.span,
                     self.expr_ty,
                     E0605,
@@ -515,7 +483,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 let metadata = known_metadata.unwrap_or("type-specific metadata");
                 let known_wide = known_metadata.is_some();
                 let span = self.cast_span;
-                fcx.tcx.sess.emit_err(errors::IntToWide {
+                fcx.dcx().emit_err(errors::IntToWide {
                     span,
                     metadata,
                     expr_ty,
@@ -535,15 +503,10 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 } else {
                     (self.cast_span, errors::CastUnknownPointerSub::From(self.span))
                 };
-                fcx.tcx.sess.emit_err(errors::CastUnknownPointer {
-                    span,
-                    to: unknown_cast_to,
-                    sub,
-                });
+                fcx.dcx().emit_err(errors::CastUnknownPointer { span, to: unknown_cast_to, sub });
             }
             CastError::ForeignNonExhaustiveAdt => {
                 make_invalid_casting_error(
-                    fcx.tcx.sess,
                     self.span,
                     self.expr_ty,
                     self.cast_ty,
@@ -565,7 +528,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
         let tstr = fcx.ty_to_string(self.cast_ty);
         let mut err = type_error_struct!(
-            fcx.tcx.sess,
+            fcx.dcx(),
             self.span,
             self.expr_ty,
             E0620,

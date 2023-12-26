@@ -207,7 +207,8 @@ pub fn find_stability(
             sym::rustc_allowed_through_unstable_modules => allowed_through_unstable_modules = true,
             sym::unstable => {
                 if stab.is_some() {
-                    sess.emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
+                    sess.dcx()
+                        .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
                     break;
                 }
 
@@ -217,7 +218,8 @@ pub fn find_stability(
             }
             sym::stable => {
                 if stab.is_some() {
-                    sess.emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
+                    sess.dcx()
+                        .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
                     break;
                 }
                 if let Some((feature, level)) = parse_stability(sess, attr) {
@@ -238,7 +240,8 @@ pub fn find_stability(
                 _,
             )) => *allowed_through_unstable_modules = true,
             _ => {
-                sess.emit_err(session_diagnostics::RustcAllowedUnstablePairing { span: item_sp });
+                sess.dcx()
+                    .emit_err(session_diagnostics::RustcAllowedUnstablePairing { span: item_sp });
             }
         }
     }
@@ -261,7 +264,8 @@ pub fn find_const_stability(
             sym::rustc_promotable => promotable = true,
             sym::rustc_const_unstable => {
                 if const_stab.is_some() {
-                    sess.emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
+                    sess.dcx()
+                        .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
                     break;
                 }
 
@@ -272,7 +276,8 @@ pub fn find_const_stability(
             }
             sym::rustc_const_stable => {
                 if const_stab.is_some() {
-                    sess.emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
+                    sess.dcx()
+                        .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
                     break;
                 }
                 if let Some((feature, level)) = parse_stability(sess, attr) {
@@ -288,7 +293,11 @@ pub fn find_const_stability(
     if promotable {
         match &mut const_stab {
             Some((stab, _)) => stab.promotable = promotable,
-            _ => _ = sess.emit_err(session_diagnostics::RustcPromotablePairing { span: item_sp }),
+            _ => {
+                _ = sess
+                    .dcx()
+                    .emit_err(session_diagnostics::RustcPromotablePairing { span: item_sp })
+            }
         }
     }
 
@@ -306,7 +315,8 @@ pub fn find_body_stability(
     for attr in attrs {
         if attr.has_name(sym::rustc_default_body_unstable) {
             if body_stab.is_some() {
-                sess.emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
+                sess.dcx()
+                    .emit_err(session_diagnostics::MultipleStabilityLevels { span: attr.span });
                 break;
             }
 
@@ -321,7 +331,7 @@ pub fn find_body_stability(
 
 fn insert_or_error(sess: &Session, meta: &MetaItem, item: &mut Option<Symbol>) -> Option<()> {
     if item.is_some() {
-        sess.emit_err(session_diagnostics::MultipleItem {
+        sess.dcx().emit_err(session_diagnostics::MultipleItem {
             span: meta.span,
             item: pprust::path_to_string(&meta.path),
         });
@@ -330,7 +340,7 @@ fn insert_or_error(sess: &Session, meta: &MetaItem, item: &mut Option<Symbol>) -
         *item = Some(v);
         Some(())
     } else {
-        sess.emit_err(session_diagnostics::IncorrectMetaItem { span: meta.span });
+        sess.dcx().emit_err(session_diagnostics::IncorrectMetaItem { span: meta.span });
         None
     }
 }
@@ -345,7 +355,7 @@ fn parse_stability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabilit
     let mut since = None;
     for meta in metas {
         let Some(mi) = meta.meta_item() else {
-            sess.emit_err(session_diagnostics::UnsupportedLiteral {
+            sess.dcx().emit_err(session_diagnostics::UnsupportedLiteral {
                 span: meta.span(),
                 reason: UnsupportedLiteralReason::Generic,
                 is_bytestr: false,
@@ -358,7 +368,7 @@ fn parse_stability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabilit
             sym::feature => insert_or_error(sess, mi, &mut feature)?,
             sym::since => insert_or_error(sess, mi, &mut since)?,
             _ => {
-                sess.emit_err(session_diagnostics::UnknownMetaItem {
+                sess.dcx().emit_err(session_diagnostics::UnknownMetaItem {
                     span: meta.span(),
                     item: pprust::path_to_string(&mi.path),
                     expected: &["feature", "since"],
@@ -371,9 +381,9 @@ fn parse_stability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabilit
     let feature = match feature {
         Some(feature) if rustc_lexer::is_ident(feature.as_str()) => Ok(feature),
         Some(_bad_feature) => {
-            Err(sess.emit_err(session_diagnostics::NonIdentFeature { span: attr.span }))
+            Err(sess.dcx().emit_err(session_diagnostics::NonIdentFeature { span: attr.span }))
         }
-        None => Err(sess.emit_err(session_diagnostics::MissingFeature { span: attr.span })),
+        None => Err(sess.dcx().emit_err(session_diagnostics::MissingFeature { span: attr.span })),
     };
 
     let since = if let Some(since) = since {
@@ -382,11 +392,11 @@ fn parse_stability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabilit
         } else if let Some(version) = parse_version(since) {
             StableSince::Version(version)
         } else {
-            sess.emit_err(session_diagnostics::InvalidSince { span: attr.span });
+            sess.dcx().emit_err(session_diagnostics::InvalidSince { span: attr.span });
             StableSince::Err
         }
     } else {
-        sess.emit_err(session_diagnostics::MissingSince { span: attr.span });
+        sess.dcx().emit_err(session_diagnostics::MissingSince { span: attr.span });
         StableSince::Err
     };
 
@@ -413,7 +423,7 @@ fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabil
     let mut implied_by = None;
     for meta in metas {
         let Some(mi) = meta.meta_item() else {
-            sess.emit_err(session_diagnostics::UnsupportedLiteral {
+            sess.dcx().emit_err(session_diagnostics::UnsupportedLiteral {
                 span: meta.span(),
                 reason: UnsupportedLiteralReason::Generic,
                 is_bytestr: false,
@@ -435,7 +445,7 @@ fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabil
                     issue => match issue.parse::<NonZeroU32>() {
                         Ok(num) => Some(num),
                         Err(err) => {
-                            sess.emit_err(
+                            sess.dcx().emit_err(
                                 session_diagnostics::InvalidIssueString {
                                     span: mi.span,
                                     cause: session_diagnostics::InvalidIssueStringCause::from_int_error_kind(
@@ -451,13 +461,13 @@ fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabil
             }
             sym::soft => {
                 if !mi.is_word() {
-                    sess.emit_err(session_diagnostics::SoftNoArgs { span: mi.span });
+                    sess.dcx().emit_err(session_diagnostics::SoftNoArgs { span: mi.span });
                 }
                 is_soft = true;
             }
             sym::implied_by => insert_or_error(sess, mi, &mut implied_by)?,
             _ => {
-                sess.emit_err(session_diagnostics::UnknownMetaItem {
+                sess.dcx().emit_err(session_diagnostics::UnknownMetaItem {
                     span: meta.span(),
                     item: pprust::path_to_string(&mi.path),
                     expected: &["feature", "reason", "issue", "soft", "implied_by"],
@@ -470,13 +480,13 @@ fn parse_unstability(sess: &Session, attr: &Attribute) -> Option<(Symbol, Stabil
     let feature = match feature {
         Some(feature) if rustc_lexer::is_ident(feature.as_str()) => Ok(feature),
         Some(_bad_feature) => {
-            Err(sess.emit_err(session_diagnostics::NonIdentFeature { span: attr.span }))
+            Err(sess.dcx().emit_err(session_diagnostics::NonIdentFeature { span: attr.span }))
         }
-        None => Err(sess.emit_err(session_diagnostics::MissingFeature { span: attr.span })),
+        None => Err(sess.dcx().emit_err(session_diagnostics::MissingFeature { span: attr.span })),
     };
 
-    let issue =
-        issue.ok_or_else(|| sess.emit_err(session_diagnostics::MissingIssue { span: attr.span }));
+    let issue = issue
+        .ok_or_else(|| sess.dcx().emit_err(session_diagnostics::MissingIssue { span: attr.span }));
 
     match (feature, issue) {
         (Ok(feature), Ok(_)) => {
@@ -588,6 +598,7 @@ pub fn eval_condition(
     features: Option<&Features>,
     eval: &mut impl FnMut(Condition) -> bool,
 ) -> bool {
+    let dcx = &sess.dcx;
     match &cfg.kind {
         ast::MetaItemKind::List(mis) if cfg.name_or_empty() == sym::version => {
             try_gate_cfg(sym::version, cfg.span, sess, features);
@@ -599,18 +610,18 @@ pub fn eval_condition(
                     NestedMetaItem::Lit(MetaItemLit { span, .. })
                     | NestedMetaItem::MetaItem(MetaItem { span, .. }),
                 ] => {
-                    sess.emit_err(session_diagnostics::ExpectedVersionLiteral { span: *span });
+                    dcx.emit_err(session_diagnostics::ExpectedVersionLiteral { span: *span });
                     return false;
                 }
                 [..] => {
-                    sess.emit_err(session_diagnostics::ExpectedSingleVersionLiteral {
+                    dcx.emit_err(session_diagnostics::ExpectedSingleVersionLiteral {
                         span: cfg.span,
                     });
                     return false;
                 }
             };
             let Some(min_version) = parse_version(*min_version) else {
-                sess.emit_warning(session_diagnostics::UnknownVersionLiteral { span: *span });
+                dcx.emit_warning(session_diagnostics::UnknownVersionLiteral { span: *span });
                 return false;
             };
 
@@ -624,7 +635,7 @@ pub fn eval_condition(
         ast::MetaItemKind::List(mis) => {
             for mi in mis.iter() {
                 if !mi.is_meta_item() {
-                    sess.emit_err(session_diagnostics::UnsupportedLiteral {
+                    dcx.emit_err(session_diagnostics::UnsupportedLiteral {
                         span: mi.span(),
                         reason: UnsupportedLiteralReason::Generic,
                         is_bytestr: false,
@@ -653,9 +664,7 @@ pub fn eval_condition(
                     }),
                 sym::not => {
                     if mis.len() != 1 {
-                        sess.emit_err(session_diagnostics::ExpectedOneCfgPattern {
-                            span: cfg.span,
-                        });
+                        dcx.emit_err(session_diagnostics::ExpectedOneCfgPattern { span: cfg.span });
                         return false;
                     }
 
@@ -684,7 +693,7 @@ pub fn eval_condition(
                     })
                 }
                 _ => {
-                    sess.emit_err(session_diagnostics::InvalidPredicate {
+                    dcx.emit_err(session_diagnostics::InvalidPredicate {
                         span: cfg.span,
                         predicate: pprust::path_to_string(&cfg.path),
                     });
@@ -693,11 +702,11 @@ pub fn eval_condition(
             }
         }
         ast::MetaItemKind::Word | MetaItemKind::NameValue(..) if cfg.path.segments.len() != 1 => {
-            sess.emit_err(session_diagnostics::CfgPredicateIdentifier { span: cfg.path.span });
+            dcx.emit_err(session_diagnostics::CfgPredicateIdentifier { span: cfg.path.span });
             true
         }
         MetaItemKind::NameValue(lit) if !lit.kind.is_str() => {
-            sess.emit_err(session_diagnostics::UnsupportedLiteral {
+            dcx.emit_err(session_diagnostics::UnsupportedLiteral {
                 span: lit.span,
                 reason: UnsupportedLiteralReason::CfgString,
                 is_bytestr: lit.kind.is_bytestr(),
@@ -791,7 +800,7 @@ pub fn find_deprecation(
             MetaItemKind::List(list) => {
                 let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
                     if item.is_some() {
-                        sess.emit_err(session_diagnostics::MultipleItem {
+                        sess.dcx().emit_err(session_diagnostics::MultipleItem {
                             span: meta.span,
                             item: pprust::path_to_string(&meta.path),
                         });
@@ -802,14 +811,14 @@ pub fn find_deprecation(
                         true
                     } else {
                         if let Some(lit) = meta.name_value_literal() {
-                            sess.emit_err(session_diagnostics::UnsupportedLiteral {
+                            sess.dcx().emit_err(session_diagnostics::UnsupportedLiteral {
                                 span: lit.span,
                                 reason: UnsupportedLiteralReason::DeprecatedString,
                                 is_bytestr: lit.kind.is_bytestr(),
                                 start_point_span: sess.source_map().start_point(lit.span),
                             });
                         } else {
-                            sess.emit_err(session_diagnostics::IncorrectMetaItem {
+                            sess.dcx().emit_err(session_diagnostics::IncorrectMetaItem {
                                 span: meta.span,
                             });
                         }
@@ -833,11 +842,13 @@ pub fn find_deprecation(
                             }
                             sym::suggestion => {
                                 if !features.deprecated_suggestion {
-                                    sess.emit_err(session_diagnostics::DeprecatedItemSuggestion {
-                                        span: mi.span,
-                                        is_nightly: sess.is_nightly_build().then_some(()),
-                                        details: (),
-                                    });
+                                    sess.dcx().emit_err(
+                                        session_diagnostics::DeprecatedItemSuggestion {
+                                            span: mi.span,
+                                            is_nightly: sess.is_nightly_build().then_some(()),
+                                            details: (),
+                                        },
+                                    );
                                 }
 
                                 if !get(mi, &mut suggestion) {
@@ -845,7 +856,7 @@ pub fn find_deprecation(
                                 }
                             }
                             _ => {
-                                sess.emit_err(session_diagnostics::UnknownMetaItem {
+                                sess.dcx().emit_err(session_diagnostics::UnknownMetaItem {
                                     span: meta.span(),
                                     item: pprust::path_to_string(&mi.path),
                                     expected: if features.deprecated_suggestion {
@@ -858,7 +869,7 @@ pub fn find_deprecation(
                             }
                         },
                         NestedMetaItem::Lit(lit) => {
-                            sess.emit_err(session_diagnostics::UnsupportedLiteral {
+                            sess.dcx().emit_err(session_diagnostics::UnsupportedLiteral {
                                 span: lit.span,
                                 reason: UnsupportedLiteralReason::DeprecatedKvPair,
                                 is_bytestr: false,
@@ -879,18 +890,18 @@ pub fn find_deprecation(
             } else if let Some(version) = parse_version(since) {
                 DeprecatedSince::RustcVersion(version)
             } else {
-                sess.emit_err(session_diagnostics::InvalidSince { span: attr.span });
+                sess.dcx().emit_err(session_diagnostics::InvalidSince { span: attr.span });
                 DeprecatedSince::Err
             }
         } else if is_rustc {
-            sess.emit_err(session_diagnostics::MissingSince { span: attr.span });
+            sess.dcx().emit_err(session_diagnostics::MissingSince { span: attr.span });
             DeprecatedSince::Err
         } else {
             DeprecatedSince::Unspecified
         };
 
         if is_rustc && note.is_none() {
-            sess.emit_err(session_diagnostics::MissingNote { span: attr.span });
+            sess.dcx().emit_err(session_diagnostics::MissingNote { span: attr.span });
             continue;
         }
 
@@ -945,7 +956,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
     assert!(attr.has_name(sym::repr), "expected `#[repr(..)]`, found: {attr:?}");
     use ReprAttr::*;
     let mut acc = Vec::new();
-    let diagnostic = sess.dcx();
+    let dcx = sess.dcx();
 
     if let Some(items) = attr.meta_item_list() {
         for item in items {
@@ -958,7 +969,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                     sym::simd => Some(ReprSimd),
                     sym::transparent => Some(ReprTransparent),
                     sym::align => {
-                        sess.emit_err(session_diagnostics::InvalidReprAlignNeedArg {
+                        sess.dcx().emit_err(session_diagnostics::InvalidReprAlignNeedArg {
                             span: item.span(),
                         });
                         recognised = true;
@@ -989,13 +1000,13 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                     || int_type_of_word(name).is_some()
                 {
                     recognised = true;
-                    sess.emit_err(session_diagnostics::InvalidReprHintNoParen {
+                    sess.dcx().emit_err(session_diagnostics::InvalidReprHintNoParen {
                         span: item.span(),
                         name: name.to_ident_string(),
                     });
                 }
                 if let Some(literal_error) = literal_error {
-                    sess.emit_err(session_diagnostics::InvalidReprGeneric {
+                    sess.dcx().emit_err(session_diagnostics::InvalidReprGeneric {
                         span: item.span(),
                         repr_arg: name.to_ident_string(),
                         error_part: literal_error,
@@ -1007,7 +1018,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                         if meta_item.has_name(sym::align) || meta_item.has_name(sym::packed) {
                             let name = meta_item.name_or_empty().to_ident_string();
                             recognised = true;
-                            sess.emit_err(session_diagnostics::IncorrectReprFormatGeneric {
+                            sess.dcx().emit_err(session_diagnostics::IncorrectReprFormatGeneric {
                                 span: item.span(),
                                 repr_arg: &name,
                                 cause: IncorrectReprFormatGenericCause::from_lit_kind(
@@ -1022,7 +1033,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                         ) || int_type_of_word(meta_item.name_or_empty()).is_some()
                         {
                             recognised = true;
-                            sess.emit_err(session_diagnostics::InvalidReprHintNoValue {
+                            sess.dcx().emit_err(session_diagnostics::InvalidReprHintNoValue {
                                 span: meta_item.span,
                                 name: meta_item.name_or_empty().to_ident_string(),
                             });
@@ -1031,12 +1042,14 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                     MetaItemKind::List(_) => {
                         if meta_item.has_name(sym::align) {
                             recognised = true;
-                            sess.emit_err(session_diagnostics::IncorrectReprFormatAlignOneArg {
-                                span: meta_item.span,
-                            });
+                            sess.dcx().emit_err(
+                                session_diagnostics::IncorrectReprFormatAlignOneArg {
+                                    span: meta_item.span,
+                                },
+                            );
                         } else if meta_item.has_name(sym::packed) {
                             recognised = true;
-                            sess.emit_err(
+                            sess.dcx().emit_err(
                                 session_diagnostics::IncorrectReprFormatPackedOneOrZeroArg {
                                     span: meta_item.span,
                                 },
@@ -1047,7 +1060,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                         ) || int_type_of_word(meta_item.name_or_empty()).is_some()
                         {
                             recognised = true;
-                            sess.emit_err(session_diagnostics::InvalidReprHintNoParen {
+                            sess.dcx().emit_err(session_diagnostics::InvalidReprHintNoParen {
                                 span: meta_item.span,
                                 name: meta_item.name_or_empty().to_ident_string(),
                             });
@@ -1062,7 +1075,7 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                 // (e.g. if we only pretty-print the source), so we have to gate
                 // the `span_delayed_bug` call as follows:
                 if sess.opts.pretty.map_or(true, |pp| pp.needs_analysis()) {
-                    diagnostic.span_delayed_bug(item.span(), "unrecognized representation hint");
+                    dcx.span_delayed_bug(item.span(), "unrecognized representation hint");
                 }
             }
         }
@@ -1149,7 +1162,7 @@ fn allow_unstable<'a>(
     let list = attrs
         .filter_map(move |attr| {
             attr.meta_item_list().or_else(|| {
-                sess.emit_err(session_diagnostics::ExpectsFeatureList {
+                sess.dcx().emit_err(session_diagnostics::ExpectsFeatureList {
                     span: attr.span,
                     name: symbol.to_ident_string(),
                 });
@@ -1161,7 +1174,7 @@ fn allow_unstable<'a>(
     list.into_iter().filter_map(move |it| {
         let name = it.ident().map(|ident| ident.name);
         if name.is_none() {
-            sess.emit_err(session_diagnostics::ExpectsFeatures {
+            sess.dcx().emit_err(session_diagnostics::ExpectsFeatures {
                 span: it.span(),
                 name: symbol.to_ident_string(),
             });

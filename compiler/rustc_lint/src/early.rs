@@ -426,7 +426,7 @@ pub fn check_ast_node_inner<'a, T: EarlyLintPass>(
     // that was not lint-checked (perhaps it doesn't exist?). This is a bug.
     for (id, lints) in cx.context.buffered.map {
         for early_lint in lints {
-            sess.span_delayed_bug(
+            sess.dcx().span_delayed_bug(
                 early_lint.span,
                 format!(
                     "failed to process buffered lint here (dummy = {})",

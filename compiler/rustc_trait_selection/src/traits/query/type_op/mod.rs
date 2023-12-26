@@ -159,7 +159,7 @@ where
         let mut region_constraints = QueryRegionConstraints::default();
         let (output, error_info, mut obligations, _) =
             Q::fully_perform_into(self, infcx, &mut region_constraints).map_err(|_| {
-                infcx.tcx.sess.span_delayed_bug(span, format!("error performing {self:?}"))
+                infcx.dcx().span_delayed_bug(span, format!("error performing {self:?}"))
             })?;
 
         // Typically, instantiating NLL query results does not
@@ -188,7 +188,7 @@ where
                 }
             }
             if !progress {
-                return Err(infcx.tcx.sess.span_delayed_bug(
+                return Err(infcx.dcx().span_delayed_bug(
                     span,
                     format!("ambiguity processing {obligations:?} from {self:?}"),
                 ));

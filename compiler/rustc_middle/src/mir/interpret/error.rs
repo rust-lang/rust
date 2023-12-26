@@ -47,7 +47,7 @@ impl ErrorHandled {
         match self {
             &ErrorHandled::Reported(err, span) => {
                 if !err.is_tainted_by_errors && !span.is_dummy() {
-                    tcx.sess.emit_note(error::ErroneousConstant { span });
+                    tcx.dcx().emit_note(error::ErroneousConstant { span });
                 }
             }
             &ErrorHandled::TooGeneric(_) => {}
@@ -91,7 +91,7 @@ pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
 pub type EvalToValTreeResult<'tcx> = Result<Option<ValTree<'tcx>>, ErrorHandled>;
 
 pub fn struct_error<'tcx>(tcx: TyCtxtAt<'tcx>, msg: &str) -> DiagnosticBuilder<'tcx> {
-    struct_span_err!(tcx.sess, tcx.span, E0080, "{}", msg)
+    struct_span_err!(tcx.dcx(), tcx.span, E0080, "{}", msg)
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]

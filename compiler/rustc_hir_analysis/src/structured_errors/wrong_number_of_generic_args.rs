@@ -524,7 +524,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
         let span = self.path_segment.ident.span;
         let msg = self.create_error_message();
 
-        self.tcx.sess.struct_span_err_with_code(span, msg, self.code())
+        self.tcx.dcx().struct_span_err_with_code(span, msg, self.code())
     }
 
     /// Builds the `expected 1 type argument / supplied 2 type arguments` message.

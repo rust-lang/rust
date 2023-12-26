@@ -25,7 +25,7 @@ pub fn from_target_feature(
     let bad_item = |span| {
         let msg = "malformed `target_feature` attribute input";
         let code = "enable = \"..\"";
-        tcx.sess
+        tcx.dcx()
             .struct_span_err(span, msg)
             .span_suggestion(span, "must be of the form", code, Applicability::HasPlaceholders)
             .emit();
@@ -48,7 +48,7 @@ pub fn from_target_feature(
         target_features.extend(value.as_str().split(',').filter_map(|feature| {
             let Some(feature_gate) = supported_target_features.get(feature) else {
                 let msg = format!("the feature named `{feature}` is not valid for this target");
-                let mut err = tcx.sess.struct_span_err(item.span(), msg);
+                let mut err = tcx.dcx().struct_span_err(item.span(), msg);
                 err.span_label(item.span(), format!("`{feature}` is not valid for this target"));
                 if let Some(stripped) = feature.strip_prefix('+') {
                     let valid = supported_target_features.contains_key(stripped);
@@ -121,7 +121,7 @@ pub fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_s
     if let DefKind::AssocFn = tcx.def_kind(id) {
         let parent_id = tcx.local_parent(id);
         if let DefKind::Trait | DefKind::Impl { of_trait: true } = tcx.def_kind(parent_id) {
-            tcx.sess.emit_err(errors::TargetFeatureSafeTrait {
+            tcx.dcx().emit_err(errors::TargetFeatureSafeTrait {
                 span: attr_span,
                 def: tcx.def_span(id),
             });

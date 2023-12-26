@@ -71,7 +71,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
                 Entry::Occupied(entry) => {
                     let former = entry.get();
                     let mut err = struct_span_err!(
-                        self.tcx.sess,
+                        self.tcx.dcx(),
                         span,
                         E0592,
                         "duplicate definitions with name `{}`",
@@ -106,7 +106,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
             if let Some(item2) = collision {
                 let name = item1.ident(self.tcx).normalize_to_macros_2_0();
                 let mut err = struct_span_err!(
-                    self.tcx.sess,
+                    self.tcx.dcx(),
                     self.tcx.def_span(item1.def_id),
                     E0592,
                     "duplicate definitions with name `{}`",

@@ -538,7 +538,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
             // The struct path probably didn't resolve
             if self.mc.typeck_results.opt_field_index(field.hir_id).is_none() {
-                self.tcx().sess.span_delayed_bug(field.span, "couldn't resolve index for field");
+                self.tcx().dcx().span_delayed_bug(field.span, "couldn't resolve index for field");
             }
         }
 
@@ -576,7 +576,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 // struct; however, when EUV is run during typeck, it
                 // may not. This will generate an error earlier in typeck,
                 // so we can just ignore it.
-                if self.tcx().sess.has_errors().is_none() {
+                if self.tcx().dcx().has_errors().is_none() {
                     span_bug!(with_expr.span, "with expression doesn't evaluate to a struct");
                 }
             }

@@ -278,7 +278,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     // Make sure we have MIR. We check MIR for some stable monomorphic function in libcore.
     let sentinel = ecx.try_resolve_path(&["core", "ascii", "escape_default"], Namespace::ValueNS);
     if !matches!(sentinel, Some(s) if tcx.is_mir_available(s.def.def_id())) {
-        tcx.sess.fatal(
+        tcx.dcx().fatal(
             "the current sysroot was built without `-Zalways-encode-mir`, or libcore seems missing. \
             Use `cargo miri setup` to prepare a sysroot that is suitable for Miri."
         );
@@ -363,7 +363,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     match entry_type {
         EntryFnType::Main { .. } => {
             let start_id = tcx.lang_items().start_fn().unwrap_or_else(|| {
-                tcx.sess.fatal(
+                tcx.dcx().fatal(
                     "could not find start function. Make sure the entry point is marked with `#[start]`."
                 );
             });
@@ -462,8 +462,8 @@ pub fn eval_entry<'tcx>(
     if leak_check && !ignore_leaks {
         // Check for thread leaks.
         if !ecx.have_all_terminated() {
-            tcx.sess.err("the main thread terminated without waiting for all remaining threads");
-            tcx.sess.note("pass `-Zmiri-ignore-leaks` to disable this check");
+            tcx.dcx().err("the main thread terminated without waiting for all remaining threads");
+            tcx.dcx().note("pass `-Zmiri-ignore-leaks` to disable this check");
             return None;
         }
         // Check for memory leaks.
@@ -474,10 +474,10 @@ pub fn eval_entry<'tcx>(
             let leak_message = "the evaluated program leaked memory, pass `-Zmiri-ignore-leaks` to disable this check";
             if ecx.machine.collect_leak_backtraces {
                 // If we are collecting leak backtraces, each leak is a distinct error diagnostic.
-                tcx.sess.note(leak_message);
+                tcx.dcx().note(leak_message);
             } else {
                 // If we do not have backtraces, we just report an error without any span.
-                tcx.sess.err(leak_message);
+                tcx.dcx().err(leak_message);
             };
             // Ignore the provided return code - let the reported error
             // determine the return code.

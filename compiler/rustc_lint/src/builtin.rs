@@ -1728,7 +1728,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
                     None => format!("&(..={end})"),
                 };
                 if join.edition() >= Edition::Edition2021 {
-                    cx.sess().emit_err(BuiltinEllipsisInclusiveRangePatterns {
+                    cx.sess().dcx().emit_err(BuiltinEllipsisInclusiveRangePatterns {
                         span: pat.span,
                         suggestion: pat.span,
                         replace,
@@ -1746,7 +1746,7 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
             } else {
                 let replace = "..=";
                 if join.edition() >= Edition::Edition2021 {
-                    cx.sess().emit_err(BuiltinEllipsisInclusiveRangePatterns {
+                    cx.sess().dcx().emit_err(BuiltinEllipsisInclusiveRangePatterns {
                         span: pat.span,
                         suggestion: join,
                         replace: replace.to_string(),

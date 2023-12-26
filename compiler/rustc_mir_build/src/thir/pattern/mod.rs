@@ -105,7 +105,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     let msg = format!(
                         "found bad range pattern endpoint `{expr:?}` outside of error recovery"
                     );
-                    return Err(self.tcx.sess.span_delayed_bug(expr.span, msg));
+                    return Err(self.tcx.dcx().span_delayed_bug(expr.span, msg));
                 };
                 Ok((Some(PatRangeBoundary::Finite(value)), ascr, inline_const))
             }
@@ -160,7 +160,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // Detect literal value out of range `[min, max]` inclusive, avoiding use of `-min` to
         // prevent overflow/panic.
         if (negated && lit_val > max + 1) || (!negated && lit_val > max) {
-            return Err(self.tcx.sess.emit_err(LiteralOutOfRange { span, ty, min, max }));
+            return Err(self.tcx.dcx().emit_err(LiteralOutOfRange { span, ty, min, max }));
         }
         Ok(())
     }
@@ -175,7 +175,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     ) -> Result<PatKind<'tcx>, ErrorGuaranteed> {
         if lo_expr.is_none() && hi_expr.is_none() {
             let msg = "found twice-open range pattern (`..`) outside of error recovery";
-            return Err(self.tcx.sess.span_delayed_bug(span, msg));
+            return Err(self.tcx.dcx().span_delayed_bug(span, msg));
         }
 
         let (lo, lo_ascr, lo_inline) = self.lower_pattern_range_endpoint(lo_expr)?;
@@ -207,13 +207,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 self.error_on_literal_overflow(hi_expr, ty)?;
                 let e = match end {
                     RangeEnd::Included => {
-                        self.tcx.sess.emit_err(LowerRangeBoundMustBeLessThanOrEqualToUpper {
+                        self.tcx.dcx().emit_err(LowerRangeBoundMustBeLessThanOrEqualToUpper {
                             span,
                             teach: self.tcx.sess.teach(&error_code!(E0030)).then_some(()),
                         })
                     }
                     RangeEnd::Excluded => {
-                        self.tcx.sess.emit_err(LowerRangeBoundMustBeLessThanUpper { span })
+                        self.tcx.dcx().emit_err(LowerRangeBoundMustBeLessThanUpper { span })
                     }
                 };
                 return Err(e);
@@ -454,12 +454,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             _ => {
                 let e = match res {
                     Res::Def(DefKind::ConstParam, _) => {
-                        self.tcx.sess.emit_err(ConstParamInPattern { span })
+                        self.tcx.dcx().emit_err(ConstParamInPattern { span })
                     }
                     Res::Def(DefKind::Static(_), _) => {
-                        self.tcx.sess.emit_err(StaticInPattern { span })
+                        self.tcx.dcx().emit_err(StaticInPattern { span })
                     }
-                    _ => self.tcx.sess.emit_err(NonConstPath { span }),
+                    _ => self.tcx.dcx().emit_err(NonConstPath { span }),
                 };
                 PatKind::Error(e)
             }
@@ -513,12 +513,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 // It should be assoc consts if there's no error but we cannot resolve it.
                 debug_assert!(is_associated_const);
 
-                let e = self.tcx.sess.emit_err(AssocConstInPattern { span });
+                let e = self.tcx.dcx().emit_err(AssocConstInPattern { span });
                 return pat_from_kind(PatKind::Error(e));
             }
 
             Err(_) => {
-                let e = self.tcx.sess.emit_err(CouldNotEvalConstPattern { span });
+                let e = self.tcx.dcx().emit_err(CouldNotEvalConstPattern { span });
                 return pat_from_kind(PatKind::Error(e));
             }
         };
@@ -573,11 +573,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             Err(ErrorHandled::TooGeneric(_)) => {
                 // While `Reported | Linted` cases will have diagnostics emitted already
                 // it is not true for TooGeneric case, so we need to give user more information.
-                let e = self.tcx.sess.emit_err(ConstPatternDependsOnGenericParameter { span });
+                let e = self.tcx.dcx().emit_err(ConstPatternDependsOnGenericParameter { span });
                 pat_from_kind(PatKind::Error(e))
             }
             Err(_) => {
-                let e = self.tcx.sess.emit_err(CouldNotEvalConstPattern { span });
+                let e = self.tcx.dcx().emit_err(CouldNotEvalConstPattern { span });
                 pat_from_kind(PatKind::Error(e))
             }
         }
@@ -646,7 +646,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 Ok(val) => self.const_to_pat(mir::Const::Val(val, ty), id, span, None).kind,
                 Err(ErrorHandled::TooGeneric(_)) => {
                     // If we land here it means the const can't be evaluated because it's `TooGeneric`.
-                    let e = self.tcx.sess.emit_err(ConstPatternDependsOnGenericParameter { span });
+                    let e = self.tcx.dcx().emit_err(ConstPatternDependsOnGenericParameter { span });
                     PatKind::Error(e)
                 }
                 Err(ErrorHandled::Reported(err, ..)) => PatKind::Error(err.into()),

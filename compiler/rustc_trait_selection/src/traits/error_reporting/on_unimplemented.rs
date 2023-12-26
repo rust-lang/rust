@@ -434,9 +434,9 @@ impl<'tcx> OnUnimplementedDirective {
         } else {
             let cond = item_iter
                 .next()
-                .ok_or_else(|| tcx.sess.emit_err(EmptyOnClauseInOnUnimplemented { span }))?
+                .ok_or_else(|| tcx.dcx().emit_err(EmptyOnClauseInOnUnimplemented { span }))?
                 .meta_item()
-                .ok_or_else(|| tcx.sess.emit_err(InvalidOnClauseInOnUnimplemented { span }))?;
+                .ok_or_else(|| tcx.dcx().emit_err(InvalidOnClauseInOnUnimplemented { span }))?;
             attr::eval_condition(cond, &tcx.sess.parse_sess, Some(tcx.features()), &mut |cfg| {
                 if let Some(value) = cfg.value
                     && let Err(guar) = parse_value(value, cfg.span)
@@ -528,7 +528,7 @@ impl<'tcx> OnUnimplementedDirective {
                 );
             } else {
                 // nothing found
-                tcx.sess.emit_err(NoValueInOnUnimplemented { span: item.span() });
+                tcx.dcx().emit_err(NoValueInOnUnimplemented { span: item.span() });
             }
         }
 
@@ -689,7 +689,7 @@ impl<'tcx> OnUnimplementedDirective {
             Ok(None)
         } else {
             let reported = tcx
-                .sess
+                .dcx()
                 .span_delayed_bug(DUMMY_SP, "of_item: neither meta_item_list nor value_str");
             return Err(reported);
         };
@@ -829,7 +829,7 @@ impl<'tcx> OnUnimplementedFormatString {
                                     );
                                 } else {
                                     result = Err(struct_span_err!(
-                                        tcx.sess,
+                                        tcx.dcx(),
                                         self.span,
                                         E0230,
                                         "there is no parameter `{}` on {}",
@@ -848,7 +848,7 @@ impl<'tcx> OnUnimplementedFormatString {
                     // `{:1}` and `{}` are not to be used
                     Position::ArgumentIs(..) | Position::ArgumentImplicitlyIs(_) => {
                         let reported = struct_span_err!(
-                            tcx.sess,
+                            tcx.dcx(),
                             self.span,
                             E0231,
                             "only named substitution parameters are allowed"

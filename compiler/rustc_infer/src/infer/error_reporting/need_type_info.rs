@@ -366,7 +366,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let multi_suggestions = Vec::new();
         let bad_label = Some(arg_data.make_bad_error(span));
         match error_code {
-            TypeAnnotationNeeded::E0282 => self.tcx.sess.dcx().create_err(AnnotationRequired {
+            TypeAnnotationNeeded::E0282 => self.dcx().create_err(AnnotationRequired {
                 span,
                 source_kind,
                 source_name,
@@ -375,7 +375,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 multi_suggestions,
                 bad_label,
             }),
-            TypeAnnotationNeeded::E0283 => self.tcx.sess.dcx().create_err(AmbiguousImpl {
+            TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
                 span,
                 source_kind,
                 source_name,
@@ -384,7 +384,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 multi_suggestions,
                 bad_label,
             }),
-            TypeAnnotationNeeded::E0284 => self.tcx.sess.dcx().create_err(AmbiguousReturn {
+            TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
                 span,
                 source_kind,
                 source_name,
@@ -570,7 +570,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
         match error_code {
-            TypeAnnotationNeeded::E0282 => self.tcx.sess.dcx().create_err(AnnotationRequired {
+            TypeAnnotationNeeded::E0282 => self.dcx().create_err(AnnotationRequired {
                 span,
                 source_kind,
                 source_name: &name,
@@ -579,7 +579,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 multi_suggestions,
                 bad_label: None,
             }),
-            TypeAnnotationNeeded::E0283 => self.tcx.sess.dcx().create_err(AmbiguousImpl {
+            TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
                 span,
                 source_kind,
                 source_name: &name,
@@ -588,7 +588,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 multi_suggestions,
                 bad_label: None,
             }),
-            TypeAnnotationNeeded::E0284 => self.tcx.sess.dcx().create_err(AmbiguousReturn {
+            TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
                 span,
                 source_kind,
                 source_name: &name,

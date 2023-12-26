@@ -151,10 +151,10 @@ where
             let (our_span, frames) = get_span_and_frames();
             let span = span.unwrap_or(our_span);
             let err = mk(span, frames);
-            let mut err = tcx.sess.create_err(err);
+            let mut err = tcx.dcx().create_err(err);
 
             let msg = error.diagnostic_message();
-            error.add_args(tcx.sess.dcx(), &mut err);
+            error.add_args(tcx.dcx(), &mut err);
 
             // Use *our* span to label the interp error
             err.span_label(our_span, msg);

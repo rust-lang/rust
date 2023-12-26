@@ -636,11 +636,11 @@ impl Conf {
         match path {
             Ok((_, warnings)) => {
                 for warning in warnings {
-                    sess.warn(warning.clone());
+                    sess.dcx().warn(warning.clone());
                 }
             },
             Err(error) => {
-                sess.err(format!("error finding Clippy's configuration file: {error}"));
+                sess.dcx().err(format!("error finding Clippy's configuration file: {error}"));
             },
         }
 
@@ -652,7 +652,7 @@ impl Conf {
             Ok((Some(path), _)) => match sess.source_map().load_file(path) {
                 Ok(file) => deserialize(&file),
                 Err(error) => {
-                    sess.err(format!("failed to read `{}`: {error}", path.display()));
+                    sess.dcx().err(format!("failed to read `{}`: {error}", path.display()));
                     TryConf::default()
                 },
             },
@@ -663,14 +663,14 @@ impl Conf {
 
         // all conf errors are non-fatal, we just use the default conf in case of error
         for error in errors {
-            sess.span_err(
+            sess.dcx().span_err(
                 error.span,
                 format!("error reading Clippy's configuration file: {}", error.message),
             );
         }
 
         for warning in warnings {
-            sess.span_warn(
+            sess.dcx().span_warn(
                 warning.span,
                 format!("error reading Clippy's configuration file: {}", warning.message),
             );

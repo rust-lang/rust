@@ -1098,7 +1098,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
         .files()
         .iter()
         .filter(|source_file| source_file.cnum == LOCAL_CRATE)
-        .map(|source_file| source_file.name_hash)
+        .map(|source_file| source_file.stable_id)
         .collect();
 
     source_file_names.sort_unstable();

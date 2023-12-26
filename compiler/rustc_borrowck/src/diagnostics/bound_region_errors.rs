@@ -77,7 +77,7 @@ impl<'tcx> UniverseInfo<'tcx> {
                 // up in the existing UI tests. Consider investigating this
                 // some more.
                 mbcx.buffer_error(
-                    mbcx.infcx.tcx.sess.create_err(HigherRankedSubtypeError { span: cause.span }),
+                    mbcx.dcx().create_err(HigherRankedSubtypeError { span: cause.span }),
                 );
             }
         }
@@ -221,7 +221,7 @@ struct PredicateQuery<'tcx> {
 
 impl<'tcx> TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
     fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-        tcx.sess.create_err(HigherRankedLifetimeError {
+        tcx.dcx().create_err(HigherRankedLifetimeError {
             cause: Some(HigherRankedErrorCause::CouldNotProve {
                 predicate: self.canonical_query.value.value.predicate.to_string(),
             }),
@@ -258,7 +258,7 @@ where
     T: Copy + fmt::Display + TypeFoldable<TyCtxt<'tcx>> + 'tcx,
 {
     fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
-        tcx.sess.create_err(HigherRankedLifetimeError {
+        tcx.dcx().create_err(HigherRankedLifetimeError {
             cause: Some(HigherRankedErrorCause::CouldNotNormalize {
                 value: self.canonical_query.value.value.value.to_string(),
             }),
@@ -303,7 +303,7 @@ impl<'tcx> TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
     fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         // FIXME: This error message isn't great, but it doesn't show up in the existing UI tests,
         // and is only the fallback when the nice error fails. Consider improving this some more.
-        tcx.sess.create_err(HigherRankedLifetimeError { cause: None, span })
+        tcx.dcx().create_err(HigherRankedLifetimeError { cause: None, span })
     }
 
     fn base_universe(&self) -> ty::UniverseIndex {
@@ -329,7 +329,7 @@ impl<'tcx> TypeOpInfo<'tcx> for crate::type_check::InstantiateOpaqueType<'tcx> {
     fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> DiagnosticBuilder<'tcx> {
         // FIXME: This error message isn't great, but it doesn't show up in the existing UI tests,
         // and is only the fallback when the nice error fails. Consider improving this some more.
-        tcx.sess.create_err(HigherRankedLifetimeError { cause: None, span })
+        tcx.dcx().create_err(HigherRankedLifetimeError { cause: None, span })
     }
 
     fn base_universe(&self) -> ty::UniverseIndex {

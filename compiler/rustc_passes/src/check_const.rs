@@ -122,7 +122,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
             // corresponding feature gate. This encourages nightly users to use feature gates when
             // possible.
             None if tcx.sess.opts.unstable_opts.unleash_the_miri_inside_of_you => {
-                tcx.sess.emit_warning(SkippingConstChecks { span });
+                tcx.dcx().emit_warning(SkippingConstChecks { span });
                 return;
             }
 

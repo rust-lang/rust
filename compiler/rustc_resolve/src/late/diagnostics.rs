@@ -429,11 +429,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         let base_error = self.make_base_error(path, span, source, res);
 
         let code = source.error_code(res.is_some());
-        let mut err = self.r.tcx.sess.struct_span_err_with_code(
-            base_error.span,
-            base_error.msg.clone(),
-            code,
-        );
+        let mut err =
+            self.r.dcx().struct_span_err_with_code(base_error.span, base_error.msg.clone(), code);
 
         self.suggest_at_operator_in_slice_pat_with_range(&mut err, path);
         self.suggest_swapping_misplaced_self_ty_and_trait(&mut err, source, res, base_error.span);
@@ -2602,7 +2599,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         debug_assert_ne!(lifetime_ref.ident.name, kw::UnderscoreLifetime);
         let mut err = if let Some(outer) = outer_lifetime_ref {
             let mut err = struct_span_err!(
-                self.r.tcx.sess,
+                self.r.dcx(),
                 lifetime_ref.ident.span,
                 E0401,
                 "can't use generic parameters from outer item",
@@ -2612,7 +2609,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             err
         } else {
             let mut err = struct_span_err!(
-                self.r.tcx.sess,
+                self.r.dcx(),
                 lifetime_ref.ident.span,
                 E0261,
                 "use of undeclared lifetime name `{}`",
@@ -2721,8 +2718,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
 
     pub(crate) fn emit_non_static_lt_in_const_param_ty_error(&self, lifetime_ref: &ast::Lifetime) {
         self.r
-            .tcx
-            .sess
+            .dcx()
             .create_err(errors::ParamInTyOfConstParam {
                 span: lifetime_ref.ident.span,
                 name: lifetime_ref.ident.name,
@@ -2742,8 +2738,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         match cause {
             NoConstantGenericsReason::IsEnumDiscriminant => {
                 self.r
-                    .tcx
-                    .sess
+                    .dcx()
                     .create_err(errors::ParamInEnumDiscriminant {
                         span: lifetime_ref.ident.span,
                         name: lifetime_ref.ident.name,
@@ -2754,8 +2749,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             NoConstantGenericsReason::NonTrivialConstArg => {
                 assert!(!self.r.tcx.features().generic_const_exprs);
                 self.r
-                    .tcx
-                    .sess
+                    .dcx()
                     .create_err(errors::ParamInNonTrivialAnonConst {
                         span: lifetime_ref.ident.span,
                         name: lifetime_ref.ident.name,
@@ -2781,7 +2775,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         let spans: Vec<_> = lifetime_refs.iter().map(|lt| lt.span).collect();
 
         let mut err = struct_span_err!(
-            self.r.tcx.sess,
+            self.r.dcx(),
             spans,
             E0106,
             "missing lifetime specifier{}",
@@ -3286,7 +3280,7 @@ fn mk_where_bound_predicate(
 /// Report lifetime/lifetime shadowing as an error.
 pub(super) fn signal_lifetime_shadowing(sess: &Session, orig: Ident, shadower: Ident) {
     let mut err = struct_span_err!(
-        sess,
+        sess.dcx(),
         shadower.span,
         E0496,
         "lifetime name `{}` shadows a lifetime name that is already in scope",
@@ -3320,7 +3314,7 @@ impl<'ast> Visitor<'ast> for LifetimeFinder<'ast> {
 pub(super) fn signal_label_shadowing(sess: &Session, orig: Span, shadower: Ident) {
     let name = shadower.name;
     let shadower = shadower.span;
-    let mut err = sess.struct_span_warn(
+    let mut err = sess.dcx().struct_span_warn(
         shadower,
         format!("label name `{name}` shadows a label name that is already in scope"),
     );
