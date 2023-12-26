@@ -4,6 +4,85 @@ use crate::cmp::Ordering::{self, *};
 use crate::marker::ConstParamTy;
 use crate::marker::{StructuralEq, StructuralPartialEq};
 
+impl<T: Ord> (T, T) {
+    /// Consumes the tuple and returns a new tuple `t`, guaranteeing that `t.0 <= t.1`.
+    /// This method is useful if you have two values and need to do one operation if one is larger,
+    /// and the opposite operation if the other is larger.
+    /// An example is unsigned integer subtraction.
+    ///
+    /// # Example
+    /// ```
+    /// let a = 3u32;
+    /// let b = 8u32;
+    ///
+    /// // instead of
+    /// let c = (a as i32 - b as i32) as usize;
+    /// // you can simply
+    /// let (a, b) = (a, b).order();
+    /// let d = b - a;
+    ///
+    /// asssert_eq!(c, d);
+    /// ```
+    #[stable(feature = "tuple_order", since = "1.76.0")]
+    pub fn order(self) -> Self {
+        match self.0.cmp(&self.1) {
+            Less | Equal => self,
+            Greater => (self.1, self.0),
+        }
+    }
+}
+
+impl<T> (T, T) {
+    /// Consumes the tuple and returns a new tuple `t`, guaranteeing that `f(&t.0, &t.1)` is
+    /// [`Ordering::Less`] or [`Ordering::Equal`].
+    /// This method is useful if you have two values and need to do one operation if one is larger,
+    /// and the opposite operation if the other is larger.
+    /// An example is working with different size vectors that are still related somehow.
+    ///
+    /// # Example:
+    /// ```
+    /// let a = vec![1, 2, 3, 4];
+    /// let b = vec![5, 6];
+    ///
+    /// // make lengths of `a` and `b` equal by padding the shortest with `0`s
+    /// let (short, long) = (&mut a, &mut b).order_by(|x, y| x.len().cmp(&y.len()));
+    /// long.extend(std::iter::repeat(0).take(long.len() - short.len()));
+    ///
+    /// asssert_eq!(a.len(), b.len());
+    /// ```
+    #[stable(feature = "tuple_order", since = "1.76.0")]
+    pub fn order_by<F: Fn(&T, &T) -> Ordering>(self, f: F) -> Self {
+        match f(&self.0, &self.1) {
+            Less | Equal => self,
+            Greater => (self.1, self.0),
+        }
+    }
+
+    /// Consumes the tuple and returns a new tuple `t`, guaranteeing that `f(&t.0) <= f(&t.1)`.
+    /// This method is useful if you have two values and need to do one operation if one is larger,
+    /// and the opposite operation if the other is larger.
+    /// An example is working with different size vectors that are still related somehow.
+    ///
+    /// # Example:
+    /// ```
+    /// let a = vec![1, 2, 3, 4];
+    /// let b = vec![5, 6];
+    ///
+    /// // make lengths of `a` and `b` equal by padding the shortest with `0`s
+    /// let (short, long) = (&mut a, &mut b).order_by_key(|v| v.len());
+    /// long.extend(std::iter::repeat(0).take(long.len() - short.len()));
+    ///
+    /// asssert_eq!(a.len(), b.len());
+    /// ```
+    #[stable(feature = "tuple_order", since = "1.76.0")]
+    pub fn order_by_key<U: Ord, F: Fn(&T) -> &U>(self, f: F) -> Self {
+        match f(&self.0).cmp(f(&self.1)) {
+            Less | Equal => self,
+            Greater => (self.1, self.0),
+        }
+    }
+}
+
 // Recursive macro for implementing n-ary tuple functions and operations
 //
 // Also provides implementations for tuples with lesser arity. For example, tuple_impls!(A B C)
