@@ -56,7 +56,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             ));
         }
 
-        if self_ty.span.edition().at_least_rust_2021() {
+        if tcx.hir().span_in_context(self_ty.hir_id).edition().at_least_rust_2021() {
             let msg = "trait objects must include the `dyn` keyword";
             let label = "add `dyn` keyword before this trait";
             let mut diag =

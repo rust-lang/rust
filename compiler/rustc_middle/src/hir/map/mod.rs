@@ -935,6 +935,11 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    pub fn span_in_context(self, hir_id: HirId) -> Span {
+        let parent_span = self.span(self.tcx.parent_hir_id(hir_id));
+        self.span(hir_id).with_neighbor(parent_span)
+    }
+
     /// Get a representation of this `id` for debugging purposes.
     /// NOTE: Do NOT use this in diagnostics!
     pub fn node_to_string(self, id: HirId) -> String {
