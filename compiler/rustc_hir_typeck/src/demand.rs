@@ -94,6 +94,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.suggest_method_call_on_range_literal(err, expr, expr_ty, expected);
         self.suggest_return_binding_for_missing_tail_expr(err, expr, expr_ty, expected);
         self.note_wrong_return_ty_due_to_generic_arg(err, expr, expr_ty);
+        self.note_fn_method_def_due_to_call(err, expr, expected);
     }
 
     /// Really hacky heuristic to remap an `assert_eq!` error to the user
@@ -1168,6 +1169,56 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 maybe_emit_help(def_id, method.ident, args, CallableKind::Method)
             }
             _ => return,
+        }
+    }
+
+    fn note_fn_method_def_due_to_call(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        expected: Ty<'_>,
+    ) {
+        let (def_id, ident, callee_str) = if let hir::ExprKind::Call(fun, _) = expr.kind
+            && let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = fun.kind
+            && let hir::def::Res::Def(def_kind, def_id) = path.res
+            && !matches!(def_kind, hir::def::DefKind::Ctor(..))
+        {
+            (def_id, path.segments[0].ident, "function")
+        } else if let hir::ExprKind::MethodCall(method, ..) = expr.kind
+            && let Some(def_id) = self.typeck_results.borrow().type_dependent_def_id(expr.hir_id)
+            && !matches!(self.tcx.def_kind(def_id), hir::def::DefKind::Ctor(..))
+        {
+            (def_id, method.ident, "method")
+        } else {
+            return;
+        };
+        err.span_note(
+            self.tcx.def_span(def_id),
+            format!("the {callee_str} {ident} is defined here"),
+        );
+
+        if let Some(local_did) = def_id.as_local()
+            && let Some(node) = self.tcx.opt_hir_node(self.tcx.local_def_id_to_hir_id(local_did))
+            && let hir::Node::TraitItem(hir::TraitItem {
+                kind: hir::TraitItemKind::Fn(sig, ..),
+                ..
+            })
+            | hir::Node::ImplItem(hir::ImplItem {
+                kind: hir::ImplItemKind::Fn(sig, ..), ..
+            })
+            | hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, ..), .. }) = node
+            && let ret_span = sig.decl.output.span()
+            && !ret_span.from_expansion()
+            && expected.has_concrete_skeleton()
+        {
+            let sugg =
+                if ret_span.is_empty() { format!("-> {expected}") } else { format!("{expected}") };
+            err.span_suggestion(
+                ret_span,
+                format!("consider changing {ident}'s return type"),
+                sugg,
+                Applicability::MaybeIncorrect,
+            );
         }
     }
 }
