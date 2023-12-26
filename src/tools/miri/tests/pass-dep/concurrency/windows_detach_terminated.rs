@@ -5,17 +5,15 @@
 use std::os::windows::io::IntoRawHandle;
 use std::thread;
 
-extern "system" {
-    fn CloseHandle(handle: usize) -> i32;
-}
+use windows_sys::Win32::Foundation::CloseHandle;
 
 fn main() {
-    let thread = thread::spawn(|| {}).into_raw_handle() as usize;
+    let thread = thread::spawn(|| {}).into_raw_handle();
 
     // this yield ensures that `thread` is terminated by this point
     thread::yield_now();
 
     unsafe {
-        assert_ne!(CloseHandle(thread), 0);
+        assert_ne!(CloseHandle(thread as _), 0);
     }
 }

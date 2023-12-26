@@ -20,4 +20,7 @@ rand = { version = "0.8", features = ["small_rng"] }
 page_size = "0.6"
 tokio = { version = "1.24", features = ["full"] }
 
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.52", features = [ "Win32_Foundation", "Win32_System_Threading" ] }
+
 [workspace]

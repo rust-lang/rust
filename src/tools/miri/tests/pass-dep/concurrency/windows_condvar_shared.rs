@@ -2,42 +2,29 @@
 // We are making scheduler assumptions here.
 //@compile-flags: -Zmiri-preemption-rate=0
 
-use std::ffi::c_void;
-use std::ptr::null_mut;
+use std::mem::MaybeUninit;
 use std::thread;
+
+use windows_sys::Win32::System::Threading::{
+    AcquireSRWLockExclusive, AcquireSRWLockShared, ReleaseSRWLockExclusive, ReleaseSRWLockShared,
+    SleepConditionVariableSRW, WakeAllConditionVariable, CONDITION_VARIABLE_LOCKMODE_SHARED,
+    INFINITE,
+};
 
 #[derive(Copy, Clone)]
 struct SendPtr<T>(*mut T);
 
 unsafe impl<T> Send for SendPtr<T> {}
 
-extern "system" {
-    fn SleepConditionVariableSRW(
-        condvar: *mut *mut c_void,
-        lock: *mut *mut c_void,
-        timeout: u32,
-        flags: u32,
-    ) -> i32;
-    fn WakeAllConditionVariable(condvar: *mut *mut c_void);
-
-    fn AcquireSRWLockExclusive(lock: *mut *mut c_void);
-    fn AcquireSRWLockShared(lock: *mut *mut c_void);
-    fn ReleaseSRWLockExclusive(lock: *mut *mut c_void);
-    fn ReleaseSRWLockShared(lock: *mut *mut c_void);
-}
-
-const CONDITION_VARIABLE_LOCKMODE_SHARED: u32 = 1;
-const INFINITE: u32 = u32::MAX;
-
 /// threads should be able to reacquire the lock while it is locked by multiple other threads in shared mode
 fn all_shared() {
     println!("all_shared");
 
-    let mut lock = null_mut();
-    let mut condvar = null_mut();
+    let mut lock = MaybeUninit::zeroed();
+    let mut condvar = MaybeUninit::zeroed();
 
-    let lock_ptr = SendPtr(&mut lock);
-    let condvar_ptr = SendPtr(&mut condvar);
+    let lock_ptr = SendPtr(lock.as_mut_ptr());
+    let condvar_ptr = SendPtr(condvar.as_mut_ptr());
 
     let mut handles = Vec::with_capacity(10);
 
@@ -105,11 +92,11 @@ fn all_shared() {
 fn shared_sleep_and_exclusive_lock() {
     println!("shared_sleep_and_exclusive_lock");
 
-    let mut lock = null_mut();
-    let mut condvar = null_mut();
+    let mut lock = MaybeUninit::zeroed();
+    let mut condvar = MaybeUninit::zeroed();
 
-    let lock_ptr = SendPtr(&mut lock);
-    let condvar_ptr = SendPtr(&mut condvar);
+    let lock_ptr = SendPtr(lock.as_mut_ptr());
+    let condvar_ptr = SendPtr(condvar.as_mut_ptr());
 
     let mut waiters = Vec::with_capacity(5);
     for i in 0..5 {
@@ -166,11 +153,11 @@ fn shared_sleep_and_exclusive_lock() {
 fn exclusive_sleep_and_shared_lock() {
     println!("exclusive_sleep_and_shared_lock");
 
-    let mut lock = null_mut();
-    let mut condvar = null_mut();
+    let mut lock = MaybeUninit::zeroed();
+    let mut condvar = MaybeUninit::zeroed();
 
-    let lock_ptr = SendPtr(&mut lock);
-    let condvar_ptr = SendPtr(&mut condvar);
+    let lock_ptr = SendPtr(lock.as_mut_ptr());
+    let condvar_ptr = SendPtr(condvar.as_mut_ptr());
 
     let mut handles = Vec::with_capacity(10);
     for i in 0..5 {
