@@ -2,6 +2,7 @@
 
 use crate::errors;
 //use crate::util::check_builtin_macro_attribute;
+//use crate::util::check_autodiff;
 
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, FnHeader, FnSig, Generics, StmtKind};

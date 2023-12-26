@@ -232,6 +232,7 @@ impl CheckAttrVisitor<'_> {
                     self.check_generic_attr(hir_id, attr, target, Target::Fn);
                     self.check_proc_macro(hir_id, target, ProcMacroKind::Derive)
                 }
+                sym::autodiff => self.check_autodiff(hir_id, attr, span, target),
                 _ => {}
             }
 
@@ -2380,6 +2381,18 @@ impl CheckAttrVisitor<'_> {
         if !errors.is_empty() {
             infcx.err_ctxt().report_fulfillment_errors(errors);
             self.abort.set(true);
+        }
+    }
+
+    /// Checks if `#[autodiff]` is applied to an item other than a function item.
+    fn check_autodiff(&self, _hir_id: HirId, _attr: &Attribute, span: Span, target: Target) {
+        dbg!("check_autodiff");
+        match target {
+            Target::Fn => {}
+            _ => {
+                self.tcx.sess.emit_err(errors::AutoDiffAttr { attr_span: span });
+                self.abort.set(true);
+            }
         }
     }
 }

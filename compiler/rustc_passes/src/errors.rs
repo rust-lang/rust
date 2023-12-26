@@ -24,6 +24,14 @@ pub struct IncorrectDoNotRecommendLocation {
     pub span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(passes_autodiff_attr)]
+pub struct AutoDiffAttr {
+    #[primary_span]
+    #[label]
+    pub attr_span: Span,
+}
+
 #[derive(LintDiagnostic)]
 #[diag(passes_outer_crate_level_attr)]
 pub struct OuterCrateLevelAttr;
