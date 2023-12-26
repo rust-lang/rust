@@ -786,8 +786,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::Coroutine(did, args, movability) => {
                 p!(write("{{"));
                 let coroutine_kind = self.tcx().coroutine_kind(did).unwrap();
-                let should_print_movability =
-                    self.should_print_verbose() || coroutine_kind == hir::CoroutineKind::Coroutine;
+                let should_print_movability = self.should_print_verbose()
+                    || matches!(coroutine_kind, hir::CoroutineKind::Coroutine(_));
 
                 if should_print_movability {
                     match movability {

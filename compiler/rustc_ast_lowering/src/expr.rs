@@ -668,11 +668,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
         let params = arena_vec![self; param];
 
+        let coroutine_kind =
+            hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, async_coroutine_source);
         let body = self.lower_body(move |this| {
-            this.coroutine_kind = Some(hir::CoroutineKind::Desugared(
-                hir::CoroutineDesugaring::Async,
-                async_coroutine_source,
-            ));
+            this.coroutine_kind = Some(coroutine_kind);
 
             let old_ctx = this.task_context;
             this.task_context = Some(task_context_hid);
@@ -691,7 +690,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             body,
             fn_decl_span: self.lower_span(span),
             fn_arg_span: None,
-            movability: Some(hir::Movability::Static),
+            kind: hir::ClosureKind::Coroutine(coroutine_kind),
             constness: hir::Constness::NotConst,
         }))
     }
@@ -725,11 +724,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             lifetime_elision_allowed: false,
         });
 
+        let coroutine_kind =
+            hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, coroutine_source);
         let body = self.lower_body(move |this| {
-            this.coroutine_kind = Some(hir::CoroutineKind::Desugared(
-                hir::CoroutineDesugaring::Gen,
-                coroutine_source,
-            ));
+            this.coroutine_kind = Some(coroutine_kind);
 
             let res = body(this);
             (&[], res)
@@ -745,7 +743,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             body,
             fn_decl_span: self.lower_span(span),
             fn_arg_span: None,
-            movability: Some(Movability::Movable),
+            kind: hir::ClosureKind::Coroutine(coroutine_kind),
             constness: hir::Constness::NotConst,
         }))
     }
@@ -806,11 +804,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
         let params = arena_vec![self; param];
 
+        let coroutine_kind = hir::CoroutineKind::Desugared(
+            hir::CoroutineDesugaring::AsyncGen,
+            async_coroutine_source,
+        );
         let body = self.lower_body(move |this| {
-            this.coroutine_kind = Some(hir::CoroutineKind::Desugared(
-                hir::CoroutineDesugaring::AsyncGen,
-                async_coroutine_source,
-            ));
+            this.coroutine_kind = Some(coroutine_kind);
 
             let old_ctx = this.task_context;
             this.task_context = Some(task_context_hid);
@@ -829,7 +828,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             body,
             fn_decl_span: self.lower_span(span),
             fn_arg_span: None,
-            movability: Some(hir::Movability::Static),
+            kind: hir::ClosureKind::Coroutine(coroutine_kind),
             constness: hir::Constness::NotConst,
         }))
     }
@@ -898,7 +897,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let is_async_gen = match self.coroutine_kind {
             Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) => false,
             Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _)) => true,
-            Some(hir::CoroutineKind::Coroutine)
+            Some(hir::CoroutineKind::Coroutine(_))
             | Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _))
             | None => {
                 return hir::ExprKind::Err(self.dcx().emit_err(AwaitOnlyInAsyncFnAndBlocks {
@@ -1086,7 +1085,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::ExprKind<'hir> {
         let (binder_clause, generic_params) = self.lower_closure_binder(binder);
 
-        let (body_id, coroutine_option) = self.with_new_scopes(fn_decl_span, move |this| {
+        let (body_id, closure_kind) = self.with_new_scopes(fn_decl_span, move |this| {
             let mut coroutine_kind = None;
             let body_id = this.lower_fn_body(decl, |this| {
                 let e = this.lower_expr_mut(body);
@@ -1094,7 +1093,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 e
             });
             let coroutine_option =
-                this.coroutine_movability_for_fn(decl, fn_decl_span, coroutine_kind, movability);
+                this.closure_movability_for_fn(decl, fn_decl_span, coroutine_kind, movability);
             (body_id, coroutine_option)
         });
 
@@ -1111,26 +1110,26 @@ impl<'hir> LoweringContext<'_, 'hir> {
             body: body_id,
             fn_decl_span: self.lower_span(fn_decl_span),
             fn_arg_span: Some(self.lower_span(fn_arg_span)),
-            movability: coroutine_option,
+            kind: closure_kind,
             constness: self.lower_constness(constness),
         });
 
         hir::ExprKind::Closure(c)
     }
 
-    fn coroutine_movability_for_fn(
+    fn closure_movability_for_fn(
         &mut self,
         decl: &FnDecl,
         fn_decl_span: Span,
         coroutine_kind: Option<hir::CoroutineKind>,
         movability: Movability,
-    ) -> Option<hir::Movability> {
+    ) -> hir::ClosureKind {
         match coroutine_kind {
-            Some(hir::CoroutineKind::Coroutine) => {
+            Some(hir::CoroutineKind::Coroutine(_)) => {
                 if decl.inputs.len() > 1 {
                     self.dcx().emit_err(CoroutineTooManyParameters { fn_decl_span });
                 }
-                Some(movability)
+                hir::ClosureKind::Coroutine(hir::CoroutineKind::Coroutine(movability))
             }
             Some(
                 hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)
@@ -1143,7 +1142,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 if movability == Movability::Static {
                     self.dcx().emit_err(ClosureCannotBeStatic { fn_decl_span });
                 }
-                None
+                hir::ClosureKind::Closure
             }
         }
     }
@@ -1235,7 +1234,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             body,
             fn_decl_span: self.lower_span(fn_decl_span),
             fn_arg_span: Some(self.lower_span(fn_arg_span)),
-            movability: None,
+            kind: hir::ClosureKind::Closure,
             constness: hir::Constness::NotConst,
         });
         hir::ExprKind::Closure(c)
@@ -1655,7 +1654,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     self.dcx().emit_err(AsyncCoroutinesNotSupported { span }),
                 );
             }
-            Some(hir::CoroutineKind::Coroutine) | None => {
+            Some(hir::CoroutineKind::Coroutine(_)) => {
                 if !self.tcx.features().coroutines {
                     rustc_session::parse::feature_err(
                         &self.tcx.sess.parse_sess,
@@ -1665,7 +1664,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     )
                     .emit();
                 }
-                self.coroutine_kind = Some(hir::CoroutineKind::Coroutine);
+                false
+            }
+            None => {
+                if !self.tcx.features().coroutines {
+                    rustc_session::parse::feature_err(
+                        &self.tcx.sess.parse_sess,
+                        sym::coroutines,
+                        span,
+                        "yield syntax is experimental",
+                    )
+                    .emit();
+                }
+                self.coroutine_kind = Some(hir::CoroutineKind::Coroutine(Movability::Movable));
                 false
             }
         };

@@ -735,7 +735,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _) => {
                         "async gen closure"
                     }
-                    hir::CoroutineKind::Coroutine => "coroutine",
+                    hir::CoroutineKind::Coroutine(_) => "coroutine",
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _) => {
                         "gen closure"
                     }
@@ -759,7 +759,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, ..) => "an",
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, ..) => "an",
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, ..) => "a",
-                    hir::CoroutineKind::Coroutine => "a",
+                    hir::CoroutineKind::Coroutine(_) => "a",
                 }
             }
             _ => def_kind.article(),

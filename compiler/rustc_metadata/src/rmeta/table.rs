@@ -199,7 +199,8 @@ fixed_size_enum! {
 
 fixed_size_enum! {
     hir::CoroutineKind {
-        ( Coroutine                                                                    )
+        ( Coroutine(hir::Movability::Movable)                                          )
+        ( Coroutine(hir::Movability::Static)                                           )
         ( Desugared(hir::CoroutineDesugaring::Gen, hir::CoroutineSource::Block)        )
         ( Desugared(hir::CoroutineDesugaring::Gen, hir::CoroutineSource::Fn)           )
         ( Desugared(hir::CoroutineDesugaring::Gen, hir::CoroutineSource::Closure)      )

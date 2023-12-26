@@ -90,5 +90,11 @@ error: question mark operator is useless here
 LL |     Ok(s.magic?)
    |     ^^^^^^^^^^^^ help: try removing question mark and `Ok()`: `s.magic`
 
-error: aborting due to 14 previous errors
+error: question mark operator is useless here
+  --> $DIR/needless_question_mark.rs:140:7
+   |
+LL |     { Some(a?) }
+   |       ^^^^^^^^ help: try removing question mark and `Some()`: `a`
+
+error: aborting due to 15 previous errors
 

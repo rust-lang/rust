@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::is_def_id_trait_method;
 use rustc_hir::def::DefKind;
-use rustc_hir::intravisit::{walk_body, walk_expr, walk_fn, FnKind, Visitor};
+use rustc_hir::intravisit::{walk_expr, walk_fn, FnKind, Visitor};
 use rustc_hir::{Body, Expr, ExprKind, FnDecl, Node, YieldSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
@@ -78,31 +78,31 @@ impl<'a, 'tcx> Visitor<'tcx> for AsyncFnVisitor<'a, 'tcx> {
                 self.await_in_async_block = Some(ex.span);
             }
         }
-        walk_expr(self, ex);
-    }
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
-    }
-
-    fn visit_body(&mut self, b: &'tcx Body<'tcx>) {
         let is_async_block = matches!(
-            b.coroutine_kind,
-            Some(rustc_hir::CoroutineKind::Desugared(
-                rustc_hir::CoroutineDesugaring::Async,
-                _
-            ))
+            ex.kind,
+            ExprKind::Closure(rustc_hir::Closure {
+                kind: rustc_hir::ClosureKind::Coroutine(rustc_hir::CoroutineKind::Desugared(
+                    rustc_hir::CoroutineDesugaring::Async,
+                    _
+                )),
+                ..
+            })
         );
 
         if is_async_block {
             self.async_depth += 1;
         }
 
-        walk_body(self, b);
+        walk_expr(self, ex);
 
         if is_async_block {
             self.async_depth -= 1;
         }
+    }
+
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
     }
 }
 

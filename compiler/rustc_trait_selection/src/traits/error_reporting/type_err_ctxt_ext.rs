@@ -1348,7 +1348,7 @@ pub(super) trait InferCtxtPrivExt<'tcx> {
         ignoring_lifetimes: bool,
     ) -> Option<CandidateSimilarity>;
 
-    fn describe_coroutine(&self, body_id: hir::BodyId) -> Option<&'static str>;
+    fn describe_closure(&self, kind: hir::ClosureKind) -> &'static str;
 
     fn find_similar_impl_candidates(
         &self,
@@ -1925,46 +1925,49 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
     }
 
-    fn describe_coroutine(&self, body_id: hir::BodyId) -> Option<&'static str> {
-        self.tcx.hir().body(body_id).coroutine_kind.map(|coroutine_source| match coroutine_source {
-            hir::CoroutineKind::Coroutine => "a coroutine",
-            hir::CoroutineKind::Desugared(
-                hir::CoroutineDesugaring::Async,
-                hir::CoroutineSource::Block,
-            ) => "an async block",
-            hir::CoroutineKind::Desugared(
-                hir::CoroutineDesugaring::Async,
-                hir::CoroutineSource::Fn,
-            ) => "an async function",
-            hir::CoroutineKind::Desugared(
-                hir::CoroutineDesugaring::Async,
-                hir::CoroutineSource::Closure,
-            ) => "an async closure",
-            hir::CoroutineKind::Desugared(
-                hir::CoroutineDesugaring::AsyncGen,
-                hir::CoroutineSource::Block,
-            ) => "an async gen block",
-            hir::CoroutineKind::Desugared(
-                hir::CoroutineDesugaring::AsyncGen,
-                hir::CoroutineSource::Fn,
-            ) => "an async gen function",
-            hir::CoroutineKind::Desugared(
-                hir::CoroutineDesugaring::AsyncGen,
-                hir::CoroutineSource::Closure,
-            ) => "an async gen closure",
-            hir::CoroutineKind::Desugared(
-                hir::CoroutineDesugaring::Gen,
-                hir::CoroutineSource::Block,
-            ) => "a gen block",
-            hir::CoroutineKind::Desugared(
-                hir::CoroutineDesugaring::Gen,
-                hir::CoroutineSource::Fn,
-            ) => "a gen function",
-            hir::CoroutineKind::Desugared(
-                hir::CoroutineDesugaring::Gen,
-                hir::CoroutineSource::Closure,
-            ) => "a gen closure",
-        })
+    fn describe_closure(&self, kind: hir::ClosureKind) -> &'static str {
+        match kind {
+            hir::ClosureKind::Closure => "a closure",
+            hir::ClosureKind::Coroutine(kind) => match kind {
+                hir::CoroutineKind::Coroutine(_) => "a coroutine",
+                hir::CoroutineKind::Desugared(
+                    hir::CoroutineDesugaring::Async,
+                    hir::CoroutineSource::Block,
+                ) => "an async block",
+                hir::CoroutineKind::Desugared(
+                    hir::CoroutineDesugaring::Async,
+                    hir::CoroutineSource::Fn,
+                ) => "an async function",
+                hir::CoroutineKind::Desugared(
+                    hir::CoroutineDesugaring::Async,
+                    hir::CoroutineSource::Closure,
+                ) => "an async closure",
+                hir::CoroutineKind::Desugared(
+                    hir::CoroutineDesugaring::AsyncGen,
+                    hir::CoroutineSource::Block,
+                ) => "an async gen block",
+                hir::CoroutineKind::Desugared(
+                    hir::CoroutineDesugaring::AsyncGen,
+                    hir::CoroutineSource::Fn,
+                ) => "an async gen function",
+                hir::CoroutineKind::Desugared(
+                    hir::CoroutineDesugaring::AsyncGen,
+                    hir::CoroutineSource::Closure,
+                ) => "an async gen closure",
+                hir::CoroutineKind::Desugared(
+                    hir::CoroutineDesugaring::Gen,
+                    hir::CoroutineSource::Block,
+                ) => "a gen block",
+                hir::CoroutineKind::Desugared(
+                    hir::CoroutineDesugaring::Gen,
+                    hir::CoroutineSource::Fn,
+                ) => "a gen function",
+                hir::CoroutineKind::Desugared(
+                    hir::CoroutineDesugaring::Gen,
+                    hir::CoroutineSource::Closure,
+                ) => "a gen closure",
+            },
+        }
     }
 
     fn find_similar_impl_candidates(

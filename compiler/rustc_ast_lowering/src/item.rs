@@ -952,11 +952,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         params: &'hir [hir::Param<'hir>],
         value: hir::Expr<'hir>,
     ) -> hir::BodyId {
-        let body = hir::Body {
-            coroutine_kind: self.coroutine_kind,
-            params,
-            value: self.arena.alloc(value),
-        };
+        let body = hir::Body { params, value: self.arena.alloc(value) };
         let id = body.id();
         debug_assert_eq!(id.hir_id.owner, self.current_hir_id_owner);
         self.bodies.push((id.hir_id.local_id, self.arena.alloc(body)));

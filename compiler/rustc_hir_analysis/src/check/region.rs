@@ -824,10 +824,6 @@ impl<'tcx> Visitor<'tcx> for RegionResolutionVisitor<'tcx> {
             resolve_local(self, None, Some(body.value));
         }
 
-        if body.coroutine_kind.is_some() {
-            self.scope_tree.body_expr_count.insert(body_id, self.expr_and_pat_count);
-        }
-
         // Restore context we had at the start.
         self.expr_and_pat_count = outer_ec;
         self.cx = outer_cx;

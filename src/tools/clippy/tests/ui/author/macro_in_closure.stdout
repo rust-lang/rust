@@ -1,6 +1,6 @@
 if let StmtKind::Local(local) = stmt.kind
     && let Some(init) = local.init
-    && let ExprKind::Closure(CaptureBy::Ref, fn_decl, body_id, _, None) = init.kind
+    && let ExprKind::Closure { capture_clause: CaptureBy::Ref, fn_decl: fn_decl, body: body_id, closure_kind: ClosureKind::Closure, .. } = init.kind
     && let FnRetTy::DefaultReturn(_) = fn_decl.output
     && expr = &cx.tcx.hir().body(body_id).value
     && let ExprKind::Block(block, None) = expr.kind

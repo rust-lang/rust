@@ -257,7 +257,7 @@ impl<'tcx> TransformVisitor<'tcx> {
             CoroutineKind::Desugared(CoroutineDesugaring::Async, _) => {
                 span_bug!(body.span, "`Future`s are not fused inherently")
             }
-            CoroutineKind::Coroutine => span_bug!(body.span, "`Coroutine`s cannot be fused"),
+            CoroutineKind::Coroutine(_) => span_bug!(body.span, "`Coroutine`s cannot be fused"),
             // `gen` continues return `None`
             CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {
                 let option_def_id = self.tcx.require_lang_item(LangItem::Option, None);
@@ -396,7 +396,7 @@ impl<'tcx> TransformVisitor<'tcx> {
                     Rvalue::Use(val)
                 }
             }
-            CoroutineKind::Coroutine => {
+            CoroutineKind::Coroutine(_) => {
                 let coroutine_state_def_id =
                     self.tcx.require_lang_item(LangItem::CoroutineState, None);
                 let args = self.tcx.mk_args(&[self.old_yield_ty.into(), self.old_ret_ty.into()]);
@@ -1428,7 +1428,8 @@ fn create_coroutine_resume_function<'tcx>(
 
     if can_return {
         let block = match coroutine_kind {
-            CoroutineKind::Desugared(CoroutineDesugaring::Async, _) | CoroutineKind::Coroutine => {
+            CoroutineKind::Desugared(CoroutineDesugaring::Async, _)
+            | CoroutineKind::Coroutine(_) => {
                 insert_panic_block(tcx, body, ResumedAfterReturn(coroutine_kind))
             }
             CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)
@@ -1643,7 +1644,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
                 // The yield ty is already `Poll<Option<yield_ty>>`
                 old_yield_ty
             }
-            CoroutineKind::Coroutine => {
+            CoroutineKind::Coroutine(_) => {
                 // Compute CoroutineState<yield_ty, return_ty>
                 let state_did = tcx.require_lang_item(LangItem::CoroutineState, None);
                 let state_adt_ref = tcx.adt_def(state_did);
