@@ -176,12 +176,37 @@ fn stmt_needs_never_type(cx: &LateContext<'_>, stmt_hir_id: HirId) -> bool {
         })
 }
 
+///
+/// The expression of the desugared `try` operator is a match over an expression with type:
+/// `ControlFlow<A:Result<Infallible, E>, B:Result<_, E'>>`, with final type `B`.
+/// If E and E' are the same type, then there is no error conversion happening.
+/// Error conversion happens when E can be transformed into E' via a `From` or `Into` conversion.
+fn desugar_expr_performs_error_conversion(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    let ty = cx.typeck_results().expr_ty(expr);
+
+    if let ty::Adt(_, generics) = ty.kind()
+        && let Some(brk) = generics.first()
+        && let Some(cont) = generics.get(1)
+        && let Some(brk_type) = brk.as_type()
+        && let Some(cont_type) = cont.as_type()
+        && let ty::Adt(_, brk_generics) = brk_type.kind()
+        && let ty::Adt(_, cont_generics) = cont_type.kind()
+        && let Some(brk_err) = brk_generics.get(1)
+        && let Some(cont_err) = cont_generics.get(1)
+        && let Some(brk_err_type) = brk_err.as_type()
+        && let Some(cont_err_type) = cont_err.as_type()
+    {
+        return brk_err_type != cont_err_type;
+    }
+    false
+}
+
 impl<'tcx> LateLintPass<'tcx> for Return {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if !in_external_macro(cx.sess(), stmt.span)
             && let StmtKind::Semi(expr) = stmt.kind
             && let ExprKind::Ret(Some(ret)) = expr.kind
-            && let ExprKind::Match(.., MatchSource::TryDesugar(_)) = ret.kind
+            && let ExprKind::Match(match_expr, _, MatchSource::TryDesugar(..)) = ret.kind
             // Ensure this is not the final stmt, otherwise removing it would cause a compile error
             && let OwnerNode::Item(item) = cx.tcx.hir().owner(cx.tcx.hir().get_parent_item(expr.hir_id))
             && let ItemKind::Fn(_, _, body) = item.kind
@@ -192,6 +217,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
             && final_stmt.hir_id != stmt.hir_id
             && !is_from_proc_macro(cx, expr)
             && !stmt_needs_never_type(cx, stmt.hir_id)
+            && !desugar_expr_performs_error_conversion(cx, match_expr)
         {
             span_lint_and_sugg(
                 cx,

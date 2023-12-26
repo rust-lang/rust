@@ -77,3 +77,30 @@ fn issue11616() -> Result<(), ()> {
     };
     Ok(())
 }
+
+/// This is a false positive that occurs because of the way `?` is handled.
+/// The `?` operator is also doing a conversion from `Result<T, E>` to `Result<T, E'>`.
+/// In this case the conversion is needed, and thus the `?` operator is also needed.
+fn issue11982() {
+    mod bar {
+        pub struct Error;
+        pub fn foo(_: bool) -> Result<(), Error> {
+            Ok(())
+        }
+    }
+
+    pub struct Error;
+
+    impl From<bar::Error> for Error {
+        fn from(_: bar::Error) -> Self {
+            Error
+        }
+    }
+
+    fn foo(ok: bool) -> Result<(), Error> {
+        if !ok {
+            return bar::foo(ok).map(|_| Ok::<(), Error>(()))?;
+        };
+        Ok(())
+    }
+}
