@@ -33,6 +33,7 @@
 #![allow(internal_features)]
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
+#![feature(if_let_guard)]
 #![feature(box_patterns)]
 #![feature(let_chains)]
 #![recursion_limit = "256"]
@@ -65,6 +66,7 @@ use rustc_session::parse::{add_feature_diagnostics, feature_err};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{DesugaringKind, Span, DUMMY_SP};
 use smallvec::SmallVec;
+use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use thin_vec::ThinVec;
 
@@ -878,8 +880,27 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         binder: NodeId,
         generic_params: &[GenericParam],
     ) -> &'hir [hir::GenericParam<'hir>] {
-        let mut generic_params: Vec<_> = self
-            .lower_generic_params_mut(generic_params, hir::GenericParamSource::Binder)
+        let mut generic_params: Vec<_> = generic_params
+            .iter()
+            .map(|param| {
+                let param = match param.kind {
+                    GenericParamKind::Type { ref default } if let Some(ty) = default => {
+                        // Default type is not permitted in non-lifetime binders.
+                        // So we emit an error and default to `None` to prevent
+                        // potential ice.
+                        self.tcx.sess.emit_err(errors::UnexpectedDefaultParameterInBinder {
+                            span: ty.span(),
+                        });
+                        let param = GenericParam {
+                            kind: GenericParamKind::Type { default: None },
+                            ..param.clone()
+                        };
+                        Cow::Owned(param)
+                    }
+                    _ => Cow::Borrowed(param),
+                };
+                self.lower_generic_param(param.as_ref(), hir::GenericParamSource::Binder)
+            })
             .collect();
         let extra_lifetimes = self.resolver.take_extra_lifetime_params(binder);
         debug!(?extra_lifetimes);
