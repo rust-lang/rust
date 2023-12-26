@@ -595,7 +595,8 @@ macro_rules! make_mir_visitor {
                                     self.visit_constant(value, location);
                                 }
                                 InlineAsmOperand::Out { place: None, .. }
-                                | InlineAsmOperand::SymStatic { def_id: _ } => {}
+                                | InlineAsmOperand::SymStatic { def_id: _ }
+                                | InlineAsmOperand::Label { target_index: _ } => {}
                             }
                         }
                     }

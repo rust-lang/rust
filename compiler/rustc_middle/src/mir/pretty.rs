@@ -830,6 +830,9 @@ impl<'tcx> TerminatorKind<'tcx> {
                         InlineAsmOperand::SymStatic { def_id } => {
                             write!(fmt, "sym_static {def_id:?}")?;
                         }
+                        InlineAsmOperand::Label { target_index } => {
+                            write!(fmt, "label {target_index}")?;
+                        }
                     }
                 }
                 write!(fmt, ", options({options:?}))")

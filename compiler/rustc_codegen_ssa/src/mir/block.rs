@@ -1119,6 +1119,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 mir::InlineAsmOperand::SymStatic { def_id } => {
                     InlineAsmOperandRef::SymStatic { def_id }
                 }
+                mir::InlineAsmOperand::Label { target_index: _ } => {
+                    todo!();
+                }
             })
             .collect();
 

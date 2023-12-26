@@ -271,7 +271,8 @@ impl<'tcx> crate::GenKillAnalysis<'tcx> for MaybeRequiresStorage<'_, 'tcx> {
                         InlineAsmOperand::In { .. }
                         | InlineAsmOperand::Const { .. }
                         | InlineAsmOperand::SymFn { .. }
-                        | InlineAsmOperand::SymStatic { .. } => {}
+                        | InlineAsmOperand::SymStatic { .. }
+                        | InlineAsmOperand::Label { .. } => {}
                     }
                 }
             }

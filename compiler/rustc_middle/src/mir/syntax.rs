@@ -919,6 +919,10 @@ pub enum InlineAsmOperand<'tcx> {
     SymStatic {
         def_id: DefId,
     },
+    Label {
+        /// This represents the index into the `targets` array in `TerminatorKind::InlineAsm`.
+        target_index: usize,
+    },
 }
 
 /// Type for MIR `Assert` terminator error messages.

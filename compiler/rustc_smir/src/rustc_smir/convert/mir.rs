@@ -559,7 +559,8 @@ impl<'tcx> Stable<'tcx> for mir::InlineAsmOperand<'tcx> {
             }
             InlineAsmOperand::Const { .. }
             | InlineAsmOperand::SymFn { .. }
-            | InlineAsmOperand::SymStatic { .. } => (None, None),
+            | InlineAsmOperand::SymStatic { .. }
+            | InlineAsmOperand::Label { .. } => (None, None),
         };
 
         stable_mir::mir::InlineAsmOperand { in_value, out_place, raw_rpr: format!("{self:?}") }
