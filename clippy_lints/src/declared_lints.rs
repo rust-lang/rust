@@ -369,6 +369,8 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::methods::ITERATOR_STEP_BY_ZERO_INFO,
     crate::methods::ITER_CLONED_COLLECT_INFO,
     crate::methods::ITER_COUNT_INFO,
+    crate::methods::ITER_FILTER_IS_OK_INFO,
+    crate::methods::ITER_FILTER_IS_SOME_INFO,
     crate::methods::ITER_KV_MAP_INFO,
     crate::methods::ITER_NEXT_SLICE_INFO,
     crate::methods::ITER_NTH_INFO,
