@@ -61,8 +61,6 @@ pub trait TypeCx: Sized + fmt::Debug {
     /// Extra data to store in a pattern.
     type PatData: Clone;
 
-    /// FIXME(Nadrieril): `Cx` should only give us revealed types.
-    fn reveal_opaque_ty(&self, ty: Self::Ty) -> Self::Ty;
     fn is_exhaustive_patterns_feature_on(&self) -> bool;
 
     /// The number of fields for this constructor.
@@ -114,6 +112,7 @@ pub fn analyze_match<'p, 'tcx>(
 ) -> rustc::UsefulnessReport<'p, 'tcx> {
     // Arena to store the extra wildcards we construct during analysis.
     let wildcard_arena = tycx.pattern_arena;
+    let scrut_ty = tycx.reveal_opaque_ty(scrut_ty);
     let scrut_validity = ValidityConstraint::from_bool(tycx.known_valid_scrutinee);
     let cx = MatchCtxt { tycx, wildcard_arena };
 
