@@ -128,11 +128,11 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
     // In the cases of either a `#[non_exhaustive]` field list or a non-public field, we hide
     // uninhabited fields in order not to reveal the uninhabitedness of the whole variant.
     // This lists the fields we keep along with their types.
-    pub(crate) fn list_variant_nonhidden_fields<'a>(
-        &'a self,
+    pub(crate) fn list_variant_nonhidden_fields(
+        &self,
         ty: Ty<'tcx>,
-        variant: &'a VariantDef, // TODO:
-    ) -> impl Iterator<Item = (FieldIdx, Ty<'tcx>)> + Captures<'p> + Captures<'a> {
+        variant: &'tcx VariantDef,
+    ) -> impl Iterator<Item = (FieldIdx, Ty<'tcx>)> + Captures<'p> + Captures<'_> {
         let cx = self;
         let ty::Adt(adt, args) = ty.kind() else { bug!() };
         // Whether we must not match the fields of this variant exhaustively.
