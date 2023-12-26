@@ -131,7 +131,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
     pub(crate) fn list_variant_nonhidden_fields<'a>(
         &'a self,
         ty: Ty<'tcx>,
-        variant: &'a VariantDef,
+        variant: &'a VariantDef, // TODO:
     ) -> impl Iterator<Item = (FieldIdx, Ty<'tcx>)> + Captures<'p> + Captures<'a> {
         let cx = self;
         let ty::Adt(adt, args) = ty.kind() else { bug!() };

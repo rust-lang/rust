@@ -821,7 +821,6 @@ impl fmt::Display for ValidityConstraint {
 
 /// Represents a pattern-tuple under investigation.
 // The three lifetimes are:
-// - 'a allocated by us
 // - 'p coming from the input
 // - Cx global compilation context
 #[derive(derivative::Derivative)]
@@ -835,7 +834,7 @@ struct PatStack<'p, Cx: TypeCx> {
     relevant: bool,
 }
 
-impl<'a, 'p, Cx: TypeCx> PatStack<'p, Cx> {
+impl<'p, Cx: TypeCx> PatStack<'p, Cx> {
     fn from_pattern(pat: &'p DeconstructedPat<'p, Cx>) -> Self {
         PatStack { pats: smallvec![pat], relevant: true }
     }
@@ -870,7 +869,7 @@ impl<'a, 'p, Cx: TypeCx> PatStack<'p, Cx> {
     /// Only call if `ctor.is_covered_by(self.head().ctor())` is true.
     fn pop_head_constructor(
         &self,
-        pcx: &PlaceCtxt<'a, 'p, Cx>,
+        pcx: &PlaceCtxt<'_, 'p, Cx>,
         ctor: &Constructor<Cx>,
         ctor_is_relevant: bool,
     ) -> PatStack<'p, Cx> {
@@ -914,7 +913,7 @@ struct MatrixRow<'p, Cx: TypeCx> {
     useful: bool,
 }
 
-impl<'a, 'p, Cx: TypeCx> MatrixRow<'p, Cx> {
+impl<'p, Cx: TypeCx> MatrixRow<'p, Cx> {
     fn is_empty(&self) -> bool {
         self.pats.is_empty()
     }
@@ -946,7 +945,7 @@ impl<'a, 'p, Cx: TypeCx> MatrixRow<'p, Cx> {
     /// Only call if `ctor.is_covered_by(self.head().ctor())` is true.
     fn pop_head_constructor(
         &self,
-        pcx: &PlaceCtxt<'a, 'p, Cx>,
+        pcx: &PlaceCtxt<'_, 'p, Cx>,
         ctor: &Constructor<Cx>,
         ctor_is_relevant: bool,
         parent_row: usize,
@@ -989,7 +988,7 @@ struct Matrix<'p, Cx: TypeCx> {
     place_validity: SmallVec<[ValidityConstraint; 2]>,
 }
 
-impl<'a, 'p, Cx: TypeCx> Matrix<'p, Cx> {
+impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this recursively
     /// expands it. Internal method, prefer [`Matrix::new`].
     fn expand_and_push(&mut self, row: MatrixRow<'p, Cx>) {
@@ -1006,7 +1005,7 @@ impl<'a, 'p, Cx: TypeCx> Matrix<'p, Cx> {
     /// Build a new matrix from an iterator of `MatchArm`s.
     fn new(
         wildcard_arena: &'p TypedArena<DeconstructedPat<'p, Cx>>,
-        arms: &'a [MatchArm<'p, Cx>],
+        arms: &[MatchArm<'p, Cx>],
         scrut_ty: Cx::Ty,
         scrut_validity: ValidityConstraint,
     ) -> Self {
@@ -1029,7 +1028,7 @@ impl<'a, 'p, Cx: TypeCx> Matrix<'p, Cx> {
         matrix
     }
 
-    fn head_ty(&self, mcx: MatchCtxt<'a, 'p, Cx>) -> Option<Cx::Ty> {
+    fn head_ty(&self, mcx: MatchCtxt<'_, 'p, Cx>) -> Option<Cx::Ty> {
         if self.column_count() == 0 {
             return None;
         }
@@ -1056,16 +1055,14 @@ impl<'a, 'p, Cx: TypeCx> Matrix<'p, Cx> {
     }
 
     /// Iterate over the first pattern of each row.
-    fn heads<'b>(
-        &'b self,
-    ) -> impl Iterator<Item = &'b DeconstructedPat<'p, Cx>> + Clone + Captures<'a> {
+    fn heads<'b>(&'b self) -> impl Iterator<Item = &'b DeconstructedPat<'p, Cx>> + Clone {
         self.rows().map(|r| r.head())
     }
 
     /// This computes `specialize(ctor, self)`. See top of the file for explanations.
     fn specialize_constructor(
         &self,
-        pcx: &PlaceCtxt<'a, 'p, Cx>,
+        pcx: &PlaceCtxt<'_, 'p, Cx>,
         ctor: &Constructor<Cx>,
         ctor_is_relevant: bool,
     ) -> Matrix<'p, Cx> {
