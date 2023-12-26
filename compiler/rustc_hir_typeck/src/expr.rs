@@ -1131,8 +1131,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut err = self.demand_suptype_diag(expr.span, expected_ty, actual_ty).unwrap();
             let lhs_ty = self.check_expr(lhs);
             let rhs_ty = self.check_expr(rhs);
+            let refs_can_coerce = |lhs: Ty<'tcx>, rhs: Ty<'tcx>| {
+                let lhs = Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, lhs.peel_refs());
+                let rhs = Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, rhs.peel_refs());
+                self.can_coerce(rhs, lhs)
+            };
             let (applicability, eq) = if self.can_coerce(rhs_ty, lhs_ty) {
                 (Applicability::MachineApplicable, true)
+            } else if refs_can_coerce(rhs_ty, lhs_ty) {
+                // The lhs and rhs are likely missing some references in either side. Subsequent
+                // suggestions will show up.
+                (Applicability::MaybeIncorrect, true)
             } else if let ExprKind::Binary(
                 Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
                 _,
@@ -1142,7 +1151,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // if x == 1 && y == 2 { .. }
                 //                 +
                 let actual_lhs_ty = self.check_expr(rhs_expr);
-                (Applicability::MaybeIncorrect, self.can_coerce(rhs_ty, actual_lhs_ty))
+                (
+                    Applicability::MaybeIncorrect,
+                    self.can_coerce(rhs_ty, actual_lhs_ty)
+                        || refs_can_coerce(rhs_ty, actual_lhs_ty),
+                )
             } else if let ExprKind::Binary(
                 Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
                 lhs_expr,
@@ -1152,7 +1165,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // if x == 1 && y == 2 { .. }
                 //       +
                 let actual_rhs_ty = self.check_expr(lhs_expr);
-                (Applicability::MaybeIncorrect, self.can_coerce(actual_rhs_ty, lhs_ty))
+                (
+                    Applicability::MaybeIncorrect,
+                    self.can_coerce(actual_rhs_ty, lhs_ty)
+                        || refs_can_coerce(actual_rhs_ty, lhs_ty),
+                )
             } else {
                 (Applicability::MaybeIncorrect, false)
             };
