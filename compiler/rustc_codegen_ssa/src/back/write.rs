@@ -326,6 +326,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub opts: Arc<config::Options>,
     pub crate_types: Vec<CrateType>,
     pub each_linked_rlib_for_lto: Vec<(CrateNum, PathBuf)>,
+    pub compiler_builtins: Option<CrateNum>,
     pub output_filenames: Arc<OutputFilenames>,
     pub regular_module_config: Arc<ModuleConfig>,
     pub metadata_module_config: Arc<ModuleConfig>,
@@ -1089,6 +1090,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     let cgcx = CodegenContext::<B> {
         crate_types: tcx.crate_types().to_vec(),
         each_linked_rlib_for_lto,
+        compiler_builtins: crate_info.compiler_builtins,
         lto: sess.lto(),
         fewer_names: sess.fewer_names(),
         save_temps: sess.opts.cg.save_temps,

@@ -45,10 +45,22 @@ pub fn crate_type_allows_lto(crate_type: CrateType) -> bool {
     }
 }
 
+struct SerializedModuleInfo {
+    module: SerializedModule<ModuleBuffer>,
+    name: CString,
+    compiler_builtins: bool,
+}
+
+impl SerializedModuleInfo {
+    fn new(module: SerializedModule<ModuleBuffer>, name: CString, compiler_builtins: bool) -> Self {
+        Self { module, name, compiler_builtins }
+    }
+}
+
 fn prepare_lto(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     dcx: &DiagCtxt,
-) -> Result<(Vec<CString>, Vec<(SerializedModule<ModuleBuffer>, CString)>), FatalError> {
+) -> Result<(Vec<CString>, Vec<SerializedModuleInfo>), FatalError> {
     let export_threshold = match cgcx.lto {
         // We're just doing LTO for our one crate
         Lto::ThinLocal => SymbolExportLevel::Rust,
@@ -127,6 +139,7 @@ fn prepare_lto(
                     })
                 })
                 .filter(|&(name, _)| looks_like_rust_object_file(name));
+            let compiler_builtins = cgcx.compiler_builtins == Some(cnum);
             for (name, child) in obj_files {
                 info!("adding bitcode from {}", name);
                 match get_bitcode_slice_from_object_data(
@@ -135,7 +148,11 @@ fn prepare_lto(
                 ) {
                     Ok(data) => {
                         let module = SerializedModule::FromRlib(data.to_vec());
-                        upstream_modules.push((module, CString::new(name).unwrap()));
+                        upstream_modules.push(SerializedModuleInfo::new(
+                            module,
+                            CString::new(name).unwrap(),
+                            compiler_builtins,
+                        ));
                     }
                     Err(e) => {
                         dcx.emit_err(e);
@@ -239,7 +256,7 @@ fn fat_lto(
     dcx: &DiagCtxt,
     modules: Vec<FatLtoInput<LlvmCodegenBackend>>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
-    mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
+    mut serialized_modules: Vec<SerializedModuleInfo>,
     symbols_below_threshold: &[*const libc::c_char],
 ) -> Result<LtoModuleCodegen<LlvmCodegenBackend>, FatalError> {
     let _timer = cgcx.prof.generic_activity("LLVM_fat_lto_build_monolithic_module");
@@ -258,7 +275,7 @@ fn fat_lto(
     let mut in_memory = Vec::new();
     serialized_modules.extend(cached_modules.into_iter().map(|(buffer, wp)| {
         info!("pushing cached module {:?}", wp.cgu_name);
-        (buffer, CString::new(wp.cgu_name).unwrap())
+        SerializedModuleInfo::new(buffer, CString::new(wp.cgu_name).unwrap(), false)
     }));
     for module in modules {
         match module {
@@ -266,7 +283,11 @@ fn fat_lto(
             FatLtoInput::Serialized { name, buffer } => {
                 info!("pushing serialized module {:?}", name);
                 let buffer = SerializedModule::Local(buffer);
-                serialized_modules.push((buffer, CString::new(name).unwrap()));
+                serialized_modules.push(SerializedModuleInfo::new(
+                    buffer,
+                    CString::new(name).unwrap(),
+                    false,
+                ));
             }
         }
     }
@@ -299,10 +320,10 @@ fn fat_lto(
         Some((_cost, i)) => in_memory.remove(i),
         None => {
             assert!(!serialized_modules.is_empty(), "must have at least one serialized module");
-            let (buffer, name) = serialized_modules.remove(0);
+            let SerializedModuleInfo { module, name, .. } = serialized_modules.remove(0);
             info!("no in-memory regular modules to choose from, parsing {:?}", name);
             ModuleCodegen {
-                module_llvm: ModuleLlvm::parse(cgcx, &name, buffer.data(), dcx)?,
+                module_llvm: ModuleLlvm::parse(cgcx, &name, module.data(), dcx)?,
                 name: name.into_string().unwrap(),
                 kind: ModuleKind::Regular,
             }
@@ -330,26 +351,39 @@ fn fat_lto(
         for module in in_memory {
             let buffer = ModuleBuffer::new(module.module_llvm.llmod());
             let llmod_id = CString::new(&module.name[..]).unwrap();
-            serialized_modules.push((SerializedModule::Local(buffer), llmod_id));
+            serialized_modules.push(SerializedModuleInfo::new(
+                SerializedModule::Local(buffer),
+                llmod_id,
+                false,
+            ));
         }
         // Sort the modules to ensure we produce deterministic results.
-        serialized_modules.sort_by(|module1, module2| module1.1.cmp(&module2.1));
+        // Place compiler_builtins at the end. After that we check if any crate wants to
+        // customize the builtin functions. Remove the function of compiler_builtins, if any.
+        serialized_modules.sort_by(|module1, module2| {
+            let compiler_builtins_cmp = module1.compiler_builtins.cmp(&module2.compiler_builtins);
+            if compiler_builtins_cmp.is_ne() {
+                return compiler_builtins_cmp;
+            }
+            module1.name.cmp(&module2.name)
+        });
 
         // For all serialized bitcode files we parse them and link them in as we did
         // above, this is all mostly handled in C++. Like above, though, we don't
         // know much about the memory management here so we err on the side of being
         // save and persist everything with the original module.
         let mut linker = Linker::new(llmod);
-        for (bc_decoded, name) in serialized_modules {
+        for serialized_module in serialized_modules {
+            let SerializedModuleInfo { module, name, .. } = serialized_module;
             let _timer = cgcx
                 .prof
                 .generic_activity_with_arg_recorder("LLVM_fat_lto_link_module", |recorder| {
                     recorder.record_arg(format!("{name:?}"))
                 });
             info!("linking {:?}", name);
-            let data = bc_decoded.data();
+            let data = module.data();
             linker.add(data).map_err(|()| write::llvm_err(dcx, LlvmError::LoadBitcode { name }))?;
-            serialized_bitcode.push(bc_decoded);
+            serialized_bitcode.push(module);
         }
         drop(linker);
         save_temp_bitcode(cgcx, &module, "lto.input");
@@ -433,7 +467,7 @@ fn thin_lto(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     dcx: &DiagCtxt,
     modules: Vec<(String, ThinBuffer)>,
-    serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
+    serialized_modules: Vec<SerializedModuleInfo>,
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
     symbols_below_threshold: &[*const libc::c_char],
 ) -> Result<(Vec<LtoModuleCodegen<LlvmCodegenBackend>>, Vec<WorkProduct>), FatalError> {
@@ -479,10 +513,12 @@ fn thin_lto(
         //        we must always unconditionally look at the index).
         let mut serialized = Vec::with_capacity(serialized_modules.len() + cached_modules.len());
 
-        let cached_modules =
-            cached_modules.into_iter().map(|(sm, wp)| (sm, CString::new(wp.cgu_name).unwrap()));
+        let cached_modules = cached_modules.into_iter().map(|(sm, wp)| {
+            SerializedModuleInfo::new(sm, CString::new(wp.cgu_name).unwrap(), false)
+        });
 
-        for (module, name) in serialized_modules.into_iter().chain(cached_modules) {
+        for serialized_module in serialized_modules.into_iter().chain(cached_modules) {
+            let SerializedModuleInfo { module, name, .. } = serialized_module;
             info!("upstream or cached module {:?}", name);
             thin_modules.push(llvm::ThinLTOModule {
                 identifier: name.as_ptr(),
