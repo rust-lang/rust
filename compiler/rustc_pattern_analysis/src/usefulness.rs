@@ -826,17 +826,17 @@ impl fmt::Display for ValidityConstraint {
 // - Cx global compilation context
 #[derive(derivative::Derivative)]
 #[derivative(Clone(bound = ""))]
-struct PatStack<'a, 'p, Cx: TypeCx> {
+struct PatStack<'p, Cx: TypeCx> {
     // Rows of len 1 are very common, which is why `SmallVec[_; 2]` works well.
-    pats: SmallVec<[&'a DeconstructedPat<'p, Cx>; 2]>,
+    pats: SmallVec<[&'p DeconstructedPat<'p, Cx>; 2]>,
     /// Sometimes we know that as far as this row is concerned, the current case is already handled
     /// by a different, more general, case. When the case is irrelevant for all rows this allows us
     /// to skip a case entirely. This is purely an optimization. See at the top for details.
     relevant: bool,
 }
 
-impl<'a, 'p, Cx: TypeCx> PatStack<'a, 'p, Cx> {
-    fn from_pattern(pat: &'a DeconstructedPat<'p, Cx>) -> Self {
+impl<'a, 'p, Cx: TypeCx> PatStack<'p, Cx> {
+    fn from_pattern(pat: &'p DeconstructedPat<'p, Cx>) -> Self {
         PatStack { pats: smallvec![pat], relevant: true }
     }
 
@@ -848,17 +848,17 @@ impl<'a, 'p, Cx: TypeCx> PatStack<'a, 'p, Cx> {
         self.pats.len()
     }
 
-    fn head(&self) -> &'a DeconstructedPat<'p, Cx> {
+    fn head(&self) -> &'p DeconstructedPat<'p, Cx> {
         self.pats[0]
     }
 
-    fn iter<'b>(&'b self) -> impl Iterator<Item = &'a DeconstructedPat<'p, Cx>> + Captures<'b> {
+    fn iter<'b>(&'b self) -> impl Iterator<Item = &'p DeconstructedPat<'p, Cx>> + Captures<'b> {
         self.pats.iter().copied()
     }
 
     // Recursively expand the first or-pattern into its subpatterns. Only useful if the pattern is
     // an or-pattern. Panics if `self` is empty.
-    fn expand_or_pat<'b>(&'b self) -> impl Iterator<Item = PatStack<'a, 'p, Cx>> + Captures<'b> {
+    fn expand_or_pat<'b>(&'b self) -> impl Iterator<Item = PatStack<'p, Cx>> + Captures<'b> {
         self.head().flatten_or_pat().into_iter().map(move |pat| {
             let mut new = self.clone();
             new.pats[0] = pat;
@@ -873,7 +873,7 @@ impl<'a, 'p, Cx: TypeCx> PatStack<'a, 'p, Cx> {
         pcx: &PlaceCtxt<'a, 'p, Cx>,
         ctor: &Constructor<Cx>,
         ctor_is_relevant: bool,
-    ) -> PatStack<'a, 'p, Cx> {
+    ) -> PatStack<'p, Cx> {
         // We pop the head pattern and push the new fields extracted from the arguments of
         // `self.head()`.
         let mut new_pats = self.head().specialize(pcx, ctor);
@@ -886,7 +886,7 @@ impl<'a, 'p, Cx: TypeCx> PatStack<'a, 'p, Cx> {
     }
 }
 
-impl<'a, 'p, Cx: TypeCx> fmt::Debug for PatStack<'a, 'p, Cx> {
+impl<'p, Cx: TypeCx> fmt::Debug for PatStack<'p, Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // We pretty-print similarly to the `Debug` impl of `Matrix`.
         write!(f, "+")?;
@@ -899,9 +899,9 @@ impl<'a, 'p, Cx: TypeCx> fmt::Debug for PatStack<'a, 'p, Cx> {
 
 /// A row of the matrix.
 #[derive(Clone)]
-struct MatrixRow<'a, 'p, Cx: TypeCx> {
+struct MatrixRow<'p, Cx: TypeCx> {
     // The patterns in the row.
-    pats: PatStack<'a, 'p, Cx>,
+    pats: PatStack<'p, Cx>,
     /// Whether the original arm had a guard. This is inherited when specializing.
     is_under_guard: bool,
     /// When we specialize, we remember which row of the original matrix produced a given row of the
@@ -914,7 +914,7 @@ struct MatrixRow<'a, 'p, Cx: TypeCx> {
     useful: bool,
 }
 
-impl<'a, 'p, Cx: TypeCx> MatrixRow<'a, 'p, Cx> {
+impl<'a, 'p, Cx: TypeCx> MatrixRow<'p, Cx> {
     fn is_empty(&self) -> bool {
         self.pats.is_empty()
     }
@@ -923,17 +923,17 @@ impl<'a, 'p, Cx: TypeCx> MatrixRow<'a, 'p, Cx> {
         self.pats.len()
     }
 
-    fn head(&self) -> &'a DeconstructedPat<'p, Cx> {
+    fn head(&self) -> &'p DeconstructedPat<'p, Cx> {
         self.pats.head()
     }
 
-    fn iter<'b>(&'b self) -> impl Iterator<Item = &'a DeconstructedPat<'p, Cx>> + Captures<'b> {
+    fn iter<'b>(&'b self) -> impl Iterator<Item = &'p DeconstructedPat<'p, Cx>> + Captures<'b> {
         self.pats.iter()
     }
 
     // Recursively expand the first or-pattern into its subpatterns. Only useful if the pattern is
     // an or-pattern. Panics if `self` is empty.
-    fn expand_or_pat<'b>(&'b self) -> impl Iterator<Item = MatrixRow<'a, 'p, Cx>> + Captures<'b> {
+    fn expand_or_pat<'b>(&'b self) -> impl Iterator<Item = MatrixRow<'p, Cx>> + Captures<'b> {
         self.pats.expand_or_pat().map(|patstack| MatrixRow {
             pats: patstack,
             parent_row: self.parent_row,
@@ -950,7 +950,7 @@ impl<'a, 'p, Cx: TypeCx> MatrixRow<'a, 'p, Cx> {
         ctor: &Constructor<Cx>,
         ctor_is_relevant: bool,
         parent_row: usize,
-    ) -> MatrixRow<'a, 'p, Cx> {
+    ) -> MatrixRow<'p, Cx> {
         MatrixRow {
             pats: self.pats.pop_head_constructor(pcx, ctor, ctor_is_relevant),
             parent_row,
@@ -960,7 +960,7 @@ impl<'a, 'p, Cx: TypeCx> MatrixRow<'a, 'p, Cx> {
     }
 }
 
-impl<'a, 'p, Cx: TypeCx> fmt::Debug for MatrixRow<'a, 'p, Cx> {
+impl<'p, Cx: TypeCx> fmt::Debug for MatrixRow<'p, Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.pats.fmt(f)
     }
@@ -977,22 +977,22 @@ impl<'a, 'p, Cx: TypeCx> fmt::Debug for MatrixRow<'a, 'p, Cx> {
 /// specializing `(,)` and `Some` on a pattern of type `(Option<u32>, bool)`, the first column of
 /// the matrix will correspond to `scrutinee.0.Some.0` and the second column to `scrutinee.1`.
 #[derive(Clone)]
-struct Matrix<'a, 'p, Cx: TypeCx> {
+struct Matrix<'p, Cx: TypeCx> {
     /// Vector of rows. The rows must form a rectangular 2D array. Moreover, all the patterns of
     /// each column must have the same type. Each column corresponds to a place within the
     /// scrutinee.
-    rows: Vec<MatrixRow<'a, 'p, Cx>>,
+    rows: Vec<MatrixRow<'p, Cx>>,
     /// Stores an extra fictitious row full of wildcards. Mostly used to keep track of the type of
     /// each column. This must obey the same invariants as the real rows.
-    wildcard_row: PatStack<'a, 'p, Cx>,
+    wildcard_row: PatStack<'p, Cx>,
     /// Track for each column/place whether it contains a known valid value.
     place_validity: SmallVec<[ValidityConstraint; 2]>,
 }
 
-impl<'a, 'p, Cx: TypeCx> Matrix<'a, 'p, Cx> {
+impl<'a, 'p, Cx: TypeCx> Matrix<'p, Cx> {
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this recursively
     /// expands it. Internal method, prefer [`Matrix::new`].
-    fn expand_and_push(&mut self, row: MatrixRow<'a, 'p, Cx>) {
+    fn expand_and_push(&mut self, row: MatrixRow<'p, Cx>) {
         if !row.is_empty() && row.head().is_or_pat() {
             // Expand nested or-patterns.
             for new_row in row.expand_or_pat() {
@@ -1005,7 +1005,7 @@ impl<'a, 'p, Cx: TypeCx> Matrix<'a, 'p, Cx> {
 
     /// Build a new matrix from an iterator of `MatchArm`s.
     fn new(
-        wildcard_arena: &'a TypedArena<DeconstructedPat<'p, Cx>>,
+        wildcard_arena: &'p TypedArena<DeconstructedPat<'p, Cx>>,
         arms: &'a [MatchArm<'p, Cx>],
         scrut_ty: Cx::Ty,
         scrut_validity: ValidityConstraint,
@@ -1044,13 +1044,13 @@ impl<'a, 'p, Cx: TypeCx> Matrix<'a, 'p, Cx> {
 
     fn rows<'b>(
         &'b self,
-    ) -> impl Iterator<Item = &'b MatrixRow<'a, 'p, Cx>> + Clone + DoubleEndedIterator + ExactSizeIterator
+    ) -> impl Iterator<Item = &'b MatrixRow<'p, Cx>> + Clone + DoubleEndedIterator + ExactSizeIterator
     {
         self.rows.iter()
     }
     fn rows_mut<'b>(
         &'b mut self,
-    ) -> impl Iterator<Item = &'b mut MatrixRow<'a, 'p, Cx>> + DoubleEndedIterator + ExactSizeIterator
+    ) -> impl Iterator<Item = &'b mut MatrixRow<'p, Cx>> + DoubleEndedIterator + ExactSizeIterator
     {
         self.rows.iter_mut()
     }
@@ -1068,7 +1068,7 @@ impl<'a, 'p, Cx: TypeCx> Matrix<'a, 'p, Cx> {
         pcx: &PlaceCtxt<'a, 'p, Cx>,
         ctor: &Constructor<Cx>,
         ctor_is_relevant: bool,
-    ) -> Matrix<'a, 'p, Cx> {
+    ) -> Matrix<'p, Cx> {
         let wildcard_row = self.wildcard_row.pop_head_constructor(pcx, ctor, ctor_is_relevant);
         let new_validity = self.place_validity[0].specialize(ctor);
         let new_place_validity = std::iter::repeat(new_validity)
@@ -1097,7 +1097,7 @@ impl<'a, 'p, Cx: TypeCx> Matrix<'a, 'p, Cx> {
 /// + _     + [_, _, tail @ ..] +
 /// | ✓     | ?                 | // column validity
 /// ```
-impl<'a, 'p, Cx: TypeCx> fmt::Debug for Matrix<'a, 'p, Cx> {
+impl<'p, Cx: TypeCx> fmt::Debug for Matrix<'p, Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "\n")?;
 
@@ -1336,7 +1336,7 @@ impl<Cx: TypeCx> WitnessMatrix<Cx> {
 #[instrument(level = "debug", skip(mcx, is_top_level), ret)]
 fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
     mcx: MatchCtxt<'a, 'p, Cx>,
-    matrix: &mut Matrix<'a, 'p, Cx>,
+    matrix: &mut Matrix<'p, Cx>,
     is_top_level: bool,
 ) -> WitnessMatrix<Cx> {
     debug_assert!(matrix.rows().all(|r| r.len() == matrix.column_count()));

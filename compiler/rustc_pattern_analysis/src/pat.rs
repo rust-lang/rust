@@ -83,7 +83,7 @@ impl<'p, Cx: TypeCx> DeconstructedPat<'p, Cx> {
         &self,
         pcx: &PlaceCtxt<'a, 'p, Cx>,
         other_ctor: &Constructor<Cx>,
-    ) -> SmallVec<[&'a DeconstructedPat<'p, Cx>; 2]> {
+    ) -> SmallVec<[&'p DeconstructedPat<'p, Cx>; 2]> {
         let wildcard_sub_tys = || {
             let tys = pcx.ctor_sub_tys(other_ctor);
             tys.iter()
