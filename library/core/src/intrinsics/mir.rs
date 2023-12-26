@@ -65,6 +65,7 @@
 //! ```rust
 //! #![feature(core_intrinsics, custom_mir)]
 //! #![allow(internal_features)]
+//! #![allow(unused_assignments)]
 //!
 //! use core::intrinsics::mir::*;
 //!
