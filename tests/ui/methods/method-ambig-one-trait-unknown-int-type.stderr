@@ -36,10 +36,19 @@ LL |     let y: usize = x.foo();
    |            |
    |            expected due to this
    |
+note: the method foo is defined here
+  --> $DIR/method-ambig-one-trait-unknown-int-type.rs:6:5
+   |
+LL |     fn foo(&self) -> isize;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
 help: you can convert an `isize` to a `usize` and panic if the converted value doesn't fit
    |
 LL |     let y: usize = x.foo().try_into().unwrap();
    |                           ++++++++++++++++++++
+help: consider changing foo's return type
+   |
+LL |     fn foo(&self) -> usize;
+   |                      ~~~~~
 
 error: aborting due to 3 previous errors
 

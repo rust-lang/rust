@@ -11,10 +11,19 @@ LL | fn opaque() -> impl Fn() -> i32 {
    |
    = note:     expected type `i32`
            found opaque type `impl Fn() -> i32`
+note: the function opaque is defined here
+  --> $DIR/suggest-calling-rpit-closure.rs:6:1
+   |
+LL | fn opaque() -> impl Fn() -> i32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: use parentheses to call this opaque type
    |
 LL |     opaque()()
    |             ++
+help: consider changing opaque's return type
+   |
+LL | fn opaque() -> i32 {
+   |                ~~~
 
 error: aborting due to 1 previous error
 

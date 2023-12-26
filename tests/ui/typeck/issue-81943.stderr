@@ -4,6 +4,11 @@ error[E0308]: mismatched types
 LL |   f(|x| lib::d!(x));
    |         ^^^^^^^^^^ expected `()`, found `i32`
    |
+note: the function $crate is defined here
+  --> $DIR/auxiliary/issue-81943-lib.rs:1:1
+   |
+LL | pub fn g(t: i32) -> i32 { t }
+   | ^^^^^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `lib::d` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
@@ -15,6 +20,11 @@ LL |   f(|x| match x { tmp => { g(tmp) } });
    |         |                  expected `()`, found `i32`
    |         expected this to be `()`
    |
+note: the function g is defined here
+  --> $DIR/issue-81943.rs:5:1
+   |
+LL | fn g(t: i32) -> i32 { t }
+   | ^^^^^^^^^^^^^^^^^^^
 help: consider using a semicolon here
    |
 LL |   f(|x| match x { tmp => { g(tmp); } });
@@ -23,6 +33,10 @@ help: consider using a semicolon here
    |
 LL |   f(|x| match x { tmp => { g(tmp) } };);
    |                                      +
+help: consider changing g's return type
+   |
+LL | fn g(t: i32) -> () { t }
+   |                 ~~
 
 error[E0308]: mismatched types
   --> $DIR/issue-81943.rs:10:38
@@ -36,6 +50,11 @@ LL |   }
 LL |   f(|x| d!(x));
    |         ----- in this macro invocation
    |
+note: the function g is defined here
+  --> $DIR/issue-81943.rs:5:1
+   |
+LL | fn g(t: i32) -> i32 { t }
+   | ^^^^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `d` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider using a semicolon here
    |
@@ -45,6 +64,10 @@ help: consider using a semicolon here
    |
 LL |     ($e:expr) => { match $e { x => { g(x) } }; }
    |                                              +
+help: consider changing g's return type
+   |
+LL | fn g(t: i32) -> () { t }
+   |                 ~~
 
 error: aborting due to 3 previous errors
 

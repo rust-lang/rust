@@ -21,6 +21,8 @@ LL | fn f(x: &mut dyn Iterator<Item: Iterator<Item = &'_ ()>>) -> Option<&'_ ()>
    |
    = note: expected enum `Option<&()>`
               found enum `Option<impl Iterator<Item = &'_ ()>>`
+note: the method next is defined here
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
 error: aborting due to 2 previous errors
 

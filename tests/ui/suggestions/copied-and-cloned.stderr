@@ -8,6 +8,8 @@ LL |     lol.x = x.clone();
    |
    = note: expected enum `Option<String>`
               found enum `Option<&String>`
+note: the method clone is defined here
+  --> $SRC_DIR/core/src/clone.rs:LL:COL
 help: use `Option::cloned` to clone the value inside the `Option`
    |
 LL |     lol.x = x.clone().cloned();

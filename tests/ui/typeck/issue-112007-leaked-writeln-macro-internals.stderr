@@ -12,6 +12,8 @@ LL | |     }
    |
    = note: expected unit type `()`
                    found enum `Result<(), std::fmt::Error>`
+note: the method write_fmt is defined here
+  --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
    = note: this error originates in the macro `writeln` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider using a semicolon here
    |
@@ -35,6 +37,8 @@ LL | |     }
    |
    = note: expected unit type `()`
                    found enum `Result<(), std::fmt::Error>`
+note: the method write_fmt is defined here
+  --> $SRC_DIR/core/src/fmt/mod.rs:LL:COL
    = note: this error originates in the macro `writeln` which comes from the expansion of the macro `baz` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider using a semicolon here
    |

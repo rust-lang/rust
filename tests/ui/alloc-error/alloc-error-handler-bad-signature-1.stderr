@@ -29,7 +29,10 @@ LL |    #[alloc_error_handler]
 LL | // fn oom(
 LL | ||     info: &Layout,
 LL | || ) -> ()
-   | ||_______^ expected `!`, found `()`
+   | ||      -^
+   | ||______||
+   | |       |expected `!`, found `()`
+   | |       help: consider changing oom's return type: `!`
 LL | |  {
 LL | |      loop {}
 LL | |  }
@@ -37,6 +40,13 @@ LL | |  }
    |
    = note:   expected type `!`
            found unit type `()`
+note: the function oom is defined here
+  --> $DIR/alloc-error-handler-bad-signature-1.rs:10:1
+   |
+LL | / fn oom(
+LL | |     info: &Layout,
+LL | | ) -> ()
+   | |_______^
    = note: this error originates in the attribute macro `alloc_error_handler` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors

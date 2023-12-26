@@ -6,6 +6,8 @@ LL |     vec!['a'].iter().map(|c| c)
    |
    = note: expected unit type `()`
                  found struct `Map<std::slice::Iter<'_, char>, {closure@$DIR/return_type_containing_closure.rs:3:26: 3:29}>`
+note: the method map is defined here
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 help: consider using a semicolon here
    |
 LL |     vec!['a'].iter().map(|c| c);

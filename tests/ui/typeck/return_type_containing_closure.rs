@@ -4,6 +4,7 @@ fn foo() { //~ HELP a return type might be missing here
     //~^ ERROR mismatched types [E0308]
     //~| NOTE expected `()`, found `Map<Iter<'_, char>, ...>`
     //~| NOTE expected unit type `()`
+    //~| NOTE the method map is defined here
     //~| HELP consider using a semicolon here
 }
 

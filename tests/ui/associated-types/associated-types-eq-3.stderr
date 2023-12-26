@@ -8,10 +8,19 @@ LL |     let _: Bar = x.boo();
    |
    = note:       expected struct `Bar`
            found associated type `<I as Foo>::A`
+note: the method boo is defined here
+  --> $DIR/associated-types-eq-3.rs:6:5
+   |
+LL |     fn boo(&self) -> <Self as Foo>::A;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider constraining the associated type `<I as Foo>::A` to `Bar`
    |
 LL | fn foo2<I: Foo<A = Bar>>(x: I) {
    |               +++++++++
+help: consider changing boo's return type
+   |
+LL |     fn boo(&self) -> Bar;
+   |                      ~~~
 
 error[E0271]: type mismatch resolving `<isize as Foo>::A == Bar`
   --> $DIR/associated-types-eq-3.rs:38:10

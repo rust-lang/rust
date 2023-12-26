@@ -1,5 +1,5 @@
 error[E0308]: `match` arms have incompatible types
-  --> $DIR/match-prev-arm-needing-semi.rs:26:18
+  --> $DIR/match-prev-arm-needing-semi.rs:31:18
    |
 LL |       let _ = match true {
    |  _____________-
@@ -16,10 +16,15 @@ LL | |     };
    | |_____- `match` arms have incompatible types
    |
 note: calling an async function returns a future
-  --> $DIR/match-prev-arm-needing-semi.rs:26:18
+  --> $DIR/match-prev-arm-needing-semi.rs:31:18
    |
 LL |         false => async_dummy(),
    |                  ^^^^^^^^^^^^^
+note: the function async_dummy is defined here
+  --> $DIR/match-prev-arm-needing-semi.rs:18:1
+   |
+LL | async fn async_dummy() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^
 help: consider `await`ing on the `Future`
    |
 LL |         false => async_dummy().await,
@@ -31,7 +36,7 @@ LL +             async_dummy()
    |
 
 error[E0308]: `match` arms have incompatible types
-  --> $DIR/match-prev-arm-needing-semi.rs:39:18
+  --> $DIR/match-prev-arm-needing-semi.rs:44:18
    |
 LL |       let _ = match true {
    |  _____________-
@@ -48,10 +53,15 @@ LL | |     };
    | |_____- `match` arms have incompatible types
    |
 note: calling an async function returns a future
-  --> $DIR/match-prev-arm-needing-semi.rs:39:18
+  --> $DIR/match-prev-arm-needing-semi.rs:44:18
    |
 LL |         false => async_dummy2(),
    |                  ^^^^^^^^^^^^^^
+note: the function async_dummy2 is defined here
+  --> $DIR/match-prev-arm-needing-semi.rs:21:1
+   |
+LL | async fn async_dummy2() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
 help: consider `await`ing on the `Future`
    |
 LL |         false => async_dummy2().await,
@@ -65,7 +75,7 @@ LL ~         false => Box::new(async_dummy2()),
    |
 
 error[E0308]: `match` arms have incompatible types
-  --> $DIR/match-prev-arm-needing-semi.rs:50:18
+  --> $DIR/match-prev-arm-needing-semi.rs:55:18
    |
 LL |       let _ = match true {
    |  _____________-
@@ -80,6 +90,11 @@ LL | |     };
    | |_____- `match` arms have incompatible types
    |
    = note: distinct uses of `impl Trait` result in different opaque types
+note: the function async_dummy2 is defined here
+  --> $DIR/match-prev-arm-needing-semi.rs:21:1
+   |
+LL | async fn async_dummy2() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
 help: consider `await`ing on both `Future`s
    |
 LL ~         true => async_dummy().await,
@@ -88,16 +103,13 @@ LL ~         false => async_dummy2().await,
    |
 
 error[E0308]: `match` arms have incompatible types
-  --> $DIR/match-prev-arm-needing-semi.rs:11:18
+  --> $DIR/match-prev-arm-needing-semi.rs:13:18
    |
 LL |       let _ = match true {
    |  _____________-
 LL | |         true => {
 LL | |             dummy();
-   | |             --------
-   | |             |      |
-   | |             |      help: consider removing this semicolon
-   | |             this is found to be of type `()`
+   | |             -------- this is found to be of type `()`
 LL | |
 LL | |         }
 LL | |         false => dummy(),
@@ -105,6 +117,21 @@ LL | |         false => dummy(),
 LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types
+   |
+note: the function dummy is defined here
+  --> $DIR/match-prev-arm-needing-semi.rs:3:1
+   |
+LL | fn dummy() -> i32 { 42 }
+   | ^^^^^^^^^^^^^^^^^
+help: consider removing this semicolon
+   |
+LL -             dummy();
+LL +             dummy()
+   |
+help: consider changing dummy's return type
+   |
+LL | fn dummy() -> () { 42 }
+   |               ~~
 
 error: aborting due to 4 previous errors
 

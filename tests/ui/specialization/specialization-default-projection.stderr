@@ -29,14 +29,25 @@ LL | fn monomorphic() -> () {
    |                     -- expected `()` because of return type
 ...
 LL |     generic::<()>()
-   |     ^^^^^^^^^^^^^^^- help: consider using a semicolon here: `;`
-   |     |
-   |     expected `()`, found associated type
+   |     ^^^^^^^^^^^^^^^ expected `()`, found associated type
    |
    = note:    expected unit type `()`
            found associated type `<() as Foo>::Assoc`
    = help: consider constraining the associated type `<() as Foo>::Assoc` to `()`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+note: the function generic is defined here
+  --> $DIR/specialization-default-projection.rs:17:1
+   |
+LL | fn generic<T>() -> <T as Foo>::Assoc {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider using a semicolon here
+   |
+LL |     generic::<()>();
+   |                    +
+help: consider changing generic's return type
+   |
+LL | fn generic<T>() -> () {
+   |                    ~~
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

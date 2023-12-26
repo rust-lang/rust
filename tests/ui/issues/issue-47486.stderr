@@ -5,6 +5,9 @@ LL |     () < std::mem::size_of::<_>();
    |     --   ^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found `usize`
    |     |
    |     expected because this is `()`
+   |
+note: the function std is defined here
+  --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
 
 error[E0282]: type annotations needed
   --> $DIR/issue-47486.rs:3:11

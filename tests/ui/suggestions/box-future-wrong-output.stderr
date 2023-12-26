@@ -1,6 +1,9 @@
 error[E0308]: mismatched types
   --> $DIR/box-future-wrong-output.rs:20:39
    |
+LL |     fn boxed<'a>(self) -> BoxFuture<'a, Self::Output>
+   |                           --------------------------- help: consider changing boxed's return type: `Pin<Box<(dyn Future<Output = bool> + Send + 'static)>>`
+...
 LL |     let _: BoxFuture<'static, bool> = async {}.boxed();
    |            ------------------------   ^^^^^^^^^^^^^^^^ expected `bool`, found `()`
    |            |
@@ -8,6 +11,13 @@ LL |     let _: BoxFuture<'static, bool> = async {}.boxed();
    |
    = note: expected struct `Pin<Box<(dyn Future<Output = bool> + Send + 'static)>>`
               found struct `Pin<Box<dyn Future<Output = ()> + Send>>`
+note: the method boxed is defined here
+  --> $DIR/box-future-wrong-output.rs:11:5
+   |
+LL | /     fn boxed<'a>(self) -> BoxFuture<'a, Self::Output>
+LL | |     where
+LL | |         Self: Sized + Send + 'a,
+   | |________________________________^
 
 error: aborting due to 1 previous error
 

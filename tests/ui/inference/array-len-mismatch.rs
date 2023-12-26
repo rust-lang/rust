@@ -1,4 +1,4 @@
-fn returns_arr() -> [u8; 2] {
+fn returns_arr() -> [u8; 2] { //~ HELP consider changing returns_arr's return type
     [1, 2]
 }
 

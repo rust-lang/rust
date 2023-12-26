@@ -8,6 +8,9 @@ LL |     let abs: i32 = 3i32.checked_abs();
    |
    = note: expected type `i32`
               found enum `Option<i32>`
+note: the method checked_abs is defined here
+  --> $SRC_DIR/core/src/num/mod.rs:LL:COL
+   = note: this error originates in the macro `int_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider using `Option::expect` to unwrap the `Option<i32>` value, panicking if the value is an `Option::None`
    |
 LL |     let abs: i32 = 3i32.checked_abs().expect("REASON");

@@ -12,7 +12,10 @@ error[E0308]: mismatched types
   --> $DIR/equality2.rs:25:18
    |
 LL | fn hide<T: Foo>(x: T) -> impl Foo {
-   |                          -------- the found opaque type
+   |                          --------
+   |                          |
+   |                          the found opaque type
+   |                          help: consider changing hide's return type: `u32`
 ...
 LL |     let _: u32 = hide(0_u32);
    |            ---   ^^^^^^^^^^^ expected `u32`, found opaque type
@@ -21,6 +24,11 @@ LL |     let _: u32 = hide(0_u32);
    |
    = note:     expected type `u32`
            found opaque type `impl Foo`
+note: the function hide is defined here
+  --> $DIR/equality2.rs:7:1
+   |
+LL | fn hide<T: Foo>(x: T) -> impl Foo {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/equality2.rs:31:18
@@ -35,10 +43,19 @@ LL |     let _: i32 = Leak::leak(hide(0_i32));
    |
    = note:         expected type `i32`
            found associated type `<impl Foo as Leak>::T`
+note: the function Leak is defined here
+  --> $DIR/equality2.rs:13:5
+   |
+LL |     fn leak(self) -> Self::T;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 help: consider constraining the associated type `<impl Foo as Leak>::T` to `i32`
    |
 LL | fn hide<T: Foo>(x: T) -> impl Foo<T = i32> {
    |                                  +++++++++
+help: consider changing Leak's return type
+   |
+LL |     fn leak(self) -> i32;
+   |                      ~~~
 
 error[E0308]: mismatched types
   --> $DIR/equality2.rs:38:10

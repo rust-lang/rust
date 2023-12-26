@@ -17,6 +17,9 @@ LL |         brains: guts.clone(),
    |                 |    |
    |                 |    help: try using a conversion method: `to_string`
    |                 expected `String`, found `&str`
+   |
+note: the method clone is defined here
+  --> $SRC_DIR/core/src/clone.rs:LL:COL
 
 error: aborting due to 2 previous errors
 

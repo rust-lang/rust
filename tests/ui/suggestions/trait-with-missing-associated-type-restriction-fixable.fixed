@@ -4,7 +4,7 @@
 trait Trait<T = Self> {
     type A;
 
-    fn func(&self) -> Self::A;
+    fn func(&self) -> usize;
 }
 
 struct S<T>(T);

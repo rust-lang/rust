@@ -6,9 +6,18 @@ LL |             -> Option<&Iterator<Item=()>> {
 ...
 LL |     inner(x)
    |     ^^^^^^^^ expected trait `Iterator<Item = ()>`, found trait `Iterator<Item = ()> + Send`
+...
+LL |              -> Option<&(Iterator<Item=()>+Send)> {
+   |                 --------------------------------- help: consider changing inner's return type: `Option<&dyn Iterator<Item = ()>>`
    |
    = note: expected enum `Option<&dyn Iterator<Item = ()>>`
               found enum `Option<&dyn Iterator<Item = ()> + Send>`
+note: the function inner is defined here
+  --> $DIR/retslot-cast.rs:16:1
+   |
+LL | / pub fn inner(x: Option<&(Iterator<Item=()>+Send)>)
+LL | |              -> Option<&(Iterator<Item=()>+Send)> {
+   | |_________________________________________________^
 
 error: aborting due to 1 previous error
 

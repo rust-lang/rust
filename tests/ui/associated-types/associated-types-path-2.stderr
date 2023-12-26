@@ -86,10 +86,19 @@ LL |     let _: i32 = f2(2i32);
    |            |
    |            expected due to this
    |
+note: the function f2 is defined here
+  --> $DIR/associated-types-path-2.rs:14:1
+   |
+LL | pub fn f2<T: Foo>(a: T) -> T::A {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: you can convert a `u32` to an `i32` and panic if the converted value doesn't fit
    |
 LL |     let _: i32 = f2(2i32).try_into().unwrap();
    |                          ++++++++++++++++++++
+help: consider changing f2's return type
+   |
+LL | pub fn f2<T: Foo>(a: T) -> i32 {
+   |                            ~~~
 
 error: aborting due to 8 previous errors
 

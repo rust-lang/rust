@@ -9,6 +9,8 @@ LL |         ::std::mem::transmute::<f64, [u8; 8]>(panic!())
    |
    = note: expected type `!`
              found array `[u8; 8]`
+note: the function {{root}} is defined here
+  --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
 
 error: aborting due to 1 previous error
 

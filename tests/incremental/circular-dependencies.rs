@@ -14,7 +14,7 @@ pub struct Foo;
 pub fn consume_foo(_: Foo) {}
 //[cfail2]~^ NOTE function defined here
 
-pub fn produce_foo() -> Foo {
+pub fn produce_foo() -> Foo { //[cfail2]~ NOTE the function produce_foo is defined here
     Foo
 }
 
@@ -28,10 +28,11 @@ fn test() {
     //[cfail2]~| NOTE the crate `circular_dependencies` is compiled multiple times, possibly with different configurations
     //[cfail2]~| NOTE function defined here
 
-    consume_foo(aux::produce_foo());
+    consume_foo(aux::produce_foo()); //
     //[cfail2]~^ ERROR mismatched types [E0308]
     //[cfail2]~| NOTE expected `Foo`, found `circular_dependencies::Foo`
     //[cfail2]~| NOTE arguments to this function are incorrect
     //[cfail2]~| NOTE `circular_dependencies::Foo` and `Foo` have similar names, but are actually distinct types
     //[cfail2]~| NOTE the crate `circular_dependencies` is compiled multiple times, possibly with different configurations
+    //[cfail2]~| NOTE the function aux is defined here
 }

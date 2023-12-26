@@ -19,6 +19,11 @@ note: calling an async function returns a future
    |
 LL |     convert_result(foo())
    |                    ^^^^^
+note: the function foo is defined here
+  --> $DIR/issue-102605.rs:3:1
+   |
+LL | async fn foo() -> Result<(), String> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: function defined here
   --> $DIR/issue-102605.rs:7:4
    |

@@ -24,6 +24,9 @@ LL |         Box::new(self)
 error[E0308]: mismatched types
   --> $DIR/specialization-default-types.rs:25:5
    |
+LL |     fn generate(self) -> Self::Output;
+   |                          ------------ help: consider changing Example's return type: `Box<T>`
+...
 LL | fn trouble<T>(t: T) -> Box<T> {
    |                        ------ expected `Box<T>` because of return type
 LL |     Example::generate(t)
@@ -33,6 +36,11 @@ LL |     Example::generate(t)
            found associated type `<T as Example>::Output`
    = help: consider constraining the associated type `<T as Example>::Output` to `Box<T>`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
+note: the function Example is defined here
+  --> $DIR/specialization-default-types.rs:9:5
+   |
+LL |     fn generate(self) -> Self::Output;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors; 1 warning emitted
 

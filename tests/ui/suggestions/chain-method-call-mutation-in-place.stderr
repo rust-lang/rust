@@ -13,6 +13,8 @@ note: method `sort_by_key` modifies its receiver in-place, it is not meant to be
    |
 LL |     let x: Vec<i32> = vec![1, 2, 3].into_iter().collect::<Vec<i32>>().sort_by_key(|i| i);
    |                                                                       ^^^^^^^^^^^ this call modifies its receiver in-place
+note: the method sort_by_key is defined here
+  --> $SRC_DIR/alloc/src/slice.rs:LL:COL
 
 error[E0599]: no method named `sort` found for unit type `()` in the current scope
   --> $DIR/chain-method-call-mutation-in-place.rs:3:72
@@ -45,6 +47,8 @@ LL |     s.push_str("asdf")
    |     |
    |     you probably want to use this value after calling the method...
    = note: ...instead of the `()` output of method `push_str`
+note: the method push_str is defined here
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
 
 error: aborting due to 3 previous errors
 
