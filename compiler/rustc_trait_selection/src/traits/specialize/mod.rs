@@ -202,7 +202,7 @@ fn fulfill_implication<'tcx>(
         {
             Ok(source_trait_ref) => source_trait_ref,
             Err(_errors) => {
-                infcx.tcx.sess.span_delayed_bug(
+                infcx.dcx().span_delayed_bug(
                     infcx.tcx.def_span(source_impl),
                     format!("failed to fully normalize {source_trait_ref}"),
                 );
@@ -345,7 +345,7 @@ fn report_negative_positive_conflict<'tcx>(
     positive_impl_def_id: DefId,
     sg: &mut specialization_graph::Graph,
 ) {
-    let mut err = tcx.sess.create_err(NegativePositiveConflict {
+    let mut err = tcx.dcx().create_err(NegativePositiveConflict {
         impl_span: tcx.def_span(local_impl_def_id),
         trait_desc: overlap.trait_ref,
         self_ty: overlap.self_ty,
@@ -426,13 +426,13 @@ fn report_conflicting_impls<'tcx>(
             let reported = if overlap.with_impl.is_local()
                 || tcx.orphan_check_impl(impl_def_id).is_ok()
             {
-                let mut err = tcx.sess.struct_span_err(impl_span, msg);
+                let mut err = tcx.dcx().struct_span_err(impl_span, msg);
                 err.code(error_code!(E0119));
                 decorate(tcx, &overlap, impl_span, &mut err);
                 Some(err.emit())
             } else {
                 Some(
-                    tcx.sess
+                    tcx.dcx()
                         .span_delayed_bug(impl_span, "impl should have failed the orphan check"),
                 )
             };

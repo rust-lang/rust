@@ -48,7 +48,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let to = normalize(to);
         trace!(?from, ?to);
         if from.has_non_region_infer() || to.has_non_region_infer() {
-            tcx.sess.span_delayed_bug(span, "argument to transmute has inference variables");
+            tcx.dcx().span_delayed_bug(span, "argument to transmute has inference variables");
             return;
         }
         // Transmutes that are only changing lifetimes are always ok.
@@ -73,7 +73,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (from.kind(), sk_to)
                 && size_to == Pointer(dl.instruction_address_space).size(&tcx)
             {
-                struct_span_err!(tcx.sess, span, E0591, "can't transmute zero-sized type")
+                struct_span_err!(tcx.dcx(), span, E0591, "can't transmute zero-sized type")
                     .note(format!("source type: {from}"))
                     .note(format!("target type: {to}"))
                     .help("cast with `as` to a pointer instead")
@@ -113,7 +113,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let mut err = struct_span_err!(
-            tcx.sess,
+            tcx.dcx(),
             span,
             E0512,
             "cannot transmute between types of different sizes, \

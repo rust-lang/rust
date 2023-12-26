@@ -78,7 +78,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                 }
                 // Known lang item with attribute on incorrect target.
                 Some(lang_item) => {
-                    self.tcx.sess.emit_err(LangItemOnIncorrectTarget {
+                    self.tcx.dcx().emit_err(LangItemOnIncorrectTarget {
                         span: attr_span,
                         name,
                         expected_target: lang_item.target(),
@@ -87,7 +87,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                 }
                 // Unknown lang item.
                 _ => {
-                    self.tcx.sess.emit_err(UnknownLangItem { span: attr_span, name });
+                    self.tcx.dcx().emit_err(UnknownLangItem { span: attr_span, name });
                 }
             }
         }
@@ -149,7 +149,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                 }
             };
 
-            self.tcx.sess.emit_err(DuplicateLangItem {
+            self.tcx.dcx().emit_err(DuplicateLangItem {
                 local_span: item_span,
                 lang_item_name,
                 crate_name,
@@ -220,7 +220,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                 // We are issuing E0718 "incorrect target" here, because while the
                 // item kind of the target is correct, the target is still wrong
                 // because of the wrong number of generic arguments.
-                self.tcx.sess.emit_err(IncorrectTarget {
+                self.tcx.dcx().emit_err(IncorrectTarget {
                     span: attr_span,
                     generics_span: generics.span,
                     name: name.as_str(),

@@ -141,7 +141,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         let found_str = args_str(&found_args, &expected_args);
 
         let mut err = struct_span_err!(
-            self.tcx.sess,
+            self.dcx(),
             span,
             E0593,
             "{} is expected to take {}, but it takes {}",

@@ -244,7 +244,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         // `async` functions cannot be `const fn`. This is checked during AST lowering, so there's
         // no need to emit duplicate errors here.
         if self.ccx.is_async() || body.coroutine.is_some() {
-            tcx.sess.span_delayed_bug(body.span, "`async` functions cannot be `const fn`");
+            tcx.dcx().span_delayed_bug(body.span, "`async` functions cannot be `const fn`");
             return;
         }
 
@@ -276,10 +276,10 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         let secondary_errors = mem::take(&mut self.secondary_errors);
         if self.error_emitted.is_none() {
             for error in secondary_errors {
-                self.tcx.sess.dcx().emit_diagnostic(error);
+                self.tcx.dcx().emit_diagnostic(error);
             }
         } else {
-            assert!(self.tcx.sess.has_errors().is_some());
+            assert!(self.tcx.dcx().has_errors().is_some());
         }
     }
 
@@ -354,7 +354,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
     fn check_static(&mut self, def_id: DefId, span: Span) {
         if self.tcx.is_thread_local_static(def_id) {
             self.tcx
-                .sess
+                .dcx()
                 .span_delayed_bug(span, "tls access is checked in `Rvalue::ThreadLocalRef`");
         }
         self.check_op_spanned(ops::StaticAccess, span)
@@ -994,5 +994,5 @@ fn is_int_bool_or_char(ty: Ty<'_>) -> bool {
 fn emit_unstable_in_stable_error(ccx: &ConstCx<'_, '_>, span: Span, gate: Symbol) {
     let attr_span = ccx.tcx.def_span(ccx.def_id()).shrink_to_lo();
 
-    ccx.tcx.sess.emit_err(UnstableInStable { gate: gate.to_string(), span, attr_span });
+    ccx.dcx().emit_err(UnstableInStable { gate: gate.to_string(), span, attr_span });
 }

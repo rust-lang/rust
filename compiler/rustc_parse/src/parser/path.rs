@@ -175,7 +175,7 @@ impl<'a> Parser<'a> {
                     .filter_map(|segment| segment.args.as_ref())
                     .map(|arg| arg.span())
                     .collect::<Vec<_>>();
-                parser.sess.emit_err(errors::GenericsInPath { span });
+                parser.dcx().emit_err(errors::GenericsInPath { span });
             }
         };
 
@@ -246,7 +246,7 @@ impl<'a> Parser<'a> {
                         && self.look_ahead(1, |token| self.token.span.hi() == token.span.lo())
                     {
                         self.bump(); // bump past the colon
-                        self.sess.emit_err(PathSingleColon {
+                        self.dcx().emit_err(PathSingleColon {
                             span: self.prev_token.span,
                             type_ascription: self
                                 .sess
@@ -350,7 +350,7 @@ impl<'a> Parser<'a> {
                     && self.look_ahead(1, |tok| tok.kind == token::DotDot)
                 {
                     self.bump();
-                    self.sess
+                    self.dcx()
                         .emit_err(errors::BadReturnTypeNotationDotDot { span: self.token.span });
                     self.bump();
                     self.expect(&token::CloseDelim(Delimiter::Parenthesis))?;
@@ -359,7 +359,7 @@ impl<'a> Parser<'a> {
                     if self.eat_noexpect(&token::RArrow) {
                         let lo = self.prev_token.span;
                         let ty = self.parse_ty()?;
-                        self.sess
+                        self.dcx()
                             .emit_err(errors::BadReturnTypeNotationOutput { span: lo.to(ty.span) });
                     }
 
@@ -535,7 +535,7 @@ impl<'a> Parser<'a> {
                     // i.e. no multibyte characters, in this range.
                     let span = lo
                         .with_hi(lo.lo() + BytePos(snapshot.unmatched_angle_bracket_count.into()));
-                    self.sess.emit_err(errors::UnmatchedAngle {
+                    self.dcx().emit_err(errors::UnmatchedAngle {
                         span,
                         plural: snapshot.unmatched_angle_bracket_count > 1,
                     });
@@ -614,7 +614,7 @@ impl<'a> Parser<'a> {
                         // FIXME(compiler-errors): this could be improved by suggesting lifting
                         // this up to the trait, at least before this becomes real syntax.
                         // e.g. `Trait<for<'a> Assoc = Ty>` -> `for<'a> Trait<Assoc = Ty>`
-                        return Err(self.struct_span_err(
+                        return Err(self.dcx().struct_span_err(
                             arg_span,
                             "`for<...>` is not allowed on associated type bounds",
                         ));
@@ -678,13 +678,14 @@ impl<'a> Parser<'a> {
                 c.into()
             }
             Some(GenericArg::Lifetime(lt)) => {
-                self.sess.emit_err(errors::AssocLifetime { span, lifetime: lt.ident.span });
+                self.dcx().emit_err(errors::AssocLifetime { span, lifetime: lt.ident.span });
                 self.mk_ty(span, ast::TyKind::Err).into()
             }
             None => {
                 let after_eq = eq.shrink_to_hi();
                 let before_next = self.token.span.shrink_to_lo();
                 let mut err = self
+                    .dcx()
                     .struct_span_err(after_eq.to(before_next), "missing type to the right of `=`");
                 if matches!(self.token.kind, token::Comma | token::Gt) {
                     err.span_suggestion(
@@ -783,10 +784,13 @@ impl<'a> Parser<'a> {
                         && let Some(expr) =
                             self.recover_unbraced_const_arg_that_can_begin_ty(snapshot)
                     {
-                        return Ok(Some(self.dummy_const_arg_needs_braces(
-                            self.struct_span_err(expr.span, "invalid const generic expression"),
-                            expr.span,
-                        )));
+                        return Ok(Some(
+                            self.dummy_const_arg_needs_braces(
+                                self.dcx()
+                                    .struct_span_err(expr.span, "invalid const generic expression"),
+                                expr.span,
+                            ),
+                        ));
                     }
 
                     GenericArg::Type(ty)
@@ -811,7 +815,7 @@ impl<'a> Parser<'a> {
             match self.parse_expr_res(Restrictions::CONST_EXPR, None) {
                 Ok(expr) => {
                     return Ok(Some(self.dummy_const_arg_needs_braces(
-                        self.struct_span_err(expr.span, "invalid const generic expression"),
+                        self.dcx().struct_span_err(expr.span, "invalid const generic expression"),
                         expr.span,
                     )));
                 }

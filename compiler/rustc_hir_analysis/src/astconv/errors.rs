@@ -31,7 +31,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             return;
         }
 
-        self.tcx().sess.emit_err(MissingTypeParams {
+        self.tcx().dcx().emit_err(MissingTypeParams {
             span,
             def_span: self.tcx().def_span(def_id),
             span_snippet: self.tcx().sess.source_map().span_to_snippet(span).ok(),
@@ -94,7 +94,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         if is_impl {
             let trait_name = self.tcx().def_path_str(trait_def_id);
-            self.tcx().sess.emit_err(ManualImplementation { span, trait_name });
+            self.tcx().dcx().emit_err(ManualImplementation { span, trait_name });
         }
     }
 
@@ -141,7 +141,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         if is_dummy {
             err.label = Some(errors::AssocItemNotFoundLabel::NotFound { span });
-            return tcx.sess.emit_err(err);
+            return tcx.dcx().emit_err(err);
         }
 
         let all_candidate_names: Vec<_> = all_candidates()
@@ -159,7 +159,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 assoc_kind: assoc_kind_str,
                 suggested_name,
             });
-            return tcx.sess.emit_err(err);
+            return tcx.dcx().emit_err(err);
         }
 
         // If we didn't find a good item in the supertraits (or couldn't get
@@ -224,10 +224,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             assoc_kind: assoc_kind_str,
                             suggested_name,
                         });
-                        return tcx.sess.emit_err(err);
+                        return tcx.dcx().emit_err(err);
                     }
 
-                    let mut err = tcx.sess.create_err(err);
+                    let mut err = tcx.dcx().create_err(err);
                     if suggest_constraining_type_param(
                         tcx,
                         generics,
@@ -249,7 +249,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                     return err.emit();
                 }
-                return tcx.sess.emit_err(err);
+                return tcx.dcx().emit_err(err);
             }
         }
 
@@ -275,7 +275,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             err.label = Some(errors::AssocItemNotFoundLabel::NotFound { span: assoc_name.span });
         }
 
-        tcx.sess.emit_err(err)
+        tcx.dcx().emit_err(err)
     }
 
     fn complain_about_assoc_kind_mismatch(
@@ -327,7 +327,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             (ident.span, None, assoc_kind, assoc_item.kind)
         };
 
-        tcx.sess.emit_err(errors::AssocKindMismatch {
+        tcx.dcx().emit_err(errors::AssocKindMismatch {
             span,
             expected: super::assoc_kind_str(expected),
             got: super::assoc_kind_str(got),
@@ -346,7 +346,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         span: Span,
     ) -> ErrorGuaranteed {
         let mut err = struct_span_err!(
-            self.tcx().sess,
+            self.tcx().dcx(),
             name.span,
             E0034,
             "multiple applicable items in scope"
@@ -445,7 +445,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             };
 
             let mut err = struct_span_err!(
-                tcx.sess,
+                tcx.dcx(),
                 name.span,
                 E0220,
                 "associated type `{name}` not found for `{self_ty}` in the current scope"
@@ -536,7 +536,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         bounds.sort();
         bounds.dedup();
 
-        let mut err = tcx.sess.struct_span_err(
+        let mut err = tcx.dcx().struct_span_err(
             name.span,
             format!("the associated type `{name}` exists for `{self_ty}`, but its trait bounds were not satisfied")
         );
@@ -697,7 +697,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         trait_bound_spans.sort();
         let mut err = struct_span_err!(
-            tcx.sess,
+            tcx.dcx(),
             trait_bound_spans,
             E0191,
             "the value of the associated type{} {} must be specified",
@@ -852,7 +852,7 @@ pub fn prohibit_assoc_ty_binding(
     span: Span,
     segment: Option<(&hir::PathSegment<'_>, Span)>,
 ) {
-    tcx.sess.emit_err(AssocTypeBindingNotAllowed {
+    tcx.dcx().emit_err(AssocTypeBindingNotAllowed {
         span,
         fn_trait_expansion: if let Some((segment, span)) = segment
             && segment.args().parenthesized == hir::GenericArgsParentheses::ParenSugar

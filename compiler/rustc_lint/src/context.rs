@@ -1056,6 +1056,7 @@ pub trait LintContext {
         // a dummy diagnostic and emit is as usual, which will be suppressed and stored like a normal
         // expected lint diagnostic.
         self.sess()
+            .dcx()
             .struct_expect(
                 "this is a dummy diagnostic, to submit and store an expectation",
                 expectation,

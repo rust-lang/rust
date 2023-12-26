@@ -168,7 +168,7 @@ impl<'a> PostExpansionVisitor<'a> {
         for param in params {
             if !param.bounds.is_empty() {
                 let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
-                self.sess.emit_err(errors::ForbiddenBound { spans });
+                self.sess.dcx().emit_err(errors::ForbiddenBound { spans });
             }
         }
     }
@@ -226,7 +226,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 || attr.has_name(sym::rustc_const_stable)
                 || attr.has_name(sym::rustc_default_body_unstable)
             {
-                self.sess.emit_err(errors::StabilityOutsideStd { span: attr.span });
+                self.sess.dcx().emit_err(errors::StabilityOutsideStd { span: attr.span });
             }
         }
     }
@@ -579,7 +579,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
                     .emit();
                 } else {
                     let suggestion = span.shrink_to_hi();
-                    sess.emit_err(errors::MatchArmWithNoBody { span, suggestion });
+                    sess.dcx().emit_err(errors::MatchArmWithNoBody { span, suggestion });
                 }
             }
         }
@@ -587,7 +587,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
 
     if !visitor.features.negative_bounds {
         for &span in spans.get(&sym::negative_bounds).iter().copied().flatten() {
-            sess.emit_err(errors::NegativeBoundUnsupported { span });
+            sess.dcx().emit_err(errors::NegativeBoundUnsupported { span });
         }
     }
 
@@ -677,7 +677,11 @@ fn check_incompatible_features(sess: &Session, features: &Features) {
             if let Some((f2_name, f2_span)) = declared_features.clone().find(|(name, _)| name == f2)
             {
                 let spans = vec![f1_span, f2_span];
-                sess.emit_err(errors::IncompatibleFeatures { spans, f1: f1_name, f2: f2_name });
+                sess.dcx().emit_err(errors::IncompatibleFeatures {
+                    spans,
+                    f1: f1_name,
+                    f2: f2_name,
+                });
             }
         }
     }

@@ -960,7 +960,9 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             {
                 imm8
             } else {
-                fx.tcx.sess.span_fatal(span, "Index argument for `_mm_cmpestri` is not a constant");
+                fx.tcx
+                    .dcx()
+                    .span_fatal(span, "Index argument for `_mm_cmpestri` is not a constant");
             };
 
             let imm8 = imm8.try_to_u8().unwrap_or_else(|_| panic!("kind not scalar: {:?}", imm8));
@@ -1011,7 +1013,9 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             {
                 imm8
             } else {
-                fx.tcx.sess.span_fatal(span, "Index argument for `_mm_cmpestrm` is not a constant");
+                fx.tcx
+                    .dcx()
+                    .span_fatal(span, "Index argument for `_mm_cmpestrm` is not a constant");
             };
 
             let imm8 = imm8.try_to_u8().unwrap_or_else(|_| panic!("kind not scalar: {:?}", imm8));
@@ -1056,7 +1060,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             {
                 imm8
             } else {
-                fx.tcx.sess.span_fatal(
+                fx.tcx.dcx().span_fatal(
                     span,
                     "Index argument for `_mm_clmulepi64_si128` is not a constant",
                 );
@@ -1093,7 +1097,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             {
                 imm8
             } else {
-                fx.tcx.sess.span_fatal(
+                fx.tcx.dcx().span_fatal(
                     span,
                     "Index argument for `_mm_aeskeygenassist_si128` is not a constant",
                 );
@@ -1361,7 +1365,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
         _ => {
             fx.tcx
-                .sess
+                .dcx()
                 .warn(format!("unsupported x86 llvm intrinsic {}; replacing with trap", intrinsic));
             crate::trap::trap_unimplemented(fx, intrinsic);
             return;

@@ -208,12 +208,12 @@ impl<'tcx> Queries<'tcx> {
 
                 // Bare `#[rustc_error]`.
                 None => {
-                    tcx.sess.emit_fatal(RustcErrorFatal { span: tcx.def_span(def_id) });
+                    tcx.dcx().emit_fatal(RustcErrorFatal { span: tcx.def_span(def_id) });
                 }
 
                 // Some other attribute.
                 Some(_) => {
-                    tcx.sess.emit_warning(RustcErrorUnexpectedAnnotation {
+                    tcx.dcx().emit_warning(RustcErrorUnexpectedAnnotation {
                         span: tcx.def_span(def_id),
                     });
                 }
@@ -292,7 +292,9 @@ impl Linker {
                 &codegen_results,
                 &*self.output_filenames,
             )
-            .map_err(|error| sess.emit_fatal(FailedWritingFile { path: &rlink_file, error }))?;
+            .map_err(|error| {
+                sess.dcx().emit_fatal(FailedWritingFile { path: &rlink_file, error })
+            })?;
             return Ok(());
         }
 
@@ -330,7 +332,7 @@ impl Compiler {
         // the global context.
         _timer = Some(self.sess.timer("free_global_ctxt"));
         if let Err((path, error)) = queries.finish() {
-            self.sess.emit_err(errors::FailedWritingFile { path: &path, error });
+            self.sess.dcx().emit_err(errors::FailedWritingFile { path: &path, error });
         }
 
         ret

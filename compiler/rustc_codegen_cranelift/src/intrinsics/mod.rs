@@ -37,7 +37,7 @@ fn report_atomic_type_validation_error<'tcx>(
     span: Span,
     ty: Ty<'tcx>,
 ) {
-    fx.tcx.sess.span_err(
+    fx.tcx.dcx().span_err(
         span,
         format!(
             "`{}` intrinsic: expected basic integer or raw pointer type, found `{:?}`",
@@ -785,7 +785,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                         return;
                     } else {
                         fx.tcx
-                            .sess
+                            .dcx()
                             .span_fatal(source_info.span, "128bit atomics not yet supported");
                     }
                 }
@@ -816,7 +816,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                         return;
                     } else {
                         fx.tcx
-                            .sess
+                            .dcx()
                             .span_fatal(source_info.span, "128bit atomics not yet supported");
                     }
                 }
@@ -1245,7 +1245,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
         // FIXME implement variadics in cranelift
         sym::va_copy | sym::va_arg | sym::va_end => {
-            fx.tcx.sess.span_fatal(
+            fx.tcx.dcx().span_fatal(
                 source_info.span,
                 "Defining variadic functions is not yet supported by Cranelift",
             );
@@ -1253,7 +1253,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
         _ => {
             fx.tcx
-                .sess
+                .dcx()
                 .span_fatal(source_info.span, format!("unsupported intrinsic {}", intrinsic));
         }
     }

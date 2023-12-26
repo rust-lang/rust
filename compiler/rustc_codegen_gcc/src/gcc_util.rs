@@ -52,7 +52,7 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
                 Some(c @ ('+' | '-')) => c,
                 Some(_) => {
                     if diagnostics {
-                        sess.emit_warning(UnknownCTargetFeaturePrefix { feature: s });
+                        sess.dcx().emit_warning(UnknownCTargetFeaturePrefix { feature: s });
                     }
                     return None;
                 }
@@ -79,7 +79,7 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
                     else {
                         UnknownCTargetFeature { feature, rust_feature: PossibleFeature::None }
                     };
-                sess.emit_warning(unknown_feature);
+                sess.dcx().emit_warning(unknown_feature);
             }
 
             if diagnostics {
@@ -114,7 +114,7 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
 
     if diagnostics {
         if let Some(f) = check_tied_features(sess, &featsmap) {
-            sess.emit_err(TargetFeatureDisableOrEnable {
+            sess.dcx().emit_err(TargetFeatureDisableOrEnable {
                 features: f,
                 span: None,
                 missing_features: None,

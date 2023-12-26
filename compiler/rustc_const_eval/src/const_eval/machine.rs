@@ -391,7 +391,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 if ecx.tcx.is_ctfe_mir_available(def) {
                     Ok(ecx.tcx.mir_for_ctfe(def))
                 } else if ecx.tcx.def_kind(def) == DefKind::AssocConst {
-                    let guar = ecx.tcx.sess.span_delayed_bug(
+                    let guar = ecx.tcx.dcx().span_delayed_bug(
                         rustc_span::DUMMY_SP,
                         "This is likely a const item that is missing from its impl",
                     );
@@ -621,7 +621,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 if is_error {
                     let guard = ecx
                         .tcx
-                        .sess
+                        .dcx()
                         .span_delayed_bug(span, "The deny lint should have already errored");
                     throw_inval!(AlreadyReported(guard.into()));
                 }
@@ -630,7 +630,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 // current number of evaluated terminators is a power of 2. The latter gives us a cheap
                 // way to implement exponential backoff.
                 let span = ecx.cur_span();
-                ecx.tcx.sess.emit_warning(LongRunningWarn { span, item_span: ecx.tcx.span });
+                ecx.tcx.dcx().emit_warning(LongRunningWarn { span, item_span: ecx.tcx.span });
             }
         }
 

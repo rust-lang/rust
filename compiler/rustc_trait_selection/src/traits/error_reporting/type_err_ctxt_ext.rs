@@ -228,7 +228,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        self.tcx.sess.span_delayed_bug(DUMMY_SP, "expected fulfillment errors")
+        self.dcx().span_delayed_bug(DUMMY_SP, "expected fulfillment errors")
     }
 
     /// Reports that an overflow has occurred and halts compilation. We
@@ -251,7 +251,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         mutate(&mut err);
         err.emit();
 
-        self.tcx.sess.abort_if_errors();
+        self.dcx().abort_if_errors();
         // FIXME: this should be something like `build_overflow_error_fatal`, which returns
         // `DiagnosticBuilder<', !>`. Then we don't even need anything after that `emit()`.
         unreachable!(
@@ -281,7 +281,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             pred_str = cx.into_buffer();
         }
         let mut err = struct_span_err!(
-            self.tcx.sess,
+            self.dcx(),
             span,
             E0275,
             "overflow evaluating the requirement `{}`",
@@ -386,7 +386,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let mut span = obligation.cause.span;
         // FIXME: statically guarantee this by tainting after the diagnostic is emitted
         self.set_tainted_by_errors(
-            tcx.sess.span_delayed_bug(span, "`report_selection_error` did not emit an error"),
+            tcx.dcx().span_delayed_bug(span, "`report_selection_error` did not emit an error"),
         );
 
         let mut err = match *error {
@@ -443,7 +443,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         // FIXME(effects)
                         let predicate_is_const = false;
 
-                        if self.tcx.sess.has_errors().is_some()
+                        if self.dcx().has_errors().is_some()
                             && trait_predicate.references_error()
                         {
                             return;
@@ -525,7 +525,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             (err_msg, None)
                         };
 
-                        let mut err = struct_span_err!(self.tcx.sess, span, E0277, "{}", err_msg);
+                        let mut err = struct_span_err!(self.dcx(), span, E0277, "{}", err_msg);
 
                         let mut suggested = false;
                         if is_try_conversion {
@@ -824,7 +824,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         if self.next_trait_solver() {
                             // FIXME: we'll need a better message which takes into account
                             // which bounds actually failed to hold.
-                            self.tcx.sess.struct_span_err(
+                            self.dcx().struct_span_err(
                                 span,
                                 format!("the type `{ty}` is not well-formed"),
                             )
@@ -873,7 +873,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     ),
 
                     ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
-                        let mut diag = self.tcx.sess.struct_span_err(
+                        let mut diag = self.dcx().struct_span_err(
                             span,
                             format!("the constant `{ct}` is not of type `{ty}`"),
                         );
@@ -1237,7 +1237,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             ty::Float(_) => {
                 struct_span_err!(
-                    self.tcx.sess,
+                    self.dcx(),
                     span,
                     E0741,
                     "`{ty}` is forbidden as the type of a const generic parameter",
@@ -1245,7 +1245,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             ty::FnPtr(_) => {
                 struct_span_err!(
-                    self.tcx.sess,
+                    self.dcx(),
                     span,
                     E0741,
                     "using function pointers as const generic parameters is forbidden",
@@ -1253,7 +1253,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             ty::RawPtr(_) => {
                 struct_span_err!(
-                    self.tcx.sess,
+                    self.dcx(),
                     span,
                     E0741,
                     "using raw pointers as const generic parameters is forbidden",
@@ -1262,7 +1262,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             ty::Adt(def, _) => {
                 // We should probably see if we're *allowed* to derive `ConstParamTy` on the type...
                 let mut diag = struct_span_err!(
-                    self.tcx.sess,
+                    self.dcx(),
                     span,
                     E0741,
                     "`{ty}` must implement `ConstParamTy` to be used as the type of a const generic parameter",
@@ -1294,7 +1294,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             _ => {
                 struct_span_err!(
-                    self.tcx.sess,
+                    self.dcx(),
                     span,
                     E0741,
                     "`{ty}` can't be used as a const parameter type",
@@ -1731,7 +1731,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         cx.into_buffer()
                     }))
                 });
-            let mut diag = struct_span_err!(self.tcx.sess, obligation.cause.span, E0271, "{msg}");
+            let mut diag = struct_span_err!(self.dcx(), obligation.cause.span, E0271, "{msg}");
 
             let secondary_span = (|| {
                 let ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj)) =
@@ -2419,7 +2419,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     )
                 } else {
                     struct_span_err!(
-                        self.tcx.sess,
+                        self.dcx(),
                         span,
                         E0283,
                         "type annotations needed: cannot satisfy `{}`",
@@ -2522,7 +2522,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                         // Replace the more general E0283 with a more specific error
                         err.cancel();
-                        err = self.tcx.sess.struct_span_err_with_code(
+                        err = self.dcx().struct_span_err_with_code(
                             span,
                             format!(
                                 "cannot {verb} associated {noun} on trait without specifying the \
@@ -2606,7 +2606,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // Same hacky approach as above to avoid deluging user
                 // with error messages.
                 if arg.references_error()
-                    || self.tcx.sess.has_errors().is_some()
+                    || self.dcx().has_errors().is_some()
                     || self.tainted_by_errors().is_some()
                 {
                     return;
@@ -2623,7 +2623,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
             ty::PredicateKind::Subtype(data) => {
                 if data.references_error()
-                    || self.tcx.sess.has_errors().is_some()
+                    || self.dcx().has_errors().is_some()
                     || self.tainted_by_errors().is_some()
                 {
                     // no need to overload user in such cases
@@ -2663,7 +2663,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 } else {
                     // If we can't find a substitution, just print a generic error
                     let mut err = struct_span_err!(
-                        self.tcx.sess,
+                        self.dcx(),
                         span,
                         E0284,
                         "type annotations needed: cannot satisfy `{}`",
@@ -2691,7 +2691,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 } else {
                     // If we can't find a substitution, just print a generic error
                     let mut err = struct_span_err!(
-                        self.tcx.sess,
+                        self.dcx(),
                         span,
                         E0284,
                         "type annotations needed: cannot satisfy `{}`",
@@ -2702,11 +2702,11 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
             }
             _ => {
-                if self.tcx.sess.has_errors().is_some() || self.tainted_by_errors().is_some() {
+                if self.dcx().has_errors().is_some() || self.tainted_by_errors().is_some() {
                     return;
                 }
                 let mut err = struct_span_err!(
-                    self.tcx.sess,
+                    self.dcx(),
                     span,
                     E0284,
                     "type annotations needed: cannot satisfy `{}`",
@@ -3367,7 +3367,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        self.tcx.sess.create_err(err)
+        self.dcx().create_err(err)
     }
 
     fn report_type_parameter_mismatch_cyclic_type_error(
@@ -3405,7 +3405,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 format!("`{}`", self.tcx.def_path_debug_str(def_id))
             }
         };
-        let mut err = self.tcx.sess.struct_span_err(
+        let mut err = self.dcx().struct_span_err(
             obligation.cause.span,
             format!("cannot check whether the hidden type of {name} satisfies auto traits"),
         );
@@ -3423,8 +3423,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
         };
 
-        if let Some(diag) =
-            self.tcx.sess.dcx().steal_diagnostic(self.tcx.def_span(def_id), StashKey::Cycle)
+        if let Some(diag) = self.dcx().steal_diagnostic(self.tcx.def_span(def_id), StashKey::Cycle)
         {
             diag.cancel();
         }
@@ -3547,8 +3546,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     ) -> Option<DiagnosticBuilder<'tcx>> {
         if !self.tcx.features().generic_const_exprs {
             let mut err = self
-                .tcx
-                .sess
+                .dcx()
                 .struct_span_err(span, "constant expression depends on a generic parameter");
             // FIXME(const_generics): we should suggest to the user how they can resolve this
             // issue. However, this is currently not actually possible
@@ -3565,7 +3563,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(ct)) => match ct.kind() {
                 ty::ConstKind::Unevaluated(uv) => {
                     let mut err =
-                        self.tcx.sess.struct_span_err(span, "unconstrained generic constant");
+                        self.dcx().struct_span_err(span, "unconstrained generic constant");
                     let const_span = self.tcx.def_span(uv.def);
                     match self.tcx.sess.source_map().span_to_snippet(const_span) {
                             Ok(snippet) => err.help(format!(
@@ -3577,8 +3575,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
                 ty::ConstKind::Expr(_) => {
                     let err = self
-                        .tcx
-                        .sess
+                        .dcx()
                         .struct_span_err(span, format!("unconstrained generic constant `{ct}`"));
                     Some(err)
                 }

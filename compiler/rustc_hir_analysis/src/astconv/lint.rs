@@ -97,7 +97,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let msg = "trait objects must include the `dyn` keyword";
                 let label = "add `dyn` keyword before this trait";
                 let mut diag =
-                    rustc_errors::struct_span_err!(tcx.sess, self_ty.span, E0782, "{}", msg);
+                    rustc_errors::struct_span_err!(tcx.dcx(), self_ty.span, E0782, "{}", msg);
                 if self_ty.span.can_be_used_for_suggestions() {
                     diag.multipart_suggestion_verbose(
                         label,

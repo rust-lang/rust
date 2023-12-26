@@ -155,7 +155,7 @@ pub fn expand_include<'cx>(
                         if self.p.token != token::Eof {
                             let token = pprust::token_to_string(&self.p.token);
                             let msg = format!("expected item, found `{token}`");
-                            self.p.struct_span_err(self.p.token.span, msg).emit();
+                            self.p.dcx().struct_span_err(self.p.token.span, msg).emit();
                         }
 
                         break;
@@ -193,12 +193,12 @@ pub fn expand_include_str(
                 base::MacEager::expr(cx.expr_str(sp, interned_src))
             }
             Err(_) => {
-                cx.span_err(sp, format!("{} wasn't a utf-8 file", file.display()));
+                cx.dcx().span_err(sp, format!("{} wasn't a utf-8 file", file.display()));
                 DummyResult::any(sp)
             }
         },
         Err(e) => {
-            cx.span_err(sp, format!("couldn't read {}: {}", file.display(), e));
+            cx.dcx().span_err(sp, format!("couldn't read {}: {}", file.display(), e));
             DummyResult::any(sp)
         }
     }
@@ -226,7 +226,7 @@ pub fn expand_include_bytes(
             base::MacEager::expr(expr)
         }
         Err(e) => {
-            cx.span_err(sp, format!("couldn't read {}: {}", file.display(), e));
+            cx.dcx().span_err(sp, format!("couldn't read {}: {}", file.display(), e));
             DummyResult::any(sp)
         }
     }

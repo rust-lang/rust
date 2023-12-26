@@ -964,7 +964,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     |impl_def_id| {
                         if let Some(old_impl_def_id) = relevant_impl {
                             self.tcx()
-                                .sess
+                                .dcx()
                                 .struct_span_err(
                                     self.tcx().def_span(impl_def_id),
                                     "multiple drop impls found",

@@ -32,7 +32,7 @@ pub fn emit_wrapper_file(
     let result = fs::write(&out_filename, data);
 
     if let Err(err) = result {
-        sess.emit_fatal(FailedWriteError { filename: out_filename, err });
+        sess.dcx().emit_fatal(FailedWriteError { filename: out_filename, err });
     }
 
     out_filename
@@ -48,7 +48,7 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
     let metadata_tmpdir = TempFileBuilder::new()
         .prefix("rmeta")
         .tempdir_in(out_filename.parent().unwrap_or_else(|| Path::new("")))
-        .unwrap_or_else(|err| tcx.sess.emit_fatal(FailedCreateTempdir { err }));
+        .unwrap_or_else(|err| tcx.dcx().emit_fatal(FailedCreateTempdir { err }));
     let metadata_tmpdir = MaybeTempDir::new(metadata_tmpdir, tcx.sess.opts.cg.save_temps);
     let metadata_filename = metadata_tmpdir.as_ref().join(METADATA_FILENAME);
 
@@ -58,7 +58,7 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
     match metadata_kind {
         MetadataKind::None => {
             std::fs::File::create(&metadata_filename).unwrap_or_else(|err| {
-                tcx.sess.emit_fatal(FailedCreateFile { filename: &metadata_filename, err });
+                tcx.dcx().emit_fatal(FailedCreateFile { filename: &metadata_filename, err });
             });
         }
         MetadataKind::Uncompressed | MetadataKind::Compressed => {
@@ -76,22 +76,22 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
         let filename = match out_filename {
             OutFileName::Real(ref path) => {
                 if let Err(err) = non_durable_rename(&metadata_filename, path) {
-                    tcx.sess.emit_fatal(FailedWriteError { filename: path.to_path_buf(), err });
+                    tcx.dcx().emit_fatal(FailedWriteError { filename: path.to_path_buf(), err });
                 }
                 path.clone()
             }
             OutFileName::Stdout => {
                 if out_filename.is_tty() {
-                    tcx.sess.emit_err(BinaryOutputToTty);
+                    tcx.dcx().emit_err(BinaryOutputToTty);
                 } else if let Err(err) = copy_to_stdout(&metadata_filename) {
-                    tcx.sess
+                    tcx.dcx()
                         .emit_err(FailedCopyToStdout { filename: metadata_filename.clone(), err });
                 }
                 metadata_filename
             }
         };
         if tcx.sess.opts.json_artifact_notifications {
-            tcx.sess.dcx().emit_artifact_notification(out_filename.as_path(), "metadata");
+            tcx.dcx().emit_artifact_notification(out_filename.as_path(), "metadata");
         }
         (filename, None)
     } else {
@@ -101,7 +101,7 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
     // Load metadata back to memory: codegen may need to include it in object files.
     let metadata =
         EncodedMetadata::from_path(metadata_filename, metadata_tmpdir).unwrap_or_else(|err| {
-            tcx.sess.emit_fatal(FailedCreateEncodedMetadata { err });
+            tcx.dcx().emit_fatal(FailedCreateEncodedMetadata { err });
         });
 
     let need_metadata_module = metadata_kind == MetadataKind::Compressed;

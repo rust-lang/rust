@@ -539,7 +539,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             RejectOpWith::Abort => isolation_abort_error(op_name),
             RejectOpWith::WarningWithoutBacktrace => {
                 this.tcx
-                    .sess
+                    .dcx()
                     .warn(format!("{op_name} was made to return an error due to isolation"));
                 Ok(())
             }

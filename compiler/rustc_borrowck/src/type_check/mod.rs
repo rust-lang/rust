@@ -224,7 +224,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
             let mut hidden_type = infcx.resolve_vars_if_possible(decl.hidden_type);
             trace!("finalized opaque type {:?} to {:#?}", opaque_type_key, hidden_type.ty.kind());
             if hidden_type.has_non_region_infer() {
-                let reported = infcx.tcx.sess.span_delayed_bug(
+                let reported = infcx.dcx().span_delayed_bug(
                     decl.hidden_type.span,
                     format!("could not resolve {:#?}", hidden_type.ty.kind()),
                 );
@@ -268,7 +268,7 @@ fn mirbug(tcx: TyCtxt<'_>, span: Span, msg: String) {
     // We sometimes see MIR failures (notably predicate failures) due to
     // the fact that we check rvalue sized predicates here. So use `span_delayed_bug`
     // to avoid reporting bugs in those cases.
-    tcx.sess.dcx().span_delayed_bug(span, msg);
+    tcx.dcx().span_delayed_bug(span, msg);
 }
 
 enum FieldAccessError {
@@ -1067,7 +1067,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
 
         if result.is_err() {
-            self.infcx.tcx.sess.span_delayed_bug(
+            self.infcx.dcx().span_delayed_bug(
                 self.body.span,
                 "failed re-defining predefined opaques in mir typeck",
             );
@@ -1573,7 +1573,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     sym::simd_shuffle => {
                         if !matches!(args[2], Operand::Constant(_)) {
                             self.tcx()
-                                .sess
+                                .dcx()
                                 .emit_err(SimdShuffleLastConst { span: term.source_info.span });
                         }
                     }
@@ -1752,7 +1752,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // While this is located in `nll::typeck` this error is not
                 // an NLL error, it's a required check to prevent creation
                 // of unsized rvalues in a call expression.
-                self.tcx().sess.emit_err(MoveUnsized { ty, span });
+                self.tcx().dcx().emit_err(MoveUnsized { ty, span });
             }
         }
     }

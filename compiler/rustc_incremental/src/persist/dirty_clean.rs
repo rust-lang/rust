@@ -199,7 +199,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
         let loaded_from_disk = self.loaded_from_disk(attr);
         for e in except.items().into_sorted_stable_ord() {
             if !auto.remove(e) {
-                self.tcx.sess.emit_fatal(errors::AssertionAuto { span: attr.span, name, e });
+                self.tcx.dcx().emit_fatal(errors::AssertionAuto { span: attr.span, name, e });
             }
         }
         Assertion { clean: auto, dirty: except, loaded_from_disk }
@@ -281,7 +281,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
                     // An implementation, eg `impl<A> Trait for Foo { .. }`
                     HirItem::Impl { .. } => ("ItemKind::Impl", LABELS_IMPL),
 
-                    _ => self.tcx.sess.emit_fatal(errors::UndefinedCleanDirtyItem {
+                    _ => self.tcx.dcx().emit_fatal(errors::UndefinedCleanDirtyItem {
                         span: attr.span,
                         kind: format!("{:?}", item.kind),
                     }),
@@ -297,7 +297,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
                 ImplItemKind::Const(..) => ("NodeImplConst", LABELS_CONST_IN_IMPL),
                 ImplItemKind::Type(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
             },
-            _ => self.tcx.sess.emit_fatal(errors::UndefinedCleanDirty {
+            _ => self.tcx.dcx().emit_fatal(errors::UndefinedCleanDirty {
                 span: attr.span,
                 kind: format!("{node:?}"),
             }),
@@ -314,13 +314,13 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
             if DepNode::has_label_string(label) {
                 if out.contains(label) {
                     self.tcx
-                        .sess
+                        .dcx()
                         .emit_fatal(errors::RepeatedDepNodeLabel { span: item.span(), label });
                 }
                 out.insert(label.to_string());
             } else {
                 self.tcx
-                    .sess
+                    .dcx()
                     .emit_fatal(errors::UnrecognizedDepNodeLabel { span: item.span(), label });
             }
         }
@@ -341,7 +341,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
         if self.tcx.dep_graph.is_green(&dep_node) {
             let dep_node_str = self.dep_node_str(&dep_node);
             self.tcx
-                .sess
+                .dcx()
                 .emit_err(errors::NotDirty { span: item_span, dep_node_str: &dep_node_str });
         }
     }
@@ -352,7 +352,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
         if self.tcx.dep_graph.is_red(&dep_node) {
             let dep_node_str = self.dep_node_str(&dep_node);
             self.tcx
-                .sess
+                .dcx()
                 .emit_err(errors::NotClean { span: item_span, dep_node_str: &dep_node_str });
         }
     }
@@ -363,7 +363,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
         if !self.tcx.dep_graph.debug_was_loaded_from_disk(dep_node) {
             let dep_node_str = self.dep_node_str(&dep_node);
             self.tcx
-                .sess
+                .dcx()
                 .emit_err(errors::NotLoaded { span: item_span, dep_node_str: &dep_node_str });
         }
     }
@@ -405,12 +405,12 @@ fn check_config(tcx: TyCtxt<'_>, attr: &Attribute) -> bool {
             debug!("check_config: searching for cfg {:?}", value);
             cfg = Some(config.contains(&(value, None)));
         } else if !(item.has_name(EXCEPT) || item.has_name(LOADED_FROM_DISK)) {
-            tcx.sess.emit_err(errors::UnknownItem { span: attr.span, name: item.name_or_empty() });
+            tcx.dcx().emit_err(errors::UnknownItem { span: attr.span, name: item.name_or_empty() });
         }
     }
 
     match cfg {
-        None => tcx.sess.emit_fatal(errors::NoCfg { span: attr.span }),
+        None => tcx.dcx().emit_fatal(errors::NoCfg { span: attr.span }),
         Some(c) => c,
     }
 }
@@ -420,9 +420,9 @@ fn expect_associated_value(tcx: TyCtxt<'_>, item: &NestedMetaItem) -> Symbol {
         value
     } else {
         if let Some(ident) = item.ident() {
-            tcx.sess.emit_fatal(errors::AssociatedValueExpectedFor { span: item.span(), ident });
+            tcx.dcx().emit_fatal(errors::AssociatedValueExpectedFor { span: item.span(), ident });
         } else {
-            tcx.sess.emit_fatal(errors::AssociatedValueExpected { span: item.span() });
+            tcx.dcx().emit_fatal(errors::AssociatedValueExpected { span: item.span() });
         }
     }
 }
@@ -447,7 +447,7 @@ impl<'tcx> FindAllAttrs<'tcx> {
     fn report_unchecked_attrs(&self, mut checked_attrs: FxHashSet<ast::AttrId>) {
         for attr in &self.found_attrs {
             if !checked_attrs.contains(&attr.id) {
-                self.tcx.sess.emit_err(errors::UncheckedClean { span: attr.span });
+                self.tcx.dcx().emit_err(errors::UncheckedClean { span: attr.span });
                 checked_attrs.insert(attr.id);
             }
         }

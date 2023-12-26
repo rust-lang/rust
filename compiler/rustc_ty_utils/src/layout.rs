@@ -91,7 +91,7 @@ fn univariant_uninterned<'tcx>(
     let dl = cx.data_layout();
     let pack = repr.pack;
     if pack.is_some() && repr.align.is_some() {
-        cx.tcx.sess.span_delayed_bug(DUMMY_SP, "struct cannot be packed and aligned");
+        cx.tcx.dcx().span_delayed_bug(DUMMY_SP, "struct cannot be packed and aligned");
         return Err(cx.tcx.arena.alloc(LayoutError::Unknown(ty)));
     }
 
@@ -344,7 +344,7 @@ fn layout_of_uncached<'tcx>(
         ty::Adt(def, args) if def.repr().simd() => {
             if !def.is_struct() {
                 // Should have yielded E0517 by now.
-                tcx.sess.span_delayed_bug(
+                tcx.dcx().span_delayed_bug(
                     DUMMY_SP,
                     "#[repr(simd)] was applied to an ADT that is not a struct",
                 );
@@ -364,7 +364,7 @@ fn layout_of_uncached<'tcx>(
             // SIMD vectors with zero fields are not supported.
             // (should be caught by typeck)
             if fields.is_empty() {
-                tcx.sess.emit_fatal(ZeroLengthSimdType { ty })
+                tcx.dcx().emit_fatal(ZeroLengthSimdType { ty })
             }
 
             // Type of the first ADT field:
@@ -374,7 +374,7 @@ fn layout_of_uncached<'tcx>(
             // (should be caught by typeck)
             for fi in fields {
                 if fi.ty(tcx, args) != f0_ty {
-                    tcx.sess.span_delayed_bug(
+                    tcx.dcx().span_delayed_bug(
                         DUMMY_SP,
                         "#[repr(simd)] was applied to an ADT with heterogeneous field type",
                     );
@@ -395,7 +395,7 @@ fn layout_of_uncached<'tcx>(
                 // SIMD vectors with multiple array fields are not supported:
                 // Can't be caught by typeck with a generic simd type.
                 if def.non_enum_variant().fields.len() != 1 {
-                    tcx.sess.emit_fatal(MultipleArrayFieldsSimdType { ty });
+                    tcx.dcx().emit_fatal(MultipleArrayFieldsSimdType { ty });
                 }
 
                 // Extract the number of elements from the layout of the array field:
@@ -415,9 +415,9 @@ fn layout_of_uncached<'tcx>(
             //
             // Can't be caught in typeck if the array length is generic.
             if e_len == 0 {
-                tcx.sess.emit_fatal(ZeroLengthSimdType { ty });
+                tcx.dcx().emit_fatal(ZeroLengthSimdType { ty });
             } else if e_len > MAX_SIMD_LANES {
-                tcx.sess.emit_fatal(OversizedSimdType { ty, max_lanes: MAX_SIMD_LANES });
+                tcx.dcx().emit_fatal(OversizedSimdType { ty, max_lanes: MAX_SIMD_LANES });
             }
 
             // Compute the ABI of the element type:
@@ -425,7 +425,7 @@ fn layout_of_uncached<'tcx>(
             let Abi::Scalar(e_abi) = e_ly.abi else {
                 // This error isn't caught in typeck, e.g., if
                 // the element type of the vector is generic.
-                tcx.sess.emit_fatal(NonPrimitiveSimdType { ty, e_ty });
+                tcx.dcx().emit_fatal(NonPrimitiveSimdType { ty, e_ty });
             };
 
             // Compute the size and alignment of the vector:
@@ -485,7 +485,7 @@ fn layout_of_uncached<'tcx>(
 
             if def.is_union() {
                 if def.repr().pack.is_some() && def.repr().align.is_some() {
-                    cx.tcx.sess.span_delayed_bug(
+                    cx.tcx.dcx().span_delayed_bug(
                         tcx.def_span(def.did()),
                         "union cannot be packed and aligned",
                     );

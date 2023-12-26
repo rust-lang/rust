@@ -2188,7 +2188,7 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
     }
 
     let mut encoder = opaque::FileEncoder::new(path)
-        .unwrap_or_else(|err| tcx.sess.emit_fatal(FailCreateFileEncoder { err }));
+        .unwrap_or_else(|err| tcx.dcx().emit_fatal(FailCreateFileEncoder { err }));
     encoder.emit_raw_bytes(METADATA_HEADER);
 
     // Will be filled with the root position after encoding everything.
@@ -2229,12 +2229,12 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
     // If we forget this, compilation can succeed with an incomplete rmeta file,
     // causing an ICE when the rmeta file is read by another compilation.
     if let Err((path, err)) = ecx.opaque.finish() {
-        tcx.sess.emit_err(FailWriteFile { path: &path, err });
+        tcx.dcx().emit_err(FailWriteFile { path: &path, err });
     }
 
     let file = ecx.opaque.file();
     if let Err(err) = encode_root_position(file, root.position.get()) {
-        tcx.sess.emit_err(FailWriteFile { path: ecx.opaque.path(), err });
+        tcx.dcx().emit_err(FailWriteFile { path: ecx.opaque.path(), err });
     }
 
     // Record metadata size for self-profiling

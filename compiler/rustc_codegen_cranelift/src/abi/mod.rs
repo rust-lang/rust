@@ -47,12 +47,12 @@ pub(crate) fn conv_to_call_conv(sess: &Session, c: Conv, default_call_conv: Call
         }
 
         Conv::X86Intr | Conv::RiscvInterrupt { .. } => {
-            sess.fatal(format!("interrupt call conv {c:?} not yet implemented"))
+            sess.dcx().fatal(format!("interrupt call conv {c:?} not yet implemented"))
         }
 
-        Conv::ArmAapcs => sess.fatal("aapcs call conv not yet implemented"),
+        Conv::ArmAapcs => sess.dcx().fatal("aapcs call conv not yet implemented"),
         Conv::CCmseNonSecureCall => {
-            sess.fatal("C-cmse-nonsecure-call call conv is not yet implemented");
+            sess.dcx().fatal("C-cmse-nonsecure-call call conv is not yet implemented");
         }
 
         Conv::Msp430Intr
@@ -88,10 +88,10 @@ pub(crate) fn import_function<'tcx>(
     let sig = get_function_sig(tcx, module.target_config().default_call_conv, inst);
     match module.declare_function(name, Linkage::Import, &sig) {
         Ok(func_id) => func_id,
-        Err(ModuleError::IncompatibleDeclaration(_)) => tcx.sess.fatal(format!(
+        Err(ModuleError::IncompatibleDeclaration(_)) => tcx.dcx().fatal(format!(
             "attempt to declare `{name}` as function, but it was already declared as static"
         )),
-        Err(ModuleError::IncompatibleSignature(_, prev_sig, new_sig)) => tcx.sess.fatal(format!(
+        Err(ModuleError::IncompatibleSignature(_, prev_sig, new_sig)) => tcx.dcx().fatal(format!(
             "attempt to declare `{name}` with signature {new_sig:?}, \
              but it was already declared with signature {prev_sig:?}"
         )),
@@ -181,7 +181,7 @@ fn make_local_place<'tcx>(
     is_ssa: bool,
 ) -> CPlace<'tcx> {
     if layout.is_unsized() {
-        fx.tcx.sess.span_fatal(
+        fx.tcx.dcx().span_fatal(
             fx.mir.local_decls[local].source_info.span,
             "unsized locals are not yet supported",
         );
@@ -226,7 +226,7 @@ pub(crate) fn codegen_fn_prelude<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, start_
 
     // FIXME implement variadics in cranelift
     if fn_abi.c_variadic {
-        fx.tcx.sess.span_fatal(
+        fx.tcx.dcx().span_fatal(
             fx.mir.span,
             "Defining variadic functions is not yet supported by Cranelift",
         );
@@ -543,7 +543,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         // FIXME find a cleaner way to support varargs
         if fn_sig.c_variadic() {
             if !matches!(fn_sig.abi(), Abi::C { .. }) {
-                fx.tcx.sess.span_fatal(
+                fx.tcx.dcx().span_fatal(
                     source_info.span,
                     format!("Variadic call for non-C abi {:?}", fn_sig.abi()),
                 );
@@ -555,7 +555,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                     let ty = fx.bcx.func.dfg.value_type(arg);
                     if !ty.is_int() {
                         // FIXME set %al to upperbound on float args once floats are supported
-                        fx.tcx.sess.span_fatal(
+                        fx.tcx.dcx().span_fatal(
                             source_info.span,
                             format!("Non int ty {:?} for variadic call", ty),
                         );

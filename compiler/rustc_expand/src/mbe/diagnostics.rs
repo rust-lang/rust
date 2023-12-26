@@ -34,7 +34,10 @@ pub(super) fn failed_to_match_macro<'cx>(
     if try_success_result.is_ok() {
         // Nonterminal parser recovery might turn failed matches into successful ones,
         // but for that it must have emitted an error already
-        tracker.cx.sess.span_delayed_bug(sp, "Macro matching returned a success on the second try");
+        tracker
+            .cx
+            .dcx()
+            .span_delayed_bug(sp, "Macro matching returned a success on the second try");
     }
 
     if let Some(result) = tracker.result {
@@ -49,7 +52,7 @@ pub(super) fn failed_to_match_macro<'cx>(
 
     let span = token.span.substitute_dummy(sp);
 
-    let mut err = cx.struct_span_err(span, parse_failure_msg(&token));
+    let mut err = cx.dcx().struct_span_err(span, parse_failure_msg(&token));
     err.span_label(span, label);
     if !def_span.is_dummy() && !cx.source_map().is_imported(def_span) {
         err.span_label(cx.source_map().guess_head_span(def_span), "when calling this macro");
@@ -151,7 +154,7 @@ impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 
             Success(_) => {
                 // Nonterminal parser recovery might turn failed matches into successful ones,
                 // but for that it must have emitted an error already
-                self.cx.sess.span_delayed_bug(
+                self.cx.dcx().span_delayed_bug(
                     self.root_span,
                     "should not collect detailed info for successful macro match",
                 );
@@ -177,7 +180,7 @@ impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 
             }
             Error(err_sp, msg) => {
                 let span = err_sp.substitute_dummy(self.root_span);
-                self.cx.struct_span_err(span, msg.clone()).emit();
+                self.cx.dcx().struct_span_err(span, msg.clone()).emit();
                 self.result = Some(DummyResult::any(span));
             }
             ErrorReported(_) => self.result = Some(DummyResult::any(self.root_span)),

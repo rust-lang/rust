@@ -1557,7 +1557,7 @@ impl<'tcx> Region<'tcx> {
         span: S,
         msg: &'static str,
     ) -> Region<'tcx> {
-        let reported = tcx.sess.span_delayed_bug(span, msg);
+        let reported = tcx.dcx().span_delayed_bug(span, msg);
         Region::new_error(tcx, reported)
     }
 
@@ -2004,7 +2004,7 @@ impl<'tcx> Ty<'tcx> {
         span: S,
         msg: impl Into<DiagnosticMessage>,
     ) -> Ty<'tcx> {
-        let reported = tcx.sess.span_delayed_bug(span, msg);
+        let reported = tcx.dcx().span_delayed_bug(span, msg);
         Ty::new(tcx, Error(reported))
     }
 

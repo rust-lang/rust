@@ -2134,7 +2134,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     // dereferencing a non-Copy raw pointer *and* have `-Ztreat-err-as-bug`
                     // enabled. We don't want to ICE for that case, as other errors will have
                     // been emitted (#52262).
-                    self.infcx.tcx.sess.span_delayed_bug(
+                    self.dcx().span_delayed_bug(
                         span,
                         format!(
                             "Accessing `{place:?}` with the kind `{kind:?}` shouldn't be possible",
@@ -2428,7 +2428,7 @@ mod error {
 
         pub fn buffer_error(&mut self, t: DiagnosticBuilder<'_>) {
             if let None = self.tainted_by_errors {
-                self.tainted_by_errors = Some(self.tcx.sess.span_delayed_bug(
+                self.tainted_by_errors = Some(self.tcx.dcx().span_delayed_bug(
                     t.span.clone_ignoring_labels(),
                     "diagnostic buffered but not emitted",
                 ))
@@ -2497,8 +2497,9 @@ mod error {
             if !self.errors.buffered.is_empty() {
                 self.errors.buffered.sort_by_key(|diag| diag.sort_span);
 
+                let dcx = self.dcx();
                 for diag in self.errors.buffered.drain(..) {
-                    self.infcx.tcx.sess.dcx().emit_diagnostic(diag);
+                    dcx.emit_diagnostic(diag);
                 }
             }
 

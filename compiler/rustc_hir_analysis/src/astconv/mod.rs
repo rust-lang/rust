@@ -564,7 +564,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             && generics.has_self
             && !tcx.has_attr(def_id, sym::const_trait)
         {
-            let e = tcx.sess.emit_err(crate::errors::ConstBoundForNonConstTrait { span });
+            let e = tcx.dcx().emit_err(crate::errors::ConstBoundForNonConstTrait { span });
             arg_count.correct =
                 Err(GenericArgCountMismatch { reported: Some(e), invalid_args: vec![] });
         }
@@ -748,7 +748,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // since we should have emitten an error for them earlier, and they will
             // not be well-formed!
             if polarity == ty::ImplPolarity::Negative {
-                self.tcx().sess.span_delayed_bug(
+                self.tcx().dcx().span_delayed_bug(
                     binding.span,
                     "negative trait bounds should not have bindings",
                 );
@@ -863,7 +863,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         traits: &[String],
         name: Symbol,
     ) -> ErrorGuaranteed {
-        let mut err = struct_span_err!(self.tcx().sess, span, E0223, "ambiguous associated type");
+        let mut err = struct_span_err!(self.tcx().dcx(), span, E0223, "ambiguous associated type");
         if self
             .tcx()
             .resolutions(())
@@ -1079,7 +1079,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             let assoc_kind_str = assoc_kind_str(assoc_kind);
             let ty_param_name = &ty_param_name.to_string();
-            let mut err = tcx.sess.create_err(crate::errors::AmbiguousAssocItem {
+            let mut err = tcx.dcx().create_err(crate::errors::AmbiguousAssocItem {
                 span,
                 assoc_kind: assoc_kind_str,
                 assoc_name,
@@ -1312,7 +1312,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // trait reference.
                 let Some(trait_ref) = tcx.impl_trait_ref(impl_def_id) else {
                     // A cycle error occurred, most likely.
-                    let guar = tcx.sess.span_delayed_bug(span, "expected cycle error");
+                    let guar = tcx.dcx().span_delayed_bug(span, "expected cycle error");
                     return Err(guar);
                 };
 
@@ -1339,10 +1339,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let reported = if variant_resolution.is_some() {
                     // Variant in type position
                     let msg = format!("expected type, found variant `{assoc_ident}`");
-                    tcx.sess.span_err(span, msg)
+                    tcx.dcx().span_err(span, msg)
                 } else if qself_ty.is_enum() {
                     let mut err = struct_span_err!(
-                        tcx.sess,
+                        tcx.dcx(),
                         assoc_ident.span,
                         E0599,
                         "no variant named `{}` found for enum `{}`",
@@ -1383,7 +1383,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 } else if let ty::Alias(ty::Opaque, alias_ty) = qself_ty.kind() {
                     // `<impl Trait as OtherTrait>::Assoc` makes no sense.
                     struct_span_err!(
-                        tcx.sess,
+                        tcx.dcx(),
                         tcx.def_span(alias_ty.def_id),
                         E0667,
                         "`impl Trait` is not allowed in path parameters"
@@ -1643,7 +1643,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let kind = tcx.def_kind_descr(kind, item);
             let msg = format!("{kind} `{name}` is private");
             let def_span = tcx.def_span(item);
-            tcx.sess
+            tcx.dcx()
                 .struct_span_err_with_code(span, msg, rustc_errors::error_code!(E0624))
                 .span_label(span, format!("private {kind}"))
                 .span_label(def_span, format!("{kind} defined here"))
@@ -1878,7 +1878,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let last_span = *arg_spans.last().unwrap();
             let span: MultiSpan = arg_spans.into();
             let mut err = struct_span_err!(
-                self.tcx().sess,
+                self.tcx().dcx(),
                 span,
                 E0109,
                 "{kind} arguments are not allowed on {this_type}",
@@ -2199,7 +2199,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // `AlwaysApplicable` impl needs a `T: ?Sized` bound for
                 // this to compile if we were to normalize here.
                 if forbid_generic && ty.has_param() {
-                    let mut err = tcx.sess.struct_span_err(
+                    let mut err = tcx.dcx().struct_span_err(
                         path.span,
                         "generic `Self` types are currently not permitted in anonymous constants",
                     );
@@ -2260,7 +2260,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             Res::Err => {
                 let e = self
                     .tcx()
-                    .sess
+                    .dcx()
                     .span_delayed_bug(path.span, "path with `Res::Err` but no error emitted");
                 self.set_tainted_by_errors(e);
                 Ty::new_error(self.tcx(), e)
@@ -2443,7 +2443,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 } else {
                     (ty, None)
                 };
-                tcx.sess.emit_err(TypeofReservedKeywordUsed { span, ty, opt_sugg });
+                tcx.dcx().emit_err(TypeofReservedKeywordUsed { span, ty, opt_sugg });
 
                 ty
             }
@@ -2629,7 +2629,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         self.validate_late_bound_regions(late_bound_in_args, late_bound_in_ret, |br_name| {
             struct_span_err!(
-                tcx.sess,
+                tcx.dcx(),
                 decl.output.span(),
                 E0581,
                 "return type references {}, which is not constrained by the fn input types",
@@ -2751,7 +2751,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // error.
         let r = derived_region_bounds[0];
         if derived_region_bounds[1..].iter().any(|r1| r != *r1) {
-            tcx.sess.emit_err(AmbiguousLifetimeBound { span });
+            tcx.dcx().emit_err(AmbiguousLifetimeBound { span });
         }
         Some(r)
     }

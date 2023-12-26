@@ -191,7 +191,7 @@ impl CodegenBackend for GccCodegenBackend {
         #[cfg(feature="master")]
         gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
         if sess.lto() == Lto::Thin {
-            sess.emit_warning(LTONotSupported {});
+            sess.dcx().emit_warning(LTONotSupported {});
         }
 
         #[cfg(not(feature="master"))]

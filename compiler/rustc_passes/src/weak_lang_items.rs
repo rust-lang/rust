@@ -44,7 +44,7 @@ impl<'ast> visit::Visitor<'ast> for WeakLangItemVisitor<'_, '_> {
                     self.items.missing.push(item);
                 }
             } else {
-                self.tcx.sess.emit_err(UnknownExternLangItem { span: i.span, lang_item });
+                self.tcx.dcx().emit_err(UnknownExternLangItem { span: i.span, lang_item });
             }
         }
     }
@@ -75,9 +75,9 @@ fn verify(tcx: TyCtxt<'_>, items: &lang_items::LanguageItems) {
     for &item in WEAK_LANG_ITEMS.iter() {
         if missing.contains(&item) && required(tcx, item) && items.get(item).is_none() {
             if item == LangItem::PanicImpl {
-                tcx.sess.emit_err(MissingPanicHandler);
+                tcx.dcx().emit_err(MissingPanicHandler);
             } else {
-                tcx.sess.emit_err(MissingLangItem { name: item.name() });
+                tcx.dcx().emit_err(MissingLangItem { name: item.name() });
             }
         }
     }

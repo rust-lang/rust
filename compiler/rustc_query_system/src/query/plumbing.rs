@@ -126,7 +126,7 @@ where
         }
         Fatal => {
             error.emit();
-            qcx.dep_context().sess().abort_if_errors();
+            qcx.dep_context().sess().dcx().abort_if_errors();
             unreachable!()
         }
         DelayBug => {
@@ -138,7 +138,7 @@ where
                 && let Some(span) = root.query.span
             {
                 error.stash(span, StashKey::Cycle);
-                qcx.dep_context().sess().span_delayed_bug(span, "delayed cycle error")
+                qcx.dep_context().sess().dcx().span_delayed_bug(span, "delayed cycle error")
             } else {
                 error.emit()
             };
@@ -421,7 +421,7 @@ where
                 // We have an inconsistency. This can happen if one of the two
                 // results is tainted by errors. In this case, delay a bug to
                 // ensure compilation is doomed.
-                qcx.dep_context().sess().span_delayed_bug(
+                qcx.dep_context().sess().dcx().span_delayed_bug(
                     DUMMY_SP,
                     format!(
                         "Computed query value for {:?}({:?}) is inconsistent with fed value,\n\
@@ -705,7 +705,7 @@ fn incremental_verify_ich_failed<Tcx>(
     let old_in_panic = INSIDE_VERIFY_PANIC.with(|in_panic| in_panic.replace(true));
 
     if old_in_panic {
-        tcx.sess().emit_err(crate::error::Reentrant);
+        tcx.sess().dcx().emit_err(crate::error::Reentrant);
     } else {
         let run_cmd = if let Some(crate_name) = &tcx.sess().opts.crate_name {
             format!("`cargo clean -p {crate_name}` or `cargo clean`")
@@ -714,7 +714,7 @@ fn incremental_verify_ich_failed<Tcx>(
         };
 
         let dep_node = tcx.dep_graph().data().unwrap().prev_node_of(prev_index);
-        tcx.sess().emit_err(crate::error::IncrementCompilation {
+        tcx.sess().dcx().emit_err(crate::error::IncrementCompilation {
             run_cmd,
             dep_node: format!("{dep_node:?}"),
         });

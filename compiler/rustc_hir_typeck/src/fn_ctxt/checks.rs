@@ -205,7 +205,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Otherwise, there's a mismatch, so clear out what we're expecting, and set
                     // our input types to err_args so we don't blow up the error messages
                     struct_span_err!(
-                        tcx.sess,
+                        tcx.dcx(),
                         call_span,
                         E0059,
                         "cannot use call notation; the first type parameter \
@@ -488,7 +488,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         // FIXME: taint after emitting errors and pass through an `ErrorGuaranteed`
         self.set_tainted_by_errors(
-            tcx.sess.span_delayed_bug(call_span, "no errors reported for args"),
+            tcx.dcx().span_delayed_bug(call_span, "no errors reported for args"),
         );
 
         // Get the argument span in the context of the call span so that
@@ -664,7 +664,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             format!("arguments to this {call_name} are incorrect"),
                         );
                     } else {
-                        err = tcx.sess.struct_span_err_with_code(
+                        err = tcx.dcx().struct_span_err_with_code(
                             full_call_span,
                             format!(
                                 "{call_name} takes {}{} but {} {} supplied",
@@ -721,7 +721,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if cfg!(debug_assertions) {
                 span_bug!(error_span, "expected errors from argument matrix");
             } else {
-                tcx.sess.emit_err(errors::ArgMismatchIndeterminate { span: error_span });
+                tcx.dcx().emit_err(errors::ArgMismatchIndeterminate { span: error_span });
             }
             return;
         }
@@ -808,14 +808,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut err = if formal_and_expected_inputs.len() == provided_args.len() {
             struct_span_err!(
-                tcx.sess,
+                tcx.dcx(),
                 full_call_span,
                 E0308,
                 "arguments to this {} are incorrect",
                 call_name,
             )
         } else {
-            tcx.sess.struct_span_err_with_code(
+            tcx.dcx().struct_span_err_with_code(
                 full_call_span,
                 format!(
                     "this {} takes {}{} but {} {} supplied",
@@ -1334,7 +1334,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let variant = match def {
             Res::Err => {
                 let guar =
-                    self.tcx.sess.span_delayed_bug(path_span, "`Res::Err` but no error emitted");
+                    self.dcx().span_delayed_bug(path_span, "`Res::Err` but no error emitted");
                 self.set_tainted_by_errors(guar);
                 return Err(guar);
             }
@@ -1378,7 +1378,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     guar
                 }
                 _ => struct_span_err!(
-                    self.tcx.sess,
+                    self.dcx(),
                     path_span,
                     E0071,
                     "expected struct, variant or union type, found {}",
@@ -1822,8 +1822,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         errors_causecode: Vec<(Span, ObligationCauseCode<'tcx>)>,
     ) {
         for (span, code) in errors_causecode {
-            let Some(mut diag) =
-                self.tcx.sess.dcx().steal_diagnostic(span, StashKey::MaybeForgetReturn)
+            let Some(mut diag) = self.dcx().steal_diagnostic(span, StashKey::MaybeForgetReturn)
             else {
                 continue;
             };

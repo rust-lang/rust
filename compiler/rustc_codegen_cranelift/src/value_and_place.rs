@@ -397,7 +397,7 @@ impl<'tcx> CPlace<'tcx> {
 
         if layout.size.bytes() >= u64::from(u32::MAX - 16) {
             fx.tcx
-                .sess
+                .dcx()
                 .fatal(format!("values of type {} are too big to store on the stack", layout.ty));
         }
 
