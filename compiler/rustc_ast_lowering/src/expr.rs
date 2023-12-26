@@ -638,7 +638,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.lower_span(span),
             Some(self.allow_gen_future.clone()),
         );
-        let resume_ty = hir::QPath::LangItem(hir::LangItem::ResumeTy, unstable_span);
+        let resume_ty = self.make_lang_item_qpath(hir::LangItem::ResumeTy, unstable_span);
         let input_ty = hir::Ty {
             hir_id: self.next_id(),
             kind: hir::TyKind::Path(resume_ty),
@@ -774,7 +774,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.lower_span(span),
             Some(self.allow_gen_future.clone()),
         );
-        let resume_ty = hir::QPath::LangItem(hir::LangItem::ResumeTy, unstable_span);
+        let resume_ty = self.make_lang_item_qpath(hir::LangItem::ResumeTy, unstable_span);
         let input_ty = hir::Ty {
             hir_id: self.next_id(),
             kind: hir::TyKind::Path(resume_ty),
@@ -2126,11 +2126,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         lang_item: hir::LangItem,
         name: Symbol,
     ) -> hir::Expr<'hir> {
+        let qpath = self.make_lang_item_qpath(lang_item, self.lower_span(span));
         let path = hir::ExprKind::Path(hir::QPath::TypeRelative(
-            self.arena.alloc(self.ty(
-                span,
-                hir::TyKind::Path(hir::QPath::LangItem(lang_item, self.lower_span(span))),
-            )),
+            self.arena.alloc(self.ty(span, hir::TyKind::Path(qpath))),
             self.arena.alloc(hir::PathSegment::new(
                 Ident::new(name, span),
                 self.next_id(),

@@ -772,6 +772,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.resolver.get_import_res(id).present_items()
     }
 
+    fn make_lang_item_qpath(&mut self, lang_item: hir::LangItem, span: Span) -> hir::QPath<'hir> {
+        hir::QPath::Resolved(None, self.make_lang_item_path(lang_item, span, None))
+    }
+
     fn make_lang_item_path(
         &mut self,
         lang_item: hir::LangItem,
@@ -789,7 +793,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir_id: self.next_id(),
                 res,
                 args,
-                infer_args: false,
+                infer_args: args.is_none(),
             }]),
         })
     }

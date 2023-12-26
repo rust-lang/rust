@@ -5,5 +5,7 @@
 // check-pass
 // compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer=cfi -Zsanitizer-cfi-generalize-pointers
 
+#![feature(cfg_sanitizer_cfi)]
+
 #[cfg(sanitizer_cfi_generalize_pointers)]
 fn main() {}
