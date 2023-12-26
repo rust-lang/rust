@@ -31,6 +31,10 @@ use crate::time::SystemTime;
 /// on closing are ignored by the implementation of `Drop`.  Use the method
 /// [`sync_all`] if these errors must be manually handled.
 ///
+/// `File` does not buffer reads and writes. For efficiency, consider wrapping the
+/// file in a [`BufReader`] or [`BufWriter`] when performing many small [`read`]
+/// or [`write`] calls, unless unbuffered reads and writes are required.
+///
 /// # Examples
 ///
 /// Creates a new file and write bytes to it (you can also use [`write()`]):
@@ -61,8 +65,7 @@ use crate::time::SystemTime;
 /// }
 /// ```
 ///
-/// It can be more efficient to read the contents of a file with a buffered
-/// [`Read`]er. This can be accomplished with [`BufReader<R>`]:
+/// Using a buffered [`Read`]er:
 ///
 /// ```no_run
 /// use std::fs::File;
@@ -93,8 +96,11 @@ use crate::time::SystemTime;
 /// perform synchronous I/O operations. Therefore the underlying file must not
 /// have been opened for asynchronous I/O (e.g. by using `FILE_FLAG_OVERLAPPED`).
 ///
-/// [`BufReader<R>`]: io::BufReader
+/// [`BufReader`]: io::BufReader
+/// [`BufWriter`]: io::BufReader
 /// [`sync_all`]: File::sync_all
+/// [`write`]: File::write
+/// [`read`]: File::read
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "File")]
 pub struct File {
