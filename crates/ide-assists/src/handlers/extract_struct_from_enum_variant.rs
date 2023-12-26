@@ -452,6 +452,27 @@ mod tests {
     use super::*;
 
     #[test]
+    fn issue_16197() {
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"
+enum Foo {
+    Bar $0{ node: Box<Self> },
+    Nil,
+}
+"#,
+            r#"
+struct Bar{ node: Box<Foo> }
+
+enum Foo {
+    Bar(Bar),
+    Nil,
+}
+"#,
+        );
+    }
+
+    #[test]
     fn test_extract_struct_several_fields_tuple() {
         check_assist(
             extract_struct_from_enum_variant,
