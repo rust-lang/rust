@@ -158,25 +158,27 @@ fn check_version(config: &Config) -> Option<String> {
 
         let changes = find_recent_config_change_ids(id);
 
-        if !changes.is_empty() {
-            msg.push_str("There have been changes to x.py since you last updated:\n");
+        if changes.is_empty() {
+            return None;
+        }
 
-            for change in changes {
-                msg.push_str(&format!("  [{}] {}\n", change.severity.to_string(), change.summary));
-                msg.push_str(&format!(
-                    "    - PR Link https://github.com/rust-lang/rust/pull/{}\n",
-                    change.change_id
-                ));
-            }
+        msg.push_str("There have been changes to x.py since you last updated:\n");
 
-            msg.push_str("NOTE: to silence this warning, ");
+        for change in changes {
+            msg.push_str(&format!("  [{}] {}\n", change.severity.to_string(), change.summary));
             msg.push_str(&format!(
-                "update `config.toml` to use `change-id = {latest_change_id}` instead"
+                "    - PR Link https://github.com/rust-lang/rust/pull/{}\n",
+                change.change_id
             ));
+        }
 
-            if io::stdout().is_terminal() && !config.dry_run() {
-                t!(fs::write(warned_id_path, latest_change_id.to_string()));
-            }
+        msg.push_str("NOTE: to silence this warning, ");
+        msg.push_str(&format!(
+            "update `config.toml` to use `change-id = {latest_change_id}` instead"
+        ));
+
+        if io::stdout().is_terminal() && !config.dry_run() {
+            t!(fs::write(warned_id_path, latest_change_id.to_string()));
         }
     } else {
         msg.push_str("WARNING: The `change-id` is missing in the `config.toml`. This means that you will not be able to track the major changes made to the bootstrap configurations.\n");
