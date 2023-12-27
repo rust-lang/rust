@@ -1,4 +1,7 @@
-use crate::errors::{InvalidMetaItem, SuffixedLiteralInAttribute};
+use crate::errors::{
+    InvalidMetaItem, InvalidMetaItemSuggQuoteIdent, InvalidMetaItemUnquotedIdent,
+    SuffixedLiteralInAttribute,
+};
 use crate::fluent_generated as fluent;
 
 use super::{AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle};
@@ -417,9 +420,26 @@ impl<'a> Parser<'a> {
             Err(err) => err.cancel(),
         }
 
-        Err(self
-            .dcx()
-            .create_err(InvalidMetaItem { span: self.token.span, token: self.token.clone() }))
+        let token = self.token.clone();
+
+        // Check for unquoted idents in meta items, e.g.: #[cfg(key = foo)]
+        // `from_expansion()` ensures we don't suggest for cases such as
+        // `#[cfg(feature = $expr)]` in macros
+        if self.prev_token == token::Eq && !self.token.span.from_expansion() {
+            let before = self.token.span.shrink_to_lo();
+            while matches!(self.token.kind, token::Ident(..)) {
+                self.bump();
+            }
+            let after = self.prev_token.span.shrink_to_hi();
+            let sugg = InvalidMetaItemSuggQuoteIdent { before, after };
+            return Err(self.dcx().create_err(InvalidMetaItemUnquotedIdent {
+                span: token.span,
+                token,
+                sugg,
+            }));
+        }
+
+        Err(self.dcx().create_err(InvalidMetaItem { span: token.span, token }))
     }
 }
 
