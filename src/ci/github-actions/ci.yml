@@ -37,13 +37,11 @@ x--expand-yaml-anchors--remove:
 
   - &public-variables
     SCCACHE_BUCKET: rust-lang-ci-sccache2
-    SCCACHE_REGION: us-west-1
     TOOLSTATE_REPO: https://github.com/rust-lang-nursery/rust-toolstate
     CACHE_DOMAIN: ci-caches.rust-lang.org
 
   - &prod-variables
     SCCACHE_BUCKET: rust-lang-ci-sccache2
-    SCCACHE_REGION: us-west-1
     DEPLOY_BUCKET: rust-lang-ci2
     TOOLSTATE_REPO: https://github.com/rust-lang-nursery/rust-toolstate
     TOOLSTATE_ISSUES_API_URL: https://api.github.com/repos/rust-lang/rust/issues
