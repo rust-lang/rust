@@ -10,5 +10,13 @@ note: the lint level is defined here
 LL | #![deny(arithmetic_overflow)]
    |         ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 1 previous error
+error: this arithmetic operation will overflow
+  --> $DIR/overflowing-lsh-4.rs:11:13
+   |
+LL |     let x = 1_i8 << 17;
+   |             ^^^^^^^^^^ attempt to shift left by `17_i32`, which would overflow
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
 

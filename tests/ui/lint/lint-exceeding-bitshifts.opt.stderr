@@ -11,6 +11,14 @@ LL | #![warn(arithmetic_overflow)]
    |         ^^^^^^^^^^^^^^^^^^^
 
 warning: this arithmetic operation will overflow
+  --> $DIR/lint-exceeding-bitshifts.rs:18:20
+   |
+LL |     const N: i32 = T::N << 42;
+   |                    ^^^^^^^^^^ attempt to shift left by `42_i32`, which would overflow
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+warning: this arithmetic operation will overflow
   --> $DIR/lint-exceeding-bitshifts.rs:22:13
    |
 LL |     let _ = x << 42;
@@ -148,5 +156,5 @@ warning: this arithmetic operation will overflow
 LL |       let n = 1_usize << BITS;
    |               ^^^^^^^^^^^^^^^ attempt to shift left by `%BITS%`, which would overflow
 
-warning: 24 warnings emitted
+warning: 25 warnings emitted
 

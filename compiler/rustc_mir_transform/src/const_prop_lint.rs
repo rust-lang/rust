@@ -485,18 +485,30 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     .and_then(|op| self.ecx.read_immediate(&op).ok())
                     .map_or(DbgVal::Underscore, |op| DbgVal::Val(op.to_const_int()))
             };
-            let msg = match msg {
-                AssertKind::DivisionByZero(op) => AssertKind::DivisionByZero(eval_to_int(op)),
-                AssertKind::RemainderByZero(op) => AssertKind::RemainderByZero(eval_to_int(op)),
+            let (msg, emit_overflow_lint) = match msg {
+                AssertKind::DivisionByZero(op) => {
+                    (AssertKind::DivisionByZero(eval_to_int(op)), false)
+                }
+                AssertKind::RemainderByZero(op) => {
+                    (AssertKind::RemainderByZero(eval_to_int(op)), false)
+                }
                 AssertKind::Overflow(bin_op @ (BinOp::Div | BinOp::Rem), op1, op2) => {
                     // Division overflow is *UB* in the MIR, and different than the
                     // other overflow checks.
-                    AssertKind::Overflow(*bin_op, eval_to_int(op1), eval_to_int(op2))
+                    (AssertKind::Overflow(*bin_op, eval_to_int(op1), eval_to_int(op2)), false)
+                }
+                AssertKind::Overflow(bin_op @ (BinOp::Shl | BinOp::Shr), op1, op2) => {
+                    // A hack that fixes #117949
+                    // Ideally check_binary_op() should check these shift ops,
+                    // but it can't because they are getting removed from the MIR
+                    // during const promotion. So we check the associated asserts
+                    // here instead as they are not removed by promotion.
+                    (AssertKind::Overflow(*bin_op, eval_to_int(op1), eval_to_int(op2)), true)
                 }
                 AssertKind::BoundsCheck { ref len, ref index } => {
                     let len = eval_to_int(len);
                     let index = eval_to_int(index);
-                    AssertKind::BoundsCheck { len, index }
+                    (AssertKind::BoundsCheck { len, index }, false)
                 }
                 // Remaining overflow errors are already covered by checks on the binary operators.
                 AssertKind::Overflow(..) | AssertKind::OverflowNeg(_) => return None,
@@ -506,7 +518,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             let source_info = self.body().source_info(location);
             self.report_assert_as_lint(
                 source_info,
-                AssertLint::UnconditionalPanic(source_info.span, msg),
+                if emit_overflow_lint {
+                    AssertLint::ArithmeticOverflow(source_info.span, msg)
+                } else {
+                    AssertLint::UnconditionalPanic(source_info.span, msg)
+                },
             );
         }
 
