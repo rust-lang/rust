@@ -15,7 +15,7 @@ pub fn test_opaque_hidden_types(tcx: TyCtxt<'_>) {
             if matches!(tcx.def_kind(id.owner_id), DefKind::OpaqueTy) {
                 let type_of = tcx.type_of(id.owner_id).instantiate_identity();
 
-                tcx.sess.emit_err(TypeOf { span: tcx.def_span(id.owner_id), type_of });
+                tcx.dcx().emit_err(TypeOf { span: tcx.def_span(id.owner_id), type_of });
             }
         }
     }
@@ -41,7 +41,7 @@ pub fn test_opaque_hidden_types(tcx: TyCtxt<'_>) {
 /// ```
 #[instrument(skip(tcx), level = "debug")]
 pub(super) fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Ty<'_> {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let scope = tcx.hir().get_defining_scope(hir_id);
     let mut locator = TaitConstraintLocator { def_id, tcx, found: None, typeck_types: vec![] };
 
@@ -50,8 +50,8 @@ pub(super) fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: Local
     if scope == hir::CRATE_HIR_ID {
         tcx.hir().walk_toplevel_module(&mut locator);
     } else {
-        trace!("scope={:#?}", tcx.hir().get(scope));
-        match tcx.hir().get(scope) {
+        trace!("scope={:#?}", tcx.hir_node(scope));
+        match tcx.hir_node(scope) {
             // We explicitly call `visit_*` methods, instead of using `intravisit::walk_*` methods
             // This allows our visitor to process the defining item itself, causing
             // it to pick up any 'sibling' defining uses.
@@ -92,10 +92,10 @@ pub(super) fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: Local
             // Account for `type Alias = impl Trait<Foo = impl Trait>;` (#116031)
             parent_def_id = tcx.local_parent(parent_def_id);
         }
-        let reported = tcx.sess.emit_err(UnconstrainedOpaqueType {
+        let reported = tcx.dcx().emit_err(UnconstrainedOpaqueType {
             span: tcx.def_span(def_id),
             name: tcx.item_name(parent_def_id.to_def_id()),
-            what: match tcx.hir().get(scope) {
+            what: match tcx.hir_node(scope) {
                 _ if scope == hir::CRATE_HIR_ID => "module",
                 Node::Item(hir::Item { kind: hir::ItemKind::Mod(_), .. }) => "module",
                 Node::Item(hir::Item { kind: hir::ItemKind::Impl(_), .. }) => "impl",
@@ -158,7 +158,7 @@ impl TaitConstraintLocator<'_> {
             }
             constrained = true;
             if !self.tcx.opaque_types_defined_by(item_def_id).contains(&self.def_id) {
-                self.tcx.sess.emit_err(TaitForwardCompat {
+                self.tcx.dcx().emit_err(TaitForwardCompat {
                     span: hidden_type.span,
                     item_span: self
                         .tcx
@@ -278,11 +278,15 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
 
     let mir_opaque_ty = tcx.mir_borrowck(owner_def_id).concrete_opaque_types.get(&def_id).copied();
     if let Some(mir_opaque_ty) = mir_opaque_ty {
-        let scope = tcx.hir().local_def_id_to_hir_id(owner_def_id);
+        if mir_opaque_ty.references_error() {
+            return mir_opaque_ty.ty;
+        }
+
+        let scope = tcx.local_def_id_to_hir_id(owner_def_id);
         debug!(?scope);
         let mut locator = RpitConstraintChecker { def_id, tcx, found: mir_opaque_ty };
 
-        match tcx.hir().get(scope) {
+        match tcx.hir_node(scope) {
             Node::Item(it) => intravisit::walk_item(&mut locator, it),
             Node::ImplItem(it) => intravisit::walk_impl_item(&mut locator, it),
             Node::TraitItem(it) => intravisit::walk_trait_item(&mut locator, it),

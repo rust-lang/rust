@@ -9,6 +9,6 @@ LL |     (return 1, return 2)
    = note: expected type `isize`
              found tuple `(!, !)`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

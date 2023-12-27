@@ -35,7 +35,7 @@ impl MultiItemModifier for Expander {
                     AttributeTemplate { list: Some("Trait1, Trait2, ..."), ..Default::default() };
                 validate_attr::check_builtin_meta_item(
                     &sess.parse_sess,
-                    &meta_item,
+                    meta_item,
                     ast::AttrStyle::Outer,
                     sym::derive,
                     template,
@@ -48,14 +48,14 @@ impl MultiItemModifier for Expander {
                                 NestedMetaItem::MetaItem(meta) => Some(meta),
                                 NestedMetaItem::Lit(lit) => {
                                     // Reject `#[derive("Debug")]`.
-                                    report_unexpected_meta_item_lit(sess, &lit);
+                                    report_unexpected_meta_item_lit(sess, lit);
                                     None
                                 }
                             })
                             .map(|meta| {
                                 // Reject `#[derive(Debug = "value", Debug(abc))]`, but recover the
                                 // paths.
-                                report_path_args(sess, &meta);
+                                report_path_args(sess, meta);
                                 meta.path.clone()
                             })
                             .map(|path| (path, dummy_annotatable(), None, self.0))
@@ -120,7 +120,7 @@ fn report_bad_target(
     let bad_target =
         !matches!(item_kind, Some(ItemKind::Struct(..) | ItemKind::Enum(..) | ItemKind::Union(..)));
     if bad_target {
-        return Err(sess.emit_err(errors::BadDeriveTarget { span, item: item.span() }));
+        return Err(sess.dcx().emit_err(errors::BadDeriveTarget { span, item: item.span() }));
     }
     Ok(())
 }
@@ -134,7 +134,7 @@ fn report_unexpected_meta_item_lit(sess: &Session, lit: &ast::MetaItemLit) {
         }
         _ => errors::BadDeriveLitHelp::Other,
     };
-    sess.emit_err(errors::BadDeriveLit { span: lit.span, help });
+    sess.dcx().emit_err(errors::BadDeriveLit { span: lit.span, help });
 }
 
 fn report_path_args(sess: &Session, meta: &ast::MetaItem) {
@@ -143,10 +143,10 @@ fn report_path_args(sess: &Session, meta: &ast::MetaItem) {
     match meta.kind {
         MetaItemKind::Word => {}
         MetaItemKind::List(..) => {
-            sess.emit_err(errors::DerivePathArgsList { span });
+            sess.dcx().emit_err(errors::DerivePathArgsList { span });
         }
         MetaItemKind::NameValue(..) => {
-            sess.emit_err(errors::DerivePathArgsValue { span });
+            sess.dcx().emit_err(errors::DerivePathArgsValue { span });
         }
     }
 }

@@ -21,5 +21,5 @@ LL |         let x = make_ref(&mut 0); // The temporary storing "0" is deallocat
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

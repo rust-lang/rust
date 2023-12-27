@@ -23,6 +23,6 @@ LL |     fn consume<F>(self, _f: F)
 LL |         for<'a> Self::Item<'a>: FuncInput<'a, Self::Item<'a>>,
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `LendingIterator::consume`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

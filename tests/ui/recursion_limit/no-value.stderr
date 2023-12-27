@@ -4,5 +4,5 @@ error: malformed `recursion_limit` attribute input
 LL | #![recursion_limit]
    | ^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#![recursion_limit = "N"]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

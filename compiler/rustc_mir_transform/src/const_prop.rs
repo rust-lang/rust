@@ -11,6 +11,7 @@ use rustc_middle::mir::visit::{
     MutVisitor, MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor,
 };
 use rustc_middle::mir::*;
+use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::{self, GenericArgs, Instance, ParamEnv, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::{def_id::DefId, Span};
@@ -18,7 +19,6 @@ use rustc_target::abi::{self, HasDataLayout, Size, TargetDataLayout};
 use rustc_target::spec::abi::Abi as CallAbi;
 
 use crate::dataflow_const_prop::Patch;
-use crate::MirPass;
 use rustc_const_eval::interpret::{
     self, compile_time_machine, AllocId, ConstAllocation, FnArg, Frame, ImmTy, Immediate, InterpCx,
     InterpResult, MemoryKind, OpTy, PlaceTy, Pointer, Scalar, StackPopCleanup,
@@ -84,8 +84,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
 
         // FIXME(welseywiser) const prop doesn't work on coroutines because of query cycles
         // computing their layout.
-        let is_coroutine = def_kind == DefKind::Coroutine;
-        if is_coroutine {
+        if tcx.is_coroutine(def_id.to_def_id()) {
             trace!("ConstProp skipped for coroutine {:?}", def_id);
             return;
         }
@@ -221,7 +220,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     }
 
     fn before_access_global(
-        _tcx: TyCtxt<'tcx>,
+        _tcx: TyCtxtAt<'tcx>,
         _machine: &Self,
         _alloc_id: AllocId,
         alloc: ConstAllocation<'tcx>,
@@ -241,10 +240,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     }
 
     #[inline(always)]
-    fn expose_ptr(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _ptr: Pointer<AllocId>,
-    ) -> InterpResult<'tcx> {
+    fn expose_ptr(_ecx: &mut InterpCx<'mir, 'tcx, Self>, _ptr: Pointer) -> InterpResult<'tcx> {
         throw_machine_stop_str!("exposing pointers isn't supported in ConstProp")
     }
 
@@ -440,6 +436,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
         // FIXME we need to revisit this for #67176
         if rvalue.has_param() {
+            trace!("skipping, has param");
             return None;
         }
         if !rvalue
@@ -606,7 +603,7 @@ impl CanConstProp {
         for arg in body.args_iter() {
             cpv.found_assignment.insert(arg);
         }
-        cpv.visit_body(&body);
+        cpv.visit_body(body);
         cpv.can_const_prop
     }
 }
@@ -668,7 +665,7 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             // These can't ever be propagated under any scheme, as we can't reason about indirect
             // mutation.
             | NonMutatingUse(NonMutatingUseContext::SharedBorrow)
-            | NonMutatingUse(NonMutatingUseContext::ShallowBorrow)
+            | NonMutatingUse(NonMutatingUseContext::FakeBorrow)
             | NonMutatingUse(NonMutatingUseContext::AddressOf)
             | MutatingUse(MutatingUseContext::Borrow)
             | MutatingUse(MutatingUseContext::AddressOf) => {
@@ -708,7 +705,11 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
     fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
         self.super_assign(place, rvalue, location);
 
-        let Some(()) = self.check_rvalue(rvalue) else { return };
+        let Some(()) = self.check_rvalue(rvalue) else {
+            trace!("rvalue check failed, removing const");
+            Self::remove_const(&mut self.ecx, place.local);
+            return;
+        };
 
         match self.ecx.machine.can_const_prop[place.local] {
             // Do nothing if the place is indirect.

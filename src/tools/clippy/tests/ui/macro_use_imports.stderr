@@ -1,8 +1,8 @@
 error: `macro_use` attributes are no longer needed in the Rust 2018 edition
-  --> $DIR/macro_use_imports.rs:25:5
+  --> $DIR/macro_use_imports.rs:19:5
    |
 LL |     #[macro_use]
-   |     ^^^^^^^^^^^^ help: remove the attribute and import the macro directly, try: `use mac::inner::nested::string_add;`
+   |     ^^^^^^^^^^^^ help: remove the attribute and import the macro directly, try: `use mac::{pub_macro, inner_mod_macro, function_macro, ty_macro, pub_in_private_macro};`
    |
    = note: `-D clippy::macro-use-imports` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::macro_use_imports)]`
@@ -14,16 +14,16 @@ LL |     #[macro_use]
    |     ^^^^^^^^^^^^ help: remove the attribute and import the macro directly, try: `use mac::{inner::mut_mut, inner::try_err};`
 
 error: `macro_use` attributes are no longer needed in the Rust 2018 edition
+  --> $DIR/macro_use_imports.rs:25:5
+   |
+LL |     #[macro_use]
+   |     ^^^^^^^^^^^^ help: remove the attribute and import the macro directly, try: `use mac::inner::nested::string_add;`
+
+error: `macro_use` attributes are no longer needed in the Rust 2018 edition
   --> $DIR/macro_use_imports.rs:21:5
    |
 LL |     #[macro_use]
    |     ^^^^^^^^^^^^ help: remove the attribute and import the macro directly, try: `use mini_mac::ClippyMiniMacroTest;`
-
-error: `macro_use` attributes are no longer needed in the Rust 2018 edition
-  --> $DIR/macro_use_imports.rs:19:5
-   |
-LL |     #[macro_use]
-   |     ^^^^^^^^^^^^ help: remove the attribute and import the macro directly, try: `use mac::{pub_macro, inner_mod_macro, function_macro, ty_macro, pub_in_private_macro};`
 
 error: aborting due to 4 previous errors
 

@@ -177,7 +177,7 @@ impl<'tcx> ObligationCause<'tcx> {
 
         // NOTE(flaper87): As of now, it keeps track of the whole error
         // chain. Ideally, we should have a way to configure this either
-        // by using -Z verbose or just a CLI argument.
+        // by using -Z verbose-internals or just a CLI argument.
         self.code =
             variant(DerivedObligationCause { parent_trait_pred, parent_code: self.code }).into();
         self
@@ -249,9 +249,6 @@ pub enum ObligationCauseCode<'tcx> {
 
     /// A tuple is WF only if its middle elements are `Sized`.
     TupleElem,
-
-    /// This is the trait reference from the given projection.
-    ProjectionWf(ty::AliasTy<'tcx>),
 
     /// Must satisfy all of the where-clause predicates of the
     /// given item.
@@ -343,7 +340,8 @@ pub enum ObligationCauseCode<'tcx> {
         parent_code: InternedObligationCauseCode<'tcx>,
     },
 
-    /// Error derived when matching traits/impls; see ObligationCause for more details
+    /// Error derived when checking an impl item is compatible with
+    /// its corresponding trait item's definition
     CompareImplItemObligation {
         impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
@@ -371,9 +369,6 @@ pub enum ObligationCauseCode<'tcx> {
         /// Whether the `Span` came from an expression or a type expression.
         origin_expr: bool,
     },
-
-    /// Constants in patterns must have `Structural` type.
-    ConstPatternStructural,
 
     /// Computing common supertype in an if expression
     IfExpression(Box<IfExpressionCause<'tcx>>),
@@ -407,9 +402,6 @@ pub enum ObligationCauseCode<'tcx> {
     /// `return` with an expression
     ReturnValue(hir::HirId),
 
-    /// Return type of this function
-    ReturnType,
-
     /// Opaque return type of this function
     OpaqueReturnType(Option<(Ty<'tcx>, Span)>),
 
@@ -419,10 +411,7 @@ pub enum ObligationCauseCode<'tcx> {
     /// #[feature(trivial_bounds)] is not enabled
     TrivialBound,
 
-    /// If `X` is the concrete type of an opaque type `impl Y`, then `X` must implement `Y`
-    OpaqueType,
-
-    AwaitableExpr(Option<hir::HirId>),
+    AwaitableExpr(hir::HirId),
 
     ForLoopIterator,
 
@@ -440,8 +429,10 @@ pub enum ObligationCauseCode<'tcx> {
     MatchImpl(ObligationCause<'tcx>, DefId),
 
     BinOp {
+        lhs_hir_id: hir::HirId,
+        rhs_hir_id: Option<hir::HirId>,
         rhs_span: Option<Span>,
-        is_lit: bool,
+        rhs_is_lit: bool,
         output_ty: Option<Ty<'tcx>>,
     },
 
@@ -519,6 +510,21 @@ impl<'tcx> ObligationCauseCode<'tcx> {
             base_cause = parent_code;
         }
         base_cause
+    }
+
+    /// Returns the base obligation and the base trait predicate, if any, ignoring
+    /// derived obligations.
+    pub fn peel_derives_with_predicate(&self) -> (&Self, Option<ty::PolyTraitPredicate<'tcx>>) {
+        let mut base_cause = self;
+        let mut base_trait_pred = None;
+        while let Some((parent_code, parent_pred)) = base_cause.parent() {
+            base_cause = parent_code;
+            if let Some(parent_pred) = parent_pred {
+                base_trait_pred = Some(parent_pred);
+            }
+        }
+
+        (base_cause, base_trait_pred)
     }
 
     pub fn parent(&self) -> Option<(&Self, Option<ty::PolyTraitPredicate<'tcx>>)> {
@@ -686,7 +692,7 @@ impl<'tcx, N> ImplSource<'tcx, N> {
     pub fn borrow_nested_obligations(&self) -> &[N] {
         match self {
             ImplSource::UserDefined(i) => &i.nested,
-            ImplSource::Param(n) | ImplSource::Builtin(_, n) => &n,
+            ImplSource::Param(n) | ImplSource::Builtin(_, n) => n,
         }
     }
 
@@ -843,50 +849,31 @@ impl ObjectSafetyViolation {
         }
     }
 
-    pub fn solution(&self, err: &mut Diagnostic) {
+    pub fn solution(&self) -> ObjectSafetyViolationSolution {
         match self {
             ObjectSafetyViolation::SizedSelf(_)
             | ObjectSafetyViolation::SupertraitSelf(_)
-            | ObjectSafetyViolation::SupertraitNonLifetimeBinder(..) => {}
+            | ObjectSafetyViolation::SupertraitNonLifetimeBinder(..) => {
+                ObjectSafetyViolationSolution::None
+            }
             ObjectSafetyViolation::Method(
                 name,
                 MethodViolationCode::StaticMethod(Some((add_self_sugg, make_sized_sugg))),
                 _,
-            ) => {
-                err.span_suggestion(
-                    add_self_sugg.1,
-                    format!(
-                        "consider turning `{name}` into a method by giving it a `&self` argument"
-                    ),
-                    add_self_sugg.0.to_string(),
-                    Applicability::MaybeIncorrect,
-                );
-                err.span_suggestion(
-                    make_sized_sugg.1,
-                    format!(
-                        "alternatively, consider constraining `{name}` so it does not apply to \
-                             trait objects"
-                    ),
-                    make_sized_sugg.0.to_string(),
-                    Applicability::MaybeIncorrect,
-                );
-            }
+            ) => ObjectSafetyViolationSolution::AddSelfOrMakeSized {
+                name: *name,
+                add_self_sugg: add_self_sugg.clone(),
+                make_sized_sugg: make_sized_sugg.clone(),
+            },
             ObjectSafetyViolation::Method(
                 name,
                 MethodViolationCode::UndispatchableReceiver(Some(span)),
                 _,
-            ) => {
-                err.span_suggestion(
-                    *span,
-                    format!("consider changing method `{name}`'s `self` parameter to be `&self`"),
-                    "&Self",
-                    Applicability::MachineApplicable,
-                );
-            }
+            ) => ObjectSafetyViolationSolution::ChangeToRefSelf(*name, *span),
             ObjectSafetyViolation::AssocConst(name, _)
             | ObjectSafetyViolation::GAT(name, _)
             | ObjectSafetyViolation::Method(name, ..) => {
-                err.help(format!("consider moving `{name}` to another trait"));
+                ObjectSafetyViolationSolution::MoveToAnotherTrait(*name)
             }
         }
     }
@@ -906,6 +893,60 @@ impl ObjectSafetyViolation {
                 smallvec![*span]
             }
             _ => smallvec![],
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum ObjectSafetyViolationSolution {
+    None,
+    AddSelfOrMakeSized {
+        name: Symbol,
+        add_self_sugg: (String, Span),
+        make_sized_sugg: (String, Span),
+    },
+    ChangeToRefSelf(Symbol, Span),
+    MoveToAnotherTrait(Symbol),
+}
+
+impl ObjectSafetyViolationSolution {
+    pub fn add_to(self, err: &mut Diagnostic) {
+        match self {
+            ObjectSafetyViolationSolution::None => {}
+            ObjectSafetyViolationSolution::AddSelfOrMakeSized {
+                name,
+                add_self_sugg,
+                make_sized_sugg,
+            } => {
+                err.span_suggestion(
+                    add_self_sugg.1,
+                    format!(
+                        "consider turning `{name}` into a method by giving it a `&self` argument"
+                    ),
+                    add_self_sugg.0,
+                    Applicability::MaybeIncorrect,
+                );
+                err.span_suggestion(
+                    make_sized_sugg.1,
+                    format!(
+                        "alternatively, consider constraining `{name}` so it does not apply to \
+                             trait objects"
+                    ),
+                    make_sized_sugg.0,
+                    Applicability::MaybeIncorrect,
+                );
+            }
+            ObjectSafetyViolationSolution::ChangeToRefSelf(name, span) => {
+                err.span_suggestion(
+                    span,
+                    format!("consider changing method `{name}`'s `self` parameter to be `&self`"),
+                    "&Self",
+                    Applicability::MachineApplicable,
+                );
+            }
+            ObjectSafetyViolationSolution::MoveToAnotherTrait(name) => {
+                err.help(format!("consider moving `{name}` to another trait"));
+            }
         }
     }
 }
@@ -956,13 +997,26 @@ pub enum CodegenObligationError {
     FulfillmentError,
 }
 
+/// Defines the treatment of opaque types in a given inference context.
+///
+/// This affects both what opaques are allowed to be defined, but also whether
+/// opaques are replaced with inference vars eagerly in the old solver (e.g.
+/// in projection, and in the signature during function type-checking).
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub enum DefiningAnchor {
-    /// `DefId` of the item.
+    /// Define opaques which are in-scope of the `LocalDefId`. Also, eagerly
+    /// replace opaque types in `replace_opaque_types_with_inference_vars`.
     Bind(LocalDefId),
-    /// When opaque types are not resolved, we `Bubble` up, meaning
-    /// return the opaque/hidden type pair from query, for caller of query to handle it.
+    /// In contexts where we don't currently know what opaques are allowed to be
+    /// defined, such as (old solver) canonical queries, we will simply allow
+    /// opaques to be defined, but "bubble" them up in the canonical response or
+    /// otherwise treat them to be handled later.
+    ///
+    /// We do not eagerly replace opaque types in `replace_opaque_types_with_inference_vars`,
+    /// which may affect what predicates pass and fail in the old trait solver.
     Bubble,
-    /// Used to catch type mismatch errors when handling opaque types.
+    /// Do not allow any opaques to be defined. This is used to catch type mismatch
+    /// errors when handling opaque types, and also should be used when we would
+    /// otherwise reveal opaques (such as [`Reveal::All`] reveal mode).
     Error,
 }

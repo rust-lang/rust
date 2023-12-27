@@ -11,6 +11,6 @@ LL |         Self { map }
    = note: expected struct `HashMap<u16, fn(_) -> Pin<Box<(dyn Future<Output = ()> + Send + 'static)>>>`
               found struct `HashMap<{integer}, fn(_) -> Pin<Box<dyn Future<Output = ()> + Send>> {<Struct as Trait>::do_something::<'_>}>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

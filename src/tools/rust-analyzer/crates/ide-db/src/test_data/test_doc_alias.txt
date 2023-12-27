@@ -21,21 +21,22 @@
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
-                        FileId(
-                            0,
-                        ),
+                        0,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
                         range: 83..119,
                     },
-                    name_ptr: SyntaxNodePtr {
-                        kind: NAME,
-                        range: 109..118,
-                    },
+                    name_ptr: AstPtr(
+                        SyntaxNodePtr {
+                            kind: NAME,
+                            range: 109..118,
+                        },
+                    ),
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "Struct",
@@ -50,21 +51,22 @@
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
-                        FileId(
-                            0,
-                        ),
+                        0,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
                         range: 0..81,
                     },
-                    name_ptr: SyntaxNodePtr {
-                        kind: NAME,
-                        range: 74..80,
-                    },
+                    name_ptr: AstPtr(
+                        SyntaxNodePtr {
+                            kind: NAME,
+                            range: 74..80,
+                        },
+                    ),
                 },
                 container_name: None,
                 is_alias: false,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "mul1",
@@ -79,21 +81,22 @@
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
-                        FileId(
-                            0,
-                        ),
+                        0,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
                         range: 0..81,
                     },
-                    name_ptr: SyntaxNodePtr {
-                        kind: NAME,
-                        range: 74..80,
-                    },
+                    name_ptr: AstPtr(
+                        SyntaxNodePtr {
+                            kind: NAME,
+                            range: 74..80,
+                        },
+                    ),
                 },
                 container_name: None,
                 is_alias: true,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "mul2",
@@ -108,21 +111,22 @@
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
-                        FileId(
-                            0,
-                        ),
+                        0,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
                         range: 0..81,
                     },
-                    name_ptr: SyntaxNodePtr {
-                        kind: NAME,
-                        range: 74..80,
-                    },
+                    name_ptr: AstPtr(
+                        SyntaxNodePtr {
+                            kind: NAME,
+                            range: 74..80,
+                        },
+                    ),
                 },
                 container_name: None,
                 is_alias: true,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "s1",
@@ -137,21 +141,22 @@
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
-                        FileId(
-                            0,
-                        ),
+                        0,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
                         range: 0..81,
                     },
-                    name_ptr: SyntaxNodePtr {
-                        kind: NAME,
-                        range: 74..80,
-                    },
+                    name_ptr: AstPtr(
+                        SyntaxNodePtr {
+                            kind: NAME,
+                            range: 74..80,
+                        },
+                    ),
                 },
                 container_name: None,
                 is_alias: true,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "s1",
@@ -166,21 +171,22 @@
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
-                        FileId(
-                            0,
-                        ),
+                        0,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
                         range: 83..119,
                     },
-                    name_ptr: SyntaxNodePtr {
-                        kind: NAME,
-                        range: 109..118,
-                    },
+                    name_ptr: AstPtr(
+                        SyntaxNodePtr {
+                            kind: NAME,
+                            range: 109..118,
+                        },
+                    ),
                 },
                 container_name: None,
                 is_alias: true,
+                is_assoc: false,
             },
             FileSymbol {
                 name: "s2",
@@ -195,21 +201,22 @@
                 ),
                 loc: DeclarationLocation {
                     hir_file_id: FileId(
-                        FileId(
-                            0,
-                        ),
+                        0,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
                         range: 0..81,
                     },
-                    name_ptr: SyntaxNodePtr {
-                        kind: NAME,
-                        range: 74..80,
-                    },
+                    name_ptr: AstPtr(
+                        SyntaxNodePtr {
+                            kind: NAME,
+                            range: 74..80,
+                        },
+                    ),
                 },
                 container_name: None,
                 is_alias: true,
+                is_assoc: false,
             },
         ],
     ),

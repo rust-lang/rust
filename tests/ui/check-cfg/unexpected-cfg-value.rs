@@ -1,12 +1,8 @@
-// Check warning for invalid configuration value in the code and
-// in the cli
+// Check for unexpected configuration value in the code.
 //
 // check-pass
-// revisions: values cfg
 // compile-flags: --cfg=feature="rand" -Z unstable-options
-// compile-flags: --check-cfg=cfg(values,cfg)
-// [values]compile-flags: --check-cfg=values(feature,"serde","full")
-// [cfg]compile-flags: --check-cfg=cfg(feature,values("serde","full"))
+// compile-flags: --check-cfg=cfg(feature,values("serde","full"))
 
 #[cfg(feature = "sedre")]
 //~^ WARNING unexpected `cfg` condition value

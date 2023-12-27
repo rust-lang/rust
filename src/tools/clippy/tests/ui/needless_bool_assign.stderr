@@ -48,7 +48,8 @@ LL |       } else {
 LL | |         a.field = true;
 LL | |     }
    | |_____^
-   = note: `#[deny(clippy::if_same_then_else)]` on by default
+   = note: `-D clippy::if-same-then-else` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::if_same_then_else)]`
 
 error: aborting due to 4 previous errors
 

@@ -1,5 +1,5 @@
 use crate::{errors, structured_errors::StructuredDiagnostic};
-use rustc_errors::{DiagnosticBuilder, DiagnosticId, ErrorGuaranteed};
+use rustc_errors::{DiagnosticBuilder, DiagnosticId};
 use rustc_middle::ty::{Ty, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::Span;
@@ -20,7 +20,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for MissingCastForVariadicArg<'tcx, '_> {
         rustc_errors::error_code!(E0617)
     }
 
-    fn diagnostic_common(&self) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    fn diagnostic_common(&self) -> DiagnosticBuilder<'tcx> {
         let (sugg_span, replace, help) =
             if let Ok(snippet) = self.sess.source_map().span_to_snippet(self.span) {
                 (Some(self.span), format!("{} as {}", snippet, self.cast_ty), None)
@@ -28,7 +28,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for MissingCastForVariadicArg<'tcx, '_> {
                 (None, "".to_string(), Some(()))
             };
 
-        let mut err = self.sess.create_err(errors::PassToVariadicFunction {
+        let mut err = self.sess.dcx().create_err(errors::PassToVariadicFunction {
             span: self.span,
             ty: self.ty,
             cast_ty: self.cast_ty,
@@ -44,10 +44,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for MissingCastForVariadicArg<'tcx, '_> {
         err
     }
 
-    fn diagnostic_extended(
-        &self,
-        mut err: DiagnosticBuilder<'tcx, ErrorGuaranteed>,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    fn diagnostic_extended(&self, mut err: DiagnosticBuilder<'tcx>) -> DiagnosticBuilder<'tcx> {
         err.note(format!(
             "certain types, like `{}`, must be casted before passing them to a \
                 variadic function, because of arcane ABI rules dictated by the C \

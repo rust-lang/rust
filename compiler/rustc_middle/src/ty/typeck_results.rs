@@ -126,7 +126,7 @@ pub struct TypeckResults<'tcx> {
     /// fn(&'a u32) -> u32
     /// ```
     ///
-    /// Note that `'a` is not bound (it would be an `ReFree`) and
+    /// Note that `'a` is not bound (it would be an `ReLateParam`) and
     /// that the `Foo` opaque type is replaced by its hidden type.
     liberated_fn_sigs: ItemLocalMap<ty::FnSig<'tcx>>,
 
@@ -241,7 +241,7 @@ impl<'tcx> TypeckResults<'tcx> {
     /// Returns the final resolution of a `QPath` in an `Expr` or `Pat` node.
     pub fn qpath_res(&self, qpath: &hir::QPath<'_>, id: hir::HirId) -> Res {
         match *qpath {
-            hir::QPath::Resolved(_, ref path) => path.res,
+            hir::QPath::Resolved(_, path) => path.res,
             hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => self
                 .type_dependent_def(id)
                 .map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)),
@@ -391,7 +391,7 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn extract_binding_mode(&self, s: &Session, id: HirId, sp: Span) -> Option<BindingMode> {
         self.pat_binding_modes().get(id).copied().or_else(|| {
-            s.delay_span_bug(sp, "missing binding mode");
+            s.dcx().span_delayed_bug(sp, "missing binding mode");
             None
         })
     }
@@ -578,6 +578,7 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]
+    #[encodable]
     #[debug_format = "UserType({})"]
     pub struct UserTypeAnnotationIndex {
         const START_INDEX = 0;
@@ -638,7 +639,7 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
                         },
 
                         GenericArgKind::Lifetime(r) => match *r {
-                            ty::ReLateBound(debruijn, br) => {
+                            ty::ReBound(debruijn, br) => {
                                 // We only allow a `ty::INNERMOST` index in substitutions.
                                 assert_eq!(debruijn, ty::INNERMOST);
                                 cvar == br.var

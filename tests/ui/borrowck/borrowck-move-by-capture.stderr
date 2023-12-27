@@ -12,6 +12,6 @@ LL |         let _h = to_fn_once(move || -> isize { *bar });
    |                             |                  move occurs because `bar` has type `Box<isize>`, which does not implement the `Copy` trait
    |                             `bar` is moved here
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0507`.

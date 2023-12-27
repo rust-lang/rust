@@ -1,11 +1,6 @@
 // Check that constants with interior mutability inside unions are rejected
 // during validation.
 //
-// Note that this test case relies on undefined behaviour to construct a
-// constant with interior mutability that is "invisible" to the static checks.
-// If for some reason this approach no longer works, it is should be fine to
-// remove the test case.
-//
 // build-fail
 // stderr-per-bitwidth
 #![feature(const_mut_refs)]
@@ -30,10 +25,9 @@ union U {
 }
 
 const C: S = {
-    let s = S { x: 0, y: E::A };
-    // Go through an &u32 reference which is definitely not allowed to mutate anything.
-    let p = &s.x as *const u32 as *mut u32;
-    // Change enum tag to E::B.
+    let mut s = S { x: 0, y: E::A };
+    let p = &mut s.x as *mut u32;
+    // Change enum tag to E::B. Now there's interior mutability here.
     unsafe { *p.add(1) = 1 };
     s
 };

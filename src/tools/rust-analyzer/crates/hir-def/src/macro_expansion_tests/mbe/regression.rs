@@ -13,36 +13,96 @@ fn test_vec() {
     check(
         r#"
 macro_rules! vec {
-   ($($item:expr),*) => {{
-           let mut v = Vec::new();
-           $( v.push($item); )*
-           v
-    }};
+    () => (
+        $crate::__rust_force_expr!($crate::vec::Vec::new())
+    );
+    ($elem:expr; $n:expr) => (
+        $crate::__rust_force_expr!($crate::vec::from_elem($elem, $n))
+    );
+    ($($x:expr),+ $(,)?) => (
+        $crate::__rust_force_expr!(<[_]>::into_vec(
+            // This rustc_box is not required, but it produces a dramatic improvement in compile
+            // time when constructing arrays with many elements.
+            #[rustc_box]
+            $crate::boxed::Box::new([$($x),+])
+        ))
+    );
 }
+
+macro_rules! __rust_force_expr {
+    ($e:expr) => {
+        $e
+    };
+}
+
 fn main() {
     vec!();
     vec![1u32,2];
+    vec![a.];
 }
 "#,
         expect![[r#"
 macro_rules! vec {
-   ($($item:expr),*) => {{
-           let mut v = Vec::new();
-           $( v.push($item); )*
-           v
-    }};
+    () => (
+        $crate::__rust_force_expr!($crate::vec::Vec::new())
+    );
+    ($elem:expr; $n:expr) => (
+        $crate::__rust_force_expr!($crate::vec::from_elem($elem, $n))
+    );
+    ($($x:expr),+ $(,)?) => (
+        $crate::__rust_force_expr!(<[_]>::into_vec(
+            // This rustc_box is not required, but it produces a dramatic improvement in compile
+            // time when constructing arrays with many elements.
+            #[rustc_box]
+            $crate::boxed::Box::new([$($x),+])
+        ))
+    );
 }
+
+macro_rules! __rust_force_expr {
+    ($e:expr) => {
+        $e
+    };
+}
+
 fn main() {
-     {
-        let mut v = Vec::new();
-        v
+    $crate::__rust_force_expr!($crate:: vec:: Vec:: new());
+    $crate::__rust_force_expr!(<[_]>:: into_vec(#[rustc_box]$crate:: boxed:: Box:: new([1u32, 2])));
+    /* error: expected Expr */$crate::__rust_force_expr!($crate:: vec:: from_elem((a.), $n));
+}
+"#]],
+    );
+    // FIXME we should ahev testing infra for multi level expansion tests
+    check(
+        r#"
+macro_rules! __rust_force_expr {
+    ($e:expr) => {
+        $e
     };
-     {
-        let mut v = Vec::new();
-        v.push(1u32);
-        v.push(2);
-        v
+}
+
+fn main() {
+    __rust_force_expr!(crate:: vec:: Vec:: new());
+    __rust_force_expr!(<[_]>:: into_vec(#[rustc_box] crate:: boxed:: Box:: new([1u32, 2])));
+    __rust_force_expr/*+errors*/!(crate:: vec:: from_elem((a.), $n));
+}
+"#,
+        expect![[r#"
+macro_rules! __rust_force_expr {
+    ($e:expr) => {
+        $e
     };
+}
+
+fn main() {
+    (crate ::vec::Vec::new());
+    (<[_]>::into_vec(#[rustc_box] crate ::boxed::Box::new([1u32, 2])));
+    /* error: expected Expr *//* parse error: expected field name or number */
+/* parse error: expected expression */
+/* parse error: expected R_PAREN */
+/* parse error: expected COMMA */
+/* parse error: expected expression, item or let statement */
+(crate ::vec::from_elem((a.), $n));
 }
 "#]],
     );
@@ -968,5 +1028,65 @@ builtin #format_args ("{}", &[0 2]);
 }
 
 "##]],
+    );
+}
+
+#[test]
+fn eager_concat_line() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! concat {}
+
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! line {}
+
+fn main() {
+    concat!("event ", line!());
+}
+
+"#,
+        expect![[r##"
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! concat {}
+
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! line {}
+
+fn main() {
+    "event 0u32";
+}
+
+"##]],
+    );
+}
+
+#[test]
+fn eager_concat_bytes_panic() {
+    check(
+        r#"
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! concat_bytes {}
+
+fn main() {
+    let x = concat_bytes!(2);
+}
+
+"#,
+        expect![[r#"
+#[rustc_builtin_macro]
+#[macro_export]
+macro_rules! concat_bytes {}
+
+fn main() {
+    let x = /* error: unexpected token in input */[];
+}
+
+"#]],
     );
 }

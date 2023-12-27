@@ -18,6 +18,6 @@ LL | #![feature(non_lifetime_binders)]
    = note: see issue #108185 <https://github.com/rust-lang/rust/issues/108185> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0412`.

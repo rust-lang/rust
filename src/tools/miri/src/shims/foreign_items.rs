@@ -22,7 +22,6 @@ use rustc_target::{
 };
 
 use super::backtrace::EvalContextExt as _;
-use crate::helpers::target_os_is_unix;
 use crate::*;
 
 /// Type of dynamic symbols (for `dlsym` et al)
@@ -345,7 +344,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // List taken from `library/std/src/sys/common/alloc.rs`.
         // This list should be kept in sync with the one from libstd.
         let min_align = match this.tcx.sess.target.arch.as_ref() {
-            "x86" | "arm" | "mips" | "mips32r6" | "powerpc" | "powerpc64" | "asmjs" | "wasm32" => 8,
+            "x86" | "arm" | "mips" | "mips32r6" | "powerpc" | "powerpc64" | "wasm32" => 8,
             "x86_64" | "aarch64" | "mips64" | "mips64r6" | "s390x" | "sparc64" | "loongarch64" =>
                 16,
             arch => bug!("unsupported target architecture for malloc: `{}`", arch),
@@ -459,12 +458,16 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // shim, add it to the corresponding submodule.
         match link_name.as_str() {
             // Miri-specific extern functions
+            "miri_run_provenance_gc" => {
+                let [] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+                this.run_provenance_gc();
+            }
             "miri_get_alloc_id" => {
                 let [ptr] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
                 let (alloc_id, _, _) = this.ptr_get_alloc_id(ptr).map_err(|_e| {
                     err_machine_stop!(TerminationInfo::Abort(format!(
-                        "pointer passed to miri_get_alloc_id must not be dangling, got {ptr:?}"
+                        "pointer passed to `miri_get_alloc_id` must not be dangling, got {ptr:?}"
                     )))
                 })?;
                 this.write_scalar(Scalar::from_u64(alloc_id.0.get()), dest)?;
@@ -496,7 +499,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let (alloc_id, offset, _) = this.ptr_get_alloc_id(ptr)?;
                 if offset != Size::ZERO {
                     throw_unsup_format!(
-                        "pointer passed to miri_static_root must point to beginning of an allocated block"
+                        "pointer passed to `miri_static_root` must point to beginning of an allocated block"
                     );
                 }
                 this.machine.static_roots.push(alloc_id);
@@ -551,6 +554,49 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     "miri_write_to_stderr" => std::io::stderr().write_all(msg),
                     _ => unreachable!(),
                 };
+            }
+
+            // Promises that a pointer has a given symbolic alignment.
+            "miri_promise_symbolic_alignment" => {
+                use rustc_target::abi::AlignFromBytesError;
+
+                let [ptr, align] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let align = this.read_target_usize(align)?;
+                if !align.is_power_of_two() {
+                    throw_unsup_format!(
+                        "`miri_promise_symbolic_alignment`: alignment must be a power of 2, got {align}"
+                    );
+                }
+                let align = Align::from_bytes(align).unwrap_or_else(|err| {
+                    match err {
+                        AlignFromBytesError::NotPowerOfTwo(_) => unreachable!(),
+                        // When the alignment is a power of 2 but too big, clamp it to MAX.
+                        AlignFromBytesError::TooLarge(_) => Align::MAX,
+                    }
+                });
+                let (_, addr) = ptr.into_parts(); // we know the offset is absolute
+                // Cannot panic since `align` is a power of 2 and hence non-zero.
+                if addr.bytes().checked_rem(align.bytes()).unwrap() != 0 {
+                    throw_unsup_format!(
+                        "`miri_promise_symbolic_alignment`: pointer is not actually aligned"
+                    );
+                }
+                if let Ok((alloc_id, offset, ..)) = this.ptr_try_get_alloc_id(ptr) {
+                    let (_size, alloc_align, _kind) = this.get_alloc_info(alloc_id);
+                    // Not `get_alloc_extra_mut`, need to handle read-only allocations!
+                    let alloc_extra = this.get_alloc_extra(alloc_id)?;
+                    // If the newly promised alignment is bigger than the native alignment of this
+                    // allocation, and bigger than the previously promised alignment, then set it.
+                    if align > alloc_align
+                        && !alloc_extra
+                            .symbolic_alignment
+                            .get()
+                            .is_some_and(|(_, old_align)| align <= old_align)
+                    {
+                        alloc_extra.symbolic_alignment.set(Some((offset, align)));
+                    }
+                }
             }
 
             // Standard C allocation
@@ -1008,9 +1054,11 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "llvm.arm.hint" if this.tcx.sess.target.arch == "arm" => {
                 let [arg] = this.check_shim(abi, Abi::Unadjusted, link_name, args)?;
                 let arg = this.read_scalar(arg)?.to_i32()?;
+                // Note that different arguments might have different target feature requirements.
                 match arg {
                     // YIELD
                     1 => {
+                        this.expect_target_feature_for_intrinsic(link_name, "v6")?;
                         this.yield_active_thread();
                     }
                     _ => {
@@ -1054,7 +1102,7 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             // Platform-specific shims
             _ =>
                 return match this.tcx.sess.target.os.as_ref() {
-                    target_os if target_os_is_unix(target_os) =>
+                    _ if this.target_os_is_unix() =>
                         shims::unix::foreign_items::EvalContextExt::emulate_foreign_item_inner(
                             this, link_name, abi, args, dest,
                         ),

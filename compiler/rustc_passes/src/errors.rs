@@ -6,8 +6,8 @@ use std::{
 use crate::fluent_generated as fluent;
 use rustc_ast::Label;
 use rustc_errors::{
-    error_code, AddToDiagnostic, Applicability, Diagnostic, DiagnosticSymbolList, ErrorGuaranteed,
-    IntoDiagnostic, MultiSpan,
+    error_code, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
+    DiagnosticSymbolList, EmissionGuarantee, IntoDiagnostic, Level, MultiSpan,
 };
 use rustc_hir::{self as hir, ExprKind, Target};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -863,13 +863,11 @@ pub struct ItemFollowingInnerAttr {
     pub kind: &'static str,
 }
 
-impl IntoDiagnostic<'_> for InvalidAttrAtCrateLevel {
+impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for InvalidAttrAtCrateLevel {
     #[track_caller]
-    fn into_diagnostic(
-        self,
-        handler: &'_ rustc_errors::Handler,
-    ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err(fluent::passes_invalid_attr_at_crate_level);
+    fn into_diagnostic(self, dcx: &'_ DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
+        let mut diag =
+            DiagnosticBuilder::new(dcx, level, fluent::passes_invalid_attr_at_crate_level);
         diag.set_span(self.span);
         diag.set_arg("name", self.name);
         // Only emit an error with a suggestion if we can create a string out
@@ -879,7 +877,7 @@ impl IntoDiagnostic<'_> for InvalidAttrAtCrateLevel {
                 span,
                 fluent::passes_suggestion,
                 String::new(),
-                rustc_errors::Applicability::MachineApplicable,
+                Applicability::MachineApplicable,
             );
         }
         if let Some(item) = self.item {
@@ -1005,15 +1003,6 @@ pub struct FeaturePreviouslyDeclared<'a, 'b> {
     pub prev_declared: &'b str,
 }
 
-#[derive(Diagnostic)]
-#[diag(passes_expr_not_allowed_in_context, code = "E0744")]
-pub struct ExprNotAllowedInContext<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub expr: String,
-    pub context: &'a str,
-}
-
 pub struct BreakNonLoop<'a> {
     pub span: Span,
     pub head: Option<Span>,
@@ -1025,17 +1014,12 @@ pub struct BreakNonLoop<'a> {
     pub break_expr_span: Span,
 }
 
-impl<'a> IntoDiagnostic<'_> for BreakNonLoop<'a> {
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'_, G> for BreakNonLoop<'a> {
     #[track_caller]
-    fn into_diagnostic(
-        self,
-        handler: &rustc_errors::Handler,
-    ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_span_err_with_code(
-            self.span,
-            fluent::passes_break_non_loop,
-            error_code!(E0571),
-        );
+    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
+        let mut diag = DiagnosticBuilder::new(dcx, level, fluent::passes_break_non_loop);
+        diag.set_span(self.span);
+        diag.code(error_code!(E0571));
         diag.set_arg("kind", self.kind);
         diag.span_label(self.span, fluent::passes_label);
         if let Some(head) = self.head {
@@ -1174,17 +1158,12 @@ pub struct NakedFunctionsAsmBlock {
     pub non_asms: Vec<Span>,
 }
 
-impl IntoDiagnostic<'_> for NakedFunctionsAsmBlock {
+impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for NakedFunctionsAsmBlock {
     #[track_caller]
-    fn into_diagnostic(
-        self,
-        handler: &rustc_errors::Handler,
-    ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_span_err_with_code(
-            self.span,
-            fluent::passes_naked_functions_asm_block,
-            error_code!(E0787),
-        );
+    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
+        let mut diag = DiagnosticBuilder::new(dcx, level, fluent::passes_naked_functions_asm_block);
+        diag.set_span(self.span);
+        diag.code(error_code!(E0787));
         for span in self.multiple_asms.iter() {
             diag.span_label(*span, fluent::passes_label_multiple_asm);
         }
@@ -1290,17 +1269,12 @@ pub struct NoMainErr {
     pub add_teach_note: bool,
 }
 
-impl<'a> IntoDiagnostic<'a> for NoMainErr {
+impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for NoMainErr {
     #[track_caller]
-    fn into_diagnostic(
-        self,
-        handler: &'a rustc_errors::Handler,
-    ) -> rustc_errors::DiagnosticBuilder<'a, ErrorGuaranteed> {
-        let mut diag = handler.struct_span_err_with_code(
-            DUMMY_SP,
-            fluent::passes_no_main_function,
-            error_code!(E0601),
-        );
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
+        let mut diag = DiagnosticBuilder::new(dcx, level, fluent::passes_no_main_function);
+        diag.set_span(DUMMY_SP);
+        diag.code(error_code!(E0601));
         diag.set_arg("crate_name", self.crate_name);
         diag.set_arg("filename", self.filename);
         diag.set_arg("has_filename", self.has_filename);
@@ -1353,20 +1327,19 @@ pub struct DuplicateLangItem {
     pub(crate) duplicate: Duplicate,
 }
 
-impl IntoDiagnostic<'_> for DuplicateLangItem {
+impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for DuplicateLangItem {
     #[track_caller]
-    fn into_diagnostic(
-        self,
-        handler: &rustc_errors::Handler,
-    ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag = handler.struct_err_with_code(
+    fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
+        let mut diag = DiagnosticBuilder::new(
+            dcx,
+            level,
             match self.duplicate {
                 Duplicate::Plain => fluent::passes_duplicate_lang_item,
                 Duplicate::Crate => fluent::passes_duplicate_lang_item_crate,
                 Duplicate::CrateDepends => fluent::passes_duplicate_lang_item_crate_depends,
             },
-            error_code!(E0152),
         );
+        diag.code(error_code!(E0152));
         diag.set_arg("lang_item_name", self.lang_item_name);
         diag.set_arg("crate_name", self.crate_name);
         diag.set_arg("dependency_of", self.dependency_of);

@@ -16,6 +16,8 @@ session_crate_name_invalid = crate names cannot start with a `-`, but `{$s}` has
 
 session_expr_parentheses_needed = parentheses are required to parse this as an expression
 
+session_failed_to_create_profiler = failed to create profiler: {$err}
+
 session_feature_diagnostic_for_issue =
     see issue #{$n} <https://github.com/rust-lang/rust/issues/{$n}> for more information
 
@@ -25,6 +27,10 @@ session_feature_diagnostic_help =
 session_file_is_not_writeable = output file {$file} is not writeable -- check its permissions
 
 session_file_write_fail = failed to write `{$path}` due to error `{$err}`
+
+session_function_return_requires_x86_or_x86_64 = `-Zfunction-return` (except `keep`) is only supported on x86 and x86_64
+
+session_function_return_thunk_extern_requires_non_large_code_model = `-Zfunction-return=thunk-extern` is only supported on non-large code models
 
 session_hexadecimal_float_literal_not_supported = hexadecimal float literal is not supported
 
@@ -69,6 +75,7 @@ session_not_supported = not supported
 session_nul_in_c_str = null characters in C string literals are not supported
 
 session_octal_float_literal_not_supported = octal float literal is not supported
+
 session_optimization_fuel_exhausted = optimization-fuel-exhausted: {$msg}
 
 session_profile_sample_use_file_does_not_exist = file `{$path}` passed to `-C profile-sample-use` does not exist.

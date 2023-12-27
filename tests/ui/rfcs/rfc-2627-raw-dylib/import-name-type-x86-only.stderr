@@ -4,5 +4,5 @@ error: import name type is only supported on x86
 LL | #[link(name = "foo", kind = "raw-dylib", import_name_type = "decorated")]
    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

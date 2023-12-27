@@ -10,5 +10,5 @@ LL |
 LL | fn main() {}
    |              ^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

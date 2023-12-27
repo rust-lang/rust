@@ -9,6 +9,6 @@ help: consider further restricting the associated type
 LL |     fn g<'a>(_: &<<Self::TypeC<'a> as TraitB>::TypeB as TraitA>::TypeA) where <<Self as TraitC<E>>::TypeC<'a> as TraitB>::TypeB: TraitA;
    |                                                                         +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

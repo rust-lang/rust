@@ -2,11 +2,11 @@ use ide_db::{
     assists::{AssistId, AssistKind},
     base_db::FileId,
     defs::Definition,
-    search::FileReference,
+    search::{FileReference, FileReferenceNode},
     syntax_helpers::node_ext::full_path_of_name_ref,
 };
 use syntax::{
-    ast::{self, NameLike, NameRef},
+    ast::{self, NameRef},
     AstNode, SyntaxKind, TextRange,
 };
 
@@ -76,7 +76,7 @@ pub(crate) fn unnecessary_async(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
                 for await_expr in find_all_references(ctx, &Definition::Function(fn_def))
                     // Keep only references that correspond NameRefs.
                     .filter_map(|(_, reference)| match reference.name {
-                        NameLike::NameRef(nameref) => Some(nameref),
+                        FileReferenceNode::NameRef(nameref) => Some(nameref),
                         _ => None,
                     })
                     // Keep only references that correspond to await expressions

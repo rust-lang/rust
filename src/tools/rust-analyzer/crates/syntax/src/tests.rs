@@ -17,11 +17,11 @@ use crate::{ast, fuzz, AstNode, SourceFile, SyntaxError};
 
 #[test]
 fn parse_smoke_test() {
-    let code = r##"
+    let code = r#"
 fn main() {
     println!("Hello, world!")
 }
-    "##;
+    "#;
 
     let parse = SourceFile::parse(code);
     // eprintln!("{:#?}", parse.syntax_node());
@@ -38,7 +38,7 @@ fn benchmark_parser() {
     let tree = {
         let _b = bench("parsing");
         let p = SourceFile::parse(&data);
-        assert!(p.errors.is_empty());
+        assert!(p.errors.is_none());
         assert_eq!(p.tree().syntax.text_range().len(), 352474.into());
         p.tree()
     };

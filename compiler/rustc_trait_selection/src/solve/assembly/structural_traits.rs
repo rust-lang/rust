@@ -14,6 +14,7 @@ use crate::solve::EvalCtxt;
 //
 // For types with an "existential" binder, i.e. coroutine witnesses, we also
 // instantiate the binder with placeholders eagerly.
+#[instrument(level = "debug", skip(ecx), ret)]
 pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
@@ -49,14 +50,14 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
 
         ty::Array(element_ty, _) | ty::Slice(element_ty) => Ok(vec![element_ty]),
 
-        ty::Tuple(ref tys) => {
+        ty::Tuple(tys) => {
             // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
             Ok(tys.iter().collect())
         }
 
-        ty::Closure(_, ref args) => Ok(vec![args.as_closure().tupled_upvars_ty()]),
+        ty::Closure(_, args) => Ok(vec![args.as_closure().tupled_upvars_ty()]),
 
-        ty::Coroutine(_, ref args, _) => {
+        ty::Coroutine(_, args, _) => {
             let coroutine_args = args.as_coroutine();
             Ok(vec![coroutine_args.tupled_upvars_ty(), coroutine_args.witness()])
         }
@@ -90,13 +91,13 @@ pub(in crate::solve) fn replace_erased_lifetimes_with_bound_vars<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
 ) -> ty::Binder<'tcx, Ty<'tcx>> {
-    debug_assert!(!ty.has_late_bound_regions());
+    debug_assert!(!ty.has_bound_regions());
     let mut counter = 0;
     let ty = tcx.fold_regions(ty, |r, current_depth| match r.kind() {
         ty::ReErased => {
             let br = ty::BoundRegion { var: ty::BoundVar::from_u32(counter), kind: ty::BrAnon };
             counter += 1;
-            ty::Region::new_late_bound(tcx, current_depth, br)
+            ty::Region::new_bound(tcx, current_depth, br)
         }
         // All free regions should be erased here.
         r => bug!("unexpected region: {r:?}"),
@@ -107,6 +108,7 @@ pub(in crate::solve) fn replace_erased_lifetimes_with_bound_vars<'tcx>(
     ty::Binder::bind_with_vars(ty, bound_vars)
 }
 
+#[instrument(level = "debug", skip(ecx), ret)]
 pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,
@@ -152,6 +154,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_sized_trait<'tcx>(
     }
 }
 
+#[instrument(level = "debug", skip(ecx), ret)]
 pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
     ecx: &EvalCtxt<'_, 'tcx>,
     ty: Ty<'tcx>,

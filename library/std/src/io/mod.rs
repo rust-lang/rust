@@ -397,12 +397,16 @@ where
     }
 }
 
-// This uses an adaptive system to extend the vector when it fills. We want to
-// avoid paying to allocate and zero a huge chunk of memory if the reader only
-// has 4 bytes while still making large reads if the reader does have a ton
-// of data to return. Simply tacking on an extra DEFAULT_BUF_SIZE space every
-// time is 4,500 times (!) slower than a default reservation size of 32 if the
-// reader has a very small amount of data to return.
+// Here we must serve many masters with conflicting goals:
+//
+// - avoid allocating unless necessary
+// - avoid overallocating if we know the exact size (#89165)
+// - avoid passing large buffers to readers that always initialize the free capacity if they perform short reads (#23815, #23820)
+// - pass large buffers to readers that do not initialize the spare capacity. this can amortize per-call overheads
+// - and finally pass not-too-small and not-too-large buffers to Windows read APIs because they manage to suffer from both problems
+//   at the same time, i.e. small reads suffer from syscall overhead, all reads incur initialization cost
+//   proportional to buffer size (#110650)
+//
 pub(crate) fn default_read_to_end<R: Read + ?Sized>(
     r: &mut R,
     buf: &mut Vec<u8>,
@@ -412,20 +416,58 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(
     let start_cap = buf.capacity();
     // Optionally limit the maximum bytes read on each iteration.
     // This adds an arbitrary fiddle factor to allow for more data than we expect.
-    let max_read_size =
-        size_hint.and_then(|s| s.checked_add(1024)?.checked_next_multiple_of(DEFAULT_BUF_SIZE));
+    let mut max_read_size = size_hint
+        .and_then(|s| s.checked_add(1024)?.checked_next_multiple_of(DEFAULT_BUF_SIZE))
+        .unwrap_or(DEFAULT_BUF_SIZE);
 
     let mut initialized = 0; // Extra initialized bytes from previous loop iteration
+
+    const PROBE_SIZE: usize = 32;
+
+    fn small_probe_read<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> {
+        let mut probe = [0u8; PROBE_SIZE];
+
+        loop {
+            match r.read(&mut probe) {
+                Ok(n) => {
+                    buf.extend_from_slice(&probe[..n]);
+                    return Ok(n);
+                }
+                Err(ref e) if e.is_interrupted() => continue,
+                Err(e) => return Err(e),
+            }
+        }
+    }
+
+    // avoid inflating empty/small vecs before we have determined that there's anything to read
+    if (size_hint.is_none() || size_hint == Some(0)) && buf.capacity() - buf.len() < PROBE_SIZE {
+        let read = small_probe_read(r, buf)?;
+
+        if read == 0 {
+            return Ok(0);
+        }
+    }
+
     loop {
+        if buf.len() == buf.capacity() && buf.capacity() == start_cap {
+            // The buffer might be an exact fit. Let's read into a probe buffer
+            // and see if it returns `Ok(0)`. If so, we've avoided an
+            // unnecessary doubling of the capacity. But if not, append the
+            // probe buffer to the primary buffer and let its capacity grow.
+            let read = small_probe_read(r, buf)?;
+
+            if read == 0 {
+                return Ok(buf.len() - start_len);
+            }
+        }
+
         if buf.len() == buf.capacity() {
-            buf.reserve(32); // buf is full, need more space
+            buf.reserve(PROBE_SIZE); // buf is full, need more space
         }
 
         let mut spare = buf.spare_capacity_mut();
-        if let Some(size) = max_read_size {
-            let len = cmp::min(spare.len(), size);
-            spare = &mut spare[..len]
-        }
+        let buf_len = cmp::min(spare.len(), max_read_size);
+        spare = &mut spare[..buf_len];
         let mut read_buf: BorrowedBuf<'_> = spare.into();
 
         // SAFETY: These bytes were initialized but not filled in the previous loop
@@ -434,42 +476,44 @@ pub(crate) fn default_read_to_end<R: Read + ?Sized>(
         }
 
         let mut cursor = read_buf.unfilled();
-        match r.read_buf(cursor.reborrow()) {
-            Ok(()) => {}
-            Err(e) if e.is_interrupted() => continue,
-            Err(e) => return Err(e),
+        loop {
+            match r.read_buf(cursor.reborrow()) {
+                Ok(()) => break,
+                Err(e) if e.is_interrupted() => continue,
+                Err(e) => return Err(e),
+            }
         }
 
-        if cursor.written() == 0 {
+        let unfilled_but_initialized = cursor.init_ref().len();
+        let bytes_read = cursor.written();
+        let was_fully_initialized = read_buf.init_len() == buf_len;
+
+        if bytes_read == 0 {
             return Ok(buf.len() - start_len);
         }
 
         // store how much was initialized but not filled
-        initialized = cursor.init_ref().len();
+        initialized = unfilled_but_initialized;
 
         // SAFETY: BorrowedBuf's invariants mean this much memory is initialized.
         unsafe {
-            let new_len = read_buf.filled().len() + buf.len();
+            let new_len = bytes_read + buf.len();
             buf.set_len(new_len);
         }
 
-        if buf.len() == buf.capacity() && buf.capacity() == start_cap {
-            // The buffer might be an exact fit. Let's read into a probe buffer
-            // and see if it returns `Ok(0)`. If so, we've avoided an
-            // unnecessary doubling of the capacity. But if not, append the
-            // probe buffer to the primary buffer and let its capacity grow.
-            let mut probe = [0u8; 32];
+        // Use heuristics to determine the max read size if no initial size hint was provided
+        if size_hint.is_none() {
+            // The reader is returning short reads but it doesn't call ensure_init().
+            // In that case we no longer need to restrict read sizes to avoid
+            // initialization costs.
+            if !was_fully_initialized {
+                max_read_size = usize::MAX;
+            }
 
-            loop {
-                match r.read(&mut probe) {
-                    Ok(0) => return Ok(buf.len() - start_len),
-                    Ok(n) => {
-                        buf.extend_from_slice(&probe[..n]);
-                        break;
-                    }
-                    Err(ref e) if e.is_interrupted() => continue,
-                    Err(e) => return Err(e),
-                }
+            // we have passed a larger buffer than previously and the
+            // reader still hasn't returned a short read
+            if buf_len >= max_read_size && bytes_read == buf_len {
+                max_read_size = max_read_size.saturating_mul(2);
             }
         }
     }
@@ -555,6 +599,10 @@ where
 /// Please note that each call to [`read()`] may involve a system call, and
 /// therefore, using something that implements [`BufRead`], such as
 /// [`BufReader`], will be more efficient.
+///
+/// Repeated calls to the reader use the same cursor, so for example
+/// calling `read_to_end` twice on a [`File`] will only return the file's
+/// contents once. It's recommended to first call `rewind()` in that case.
 ///
 /// # Examples
 ///
@@ -1957,6 +2005,36 @@ pub trait Seek {
     fn stream_position(&mut self) -> Result<u64> {
         self.seek(SeekFrom::Current(0))
     }
+
+    /// Seeks relative to the current position.
+    ///
+    /// This is equivalent to `self.seek(SeekFrom::Current(offset))` but
+    /// doesn't return the new position which can allow some implementations
+    /// such as [`BufReader`] to perform more efficient seeks.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// #![feature(seek_seek_relative)]
+    /// use std::{
+    ///     io::{self, Seek},
+    ///     fs::File,
+    /// };
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let mut f = File::open("foo.txt")?;
+    ///     f.seek_relative(10)?;
+    ///     assert_eq!(f.stream_position()?, 10);
+    ///     Ok(())
+    /// }
+    /// ```
+    ///
+    /// [`BufReader`]: crate::io::BufReader
+    #[unstable(feature = "seek_seek_relative", issue = "117374")]
+    fn seek_relative(&mut self, offset: i64) -> Result<()> {
+        self.seek(SeekFrom::Current(offset))?;
+        Ok(())
+    }
 }
 
 /// Enumeration of possible methods to seek within an I/O object.
@@ -2004,6 +2082,28 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>) -> R
                     buf.extend_from_slice(available);
                     (false, available.len())
                 }
+            }
+        };
+        r.consume(used);
+        read += used;
+        if done || used == 0 {
+            return Ok(read);
+        }
+    }
+}
+
+fn skip_until<R: BufRead + ?Sized>(r: &mut R, delim: u8) -> Result<usize> {
+    let mut read = 0;
+    loop {
+        let (done, used) = {
+            let available = match r.fill_buf() {
+                Ok(n) => n,
+                Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+                Err(e) => return Err(e),
+            };
+            match memchr::memchr(delim, available) {
+                Some(i) => (true, i + 1),
+                None => (false, available.len()),
             }
         };
         r.consume(used);
@@ -2215,6 +2315,68 @@ pub trait BufRead: Read {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> Result<usize> {
         read_until(self, byte, buf)
+    }
+
+    /// Skip all bytes until the delimiter `byte` or EOF is reached.
+    ///
+    /// This function will read (and discard) bytes from the underlying stream until the
+    /// delimiter or EOF is found.
+    ///
+    /// If successful, this function will return the total number of bytes read,
+    /// including the delimiter byte.
+    ///
+    /// This is useful for efficiently skipping data such as NUL-terminated strings
+    /// in binary file formats without buffering.
+    ///
+    /// This function is blocking and should be used carefully: it is possible for
+    /// an attacker to continuously send bytes without ever sending the delimiter
+    /// or EOF.
+    ///
+    /// # Errors
+    ///
+    /// This function will ignore all instances of [`ErrorKind::Interrupted`] and
+    /// will otherwise return any errors returned by [`fill_buf`].
+    ///
+    /// If an I/O error is encountered then all bytes read so far will be
+    /// present in `buf` and its length will have been adjusted appropriately.
+    ///
+    /// [`fill_buf`]: BufRead::fill_buf
+    ///
+    /// # Examples
+    ///
+    /// [`std::io::Cursor`][`Cursor`] is a type that implements `BufRead`. In
+    /// this example, we use [`Cursor`] to read some NUL-terminated information
+    /// about Ferris from a binary string, skipping the fun fact:
+    ///
+    /// ```
+    /// #![feature(bufread_skip_until)]
+    ///
+    /// use std::io::{self, BufRead};
+    ///
+    /// let mut cursor = io::Cursor::new(b"Ferris\0Likes long walks on the beach\0Crustacean\0");
+    ///
+    /// // read name
+    /// let mut name = Vec::new();
+    /// let num_bytes = cursor.read_until(b'\0', &mut name)
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(num_bytes, 7);
+    /// assert_eq!(name, b"Ferris\0");
+    ///
+    /// // skip fun fact
+    /// let num_bytes = cursor.skip_until(b'\0')
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(num_bytes, 30);
+    ///
+    /// // read animal type
+    /// let mut animal = Vec::new();
+    /// let num_bytes = cursor.read_until(b'\0', &mut animal)
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(num_bytes, 11);
+    /// assert_eq!(animal, b"Crustacean\0");
+    /// ```
+    #[unstable(feature = "bufread_skip_until", issue = "111735")]
+    fn skip_until(&mut self, byte: u8) -> Result<usize> {
+        skip_until(self, byte)
     }
 
     /// Read all bytes until a newline (the `0xA` byte) is reached, and append

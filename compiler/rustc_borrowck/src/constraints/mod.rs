@@ -122,6 +122,7 @@ rustc_index::newtype_index! {
 }
 
 rustc_index::newtype_index! {
+    #[orderable]
     #[debug_format = "ConstraintSccIndex({})"]
     pub struct ConstraintSccIndex {}
 }

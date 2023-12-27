@@ -19,7 +19,7 @@ use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::Lock;
 #[cfg(parallel_compiler)]
 use rustc_data_structures::{outline, sync};
-use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, FatalError, StashKey};
+use rustc_errors::{DiagnosticBuilder, FatalError, StashKey};
 use rustc_span::{Span, DUMMY_SP};
 use std::cell::Cell;
 use std::collections::hash_map::Entry;
@@ -112,7 +112,7 @@ fn handle_cycle_error<Q, Qcx>(
     query: Q,
     qcx: Qcx,
     cycle_error: &CycleError,
-    mut error: DiagnosticBuilder<'_, ErrorGuaranteed>,
+    mut error: DiagnosticBuilder<'_>,
 ) -> Q::Value
 where
     Q: QueryConfig<Qcx>,
@@ -126,7 +126,7 @@ where
         }
         Fatal => {
             error.emit();
-            qcx.dep_context().sess().abort_if_errors();
+            qcx.dep_context().sess().dcx().abort_if_errors();
             unreachable!()
         }
         DelayBug => {
@@ -138,7 +138,7 @@ where
                 && let Some(span) = root.query.span
             {
                 error.stash(span, StashKey::Cycle);
-                qcx.dep_context().sess().delay_span_bug(span, "delayed cycle error")
+                qcx.dep_context().sess().dcx().span_delayed_bug(span, "delayed cycle error")
             } else {
                 error.emit()
             };
@@ -203,7 +203,7 @@ where
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct CycleError {
     /// The query and related span that uses the cycle.
     pub usage: Option<(Span, QueryStackFrame)>,
@@ -220,7 +220,7 @@ where
     C: QueryCache,
     Tcx: DepContext,
 {
-    match cache.lookup(&key) {
+    match cache.lookup(key) {
         Some((value, index)) => {
             tcx.profiler().query_cache_hit(index.into());
             tcx.dep_graph().read_index(index);
@@ -242,11 +242,8 @@ where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
-    let error = try_execute.find_cycle_in_stack(
-        qcx.try_collect_active_jobs().unwrap(),
-        &qcx.current_query_job(),
-        span,
-    );
+    let error =
+        try_execute.find_cycle_in_stack(qcx.collect_active_jobs(), &qcx.current_query_job(), span);
     (mk_cycle(query, qcx, error), None)
 }
 
@@ -424,7 +421,7 @@ where
                 // We have an inconsistency. This can happen if one of the two
                 // results is tainted by errors. In this case, delay a bug to
                 // ensure compilation is doomed.
-                qcx.dep_context().sess().delay_span_bug(
+                qcx.dep_context().sess().dcx().span_delayed_bug(
                     DUMMY_SP,
                     format!(
                         "Computed query value for {:?}({:?}) is inconsistent with fed value,\n\
@@ -502,7 +499,7 @@ where
         // The diagnostics for this query will be promoted to the current session during
         // `try_mark_green()`, so we can ignore them here.
         if let Some(ret) = qcx.start_query(job_id, false, None, || {
-            try_load_from_disk_and_cache_in_memory(query, dep_graph_data, qcx, &key, &dep_node)
+            try_load_from_disk_and_cache_in_memory(query, dep_graph_data, qcx, &key, dep_node)
         }) {
             return ret;
         }
@@ -563,7 +560,7 @@ where
     // Note this function can be called concurrently from the same query
     // We must ensure that this is handled correctly.
 
-    let (prev_dep_node_index, dep_node_index) = dep_graph_data.try_mark_green(qcx, &dep_node)?;
+    let (prev_dep_node_index, dep_node_index) = dep_graph_data.try_mark_green(qcx, dep_node)?;
 
     debug_assert!(dep_graph_data.is_index_green(prev_dep_node_index));
 
@@ -610,7 +607,7 @@ where
     // Sanity check for the logic in `ensure`: if the node is green and the result loadable,
     // we should actually be able to load it.
     debug_assert!(
-        !query.loadable_from_disk(qcx, &key, prev_dep_node_index),
+        !query.loadable_from_disk(qcx, key, prev_dep_node_index),
         "missing on-disk cache entry for loadable {dep_node:?}"
     );
 
@@ -667,7 +664,7 @@ pub(crate) fn incremental_verify_ich<Tcx, V>(
     let old_hash = dep_graph_data.prev_fingerprint_of(prev_index);
 
     if new_hash != old_hash {
-        incremental_verify_ich_failed(tcx, prev_index, &|| format_value(&result));
+        incremental_verify_ich_failed(tcx, prev_index, &|| format_value(result));
     }
 }
 
@@ -708,7 +705,7 @@ fn incremental_verify_ich_failed<Tcx>(
     let old_in_panic = INSIDE_VERIFY_PANIC.with(|in_panic| in_panic.replace(true));
 
     if old_in_panic {
-        tcx.sess().emit_err(crate::error::Reentrant);
+        tcx.sess().dcx().emit_err(crate::error::Reentrant);
     } else {
         let run_cmd = if let Some(crate_name) = &tcx.sess().opts.crate_name {
             format!("`cargo clean -p {crate_name}` or `cargo clean`")
@@ -717,7 +714,7 @@ fn incremental_verify_ich_failed<Tcx>(
         };
 
         let dep_node = tcx.dep_graph().data().unwrap().prev_node_of(prev_index);
-        tcx.sess().emit_err(crate::error::IncrementCompilation {
+        tcx.sess().dcx().emit_err(crate::error::IncrementCompilation {
             run_cmd,
             dep_node: format!("{dep_node:?}"),
         });

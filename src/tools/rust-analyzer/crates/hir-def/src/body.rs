@@ -57,7 +57,7 @@ pub struct Body {
 pub type ExprPtr = AstPtr<ast::Expr>;
 pub type ExprSource = InFile<ExprPtr>;
 
-pub type PatPtr = Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>;
+pub type PatPtr = AstPtr<Either<ast::Pat, ast::SelfParam>>;
 pub type PatSource = InFile<PatPtr>;
 
 pub type LabelPtr = AstPtr<ast::Label>;
@@ -94,6 +94,8 @@ pub struct BodySourceMap {
     /// Instead, we use id of expression (`92`) to identify the field.
     field_map_back: FxHashMap<ExprId, FieldSource>,
     pat_field_map_back: FxHashMap<PatId, PatFieldSource>,
+
+    format_args_template_map: FxHashMap<ExprId, Vec<(syntax::TextRange, Name)>>,
 
     expansions: FxHashMap<InFile<AstPtr<ast::MacroCall>>, HirFileId>,
 
@@ -356,12 +358,12 @@ impl BodySourceMap {
     }
 
     pub fn node_pat(&self, node: InFile<&ast::Pat>) -> Option<PatId> {
-        let src = node.map(|it| Either::Left(AstPtr::new(it)));
+        let src = node.map(|it| AstPtr::new(it).wrap_left());
         self.pat_map.get(&src).cloned()
     }
 
     pub fn node_self_param(&self, node: InFile<&ast::SelfParam>) -> Option<PatId> {
-        let src = node.map(|it| Either::Right(AstPtr::new(it)));
+        let src = node.map(|it| AstPtr::new(it).wrap_right());
         self.pat_map.get(&src).cloned()
     }
 
@@ -387,6 +389,14 @@ impl BodySourceMap {
         self.expr_map.get(&src).copied()
     }
 
+    pub fn implicit_format_args(
+        &self,
+        node: InFile<&ast::FormatArgsExpr>,
+    ) -> Option<&[(syntax::TextRange, Name)]> {
+        let src = node.map(AstPtr::new).map(AstPtr::upcast::<ast::Expr>);
+        self.format_args_template_map.get(self.expr_map.get(&src)?).map(std::ops::Deref::deref)
+    }
+
     /// Get a reference to the body source map's diagnostics.
     pub fn diagnostics(&self) -> &[BodyDiagnostic] {
         &self.diagnostics
@@ -403,8 +413,10 @@ impl BodySourceMap {
             field_map_back,
             pat_field_map_back,
             expansions,
+            format_args_template_map,
             diagnostics,
         } = self;
+        format_args_template_map.shrink_to_fit();
         expr_map.shrink_to_fit();
         expr_map_back.shrink_to_fit();
         pat_map.shrink_to_fit();

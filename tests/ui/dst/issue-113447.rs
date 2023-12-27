@@ -1,5 +1,3 @@
-// run-rustfix
-
 pub struct Bytes;
 
 impl Bytes {

@@ -7,6 +7,6 @@ LL | #[must_not_suspend = "You gotta use Umm's, ya know?"]
    = note: see issue #83310 <https://github.com/rust-lang/rust/issues/83310> for more information
    = help: add `#![feature(must_not_suspend)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

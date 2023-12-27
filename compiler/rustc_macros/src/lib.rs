@@ -19,13 +19,15 @@ mod current_version;
 mod diagnostics;
 mod hash_stable;
 mod lift;
-mod newtype;
 mod query;
 mod serialize;
 mod symbols;
 mod type_foldable;
 mod type_visitable;
 
+// Reads the rust version (e.g. "1.75.0") from the CFG_RELEASE env var and
+// produces a `RustcVersion` literal containing that version (e.g.
+// `RustcVersion { major: 1, minor: 75, patch: 0 }`).
 #[proc_macro]
 pub fn current_rustc_version(input: TokenStream) -> TokenStream {
     current_version::current_version(input)
@@ -41,31 +43,17 @@ pub fn symbols(input: TokenStream) -> TokenStream {
     symbols::symbols(input.into()).into()
 }
 
-/// Creates a struct type `S` that can be used as an index with
-/// `IndexVec` and so on.
-///
-/// There are two ways of interacting with these indices:
-///
-/// - The `From` impls are the preferred way. So you can do
-///   `S::from(v)` with a `usize` or `u32`. And you can convert back
-///   to an integer with `u32::from(s)`.
-///
-/// - Alternatively, you can use the methods `S::new(v)` and `s.index()`
-///   to create/return a value.
-///
-/// Internally, the index uses a u32, so the index must not exceed
-/// `u32::MAX`. You can also customize things like the `Debug` impl,
-/// what traits are derived, and so forth via the macro.
-#[proc_macro]
-#[allow_internal_unstable(step_trait, rustc_attrs, trusted_step, spec_option_partial_eq)]
-pub fn newtype_index(input: TokenStream) -> TokenStream {
-    newtype::newtype(input)
-}
-
 decl_derive!([HashStable, attributes(stable_hasher)] => hash_stable::hash_stable_derive);
 decl_derive!(
     [HashStable_Generic, attributes(stable_hasher)] =>
     hash_stable::hash_stable_generic_derive
+);
+decl_derive!(
+    [HashStable_NoContext] =>
+    /// `HashStable` implementation that has no `HashStableContext` bound and
+    /// which adds `where` bounds for `HashStable` based off of fields and not
+    /// generics. This is suitable for use in crates like `rustc_type_ir`.
+    hash_stable::hash_stable_no_context_derive
 );
 
 decl_derive!([Decodable] => serialize::decodable_derive);

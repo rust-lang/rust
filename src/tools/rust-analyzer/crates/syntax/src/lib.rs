@@ -19,7 +19,8 @@
 //! [RFC]: <https://github.com/rust-lang/rfcs/pull/2256>
 //! [Swift]: <https://github.com/apple/swift/blob/13d593df6f359d0cb2fc81cfaac273297c539455/lib/Syntax/README.md>
 
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 
 #[allow(unused)]
 macro_rules! eprintln {
@@ -74,7 +75,7 @@ pub use smol_str::SmolStr;
 #[derive(Debug, PartialEq, Eq)]
 pub struct Parse<T> {
     green: GreenNode,
-    errors: Arc<Vec<SyntaxError>>,
+    errors: Option<Arc<[SyntaxError]>>,
     _ty: PhantomData<fn() -> T>,
 }
 
@@ -86,14 +87,18 @@ impl<T> Clone for Parse<T> {
 
 impl<T> Parse<T> {
     fn new(green: GreenNode, errors: Vec<SyntaxError>) -> Parse<T> {
-        Parse { green, errors: Arc::new(errors), _ty: PhantomData }
+        Parse {
+            green,
+            errors: if errors.is_empty() { None } else { Some(errors.into()) },
+            _ty: PhantomData,
+        }
     }
 
     pub fn syntax_node(&self) -> SyntaxNode {
         SyntaxNode::new_root(self.green.clone())
     }
     pub fn errors(&self) -> &[SyntaxError] {
-        &self.errors
+        self.errors.as_deref().unwrap_or_default()
     }
 }
 
@@ -106,11 +111,10 @@ impl<T: AstNode> Parse<T> {
         T::cast(self.syntax_node()).unwrap()
     }
 
-    pub fn ok(self) -> Result<T, Arc<Vec<SyntaxError>>> {
-        if self.errors.is_empty() {
-            Ok(self.tree())
-        } else {
-            Err(self.errors)
+    pub fn ok(self) -> Result<T, Arc<[SyntaxError]>> {
+        match self.errors {
+            Some(e) => Err(e),
+            None => Ok(self.tree()),
         }
     }
 }
@@ -128,7 +132,7 @@ impl Parse<SyntaxNode> {
 impl Parse<SourceFile> {
     pub fn debug_dump(&self) -> String {
         let mut buf = format!("{:#?}", self.tree().syntax());
-        for err in self.errors.iter() {
+        for err in self.errors.as_deref().into_iter().flat_map(<[_]>::iter) {
             format_to!(buf, "error {:?}: {}\n", err.range(), err);
         }
         buf
@@ -140,13 +144,16 @@ impl Parse<SourceFile> {
 
     fn incremental_reparse(&self, indel: &Indel) -> Option<Parse<SourceFile>> {
         // FIXME: validation errors are not handled here
-        parsing::incremental_reparse(self.tree().syntax(), indel, self.errors.to_vec()).map(
-            |(green_node, errors, _reparsed_range)| Parse {
-                green: green_node,
-                errors: Arc::new(errors),
-                _ty: PhantomData,
-            },
+        parsing::incremental_reparse(
+            self.tree().syntax(),
+            indel,
+            self.errors.as_deref().unwrap_or_default().iter().cloned(),
         )
+        .map(|(green_node, errors, _reparsed_range)| Parse {
+            green: green_node,
+            errors: if errors.is_empty() { None } else { Some(errors.into()) },
+            _ty: PhantomData,
+        })
     }
 
     fn full_reparse(&self, indel: &Indel) -> Parse<SourceFile> {
@@ -167,7 +174,11 @@ impl SourceFile {
         errors.extend(validation::validate(&root));
 
         assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
-        Parse { green, errors: Arc::new(errors), _ty: PhantomData }
+        Parse {
+            green,
+            errors: if errors.is_empty() { None } else { Some(errors.into()) },
+            _ty: PhantomData,
+        }
     }
 }
 
@@ -181,29 +192,27 @@ impl ast::TokenTree {
             let kind = t.kind();
             if kind.is_trivia() {
                 was_joint = false
+            } else if kind == SyntaxKind::IDENT {
+                let token_text = t.text();
+                let contextual_kw =
+                    SyntaxKind::from_contextual_keyword(token_text).unwrap_or(SyntaxKind::IDENT);
+                parser_input.push_ident(contextual_kw);
             } else {
-                if kind == SyntaxKind::IDENT {
-                    let token_text = t.text();
-                    let contextual_kw = SyntaxKind::from_contextual_keyword(token_text)
-                        .unwrap_or(SyntaxKind::IDENT);
-                    parser_input.push_ident(contextual_kw);
-                } else {
-                    if was_joint {
+                if was_joint {
+                    parser_input.was_joint();
+                }
+                parser_input.push(kind);
+                // Tag the token as joint if it is float with a fractional part
+                // we use this jointness to inform the parser about what token split
+                // event to emit when we encounter a float literal in a field access
+                if kind == SyntaxKind::FLOAT_NUMBER {
+                    if !t.text().ends_with('.') {
                         parser_input.was_joint();
-                    }
-                    parser_input.push(kind);
-                    // Tag the token as joint if it is float with a fractional part
-                    // we use this jointness to inform the parser about what token split
-                    // event to emit when we encounter a float literal in a field access
-                    if kind == SyntaxKind::FLOAT_NUMBER {
-                        if !t.text().ends_with('.') {
-                            parser_input.was_joint();
-                        } else {
-                            was_joint = false;
-                        }
                     } else {
-                        was_joint = true;
+                        was_joint = false;
                     }
+                } else {
+                    was_joint = true;
                 }
             }
         }
@@ -276,7 +285,11 @@ impl ast::TokenTree {
 
         let (green, errors) = builder.finish_raw();
 
-        Parse { green, errors: Arc::new(errors), _ty: PhantomData }
+        Parse {
+            green,
+            errors: if errors.is_empty() { None } else { Some(errors.into()) },
+            _ty: PhantomData,
+        }
     }
 }
 

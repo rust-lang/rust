@@ -4,6 +4,8 @@
 #![feature(array_windows)]
 #![feature(ascii_char)]
 #![feature(ascii_char_variants)]
+#![feature(async_iter_from_iter)]
+#![feature(async_iterator)]
 #![feature(bigint_helper_methods)]
 #![feature(cell_update)]
 #![feature(const_align_offset)]
@@ -28,6 +30,7 @@
 #![feature(core_private_diy_float)]
 #![feature(dec2flt)]
 #![feature(div_duration)]
+#![feature(duration_abs_diff)]
 #![feature(duration_consts_float)]
 #![feature(duration_constants)]
 #![feature(exact_size_is_empty)]
@@ -54,6 +57,7 @@
 #![feature(maybe_uninit_write_slice)]
 #![feature(maybe_uninit_uninit_array_transpose)]
 #![feature(min_specialization)]
+#![feature(noop_waker)]
 #![feature(numfmt)]
 #![feature(num_midpoint)]
 #![feature(isqrt)]
@@ -67,7 +71,6 @@
 #![feature(slice_internals)]
 #![feature(slice_partition_dedup)]
 #![feature(ip)]
-#![feature(ip_in_core)]
 #![feature(iter_advance_by)]
 #![feature(iter_array_chunks)]
 #![feature(iter_collect_into)]
@@ -110,12 +113,12 @@
 #![feature(slice_flatten)]
 #![feature(error_generic_member_access)]
 #![feature(error_in_core)]
-#![feature(trait_upcasting)]
 #![feature(utf8_chunks)]
 #![feature(is_ascii_octdigit)]
 #![feature(get_many_mut)]
 #![feature(offset_of)]
 #![feature(iter_map_windows)]
+#![allow(internal_features)]
 #![deny(unsafe_op_in_unsafe_fn)]
 #![deny(fuzzy_provenance_casts)]
 
@@ -124,6 +127,7 @@ mod any;
 mod array;
 mod ascii;
 mod asserting;
+mod async_iter;
 mod atomic;
 mod bool;
 mod cell;
@@ -169,7 +173,7 @@ mod waker;
 #[allow(dead_code)] // Not used in all configurations.
 pub(crate) fn test_rng() -> rand_xorshift::XorShiftRng {
     use core::hash::{BuildHasher, Hash, Hasher};
-    let mut hasher = std::collections::hash_map::RandomState::new().build_hasher();
+    let mut hasher = std::hash::RandomState::new().build_hasher();
     core::panic::Location::caller().hash(&mut hasher);
     let hc64 = hasher.finish();
     let seed_vec = hc64.to_le_bytes().into_iter().chain(0u8..8).collect::<Vec<u8>>();

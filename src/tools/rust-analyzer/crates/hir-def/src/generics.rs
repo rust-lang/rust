@@ -21,7 +21,7 @@ use crate::{
     db::DefDatabase,
     dyn_map::{keys, DynMap},
     expander::Expander,
-    item_tree::{AttrOwner, ItemTree},
+    item_tree::ItemTree,
     lower::LowerCtx,
     nameres::{DefMap, MacroSubNs},
     src::{HasChildSource, HasSource},
@@ -222,12 +222,11 @@ impl GenericParams {
                 let module = loc.container.module(db);
                 let func_data = db.function_data(id);
 
-                // Don't create an `Expander` nor call `loc.source(db)` if not needed since this
-                // causes a reparse after the `ItemTree` has been created.
-                let mut expander = Lazy::new(|| {
-                    (module.def_map(db), Expander::new(db, loc.source(db).file_id, module))
-                });
-                for param in &func_data.params {
+                // Don't create an `Expander` if not needed since this
+                // could cause a reparse after the `ItemTree` has been created due to the spanmap.
+                let mut expander =
+                    Lazy::new(|| (module.def_map(db), Expander::new(db, loc.id.file_id(), module)));
+                for param in func_data.params.iter() {
                     generic_params.fill_implicit_impl_trait_args(db, &mut expander, param);
                 }
 
@@ -250,7 +249,10 @@ impl GenericParams {
         &mut self,
         lower_ctx: &LowerCtx<'_>,
         node: &dyn HasGenericParams,
-        add_param_attrs: impl FnMut(AttrOwner, ast::GenericParam),
+        add_param_attrs: impl FnMut(
+            Either<Idx<TypeOrConstParamData>, Idx<LifetimeParamData>>,
+            ast::GenericParam,
+        ),
     ) {
         if let Some(params) = node.generic_param_list() {
             self.fill_params(lower_ctx, params, add_param_attrs)
@@ -275,7 +277,10 @@ impl GenericParams {
         &mut self,
         lower_ctx: &LowerCtx<'_>,
         params: ast::GenericParamList,
-        mut add_param_attrs: impl FnMut(AttrOwner, ast::GenericParam),
+        mut add_param_attrs: impl FnMut(
+            Either<Idx<TypeOrConstParamData>, Idx<LifetimeParamData>>,
+            ast::GenericParam,
+        ),
     ) {
         for type_or_const_param in params.type_or_const_params() {
             match type_or_const_param {
@@ -297,7 +302,7 @@ impl GenericParams {
                         type_param.type_bound_list(),
                         Either::Left(type_ref),
                     );
-                    add_param_attrs(idx.into(), ast::GenericParam::TypeParam(type_param));
+                    add_param_attrs(Either::Left(idx), ast::GenericParam::TypeParam(type_param));
                 }
                 ast::TypeOrConstParam::Const(const_param) => {
                     let name = const_param.name().map_or_else(Name::missing, |it| it.as_name());
@@ -310,7 +315,7 @@ impl GenericParams {
                         default: ConstRef::from_const_param(lower_ctx, &const_param),
                     };
                     let idx = self.type_or_consts.alloc(param.into());
-                    add_param_attrs(idx.into(), ast::GenericParam::ConstParam(const_param));
+                    add_param_attrs(Either::Left(idx), ast::GenericParam::ConstParam(const_param));
                 }
             }
         }
@@ -325,7 +330,7 @@ impl GenericParams {
                 lifetime_param.type_bound_list(),
                 Either::Right(lifetime_ref),
             );
-            add_param_attrs(idx.into(), ast::GenericParam::LifetimeParam(lifetime_param));
+            add_param_attrs(Either::Right(idx), ast::GenericParam::LifetimeParam(lifetime_param));
         }
     }
 
@@ -433,7 +438,7 @@ impl GenericParams {
                     let ctx = expander.ctx(db);
                     let type_ref = TypeRef::from_ast(&ctx, expanded.tree());
                     self.fill_implicit_impl_trait_args(db, &mut *exp, &type_ref);
-                    exp.1.exit(db, mark);
+                    exp.1.exit(mark);
                 }
             }
         });
@@ -518,7 +523,7 @@ fn file_id_and_params_of(
             (src.file_id, src.value.generic_param_list())
         }
         // We won't be using this ID anyway
-        GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => (FileId(!0).into(), None),
+        GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => (FileId::BOGUS.into(), None),
     }
 }
 

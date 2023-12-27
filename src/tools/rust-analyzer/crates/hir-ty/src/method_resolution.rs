@@ -27,8 +27,9 @@ use crate::{
     primitive::{FloatTy, IntTy, UintTy},
     static_lifetime, to_chalk_trait_id,
     utils::all_super_traits,
-    AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, DynTyExt, ForeignDefId, InEnvironment,
-    Interner, Scalar, Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt,
+    AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, DynTyExt, ForeignDefId, Goal, Guidance,
+    InEnvironment, Interner, Scalar, Solution, Substitution, TraitEnvironment, TraitRef,
+    TraitRefExt, Ty, TyBuilder, TyExt,
 };
 
 /// This is used as a key for indexing impls.
@@ -167,12 +168,9 @@ impl TraitImpls {
     ) -> Arc<[Arc<Self>]> {
         let _p = profile::span("trait_impls_in_deps_query").detail(|| format!("{krate:?}"));
         let crate_graph = db.crate_graph();
-        // FIXME: use `Arc::from_iter` when it becomes available
-        Arc::from(
-            crate_graph
-                .transitive_deps(krate)
-                .map(|krate| db.trait_impls_in_crate(krate))
-                .collect::<Vec<_>>(),
+
+        Arc::from_iter(
+            crate_graph.transitive_deps(krate).map(|krate| db.trait_impls_in_crate(krate)),
         )
     }
 
@@ -862,6 +860,62 @@ fn is_inherent_impl_coherent(
     }
 }
 
+/// Checks whether the impl satisfies the orphan rules.
+///
+/// Given `impl<P1..=Pn> Trait<T1..=Tn> for T0`, an `impl`` is valid only if at least one of the following is true:
+/// - Trait is a local trait
+/// - All of
+///   - At least one of the types `T0..=Tn`` must be a local type. Let `Ti`` be the first such type.
+///   - No uncovered type parameters `P1..=Pn` may appear in `T0..Ti`` (excluding `Ti`)
+pub fn check_orphan_rules(db: &dyn HirDatabase, impl_: ImplId) -> bool {
+    let substs = TyBuilder::placeholder_subst(db, impl_);
+    let Some(impl_trait) = db.impl_trait(impl_) else {
+        // not a trait impl
+        return true;
+    };
+
+    let local_crate = impl_.lookup(db.upcast()).container.krate();
+    let is_local = |tgt_crate| tgt_crate == local_crate;
+
+    let trait_ref = impl_trait.substitute(Interner, &substs);
+    let trait_id = from_chalk_trait_id(trait_ref.trait_id);
+    if is_local(trait_id.module(db.upcast()).krate()) {
+        // trait to be implemented is local
+        return true;
+    }
+
+    let unwrap_fundamental = |ty: Ty| match ty.kind(Interner) {
+        TyKind::Ref(_, _, referenced) => referenced.clone(),
+        &TyKind::Adt(AdtId(hir_def::AdtId::StructId(s)), ref subs) => {
+            let struct_data = db.struct_data(s);
+            if struct_data.flags.contains(StructFlags::IS_FUNDAMENTAL) {
+                let next = subs.type_parameters(Interner).next();
+                match next {
+                    Some(ty) => ty,
+                    None => ty,
+                }
+            } else {
+                ty
+            }
+        }
+        _ => ty,
+    };
+    //   - At least one of the types `T0..=Tn`` must be a local type. Let `Ti`` be the first such type.
+    let is_not_orphan = trait_ref.substitution.type_parameters(Interner).any(|ty| {
+        match unwrap_fundamental(ty).kind(Interner) {
+            &TyKind::Adt(AdtId(id), _) => is_local(id.module(db.upcast()).krate()),
+            TyKind::Error => true,
+            TyKind::Dyn(it) => it.principal().map_or(false, |trait_ref| {
+                is_local(from_chalk_trait_id(trait_ref.trait_id).module(db.upcast()).krate())
+            }),
+            _ => false,
+        }
+    });
+    // FIXME: param coverage
+    //   - No uncovered type parameters `P1..=Pn` may appear in `T0..Ti`` (excluding `Ti`)
+    is_not_orphan
+}
+
 pub fn iterate_path_candidates(
     ty: &Canonical<Ty>,
     db: &dyn HirDatabase,
@@ -1422,26 +1476,52 @@ fn is_valid_fn_candidate(
             // We need to consider the bounds on the impl to distinguish functions of the same name
             // for a type.
             let predicates = db.generic_predicates(impl_id.into());
-            let valid = predicates
-                .iter()
-                .map(|predicate| {
-                    let (p, b) = predicate
-                        .clone()
-                        .substitute(Interner, &impl_subst)
-                        // Skipping the inner binders is ok, as we don't handle quantified where
-                        // clauses yet.
-                        .into_value_and_skipped_binders();
-                    stdx::always!(b.len(Interner) == 0);
-                    p
-                })
-                // It's ok to get ambiguity here, as we may not have enough information to prove
-                // obligations. We'll check if the user is calling the selected method properly
-                // later anyway.
-                .all(|p| table.try_obligation(p.cast(Interner)).is_some());
-            match valid {
-                true => IsValidCandidate::Yes,
-                false => IsValidCandidate::No,
+            let goals = predicates.iter().map(|p| {
+                let (p, b) = p
+                    .clone()
+                    .substitute(Interner, &impl_subst)
+                    // Skipping the inner binders is ok, as we don't handle quantified where
+                    // clauses yet.
+                    .into_value_and_skipped_binders();
+                stdx::always!(b.len(Interner) == 0);
+
+                p.cast::<Goal>(Interner)
+            });
+
+            for goal in goals.clone() {
+                let in_env = InEnvironment::new(&table.trait_env.env, goal);
+                let canonicalized = table.canonicalize(in_env);
+                let solution = table.db.trait_solve(
+                    table.trait_env.krate,
+                    table.trait_env.block,
+                    canonicalized.value.clone(),
+                );
+
+                match solution {
+                    Some(Solution::Unique(canonical_subst)) => {
+                        canonicalized.apply_solution(
+                            table,
+                            Canonical {
+                                binders: canonical_subst.binders,
+                                value: canonical_subst.value.subst,
+                            },
+                        );
+                    }
+                    Some(Solution::Ambig(Guidance::Definite(substs))) => {
+                        canonicalized.apply_solution(table, substs);
+                    }
+                    Some(_) => (),
+                    None => return IsValidCandidate::No,
+                }
             }
+
+            for goal in goals {
+                if table.try_obligation(goal).is_none() {
+                    return IsValidCandidate::No;
+                }
+            }
+
+            IsValidCandidate::Yes
         } else {
             // For `ItemContainerId::TraitId`, we check if `self_ty` implements the trait in
             // `iterate_trait_method_candidates()`.

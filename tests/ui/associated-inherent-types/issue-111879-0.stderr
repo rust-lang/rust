@@ -4,5 +4,5 @@ error: overflow evaluating associated type `Carrier<'b>::Focus<i32>`
 LL |     pub type Focus<T> = &'a mut for<'b> fn(Carrier<'b>::Focus<i32>);
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

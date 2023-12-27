@@ -1,4 +1,4 @@
 error: monomorphising SIMD type `Simd<65536>` of length greater than 32768
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -22,12 +22,18 @@ use crate::{syntax_node::RustLanguage, AstNode, SyntaxNode};
 pub type SyntaxNodePtr = rowan::ast::SyntaxNodePtr<RustLanguage>;
 
 /// Like `SyntaxNodePtr`, but remembers the type of node.
-#[derive(Debug)]
 pub struct AstPtr<N: AstNode> {
     raw: SyntaxNodePtr,
     _ty: PhantomData<fn() -> N>,
 }
 
+impl<N: AstNode + std::fmt::Debug> std::fmt::Debug for AstPtr<N> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("AstPtr").field(&self.raw).finish()
+    }
+}
+
+impl<N: AstNode> Copy for AstPtr<N> {}
 impl<N: AstNode> Clone for AstPtr<N> {
     fn clone(&self) -> AstPtr<N> {
         AstPtr { raw: self.raw.clone(), _ty: PhantomData }
@@ -73,6 +79,10 @@ impl<N: AstNode> AstPtr<N> {
         Some(AstPtr { raw: self.raw, _ty: PhantomData })
     }
 
+    pub fn kind(&self) -> parser::SyntaxKind {
+        self.raw.kind()
+    }
+
     pub fn upcast<M: AstNode>(self) -> AstPtr<M>
     where
         N: Into<M>,
@@ -83,6 +93,20 @@ impl<N: AstNode> AstPtr<N> {
     /// Like `SyntaxNodePtr::cast` but the trait bounds work out.
     pub fn try_from_raw(raw: SyntaxNodePtr) -> Option<AstPtr<N>> {
         N::can_cast(raw.kind()).then_some(AstPtr { raw, _ty: PhantomData })
+    }
+
+    pub fn wrap_left<R>(self) -> AstPtr<either::Either<N, R>>
+    where
+        either::Either<N, R>: AstNode,
+    {
+        AstPtr { raw: self.raw, _ty: PhantomData }
+    }
+
+    pub fn wrap_right<L>(self) -> AstPtr<either::Either<L, N>>
+    where
+        either::Either<L, N>: AstNode,
+    {
+        AstPtr { raw: self.raw, _ty: PhantomData }
     }
 }
 

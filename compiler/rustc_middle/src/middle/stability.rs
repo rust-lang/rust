@@ -219,11 +219,10 @@ fn late_report_deprecation(
     }
     let method_span = method_span.unwrap_or(span);
     tcx.struct_span_lint_hir(lint, hir_id, method_span, message, |diag| {
-        if let hir::Node::Expr(_) = tcx.hir().get(hir_id) {
+        if let hir::Node::Expr(_) = tcx.hir_node(hir_id) {
             let kind = tcx.def_descr(def_id);
             deprecation_suggestion(diag, kind, suggestion, method_span);
         }
-        diag
     });
 }
 
@@ -566,7 +565,7 @@ impl<'tcx> TyCtxt<'tcx> {
             |span, def_id| {
                 // The API could be uncallable for other reasons, for example when a private module
                 // was referenced.
-                self.sess.delay_span_bug(span, format!("encountered unmarked API: {def_id:?}"));
+                self.dcx().span_delayed_bug(span, format!("encountered unmarked API: {def_id:?}"));
             },
         )
     }
@@ -587,7 +586,7 @@ impl<'tcx> TyCtxt<'tcx> {
         unmarked: impl FnOnce(Span, DefId),
     ) -> bool {
         let soft_handler = |lint, span, msg: String| {
-            self.struct_span_lint_hir(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, msg, |lint| lint)
+            self.struct_span_lint_hir(lint, id.unwrap_or(hir::CRATE_HIR_ID), span, msg, |_| {})
         };
         let eval_result =
             self.eval_stability_allow_unstable(def_id, id, span, method_span, allow_unstable);

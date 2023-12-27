@@ -660,7 +660,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat<'v>) {
             walk_list!(visitor, visit_expr, lower_bound);
             walk_list!(visitor, visit_expr, upper_bound);
         }
-        PatKind::Wild => (),
+        PatKind::Never | PatKind::Wild => (),
         PatKind::Slice(prepatterns, ref slice_pattern, postpatterns) => {
             walk_list!(visitor, visit_pat, prepatterns);
             walk_list!(visitor, visit_pat, slice_pattern);
@@ -757,7 +757,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             capture_clause: _,
             fn_decl_span: _,
             fn_arg_span: _,
-            movability: _,
+            kind: _,
             constness: _,
         }) => {
             walk_list!(visitor, visit_generic_param, bound_generic_params);
@@ -874,7 +874,7 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Generi
     match param.kind {
         GenericParamKind::Lifetime { .. } => {}
         GenericParamKind::Type { ref default, .. } => walk_list!(visitor, visit_ty, default),
-        GenericParamKind::Const { ref ty, ref default } => {
+        GenericParamKind::Const { ref ty, ref default, is_host_effect: _ } => {
             visitor.visit_ty(ty);
             if let Some(ref default) = default {
                 visitor.visit_const_param_default(param.hir_id, default);
@@ -1074,10 +1074,6 @@ pub fn walk_param_bound<'v, V: Visitor<'v>>(visitor: &mut V, bound: &'v GenericB
     match *bound {
         GenericBound::Trait(ref typ, _modifier) => {
             visitor.visit_poly_trait_ref(typ);
-        }
-        GenericBound::LangItemTrait(_, _span, hir_id, args) => {
-            visitor.visit_id(hir_id);
-            visitor.visit_generic_args(args);
         }
         GenericBound::Outlives(ref lifetime) => visitor.visit_lifetime(lifetime),
     }

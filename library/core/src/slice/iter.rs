@@ -10,7 +10,7 @@ use crate::intrinsics::assume;
 use crate::iter::{
     FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce, UncheckedIterator,
 };
-use crate::marker::{PhantomData, Send, Sized, Sync};
+use crate::marker::PhantomData;
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZeroUsize;
 use crate::ptr::{self, invalid, invalid_mut, NonNull};
@@ -458,8 +458,12 @@ where
         match self.v.iter().position(|x| (self.pred)(x)) {
             None => self.finish(),
             Some(idx) => {
-                let ret = Some(&self.v[..idx]);
-                self.v = &self.v[idx + 1..];
+                let (left, right) =
+                    // SAFETY: if v.iter().position returns Some(idx), that
+                    // idx is definitely a valid index for v
+                    unsafe { (self.v.get_unchecked(..idx), self.v.get_unchecked(idx + 1..)) };
+                let ret = Some(left);
+                self.v = right;
                 ret
             }
         }
@@ -491,8 +495,12 @@ where
         match self.v.iter().rposition(|x| (self.pred)(x)) {
             None => self.finish(),
             Some(idx) => {
-                let ret = Some(&self.v[idx + 1..]);
-                self.v = &self.v[..idx];
+                let (left, right) =
+                    // SAFETY: if v.iter().rposition returns Some(idx), then
+                    // idx is definitely a valid index for v
+                    unsafe { (self.v.get_unchecked(..idx), self.v.get_unchecked(idx + 1..)) };
+                let ret = Some(right);
+                self.v = left;
                 ret
             }
         }

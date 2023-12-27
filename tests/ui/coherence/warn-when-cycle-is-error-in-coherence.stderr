@@ -22,7 +22,7 @@ note: the lint level is defined here
 LL | #![deny(coinductive_overlap_in_coherence)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 Future incompatibility report: Future breakage diagnostic:
 error: implementations of `PartialEq<Interval<_>>` for `Interval<_>` will conflict in the future

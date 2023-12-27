@@ -8,7 +8,6 @@
 //! this via an attribute on the crate like `#![recursion_limit="22"]`. This pass
 //! just peeks and looks for that attribute.
 
-use crate::bug;
 use crate::error::LimitInvalid;
 use crate::query::Providers;
 use rustc_ast::Attribute;
@@ -65,7 +64,7 @@ fn get_limit(krate_attrs: &[Attribute], sess: &Session, name: Symbol, default: u
                         IntErrorKind::Zero => bug!("zero is a valid `limit`"),
                         kind => bug!("unimplemented IntErrorKind variant: {:?}", kind),
                     };
-                    sess.emit_err(LimitInvalid { span: attr.span, value_span, error_str });
+                    sess.dcx().emit_err(LimitInvalid { span: attr.span, value_span, error_str });
                 }
             }
         }

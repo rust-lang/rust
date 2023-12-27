@@ -7,7 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind, Node, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -76,7 +76,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
             // Also ensures the const is nonzero since zero can't be a divisor
             && const1 == const2 && const2 == const3
             && let Some(hir_id) = path_to_local(expr3)
-            && let Some(Node::Pat(_)) = cx.tcx.hir().find(hir_id)
+            && let Some(Node::Pat(_)) = cx.tcx.opt_hir_node(hir_id)
         {
             // Apply only to params or locals with annotated types
             match cx.tcx.hir().find_parent(hir_id) {

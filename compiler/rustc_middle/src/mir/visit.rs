@@ -63,9 +63,7 @@
 //! `is_cleanup` above.
 
 use crate::mir::*;
-use crate::ty::GenericArgsRef;
-use crate::ty::{self, CanonicalUserTypeAnnotation, Ty};
-use rustc_span::Span;
+use crate::ty::CanonicalUserTypeAnnotation;
 
 macro_rules! make_mir_visitor {
     ($visitor_trait_name:ident, $($mutability:ident)?) => {
@@ -649,8 +647,8 @@ macro_rules! make_mir_visitor {
                             BorrowKind::Shared => PlaceContext::NonMutatingUse(
                                 NonMutatingUseContext::SharedBorrow
                             ),
-                            BorrowKind::Shallow => PlaceContext::NonMutatingUse(
-                                NonMutatingUseContext::ShallowBorrow
+                            BorrowKind::Fake => PlaceContext::NonMutatingUse(
+                                NonMutatingUseContext::FakeBorrow
                             ),
                             BorrowKind::Mut { .. } =>
                                 PlaceContext::MutatingUse(MutatingUseContext::Borrow),
@@ -1261,8 +1259,8 @@ pub enum NonMutatingUseContext {
     Move,
     /// Shared borrow.
     SharedBorrow,
-    /// Shallow borrow.
-    ShallowBorrow,
+    /// A fake borrow.
+    FakeBorrow,
     /// AddressOf for *const pointer.
     AddressOf,
     /// PlaceMention statement.
@@ -1341,7 +1339,7 @@ impl PlaceContext {
         matches!(
             self,
             PlaceContext::NonMutatingUse(
-                NonMutatingUseContext::SharedBorrow | NonMutatingUseContext::ShallowBorrow
+                NonMutatingUseContext::SharedBorrow | NonMutatingUseContext::FakeBorrow
             ) | PlaceContext::MutatingUse(MutatingUseContext::Borrow)
         )
     }

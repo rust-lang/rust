@@ -51,7 +51,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
         {
             sig.decl.inputs.len() + sig.decl.implicit_self.has_implicit_self() as usize
         } else {
-            tcx.sess.abort_if_errors();
+            tcx.dcx().abort_if_errors();
             unreachable!()
         };
 
@@ -114,12 +114,11 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::EarlyBinder<ty::Binder<'_, ty::FnSig<'_>>
 }
 
 impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>> {
-    fn from_cycle_error(_tcx: TyCtxt<'tcx>, _cycle: &[QueryInfo], _guar: ErrorGuaranteed) -> Self {
+    fn from_cycle_error(_tcx: TyCtxt<'tcx>, _cycle: &[QueryInfo], guar: ErrorGuaranteed) -> Self {
         // tcx.arena.alloc cannot be used because we are not allowed to use &'tcx LayoutError under
         // min_specialization. Since this is an error path anyways, leaking doesn't matter (and really,
         // tcx.arena.alloc is pretty much equal to leaking).
-        // FIXME: `Cycle` should carry the ErrorGuaranteed
-        Err(Box::leak(Box::new(ty::layout::LayoutError::Cycle)))
+        Err(Box::leak(Box::new(ty::layout::LayoutError::Cycle(guar))))
     }
 }
 
@@ -155,8 +154,9 @@ pub fn recursive_type_error(
         let (_, field_id) = item_and_field_ids[i];
         let (next_item_id, _) = item_and_field_ids[(i + 1) % cycle_len];
         // Find the span(s) that contain the next item in the cycle
-        let hir_id = tcx.hir().local_def_id_to_hir_id(field_id);
-        let hir::Node::Field(field) = tcx.hir().get(hir_id) else { bug!("expected field") };
+        let hir::Node::Field(field) = tcx.hir_node_by_def_id(field_id) else {
+            bug!("expected field")
+        };
         let mut found = Vec::new();
         find_item_ty_spans(tcx, field.ty, next_item_id, &mut found, representable_ids);
 
@@ -191,7 +191,7 @@ pub fn recursive_type_error(
         s
     };
     let mut err = struct_span_err!(
-        tcx.sess,
+        tcx.dcx(),
         err_span,
         E0072,
         "recursive type{} {} {} infinite size",

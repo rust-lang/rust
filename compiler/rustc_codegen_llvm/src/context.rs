@@ -8,7 +8,6 @@ use crate::llvm_util;
 use crate::type_::Type;
 use crate::value::Value;
 
-use cstr::cstr;
 use rustc_codegen_ssa::base::{wants_msvc_seh, wants_wasm_eh};
 use rustc_codegen_ssa::errors as ssa_errors;
 use rustc_codegen_ssa::traits::*;
@@ -120,6 +119,7 @@ fn to_llvm_tls_model(tls_model: TlsModel) -> llvm::ThreadLocalMode {
         TlsModel::LocalDynamic => llvm::ThreadLocalMode::LocalDynamic,
         TlsModel::InitialExec => llvm::ThreadLocalMode::InitialExec,
         TlsModel::LocalExec => llvm::ThreadLocalMode::LocalExec,
+        TlsModel::Emulated => llvm::ThreadLocalMode::GeneralDynamic,
     }
 }
 
@@ -134,18 +134,6 @@ pub unsafe fn create_module<'ll>(
 
     let mut target_data_layout = sess.target.data_layout.to_string();
     let llvm_version = llvm_util::get_version();
-    if llvm_version < (16, 0, 0) {
-        if sess.target.arch == "s390x" {
-            // LLVM 16 data layout changed to always set 64-bit vector alignment,
-            // which is conditional in earlier LLVM versions.
-            // https://reviews.llvm.org/D131158 for the discussion.
-            target_data_layout = target_data_layout.replace("-v128:64", "");
-        } else if sess.target.arch == "riscv64" {
-            // LLVM 16 introduced this change so as to produce more efficient code.
-            // See https://reviews.llvm.org/D116735 for the discussion.
-            target_data_layout = target_data_layout.replace("-n32:64-", "-n64-");
-        }
-    }
     if llvm_version < (17, 0, 0) {
         if sess.target.arch.starts_with("powerpc") {
             // LLVM 17 specifies function pointer alignment for ppc:
@@ -226,13 +214,13 @@ pub unsafe fn create_module<'ll>(
     // If skipping the PLT is enabled, we need to add some module metadata
     // to ensure intrinsic calls don't use it.
     if !sess.needs_plt() {
-        let avoid_plt = "RtLibUseGOT\0".as_ptr().cast();
+        let avoid_plt = c"RtLibUseGOT".as_ptr().cast();
         llvm::LLVMRustAddModuleFlag(llmod, llvm::LLVMModFlagBehavior::Warning, avoid_plt, 1);
     }
 
     // Enable canonical jump tables if CFI is enabled. (See https://reviews.llvm.org/D65629.)
     if sess.is_sanitizer_cfi_canonical_jump_tables_enabled() && sess.is_sanitizer_cfi_enabled() {
-        let canonical_jump_tables = "CFI Canonical Jump Tables\0".as_ptr().cast();
+        let canonical_jump_tables = c"CFI Canonical Jump Tables".as_ptr().cast();
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
@@ -243,7 +231,7 @@ pub unsafe fn create_module<'ll>(
 
     // Enable LTO unit splitting if specified or if CFI is enabled. (See https://reviews.llvm.org/D53891.)
     if sess.is_split_lto_unit_enabled() || sess.is_sanitizer_cfi_enabled() {
-        let enable_split_lto_unit = "EnableSplitLTOUnit\0".as_ptr().cast();
+        let enable_split_lto_unit = c"EnableSplitLTOUnit".as_ptr().cast();
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
@@ -254,7 +242,7 @@ pub unsafe fn create_module<'ll>(
 
     // Add "kcfi" module flag if KCFI is enabled. (See https://reviews.llvm.org/D119296.)
     if sess.is_sanitizer_kcfi_enabled() {
-        let kcfi = "kcfi\0".as_ptr().cast();
+        let kcfi = c"kcfi".as_ptr().cast();
         llvm::LLVMRustAddModuleFlag(llmod, llvm::LLVMModFlagBehavior::Override, kcfi, 1);
     }
 
@@ -267,7 +255,7 @@ pub unsafe fn create_module<'ll>(
                 llvm::LLVMRustAddModuleFlag(
                     llmod,
                     llvm::LLVMModFlagBehavior::Warning,
-                    "cfguard\0".as_ptr() as *const _,
+                    c"cfguard".as_ptr() as *const _,
                     1,
                 )
             }
@@ -276,7 +264,7 @@ pub unsafe fn create_module<'ll>(
                 llvm::LLVMRustAddModuleFlag(
                     llmod,
                     llvm::LLVMModFlagBehavior::Warning,
-                    "cfguard\0".as_ptr() as *const _,
+                    c"cfguard".as_ptr() as *const _,
                     2,
                 )
             }
@@ -294,26 +282,26 @@ pub unsafe fn create_module<'ll>(
             llvm::LLVMRustAddModuleFlag(
                 llmod,
                 behavior,
-                "branch-target-enforcement\0".as_ptr().cast(),
+                c"branch-target-enforcement".as_ptr().cast(),
                 bti.into(),
             );
             llvm::LLVMRustAddModuleFlag(
                 llmod,
                 behavior,
-                "sign-return-address\0".as_ptr().cast(),
+                c"sign-return-address".as_ptr().cast(),
                 pac_ret.is_some().into(),
             );
             let pac_opts = pac_ret.unwrap_or(PacRet { leaf: false, key: PAuthKey::A });
             llvm::LLVMRustAddModuleFlag(
                 llmod,
                 behavior,
-                "sign-return-address-all\0".as_ptr().cast(),
+                c"sign-return-address-all".as_ptr().cast(),
                 pac_opts.leaf.into(),
             );
             llvm::LLVMRustAddModuleFlag(
                 llmod,
                 behavior,
-                "sign-return-address-with-bkey\0".as_ptr().cast(),
+                c"sign-return-address-with-bkey".as_ptr().cast(),
                 u32::from(pac_opts.key == PAuthKey::B),
             );
         } else {
@@ -329,7 +317,7 @@ pub unsafe fn create_module<'ll>(
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
-            "cf-protection-branch\0".as_ptr().cast(),
+            c"cf-protection-branch".as_ptr().cast(),
             1,
         )
     }
@@ -337,7 +325,7 @@ pub unsafe fn create_module<'ll>(
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Override,
-            "cf-protection-return\0".as_ptr().cast(),
+            c"cf-protection-return".as_ptr().cast(),
             1,
         )
     }
@@ -346,9 +334,19 @@ pub unsafe fn create_module<'ll>(
         llvm::LLVMRustAddModuleFlag(
             llmod,
             llvm::LLVMModFlagBehavior::Error,
-            "Virtual Function Elim\0".as_ptr().cast(),
+            c"Virtual Function Elim".as_ptr().cast(),
             1,
         );
+    }
+
+    // Set module flag to enable Windows EHCont Guard (/guard:ehcont).
+    if sess.opts.unstable_opts.ehcont_guard {
+        llvm::LLVMRustAddModuleFlag(
+            llmod,
+            llvm::LLVMModFlagBehavior::Warning,
+            c"ehcontguard".as_ptr() as *const _,
+            1,
+        )
     }
 
     // Insert `llvm.ident` metadata.
@@ -364,9 +362,27 @@ pub unsafe fn create_module<'ll>(
     );
     llvm::LLVMAddNamedMetadataOperand(
         llmod,
-        cstr!("llvm.ident").as_ptr(),
+        c"llvm.ident".as_ptr(),
         llvm::LLVMMDNodeInContext(llcx, &name_metadata, 1),
     );
+
+    // Add module flags specified via -Z llvm_module_flag
+    for (key, value, behavior) in &sess.opts.unstable_opts.llvm_module_flag {
+        let key = format!("{key}\0");
+        let behavior = match behavior.as_str() {
+            "error" => llvm::LLVMModFlagBehavior::Error,
+            "warning" => llvm::LLVMModFlagBehavior::Warning,
+            "require" => llvm::LLVMModFlagBehavior::Require,
+            "override" => llvm::LLVMModFlagBehavior::Override,
+            "append" => llvm::LLVMModFlagBehavior::Append,
+            "appendunique" => llvm::LLVMModFlagBehavior::AppendUnique,
+            "max" => llvm::LLVMModFlagBehavior::Max,
+            "min" => llvm::LLVMModFlagBehavior::Min,
+            // We already checked this during option parsing
+            _ => unreachable!(),
+        };
+        llvm::LLVMRustAddModuleFlag(llmod, behavior, key.as_ptr().cast(), *value)
+    }
 
     llmod
 }
@@ -494,14 +510,13 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     }
 
     pub(crate) fn create_used_variable_impl(&self, name: &'static CStr, values: &[&'ll Value]) {
-        let section = cstr!("llvm.metadata");
         let array = self.const_array(self.type_ptr(), values);
 
         unsafe {
             let g = llvm::LLVMAddGlobal(self.llmod, self.val_ty(array), name.as_ptr());
             llvm::LLVMSetInitializer(g, array);
             llvm::LLVMRustSetLinkage(g, llvm::Linkage::AppendingLinkage);
-            llvm::LLVMSetSection(g, section.as_ptr());
+            llvm::LLVMSetSection(g, c"llvm.metadata".as_ptr());
         }
     }
 }
@@ -999,9 +1014,9 @@ impl<'tcx> LayoutOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
     #[inline]
     fn handle_layout_err(&self, err: LayoutError<'tcx>, span: Span, ty: Ty<'tcx>) -> ! {
         if let LayoutError::SizeOverflow(_) | LayoutError::ReferencesError(_) = err {
-            self.sess().emit_fatal(Spanned { span, node: err.into_diagnostic() })
+            self.tcx.dcx().emit_fatal(Spanned { span, node: err.into_diagnostic() })
         } else {
-            self.tcx.sess.emit_fatal(ssa_errors::FailedToGetLayout { span, ty, err })
+            self.tcx.dcx().emit_fatal(ssa_errors::FailedToGetLayout { span, ty, err })
         }
     }
 }
@@ -1017,7 +1032,7 @@ impl<'tcx> FnAbiOfHelpers<'tcx> for CodegenCx<'_, 'tcx> {
         fn_abi_request: FnAbiRequest<'tcx>,
     ) -> ! {
         if let FnAbiError::Layout(LayoutError::SizeOverflow(_)) = err {
-            self.sess().emit_fatal(Spanned { span, node: err })
+            self.tcx.dcx().emit_fatal(Spanned { span, node: err })
         } else {
             match fn_abi_request {
                 FnAbiRequest::OfFnPtr { sig, extra_args } => {

@@ -790,9 +790,9 @@ pub struct VClockAlloc {
     alloc_ranges: RefCell<RangeMap<MemoryCellClocks>>,
 }
 
-impl VisitTags for VClockAlloc {
-    fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {
-        // No tags here.
+impl VisitProvenance for VClockAlloc {
+    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
+        // No tags or allocIds here.
     }
 }
 
@@ -1404,8 +1404,8 @@ pub struct GlobalState {
     pub track_outdated_loads: bool,
 }
 
-impl VisitTags for GlobalState {
-    fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {
+impl VisitProvenance for GlobalState {
+    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
         // We don't have any tags.
     }
 }

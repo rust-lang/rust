@@ -6,6 +6,6 @@ LL |     let _: &dyn I32Iterator<Item = u32> = &vec![42].into_iter();
    |
    = note: required for the cast from `&std::vec::IntoIter<u32>` to `&dyn Iterator<Item = u32, Item = i32>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0271`.

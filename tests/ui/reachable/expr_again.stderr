@@ -13,5 +13,5 @@ LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
    = note: this error originates in the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -7,14 +7,13 @@ use std::fmt::Write;
 
 use crate::query::Providers;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
-use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, LangItem};
+use rustc_hir as hir;
+use rustc_hir::def_id::LocalDefId;
 use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
 
-use super::{Ty, TyCtxt};
+use super::TyCtxt;
 
 use self::BorrowKind::*;
 
@@ -72,72 +71,6 @@ pub type RootVariableMinCaptureList<'tcx> = FxIndexMap<hir::HirId, MinCaptureLis
 
 /// Part of `MinCaptureInformationMap`; List of `CapturePlace`s.
 pub type MinCaptureList<'tcx> = Vec<CapturedPlace<'tcx>>;
-
-/// Represents the various closure traits in the language. This
-/// will determine the type of the environment (`self`, in the
-/// desugaring) argument that the closure expects.
-///
-/// You can get the environment type of a closure using
-/// `tcx.closure_env_ty()`.
-#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable)]
-pub enum ClosureKind {
-    // Warning: Ordering is significant here! The ordering is chosen
-    // because the trait Fn is a subtrait of FnMut and so in turn, and
-    // hence we order it so that Fn < FnMut < FnOnce.
-    Fn,
-    FnMut,
-    FnOnce,
-}
-
-impl ClosureKind {
-    /// This is the initial value used when doing upvar inference.
-    pub const LATTICE_BOTTOM: ClosureKind = ClosureKind::Fn;
-
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            ClosureKind::Fn => "Fn",
-            ClosureKind::FnMut => "FnMut",
-            ClosureKind::FnOnce => "FnOnce",
-        }
-    }
-
-    /// Returns `true` if a type that impls this closure kind
-    /// must also implement `other`.
-    pub fn extends(self, other: ty::ClosureKind) -> bool {
-        self <= other
-    }
-
-    /// Converts `self` to a [`DefId`] of the corresponding trait.
-    ///
-    /// Note: the inverse of this function is [`TyCtxt::fn_trait_kind_from_def_id`].
-    pub fn to_def_id(&self, tcx: TyCtxt<'_>) -> DefId {
-        tcx.require_lang_item(
-            match self {
-                ClosureKind::Fn => LangItem::Fn,
-                ClosureKind::FnMut => LangItem::FnMut,
-                ClosureKind::FnOnce => LangItem::FnOnce,
-            },
-            None,
-        )
-    }
-
-    /// Returns the representative scalar type for this closure kind.
-    /// See `Ty::to_opt_closure_kind` for more details.
-    pub fn to_ty<'tcx>(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
-        match self {
-            ClosureKind::Fn => tcx.types.i8,
-            ClosureKind::FnMut => tcx.types.i16,
-            ClosureKind::FnOnce => tcx.types.i32,
-        }
-    }
-}
-
-impl IntoDiagnosticArg for ClosureKind {
-    fn into_diagnostic_arg(self) -> DiagnosticArgValue<'static> {
-        DiagnosticArgValue::Str(self.as_str().into())
-    }
-}
 
 /// A composite describing a `Place` that is captured by a closure.
 #[derive(PartialEq, Clone, Debug, TyEncodable, TyDecodable, HashStable)]
@@ -247,6 +180,13 @@ impl<'tcx> CapturedPlace<'tcx> {
                 .span
         }
     }
+
+    pub fn is_by_ref(&self) -> bool {
+        match self.info.capture_kind {
+            ty::UpvarCapture::ByValue => false,
+            ty::UpvarCapture::ByRef(..) => true,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, HashStable)]
@@ -262,7 +202,7 @@ fn closure_typeinfo<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ClosureTypeInfo
     let user_provided_sig = typeck_results.user_provided_sigs[&def];
     let captures = typeck_results.closure_min_captures_flattened(def);
     let captures = tcx.arena.alloc_from_iter(captures);
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def);
+    let hir_id = tcx.local_def_id_to_hir_id(def);
     let kind_origin = typeck_results.closure_kind_origins().get(hir_id);
     ClosureTypeInfo { user_provided_sig, captures, kind_origin }
 }

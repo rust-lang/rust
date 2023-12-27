@@ -184,7 +184,7 @@ pub(super) fn compute_locs(matcher: &[TokenTree]) -> Vec<MatcherLoc> {
                 TokenTree::Token(token) => {
                     locs.push(MatcherLoc::Token { token: token.clone() });
                 }
-                TokenTree::Delimited(span, delimited) => {
+                TokenTree::Delimited(span, _, delimited) => {
                     let open_token = Token::new(token::OpenDelim(delimited.delim), span.open);
                     let close_token = Token::new(token::CloseDelim(delimited.delim), span.close);
 
@@ -335,7 +335,7 @@ pub(super) fn count_metavar_decls(matcher: &[TokenTree]) -> usize {
         .map(|tt| match tt {
             TokenTree::MetaVarDecl(..) => 1,
             TokenTree::Sequence(_, seq) => seq.num_captures,
-            TokenTree::Delimited(_, delim) => count_metavar_decls(&delim.tts),
+            TokenTree::Delimited(.., delim) => count_metavar_decls(&delim.tts),
             TokenTree::Token(..) => 0,
             TokenTree::MetaVar(..) | TokenTree::MetaVarExpr(..) => unreachable!(),
         })
@@ -397,7 +397,7 @@ pub(crate) enum NamedMatch {
     MatchedTokenTree(rustc_ast::tokenstream::TokenTree),
 
     // A metavar match of any type other than `tt`.
-    MatchedNonterminal(Lrc<Nonterminal>),
+    MatchedNonterminal(Lrc<(Nonterminal, rustc_span::Span)>),
 }
 
 /// Performs a token equality check, ignoring syntax context (that is, an unhygienic comparison)
@@ -483,7 +483,7 @@ impl TtParser {
                     if matches!(t, Token { kind: DocComment(..), .. }) {
                         mp.idx += 1;
                         self.cur_mps.push(mp);
-                    } else if token_name_eq(&t, token) {
+                    } else if token_name_eq(t, token) {
                         mp.idx += 1;
                         self.next_mps.push(mp);
                     }
@@ -692,7 +692,7 @@ impl TtParser {
                             Ok(nt) => nt,
                         };
                         let m = match nt {
-                            ParseNtResult::Nt(nt) => MatchedNonterminal(Lrc::new(nt)),
+                            ParseNtResult::Nt(nt) => MatchedNonterminal(Lrc::new((nt, span))),
                             ParseNtResult::Tt(tt) => MatchedTokenTree(tt),
                         };
                         mp.push_match(next_metavar, seq_depth, m);

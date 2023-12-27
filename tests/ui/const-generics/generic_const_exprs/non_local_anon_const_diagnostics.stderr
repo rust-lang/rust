@@ -7,6 +7,6 @@ LL |     let _: anon_const_non_local::Foo<2> = anon_const_non_local::foo::<M>();
    = note: expected constant `2`
               found constant `anon_const_non_local::::foo::{constant#0}`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

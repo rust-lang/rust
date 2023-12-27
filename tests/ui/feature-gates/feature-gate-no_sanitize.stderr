@@ -7,6 +7,6 @@ LL | #[no_sanitize(address)]
    = note: see issue #39699 <https://github.com/rust-lang/rust/issues/39699> for more information
    = help: add `#![feature(no_sanitize)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

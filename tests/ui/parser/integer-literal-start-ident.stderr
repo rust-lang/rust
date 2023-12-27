@@ -10,5 +10,5 @@ help: identifiers cannot start with a number
 LL | fn 1main() {}
    |    ^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

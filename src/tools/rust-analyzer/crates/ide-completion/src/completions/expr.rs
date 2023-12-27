@@ -175,6 +175,7 @@ pub(crate) fn complete_expr_path(
                                 ctx.db,
                                 hir::ModuleDef::from(strukt),
                                 ctx.config.prefer_no_std,
+                                ctx.config.prefer_prelude,
                             )
                             .filter(|it| it.len() > 1);
 
@@ -197,6 +198,7 @@ pub(crate) fn complete_expr_path(
                                 ctx.db,
                                 hir::ModuleDef::from(un),
                                 ctx.config.prefer_no_std,
+                                ctx.config.prefer_prelude,
                             )
                             .filter(|it| it.len() > 1);
 

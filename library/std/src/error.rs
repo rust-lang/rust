@@ -12,14 +12,6 @@ pub use core::error::Error;
 #[unstable(feature = "error_generic_member_access", issue = "99301")]
 pub use core::error::{request_ref, request_value, Request};
 
-mod private {
-    // This is a hack to prevent `type_id` from being overridden by `Error`
-    // implementations, since that can enable unsound downcasting.
-    #[unstable(feature = "error_type_id", issue = "60784")]
-    #[derive(Debug)]
-    pub struct Internal;
-}
-
 /// An error reporter that prints an error and its sources.
 ///
 /// Report also exposes configuration options for formatting the error sources, either entirely on a

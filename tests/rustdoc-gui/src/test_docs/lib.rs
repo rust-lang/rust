@@ -85,6 +85,9 @@ impl AsRef<str> for Foo {
     }
 }
 
+/// <div id="doc-warning-0" class="warning">I have warnings!</div>
+pub struct WarningStruct;
+
 /// Just a normal enum.
 ///
 /// # title!
@@ -591,5 +594,23 @@ pub mod foreign_impl_order {
     }
     impl Foo<3> for [u8; 3] {
         fn f(&mut self, fg: [u8; 3]) {}
+    }
+}
+
+pub mod private {
+    pub struct Tuple(u32, u8);
+    pub struct Struct {
+        a: u8,
+    }
+
+    pub union Union {
+        a: u8,
+        b: u16,
+    }
+
+    pub enum Enum {
+        A,
+        #[doc(hidden)]
+        B,
     }
 }

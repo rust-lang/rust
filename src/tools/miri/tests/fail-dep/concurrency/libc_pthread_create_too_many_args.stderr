@@ -10,5 +10,5 @@ LL |     panic!()
    = note: inside `thread_start` at RUSTLIB/core/src/panic.rs:LL:CC
    = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -185,27 +185,29 @@ impl<'tcx> ConstToPat<'tcx> {
                     let e = if let ty::Adt(def, ..) = non_sm_ty.kind() {
                         if def.is_union() {
                             let err = UnionPattern { span: self.span };
-                            self.tcx().sess.emit_err(err)
+                            self.tcx().dcx().emit_err(err)
                         } else {
                             // fatal avoids ICE from resolution of nonexistent method (rare case).
                             self.tcx()
-                                .sess
+                                .dcx()
                                 .emit_fatal(TypeNotStructural { span: self.span, non_sm_ty })
                         }
                     } else {
                         let err = InvalidPattern { span: self.span, non_sm_ty };
-                        self.tcx().sess.emit_err(err)
+                        self.tcx().dcx().emit_err(err)
                     };
                     // All branches above emitted an error. Don't print any more lints.
                     // We errored. Signal that in the pattern, so that follow up errors can be silenced.
                     let kind = PatKind::Error(e);
                     return Box::new(Pat { span: self.span, ty: cv.ty(), kind });
-                } else if let ty::Adt(..) = cv.ty().kind() && matches!(cv, mir::Const::Val(..)) {
+                } else if let ty::Adt(..) = cv.ty().kind()
+                    && matches!(cv, mir::Const::Val(..))
+                {
                     // This branch is only entered when the current `cv` is `mir::Const::Val`.
                     // This is because `mir::Const::ty` has already been handled by `Self::recur`
                     // and the invalid types may be ignored.
                     let err = TypeNotStructural { span: self.span, non_sm_ty };
-                    let e = self.tcx().sess.emit_err(err);
+                    let e = self.tcx().dcx().emit_err(err);
                     let kind = PatKind::Error(e);
                     return Box::new(Pat { span: self.span, ty: cv.ty(), kind });
                 } else if !self.saw_const_match_lint.get() {
@@ -256,18 +258,26 @@ impl<'tcx> ConstToPat<'tcx> {
 
     #[instrument(level = "trace", skip(self), ret)]
     fn type_has_partial_eq_impl(&self, ty: Ty<'tcx>) -> bool {
+        let tcx = self.tcx();
         // double-check there even *is* a semantic `PartialEq` to dispatch to.
         //
         // (If there isn't, then we can safely issue a hard
         // error, because that's never worked, due to compiler
         // using `PartialEq::eq` in this scenario in the past.)
-        let partial_eq_trait_id =
-            self.tcx().require_lang_item(hir::LangItem::PartialEq, Some(self.span));
+        let partial_eq_trait_id = tcx.require_lang_item(hir::LangItem::PartialEq, Some(self.span));
         let partial_eq_obligation = Obligation::new(
-            self.tcx(),
+            tcx,
             ObligationCause::dummy(),
             self.param_env,
-            ty::TraitRef::new(self.tcx(), partial_eq_trait_id, [ty, ty]),
+            ty::TraitRef::new(
+                tcx,
+                partial_eq_trait_id,
+                tcx.with_opt_host_effect_param(
+                    tcx.hir().enclosing_body_owner(self.id),
+                    partial_eq_trait_id,
+                    [ty, ty],
+                ),
+            ),
         );
 
         // This *could* accept a type that isn't actually `PartialEq`, because region bounds get
@@ -342,7 +352,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 return Err(FallbackToOpaqueConst);
             }
             ty::FnDef(..) => {
-                let e = tcx.sess.emit_err(InvalidPattern { span, non_sm_ty: ty });
+                let e = tcx.dcx().emit_err(InvalidPattern { span, non_sm_ty: ty });
                 self.saw_const_match_error.set(Some(e));
                 // We errored. Signal that in the pattern, so that follow up errors can be silenced.
                 PatKind::Error(e)
@@ -350,7 +360,7 @@ impl<'tcx> ConstToPat<'tcx> {
             ty::Adt(adt_def, _) if !self.type_marked_structural(ty) => {
                 debug!("adt_def {:?} has !type_marked_structural for cv.ty: {:?}", adt_def, ty,);
                 let err = TypeNotStructural { span, non_sm_ty: ty };
-                let e = tcx.sess.emit_err(err);
+                let e = tcx.dcx().emit_err(err);
                 self.saw_const_match_error.set(Some(e));
                 // We errored. Signal that in the pattern, so that follow up errors can be silenced.
                 PatKind::Error(e)
@@ -439,7 +449,7 @@ impl<'tcx> ConstToPat<'tcx> {
                             PatKind::Error(e)
                         } else {
                             let err = TypeNotStructural { span, non_sm_ty: *pointee_ty };
-                            let e = tcx.sess.emit_err(err);
+                            let e = tcx.dcx().emit_err(err);
                             self.saw_const_match_error.set(Some(e));
                             // We errored. Signal that in the pattern, so that follow up errors can be silenced.
                             PatKind::Error(e)
@@ -452,7 +462,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 _ => {
                     if !pointee_ty.is_sized(tcx, param_env) && !pointee_ty.is_slice() {
                         let err = UnsizedPattern { span, non_sm_ty: *pointee_ty };
-                        let e = tcx.sess.emit_err(err);
+                        let e = tcx.dcx().emit_err(err);
                         // We errored. Signal that in the pattern, so that follow up errors can be silenced.
                         PatKind::Error(e)
                     } else {
@@ -482,12 +492,13 @@ impl<'tcx> ConstToPat<'tcx> {
                 PatKind::Constant { value: mir::Const::Ty(ty::Const::new_value(tcx, cv, ty)) }
             }
             ty::FnPtr(..) => {
-                // Valtree construction would never succeed for these, so this is unreachable.
-                unreachable!()
+                unreachable!(
+                    "Valtree construction would never succeed for FnPtr, so this is unreachable."
+                )
             }
             _ => {
                 let err = InvalidPattern { span, non_sm_ty: ty };
-                let e = tcx.sess.emit_err(err);
+                let e = tcx.dcx().emit_err(err);
                 self.saw_const_match_error.set(Some(e));
                 // We errored. Signal that in the pattern, so that follow up errors can be silenced.
                 PatKind::Error(e)

@@ -6,6 +6,6 @@ LL |         Some(ref mut y) if let Some(ref mut z) = *y => {
    |
    = note: variables bound in patterns are immutable until the end of the pattern guard
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0596`.

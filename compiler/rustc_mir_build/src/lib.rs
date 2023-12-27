@@ -1,7 +1,6 @@
 //! Construction of MIR from HIR.
 //!
 //! This crate also contains the match exhaustiveness and usefulness checking.
-#![allow(rustc::potential_query_instability)]
 #![feature(assert_matches)]
 #![feature(associated_type_bounds)]
 #![feature(box_patterns)]
@@ -24,10 +23,7 @@ mod thir;
 
 use rustc_middle::query::Providers;
 
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_fluent_macro::fluent_messages;
-
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     providers.check_match = thir::pattern::check_match;

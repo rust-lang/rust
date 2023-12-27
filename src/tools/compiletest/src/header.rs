@@ -632,7 +632,7 @@ fn iter_header_extra(
         it(None, directive, 0);
     }
 
-    let comment = if testfile.extension().map(|e| e == "rs") == Some(true) { "//" } else { "#" };
+    let comment = if testfile.extension().is_some_and(|e| e == "rs") { "//" } else { "#" };
 
     let mut rdr = BufReader::new(rdr);
     let mut ln = String::new();

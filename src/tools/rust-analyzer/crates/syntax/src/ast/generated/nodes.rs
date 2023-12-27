@@ -59,8 +59,9 @@ impl PathSegment {
     pub fn param_list(&self) -> Option<ParamList> { support::child(&self.syntax) }
     pub fn ret_type(&self) -> Option<RetType> { support::child(&self.syntax) }
     pub fn l_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![<]) }
-    pub fn path_type(&self) -> Option<PathType> { support::child(&self.syntax) }
+    pub fn ty(&self) -> Option<Type> { support::child(&self.syntax) }
     pub fn as_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![as]) }
+    pub fn path_type(&self) -> Option<PathType> { support::child(&self.syntax) }
     pub fn r_angle_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![>]) }
 }
 
@@ -1577,14 +1578,6 @@ impl RecordPatField {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum GenericArg {
-    TypeArg(TypeArg),
-    AssocTypeArg(AssocTypeArg),
-    LifetimeArg(LifetimeArg),
-    ConstArg(ConstArg),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Type {
     ArrayType(ArrayType),
     DynTraitType(DynTraitType),
@@ -1600,6 +1593,14 @@ pub enum Type {
     RefType(RefType),
     SliceType(SliceType),
     TupleType(TupleType),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum GenericArg {
+    TypeArg(TypeArg),
+    AssocTypeArg(AssocTypeArg),
+    LifetimeArg(LifetimeArg),
+    ConstArg(ConstArg),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -3319,41 +3320,6 @@ impl AstNode for RecordPatField {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl From<TypeArg> for GenericArg {
-    fn from(node: TypeArg) -> GenericArg { GenericArg::TypeArg(node) }
-}
-impl From<AssocTypeArg> for GenericArg {
-    fn from(node: AssocTypeArg) -> GenericArg { GenericArg::AssocTypeArg(node) }
-}
-impl From<LifetimeArg> for GenericArg {
-    fn from(node: LifetimeArg) -> GenericArg { GenericArg::LifetimeArg(node) }
-}
-impl From<ConstArg> for GenericArg {
-    fn from(node: ConstArg) -> GenericArg { GenericArg::ConstArg(node) }
-}
-impl AstNode for GenericArg {
-    fn can_cast(kind: SyntaxKind) -> bool {
-        matches!(kind, TYPE_ARG | ASSOC_TYPE_ARG | LIFETIME_ARG | CONST_ARG)
-    }
-    fn cast(syntax: SyntaxNode) -> Option<Self> {
-        let res = match syntax.kind() {
-            TYPE_ARG => GenericArg::TypeArg(TypeArg { syntax }),
-            ASSOC_TYPE_ARG => GenericArg::AssocTypeArg(AssocTypeArg { syntax }),
-            LIFETIME_ARG => GenericArg::LifetimeArg(LifetimeArg { syntax }),
-            CONST_ARG => GenericArg::ConstArg(ConstArg { syntax }),
-            _ => return None,
-        };
-        Some(res)
-    }
-    fn syntax(&self) -> &SyntaxNode {
-        match self {
-            GenericArg::TypeArg(it) => &it.syntax,
-            GenericArg::AssocTypeArg(it) => &it.syntax,
-            GenericArg::LifetimeArg(it) => &it.syntax,
-            GenericArg::ConstArg(it) => &it.syntax,
-        }
-    }
-}
 impl From<ArrayType> for Type {
     fn from(node: ArrayType) -> Type { Type::ArrayType(node) }
 }
@@ -3452,6 +3418,41 @@ impl AstNode for Type {
             Type::RefType(it) => &it.syntax,
             Type::SliceType(it) => &it.syntax,
             Type::TupleType(it) => &it.syntax,
+        }
+    }
+}
+impl From<TypeArg> for GenericArg {
+    fn from(node: TypeArg) -> GenericArg { GenericArg::TypeArg(node) }
+}
+impl From<AssocTypeArg> for GenericArg {
+    fn from(node: AssocTypeArg) -> GenericArg { GenericArg::AssocTypeArg(node) }
+}
+impl From<LifetimeArg> for GenericArg {
+    fn from(node: LifetimeArg) -> GenericArg { GenericArg::LifetimeArg(node) }
+}
+impl From<ConstArg> for GenericArg {
+    fn from(node: ConstArg) -> GenericArg { GenericArg::ConstArg(node) }
+}
+impl AstNode for GenericArg {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        matches!(kind, TYPE_ARG | ASSOC_TYPE_ARG | LIFETIME_ARG | CONST_ARG)
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        let res = match syntax.kind() {
+            TYPE_ARG => GenericArg::TypeArg(TypeArg { syntax }),
+            ASSOC_TYPE_ARG => GenericArg::AssocTypeArg(AssocTypeArg { syntax }),
+            LIFETIME_ARG => GenericArg::LifetimeArg(LifetimeArg { syntax }),
+            CONST_ARG => GenericArg::ConstArg(ConstArg { syntax }),
+            _ => return None,
+        };
+        Some(res)
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        match self {
+            GenericArg::TypeArg(it) => &it.syntax,
+            GenericArg::AssocTypeArg(it) => &it.syntax,
+            GenericArg::LifetimeArg(it) => &it.syntax,
+            GenericArg::ConstArg(it) => &it.syntax,
         }
     }
 }
@@ -4340,12 +4341,12 @@ impl AstNode for AnyHasVisibility {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
-impl std::fmt::Display for GenericArg {
+impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }
 }
-impl std::fmt::Display for Type {
+impl std::fmt::Display for GenericArg {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

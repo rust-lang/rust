@@ -4,7 +4,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{HirId, Impl, ItemKind, Node, Path, QPath, TraitRef, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::AssocKind;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
 use std::collections::{BTreeMap, BTreeSet};
@@ -55,11 +55,11 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
             if matches!(cx.tcx.def_kind(id.owner_id), DefKind::Impl { .. })
                 && let item = cx.tcx.hir().item(id)
                 && let ItemKind::Impl(Impl {
-                  items,
-                  of_trait,
-                  self_ty,
-                  ..
-                                      }) = &item.kind
+                    items,
+                    of_trait,
+                    self_ty,
+                    ..
+                }) = &item.kind
                 && let TyKind::Path(QPath::Resolved(_, Path { res, .. })) = self_ty.kind
             {
                 if !map.contains_key(res) {
@@ -75,11 +75,11 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
 
                 match of_trait {
                     Some(trait_ref) => {
-                        let mut methods_in_trait: BTreeSet<Symbol> = if_chain! {
+                        let mut methods_in_trait: BTreeSet<Symbol> =
                             if let Some(Node::TraitRef(TraitRef { path, .. })) =
-                                cx.tcx.hir().find(trait_ref.hir_ref_id);
-                            if let Res::Def(DefKind::Trait, did) = path.res;
-                            then{
+                                cx.tcx.opt_hir_node(trait_ref.hir_ref_id)
+                                && let Res::Def(DefKind::Trait, did) = path.res
+                            {
                                 // FIXME: if
                                 // `rustc_middle::ty::assoc::AssocItems::items` is public,
                                 // we can iterate its keys instead of `in_definition_order`,
@@ -87,15 +87,12 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                                 cx.tcx
                                     .associated_items(did)
                                     .in_definition_order()
-                                    .filter(|assoc_item| {
-                                        matches!(assoc_item.kind, AssocKind::Fn)
-                                    })
+                                    .filter(|assoc_item| matches!(assoc_item.kind, AssocKind::Fn))
                                     .map(|assoc_item| assoc_item.name)
                                     .collect()
-                            }else{
+                            } else {
                                 BTreeSet::new()
-                            }
-                        };
+                            };
 
                         let mut check_trait_method = |method_name: Symbol, trait_method_span: Span| {
                             if let Some((impl_span, hir_id)) = existing_name.impl_methods.get(&method_name) {

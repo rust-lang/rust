@@ -3,17 +3,22 @@
 //! and miri.
 
 use rustc_hir::def_id::DefId;
-use rustc_middle::mir::{
-    self,
-    interpret::{Allocation, ConstAllocation, GlobalId, InterpResult, PointerArithmetic, Scalar},
-    BinOp, ConstValue, NonDivergingIntrinsic,
-};
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf as _, ValidityRequirement};
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{Ty, TyCtxt};
+use rustc_middle::{
+    mir::{
+        self,
+        interpret::{
+            Allocation, ConstAllocation, GlobalId, InterpResult, PointerArithmetic, Scalar,
+        },
+        BinOp, ConstValue, NonDivergingIntrinsic,
+    },
+    ty::layout::TyAndLayout,
+};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_target::abi::{Abi, Primitive, Size};
+use rustc_target::abi::Size;
 
 use super::{
     util::ensure_monomorphic_enough, CheckInAllocMsg, ImmTy, InterpCx, Machine, OpTy, PlaceTy,
@@ -21,23 +26,6 @@ use super::{
 };
 
 use crate::fluent_generated as fluent;
-
-fn numeric_intrinsic<Prov>(name: Symbol, bits: u128, kind: Primitive) -> Scalar<Prov> {
-    let size = match kind {
-        Primitive::Int(integer, _) => integer.size(),
-        _ => bug!("invalid `{}` argument: {:?}", name, bits),
-    };
-    let extra = 128 - u128::from(size.bits());
-    let bits_out = match name {
-        sym::ctpop => u128::from(bits.count_ones()),
-        sym::ctlz => u128::from(bits.leading_zeros()) - extra,
-        sym::cttz => u128::from((bits << extra).trailing_zeros()) - extra,
-        sym::bswap => (bits << extra).swap_bytes(),
-        sym::bitreverse => (bits << extra).reverse_bits(),
-        _ => bug!("not a numeric intrinsic: {}", name),
-    };
-    Scalar::from_uint(bits_out, size)
-}
 
 /// Directly returns an `Allocation` containing an absolute path representation of the given type.
 pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ConstAllocation<'tcx> {
@@ -179,30 +167,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             | sym::bswap
             | sym::bitreverse => {
                 let ty = instance_args.type_at(0);
-                let layout_of = self.layout_of(ty)?;
+                let layout = self.layout_of(ty)?;
                 let val = self.read_scalar(&args[0])?;
-                let bits = val.to_bits(layout_of.size)?;
-                let kind = match layout_of.abi {
-                    Abi::Scalar(scalar) => scalar.primitive(),
-                    _ => span_bug!(
-                        self.cur_span(),
-                        "{} called on invalid type {:?}",
-                        intrinsic_name,
-                        ty
-                    ),
-                };
-                let (nonzero, actual_intrinsic_name) = match intrinsic_name {
-                    sym::cttz_nonzero => (true, sym::cttz),
-                    sym::ctlz_nonzero => (true, sym::ctlz),
-                    other => (false, other),
-                };
-                if nonzero && bits == 0 {
-                    throw_ub_custom!(
-                        fluent::const_eval_call_nonzero_intrinsic,
-                        name = intrinsic_name,
-                    );
-                }
-                let out_val = numeric_intrinsic(actual_intrinsic_name, bits, kind);
+                let out_val = self.numeric_intrinsic(intrinsic_name, val, layout)?;
                 self.write_scalar(out_val, dest)?;
             }
             sym::saturating_add | sym::saturating_sub => {
@@ -493,6 +460,29 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
+    pub fn numeric_intrinsic(
+        &self,
+        name: Symbol,
+        val: Scalar<M::Provenance>,
+        layout: TyAndLayout<'tcx>,
+    ) -> InterpResult<'tcx, Scalar<M::Provenance>> {
+        assert!(layout.ty.is_integral(), "invalid type for numeric intrinsic: {}", layout.ty);
+        let bits = val.to_bits(layout.size)?;
+        let extra = 128 - u128::from(layout.size.bits());
+        let bits_out = match name {
+            sym::ctpop => u128::from(bits.count_ones()),
+            sym::ctlz_nonzero | sym::cttz_nonzero if bits == 0 => {
+                throw_ub_custom!(fluent::const_eval_call_nonzero_intrinsic, name = name,);
+            }
+            sym::ctlz | sym::ctlz_nonzero => u128::from(bits.leading_zeros()) - extra,
+            sym::cttz | sym::cttz_nonzero => u128::from((bits << extra).trailing_zeros()) - extra,
+            sym::bswap => (bits << extra).swap_bytes(),
+            sym::bitreverse => (bits << extra).reverse_bits(),
+            _ => bug!("not a numeric intrinsic: {}", name),
+        };
+        Ok(Scalar::from_uint(bits_out, layout.size))
+    }
+
     pub fn exact_div(
         &mut self,
         a: &ImmTy<'tcx, M::Provenance>,
@@ -505,7 +495,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Performs an exact division, resulting in undefined behavior where
         // `x % y != 0` or `y == 0` or `x == T::MIN && y == -1`.
         // First, check x % y != 0 (or if that computation overflows).
-        let (res, overflow) = self.overflowing_binary_op(BinOp::Rem, &a, &b)?;
+        let (res, overflow) = self.overflowing_binary_op(BinOp::Rem, a, b)?;
         assert!(!overflow); // All overflow is UB, so this should never return on overflow.
         if res.to_scalar().assert_bits(a.layout.size) != 0 {
             throw_ub_custom!(
@@ -515,7 +505,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             )
         }
         // `Rem` says this is all right, so we can let `Div` do its job.
-        self.binop_ignore_overflow(BinOp::Div, &a, &b, dest)
+        self.binop_ignore_overflow(BinOp::Div, a, b, dest)
     }
 
     pub fn saturating_arith(

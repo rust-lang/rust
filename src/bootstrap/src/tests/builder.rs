@@ -1,6 +1,6 @@
 use super::*;
-use crate::core::config::{Config, DryRun, TargetSelection};
 use crate::core::build_steps::doc::DocumentationFormat;
+use crate::core::config::{Config, DryRun, TargetSelection};
 use std::thread;
 
 fn configure(cmd: &str, host: &[&str], target: &[&str]) -> Config {
@@ -154,22 +154,6 @@ fn alias_and_path_for_library() {
 
     let mut cache = run_build(&["library".into(), "core".into()], configure("doc", &["A"], &["A"]));
     assert_eq!(first(cache.all::<doc::Std>()), &[doc_std!(A => A, stage = 0)]);
-}
-
-#[test]
-fn test_beta_rev_parsing() {
-    use crate::utils::helpers::extract_beta_rev;
-
-    // single digit revision
-    assert_eq!(extract_beta_rev("1.99.9-beta.7 (xxxxxx)"), Some("7".to_string()));
-    // multiple digits
-    assert_eq!(extract_beta_rev("1.99.9-beta.777 (xxxxxx)"), Some("777".to_string()));
-    // nightly channel (no beta revision)
-    assert_eq!(extract_beta_rev("1.99.9-nightly (xxxxxx)"), None);
-    // stable channel (no beta revision)
-    assert_eq!(extract_beta_rev("1.99.9 (xxxxxxx)"), None);
-    // invalid string
-    assert_eq!(extract_beta_rev("invalid"), None);
 }
 
 mod defaults {

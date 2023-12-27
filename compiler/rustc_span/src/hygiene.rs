@@ -60,7 +60,7 @@ pub struct SyntaxContextData {
 
 rustc_index::newtype_index! {
     /// A unique ID associated with a macro invocation and expansion.
-    #[custom_encodable]
+    #[orderable]
     pub struct ExpnIndex {}
 }
 
@@ -80,8 +80,6 @@ impl fmt::Debug for ExpnId {
 
 rustc_index::newtype_index! {
     /// A unique ID associated with a macro invocation and expansion.
-    #[custom_encodable]
-    #[no_ord_impl]
     #[debug_format = "expn{}"]
     pub struct LocalExpnId {}
 }
@@ -567,10 +565,6 @@ impl HygieneData {
             new_opaque_and_semitransparent_and_transparent
         })
     }
-}
-
-pub fn clear_syntax_context_map() {
-    HygieneData::with(|data| data.syntax_context_map = FxHashMap::default());
 }
 
 pub fn walk_chain(span: Span, to: SyntaxContext) -> Span {

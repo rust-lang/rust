@@ -9,6 +9,8 @@ use core::ffi::NonZero_c_int;
 
 #[cfg(target_os = "linux")]
 use crate::os::linux::process::PidFd;
+#[cfg(target_os = "linux")]
+use crate::os::unix::io::AsRawFd;
 
 #[cfg(any(
     target_os = "macos",
@@ -696,11 +698,12 @@ impl Command {
 
             msg.msg_iov = &mut iov as *mut _ as *mut _;
             msg.msg_iovlen = 1;
-            msg.msg_controllen = mem::size_of_val(&cmsg.buf) as _;
-            msg.msg_control = &mut cmsg.buf as *mut _ as *mut _;
 
             // only attach cmsg if we successfully acquired the pidfd
             if pidfd >= 0 {
+                msg.msg_controllen = mem::size_of_val(&cmsg.buf) as _;
+                msg.msg_control = &mut cmsg.buf as *mut _ as *mut _;
+
                 let hdr = CMSG_FIRSTHDR(&mut msg as *mut _ as *mut _);
                 (*hdr).cmsg_level = SOL_SOCKET;
                 (*hdr).cmsg_type = SCM_RIGHTS;
@@ -717,7 +720,7 @@ impl Command {
             // so we get a consistent SEQPACKET order
             match cvt_r(|| libc::sendmsg(sock.as_raw(), &msg, 0)) {
                 Ok(0) => {}
-                _ => rtabort!("failed to communicate with parent process"),
+                other => rtabort!("failed to communicate with parent process. {:?}", other),
             }
         }
     }
@@ -748,7 +751,7 @@ impl Command {
             msg.msg_controllen = mem::size_of::<Cmsg>() as _;
             msg.msg_control = &mut cmsg as *mut _ as *mut _;
 
-            match cvt_r(|| libc::recvmsg(sock.as_raw(), &mut msg, 0)) {
+            match cvt_r(|| libc::recvmsg(sock.as_raw(), &mut msg, libc::MSG_CMSG_CLOEXEC)) {
                 Err(_) => return -1,
                 Ok(_) => {}
             }
@@ -787,7 +790,7 @@ pub struct Process {
     // On Linux, stores the pidfd created for this child.
     // This is None if the user did not request pidfd creation,
     // or if the pidfd could not be created for some reason
-    // (e.g. the `clone3` syscall was not available).
+    // (e.g. the `pidfd_open` syscall was not available).
     #[cfg(target_os = "linux")]
     pidfd: Option<PidFd>,
 }
@@ -816,15 +819,39 @@ impl Process {
         // and used for another process, and we probably shouldn't be killing
         // random processes, so return Ok because the process has exited already.
         if self.status.is_some() {
-            Ok(())
-        } else {
-            cvt(unsafe { libc::kill(self.pid, libc::SIGKILL) }).map(drop)
+            return Ok(());
         }
+        #[cfg(target_os = "linux")]
+        if let Some(pid_fd) = self.pidfd.as_ref() {
+            // pidfd_send_signal predates pidfd_open. so if we were able to get an fd then sending signals will work too
+            return cvt(unsafe {
+                libc::syscall(
+                    libc::SYS_pidfd_send_signal,
+                    pid_fd.as_raw_fd(),
+                    libc::SIGKILL,
+                    crate::ptr::null::<()>(),
+                    0,
+                )
+            })
+            .map(drop);
+        }
+        cvt(unsafe { libc::kill(self.pid, libc::SIGKILL) }).map(drop)
     }
 
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
         use crate::sys::cvt_r;
         if let Some(status) = self.status {
+            return Ok(status);
+        }
+        #[cfg(target_os = "linux")]
+        if let Some(pid_fd) = self.pidfd.as_ref() {
+            let mut siginfo: libc::siginfo_t = unsafe { crate::mem::zeroed() };
+
+            cvt_r(|| unsafe {
+                libc::waitid(libc::P_PIDFD, pid_fd.as_raw_fd() as u32, &mut siginfo, libc::WEXITED)
+            })?;
+            let status = ExitStatus::from_waitid_siginfo(siginfo);
+            self.status = Some(status);
             return Ok(status);
         }
         let mut status = 0 as c_int;
@@ -835,6 +862,25 @@ impl Process {
 
     pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
         if let Some(status) = self.status {
+            return Ok(Some(status));
+        }
+        #[cfg(target_os = "linux")]
+        if let Some(pid_fd) = self.pidfd.as_ref() {
+            let mut siginfo: libc::siginfo_t = unsafe { crate::mem::zeroed() };
+
+            cvt(unsafe {
+                libc::waitid(
+                    libc::P_PIDFD,
+                    pid_fd.as_raw_fd() as u32,
+                    &mut siginfo,
+                    libc::WEXITED | libc::WNOHANG,
+                )
+            })?;
+            if unsafe { siginfo.si_pid() } == 0 {
+                return Ok(None);
+            }
+            let status = ExitStatus::from_waitid_siginfo(siginfo);
+            self.status = Some(status);
             return Ok(Some(status));
         }
         let mut status = 0 as c_int;
@@ -864,6 +910,20 @@ impl fmt::Debug for ExitStatus {
 impl ExitStatus {
     pub fn new(status: c_int) -> ExitStatus {
         ExitStatus(status)
+    }
+
+    #[cfg(target_os = "linux")]
+    pub fn from_waitid_siginfo(siginfo: libc::siginfo_t) -> ExitStatus {
+        let status = unsafe { siginfo.si_status() };
+
+        match siginfo.si_code {
+            libc::CLD_EXITED => ExitStatus((status & 0xff) << 8),
+            libc::CLD_KILLED => ExitStatus(status),
+            libc::CLD_DUMPED => ExitStatus(status | 0x80),
+            libc::CLD_CONTINUED => ExitStatus(0xffff),
+            libc::CLD_STOPPED | libc::CLD_TRAPPED => ExitStatus(((status & 0xff) << 8) | 0x7f),
+            _ => unreachable!("waitid() should only return the above codes"),
+        }
     }
 
     fn exited(&self) -> bool {

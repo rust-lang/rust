@@ -21,6 +21,6 @@ LL |   impl IntoPyDictPointer for ()
    |
    = note: upstream crates may add a new impl of trait `std::iter::Iterator` for type `()` in future versions
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0119`.

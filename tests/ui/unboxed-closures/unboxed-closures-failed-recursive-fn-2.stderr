@@ -12,6 +12,6 @@ help: consider giving `closure0` an explicit type, where the placeholders `_` ar
 LL |     let mut closure0: Option<T> = None;
    |                     +++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0282`.

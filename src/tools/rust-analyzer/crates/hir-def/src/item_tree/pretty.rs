@@ -261,15 +261,15 @@ impl Printer<'_> {
                     self.indented(|this| {
                         for param in params.clone() {
                             this.print_attrs_of(param, "\n");
-                            match &this.tree[param] {
-                                Param::Normal(ty) => {
+                            match &this.tree[param].type_ref {
+                                Some(ty) => {
                                     if flags.contains(FnFlags::HAS_SELF_PARAM) {
                                         w!(this, "self: ");
                                     }
                                     this.print_type_ref(ty);
                                     wln!(this, ",");
                                 }
-                                Param::Varargs => {
+                                None => {
                                     wln!(this, "...");
                                 }
                             };
@@ -388,8 +388,18 @@ impl Printer<'_> {
                 wln!(self);
             }
             ModItem::Impl(it) => {
-                let Impl { target_trait, self_ty, is_negative, items, generic_params, ast_id: _ } =
-                    &self.tree[it];
+                let Impl {
+                    target_trait,
+                    self_ty,
+                    is_negative,
+                    is_unsafe,
+                    items,
+                    generic_params,
+                    ast_id: _,
+                } = &self.tree[it];
+                if *is_unsafe {
+                    w!(self, "unsafe");
+                }
                 w!(self, "impl");
                 self.print_generic_params(generic_params);
                 w!(self, " ");
@@ -447,7 +457,7 @@ impl Printer<'_> {
                 }
             }
             ModItem::MacroCall(it) => {
-                let MacroCall { path, ast_id: _, expand_to: _ } = &self.tree[it];
+                let MacroCall { path, ast_id: _, expand_to: _, call_site: _ } = &self.tree[it];
                 wln!(self, "{}!(...);", path.display(self.db.upcast()));
             }
             ModItem::MacroRules(it) => {

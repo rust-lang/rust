@@ -481,12 +481,8 @@ where
     ) -> (BasicBlock, Unwind) {
         let (succ, unwind) = self.drop_ladder_bottom();
         if !adt.is_enum() {
-            let fields = self.move_paths_for_fields(
-                self.place,
-                self.path,
-                &adt.variant(FIRST_VARIANT),
-                args,
-            );
+            let fields =
+                self.move_paths_for_fields(self.place, self.path, adt.variant(FIRST_VARIANT), args);
             self.drop_ladder(fields, succ, unwind)
         } else {
             self.open_drop_for_multivariant(adt, args, succ, unwind)
@@ -518,7 +514,7 @@ where
                     self.place,
                     ProjectionElem::Downcast(Some(variant.name), variant_index),
                 );
-                let fields = self.move_paths_for_fields(base_place, variant_path, &variant, args);
+                let fields = self.move_paths_for_fields(base_place, variant_path, variant, args);
                 values.push(discr.val);
                 if let Unwind::To(unwind) = unwind {
                     // We can't use the half-ladder from the original
@@ -859,14 +855,14 @@ where
     fn open_drop(&mut self) -> BasicBlock {
         let ty = self.place_ty(self.place);
         match ty.kind() {
-            ty::Closure(_, args) => self.open_drop_for_tuple(&args.as_closure().upvar_tys()),
+            ty::Closure(_, args) => self.open_drop_for_tuple(args.as_closure().upvar_tys()),
             // Note that `elaborate_drops` only drops the upvars of a coroutine,
             // and this is ok because `open_drop` here can only be reached
             // within that own coroutine's resume function.
             // This should only happen for the self argument on the resume function.
             // It effectively only contains upvars until the coroutine transformation runs.
             // See librustc_body/transform/coroutine.rs for more details.
-            ty::Coroutine(_, args, _) => self.open_drop_for_tuple(&args.as_coroutine().upvar_tys()),
+            ty::Coroutine(_, args, _) => self.open_drop_for_tuple(args.as_coroutine().upvar_tys()),
             ty::Tuple(fields) => self.open_drop_for_tuple(fields),
             ty::Adt(def, args) => self.open_drop_for_adt(*def, args),
             ty::Dynamic(..) => self.complete_drop(self.succ, self.unwind),

@@ -42,8 +42,8 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         if !def_id.is_local() {
             return None;
         }
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-        match tcx.hir().find(hir_id) {
+        let hir_id = tcx.local_def_id_to_hir_id(def_id.expect_local());
+        match tcx.opt_hir_node(hir_id) {
             Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })) => {
                 generics.params.is_empty().not().then_some(generics.span)
             }
@@ -57,8 +57,8 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         if !def_id.is_local() {
             return None;
         }
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-        match tcx.hir().find(hir_id) {
+        let hir_id = tcx.local_def_id_to_hir_id(def_id.expect_local());
+        match tcx.opt_hir_node(hir_id) {
             Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })) => {
                 Some(generics.where_clause_span)
             }
@@ -79,8 +79,8 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         if !def_id.is_local() {
             return None;
         }
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-        match tcx.hir().find(hir_id) {
+        let hir_id = tcx.local_def_id_to_hir_id(def_id.expect_local());
+        match tcx.opt_hir_node(hir_id) {
             Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(fn_sig, _, _), .. })) => {
                 Some(fn_sig.decl.output.span())
             }
@@ -92,34 +92,17 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
 
     let mut error = false;
     let main_diagnostics_def_id = main_fn_diagnostics_def_id(tcx, main_def_id, main_span);
-    let main_fn_generics = tcx.generics_of(main_def_id);
-    let main_fn_predicates = tcx.predicates_of(main_def_id);
-    if main_fn_generics.count() != 0 || !main_fnsig.bound_vars().is_empty() {
-        let generics_param_span = main_fn_generics_params_span(tcx, main_def_id);
-        tcx.sess.emit_err(errors::MainFunctionGenericParameters {
-            span: generics_param_span.unwrap_or(main_span),
-            label_span: generics_param_span,
-        });
-        error = true;
-    } else if !main_fn_predicates.predicates.is_empty() {
-        // generics may bring in implicit predicates, so we skip this check if generics is present.
-        let generics_where_clauses_span = main_fn_where_clauses_span(tcx, main_def_id);
-        tcx.sess.emit_err(errors::WhereClauseOnMain {
-            span: generics_where_clauses_span.unwrap_or(main_span),
-            generics_span: generics_where_clauses_span,
-        });
-        error = true;
-    }
 
     let main_asyncness = tcx.asyncness(main_def_id);
     if main_asyncness.is_async() {
         let asyncness_span = main_fn_asyncness_span(tcx, main_def_id);
-        tcx.sess.emit_err(errors::MainFunctionAsync { span: main_span, asyncness: asyncness_span });
+        tcx.dcx()
+            .emit_err(errors::MainFunctionAsync { span: main_span, asyncness: asyncness_span });
         error = true;
     }
 
     for attr in tcx.get_attrs(main_def_id, sym::track_caller) {
-        tcx.sess.emit_err(errors::TrackCallerOnMain { span: attr.span, annotated: main_span });
+        tcx.dcx().emit_err(errors::TrackCallerOnMain { span: attr.span, annotated: main_span });
         error = true;
     }
 
@@ -128,7 +111,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         && !tcx.sess.target.is_like_wasm
         && !tcx.sess.opts.actually_rustdoc
     {
-        tcx.sess.emit_err(errors::TargetFeatureOnMain { main: main_span });
+        tcx.dcx().emit_err(errors::TargetFeatureOnMain { main: main_span });
         error = true;
     }
 
@@ -142,11 +125,10 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
     if let Some(term_did) = tcx.lang_items().termination() {
         let return_ty = main_fnsig.output();
         let return_ty_span = main_fn_return_type_span(tcx, main_def_id).unwrap_or(main_span);
-        if !return_ty.bound_vars().is_empty() {
-            tcx.sess.emit_err(errors::MainFunctionReturnTypeGeneric { span: return_ty_span });
-            error = true;
-        }
-        let return_ty = return_ty.skip_binder();
+        let Some(return_ty) = return_ty.no_bound_vars() else {
+            tcx.dcx().emit_err(errors::MainFunctionReturnTypeGeneric { span: return_ty_span });
+            return;
+        };
         let infcx = tcx.infer_ctxt().build();
         let cause = traits::ObligationCause::new(
             return_ty_span,
@@ -180,7 +162,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         Abi::Rust,
     ));
 
-    check_function_signature(
+    if check_function_signature(
         tcx,
         ObligationCause::new(
             main_span,
@@ -189,39 +171,60 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         ),
         main_def_id,
         expected_sig,
-    );
+    )
+    .is_err()
+    {
+        return;
+    }
+
+    let main_fn_generics = tcx.generics_of(main_def_id);
+    let main_fn_predicates = tcx.predicates_of(main_def_id);
+    if main_fn_generics.count() != 0 || !main_fnsig.bound_vars().is_empty() {
+        let generics_param_span = main_fn_generics_params_span(tcx, main_def_id);
+        tcx.dcx().emit_err(errors::MainFunctionGenericParameters {
+            span: generics_param_span.unwrap_or(main_span),
+            label_span: generics_param_span,
+        });
+    } else if !main_fn_predicates.predicates.is_empty() {
+        // generics may bring in implicit predicates, so we skip this check if generics is present.
+        let generics_where_clauses_span = main_fn_where_clauses_span(tcx, main_def_id);
+        tcx.dcx().emit_err(errors::WhereClauseOnMain {
+            span: generics_where_clauses_span.unwrap_or(main_span),
+            generics_span: generics_where_clauses_span,
+        });
+    }
 }
 
 fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
     let start_def_id = start_def_id.expect_local();
-    let start_id = tcx.hir().local_def_id_to_hir_id(start_def_id);
+    let start_id = tcx.local_def_id_to_hir_id(start_def_id);
     let start_span = tcx.def_span(start_def_id);
     let start_t = tcx.type_of(start_def_id).instantiate_identity();
     match start_t.kind() {
         ty::FnDef(..) => {
-            if let Some(Node::Item(it)) = tcx.hir().find(start_id) {
+            if let Some(Node::Item(it)) = tcx.opt_hir_node(start_id) {
                 if let hir::ItemKind::Fn(sig, generics, _) = &it.kind {
                     let mut error = false;
                     if !generics.params.is_empty() {
-                        tcx.sess.emit_err(errors::StartFunctionParameters { span: generics.span });
+                        tcx.dcx().emit_err(errors::StartFunctionParameters { span: generics.span });
                         error = true;
                     }
                     if generics.has_where_clause_predicates {
-                        tcx.sess.emit_err(errors::StartFunctionWhere {
+                        tcx.dcx().emit_err(errors::StartFunctionWhere {
                             span: generics.where_clause_span,
                         });
                         error = true;
                     }
                     if sig.header.asyncness.is_async() {
                         let span = tcx.def_span(it.owner_id);
-                        tcx.sess.emit_err(errors::StartAsync { span: span });
+                        tcx.dcx().emit_err(errors::StartAsync { span: span });
                         error = true;
                     }
 
                     let attrs = tcx.hir().attrs(start_id);
                     for attr in attrs {
                         if attr.has_name(sym::track_caller) {
-                            tcx.sess.emit_err(errors::StartTrackCaller {
+                            tcx.dcx().emit_err(errors::StartTrackCaller {
                                 span: attr.span,
                                 start: start_span,
                             });
@@ -233,7 +236,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                             && !tcx.sess.target.is_like_wasm
                             && !tcx.sess.opts.actually_rustdoc
                         {
-                            tcx.sess.emit_err(errors::StartTargetFeature {
+                            tcx.dcx().emit_err(errors::StartTargetFeature {
                                 span: attr.span,
                                 start: start_span,
                             });
@@ -255,7 +258,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                 Abi::Rust,
             ));
 
-            check_function_signature(
+            let _ = check_function_signature(
                 tcx,
                 ObligationCause::new(
                     start_span,

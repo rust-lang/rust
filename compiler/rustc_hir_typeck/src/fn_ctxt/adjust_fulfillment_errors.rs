@@ -4,7 +4,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_infer::{infer::type_variable::TypeVariableOriginKind, traits::ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use rustc_span::{self, symbol::kw, Span};
+use rustc_span::{symbol::kw, Span};
 use rustc_trait_selection::traits;
 
 use std::ops::ControlFlow;
@@ -94,7 +94,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let hir = self.tcx.hir();
-        let (expr, qpath) = match hir.get(hir_id) {
+        let (expr, qpath) = match self.tcx.hir_node(hir_id) {
             hir::Node::Expr(expr) => {
                 if self.closure_span_overlaps_error(error, expr.span) {
                     return false;
@@ -454,7 +454,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .find_ancestor_in_same_ctxt(error.obligation.cause.span)
                 .unwrap_or(arg.span);
 
-            if let hir::Node::Expr(arg_expr) = self.tcx.hir().get(arg.hir_id) {
+            if let hir::Node::Expr(arg_expr) = self.tcx.hir_node(arg.hir_id) {
                 // This is more specific than pointing at the entire argument.
                 self.blame_specific_expr_if_possible(error, arg_expr)
             }
@@ -495,7 +495,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Whether it succeeded or failed, it likely made some amount of progress.
         // In the very worst case, it's just the same `expr` we originally passed in.
         let expr = match self.blame_specific_expr_if_possible_for_obligation_cause_code(
-            &error.obligation.cause.code(),
+            error.obligation.cause.code(),
             expr,
         ) {
             Ok(expr) => expr,

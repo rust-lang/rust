@@ -75,10 +75,11 @@ pub(crate) fn format_visibility(
 }
 
 #[inline]
-pub(crate) fn format_async(is_async: &ast::Async) -> &'static str {
-    match is_async {
-        ast::Async::Yes { .. } => "async ",
-        ast::Async::No => "",
+pub(crate) fn format_coro(coroutine_kind: &ast::CoroutineKind) -> &'static str {
+    match coroutine_kind {
+        ast::CoroutineKind::Async { .. } => "async ",
+        ast::CoroutineKind::Gen { .. } => "gen ",
+        ast::CoroutineKind::AsyncGen { .. } => "async gen ",
     }
 }
 
@@ -294,7 +295,7 @@ pub(crate) fn semicolon_for_stmt(
 ) -> bool {
     match stmt.kind {
         ast::StmtKind::Semi(ref expr) => match expr.kind {
-            ast::ExprKind::While(..) | ast::ExprKind::Loop(..) | ast::ExprKind::ForLoop(..) => {
+            ast::ExprKind::While(..) | ast::ExprKind::Loop(..) | ast::ExprKind::ForLoop { .. } => {
                 false
             }
             ast::ExprKind::Break(..) | ast::ExprKind::Continue(..) | ast::ExprKind::Ret(..) => {
@@ -475,7 +476,7 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::ConstBlock(..)
         | ast::ExprKind::Gen(..)
         | ast::ExprKind::Loop(..)
-        | ast::ExprKind::ForLoop(..)
+        | ast::ExprKind::ForLoop { .. }
         | ast::ExprKind::TryBlock(..)
         | ast::ExprKind::Match(..) => repr.contains('\n'),
         ast::ExprKind::Paren(ref expr)

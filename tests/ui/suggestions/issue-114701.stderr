@@ -10,6 +10,6 @@ LL |         assert!(if let Enum::$variant::<()> $matcher = $expr () { true } el
 LL |     is_variant!(UVariant, Enum::<()>::UVariant);
    |                           ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0618`.

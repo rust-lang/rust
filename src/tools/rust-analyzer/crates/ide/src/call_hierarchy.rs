@@ -1,6 +1,8 @@
 //! Entry point for call-hierarchy
 
-use hir::Semantics;
+use std::iter;
+
+use hir::{DescendPreference, Semantics};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     helpers::pick_best_token,
@@ -66,7 +68,10 @@ pub(crate) fn incoming_calls(
                 def.try_to_nav(sema.db)
             });
             if let Some(nav) = nav {
-                calls.add(nav, sema.original_range(name.syntax()).range);
+                calls.add(nav.call_site, sema.original_range(name.syntax()).range);
+                if let Some(other) = nav.def_site {
+                    calls.add(other, sema.original_range(name.syntax()).range);
+                }
             }
         }
     }
@@ -87,7 +92,7 @@ pub(crate) fn outgoing_calls(
     })?;
     let mut calls = CallLocations::default();
 
-    sema.descend_into_macros(token, offset)
+    sema.descend_into_macros(DescendPreference::None, token)
         .into_iter()
         .filter_map(|it| it.parent_ancestors().nth(1).and_then(ast::Item::cast))
         .filter_map(|item| match item {
@@ -117,8 +122,9 @@ pub(crate) fn outgoing_calls(
                     function.try_to_nav(db).zip(Some(range))
                 }
             }?;
-            Some((nav_target, range))
+            Some(nav_target.into_iter().zip(iter::repeat(range)))
         })
+        .flatten()
         .for_each(|(nav, range)| calls.add(nav, range));
 
     Some(calls.into_items())
@@ -149,7 +155,7 @@ mod tests {
 
     fn check_hierarchy(
         ra_fixture: &str,
-        expected: Expect,
+        expected_nav: Expect,
         expected_incoming: Expect,
         expected_outgoing: Expect,
     ) {
@@ -158,7 +164,7 @@ mod tests {
         let mut navs = analysis.call_hierarchy(pos).unwrap().unwrap().info;
         assert_eq!(navs.len(), 1);
         let nav = navs.pop().unwrap();
-        expected.assert_eq(&nav.debug_render());
+        expected_nav.assert_eq(&nav.debug_render());
 
         let item_pos =
             FilePosition { file_id: nav.file_id, offset: nav.focus_or_full_range().start() };

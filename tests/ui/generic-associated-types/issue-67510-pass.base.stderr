@@ -13,6 +13,6 @@ LL |     type Y<'a>;
    |          ^ ...because it contains the generic associated type `Y`
    = help: consider moving `Y` to another trait
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0038`.

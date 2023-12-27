@@ -3,6 +3,11 @@ error[E0425]: cannot find value `_y` in this scope
    |
 LL |     let [_y..] = [Box::new(1), Box::new(2)];
    |          ^^ not found in this scope
+   |
+help: if you meant to collect the rest of the slice in `_y`, use the at operator
+   |
+LL |     let [_y @ ..] = [Box::new(1), Box::new(2)];
+   |             +
 
 error[E0658]: `X..` patterns in slices are experimental
   --> $DIR/issue-105946.rs:6:10

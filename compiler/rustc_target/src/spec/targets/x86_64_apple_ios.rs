@@ -1,5 +1,5 @@
 use crate::spec::base::apple::{ios_sim_llvm_target, opts, Arch};
-use crate::spec::{SanitizerSet, StackProbeType, Target, TargetOptions};
+use crate::spec::{SanitizerSet, Target, TargetOptions};
 
 pub fn target() -> Target {
     let arch = Arch::X86_64_sim;
@@ -12,10 +12,6 @@ pub fn target() -> Target {
         data_layout: "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
             .into(),
         arch: arch.target_arch(),
-        options: TargetOptions {
-            max_atomic_width: Some(128),
-            stack_probes: StackProbeType::X86,
-            ..base
-        },
+        options: TargetOptions { max_atomic_width: Some(128), ..base },
     }
 }

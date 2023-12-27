@@ -7,6 +7,6 @@ LL | fn test() -> Pointer<_> {
    |              |       not allowed in type signatures
    |              help: replace with the correct return type: `Pointer<i32>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0121`.

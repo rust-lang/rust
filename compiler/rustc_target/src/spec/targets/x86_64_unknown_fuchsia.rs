@@ -5,7 +5,7 @@ pub fn target() -> Target {
     base.cpu = "x86-64".into();
     base.plt_by_default = false;
     base.max_atomic_width = Some(64);
-    base.stack_probes = StackProbeType::X86;
+    base.stack_probes = StackProbeType::Inline;
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::CFI;
 
     Target {

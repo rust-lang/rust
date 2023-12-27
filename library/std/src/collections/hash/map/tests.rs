@@ -1,8 +1,8 @@
 use super::Entry::{Occupied, Vacant};
 use super::HashMap;
-use super::RandomState;
 use crate::assert_matches::assert_matches;
 use crate::cell::RefCell;
+use crate::hash::RandomState;
 use crate::test_helpers::test_rng;
 use rand::Rng;
 use realstd::collections::TryReserveErrorKind::*;

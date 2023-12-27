@@ -4,7 +4,6 @@
 
 #![feature(associated_type_defaults)]
 #![feature(closure_track_caller)]
-#![feature(const_btree_len)]
 #![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(never_type)]

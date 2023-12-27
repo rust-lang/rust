@@ -1,8 +1,6 @@
 // run-pass
 // Test that the call operator autoderefs when calling to an object type.
 
-use std::ops::FnMut;
-
 fn make_adder(x: isize) -> Box<dyn FnMut(isize)->isize + 'static> {
     Box::new(move |y| { x + y })
 }

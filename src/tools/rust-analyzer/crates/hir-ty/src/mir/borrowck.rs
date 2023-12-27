@@ -24,6 +24,7 @@ use super::{
 pub enum MutabilityReason {
     Mut { spans: Vec<MirSpan> },
     Not,
+    Unused,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -144,7 +145,8 @@ fn moved_out_of_ref(db: &dyn HirDatabase, body: &MirBody) -> Vec<MovedOutOfRef> 
                         }
                     }
                 },
-                StatementKind::Deinit(_)
+                StatementKind::FakeRead(_)
+                | StatementKind::Deinit(_)
                 | StatementKind::StorageLive(_)
                 | StatementKind::StorageDead(_)
                 | StatementKind::Nop => (),
@@ -264,7 +266,10 @@ fn ever_initialized_map(
                         is_ever_initialized = false;
                     }
                 }
-                StatementKind::Deinit(_) | StatementKind::Nop | StatementKind::StorageLive(_) => (),
+                StatementKind::Deinit(_)
+                | StatementKind::FakeRead(_)
+                | StatementKind::Nop
+                | StatementKind::StorageLive(_) => (),
             }
         }
         let Some(terminator) = &block.terminator else {
@@ -331,16 +336,37 @@ fn ever_initialized_map(
     result
 }
 
+fn push_mut_span(local: LocalId, span: MirSpan, result: &mut ArenaMap<LocalId, MutabilityReason>) {
+    match &mut result[local] {
+        MutabilityReason::Mut { spans } => spans.push(span),
+        it @ (MutabilityReason::Not | MutabilityReason::Unused) => {
+            *it = MutabilityReason::Mut { spans: vec![span] }
+        }
+    };
+}
+
+fn record_usage(local: LocalId, result: &mut ArenaMap<LocalId, MutabilityReason>) {
+    match &mut result[local] {
+        it @ MutabilityReason::Unused => {
+            *it = MutabilityReason::Not;
+        }
+        _ => (),
+    };
+}
+
+fn record_usage_for_operand(arg: &Operand, result: &mut ArenaMap<LocalId, MutabilityReason>) {
+    if let Operand::Copy(p) | Operand::Move(p) = arg {
+        record_usage(p.local, result);
+    }
+}
+
 fn mutability_of_locals(
     db: &dyn HirDatabase,
     body: &MirBody,
 ) -> ArenaMap<LocalId, MutabilityReason> {
     let mut result: ArenaMap<LocalId, MutabilityReason> =
-        body.locals.iter().map(|it| (it.0, MutabilityReason::Not)).collect();
-    let mut push_mut_span = |local, span| match &mut result[local] {
-        MutabilityReason::Mut { spans } => spans.push(span),
-        it @ MutabilityReason::Not => *it = MutabilityReason::Mut { spans: vec![span] },
-    };
+        body.locals.iter().map(|it| (it.0, MutabilityReason::Unused)).collect();
+
     let ever_init_maps = ever_initialized_map(db, body);
     for (block_id, mut ever_init_map) in ever_init_maps.into_iter() {
         let block = &body.basic_blocks[block_id];
@@ -350,22 +376,50 @@ fn mutability_of_locals(
                     match place_case(db, body, place) {
                         ProjectionCase::Direct => {
                             if ever_init_map.get(place.local).copied().unwrap_or_default() {
-                                push_mut_span(place.local, statement.span);
+                                push_mut_span(place.local, statement.span, &mut result);
                             } else {
                                 ever_init_map.insert(place.local, true);
                             }
                         }
                         ProjectionCase::DirectPart => {
                             // Partial initialization is not supported, so it is definitely `mut`
-                            push_mut_span(place.local, statement.span);
+                            push_mut_span(place.local, statement.span, &mut result);
                         }
-                        ProjectionCase::Indirect => (),
+                        ProjectionCase::Indirect => {
+                            record_usage(place.local, &mut result);
+                        }
+                    }
+                    match value {
+                        Rvalue::CopyForDeref(p)
+                        | Rvalue::Discriminant(p)
+                        | Rvalue::Len(p)
+                        | Rvalue::Ref(_, p) => {
+                            record_usage(p.local, &mut result);
+                        }
+                        Rvalue::Use(o)
+                        | Rvalue::Repeat(o, _)
+                        | Rvalue::Cast(_, o, _)
+                        | Rvalue::UnaryOp(_, o) => record_usage_for_operand(o, &mut result),
+                        Rvalue::CheckedBinaryOp(_, o1, o2) => {
+                            for o in [o1, o2] {
+                                record_usage_for_operand(o, &mut result);
+                            }
+                        }
+                        Rvalue::Aggregate(_, args) => {
+                            for arg in args.iter() {
+                                record_usage_for_operand(arg, &mut result);
+                            }
+                        }
+                        Rvalue::ShallowInitBox(_, _) | Rvalue::ShallowInitBoxWithAlloc(_) => (),
                     }
                     if let Rvalue::Ref(BorrowKind::Mut { .. }, p) = value {
                         if place_case(db, body, p) != ProjectionCase::Indirect {
-                            push_mut_span(p.local, statement.span);
+                            push_mut_span(p.local, statement.span, &mut result);
                         }
                     }
+                }
+                StatementKind::FakeRead(p) => {
+                    record_usage(p.local, &mut result);
                 }
                 StatementKind::StorageDead(p) => {
                     ever_init_map.insert(*p, false);
@@ -386,15 +440,21 @@ fn mutability_of_locals(
             | TerminatorKind::FalseEdge { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::GeneratorDrop
-            | TerminatorKind::SwitchInt { .. }
             | TerminatorKind::Drop { .. }
             | TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::Assert { .. }
             | TerminatorKind::Yield { .. } => (),
-            TerminatorKind::Call { destination, .. } => {
+            TerminatorKind::SwitchInt { discr, targets: _ } => {
+                record_usage_for_operand(discr, &mut result);
+            }
+            TerminatorKind::Call { destination, args, func, .. } => {
+                record_usage_for_operand(func, &mut result);
+                for arg in args.iter() {
+                    record_usage_for_operand(arg, &mut result);
+                }
                 if destination.projection.lookup(&body.projection_store).len() == 0 {
                     if ever_init_map.get(destination.local).copied().unwrap_or_default() {
-                        push_mut_span(destination.local, MirSpan::Unknown);
+                        push_mut_span(destination.local, MirSpan::Unknown, &mut result);
                     } else {
                         ever_init_map.insert(destination.local, true);
                     }

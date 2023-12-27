@@ -13,7 +13,7 @@ fn ident<T>(t: T) -> T {
 fn direct_call(x: i32) -> i32 {
     mir!(
         {
-            Call(RET = ident(x), retblock)
+            Call(RET = ident(x), retblock, UnwindContinue())
         }
 
         retblock = {
@@ -27,7 +27,7 @@ fn direct_call(x: i32) -> i32 {
 fn indirect_call(x: i32, f: fn(i32) -> i32) -> i32 {
     mir!(
         {
-            Call(RET = f(x), retblock)
+            Call(RET = f(x), retblock, UnwindContinue())
         }
 
         retblock = {
@@ -49,7 +49,7 @@ impl<'a> Drop for WriteOnDrop<'a> {
 fn drop_first<'a>(a: WriteOnDrop<'a>, b: WriteOnDrop<'a>) {
     mir!(
         {
-            Drop(a, retblock)
+            Drop(a, retblock, UnwindContinue())
         }
 
         retblock = {
@@ -64,7 +64,7 @@ fn drop_first<'a>(a: WriteOnDrop<'a>, b: WriteOnDrop<'a>) {
 fn drop_second<'a>(a: WriteOnDrop<'a>, b: WriteOnDrop<'a>) {
     mir!(
         {
-            Drop(b, retblock)
+            Drop(b, retblock, UnwindContinue())
         }
 
         retblock = {

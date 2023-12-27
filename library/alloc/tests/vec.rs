@@ -1,6 +1,5 @@
 use core::alloc::{Allocator, Layout};
-use core::assert_eq;
-use core::iter::IntoIterator;
+use core::{assert_eq, assert_ne};
 use core::num::NonZeroUsize;
 use core::ptr::NonNull;
 use std::alloc::System;
@@ -1185,6 +1184,54 @@ fn test_from_iter_specialization_with_iterator_adapters() {
 }
 
 #[test]
+fn test_in_place_specialization_step_up_down() {
+    fn assert_in_place_trait<T: InPlaceIterable>(_: &T) {}
+    let src = vec![[0u8; 4]; 256];
+    let srcptr = src.as_ptr();
+    let src_cap = src.capacity();
+    let iter = src.into_iter().flatten();
+    assert_in_place_trait(&iter);
+    let sink = iter.collect::<Vec<_>>();
+    let sinkptr = sink.as_ptr();
+    assert_eq!(srcptr as *const u8, sinkptr);
+    assert_eq!(src_cap * 4, sink.capacity());
+
+    let iter = sink.into_iter().array_chunks::<4>();
+    assert_in_place_trait(&iter);
+    let sink = iter.collect::<Vec<_>>();
+    let sinkptr = sink.as_ptr();
+    assert_eq!(srcptr, sinkptr);
+    assert_eq!(src_cap, sink.capacity());
+
+    let mut src: Vec<u8> = Vec::with_capacity(17);
+    let src_bytes = src.capacity();
+    src.resize(8, 0u8);
+    let sink: Vec<[u8; 4]> = src.into_iter().array_chunks::<4>().collect();
+    let sink_bytes = sink.capacity() * 4;
+    assert_ne!(src_bytes, sink_bytes);
+    assert_eq!(sink.len(), 2);
+
+    let mut src: Vec<[u8; 3]> = Vec::with_capacity(17);
+    src.resize( 8, [0; 3]);
+    let iter = src.into_iter().map(|[a, b, _]| [a, b]);
+    assert_in_place_trait(&iter);
+    let sink: Vec<[u8; 2]> = iter.collect();
+    assert_eq!(sink.len(), 8);
+    assert!(sink.capacity() <= 25);
+
+    let src = vec![[0u8; 4]; 256];
+    let srcptr = src.as_ptr();
+    let iter = src
+        .into_iter()
+        .flat_map(|a| {
+            a.into_iter().map(|b| b.wrapping_add(1))
+        });
+    assert_in_place_trait(&iter);
+    let sink = iter.collect::<Vec<_>>();
+    assert_eq!(srcptr as *const u8, sink.as_ptr());
+}
+
+#[test]
 fn test_from_iter_specialization_head_tail_drop() {
     let drop_count: Vec<_> = (0..=2).map(|_| Rc::new(())).collect();
     let src: Vec<_> = drop_count.iter().cloned().collect();
@@ -1933,7 +1980,7 @@ fn vec_macro_repeating_null_raw_fat_pointer() {
 
     let vec = vec![null_raw_dyn; 1];
     dbg!(ptr_metadata(vec[0]));
-    assert!(vec[0] == null_raw_dyn);
+    assert!(std::ptr::eq(vec[0], null_raw_dyn));
 
     // Polyfill for https://github.com/rust-lang/rfcs/pull/2580
 

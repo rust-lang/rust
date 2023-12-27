@@ -157,7 +157,6 @@ Apache-2.0 OR MIT
 Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT
 Apache-2.0/MIT
 BSD-3-Clause
-BlueOak-1.0.0 OR MIT OR Apache-2.0
 CC0-1.0
 ISC
 MIT
@@ -251,6 +250,7 @@ fn check_dbg(path: &Path, text: &str) {
         // We have .dbg postfix
         "ide-completion/src/completions/postfix.rs",
         "ide-completion/src/completions/keyword.rs",
+        "ide-completion/src/tests/expression.rs",
         "ide-completion/src/tests/proc_macros.rs",
         // The documentation in string literals may contain anything for its own purposes
         "ide-completion/src/lib.rs",
@@ -300,6 +300,8 @@ fn check_test_attrs(path: &Path, text: &str) {
         // This file.
         "slow-tests/tidy.rs",
         "test-utils/src/fixture.rs",
+        // Generated code from lints contains doc tests in string literals.
+        "ide-db/src/generated/lints.rs",
     ];
     if text.contains("#[should_panic") && !need_panic.iter().any(|p| path.ends_with(p)) {
         panic!(
@@ -315,7 +317,7 @@ fn check_trailing_ws(path: &Path, text: &str) {
         return;
     }
     for (line_number, line) in text.lines().enumerate() {
-        if line.chars().last().map(char::is_whitespace) == Some(true) {
+        if line.chars().last().is_some_and(char::is_whitespace) {
             panic!("Trailing whitespace in {} at line {}", path.display(), line_number + 1)
         }
     }

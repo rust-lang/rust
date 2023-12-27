@@ -21,15 +21,19 @@ object = { version = "0.32.0", default-features = false, features = [
 ] }
 serde.workspace = true
 serde_json = { workspace = true, features = ["unbounded_depth"] }
-tracing = "0.1.37"
+tracing.workspace = true
 triomphe.workspace = true
 memmap2 = "0.5.4"
 snap = "1.1.0"
+indexmap = "2.1.0"
 
 # local deps
 paths.workspace = true
 tt.workspace = true
 stdx.workspace = true
 profile.workspace = true
-# Intentionally *not* depend on anything salsa-related
-# base-db.workspace = true
+text-size.workspace = true
+# Ideally this crate would not depend on salsa things, but we need span information here which wraps
+# InternIds for the syntax context
+base-db.workspace = true
+la-arena.workspace = true

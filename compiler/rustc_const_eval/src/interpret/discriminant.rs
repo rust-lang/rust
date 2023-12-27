@@ -119,7 +119,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     if matches!(ty.kind(), ty::Adt(def, ..) if def.variants().is_empty()) {
                         throw_ub!(UninhabitedEnumVariantRead(index))
                     }
-                    // For consisteny with `write_discriminant`, and to make sure that
+                    // For consistency with `write_discriminant`, and to make sure that
                     // `project_downcast` cannot fail due to strange layouts, we declare immediate UB
                     // for uninhabited variants.
                     if op.layout().for_variant(self, index).abi.is_uninhabited() {
@@ -236,7 +236,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 variant
             }
         };
-        // For consisteny with `write_discriminant`, and to make sure that `project_downcast` cannot fail due to strange layouts, we declare immediate UB for uninhabited variants.
+        // For consistency with `write_discriminant`, and to make sure that `project_downcast` cannot fail due to strange layouts, we declare immediate UB for uninhabited variants.
         if op.layout().for_variant(self, index).abi.is_uninhabited() {
             throw_ub!(UninhabitedEnumVariantRead(index))
         }

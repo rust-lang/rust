@@ -13,5 +13,5 @@ help: consider introducing a named lifetime parameter
 LL | fn foo<'a>(&mut (ref mut v, w): &mut (&'a u8, &u8), x: &'a u8) {
    |       ++++                             ++               ++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -45,13 +45,7 @@ impl<'a, T: EarlyLintPass> EarlyContextAndPass<'a, T> {
     fn inlined_check_id(&mut self, id: ast::NodeId) {
         for early_lint in self.context.buffered.take(id) {
             let BufferedEarlyLint { span, msg, node_id: _, lint_id, diagnostic } = early_lint;
-            self.context.lookup_with_diagnostics(
-                lint_id.lint,
-                Some(span),
-                msg,
-                |lint| lint,
-                diagnostic,
-            );
+            self.context.lookup_with_diagnostics(lint_id.lint, Some(span), msg, |_| {}, diagnostic);
         }
     }
 
@@ -162,8 +156,8 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         // Explicitly check for lints associated with 'closure_id', since
         // it does not have a corresponding AST node
         if let ast_visit::FnKind::Fn(_, _, sig, _, _, _) = fk {
-            if let ast::Async::Yes { closure_id, .. } = sig.header.asyncness {
-                self.check_id(closure_id);
+            if let Some(coroutine_kind) = sig.header.coroutine_kind {
+                self.check_id(coroutine_kind.closure_id());
             }
         }
     }
@@ -223,9 +217,11 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
         // it does not have a corresponding AST node
         match e.kind {
             ast::ExprKind::Closure(box ast::Closure {
-                asyncness: ast::Async::Yes { closure_id, .. },
+                coroutine_kind: Some(coroutine_kind),
                 ..
-            }) => self.check_id(closure_id),
+            }) => {
+                self.check_id(coroutine_kind.closure_id());
+            }
             _ => {}
         }
         lint_callback!(self, check_expr_post, e);
@@ -350,7 +346,7 @@ impl<'a> EarlyCheckNode<'a> for (&'a ast::Crate, &'a [ast::Attribute]) {
     where
         'a: 'b,
     {
-        &self.1
+        self.1
     }
     fn check<'b, T: EarlyLintPass>(self, cx: &mut EarlyContextAndPass<'b, T>)
     where
@@ -430,7 +426,7 @@ pub fn check_ast_node_inner<'a, T: EarlyLintPass>(
     // that was not lint-checked (perhaps it doesn't exist?). This is a bug.
     for (id, lints) in cx.context.buffered.map {
         for early_lint in lints {
-            sess.delay_span_bug(
+            sess.dcx().span_delayed_bug(
                 early_lint.span,
                 format!(
                     "failed to process buffered lint here (dummy = {})",

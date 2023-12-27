@@ -50,8 +50,8 @@ impl OutlivesSuggestionBuilder {
     // naming the `'self` lifetime in methods, etc.
     fn region_name_is_suggestable(name: &RegionName) -> bool {
         match name.source {
-            RegionNameSource::NamedEarlyBoundRegion(..)
-            | RegionNameSource::NamedFreeRegion(..)
+            RegionNameSource::NamedEarlyParamRegion(..)
+            | RegionNameSource::NamedLateParamRegion(..)
             | RegionNameSource::Static => true,
 
             // Don't give suggestions for upvars, closure return types, or other unnameable
@@ -206,7 +206,7 @@ impl OutlivesSuggestionBuilder {
         // If there is exactly one suggestable constraints, then just suggest it. Otherwise, emit a
         // list of diagnostics.
         let mut diag = if suggested.len() == 1 {
-            mbcx.infcx.tcx.sess.diagnostic().struct_help(match suggested.last().unwrap() {
+            mbcx.dcx().struct_help(match suggested.last().unwrap() {
                 SuggestedConstraint::Outlives(a, bs) => {
                     let bs: SmallVec<[String; 2]> = bs.iter().map(|r| r.to_string()).collect();
                     format!("add bound `{a}: {}`", bs.join(" + "))
@@ -222,8 +222,7 @@ impl OutlivesSuggestionBuilder {
             let mut diag = mbcx
                 .infcx
                 .tcx
-                .sess
-                .diagnostic()
+                .dcx()
                 .struct_help("the following changes may resolve your lifetime errors");
 
             // Add suggestions.

@@ -54,6 +54,10 @@ impl FamousDefs<'_, '_> {
         self.find_trait("core:convert:Into")
     }
 
+    pub fn core_convert_Index(&self) -> Option<Trait> {
+        self.find_trait("core:ops:Index")
+    }
+
     pub fn core_option_Option(&self) -> Option<Enum> {
         self.find_enum("core:option:Option")
     }

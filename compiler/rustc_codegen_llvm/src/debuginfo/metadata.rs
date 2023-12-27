@@ -17,10 +17,10 @@ use crate::debuginfo::utils::FatPtrKind;
 use crate::llvm;
 use crate::llvm::debuginfo::{
     DIDescriptor, DIFile, DIFlags, DILexicalBlock, DIScope, DIType, DebugEmissionKind,
+    DebugNameTableKind,
 };
 use crate::value::Value;
 
-use cstr::cstr;
 use rustc_codegen_ssa::debuginfo::type_names::cpp_like_debuginfo;
 use rustc_codegen_ssa::debuginfo::type_names::VTableNameKind;
 use rustc_codegen_ssa::traits::*;
@@ -35,9 +35,10 @@ use rustc_middle::ty::{
 use rustc_session::config::{self, DebugInfo, Lto};
 use rustc_span::symbol::Symbol;
 use rustc_span::FileName;
-use rustc_span::{self, FileNameDisplayPreference, SourceFile};
+use rustc_span::{FileNameDisplayPreference, SourceFile};
 use rustc_symbol_mangling::typeid_for_trait_ref;
 use rustc_target::abi::{Align, Size};
+use rustc_target::spec::DebuginfoKind;
 use smallvec::smallvec;
 
 use libc::{c_char, c_longlong, c_uint};
@@ -533,7 +534,7 @@ fn hex_encode(data: &[u8]) -> String {
 }
 
 pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> &'ll DIFile {
-    let cache_key = Some((source_file.name_hash, source_file.src_hash));
+    let cache_key = Some((source_file.stable_id, source_file.src_hash));
     return debug_context(cx)
         .created_files
         .borrow_mut()
@@ -606,7 +607,7 @@ pub fn file_metadata<'ll>(cx: &CodegenCx<'ll, '_>, source_file: &SourceFile) -> 
 
                     if let Ok(rel_path) = abs_path.strip_prefix(working_directory) {
                         (
-                            working_directory.to_string_lossy().into(),
+                            working_directory.to_string_lossy(),
                             rel_path.to_string_lossy().into_owned(),
                         )
                     } else {
@@ -853,8 +854,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
 
     use rustc_session::RemapFileNameExt;
     let name_in_debuginfo = name_in_debuginfo.to_string_lossy();
-    let work_dir = tcx.sess.opts.working_dir.for_codegen(&tcx.sess).to_string_lossy();
-    let flags = "\0";
+    let work_dir = tcx.sess.opts.working_dir.for_codegen(tcx.sess).to_string_lossy();
     let output_filenames = tcx.output_filenames(());
     let split_name = if tcx.sess.target_can_use_split_dwarf() {
         output_filenames
@@ -878,6 +878,17 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
     let split_name = split_name.to_str().unwrap();
     let kind = DebugEmissionKind::from_generic(tcx.sess.opts.debuginfo);
 
+    let dwarf_version =
+        tcx.sess.opts.unstable_opts.dwarf_version.unwrap_or(tcx.sess.target.default_dwarf_version);
+    let is_dwarf_kind =
+        matches!(tcx.sess.target.debuginfo_kind, DebuginfoKind::Dwarf | DebuginfoKind::DwarfDsym);
+    // Don't emit `.debug_pubnames` and `.debug_pubtypes` on DWARFv4 or lower.
+    let debug_name_table_kind = if is_dwarf_kind && dwarf_version <= 4 {
+        DebugNameTableKind::None
+    } else {
+        DebugNameTableKind::Default
+    };
+
     unsafe {
         let compile_unit_file = llvm::LLVMRustDIBuilderCreateFile(
             debug_context.builder,
@@ -897,7 +908,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
             producer.as_ptr().cast(),
             producer.len(),
             tcx.sess.opts.optimize != config::OptLevel::No,
-            flags.as_ptr().cast(),
+            c"".as_ptr().cast(),
             0,
             // NB: this doesn't actually have any perceptible effect, it seems. LLVM will instead
             // put the path supplied to `MCSplitDwarfFile` into the debug info of the final
@@ -907,6 +918,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
             kind,
             0,
             tcx.sess.opts.unstable_opts.split_dwarf_inlining,
+            debug_name_table_kind,
         );
 
         if tcx.sess.opts.unstable_opts.profile {
@@ -926,8 +938,7 @@ pub fn build_compile_unit_di_node<'ll, 'tcx>(
             );
             let val = llvm::LLVMMetadataAsValue(debug_context.llcontext, gcov_metadata);
 
-            let llvm_gcov_ident = cstr!("llvm.gcov");
-            llvm::LLVMAddNamedMetadataOperand(debug_context.llmod, llvm_gcov_ident.as_ptr(), val);
+            llvm::LLVMAddNamedMetadataOperand(debug_context.llmod, c"llvm.gcov".as_ptr(), val);
         }
 
         return unit_metadata;
@@ -966,6 +977,27 @@ fn build_field_di_node<'ll, 'tcx>(
     }
 }
 
+/// Returns the `DIFlags` corresponding to the visibility of the item identified by `did`.
+///
+/// `DIFlags::Flag{Public,Protected,Private}` correspond to `DW_AT_accessibility`
+/// (public/protected/private) aren't exactly right for Rust, but neither is `DW_AT_visibility`
+/// (local/exported/qualified), and there's no way to set `DW_AT_visibility` in LLVM's API.
+fn visibility_di_flags<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    did: DefId,
+    type_did: DefId,
+) -> DIFlags {
+    let parent_did = cx.tcx.parent(type_did);
+    let visibility = cx.tcx.visibility(did);
+    match visibility {
+        Visibility::Public => DIFlags::FlagPublic,
+        // Private fields have a restricted visibility of the module containing the type.
+        Visibility::Restricted(did) if did == parent_did => DIFlags::FlagPrivate,
+        // `pub(crate)`/`pub(super)` visibilities are any other restricted visibility.
+        Visibility::Restricted(..) => DIFlags::FlagProtected,
+    }
+}
+
 /// Creates the debuginfo node for a Rust struct type. Maybe be a regular struct or a tuple-struct.
 fn build_struct_type_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
@@ -989,7 +1021,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
             &compute_debuginfo_type_name(cx.tcx, struct_type, false),
             size_and_align_of(struct_type_and_layout),
             Some(containing_scope),
-            DIFlags::FlagZero,
+            visibility_di_flags(cx, adt_def.did(), adt_def.did()),
         ),
         // Fields:
         |cx, owner| {
@@ -1012,7 +1044,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
                         &field_name[..],
                         (field_layout.size, field_layout.align.abi),
                         struct_type_and_layout.fields.offset(i),
-                        DIFlags::FlagZero,
+                        visibility_di_flags(cx, f.did, adt_def.did()),
                         type_di_node(cx, field_layout.ty),
                     )
                 })

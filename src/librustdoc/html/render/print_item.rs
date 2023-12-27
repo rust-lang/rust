@@ -1,5 +1,3 @@
-use clean::AttributesExt;
-
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
@@ -22,12 +20,13 @@ use super::{
     item_ty_to_section, notable_traits_button, notable_traits_json, render_all_impls,
     render_assoc_item, render_assoc_items, render_attributes_in_code, render_attributes_in_pre,
     render_impl, render_rightside, render_stability_since_raw,
-    render_stability_since_raw_with_extra, AssocItemLink, Context, ImplRenderingParameters,
+    render_stability_since_raw_with_extra, AssocItemLink, AssocItemRender, Context,
+    ImplRenderingParameters, RenderMode,
 };
 use crate::clean;
 use crate::config::ModuleSorting;
 use crate::formats::item_type::ItemType;
-use crate::formats::{AssocItemRender, Impl, RenderMode};
+use crate::formats::Impl;
 use crate::html::escape::Escape;
 use crate::html::format::{
     display_fn, join_with_double_colon, print_abi_with_space, print_constness_with_space,
@@ -369,8 +368,8 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
         if let (Some(a), Some(b)) = (s1, s2) {
             match (a.is_stable(), b.is_stable()) {
                 (true, true) | (false, false) => {}
-                (false, true) => return Ordering::Less,
-                (true, false) => return Ordering::Greater,
+                (false, true) => return Ordering::Greater,
+                (true, false) => return Ordering::Less,
             }
         }
         let lhs = i1.name.unwrap_or(kw::Empty);
@@ -429,7 +428,7 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
             last_section = Some(my_section);
             write!(
                 w,
-                "<h2 id=\"{id}\" class=\"small-section-header\">\
+                "<h2 id=\"{id}\" class=\"section-header\">\
                     <a href=\"#{id}\">{name}</a>\
                  </h2>{ITEM_TABLE_OPEN}",
                 id = cx.derive_id(my_section.id()),
@@ -464,16 +463,9 @@ fn item_module(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Item, items: 
 
             clean::ImportItem(ref import) => {
                 let stab_tags = if let Some(import_def_id) = import.source.did {
-                    let ast_attrs = tcx.get_attrs_unchecked(import_def_id);
-                    let import_attrs = Box::new(clean::Attributes::from_ast(ast_attrs));
-
                     // Just need an item with the correct def_id and attrs
-                    let import_item = clean::Item {
-                        item_id: import_def_id.into(),
-                        attrs: import_attrs,
-                        cfg: ast_attrs.cfg(tcx, &cx.cache().hidden_cfg),
-                        ..myitem.clone()
-                    };
+                    let import_item =
+                        clean::Item { item_id: import_def_id.into(), ..myitem.clone() };
 
                     let stab_tags = Some(extra_info_tags(&import_item, item, tcx).to_string());
                     stab_tags
@@ -596,8 +588,10 @@ fn extra_info_tags<'a, 'tcx: 'a>(
 
         // The "rustc_private" crates are permanently unstable so it makes no sense
         // to render "unstable" everywhere.
-        if item.stability(tcx).as_ref().map(|s| s.is_unstable() && s.feature != sym::rustc_private)
-            == Some(true)
+        if item
+            .stability(tcx)
+            .as_ref()
+            .is_some_and(|s| s.is_unstable() && s.feature != sym::rustc_private)
         {
             write!(f, "{}", tag_html("unstable", "", "Experimental"))?;
         }
@@ -824,7 +818,7 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
     fn write_small_section_header(w: &mut Buffer, id: &str, title: &str, extra_content: &str) {
         write!(
             w,
-            "<h2 id=\"{0}\" class=\"small-section-header\">\
+            "<h2 id=\"{0}\" class=\"section-header\">\
                 {1}<a href=\"#{0}\" class=\"anchor\">§</a>\
              </h2>{2}",
             id, title, extra_content
@@ -974,8 +968,9 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         // if any Types with the same name but different DefId have been found.
         let mut implementor_dups: FxHashMap<Symbol, (DefId, bool)> = FxHashMap::default();
         for implementor in implementors {
-            if let Some(did) = implementor.inner_impl().for_.without_borrowed_ref().def_id(cache) &&
-                !did.is_local() {
+            if let Some(did) = implementor.inner_impl().for_.without_borrowed_ref().def_id(cache)
+                && !did.is_local()
+            {
                 extern_crates.insert(did.krate);
             }
             match implementor.inner_impl().for_.without_borrowed_ref() {
@@ -1152,9 +1147,10 @@ fn item_trait(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &clean:
         .take(cx.current.len())
         .chain(std::iter::once("trait.impl"))
         .collect();
-    if let Some(did) = it.item_id.as_def_id() &&
-        let get_extern = { || cache.external_paths.get(&did).map(|s| &s.0) } &&
-        let Some(fqp) = cache.exact_paths.get(&did).or_else(get_extern) {
+    if let Some(did) = it.item_id.as_def_id()
+        && let get_extern = { || cache.external_paths.get(&did).map(|s| &s.0) }
+        && let Some(fqp) = cache.exact_paths.get(&did).or_else(get_extern)
+    {
         js_src_path.extend(fqp[..fqp.len() - 1].iter().copied());
         js_src_path.push_fmt(format_args!("{}.{}.js", it.type_(), fqp.last().unwrap()));
     } else {
@@ -1255,7 +1251,7 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
     if let Some(inner_type) = &t.inner_type {
         write!(
             w,
-            "<h2 id=\"aliased-type\" class=\"small-section-header\">\
+            "<h2 id=\"aliased-type\" class=\"section-header\">\
                 Aliased Type<a href=\"#aliased-type\" class=\"anchor\">§</a></h2>"
         );
 
@@ -1499,10 +1495,12 @@ fn print_tuple_struct_fields<'a, 'cx: 'a>(
     s: &'a [clean::Item],
 ) -> impl fmt::Display + 'a + Captures<'cx> {
     display_fn(|f| {
-        if s.iter()
-            .all(|field| matches!(*field.kind, clean::StrippedItem(box clean::StructFieldItem(..))))
+        if !s.is_empty()
+            && s.iter().all(|field| {
+                matches!(*field.kind, clean::StrippedItem(box clean::StructFieldItem(..)))
+            })
         {
-            return f.write_str("/* private fields */");
+            return f.write_str("<span class=\"comment\">/* private fields */</span>");
         }
 
         for (i, ty) in s.iter().enumerate() {
@@ -1564,8 +1562,8 @@ fn should_show_enum_discriminant(
 ) -> bool {
     let mut has_variants_with_value = false;
     for variant in variants {
-        if let clean::VariantItem(ref var) = *variant.kind &&
-            matches!(var.kind, clean::VariantKind::CLike)
+        if let clean::VariantItem(ref var) = *variant.kind
+            && matches!(var.kind, clean::VariantKind::CLike)
         {
             has_variants_with_value |= var.discriminant.is_some();
         } else {
@@ -1659,7 +1657,7 @@ fn render_enum_fields(
         }
 
         if variants_stripped && !is_non_exhaustive {
-            w.write_str("    // some variants omitted\n");
+            w.write_str("    <span class=\"comment\">// some variants omitted</span>\n");
         }
         if toggle {
             toggle_close(&mut w);
@@ -1678,7 +1676,7 @@ fn item_variants(
     let tcx = cx.tcx();
     write!(
         w,
-        "<h2 id=\"variants\" class=\"variants small-section-header\">\
+        "<h2 id=\"variants\" class=\"variants section-header\">\
             Variants{}<a href=\"#variants\" class=\"anchor\">§</a>\
         </h2>\
         {}\
@@ -1706,8 +1704,8 @@ fn item_variants(
             " rightside",
         );
         w.write_str("<h3 class=\"code-header\">");
-        if let clean::VariantItem(ref var) = *variant.kind &&
-            let clean::VariantKind::CLike = var.kind
+        if let clean::VariantItem(ref var) = *variant.kind
+            && let clean::VariantKind::CLike = var.kind
         {
             display_c_like_variant(
                 w,
@@ -1730,7 +1728,14 @@ fn item_variants(
         w.write_str("</h3></section>");
 
         let heading_and_fields = match &variant_data.kind {
-            clean::VariantKind::Struct(s) => Some(("Fields", &s.fields)),
+            clean::VariantKind::Struct(s) => {
+                // If there is no field to display, no need to add the heading.
+                if s.fields.iter().any(|f| !f.is_doc_hidden()) {
+                    Some(("Fields", &s.fields))
+                } else {
+                    None
+                }
+            }
             clean::VariantKind::Tuple(fields) => {
                 // Documentation on tuple variant fields is rare, so to reduce noise we only emit
                 // the section if at least one field is documented.
@@ -1765,7 +1770,7 @@ fn item_variants(
                         write!(
                             w,
                             "<div class=\"sub-variant-field\">\
-                                 <span id=\"{id}\" class=\"small-section-header\">\
+                                 <span id=\"{id}\" class=\"section-header\">\
                                      <a href=\"#{id}\" class=\"anchor field\">§</a>\
                                      <code>{f}: {t}</code>\
                                  </span>",
@@ -1804,7 +1809,8 @@ fn item_proc_macro(
         let name = it.name.expect("proc-macros always have names");
         match m.kind {
             MacroKind::Bang => {
-                write!(buffer, "{name}!() {{ /* proc-macro */ }}").unwrap();
+                write!(buffer, "{name}!() {{ <span class=\"comment\">/* proc-macro */</span> }}")
+                    .unwrap();
             }
             MacroKind::Attr => {
                 write!(buffer, "#[{name}]").unwrap();
@@ -1812,7 +1818,12 @@ fn item_proc_macro(
             MacroKind::Derive => {
                 write!(buffer, "#[derive({name})]").unwrap();
                 if !m.helpers.is_empty() {
-                    buffer.write_str("\n{\n    // Attributes available to this derive:\n").unwrap();
+                    buffer
+                        .write_str(
+                            "\n{\n    \
+                        <span class=\"comment\">// Attributes available to this derive:</span>\n",
+                        )
+                        .unwrap();
                     for attr in &m.helpers {
                         writeln!(buffer, "    #[{attr}]").unwrap();
                     }
@@ -1922,7 +1933,7 @@ fn item_fields(
         if fields.peek().is_some() {
             write!(
                 w,
-                "<h2 id=\"fields\" class=\"fields small-section-header\">\
+                "<h2 id=\"fields\" class=\"fields section-header\">\
                      {}{}<a href=\"#fields\" class=\"anchor\">§</a>\
                  </h2>\
                  {}",
@@ -1936,7 +1947,7 @@ fn item_fields(
                 let id = cx.derive_id(format!("{typ}.{field_name}", typ = ItemType::StructField));
                 write!(
                     w,
-                    "<span id=\"{id}\" class=\"{item_type} small-section-header\">\
+                    "<span id=\"{id}\" class=\"{item_type} section-header\">\
                          <a href=\"#{id}\" class=\"anchor field\">§</a>\
                          <code>{field_name}: {ty}</code>\
                      </span>",
@@ -2174,7 +2185,7 @@ fn render_union<'a, 'cx: 'a>(
         }
 
         if it.has_stripped_entries().unwrap() {
-            write!(f, "    /* private fields */\n")?;
+            write!(f, "    <span class=\"comment\">/* private fields */</span>\n")?;
         }
         if toggle {
             toggle_close(&mut f);
@@ -2260,11 +2271,11 @@ fn render_struct_fields(
 
             if has_visible_fields {
                 if has_stripped_entries {
-                    write!(w, "\n{tab}    /* private fields */");
+                    write!(w, "\n{tab}    <span class=\"comment\">/* private fields */</span>");
                 }
                 write!(w, "\n{tab}");
             } else if has_stripped_entries {
-                write!(w, " /* private fields */ ");
+                write!(w, " <span class=\"comment\">/* private fields */</span> ");
             }
             if toggle {
                 toggle_close(&mut w);
@@ -2273,10 +2284,12 @@ fn render_struct_fields(
         }
         Some(CtorKind::Fn) => {
             w.write_str("(");
-            if fields.iter().all(|field| {
-                matches!(*field.kind, clean::StrippedItem(box clean::StructFieldItem(..)))
-            }) {
-                write!(w, "/* private fields */");
+            if !fields.is_empty()
+                && fields.iter().all(|field| {
+                    matches!(*field.kind, clean::StrippedItem(box clean::StructFieldItem(..)))
+                })
+            {
+                write!(w, "<span class=\"comment\">/* private fields */</span>");
             } else {
                 for (i, field) in fields.iter().enumerate() {
                     if i > 0 {

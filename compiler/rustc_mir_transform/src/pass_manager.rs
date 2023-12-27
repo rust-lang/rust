@@ -2,7 +2,7 @@ use rustc_middle::mir::{self, Body, MirPhase, RuntimePhase};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 
-use crate::{validate, MirPass};
+use crate::{lint::lint_body, validate, MirPass};
 
 /// Just like `MirPass`, except it cannot mutate `Body`.
 pub trait MirLint<'tcx> {
@@ -99,7 +99,7 @@ where
             );
             *polarity
         });
-    overridden.unwrap_or_else(|| pass.is_enabled(&tcx.sess))
+    overridden.unwrap_or_else(|| pass.is_enabled(tcx.sess))
 }
 
 fn run_passes_inner<'tcx>(
@@ -109,6 +109,7 @@ fn run_passes_inner<'tcx>(
     phase_change: Option<MirPhase>,
     validate_each: bool,
 ) {
+    let lint = tcx.sess.opts.unstable_opts.lint_mir & !body.should_skip();
     let validate = validate_each & tcx.sess.opts.unstable_opts.validate_mir & !body.should_skip();
     let overridden_passes = &tcx.sess.opts.unstable_opts.mir_enable_passes;
     trace!(?overridden_passes);
@@ -126,10 +127,13 @@ fn run_passes_inner<'tcx>(
             let dump_enabled = pass.is_mir_dump_enabled();
 
             if dump_enabled {
-                dump_mir_for_pass(tcx, body, &name, false);
+                dump_mir_for_pass(tcx, body, name, false);
             }
             if validate {
                 validate_body(tcx, body, format!("before pass {name}"));
+            }
+            if lint {
+                lint_body(tcx, body, format!("before pass {name}"));
             }
 
             if let Some(prof_arg) = &prof_arg {
@@ -142,10 +146,13 @@ fn run_passes_inner<'tcx>(
             }
 
             if dump_enabled {
-                dump_mir_for_pass(tcx, body, &name, true);
+                dump_mir_for_pass(tcx, body, name, true);
             }
             if validate {
                 validate_body(tcx, body, format!("after pass {name}"));
+            }
+            if lint {
+                lint_body(tcx, body, format!("after pass {name}"));
             }
 
             body.pass_count += 1;
@@ -163,6 +170,9 @@ fn run_passes_inner<'tcx>(
         dump_mir_for_phase_change(tcx, body);
         if validate || new_phase == MirPhase::Runtime(RuntimePhase::Optimized) {
             validate_body(tcx, body, format!("after phase change to {}", new_phase.name()));
+        }
+        if lint {
+            lint_body(tcx, body, format!("after phase change to {}", new_phase.name()));
         }
 
         body.pass_count = 1;

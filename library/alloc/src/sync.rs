@@ -2174,7 +2174,6 @@ impl<T: Clone, A: Allocator + Clone> Arc<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_unwrap_or_clone)]
     /// # use std::{ptr, sync::Arc};
     /// let inner = String::from("test");
     /// let ptr = inner.as_ptr();
@@ -2195,7 +2194,7 @@ impl<T: Clone, A: Allocator + Clone> Arc<T, A> {
     /// assert!(ptr::eq(ptr, inner.as_ptr()));
     /// ```
     #[inline]
-    #[unstable(feature = "arc_unwrap_or_clone", issue = "93610")]
+    #[stable(feature = "arc_unwrap_or_clone", since = "1.76.0")]
     pub fn unwrap_or_clone(this: Self) -> T {
         Arc::try_unwrap(this).unwrap_or_else(|arc| (*arc).clone())
     }
@@ -2843,16 +2842,14 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     /// (i.e., when this `Weak` was created by `Weak::new`).
     #[inline]
     fn inner(&self) -> Option<WeakInner<'_>> {
-        if is_dangling(self.ptr.as_ptr()) {
+        let ptr = self.ptr.as_ptr();
+        if is_dangling(ptr) {
             None
         } else {
             // We are careful to *not* create a reference covering the "data" field, as
             // the field may be mutated concurrently (for example, if the last `Arc`
             // is dropped, the data field will be dropped in-place).
-            Some(unsafe {
-                let ptr = self.ptr.as_ptr();
-                WeakInner { strong: &(*ptr).strong, weak: &(*ptr).weak }
-            })
+            Some(unsafe { WeakInner { strong: &(*ptr).strong, weak: &(*ptr).weak } })
         }
     }
 
@@ -3503,6 +3500,7 @@ impl<T> FromIterator<T> for Arc<[T]> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 /// Specialization trait used for collecting into `Arc<[T]>`.
 trait ToArcSlice<T>: Iterator<Item = T> + Sized {
     fn to_arc_slice(self) -> Arc<[T]>;

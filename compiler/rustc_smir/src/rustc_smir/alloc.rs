@@ -2,6 +2,7 @@ use rustc_middle::mir::{
     interpret::{alloc_range, AllocRange, Pointer},
     ConstValue,
 };
+use stable_mir::Error;
 
 use crate::rustc_smir::{Stable, Tables};
 use stable_mir::mir::Mutability;
@@ -26,33 +27,47 @@ pub fn new_allocation<'tcx>(
     const_value: ConstValue<'tcx>,
     tables: &mut Tables<'tcx>,
 ) -> Allocation {
-    match const_value {
+    try_new_allocation(ty, const_value, tables).unwrap()
+}
+
+#[allow(rustc::usage_of_qualified_ty)]
+pub fn try_new_allocation<'tcx>(
+    ty: rustc_middle::ty::Ty<'tcx>,
+    const_value: ConstValue<'tcx>,
+    tables: &mut Tables<'tcx>,
+) -> Result<Allocation, Error> {
+    Ok(match const_value {
         ConstValue::Scalar(scalar) => {
             let size = scalar.size();
             let align = tables
                 .tcx
                 .layout_of(rustc_middle::ty::ParamEnv::reveal_all().and(ty))
-                .unwrap()
+                .map_err(|e| e.stable(tables))?
                 .align;
             let mut allocation = rustc_middle::mir::interpret::Allocation::uninit(size, align.abi);
             allocation
                 .write_scalar(&tables.tcx, alloc_range(rustc_target::abi::Size::ZERO, size), scalar)
-                .unwrap();
+                .map_err(|e| e.stable(tables))?;
             allocation.stable(tables)
         }
         ConstValue::ZeroSized => {
-            let align =
-                tables.tcx.layout_of(rustc_middle::ty::ParamEnv::empty().and(ty)).unwrap().align;
+            let align = tables
+                .tcx
+                .layout_of(rustc_middle::ty::ParamEnv::empty().and(ty))
+                .map_err(|e| e.stable(tables))?
+                .align;
             new_empty_allocation(align.abi)
         }
         ConstValue::Slice { data, meta } => {
             let alloc_id = tables.tcx.reserve_and_set_memory_alloc(data);
-            let ptr = Pointer::new(alloc_id, rustc_target::abi::Size::ZERO);
+            let ptr = Pointer::new(alloc_id.into(), rustc_target::abi::Size::ZERO);
             let scalar_ptr = rustc_middle::mir::interpret::Scalar::from_pointer(ptr, &tables.tcx);
             let scalar_meta =
                 rustc_middle::mir::interpret::Scalar::from_target_usize(meta, &tables.tcx);
-            let layout =
-                tables.tcx.layout_of(rustc_middle::ty::ParamEnv::reveal_all().and(ty)).unwrap();
+            let layout = tables
+                .tcx
+                .layout_of(rustc_middle::ty::ParamEnv::reveal_all().and(ty))
+                .map_err(|e| e.stable(tables))?;
             let mut allocation =
                 rustc_middle::mir::interpret::Allocation::uninit(layout.size, layout.align.abi);
             allocation
@@ -61,14 +76,14 @@ pub fn new_allocation<'tcx>(
                     alloc_range(rustc_target::abi::Size::ZERO, tables.tcx.data_layout.pointer_size),
                     scalar_ptr,
                 )
-                .unwrap();
+                .map_err(|e| e.stable(tables))?;
             allocation
                 .write_scalar(
                     &tables.tcx,
                     alloc_range(tables.tcx.data_layout.pointer_size, scalar_meta.size()),
                     scalar_meta,
                 )
-                .unwrap();
+                .map_err(|e| e.stable(tables))?;
             allocation.stable(tables)
         }
         ConstValue::Indirect { alloc_id, offset } => {
@@ -76,11 +91,11 @@ pub fn new_allocation<'tcx>(
             let ty_size = tables
                 .tcx
                 .layout_of(rustc_middle::ty::ParamEnv::reveal_all().and(ty))
-                .unwrap()
+                .map_err(|e| e.stable(tables))?
                 .size;
             allocation_filter(&alloc.0, alloc_range(offset, ty_size), tables)
         }
-    }
+    })
 }
 
 /// Creates an `Allocation` only from information within the `AllocRange`.
@@ -112,7 +127,10 @@ pub(super) fn allocation_filter<'tcx>(
         .iter()
         .filter(|a| a.0 >= alloc_range.start && a.0 <= alloc_range.end())
     {
-        ptrs.push((offset.bytes_usize() - alloc_range.start.bytes_usize(), tables.prov(*prov)));
+        ptrs.push((
+            offset.bytes_usize() - alloc_range.start.bytes_usize(),
+            tables.prov(prov.alloc_id()),
+        ));
     }
     Allocation {
         bytes: bytes,

@@ -4,5 +4,5 @@ error: unknown start of token: \
 LL | \
    | ^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

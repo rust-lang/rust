@@ -1,7 +1,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), allow(internal_features))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
+#![doc(rust_logo)]
+#![allow(internal_features)]
+#![feature(rustdoc_internals)]
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_span)]
 #![deny(rustc::untranslatable_diagnostic)]
@@ -61,6 +61,10 @@ mod fluent;
 /// );
 /// err.emit();
 /// ```
+///
+/// Note: any crate using this macro must also have a dependency on
+/// `rustc_errors`, because the generated code refers to things from that
+/// crate.
 #[proc_macro]
 pub fn fluent_messages(input: TokenStream) -> TokenStream {
     fluent::fluent_messages(input)

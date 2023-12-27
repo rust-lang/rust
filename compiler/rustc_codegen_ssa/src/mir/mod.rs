@@ -168,7 +168,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     debug!("fn_abi: {:?}", fn_abi);
 
-    let debug_context = cx.create_function_debug_context(instance, &fn_abi, llfn, &mir);
+    let debug_context = cx.create_function_debug_context(instance, fn_abi, llfn, mir);
 
     let start_llbb = Bx::append_block(cx, llfn, "start");
     let mut start_bx = Bx::build(cx, start_llbb);
@@ -180,7 +180,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 
     let cleanup_kinds =
-        base::wants_new_eh_instructions(cx.tcx().sess).then(|| analyze::cleanup_kinds(&mir));
+        base::wants_new_eh_instructions(cx.tcx().sess).then(|| analyze::cleanup_kinds(mir));
 
     let cached_llbbs: IndexVec<mir::BasicBlock, CachedLlbb<Bx::BasicBlock>> =
         mir.basic_blocks
@@ -261,7 +261,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     drop(start_bx);
 
     // Codegen the body of each block using reverse postorder
-    for (bb, _) in traversal::reverse_postorder(&mir) {
+    for (bb, _) in traversal::reverse_postorder(mir) {
         fx.codegen_block(bb);
     }
 }

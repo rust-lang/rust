@@ -76,6 +76,15 @@ pub trait MirVisitor {
         self.super_place(place, ptx, location)
     }
 
+    fn visit_projection_elem(
+        &mut self,
+        elem: &ProjectionElem,
+        ptx: PlaceContext,
+        location: Location,
+    ) {
+        self.super_projection_elem(elem, ptx, location);
+    }
+
     fn visit_local(&mut self, local: &Local, ptx: PlaceContext, location: Location) {
         let _ = (local, ptx, location);
     }
@@ -119,8 +128,12 @@ pub trait MirVisitor {
         self.super_assert_msg(msg, location)
     }
 
+    fn visit_var_debug_info(&mut self, var_debug_info: &VarDebugInfo) {
+        self.super_var_debug_info(var_debug_info);
+    }
+
     fn super_body(&mut self, body: &Body) {
-        let Body { blocks, locals: _, arg_count } = body;
+        let Body { blocks, locals: _, arg_count, var_debug_info, spread_arg: _, span } = body;
 
         for bb in blocks {
             self.visit_basic_block(bb);
@@ -133,9 +146,15 @@ pub trait MirVisitor {
         }
 
         let local_start = arg_count + 1;
-        for (idx, arg) in body.arg_locals().iter().enumerate() {
+        for (idx, arg) in body.inner_locals().iter().enumerate() {
             self.visit_local_decl(idx + local_start, arg)
         }
+
+        for info in var_debug_info.iter() {
+            self.visit_var_debug_info(info);
+        }
+
+        self.visit_span(span)
     }
 
     fn super_basic_block(&mut self, bb: &BasicBlock) {
@@ -148,7 +167,7 @@ pub trait MirVisitor {
 
     fn super_local_decl(&mut self, local: Local, decl: &LocalDecl) {
         let _ = local;
-        let LocalDecl { ty, span } = decl;
+        let LocalDecl { ty, span, .. } = decl;
         self.visit_ty(ty, Location(*span));
     }
 
@@ -215,13 +234,12 @@ pub trait MirVisitor {
 
     fn super_terminator(&mut self, term: &Terminator, location: Location) {
         let Terminator { kind, span } = term;
-        self.visit_span(&span);
+        self.visit_span(span);
         match kind {
             TerminatorKind::Goto { .. }
             | TerminatorKind::Resume
             | TerminatorKind::Abort
-            | TerminatorKind::Unreachable
-            | TerminatorKind::CoroutineDrop => {}
+            | TerminatorKind::Unreachable => {}
             TerminatorKind::Assert { cond, expected: _, msg, target: _, unwind: _ } => {
                 self.visit_operand(cond, location);
                 self.visit_assert_msg(msg, location);
@@ -251,7 +269,7 @@ pub trait MirVisitor {
                 let local = RETURN_LOCAL;
                 self.visit_local(&local, PlaceContext::NON_MUTATING, location);
             }
-            TerminatorKind::SwitchInt { discr, targets: _, otherwise: _ } => {
+            TerminatorKind::SwitchInt { discr, targets: _ } => {
                 self.visit_operand(discr, location);
             }
         }
@@ -264,7 +282,29 @@ pub trait MirVisitor {
     fn super_place(&mut self, place: &Place, ptx: PlaceContext, location: Location) {
         let _ = location;
         let _ = ptx;
-        visit_opaque(&Opaque(place.projection.clone()));
+        self.visit_local(&place.local, ptx, location);
+
+        for elem in &place.projection {
+            self.visit_projection_elem(elem, ptx, location);
+        }
+    }
+
+    fn super_projection_elem(
+        &mut self,
+        elem: &ProjectionElem,
+        ptx: PlaceContext,
+        location: Location,
+    ) {
+        match elem {
+            ProjectionElem::Deref => {}
+            ProjectionElem::Field(_idx, ty) => self.visit_ty(ty, location),
+            ProjectionElem::Index(local) => self.visit_local(local, ptx, location),
+            ProjectionElem::ConstantIndex { offset: _, min_length: _, from_end: _ } => {}
+            ProjectionElem::Subslice { from: _, to: _, from_end: _ } => {}
+            ProjectionElem::Downcast(_idx) => {}
+            ProjectionElem::OpaqueCast(ty) => self.visit_ty(ty, location),
+            ProjectionElem::Subtype(ty) => self.visit_ty(ty, location),
+        }
     }
 
     fn super_rvalue(&mut self, rvalue: &Rvalue, location: Location) {
@@ -351,6 +391,24 @@ pub trait MirVisitor {
         let _ = args;
     }
 
+    fn super_var_debug_info(&mut self, var_debug_info: &VarDebugInfo) {
+        let VarDebugInfo { source_info, composite, value, name: _, argument_index: _ } =
+            var_debug_info;
+        self.visit_span(&source_info.span);
+        let location = Location(source_info.span);
+        if let Some(composite) = composite {
+            self.visit_ty(&composite.ty, location);
+        }
+        match value {
+            VarDebugInfoContents::Place(place) => {
+                self.visit_place(place, PlaceContext::NON_USE, location);
+            }
+            VarDebugInfoContents::Const(constant) => {
+                self.visit_const(&constant.const_, location);
+            }
+        }
+    }
+
     fn super_assert_msg(&mut self, msg: &AssertMessage, location: Location) {
         match msg {
             AssertMessage::BoundsCheck { len, index } => {
@@ -386,7 +444,7 @@ pub trait MirVisitor {
 fn visit_opaque(_: &Opaque) {}
 
 /// The location of a statement / terminator in the code and the CFG.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Location(Span);
 
 impl Location {
@@ -396,7 +454,7 @@ impl Location {
 }
 
 /// Information about a place's usage.
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct PlaceContext {
     /// Whether the access is mutable or not. Keep this private so we can increment the type in a
     /// backward compatible manner.

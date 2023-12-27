@@ -11,5 +11,5 @@ LL | | }
    = note: `-D clippy::large-stack-frames` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::large_stack_frames)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

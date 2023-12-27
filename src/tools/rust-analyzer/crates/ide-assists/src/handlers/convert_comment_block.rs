@@ -25,9 +25,7 @@ pub(crate) fn convert_comment_block(acc: &mut Assists, ctx: &AssistContext<'_>) 
     let comment = ctx.find_token_at_offset::<ast::Comment>()?;
     // Only allow comments which are alone on their line
     if let Some(prev) = comment.syntax().prev_token() {
-        if Whitespace::cast(prev).filter(|w| w.text().contains('\n')).is_none() {
-            return None;
-        }
+        Whitespace::cast(prev).filter(|w| w.text().contains('\n'))?;
     }
 
     match comment.kind().shape {
@@ -78,7 +76,7 @@ fn line_to_block(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
     // Establish the target of our edit based on the comments we found
     let target = TextRange::new(
         comments[0].syntax().text_range().start(),
-        comments.last().unwrap().syntax().text_range().end(),
+        comments.last()?.syntax().text_range().end(),
     );
 
     acc.add(
@@ -91,8 +89,12 @@ fn line_to_block(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
             // contents of each line comment when they're put into the block comment.
             let indentation = IndentLevel::from_token(comment.syntax());
 
-            let block_comment_body =
-                comments.into_iter().map(|c| line_comment_text(indentation, c)).join("\n");
+            let block_comment_body = comments
+                .into_iter()
+                .map(|c| line_comment_text(indentation, c))
+                .collect::<Vec<String>>()
+                .into_iter()
+                .join("\n");
 
             let block_prefix =
                 CommentKind { shape: CommentShape::Block, ..comment.kind() }.prefix();
@@ -160,7 +162,8 @@ pub(crate) fn relevant_line_comments(comment: &ast::Comment) -> Vec<Comment> {
 //
 // But since such comments aren't idiomatic we're okay with this.
 pub(crate) fn line_comment_text(indentation: IndentLevel, comm: ast::Comment) -> String {
-    let contents_without_prefix = comm.text().strip_prefix(comm.prefix()).unwrap();
+    let text = comm.text();
+    let contents_without_prefix = text.strip_prefix(comm.prefix()).unwrap_or(text);
     let contents = contents_without_prefix.strip_prefix(' ').unwrap_or(contents_without_prefix);
 
     // Don't add the indentation if the line is empty

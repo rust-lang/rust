@@ -6,8 +6,8 @@ LL |     foo(move |x| v);
    |     |
    |     expected due to this
    |
-   = note: expected closure signature `fn(char) -> _`
-              found closure signature `for<'a> fn(&'a char) -> _`
+   = note: expected closure signature `fn(_) -> _`
+              found closure signature `for<'a> fn(&'a _) -> _`
 note: closure inferred to have a different signature due to this bound
   --> $DIR/multiple-fn-bounds.rs:1:11
    |
@@ -23,6 +23,6 @@ help: consider adjusting the signature so it does not borrow its argument
 LL |     foo(move |char| v);
    |               ~~~~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0631`.

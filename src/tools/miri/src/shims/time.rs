@@ -31,8 +31,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let mut relative_clocks;
 
         match this.tcx.sess.target.os.as_ref() {
-            "linux" => {
-                // Linux has two main kinds of clocks. REALTIME clocks return the actual time since the
+            "linux" | "freebsd" => {
+                // Linux and FreeBSD have two main kinds of clocks. REALTIME clocks return the actual time since the
                 // Unix epoch, including effects which may cause time to move backwards such as NTP.
                 // Linux further distinguishes regular and "coarse" clocks, but the "coarse" version
                 // is just specified to be "faster and less precise", so we implement both the same way.
@@ -274,8 +274,8 @@ struct UnblockCallback {
     thread_to_unblock: ThreadId,
 }
 
-impl VisitTags for UnblockCallback {
-    fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {}
+impl VisitProvenance for UnblockCallback {
+    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {}
 }
 
 impl<'mir, 'tcx: 'mir> MachineCallback<'mir, 'tcx> for UnblockCallback {

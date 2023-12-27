@@ -81,8 +81,8 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
     /// For the above example, this function returns `true` for `f1` and `false` for `f2`.
     #[instrument(level = "trace", skip(self), ret)]
     fn check_tait_defining_scope(&self, opaque_def_id: LocalDefId) -> bool {
-        let mut hir_id = self.tcx.hir().local_def_id_to_hir_id(self.item);
-        let opaque_hir_id = self.tcx.hir().local_def_id_to_hir_id(opaque_def_id);
+        let mut hir_id = self.tcx.local_def_id_to_hir_id(self.item);
+        let opaque_hir_id = self.tcx.local_def_id_to_hir_id(opaque_def_id);
 
         // Named opaque types can be defined by any siblings or children of siblings.
         let scope = self.tcx.hir().get_defining_scope(opaque_hir_id);
@@ -159,10 +159,10 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                 // Only check that the parent generics of the TAIT/RPIT are unique.
                 // the args owned by the opaque are going to always be duplicate
                 // lifetime params for RPITs, and empty for TAITs.
-                match self
-                    .tcx
-                    .uses_unique_generic_params(&alias_ty.args[..parent_count], CheckRegions::Bound)
-                {
+                match self.tcx.uses_unique_generic_params(
+                    &alias_ty.args[..parent_count],
+                    CheckRegions::FromFunction,
+                ) {
                     Ok(()) => {
                         // FIXME: implement higher kinded lifetime bounds on nested opaque types. They are not
                         // supported at all, so this is sound to do, but once we want to support them, you'll
@@ -181,14 +181,14 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                         }
                     }
                     Err(NotUniqueParam::NotParam(arg)) => {
-                        self.tcx.sess.emit_err(NotParam {
+                        self.tcx.dcx().emit_err(NotParam {
                             arg,
                             span: self.span(),
                             opaque_span: self.tcx.def_span(alias_ty.def_id),
                         });
                     }
                     Err(NotUniqueParam::DuplicateParam(arg)) => {
-                        self.tcx.sess.emit_err(DuplicateArg {
+                        self.tcx.dcx().emit_err(DuplicateArg {
                             arg,
                             span: self.span(),
                             opaque_span: self.tcx.def_span(alias_ty.def_id),
@@ -238,7 +238,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
                                     .instantiate(self.tcx, impl_args)
                                     .visit_with(self);
                             } else {
-                                self.tcx.sess.delay_span_bug(
+                                self.tcx.dcx().span_delayed_bug(
                                     self.tcx.def_span(assoc.def_id),
                                     "item had incorrect args",
                                 );
@@ -313,7 +313,7 @@ fn opaque_types_defined_by<'tcx>(
         | DefKind::Impl { .. } => {}
         // Closures and coroutines are type checked with their parent, so we need to allow all
         // opaques from the closure signature *and* from the parent body.
-        DefKind::Closure | DefKind::Coroutine | DefKind::InlineConst => {
+        DefKind::Closure | DefKind::InlineConst => {
             collector.opaques.extend(tcx.opaque_types_defined_by(tcx.local_parent(item)));
         }
     }

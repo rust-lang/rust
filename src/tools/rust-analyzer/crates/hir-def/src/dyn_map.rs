@@ -29,8 +29,8 @@ use std::{
     ops::{Index, IndexMut},
 };
 
-use anymap::Map;
 use rustc_hash::FxHashMap;
+use stdx::anymap::Map;
 
 pub struct Key<K, V, P = (K, V)> {
     _phantom: PhantomData<(K, V, P)>,

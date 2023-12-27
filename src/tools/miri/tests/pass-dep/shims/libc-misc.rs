@@ -178,7 +178,7 @@ fn test_clocks() {
     assert_eq!(is_error, 0);
     let is_error = unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, tp.as_mut_ptr()) };
     assert_eq!(is_error, 0);
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "freebsd"))]
     {
         let is_error = unsafe { libc::clock_gettime(libc::CLOCK_REALTIME_COARSE, tp.as_mut_ptr()) };
         assert_eq!(is_error, 0);
@@ -234,50 +234,6 @@ fn test_isatty() {
         // Cleanup after test.
         drop(file);
         remove_file(&path).unwrap();
-    }
-}
-
-fn test_posix_mkstemp() {
-    use std::ffi::CString;
-    use std::ffi::OsStr;
-    use std::os::unix::ffi::OsStrExt;
-    use std::os::unix::io::FromRawFd;
-    use std::path::Path;
-
-    let valid_template = "fooXXXXXX";
-    // C needs to own this as `mkstemp(3)` says:
-    // "Since it will be modified, `template` must not be a string constant, but
-    // should be declared as a character array."
-    // There seems to be no `as_mut_ptr` on `CString` so we need to use `into_raw`.
-    let ptr = CString::new(valid_template).unwrap().into_raw();
-    let fd = unsafe { libc::mkstemp(ptr) };
-    // Take ownership back in Rust to not leak memory.
-    let slice = unsafe { CString::from_raw(ptr) };
-    assert!(fd > 0);
-    let osstr = OsStr::from_bytes(slice.to_bytes());
-    let path: &Path = osstr.as_ref();
-    let name = path.file_name().unwrap().to_string_lossy();
-    assert!(name.ne("fooXXXXXX"));
-    assert!(name.starts_with("foo"));
-    assert_eq!(name.len(), 9);
-    assert_eq!(
-        name.chars().skip(3).filter(char::is_ascii_alphanumeric).collect::<Vec<char>>().len(),
-        6
-    );
-    let file = unsafe { File::from_raw_fd(fd) };
-    assert!(file.set_len(0).is_ok());
-
-    let invalid_templates = vec!["foo", "barXX", "XXXXXXbaz", "whatXXXXXXever", "X"];
-    for t in invalid_templates {
-        let ptr = CString::new(t).unwrap().into_raw();
-        let fd = unsafe { libc::mkstemp(ptr) };
-        let _ = unsafe { CString::from_raw(ptr) };
-        // "On error, -1 is returned, and errno is set to
-        // indicate the error"
-        assert_eq!(fd, -1);
-        let e = std::io::Error::last_os_error();
-        assert_eq!(e.raw_os_error(), Some(libc::EINVAL));
-        assert_eq!(e.kind(), std::io::ErrorKind::InvalidInput);
     }
 }
 
@@ -388,9 +344,21 @@ fn test_dlsym() {
     assert_eq!(errno, libc::EBADF);
 }
 
+#[cfg(not(target_os = "macos"))]
+fn test_reallocarray() {
+    unsafe {
+        let mut p = libc::reallocarray(std::ptr::null_mut(), 4096, 2);
+        assert!(!p.is_null());
+        libc::free(p);
+        p = libc::malloc(16);
+        let r = libc::reallocarray(p, 2, 32);
+        assert!(!r.is_null());
+        libc::free(r);
+    }
+}
+
 fn main() {
     test_posix_gettimeofday();
-    test_posix_mkstemp();
 
     test_posix_realpath_alloc();
     test_posix_realpath_noalloc();
@@ -399,12 +367,18 @@ fn main() {
     test_thread_local_errno();
 
     test_isatty();
+
     test_clocks();
+
     test_dlsym();
 
     test_memcpy();
     test_strcpy();
 
+    #[cfg(not(target_os = "macos"))] // reallocarray does not exist on macOS
+    test_reallocarray();
+
+    // These are Linux-specific
     #[cfg(target_os = "linux")]
     {
         test_posix_fadvise();

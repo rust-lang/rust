@@ -175,8 +175,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
     ) -> io::Result<()> {
         let mut archive_path = archive_path.to_path_buf();
         if self.sess.target.llvm_target.contains("-apple-macosx") {
-            if let Some(new_archive_path) =
-                try_extract_macho_fat_archive(&self.sess, &archive_path)?
+            if let Some(new_archive_path) = try_extract_macho_fat_archive(self.sess, &archive_path)?
             {
                 archive_path = new_archive_path
             }
@@ -221,7 +220,7 @@ impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
         let sess = self.sess;
         match self.build_inner(output) {
             Ok(any_members) => any_members,
-            Err(e) => sess.emit_fatal(ArchiveBuildFailure { error: e }),
+            Err(e) => sess.dcx().emit_fatal(ArchiveBuildFailure { error: e }),
         }
     }
 }
@@ -235,7 +234,7 @@ impl<'a> ArArchiveBuilder<'a> {
             "coff" => ArchiveKind::Coff,
             "aix_big" => ArchiveKind::AixBig,
             kind => {
-                self.sess.emit_fatal(UnknownArchiveKind { kind });
+                self.sess.dcx().emit_fatal(UnknownArchiveKind { kind });
             }
         };
 

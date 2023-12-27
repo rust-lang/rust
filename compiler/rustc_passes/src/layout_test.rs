@@ -27,7 +27,7 @@ pub fn test_layout(tcx: TyCtxt<'_>) {
                     dump_layout_of(tcx, id, attr);
                 }
                 _ => {
-                    tcx.sess.emit_err(LayoutInvalidAttribute { span: tcx.def_span(id) });
+                    tcx.dcx().emit_err(LayoutInvalidAttribute { span: tcx.def_span(id) });
                 }
             }
         }
@@ -80,23 +80,23 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
             for meta_item in meta_items {
                 match meta_item.name_or_empty() {
                     sym::abi => {
-                        tcx.sess.emit_err(LayoutAbi { span, abi: format!("{:?}", ty_layout.abi) });
+                        tcx.dcx().emit_err(LayoutAbi { span, abi: format!("{:?}", ty_layout.abi) });
                     }
 
                     sym::align => {
-                        tcx.sess.emit_err(LayoutAlign {
+                        tcx.dcx().emit_err(LayoutAlign {
                             span,
                             align: format!("{:?}", ty_layout.align),
                         });
                     }
 
                     sym::size => {
-                        tcx.sess
+                        tcx.dcx()
                             .emit_err(LayoutSize { span, size: format!("{:?}", ty_layout.size) });
                     }
 
                     sym::homogeneous_aggregate => {
-                        tcx.sess.emit_err(LayoutHomogeneousAggregate {
+                        tcx.dcx().emit_err(LayoutHomogeneousAggregate {
                             span,
                             homogeneous_aggregate: format!(
                                 "{:?}",
@@ -115,18 +115,18 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, attr: &Attribute) {
                         );
                         // FIXME: using the `Debug` impl here isn't ideal.
                         let ty_layout = format!("{:#?}", *ty_layout);
-                        tcx.sess.emit_err(LayoutOf { span, normalized_ty, ty_layout });
+                        tcx.dcx().emit_err(LayoutOf { span, normalized_ty, ty_layout });
                     }
 
                     name => {
-                        tcx.sess.emit_err(UnrecognizedField { span: meta_item.span(), name });
+                        tcx.dcx().emit_err(UnrecognizedField { span: meta_item.span(), name });
                     }
                 }
             }
         }
 
         Err(layout_error) => {
-            tcx.sess.emit_fatal(Spanned { node: layout_error.into_diagnostic(), span });
+            tcx.dcx().emit_fatal(Spanned { node: layout_error.into_diagnostic(), span });
         }
     }
 }

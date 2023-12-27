@@ -1,7 +1,10 @@
-// skip-filecheck
+// This does not currently propagate (#67862)
 // unit-test: ConstProp
-// EMIT_MIR ref_deref_project.main.ConstProp.diff
 
+// EMIT_MIR ref_deref_project.main.ConstProp.diff
 fn main() {
-    *(&(4, 5).1); // This does not currently propagate (#67862)
+    // CHECK-LABEL: fn main(
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: [[a]] = (*{{_.*}});
+    let a = *(&(4, 5).1);
 }

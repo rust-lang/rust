@@ -29,11 +29,11 @@ macro_rules! tuple_impls {
             {
                 #[inline]
                 fn eq(&self, other: &($($T,)+)) -> bool {
-                    $( ${ignore(T)} self.${index()} == other.${index()} )&&+
+                    $( ${ignore($T)} self.${index()} == other.${index()} )&&+
                 }
                 #[inline]
                 fn ne(&self, other: &($($T,)+)) -> bool {
-                    $( ${ignore(T)} self.${index()} != other.${index()} )||+
+                    $( ${ignore($T)} self.${index()} != other.${index()} )||+
                 }
             }
         }
@@ -77,23 +77,23 @@ macro_rules! tuple_impls {
             {
                 #[inline]
                 fn partial_cmp(&self, other: &($($T,)+)) -> Option<Ordering> {
-                    lexical_partial_cmp!($( ${ignore(T)} self.${index()}, other.${index()} ),+)
+                    lexical_partial_cmp!($( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
                 fn lt(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(lt, Less, $( ${ignore(T)} self.${index()}, other.${index()} ),+)
+                    lexical_ord!(lt, Less, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
                 fn le(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(le, Less, $( ${ignore(T)} self.${index()}, other.${index()} ),+)
+                    lexical_ord!(le, Less, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
                 fn ge(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(ge, Greater, $( ${ignore(T)} self.${index()}, other.${index()} ),+)
+                    lexical_ord!(ge, Greater, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
                 fn gt(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(gt, Greater, $( ${ignore(T)} self.${index()}, other.${index()} ),+)
+                    lexical_ord!(gt, Greater, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
             }
         }
@@ -107,7 +107,7 @@ macro_rules! tuple_impls {
             {
                 #[inline]
                 fn cmp(&self, other: &($($T,)+)) -> Ordering {
-                    lexical_cmp!($( ${ignore(T)} self.${index()}, other.${index()} ),+)
+                    lexical_cmp!($( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
             }
         }
@@ -124,20 +124,20 @@ macro_rules! tuple_impls {
         }
 
         #[stable(feature = "array_tuple_conv", since = "1.71.0")]
-        impl<T> From<[T; ${count(T)}]> for ($(${ignore(T)} T,)+) {
+        impl<T> From<[T; ${count($T)}]> for ($(${ignore($T)} T,)+) {
             #[inline]
             #[allow(non_snake_case)]
-            fn from(array: [T; ${count(T)}]) -> Self {
+            fn from(array: [T; ${count($T)}]) -> Self {
                 let [$($T,)+] = array;
                 ($($T,)+)
             }
         }
 
         #[stable(feature = "array_tuple_conv", since = "1.71.0")]
-        impl<T> From<($(${ignore(T)} T,)+)> for [T; ${count(T)}] {
+        impl<T> From<($(${ignore($T)} T,)+)> for [T; ${count($T)}] {
             #[inline]
             #[allow(non_snake_case)]
-            fn from(tuple: ($(${ignore(T)} T,)+)) -> Self {
+            fn from(tuple: ($(${ignore($T)} T,)+)) -> Self {
                 let ($($T,)+) = tuple;
                 [$($T,)+]
             }
@@ -196,7 +196,7 @@ macro_rules! lexical_partial_cmp {
     ($a:expr, $b:expr, $($rest_a:expr, $rest_b:expr),+) => {
         match ($a).partial_cmp(&$b) {
             Some(Equal) => lexical_partial_cmp!($($rest_a, $rest_b),+),
-            ordering   => ordering
+            ordering => ordering
         }
     };
     ($a:expr, $b:expr) => { ($a).partial_cmp(&$b) };
@@ -206,7 +206,7 @@ macro_rules! lexical_cmp {
     ($a:expr, $b:expr, $($rest_a:expr, $rest_b:expr),+) => {
         match ($a).cmp(&$b) {
             Equal => lexical_cmp!($($rest_a, $rest_b),+),
-            ordering   => ordering
+            ordering => ordering
         }
     };
     ($a:expr, $b:expr) => { ($a).cmp(&$b) };

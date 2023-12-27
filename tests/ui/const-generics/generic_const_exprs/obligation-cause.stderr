@@ -15,6 +15,6 @@ LL | fn g<T>()
 LL |     Is<{ std::mem::size_of::<T>() == 0 }>: True,
    |                                            ^^^^ required by this bound in `g`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

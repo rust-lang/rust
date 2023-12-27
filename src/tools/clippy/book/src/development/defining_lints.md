@@ -186,7 +186,7 @@ However, sometimes we might want to declare a new lint by hand. In this case,
 we'd use `cargo dev update_lints` command afterwards.
 
 When a lint is manually declared, we might need to register the lint pass
-manually in the `register_plugins` function in `clippy_lints/src/lib.rs`:
+manually in the `register_lints` function in `clippy_lints/src/lib.rs`:
 
 ```rust
 store.register_late_pass(|_| Box::new(foo_functions::FooFunctions));

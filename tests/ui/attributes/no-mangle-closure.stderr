@@ -4,5 +4,5 @@ error: `#[no_mangle]` cannot be used on a closure as it has no name
 LL |     (#[no_mangle] || y.0[0])()
    |      ^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

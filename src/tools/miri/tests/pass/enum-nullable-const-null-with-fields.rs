@@ -1,6 +1,3 @@
-use std::result::Result;
-use std::result::Result::Ok;
-
 static C: Result<(), Box<isize>> = Ok(());
 
 // This is because of yet another bad assertion (ICE) about the null side of a nullable enum.

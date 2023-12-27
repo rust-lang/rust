@@ -2,7 +2,6 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::walk_ptrs_ty_depth;
 use clippy_utils::{get_parent_expr, is_trait_method};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -22,13 +21,11 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str,
         let (base_rcv_ty, rcv_depth) = walk_ptrs_ty_depth(rcv_ty);
         if base_rcv_ty == base_res_ty && rcv_depth >= res_depth {
             // allow the `as_ref` or `as_mut` if it is followed by another method call
-            if_chain! {
-                if let Some(parent) = get_parent_expr(cx, expr);
-                if let hir::ExprKind::MethodCall(segment, ..) = parent.kind;
-                if segment.ident.span != expr.span;
-                then {
-                    return;
-                }
+            if let Some(parent) = get_parent_expr(cx, expr)
+                && let hir::ExprKind::MethodCall(segment, ..) = parent.kind
+                && segment.ident.span != expr.span
+            {
+                return;
             }
 
             let mut applicability = Applicability::MachineApplicable;

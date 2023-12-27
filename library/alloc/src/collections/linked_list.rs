@@ -1026,6 +1026,99 @@ impl<T, A: Allocator> LinkedList<T, A> {
         }
     }
 
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all elements `e` for which `f(&e)` returns false.
+    /// This method operates in place, visiting each element exactly once in the
+    /// original order, and preserves the order of the retained elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(linked_list_retain)]
+    /// use std::collections::LinkedList;
+    ///
+    /// let mut d = LinkedList::new();
+    ///
+    /// d.push_front(1);
+    /// d.push_front(2);
+    /// d.push_front(3);
+    ///
+    /// d.retain(|&x| x % 2 == 0);
+    ///
+    /// assert_eq!(d.pop_front(), Some(2));
+    /// assert_eq!(d.pop_front(), None);
+    /// ```
+    ///
+    /// Because the elements are visited exactly once in the original order,
+    /// external state may be used to decide which elements to keep.
+    ///
+    /// ```
+    /// #![feature(linked_list_retain)]
+    /// use std::collections::LinkedList;
+    ///
+    /// let mut d = LinkedList::new();
+    ///
+    /// d.push_front(1);
+    /// d.push_front(2);
+    /// d.push_front(3);
+    ///
+    /// let keep = [false, true, false];
+    /// let mut iter = keep.iter();
+    /// d.retain(|_| *iter.next().unwrap());
+    /// assert_eq!(d.pop_front(), Some(2));
+    /// assert_eq!(d.pop_front(), None);
+    /// ```
+    #[unstable(feature = "linked_list_retain", issue = "114135")]
+    pub fn retain<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&T) -> bool,
+    {
+        self.retain_mut(|elem| f(elem));
+    }
+
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all elements `e` for which `f(&e)` returns false.
+    /// This method operates in place, visiting each element exactly once in the
+    /// original order, and preserves the order of the retained elements.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(linked_list_retain)]
+    /// use std::collections::LinkedList;
+    ///
+    /// let mut d = LinkedList::new();
+    ///
+    /// d.push_front(1);
+    /// d.push_front(2);
+    /// d.push_front(3);
+    ///
+    /// d.retain_mut(|x| if *x % 2 == 0 {
+    ///     *x += 1;
+    ///     true
+    /// } else {
+    ///     false
+    /// });
+    /// assert_eq!(d.pop_front(), Some(3));
+    /// assert_eq!(d.pop_front(), None);
+    /// ```
+    #[unstable(feature = "linked_list_retain", issue = "114135")]
+    pub fn retain_mut<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&mut T) -> bool,
+    {
+        let mut cursor = self.cursor_front_mut();
+        while let Some(node) = cursor.current() {
+            if !f(node) {
+                cursor.remove_current().unwrap();
+            } else {
+                cursor.move_next();
+            }
+        }
+    }
+
     /// Creates an iterator which uses a closure to determine if an element should be removed.
     ///
     /// If the closure returns true, then the element is removed and yielded.

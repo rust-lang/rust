@@ -8,7 +8,7 @@ use std::{
 
 use hir::{
     db::{DefDatabase, ExpandDatabase, HirDatabase},
-    Adt, AssocItem, Crate, DefWithBody, HasSource, HirDisplay, ModuleDef, Name,
+    Adt, AssocItem, Crate, DefWithBody, HasSource, HirDisplay, HirFileIdExt, ModuleDef, Name,
 };
 use hir_def::{
     body::{BodySourceMap, SyntheticSyntax},
@@ -762,7 +762,8 @@ impl flags::AnalysisStats {
                         group: true,
                         skip_glob_imports: true,
                     },
-                    prefer_no_std: Default::default(),
+                    prefer_no_std: false,
+                    prefer_prelude: true,
                 },
                 ide::AssistResolveStrategy::All,
                 file_id,
@@ -782,6 +783,7 @@ impl flags::AnalysisStats {
                     closure_return_type_hints: ide::ClosureReturnTypeHints::Always,
                     closure_capture_hints: true,
                     binding_mode_hints: true,
+                    implicit_drop_hints: true,
                     lifetime_elision_hints: ide::LifetimeElisionHints::Always,
                     param_names_for_lifetime_elision_hints: true,
                     hide_named_constructor_hints: false,
@@ -846,9 +848,7 @@ fn location_csv_pat(db: &RootDatabase, vfs: &Vfs, sm: &BodySourceMap, pat_id: Pa
         Err(SyntheticSyntax) => return "synthetic,,".to_string(),
     };
     let root = db.parse_or_expand(src.file_id);
-    let node = src.map(|e| {
-        e.either(|it| it.to_node(&root).syntax().clone(), |it| it.to_node(&root).syntax().clone())
-    });
+    let node = src.map(|e| e.to_node(&root).syntax().clone());
     let original_range = node.as_ref().original_file_range(db);
     let path = vfs.file_path(original_range.file_id);
     let line_index = db.line_index(original_range.file_id);
@@ -888,12 +888,7 @@ fn pat_syntax_range(
     let src = sm.pat_syntax(pat_id);
     if let Ok(src) = src {
         let root = db.parse_or_expand(src.file_id);
-        let node = src.map(|e| {
-            e.either(
-                |it| it.to_node(&root).syntax().clone(),
-                |it| it.to_node(&root).syntax().clone(),
-            )
-        });
+        let node = src.map(|e| e.to_node(&root).syntax().clone());
         let original_range = node.as_ref().original_file_range(db);
         let path = vfs.file_path(original_range.file_id);
         let line_index = db.line_index(original_range.file_id);

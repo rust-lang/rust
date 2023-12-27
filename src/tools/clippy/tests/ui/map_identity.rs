@@ -26,30 +26,42 @@ fn main() {
 
 fn issue7189() {
     // should lint
-    let x = [(1, 2), (3, 4)];
-    let _ = x.iter().map(|(x, y)| (x, y));
-    let _ = x.iter().map(|(x, y)| {
+    let x = [(1, 2), (3, 4)].iter().copied();
+    let _ = x.clone().map(|(x, y)| (x, y));
+    let _ = x.clone().map(|(x, y)| {
         return (x, y);
     });
-    let _ = x.iter().map(|(x, y)| return (x, y));
+    let _ = x.clone().map(|(x, y)| return (x, y));
 
-    let y = [(1, 2, (3, (4,))), (5, 6, (7, (8,)))];
-    let _ = y.iter().map(|(x, y, (z, (w,)))| (x, y, (z, (w,))));
+    let y = [(1, 2, (3, (4,))), (5, 6, (7, (8,)))].iter().copied();
+    let _ = y.clone().map(|(x, y, (z, (w,)))| (x, y, (z, (w,))));
 
     // should not lint
-    let _ = x.iter().map(|(x, y)| (x, y, y));
-    let _ = x.iter().map(|(x, _y)| (x,));
-    let _ = x.iter().map(|(x, _)| (x,));
-    let _ = x.iter().map(|(x, ..)| (x,));
-    let _ = y.iter().map(|(x, y, (z, _))| (x, y, (z, z)));
+    let _ = x.clone().map(|(x, y)| (x, y, y));
+    let _ = x.clone().map(|(x, _y)| (x,));
+    let _ = x.clone().map(|(x, _)| (x,));
+    let _ = x.clone().map(|(x, ..)| (x,));
+    let _ = y.clone().map(|(x, y, (z, _))| (x, y, (z, z)));
     let _ = y
-        .iter()
-        .map(|(x, y, (z, _)): &(i32, i32, (i32, (i32,)))| (x, y, (z, z)));
+        .clone()
+        .map(|(x, y, (z, _)): (i32, i32, (i32, (i32,)))| (x, y, (z, z)));
     let _ = y
-        .iter()
-        .map(|(x, y, (z, (w,))): &(i32, i32, (i32, (i32,)))| (x, y, (z, (w,))));
+        .clone()
+        .map(|(x, y, (z, (w,))): (i32, i32, (i32, (i32,)))| (x, y, (z, (w,))));
 }
 
 fn not_identity(x: &u16) -> u16 {
     *x
+}
+
+fn issue11764() {
+    let x = [(1, 2), (3, 4)];
+    // don't lint: this is an `Iterator<Item = &(i32, i32)>`
+    // match ergonomics makes the binding patterns into references
+    // so that its type changes to `Iterator<Item = (&i32, &i32)>`
+    let _ = x.iter().map(|(x, y)| (x, y));
+    let _ = x.iter().map(|x| (x.0,)).map(|(x,)| x);
+
+    // no match ergonomics for `(i32, i32)`
+    let _ = x.iter().copied().map(|(x, y)| (x, y));
 }

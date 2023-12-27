@@ -8,9 +8,9 @@
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(attr(deny(warnings)))
 )]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), allow(internal_features))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
+#![doc(rust_logo)]
+#![allow(internal_features)]
+#![feature(rustdoc_internals)]
 #![feature(associated_type_bounds)]
 #![feature(box_patterns)]
 #![feature(const_trait_impl)]
@@ -59,9 +59,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
 /// instead of implementing everything in `rustc_middle`.
-pub trait HashStableContext:
-    rustc_type_ir::HashStableContext + rustc_span::HashStableContext
-{
+pub trait HashStableContext: rustc_span::HashStableContext {
     fn hash_attr(&mut self, _: &ast::Attribute, hasher: &mut StableHasher);
 }
 

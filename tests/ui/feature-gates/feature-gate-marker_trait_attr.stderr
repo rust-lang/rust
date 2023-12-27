@@ -7,6 +7,6 @@ LL | #[marker] trait ExplicitMarker {}
    = note: see issue #29864 <https://github.com/rust-lang/rust/issues/29864> for more information
    = help: add `#![feature(marker_trait_attr)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

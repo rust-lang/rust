@@ -4,5 +4,5 @@ error: the `#[proc_macro_derive]` attribute is only usable with crates of the `p
 LL | #[proc_macro_derive(DeriveA)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

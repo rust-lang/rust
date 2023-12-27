@@ -48,14 +48,14 @@ fn main() {
         // (except in/lateout which don't conflict)
 
         asm!("", in("x0") foo, in("w0") bar);
-        //~^ ERROR register `x0` conflicts with register `x0`
+        //~^ ERROR register `w0` conflicts with register `x0`
         asm!("", in("x0") foo, out("x0") bar);
         //~^ ERROR register `x0` conflicts with register `x0`
         asm!("", in("w0") foo, lateout("w0") bar);
         asm!("", in("v0") foo, in("q0") bar);
-        //~^ ERROR register `v0` conflicts with register `v0`
+        //~^ ERROR register `q0` conflicts with register `v0`
         asm!("", in("v0") foo, out("q0") bar);
-        //~^ ERROR register `v0` conflicts with register `v0`
+        //~^ ERROR register `q0` conflicts with register `v0`
         asm!("", in("v0") foo, lateout("q0") bar);
     }
 }

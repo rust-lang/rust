@@ -46,6 +46,8 @@ ast_passes_const_and_c_variadic = functions cannot be both `const` and C-variadi
     .const = `const` because of this
     .variadic = C-variadic because of this
 
+ast_passes_const_bound_trait_object = const trait bounds are not allowed in trait object types
+
 ast_passes_const_without_body =
     free constant item without body
     .suggestion = provide a definition for the constant
@@ -117,12 +119,12 @@ ast_passes_fn_without_body =
     free function without a body
     .suggestion = provide a definition for the function
 
+ast_passes_forbidden_bound =
+    bounds cannot be used in this context
+
 ast_passes_forbidden_default =
     `default` is only allowed on items in trait impls
     .label = `default` because of this
-
-ast_passes_forbidden_lifetime_bound =
-    lifetime bounds cannot be used in this context
 
 ast_passes_forbidden_non_lifetime_param =
     only lifetime parameters can be used in this context
@@ -152,6 +154,8 @@ ast_passes_impl_trait_path = `impl Trait` is not allowed in path parameters
 ast_passes_incompatible_features = `{$f1}` and `{$f2}` are incompatible, using them at the same time is not allowed
     .help = remove one of these features
 
+ast_passes_incompatible_trait_bound_modifiers = `{$left}` and `{$right}` are mutually exclusive
+
 ast_passes_inherent_cannot_be = inherent impls cannot be {$annotation}
     .because = {$annotation} because of this
     .type = inherent impl for this type
@@ -174,6 +178,10 @@ ast_passes_item_underscore = `{$kind}` items in this context need a name
 ast_passes_keyword_lifetime =
     lifetimes cannot use keyword names
 
+ast_passes_match_arm_with_no_body =
+    `match` arm with no body
+    .suggestion = add a body after the pattern
+
 ast_passes_module_nonascii = trying to load file for module `{$name}` with non-ascii identifier name
     .help = consider using the `#[path]` attribute to specify filesystem path
 
@@ -190,8 +198,6 @@ ast_passes_nomangle_ascii = `#[no_mangle]` requires ASCII identifier
 
 ast_passes_obsolete_auto = `impl Trait for .. {"{}"}` is an obsolete syntax
     .help = use `auto trait Trait {"{}"}` instead
-
-ast_passes_optional_const_exclusive = `~const` and `{$modifier}` are mutually exclusive
 
 ast_passes_optional_trait_object = `?Trait` is not permitted in trait object types
 
@@ -218,9 +224,13 @@ ast_passes_static_without_body =
     .suggestion = provide a definition for the static
 
 ast_passes_tilde_const_disallowed = `~const` is not allowed here
-    .trait = trait objects cannot have `~const` trait bounds
     .closure = closures cannot have `~const` trait bounds
     .function = this function is not `const`, so it cannot have `~const` trait bounds
+    .trait = this trait is not a `#[const_trait]`, so it cannot have `~const` trait bounds
+    .trait_impl = this impl is not `const`, so it cannot have `~const` trait bounds
+    .impl = inherent impls cannot have `~const` trait bounds
+    .object = trait objects cannot have `~const` trait bounds
+    .item = this item cannot have `~const` trait bounds
 
 ast_passes_trait_fn_const =
     functions in traits cannot be declared const

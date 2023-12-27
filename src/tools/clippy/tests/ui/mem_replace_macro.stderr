@@ -8,5 +8,5 @@ LL |     inline!(std::mem::replace($s, Default::default()));
    = help: to override `-D warnings` add `#[allow(clippy::mem_replace_with_default)]`
    = note: this error originates in the macro `__inline_mac_fn_main` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -2,9 +2,7 @@
 
 use std::marker::PhantomData;
 
-use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
-use rustc_middle::mir::{self, BasicBlock, Location};
 use rustc_middle::ty;
 use rustc_span::DUMMY_SP;
 
@@ -267,8 +265,7 @@ fn test_cursor<D: Direction>(analysis: MockAnalysis<'_, D>) {
     let body = analysis.body;
 
     let mut cursor =
-        Results { entry_sets: analysis.mock_entry_sets(), analysis, _marker: PhantomData }
-            .into_results_cursor(body);
+        Results { entry_sets: analysis.mock_entry_sets(), analysis }.into_results_cursor(body);
 
     cursor.allow_unreachable();
 

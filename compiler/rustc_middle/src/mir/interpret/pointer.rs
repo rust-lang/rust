@@ -3,7 +3,7 @@ use super::{AllocId, InterpResult};
 use rustc_macros::HashStable;
 use rustc_target::abi::{HasDataLayout, Size};
 
-use std::fmt;
+use std::{fmt, num::NonZeroU64};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Pointer arithmetic
@@ -114,22 +114,7 @@ pub trait Provenance: Copy + fmt::Debug + 'static {
     const OFFSET_IS_ADDR: bool;
 
     /// Determines how a pointer should be printed.
-    ///
-    /// Default impl is only good for when `OFFSET_IS_ADDR == true`.
-    fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result
-    where
-        Self: Sized,
-    {
-        assert!(Self::OFFSET_IS_ADDR);
-        let (prov, addr) = ptr.into_parts(); // address is absolute
-        write!(f, "{:#x}", addr.bytes())?;
-        if f.alternate() {
-            write!(f, "{prov:#?}")?;
-        } else {
-            write!(f, "{prov:?}")?;
-        }
-        Ok(())
-    }
+    fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result;
 
     /// If `OFFSET_IS_ADDR == false`, provenance must always be able to
     /// identify the allocation this ptr points to (i.e., this must return `Some`).
@@ -141,6 +126,80 @@ pub trait Provenance: Copy + fmt::Debug + 'static {
     fn join(left: Option<Self>, right: Option<Self>) -> Option<Self>;
 }
 
+/// The type of provenance in the compile-time interpreter.
+/// This is a packed representation of an `AllocId` and an `immutable: bool`.
+#[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct CtfeProvenance(NonZeroU64);
+
+impl From<AllocId> for CtfeProvenance {
+    fn from(value: AllocId) -> Self {
+        let prov = CtfeProvenance(value.0);
+        assert!(!prov.immutable(), "`AllocId` with the highest bit set cannot be used in CTFE");
+        prov
+    }
+}
+
+impl fmt::Debug for CtfeProvenance {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.alloc_id(), f)?; // propagates `alternate` flag
+        if self.immutable() {
+            write!(f, "<imm>")?;
+        }
+        Ok(())
+    }
+}
+
+const IMMUTABLE_MASK: u64 = 1 << 63; // the highest bit
+
+impl CtfeProvenance {
+    /// Returns the `AllocId` of this provenance.
+    #[inline(always)]
+    pub fn alloc_id(self) -> AllocId {
+        AllocId(NonZeroU64::new(self.0.get() & !IMMUTABLE_MASK).unwrap())
+    }
+
+    /// Returns whether this provenance is immutable.
+    #[inline]
+    pub fn immutable(self) -> bool {
+        self.0.get() & IMMUTABLE_MASK != 0
+    }
+
+    /// Returns an immutable version of this provenance.
+    #[inline]
+    pub fn as_immutable(self) -> Self {
+        CtfeProvenance(self.0 | IMMUTABLE_MASK)
+    }
+}
+
+impl Provenance for CtfeProvenance {
+    // With the `AllocId` as provenance, the `offset` is interpreted *relative to the allocation*,
+    // so ptr-to-int casts are not possible (since we do not know the global physical offset).
+    const OFFSET_IS_ADDR: bool = false;
+
+    fn fmt(ptr: &Pointer<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Print AllocId.
+        fmt::Debug::fmt(&ptr.provenance.alloc_id(), f)?; // propagates `alternate` flag
+        // Print offset only if it is non-zero.
+        if ptr.offset.bytes() > 0 {
+            write!(f, "+{:#x}", ptr.offset.bytes())?;
+        }
+        // Print immutable status.
+        if ptr.provenance.immutable() {
+            write!(f, "<imm>")?;
+        }
+        Ok(())
+    }
+
+    fn get_alloc_id(self) -> Option<AllocId> {
+        Some(self.alloc_id())
+    }
+
+    fn join(_left: Option<Self>, _right: Option<Self>) -> Option<Self> {
+        panic!("merging provenance is not supported when `OFFSET_IS_ADDR` is false")
+    }
+}
+
+// We also need this impl so that one can debug-print `Pointer<AllocId>`
 impl Provenance for AllocId {
     // With the `AllocId` as provenance, the `offset` is interpreted *relative to the allocation*,
     // so ptr-to-int casts are not possible (since we do not know the global physical offset).
@@ -174,7 +233,7 @@ impl Provenance for AllocId {
 /// Pointers are "tagged" with provenance information; typically the `AllocId` they belong to.
 #[derive(Copy, Clone, Eq, PartialEq, TyEncodable, TyDecodable, Hash)]
 #[derive(HashStable)]
-pub struct Pointer<Prov = AllocId> {
+pub struct Pointer<Prov = CtfeProvenance> {
     pub(super) offset: Size, // kept private to avoid accidental misinterpretation (meaning depends on `Prov` type)
     pub provenance: Prov,
 }
@@ -182,7 +241,7 @@ pub struct Pointer<Prov = AllocId> {
 static_assert_size!(Pointer, 16);
 // `Option<Prov>` pointers are also passed around quite a bit
 // (but not stored in permanent machine state).
-static_assert_size!(Pointer<Option<AllocId>>, 16);
+static_assert_size!(Pointer<Option<CtfeProvenance>>, 16);
 
 // We want the `Debug` output to be readable as it is used by `derive(Debug)` for
 // all the Miri types.
@@ -215,7 +274,7 @@ impl<Prov: Provenance> fmt::Display for Pointer<Option<Prov>> {
 impl From<AllocId> for Pointer {
     #[inline(always)]
     fn from(alloc_id: AllocId) -> Self {
-        Pointer::new(alloc_id, Size::ZERO)
+        Pointer::new(alloc_id.into(), Size::ZERO)
     }
 }
 

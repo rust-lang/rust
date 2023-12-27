@@ -4,9 +4,7 @@
  */
 
 use crate::mir::*;
-use crate::ty::{self, Ty, TyCtxt};
 use rustc_hir as hir;
-use rustc_target::abi::{FieldIdx, VariantIdx};
 
 #[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
 pub struct PlaceTy<'tcx> {
@@ -40,7 +38,7 @@ impl<'tcx> PlaceTy<'tcx> {
                     None => adt_def.non_enum_variant(),
                     Some(variant_index) => {
                         assert!(adt_def.is_enum());
-                        &adt_def.variant(variant_index)
+                        adt_def.variant(variant_index)
                     }
                 };
                 let field_def = &variant_def.fields[f];
@@ -95,9 +93,7 @@ impl<'tcx> PlaceTy<'tcx> {
             ProjectionElem::Subslice { from, to, from_end } => {
                 PlaceTy::from_ty(match self.ty.kind() {
                     ty::Slice(..) => self.ty,
-                    ty::Array(inner, _) if !from_end => {
-                        Ty::new_array(tcx, *inner, (to - from) as u64)
-                    }
+                    ty::Array(inner, _) if !from_end => Ty::new_array(tcx, *inner, to - from),
                     ty::Array(inner, size) if from_end => {
                         let size = size.eval_target_usize(tcx, param_env);
                         let len = size - from - to;
@@ -143,7 +139,7 @@ impl<'tcx> Place<'tcx> {
     where
         D: HasLocalDecls<'tcx>,
     {
-        Place::ty_from(self.local, &self.projection, local_decls, tcx)
+        Place::ty_from(self.local, self.projection, local_decls, tcx)
     }
 }
 
@@ -152,7 +148,7 @@ impl<'tcx> PlaceRef<'tcx> {
     where
         D: HasLocalDecls<'tcx>,
     {
-        Place::ty_from(self.local, &self.projection, local_decls, tcx)
+        Place::ty_from(self.local, self.projection, local_decls, tcx)
     }
 }
 
@@ -278,7 +274,7 @@ impl BorrowKind {
 
             // We have no type corresponding to a shallow borrow, so use
             // `&` as an approximation.
-            BorrowKind::Shallow => hir::Mutability::Not,
+            BorrowKind::Fake => hir::Mutability::Not,
         }
     }
 }

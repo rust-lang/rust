@@ -6,9 +6,9 @@ LL |     let _: for<'b> fn(&'b u32) = foo();
    |            |
    |            expected due to this
    |
-   = note: expected fn pointer `for<'b> fn(&'b u32)`
-              found fn pointer `fn(&u32)`
+   = note: expected fn pointer `for<'b> fn(&'b _)`
+              found fn pointer `fn(&_)`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

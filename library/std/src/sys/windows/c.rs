@@ -3,6 +3,7 @@
 #![allow(nonstandard_style)]
 #![cfg_attr(test, allow(dead_code))]
 #![unstable(issue = "none", feature = "windows_c")]
+#![allow(clippy::style)]
 
 use crate::ffi::CStr;
 use crate::mem;
@@ -46,6 +47,8 @@ pub use FD_SET as fd_set;
 pub use LINGER as linger;
 pub use TIMEVAL as timeval;
 
+pub const INVALID_HANDLE_VALUE: HANDLE = ::core::ptr::invalid_mut(-1i32 as _);
+
 // https://learn.microsoft.com/en-us/cpp/c-runtime-library/exit-success-exit-failure?view=msvc-170
 pub const EXIT_SUCCESS: u32 = 0;
 pub const EXIT_FAILURE: u32 = 1;
@@ -81,7 +84,7 @@ pub fn nt_success(status: NTSTATUS) -> bool {
 
 impl UNICODE_STRING {
     pub fn from_ref(slice: &[u16]) -> Self {
-        let len = slice.len() * mem::size_of::<u16>();
+        let len = mem::size_of_val(slice);
         Self { Length: len as _, MaximumLength: len as _, Buffer: slice.as_ptr() as _ }
     }
 }
@@ -321,7 +324,7 @@ pub unsafe fn NtWriteFile(
 // Functions that aren't available on every version of Windows that we support,
 // but we still use them and just provide some form of a fallback implementation.
 compat_fn_with_fallback! {
-    pub static KERNEL32: &CStr = ansi_str!("kernel32");
+    pub static KERNEL32: &CStr = c"kernel32";
 
     // >= Win10 1607
     // https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreaddescription
@@ -354,7 +357,7 @@ compat_fn_optional! {
 }
 
 compat_fn_with_fallback! {
-    pub static NTDLL: &CStr = ansi_str!("ntdll");
+    pub static NTDLL: &CStr = c"ntdll";
 
     pub fn NtCreateKeyedEvent(
         KeyedEventHandle: LPHANDLE,

@@ -5,18 +5,18 @@ use std::{
     io::{BufRead, BufReader, BufWriter, ErrorKind, Write},
     path::{Path, PathBuf},
     process::{Command, Stdio},
+    sync::OnceLock,
 };
 
 use build_helper::ci::CiEnv;
-use once_cell::sync::OnceCell;
 use xz2::bufread::XzDecoder;
 
-use crate::core::build_steps::llvm::detect_llvm_sha;
 use crate::core::config::RustfmtMetadata;
 use crate::utils::helpers::{check_run, exe, program_out_of_date};
+use crate::{core::build_steps::llvm::detect_llvm_sha, utils::helpers::hex_encode};
 use crate::{t, Config};
 
-static SHOULD_FIX_BINS_AND_DYLIBS: OnceCell<bool> = OnceCell::new();
+static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
 
 /// `Config::try_run` wrapper for this module to avoid warnings on `try_run`, since we don't have access to a `builder` yet.
 fn try_run(config: &Config, cmd: &mut Command) -> Result<(), ()> {
@@ -114,7 +114,7 @@ impl Config {
             is_nixos
         });
         if val {
-            eprintln!("info: You seem to be using Nix.");
+            eprintln!("INFO: You seem to be using Nix.");
         }
         val
     }
@@ -131,7 +131,7 @@ impl Config {
         println!("attempting to patch {}", fname.display());
 
         // Only build `.nix-deps` once.
-        static NIX_DEPS_DIR: OnceCell<PathBuf> = OnceCell::new();
+        static NIX_DEPS_DIR: OnceLock<PathBuf> = OnceLock::new();
         let mut nix_build_succeeded = true;
         let nix_deps_dir = NIX_DEPS_DIR.get_or_init(|| {
             // Run `nix-build` to "build" each dependency (which will likely reuse
@@ -208,7 +208,10 @@ impl Config {
             Some(other) => panic!("unsupported protocol {other} in {url}"),
             None => panic!("no protocol in {url}"),
         }
-        t!(std::fs::rename(&tempfile, dest_path));
+        t!(
+            std::fs::rename(&tempfile, dest_path),
+            format!("failed to rename {tempfile:?} to {dest_path:?}")
+        );
     }
 
     fn download_http_with_retries(&self, tempfile: &Path, url: &str, help_on_error: &str) {
@@ -342,7 +345,7 @@ impl Config {
             reader.consume(l);
         }
 
-        let checksum = hex::encode(hasher.finalize().as_slice());
+        let checksum = hex_encode(hasher.finalize().as_slice());
         let verified = checksum == expected;
 
         if !verified {
@@ -375,6 +378,32 @@ enum DownloadSource {
 
 /// Functions that are only ever called once, but named for clarify and to avoid thousand-line functions.
 impl Config {
+    pub(crate) fn download_clippy(&self) -> PathBuf {
+        self.verbose("downloading stage0 clippy artifacts");
+
+        let date = &self.stage0_metadata.compiler.date;
+        let version = &self.stage0_metadata.compiler.version;
+        let host = self.build;
+
+        let bin_root = self.out.join(host.triple).join("stage0");
+        let clippy_stamp = bin_root.join(".clippy-stamp");
+        let cargo_clippy = bin_root.join("bin").join(exe("cargo-clippy", host));
+        if cargo_clippy.exists() && !program_out_of_date(&clippy_stamp, &date) {
+            return cargo_clippy;
+        }
+
+        let filename = format!("clippy-{version}-{host}.tar.xz");
+        self.download_component(DownloadSource::Dist, filename, "clippy-preview", date, "stage0");
+        if self.should_fix_bins_and_dylibs() {
+            self.fix_bin_or_dylib(&cargo_clippy);
+            self.fix_bin_or_dylib(&cargo_clippy.with_file_name(exe("clippy-driver", host)));
+        }
+
+        cargo_clippy
+    }
+
+    /// NOTE: rustfmt is a completely different toolchain than the bootstrap compiler, so it can't
+    /// reuse target directories or artifacts
     pub(crate) fn maybe_download_rustfmt(&self) -> Option<PathBuf> {
         let RustfmtMetadata { date, version } = self.stage0_metadata.rustfmt.as_ref()?;
         let channel = format!("{version}-{date}");
@@ -544,6 +573,10 @@ impl Config {
         key: &str,
         destination: &str,
     ) {
+        if self.dry_run() {
+            return;
+        }
+
         let cache_dst = self.out.join("cache");
         let cache_dir = cache_dst.join(key);
         if !cache_dir.exists() {
@@ -606,10 +639,10 @@ impl Config {
 
         let mut help_on_error = "";
         if destination == "ci-rustc" {
-            help_on_error = "error: failed to download pre-built rustc from CI
+            help_on_error = "ERROR: failed to download pre-built rustc from CI
 
-note: old builds get deleted after a certain time
-help: if trying to compile an old commit of rustc, disable `download-rustc` in config.toml:
+NOTE: old builds get deleted after a certain time
+HELP: if trying to compile an old commit of rustc, disable `download-rustc` in config.toml:
 
 [rust]
 download-rustc = false
@@ -685,10 +718,10 @@ download-rustc = false
         let filename = format!("rust-dev-{}-{}.tar.xz", version, self.build.triple);
         let tarball = rustc_cache.join(&filename);
         if !tarball.exists() {
-            let help_on_error = "error: failed to download llvm from ci
+            let help_on_error = "ERROR: failed to download llvm from ci
 
-    help: old builds get deleted after a certain time
-    help: if trying to compile an old commit of rustc, disable `download-ci-llvm` in config.toml:
+    HELP: old builds get deleted after a certain time
+    HELP: if trying to compile an old commit of rustc, disable `download-ci-llvm` in config.toml:
 
     [llvm]
     download-ci-llvm = false

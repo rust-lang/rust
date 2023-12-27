@@ -4,5 +4,5 @@ error: the order of `mut` and `ref` is incorrect
 LL |     let mut ref x = 10;
    |         ^^^^^^^ help: try switching the order: `ref mut`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

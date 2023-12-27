@@ -11,7 +11,7 @@ fn main() {
         {
             let non_copy = S(42);
             // This could change `non_copy` in-place
-            Call(_unit = change_arg(Move(non_copy)), after_call)
+            Call(_unit = change_arg(Move(non_copy)), after_call, UnwindContinue())
         }
         after_call = {
             // So now we must not be allowed to observe non-copy again.

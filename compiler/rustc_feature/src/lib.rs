@@ -11,9 +11,9 @@
 //! even if it is stabilized or removed, *do not remove it*. Instead, move the
 //! symbol to the `accepted` or `removed` modules respectively.
 
-#![cfg_attr(not(bootstrap), allow(internal_features))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
+#![allow(internal_features)]
+#![feature(rustdoc_internals)]
+#![doc(rust_logo)]
 #![feature(lazy_cell)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
@@ -26,7 +26,7 @@ mod unstable;
 #[cfg(test)]
 mod tests;
 
-use rustc_span::{edition::Edition, symbol::Symbol};
+use rustc_span::symbol::Symbol;
 use std::num::NonZeroU32;
 
 #[derive(Debug, Clone)]
@@ -34,7 +34,6 @@ pub struct Feature {
     pub name: Symbol,
     pub since: &'static str,
     issue: Option<NonZeroU32>,
-    pub edition: Option<Edition>,
 }
 
 #[derive(Copy, Clone, Debug)]

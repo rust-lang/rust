@@ -209,7 +209,7 @@ mod tests {
     use super::*;
 
     use cfg::CfgExpr;
-    use mbe::syntax_node_to_token_tree;
+    use mbe::{syntax_node_to_token_tree, DummyTestSpanMap};
     use syntax::{
         ast::{self, AstNode},
         SmolStr,
@@ -219,7 +219,7 @@ mod tests {
         let cfg_expr = {
             let source_file = ast::SourceFile::parse(cfg).ok().unwrap();
             let tt = source_file.syntax().descendants().find_map(ast::TokenTree::cast).unwrap();
-            let (tt, _) = syntax_node_to_token_tree(tt.syntax());
+            let tt = syntax_node_to_token_tree(tt.syntax(), &DummyTestSpanMap);
             CfgExpr::parse(&tt)
         };
 

@@ -340,6 +340,32 @@ pub struct NotSupportedForLifetimeBinderAsyncClosure {
     pub span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(ast_lowering_match_arm_with_no_body)]
+pub struct MatchArmWithNoBody {
+    #[primary_span]
+    pub span: Span,
+    #[suggestion(code = " => todo!(),", applicability = "has-placeholders")]
+    pub suggestion: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_never_pattern_with_body)]
+pub struct NeverPatternWithBody {
+    #[primary_span]
+    #[label]
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_never_pattern_with_guard)]
+pub struct NeverPatternWithGuard {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "maybe-incorrect")]
+    pub span: Span,
+}
+
 #[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering_arbitrary_expression_in_pattern)]
 pub struct ArbitraryExpressionInPattern {
@@ -368,4 +394,11 @@ pub enum BadReturnTypeNotation {
         #[suggestion(code = "", applicability = "maybe-incorrect")]
         span: Span,
     },
+}
+
+#[derive(Diagnostic)]
+#[diag(ast_lowering_default_parameter_in_binder)]
+pub(crate) struct UnexpectedDefaultParameterInBinder {
+    #[primary_span]
+    pub span: Span,
 }

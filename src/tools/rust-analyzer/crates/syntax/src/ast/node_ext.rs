@@ -275,8 +275,17 @@ impl ast::Path {
         successors(Some(self.clone()), ast::Path::qualifier).last().unwrap()
     }
 
+    pub fn first_qualifier(&self) -> Option<ast::Path> {
+        successors(self.qualifier(), ast::Path::qualifier).last()
+    }
+
     pub fn first_segment(&self) -> Option<ast::PathSegment> {
         self.first_qualifier_or_self().segment()
+    }
+
+    // FIXME: Check usages of Self::segments, they might be wrong because of the logic of the bloew function
+    pub fn segments_of_this_path_only_rev(&self) -> impl Iterator<Item = ast::PathSegment> + Clone {
+        self.qualifiers_and_self().filter_map(|it| it.segment())
     }
 
     pub fn segments(&self) -> impl Iterator<Item = ast::PathSegment> + Clone {
@@ -287,6 +296,10 @@ impl ast::Path {
 
     pub fn qualifiers(&self) -> impl Iterator<Item = ast::Path> + Clone {
         successors(self.qualifier(), |p| p.qualifier())
+    }
+
+    pub fn qualifiers_and_self(&self) -> impl Iterator<Item = ast::Path> + Clone {
+        successors(Some(self.clone()), |p| p.qualifier())
     }
 
     pub fn top_path(&self) -> ast::Path {
@@ -358,6 +371,15 @@ impl ast::Impl {
         } else {
             None
         }
+    }
+}
+
+// [#15778](https://github.com/rust-lang/rust-analyzer/issues/15778)
+impl ast::PathSegment {
+    pub fn qualifying_trait(&self) -> Option<ast::PathType> {
+        let mut path_types = support::children(self.syntax());
+        let first = path_types.next()?;
+        path_types.next().or(Some(first))
     }
 }
 

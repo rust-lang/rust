@@ -33,7 +33,7 @@ pub fn expand_deriving_debug(
             explicit_self: true,
             nonself_args: vec![(fmtr, sym::f)],
             ret_ty: Path(path_std!(fmt::Result)),
-            attributes: ast::AttrVec::new(),
+            attributes: thin_vec![cx.attr_word(sym::inline, span)],
             fieldless_variants_strategy:
                 FieldlessVariantsStrategy::SpecializeIfAllVariantsFieldless,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
@@ -55,7 +55,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
         EnumMatching(_, _, v, fields) => (v.ident, &v.data, fields),
         AllFieldlessEnum(enum_def) => return show_fieldless_enum(cx, span, enum_def, substr),
         EnumTag(..) | StaticStruct(..) | StaticEnum(..) => {
-            cx.span_bug(span, "nonsensical .fields in `#[derive(Debug)]`")
+            cx.dcx().span_bug(span, "nonsensical .fields in `#[derive(Debug)]`")
         }
     };
 
@@ -71,7 +71,7 @@ fn show_substructure(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>
             (false, 0)
         }
         ast::VariantData::Tuple(..) => (false, 1),
-        ast::VariantData::Struct(..) => (true, 2),
+        ast::VariantData::Struct { .. } => (true, 2),
     };
 
     // The number of fields that can be handled without an array.
@@ -226,7 +226,7 @@ fn show_fieldless_enum(
                     debug_assert!(fields.is_empty());
                     cx.pat_tuple_struct(span, variant_path, ThinVec::new())
                 }
-                ast::VariantData::Struct(fields, _) => {
+                ast::VariantData::Struct { fields, .. } => {
                     debug_assert!(fields.is_empty());
                     cx.pat_struct(span, variant_path, ThinVec::new())
                 }

@@ -4,7 +4,7 @@
 #![feature(const_trait_impl)]
 #![feature(const_mut_refs)]
 #![feature(never_type)]
-// #![cfg_attr(precise, feature(const_precise_live_drops))]
+#![cfg_attr(precise, feature(const_precise_live_drops))]
 
 use std::marker::Destruct;
 
@@ -63,7 +63,7 @@ mod t {
         fn foo() {}
     }
 
-    pub struct ConstDropWithBound<T: ~const SomeTrait>(pub core::marker::PhantomData<T>);
+    pub struct ConstDropWithBound<T: const SomeTrait>(pub core::marker::PhantomData<T>);
 
     impl<T: ~const SomeTrait> const Drop for ConstDropWithBound<T> {
         fn drop(&mut self) {

@@ -18,14 +18,14 @@ use rustc_target::abi::{
 use rustc_target::spec::abi::Abi;
 
 use super::{
-    AllocId, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy, Projectable,
-    Provenance, Scalar, StackPopCleanup,
+    CtfeProvenance, FnVal, ImmTy, InterpCx, InterpResult, MPlaceTy, Machine, OpTy, PlaceTy,
+    Projectable, Provenance, Scalar, StackPopCleanup,
 };
 use crate::fluent_generated as fluent;
 
 /// An argment passed to a function.
 #[derive(Clone, Debug)]
-pub enum FnArg<'tcx, Prov: Provenance = AllocId> {
+pub enum FnArg<'tcx, Prov: Provenance = CtfeProvenance> {
     /// Pass a copy of the given operand.
     Copy(OpTy<'tcx, Prov>),
     /// Allow for the argument to be passed in-place: destroy the value originally stored at that place and
@@ -51,7 +51,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
         match arg {
             FnArg::Copy(op) => Ok(op.clone()),
-            FnArg::InPlace(place) => self.place_to_op(&place),
+            FnArg::InPlace(place) => self.place_to_op(place),
         }
     }
 
@@ -384,10 +384,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
 
         // Compatible integer types (in particular, usize vs ptr-sized-u32/u64).
+        // `char` counts as `u32.`
         let int_ty = |ty: Ty<'tcx>| {
             Some(match ty.kind() {
                 ty::Int(ity) => (Integer::from_int_ty(&self.tcx, *ity), /* signed */ true),
                 ty::Uint(uty) => (Integer::from_uint_ty(&self.tcx, *uty), /* signed */ false),
+                ty::Char => (Integer::I32, /* signed */ false),
                 _ => return None,
             })
         };
@@ -410,7 +412,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // so we implement a type-based check that reflects the guaranteed rules for ABI compatibility.
         if self.layout_compat(caller_abi.layout, callee_abi.layout)? {
             // Ensure that our checks imply actual ABI compatibility for this concrete call.
-            assert!(caller_abi.eq_abi(&callee_abi));
+            assert!(caller_abi.eq_abi(callee_abi));
             return Ok(true);
         } else {
             trace!(
@@ -464,7 +466,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // We work with a copy of the argument for now; if this is in-place argument passing, we
         // will later protect the source it comes from. This means the callee cannot observe if we
         // did in-place of by-copy argument passing, except for pointer equality tests.
-        let caller_arg_copy = self.copy_fn_arg(&caller_arg)?;
+        let caller_arg_copy = self.copy_fn_arg(caller_arg)?;
         if !already_live {
             let local = callee_arg.as_local().unwrap();
             let meta = caller_arg_copy.meta();

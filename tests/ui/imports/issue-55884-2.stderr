@@ -13,18 +13,22 @@ note: ...and refers to the struct import `ParseOptions` which is defined here...
   --> $DIR/issue-55884-2.rs:13:9
    |
 LL | pub use parser::ParseOptions;
-   |         ^^^^^^^^^^^^^^^^^^^^ consider importing it directly
+   |         ^^^^^^^^^^^^^^^^^^^^ you could import this re-export
 note: ...and refers to the struct import `ParseOptions` which is defined here...
   --> $DIR/issue-55884-2.rs:6:13
    |
 LL |     pub use options::*;
-   |             ^^^^^^^^^^ consider importing it directly
+   |             ^^^^^^^^^^ you could import this re-export
 note: ...and refers to the struct `ParseOptions` which is defined here
   --> $DIR/issue-55884-2.rs:2:5
    |
 LL |     pub struct ParseOptions {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ consider importing it directly
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ you could import this directly
+help: import `ParseOptions` through the re-export
+   |
+LL | pub use parser::ParseOptions;
+   |         ~~~~~~~~~~~~~~~~~~~~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0603`.

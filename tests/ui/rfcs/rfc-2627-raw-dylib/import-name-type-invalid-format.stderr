@@ -4,5 +4,5 @@ error: import name type must be of the form `import_name_type = "string"`
 LL | #[link(name = "foo", kind = "raw-dylib", import_name_type = 6)]
    |                                          ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

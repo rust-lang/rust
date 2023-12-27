@@ -143,7 +143,6 @@ mod m {
 
 #[test]
 fn desugar_builtin_format_args() {
-    // Regression test for a path resolution bug introduced with inner item handling.
     let (db, body, def) = lower(
         r#"
 //- minicore: fmt
@@ -161,7 +160,7 @@ fn main() {
             let count = 10;
             builtin#lang(Arguments::new_v1_formatted)(
                 &[
-                    "\"hello ", " ", " friends, we ", " ", "", "\"",
+                    "hello ", " ", " friends, we ", " ", "",
                 ],
                 &[
                     builtin#lang(Argument::new_display)(
@@ -217,6 +216,118 @@ fn main() {
                 unsafe {
                     builtin#lang(UnsafeArg::new)()
                 },
+            );
+        }"#]]
+    .assert_eq(&body.pretty_print(&db, def))
+}
+
+#[test]
+fn test_macro_hygiene() {
+    let (db, body, def) = lower(
+        r##"
+//- minicore: fmt, from
+//- /main.rs
+mod error;
+
+use crate::error::error;
+
+fn main() {
+    // _ = forces body expansion instead of block def map expansion
+    _ = error!("Failed to resolve path `{}`", node.text());
+}
+//- /error.rs
+macro_rules! _error {
+    ($fmt:expr, $($arg:tt)+) => {$crate::error::intermediate!(format_args!($fmt, $($arg)+))}
+}
+pub(crate) use _error as error;
+macro_rules! _intermediate {
+    ($arg:expr) => {$crate::error::SsrError::new($arg)}
+}
+pub(crate) use _intermediate as intermediate;
+
+pub struct SsrError(pub(crate) core::fmt::Arguments);
+
+impl SsrError {
+    pub(crate) fn new(message: impl Into<core::fmt::Arguments>) -> SsrError {
+        SsrError(message.into())
+    }
+}
+"##,
+    );
+
+    assert_eq!(db.body_with_source_map(def.into()).1.diagnostics(), &[]);
+    expect![[r#"
+        fn main() {
+            _ = $crate::error::SsrError::new(
+                builtin#lang(Arguments::new_v1_formatted)(
+                    &[
+                        "Failed to resolve path `", "`",
+                    ],
+                    &[
+                        builtin#lang(Argument::new_display)(
+                            &node.text(),
+                        ),
+                    ],
+                    &[
+                        builtin#lang(Placeholder::new)(
+                            0usize,
+                            ' ',
+                            builtin#lang(Alignment::Unknown),
+                            0u32,
+                            builtin#lang(Count::Implied),
+                            builtin#lang(Count::Implied),
+                        ),
+                    ],
+                    unsafe {
+                        builtin#lang(UnsafeArg::new)()
+                    },
+                ),
+            );
+        }"#]]
+    .assert_eq(&body.pretty_print(&db, def))
+}
+
+#[test]
+fn regression_10300() {
+    let (db, body, def) = lower(
+        r#"
+//- minicore: concat, panic
+mod private {
+    pub use core::concat;
+}
+
+macro_rules! m {
+    () => {
+        panic!(concat!($crate::private::concat!("cc")));
+    };
+}
+
+fn f() {
+    m!();
+}
+"#,
+    );
+
+    let (_, source_map) = db.body_with_source_map(def.into());
+    assert_eq!(source_map.diagnostics(), &[]);
+
+    for (_, def_map) in body.blocks(&db) {
+        assert_eq!(def_map.diagnostics(), &[]);
+    }
+
+    expect![[r#"
+        fn f() {
+            $crate::panicking::panic_fmt(
+                builtin#lang(Arguments::new_v1_formatted)(
+                    &[
+                        "cc",
+                    ],
+                    &[],
+                    &[],
+                    unsafe {
+                        builtin#lang(UnsafeArg::new)()
+                    },
+                ),
             );
         }"#]]
     .assert_eq(&body.pretty_print(&db, def))

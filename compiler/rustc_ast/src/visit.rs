@@ -13,7 +13,7 @@
 //! instance, a walker looking for item names in a module will miss all of
 //! those that are created by the expansion of a macro.
 
-use crate::{ast::*, StaticItem};
+use crate::ast::*;
 
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
@@ -559,7 +559,7 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
             walk_list!(visitor, visit_expr, lower_bound);
             walk_list!(visitor, visit_expr, upper_bound);
         }
-        PatKind::Wild | PatKind::Rest => {}
+        PatKind::Wild | PatKind::Rest | PatKind::Never => {}
         PatKind::Tuple(elems) | PatKind::Slice(elems) | PatKind::Or(elems) => {
             walk_list!(visitor, visit_pat, elems);
         }
@@ -844,11 +844,11 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
             visitor.visit_expr(subexpression);
             visitor.visit_block(block);
         }
-        ExprKind::ForLoop(pattern, subexpression, block, opt_label) => {
-            walk_list!(visitor, visit_label, opt_label);
-            visitor.visit_pat(pattern);
-            visitor.visit_expr(subexpression);
-            visitor.visit_block(block);
+        ExprKind::ForLoop { pat, iter, body, label, kind: _ } => {
+            walk_list!(visitor, visit_label, label);
+            visitor.visit_pat(pat);
+            visitor.visit_expr(iter);
+            visitor.visit_block(body);
         }
         ExprKind::Loop(block, opt_label, _) => {
             walk_list!(visitor, visit_label, opt_label);
@@ -861,7 +861,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) {
         ExprKind::Closure(box Closure {
             binder,
             capture_clause,
-            asyncness: _,
+            coroutine_kind: _,
             constness: _,
             movability: _,
             fn_decl,
@@ -951,7 +951,7 @@ pub fn walk_param<'a, V: Visitor<'a>>(visitor: &mut V, param: &'a Param) {
 pub fn walk_arm<'a, V: Visitor<'a>>(visitor: &mut V, arm: &'a Arm) {
     visitor.visit_pat(&arm.pat);
     walk_list!(visitor, visit_expr, &arm.guard);
-    visitor.visit_expr(&arm.body);
+    walk_list!(visitor, visit_expr, &arm.body);
     walk_list!(visitor, visit_attribute, &arm.attrs);
 }
 

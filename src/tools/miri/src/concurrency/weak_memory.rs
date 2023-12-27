@@ -82,7 +82,6 @@ use std::{
     collections::VecDeque,
 };
 
-use rustc_const_eval::interpret::{alloc_range, AllocRange, InterpResult, MPlaceTy, Scalar};
 use rustc_data_structures::fx::FxHashMap;
 
 use crate::*;
@@ -108,15 +107,15 @@ pub struct StoreBufferAlloc {
     store_buffers: RefCell<RangeObjectMap<StoreBuffer>>,
 }
 
-impl VisitTags for StoreBufferAlloc {
-    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+impl VisitProvenance for StoreBufferAlloc {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         let Self { store_buffers } = self;
         for val in store_buffers
             .borrow()
             .iter()
             .flat_map(|buf| buf.buffer.iter().map(|element| &element.val))
         {
-            val.visit_tags(visit);
+            val.visit_provenance(visit);
         }
     }
 }

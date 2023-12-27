@@ -135,7 +135,7 @@ pub enum FulfillmentErrorCode<'tcx> {
     CodeSubtypeError(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
     CodeConstEquateError(ExpectedFound<Const<'tcx>>, TypeError<'tcx>),
     CodeAmbiguity {
-        /// Overflow reported from the new solver `-Ztrait-solver=next`, which will
+        /// Overflow reported from the new solver `-Znext-solver`, which will
         /// be reported as an regular error as opposed to a fatal error.
         overflow: bool,
     },

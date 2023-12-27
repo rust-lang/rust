@@ -2,5 +2,5 @@ warning: ignoring --out-dir flag due to -o flag
 
 error: io error modifying ./does-not-exist/
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 

@@ -13,7 +13,7 @@ use rustc_middle::ty::{
     self, Binder, ClosureArgs, ClosureKind, EarlyBinder, FnSig, GenericArg, GenericArgKind, GenericArgsRef,
     ImplPolarity, List, Region, RegionKind, Ty, TypeVisitableExt, TypeckResults,
 };
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
@@ -220,7 +220,8 @@ fn check_inputs(
     params.len() == self_arg.map_or(0, |_| 1) + args.len()
         && params.iter().zip(self_arg.into_iter().chain(args)).all(|(p, arg)| {
             matches!(
-                p.pat.kind,PatKind::Binding(BindingAnnotation::NONE, id, _, None)
+                p.pat.kind,
+                PatKind::Binding(BindingAnnotation::NONE, id, _, None)
                 if path_to_local_id(arg, id)
             )
             // Only allow adjustments which change regions (i.e. re-borrowing).
@@ -247,8 +248,7 @@ fn check_sig<'tcx>(cx: &LateContext<'tcx>, closure: ClosureArgs<'tcx>, call_sig:
 /// This is needed because rustc is unable to late bind early-bound regions in a function signature.
 fn has_late_bound_to_non_late_bound_regions(from_sig: FnSig<'_>, to_sig: FnSig<'_>) -> bool {
     fn check_region(from_region: Region<'_>, to_region: Region<'_>) -> bool {
-        matches!(from_region.kind(), RegionKind::ReLateBound(..))
-            && !matches!(to_region.kind(), RegionKind::ReLateBound(..))
+        matches!(from_region.kind(), RegionKind::ReBound(..)) && !matches!(to_region.kind(), RegionKind::ReBound(..))
     }
 
     fn check_subs(from_subs: &[GenericArg<'_>], to_subs: &[GenericArg<'_>]) -> bool {
@@ -290,7 +290,7 @@ fn has_late_bound_to_non_late_bound_regions(from_sig: FnSig<'_>, to_sig: FnSig<'
                         .zip(to_tys)
                         .any(|(from_ty, to_ty)| check_ty(from_ty, to_ty))
             },
-            _ => from_ty.has_late_bound_regions(),
+            _ => from_ty.has_bound_regions(),
         }
     }
 

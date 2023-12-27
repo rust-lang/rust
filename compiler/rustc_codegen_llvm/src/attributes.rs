@@ -4,7 +4,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_session::config::OptLevel;
+use rustc_session::config::{FunctionReturn, OptLevel};
 use rustc_span::symbol::sym;
 use rustc_target::spec::abi::Abi;
 use rustc_target::spec::{FramePointer, SanitizerSet, StackProbeType, StackProtector};
@@ -82,7 +82,7 @@ pub fn sanitize_attrs<'ll>(
         let mte_feature =
             features.iter().map(|s| &s[..]).rfind(|n| ["+mte", "-mte"].contains(&&n[..]));
         if let None | Some("-mte") = mte_feature {
-            cx.tcx.sess.emit_err(SanitizerMemtagRequiresMte);
+            cx.tcx.dcx().emit_err(SanitizerMemtagRequiresMte);
         }
 
         attrs.push(llvm::AttributeKind::SanitizeMemTag.create_attr(cx.llcx));
@@ -118,6 +118,15 @@ pub fn frame_pointer_type_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attr
     Some(llvm::CreateAttrStringValue(cx.llcx, "frame-pointer", attr_value))
 }
 
+fn function_return_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
+    let function_return_attr = match cx.sess().opts.unstable_opts.function_return {
+        FunctionReturn::Keep => return None,
+        FunctionReturn::ThunkExtern => AttributeKind::FnRetThunkExtern,
+    };
+
+    Some(function_return_attr.create_attr(cx.llcx))
+}
+
 /// Tell LLVM what instrument function to insert.
 #[inline]
 fn instrument_function_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'ll Attribute; 4]> {
@@ -136,7 +145,7 @@ fn instrument_function_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'ll Attr
         attrs.push(llvm::CreateAttrStringValue(
             cx.llcx,
             "instrument-function-entry-inlined",
-            &mcount_name,
+            mcount_name,
         ));
     }
     if let Some(options) = &cx.sess().opts.unstable_opts.instrument_xray {
@@ -331,8 +340,9 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         to_add.push(llvm::CreateAttrString(cx.llcx, "use-sample-profile"));
     }
 
-    // FIXME: none of these three functions interact with source level attributes.
+    // FIXME: none of these functions interact with source level attributes.
     to_add.extend(frame_pointer_type_attr(cx));
+    to_add.extend(function_return_attr(cx));
     to_add.extend(instrument_function_attr(cx));
     to_add.extend(nojumptables_attr(cx));
     to_add.extend(probestack_attr(cx));
@@ -434,7 +444,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
             .next()
             .map_or_else(|| cx.tcx.def_span(instance.def_id()), |a| a.span);
         cx.tcx
-            .sess
+            .dcx()
             .create_err(TargetFeatureDisableOrEnable {
                 features: f,
                 span: Some(span),
@@ -459,7 +469,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         // If this function is an import from the environment but the wasm
         // import has a specific module/name, apply them here.
         if let Some(module) = wasm_import_module(cx.tcx, instance.def_id()) {
-            to_add.push(llvm::CreateAttrStringValue(cx.llcx, "wasm-import-module", &module));
+            to_add.push(llvm::CreateAttrStringValue(cx.llcx, "wasm-import-module", module));
 
             let name =
                 codegen_fn_attrs.link_name.unwrap_or_else(|| cx.tcx.item_name(instance.def_id()));

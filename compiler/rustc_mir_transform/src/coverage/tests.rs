@@ -27,15 +27,17 @@
 use super::counters;
 use super::graph::{self, BasicCoverageBlock};
 
-use coverage_test_macros::let_bcb;
-
 use itertools::Itertools;
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_data_structures::graph::WithSuccessors;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::ty;
-use rustc_span::{self, BytePos, Pos, Span, DUMMY_SP};
+use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
+
+fn bcb(index: u32) -> BasicCoverageBlock {
+    BasicCoverageBlock::from_u32(index)
+}
 
 // All `TEMP_BLOCK` targets should be replaced before calling `to_body() -> mir::Body`.
 const TEMP_BLOCK: BasicBlock = BasicBlock::MAX;
@@ -300,12 +302,15 @@ fn goto_switchint<'a>() -> Body<'a> {
     mir_body
 }
 
-macro_rules! assert_successors {
-    ($basic_coverage_blocks:ident, $i:ident, [$($successor:ident),*]) => {
-        let mut successors = $basic_coverage_blocks.successors[$i].clone();
-        successors.sort_unstable();
-        assert_eq!(successors, vec![$($successor),*]);
-    }
+#[track_caller]
+fn assert_successors(
+    basic_coverage_blocks: &graph::CoverageGraph,
+    bcb: BasicCoverageBlock,
+    expected_successors: &[BasicCoverageBlock],
+) {
+    let mut successors = basic_coverage_blocks.successors[bcb].clone();
+    successors.sort_unstable();
+    assert_eq!(successors, expected_successors);
 }
 
 #[test]
@@ -334,13 +339,9 @@ fn test_covgraph_goto_switchint() {
         basic_coverage_blocks.iter_enumerated().collect::<Vec<_>>()
     );
 
-    let_bcb!(0);
-    let_bcb!(1);
-    let_bcb!(2);
-
-    assert_successors!(basic_coverage_blocks, bcb0, [bcb1, bcb2]);
-    assert_successors!(basic_coverage_blocks, bcb1, []);
-    assert_successors!(basic_coverage_blocks, bcb2, []);
+    assert_successors(&basic_coverage_blocks, bcb(0), &[bcb(1), bcb(2)]);
+    assert_successors(&basic_coverage_blocks, bcb(1), &[]);
+    assert_successors(&basic_coverage_blocks, bcb(2), &[]);
 }
 
 /// Create a mock `Body` with a loop.
@@ -418,15 +419,10 @@ fn test_covgraph_switchint_then_loop_else_return() {
         basic_coverage_blocks.iter_enumerated().collect::<Vec<_>>()
     );
 
-    let_bcb!(0);
-    let_bcb!(1);
-    let_bcb!(2);
-    let_bcb!(3);
-
-    assert_successors!(basic_coverage_blocks, bcb0, [bcb1]);
-    assert_successors!(basic_coverage_blocks, bcb1, [bcb2, bcb3]);
-    assert_successors!(basic_coverage_blocks, bcb2, []);
-    assert_successors!(basic_coverage_blocks, bcb3, [bcb1]);
+    assert_successors(&basic_coverage_blocks, bcb(0), &[bcb(1)]);
+    assert_successors(&basic_coverage_blocks, bcb(1), &[bcb(2), bcb(3)]);
+    assert_successors(&basic_coverage_blocks, bcb(2), &[]);
+    assert_successors(&basic_coverage_blocks, bcb(3), &[bcb(1)]);
 }
 
 /// Create a mock `Body` with nested loops.
@@ -546,21 +542,13 @@ fn test_covgraph_switchint_loop_then_inner_loop_else_break() {
         basic_coverage_blocks.iter_enumerated().collect::<Vec<_>>()
     );
 
-    let_bcb!(0);
-    let_bcb!(1);
-    let_bcb!(2);
-    let_bcb!(3);
-    let_bcb!(4);
-    let_bcb!(5);
-    let_bcb!(6);
-
-    assert_successors!(basic_coverage_blocks, bcb0, [bcb1]);
-    assert_successors!(basic_coverage_blocks, bcb1, [bcb2, bcb3]);
-    assert_successors!(basic_coverage_blocks, bcb2, []);
-    assert_successors!(basic_coverage_blocks, bcb3, [bcb4]);
-    assert_successors!(basic_coverage_blocks, bcb4, [bcb5, bcb6]);
-    assert_successors!(basic_coverage_blocks, bcb5, [bcb1]);
-    assert_successors!(basic_coverage_blocks, bcb6, [bcb4]);
+    assert_successors(&basic_coverage_blocks, bcb(0), &[bcb(1)]);
+    assert_successors(&basic_coverage_blocks, bcb(1), &[bcb(2), bcb(3)]);
+    assert_successors(&basic_coverage_blocks, bcb(2), &[]);
+    assert_successors(&basic_coverage_blocks, bcb(3), &[bcb(4)]);
+    assert_successors(&basic_coverage_blocks, bcb(4), &[bcb(5), bcb(6)]);
+    assert_successors(&basic_coverage_blocks, bcb(5), &[bcb(1)]);
+    assert_successors(&basic_coverage_blocks, bcb(6), &[bcb(4)]);
 }
 
 #[test]
@@ -595,10 +583,7 @@ fn test_find_loop_backedges_one() {
         backedges
     );
 
-    let_bcb!(1);
-    let_bcb!(3);
-
-    assert_eq!(backedges[bcb1], vec![bcb3]);
+    assert_eq!(backedges[bcb(1)], &[bcb(3)]);
 }
 
 #[test]
@@ -613,13 +598,8 @@ fn test_find_loop_backedges_two() {
         backedges
     );
 
-    let_bcb!(1);
-    let_bcb!(4);
-    let_bcb!(5);
-    let_bcb!(6);
-
-    assert_eq!(backedges[bcb1], vec![bcb5]);
-    assert_eq!(backedges[bcb4], vec![bcb6]);
+    assert_eq!(backedges[bcb(1)], &[bcb(5)]);
+    assert_eq!(backedges[bcb(4)], &[bcb(6)]);
 }
 
 #[test]
@@ -632,13 +612,11 @@ fn test_traverse_coverage_with_loops() {
         traversed_in_order.push(bcb);
     }
 
-    let_bcb!(6);
-
     // bcb0 is visited first. Then bcb1 starts the first loop, and all remaining nodes, *except*
     // bcb6 are inside the first loop.
     assert_eq!(
         *traversed_in_order.last().expect("should have elements"),
-        bcb6,
+        bcb(6),
         "bcb6 should not be visited until all nodes inside the first loop have been visited"
     );
 }
@@ -656,20 +634,18 @@ fn test_make_bcb_counters() {
         coverage_counters.make_bcb_counters(&basic_coverage_blocks, bcb_has_coverage_spans);
         assert_eq!(coverage_counters.num_expressions(), 0);
 
-        let_bcb!(1);
         assert_eq!(
             0, // bcb1 has a `Counter` with id = 0
-            match coverage_counters.bcb_counter(bcb1).expect("should have a counter") {
+            match coverage_counters.bcb_counter(bcb(1)).expect("should have a counter") {
                 counters::BcbCounter::Counter { id, .. } => id,
                 _ => panic!("expected a Counter"),
             }
             .as_u32()
         );
 
-        let_bcb!(2);
         assert_eq!(
             1, // bcb2 has a `Counter` with id = 1
-            match coverage_counters.bcb_counter(bcb2).expect("should have a counter") {
+            match coverage_counters.bcb_counter(bcb(2)).expect("should have a counter") {
                 counters::BcbCounter::Counter { id, .. } => id,
                 _ => panic!("expected a Counter"),
             }

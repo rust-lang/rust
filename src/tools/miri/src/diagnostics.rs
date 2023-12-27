@@ -3,7 +3,7 @@ use std::num::NonZeroU64;
 
 use log::trace;
 
-use rustc_errors::DiagnosticMessage;
+use rustc_errors::{DiagnosticBuilder, DiagnosticMessage, Level};
 use rustc_span::{SpanData, Symbol, DUMMY_SP};
 use rustc_target::abi::{Align, Size};
 
@@ -44,7 +44,7 @@ pub enum TerminationInfo {
     },
     DataRace {
         involves_non_atomic: bool,
-        ptr: Pointer,
+        ptr: Pointer<AllocId>,
         op1: RacingOp,
         op2: RacingOp,
         extra: Option<&'static str>,
@@ -270,7 +270,8 @@ pub fn report_error<'tcx, 'mir>(
             DataRace { op1, extra, .. } => {
                 let mut helps = vec![(Some(op1.span), format!("and (1) occurred earlier here"))];
                 if let Some(extra) = extra {
-                    helps.push((None, format!("{extra}")))
+                    helps.push((None, format!("{extra}")));
+                    helps.push((None, format!("see https://doc.rust-lang.org/nightly/std/sync/atomic/index.html#memory-model-for-atomic-accesses for more information about the Rust memory model")));
                 }
                 helps.push((None, format!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior")));
                 helps.push((None, format!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information")));
@@ -383,7 +384,7 @@ pub fn report_error<'tcx, 'mir>(
 
     // Include a note like `std` does when we omit frames from a backtrace
     if was_pruned {
-        ecx.tcx.sess.diagnostic().note_without_error(
+        ecx.tcx.dcx().note(
             "some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace",
         );
     }
@@ -430,7 +431,7 @@ pub fn report_leaks<'mir, 'tcx>(
         );
     }
     if any_pruned {
-        ecx.tcx.sess.diagnostic().note_without_error(
+        ecx.tcx.dcx().note(
             "some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace",
         );
     }
@@ -452,11 +453,13 @@ pub fn report_msg<'tcx>(
 ) {
     let span = stacktrace.first().map_or(DUMMY_SP, |fi| fi.span);
     let sess = machine.tcx.sess;
-    let mut err = match diag_level {
-        DiagLevel::Error => sess.struct_span_err(span, title).forget_guarantee(),
-        DiagLevel::Warning => sess.struct_span_warn(span, title),
-        DiagLevel::Note => sess.diagnostic().span_note_diag(span, title),
+    let level = match diag_level {
+        DiagLevel::Error => Level::Error { lint: false },
+        DiagLevel::Warning => Level::Warning(None),
+        DiagLevel::Note => Level::Note,
     };
+    let mut err = DiagnosticBuilder::<()>::new(sess.dcx(), level, title);
+    err.set_span(span);
 
     // Show main message.
     if span != DUMMY_SP {
@@ -511,7 +514,7 @@ pub fn report_msg<'tcx>(
         }
     }
 
-    handler.emit_diagnostic(&mut err);
+    handler.emit_diagnostic(err);
 }
 
 impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {

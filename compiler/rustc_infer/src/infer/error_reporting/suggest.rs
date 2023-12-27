@@ -42,7 +42,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         ]
         .into_iter()
         .find_map(|(id, ty)| {
-            let hir::Node::Block(blk) = self.tcx.hir().get(id?) else { return None };
+            let hir::Node::Block(blk) = self.tcx.hir_node(id?) else { return None };
             self.could_remove_semicolon(blk, ty)
         });
         match remove_semicolon {
@@ -62,7 +62,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let mut ret = None;
                 for (id, ty) in [(first_id, second_ty), (second_id, first_ty)] {
                     if let Some(id) = id
-                        && let hir::Node::Block(blk) = self.tcx.hir().get(id)
+                        && let hir::Node::Block(blk) = self.tcx.hir_node(id)
                         && let Some(diag) = self.consider_returning_binding_diag(blk, ty)
                     {
                         ret = Some(diag);
@@ -511,7 +511,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
 
             let mut visitor = IfVisitor { err_span: span, found_if: false, result: false };
-            visitor.visit_body(&body);
+            visitor.visit_body(body);
             if visitor.result {
                 return Some(TypeErrorAdditionalDiags::AddLetForLetChains {
                     span: span.shrink_to_lo(),
@@ -572,8 +572,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
                 if let ty::Ref(expected_region, _, _) = expected.kind()
                     && let ty::Ref(found_region, _, _) = found.kind()
-                    && expected_region.is_late_bound()
-                    && !found_region.is_late_bound()
+                    && expected_region.is_bound()
+                    && !found_region.is_bound()
                     && let hir::TyKind::Infer = arg_hir.kind
                 {
                     // If the expected region is late bound, the found region is not, and users are asking compiler
@@ -636,10 +636,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             return None;
         }
         let last_stmt = blk.stmts.last()?;
-        let hir::StmtKind::Semi(ref last_expr) = last_stmt.kind else {
+        let hir::StmtKind::Semi(last_expr) = last_stmt.kind else {
             return None;
         };
-        let last_expr_ty = self.typeck_results.as_ref()?.expr_ty_opt(*last_expr)?;
+        let last_expr_ty = self.typeck_results.as_ref()?.expr_ty_opt(last_expr)?;
         let needs_box = match (last_expr_ty.kind(), expected_ty.kind()) {
             _ if last_expr_ty.references_error() => return None,
             _ if self.same_type_modulo_infer(last_expr_ty, expected_ty) => {
@@ -668,26 +668,16 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     (
                         hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: last_bounds, .. }),
                         hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds: exp_bounds, .. }),
-                    ) if std::iter::zip(*last_bounds, *exp_bounds).all(|(left, right)| {
-                        match (left, right) {
-                            (
-                                hir::GenericBound::Trait(tl, ml),
-                                hir::GenericBound::Trait(tr, mr),
-                            ) if tl.trait_ref.trait_def_id() == tr.trait_ref.trait_def_id()
+                    ) if std::iter::zip(*last_bounds, *exp_bounds).all(|(left, right)| match (
+                        left, right,
+                    ) {
+                        (hir::GenericBound::Trait(tl, ml), hir::GenericBound::Trait(tr, mr))
+                            if tl.trait_ref.trait_def_id() == tr.trait_ref.trait_def_id()
                                 && ml == mr =>
-                            {
-                                true
-                            }
-                            (
-                                hir::GenericBound::LangItemTrait(langl, _, _, argsl),
-                                hir::GenericBound::LangItemTrait(langr, _, _, argsr),
-                            ) if langl == langr => {
-                                // FIXME: consider the bounds!
-                                debug!("{:?} {:?}", argsl, argsr);
-                                true
-                            }
-                            _ => false,
+                        {
+                            true
                         }
+                        _ => false,
                     }) =>
                     {
                         StatementAsExpression::NeedsBoxing

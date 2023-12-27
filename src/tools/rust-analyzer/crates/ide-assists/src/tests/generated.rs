@@ -245,6 +245,30 @@ fn main() {
 }
 
 #[test]
+fn doctest_apply_demorgan_iterator() {
+    check_doc_test(
+        "apply_demorgan_iterator",
+        r#####"
+//- minicore: iterator
+fn main() {
+    let arr = [1, 2, 3];
+    if !arr.into_iter().$0any(|num| num == 4) {
+        println!("foo");
+    }
+}
+"#####,
+        r#####"
+fn main() {
+    let arr = [1, 2, 3];
+    if arr.into_iter().all(|num| num != 4) {
+        println!("foo");
+    }
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_auto_import() {
     check_doc_test(
         "auto_import",
@@ -275,6 +299,34 @@ fn some_function(x: i32$0) {}
         r#####"
 fn some_function(x: i32) {
     let _ = x;
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_bool_to_enum() {
+    check_doc_test(
+        "bool_to_enum",
+        r#####"
+fn main() {
+    let $0bool = true;
+
+    if bool {
+        println!("foo");
+    }
+}
+"#####,
+        r#####"
+#[derive(PartialEq, Eq)]
+enum Bool { True, False }
+
+fn main() {
+    let bool = Bool::True;
+
+    if bool == Bool::True {
+        println!("foo");
+    }
 }
 "#####,
     )
@@ -553,6 +605,33 @@ fn main() {
     }
     foo();
     bar();
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_convert_tuple_return_type_to_struct() {
+    check_doc_test(
+        "convert_tuple_return_type_to_struct",
+        r#####"
+fn bar() {
+    let (a, b, c) = foo();
+}
+
+fn foo() -> ($0u32, u32, u32) {
+    (1, 2, 3)
+}
+"#####,
+        r#####"
+fn bar() {
+    let FooResult(a, b, c) = foo();
+}
+
+struct FooResult(u32, u32, u32);
+
+fn foo() -> FooResult {
+    FooResult(1, 2, 3)
 }
 "#####,
     )
@@ -1453,6 +1532,42 @@ impl MyStruct {
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+}
+"#####,
+    )
+}
+
+#[test]
+fn doctest_generate_mut_trait_impl() {
+    check_doc_test(
+        "generate_mut_trait_impl",
+        r#####"
+//- minicore: index
+pub enum Axis { X = 0, Y = 1, Z = 2 }
+
+impl<T> core::ops::Index$0<Axis> for [T; 3] {
+    type Output = T;
+
+    fn index(&self, index: Axis) -> &Self::Output {
+        &self[index as usize]
+    }
+}
+"#####,
+        r#####"
+pub enum Axis { X = 0, Y = 1, Z = 2 }
+
+$0impl<T> core::ops::IndexMut<Axis> for [T; 3] {
+    fn index_mut(&mut self, index: Axis) -> &mut Self::Output {
+        &self[index as usize]
+    }
+}
+
+impl<T> core::ops::Index<Axis> for [T; 3] {
+    type Output = T;
+
+    fn index(&self, index: Axis) -> &Self::Output {
+        &self[index as usize]
     }
 }
 "#####,
@@ -2480,6 +2595,25 @@ fn handle(action: Action) {
 }
 
 #[test]
+fn doctest_replace_is_some_with_if_let_some() {
+    check_doc_test(
+        "replace_is_some_with_if_let_some",
+        r#####"
+fn main() {
+    let x = Some(1);
+    if x.is_som$0e() {}
+}
+"#####,
+        r#####"
+fn main() {
+    let x = Some(1);
+    if let Some(${0:x}) = x {}
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_replace_let_with_if_let() {
     check_doc_test(
         "replace_let_with_if_let",
@@ -2850,6 +2984,8 @@ fn main() {
 mod std { pub mod ops { pub trait Add { fn add(self, _: Self) {} } impl Add for i32 {} } }
 "#####,
         r#####"
+use std::ops::Add;
+
 fn main() {
     1.add(2);
 }

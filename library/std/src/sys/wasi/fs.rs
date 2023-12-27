@@ -477,12 +477,13 @@ impl File {
     }
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
-        let to_timestamp = |time: Option<SystemTime>| {
-            match time {
-                Some(time) if let Some(ts) = time.to_wasi_timestamp() => Ok(ts),
-                Some(_) => Err(io::const_io_error!(io::ErrorKind::InvalidInput, "timestamp is too large to set as a file time")),
-                None => Ok(0),
-            }
+        let to_timestamp = |time: Option<SystemTime>| match time {
+            Some(time) if let Some(ts) = time.to_wasi_timestamp() => Ok(ts),
+            Some(_) => Err(io::const_io_error!(
+                io::ErrorKind::InvalidInput,
+                "timestamp is too large to set as a file time"
+            )),
+            None => Ok(0),
         };
         self.fd.filestat_set_times(
             to_timestamp(times.accessed)?,

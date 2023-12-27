@@ -43,15 +43,13 @@ pub fn check_fn(cx: &LateContext<'_>, kind: FnKind<'_>, decl: &FnDecl<'_>, body:
     // Body must be &(mut) <self_data>.name
     // self_data is not necessarily self, to also lint sub-getters, etc…
 
-    let block_expr = if_chain! {
-        if let ExprKind::Block(block,_) = body.value.kind;
-        if block.stmts.is_empty();
-        if let Some(block_expr) = block.expr;
-        then {
-            block_expr
-        } else {
-            return;
-        }
+    let block_expr = if let ExprKind::Block(block, _) = body.value.kind
+        && block.stmts.is_empty()
+        && let Some(block_expr) = block.expr
+    {
+        block_expr
+    } else {
+        return;
     };
     let expr_span = block_expr.span;
 
@@ -61,14 +59,12 @@ pub fn check_fn(cx: &LateContext<'_>, kind: FnKind<'_>, decl: &FnDecl<'_>, body:
     } else {
         block_expr
     };
-    let (self_data, used_ident) = if_chain! {
-        if let ExprKind::Field(self_data, ident) = expr.kind;
-        if ident.name.as_str() != name;
-        then {
-            (self_data, ident)
-        } else {
-            return;
-        }
+    let (self_data, used_ident) = if let ExprKind::Field(self_data, ident) = expr.kind
+        && ident.name.as_str() != name
+    {
+        (self_data, ident)
+    } else {
+        return;
     };
 
     let mut used_field = None;

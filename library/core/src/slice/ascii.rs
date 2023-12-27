@@ -125,6 +125,7 @@ impl [u8] {
     /// assert_eq!(b"".trim_ascii_start(), b"");
     /// ```
     #[unstable(feature = "byte_slice_trim_ascii", issue = "94035")]
+    #[inline]
     pub const fn trim_ascii_start(&self) -> &[u8] {
         let mut bytes = self;
         // Note: A pattern matching based approach (instead of indexing) allows
@@ -154,6 +155,7 @@ impl [u8] {
     /// assert_eq!(b"".trim_ascii_end(), b"");
     /// ```
     #[unstable(feature = "byte_slice_trim_ascii", issue = "94035")]
+    #[inline]
     pub const fn trim_ascii_end(&self) -> &[u8] {
         let mut bytes = self;
         // Note: A pattern matching based approach (instead of indexing) allows
@@ -184,6 +186,7 @@ impl [u8] {
     /// assert_eq!(b"".trim_ascii(), b"");
     /// ```
     #[unstable(feature = "byte_slice_trim_ascii", issue = "94035")]
+    #[inline]
     pub const fn trim_ascii(&self) -> &[u8] {
         self.trim_ascii_start().trim_ascii_end()
     }

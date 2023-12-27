@@ -8,5 +8,5 @@ LL |     T: Unpin + PartialEq,
    = note: `-D clippy::type-repetition-in-bounds` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::type_repetition_in_bounds)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

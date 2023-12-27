@@ -5,7 +5,6 @@
 
 #![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 
-use std::convert::Into;
 
 trait Trait {
     fn to_u8(&self) -> u8;

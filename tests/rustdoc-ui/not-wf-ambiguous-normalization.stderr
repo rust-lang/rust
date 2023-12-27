@@ -4,6 +4,6 @@ error[E0282]: type annotations needed
 LL | impl<T> Allocator for DefaultAllocator {
    |                       ^^^^^^^^^^^^^^^^ cannot infer type for type parameter `T`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0282`.

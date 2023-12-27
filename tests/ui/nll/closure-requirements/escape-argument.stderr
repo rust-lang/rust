@@ -6,7 +6,7 @@ LL |         let mut closure = expect_sig(|p, y| *p = y);
    |
    = note: defining type: test::{closure#0} with closure args [
                i16,
-               for<Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon }) mut &ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon }) i32, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon }) i32)),
+               for<Region(BrAnon), Region(BrAnon)> extern "rust-call" fn((&ReBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon }) mut &ReBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon }) i32, &ReBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon }) i32)),
                (),
            ]
 
@@ -33,6 +33,6 @@ LL |
 LL |     deref(p);
    |           - borrow later used here
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0597`.

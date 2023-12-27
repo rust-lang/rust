@@ -1,11 +1,12 @@
-use rustc_apfloat::{ieee::Single, Float as _};
+use rustc_apfloat::ieee::Single;
 use rustc_middle::mir;
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
-use rand::Rng as _;
-
-use super::{bin_op_simd_float_all, bin_op_simd_float_first, FloatBinOp, FloatCmpOp};
+use super::{
+    bin_op_simd_float_all, bin_op_simd_float_first, unary_op_ps, unary_op_ss, FloatBinOp,
+    FloatUnaryOp,
+};
 use crate::*;
 use shims::foreign_items::EmulateForeignItemResult;
 
@@ -21,6 +22,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         dest: &PlaceTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, EmulateForeignItemResult> {
         let this = self.eval_context_mut();
+        this.expect_target_feature_for_intrinsic(link_name, "sse")?;
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.x86.sse.").unwrap();
         // All these intrinsics operate on 128-bit (f32x4) SIMD vectors unless stated otherwise.
@@ -95,33 +97,37 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
 
                 unary_op_ps(this, which, op, dest)?;
             }
-            // Used to implement the _mm_cmp_ss function.
+            // Used to implement the _mm_cmp*_ss functions.
             // Performs a comparison operation on the first component of `left`
             // and `right`, returning 0 if false or `u32::MAX` if true. The remaining
             // components are copied from `left`.
+            // _mm_cmp_ss is actually an AVX function where the operation is specified
+            // by a const parameter.
+            // _mm_cmp{eq,lt,le,gt,ge,neq,nlt,nle,ngt,nge,ord,unord}_ss are SSE functions
+            // with hard-coded operations.
             "cmp.ss" => {
                 let [left, right, imm] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let which = FloatBinOp::Cmp(FloatCmpOp::from_intrinsic_imm(
-                    this.read_scalar(imm)?.to_i8()?,
-                    "llvm.x86.sse.cmp.ss",
-                )?);
+                let which =
+                    FloatBinOp::cmp_from_imm(this, this.read_scalar(imm)?.to_i8()?, link_name)?;
 
                 bin_op_simd_float_first::<Single>(this, which, left, right, dest)?;
             }
-            // Used to implement the _mm_cmp_ps function.
+            // Used to implement the _mm_cmp*_ps functions.
             // Performs a comparison operation on each component of `left`
             // and `right`. For each component, returns 0 if false or u32::MAX
             // if true.
+            // _mm_cmp_ps is actually an AVX function where the operation is specified
+            // by a const parameter.
+            // _mm_cmp{eq,lt,le,gt,ge,neq,nlt,nle,ngt,nge,ord,unord}_ps are SSE functions
+            // with hard-coded operations.
             "cmp.ps" => {
                 let [left, right, imm] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
 
-                let which = FloatBinOp::Cmp(FloatCmpOp::from_intrinsic_imm(
-                    this.read_scalar(imm)?.to_i8()?,
-                    "llvm.x86.sse.cmp.ps",
-                )?);
+                let which =
+                    FloatBinOp::cmp_from_imm(this, this.read_scalar(imm)?.to_i8()?, link_name)?;
 
                 bin_op_simd_float_all::<Single>(this, which, left, right, dest)?;
             }
@@ -163,7 +169,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                 let [op] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let (op, _) = this.operand_to_simd(op)?;
 
-                let op = this.read_scalar(&this.project_index(&op, 0)?)?.to_f32()?;
+                let op = this.read_immediate(&this.project_index(&op, 0)?)?;
 
                 let rnd = match unprefixed_name {
                     // "current SSE rounding mode", assume nearest
@@ -175,7 +181,7 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
                     _ => unreachable!(),
                 };
 
-                let res = this.float_to_int_checked(op, dest.layout, rnd).unwrap_or_else(|| {
+                let res = this.float_to_int_checked(&op, dest.layout, rnd)?.unwrap_or_else(|| {
                     // Fallback to minimum acording to SSE semantics.
                     ImmTy::from_int(dest.layout.size.signed_int_min(), dest.layout)
                 });
@@ -213,125 +219,4 @@ pub(super) trait EvalContextExt<'mir, 'tcx: 'mir>:
         }
         Ok(EmulateForeignItemResult::NeedsJumping)
     }
-}
-
-#[derive(Copy, Clone)]
-enum FloatUnaryOp {
-    /// sqrt(x)
-    ///
-    /// <https://www.felixcloutier.com/x86/sqrtss>
-    /// <https://www.felixcloutier.com/x86/sqrtps>
-    Sqrt,
-    /// Approximation of 1/x
-    ///
-    /// <https://www.felixcloutier.com/x86/rcpss>
-    /// <https://www.felixcloutier.com/x86/rcpps>
-    Rcp,
-    /// Approximation of 1/sqrt(x)
-    ///
-    /// <https://www.felixcloutier.com/x86/rsqrtss>
-    /// <https://www.felixcloutier.com/x86/rsqrtps>
-    Rsqrt,
-}
-
-/// Performs `which` scalar operation on `op` and returns the result.
-#[allow(clippy::arithmetic_side_effects)] // floating point operations without side effects
-fn unary_op_f32<'tcx>(
-    this: &mut crate::MiriInterpCx<'_, 'tcx>,
-    which: FloatUnaryOp,
-    op: &ImmTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, Scalar<Provenance>> {
-    match which {
-        FloatUnaryOp::Sqrt => {
-            let op = op.to_scalar();
-            // FIXME using host floats
-            Ok(Scalar::from_u32(f32::from_bits(op.to_u32()?).sqrt().to_bits()))
-        }
-        FloatUnaryOp::Rcp => {
-            let op = op.to_scalar().to_f32()?;
-            let div = (Single::from_u128(1).value / op).value;
-            // Apply a relative error with a magnitude on the order of 2^-12 to simulate the
-            // inaccuracy of RCP.
-            let res = apply_random_float_error(this, div, -12);
-            Ok(Scalar::from_f32(res))
-        }
-        FloatUnaryOp::Rsqrt => {
-            let op = op.to_scalar().to_u32()?;
-            // FIXME using host floats
-            let sqrt = Single::from_bits(f32::from_bits(op).sqrt().to_bits().into());
-            let rsqrt = (Single::from_u128(1).value / sqrt).value;
-            // Apply a relative error with a magnitude on the order of 2^-12 to simulate the
-            // inaccuracy of RSQRT.
-            let res = apply_random_float_error(this, rsqrt, -12);
-            Ok(Scalar::from_f32(res))
-        }
-    }
-}
-
-/// Disturbes a floating-point result by a relative error on the order of (-2^scale, 2^scale).
-#[allow(clippy::arithmetic_side_effects)] // floating point arithmetic cannot panic
-fn apply_random_float_error<F: rustc_apfloat::Float>(
-    this: &mut crate::MiriInterpCx<'_, '_>,
-    val: F,
-    err_scale: i32,
-) -> F {
-    let rng = this.machine.rng.get_mut();
-    // generates rand(0, 2^64) * 2^(scale - 64) = rand(0, 1) * 2^scale
-    let err =
-        F::from_u128(rng.gen::<u64>().into()).value.scalbn(err_scale.checked_sub(64).unwrap());
-    // give it a random sign
-    let err = if rng.gen::<bool>() { -err } else { err };
-    // multiple the value with (1+err)
-    (val * (F::from_u128(1).value + err).value).value
-}
-
-/// Performs `which` operation on the first component of `op` and copies
-/// the other components. The result is stored in `dest`.
-fn unary_op_ss<'tcx>(
-    this: &mut crate::MiriInterpCx<'_, 'tcx>,
-    which: FloatUnaryOp,
-    op: &OpTy<'tcx, Provenance>,
-    dest: &PlaceTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, ()> {
-    let (op, op_len) = this.operand_to_simd(op)?;
-    let (dest, dest_len) = this.place_to_simd(dest)?;
-
-    assert_eq!(dest_len, op_len);
-
-    let res0 = unary_op_f32(this, which, &this.read_immediate(&this.project_index(&op, 0)?)?)?;
-    this.write_scalar(res0, &this.project_index(&dest, 0)?)?;
-
-    for i in 1..dest_len {
-        this.copy_op(
-            &this.project_index(&op, i)?,
-            &this.project_index(&dest, i)?,
-            /*allow_transmute*/ false,
-        )?;
-    }
-
-    Ok(())
-}
-
-/// Performs `which` operation on each component of `op`, storing the
-/// result is stored in `dest`.
-fn unary_op_ps<'tcx>(
-    this: &mut crate::MiriInterpCx<'_, 'tcx>,
-    which: FloatUnaryOp,
-    op: &OpTy<'tcx, Provenance>,
-    dest: &PlaceTy<'tcx, Provenance>,
-) -> InterpResult<'tcx, ()> {
-    let (op, op_len) = this.operand_to_simd(op)?;
-    let (dest, dest_len) = this.place_to_simd(dest)?;
-
-    assert_eq!(dest_len, op_len);
-
-    for i in 0..dest_len {
-        let op = this.read_immediate(&this.project_index(&op, i)?)?;
-        let dest = this.project_index(&dest, i)?;
-
-        let res = unary_op_f32(this, which, &op)?;
-        this.write_scalar(res, &dest)?;
-    }
-
-    Ok(())
 }

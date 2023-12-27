@@ -125,10 +125,8 @@ pub enum SelectionCandidate<'tcx> {
 
     /// This is a trait matching with a projected type as `Self`, and we found
     /// an applicable bound in the trait definition. The `usize` is an index
-    /// into the list returned by `tcx.item_bounds`. The constness is the
-    /// constness of the bound in the trait.
-    // FIXME(effects) do we need this constness
-    ProjectionCandidate(usize, ty::BoundConstness),
+    /// into the list returned by `tcx.item_bounds`.
+    ProjectionCandidate(usize),
 
     /// Implementation of a `Fn`-family trait by one of the anonymous types
     /// generated for an `||` expression.
@@ -144,14 +142,18 @@ pub enum SelectionCandidate<'tcx> {
     /// generated for an async construct.
     FutureCandidate,
 
-    /// Implementation of an `Iterator` trait by one of the generator types
-    /// generated for a gen construct.
+    /// Implementation of an `Iterator` trait by one of the coroutine types
+    /// generated for a `gen` construct.
     IteratorCandidate,
+
+    /// Implementation of an `AsyncIterator` trait by one of the coroutine types
+    /// generated for a `async gen` construct.
+    AsyncIteratorCandidate,
 
     /// Implementation of a `Fn`-family trait by one of the anonymous
     /// types generated for a fn pointer type (e.g., `fn(int) -> int`)
     FnPointerCandidate {
-        is_const: bool,
+        fn_host_effect: ty::Const<'tcx>,
     },
 
     TraitAliasCandidate,
@@ -180,8 +182,8 @@ pub enum SelectionCandidate<'tcx> {
 ///
 /// The evaluation results are ordered:
 ///     - `EvaluatedToOk` implies `EvaluatedToOkModuloRegions`
-///       implies `EvaluatedToAmbig` implies `EvaluatedToUnknown`
-///     - `EvaluatedToErr` implies `EvaluatedToRecur`
+///       implies `EvaluatedToAmbig` implies `EvaluatedToAmbigStackDependent`
+///     - `EvaluatedToErr` implies `EvaluatedToErrStackDependent`
 ///     - the "union" of evaluation results is equal to their maximum -
 ///     all the "potential success" candidates can potentially succeed,
 ///     so they are noops when unioned with a definite error, and within
@@ -199,7 +201,7 @@ pub enum EvaluationResult {
     /// Evaluation is known to be ambiguous -- it *might* hold for some
     /// assignment of inference variables, but it might not.
     ///
-    /// While this has the same meaning as `EvaluatedToUnknown` -- we can't
+    /// While this has the same meaning as `EvaluatedToAmbigStackDependent` -- we can't
     /// know whether this obligation holds or not -- it is the result we
     /// would get with an empty stack, and therefore is cacheable.
     EvaluatedToAmbig,
@@ -207,8 +209,8 @@ pub enum EvaluationResult {
     /// variables. We are somewhat imprecise there, so we don't actually
     /// know the real result.
     ///
-    /// This can't be trivially cached for the same reason as `EvaluatedToRecur`.
-    EvaluatedToUnknown,
+    /// This can't be trivially cached for the same reason as `EvaluatedToErrStackDependent`.
+    EvaluatedToAmbigStackDependent,
     /// Evaluation failed because we encountered an obligation we are already
     /// trying to prove on this branch.
     ///
@@ -247,12 +249,12 @@ pub enum EvaluationResult {
     /// does not hold, because of the bound (which can indeed be satisfied
     /// by `SomeUnsizedType` from another crate).
     //
-    // FIXME: when an `EvaluatedToRecur` goes past its parent root, we
+    // FIXME: when an `EvaluatedToErrStackDependent` goes past its parent root, we
     // ought to convert it to an `EvaluatedToErr`, because we know
     // there definitely isn't a proof tree for that obligation. Not
     // doing so is still sound -- there isn't any proof tree, so the
     // branch still can't be a part of a minimal one -- but does not re-enable caching.
-    EvaluatedToRecur,
+    EvaluatedToErrStackDependent,
     /// Evaluation failed.
     EvaluatedToErr,
 }
@@ -276,15 +278,15 @@ impl EvaluationResult {
             | EvaluatedToOk
             | EvaluatedToOkModuloRegions
             | EvaluatedToAmbig
-            | EvaluatedToUnknown => true,
+            | EvaluatedToAmbigStackDependent => true,
 
-            EvaluatedToErr | EvaluatedToRecur => false,
+            EvaluatedToErr | EvaluatedToErrStackDependent => false,
         }
     }
 
     pub fn is_stack_dependent(self) -> bool {
         match self {
-            EvaluatedToUnknown | EvaluatedToRecur => true,
+            EvaluatedToAmbigStackDependent | EvaluatedToErrStackDependent => true,
 
             EvaluatedToOkModuloOpaqueTypes
             | EvaluatedToOk

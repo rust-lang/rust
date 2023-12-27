@@ -48,6 +48,7 @@ call-function: (
 
 // Next, desktop mode layout.
 set-window-size: (1100, 800)
+wait-for: "#src-sidebar-toggle"
 // We check that the sidebar isn't expanded and has the expected width.
 assert-css: ("nav.sidebar", {"width": "50px"})
 // We now click on the button to expand the sidebar.
@@ -58,7 +59,7 @@ assert-css: (".src-sidebar-expanded nav.sidebar a", {"font-size": "14px"})
 // We collapse the sidebar.
 click: (10, 10)
 // We ensure that the class has been removed.
-wait-for: "html:not(.expanded)"
+wait-for: "html:not(.src-sidebar-expanded)"
 assert: "nav.sidebar"
 
 // Checking that only the path to the current file is "open".
@@ -73,7 +74,7 @@ assert: "//*[@class='dir-entry' and @open]/*[text()='sub_mod']"
 // Only "another_folder" should be "open" in "lib2".
 assert: "//*[@class='dir-entry' and not(@open)]/*[text()='another_mod']"
 // All other trees should be collapsed.
-assert-count: ("//*[@id='src-sidebar']/details[not(text()='lib2') and not(@open)]", 10)
+assert-count: ("//*[@id='src-sidebar']/details[not(text()='lib2') and not(@open)]", 11)
 
 // We now switch to mobile mode.
 set-window-size: (600, 600)

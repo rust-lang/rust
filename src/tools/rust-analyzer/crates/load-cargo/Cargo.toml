@@ -11,13 +11,13 @@ authors.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-anyhow = "1.0.62"
+anyhow.workspace = true
 crossbeam-channel = "0.5.5"
-itertools = "0.10.5"
-tracing = "0.1.35"
+itertools.workspace = true
+tracing.workspace = true
 
 ide.workspace = true
-ide-db.workspace =true
+ide-db.workspace = true
 proc-macro-api.workspace = true
 project-model.workspace = true
 tt.workspace = true

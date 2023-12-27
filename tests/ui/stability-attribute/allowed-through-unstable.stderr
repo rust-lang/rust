@@ -7,6 +7,6 @@ LL | use allowed_through_unstable_core::unstable_module::NewStableTraitNotAllowe
    = note: see issue #1 <https://github.com/rust-lang/rust/issues/1> for more information
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

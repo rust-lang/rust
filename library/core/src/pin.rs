@@ -381,10 +381,9 @@
 
 #![stable(feature = "pin", since = "1.33.0")]
 
-use crate::cmp::{self, PartialEq, PartialOrd};
+use crate::cmp;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
-use crate::marker::{Sized, Unpin};
 use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Receiver};
 
 /// A pinned pointer.
@@ -1088,8 +1087,7 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// ### With `Coroutine`s
 ///
 /// ```rust
-/// #![cfg_attr(bootstrap, feature(generators))]
-/// #![cfg_attr(not(bootstrap), feature(coroutines))]
+/// #![feature(coroutines)]
 /// #![feature(coroutine_trait)]
 /// use core::{
 ///     ops::{Coroutine, CoroutineState},

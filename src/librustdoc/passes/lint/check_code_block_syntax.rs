@@ -3,7 +3,7 @@ use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_errors::{
     emitter::Emitter,
     translation::{to_fluent_args, Translate},
-    Applicability, Diagnostic, Handler, LazyFallbackBundle,
+    Applicability, DiagCtxt, Diagnostic, LazyFallbackBundle,
 };
 use rustc_parse::parse_stream_from_source_str;
 use rustc_resolve::rustdoc::source_span_for_markdown_range;
@@ -42,9 +42,9 @@ fn check_rust_syntax(
     let emitter = BufferEmitter { buffer: Lrc::clone(&buffer), fallback_bundle };
 
     let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-    let handler = Handler::with_emitter(Box::new(emitter)).disable_warnings();
+    let dcx = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
     let source = dox[code_block.code].to_owned();
-    let sess = ParseSess::with_span_handler(handler, sm);
+    let sess = ParseSess::with_dcx(dcx, sm);
 
     let edition = code_block.lang_string.edition.unwrap_or_else(|| cx.tcx.sess.edition());
     let expn_data =
@@ -98,7 +98,7 @@ fn check_rust_syntax(
     // Finally build and emit the completed diagnostic.
     // All points of divergence have been handled earlier so this can be
     // done the same way whether the span is precise or not.
-    let hir_id = cx.tcx.hir().local_def_id_to_hir_id(local_id);
+    let hir_id = cx.tcx.local_def_id_to_hir_id(local_id);
     cx.tcx.struct_span_lint_hir(crate::lint::INVALID_RUST_CODEBLOCKS, hir_id, sp, msg, |lint| {
         let explanation = if is_ignore {
             "`ignore` code blocks require valid Rust code for syntax highlighting; \
@@ -131,8 +131,6 @@ fn check_rust_syntax(
         for message in buffer.messages.iter() {
             lint.note(message.clone());
         }
-
-        lint
     });
 }
 
@@ -163,7 +161,7 @@ impl Emitter for BufferEmitter {
 
         let fluent_args = to_fluent_args(diag.args());
         let translated_main_message = self
-            .translate_message(&diag.message[0].0, &fluent_args)
+            .translate_message(&diag.messages[0].0, &fluent_args)
             .unwrap_or_else(|e| panic!("{e}"));
 
         buffer.messages.push(format!("error from rustc: {translated_main_message}"));

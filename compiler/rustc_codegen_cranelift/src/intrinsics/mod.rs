@@ -37,7 +37,7 @@ fn report_atomic_type_validation_error<'tcx>(
     span: Span,
     ty: Ty<'tcx>,
 ) {
-    fx.tcx.sess.span_err(
+    fx.tcx.dcx().span_err(
         span,
         format!(
             "`{}` intrinsic: expected basic integer or raw pointer type, found `{:?}`",
@@ -126,6 +126,65 @@ fn simd_pair_for_each_lane<'tcx>(
         let y_lane = y.value_lane(fx, lane_idx).load_scalar(fx);
 
         let res_lane = f(fx, lane_layout.ty, ret_lane_layout.ty, x_lane, y_lane);
+        let res_lane = CValue::by_val(res_lane, ret_lane_layout);
+
+        ret.place_lane(fx, lane_idx).write_cvalue(fx, res_lane);
+    }
+}
+
+fn simd_horizontal_pair_for_each_lane<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    x: CValue<'tcx>,
+    y: CValue<'tcx>,
+    ret: CPlace<'tcx>,
+    f: &dyn Fn(&mut FunctionCx<'_, '_, 'tcx>, Ty<'tcx>, Ty<'tcx>, Value, Value) -> Value,
+) {
+    assert_eq!(x.layout(), y.layout());
+    let layout = x.layout();
+
+    let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+    let lane_layout = fx.layout_of(lane_ty);
+    let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+    let ret_lane_layout = fx.layout_of(ret_lane_ty);
+    assert_eq!(lane_count, ret_lane_count);
+
+    for lane_idx in 0..lane_count {
+        let src = if lane_idx < (lane_count / 2) { x } else { y };
+        let src_idx = lane_idx % (lane_count / 2);
+
+        let lhs_lane = src.value_lane(fx, src_idx * 2).load_scalar(fx);
+        let rhs_lane = src.value_lane(fx, src_idx * 2 + 1).load_scalar(fx);
+
+        let res_lane = f(fx, lane_layout.ty, ret_lane_layout.ty, lhs_lane, rhs_lane);
+        let res_lane = CValue::by_val(res_lane, ret_lane_layout);
+
+        ret.place_lane(fx, lane_idx).write_cvalue(fx, res_lane);
+    }
+}
+
+fn simd_trio_for_each_lane<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    x: CValue<'tcx>,
+    y: CValue<'tcx>,
+    z: CValue<'tcx>,
+    ret: CPlace<'tcx>,
+    f: &dyn Fn(&mut FunctionCx<'_, '_, 'tcx>, Ty<'tcx>, Ty<'tcx>, Value, Value, Value) -> Value,
+) {
+    assert_eq!(x.layout(), y.layout());
+    let layout = x.layout();
+
+    let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+    let lane_layout = fx.layout_of(lane_ty);
+    let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+    let ret_lane_layout = fx.layout_of(ret_lane_ty);
+    assert_eq!(lane_count, ret_lane_count);
+
+    for lane_idx in 0..lane_count {
+        let x_lane = x.value_lane(fx, lane_idx).load_scalar(fx);
+        let y_lane = y.value_lane(fx, lane_idx).load_scalar(fx);
+        let z_lane = z.value_lane(fx, lane_idx).load_scalar(fx);
+
+        let res_lane = f(fx, lane_layout.ty, ret_lane_layout.ty, x_lane, y_lane, z_lane);
         let res_lane = CValue::by_val(res_lane, ret_lane_layout);
 
         ret.place_lane(fx, lane_idx).write_cvalue(fx, res_lane);
@@ -428,13 +487,12 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let layout = fx.layout_of(generic_args.type_at(0));
             // Note: Can't use is_unsized here as truly unsized types need to take the fixed size
             // branch
-            let size = if let Abi::ScalarPair(_, _) = ptr.layout().abi {
-                let (_ptr, info) = ptr.load_scalar_pair(fx);
-                let (size, _align) = crate::unsize::size_and_align_of_dst(fx, layout, info);
-                size
+            let meta = if let Abi::ScalarPair(_, _) = ptr.layout().abi {
+                Some(ptr.load_scalar_pair(fx).1)
             } else {
-                fx.bcx.ins().iconst(fx.pointer_type, layout.size.bytes() as i64)
+                None
             };
+            let (size, _align) = crate::unsize::size_and_align_of(fx, layout, meta);
             ret.write_cvalue(fx, CValue::by_val(size, usize_layout));
         }
         sym::min_align_of_val => {
@@ -443,13 +501,12 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let layout = fx.layout_of(generic_args.type_at(0));
             // Note: Can't use is_unsized here as truly unsized types need to take the fixed size
             // branch
-            let align = if let Abi::ScalarPair(_, _) = ptr.layout().abi {
-                let (_ptr, info) = ptr.load_scalar_pair(fx);
-                let (_size, align) = crate::unsize::size_and_align_of_dst(fx, layout, info);
-                align
+            let meta = if let Abi::ScalarPair(_, _) = ptr.layout().abi {
+                Some(ptr.load_scalar_pair(fx).1)
             } else {
-                fx.bcx.ins().iconst(fx.pointer_type, layout.align.abi.bytes() as i64)
+                None
             };
+            let (_size, align) = crate::unsize::size_and_align_of(fx, layout, meta);
             ret.write_cvalue(fx, CValue::by_val(align, usize_layout));
         }
 
@@ -629,7 +686,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                             }
                         })
                     });
-                    crate::base::codegen_panic_nounwind(fx, &msg_str, source_info);
+                    crate::base::codegen_panic_nounwind(fx, &msg_str, Some(source_info.span));
                     return;
                 }
             }
@@ -728,7 +785,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                         return;
                     } else {
                         fx.tcx
-                            .sess
+                            .dcx()
                             .span_fatal(source_info.span, "128bit atomics not yet supported");
                     }
                 }
@@ -759,7 +816,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                         return;
                     } else {
                         fx.tcx
-                            .sess
+                            .dcx()
                             .span_fatal(source_info.span, "128bit atomics not yet supported");
                     }
                 }
@@ -1188,7 +1245,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
         // FIXME implement variadics in cranelift
         sym::va_copy | sym::va_arg | sym::va_end => {
-            fx.tcx.sess.span_fatal(
+            fx.tcx.dcx().span_fatal(
                 source_info.span,
                 "Defining variadic functions is not yet supported by Cranelift",
             );
@@ -1196,7 +1253,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
         _ => {
             fx.tcx
-                .sess
+                .dcx()
                 .span_fatal(source_info.span, format!("unsupported intrinsic {}", intrinsic));
         }
     }

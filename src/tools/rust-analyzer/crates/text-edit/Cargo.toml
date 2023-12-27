@@ -12,5 +12,5 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
-itertools = "0.10.5"
+itertools.workspace = true
 text-size.workspace = true

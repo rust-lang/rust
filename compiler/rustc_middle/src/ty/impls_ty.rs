@@ -29,7 +29,7 @@ where
             }
 
             let mut hasher = StableHasher::new();
-            (&self[..]).hash_stable(hcx, &mut hasher);
+            self[..].hash_stable(hcx, &mut hasher);
 
             let hash: Fingerprint = hasher.finish();
             cache.borrow_mut().insert(key, hash);
@@ -81,6 +81,14 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
             let tcx = tcx.expect("can't hash AllocIds during hir lowering");
             tcx.try_get_global_alloc(*self).hash_stable(hcx, hasher);
         });
+    }
+}
+
+// CtfeProvenance is an AllocId and a bool.
+impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::CtfeProvenance {
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
+        self.alloc_id().hash_stable(hcx, hasher);
+        self.immutable().hash_stable(hcx, hasher);
     }
 }
 

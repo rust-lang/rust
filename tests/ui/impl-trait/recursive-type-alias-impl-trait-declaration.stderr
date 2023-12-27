@@ -10,6 +10,6 @@ LL |     Bar
    = help: the trait `PartialEq<(Foo, i32)>` is not implemented for `Bar`
    = help: the trait `PartialEq<(Bar, i32)>` is implemented for `Bar`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

@@ -176,10 +176,10 @@ pub(crate) fn compile_fn(
         match module.define_function(codegened_func.func_id, context) {
             Ok(()) => {}
             Err(ModuleError::Compilation(CodegenError::ImplLimitExceeded)) => {
-                let handler = rustc_session::EarlyErrorHandler::new(
+                let early_dcx = rustc_session::EarlyDiagCtxt::new(
                     rustc_session::config::ErrorOutputType::default(),
                 );
-                handler.early_error(format!(
+                early_dcx.early_fatal(format!(
                     "backend implementation limit exceeded while compiling {name}",
                     name = codegened_func.symbol_name
                 ));
@@ -236,13 +236,13 @@ pub(crate) fn verify_func(
         match cranelift_codegen::verify_function(&func, &flags) {
             Ok(_) => {}
             Err(err) => {
-                tcx.sess.err(format!("{:?}", err));
+                tcx.dcx().err(format!("{:?}", err));
                 let pretty_error = cranelift_codegen::print_errors::pretty_verifier_error(
                     &func,
                     Some(Box::new(writer)),
                     err,
                 );
-                tcx.sess.fatal(format!("cranelift verify error:\n{}", pretty_error));
+                tcx.dcx().fatal(format!("cranelift verify error:\n{}", pretty_error));
             }
         }
     });
@@ -353,7 +353,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                             fx,
                             rustc_hir::LangItem::PanicBoundsCheck,
                             &[index, len, location],
-                            source_info.span,
+                            Some(source_info.span),
                         );
                     }
                     AssertKind::MisalignedPointerDereference { ref required, ref found } => {
@@ -365,7 +365,7 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                             fx,
                             rustc_hir::LangItem::PanicMisalignedPointerDereference,
                             &[required, found, location],
-                            source_info.span,
+                            Some(source_info.span),
                         );
                     }
                     _ => {
@@ -450,13 +450,13 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 unwind: _,
             } => {
                 if options.contains(InlineAsmOptions::MAY_UNWIND) {
-                    fx.tcx.sess.span_fatal(
+                    fx.tcx.dcx().span_fatal(
                         source_info.span,
                         "cranelift doesn't support unwinding from inline assembly.",
                     );
                 }
 
-                crate::inline_asm::codegen_inline_asm(
+                crate::inline_asm::codegen_inline_asm_terminator(
                     fx,
                     source_info.span,
                     template,
@@ -812,7 +812,7 @@ fn codegen_stmt<'tcx>(
         | StatementKind::PlaceMention(..)
         | StatementKind::AscribeUserType(..) => {}
 
-        StatementKind::Coverage { .. } => fx.tcx.sess.fatal("-Zcoverage is unimplemented"),
+        StatementKind::Coverage { .. } => fx.tcx.dcx().fatal("-Zcoverage is unimplemented"),
         StatementKind::Intrinsic(ref intrinsic) => match &**intrinsic {
             // We ignore `assume` intrinsics, they are only useful for optimizations
             NonDivergingIntrinsic::Assume(_) => {}
@@ -945,19 +945,19 @@ pub(crate) fn codegen_panic<'tcx>(
     let msg_len = fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(msg_str.len()).unwrap());
     let args = [msg_ptr, msg_len, location];
 
-    codegen_panic_inner(fx, rustc_hir::LangItem::Panic, &args, source_info.span);
+    codegen_panic_inner(fx, rustc_hir::LangItem::Panic, &args, Some(source_info.span));
 }
 
 pub(crate) fn codegen_panic_nounwind<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     msg_str: &str,
-    source_info: mir::SourceInfo,
+    span: Option<Span>,
 ) {
     let msg_ptr = fx.anonymous_str(msg_str);
     let msg_len = fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(msg_str.len()).unwrap());
     let args = [msg_ptr, msg_len];
 
-    codegen_panic_inner(fx, rustc_hir::LangItem::PanicNounwind, &args, source_info.span);
+    codegen_panic_inner(fx, rustc_hir::LangItem::PanicNounwind, &args, span);
 }
 
 pub(crate) fn codegen_unwind_terminate<'tcx>(
@@ -967,16 +967,16 @@ pub(crate) fn codegen_unwind_terminate<'tcx>(
 ) {
     let args = [];
 
-    codegen_panic_inner(fx, reason.lang_item(), &args, source_info.span);
+    codegen_panic_inner(fx, reason.lang_item(), &args, Some(source_info.span));
 }
 
 fn codegen_panic_inner<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     lang_item: rustc_hir::LangItem,
     args: &[Value],
-    span: Span,
+    span: Option<Span>,
 ) {
-    let def_id = fx.tcx.require_lang_item(lang_item, Some(span));
+    let def_id = fx.tcx.require_lang_item(lang_item, span);
 
     let instance = Instance::mono(fx.tcx, def_id).polymorphize(fx.tcx);
     let symbol_name = fx.tcx.symbol_name(instance).name;

@@ -141,7 +141,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-ref-ptr.rs:59:1
    |
 LL | const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered ALLOC2, but expected a function pointer
+   | ^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered ALLOC2<imm>, but expected a function pointer
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
    = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
@@ -155,7 +155,7 @@ error[E0080]: evaluation of constant value failed
    |
 note: inside `std::ptr::read::<u32>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: inside `ptr::const_ptr::<impl *const u32>::read`
+note: inside `std::ptr::const_ptr::<impl *const u32>::read`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `UNALIGNED_READ`
   --> $DIR/ub-ref-ptr.rs:66:5

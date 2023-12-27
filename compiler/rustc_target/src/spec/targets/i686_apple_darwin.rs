@@ -1,5 +1,5 @@
 use crate::spec::base::apple::{macos_llvm_target, opts, Arch};
-use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
+use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, Target, TargetOptions};
 
 pub fn target() -> Target {
     // ld64 only understands i386 and not i686
@@ -7,7 +7,6 @@ pub fn target() -> Target {
     let mut base = opts("macos", arch);
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-m32"]);
-    base.stack_probes = StackProbeType::X86;
     base.frame_pointer = FramePointer::Always;
 
     Target {

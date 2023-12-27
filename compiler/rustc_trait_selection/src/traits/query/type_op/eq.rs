@@ -23,7 +23,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for Eq<'tcx> {
         tcx.type_op_eq(canonicalized)
     }
 
-    fn perform_locally_in_new_solver(
+    fn perform_locally_with_next_solver(
         ocx: &ObligationCtxt<'_, 'tcx>,
         key: ParamEnvAnd<'tcx, Self>,
     ) -> Result<Self::QueryResponse, NoSolution> {

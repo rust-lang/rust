@@ -1,6 +1,11 @@
 use std::process::Stdio;
 use std::{path::Path, process::Command};
 
+pub struct GitConfig<'a> {
+    pub git_repository: &'a str,
+    pub nightly_branch: &'a str,
+}
+
 /// Runs a command and returns the output
 fn output_result(cmd: &mut Command) -> Result<String, String> {
     let output = match cmd.stderr(Stdio::inherit()).output() {
@@ -27,7 +32,10 @@ fn output_result(cmd: &mut Command) -> Result<String, String> {
 /// upstream        https://github.com/rust-lang/rust (fetch)
 /// upstream        https://github.com/rust-lang/rust (push)
 /// ```
-pub fn get_rust_lang_rust_remote(git_dir: Option<&Path>) -> Result<String, String> {
+pub fn get_rust_lang_rust_remote(
+    config: &GitConfig<'_>,
+    git_dir: Option<&Path>,
+) -> Result<String, String> {
     let mut git = Command::new("git");
     if let Some(git_dir) = git_dir {
         git.current_dir(git_dir);
@@ -37,8 +45,8 @@ pub fn get_rust_lang_rust_remote(git_dir: Option<&Path>) -> Result<String, Strin
 
     let rust_lang_remote = stdout
         .lines()
-        .find(|remote| remote.contains("rust-lang"))
-        .ok_or_else(|| "rust-lang/rust remote not found".to_owned())?;
+        .find(|remote| remote.contains(config.git_repository))
+        .ok_or_else(|| format!("{} remote not found", config.git_repository))?;
 
     let remote_name =
         rust_lang_remote.split('.').nth(1).ok_or_else(|| "remote name not found".to_owned())?;
@@ -76,9 +84,13 @@ pub fn rev_exists(rev: &str, git_dir: Option<&Path>) -> Result<bool, String> {
 /// This could be because the user is updating their forked master branch using the GitHub UI
 /// and therefore doesn't need an upstream master branch checked out.
 /// We will then fall back to origin/master in the hope that at least this exists.
-pub fn updated_master_branch(git_dir: Option<&Path>) -> Result<String, String> {
-    let upstream_remote = get_rust_lang_rust_remote(git_dir)?;
-    for upstream_master in [format!("{upstream_remote}/master"), format!("origin/master")] {
+pub fn updated_master_branch(
+    config: &GitConfig<'_>,
+    git_dir: Option<&Path>,
+) -> Result<String, String> {
+    let upstream_remote = get_rust_lang_rust_remote(config, git_dir)?;
+    let branch = config.nightly_branch;
+    for upstream_master in [format!("{upstream_remote}/{branch}"), format!("origin/{branch}")] {
         if rev_exists(&upstream_master, git_dir)? {
             return Ok(upstream_master);
         }
@@ -87,8 +99,11 @@ pub fn updated_master_branch(git_dir: Option<&Path>) -> Result<String, String> {
     Err(format!("Cannot find any suitable upstream master branch"))
 }
 
-pub fn get_git_merge_base(git_dir: Option<&Path>) -> Result<String, String> {
-    let updated_master = updated_master_branch(git_dir)?;
+pub fn get_git_merge_base(
+    config: &GitConfig<'_>,
+    git_dir: Option<&Path>,
+) -> Result<String, String> {
+    let updated_master = updated_master_branch(config, git_dir)?;
     let mut git = Command::new("git");
     if let Some(git_dir) = git_dir {
         git.current_dir(git_dir);
@@ -100,10 +115,11 @@ pub fn get_git_merge_base(git_dir: Option<&Path>) -> Result<String, String> {
 /// The `extensions` parameter can be used to filter the files by their extension.
 /// If `extensions` is empty, all files will be returned.
 pub fn get_git_modified_files(
+    config: &GitConfig<'_>,
     git_dir: Option<&Path>,
     extensions: &Vec<&str>,
 ) -> Result<Option<Vec<String>>, String> {
-    let merge_base = get_git_merge_base(git_dir)?;
+    let merge_base = get_git_merge_base(config, git_dir)?;
 
     let mut git = Command::new("git");
     if let Some(git_dir) = git_dir {
@@ -122,8 +138,11 @@ pub fn get_git_modified_files(
 }
 
 /// Returns the files that haven't been added to git yet.
-pub fn get_git_untracked_files(git_dir: Option<&Path>) -> Result<Option<Vec<String>>, String> {
-    let Ok(_updated_master) = updated_master_branch(git_dir) else {
+pub fn get_git_untracked_files(
+    config: &GitConfig<'_>,
+    git_dir: Option<&Path>,
+) -> Result<Option<Vec<String>>, String> {
+    let Ok(_updated_master) = updated_master_branch(config, git_dir) else {
         return Ok(None);
     };
     let mut git = Command::new("git");

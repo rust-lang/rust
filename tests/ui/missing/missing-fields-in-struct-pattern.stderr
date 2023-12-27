@@ -9,6 +9,6 @@ help: use the tuple variant pattern syntax instead
 LL |     if let S(a, b, c, d) = S(1, 2, 3, 4) {
    |             ~~~~~~~~~~~~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0769`.

@@ -65,8 +65,15 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// Forks the inference context, creating a new inference context with the same inference
     /// variables in the same state. This can be used to "branch off" many tests from the same
-    /// common state. Used in coherence.
+    /// common state.
     pub fn fork(&self) -> Self {
+        self.fork_with_intercrate(self.intercrate)
+    }
+
+    /// Forks the inference context, creating a new inference context with the same inference
+    /// variables in the same state, except possibly changing the intercrate mode. This can be
+    /// used to "branch off" many tests from the same common state. Used in negative coherence.
+    pub fn fork_with_intercrate(&self, intercrate: bool) -> Self {
         Self {
             tcx: self.tcx,
             defining_use_anchor: self.defining_use_anchor,
@@ -81,7 +88,7 @@ impl<'tcx> InferCtxt<'tcx> {
             tainted_by_errors: self.tainted_by_errors.clone(),
             err_count_on_creation: self.err_count_on_creation,
             universe: self.universe.clone(),
-            intercrate: self.intercrate,
+            intercrate,
             next_trait_solver: self.next_trait_solver,
         }
     }
@@ -441,7 +448,11 @@ impl<'tcx> ToTrace<'tcx> for ty::TraitRef<'tcx> {
     ) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: TraitRefs(ExpectedFound::new(a_is_expected, a, b)),
+            values: PolyTraitRefs(ExpectedFound::new(
+                a_is_expected,
+                ty::Binder::dummy(a),
+                ty::Binder::dummy(b),
+            )),
         }
     }
 }

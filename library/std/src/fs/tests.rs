@@ -22,7 +22,7 @@ use crate::os::unix::fs::symlink as symlink_file;
 #[cfg(unix)]
 use crate::os::unix::fs::symlink as symlink_junction;
 #[cfg(windows)]
-use crate::os::windows::fs::{symlink_dir, symlink_file};
+use crate::os::windows::fs::{symlink_dir, symlink_file, OpenOptionsExt};
 #[cfg(windows)]
 use crate::sys::fs::symlink_junction;
 #[cfg(target_os = "macos")]
@@ -74,7 +74,7 @@ macro_rules! error_contains {
 // tests most of the time, but at least we do if the user has the right
 // permissions.
 pub fn got_symlink_permission(tmpdir: &TempDir) -> bool {
-    if cfg!(unix) {
+    if cfg!(not(windows)) || env::var_os("CI").is_some() {
         return true;
     }
     let link = tmpdir.join("some_hopefully_unique_link_name");
@@ -1792,4 +1792,29 @@ fn windows_unix_socket_exists() {
     assert_eq!(socket_path.exists(), true);
     assert_eq!(socket_path.try_exists().unwrap(), true);
     assert_eq!(socket_path.metadata().is_ok(), true);
+}
+
+#[cfg(windows)]
+#[test]
+fn test_hidden_file_truncation() {
+    // Make sure that File::create works on an existing hidden file. See #115745.
+    let tmpdir = tmpdir();
+    let path = tmpdir.join("hidden_file.txt");
+
+    // Create a hidden file.
+    const FILE_ATTRIBUTE_HIDDEN: u32 = 2;
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .attributes(FILE_ATTRIBUTE_HIDDEN)
+        .open(&path)
+        .unwrap();
+    file.write("hidden world!".as_bytes()).unwrap();
+    file.flush().unwrap();
+    drop(file);
+
+    // Create a new file by truncating the existing one.
+    let file = File::create(&path).unwrap();
+    let metadata = file.metadata().unwrap();
+    assert_eq!(metadata.len(), 0);
 }

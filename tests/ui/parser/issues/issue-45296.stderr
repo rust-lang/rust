@@ -13,5 +13,5 @@ LL -     #![allow(unused_variables)]
 LL +     #[allow(unused_variables)]
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

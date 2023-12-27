@@ -5,7 +5,6 @@ mod mem;
 mod sync;
 mod thread;
 
-mod android;
 mod freebsd;
 mod linux;
 mod macos;

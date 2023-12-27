@@ -23,5 +23,5 @@ LL |     for<T> [i32; { let _: T = todo!(); 0 }]:,
    |         |
    |         parameter defined here
 
-error: aborting due to previous error; 2 warnings emitted
+error: aborting due to 1 previous error; 2 warnings emitted
 

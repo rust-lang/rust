@@ -17,8 +17,8 @@
     test(no_crate_inject, attr(deny(warnings))),
     test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
 )]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
+#![doc(rust_logo)]
+#![feature(rustdoc_internals)]
 // This library is copied into rust-analyzer to allow loading rustc compiled proc macros.
 // Please avoid unstable features where possible to minimize the amount of changes necessary
 // to make it compile with rust-analyzer on stable.
@@ -925,13 +925,12 @@ impl !Sync for Punct {}
 pub enum Spacing {
     /// A `Punct` token can join with the following token to form a multi-character operator.
     ///
-    /// In token streams constructed using proc macro interfaces `Joint` punctuation tokens can be
-    /// followed by any other tokens. \
-    /// However, in token streams parsed from source code compiler will only set spacing to `Joint`
-    /// in the following cases:
-    /// - A `Punct` is immediately followed by another `Punct` without a whitespace. \
-    ///   E.g. `+` is `Joint` in `+=` and `++`.
-    /// - A single quote `'` is immediately followed by an identifier without a whitespace. \
+    /// In token streams constructed using proc macro interfaces, `Joint` punctuation tokens can be
+    /// followed by any other tokens. However, in token streams parsed from source code, the
+    /// compiler will only set spacing to `Joint` in the following cases.
+    /// - When a `Punct` is immediately followed by another `Punct` without a whitespace. E.g. `+`
+    ///   is `Joint` in `+=` and `++`.
+    /// - When a single quote `'` is immediately followed by an identifier without a whitespace.
     ///   E.g. `'` is `Joint` in `'lifetime`.
     ///
     /// This list may be extended in the future to enable more token combinations.
@@ -939,11 +938,10 @@ pub enum Spacing {
     Joint,
     /// A `Punct` token cannot join with the following token to form a multi-character operator.
     ///
-    /// `Alone` punctuation tokens can be followed by any other tokens. \
-    /// In token streams parsed from source code compiler will set spacing to `Alone` in all cases
-    /// not covered by the conditions for `Joint` above. \
-    /// E.g. `+` is `Alone` in `+ =`, `+ident` and `+()`.
-    /// In particular, token not followed by anything  will also be marked as `Alone`.
+    /// `Alone` punctuation tokens can be followed by any other tokens. In token streams parsed
+    /// from source code, the compiler will set spacing to `Alone` in all cases not covered by the
+    /// conditions for `Joint` above. E.g. `+` is `Alone` in `+ =`, `+ident` and `+()`. In
+    /// particular, tokens not followed by anything will be marked as `Alone`.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     Alone,
 }
@@ -978,8 +976,8 @@ impl Punct {
     }
 
     /// Returns the spacing of this punctuation character, indicating whether it can be potentially
-    /// combined into a multi-character operator with the following token (`Joint`), or the operator
-    /// has certainly ended (`Alone`).
+    /// combined into a multi-character operator with the following token (`Joint`), or whether the
+    /// operator has definitely ended (`Alone`).
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn spacing(&self) -> Spacing {
         if self.0.joint { Spacing::Joint } else { Spacing::Alone }
@@ -1505,7 +1503,8 @@ pub mod tracked_env {
     #[unstable(feature = "proc_macro_tracked_env", issue = "99515")]
     pub fn var<K: AsRef<OsStr> + AsRef<str>>(key: K) -> Result<String, VarError> {
         let key: &str = key.as_ref();
-        let value = env::var(key);
+        let value = crate::bridge::client::FreeFunctions::injected_env_var(key)
+            .map_or_else(|| env::var(key), Ok);
         crate::bridge::client::FreeFunctions::track_env_var(key, value.as_deref().ok());
         value
     }

@@ -1748,7 +1748,6 @@ impl<T: Clone, A: Allocator + Clone> Rc<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(arc_unwrap_or_clone)]
     /// # use std::{ptr, rc::Rc};
     /// let inner = String::from("test");
     /// let ptr = inner.as_ptr();
@@ -1769,7 +1768,7 @@ impl<T: Clone, A: Allocator + Clone> Rc<T, A> {
     /// assert!(ptr::eq(ptr, inner.as_ptr()));
     /// ```
     #[inline]
-    #[unstable(feature = "arc_unwrap_or_clone", issue = "93610")]
+    #[stable(feature = "arc_unwrap_or_clone", since = "1.76.0")]
     pub fn unwrap_or_clone(this: Self) -> T {
         Rc::try_unwrap(this).unwrap_or_else(|rc| (*rc).clone())
     }
@@ -2023,6 +2022,7 @@ impl<T, A: Allocator> Rc<[T], A> {
     }
 }
 
+#[cfg(not(no_global_oom_handling))]
 /// Specialization trait used for `From<&[T]>`.
 trait RcFromSlice<T> {
     fn from_slice(slice: &[T]) -> Self;

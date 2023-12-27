@@ -1,5 +1,5 @@
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::{InferCtxt, LateBoundRegionConversionTime};
+use rustc_infer::infer::{BoundRegionConversionTime, InferCtxt};
 use rustc_infer::traits::util::elaborate;
 use rustc_infer::traits::{Obligation, ObligationCause, PolyTraitObligation};
 use rustc_middle::ty;
@@ -53,7 +53,7 @@ pub fn recompute_applicable_impls<'tcx>(
 
         let param_env_predicate = infcx.instantiate_binder_with_fresh_vars(
             DUMMY_SP,
-            LateBoundRegionConversionTime::HigherRankedType,
+            BoundRegionConversionTime::HigherRankedType,
             poly_trait_predicate,
         );
         let param_env_trait_ref =

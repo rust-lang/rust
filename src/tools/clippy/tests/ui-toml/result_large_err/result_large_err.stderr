@@ -8,5 +8,5 @@ LL | fn f2() -> Result<(), [u8; 512]> {
    = note: `-D clippy::result-large-err` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::result_large_err)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -462,7 +462,6 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
         // "Liberate" the late-bound regions. These correspond to
         // "local" free regions.
-
         let bound_inputs_and_output = self.compute_inputs_and_output(&indices, defining_ty);
 
         let inputs_and_output = self.infcx.replace_bound_regions_with_nll_infer_vars(
@@ -665,7 +664,7 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                     kind: ty::BrEnv,
                 };
-                let env_region = ty::Region::new_late_bound(tcx, ty::INNERMOST, br);
+                let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
                 let closure_ty = tcx.closure_env_ty(def_id, args, env_region).unwrap();
 
                 // The "inputs" of the closure in the
@@ -738,18 +737,6 @@ trait InferCtxtExt<'tcx> {
     ) -> T
     where
         T: TypeFoldable<TyCtxt<'tcx>>;
-
-    fn replace_late_bound_regions_with_nll_infer_vars_in_recursive_scope(
-        &self,
-        mir_def_id: LocalDefId,
-        indices: &mut UniversalRegionIndices<'tcx>,
-    );
-
-    fn replace_late_bound_regions_with_nll_infer_vars_in_item(
-        &self,
-        mir_def_id: LocalDefId,
-        indices: &mut UniversalRegionIndices<'tcx>,
-    );
 }
 
 impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
@@ -781,10 +768,10 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let (value, _map) = self.tcx.replace_late_bound_regions(value, |br| {
+        let (value, _map) = self.tcx.instantiate_bound_regions(value, |br| {
             debug!(?br);
             let liberated_region =
-                ty::Region::new_free(self.tcx, all_outlive_scope.to_def_id(), br.kind);
+                ty::Region::new_late_param(self.tcx, all_outlive_scope.to_def_id(), br.kind);
             let region_vid = {
                 let name = match br.kind.get_name() {
                     Some(name) => name,
@@ -800,61 +787,13 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for BorrowckInferCtxt<'cx, 'tcx> {
         });
         value
     }
-
-    /// Finds late-bound regions that do not appear in the parameter listing and adds them to the
-    /// indices vector. Typically, we identify late-bound regions as we process the inputs and
-    /// outputs of the closure/function. However, sometimes there are late-bound regions which do
-    /// not appear in the fn parameters but which are nonetheless in scope. The simplest case of
-    /// this are unused functions, like fn foo<'a>() { } (see e.g., #51351). Despite not being used,
-    /// users can still reference these regions (e.g., let x: &'a u32 = &22;), so we need to create
-    /// entries for them and store them in the indices map. This code iterates over the complete
-    /// set of late-bound regions and checks for any that we have not yet seen, adding them to the
-    /// inputs vector.
-    #[instrument(skip(self, indices))]
-    fn replace_late_bound_regions_with_nll_infer_vars_in_recursive_scope(
-        &self,
-        mir_def_id: LocalDefId,
-        indices: &mut UniversalRegionIndices<'tcx>,
-    ) {
-        for_each_late_bound_region_in_recursive_scope(self.tcx, mir_def_id, |r| {
-            debug!(?r);
-            if !indices.indices.contains_key(&r) {
-                let region_vid = {
-                    let name = r.get_name_or_anon();
-                    self.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
-                };
-
-                debug!(?region_vid);
-                indices.insert_late_bound_region(r, region_vid.as_var());
-            }
-        });
-    }
-
-    #[instrument(skip(self, indices))]
-    fn replace_late_bound_regions_with_nll_infer_vars_in_item(
-        &self,
-        mir_def_id: LocalDefId,
-        indices: &mut UniversalRegionIndices<'tcx>,
-    ) {
-        for_each_late_bound_region_in_item(self.tcx, mir_def_id, |r| {
-            debug!(?r);
-            if !indices.indices.contains_key(&r) {
-                let region_vid = {
-                    let name = r.get_name_or_anon();
-                    self.next_nll_region_var(FR, || RegionCtxt::LateBound(name))
-                };
-
-                indices.insert_late_bound_region(r, region_vid.as_var());
-            }
-        });
-    }
 }
 
 impl<'tcx> UniversalRegionIndices<'tcx> {
     /// Initially, the `UniversalRegionIndices` map contains only the
     /// early-bound regions in scope. Once that is all setup, we come
     /// in later and instantiate the late-bound regions, and then we
-    /// insert the `ReFree` version of those into the map as
+    /// insert the `ReLateParam` version of those into the map as
     /// well. These are used for error reporting.
     fn insert_late_bound_region(&mut self, r: ty::Region<'tcx>, vid: ty::RegionVid) {
         debug!("insert_late_bound_region({:?}, {:?})", r, vid);
@@ -929,11 +868,12 @@ fn for_each_late_bound_region_in_item<'tcx>(
         return;
     }
 
-    for bound_var in tcx.late_bound_vars(tcx.hir().local_def_id_to_hir_id(mir_def_id)) {
+    for bound_var in tcx.late_bound_vars(tcx.local_def_id_to_hir_id(mir_def_id)) {
         let ty::BoundVariableKind::Region(bound_region) = bound_var else {
             continue;
         };
-        let liberated_region = ty::Region::new_free(tcx, mir_def_id.to_def_id(), bound_region);
+        let liberated_region =
+            ty::Region::new_late_param(tcx, mir_def_id.to_def_id(), bound_region);
         f(liberated_region);
     }
 }

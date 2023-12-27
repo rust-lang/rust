@@ -119,7 +119,7 @@ an `u32`. As far as `hir::Ty` is concerned those might be different types. But a
 understands that they're the same type, in-depth lifetimes, etc...
 
 To get from a `hir::Ty` to a `ty::Ty`, you can use the [`hir_ty_to_ty`][hir_ty_to_ty] function outside of bodies or
-outside of bodies the [`TypeckResults::node_type()`][node_type] method.
+the [`TypeckResults::node_type()`][node_type] method inside of bodies.
 
 > **Warning**: Don't use `hir_ty_to_ty` inside of bodies, because this can cause ICEs.
 

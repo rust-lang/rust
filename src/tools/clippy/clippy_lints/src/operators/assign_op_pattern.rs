@@ -4,7 +4,6 @@ use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{binop_traits, eq_expr_value, trait_ref_of_method};
 use core::ops::ControlFlow;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
@@ -25,43 +24,40 @@ pub(super) fn check<'tcx>(
         let lint = |assignee: &hir::Expr<'_>, rhs: &hir::Expr<'_>| {
             let ty = cx.typeck_results().expr_ty(assignee);
             let rty = cx.typeck_results().expr_ty(rhs);
-            if_chain! {
-                if let Some((_, lang_item)) = binop_traits(op.node);
-                if let Some(trait_id) = cx.tcx.lang_items().get(lang_item);
-                let parent_fn = cx.tcx.hir().get_parent_item(e.hir_id).def_id;
-                if trait_ref_of_method(cx, parent_fn)
-                    .map_or(true, |t| t.path.res.def_id() != trait_id);
-                if implements_trait(cx, ty, trait_id, &[rty.into()]);
-                then {
-                    // Primitive types execute assign-ops right-to-left. Every other type is left-to-right.
-                    if !(ty.is_primitive() && rty.is_primitive()) {
-                        // TODO: This will have false negatives as it doesn't check if the borrows are
-                        // actually live at the end of their respective expressions.
-                        let mut_borrows = mut_borrows_in_expr(cx, assignee);
-                        let imm_borrows = imm_borrows_in_expr(cx, rhs);
-                        if mut_borrows.iter().any(|id| imm_borrows.contains(id)) {
-                            return;
-                        }
+            if let Some((_, lang_item)) = binop_traits(op.node)
+                && let Some(trait_id) = cx.tcx.lang_items().get(lang_item)
+                && let parent_fn = cx.tcx.hir().get_parent_item(e.hir_id).def_id
+                && trait_ref_of_method(cx, parent_fn).map_or(true, |t| t.path.res.def_id() != trait_id)
+                && implements_trait(cx, ty, trait_id, &[rty.into()])
+            {
+                // Primitive types execute assign-ops right-to-left. Every other type is left-to-right.
+                if !(ty.is_primitive() && rty.is_primitive()) {
+                    // TODO: This will have false negatives as it doesn't check if the borrows are
+                    // actually live at the end of their respective expressions.
+                    let mut_borrows = mut_borrows_in_expr(cx, assignee);
+                    let imm_borrows = imm_borrows_in_expr(cx, rhs);
+                    if mut_borrows.iter().any(|id| imm_borrows.contains(id)) {
+                        return;
                     }
-                    span_lint_and_then(
-                        cx,
-                        ASSIGN_OP_PATTERN,
-                        expr.span,
-                        "manual implementation of an assign operation",
-                        |diag| {
-                            if let (Some(snip_a), Some(snip_r)) =
-                                (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs.span))
-                            {
-                                diag.span_suggestion(
-                                    expr.span,
-                                    "replace it with",
-                                    format!("{snip_a} {}= {snip_r}", op.node.as_str()),
-                                    Applicability::MachineApplicable,
-                                );
-                            }
-                        },
-                    );
                 }
+                span_lint_and_then(
+                    cx,
+                    ASSIGN_OP_PATTERN,
+                    expr.span,
+                    "manual implementation of an assign operation",
+                    |diag| {
+                        if let (Some(snip_a), Some(snip_r)) =
+                            (snippet_opt(cx, assignee.span), snippet_opt(cx, rhs.span))
+                        {
+                            diag.span_suggestion(
+                                expr.span,
+                                "replace it with",
+                                format!("{snip_a} {}= {snip_r}", op.node.as_str()),
+                                Applicability::MachineApplicable,
+                            );
+                        }
+                    },
+                );
             }
         };
 

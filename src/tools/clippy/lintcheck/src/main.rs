@@ -309,7 +309,7 @@ impl Crate {
         target_dir_index: &AtomicUsize,
         total_crates_to_lint: usize,
         config: &LintcheckConfig,
-        lint_filter: &Vec<String>,
+        lint_filter: &[String],
         server: &Option<LintcheckServer>,
     ) -> Vec<ClippyWarning> {
         // advance the atomic index by one
@@ -367,7 +367,7 @@ impl Crate {
             //
             // The wrapper is set to the `lintcheck` so we can force enable linting and ignore certain crates
             // (see `crate::driver`)
-            let status = Command::new("cargo")
+            let status = Command::new(env::var("CARGO").unwrap_or("cargo".into()))
                 .arg("check")
                 .arg("--quiet")
                 .current_dir(&self.path)
@@ -441,7 +441,7 @@ impl Crate {
 
 /// Builds clippy inside the repo to make sure we have a clippy executable we can use.
 fn build_clippy() {
-    let status = Command::new("cargo")
+    let status = Command::new(env::var("CARGO").unwrap_or("cargo".into()))
         .arg("build")
         .status()
         .expect("Failed to build clippy!");
@@ -728,7 +728,7 @@ fn read_stats_from_file(file_path: &Path) -> HashMap<String, usize> {
 }
 
 /// print how lint counts changed between runs
-fn print_stats(old_stats: HashMap<String, usize>, new_stats: HashMap<&String, usize>, lint_filter: &Vec<String>) {
+fn print_stats(old_stats: HashMap<String, usize>, new_stats: HashMap<&String, usize>, lint_filter: &[String]) {
     let same_in_both_hashmaps = old_stats
         .iter()
         .filter(|(old_key, old_val)| new_stats.get::<&String>(old_key) == Some(old_val))
@@ -816,7 +816,7 @@ fn lintcheck_test() {
         "--crates-toml",
         "lintcheck/test_sources.toml",
     ];
-    let status = std::process::Command::new("cargo")
+    let status = std::process::Command::new(env::var("CARGO").unwrap_or("cargo".into()))
         .args(args)
         .current_dir("..") // repo root
         .status();

@@ -5,9 +5,7 @@ use crate::errors::{
 };
 use crate::framework::BitSetExt;
 
-use std::borrow::Borrow;
 use std::ffi::OsString;
-use std::marker::PhantomData;
 use std::path::PathBuf;
 
 use rustc_ast as ast;
@@ -24,42 +22,37 @@ use rustc_span::symbol::{sym, Symbol};
 use super::fmt::DebugWithContext;
 use super::graphviz;
 use super::{
-    visit_results, Analysis, AnalysisDomain, CloneAnalysis, Direction, GenKill, GenKillAnalysis,
-    GenKillSet, JoinSemiLattice, ResultsClonedCursor, ResultsCursor, ResultsRefCursor,
-    ResultsVisitor,
+    visit_results, Analysis, AnalysisDomain, Direction, GenKill, GenKillAnalysis, GenKillSet,
+    JoinSemiLattice, ResultsCursor, ResultsVisitor,
 };
 
 pub type EntrySets<'tcx, A> = IndexVec<BasicBlock, <A as AnalysisDomain<'tcx>>::Domain>;
 
 /// A dataflow analysis that has converged to fixpoint.
-pub struct Results<'tcx, A, E = EntrySets<'tcx, A>>
+#[derive(Clone)]
+pub struct Results<'tcx, A>
 where
     A: Analysis<'tcx>,
 {
     pub analysis: A,
-    pub(super) entry_sets: E,
-    pub(super) _marker: PhantomData<&'tcx ()>,
+    pub(super) entry_sets: EntrySets<'tcx, A>,
 }
 
-/// `Results` type with a cloned `Analysis` and borrowed entry sets.
-pub type ResultsCloned<'res, 'tcx, A> = Results<'tcx, A, &'res EntrySets<'tcx, A>>;
-
-impl<'tcx, A, E> Results<'tcx, A, E>
+impl<'tcx, A> Results<'tcx, A>
 where
     A: Analysis<'tcx>,
-    E: Borrow<EntrySets<'tcx, A>>,
 {
     /// Creates a `ResultsCursor` that can inspect these `Results`.
     pub fn into_results_cursor<'mir>(
         self,
         body: &'mir mir::Body<'tcx>,
-    ) -> ResultsCursor<'mir, 'tcx, A, Self> {
+    ) -> ResultsCursor<'mir, 'tcx, A> {
         ResultsCursor::new(body, self)
     }
 
     /// Gets the dataflow state for the given block.
     pub fn entry_set_for_block(&self, block: BasicBlock) -> &A::Domain {
-        &self.entry_sets.borrow()[block]
+        &self.entry_sets[block]
     }
 
     pub fn visit_with<'mir>(
@@ -80,60 +73,14 @@ where
         visit_results(body, blocks.map(|(bb, _)| bb), self, vis)
     }
 }
-impl<'tcx, A> Results<'tcx, A>
-where
-    A: Analysis<'tcx>,
-{
-    /// Creates a `ResultsCursor` that can inspect these `Results`.
-    pub fn as_results_cursor<'a, 'mir>(
-        &'a mut self,
-        body: &'mir mir::Body<'tcx>,
-    ) -> ResultsRefCursor<'a, 'mir, 'tcx, A> {
-        ResultsCursor::new(body, self)
-    }
-}
-impl<'tcx, A> Results<'tcx, A>
-where
-    A: Analysis<'tcx> + CloneAnalysis,
-{
-    /// Creates a new `Results` type with a cloned `Analysis` and borrowed entry sets.
-    pub fn clone_analysis(&self) -> ResultsCloned<'_, 'tcx, A> {
-        Results {
-            analysis: self.analysis.clone_analysis(),
-            entry_sets: &self.entry_sets,
-            _marker: PhantomData,
-        }
-    }
-
-    /// Creates a `ResultsCursor` that can inspect these `Results`.
-    pub fn cloned_results_cursor<'mir>(
-        &self,
-        body: &'mir mir::Body<'tcx>,
-    ) -> ResultsClonedCursor<'_, 'mir, 'tcx, A> {
-        self.clone_analysis().into_results_cursor(body)
-    }
-}
-impl<'res, 'tcx, A> Results<'tcx, A, &'res EntrySets<'tcx, A>>
-where
-    A: Analysis<'tcx> + CloneAnalysis,
-{
-    /// Creates a new `Results` type with a cloned `Analysis` and borrowed entry sets.
-    pub fn reclone_analysis(&self) -> Self {
-        Results {
-            analysis: self.analysis.clone_analysis(),
-            entry_sets: self.entry_sets,
-            _marker: PhantomData,
-        }
-    }
-}
 
 /// A solver for dataflow problems.
-pub struct Engine<'a, 'tcx, A>
+pub struct Engine<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
     tcx: TyCtxt<'tcx>,
-    body: &'a mir::Body<'tcx>,
+    body: &'mir mir::Body<'tcx>,
     entry_sets: IndexVec<BasicBlock, A::Domain>,
     pass_name: Option<&'static str>,
     analysis: A,
@@ -147,14 +94,14 @@ where
     apply_statement_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
 }
 
-impl<'a, 'tcx, A, D, T> Engine<'a, 'tcx, A>
+impl<'mir, 'tcx, A, D, T> Engine<'mir, 'tcx, A>
 where
     A: GenKillAnalysis<'tcx, Idx = T, Domain = D>,
     D: Clone + JoinSemiLattice + GenKill<T> + BitSetExt<T>,
     T: Idx,
 {
     /// Creates a new `Engine` to solve a gen-kill dataflow problem.
-    pub fn new_gen_kill(tcx: TyCtxt<'tcx>, body: &'a mir::Body<'tcx>, mut analysis: A) -> Self {
+    pub fn new_gen_kill(tcx: TyCtxt<'tcx>, body: &'mir mir::Body<'tcx>, mut analysis: A) -> Self {
         // If there are no back-edges in the control-flow graph, we only ever need to apply the
         // transfer function for each block exactly once (assuming that we process blocks in RPO).
         //
@@ -186,7 +133,7 @@ where
     }
 }
 
-impl<'a, 'tcx, A, D> Engine<'a, 'tcx, A>
+impl<'mir, 'tcx, A, D> Engine<'mir, 'tcx, A>
 where
     A: Analysis<'tcx, Domain = D>,
     D: Clone + JoinSemiLattice,
@@ -196,13 +143,13 @@ where
     ///
     /// Gen-kill problems should use `new_gen_kill`, which will coalesce transfer functions for
     /// better performance.
-    pub fn new_generic(tcx: TyCtxt<'tcx>, body: &'a mir::Body<'tcx>, analysis: A) -> Self {
+    pub fn new_generic(tcx: TyCtxt<'tcx>, body: &'mir mir::Body<'tcx>, analysis: A) -> Self {
         Self::new(tcx, body, analysis, None)
     }
 
     fn new(
         tcx: TyCtxt<'tcx>,
-        body: &'a mir::Body<'tcx>,
+        body: &'mir mir::Body<'tcx>,
         analysis: A,
         apply_statement_trans_for_block: Option<Box<dyn Fn(BasicBlock, &mut A::Domain)>>,
     ) -> Self {
@@ -239,7 +186,6 @@ where
             tcx,
             apply_statement_trans_for_block,
             pass_name,
-            ..
         } = self;
 
         let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks.len());
@@ -292,29 +238,31 @@ where
             );
         }
 
-        let mut results = Results { analysis, entry_sets, _marker: PhantomData };
+        let results = Results { analysis, entry_sets };
 
         if tcx.sess.opts.unstable_opts.dump_mir_dataflow {
-            let res = write_graphviz_results(tcx, &body, &mut results, pass_name);
+            let (res, results) = write_graphviz_results(tcx, body, results, pass_name);
             if let Err(e) = res {
                 error!("Failed to write graphviz dataflow results: {}", e);
             }
+            results
+        } else {
+            results
         }
-
-        results
     }
 }
 
 // Graphviz
 
 /// Writes a DOT file containing the results of a dataflow analysis if the user requested it via
-/// `rustc_mir` attributes and `-Z dump-mir-dataflow`.
+/// `rustc_mir` attributes and `-Z dump-mir-dataflow`. The `Result` in and the `Results` out are
+/// the same.
 fn write_graphviz_results<'tcx, A>(
     tcx: TyCtxt<'tcx>,
     body: &mir::Body<'tcx>,
-    results: &mut Results<'tcx, A>,
+    results: Results<'tcx, A>,
     pass_name: Option<&'static str>,
-) -> std::io::Result<()>
+) -> (std::io::Result<()>, Results<'tcx, A>)
 where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
@@ -325,23 +273,30 @@ where
     let def_id = body.source.def_id();
     let Ok(attrs) = RustcMirAttrs::parse(tcx, def_id) else {
         // Invalid `rustc_mir` attrs are reported in `RustcMirAttrs::parse`
-        return Ok(());
+        return (Ok(()), results);
     };
 
-    let mut file = match attrs.output_path(A::NAME) {
-        Some(path) => {
-            debug!("printing dataflow results for {:?} to {}", def_id, path.display());
-            if let Some(parent) = path.parent() {
-                fs::create_dir_all(parent)?;
+    let file = try {
+        match attrs.output_path(A::NAME) {
+            Some(path) => {
+                debug!("printing dataflow results for {:?} to {}", def_id, path.display());
+                if let Some(parent) = path.parent() {
+                    fs::create_dir_all(parent)?;
+                }
+                let f = fs::File::create(&path)?;
+                io::BufWriter::new(f)
             }
-            io::BufWriter::new(fs::File::create(&path)?)
-        }
 
-        None if dump_enabled(tcx, A::NAME, def_id) => {
-            create_dump_file(tcx, ".dot", false, A::NAME, &pass_name.unwrap_or("-----"), body)?
-        }
+            None if dump_enabled(tcx, A::NAME, def_id) => {
+                create_dump_file(tcx, ".dot", false, A::NAME, &pass_name.unwrap_or("-----"), body)?
+            }
 
-        _ => return Ok(()),
+            _ => return (Ok(()), results),
+        }
+    };
+    let mut file = match file {
+        Ok(f) => f,
+        Err(e) => return (Err(e), results),
     };
 
     let style = match attrs.formatter {
@@ -357,11 +312,14 @@ where
     if tcx.sess.opts.unstable_opts.graphviz_dark_mode {
         render_opts.push(dot::RenderOption::DarkTheme);
     }
-    with_no_trimmed_paths!(dot::render_opts(&graphviz, &mut buf, &render_opts)?);
+    let r = with_no_trimmed_paths!(dot::render_opts(&graphviz, &mut buf, &render_opts));
 
-    file.write_all(&buf)?;
+    let lhs = try {
+        r?;
+        file.write_all(&buf)?;
+    };
 
-    Ok(())
+    (lhs, graphviz.into_results())
 }
 
 #[derive(Default)]
@@ -386,7 +344,7 @@ impl RustcMirAttrs {
                     match path.file_name() {
                         Some(_) => Ok(path),
                         None => {
-                            tcx.sess.emit_err(PathMustEndInFilename { span: attr.span() });
+                            tcx.dcx().emit_err(PathMustEndInFilename { span: attr.span() });
                             Err(())
                         }
                     }
@@ -395,7 +353,7 @@ impl RustcMirAttrs {
                 Self::set_field(&mut ret.formatter, tcx, &attr, |s| match s {
                     sym::gen_kill | sym::two_phase => Ok(s),
                     _ => {
-                        tcx.sess.emit_err(UnknownFormatter { span: attr.span() });
+                        tcx.dcx().emit_err(UnknownFormatter { span: attr.span() });
                         Err(())
                     }
                 })
@@ -416,7 +374,8 @@ impl RustcMirAttrs {
         mapper: impl FnOnce(Symbol) -> Result<T, ()>,
     ) -> Result<(), ()> {
         if field.is_some() {
-            tcx.sess.emit_err(DuplicateValuesFor { span: attr.span(), name: attr.name_or_empty() });
+            tcx.dcx()
+                .emit_err(DuplicateValuesFor { span: attr.span(), name: attr.name_or_empty() });
 
             return Err(());
         }
@@ -425,7 +384,8 @@ impl RustcMirAttrs {
             *field = Some(mapper(s)?);
             Ok(())
         } else {
-            tcx.sess.emit_err(RequiresAnArgument { span: attr.span(), name: attr.name_or_empty() });
+            tcx.dcx()
+                .emit_err(RequiresAnArgument { span: attr.span(), name: attr.name_or_empty() });
             Err(())
         }
     }

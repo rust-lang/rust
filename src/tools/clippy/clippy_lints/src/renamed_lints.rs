@@ -4,8 +4,9 @@
 pub static RENAMED_LINTS: &[(&str, &str)] = &[
     ("clippy::almost_complete_letter_range", "clippy::almost_complete_range"),
     ("clippy::blacklisted_name", "clippy::disallowed_names"),
-    ("clippy::block_in_if_condition_expr", "clippy::blocks_in_if_conditions"),
-    ("clippy::block_in_if_condition_stmt", "clippy::blocks_in_if_conditions"),
+    ("clippy::block_in_if_condition_expr", "clippy::blocks_in_conditions"),
+    ("clippy::block_in_if_condition_stmt", "clippy::blocks_in_conditions"),
+    ("clippy::blocks_in_if_conditions", "clippy::blocks_in_conditions"),
     ("clippy::box_vec", "clippy::box_collection"),
     ("clippy::const_static_lifetime", "clippy::redundant_static_lifetimes"),
     ("clippy::cyclomatic_complexity", "clippy::cognitive_complexity"),
@@ -58,4 +59,5 @@ pub static RENAMED_LINTS: &[(&str, &str)] = &[
     ("clippy::undropped_manually_drops", "undropped_manually_drops"),
     ("clippy::unknown_clippy_lints", "unknown_lints"),
     ("clippy::unused_label", "unused_labels"),
+    ("clippy::vtable_address_comparisons", "ambiguous_wide_pointer_comparisons"),
 ];

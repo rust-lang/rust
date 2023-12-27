@@ -4,10 +4,14 @@
 use std::ops::Range;
 use std::str::Chars;
 
+use Mode::*;
+
 #[cfg(test)]
 mod tests;
 
-/// Errors and warnings that can occur during string unescaping.
+/// Errors and warnings that can occur during string unescaping. They mostly
+/// relate to malformed escape sequences, but there are a few that are about
+/// other problems.
 #[derive(Debug, PartialEq, Eq)]
 pub enum EscapeError {
     /// Expected 1 char, but 0 were found.
@@ -73,25 +77,24 @@ impl EscapeError {
     }
 }
 
-/// Takes a contents of a literal (without quotes) and produces a
-/// sequence of escaped characters or errors.
-/// Values are returned through invoking of the provided callback.
+/// Takes a contents of a literal (without quotes) and produces a sequence of
+/// escaped characters or errors.
+///
+/// Values are returned by invoking `callback`. For `Char` and `Byte` modes,
+/// the callback will be called exactly once.
 pub fn unescape_literal<F>(src: &str, mode: Mode, callback: &mut F)
 where
     F: FnMut(Range<usize>, Result<char, EscapeError>),
 {
     match mode {
-        Mode::Char | Mode::Byte => {
+        Char | Byte => {
             let mut chars = src.chars();
-            let res = unescape_char_or_byte(&mut chars, mode == Mode::Byte);
+            let res = unescape_char_or_byte(&mut chars, mode);
             callback(0..(src.len() - chars.as_str().len()), res);
         }
-        Mode::Str | Mode::ByteStr => unescape_str_common(src, mode, callback),
-
-        Mode::RawStr | Mode::RawByteStr => {
-            unescape_raw_str_or_raw_byte_str(src, mode == Mode::RawByteStr, callback)
-        }
-        Mode::CStr | Mode::RawCStr => unreachable!(),
+        Str | ByteStr => unescape_non_raw_common(src, mode, callback),
+        RawStr | RawByteStr => check_raw_common(src, mode, callback),
+        CStr | RawCStr => unreachable!(),
     }
 }
 
@@ -117,38 +120,42 @@ pub fn unescape_c_string<F>(src: &str, mode: Mode, callback: &mut F)
 where
     F: FnMut(Range<usize>, Result<CStrUnit, EscapeError>),
 {
-    if mode == Mode::RawCStr {
-        unescape_raw_str_or_raw_byte_str(
-            src,
-            mode.characters_should_be_ascii(),
-            &mut |r, result| callback(r, result.map(CStrUnit::Char)),
-        );
-    } else {
-        unescape_str_common(src, mode, callback);
+    match mode {
+        CStr => {
+            unescape_non_raw_common(src, mode, callback);
+        }
+        RawCStr => {
+            check_raw_common(src, mode, &mut |r, result| callback(r, result.map(CStrUnit::Char)));
+        }
+        Char | Byte | Str | RawStr | ByteStr | RawByteStr => unreachable!(),
     }
 }
 
 /// Takes a contents of a char literal (without quotes), and returns an
 /// unescaped char or an error.
 pub fn unescape_char(src: &str) -> Result<char, EscapeError> {
-    unescape_char_or_byte(&mut src.chars(), false)
+    unescape_char_or_byte(&mut src.chars(), Char)
 }
 
 /// Takes a contents of a byte literal (without quotes), and returns an
 /// unescaped byte or an error.
 pub fn unescape_byte(src: &str) -> Result<u8, EscapeError> {
-    unescape_char_or_byte(&mut src.chars(), true).map(byte_from_char)
+    unescape_char_or_byte(&mut src.chars(), Byte).map(byte_from_char)
 }
 
 /// What kind of literal do we parse.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Mode {
     Char,
-    Str,
+
     Byte,
-    ByteStr,
+
+    Str,
     RawStr,
+
+    ByteStr,
     RawByteStr,
+
     CStr,
     RawCStr,
 }
@@ -156,45 +163,43 @@ pub enum Mode {
 impl Mode {
     pub fn in_double_quotes(self) -> bool {
         match self {
-            Mode::Str
-            | Mode::ByteStr
-            | Mode::RawStr
-            | Mode::RawByteStr
-            | Mode::CStr
-            | Mode::RawCStr => true,
-            Mode::Char | Mode::Byte => false,
+            Str | RawStr | ByteStr | RawByteStr | CStr | RawCStr => true,
+            Char | Byte => false,
         }
     }
 
     /// Non-byte literals should have `\xXX` escapes that are within the ASCII range.
-    pub fn ascii_escapes_should_be_ascii(self) -> bool {
+    fn ascii_escapes_should_be_ascii(self) -> bool {
         match self {
-            Mode::Char | Mode::Str | Mode::RawStr => true,
-            Mode::Byte | Mode::ByteStr | Mode::RawByteStr | Mode::CStr | Mode::RawCStr => false,
+            Char | Str => true,
+            Byte | ByteStr | CStr => false,
+            RawStr | RawByteStr | RawCStr => unreachable!(),
         }
     }
 
-    /// Whether characters within the literal must be within the ASCII range
-    pub fn characters_should_be_ascii(self) -> bool {
+    /// Whether characters within the literal must be within the ASCII range.
+    #[inline]
+    fn chars_should_be_ascii(self) -> bool {
         match self {
-            Mode::Byte | Mode::ByteStr | Mode::RawByteStr => true,
-            Mode::Char | Mode::Str | Mode::RawStr | Mode::CStr | Mode::RawCStr => false,
+            Byte | ByteStr | RawByteStr => true,
+            Char | Str | RawStr | CStr | RawCStr => false,
         }
     }
 
     /// Byte literals do not allow unicode escape.
-    pub fn is_unicode_escape_disallowed(self) -> bool {
+    fn is_unicode_escape_disallowed(self) -> bool {
         match self {
-            Mode::Byte | Mode::ByteStr | Mode::RawByteStr => true,
-            Mode::Char | Mode::Str | Mode::RawStr | Mode::CStr | Mode::RawCStr => false,
+            Byte | ByteStr => true,
+            Char | Str | CStr => false,
+            RawByteStr | RawStr | RawCStr => unreachable!(),
         }
     }
 
     pub fn prefix_noraw(self) -> &'static str {
         match self {
-            Mode::Byte | Mode::ByteStr | Mode::RawByteStr => "b",
-            Mode::CStr | Mode::RawCStr => "c",
-            Mode::Char | Mode::Str | Mode::RawStr => "",
+            Char | Str | RawStr => "",
+            Byte | ByteStr | RawByteStr => "b",
+            CStr | RawCStr => "c",
         }
     }
 }
@@ -294,22 +299,21 @@ fn scan_unicode(
 }
 
 #[inline]
-fn ascii_check(c: char, characters_should_be_ascii: bool) -> Result<char, EscapeError> {
-    if characters_should_be_ascii && !c.is_ascii() {
-        // Byte literal can't be a non-ascii character.
+fn ascii_check(c: char, chars_should_be_ascii: bool) -> Result<char, EscapeError> {
+    if chars_should_be_ascii && !c.is_ascii() {
         Err(EscapeError::NonAsciiCharInByte)
     } else {
         Ok(c)
     }
 }
 
-fn unescape_char_or_byte(chars: &mut Chars<'_>, is_byte: bool) -> Result<char, EscapeError> {
+fn unescape_char_or_byte(chars: &mut Chars<'_>, mode: Mode) -> Result<char, EscapeError> {
     let c = chars.next().ok_or(EscapeError::ZeroChars)?;
     let res = match c {
-        '\\' => scan_escape(chars, if is_byte { Mode::Byte } else { Mode::Char }),
+        '\\' => scan_escape(chars, mode),
         '\n' | '\t' | '\'' => Err(EscapeError::EscapeOnlyChar),
         '\r' => Err(EscapeError::BareCarriageReturn),
-        _ => ascii_check(c, is_byte),
+        _ => ascii_check(c, mode.chars_should_be_ascii()),
     }?;
     if chars.next().is_some() {
         return Err(EscapeError::MoreThanOneChar);
@@ -319,11 +323,12 @@ fn unescape_char_or_byte(chars: &mut Chars<'_>, is_byte: bool) -> Result<char, E
 
 /// Takes a contents of a string literal (without quotes) and produces a
 /// sequence of escaped characters or errors.
-fn unescape_str_common<F, T: From<u8> + From<char>>(src: &str, mode: Mode, callback: &mut F)
+fn unescape_non_raw_common<F, T: From<u8> + From<char>>(src: &str, mode: Mode, callback: &mut F)
 where
     F: FnMut(Range<usize>, Result<T, EscapeError>),
 {
     let mut chars = src.chars();
+    let chars_should_be_ascii = mode.chars_should_be_ascii(); // get this outside the loop
 
     // The `start` and `end` computation here is complicated because
     // `skip_ascii_whitespace` makes us to skip over chars without counting
@@ -346,14 +351,12 @@ where
                     _ => scan_escape::<T>(&mut chars, mode),
                 }
             }
-            '\n' => Ok(b'\n'.into()),
-            '\t' => Ok(b'\t'.into()),
             '"' => Err(EscapeError::EscapeOnlyChar),
             '\r' => Err(EscapeError::BareCarriageReturn),
-            _ => ascii_check(c, mode.characters_should_be_ascii()).map(Into::into),
+            _ => ascii_check(c, chars_should_be_ascii).map(Into::into),
         };
         let end = src.len() - chars.as_str().len();
-        callback(start..end, res.map(Into::into));
+        callback(start..end, res);
     }
 }
 
@@ -387,20 +390,21 @@ where
 /// sequence of characters or errors.
 /// NOTE: Raw strings do not perform any explicit character escaping, here we
 /// only produce errors on bare CR.
-fn unescape_raw_str_or_raw_byte_str<F>(src: &str, is_byte: bool, callback: &mut F)
+fn check_raw_common<F>(src: &str, mode: Mode, callback: &mut F)
 where
     F: FnMut(Range<usize>, Result<char, EscapeError>),
 {
     let mut chars = src.chars();
+    let chars_should_be_ascii = mode.chars_should_be_ascii(); // get this outside the loop
 
     // The `start` and `end` computation here matches the one in
-    // `unescape_str_or_byte_str` for consistency, even though this function
+    // `unescape_non_raw_common` for consistency, even though this function
     // doesn't have to worry about skipping any chars.
     while let Some(c) = chars.next() {
         let start = src.len() - chars.as_str().len() - c.len_utf8();
         let res = match c {
             '\r' => Err(EscapeError::BareCarriageReturnInRawString),
-            _ => ascii_check(c, is_byte),
+            _ => ascii_check(c, chars_should_be_ascii),
         };
         let end = src.len() - chars.as_str().len();
         callback(start..end, res);
@@ -410,7 +414,7 @@ where
 #[inline]
 pub fn byte_from_char(c: char) -> u8 {
     let res = c as u32;
-    debug_assert!(res <= u8::MAX as u32, "guaranteed because of Mode::ByteStr");
+    debug_assert!(res <= u8::MAX as u32, "guaranteed because of ByteStr");
     res as u8
 }
 

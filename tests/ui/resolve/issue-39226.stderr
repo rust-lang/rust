@@ -16,6 +16,6 @@ help: a local variable with a similar name exists
 LL |         handle: handle
    |                 ~~~~~~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0423`.

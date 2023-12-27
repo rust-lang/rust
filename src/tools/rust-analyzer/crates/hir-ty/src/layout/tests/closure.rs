@@ -186,9 +186,9 @@ fn capture_specific_fields() {
 fn match_pattern() {
     size_and_align_expr! {
         struct X(i64, i32, (u8, i128));
-        let y: X = X(2, 5, (7, 3));
+        let _y: X = X(2, 5, (7, 3));
         move |x: i64| {
-            match y {
+            match _y {
                 _ => x,
             }
         }

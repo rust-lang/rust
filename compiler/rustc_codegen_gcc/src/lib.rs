@@ -12,9 +12,9 @@
  * TODO(antoyo): remove the patches.
  */
 
-#![cfg_attr(not(bootstrap), allow(internal_features))]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
+#![allow(internal_features)]
+#![doc(rust_logo)]
+#![feature(rustdoc_internals)]
 #![feature(
     rustc_private,
     decl_macro,
@@ -39,6 +39,8 @@ extern crate rustc_errors;
 extern crate rustc_fluent_macro;
 extern crate rustc_fs_util;
 extern crate rustc_hir;
+#[cfg(feature="master")]
+extern crate rustc_interface;
 extern crate rustc_macros;
 extern crate rustc_metadata;
 extern crate rustc_middle;
@@ -86,7 +88,7 @@ use std::sync::atomic::Ordering;
 
 use gccjit::{Context, OptimizationLevel};
 #[cfg(feature="master")]
-use gccjit::TargetInfo;
+use gccjit::{TargetInfo, Version};
 #[cfg(not(feature="master"))]
 use gccjit::CType;
 use errors::LTONotSupported;
@@ -95,12 +97,10 @@ use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleCodegen};
 use rustc_codegen_ssa::base::codegen_crate;
 use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput, ModuleConfig, TargetMachineFactoryFn};
 use rustc_codegen_ssa::back::lto::{LtoModuleCodegen, SerializedModule, ThinModule};
-use rustc_codegen_ssa::target_features::supported_target_features;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync::IntoDynSyncSend;
 use rustc_codegen_ssa::traits::{CodegenBackend, ExtraBackendMethods, ThinBufferMethods, WriteBackendMethods};
-use rustc_errors::{DiagnosticMessage, ErrorGuaranteed, Handler, SubdiagnosticMessage};
-use rustc_fluent_macro::fluent_messages;
+use rustc_errors::{ErrorGuaranteed, DiagCtxt};
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::util::Providers;
@@ -114,7 +114,7 @@ use tempfile::TempDir;
 use crate::back::lto::ModuleBuffer;
 use crate::gcc_util::target_cpu;
 
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub struct PrintOnPanic<F: Fn() -> String>(pub F);
 
@@ -191,7 +191,7 @@ impl CodegenBackend for GccCodegenBackend {
         #[cfg(feature="master")]
         gccjit::set_global_personality_function_name(b"rust_eh_personality\0");
         if sess.lto() == Lto::Thin {
-            sess.emit_warning(LTONotSupported {});
+            sess.dcx().emit_warning(LTONotSupported {});
         }
 
         #[cfg(not(feature="master"))]
@@ -244,17 +244,33 @@ impl CodegenBackend for GccCodegenBackend {
     }
 }
 
+fn new_context<'gcc, 'tcx>(tcx: TyCtxt<'tcx>) -> Context<'gcc> {
+    let context = Context::default();
+    if tcx.sess.target.arch == "x86" || tcx.sess.target.arch == "x86_64" {
+        context.add_command_line_option("-masm=intel");
+    }
+    #[cfg(feature="master")]
+    {
+        let version = Version::get();
+        let version = format!("{}.{}.{}", version.major, version.minor, version.patch);
+        context.set_output_ident(&format!("rustc version {} with libgccjit {}",
+                rustc_interface::util::rustc_version_str().unwrap_or("unknown version"),
+                version,
+        ));
+    }
+    // TODO(antoyo): check if this should only be added when using -Cforce-unwind-tables=n.
+    context.add_command_line_option("-fno-asynchronous-unwind-tables");
+    context
+}
+
 impl ExtraBackendMethods for GccCodegenBackend {
     fn codegen_allocator<'tcx>(&self, tcx: TyCtxt<'tcx>, module_name: &str, kind: AllocatorKind, alloc_error_handler_kind: AllocatorKind) -> Self::Module {
         let mut mods = GccContext {
-            context: Context::default(),
+            context: new_context(tcx),
             should_combine_object_files: false,
             temp_dir: None,
         };
 
-        if tcx.sess.target.arch == "x86" || tcx.sess.target.arch == "x86_64" {
-            mods.context.add_command_line_option("-masm=intel");
-        }
         unsafe { allocator::codegen(tcx, &mut mods, module_name, kind, alloc_error_handler_kind); }
         mods
     }
@@ -314,7 +330,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         unimplemented!()
     }
 
-    unsafe fn optimize(_cgcx: &CodegenContext<Self>, _diag_handler: &Handler, module: &ModuleCodegen<Self::Module>, config: &ModuleConfig) -> Result<(), FatalError> {
+    unsafe fn optimize(_cgcx: &CodegenContext<Self>, _dcx: &DiagCtxt, module: &ModuleCodegen<Self::Module>, config: &ModuleConfig) -> Result<(), FatalError> {
         module.module_llvm.context.set_optimization_level(to_gcc_opt_level(config.opt_level));
         Ok(())
     }
@@ -328,8 +344,8 @@ impl WriteBackendMethods for GccCodegenBackend {
         unimplemented!();
     }
 
-    unsafe fn codegen(cgcx: &CodegenContext<Self>, diag_handler: &Handler, module: ModuleCodegen<Self::Module>, config: &ModuleConfig) -> Result<CompiledModule, FatalError> {
-        back::write::codegen(cgcx, diag_handler, module, config)
+    unsafe fn codegen(cgcx: &CodegenContext<Self>, dcx: &DiagCtxt, module: ModuleCodegen<Self::Module>, config: &ModuleConfig) -> Result<CompiledModule, FatalError> {
+        back::write::codegen(cgcx, dcx, module, config)
     }
 
     fn prepare_thin(_module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer) {
@@ -340,8 +356,8 @@ impl WriteBackendMethods for GccCodegenBackend {
         unimplemented!();
     }
 
-    fn run_link(cgcx: &CodegenContext<Self>, diag_handler: &Handler, modules: Vec<ModuleCodegen<Self::Module>>) -> Result<ModuleCodegen<Self::Module>, FatalError> {
-        back::write::link(cgcx, diag_handler, modules)
+    fn run_link(cgcx: &CodegenContext<Self>, dcx: &DiagCtxt, modules: Vec<ModuleCodegen<Self::Module>>) -> Result<ModuleCodegen<Self::Module>, FatalError> {
+        back::write::link(cgcx, dcx, modules)
     }
 }
 
@@ -380,11 +396,13 @@ fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
 }
 
 pub fn target_features(sess: &Session, allow_unstable: bool, target_info: &LockedTargetInfo) -> Vec<Symbol> {
-    supported_target_features(sess)
+    sess
+        .target
+        .supported_target_features()
         .iter()
         .filter_map(
             |&(feature, gate)| {
-                if sess.is_nightly_build() || allow_unstable || gate.is_none() { Some(feature) } else { None }
+                if sess.is_nightly_build() || allow_unstable || gate.is_stable() { Some(feature) } else { None }
             },
         )
         .filter(|_feature| {

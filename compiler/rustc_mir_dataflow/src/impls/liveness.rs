@@ -23,7 +23,6 @@ use crate::{Analysis, AnalysisDomain, Backward, GenKill, GenKillAnalysis};
 /// [`MaybeBorrowedLocals`]: super::MaybeBorrowedLocals
 /// [flow-test]: https://github.com/rust-lang/rust/blob/a08c47310c7d49cbdc5d7afb38408ba519967ecd/src/test/ui/mir-dataflow/liveness-ptr.rs
 /// [liveness]: https://en.wikipedia.org/wiki/Live_variable_analysis
-#[derive(Clone, Copy)]
 pub struct MaybeLiveLocals;
 
 impl<'tcx> AnalysisDomain<'tcx> for MaybeLiveLocals {
@@ -70,7 +69,7 @@ impl<'tcx> GenKillAnalysis<'tcx> for MaybeLiveLocals {
 
     fn call_return_effect(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
+        trans: &mut Self::Domain,
         _block: mir::BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
@@ -201,7 +200,7 @@ impl DefUse {
                 | NonMutatingUseContext::Inspect
                 | NonMutatingUseContext::Move
                 | NonMutatingUseContext::PlaceMention
-                | NonMutatingUseContext::ShallowBorrow
+                | NonMutatingUseContext::FakeBorrow
                 | NonMutatingUseContext::SharedBorrow,
             ) => Some(DefUse::Use),
 

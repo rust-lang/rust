@@ -35,12 +35,14 @@ pub struct Discr<'tcx> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum CheckRegions {
     No,
-    /// Only permit early bound regions. This is useful for Adts which
-    /// can never have late bound regions.
-    OnlyEarlyBound,
-    /// Permit both late bound and early bound regions. Use this for functions,
-    /// which frequently have late bound regions.
-    Bound,
+    /// Only permit parameter regions. This should be used
+    /// for everything apart from functions, which may use
+    /// `ReBound` to represent late-bound regions.
+    OnlyParam,
+    /// Check region parameters from a function definition.
+    /// Allows `ReEarlyParam` and `ReBound` to handle early
+    /// and late-bound region parameters.
+    FromFunction,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -221,8 +223,9 @@ impl<'tcx> TyCtxt<'tcx> {
                     Limit(0) => Limit(2),
                     limit => limit * 2,
                 };
-                let reported =
-                    self.sess.emit_err(crate::error::RecursionLimitReached { ty, suggested_limit });
+                let reported = self
+                    .dcx()
+                    .emit_err(crate::error::RecursionLimitReached { ty, suggested_limit });
                 return Ty::new_error(self, reported);
             }
             match *ty.kind() {
@@ -358,13 +361,13 @@ impl<'tcx> TyCtxt<'tcx> {
             }
 
             let Some(item_id) = self.associated_item_def_ids(impl_did).first() else {
-                self.sess
-                    .delay_span_bug(self.def_span(impl_did), "Drop impl without drop function");
+                self.dcx()
+                    .span_delayed_bug(self.def_span(impl_did), "Drop impl without drop function");
                 return;
             };
 
             if let Some((old_item_id, _)) = dtor_candidate {
-                self.sess
+                self.dcx()
                     .struct_span_err(self.def_span(item_id), "multiple drop impls found")
                     .span_note(self.def_span(old_item_id), "other impl here")
                     .delay_as_bug();
@@ -419,19 +422,16 @@ impl<'tcx> TyCtxt<'tcx> {
 
         let impl_args = match *self.type_of(impl_def_id).instantiate_identity().kind() {
             ty::Adt(def_, args) if def_ == def => args,
-            _ => bug!(),
+            _ => span_bug!(self.def_span(impl_def_id), "expected ADT for self type of `Drop` impl"),
         };
 
-        let item_args = match *self.type_of(def.did()).instantiate_identity().kind() {
-            ty::Adt(def_, args) if def_ == def => args,
-            _ => bug!(),
-        };
+        let item_args = ty::GenericArgs::identity_for_item(self, def.did());
 
         let result = iter::zip(item_args, impl_args)
             .filter(|&(_, k)| {
                 match k.unpack() {
                     GenericArgKind::Lifetime(region) => match region.kind() {
-                        ty::ReEarlyBound(ref ebr) => {
+                        ty::ReEarlyParam(ref ebr) => {
                             !impl_generics.region_param(ebr, self).pure_wrt_drop
                         }
                         // Error: not a region param
@@ -468,17 +468,17 @@ impl<'tcx> TyCtxt<'tcx> {
         for arg in args {
             match arg.unpack() {
                 GenericArgKind::Lifetime(lt) => match (ignore_regions, lt.kind()) {
-                    (CheckRegions::Bound, ty::ReLateBound(di, reg)) => {
+                    (CheckRegions::FromFunction, ty::ReBound(di, reg)) => {
                         if !seen_late.insert((di, reg)) {
                             return Err(NotUniqueParam::DuplicateParam(lt.into()));
                         }
                     }
-                    (CheckRegions::OnlyEarlyBound | CheckRegions::Bound, ty::ReEarlyBound(p)) => {
+                    (CheckRegions::OnlyParam | CheckRegions::FromFunction, ty::ReEarlyParam(p)) => {
                         if !seen.insert(p.index) {
                             return Err(NotUniqueParam::DuplicateParam(lt.into()));
                         }
                     }
-                    (CheckRegions::OnlyEarlyBound | CheckRegions::Bound, _) => {
+                    (CheckRegions::OnlyParam | CheckRegions::FromFunction, _) => {
                         return Err(NotUniqueParam::NotParam(lt.into()));
                     }
                     (CheckRegions::No, _) => {}
@@ -548,16 +548,13 @@ impl<'tcx> TyCtxt<'tcx> {
     /// those are not yet phased out). The parent of the closure's
     /// `DefId` will also be the context where it appears.
     pub fn is_closure(self, def_id: DefId) -> bool {
-        matches!(self.def_kind(def_id), DefKind::Closure | DefKind::Coroutine)
+        matches!(self.def_kind(def_id), DefKind::Closure)
     }
 
     /// Returns `true` if `def_id` refers to a definition that does not have its own
     /// type-checking context, i.e. closure, coroutine or inline const.
     pub fn is_typeck_child(self, def_id: DefId) -> bool {
-        matches!(
-            self.def_kind(def_id),
-            DefKind::Closure | DefKind::Coroutine | DefKind::InlineConst
-        )
+        matches!(self.def_kind(def_id), DefKind::Closure | DefKind::InlineConst)
     }
 
     /// Returns `true` if `def_id` refers to a trait (i.e., `trait Foo { ... }`).
@@ -699,22 +696,6 @@ impl<'tcx> TyCtxt<'tcx> {
             .map(|decl| ty::EarlyBinder::bind(decl.ty))
     }
 
-    /// Normalizes all opaque types in the given value, replacing them
-    /// with their underlying types.
-    pub fn expand_opaque_types(self, val: Ty<'tcx>) -> Ty<'tcx> {
-        let mut visitor = OpaqueTypeExpander {
-            seen_opaque_tys: FxHashSet::default(),
-            expanded_cache: FxHashMap::default(),
-            primary_def_id: None,
-            found_recursion: false,
-            found_any_recursion: false,
-            check_recursion: false,
-            expand_coroutines: false,
-            tcx: self,
-        };
-        val.fold_with(&mut visitor)
-    }
-
     /// Expands the given impl trait type, stopping if the type is recursive.
     #[instrument(skip(self), level = "debug", ret)]
     pub fn try_expand_impl_trait_type(
@@ -746,11 +727,20 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn def_kind_descr(self, def_kind: DefKind, def_id: DefId) -> &'static str {
         match def_kind {
             DefKind::AssocFn if self.associated_item(def_id).fn_has_self_parameter => "method",
-            DefKind::Coroutine => match self.coroutine_kind(def_id).unwrap() {
-                rustc_hir::CoroutineKind::Async(..) => "async closure",
-                rustc_hir::CoroutineKind::Coroutine => "coroutine",
-                rustc_hir::CoroutineKind::Gen(..) => "gen closure",
-            },
+            DefKind::Closure if let Some(coroutine_kind) = self.coroutine_kind(def_id) => {
+                match coroutine_kind {
+                    hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _) => {
+                        "async closure"
+                    }
+                    hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _) => {
+                        "async gen closure"
+                    }
+                    hir::CoroutineKind::Coroutine(_) => "coroutine",
+                    hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _) => {
+                        "gen closure"
+                    }
+                }
+            }
             _ => def_kind.descr(def_id),
         }
     }
@@ -764,11 +754,14 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn def_kind_descr_article(self, def_kind: DefKind, def_id: DefId) -> &'static str {
         match def_kind {
             DefKind::AssocFn if self.associated_item(def_id).fn_has_self_parameter => "a",
-            DefKind::Coroutine => match self.coroutine_kind(def_id).unwrap() {
-                rustc_hir::CoroutineKind::Async(..) => "an",
-                rustc_hir::CoroutineKind::Coroutine => "a",
-                rustc_hir::CoroutineKind::Gen(..) => "a",
-            },
+            DefKind::Closure if let Some(coroutine_kind) = self.coroutine_kind(def_id) => {
+                match coroutine_kind {
+                    hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, ..) => "an",
+                    hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, ..) => "an",
+                    hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, ..) => "a",
+                    hir::CoroutineKind::Coroutine(_) => "a",
+                }
+            }
             _ => def_kind.article(),
         }
     }
@@ -790,7 +783,60 @@ impl<'tcx> TyCtxt<'tcx> {
             // If `extern_crate` is `None`, then the crate was injected (e.g., by the allocator).
             // Treat that kind of crate as "indirect", since it's an implementation detail of
             // the language.
-            || self.extern_crate(key.as_def_id()).map_or(false, |e| e.is_direct())
+            || self.extern_crate(key.as_def_id()).is_some_and(|e| e.is_direct())
+    }
+
+    pub fn expected_host_effect_param_for_body(self, def_id: impl Into<DefId>) -> ty::Const<'tcx> {
+        let def_id = def_id.into();
+        // FIXME(effects): This is suspicious and should probably not be done,
+        // especially now that we enforce host effects and then properly handle
+        // effect vars during fallback.
+        let mut host_always_on =
+            !self.features().effects || self.sess.opts.unstable_opts.unleash_the_miri_inside_of_you;
+
+        // Compute the constness required by the context.
+        let const_context = self.hir().body_const_context(def_id);
+
+        let kind = self.def_kind(def_id);
+        debug_assert_ne!(kind, DefKind::ConstParam);
+
+        if self.has_attr(def_id, sym::rustc_do_not_const_check) {
+            trace!("do not const check this context");
+            host_always_on = true;
+        }
+
+        match const_context {
+            _ if host_always_on => self.consts.true_,
+            Some(hir::ConstContext::Static(_) | hir::ConstContext::Const { .. }) => {
+                self.consts.false_
+            }
+            Some(hir::ConstContext::ConstFn) => {
+                let host_idx = self
+                    .generics_of(def_id)
+                    .host_effect_index
+                    .expect("ConstContext::Maybe must have host effect param");
+                ty::GenericArgs::identity_for_item(self, def_id).const_at(host_idx)
+            }
+            None => self.consts.true_,
+        }
+    }
+
+    /// Constructs generic args for an item, optionally appending a const effect param type
+    pub fn with_opt_host_effect_param(
+        self,
+        caller_def_id: LocalDefId,
+        callee_def_id: DefId,
+        args: impl IntoIterator<Item: Into<ty::GenericArg<'tcx>>>,
+    ) -> ty::GenericArgsRef<'tcx> {
+        let generics = self.generics_of(callee_def_id);
+        assert_eq!(generics.parent, None);
+
+        let opt_const_param = generics
+            .host_effect_index
+            .is_some()
+            .then(|| ty::GenericArg::from(self.expected_host_effect_param_for_body(caller_def_id)));
+
+        self.mk_args_from_iter(args.into_iter().map(|arg| arg.into()).chain(opt_const_param))
     }
 }
 

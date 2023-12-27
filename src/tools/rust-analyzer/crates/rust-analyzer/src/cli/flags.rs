@@ -98,6 +98,15 @@ xflags::xflags! {
             required path: PathBuf
         }
 
+        /// Run unit tests of the project using mir interpreter
+        cmd rustc-tests {
+            /// Directory with Cargo.toml.
+            required rustc_repo: PathBuf
+
+            /// Only run tests with filter as substring
+            optional --filter path: String
+        }
+
         cmd diagnostics {
             /// Directory with Cargo.toml.
             required path: PathBuf
@@ -131,6 +140,9 @@ xflags::xflags! {
 
             /// The output path where the SCIP file will be written to. Defaults to `index.scip`.
             optional --output path: PathBuf
+
+            /// A path to an json configuration file that can be used to customize cargo behavior.
+            optional --config-path config_path: PathBuf
         }
     }
 }
@@ -156,6 +168,7 @@ pub enum RustAnalyzerCmd {
     Highlight(Highlight),
     AnalysisStats(AnalysisStats),
     RunTests(RunTests),
+    RustcTests(RustcTests),
     Diagnostics(Diagnostics),
     Ssr(Ssr),
     Search(Search),
@@ -209,6 +222,12 @@ pub struct RunTests {
 }
 
 #[derive(Debug)]
+pub struct RustcTests {
+    pub rustc_repo: PathBuf,
+    pub filter: Option<String>,
+}
+
+#[derive(Debug)]
 pub struct Diagnostics {
     pub path: PathBuf,
 
@@ -239,6 +258,7 @@ pub struct Scip {
     pub path: PathBuf,
 
     pub output: Option<PathBuf>,
+    pub config_path: Option<PathBuf>,
 }
 
 impl RustAnalyzer {

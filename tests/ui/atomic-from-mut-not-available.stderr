@@ -8,6 +8,6 @@ note: if you're trying to build a new `AtomicU64`, consider using `AtomicU64::ne
   --> $SRC_DIR/core/src/sync/atomic.rs:LL:COL
    = note: this error originates in the macro `atomic_int` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0599`.

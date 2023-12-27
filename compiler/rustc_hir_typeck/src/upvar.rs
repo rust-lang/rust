@@ -221,7 +221,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.compute_min_captures(closure_def_id, capture_information, span);
 
-        let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(closure_def_id);
+        let closure_hir_id = self.tcx.local_def_id_to_hir_id(closure_def_id);
 
         if should_do_rust_2021_incompatible_closure_captures_analysis(self.tcx, closure_hir_id) {
             self.perform_2229_migration_analysis(closure_def_id, body_id, capture_clause, span);
@@ -261,7 +261,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Unify the (as yet unbound) type variable in the closure
             // args with the kind we inferred.
             let closure_kind_ty = closure_args.as_closure().kind_ty();
-            self.demand_eqtype(span, closure_kind.to_ty(self.tcx), closure_kind_ty);
+            self.demand_eqtype(
+                span,
+                Ty::from_closure_kind(self.tcx, closure_kind),
+                closure_kind_ty,
+            );
 
             // If we have an origin, store it.
             if let Some(mut origin) = origin {
@@ -315,11 +319,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let final_tupled_upvars_type = Ty::new_tup(self.tcx, &final_upvar_tys);
         self.demand_suptype(span, args.tupled_upvars_ty(), final_tupled_upvars_type);
 
-        let fake_reads = delegate
-            .fake_reads
-            .into_iter()
-            .map(|(place, cause, hir_id)| (place, cause, hir_id))
-            .collect();
+        let fake_reads = delegate.fake_reads;
+
         self.typeck_results.borrow_mut().closure_fake_reads.insert(closure_def_id, fake_reads);
 
         if self.tcx.sess.opts.unstable_opts.profile_closures {
@@ -679,53 +680,41 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // `tests/ui/closures/2229_closure_analysis/preserve_field_drop_order.rs`.
         for (_, captures) in &mut root_var_min_capture_list {
             captures.sort_by(|capture1, capture2| {
-                for (p1, p2) in capture1.place.projections.iter().zip(&capture2.place.projections) {
+                fn is_field<'a>(p: &&Projection<'a>) -> bool {
+                    match p.kind {
+                        ProjectionKind::Field(_, _) => true,
+                        ProjectionKind::Deref | ProjectionKind::OpaqueCast => false,
+                        p @ (ProjectionKind::Subslice | ProjectionKind::Index) => {
+                            bug!("ProjectionKind {:?} was unexpected", p)
+                        }
+                    }
+                }
+
+                // Need to sort only by Field projections, so filter away others.
+                // A previous implementation considered other projection types too
+                // but that caused ICE #118144
+                let capture1_field_projections = capture1.place.projections.iter().filter(is_field);
+                let capture2_field_projections = capture2.place.projections.iter().filter(is_field);
+
+                for (p1, p2) in capture1_field_projections.zip(capture2_field_projections) {
                     // We do not need to look at the `Projection.ty` fields here because at each
                     // step of the iteration, the projections will either be the same and therefore
                     // the types must be as well or the current projection will be different and
                     // we will return the result of comparing the field indexes.
                     match (p1.kind, p2.kind) {
-                        // Paths are the same, continue to next loop.
-                        (ProjectionKind::Deref, ProjectionKind::Deref) => {}
-                        (ProjectionKind::OpaqueCast, ProjectionKind::OpaqueCast) => {}
-                        (ProjectionKind::Field(i1, _), ProjectionKind::Field(i2, _))
-                            if i1 == i2 => {}
-
-                        // Fields are different, compare them.
                         (ProjectionKind::Field(i1, _), ProjectionKind::Field(i2, _)) => {
-                            return i1.cmp(&i2);
+                            // Compare only if paths are different.
+                            // Otherwise continue to the next iteration
+                            if i1 != i2 {
+                                return i1.cmp(&i2);
+                            }
                         }
-
-                        // We should have either a pair of `Deref`s or a pair of `Field`s.
-                        // Anything else is a bug.
-                        (
-                            l @ (ProjectionKind::Deref | ProjectionKind::Field(..)),
-                            r @ (ProjectionKind::Deref | ProjectionKind::Field(..)),
-                        ) => bug!(
-                            "ProjectionKinds Deref and Field were mismatched: ({:?}, {:?})",
-                            l,
-                            r
-                        ),
-                        (
-                            l @ (ProjectionKind::Index
-                            | ProjectionKind::Subslice
-                            | ProjectionKind::Deref
-                            | ProjectionKind::OpaqueCast
-                            | ProjectionKind::Field(..)),
-                            r @ (ProjectionKind::Index
-                            | ProjectionKind::Subslice
-                            | ProjectionKind::Deref
-                            | ProjectionKind::OpaqueCast
-                            | ProjectionKind::Field(..)),
-                        ) => bug!(
-                            "ProjectionKinds Index or Subslice were unexpected: ({:?}, {:?})",
-                            l,
-                            r
-                        ),
+                        // Given the filter above, this arm should never be hit
+                        (l, r) => bug!("ProjectionKinds {:?} or {:?} were unexpected", l, r),
                     }
                 }
 
-                self.tcx.sess.delay_span_bug(
+                self.dcx().span_delayed_bug(
                     closure_span,
                     format!(
                         "two identical projections: ({:?}, {:?})",
@@ -763,7 +752,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let (migration_string, migrated_variables_concat) =
                 migration_suggestion_for_2229(self.tcx, &need_migrations);
 
-            let closure_hir_id = self.tcx.hir().local_def_id_to_hir_id(closure_def_id);
+            let closure_hir_id = self.tcx.local_def_id_to_hir_id(closure_def_id);
             let closure_head_span = self.tcx.def_span(closure_def_id);
             self.tcx.struct_span_lint_hir(
                 lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES,
@@ -853,7 +842,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // Looks like a macro fragment. Try to find the real block.
                             if let Some(hir::Node::Expr(&hir::Expr {
                                 kind: hir::ExprKind::Block(block, ..), ..
-                            })) = self.tcx.hir().find(body_id.hir_id) {
+                            })) = self.tcx.opt_hir_node(body_id.hir_id) {
                                 // If the body is a block (with `{..}`), we use the span of that block.
                                 // E.g. with a `|| $body` expanded from a `m!({ .. })`, we use `{ .. }`, and not `$body`.
                                 // Since we know it's a block, we know we can insert the `let _ = ..` without
@@ -911,8 +900,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             Applicability::HasPlaceholders
                         );
                     }
-
-                    lint
                 },
             );
         }
@@ -1514,7 +1501,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         if self.should_log_capture_analysis(closure_def_id) {
             let mut diag =
-                self.tcx.sess.struct_span_err(closure_span, "First Pass analysis includes:");
+                self.dcx().struct_span_err(closure_span, "First Pass analysis includes:");
             for (place, capture_info) in capture_information {
                 let capture_str = construct_capture_info_string(self.tcx, place, capture_info);
                 let output_str = format!("Capturing {capture_str}");
@@ -1533,7 +1520,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.typeck_results.borrow().closure_min_captures.get(&closure_def_id)
             {
                 let mut diag =
-                    self.tcx.sess.struct_span_err(closure_span, "Min Capture analysis includes:");
+                    self.dcx().struct_span_err(closure_span, "Min Capture analysis includes:");
 
                 for (_, min_captures_for_var) in min_captures {
                     for capture in min_captures_for_var {
@@ -1673,7 +1660,7 @@ fn apply_capture_kind_on_capture_ty<'tcx>(
 fn drop_location_span(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> Span {
     let owner_id = tcx.hir().get_enclosing_scope(hir_id).unwrap();
 
-    let owner_node = tcx.hir().get(owner_id);
+    let owner_node = tcx.hir_node(owner_id);
     let owner_span = match owner_node {
         hir::Node::Item(item) => match item.kind {
             hir::ItemKind::Fn(_, _, owner_id) => tcx.hir().span(owner_id.hir_id),

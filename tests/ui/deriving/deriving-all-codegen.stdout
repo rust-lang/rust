@@ -33,6 +33,7 @@ impl ::core::clone::Clone for Empty {
 impl ::core::marker::Copy for Empty { }
 #[automatically_derived]
 impl ::core::fmt::Debug for Empty {
+    #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::write_str(f, "Empty")
     }
@@ -97,6 +98,7 @@ impl ::core::clone::Clone for Point {
 impl ::core::marker::Copy for Point { }
 #[automatically_derived]
 impl ::core::fmt::Debug for Point {
+    #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_struct_field2_finish(f, "Point", "x",
             &self.x, "y", &&self.y)
@@ -183,6 +185,7 @@ impl ::core::clone::Clone for PackedPoint {
 impl ::core::marker::Copy for PackedPoint { }
 #[automatically_derived]
 impl ::core::fmt::Debug for PackedPoint {
+    #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_struct_field2_finish(f, "PackedPoint",
             "x", &{ self.x }, "y", &&{ self.y })
@@ -276,6 +279,7 @@ impl ::core::clone::Clone for Big {
 impl ::core::marker::Copy for Big { }
 #[automatically_derived]
 impl ::core::fmt::Debug for Big {
+    #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         let names: &'static _ =
             &["b1", "b2", "b3", "b4", "b5", "b6", "b7", "b8"];
@@ -475,6 +479,7 @@ impl Copy for PackedManualCopy {}
 struct Unsized([u32]);
 #[automatically_derived]
 impl ::core::fmt::Debug for Unsized {
+    #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_tuple_field1_finish(f, "Unsized",
             &&self.0)
@@ -527,6 +532,7 @@ impl ::core::cmp::Ord for Unsized {
 struct PackedUnsizedU8([u8]);
 #[automatically_derived]
 impl ::core::fmt::Debug for PackedUnsizedU8 {
+    #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_tuple_field1_finish(f,
             "PackedUnsizedU8", &&self.0)
@@ -569,6 +575,7 @@ impl<T: ::core::marker::Copy + Trait, U: ::core::marker::Copy>
 #[automatically_derived]
 impl<T: ::core::fmt::Debug + Trait, U: ::core::fmt::Debug> ::core::fmt::Debug
     for Generic<T, U> where T::A: ::core::fmt::Debug {
+    #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_struct_field3_finish(f, "Generic", "t",
             &self.t, "ta", &self.ta, "u", &&self.u)
@@ -687,6 +694,7 @@ impl<T: ::core::fmt::Debug + ::core::marker::Copy + Trait,
     U: ::core::fmt::Debug + ::core::marker::Copy> ::core::fmt::Debug for
     PackedGeneric<T, U> where T::A: ::core::fmt::Debug + ::core::marker::Copy
     {
+    #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::debug_tuple_field3_finish(f, "PackedGeneric",
             &{ self.0 }, &{ self.1 }, &&{ self.2 })
@@ -797,6 +805,7 @@ impl ::core::clone::Clone for Enum0 {
 impl ::core::marker::Copy for Enum0 { }
 #[automatically_derived]
 impl ::core::fmt::Debug for Enum0 {
+    #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match *self {}
     }
@@ -856,6 +865,7 @@ impl ::core::clone::Clone for Enum1 {
 }
 #[automatically_derived]
 impl ::core::fmt::Debug for Enum1 {
+    #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
             Enum1::Single { x: __self_0 } =>
@@ -932,6 +942,7 @@ impl ::core::clone::Clone for Fieldless1 {
 }
 #[automatically_derived]
 impl ::core::fmt::Debug for Fieldless1 {
+    #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::write_str(f, "A")
     }
@@ -995,6 +1006,7 @@ impl ::core::clone::Clone for Fieldless {
 impl ::core::marker::Copy for Fieldless { }
 #[automatically_derived]
 impl ::core::fmt::Debug for Fieldless {
+    #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         ::core::fmt::Formatter::write_str(f,
             match self {
@@ -1083,6 +1095,7 @@ impl ::core::clone::Clone for Mixed {
 impl ::core::marker::Copy for Mixed { }
 #[automatically_derived]
 impl ::core::fmt::Debug for Mixed {
+    #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
             Mixed::P => ::core::fmt::Formatter::write_str(f, "P"),
@@ -1217,6 +1230,7 @@ impl ::core::clone::Clone for Fielded {
 }
 #[automatically_derived]
 impl ::core::fmt::Debug for Fielded {
+    #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
             Fielded::X(__self_0) =>
@@ -1341,6 +1355,7 @@ impl<T: ::core::marker::Copy, U: ::core::marker::Copy> ::core::marker::Copy
 #[automatically_derived]
 impl<T: ::core::fmt::Debug, U: ::core::fmt::Debug> ::core::fmt::Debug for
     EnumGeneric<T, U> {
+    #[inline]
     fn fmt(&self, f: &mut ::core::fmt::Formatter) -> ::core::fmt::Result {
         match self {
             EnumGeneric::One(__self_0) =>

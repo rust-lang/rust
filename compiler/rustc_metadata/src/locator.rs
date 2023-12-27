@@ -212,7 +212,7 @@
 //! no means all of the necessary details. Take a look at the rest of
 //! metadata::locator or metadata::creader for all the juicy details!
 
-use crate::creader::Library;
+use crate::creader::{Library, MetadataLoader};
 use crate::errors;
 use crate::rmeta::{rustc_version, MetadataBlob, METADATA_HEADER};
 
@@ -223,7 +223,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_errors::{DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_fs_util::try_canonicalize;
 use rustc_session::config;
-use rustc_session::cstore::{CrateSource, MetadataLoader};
+use rustc_session::cstore::CrateSource;
 use rustc_session::filesearch::FileSearch;
 use rustc_session::search_paths::PathKind;
 use rustc_session::utils::CanonicalizedPath;
@@ -783,8 +783,8 @@ fn get_metadata_section<'p>(
                 loader.get_dylib_metadata(target, filename).map_err(MetadataError::LoadFailure)?;
             // The header is uncompressed
             let header_len = METADATA_HEADER.len();
-            // header + u32 length of data
-            let data_start = header_len + 4;
+            // header + u64 length of data
+            let data_start = header_len + 8;
 
             debug!("checking {} bytes of metadata-version stamp", header_len);
             let header = &buf[..cmp::min(header_len, buf.len())];
@@ -797,13 +797,13 @@ fn get_metadata_section<'p>(
 
             // Length of the compressed stream - this allows linkers to pad the section if they want
             let Ok(len_bytes) =
-                <[u8; 4]>::try_from(&buf[header_len..cmp::min(data_start, buf.len())])
+                <[u8; 8]>::try_from(&buf[header_len..cmp::min(data_start, buf.len())])
             else {
                 return Err(MetadataError::LoadFailure(
                     "invalid metadata length found".to_string(),
                 ));
             };
-            let compressed_len = u32::from_be_bytes(len_bytes) as usize;
+            let compressed_len = u64::from_le_bytes(len_bytes) as usize;
 
             // Header is okay -> inflate the actual metadata
             let compressed_bytes = buf.slice(|buf| &buf[data_start..(data_start + compressed_len)]);
@@ -947,27 +947,28 @@ impl fmt::Display for MetadataError<'_> {
 
 impl CrateError {
     pub(crate) fn report(self, sess: &Session, span: Span, missing_core: bool) {
+        let dcx = sess.dcx();
         match self {
             CrateError::NonAsciiName(crate_name) => {
-                sess.emit_err(errors::NonAsciiName { span, crate_name });
+                dcx.emit_err(errors::NonAsciiName { span, crate_name });
             }
             CrateError::ExternLocationNotExist(crate_name, loc) => {
-                sess.emit_err(errors::ExternLocationNotExist { span, crate_name, location: &loc });
+                dcx.emit_err(errors::ExternLocationNotExist { span, crate_name, location: &loc });
             }
             CrateError::ExternLocationNotFile(crate_name, loc) => {
-                sess.emit_err(errors::ExternLocationNotFile { span, crate_name, location: &loc });
+                dcx.emit_err(errors::ExternLocationNotFile { span, crate_name, location: &loc });
             }
             CrateError::MultipleCandidates(crate_name, flavor, candidates) => {
-                sess.emit_err(errors::MultipleCandidates { span, crate_name, flavor, candidates });
+                dcx.emit_err(errors::MultipleCandidates { span, crate_name, flavor, candidates });
             }
             CrateError::SymbolConflictsCurrent(root_name) => {
-                sess.emit_err(errors::SymbolConflictsCurrent { span, crate_name: root_name });
+                dcx.emit_err(errors::SymbolConflictsCurrent { span, crate_name: root_name });
             }
             CrateError::StableCrateIdCollision(crate_name0, crate_name1) => {
-                sess.emit_err(errors::StableCrateIdCollision { span, crate_name0, crate_name1 });
+                dcx.emit_err(errors::StableCrateIdCollision { span, crate_name0, crate_name1 });
             }
             CrateError::DlOpen(s) | CrateError::DlSym(s) => {
-                sess.emit_err(errors::DlError { span, err: s });
+                dcx.emit_err(errors::DlError { span, err: s });
             }
             CrateError::LocatorCombined(locator) => {
                 let crate_name = locator.crate_name;
@@ -978,12 +979,12 @@ impl CrateError {
                 if !locator.crate_rejections.via_filename.is_empty() {
                     let mismatches = locator.crate_rejections.via_filename.iter();
                     for CrateMismatch { path, .. } in mismatches {
-                        sess.emit_err(errors::CrateLocationUnknownType {
+                        dcx.emit_err(errors::CrateLocationUnknownType {
                             span,
-                            path: &path,
+                            path: path,
                             crate_name,
                         });
-                        sess.emit_err(errors::LibFilenameForm {
+                        dcx.emit_err(errors::LibFilenameForm {
                             span,
                             dll_prefix: &locator.dll_prefix,
                             dll_suffix: &locator.dll_suffix,
@@ -1009,7 +1010,7 @@ impl CrateError {
                             ));
                         }
                     }
-                    sess.emit_err(errors::NewerCrateVersion {
+                    dcx.emit_err(errors::NewerCrateVersion {
                         span,
                         crate_name: crate_name,
                         add_info,
@@ -1025,7 +1026,7 @@ impl CrateError {
                             path.display(),
                         ));
                     }
-                    sess.emit_err(errors::NoCrateWithTriple {
+                    dcx.emit_err(errors::NoCrateWithTriple {
                         span,
                         crate_name,
                         locator_triple: locator.triple.triple(),
@@ -1041,7 +1042,7 @@ impl CrateError {
                             path.display()
                         ));
                     }
-                    sess.emit_err(errors::FoundStaticlib {
+                    dcx.emit_err(errors::FoundStaticlib {
                         span,
                         crate_name,
                         add_info,
@@ -1057,7 +1058,7 @@ impl CrateError {
                             path.display(),
                         ));
                     }
-                    sess.emit_err(errors::IncompatibleRustc {
+                    dcx.emit_err(errors::IncompatibleRustc {
                         span,
                         crate_name,
                         add_info,
@@ -1069,14 +1070,14 @@ impl CrateError {
                     for CrateMismatch { path: _, got } in locator.crate_rejections.via_invalid {
                         crate_rejections.push(got);
                     }
-                    sess.emit_err(errors::InvalidMetadataFiles {
+                    dcx.emit_err(errors::InvalidMetadataFiles {
                         span,
                         crate_name,
                         add_info,
                         crate_rejections,
                     });
                 } else {
-                    sess.emit_err(errors::CannotFindCrate {
+                    dcx.emit_err(errors::CannotFindCrate {
                         span,
                         crate_name,
                         add_info,
@@ -1094,7 +1095,7 @@ impl CrateError {
                 }
             }
             CrateError::NotFound(crate_name) => {
-                sess.emit_err(errors::CannotFindCrate {
+                dcx.emit_err(errors::CannotFindCrate {
                     span,
                     crate_name,
                     add_info: String::new(),

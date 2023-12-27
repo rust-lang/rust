@@ -10,7 +10,7 @@ use rustc_hir::{
 use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, ClauseKind, Generics, Ty, TyCtxt};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -43,9 +43,9 @@ declare_clippy_lint! {
     ///     Box::new(123)
     /// }
     /// ```
-    #[clippy::version = "1.73.0"]
+    #[clippy::version = "1.74.0"]
     pub IMPLIED_BOUNDS_IN_IMPLS,
-    nursery,
+    complexity,
     "specifying bounds that are implied by other bounds in `impl Trait` type"
 }
 declare_lint_pass!(ImpliedBoundsInImpls => [IMPLIED_BOUNDS_IN_IMPLS]);
@@ -194,6 +194,15 @@ fn is_same_generics<'tcx>(
         .enumerate()
         .skip(1) // skip `Self` implicit arg
         .all(|(arg_index, arg)| {
+            if [
+                implied_by_generics.host_effect_index,
+                implied_generics.host_effect_index,
+            ]
+            .contains(&Some(arg_index))
+            {
+                // skip host effect params in determining whether generics are same
+                return true;
+            }
             if let Some(ty) = arg.as_type() {
                 if let &ty::Param(ty::ParamTy { index, .. }) = ty.kind()
                     // `index == 0` means that it's referring to `Self`,

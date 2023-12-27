@@ -27,10 +27,13 @@ macro_rules! parse_by_kind {
         $expr_name:pat,
         $expected:literal,
         $(
-            @call($name:literal, $args:ident) => $call_expr:expr,
+            @call($name:ident, $args:ident) => $call_expr:expr,
         )*
         $(
-            $pat:pat => $expr:expr,
+            @variant($adt:ident, $variant:ident) => $variant_expr:expr,
+        )*
+        $(
+            $pat:pat $(if $guard:expr)? => $expr:expr,
         )*
     ) => {{
         let expr_id = $self.preparse($expr_id);
@@ -42,14 +45,20 @@ macro_rules! parse_by_kind {
                 ExprKind::Call { ty, fun: _, args: $args, .. } if {
                     match ty.kind() {
                         ty::FnDef(did, _) => {
-                            $self.tcx.is_diagnostic_item(rustc_span::Symbol::intern($name), *did)
+                            $self.tcx.is_diagnostic_item(rustc_span::sym::$name, *did)
                         }
                         _ => false,
                     }
                 } => $call_expr,
             )*
             $(
-                $pat => $expr,
+                ExprKind::Adt(box AdtExpr { adt_def, variant_index, .. }) if {
+                    $self.tcx.is_diagnostic_item(rustc_span::sym::$adt, adt_def.did()) &&
+                    adt_def.variants()[*variant_index].name == rustc_span::sym::$variant
+                } => $variant_expr,
+            )*
+            $(
+                $pat $(if $guard)? => $expr,
             )*
             #[allow(unreachable_patterns)]
             _ => return Err($self.expr_error(expr_id, $expected))
@@ -172,7 +181,8 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             ExprKind::Block { block } => &self.thir[*block].stmts,
         );
         for (i, block_def) in block_defs.iter().enumerate() {
-            let block = self.parse_block_def(self.statement_as_expr(*block_def)?)?;
+            let is_cleanup = self.body.basic_blocks_mut()[BasicBlock::from_usize(i)].is_cleanup;
+            let block = self.parse_block_def(self.statement_as_expr(*block_def)?, is_cleanup)?;
             self.body.basic_blocks_mut()[BasicBlock::from_usize(i)] = block;
         }
 
@@ -181,13 +191,26 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
 
     fn parse_block_decls(&mut self, stmts: impl Iterator<Item = StmtId>) -> PResult<()> {
         for stmt in stmts {
-            let (var, _, _) = self.parse_let_statement(stmt)?;
-            let data = BasicBlockData::new(None);
-            let block = self.body.basic_blocks_mut().push(data);
-            self.block_map.insert(var, block);
+            self.parse_basic_block_decl(stmt)?;
         }
-
         Ok(())
+    }
+
+    fn parse_basic_block_decl(&mut self, stmt: StmtId) -> PResult<()> {
+        match &self.thir[stmt].kind {
+            StmtKind::Let { pattern, initializer: Some(initializer), .. } => {
+                let (var, ..) = self.parse_var(pattern)?;
+                let mut data = BasicBlockData::new(None);
+                data.is_cleanup = parse_by_kind!(self, *initializer, _, "basic block declaration",
+                    @variant(mir_basic_block, Normal) => false,
+                    @variant(mir_basic_block, Cleanup) => true,
+                );
+                let block = self.body.basic_blocks_mut().push(data);
+                self.block_map.insert(var, block);
+                Ok(())
+            }
+            _ => Err(self.stmt_error(stmt, "let statement with an initializer")),
+        }
     }
 
     fn parse_local_decls(&mut self, mut stmts: impl Iterator<Item = StmtId>) -> PResult<()> {
@@ -219,7 +242,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             };
             let span = self.thir[expr].span;
             let (name, operand) = parse_by_kind!(self, expr, _, "debuginfo",
-                @call("mir_debuginfo", args) => {
+                @call(mir_debuginfo, args) => {
                     (args[0], args[1])
                 },
             );
@@ -281,12 +304,13 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         }
     }
 
-    fn parse_block_def(&self, expr_id: ExprId) -> PResult<BasicBlockData<'tcx>> {
+    fn parse_block_def(&self, expr_id: ExprId, is_cleanup: bool) -> PResult<BasicBlockData<'tcx>> {
         let block = parse_by_kind!(self, expr_id, _, "basic block",
             ExprKind::Block { block } => &self.thir[*block],
         );
 
         let mut data = BasicBlockData::new(None);
+        data.is_cleanup = is_cleanup;
         for stmt_id in &*block.stmts {
             let stmt = self.statement_as_expr(*stmt_id)?;
             let span = self.thir[stmt].span;

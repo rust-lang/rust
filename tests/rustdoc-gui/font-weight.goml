@@ -2,7 +2,7 @@
 go-to: "file://" + |DOC_PATH| + "/lib2/struct.Foo.html"
 assert-css: ("//*[@class='rust item-decl']//a[text()='Alias']", {"font-weight": "400"})
 assert-css: (
-    "//*[@class='structfield small-section-header']//a[text()='Alias']",
+    "//*[@class='structfield section-header']//a[text()='Alias']",
     {"font-weight": "400"},
 )
 assert-css: ("#method\.a_method > .code-header", {"font-weight": "600"})

@@ -6,11 +6,70 @@ document.
 
 ## Unreleased / Beta / In Rust Nightly
 
-[1e8fdf49...master](https://github.com/rust-lang/rust-clippy/compare/1e8fdf49...master)
+[7671c283...master](https://github.com/rust-lang/rust-clippy/compare/7671c283...master)
+
+## Rust 1.74
+
+Current stable, released 2023-11-16
+
+[View all 94 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2023-08-11T15%3A29%3A18Z..2023-09-25T08%3A48%3A22Z+base%3Amaster)
+
+### New Lints
+
+* [`redundant_as_str`]
+  [#11526](https://github.com/rust-lang/rust-clippy/pull/11526)
+* [`needless_borrows_for_generic_args`]
+  [#11511](https://github.com/rust-lang/rust-clippy/pull/11511)
+* [`path_ends_with_ext`]
+  [#11483](https://github.com/rust-lang/rust-clippy/pull/11483)
+* [`unnecessary_map_on_constructor`]
+  [#11413](https://github.com/rust-lang/rust-clippy/pull/11413)
+* [`missing_asserts_for_indexing`]
+  [#10692](https://github.com/rust-lang/rust-clippy/pull/10692)
+* [`iter_out_of_bounds`]
+  [#11396](https://github.com/rust-lang/rust-clippy/pull/11396)
+* [`implied_bounds_in_impls`]
+  [#11362](https://github.com/rust-lang/rust-clippy/pull/11362)
+* [`reserve_after_initialization`]
+  [#11373](https://github.com/rust-lang/rust-clippy/pull/11373)
+* [`should_panic_without_expect`]
+  [#11204](https://github.com/rust-lang/rust-clippy/pull/11204)
+
+### Moves and Deprecations
+
+* Renamed `incorrect_clone_impl_on_copy_type` to [`non_canonical_clone_impl`]
+  [#11358](https://github.com/rust-lang/rust-clippy/pull/11358)
+* Renamed `incorrect_partial_ord_impl_on_ord_type` to [`non_canonical_partial_ord_impl`]
+  [#11358](https://github.com/rust-lang/rust-clippy/pull/11358)
+* Moved [`non_canonical_clone_impl`] to `suspicious` (Now warn-by-default)
+  [#11358](https://github.com/rust-lang/rust-clippy/pull/11358)
+* Moved [`non_canonical_partial_ord_impl`] to `suspicious` (Now warn-by-default)
+  [#11358](https://github.com/rust-lang/rust-clippy/pull/11358)
+* Moved [`needless_pass_by_ref_mut`] to `nursery` (Now allow-by-default)
+  [#11596](https://github.com/rust-lang/rust-clippy/pull/11596)
+
+### Enhancements
+
+* [`undocumented_unsafe_blocks`]: The config values [`accept-comment-above-statement`] and 
+  [`accept-comment-above-attributes`] to `true` by default
+  [#11170](https://github.com/rust-lang/rust-clippy/pull/11170)
+* [`explicit_iter_loop`]: Added [`enforce-iter-loop-reborrow`] to disable reborrow linting by default
+  [#11418](https://github.com/rust-lang/rust-clippy/pull/11418)
+
+### ICE Fixes
+
+* [`enum_variant_names`]: No longer crashes if the threshold is 0 and the enum has no variants
+  [#11552](https://github.com/rust-lang/rust-clippy/pull/11552)
+* [`cast_possible_truncation`]: No longer crashes on values larger than `u64::MAX`
+  [#11517](https://github.com/rust-lang/rust-clippy/pull/11517)
+* [`tuple_array_conversions`]: No longer crashes if the array length is not usize
+  [#11379](https://github.com/rust-lang/rust-clippy/pull/11379)
+* [`useless_conversion`]: No longer crashes, when the receiver is a non-fn item
+  [#11070](https://github.com/rust-lang/rust-clippy/pull/11070)
 
 ## Rust 1.73
 
-Current stable, released 2023-10-05
+Released 2023-10-05
 
 [View all 103 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2023-07-02T12%3A24%3A40Z..2023-08-11T11%3A09%3A56Z+base%3Amaster)
 
@@ -4887,6 +4946,7 @@ Released 2018-09-13
 [`blanket_clippy_restriction_lints`]: https://rust-lang.github.io/rust-clippy/master/index.html#blanket_clippy_restriction_lints
 [`block_in_if_condition_expr`]: https://rust-lang.github.io/rust-clippy/master/index.html#block_in_if_condition_expr
 [`block_in_if_condition_stmt`]: https://rust-lang.github.io/rust-clippy/master/index.html#block_in_if_condition_stmt
+[`blocks_in_conditions`]: https://rust-lang.github.io/rust-clippy/master/index.html#blocks_in_conditions
 [`blocks_in_if_conditions`]: https://rust-lang.github.io/rust-clippy/master/index.html#blocks_in_if_conditions
 [`bool_assert_comparison`]: https://rust-lang.github.io/rust-clippy/master/index.html#bool_assert_comparison
 [`bool_comparison`]: https://rust-lang.github.io/rust-clippy/master/index.html#bool_comparison
@@ -5069,6 +5129,7 @@ Released 2018-09-13
 [`if_then_some_else_none`]: https://rust-lang.github.io/rust-clippy/master/index.html#if_then_some_else_none
 [`ifs_same_cond`]: https://rust-lang.github.io/rust-clippy/master/index.html#ifs_same_cond
 [`ignored_unit_patterns`]: https://rust-lang.github.io/rust-clippy/master/index.html#ignored_unit_patterns
+[`impl_hash_borrow_with_str_and_bytes`]: https://rust-lang.github.io/rust-clippy/master/index.html#impl_hash_borrow_with_str_and_bytes
 [`impl_trait_in_params`]: https://rust-lang.github.io/rust-clippy/master/index.html#impl_trait_in_params
 [`implicit_clone`]: https://rust-lang.github.io/rust-clippy/master/index.html#implicit_clone
 [`implicit_hasher`]: https://rust-lang.github.io/rust-clippy/master/index.html#implicit_hasher
@@ -5085,9 +5146,11 @@ Released 2018-09-13
 [`index_refutable_slice`]: https://rust-lang.github.io/rust-clippy/master/index.html#index_refutable_slice
 [`indexing_slicing`]: https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing
 [`ineffective_bit_mask`]: https://rust-lang.github.io/rust-clippy/master/index.html#ineffective_bit_mask
+[`ineffective_open_options`]: https://rust-lang.github.io/rust-clippy/master/index.html#ineffective_open_options
 [`inefficient_to_string`]: https://rust-lang.github.io/rust-clippy/master/index.html#inefficient_to_string
 [`infallible_destructuring_match`]: https://rust-lang.github.io/rust-clippy/master/index.html#infallible_destructuring_match
 [`infinite_iter`]: https://rust-lang.github.io/rust-clippy/master/index.html#infinite_iter
+[`infinite_loop`]: https://rust-lang.github.io/rust-clippy/master/index.html#infinite_loop
 [`inherent_to_string`]: https://rust-lang.github.io/rust-clippy/master/index.html#inherent_to_string
 [`inherent_to_string_shadow_display`]: https://rust-lang.github.io/rust-clippy/master/index.html#inherent_to_string_shadow_display
 [`init_numbered_fields`]: https://rust-lang.github.io/rust-clippy/master/index.html#init_numbered_fields
@@ -5123,12 +5186,14 @@ Released 2018-09-13
 [`iter_on_empty_collections`]: https://rust-lang.github.io/rust-clippy/master/index.html#iter_on_empty_collections
 [`iter_on_single_items`]: https://rust-lang.github.io/rust-clippy/master/index.html#iter_on_single_items
 [`iter_out_of_bounds`]: https://rust-lang.github.io/rust-clippy/master/index.html#iter_out_of_bounds
+[`iter_over_hash_type`]: https://rust-lang.github.io/rust-clippy/master/index.html#iter_over_hash_type
 [`iter_overeager_cloned`]: https://rust-lang.github.io/rust-clippy/master/index.html#iter_overeager_cloned
 [`iter_skip_next`]: https://rust-lang.github.io/rust-clippy/master/index.html#iter_skip_next
 [`iter_skip_zero`]: https://rust-lang.github.io/rust-clippy/master/index.html#iter_skip_zero
 [`iter_with_drain`]: https://rust-lang.github.io/rust-clippy/master/index.html#iter_with_drain
 [`iter_without_into_iter`]: https://rust-lang.github.io/rust-clippy/master/index.html#iter_without_into_iter
 [`iterator_step_by_zero`]: https://rust-lang.github.io/rust-clippy/master/index.html#iterator_step_by_zero
+[`join_absolute_paths`]: https://rust-lang.github.io/rust-clippy/master/index.html#join_absolute_paths
 [`just_underscores_and_digits`]: https://rust-lang.github.io/rust-clippy/master/index.html#just_underscores_and_digits
 [`large_const_arrays`]: https://rust-lang.github.io/rust-clippy/master/index.html#large_const_arrays
 [`large_digit_groups`]: https://rust-lang.github.io/rust-clippy/master/index.html#large_digit_groups
@@ -5320,6 +5385,7 @@ Released 2018-09-13
 [`option_expect_used`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_expect_used
 [`option_filter_map`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_filter_map
 [`option_if_let_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_if_let_else
+[`option_map_or_err_ok`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_map_or_err_ok
 [`option_map_or_none`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_map_or_none
 [`option_map_unit_fn`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_map_unit_fn
 [`option_map_unwrap_or`]: https://rust-lang.github.io/rust-clippy/master/index.html#option_map_unwrap_or
@@ -5399,6 +5465,7 @@ Released 2018-09-13
 [`ref_patterns`]: https://rust-lang.github.io/rust-clippy/master/index.html#ref_patterns
 [`regex_macro`]: https://rust-lang.github.io/rust-clippy/master/index.html#regex_macro
 [`repeat_once`]: https://rust-lang.github.io/rust-clippy/master/index.html#repeat_once
+[`repeat_vec_with_capacity`]: https://rust-lang.github.io/rust-clippy/master/index.html#repeat_vec_with_capacity
 [`replace_consts`]: https://rust-lang.github.io/rust-clippy/master/index.html#replace_consts
 [`reserve_after_initialization`]: https://rust-lang.github.io/rust-clippy/master/index.html#reserve_after_initialization
 [`rest_pat_in_fully_bound_structs`]: https://rust-lang.github.io/rust-clippy/master/index.html#rest_pat_in_fully_bound_structs
@@ -5482,6 +5549,7 @@ Released 2018-09-13
 [`tabs_in_doc_comments`]: https://rust-lang.github.io/rust-clippy/master/index.html#tabs_in_doc_comments
 [`temporary_assignment`]: https://rust-lang.github.io/rust-clippy/master/index.html#temporary_assignment
 [`temporary_cstring_as_ptr`]: https://rust-lang.github.io/rust-clippy/master/index.html#temporary_cstring_as_ptr
+[`test_attr_in_doctest`]: https://rust-lang.github.io/rust-clippy/master/index.html#test_attr_in_doctest
 [`tests_outside_test_module`]: https://rust-lang.github.io/rust-clippy/master/index.html#tests_outside_test_module
 [`to_digit_is_some`]: https://rust-lang.github.io/rust-clippy/master/index.html#to_digit_is_some
 [`to_string_in_display`]: https://rust-lang.github.io/rust-clippy/master/index.html#to_string_in_display
@@ -5518,6 +5586,7 @@ Released 2018-09-13
 [`undropped_manually_drops`]: https://rust-lang.github.io/rust-clippy/master/index.html#undropped_manually_drops
 [`unicode_not_nfc`]: https://rust-lang.github.io/rust-clippy/master/index.html#unicode_not_nfc
 [`unimplemented`]: https://rust-lang.github.io/rust-clippy/master/index.html#unimplemented
+[`uninhabited_references`]: https://rust-lang.github.io/rust-clippy/master/index.html#uninhabited_references
 [`uninit_assumed_init`]: https://rust-lang.github.io/rust-clippy/master/index.html#uninit_assumed_init
 [`uninit_vec`]: https://rust-lang.github.io/rust-clippy/master/index.html#uninit_vec
 [`uninlined_format_args`]: https://rust-lang.github.io/rust-clippy/master/index.html#uninlined_format_args
@@ -5678,4 +5747,5 @@ Released 2018-09-13
 [`absolute-paths-allowed-crates`]: https://doc.rust-lang.org/clippy/lint_configuration.html#absolute-paths-allowed-crates
 [`allowed-dotfiles`]: https://doc.rust-lang.org/clippy/lint_configuration.html#allowed-dotfiles
 [`enforce-iter-loop-reborrow`]: https://doc.rust-lang.org/clippy/lint_configuration.html#enforce-iter-loop-reborrow
+[`check-private-items`]: https://doc.rust-lang.org/clippy/lint_configuration.html#check-private-items
 <!-- end autogenerated links to configuration documentation -->

@@ -97,6 +97,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// N.B., currently, higher-ranked type bounds inhibit
     /// normalization. Therefore, each time we erase them in
     /// codegen, we need to normalize the contents.
+    // FIXME(@lcnr): This method should not be necessary, we now normalize
+    // inside of binders. We should be able to only use
+    // `tcx.instantiate_bound_regions_with_erased`. Same for the `try_X`
+    // variant.
     #[tracing::instrument(level = "debug", skip(self, param_env))]
     pub fn normalize_erasing_late_bound_regions<T>(
         self,
@@ -106,7 +110,7 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let value = self.erase_late_bound_regions(value);
+        let value = self.instantiate_bound_regions_with_erased(value);
         self.normalize_erasing_regions(param_env, value)
     }
 
@@ -126,7 +130,7 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        let value = self.erase_late_bound_regions(value);
+        let value = self.instantiate_bound_regions_with_erased(value);
         self.try_normalize_erasing_regions(param_env, value)
     }
 

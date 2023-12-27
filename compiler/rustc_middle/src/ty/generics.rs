@@ -6,7 +6,7 @@ use rustc_hir::def_id::DefId;
 use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
 
-use super::{Clause, EarlyBoundRegion, InstantiatedPredicates, ParamConst, ParamTy, Ty, TyCtxt};
+use super::{Clause, InstantiatedPredicates, ParamConst, ParamTy, Ty, TyCtxt};
 
 #[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
 pub enum GenericParamDefKind {
@@ -62,9 +62,9 @@ pub struct GenericParamDef {
 }
 
 impl GenericParamDef {
-    pub fn to_early_bound_region_data(&self) -> ty::EarlyBoundRegion {
+    pub fn to_early_bound_region_data(&self) -> ty::EarlyParamRegion {
         if let GenericParamDefKind::Lifetime = self.kind {
-            ty::EarlyBoundRegion { def_id: self.def_id, index: self.index, name: self.name }
+            ty::EarlyParamRegion { def_id: self.def_id, index: self.index, name: self.name }
         } else {
             bug!("cannot convert a non-lifetime parameter def to an early bound region")
         }
@@ -260,10 +260,10 @@ impl<'tcx> Generics {
         }
     }
 
-    /// Returns the `GenericParamDef` associated with this `EarlyBoundRegion`.
+    /// Returns the `GenericParamDef` associated with this `EarlyParamRegion`.
     pub fn region_param(
         &'tcx self,
-        param: &EarlyBoundRegion,
+        param: &ty::EarlyParamRegion,
         tcx: TyCtxt<'tcx>,
     ) -> &'tcx GenericParamDef {
         let param = self.param_at(param.index as usize, tcx);
@@ -326,6 +326,8 @@ impl<'tcx> Generics {
             own_params.start = 1;
         }
 
+        let verbose = tcx.sess.verbose_internals();
+
         // Filter the default arguments.
         //
         // This currently uses structural equality instead
@@ -340,6 +342,8 @@ impl<'tcx> Generics {
                 param.default_value(tcx).is_some_and(|default| {
                     default.instantiate(tcx, args) == args[param.index as usize]
                 })
+                // filter out trailing effect params, if we're not in `-Zverbose-internals`.
+                || (!verbose && matches!(param.kind, GenericParamDefKind::Const { is_host_effect: true, .. }))
             })
             .count();
 
@@ -354,7 +358,7 @@ impl<'tcx> Generics {
         args: &'tcx [ty::GenericArg<'tcx>],
     ) -> &'tcx [ty::GenericArg<'tcx>] {
         let own = &args[self.parent_count..][..self.params.len()];
-        if self.has_self && self.parent.is_none() { &own[1..] } else { &own }
+        if self.has_self && self.parent.is_none() { &own[1..] } else { own }
     }
 }
 

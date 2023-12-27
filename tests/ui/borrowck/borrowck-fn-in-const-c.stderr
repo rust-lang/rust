@@ -6,6 +6,6 @@ LL |         return &local.inner;
 LL |     }
    |     - here, drop of `local` needs exclusive access to `local.inner`, because the type `DropString` implements the `Drop` trait
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0713`.

@@ -16,6 +16,6 @@ LL |         x.unwrap()
    = note: the struct `Invariant<'a>` is invariant over the parameter `'a`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0521`.

@@ -23,7 +23,7 @@ use hir_def::{
     EnumVariantId, HasModule, ItemContainerId, LocalFieldId, Lookup, ModuleDefId, ModuleId,
     TraitId,
 };
-use hir_expand::{hygiene::Hygiene, name::Name};
+use hir_expand::name::Name;
 use intern::{Internable, Interned};
 use itertools::Itertools;
 use la_arena::ArenaMap;
@@ -448,9 +448,8 @@ fn render_const_scalar(
 ) -> Result<(), HirDisplayError> {
     // FIXME: We need to get krate from the final callers of the hir display
     // infrastructure and have it here as a field on `f`.
-    let trait_env = Arc::new(TraitEnvironment::empty(
-        *f.db.crate_graph().crates_in_topological_order().last().unwrap(),
-    ));
+    let trait_env =
+        TraitEnvironment::empty(*f.db.crate_graph().crates_in_topological_order().last().unwrap());
     match ty.kind(Interner) {
         TyKind::Scalar(s) => match s {
             Scalar::Bool => write!(f, "{}", if b[0] == 0 { false } else { true }),
@@ -945,6 +944,7 @@ impl HirDisplay for Ty {
                             ItemInNs::Types((*def_id).into()),
                             module_id,
                             false,
+                            true,
                         ) {
                             write!(f, "{}", path.display(f.db.upcast()))?;
                         } else {
@@ -1731,13 +1731,13 @@ impl HirDisplay for TypeRef {
                 f.write_joined(bounds, " + ")?;
             }
             TypeRef::Macro(macro_call) => {
-                let macro_call = macro_call.to_node(f.db.upcast());
-                let ctx = hir_def::lower::LowerCtx::with_hygiene(
+                let ctx = hir_def::lower::LowerCtx::with_span_map(
                     f.db.upcast(),
-                    &Hygiene::new_unhygienic(),
+                    f.db.span_map(macro_call.file_id),
                 );
+                let macro_call = macro_call.to_node(f.db.upcast());
                 match macro_call.path() {
-                    Some(path) => match Path::from_src(path, &ctx) {
+                    Some(path) => match Path::from_src(&ctx, path) {
                         Some(path) => path.hir_fmt(f)?,
                         None => write!(f, "{{macro}}")?,
                     },

@@ -176,6 +176,7 @@ use rustc_middle::mir::visit::Visitor as MirVisitor;
 use rustc_middle::mir::{self, Location};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
+use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
     self, AssocKind, GenericParamDefKind, Instance, InstanceDef, Ty, TyCtxt, TypeFoldable,
@@ -370,7 +371,7 @@ fn collect_items_rec<'tcx>(
     // current step of mono items collection.
     //
     // FIXME: don't rely on global state, instead bubble up errors. Note: this is very hard to do.
-    let error_count = tcx.sess.diagnostic().err_count();
+    let error_count = tcx.dcx().err_count();
 
     match starting_item.node {
         MonoItem::Static(def_id) => {
@@ -385,8 +386,8 @@ fn collect_items_rec<'tcx>(
             recursion_depth_reset = None;
 
             if let Ok(alloc) = tcx.eval_static_initializer(def_id) {
-                for &id in alloc.inner().provenance().ptrs().values() {
-                    collect_alloc(tcx, id, &mut used_items);
+                for &prov in alloc.inner().provenance().ptrs().values() {
+                    collect_alloc(tcx, prov.alloc_id(), &mut used_items);
                 }
             }
 
@@ -458,12 +459,12 @@ fn collect_items_rec<'tcx>(
 
     // Check for PMEs and emit a diagnostic if one happened. To try to show relevant edges of the
     // mono item graph.
-    if tcx.sess.diagnostic().err_count() > error_count
+    if tcx.dcx().err_count() > error_count
         && starting_item.node.is_generic_fn(tcx)
         && starting_item.node.is_user_defined()
     {
         let formatted_item = with_no_trimmed_paths!(starting_item.node.to_string());
-        tcx.sess.emit_note(EncounteredErrorWhileInstantiating {
+        tcx.dcx().emit_note(EncounteredErrorWhileInstantiating {
             span: starting_item.span,
             formatted_item,
         });
@@ -540,7 +541,7 @@ fn check_recursion_limit<'tcx>(
         } else {
             None
         };
-        tcx.sess.emit_fatal(RecursionLimit {
+        tcx.dcx().emit_fatal(RecursionLimit {
             span,
             shrunk,
             def_span,
@@ -583,7 +584,7 @@ fn check_type_length_limit<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
         } else {
             None
         };
-        tcx.sess.emit_fatal(TypeLengthLimit { span, shrunk, was_written, path, type_length });
+        tcx.dcx().emit_fatal(TypeLengthLimit { span, shrunk, was_written, path, type_length });
     }
 }
 
@@ -740,7 +741,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             ) => {
                 let fn_ty = operand.ty(self.body, self.tcx);
                 let fn_ty = self.monomorphize(fn_ty);
-                visit_fn_use(self.tcx, fn_ty, false, span, &mut self.output);
+                visit_fn_use(self.tcx, fn_ty, false, span, self.output);
             }
             mir::Rvalue::Cast(
                 mir::CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_)),
@@ -816,7 +817,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 let callee_ty = func.ty(self.body, tcx);
                 let callee_ty = self.monomorphize(callee_ty);
                 self.check_fn_args_move_size(callee_ty, args, location);
-                visit_fn_use(self.tcx, callee_ty, true, source, &mut self.output)
+                visit_fn_use(self.tcx, callee_ty, true, source, self.output)
             }
             mir::TerminatorKind::Drop { ref place, .. } => {
                 let ty = place.ty(self.body, self.tcx).ty;
@@ -828,7 +829,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                     match *op {
                         mir::InlineAsmOperand::SymFn { ref value } => {
                             let fn_ty = self.monomorphize(value.const_.ty());
-                            visit_fn_use(self.tcx, fn_ty, false, source, &mut self.output);
+                            visit_fn_use(self.tcx, fn_ty, false, source, self.output);
                         }
                         mir::InlineAsmOperand::SymStatic { def_id } => {
                             let instance = Instance::mono(self.tcx, def_id);
@@ -844,6 +845,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
             mir::TerminatorKind::Assert { ref msg, .. } => {
                 let lang_item = match &**msg {
                     mir::AssertKind::BoundsCheck { .. } => LangItem::PanicBoundsCheck,
+                    mir::AssertKind::MisalignedPointerDereference { .. } => {
+                        LangItem::PanicMisalignedPointerDereference
+                    }
                     _ => LangItem::Panic,
                 };
                 push_mono_lang_item(self, lang_item);
@@ -920,6 +924,21 @@ fn visit_instance_use<'tcx>(
         return;
     }
 
+    // The intrinsics assert_inhabited, assert_zero_valid, and assert_mem_uninitialized_valid will
+    // be lowered in codegen to nothing or a call to panic_nounwind. So if we encounter any
+    // of those intrinsics, we need to include a mono item for panic_nounwind, else we may try to
+    // codegen a call to that function without generating code for the function itself.
+    if let ty::InstanceDef::Intrinsic(def_id) = instance.def {
+        let name = tcx.item_name(def_id);
+        if let Some(_requirement) = ValidityRequirement::from_intrinsic(name) {
+            let def_id = tcx.lang_items().get(LangItem::PanicNounwind).unwrap();
+            let panic_instance = Instance::mono(tcx, def_id);
+            if should_codegen_locally(tcx, &panic_instance) {
+                output.push(create_fn_mono_item(tcx, panic_instance, source));
+            }
+        }
+    }
+
     match instance.def {
         ty::InstanceDef::Virtual(..) | ty::InstanceDef::Intrinsic(_) => {
             if !is_direct_call {
@@ -978,7 +997,7 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: &Instance<'tcx>) ->
     }
 
     if !tcx.is_mir_available(def_id) {
-        tcx.sess.emit_fatal(NoOptimizedMir {
+        tcx.dcx().emit_fatal(NoOptimizedMir {
             span: tcx.def_span(def_id),
             crate_name: tcx.crate_name(def_id.krate),
         });
@@ -1118,7 +1137,7 @@ fn create_mono_items_for_vtable_methods<'tcx>(
 ) {
     assert!(!trait_ty.has_escaping_bound_vars() && !impl_ty.has_escaping_bound_vars());
 
-    if let ty::Dynamic(ref trait_ty, ..) = trait_ty.kind() {
+    if let ty::Dynamic(trait_ty, ..) = trait_ty.kind() {
         if let Some(principal) = trait_ty.principal() {
             let poly_trait_ref = principal.with_self_ty(tcx, impl_ty);
             assert!(!poly_trait_ref.has_escaping_bound_vars());
@@ -1191,7 +1210,7 @@ impl<'v> RootCollector<'_, 'v> {
 
                 // but even just declaring them must collect the items they refer to
                 if let Ok(val) = self.tcx.const_eval_poly(id.owner_id.to_def_id()) {
-                    collect_const_value(self.tcx, val, &mut self.output);
+                    collect_const_value(self.tcx, val, self.output);
                 }
             }
             DefKind::Impl { .. } => {
@@ -1363,9 +1382,9 @@ fn collect_alloc<'tcx>(tcx: TyCtxt<'tcx>, alloc_id: AllocId, output: &mut MonoIt
         }
         GlobalAlloc::Memory(alloc) => {
             trace!("collecting {:?} with {:#?}", alloc_id, alloc);
-            for &inner in alloc.inner().provenance().ptrs().values() {
+            for &prov in alloc.inner().provenance().ptrs().values() {
                 rustc_data_structures::stack::ensure_sufficient_stack(|| {
-                    collect_alloc(tcx, inner, output);
+                    collect_alloc(tcx, prov.alloc_id(), output);
                 });
             }
         }
@@ -1422,14 +1441,14 @@ fn collect_used_items<'tcx>(
     // and abort compilation if any of them errors.
     MirUsedCollector {
         tcx,
-        body: &body,
+        body: body,
         output,
         instance,
         move_size_spans: vec![],
         visiting_call_terminator: false,
         skip_move_check_fns: None,
     }
-    .visit_body(&body);
+    .visit_body(body);
 }
 
 #[instrument(skip(tcx, output), level = "debug")]
@@ -1440,12 +1459,12 @@ fn collect_const_value<'tcx>(
 ) {
     match value {
         mir::ConstValue::Scalar(Scalar::Ptr(ptr, _size)) => {
-            collect_alloc(tcx, ptr.provenance, output)
+            collect_alloc(tcx, ptr.provenance.alloc_id(), output)
         }
         mir::ConstValue::Indirect { alloc_id, .. } => collect_alloc(tcx, alloc_id, output),
         mir::ConstValue::Slice { data, meta: _ } => {
-            for &id in data.inner().provenance().ptrs().values() {
-                collect_alloc(tcx, id, output);
+            for &prov in data.inner().provenance().ptrs().values() {
+                collect_alloc(tcx, prov.alloc_id(), output);
             }
         }
         _ => {}

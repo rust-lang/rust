@@ -215,6 +215,10 @@ impl Attrs {
         self.doc_exprs().flat_map(|doc_expr| doc_expr.aliases().to_vec())
     }
 
+    pub fn export_name(&self) -> Option<&SmolStr> {
+        self.by_key("export_name").string_value()
+    }
+
     pub fn is_proc_macro(&self) -> bool {
         self.by_key("proc_macro").exists()
     }
@@ -417,6 +421,7 @@ impl AttrsWithOwner {
                     RawAttrs::from_attrs_owner(
                         db.upcast(),
                         src.with_value(&src.value[it.local_id()]),
+                        db.span_map(src.file_id).as_ref(),
                     )
                 }
                 GenericParamId::TypeParamId(it) => {
@@ -424,11 +429,16 @@ impl AttrsWithOwner {
                     RawAttrs::from_attrs_owner(
                         db.upcast(),
                         src.with_value(&src.value[it.local_id()]),
+                        db.span_map(src.file_id).as_ref(),
                     )
                 }
                 GenericParamId::LifetimeParamId(it) => {
                     let src = it.parent.child_source(db);
-                    RawAttrs::from_attrs_owner(db.upcast(), src.with_value(&src.value[it.local_id]))
+                    RawAttrs::from_attrs_owner(
+                        db.upcast(),
+                        src.with_value(&src.value[it.local_id]),
+                        db.span_map(src.file_id).as_ref(),
+                    )
                 }
             },
             AttrDefId::ExternBlockId(it) => attrs_from_item_tree_loc(db, it),

@@ -20,6 +20,6 @@ LL | pub fn trigger_error<I, F>(iterable: I, functor: F)
 LL | for<'t> <Map<<&'t I as IntoIterator>::IntoIter, F> as Iterator>::Item: Foo,
    |                                                                        ^^^ required by this bound in `trigger_error`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

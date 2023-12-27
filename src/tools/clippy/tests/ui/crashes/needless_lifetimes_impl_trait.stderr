@@ -15,5 +15,5 @@ LL -     fn baz<'a>(&'a self) -> impl Foo + 'a {
 LL +     fn baz(&self) -> impl Foo + '_ {
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

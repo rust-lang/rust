@@ -9,12 +9,15 @@
 //!
 //! Available flags:
 //!     add:
+//!     asm:
+//!     assert:
 //!     as_ref: sized
 //!     bool_impl: option, fn
 //!     builtin_impls:
 //!     cell: copy, drop
 //!     clone: sized
 //!     coerce_unsized: unsize
+//!     concat:
 //!     copy: clone
 //!     default: sized
 //!     deref_mut: deref
@@ -44,7 +47,7 @@
 //!     panic: fmt
 //!     phantom_data:
 //!     pin:
-//!     pointee:
+//!     pointee: copy, send, sync, ord, hash, unpin
 //!     range:
 //!     result:
 //!     send: sized
@@ -54,6 +57,7 @@
 //!     sync: sized
 //!     transmute:
 //!     try: infallible
+//!     unpin: sized
 //!     unsize: sized
 
 #![rustc_coherence_is_core]
@@ -88,6 +92,11 @@ pub mod marker {
     #[lang = "unsize"]
     pub trait Unsize<T: ?Sized> {}
     // endregion:unsize
+
+    // region:unpin
+    #[lang = "unpin"]
+    pub auto trait Unpin {}
+    // endregion:unpin
 
     // region:copy
     #[lang = "copy"]
@@ -387,9 +396,10 @@ pub mod ptr {
 
     // region:pointee
     #[lang = "pointee_trait"]
+    #[rustc_deny_explicit_impl(implement_via_object = false)]
     pub trait Pointee {
         #[lang = "metadata_type"]
-        type Metadata;
+        type Metadata: Copy + Send + Sync + Ord + Hash + Unpin;
     }
     // endregion:pointee
     // region:non_null
@@ -489,7 +499,7 @@ pub mod ops {
             I: SliceIndex<[T]>,
         {
             type Output = I::Output;
-            fn index(&self, index: I) -> &I::Output {
+            fn index(&self, _index: I) -> &I::Output {
                 loop {}
             }
         }
@@ -497,7 +507,7 @@ pub mod ops {
         where
             I: SliceIndex<[T]>,
         {
-            fn index_mut(&mut self, index: I) -> &mut I::Output {
+            fn index_mut(&mut self, _index: I) -> &mut I::Output {
                 loop {}
             }
         }
@@ -507,7 +517,7 @@ pub mod ops {
             I: SliceIndex<[T]>,
         {
             type Output = I::Output;
-            fn index(&self, index: I) -> &I::Output {
+            fn index(&self, _index: I) -> &I::Output {
                 loop {}
             }
         }
@@ -515,7 +525,7 @@ pub mod ops {
         where
             I: SliceIndex<[T]>,
         {
-            fn index_mut(&mut self, index: I) -> &mut I::Output {
+            fn index_mut(&mut self, _index: I) -> &mut I::Output {
                 loop {}
             }
         }
@@ -863,17 +873,17 @@ pub mod fmt {
     pub struct DebugTuple;
     pub struct DebugStruct;
     impl Formatter<'_> {
-        pub fn debug_tuple(&mut self, name: &str) -> DebugTuple {
+        pub fn debug_tuple(&mut self, _name: &str) -> DebugTuple {
             DebugTuple
         }
 
-        pub fn debug_struct(&mut self, name: &str) -> DebugStruct {
+        pub fn debug_struct(&mut self, _name: &str) -> DebugStruct {
             DebugStruct
         }
     }
 
     impl DebugTuple {
-        pub fn field(&mut self, value: &dyn Debug) -> &mut Self {
+        pub fn field(&mut self, _value: &dyn Debug) -> &mut Self {
             self
         }
 
@@ -883,7 +893,7 @@ pub mod fmt {
     }
 
     impl DebugStruct {
-        pub fn field(&mut self, name: &str, value: &dyn Debug) -> &mut Self {
+        pub fn field(&mut self, _name: &str, _value: &dyn Debug) -> &mut Self {
             self
         }
 
@@ -996,7 +1006,7 @@ pub mod fmt {
         ($($t:ty)*) => {
             $(
                 impl const Debug for $t {
-                    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+                    fn fmt(&self, _f: &mut Formatter<'_>) -> Result {
                         Ok(())
                     }
                 }
@@ -1012,7 +1022,7 @@ pub mod fmt {
     }
 
     impl<T: Debug> Debug for [T] {
-        fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        fn fmt(&self, _f: &mut Formatter<'_>) -> Result {
             Ok(())
         }
     }
@@ -1047,6 +1057,10 @@ pub mod option {
         Some(T),
     }
 
+    // region:copy
+    impl<T: Copy> Copy for Option<T> {}
+    // endregion:copy
+
     impl<T> Option<T> {
         pub const fn unwrap(self) -> T {
             match self {
@@ -1062,7 +1076,7 @@ pub mod option {
             }
         }
 
-        pub fn and<U>(self, optb: Option<U>) -> Option<U> {
+        pub fn and<U>(self, _optb: Option<U>) -> Option<U> {
             loop {}
         }
         pub fn unwrap_or(self, default: T) -> T {
@@ -1080,25 +1094,25 @@ pub mod option {
         }
         // endregion:result
         // region:fn
-        pub fn and_then<U, F>(self, f: F) -> Option<U>
+        pub fn and_then<U, F>(self, _f: F) -> Option<U>
         where
             F: FnOnce(T) -> Option<U>,
         {
             loop {}
         }
-        pub fn unwrap_or_else<F>(self, f: F) -> T
+        pub fn unwrap_or_else<F>(self, _f: F) -> T
         where
             F: FnOnce() -> T,
         {
             loop {}
         }
-        pub fn map_or<U, F>(self, default: U, f: F) -> U
+        pub fn map_or<U, F>(self, _default: U, _f: F) -> U
         where
             F: FnOnce(T) -> U,
         {
             loop {}
         }
-        pub fn map_or_else<U, D, F>(self, default: D, f: F) -> U
+        pub fn map_or_else<U, D, F>(self, _default: D, _f: F) -> U
         where
             D: FnOnce() -> U,
             F: FnOnce(T) -> U,
@@ -1129,7 +1143,7 @@ pub mod pin {
         pointer: P,
     }
     impl<P> Pin<P> {
-        pub fn new(pointer: P) -> Pin<P> {
+        pub fn new(_pointer: P) -> Pin<P> {
             loop {}
         }
     }
@@ -1226,7 +1240,7 @@ pub mod iter {
 
     mod sources {
         mod repeat {
-            pub fn repeat<T>(elt: T) -> Repeat<T> {
+            pub fn repeat<T>(_elt: T) -> Repeat<T> {
                 loop {}
             }
 
@@ -1266,7 +1280,7 @@ pub mod iter {
                 fn take(self, n: usize) -> crate::iter::Take<Self> {
                     loop {}
                 }
-                fn filter_map<B, F>(self, f: F) -> crate::iter::FilterMap<Self, F>
+                fn filter_map<B, F>(self, _f: F) -> crate::iter::FilterMap<Self, F>
                 where
                     Self: Sized,
                     F: FnMut(Self::Item) -> Option<B>,
@@ -1337,7 +1351,7 @@ mod panic {
 
 mod panicking {
     #[lang = "panic_fmt"]
-    pub const fn panic_fmt(fmt: crate::fmt::Arguments<'_>) -> ! {
+    pub const fn panic_fmt(_fmt: crate::fmt::Arguments<'_>) -> ! {
         loop {}
     }
 }
@@ -1346,13 +1360,33 @@ mod panicking {
 mod macros {
     // region:panic
     #[macro_export]
-    #[rustc_builtin_macro(std_panic)]
+    #[rustc_builtin_macro(core_panic)]
     macro_rules! panic {
         ($($arg:tt)*) => {
             /* compiler built-in */
         };
     }
     // endregion:panic
+
+    // region:asm
+    #[macro_export]
+    #[rustc_builtin_macro]
+    macro_rules! asm {
+        ($($arg:tt)*) => {
+            /* compiler built-in */
+        };
+    }
+    // endregion:asm
+
+    // region:assert
+    #[macro_export]
+    #[rustc_builtin_macro]
+    macro_rules! assert {
+        ($($arg:tt)*) => {
+            /* compiler built-in */
+        };
+    }
+    // endregion:assert
 
     // region:fmt
     #[macro_export]
@@ -1365,6 +1399,13 @@ mod macros {
     #[macro_export]
     #[rustc_builtin_macro]
     macro_rules! format_args {
+        ($fmt:expr) => {{ /* compiler built-in */ }};
+        ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
+    }
+
+    #[macro_export]
+    #[rustc_builtin_macro]
+    macro_rules! format_args_nl {
         ($fmt:expr) => {{ /* compiler built-in */ }};
         ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
     }
@@ -1399,6 +1440,12 @@ mod macros {
         ($file:expr $(,)?) => {{ /* compiler built-in */ }};
     }
     // endregion:include
+
+    // region:concat
+    #[rustc_builtin_macro]
+    #[macro_export]
+    macro_rules! concat {}
+    // endregion:concat
 }
 
 // region:non_zero

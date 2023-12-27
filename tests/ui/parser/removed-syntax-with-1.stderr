@@ -7,5 +7,5 @@ LL |     let b = S { foo: () with a, bar: () };
    |             |          help: try adding a comma: `,`
    |             while parsing this struct
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

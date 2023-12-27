@@ -20,11 +20,10 @@ extern crate rustc_session;
 extern crate rustc_span;
 
 use rustc_errors::{Applicability, DiagnosticMessage, SubdiagnosticMessage};
-use rustc_fluent_macro::fluent_messages;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
 
-fluent_messages! { "./example.ftl" }
+rustc_fluent_macro::fluent_messages! { "./example.ftl" }
 
 struct NotIntoDiagnosticArg;
 

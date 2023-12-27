@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `T: Clone` is not satisfied
-  --> $DIR/derive-clone-for-eq.rs:6:17
+  --> $DIR/derive-clone-for-eq.rs:4:17
    |
 LL | #[derive(Clone, Eq)]
    |                 ^^ the trait `Clone` is not implemented for `T`
    |
 note: required for `Struct<T>` to implement `PartialEq`
-  --> $DIR/derive-clone-for-eq.rs:9:19
+  --> $DIR/derive-clone-for-eq.rs:7:19
    |
 LL | impl<T: Clone, U> PartialEq<U> for Struct<T>
    |         -----     ^^^^^^^^^^^^     ^^^^^^^^^
@@ -19,6 +19,6 @@ help: consider restricting type parameter `T`
 LL | pub struct Struct<T: std::clone::Clone>(T);
    |                    +++++++++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

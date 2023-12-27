@@ -9,6 +9,6 @@ help: consider giving this pattern a type, where the value of const parameter `N
 LL |     let _: [usize; N] = foo("foo");
    |          ++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0282`.

@@ -19,7 +19,7 @@ use rustc_ast::util::classify;
 use rustc_ast::{AttrStyle, AttrVec, LocalKind, MacCall, MacCallStmt, MacStmtStyle};
 use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, HasAttrs, Local, Stmt};
 use rustc_ast::{StmtKind, DUMMY_NODE_ID};
-use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, PResult};
+use rustc_errors::{Applicability, DiagnosticBuilder, PResult};
 use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span};
 
@@ -53,7 +53,7 @@ impl<'a> Parser<'a> {
         // Don't use `maybe_whole` so that we have precise control
         // over when we bump the parser
         if let token::Interpolated(nt) = &self.token.kind
-            && let token::NtStmt(stmt) = &**nt
+            && let token::NtStmt(stmt) = &nt.0
         {
             let mut stmt = stmt.clone();
             self.bump();
@@ -66,7 +66,7 @@ impl<'a> Parser<'a> {
         if self.token.is_keyword(kw::Mut) && self.is_keyword_ahead(1, &[kw::Let]) {
             self.bump();
             let mut_let_span = lo.to(self.token.span);
-            self.sess.emit_err(errors::InvalidVariableDeclaration {
+            self.dcx().emit_err(errors::InvalidVariableDeclaration {
                 span: mut_let_span,
                 sub: errors::InvalidVariableDeclarationSub::SwitchMutLetOrder(mut_let_span),
             });
@@ -140,7 +140,7 @@ impl<'a> Parser<'a> {
                 let bl = self.parse_block()?;
                 // Destructuring assignment ... else.
                 // This is not allowed, but point it out in a nice way.
-                self.sess.emit_err(errors::AssignmentElseNotAllowed { span: e.span.to(bl.span) });
+                self.dcx().emit_err(errors::AssignmentElseNotAllowed { span: e.span.to(bl.span) });
             }
             self.mk_stmt(lo.to(e.span), StmtKind::Expr(e))
         } else {
@@ -233,12 +233,12 @@ impl<'a> Parser<'a> {
             && let attrs @ [.., last] = &*attrs
         {
             if last.is_doc_comment() {
-                self.sess.emit_err(errors::DocCommentDoesNotDocumentAnything {
+                self.dcx().emit_err(errors::DocCommentDoesNotDocumentAnything {
                     span: last.span,
                     missing_comma: None,
                 });
             } else if attrs.iter().any(|a| a.style == AttrStyle::Outer) {
-                self.sess.emit_err(errors::ExpectedStatementAfterOuterAttr { span: last.span });
+                self.dcx().emit_err(errors::ExpectedStatementAfterOuterAttr { span: last.span });
             }
         }
     }
@@ -258,7 +258,8 @@ impl<'a> Parser<'a> {
                     TrailingToken::None,
                 ))
             })?;
-        self.sess.emit_err(errors::InvalidVariableDeclaration { span: lo, sub: subdiagnostic(lo) });
+        self.dcx()
+            .emit_err(errors::InvalidVariableDeclaration { span: lo, sub: subdiagnostic(lo) });
         Ok(stmt)
     }
 
@@ -286,7 +287,7 @@ impl<'a> Parser<'a> {
         let lo = self.prev_token.span;
 
         if self.token.is_keyword(kw::Const) && self.look_ahead(1, |t| t.is_ident()) {
-            self.sess.emit_err(errors::ConstLetMutuallyExclusive { span: lo.to(self.token.span) });
+            self.dcx().emit_err(errors::ConstLetMutuallyExclusive { span: lo.to(self.token.span) });
             self.bump();
         }
 
@@ -384,10 +385,10 @@ impl<'a> Parser<'a> {
 
     fn check_let_else_init_bool_expr(&self, init: &ast::Expr) {
         if let ast::ExprKind::Binary(op, ..) = init.kind {
-            if op.node.lazy() {
-                self.sess.emit_err(errors::InvalidExpressionInLetElse {
+            if op.node.is_lazy() {
+                self.dcx().emit_err(errors::InvalidExpressionInLetElse {
                     span: init.span,
-                    operator: op.node.to_string(),
+                    operator: op.node.as_str(),
                     sugg: errors::WrapExpressionInParentheses {
                         left: init.span.shrink_to_lo(),
                         right: init.span.shrink_to_hi(),
@@ -399,7 +400,7 @@ impl<'a> Parser<'a> {
 
     fn check_let_else_init_trailing_brace(&self, init: &ast::Expr) {
         if let Some(trailing) = classify::expr_trailing_brace(init) {
-            self.sess.emit_err(errors::InvalidCurlyInLetElse {
+            self.dcx().emit_err(errors::InvalidCurlyInLetElse {
                 span: trailing.span.with_lo(trailing.span.hi() - BytePos(1)),
                 sugg: errors::WrapExpressionInParentheses {
                     left: trailing.span.shrink_to_lo(),
@@ -414,7 +415,7 @@ impl<'a> Parser<'a> {
         let eq_consumed = match self.token.kind {
             token::BinOpEq(..) => {
                 // Recover `let x <op>= 1` as `let x = 1`
-                self.sess
+                self.dcx()
                     .emit_err(errors::CompoundAssignmentExpressionInLet { span: self.token.span });
                 self.bump();
                 true
@@ -442,9 +443,9 @@ impl<'a> Parser<'a> {
     fn error_block_no_opening_brace_msg(
         &mut self,
         msg: Cow<'static, str>,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'a> {
         let sp = self.token.span;
-        let mut e = self.struct_span_err(sp, msg);
+        let mut e = self.dcx().struct_span_err(sp, msg);
         let do_not_suggest_help = self.token.is_keyword(kw::In) || self.token == token::Colon;
 
         // Check to see if the user has written something like
@@ -567,20 +568,37 @@ impl<'a> Parser<'a> {
                         snapshot.recover_diff_marker();
                     }
                     if self.token == token::Colon {
-                        // if next token is following a colon, it's likely a path
-                        // and we can suggest a path separator
-                        self.bump();
-                        if self.token.span.lo() == self.prev_token.span.hi() {
+                        // if a previous and next token of the current one is
+                        // integer literal (e.g. `1:42`), it's likely a range
+                        // expression for Pythonistas and we can suggest so.
+                        if self.prev_token.is_integer_lit()
+                            && self.may_recover()
+                            && self.look_ahead(1, |token| token.is_integer_lit())
+                        {
+                            // FIXME(hkmatsumoto): Might be better to trigger
+                            // this only when parsing an index expression.
                             err.span_suggestion_verbose(
-                                self.prev_token.span,
-                                "maybe write a path separator here",
-                                "::",
+                                self.token.span,
+                                "you might have meant a range expression",
+                                "..",
                                 Applicability::MaybeIncorrect,
                             );
-                        }
-                        if self.sess.unstable_features.is_nightly_build() {
-                            // FIXME(Nilstrieb): Remove this again after a few months.
-                            err.note("type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>");
+                        } else {
+                            // if next token is following a colon, it's likely a path
+                            // and we can suggest a path separator
+                            self.bump();
+                            if self.token.span.lo() == self.prev_token.span.hi() {
+                                err.span_suggestion_verbose(
+                                    self.prev_token.span,
+                                    "maybe write a path separator here",
+                                    "::",
+                                    Applicability::MaybeIncorrect,
+                                );
+                            }
+                            if self.sess.unstable_features.is_nightly_build() {
+                                // FIXME(Nilstrieb): Remove this again after a few months.
+                                err.note("type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>");
+                            }
                         }
                     }
 
@@ -617,6 +635,20 @@ impl<'a> Parser<'a> {
         let mut add_semi_to_stmt = false;
 
         match &mut stmt.kind {
+            // Expression without semicolon.
+            StmtKind::Expr(expr)
+                if classify::expr_requires_semi_to_be_stmt(expr)
+                    && !expr.attrs.is_empty()
+                    && ![token::Eof, token::Semi, token::CloseDelim(Delimiter::Brace)]
+                        .contains(&self.token.kind) =>
+            {
+                // The user has written `#[attr] expr` which is unsupported. (#106020)
+                self.attr_on_non_tail_expr(&expr);
+                // We already emitted an error, so don't emit another type error
+                let sp = expr.span.to(self.prev_token.span);
+                *expr = self.mk_expr_err(sp);
+            }
+
             // Expression without semicolon.
             StmtKind::Expr(expr)
                 if self.token != token::Eof && classify::expr_requires_semi_to_be_stmt(expr) =>
@@ -667,7 +699,7 @@ impl<'a> Parser<'a> {
                                         match self.parse_expr_labeled(label, false) {
                                             Ok(labeled_expr) => {
                                                 e.delay_as_bug();
-                                                self.sess.emit_err(MalformedLoopLabel {
+                                                self.dcx().emit_err(MalformedLoopLabel {
                                                     span: label.ident.span,
                                                     correct_label: label.ident,
                                                 });

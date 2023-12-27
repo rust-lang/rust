@@ -4,9 +4,7 @@ use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, VariantDef};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
-use rustc_mir_dataflow::{
-    self, move_path_children_matching, Analysis, MaybeReachable, MoveDataParamEnv,
-};
+use rustc_mir_dataflow::{move_path_children_matching, Analysis, MaybeReachable, MoveDataParamEnv};
 use rustc_target::abi::FieldIdx;
 
 use crate::MirPass;
@@ -25,7 +23,7 @@ impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let param_env = tcx.param_env(body.source.def_id());
         let move_data =
-            MoveData::gather_moves(&body, tcx, param_env, |ty| ty.needs_drop(tcx, param_env));
+            MoveData::gather_moves(body, tcx, param_env, |ty| ty.needs_drop(tcx, param_env));
 
         let mdpe = MoveDataParamEnv { move_data, param_env };
         let mut maybe_inits = MaybeInitializedPlaces::new(tcx, body, &mdpe)

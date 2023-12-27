@@ -4,5 +4,5 @@ error: macro names aren't followed by a `!`
 LL | macro_rules! foo! {
    |                 ^ help: remove the `!`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

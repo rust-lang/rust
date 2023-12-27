@@ -1,6 +1,6 @@
 // Local js definitions:
 /* global getSettingValue, updateLocalStorage, updateTheme */
-/* global addClass, removeClass, onEach, onEachLazy, blurHandler, elemIsInParent */
+/* global addClass, removeClass, onEach, onEachLazy, blurHandler */
 /* global MAIN_ID, getVar, getSettingsButton */
 
 "use strict";
@@ -27,6 +27,13 @@
                     window.rustdoc_add_line_numbers_to_examples();
                 } else {
                     window.rustdoc_remove_line_numbers_from_examples();
+                }
+                break;
+            case "hide-sidebar":
+                if (value === true) {
+                    addClass(document.documentElement, "hide-sidebar");
+                } else {
+                    removeClass(document.documentElement, "hide-sidebar");
                 }
                 break;
         }
@@ -187,6 +194,11 @@
                 "default": false,
             },
             {
+                "name": "Hide persistent navigation bar",
+                "js_name": "hide-sidebar",
+                "default": false,
+            },
+            {
                 "name": "Disable keyboard shortcuts",
                 "js_name": "disable-shortcuts",
                 "default": false,
@@ -216,6 +228,13 @@
 
     function displaySettings() {
         settingsMenu.style.display = "";
+        onEachLazy(settingsMenu.querySelectorAll("input[type='checkbox']"), el => {
+            const val = getSettingValue(el.id);
+            const checked = val === "true";
+            if (checked !== el.checked && val !== null) {
+                el.checked = checked;
+            }
+        });
     }
 
     function settingsBlurHandler(event) {
@@ -232,7 +251,7 @@
         const settingsButton = getSettingsButton();
         const settingsMenu = document.getElementById("settings");
         settingsButton.onclick = event => {
-            if (elemIsInParent(event.target, settingsMenu)) {
+            if (settingsMenu.contains(event.target)) {
                 return;
             }
             event.preventDefault();

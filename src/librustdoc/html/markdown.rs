@@ -27,7 +27,7 @@
 //! ```
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
+use rustc_errors::{DiagnosticBuilder, DiagnosticMessage};
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::TyCtxt;
 pub(crate) use rustc_resolve::rustdoc::main_body_opts;
@@ -234,10 +234,6 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let event = self.inner.next();
-        let compile_fail;
-        let should_panic;
-        let ignore;
-        let edition;
         let Some(Event::Start(Tag::CodeBlock(kind))) = event else {
             return event;
         };
@@ -253,48 +249,43 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             }
         }
 
-        let parse_result = match kind {
-            CodeBlockKind::Fenced(ref lang) => {
-                let parse_result = LangString::parse_without_check(
-                    lang,
-                    self.check_error_codes,
-                    false,
-                    self.custom_code_classes_in_docs,
-                );
-                if !parse_result.rust {
-                    let added_classes = parse_result.added_classes;
-                    let lang_string = if let Some(lang) = parse_result.unknown.first() {
-                        format!("language-{}", lang)
-                    } else {
-                        String::new()
-                    };
-                    let whitespace = if added_classes.is_empty() { "" } else { " " };
-                    return Some(Event::Html(
-                        format!(
-                            "<div class=\"example-wrap\">\
+        let LangString { added_classes, compile_fail, should_panic, ignore, edition, .. } =
+            match kind {
+                CodeBlockKind::Fenced(ref lang) => {
+                    let parse_result = LangString::parse_without_check(
+                        lang,
+                        self.check_error_codes,
+                        false,
+                        self.custom_code_classes_in_docs,
+                    );
+                    if !parse_result.rust {
+                        let added_classes = parse_result.added_classes;
+                        let lang_string = if let Some(lang) = parse_result.unknown.first() {
+                            format!("language-{}", lang)
+                        } else {
+                            String::new()
+                        };
+                        let whitespace = if added_classes.is_empty() { "" } else { " " };
+                        return Some(Event::Html(
+                            format!(
+                                "<div class=\"example-wrap\">\
                                  <pre class=\"{lang_string}{whitespace}{added_classes}\">\
                                      <code>{text}</code>\
                                  </pre>\
                              </div>",
-                            added_classes = added_classes.join(" "),
-                            text = Escape(&original_text),
-                        )
-                        .into(),
-                    ));
+                                added_classes = added_classes.join(" "),
+                                text = Escape(&original_text),
+                            )
+                            .into(),
+                        ));
+                    }
+                    parse_result
                 }
-                parse_result
-            }
-            CodeBlockKind::Indented => Default::default(),
-        };
+                CodeBlockKind::Indented => Default::default(),
+            };
 
-        let added_classes = parse_result.added_classes;
         let lines = original_text.lines().filter_map(|l| map_line(l).for_html());
         let text = lines.intersperse("\n".into()).collect::<String>();
-
-        compile_fail = parse_result.compile_fail;
-        should_panic = parse_result.should_panic;
-        ignore = parse_result.ignore;
-        edition = parse_result.edition;
 
         let explicit_edition = edition.is_some();
         let edition = edition.unwrap_or(self.edition);
@@ -841,10 +832,10 @@ impl<'tcx> ExtraInfo<'tcx> {
         if let Some(def_id) = self.def_id.as_local() {
             self.tcx.struct_span_lint_hir(
                 crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
-                self.tcx.hir().local_def_id_to_hir_id(def_id),
+                self.tcx.local_def_id_to_hir_id(def_id),
                 self.sp,
                 msg,
-                |l| l,
+                |_| {},
             );
         }
     }
@@ -852,15 +843,15 @@ impl<'tcx> ExtraInfo<'tcx> {
     fn error_invalid_codeblock_attr_with_help(
         &self,
         msg: impl Into<DiagnosticMessage>,
-        help: impl Into<SubdiagnosticMessage>,
+        f: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
         if let Some(def_id) = self.def_id.as_local() {
             self.tcx.struct_span_lint_hir(
                 crate::lint::INVALID_CODEBLOCK_ATTRIBUTES,
-                self.tcx.hir().local_def_id_to_hir_id(def_id),
+                self.tcx.local_def_id_to_hir_id(def_id),
                 self.sp,
                 msg,
-                |lint| lint.help(help),
+                f,
             );
         }
     }
@@ -1119,10 +1110,10 @@ impl<'a, 'tcx> TagIterator<'a, 'tcx> {
                     return None;
                 }
                 let indices = self.parse_string(pos)?;
-                if let Some((_, c)) = self.inner.peek().copied() &&
-                    c != '{' &&
-                    !is_separator(c) &&
-                    c != '('
+                if let Some((_, c)) = self.inner.peek().copied()
+                    && c != '{'
+                    && !is_separator(c)
+                    && c != '('
                 {
                     self.emit_error(format!("expected ` `, `{{` or `,` after `\"`, found `{c}`"));
                     return None;
@@ -1294,6 +1285,21 @@ impl LangString {
                         data.edition = x[7..].parse::<Edition>().ok();
                     }
                     LangStringToken::LangToken(x)
+                        if x.starts_with("rust") && x[4..].parse::<Edition>().is_ok() =>
+                    {
+                        if let Some(extra) = extra {
+                            extra.error_invalid_codeblock_attr_with_help(
+                                format!("unknown attribute `{x}`"),
+                                |lint| {
+                                    lint.help(format!(
+                                        "there is an attribute with a similar name: `edition{}`",
+                                        &x[4..],
+                                    ));
+                                },
+                            );
+                        }
+                    }
+                    LangStringToken::LangToken(x)
                         if allow_error_code_check && x.starts_with('E') && x.len() == 5 =>
                     {
                         if x[1..].parse::<u32>().is_ok() {
@@ -1337,8 +1343,13 @@ impl LangString {
                         } {
                             if let Some(extra) = extra {
                                 extra.error_invalid_codeblock_attr_with_help(
-                                    format!("unknown attribute `{x}`. Did you mean `{flag}`?"),
-                                    help,
+                                    format!("unknown attribute `{x}`"),
+                                    |lint| {
+                                        lint.help(format!(
+                                            "there is an attribute with a similar name: `{flag}`"
+                                        ))
+                                        .help(help);
+                                    },
                                 );
                             }
                         }
@@ -1370,7 +1381,7 @@ impl LangString {
         };
 
         if custom_code_classes_in_docs {
-            call(&mut TagIterator::new(string, extra).into_iter())
+            call(&mut TagIterator::new(string, extra))
         } else {
             call(&mut tokens(string))
         }
@@ -2000,6 +2011,7 @@ fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     map.insert("themeStyle".into(), 1);
     map.insert("settings-menu".into(), 1);
     map.insert("help-button".into(), 1);
+    map.insert("sidebar-button".into(), 1);
     map.insert("main-content".into(), 1);
     map.insert("toggle-all-docs".into(), 1);
     map.insert("all-types".into(), 1);

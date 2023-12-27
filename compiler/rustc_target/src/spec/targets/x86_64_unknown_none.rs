@@ -12,7 +12,7 @@ pub fn target() -> Target {
         cpu: "x86-64".into(),
         plt_by_default: false,
         max_atomic_width: Some(64),
-        stack_probes: StackProbeType::X86,
+        stack_probes: StackProbeType::Inline,
         position_independent_executables: true,
         static_position_independent_executables: true,
         relro_level: RelroLevel::Full,

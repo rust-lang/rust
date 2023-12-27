@@ -31,7 +31,7 @@ pub(super) fn visit_item(cx: &DocContext<'_>, item: &Item) {
                             "use an automatic link instead",
                             format!("<{url}>"),
                             Applicability::MachineApplicable,
-                        )
+                        );
                 });
             };
 

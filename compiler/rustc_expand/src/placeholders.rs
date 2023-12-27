@@ -119,7 +119,7 @@ pub fn placeholder(
         }]),
         AstFragmentKind::Arms => AstFragment::Arms(smallvec![ast::Arm {
             attrs: Default::default(),
-            body: expr_placeholder(),
+            body: Some(expr_placeholder()),
             guard: None,
             id,
             pat: pat(),
@@ -174,7 +174,7 @@ pub fn placeholder(
         }]),
         AstFragmentKind::Variants => AstFragment::Variants(smallvec![ast::Variant {
             attrs: Default::default(),
-            data: ast::VariantData::Struct(Default::default(), false),
+            data: ast::VariantData::Struct { fields: Default::default(), recovered: false },
             disr_expr: None,
             id,
             ident,

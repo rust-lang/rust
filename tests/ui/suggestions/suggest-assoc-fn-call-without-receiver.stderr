@@ -1,0 +1,79 @@
+error[E0599]: no method named `hello` found for struct `A` in the current scope
+  --> $DIR/suggest-assoc-fn-call-without-receiver.rs:20:8
+   |
+LL | struct A {}
+   | -------- method `hello` not found for this struct
+...
+LL |     _a.hello(1);
+   |     ---^^^^^---
+   |     |  |
+   |     |  this is an associated function, not a method
+   |     help: use associated function syntax instead: `A::hello(1)`
+   |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: the candidate is defined in an impl for the type `A`
+  --> $DIR/suggest-assoc-fn-call-without-receiver.rs:6:5
+   |
+LL |     fn hello(_a: i32) {}
+   |     ^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `test` found for struct `A` in the current scope
+  --> $DIR/suggest-assoc-fn-call-without-receiver.rs:22:8
+   |
+LL | struct A {}
+   | -------- method `test` not found for this struct
+...
+LL |     _a.test(1);
+   |     ---^^^^---
+   |     |  |
+   |     |  this is an associated function, not a method
+   |     help: use associated function syntax instead: `A::test(_a, 1)`
+   |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: the candidate is defined in an impl for the type `A`
+  --> $DIR/suggest-assoc-fn-call-without-receiver.rs:7:5
+   |
+LL |     fn test(_a: Self, _b: i32) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `hello` found for struct `B<&str>` in the current scope
+  --> $DIR/suggest-assoc-fn-call-without-receiver.rs:26:8
+   |
+LL | struct B<T> {
+   | ----------- method `hello` not found for this struct
+...
+LL |     _b.hello(1);
+   |     ---^^^^^---
+   |     |  |
+   |     |  this is an associated function, not a method
+   |     help: use associated function syntax instead: `B::<&str>::hello(1)`
+   |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: the candidate is defined in an impl for the type `B<T>`
+  --> $DIR/suggest-assoc-fn-call-without-receiver.rs:14:5
+   |
+LL |     fn hello(_a: i32) {}
+   |     ^^^^^^^^^^^^^^^^^
+
+error[E0599]: no method named `test` found for struct `B<&str>` in the current scope
+  --> $DIR/suggest-assoc-fn-call-without-receiver.rs:28:8
+   |
+LL | struct B<T> {
+   | ----------- method `test` not found for this struct
+...
+LL |     _b.test(1);
+   |     ---^^^^---
+   |     |  |
+   |     |  this is an associated function, not a method
+   |     help: use associated function syntax instead: `B::<&str>::test(_b, 1)`
+   |
+   = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
+note: the candidate is defined in an impl for the type `B<T>`
+  --> $DIR/suggest-assoc-fn-call-without-receiver.rs:15:5
+   |
+LL |     fn test(_a: Self, _b: i32) {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0599`.

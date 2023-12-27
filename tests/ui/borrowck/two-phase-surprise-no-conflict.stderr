@@ -77,6 +77,8 @@ LL |     reg.register_univ(Box::new(CapturePass::new(&reg.sess_mut)));
    |     |                 |                         immutable borrow occurs here
    |     |                 cast requires that `reg.sess_mut` is borrowed for `'a`
    |     mutable borrow occurs here
+   |
+   = note: due to object lifetime defaults, `Box<dyn for<'b> LateLintPass<'b>>` actually means `Box<(dyn for<'b> LateLintPass<'b> + 'static)>`
 
 error[E0502]: cannot borrow `*reg` as mutable because it is also borrowed as immutable
   --> $DIR/two-phase-surprise-no-conflict.rs:144:5
@@ -119,6 +121,8 @@ LL |     reg.register_univ(Box::new(CapturePass::new_mut(&mut reg.sess_mut)));
    |     |                 |                             first mutable borrow occurs here
    |     |                 cast requires that `reg.sess_mut` is borrowed for `'a`
    |     second mutable borrow occurs here
+   |
+   = note: due to object lifetime defaults, `Box<dyn for<'b> LateLintPass<'b>>` actually means `Box<(dyn for<'b> LateLintPass<'b> + 'static)>`
 
 error[E0499]: cannot borrow `reg.sess_mut` as mutable more than once at a time
   --> $DIR/two-phase-surprise-no-conflict.rs:158:53

@@ -77,6 +77,7 @@ use std::num::NonZeroU32;
 
 use check::check_mod_item_types;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::ErrorGuaranteed;
 use rustc_errors::{pluralize, struct_span_err, Diagnostic, DiagnosticBuilder};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
@@ -128,9 +129,9 @@ fn get_owner_return_paths(
     tcx: TyCtxt<'_>,
     def_id: LocalDefId,
 ) -> Option<(LocalDefId, ReturnsVisitor<'_>)> {
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let parent_id = tcx.hir().get_parent_item(hir_id).def_id;
-    tcx.hir().find_by_def_id(parent_id).and_then(|node| node.body_id()).map(|body_id| {
+    tcx.opt_hir_node_by_def_id(parent_id).and_then(|node| node.body_id()).map(|body_id| {
         let body = tcx.hir().body(body_id);
         let mut visitor = ReturnsVisitor::default();
         visitor.visit_body(body);
@@ -141,9 +142,9 @@ fn get_owner_return_paths(
 /// Forbid defining intrinsics in Rust code,
 /// as they must always be defined by the compiler.
 // FIXME: Move this to a more appropriate place.
-pub fn fn_maybe_err(tcx: TyCtxt<'_>, sp: Span, abi: Abi) {
+pub fn forbid_intrinsic_abi(tcx: TyCtxt<'_>, sp: Span, abi: Abi) {
     if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = abi {
-        tcx.sess.span_err(sp, "intrinsic must be in `extern \"rust-intrinsic\" { ... }` block");
+        tcx.dcx().span_err(sp, "intrinsic must be in `extern \"rust-intrinsic\" { ... }` block");
     }
 }
 
@@ -173,7 +174,7 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
         let msg = "statics with a custom `#[link_section]` must be a \
                         simple list of bytes on the wasm target with no \
                         extra levels of indirection such as references";
-        tcx.sess.span_err(tcx.def_span(id), msg);
+        tcx.dcx().span_err(tcx.def_span(id), msg);
     }
 }
 
@@ -186,7 +187,7 @@ fn report_forbidden_specialization(tcx: TyCtxt<'_>, impl_item: DefId, parent_imp
         Err(cname) => errors::ImplNotMarkedDefault::Err { span, ident, cname },
     };
 
-    tcx.sess.emit_err(err);
+    tcx.dcx().emit_err(err);
 }
 
 fn missing_items_err(
@@ -239,7 +240,7 @@ fn missing_items_err(
         }
     }
 
-    tcx.sess.emit_err(errors::MissingTraitItem {
+    tcx.dcx().emit_err(errors::MissingTraitItem {
         span: tcx.span_of_impl(impl_def_id.to_def_id()).unwrap(),
         missing_items_msg,
         missing_trait_item_label,
@@ -257,7 +258,7 @@ fn missing_items_must_implement_one_of_err(
     let missing_items_msg =
         missing_items.iter().map(Ident::to_string).collect::<Vec<_>>().join("`, `");
 
-    tcx.sess.emit_err(errors::MissingOneOfTraitItem {
+    tcx.dcx().emit_err(errors::MissingOneOfTraitItem {
         span: impl_span,
         note: annotation_span,
         missing_items_msg,
@@ -282,7 +283,7 @@ fn default_body_is_unstable(
         None => none_note = true,
     };
 
-    let mut err = tcx.sess.create_err(errors::MissingTraitItemUnstable {
+    let mut err = tcx.dcx().create_err(errors::MissingTraitItemUnstable {
         span: impl_span,
         some_note,
         none_note,
@@ -525,7 +526,7 @@ fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>, sp: Span, d
         spans = start.to_vec();
         many = Some(*end);
     }
-    tcx.sess.emit_err(errors::TransparentEnumVariant {
+    tcx.dcx().emit_err(errors::TransparentEnumVariant {
         span: sp,
         spans,
         many,
@@ -544,14 +545,14 @@ fn bad_non_zero_sized_fields<'tcx>(
     sp: Span,
 ) {
     if adt.is_enum() {
-        tcx.sess.emit_err(errors::TransparentNonZeroSizedEnum {
+        tcx.dcx().emit_err(errors::TransparentNonZeroSizedEnum {
             span: sp,
             spans: field_spans.collect(),
             field_count,
             desc: adt.descr(),
         });
     } else {
-        tcx.sess.emit_err(errors::TransparentNonZeroSized {
+        tcx.dcx().emit_err(errors::TransparentNonZeroSized {
             span: sp,
             spans: field_spans.collect(),
             field_count,
@@ -570,54 +571,7 @@ pub fn check_function_signature<'tcx>(
     mut cause: ObligationCause<'tcx>,
     fn_id: DefId,
     expected_sig: ty::PolyFnSig<'tcx>,
-) {
-    let local_id = fn_id.as_local().unwrap_or(CRATE_DEF_ID);
-
-    let param_env = ty::ParamEnv::empty();
-
-    let infcx = &tcx.infer_ctxt().build();
-    let ocx = ObligationCtxt::new(infcx);
-
-    let actual_sig = tcx.fn_sig(fn_id).instantiate_identity();
-
-    let norm_cause = ObligationCause::misc(cause.span, local_id);
-    let actual_sig = ocx.normalize(&norm_cause, param_env, actual_sig);
-
-    match ocx.eq(&cause, param_env, expected_sig, actual_sig) {
-        Ok(()) => {
-            let errors = ocx.select_all_or_error();
-            if !errors.is_empty() {
-                infcx.err_ctxt().report_fulfillment_errors(errors);
-                return;
-            }
-        }
-        Err(err) => {
-            let err_ctxt = infcx.err_ctxt();
-            if fn_id.is_local() {
-                cause.span = extract_span_for_error_reporting(tcx, err, &cause, local_id);
-            }
-            let failure_code = cause.as_failure_code_diag(err, cause.span, vec![]);
-            let mut diag = tcx.sess.create_err(failure_code);
-            err_ctxt.note_type_err(
-                &mut diag,
-                &cause,
-                None,
-                Some(infer::ValuePairs::PolySigs(ExpectedFound {
-                    expected: expected_sig,
-                    found: actual_sig,
-                })),
-                err,
-                false,
-                false,
-            );
-            diag.emit();
-            return;
-        }
-    }
-
-    let outlives_env = OutlivesEnvironment::new(param_env);
-    let _ = ocx.resolve_regions_and_report_errors(local_id, &outlives_env);
-
+) -> Result<(), ErrorGuaranteed> {
     fn extract_span_for_error_reporting<'tcx>(
         tcx: TyCtxt<'tcx>,
         err: TypeError<'_>,
@@ -636,4 +590,53 @@ pub fn check_function_signature<'tcx>(
             _ => cause.span(),
         }
     }
+
+    let local_id = fn_id.as_local().unwrap_or(CRATE_DEF_ID);
+
+    let param_env = ty::ParamEnv::empty();
+
+    let infcx = &tcx.infer_ctxt().build();
+    let ocx = ObligationCtxt::new(infcx);
+
+    let actual_sig = tcx.fn_sig(fn_id).instantiate_identity();
+
+    let norm_cause = ObligationCause::misc(cause.span, local_id);
+    let actual_sig = ocx.normalize(&norm_cause, param_env, actual_sig);
+
+    match ocx.eq(&cause, param_env, expected_sig, actual_sig) {
+        Ok(()) => {
+            let errors = ocx.select_all_or_error();
+            if !errors.is_empty() {
+                return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
+            }
+        }
+        Err(err) => {
+            let err_ctxt = infcx.err_ctxt();
+            if fn_id.is_local() {
+                cause.span = extract_span_for_error_reporting(tcx, err, &cause, local_id);
+            }
+            let failure_code = cause.as_failure_code_diag(err, cause.span, vec![]);
+            let mut diag = tcx.dcx().create_err(failure_code);
+            err_ctxt.note_type_err(
+                &mut diag,
+                &cause,
+                None,
+                Some(infer::ValuePairs::PolySigs(ExpectedFound {
+                    expected: expected_sig,
+                    found: actual_sig,
+                })),
+                err,
+                false,
+                false,
+            );
+            return Err(diag.emit());
+        }
+    }
+
+    let outlives_env = OutlivesEnvironment::new(param_env);
+    if let Err(e) = ocx.resolve_regions_and_report_errors(local_id, &outlives_env) {
+        return Err(e);
+    }
+
+    Ok(())
 }

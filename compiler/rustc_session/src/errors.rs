@@ -3,7 +3,9 @@ use std::num::NonZeroU32;
 use crate::parse::ParseSess;
 use rustc_ast::token;
 use rustc_ast::util::literal::LitError;
-use rustc_errors::{error_code, DiagnosticMessage, EmissionGuarantee, IntoDiagnostic, MultiSpan};
+use rustc_errors::{
+    error_code, DiagCtxt, DiagnosticBuilder, DiagnosticMessage, IntoDiagnostic, Level, MultiSpan,
+};
 use rustc_macros::Diagnostic;
 use rustc_span::{BytePos, Span, Symbol};
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
@@ -13,13 +15,10 @@ pub struct FeatureGateError {
     pub explain: DiagnosticMessage,
 }
 
-impl<'a, T: EmissionGuarantee> IntoDiagnostic<'a, T> for FeatureGateError {
+impl<'a> IntoDiagnostic<'a> for FeatureGateError {
     #[track_caller]
-    fn into_diagnostic(
-        self,
-        handler: &'a rustc_errors::Handler,
-    ) -> rustc_errors::DiagnosticBuilder<'a, T> {
-        let mut diag = handler.struct_diagnostic(self.explain);
+    fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a> {
+        let mut diag = DiagnosticBuilder::new(dcx, level, self.explain);
         diag.set_span(self.span);
         diag.code(error_code!(E0658));
         diag
@@ -365,13 +364,14 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
     }
 
     let token::Lit { kind, symbol, suffix, .. } = lit;
+    let dcx = &sess.dcx;
     match err {
         // `LexerError` is an error, but it was already reported
         // by lexer, so here we don't report it the second time.
         LitError::LexerError => {}
         LitError::InvalidSuffix => {
             if let Some(suffix) = suffix {
-                sess.emit_err(InvalidLiteralSuffix { span, kind: kind.descr(), suffix });
+                dcx.emit_err(InvalidLiteralSuffix { span, kind: kind.descr(), suffix });
             }
         }
         LitError::InvalidIntSuffix => {
@@ -379,11 +379,11 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
             let suf = suf.as_str();
             if looks_like_width_suffix(&['i', 'u'], suf) {
                 // If it looks like a width, try to be helpful.
-                sess.emit_err(InvalidIntLiteralWidth { span, width: suf[1..].into() });
+                dcx.emit_err(InvalidIntLiteralWidth { span, width: suf[1..].into() });
             } else if let Some(fixed) = fix_base_capitalisation(symbol.as_str(), suf) {
-                sess.emit_err(InvalidNumLiteralBasePrefix { span, fixed });
+                dcx.emit_err(InvalidNumLiteralBasePrefix { span, fixed });
             } else {
-                sess.emit_err(InvalidNumLiteralSuffix { span, suffix: suf.to_string() });
+                dcx.emit_err(InvalidNumLiteralSuffix { span, suffix: suf.to_string() });
             }
         }
         LitError::InvalidFloatSuffix => {
@@ -391,16 +391,16 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
             let suf = suf.as_str();
             if looks_like_width_suffix(&['f'], suf) {
                 // If it looks like a width, try to be helpful.
-                sess.emit_err(InvalidFloatLiteralWidth { span, width: suf[1..].to_string() });
+                dcx.emit_err(InvalidFloatLiteralWidth { span, width: suf[1..].to_string() });
             } else {
-                sess.emit_err(InvalidFloatLiteralSuffix { span, suffix: suf.to_string() });
+                dcx.emit_err(InvalidFloatLiteralSuffix { span, suffix: suf.to_string() });
             }
         }
         LitError::NonDecimalFloat(base) => {
             match base {
-                16 => sess.emit_err(HexadecimalFloatLiteralNotSupported { span }),
-                8 => sess.emit_err(OctalFloatLiteralNotSupported { span }),
-                2 => sess.emit_err(BinaryFloatLiteralNotSupported { span }),
+                16 => dcx.emit_err(HexadecimalFloatLiteralNotSupported { span }),
+                8 => dcx.emit_err(OctalFloatLiteralNotSupported { span }),
+                2 => dcx.emit_err(BinaryFloatLiteralNotSupported { span }),
                 _ => unreachable!(),
             };
         }
@@ -412,13 +412,13 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
                 16 => format!("{max:#x}"),
                 _ => format!("{max}"),
             };
-            sess.emit_err(IntLiteralTooLarge { span, limit });
+            dcx.emit_err(IntLiteralTooLarge { span, limit });
         }
         LitError::NulInCStr(range) => {
             let lo = BytePos(span.lo().0 + range.start as u32 + 2);
             let hi = BytePos(span.lo().0 + range.end as u32 + 2);
             let span = span.with_lo(lo).with_hi(hi);
-            sess.emit_err(NulInCStr { span });
+            dcx.emit_err(NulInCStr { span });
         }
     }
 }
@@ -435,4 +435,18 @@ pub struct OptimisationFuelExhausted {
 pub struct IncompatibleLinkerFlavor {
     pub flavor: &'static str,
     pub compatible_list: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(session_function_return_requires_x86_or_x86_64)]
+pub(crate) struct FunctionReturnRequiresX86OrX8664;
+
+#[derive(Diagnostic)]
+#[diag(session_function_return_thunk_extern_requires_non_large_code_model)]
+pub(crate) struct FunctionReturnThunkExternRequiresNonLargeCodeModel;
+
+#[derive(Diagnostic)]
+#[diag(session_failed_to_create_profiler)]
+pub struct FailedToCreateProfiler {
+    pub err: String,
 }

@@ -303,7 +303,8 @@ pub(crate) fn name_from_pat(p: &hir::Pat<'_>) -> Symbol {
     debug!("trying to get a name from pattern: {p:?}");
 
     Symbol::intern(&match p.kind {
-        PatKind::Wild | PatKind::Struct(..) => return kw::Underscore,
+        // FIXME(never_patterns): does this make sense?
+        PatKind::Wild | PatKind::Never | PatKind::Struct(..) => return kw::Underscore,
         PatKind::Binding(_, _, ident, _) => return ident.name,
         PatKind::TupleStruct(ref p, ..) | PatKind::Path(ref p) => qpath_to_string(p),
         PatKind::Or(pats) => {
@@ -438,13 +439,13 @@ fn print_const_with_custom_print_scalar<'tcx>(
 }
 
 pub(crate) fn is_literal_expr(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> bool {
-    if let hir::Node::Expr(expr) = tcx.hir().get(hir_id) {
+    if let hir::Node::Expr(expr) = tcx.hir_node(hir_id) {
         if let hir::ExprKind::Lit(_) = &expr.kind {
             return true;
         }
 
-        if let hir::ExprKind::Unary(hir::UnOp::Neg, expr) = &expr.kind &&
-            let hir::ExprKind::Lit(_) = &expr.kind
+        if let hir::ExprKind::Unary(hir::UnOp::Neg, expr) = &expr.kind
+            && let hir::ExprKind::Lit(_) = &expr.kind
         {
             return true;
         }
@@ -573,9 +574,8 @@ pub(crate) fn find_nearest_parent_module(tcx: TyCtxt<'_>, def_id: DefId) -> Opti
 /// This function exists because it runs on `hir::Attributes` whereas the other is a
 /// `clean::Attributes` method.
 pub(crate) fn has_doc_flag(tcx: TyCtxt<'_>, did: DefId, flag: Symbol) -> bool {
-    tcx.get_attrs(did, sym::doc).any(|attr| {
-        attr.meta_item_list().map_or(false, |l| rustc_attr::list_contains_name(&l, flag))
-    })
+    tcx.get_attrs(did, sym::doc)
+        .any(|attr| attr.meta_item_list().is_some_and(|l| rustc_attr::list_contains_name(&l, flag)))
 }
 
 /// A link to `doc.rust-lang.org` that includes the channel name. Use this instead of manual links
@@ -641,19 +641,17 @@ pub(crate) fn inherits_doc_hidden(
     mut def_id: LocalDefId,
     stop_at: Option<LocalDefId>,
 ) -> bool {
-    let hir = tcx.hir();
     while let Some(id) = tcx.opt_local_parent(def_id) {
-        if let Some(stop_at) = stop_at && id == stop_at {
+        if let Some(stop_at) = stop_at
+            && id == stop_at
+        {
             return false;
         }
         def_id = id;
         if tcx.is_doc_hidden(def_id.to_def_id()) {
             return true;
-        } else if let Some(node) = hir.find_by_def_id(def_id) &&
-            matches!(
-                node,
-                hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(_), .. }),
-            )
+        } else if let Some(node) = tcx.opt_hir_node_by_def_id(def_id)
+            && matches!(node, hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(_), .. }),)
         {
             // `impl` blocks stand a bit on their own: unless they have `#[doc(hidden)]` directly
             // on them, they don't inherit it from the parent context.

@@ -1,7 +1,7 @@
 //! Thin wrappers around `std::path`, distinguishing between absolute and
 //! relative paths.
 
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 
 use std::{
     borrow::Borrow,

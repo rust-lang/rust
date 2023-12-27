@@ -1,4 +1,5 @@
 use hir::db::ExpandDatabase;
+use hir::HirFileIdExt;
 use ide_db::{assists::Assist, source_change::SourceChange};
 use syntax::{ast, SyntaxNode};
 use syntax::{match_ast, AstNode};
@@ -100,9 +101,9 @@ mod tests {
             r#"
 fn main() {
     let x = &5 as *const usize;
-    unsafe { let y = *x; }
-    let z = *x;
-}         //^^💡 error: this operation is unsafe and requires an unsafe function or block
+    unsafe { let _y = *x; }
+    let _z = *x;
+}          //^^💡 error: this operation is unsafe and requires an unsafe function or block
 "#,
         )
     }
@@ -116,13 +117,13 @@ struct HasUnsafe;
 impl HasUnsafe {
     unsafe fn unsafe_fn(&self) {
         let x = &5 as *const usize;
-        let y = *x;
+        let _y = *x;
     }
 }
 
 unsafe fn unsafe_fn() {
     let x = &5 as *const usize;
-    let y = *x;
+    let _y = *x;
 }
 
 fn main() {
@@ -152,10 +153,10 @@ struct Ty {
 static mut STATIC_MUT: Ty = Ty { a: 0 };
 
 fn main() {
-    let x = STATIC_MUT.a;
-          //^^^^^^^^^^💡 error: this operation is unsafe and requires an unsafe function or block
+    let _x = STATIC_MUT.a;
+           //^^^^^^^^^^💡 error: this operation is unsafe and requires an unsafe function or block
     unsafe {
-        let x = STATIC_MUT.a;
+        let _x = STATIC_MUT.a;
     }
 }
 "#,
@@ -187,13 +188,13 @@ fn main() {
             r#"
 fn main() {
     let x = &5 as *const usize;
-    let z = *x$0;
+    let _z = *x$0;
 }
 "#,
             r#"
 fn main() {
     let x = &5 as *const usize;
-    let z = unsafe { *x };
+    let _z = unsafe { *x };
 }
 "#,
         );
@@ -231,7 +232,7 @@ struct S(usize);
 impl S {
     unsafe fn func(&self) {
         let x = &self.0 as *const usize;
-        let z = *x;
+        let _z = *x;
     }
 }
 fn main() {
@@ -244,7 +245,7 @@ struct S(usize);
 impl S {
     unsafe fn func(&self) {
         let x = &self.0 as *const usize;
-        let z = *x;
+        let _z = *x;
     }
 }
 fn main() {
@@ -267,7 +268,7 @@ struct Ty {
 static mut STATIC_MUT: Ty = Ty { a: 0 };
 
 fn main() {
-    let x = STATIC_MUT$0.a;
+    let _x = STATIC_MUT$0.a;
 }
 "#,
             r#"
@@ -278,7 +279,7 @@ struct Ty {
 static mut STATIC_MUT: Ty = Ty { a: 0 };
 
 fn main() {
-    let x = unsafe { STATIC_MUT.a };
+    let _x = unsafe { STATIC_MUT.a };
 }
 "#,
         )
@@ -382,16 +383,16 @@ fn main() {
 static mut STATIC_MUT: u8 = 0;
 
 fn main() {
-    let x;
-    x = STATIC_MUT$0;
+    let _x;
+    _x = STATIC_MUT$0;
 }
 "#,
             r#"
 static mut STATIC_MUT: u8 = 0;
 
 fn main() {
-    let x;
-    x = unsafe { STATIC_MUT };
+    let _x;
+    _x = unsafe { STATIC_MUT };
 }
 "#,
         )
@@ -405,14 +406,14 @@ fn main() {
 static mut STATIC_MUT: u8 = 0;
 
 fn main() {
-    let x = STATIC_MUT$0 + 1;
+    let _x = STATIC_MUT$0 + 1;
 }
 "#,
             r#"
 static mut STATIC_MUT: u8 = 0;
 
 fn main() {
-    let x = unsafe { STATIC_MUT } + 1;
+    let _x = unsafe { STATIC_MUT } + 1;
 }
 "#,
         )
@@ -425,14 +426,14 @@ fn main() {
 static mut STATIC_MUT: u8 = 0;
 
 fn main() {
-    let x = &STATIC_MUT$0;
+    let _x = &STATIC_MUT$0;
 }
 "#,
             r#"
 static mut STATIC_MUT: u8 = 0;
 
 fn main() {
-    let x = unsafe { &STATIC_MUT };
+    let _x = unsafe { &STATIC_MUT };
 }
 "#,
         )
@@ -445,14 +446,14 @@ fn main() {
 static mut STATIC_MUT: u8 = 0;
 
 fn main() {
-    let x = &&STATIC_MUT$0;
+    let _x = &&STATIC_MUT$0;
 }
 "#,
             r#"
 static mut STATIC_MUT: u8 = 0;
 
 fn main() {
-    let x = unsafe { &&STATIC_MUT };
+    let _x = unsafe { &&STATIC_MUT };
 }
 "#,
         )

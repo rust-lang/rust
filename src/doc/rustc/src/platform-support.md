@@ -137,18 +137,17 @@ target | std | notes
 [`arm-linux-androideabi`](platform-support/android.md) | ✓ | ARMv6 Android
 `arm-unknown-linux-musleabi` | ✓ | ARMv6 Linux with MUSL
 `arm-unknown-linux-musleabihf` | ✓ | ARMv6 Linux with MUSL, hardfloat
-`armebv7r-none-eabi` | * | Bare ARMv7-R, Big Endian
-`armebv7r-none-eabihf` | * | Bare ARMv7-R, Big Endian, hardfloat
+[`armebv7r-none-eabi`](platform-support/armv7r-none-eabi.md) | * | Bare ARMv7-R, Big Endian
+[`armebv7r-none-eabihf`](platform-support/armv7r-none-eabi.md) | * | Bare ARMv7-R, Big Endian, hardfloat
 `armv5te-unknown-linux-gnueabi` | ✓ | ARMv5TE Linux (kernel 4.4, glibc 2.23)
 `armv5te-unknown-linux-musleabi` | ✓ | ARMv5TE Linux with MUSL
 [`armv7-linux-androideabi`](platform-support/android.md) | ✓ | ARMv7-A Android
 `armv7-unknown-linux-gnueabi` | ✓ | ARMv7-A Linux (kernel 4.15, glibc 2.27)
 `armv7-unknown-linux-musleabi` | ✓ | ARMv7-A Linux with MUSL
 `armv7-unknown-linux-musleabihf` | ✓ | ARMv7-A Linux with MUSL, hardfloat
-`armv7a-none-eabi` | * | Bare ARMv7-A
-`armv7r-none-eabi` | * | Bare ARMv7-R
-`armv7r-none-eabihf` | * | Bare ARMv7-R, hardfloat
-`asmjs-unknown-emscripten` | ✓ | asm.js via Emscripten
+[`armv7a-none-eabi`](platform-support/arm-none-eabi.md) | * | Bare ARMv7-A
+[`armv7r-none-eabi`](platform-support/armv7r-none-eabi.md) | * | Bare ARMv7-R
+[`armv7r-none-eabihf`](platform-support/armv7r-none-eabi.md) | * | Bare ARMv7-R, hardfloat
 `i586-pc-windows-msvc` | * | 32-bit Windows w/o SSE [^x86_32-floats-x87]
 `i586-unknown-linux-gnu` | ✓ | 32-bit Linux w/o SSE (kernel 3.2, glibc 2.17) [^x86_32-floats-x87]
 `i586-unknown-linux-musl` | ✓ | 32-bit Linux w/o SSE, MUSL [^x86_32-floats-x87]
@@ -160,22 +159,22 @@ target | std | notes
 [`loongarch64-unknown-none`](platform-support/loongarch-none.md) | * |  | LoongArch64 Bare-metal (LP64D ABI)
 [`loongarch64-unknown-none-softfloat`](platform-support/loongarch-none.md) | * |  | LoongArch64 Bare-metal (LP64S ABI)
 [`nvptx64-nvidia-cuda`](platform-support/nvptx64-nvidia-cuda.md) | * | --emit=asm generates PTX code that [runs on NVIDIA GPUs]
-`riscv32i-unknown-none-elf` | * | Bare RISC-V (RV32I ISA)
-`riscv32imac-unknown-none-elf` | * | Bare RISC-V (RV32IMAC ISA)
-`riscv32imc-unknown-none-elf` | * | Bare RISC-V (RV32IMC ISA)
+[`riscv32imac-unknown-none-elf`](platform-support/riscv32imac-unknown-none-elf.md) | * | Bare RISC-V (RV32IMAC ISA)
+[`riscv32i-unknown-none-elf`](platform-support/riscv32imac-unknown-none-elf.md) | * | Bare RISC-V (RV32I ISA)
+[`riscv32imc-unknown-none-elf`](platform-support/riscv32imac-unknown-none-elf.md) | * | Bare RISC-V (RV32IMC ISA)
 `riscv64gc-unknown-none-elf` | * | Bare RISC-V (RV64IMAFDC ISA)
 `riscv64imac-unknown-none-elf` | * | Bare RISC-V (RV64IMAC ISA)
 `sparc64-unknown-linux-gnu` | ✓ | SPARC Linux (kernel 4.4, glibc 2.23)
-`sparcv9-sun-solaris` | ✓ | SPARC Solaris 10/11, illumos
-`thumbv6m-none-eabi` | * | Bare ARMv6-M
-`thumbv7em-none-eabi` | * | Bare ARMv7E-M
-`thumbv7em-none-eabihf` | * | Bare ARMV7E-M, hardfloat
-`thumbv7m-none-eabi` | * | Bare ARMv7-M
+`sparcv9-sun-solaris` | ✓ | SPARC Solaris 11, illumos
+[`thumbv6m-none-eabi`](platform-support/arm-none-eabi.md) | * | Bare ARMv6-M
+[`thumbv7em-none-eabi`](platform-support/arm-none-eabi.md) | * | Bare ARMv7E-M
+[`thumbv7em-none-eabihf`](platform-support/arm-none-eabi.md) | * | Bare ARMV7E-M, hardfloat
+[`thumbv7m-none-eabi`](platform-support/arm-none-eabi.md) | * | Bare ARMv7-M
 [`thumbv7neon-linux-androideabi`](platform-support/android.md) | ✓ | Thumb2-mode ARMv7-A Android with NEON
 `thumbv7neon-unknown-linux-gnueabihf` | ✓ | Thumb2-mode ARMv7-A Linux with NEON (kernel 4.4, glibc 2.23)
-`thumbv8m.base-none-eabi` | * | Bare ARMv8-M Baseline
-`thumbv8m.main-none-eabi` | * | Bare ARMv8-M Mainline
-`thumbv8m.main-none-eabihf` | * | Bare ARMv8-M Mainline, hardfloat
+[`thumbv8m.base-none-eabi`](platform-support/arm-none-eabi.md) | * | Bare ARMv8-M Baseline
+[`thumbv8m.main-none-eabi`](platform-support/arm-none-eabi.md) | * | Bare ARMv8-M Mainline
+[`thumbv8m.main-none-eabihf`](platform-support/arm-none-eabi.md) | * | Bare ARMv8-M Mainline, hardfloat
 `wasm32-unknown-emscripten` | ✓ | WebAssembly via Emscripten
 `wasm32-unknown-unknown` | ✓ | WebAssembly
 `wasm32-wasi` | ✓ | WebAssembly with WASI
@@ -185,7 +184,7 @@ target | std | notes
 `x86_64-fuchsia` | ✓ | Alias for `x86_64-unknown-fuchsia`
 [`x86_64-unknown-fuchsia`](platform-support/fuchsia.md) | ✓ | 64-bit x86 Fuchsia
 [`x86_64-linux-android`](platform-support/android.md) | ✓ | 64-bit x86 Android
-`x86_64-pc-solaris` | ✓ | 64-bit Solaris 10/11, illumos
+`x86_64-pc-solaris` | ✓ | 64-bit Solaris 11, illumos
 `x86_64-unknown-linux-gnux32` | ✓ | 64-bit Linux (x32 ABI) (kernel 4.15, glibc 2.27)
 [`x86_64-unknown-none`](platform-support/x86_64-unknown-none.md) | * | Freestanding/bare-metal x86_64, softfloat
 `x86_64-unknown-redox` | ✓ | Redox OS
@@ -216,9 +215,12 @@ host tools.
 
 target | std | host | notes
 -------|:---:|:----:|-------
+[`arm64e-apple-ios`](platform-support/arm64e-apple-ios.md) | ✓ | | ARM64e Apple iOS
+[`arm64e-apple-darwin`](platform-support/arm64e-apple-darwin.md)  | ✓ | ✓ | ARM64e Apple Darwin
 `aarch64-apple-ios-macabi` | ? |  | Apple Catalyst on ARM64
 [`aarch64-apple-tvos`](platform-support/apple-tvos.md) | ? |  | ARM64 tvOS
 [`aarch64-apple-tvos-sim`](platform-support/apple-tvos.md) | ? |  | ARM64 tvOS Simulator
+[`aarch64-apple-watchos`](platform-support/apple-watchos.md) | ✓ |  | ARM64 Apple WatchOS
 [`aarch64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ |  | ARM64 Apple WatchOS Simulator
 [`aarch64-kmc-solid_asp3`](platform-support/kmc-solid.md) | ✓ |  | ARM64 SOLID with TOPPERS/ASP3
 [`aarch64-nintendo-switch-freestanding`](platform-support/aarch64-nintendo-switch-freestanding.md) | * |  | ARM64 Nintendo Switch, Horizon
@@ -228,6 +230,7 @@ target | std | host | notes
 [`aarch64-unknown-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | ARM64 QNX Neutrino 7.1 RTOS |
 `aarch64-unknown-freebsd` | ✓ | ✓ | ARM64 FreeBSD
 [`aarch64-unknown-hermit`](platform-support/hermit.md) | ✓ |  | ARM64 Hermit
+`aarch64-unknown-illumos` | ✓ | ✓ | ARM64 illumos
 `aarch64-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (ILP32 ABI)
 [`aarch64-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD
 [`aarch64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | ARM64 OpenBSD
@@ -237,11 +240,11 @@ target | std | host | notes
 `aarch64_be-unknown-linux-gnu_ilp32` | ✓ | ✓ | ARM64 Linux (big-endian, ILP32 ABI)
 `aarch64_be-unknown-linux-gnu` | ✓ | ✓ | ARM64 Linux (big-endian)
 [`aarch64_be-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | ARM64 NetBSD (big-endian)
-[`arm64_32-apple-watchos`](platform-support/apple-watchos.md) | ✓ | | ARM Apple WatchOS 64-bit with 32-bit pointers
+[`arm64_32-apple-watchos`](platform-support/apple-watchos.md) | ✓ |  | ARM Apple WatchOS 64-bit with 32-bit pointers
 [`armeb-unknown-linux-gnueabi`](platform-support/armeb-unknown-linux-gnueabi.md) | ✓ | ? | ARM BE8 the default ARM big-endian architecture since [ARMv6](https://developer.arm.com/documentation/101754/0616/armlink-Reference/armlink-Command-line-Options/--be8?lang=en).
-`armv4t-none-eabi` | * |  | Bare ARMv4T
+[`armv4t-none-eabi`](platform-support/armv4t-none-eabi.md) | * |  | Bare ARMv4T
 `armv4t-unknown-linux-gnueabi` | ? |  | ARMv4T Linux
-[`armv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * | | Bare ARMv5TE
+[`armv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * |  | Bare ARMv5TE
 `armv5te-unknown-linux-uclibceabi` | ? |  | ARMv5TE Linux with uClibc
 `armv6-unknown-freebsd` | ✓ | ✓ | ARMv6 FreeBSD
 [`armv6-unknown-netbsd-eabihf`](platform-support/netbsd.md) | ✓ | ✓ | ARMv6 NetBSD w/hard-float
@@ -255,14 +258,15 @@ target | std | host | notes
 `armv7-wrs-vxworks-eabihf` | ? |  | ARMv7-A for VxWorks
 [`armv7a-kmc-solid_asp3-eabi`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3
 [`armv7a-kmc-solid_asp3-eabihf`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3, hardfloat
-`armv7a-none-eabihf` | * | | Bare ARMv7-A, hardfloat
-[`armv7k-apple-watchos`](platform-support/apple-watchos.md) | ✓ | | ARMv7-A Apple WatchOS
+[`armv7a-none-eabihf`](platform-support/arm-none-eabi.md) | * |  | Bare ARMv7-A, hardfloat
+[`armv7k-apple-watchos`](platform-support/apple-watchos.md) | ✓ |  | ARMv7-A Apple WatchOS
 `armv7s-apple-ios` | ✓ |  | ARMv7-A Apple-A6 Apple iOS
 `avr-unknown-gnu-atmega328` | * |  | AVR. Requires `-Z build-std=core`
 `bpfeb-unknown-none` | * |  | BPF (big endian)
 `bpfel-unknown-none` | * |  | BPF (little endian)
 `csky-unknown-linux-gnuabiv2` | ✓ |  | C-SKY abiv2 Linux (little endian)
 `csky-unknown-linux-gnuabiv2hf` | ✓ |  | C-SKY abiv2 Linux, hardfloat (little endian)
+[`hexagon-unknown-none-elf`](platform-support/hexagon-unknown-none-elf.md)| * | Bare Hexagon (v60+, HVX)
 `hexagon-unknown-linux-musl` | ? |  |
 `i386-apple-ios` | ✓ |  | 32-bit x86 iOS [^x86_32-floats-return-ABI]
 [`i586-pc-nto-qnx700`](platform-support/nto-qnx.md) | * |  | 32-bit x86 QNX Neutrino 7.0 RTOS  [^x86_32-floats-return-ABI]
@@ -275,6 +279,7 @@ target | std | host | notes
 [`i686-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 32-bit OpenBSD [^x86_32-floats-return-ABI]
 `i686-uwp-windows-gnu` | ? |  | [^x86_32-floats-return-ABI]
 `i686-uwp-windows-msvc` | ? |  | [^x86_32-floats-return-ABI]
+[`i686-win7-windows-msvc`](platform-support/win7-windows-msvc.md) | ✓ |   | 32-bit Windows 7 support [^x86_32-floats-return-ABI]
 `i686-wrs-vxworks` | ? |  | [^x86_32-floats-return-ABI]
 [`m68k-unknown-linux-gnu`](platform-support/m68k-unknown-linux-gnu.md) | ? |  | Motorola 680x0 Linux
 `mips-unknown-linux-gnu` | ✓ | ✓ | MIPS Linux (kernel 4.4, glibc 2.23)
@@ -313,7 +318,8 @@ target | std | host | notes
 [`powerpc64-ibm-aix`](platform-support/aix.md) | ? |  | 64-bit AIX (7.2 and newer)
 `riscv32gc-unknown-linux-gnu` |   |   | RISC-V Linux (kernel 5.4, glibc 2.33)
 `riscv32gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 5.4, musl + RISCV32 support patches)
-`riscv32im-unknown-none-elf` | * |  | Bare RISC-V (RV32IM ISA)
+[`riscv32imafc-unknown-none-elf`](platform-support/riscv32imac-unknown-none-elf.md) | * | Bare RISC-V (RV32IMAFC ISA)
+[`riscv32im-unknown-none-elf`](platform-support/riscv32imac-unknown-none-elf.md) | * |  | Bare RISC-V (RV32IM ISA)
 [`riscv32imac-unknown-xous-elf`](platform-support/riscv32imac-unknown-xous-elf.md) | ? |  | RISC-V Xous (RV32IMAC ISA)
 [`riscv32imc-esp-espidf`](platform-support/esp-idf.md) | ✓ |  | RISC-V ESP-IDF
 [`riscv32imac-esp-espidf`](platform-support/esp-idf.md) | ✓ |  | RISC-V ESP-IDF
@@ -329,19 +335,18 @@ target | std | host | notes
 [`sparc-unknown-none-elf`](./platform-support/sparc-unknown-none-elf.md) | * |  | Bare 32-bit SPARC V7+
 [`sparc64-unknown-netbsd`](platform-support/netbsd.md) | ✓ | ✓ | NetBSD/sparc64
 [`sparc64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | OpenBSD/sparc64
-`thumbv4t-none-eabi` | * |  | Thumb-mode Bare ARMv4T
-[`thumbv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * | | Thumb-mode Bare ARMv5TE
+[`thumbv4t-none-eabi`](platform-support/armv4t-none-eabi.md) | * |  | Thumb-mode Bare ARMv4T
+[`thumbv5te-none-eabi`](platform-support/armv5te-none-eabi.md) | * |  | Thumb-mode Bare ARMv5TE
 `thumbv7a-pc-windows-msvc` | ? |  |
 `thumbv7a-uwp-windows-msvc` | ✓ |  |
 `thumbv7neon-unknown-linux-musleabihf` | ? |  | Thumb2-mode ARMv7-A Linux with NEON, MUSL
 [`wasm64-unknown-unknown`](platform-support/wasm64-unknown-unknown.md) | ? |  | WebAssembly
 `x86_64-apple-ios-macabi` | ✓ |  | Apple Catalyst on x86_64
-[`x86_64-apple-tvos`](platform-support/apple-tvos.md) | ? | | x86 64-bit tvOS
-[`x86_64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ | | x86 64-bit Apple WatchOS simulator
+[`x86_64-apple-tvos`](platform-support/apple-tvos.md) | ? |  | x86 64-bit tvOS
+[`x86_64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ |  | x86 64-bit Apple WatchOS simulator
 [`x86_64-pc-nto-qnx710`](platform-support/nto-qnx.md) | ✓ |  | x86 64-bit QNX Neutrino 7.1 RTOS |
 [`x86_64-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ |
 `x86_64-pc-windows-msvc` | * |  | 64-bit Windows XP support
-`x86_64-sun-solaris` | ? |  | Deprecated target for 64-bit Solaris 10/11, illumos
 [`x86_64-unikraft-linux-musl`](platform-support/unikraft-linux-musl.md) | ✓ |   | 64-bit Unikraft with musl
 `x86_64-unknown-dragonfly` | ✓ | ✓ | 64-bit DragonFlyBSD
 `x86_64-unknown-haiku` | ✓ | ✓ | 64-bit Haiku
@@ -351,6 +356,7 @@ target | std | host | notes
 [`x86_64-unknown-openbsd`](platform-support/openbsd.md) | ✓ | ✓ | 64-bit OpenBSD
 `x86_64-uwp-windows-gnu` | ✓ |  |
 `x86_64-uwp-windows-msvc` | ✓ |  |
+[`x86_64-win7-windows-msvc`](platform-support/win7-windows-msvc.md) | ✓ |   | 64-bit Windows 7 support
 `x86_64-wrs-vxworks` | ? |  |
 [`x86_64h-apple-darwin`](platform-support/x86_64h-apple-darwin.md) | ✓ | ✓ | macOS with late-gen Intel (at least Haswell)
 

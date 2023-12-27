@@ -163,12 +163,25 @@ where
             // With custom DSTS, this *will* execute user-defined code, but the same
             // happens at run-time so that's okay.
             match self.size_and_align_of(&base_meta, &field_layout)? {
-                Some((_, align)) => (base_meta, offset.align_to(align)),
-                None => {
-                    // For unsized types with an extern type tail we perform no adjustments.
-                    // NOTE: keep this in sync with `PlaceRef::project_field` in the codegen backend.
-                    assert!(matches!(base_meta, MemPlaceMeta::None));
+                Some((_, align)) => {
+                    // For packed types, we need to cap alignment.
+                    let align = if let ty::Adt(def, _) = base.layout().ty.kind()
+                        && let Some(packed) = def.repr().pack
+                    {
+                        align.min(packed)
+                    } else {
+                        align
+                    };
+                    (base_meta, offset.align_to(align))
+                }
+                None if offset == Size::ZERO => {
+                    // If the offset is 0, then rounding it up to alignment wouldn't change anything,
+                    // so we can do this even for types where we cannot determine the alignment.
                     (base_meta, offset)
+                }
+                None => {
+                    // We don't know the alignment of this field, so we cannot adjust.
+                    throw_unsup_format!("`extern type` does not have a known offset")
                 }
             }
         } else {
@@ -195,6 +208,24 @@ where
         if layout.abi.is_uninhabited() {
             // `read_discriminant` should have excluded uninhabited variants... but ConstProp calls
             // us on dead code.
+            // In the future we might want to allow this to permit code like this:
+            // (this is a Rust/MIR pseudocode mix)
+            // ```
+            // enum Option2 {
+            //   Some(i32, !),
+            //   None,
+            // }
+            //
+            // fn panic() -> ! { panic!() }
+            //
+            // let x: Option2;
+            // x.Some.0 = 42;
+            // x.Some.1 = panic();
+            // SetDiscriminant(x, Some);
+            // ```
+            // However, for now we don't generate such MIR, and this check here *has* found real
+            // bugs (see https://github.com/rust-lang/rust/issues/115145), so we will keep rejecting
+            // it.
             throw_inval!(ConstPropNonsense)
         }
         // This cannot be `transmute` as variants *can* have a smaller size than the entire enum.
@@ -256,13 +287,13 @@ where
     }
 
     /// Iterates over all fields of an array. Much more efficient than doing the
-    /// same by repeatedly calling `operand_index`.
+    /// same by repeatedly calling `project_index`.
     pub fn project_array_fields<'a, P: Projectable<'tcx, M::Provenance>>(
         &self,
         base: &'a P,
     ) -> InterpResult<'tcx, ArrayIterator<'tcx, 'a, M::Provenance, P>> {
         let abi::FieldsShape::Array { stride, .. } = base.layout().fields else {
-            span_bug!(self.cur_span(), "operand_array_fields: expected an array layout");
+            span_bug!(self.cur_span(), "project_array_fields: expected an array layout");
         };
         let len = base.len(self)?;
         let field_layout = base.layout().field(self, 0);

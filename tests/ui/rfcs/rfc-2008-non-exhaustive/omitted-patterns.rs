@@ -1,6 +1,7 @@
 // Test that the `non_exhaustive_omitted_patterns` lint is triggered correctly.
 
 #![feature(non_exhaustive_omitted_patterns_lint, unstable_test_feature)]
+#![deny(unreachable_patterns)]
 
 // aux-build:enums.rs
 extern crate enums;
@@ -31,11 +32,21 @@ pub enum Bar {
     C,
 }
 
+fn no_lint() {
+    let non_enum = NonExhaustiveEnum::Unit;
+    // Ok: without the attribute
+    match non_enum {
+        NonExhaustiveEnum::Unit => {}
+        NonExhaustiveEnum::Tuple(_) => {}
+        _ => {}
+    }
+}
+
+#[deny(non_exhaustive_omitted_patterns)]
 fn main() {
     let enumeration = Bar::A;
 
     // Ok: this is a crate local non_exhaustive enum
-    #[deny(non_exhaustive_omitted_patterns)]
     match enumeration {
         Bar::A => {}
         Bar::B => {}
@@ -44,14 +55,13 @@ fn main() {
 
     let non_enum = NonExhaustiveEnum::Unit;
 
-    // Ok: without the attribute
+    #[allow(non_exhaustive_omitted_patterns)]
     match non_enum {
         NonExhaustiveEnum::Unit => {}
         NonExhaustiveEnum::Tuple(_) => {}
         _ => {}
     }
 
-    #[deny(non_exhaustive_omitted_patterns)]
     match non_enum {
         //~^ some variants are not matched explicitly
         NonExhaustiveEnum::Unit => {}
@@ -59,7 +69,6 @@ fn main() {
         _ => {}
     }
 
-    #[deny(non_exhaustive_omitted_patterns)]
     match non_enum {
         //~^ some variants are not matched explicitly
         NonExhaustiveEnum::Unit | NonExhaustiveEnum::Struct { .. } => {}
@@ -68,7 +77,6 @@ fn main() {
 
     let x = 5;
     // We ignore the guard.
-    #[deny(non_exhaustive_omitted_patterns)]
     match non_enum {
         NonExhaustiveEnum::Unit if x > 10 => {}
         NonExhaustiveEnum::Tuple(_) => {}
@@ -76,14 +84,12 @@ fn main() {
         _ => {}
     }
 
-    #[deny(non_exhaustive_omitted_patterns)]
     match (non_enum, true) {
         (NonExhaustiveEnum::Unit, true) => {}
         (NonExhaustiveEnum::Tuple(_), false) => {}
         (NonExhaustiveEnum::Struct { .. }, false) => {}
         _ => {}
     }
-    #[deny(non_exhaustive_omitted_patterns)]
     match (non_enum, true) {
         //~^ some variants are not matched explicitly
         (NonExhaustiveEnum::Unit, true) => {}
@@ -91,14 +97,12 @@ fn main() {
         _ => {}
     }
 
-    #[deny(non_exhaustive_omitted_patterns)]
     match (true, non_enum) {
         (true, NonExhaustiveEnum::Unit) => {}
         (false, NonExhaustiveEnum::Tuple(_)) => {}
         (false, NonExhaustiveEnum::Struct { .. }) => {}
         _ => {}
     }
-    #[deny(non_exhaustive_omitted_patterns)]
     match (true, non_enum) {
         //~^ some variants are not matched explicitly
         (true, NonExhaustiveEnum::Unit) => {}
@@ -106,7 +110,6 @@ fn main() {
         _ => {}
     }
 
-    #[deny(non_exhaustive_omitted_patterns)]
     match Some(non_enum) {
         //~^ some variants are not matched explicitly
         Some(NonExhaustiveEnum::Unit) => {}
@@ -116,7 +119,6 @@ fn main() {
 
     // Ok: all covered and not `unreachable-patterns`
     #[deny(unreachable_patterns)]
-    #[deny(non_exhaustive_omitted_patterns)]
     match non_enum {
         NonExhaustiveEnum::Unit => {}
         NonExhaustiveEnum::Tuple(_) => {}
@@ -124,7 +126,6 @@ fn main() {
         _ => {}
     }
 
-    #[deny(non_exhaustive_omitted_patterns)]
     match NestedNonExhaustive::B {
         //~^ some variants are not matched explicitly
         NestedNonExhaustive::A(NonExhaustiveEnum::Unit) => {}
@@ -133,54 +134,53 @@ fn main() {
         _ => {}
     }
 
-    #[warn(non_exhaustive_omitted_patterns)]
     match VariantNonExhaustive::Baz(1, 2) {
         VariantNonExhaustive::Baz(_, _) => {}
         VariantNonExhaustive::Bar { x, .. } => {}
     }
     //~^^ some fields are not explicitly listed
 
-    #[warn(non_exhaustive_omitted_patterns)]
     let FunctionalRecord { first_field, second_field, .. } = FunctionalRecord::default();
     //~^ some fields are not explicitly listed
 
     // Ok: this is local
-    #[warn(non_exhaustive_omitted_patterns)]
     let Foo { a, b, .. } = Foo::default();
 
-    #[warn(non_exhaustive_omitted_patterns)]
     let NestedStruct { bar: NormalStruct { first_field, .. }, .. } = NestedStruct::default();
     //~^ some fields are not explicitly listed
     //~^^ some fields are not explicitly listed
 
     // Ok: this tests https://github.com/rust-lang/rust/issues/89382
-    #[warn(non_exhaustive_omitted_patterns)]
     let MixedVisFields { a, b, .. } = MixedVisFields::default();
 
     // Ok: this only has 1 variant
-    #[deny(non_exhaustive_omitted_patterns)]
     match NonExhaustiveSingleVariant::A(true) {
         NonExhaustiveSingleVariant::A(true) => {}
         _ => {}
     }
 
     // We can't catch the case below, so for consistency we don't catch this one either.
-    #[deny(non_exhaustive_omitted_patterns)]
     match NonExhaustiveSingleVariant::A(true) {
         _ => {}
     }
     // We can't catch this case, because this would require digging fully through all the values of
     // any type we encounter. We need to be able to only consider present constructors.
-    #[deny(non_exhaustive_omitted_patterns)]
     match &NonExhaustiveSingleVariant::A(true) {
         _ => {}
     }
 
+    match Some(NonExhaustiveSingleVariant::A(true)) {
+        Some(_) => {}
+        None => {}
+    }
+    match Some(&NonExhaustiveSingleVariant::A(true)) {
+        Some(_) => {}
+        None => {}
+    }
+
     // Ok: we don't lint on `if let` expressions
-    #[deny(non_exhaustive_omitted_patterns)]
     if let NonExhaustiveEnum::Tuple(_) = non_enum {}
 
-    #[deny(non_exhaustive_omitted_patterns)]
     match UnstableEnum::Stable {
         //~^ some variants are not matched explicitly
         UnstableEnum::Stable => {}
@@ -189,7 +189,6 @@ fn main() {
     }
 
     // Ok: the feature is on and all variants are matched
-    #[deny(non_exhaustive_omitted_patterns)]
     match UnstableEnum::Stable {
         UnstableEnum::Stable => {}
         UnstableEnum::Stable2 => {}
@@ -198,50 +197,64 @@ fn main() {
     }
 
     // Ok: the feature is on and both variants are matched
-    #[deny(non_exhaustive_omitted_patterns)]
     match OnlyUnstableEnum::Unstable {
         OnlyUnstableEnum::Unstable => {}
         OnlyUnstableEnum::Unstable2 => {}
         _ => {}
     }
 
-    #[deny(non_exhaustive_omitted_patterns)]
     match OnlyUnstableEnum::Unstable {
         //~^ some variants are not matched explicitly
         OnlyUnstableEnum::Unstable => {}
         _ => {}
     }
 
-    #[warn(non_exhaustive_omitted_patterns)]
     let OnlyUnstableStruct { unstable, .. } = OnlyUnstableStruct::new();
     //~^ some fields are not explicitly listed
 
     // OK: both unstable fields are matched with feature on
-    #[warn(non_exhaustive_omitted_patterns)]
     let OnlyUnstableStruct { unstable, unstable2, .. } = OnlyUnstableStruct::new();
 
-    #[warn(non_exhaustive_omitted_patterns)]
     let UnstableStruct { stable, stable2, .. } = UnstableStruct::default();
     //~^ some fields are not explicitly listed
 
     // OK: both unstable and stable fields are matched with feature on
-    #[warn(non_exhaustive_omitted_patterns)]
     let UnstableStruct { stable, stable2, unstable, .. } = UnstableStruct::default();
 
     // Ok: local bindings are allowed
-    #[deny(non_exhaustive_omitted_patterns)]
     let local = NonExhaustiveEnum::Unit;
 
     // Ok: missing patterns will be blocked by the pattern being refutable
-    #[deny(non_exhaustive_omitted_patterns)]
     let local_refutable @ NonExhaustiveEnum::Unit = NonExhaustiveEnum::Unit;
     //~^ refutable pattern in local binding
 
-    #[deny(non_exhaustive_omitted_patterns)]
+    // Check that matching on a reference results in a correct diagnostic
     match &non_enum {
         //~^ some variants are not matched explicitly
+        //~| pattern `&NonExhaustiveEnum::Struct { .. }` not covered
         NonExhaustiveEnum::Unit => {}
         NonExhaustiveEnum::Tuple(_) => {}
+        _ => {}
+    }
+
+    match (true, &non_enum) {
+        //~^ some variants are not matched explicitly
+        //~| patterns `(_, &NonExhaustiveEnum::Tuple(_))` and `(_, &NonExhaustiveEnum::Struct { .. })` not covered
+        (true, NonExhaustiveEnum::Unit) => {}
+        _ => {}
+    }
+
+    match (&non_enum, true) {
+        //~^ some variants are not matched explicitly
+        //~| patterns `(&NonExhaustiveEnum::Tuple(_), _)` and `(&NonExhaustiveEnum::Struct { .. }, _)` not covered
+        (NonExhaustiveEnum::Unit, true) => {}
+        _ => {}
+    }
+
+    match Some(&non_enum) {
+        //~^ some variants are not matched explicitly
+        //~| pattern `Some(&NonExhaustiveEnum::Struct { .. })` not covered
+        Some(NonExhaustiveEnum::Unit | NonExhaustiveEnum::Tuple(_)) => {}
         _ => {}
     }
 }

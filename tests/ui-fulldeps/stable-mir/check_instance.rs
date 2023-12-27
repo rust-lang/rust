@@ -49,7 +49,7 @@ fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
     assert!(generic.iter().all(|item| mir::mono::Instance::try_from(*item).is_err()));
 
     for instance in instances {
-        test_body(instance.body())
+        test_body(instance.body().unwrap())
     }
     ControlFlow::Continue(())
 }
@@ -59,10 +59,17 @@ fn test_body(body: mir::Body) {
     for term in body.blocks.iter().map(|bb| &bb.terminator) {
         match &term.kind {
             Call { func, .. } => {
-                let TyKind::RigidTy(ty) = func.ty(body.locals()).kind() else { unreachable!() };
+                let TyKind::RigidTy(ty) = func.ty(body.locals()).unwrap().kind() else { unreachable!
+                () };
                 let RigidTy::FnDef(def, args) = ty else { unreachable!() };
-                let result = Instance::resolve(def, &args);
-                assert!(result.is_ok());
+                let instance = Instance::resolve(def, &args).unwrap();
+                let mangled_name = instance.mangled_name();
+                assert!(instance.has_body() || (mangled_name == "setpwent"), "Failed: {func:?}");
+                assert!(instance.has_body() ^ instance.is_foreign_item());
+                if instance.has_body() {
+                    let body = instance.body().unwrap();
+                    assert!(!body.locals().is_empty(), "Body must at least have a return local");
+                }
             }
             Goto { .. } | Assert { .. } | SwitchInt { .. } | Return | Drop { .. } => {
                 /* Do nothing */
@@ -105,10 +112,16 @@ fn generate_input(path: &str) -> std::io::Result<()> {
         LEN > 0 && a[0]
     }}
 
+    extern "C" {{
+        // Body should not be available.
+        fn setpwent();
+    }}
+
     pub fn monomorphic() {{
         let v = vec![10];
         let dup = ty_param(&v);
         assert_eq!(v, dup);
+        unsafe {{ setpwent() }};
     }}
 
     pub mod foo {{

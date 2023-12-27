@@ -12,5 +12,5 @@ LL | pub fn main() { println!("🦀%%%", 0) }
    |                               ^^
    = note: printf formatting is not supported; see the documentation for `std::fmt`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

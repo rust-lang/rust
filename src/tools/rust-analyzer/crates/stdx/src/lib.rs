@@ -1,6 +1,6 @@
 //! Missing batteries for standard libraries.
 
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 
 use std::io as sio;
 use std::process::Command;
@@ -12,8 +12,10 @@ pub mod panic_context;
 pub mod non_empty_vec;
 pub mod rand;
 pub mod thread;
+pub mod anymap;
 
 pub use always_assert::{always, never};
+pub use itertools;
 
 #[inline(always)]
 pub fn is_ci() -> bool {
@@ -37,6 +39,24 @@ pub fn print_backtrace() {
 Uncomment `default = [ "backtrace" ]` in `crates/stdx/Cargo.toml`.
 "#
     );
+}
+
+pub trait TupleExt {
+    type Head;
+    type Tail;
+    fn head(self) -> Self::Head;
+    fn tail(self) -> Self::Tail;
+}
+
+impl<T, U> TupleExt for (T, U) {
+    type Head = T;
+    type Tail = U;
+    fn head(self) -> Self::Head {
+        self.0
+    }
+    fn tail(self) -> Self::Tail {
+        self.1
+    }
 }
 
 pub fn to_lower_snake_case(s: &str) -> String {
@@ -87,6 +107,57 @@ where
     }
 
     words.join("_")
+}
+
+// Taken from rustc.
+pub fn to_camel_case(ident: &str) -> String {
+    ident
+        .trim_matches('_')
+        .split('_')
+        .filter(|component| !component.is_empty())
+        .map(|component| {
+            let mut camel_cased_component = String::with_capacity(component.len());
+
+            let mut new_word = true;
+            let mut prev_is_lower_case = true;
+
+            for c in component.chars() {
+                // Preserve the case if an uppercase letter follows a lowercase letter, so that
+                // `camelCase` is converted to `CamelCase`.
+                if prev_is_lower_case && c.is_uppercase() {
+                    new_word = true;
+                }
+
+                if new_word {
+                    camel_cased_component.extend(c.to_uppercase());
+                } else {
+                    camel_cased_component.extend(c.to_lowercase());
+                }
+
+                prev_is_lower_case = c.is_lowercase();
+                new_word = false;
+            }
+
+            camel_cased_component
+        })
+        .fold((String::new(), None), |(acc, prev): (_, Option<String>), next| {
+            // separate two components with an underscore if their boundary cannot
+            // be distinguished using an uppercase/lowercase case distinction
+            let join = prev
+                .and_then(|prev| {
+                    let f = next.chars().next()?;
+                    let l = prev.chars().last()?;
+                    Some(!char_has_case(l) && !char_has_case(f))
+                })
+                .unwrap_or(false);
+            (acc + if join { "_" } else { "" } + &next, Some(next))
+        })
+        .0
+}
+
+// Taken from rustc.
+pub fn char_has_case(c: char) -> bool {
+    c.is_lowercase() || c.is_uppercase()
 }
 
 pub fn replace(buf: &mut String, from: char, to: &str) {

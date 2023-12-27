@@ -79,6 +79,7 @@ pub(super) fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool) {
             e.complete(p, ERROR);
         }
         EOF | T!['}'] => p.error("expected an item"),
+        T![let] => error_let_stmt(p, "expected an item"),
         _ => p.err_and_bump("expected an item"),
     }
 }

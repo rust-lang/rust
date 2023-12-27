@@ -9,5 +9,5 @@ help: terminate the unicode escape
 LL |     let s = "\u{2603}";
    |                     +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

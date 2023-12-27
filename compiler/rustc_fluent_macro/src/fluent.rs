@@ -57,20 +57,20 @@ fn finish(body: TokenStream, resource: TokenStream) -> proc_macro::TokenStream {
             /// identifiers for different subdiagnostic kinds.
             pub mod _subdiag {
                 /// Default for `#[help]`
-                pub const help: crate::SubdiagnosticMessage =
-                    crate::SubdiagnosticMessage::FluentAttr(std::borrow::Cow::Borrowed("help"));
+                pub const help: rustc_errors::SubdiagnosticMessage =
+                    rustc_errors::SubdiagnosticMessage::FluentAttr(std::borrow::Cow::Borrowed("help"));
                 /// Default for `#[note]`
-                pub const note: crate::SubdiagnosticMessage =
-                    crate::SubdiagnosticMessage::FluentAttr(std::borrow::Cow::Borrowed("note"));
+                pub const note: rustc_errors::SubdiagnosticMessage =
+                    rustc_errors::SubdiagnosticMessage::FluentAttr(std::borrow::Cow::Borrowed("note"));
                 /// Default for `#[warn]`
-                pub const warn: crate::SubdiagnosticMessage =
-                    crate::SubdiagnosticMessage::FluentAttr(std::borrow::Cow::Borrowed("warn"));
+                pub const warn: rustc_errors::SubdiagnosticMessage =
+                    rustc_errors::SubdiagnosticMessage::FluentAttr(std::borrow::Cow::Borrowed("warn"));
                 /// Default for `#[label]`
-                pub const label: crate::SubdiagnosticMessage =
-                    crate::SubdiagnosticMessage::FluentAttr(std::borrow::Cow::Borrowed("label"));
+                pub const label: rustc_errors::SubdiagnosticMessage =
+                    rustc_errors::SubdiagnosticMessage::FluentAttr(std::borrow::Cow::Borrowed("label"));
                 /// Default for `#[suggestion]`
-                pub const suggestion: crate::SubdiagnosticMessage =
-                    crate::SubdiagnosticMessage::FluentAttr(std::borrow::Cow::Borrowed("suggestion"));
+                pub const suggestion: rustc_errors::SubdiagnosticMessage =
+                    rustc_errors::SubdiagnosticMessage::FluentAttr(std::borrow::Cow::Borrowed("suggestion"));
             }
         }
     }
@@ -248,11 +248,8 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                 format!("Constant referring to Fluent message `{name}` from `{crate_name}`");
             constants.extend(quote! {
                 #[doc = #docstr]
-                pub const #snake_name: crate::DiagnosticMessage =
-                    crate::DiagnosticMessage::FluentIdentifier(
-                        std::borrow::Cow::Borrowed(#name),
-                        None
-                    );
+                pub const #snake_name: rustc_errors::DiagnosticMessage =
+                    rustc_errors::DiagnosticMessage::FluentIdentifier(std::borrow::Cow::Borrowed(#name), None);
             });
 
             for Attribute { id: Identifier { name: attr_name }, .. } in attributes {
@@ -279,10 +276,8 @@ pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::Tok
                 );
                 constants.extend(quote! {
                     #[doc = #msg]
-                    pub const #snake_name: crate::SubdiagnosticMessage =
-                        crate::SubdiagnosticMessage::FluentAttr(
-                            std::borrow::Cow::Borrowed(#attr_name)
-                        );
+                    pub const #snake_name: rustc_errors::SubdiagnosticMessage =
+                        rustc_errors::SubdiagnosticMessage::FluentAttr(std::borrow::Cow::Borrowed(#attr_name));
                 });
             }
 

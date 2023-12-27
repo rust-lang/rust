@@ -2,7 +2,7 @@
 
 use std::cell::RefCell;
 
-use crate::diagnostics::diagnostic_builder::{DiagnosticDeriveBuilder, DiagnosticDeriveKind};
+use crate::diagnostics::diagnostic_builder::DiagnosticDeriveKind;
 use crate::diagnostics::error::{span_err, DiagnosticDeriveError};
 use crate::diagnostics::utils::SetOnce;
 use proc_macro2::TokenStream;
@@ -13,32 +13,21 @@ use synstructure::Structure;
 /// The central struct for constructing the `into_diagnostic` method from an annotated struct.
 pub(crate) struct DiagnosticDerive<'a> {
     structure: Structure<'a>,
-    builder: DiagnosticDeriveBuilder,
 }
 
 impl<'a> DiagnosticDerive<'a> {
-    pub(crate) fn new(diag: syn::Ident, handler: syn::Ident, structure: Structure<'a>) -> Self {
-        Self {
-            builder: DiagnosticDeriveBuilder {
-                diag,
-                kind: DiagnosticDeriveKind::Diagnostic { handler },
-            },
-            structure,
-        }
+    pub(crate) fn new(structure: Structure<'a>) -> Self {
+        Self { structure }
     }
 
     pub(crate) fn into_tokens(self) -> TokenStream {
-        let DiagnosticDerive { mut structure, mut builder } = self;
-
+        let DiagnosticDerive { mut structure } = self;
+        let kind = DiagnosticDeriveKind::Diagnostic;
         let slugs = RefCell::new(Vec::new());
-        let implementation = builder.each_variant(&mut structure, |mut builder, variant| {
+        let implementation = kind.each_variant(&mut structure, |mut builder, variant| {
             let preamble = builder.preamble(variant);
             let body = builder.body(variant);
 
-            let diag = &builder.parent.diag;
-            let DiagnosticDeriveKind::Diagnostic { handler } = &builder.parent.kind else {
-                unreachable!()
-            };
             let init = match builder.slug.value_ref() {
                 None => {
                     span_err(builder.span, "diagnostic slug not specified")
@@ -62,7 +51,11 @@ impl<'a> DiagnosticDerive<'a> {
                 Some(slug) => {
                     slugs.borrow_mut().push(slug.clone());
                     quote! {
-                        let mut #diag = #handler.struct_diagnostic(crate::fluent_generated::#slug);
+                        let mut diag = rustc_errors::DiagnosticBuilder::new(
+                            dcx,
+                            level,
+                            crate::fluent_generated::#slug
+                        );
                     }
                 }
             };
@@ -73,15 +66,14 @@ impl<'a> DiagnosticDerive<'a> {
                 #formatting_init
                 #preamble
                 #body
-                #diag
+                diag
             }
         });
 
-        let DiagnosticDeriveKind::Diagnostic { handler } = &builder.kind else { unreachable!() };
-
+        // A lifetime of `'a` causes conflicts, but `_sess` is fine.
         let mut imp = structure.gen_impl(quote! {
-            gen impl<'__diagnostic_handler_sess, G>
-                    rustc_errors::IntoDiagnostic<'__diagnostic_handler_sess, G>
+            gen impl<'_sess, G>
+                    rustc_errors::IntoDiagnostic<'_sess, G>
                     for @Self
                 where G: rustc_errors::EmissionGuarantee
             {
@@ -89,9 +81,9 @@ impl<'a> DiagnosticDerive<'a> {
                 #[track_caller]
                 fn into_diagnostic(
                     self,
-                    #handler: &'__diagnostic_handler_sess rustc_errors::Handler
-                ) -> rustc_errors::DiagnosticBuilder<'__diagnostic_handler_sess, G> {
-                    use rustc_errors::IntoDiagnosticArg;
+                    dcx: &'_sess rustc_errors::DiagCtxt,
+                    level: rustc_errors::Level
+                ) -> rustc_errors::DiagnosticBuilder<'_sess, G> {
                     #implementation
                 }
             }
@@ -106,36 +98,31 @@ impl<'a> DiagnosticDerive<'a> {
 /// The central struct for constructing the `decorate_lint` method from an annotated struct.
 pub(crate) struct LintDiagnosticDerive<'a> {
     structure: Structure<'a>,
-    builder: DiagnosticDeriveBuilder,
 }
 
 impl<'a> LintDiagnosticDerive<'a> {
-    pub(crate) fn new(diag: syn::Ident, structure: Structure<'a>) -> Self {
-        Self {
-            builder: DiagnosticDeriveBuilder { diag, kind: DiagnosticDeriveKind::LintDiagnostic },
-            structure,
-        }
+    pub(crate) fn new(structure: Structure<'a>) -> Self {
+        Self { structure }
     }
 
     pub(crate) fn into_tokens(self) -> TokenStream {
-        let LintDiagnosticDerive { mut structure, mut builder } = self;
-
-        let implementation = builder.each_variant(&mut structure, |mut builder, variant| {
+        let LintDiagnosticDerive { mut structure } = self;
+        let kind = DiagnosticDeriveKind::LintDiagnostic;
+        let implementation = kind.each_variant(&mut structure, |mut builder, variant| {
             let preamble = builder.preamble(variant);
             let body = builder.body(variant);
 
-            let diag = &builder.parent.diag;
             let formatting_init = &builder.formatting_init;
             quote! {
                 #preamble
                 #formatting_init
                 #body
-                #diag
+                diag
             }
         });
 
         let slugs = RefCell::new(Vec::new());
-        let msg = builder.each_variant(&mut structure, |mut builder, variant| {
+        let msg = kind.each_variant(&mut structure, |mut builder, variant| {
             // Collect the slug by generating the preamble.
             let _ = builder.preamble(variant);
 
@@ -168,16 +155,14 @@ impl<'a> LintDiagnosticDerive<'a> {
             }
         });
 
-        let diag = &builder.diag;
         let mut imp = structure.gen_impl(quote! {
             gen impl<'__a> rustc_errors::DecorateLint<'__a, ()> for @Self {
                 #[track_caller]
                 fn decorate_lint<'__b>(
                     self,
-                    #diag: &'__b mut rustc_errors::DiagnosticBuilder<'__a, ()>
-                ) -> &'__b mut rustc_errors::DiagnosticBuilder<'__a, ()> {
-                    use rustc_errors::IntoDiagnosticArg;
-                    #implementation
+                    diag: &'__b mut rustc_errors::DiagnosticBuilder<'__a, ()>
+                ) {
+                    #implementation;
                 }
 
                 fn msg(&self) -> rustc_errors::DiagnosticMessage {
@@ -229,8 +214,8 @@ fn generate_test(slug: &syn::Path, structure: &Structure<'_>) -> TokenStream {
         }
     }
     use std::sync::atomic::{AtomicUsize, Ordering};
-    // We need to make sure that the same diagnostic slug can be used multiple times without causing an
-    // error, so just have a global counter here.
+    // We need to make sure that the same diagnostic slug can be used multiple times without
+    // causing an error, so just have a global counter here.
     static COUNTER: AtomicUsize = AtomicUsize::new(0);
     let slug = slug.get_ident().unwrap();
     let ident = quote::format_ident!("verify_{slug}_{}", COUNTER.fetch_add(1, Ordering::Relaxed));

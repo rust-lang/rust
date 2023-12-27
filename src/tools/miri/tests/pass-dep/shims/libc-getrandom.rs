@@ -1,10 +1,12 @@
-//@only-target-linux
+//@ignore-target-windows: no libc
+//@ignore-target-apple: no getrandom
 
 use std::ptr;
 
 fn main() {
     let mut buf = [0u8; 5];
     unsafe {
+        #[cfg(target_os = "linux")]
         assert_eq!(
             libc::syscall(
                 libc::SYS_getrandom,
@@ -14,6 +16,7 @@ fn main() {
             ),
             0,
         );
+        #[cfg(target_os = "linux")]
         assert_eq!(
             libc::syscall(
                 libc::SYS_getrandom,

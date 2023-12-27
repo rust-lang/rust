@@ -1,5 +1,5 @@
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
+#![doc(rust_logo)]
+#![feature(rustdoc_internals)]
 #![feature(let_chains)]
 #![feature(lazy_cell)]
 #![feature(rustc_attrs)]
@@ -15,7 +15,6 @@ use fluent_bundle::FluentResource;
 use fluent_syntax::parser::ParserError;
 use icu_provider_adapters::fallback::{LocaleFallbackProvider, LocaleFallbacker};
 use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
-use rustc_fluent_macro::fluent_messages;
 use rustc_macros::{Decodable, Encodable};
 use rustc_span::Span;
 use std::borrow::Cow;
@@ -37,8 +36,6 @@ use intl_memoizer::IntlLangMemoizer;
 
 pub use fluent_bundle::{self, types::FluentType, FluentArgs, FluentError, FluentValue};
 pub use unic_langid::{langid, LanguageIdentifier};
-
-fluent_messages! { "../messages.ftl" }
 
 pub type FluentBundle =
     IntoDynSyncSend<fluent_bundle::bundle::FluentBundle<FluentResource, IntlLangMemoizer>>;

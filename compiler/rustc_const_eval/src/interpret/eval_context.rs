@@ -7,7 +7,9 @@ use hir::CRATE_HIR_ID;
 use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
 use rustc_index::IndexVec;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{ErrorHandled, InvalidMetaKind, ReportedErrorInfo};
+use rustc_middle::mir::interpret::{
+    CtfeProvenance, ErrorHandled, InvalidMetaKind, ReportedErrorInfo,
+};
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOf, LayoutOfHelpers,
@@ -20,9 +22,9 @@ use rustc_span::Span;
 use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{
-    AllocId, GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace,
-    MemPlaceMeta, Memory, MemoryKind, OpTy, Operand, Place, PlaceTy, Pointer, PointerArithmetic,
-    Projectable, Provenance, Scalar, StackPopJump,
+    GlobalId, Immediate, InterpErrorInfo, InterpResult, MPlaceTy, Machine, MemPlace, MemPlaceMeta,
+    Memory, MemoryKind, OpTy, Operand, Place, PlaceTy, Pointer, PointerArithmetic, Projectable,
+    Provenance, Scalar, StackPopJump,
 };
 use crate::errors;
 use crate::util;
@@ -84,7 +86,7 @@ impl Drop for SpanGuard {
 }
 
 /// A stack frame.
-pub struct Frame<'mir, 'tcx, Prov: Provenance = AllocId, Extra = ()> {
+pub struct Frame<'mir, 'tcx, Prov: Provenance = CtfeProvenance, Extra = ()> {
     ////////////////////////////////////////////////////////////////////////////////
     // Function and callsite information
     ////////////////////////////////////////////////////////////////////////////////
@@ -156,7 +158,7 @@ pub enum StackPopCleanup {
 
 /// State of a local variable including a memoized layout
 #[derive(Clone)]
-pub struct LocalState<'tcx, Prov: Provenance = AllocId> {
+pub struct LocalState<'tcx, Prov: Provenance = CtfeProvenance> {
     value: LocalValue<Prov>,
     /// Don't modify if `Some`, this is only used to prevent computing the layout twice.
     /// Avoids computing the layout of locals that are never actually initialized.
@@ -173,8 +175,11 @@ impl<Prov: Provenance> std::fmt::Debug for LocalState<'_, Prov> {
 }
 
 /// Current value of a local variable
+///
+/// This does not store the type of the local; the type is given by `body.local_decls` and can never
+/// change, so by not storing here we avoid having to maintain that as an invariant.
 #[derive(Copy, Clone, Debug)] // Miri debug-prints these
-pub(super) enum LocalValue<Prov: Provenance = AllocId> {
+pub(super) enum LocalValue<Prov: Provenance = CtfeProvenance> {
     /// This local is not currently alive, and cannot be used at all.
     Dead,
     /// A normal, live local.
@@ -279,14 +284,12 @@ impl<'mir, 'tcx, Prov: Provenance, Extra> Frame<'mir, 'tcx, Prov, Extra> {
 impl<'tcx> fmt::Display for FrameInfo<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ty::tls::with(|tcx| {
-            if tcx.def_key(self.instance.def_id()).disambiguated_data.data
-                == DefPathData::ClosureExpr
-            {
+            if tcx.def_key(self.instance.def_id()).disambiguated_data.data == DefPathData::Closure {
                 write!(f, "inside closure")
             } else {
-                // Note: this triggers a `good_path_bug` state, which means that if we ever get here
-                // we must emit a diagnostic. We should never display a `FrameInfo` unless we
-                // actually want to emit a warning or error to the user.
+                // Note: this triggers a `good_path_delayed_bug` state, which means that if we ever
+                // get here we must emit a diagnostic. We should never display a `FrameInfo` unless
+                // we actually want to emit a warning or error to the user.
                 write!(f, "inside `{}`", self.instance)
             }
         })
@@ -296,12 +299,12 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
 impl<'tcx> FrameInfo<'tcx> {
     pub fn as_note(&self, tcx: TyCtxt<'tcx>) -> errors::FrameNote {
         let span = self.span;
-        if tcx.def_key(self.instance.def_id()).disambiguated_data.data == DefPathData::ClosureExpr {
+        if tcx.def_key(self.instance.def_id()).disambiguated_data.data == DefPathData::Closure {
             errors::FrameNote { where_: "closure", span, instance: String::new(), times: 0 }
         } else {
             let instance = format!("{}", self.instance);
-            // Note: this triggers a `good_path_bug` state, which means that if we ever get here
-            // we must emit a diagnostic. We should never display a `FrameInfo` unless we
+            // Note: this triggers a `good_path_delayed_bug` state, which means that if we ever get
+            // here we must emit a diagnostic. We should never display a `FrameInfo` unless we
             // actually want to emit a warning or error to the user.
             errors::FrameNote { where_: "instance", span, instance, times: 0 }
         }
@@ -456,7 +459,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.stack()
             .iter()
             .find_map(|frame| frame.body.source.def_id().as_local())
-            .map_or(CRATE_HIR_ID, |def_id| self.tcx.hir().local_def_id_to_hir_id(def_id))
+            .map_or(CRATE_HIR_ID, |def_id| self.tcx.local_def_id_to_hir_id(def_id))
     }
 
     /// Turn the given error into a human-readable string. Expects the string to be printed, so if
@@ -470,12 +473,12 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         backtrace.print_backtrace();
         // FIXME(fee1-dead), HACK: we want to use the error as title therefore we can just extract the
         // label and arguments from the InterpError.
-        let handler = &self.tcx.sess.parse_sess.span_diagnostic;
+        let dcx = self.tcx.dcx();
         #[allow(rustc::untranslatable_diagnostic)]
-        let mut diag = self.tcx.sess.struct_allow("");
+        let mut diag = dcx.struct_allow("");
         let msg = e.diagnostic_message();
-        e.add_args(handler, &mut diag);
-        let s = handler.eagerly_translate_to_string(msg, diag.args());
+        e.add_args(dcx, &mut diag);
+        let s = dcx.eagerly_translate_to_string(msg, diag.args());
         diag.cancel();
         s
     }
@@ -683,14 +686,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert!(layout.fields.count() > 0);
                 trace!("DST layout: {:?}", layout);
 
-                let sized_size = layout.fields.offset(layout.fields.count() - 1);
+                let unsized_offset_unadjusted = layout.fields.offset(layout.fields.count() - 1);
                 let sized_align = layout.align.abi;
-                trace!(
-                    "DST {} statically sized prefix size: {:?} align: {:?}",
-                    layout.ty,
-                    sized_size,
-                    sized_align
-                );
 
                 // Recurse to get the size of the dynamically sized field (must be
                 // the last field). Can't have foreign types here, how would we
@@ -704,36 +701,35 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     return Ok(None);
                 };
 
-                // FIXME (#26403, #27023): We should be adding padding
-                // to `sized_size` (to accommodate the `unsized_align`
-                // required of the unsized field that follows) before
-                // summing it with `sized_size`. (Note that since #26403
-                // is unfixed, we do not yet add the necessary padding
-                // here. But this is where the add would go.)
+                // # First compute the dynamic alignment
 
-                // Return the sum of sizes and max of aligns.
-                let size = sized_size + unsized_size; // `Size` addition
-
-                // Packed types ignore the alignment of their fields.
+                // Packed type alignment needs to be capped.
                 if let ty::Adt(def, _) = layout.ty.kind() {
-                    if def.repr().packed() {
-                        unsized_align = sized_align;
+                    if let Some(packed) = def.repr().pack {
+                        unsized_align = unsized_align.min(packed);
                     }
                 }
 
                 // Choose max of two known alignments (combined value must
                 // be aligned according to more restrictive of the two).
-                let align = sized_align.max(unsized_align);
+                let full_align = sized_align.max(unsized_align);
 
-                // Issue #27023: must add any necessary padding to `size`
-                // (to make it a multiple of `align`) before returning it.
-                let size = size.align_to(align);
+                // # Then compute the dynamic size
+
+                let unsized_offset_adjusted = unsized_offset_unadjusted.align_to(unsized_align);
+                let full_size = (unsized_offset_adjusted + unsized_size).align_to(full_align);
+
+                // Just for our sanitiy's sake, assert that this is equal to what codegen would compute.
+                assert_eq!(
+                    full_size,
+                    (unsized_offset_unadjusted + unsized_size).align_to(full_align)
+                );
 
                 // Check if this brought us over the size limit.
-                if size > self.max_size_of_val() {
+                if full_size > self.max_size_of_val() {
                     throw_ub!(InvalidMeta(InvalidMetaKind::TooBig));
                 }
-                Ok(Some((size, align)))
+                Ok(Some((full_size, full_align)))
             }
             ty::Dynamic(_, _, ty::Dyn) => {
                 let vtable = metadata.unwrap_meta().to_pointer(self)?;

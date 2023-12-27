@@ -119,7 +119,7 @@
 //! # Representation
 //!
 //! Rust guarantees to optimize the following types `T` such that
-//! [`Option<T>`] has the same size and alignment as `T`. In some
+//! [`Option<T>`] has the same size, alignment, and [function call ABI] as `T`. In some
 //! of these cases, Rust further guarantees that
 //! `transmute::<_, Option<T>>([0u8; size_of::<T>()])` is sound and
 //! produces `Option::<T>::None`. These cases are identified by the
@@ -127,7 +127,7 @@
 //!
 //! | `T`                                                                 | `transmute::<_, Option<T>>([0u8; size_of::<T>()])` sound? |
 //! |---------------------------------------------------------------------|----------------------------------------------------------------------|
-//! | [`Box<U>`]                                                          | when `U: Sized`                                                      |
+//! | [`Box<U>`] (specifically, only `Box<U, Global>`)                    | when `U: Sized`                                                      |
 //! | `&U`                                                                | when `U: Sized`                                                      |
 //! | `&mut U`                                                            | when `U: Sized`                                                      |
 //! | `fn`, `extern "C" fn`[^extern_fn]                                   | always                                                               |
@@ -135,11 +135,12 @@
 //! | [`ptr::NonNull<U>`]                                                 | when `U: Sized`                                                      |
 //! | `#[repr(transparent)]` struct around one of the types in this list. | when it holds for the inner type                                     |
 //!
-//! [^extern_fn]: this remains true for any other ABI: `extern "abi" fn` (_e.g._, `extern "system" fn`)
+//! [^extern_fn]: this remains true for any argument/return types and any other ABI: `extern "abi" fn` (_e.g._, `extern "system" fn`)
 //!
 //! [`Box<U>`]: ../../std/boxed/struct.Box.html
 //! [`num::NonZero*`]: crate::num
 //! [`ptr::NonNull<U>`]: crate::ptr::NonNull
+//! [function call ABI]: ../primitive.fn.html#abi-compatibility
 //!
 //! This is called the "null pointer optimization" or NPO.
 //!
@@ -765,7 +766,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[must_use]
-    #[stable(feature = "option_as_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "option_as_slice", since = "1.75.0")]
     pub fn as_slice(&self) -> &[T] {
         // SAFETY: When the `Option` is `Some`, we're using the actual pointer
         // to the payload, with a length of 1, so this is equivalent to
@@ -779,7 +780,7 @@ impl<T> Option<T> {
         // `None` case it's just padding).
         unsafe {
             slice::from_raw_parts(
-                crate::intrinsics::option_payload_ptr(crate::ptr::from_ref(self)),
+                (self as *const Self).byte_add(core::mem::offset_of!(Self, Some.0)).cast(),
                 usize::from(self.is_some()),
             )
         }
@@ -819,7 +820,7 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[must_use]
-    #[stable(feature = "option_as_slice", since = "CURRENT_RUSTC_VERSION")]
+    #[stable(feature = "option_as_slice", since = "1.75.0")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         // SAFETY: When the `Option` is `Some`, we're using the actual pointer
         // to the payload, with a length of 1, so this is equivalent to
@@ -835,8 +836,7 @@ impl<T> Option<T> {
         // the `None` case it's just padding).
         unsafe {
             slice::from_raw_parts_mut(
-                crate::intrinsics::option_payload_ptr(crate::ptr::from_mut(self).cast_const())
-                    .cast_mut(),
+                (self as *mut Self).byte_add(core::mem::offset_of!(Self, Some.0)).cast(),
                 usize::from(self.is_some()),
             )
         }
@@ -1079,8 +1079,6 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(result_option_inspect)]
-    ///
     /// let v = vec![1, 2, 3, 4, 5];
     ///
     /// // prints "got: 4"
@@ -1090,11 +1088,8 @@ impl<T> Option<T> {
     /// let x: Option<&usize> = v.get(5).inspect(|x| println!("got: {x}"));
     /// ```
     #[inline]
-    #[unstable(feature = "result_option_inspect", issue = "91345")]
-    pub fn inspect<F>(self, f: F) -> Self
-    where
-        F: FnOnce(&T),
-    {
+    #[stable(feature = "result_option_inspect", since = "1.76.0")]
+    pub fn inspect<F: FnOnce(&T)>(self, f: F) -> Self {
         if let Some(ref x) = self {
             f(x);
         }

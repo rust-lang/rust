@@ -5,9 +5,10 @@ use crate::{
     io::{self, BorrowedBuf, BorrowedCursor, ErrorKind, IoSlice, IoSliceMut},
     mem,
     net::{Shutdown, SocketAddr},
+    os::solid::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd},
     ptr, str,
     sys_common::net::{getsockopt, setsockopt, sockaddr_to_addr},
-    sys_common::{AsInner, FromInner, IntoInner},
+    sys_common::{FromInner, IntoInner},
     time::Duration,
 };
 
@@ -26,102 +27,6 @@ const fn max_iov() -> usize {
     // Judging by the source code, it's unlimited, but specify a lower
     // value just in case.
     1024
-}
-
-/// A file descriptor.
-#[rustc_layout_scalar_valid_range_start(0)]
-// libstd/os/raw/mod.rs assures me that every libstd-supported platform has a
-// 32-bit c_int. Below is -2, in two's complement, but that only works out
-// because c_int is 32 bits.
-#[rustc_layout_scalar_valid_range_end(0xFF_FF_FF_FE)]
-struct FileDesc {
-    fd: c_int,
-}
-
-impl FileDesc {
-    #[inline]
-    fn new(fd: c_int) -> FileDesc {
-        assert_ne!(fd, -1i32);
-        // Safety: we just asserted that the value is in the valid range and
-        // isn't `-1` (the only value bigger than `0xFF_FF_FF_FE` unsigned)
-        unsafe { FileDesc { fd } }
-    }
-
-    #[inline]
-    fn raw(&self) -> c_int {
-        self.fd
-    }
-
-    /// Extracts the actual file descriptor without closing it.
-    #[inline]
-    fn into_raw(self) -> c_int {
-        let fd = self.fd;
-        mem::forget(self);
-        fd
-    }
-
-    fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        let ret = cvt(unsafe {
-            netc::read(self.fd, buf.as_mut_ptr() as *mut c_void, cmp::min(buf.len(), READ_LIMIT))
-        })?;
-        Ok(ret as usize)
-    }
-
-    fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        let ret = cvt(unsafe {
-            netc::readv(
-                self.fd,
-                bufs.as_ptr() as *const netc::iovec,
-                cmp::min(bufs.len(), max_iov()) as c_int,
-            )
-        })?;
-        Ok(ret as usize)
-    }
-
-    #[inline]
-    fn is_read_vectored(&self) -> bool {
-        true
-    }
-
-    fn write(&self, buf: &[u8]) -> io::Result<usize> {
-        let ret = cvt(unsafe {
-            netc::write(self.fd, buf.as_ptr() as *const c_void, cmp::min(buf.len(), READ_LIMIT))
-        })?;
-        Ok(ret as usize)
-    }
-
-    fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let ret = cvt(unsafe {
-            netc::writev(
-                self.fd,
-                bufs.as_ptr() as *const netc::iovec,
-                cmp::min(bufs.len(), max_iov()) as c_int,
-            )
-        })?;
-        Ok(ret as usize)
-    }
-
-    #[inline]
-    fn is_write_vectored(&self) -> bool {
-        true
-    }
-
-    fn duplicate(&self) -> io::Result<FileDesc> {
-        cvt(unsafe { netc::dup(self.fd) }).map(Self::new)
-    }
-}
-
-impl AsInner<c_int> for FileDesc {
-    #[inline]
-    fn as_inner(&self) -> &c_int {
-        &self.fd
-    }
-}
-
-impl Drop for FileDesc {
-    fn drop(&mut self) {
-        unsafe { netc::close(self.fd) };
-    }
 }
 
 #[doc(hidden)]
@@ -212,7 +117,7 @@ pub(super) fn decode_error_kind(er: abi::ER) -> ErrorKind {
 
 pub fn init() {}
 
-pub struct Socket(FileDesc);
+pub struct Socket(OwnedFd);
 
 impl Socket {
     pub fn new(addr: &SocketAddr, ty: c_int) -> io::Result<Socket> {
@@ -226,16 +131,13 @@ impl Socket {
     pub fn new_raw(fam: c_int, ty: c_int) -> io::Result<Socket> {
         unsafe {
             let fd = cvt(netc::socket(fam, ty, 0))?;
-            let fd = FileDesc::new(fd);
-            let socket = Socket(fd);
-
-            Ok(socket)
+            Ok(Self::from_raw_fd(fd))
         }
     }
 
     pub fn connect(&self, addr: &SocketAddr) -> io::Result<()> {
         let (addr, len) = addr.into_inner();
-        cvt(unsafe { netc::connect(self.0.raw(), addr.as_ptr(), len) })?;
+        cvt(unsafe { netc::connect(self.as_raw_fd(), addr.as_ptr(), len) })?;
         Ok(())
     }
 
@@ -264,14 +166,14 @@ impl Socket {
             timeout.tv_usec = 1;
         }
 
-        let fds = netc::fd_set { num_fds: 1, fds: [self.0.raw()] };
+        let fds = netc::fd_set { num_fds: 1, fds: [self.as_raw_fd()] };
 
         let mut writefds = fds;
         let mut errorfds = fds;
 
         let n = unsafe {
             cvt(netc::select(
-                self.0.raw() + 1,
+                self.as_raw_fd() + 1,
                 ptr::null_mut(),
                 &mut writefds,
                 &mut errorfds,
@@ -294,18 +196,17 @@ impl Socket {
     }
 
     pub fn accept(&self, storage: *mut sockaddr, len: *mut socklen_t) -> io::Result<Socket> {
-        let fd = cvt_r(|| unsafe { netc::accept(self.0.raw(), storage, len) })?;
-        let fd = FileDesc::new(fd);
-        Ok(Socket(fd))
+        let fd = cvt_r(|| unsafe { netc::accept(self.as_raw_fd(), storage, len) })?;
+        unsafe { Ok(Self::from_raw_fd(fd)) }
     }
 
     pub fn duplicate(&self) -> io::Result<Socket> {
-        self.0.duplicate().map(Socket)
+        Ok(Self(self.0.try_clone()?))
     }
 
     fn recv_with_flags(&self, mut buf: BorrowedCursor<'_>, flags: c_int) -> io::Result<()> {
         let ret = cvt(unsafe {
-            netc::recv(self.0.raw(), buf.as_mut().as_mut_ptr().cast(), buf.capacity(), flags)
+            netc::recv(self.as_raw_fd(), buf.as_mut().as_mut_ptr().cast(), buf.capacity(), flags)
         })?;
         unsafe {
             buf.advance(ret as usize);
@@ -330,12 +231,19 @@ impl Socket {
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        self.0.read_vectored(bufs)
+        let ret = cvt(unsafe {
+            netc::readv(
+                self.as_raw_fd(),
+                bufs.as_ptr() as *const netc::iovec,
+                cmp::min(bufs.len(), max_iov()) as c_int,
+            )
+        })?;
+        Ok(ret as usize)
     }
 
     #[inline]
     pub fn is_read_vectored(&self) -> bool {
-        self.0.is_read_vectored()
+        true
     }
 
     fn recv_from_with_flags(
@@ -348,7 +256,7 @@ impl Socket {
 
         let n = cvt(unsafe {
             netc::recvfrom(
-                self.0.raw(),
+                self.as_raw_fd(),
                 buf.as_mut_ptr() as *mut c_void,
                 buf.len(),
                 flags,
@@ -368,16 +276,30 @@ impl Socket {
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
-        self.0.write(buf)
+        let ret = cvt(unsafe {
+            netc::write(
+                self.as_raw_fd(),
+                buf.as_ptr() as *const c_void,
+                cmp::min(buf.len(), READ_LIMIT),
+            )
+        })?;
+        Ok(ret as usize)
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        self.0.write_vectored(bufs)
+        let ret = cvt(unsafe {
+            netc::writev(
+                self.as_raw_fd(),
+                bufs.as_ptr() as *const netc::iovec,
+                cmp::min(bufs.len(), max_iov()) as c_int,
+            )
+        })?;
+        Ok(ret as usize)
     }
 
     #[inline]
     pub fn is_write_vectored(&self) -> bool {
-        self.0.is_write_vectored()
+        true
     }
 
     pub fn set_timeout(&self, dur: Option<Duration>, kind: c_int) -> io::Result<()> {
@@ -423,7 +345,7 @@ impl Socket {
             Shutdown::Read => netc::SHUT_RD,
             Shutdown::Both => netc::SHUT_RDWR,
         };
-        cvt(unsafe { netc::shutdown(self.0.raw(), how) })?;
+        cvt(unsafe { netc::shutdown(self.as_raw_fd(), how) })?;
         Ok(())
     }
 
@@ -454,7 +376,7 @@ impl Socket {
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         let mut nonblocking = nonblocking as c_int;
         cvt(unsafe {
-            netc::ioctl(*self.as_inner(), netc::FIONBIO, (&mut nonblocking) as *mut c_int as _)
+            netc::ioctl(self.as_raw_fd(), netc::FIONBIO, (&mut nonblocking) as *mut c_int as _)
         })
         .map(drop)
     }
@@ -466,25 +388,48 @@ impl Socket {
 
     // This method is used by sys_common code to abstract over targets.
     pub fn as_raw(&self) -> c_int {
-        *self.as_inner()
+        self.as_raw_fd()
     }
 }
 
-impl AsInner<c_int> for Socket {
+impl FromInner<OwnedFd> for Socket {
     #[inline]
-    fn as_inner(&self) -> &c_int {
-        self.0.as_inner()
+    fn from_inner(sock: OwnedFd) -> Socket {
+        Socket(sock)
     }
 }
 
-impl FromInner<c_int> for Socket {
-    fn from_inner(fd: c_int) -> Socket {
-        Socket(FileDesc::new(fd))
+impl IntoInner<OwnedFd> for Socket {
+    #[inline]
+    fn into_inner(self) -> OwnedFd {
+        self.0
     }
 }
 
-impl IntoInner<c_int> for Socket {
-    fn into_inner(self) -> c_int {
-        self.0.into_raw()
+impl AsFd for Socket {
+    #[inline]
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.0.as_fd()
+    }
+}
+
+impl AsRawFd for Socket {
+    #[inline]
+    fn as_raw_fd(&self) -> c_int {
+        self.0.as_raw_fd()
+    }
+}
+
+impl FromRawFd for Socket {
+    #[inline]
+    unsafe fn from_raw_fd(fd: c_int) -> Socket {
+        unsafe { Self(FromRawFd::from_raw_fd(fd)) }
+    }
+}
+
+impl IntoRawFd for Socket {
+    #[inline]
+    fn into_raw_fd(self) -> c_int {
+        self.0.into_raw_fd()
     }
 }

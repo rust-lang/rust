@@ -4,5 +4,5 @@ error: lifetime parameters must be declared prior to type and const parameters
 LL | struct S<T = (), 'a>(&'a T);
    |         ---------^^- help: reorder the parameters: lifetimes, then consts and types: `<'a, T = ()>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

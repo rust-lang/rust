@@ -6,7 +6,7 @@ use clippy_utils::{is_trait_method, path_to_local_id};
 use rustc_errors::Applicability;
 use rustc_hir::{BindingAnnotation, ExprKind, Local, Node, PatKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::sym;
 
 declare_clippy_lint! {

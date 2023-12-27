@@ -3,7 +3,7 @@
 
 use hir::{PathResolution, Semantics};
 use ide_db::{
-    base_db::FileId,
+    base_db::{FileId, FileRange},
     helpers::mod_path_to_ast,
     imports::insert_use::{insert_use, ImportScope},
     source_change::SourceChangeBuilder,
@@ -119,7 +119,7 @@ pub(crate) fn json_in_items(
                     Diagnostic::new(
                         DiagnosticCode::Ra("json-is-not-rust", Severity::WeakWarning),
                         "JSON syntax is not valid as a Rust item",
-                        range,
+                        FileRange { file_id, range },
                     )
                     .with_fixes(Some(vec![{
                         let mut scb = SourceChangeBuilder::new(file_id);
@@ -136,6 +136,7 @@ pub(crate) fn json_in_items(
                                     it,
                                     config.insert_use.prefix_kind,
                                     config.prefer_no_std,
+                                    config.prefer_prelude,
                                 ) {
                                     insert_use(&scope, mod_path_to_ast(&it), &config.insert_use);
                                 }
@@ -148,6 +149,7 @@ pub(crate) fn json_in_items(
                                     it,
                                     config.insert_use.prefix_kind,
                                     config.prefer_no_std,
+                                    config.prefer_prelude,
                                 ) {
                                     insert_use(&scope, mod_path_to_ast(&it), &config.insert_use);
                                 }

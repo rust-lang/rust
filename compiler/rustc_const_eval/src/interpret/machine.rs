@@ -9,15 +9,17 @@ use std::hash::Hash;
 use rustc_apfloat::{Float, FloatConvert};
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_middle::mir;
+use rustc_middle::query::TyCtxtAt;
+use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::DefId;
-use rustc_target::abi::Size;
+use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi as CallAbi;
 
 use super::{
-    AllocBytes, AllocId, AllocRange, Allocation, ConstAllocation, FnArg, Frame, ImmTy, InterpCx,
-    InterpResult, MPlaceTy, MemoryKind, OpTy, PlaceTy, Pointer, Provenance,
+    AllocBytes, AllocId, AllocKind, AllocRange, Allocation, ConstAllocation, CtfeProvenance, FnArg,
+    Frame, ImmTy, InterpCx, InterpResult, MPlaceTy, MemoryKind, Misalignment, OpTy, PlaceTy,
+    Pointer, Provenance,
 };
 
 /// Data returned by Machine::stack_pop,
@@ -46,6 +48,14 @@ pub trait AllocMap<K: Hash + Eq, V> {
     /// Deliberately takes `&mut` because that is sufficient, and some implementations
     /// can be more efficient then (using `RefCell::get_mut`).
     fn contains_key<Q: ?Sized + Hash + Eq>(&mut self, k: &Q) -> bool
+    where
+        K: Borrow<Q>;
+
+    /// Callers should prefer [`AllocMap::contains_key`] when it is possible to call because it may
+    /// be more efficient. This function exists for callers that only have a shared reference
+    /// (which might make it slightly less efficient than `contains_key`, e.g. if
+    /// the data is stored inside a `RefCell`).
+    fn contains_key_ref<Q: ?Sized + Hash + Eq>(&self, k: &Q) -> bool
     where
         K: Borrow<Q>;
 
@@ -135,11 +145,18 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// Whether memory accesses should be alignment-checked.
     fn enforce_alignment(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
 
-    /// Whether, when checking alignment, we should look at the actual address and thus support
-    /// custom alignment logic based on whatever the integer address happens to be.
-    ///
-    /// If this returns true, Provenance::OFFSET_IS_ADDR must be true.
-    fn use_addr_for_alignment_check(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool;
+    /// Gives the machine a chance to detect more misalignment than the built-in checks would catch.
+    #[inline(always)]
+    fn alignment_check(
+        _ecx: &InterpCx<'mir, 'tcx, Self>,
+        _alloc_id: AllocId,
+        _alloc_align: Align,
+        _alloc_kind: AllocKind,
+        _offset: Size,
+        _align: Align,
+    ) -> Option<Misalignment> {
+        None
+    }
 
     /// Whether to enforce the validity invariant for a specific layout.
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>, layout: TyAndLayout<'tcx>) -> bool;
@@ -277,7 +294,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// `def_id` is `Some` if this is the "lazy" allocation of a static.
     #[inline]
     fn before_access_global(
-        _tcx: TyCtxt<'tcx>,
+        _tcx: TyCtxtAt<'tcx>,
         _machine: &Self,
         _alloc_id: AllocId,
         _allocation: ConstAllocation<'tcx>,
@@ -372,7 +389,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// need to mutate.
     #[inline(always)]
     fn before_memory_read(
-        _tcx: TyCtxt<'tcx>,
+        _tcx: TyCtxtAt<'tcx>,
         _machine: &Self,
         _alloc_extra: &Self::AllocExtra,
         _prov: (AllocId, Self::ProvenanceExtra),
@@ -384,7 +401,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// Hook for performing extra checks on a memory write access.
     #[inline(always)]
     fn before_memory_write(
-        _tcx: TyCtxt<'tcx>,
+        _tcx: TyCtxtAt<'tcx>,
         _machine: &mut Self,
         _alloc_extra: &mut Self::AllocExtra,
         _prov: (AllocId, Self::ProvenanceExtra),
@@ -396,7 +413,7 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
     /// Hook for performing extra operations on a memory deallocation.
     #[inline(always)]
     fn before_memory_deallocation(
-        _tcx: TyCtxt<'tcx>,
+        _tcx: TyCtxtAt<'tcx>,
         _machine: &mut Self,
         _alloc_extra: &mut Self::AllocExtra,
         _prov: (AllocId, Self::ProvenanceExtra),
@@ -498,8 +515,8 @@ pub trait Machine<'mir, 'tcx: 'mir>: Sized {
 /// A lot of the flexibility above is just needed for `Miri`, but all "compile-time" machines
 /// (CTFE and ConstProp) use the same instance. Here, we share that code.
 pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
-    type Provenance = AllocId;
-    type ProvenanceExtra = ();
+    type Provenance = CtfeProvenance;
+    type ProvenanceExtra = bool; // the "immutable" flag
 
     type ExtraFnVal = !;
 
@@ -510,12 +527,6 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     type AllocExtra = ();
     type FrameExtra = ();
     type Bytes = Box<[u8]>;
-
-    #[inline(always)]
-    fn use_addr_for_alignment_check(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
-        // We do not support `use_addr`.
-        false
-    }
 
     #[inline(always)]
     fn ignore_optional_overflow_checks(_ecx: &InterpCx<$mir, $tcx, Self>) -> bool {
@@ -558,14 +569,14 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
         def_id: DefId,
     ) -> InterpResult<$tcx, Pointer> {
         // Use the `AllocId` associated with the `DefId`. Any actual *access* will fail.
-        Ok(Pointer::new(ecx.tcx.reserve_and_set_static_alloc(def_id), Size::ZERO))
+        Ok(Pointer::new(ecx.tcx.reserve_and_set_static_alloc(def_id).into(), Size::ZERO))
     }
 
     #[inline(always)]
     fn adjust_alloc_base_pointer(
         _ecx: &InterpCx<$mir, $tcx, Self>,
-        ptr: Pointer<AllocId>,
-    ) -> InterpResult<$tcx, Pointer<AllocId>> {
+        ptr: Pointer<CtfeProvenance>,
+    ) -> InterpResult<$tcx, Pointer<CtfeProvenance>> {
         Ok(ptr)
     }
 
@@ -573,7 +584,7 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     fn ptr_from_addr_cast(
         _ecx: &InterpCx<$mir, $tcx, Self>,
         addr: u64,
-    ) -> InterpResult<$tcx, Pointer<Option<AllocId>>> {
+    ) -> InterpResult<$tcx, Pointer<Option<CtfeProvenance>>> {
         // Allow these casts, but make the pointer not dereferenceable.
         // (I.e., they behave like transmutation.)
         // This is correct because no pointers can ever be exposed in compile-time evaluation.
@@ -583,10 +594,10 @@ pub macro compile_time_machine(<$mir: lifetime, $tcx: lifetime>) {
     #[inline(always)]
     fn ptr_get_alloc(
         _ecx: &InterpCx<$mir, $tcx, Self>,
-        ptr: Pointer<AllocId>,
+        ptr: Pointer<CtfeProvenance>,
     ) -> Option<(AllocId, Size, Self::ProvenanceExtra)> {
         // We know `offset` is relative to the allocation, so we can use `into_parts`.
-        let (alloc_id, offset) = ptr.into_parts();
-        Some((alloc_id, offset, ()))
+        let (prov, offset) = ptr.into_parts();
+        Some((prov.alloc_id(), offset, prov.immutable()))
     }
 }

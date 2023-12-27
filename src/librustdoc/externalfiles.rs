@@ -27,15 +27,15 @@ impl ExternalHtml {
         md_before_content: &[String],
         md_after_content: &[String],
         nightly_build: bool,
-        diag: &rustc_errors::Handler,
+        dcx: &rustc_errors::DiagCtxt,
         id_map: &mut IdMap,
         edition: Edition,
         playground: &Option<Playground>,
     ) -> Option<ExternalHtml> {
         let codes = ErrorCodes::from(nightly_build);
-        let ih = load_external_files(in_header, diag)?;
-        let bc = load_external_files(before_content, diag)?;
-        let m_bc = load_external_files(md_before_content, diag)?;
+        let ih = load_external_files(in_header, dcx)?;
+        let bc = load_external_files(before_content, dcx)?;
+        let m_bc = load_external_files(md_before_content, dcx)?;
         let bc = format!(
             "{bc}{}",
             Markdown {
@@ -51,8 +51,8 @@ impl ExternalHtml {
             }
             .into_string()
         );
-        let ac = load_external_files(after_content, diag)?;
-        let m_ac = load_external_files(md_after_content, diag)?;
+        let ac = load_external_files(after_content, dcx)?;
+        let m_ac = load_external_files(md_after_content, dcx)?;
         let ac = format!(
             "{ac}{}",
             Markdown {
@@ -79,13 +79,13 @@ pub(crate) enum LoadStringError {
 
 pub(crate) fn load_string<P: AsRef<Path>>(
     file_path: P,
-    diag: &rustc_errors::Handler,
+    dcx: &rustc_errors::DiagCtxt,
 ) -> Result<String, LoadStringError> {
     let file_path = file_path.as_ref();
     let contents = match fs::read(file_path) {
         Ok(bytes) => bytes,
         Err(e) => {
-            diag.struct_err(format!(
+            dcx.struct_err(format!(
                 "error reading `{file_path}`: {e}",
                 file_path = file_path.display()
             ))
@@ -96,16 +96,16 @@ pub(crate) fn load_string<P: AsRef<Path>>(
     match str::from_utf8(&contents) {
         Ok(s) => Ok(s.to_string()),
         Err(_) => {
-            diag.struct_err(format!("error reading `{}`: not UTF-8", file_path.display())).emit();
+            dcx.struct_err(format!("error reading `{}`: not UTF-8", file_path.display())).emit();
             Err(LoadStringError::BadUtf8)
         }
     }
 }
 
-fn load_external_files(names: &[String], diag: &rustc_errors::Handler) -> Option<String> {
+fn load_external_files(names: &[String], dcx: &rustc_errors::DiagCtxt) -> Option<String> {
     let mut out = String::new();
     for name in names {
-        let Ok(s) = load_string(name, diag) else { return None };
+        let Ok(s) = load_string(name, dcx) else { return None };
         out.push_str(&s);
         out.push('\n');
     }

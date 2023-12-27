@@ -224,11 +224,13 @@ use self::Ordering::*;
     append_const_msg
 )]
 #[rustc_diagnostic_item = "PartialEq"]
+#[const_trait]
 pub trait PartialEq<Rhs: ?Sized = Self> {
     /// This method tests for `self` and `other` values to be equal, and is used
     /// by `==`.
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_diagnostic_item = "cmp_partialeq_eq"]
     fn eq(&self, other: &Rhs) -> bool;
 
     /// This method tests for `!=`. The default implementation is almost always
@@ -236,6 +238,7 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
     #[inline]
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_diagnostic_item = "cmp_partialeq_ne"]
     fn ne(&self, other: &Rhs) -> bool {
         !self.eq(other)
     }
@@ -1414,7 +1417,8 @@ mod impls {
     macro_rules! partial_eq_impl {
         ($($t:ty)*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
-            impl PartialEq for $t {
+            #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+            impl const PartialEq for $t {
                 #[inline]
                 fn eq(&self, other: &$t) -> bool { (*self) == (*other) }
                 #[inline]

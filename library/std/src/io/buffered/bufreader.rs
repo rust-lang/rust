@@ -507,6 +507,16 @@ impl<R: ?Sized + Seek> Seek for BufReader<R> {
             )
         })
     }
+
+    /// Seeks relative to the current position.
+    ///
+    /// If the new position lies within the buffer, the buffer will not be
+    /// flushed, allowing for more efficient seeks. This method does not return
+    /// the location of the underlying reader, so the caller must track this
+    /// information themselves if it is required.
+    fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
+        self.seek_relative(offset)
+    }
 }
 
 impl<T: ?Sized> SizeHint for BufReader<T> {

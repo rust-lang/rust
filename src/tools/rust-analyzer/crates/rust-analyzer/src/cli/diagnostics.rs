@@ -4,7 +4,7 @@
 use project_model::{CargoConfig, RustLibSource};
 use rustc_hash::FxHashSet;
 
-use hir::{db::HirDatabase, Crate, Module};
+use hir::{db::HirDatabase, Crate, HirFileIdExt, Module};
 use ide::{AssistResolveStrategy, DiagnosticsConfig, Severity};
 use ide_db::base_db::SourceDatabaseExt;
 use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};

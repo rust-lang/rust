@@ -18,11 +18,7 @@ trait Bar {
     fn bar();
 }
 
-// bgr360: I was only able to exercise the code path that raises the
-// "missing ~const qualifier" error by making this base impl non-const, even
-// though that doesn't really make sense to do. As seen below, if the base impl
-// is made const, rustc fails earlier with an overlapping impl failure.
-impl<T> Bar for T
+impl<T> const Bar for T
 where
     T: ~const Foo,
 {

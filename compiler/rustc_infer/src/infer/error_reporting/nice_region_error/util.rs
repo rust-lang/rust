@@ -41,8 +41,8 @@ pub fn find_param_with_region<'tcx>(
     replace_region: Region<'tcx>,
 ) -> Option<AnonymousParamInfo<'tcx>> {
     let (id, bound_region) = match *anon_region {
-        ty::ReFree(ref free_region) => (free_region.scope, free_region.bound_region),
-        ty::ReEarlyBound(ebr) => {
+        ty::ReLateParam(late_param) => (late_param.scope, late_param.bound_region),
+        ty::ReEarlyParam(ebr) => {
             (tcx.parent(ebr.def_id), ty::BoundRegionKind::BrNamed(ebr.def_id, ebr.name))
         }
         _ => return None, // not a free region
@@ -50,11 +50,10 @@ pub fn find_param_with_region<'tcx>(
 
     let hir = &tcx.hir();
     let def_id = id.as_local()?;
-    let hir_id = hir.local_def_id_to_hir_id(def_id);
 
     // FIXME: use def_kind
     // Don't perform this on closures
-    match hir.get(hir_id) {
+    match tcx.hir_node_by_def_id(def_id) {
         hir::Node::Expr(&hir::Expr { kind: hir::ExprKind::Closure { .. }, .. }) => {
             return None;
         }
@@ -161,7 +160,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             && self
                 .tcx()
                 .opt_associated_item(scope_def_id.to_def_id())
-                .map(|i| i.fn_has_self_parameter)
-                == Some(true)
+                .is_some_and(|i| i.fn_has_self_parameter)
     }
 }

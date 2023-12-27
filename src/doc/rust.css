@@ -1,6 +1,7 @@
 /* General structure */
 
 body {
+	font-family: serif;
 	margin: 0 auto;
 	padding: 0 15px;
 	font-size: 18px;
@@ -17,6 +18,9 @@ body {
 	}
 }
 
+h1, h2, h3, h4, h5, h6 {
+	font-family: sans-serif;
+}
 h2, h3, h4, h5, h6 {
 	font-weight: 400;
 	line-height: 1.1;

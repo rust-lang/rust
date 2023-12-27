@@ -4,5 +4,5 @@ error: cannot use register `r8`: high registers (r8+) can only be used as clobbe
 LL |         asm!("", in("r8") 0);
    |                  ^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

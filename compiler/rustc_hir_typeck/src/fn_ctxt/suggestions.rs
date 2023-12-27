@@ -17,8 +17,8 @@ use rustc_hir::def::Res;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{
-    CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId, Node, Path, QPath, Stmt,
-    StmtKind, TyKind, WherePredicate,
+    CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, GenericBound, HirId, Node,
+    Path, QPath, Stmt, StmtKind, TyKind, WherePredicate,
 };
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::traits::{self, StatementAsExpression};
@@ -43,7 +43,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.typeck_results
             .borrow()
             .liberated_fn_sigs()
-            .get(self.tcx.hir().local_def_id_to_hir_id(self.body_id))
+            .get(self.tcx.local_def_id_to_hir_id(self.body_id))
             .copied()
     }
 
@@ -72,23 +72,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         blk_id: hir::HirId,
     ) -> bool {
         let expr = expr.peel_drop_temps();
-        self.suggest_missing_semicolon(err, expr, expected, false);
         let mut pointing_at_return_type = false;
         if let hir::ExprKind::Break(..) = expr.kind {
             // `break` type mismatches provide better context for tail `loop` expressions.
             return false;
         }
         if let Some((fn_id, fn_decl, can_suggest)) = self.get_fn_decl(blk_id) {
-            pointing_at_return_type = self.suggest_missing_return_type(
-                err,
-                &fn_decl,
-                expected,
-                found,
-                can_suggest,
-                fn_id,
-            );
+            pointing_at_return_type =
+                self.suggest_missing_return_type(err, fn_decl, expected, found, can_suggest, fn_id);
             self.suggest_missing_break_or_return_expr(
-                err, expr, &fn_decl, expected, found, blk_id, fn_id,
+                err, expr, fn_decl, expected, found, blk_id, fn_id,
             );
         }
         pointing_at_return_type
@@ -449,12 +442,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     expected,
                 )
             });
+
+            let prefix_wrap = |sugg: &str| {
+                if let Some(name) = self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
+                    format!(": {}{}", name, sugg)
+                } else {
+                    sugg.to_string()
+                }
+            };
+
             // FIXME: This could/should be extended to suggest `as_mut` and `as_deref_mut`,
             // but those checks need to be a bit more delicate and the benefit is diminishing.
             if self.can_eq(self.param_env, found_ty_inner, peeled) && error_tys_equate_as_ref {
+                let sugg = prefix_wrap(".as_ref()");
                 err.subdiagnostic(errors::SuggestConvertViaMethod {
                     span: expr.span.shrink_to_hi(),
-                    sugg: ".as_ref()",
+                    sugg,
                     expected,
                     found,
                     borrow_removal_span,
@@ -465,9 +468,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && self.can_eq(self.param_env, deref_ty, peeled)
                 && error_tys_equate_as_ref
             {
+                let sugg = prefix_wrap(".as_deref()");
                 err.subdiagnostic(errors::SuggestConvertViaMethod {
                     span: expr.span.shrink_to_hi(),
-                    sugg: ".as_deref()",
+                    sugg,
                     expected,
                     found,
                     borrow_removal_span,
@@ -481,10 +485,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.can_eq(self.param_env, found, expected)
                 })
             {
+                let sugg = prefix_wrap(".map(|x| x.as_str())");
                 err.span_suggestion_verbose(
                     expr.span.shrink_to_hi(),
                     fluent::hir_typeck_convert_to_str,
-                    ".map(|x| x.as_str())",
+                    sugg,
                     Applicability::MachineApplicable,
                 );
                 return true;
@@ -544,7 +549,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Coroutine(def_id, ..)
                     if matches!(
                         self.tcx.coroutine_kind(def_id),
-                        Some(CoroutineKind::Async(CoroutineSource::Closure))
+                        Some(CoroutineKind::Desugared(
+                            CoroutineDesugaring::Async,
+                            CoroutineSource::Closure
+                        ))
                     ) =>
                 {
                     errors::SuggestBoxing::AsyncBody
@@ -615,7 +623,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
         let pin_did = self.tcx.lang_items().pin_type();
-        // This guards the `unwrap` and `mk_box` below.
+        // This guards the `new_box` below.
         if pin_did.is_none() || self.tcx.lang_items().owned_box().is_none() {
             return false;
         }
@@ -635,12 +643,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             err.help("use `Box::pin`");
                         }
                         _ => {
+                            let prefix = if let Some(name) =
+                                self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr)
+                            {
+                                format!("{}: ", name)
+                            } else {
+                                String::new()
+                            };
+                            let suggestion = vec![
+                                (expr.span.shrink_to_lo(), format!("{prefix}Box::pin(")),
+                                (expr.span.shrink_to_hi(), ")".to_string()),
+                            ];
                             err.multipart_suggestion(
                                 "you need to pin and box this expression",
-                                vec![
-                                    (expr.span.shrink_to_lo(), "Box::pin(".to_string()),
-                                    (expr.span.shrink_to_hi(), ")".to_string()),
-                                ],
+                                suggestion,
                                 Applicability::MaybeIncorrect,
                             );
                         }
@@ -664,7 +680,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // can suggest Box::pin.
                 let parent = self.tcx.hir().parent_id(expr.hir_id);
                 let Some(Node::Expr(Expr { kind: ExprKind::Call(fn_name, _), .. })) =
-                    self.tcx.hir().find(parent)
+                    self.tcx.opt_hir_node(parent)
                 else {
                     return false;
                 };
@@ -811,10 +827,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let hir::TyKind::OpaqueDef(item_id, ..) = hir_ty.kind
                     && let hir::Node::Item(hir::Item {
                         kind: hir::ItemKind::OpaqueTy(op_ty), ..
-                    }) = self.tcx.hir().get(item_id.hir_id())
-                    && let [
-                        hir::GenericBound::LangItemTrait(hir::LangItem::Future, _, _, generic_args),
-                    ] = op_ty.bounds
+                    }) = self.tcx.hir_node(item_id.hir_id())
+                    && let [hir::GenericBound::Trait(trait_ref, _)] = op_ty.bounds
+                    && let Some(hir::PathSegment { args: Some(generic_args), .. }) =
+                        trait_ref.trait_ref.path.segments.last()
                     && let hir::GenericArgs { bindings: [ty_binding], .. } = generic_args
                     && let hir::TypeBindingKind::Equality { term: hir::Term::Ty(term) } =
                         ty_binding.kind
@@ -846,7 +862,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let bound_vars = self.tcx.late_bound_vars(hir_ty.hir_id.owner.into());
                     let ty = Binder::bind_with_vars(ty, bound_vars);
                     let ty = self.normalize(hir_ty.span, ty);
-                    let ty = self.tcx.erase_late_bound_regions(ty);
+                    let ty = self.tcx.instantiate_bound_regions_with_erased(ty);
                     if self.can_coerce(expected, ty) {
                         err.subdiagnostic(errors::ExpectedReturnTypeLabel::Other {
                             span: hir_ty.span,
@@ -889,7 +905,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ty::Param(expected_ty_as_param) = expected.kind() else { return };
 
-        let fn_node = self.tcx.hir().find(fn_id);
+        let fn_node = self.tcx.opt_hir_node(fn_id);
 
         let Some(hir::Node::Item(hir::Item {
             kind:
@@ -1023,7 +1039,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let hir::FnRetTy::Return(ty) = fn_decl.output {
             let ty = self.astconv().ast_ty_to_ty(ty);
             let bound_vars = self.tcx.late_bound_vars(fn_id);
-            let ty = self.tcx.erase_late_bound_regions(Binder::bind_with_vars(ty, bound_vars));
+            let ty = self
+                .tcx
+                .instantiate_bound_regions_with_erased(Binder::bind_with_vars(ty, bound_vars));
             let ty = match self.tcx.asyncness(fn_id.owner) {
                 ty::Asyncness::Yes => self.get_impl_future_output_ty(ty).unwrap_or_else(|| {
                     span_bug!(fn_decl.output.span(), "failed to get output type of async function")
@@ -1032,7 +1050,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             let ty = self.normalize(expr.span, ty);
             if self.can_coerce(found, ty) {
-                if let Some(node) = self.tcx.hir().find(fn_id)
+                if let Some(node) = self.tcx.opt_hir_node(fn_id)
                     && let Some(owner_node) = node.as_owner()
                     && let Some(span) = expr.span.find_ancestor_inside(owner_node.span())
                 {
@@ -1219,7 +1237,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 span = parent_callsite;
             }
 
-            let sugg = if expr.precedence().order() >= PREC_POSTFIX {
+            let mut sugg = if expr.precedence().order() >= PREC_POSTFIX {
                 vec![(span.shrink_to_hi(), ".into()".to_owned())]
             } else {
                 vec![
@@ -1227,6 +1245,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (span.shrink_to_hi(), ").into()".to_owned()),
                 ]
             };
+            if let Some(name) = self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
+                sugg.insert(0, (expr.span.shrink_to_lo(), format!("{}: ", name)));
+            }
             diag.multipart_suggestion(
                 format!("call `Into::into` on this expression to convert `{expr_ty}` into `{expected_ty}`"),
                 sugg,
@@ -1527,12 +1548,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn is_loop(&self, id: hir::HirId) -> bool {
-        let node = self.tcx.hir().get(id);
+        let node = self.tcx.hir_node(id);
         matches!(node, Node::Expr(Expr { kind: ExprKind::Loop(..), .. }))
     }
 
     fn is_local_statement(&self, id: hir::HirId) -> bool {
-        let node = self.tcx.hir().get(id);
+        let node = self.tcx.hir_node(id);
         matches!(node, Node::Stmt(Stmt { kind: StmtKind::Local(..), .. }))
     }
 
@@ -1601,6 +1622,46 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     None,
                 );
             } else {
+                if let Some(errors) =
+                    self.could_impl_trait(clone_trait_did, expected_ty, self.param_env)
+                {
+                    match &errors[..] {
+                        [] => {}
+                        [error] => {
+                            diag.help(format!(
+                                "`Clone` is not implemented because the trait bound `{}` is \
+                                 not satisfied",
+                                error.obligation.predicate,
+                            ));
+                        }
+                        [errors @ .., last] => {
+                            diag.help(format!(
+                                "`Clone` is not implemented because the following trait bounds \
+                                 could not be satisfied: {} and `{}`",
+                                errors
+                                    .iter()
+                                    .map(|e| format!("`{}`", e.obligation.predicate))
+                                    .collect::<Vec<_>>()
+                                    .join(", "),
+                                last.obligation.predicate,
+                            ));
+                        }
+                    }
+                    for error in errors {
+                        if let traits::FulfillmentErrorCode::CodeSelectionError(
+                            traits::SelectionError::Unimplemented,
+                        ) = error.code
+                            && let ty::PredicateKind::Clause(ty::ClauseKind::Trait(pred)) =
+                                error.obligation.predicate.kind().skip_binder()
+                        {
+                            self.infcx.err_ctxt().suggest_derive(
+                                &error.obligation,
+                                diag,
+                                error.obligation.predicate.kind().rebind(pred),
+                            );
+                        }
+                    }
+                }
                 self.suggest_derive(diag, &[(trait_ref.to_predicate(self.tcx), None, None)]);
             }
         }
@@ -1619,11 +1680,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 None,
                 hir::Path { segments: [_], res: crate::Res::Local(binding), .. },
             )) => {
-                let Some(hir::Node::Pat(hir::Pat { hir_id, .. })) = self.tcx.hir().find(*binding)
+                let Some(hir::Node::Pat(hir::Pat { hir_id, .. })) = self.tcx.opt_hir_node(*binding)
                 else {
                     return expr;
                 };
-                let Some(parent) = self.tcx.hir().find(self.tcx.hir().parent_id(*hir_id)) else {
+                let Some(parent) = self.tcx.opt_hir_node(self.tcx.hir().parent_id(*hir_id)) else {
                     return expr;
                 };
 
@@ -1639,7 +1700,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ..
                     }) => {
                         let Some(hir::Node::Local(hir::Local { init: Some(init), .. })) =
-                            self.tcx.hir().find(self.tcx.hir().parent_id(*pat_hir_id))
+                            self.tcx.opt_hir_node(self.tcx.hir().parent_id(*pat_hir_id))
                         else {
                             return expr;
                         };
@@ -1672,8 +1733,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && let hir::Path { segments: [_], res: crate::Res::Local(binding), .. } =
                         call_expr_path
                     && let Some(hir::Node::Pat(hir::Pat { hir_id, .. })) =
-                        self.tcx.hir().find(*binding)
-                    && let Some(closure) = self.tcx.hir().find(self.tcx.hir().parent_id(*hir_id))
+                        self.tcx.opt_hir_node(*binding)
+                    && let Some(closure) = self.tcx.opt_hir_node(self.tcx.hir().parent_id(*hir_id))
                     && let hir::Node::Local(hir::Local { init: Some(init), .. }) = closure
                     && let Expr {
                         kind: hir::ExprKind::Closure(hir::Closure { body: body_id, .. }),
@@ -1816,6 +1877,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ".expect(\"REASON\")",
             )
         };
+
+        let sugg = match self.tcx.hir().maybe_get_struct_pattern_shorthand_field(expr) {
+            Some(ident) => format!(": {ident}{sugg}"),
+            None => sugg.to_string(),
+        };
+
         err.span_suggestion_verbose(
             expr.span.shrink_to_hi(),
             msg,
@@ -1921,7 +1988,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 if let Some(hir::Node::Block(&hir::Block {
                     span: block_span, expr: Some(e), ..
-                })) = self.tcx.hir().find(parent)
+                })) = self.tcx.opt_hir_node(parent)
                 {
                     if e.hir_id == id {
                         if let Some(span) = expr.span.find_ancestor_inside(block_span) {
@@ -2008,8 +2075,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     Some(CtorKind::Fn) => ("(".to_owned(), ")"),
                     None => (format!(" {{ {field_name}: "), " }"),
 
-                    // unit variants don't have fields
-                    Some(CtorKind::Const) => unreachable!(),
+                    Some(CtorKind::Const) => unreachable!("unit variants don't have fields"),
                 };
 
                 // Suggest constructor as deep into the block tree as possible.
@@ -2137,7 +2203,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// opt.map(|param| { takes_ref(param) });
     /// ```
     fn can_use_as_ref(&self, expr: &hir::Expr<'_>) -> Option<(Vec<(Span, String)>, &'static str)> {
-        let hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) = expr.kind else {
+        let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = expr.kind else {
             return None;
         };
 
@@ -2147,7 +2213,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let local_parent = self.tcx.hir().parent_id(local_id);
         let Some(Node::Param(hir::Param { hir_id: param_hir_id, .. })) =
-            self.tcx.hir().find(local_parent)
+            self.tcx.opt_hir_node(local_parent)
         else {
             return None;
         };
@@ -2157,13 +2223,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir_id: expr_hir_id,
             kind: hir::ExprKind::Closure(hir::Closure { fn_decl: closure_fn_decl, .. }),
             ..
-        })) = self.tcx.hir().find(param_parent)
+        })) = self.tcx.opt_hir_node(param_parent)
         else {
             return None;
         };
 
         let expr_parent = self.tcx.hir().parent_id(*expr_hir_id);
-        let hir = self.tcx.hir().find(expr_parent);
+        let hir = self.tcx.opt_hir_node(expr_parent);
         let closure_params_len = closure_fn_decl.inputs.len();
         let (
             Some(Node::Expr(hir::Expr {
@@ -2293,16 +2359,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 };
                 if self.can_coerce(ref_ty, expected) {
                     let mut sugg_sp = sp;
-                    if let hir::ExprKind::MethodCall(ref segment, receiver, args, _) = expr.kind {
+                    if let hir::ExprKind::MethodCall(segment, receiver, args, _) = expr.kind {
                         let clone_trait =
                             self.tcx.require_lang_item(LangItem::Clone, Some(segment.ident.span));
                         if args.is_empty()
-                            && self.typeck_results.borrow().type_dependent_def_id(expr.hir_id).map(
-                                |did| {
+                            && self
+                                .typeck_results
+                                .borrow()
+                                .type_dependent_def_id(expr.hir_id)
+                                .is_some_and(|did| {
                                     let ai = self.tcx.associated_item(did);
                                     ai.trait_container(self.tcx) == Some(clone_trait)
-                                },
-                            ) == Some(true)
+                                })
                             && segment.ident.name == sym::clone
                         {
                             // If this expression had a clone call when suggesting borrowing
@@ -2311,7 +2379,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
 
-                    if let hir::ExprKind::Unary(hir::UnOp::Deref, ref inner) = expr.kind
+                    if let hir::ExprKind::Unary(hir::UnOp::Deref, inner) = expr.kind
                         && let Some(1) = self.deref_steps(expected, checked_ty)
                     {
                         // We have `*&T`, check if what was expected was `&T`.
@@ -2325,14 +2393,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             false,
                         ));
                     }
-
-                    let needs_parens = match expr.kind {
-                        // parenthesize if needed (Issue #46756)
-                        hir::ExprKind::Cast(_, _) | hir::ExprKind::Binary(_, _, _) => true,
-                        // parenthesize borrows of range literals (Issue #54505)
-                        _ if is_range_literal(expr) => true,
-                        _ => false,
-                    };
 
                     if let Some((sugg, msg)) = self.can_use_as_ref(expr) {
                         return Some((
@@ -2361,18 +2421,48 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
 
-                    let sugg = mutability.ref_prefix_str();
-                    let (sugg, verbose) = if needs_parens {
-                        (
-                            vec![
-                                (sp.shrink_to_lo(), format!("{prefix}{sugg}(")),
-                                (sp.shrink_to_hi(), ")".to_string()),
-                            ],
-                            false,
-                        )
-                    } else {
-                        (vec![(sp.shrink_to_lo(), format!("{prefix}{sugg}"))], true)
+                    let make_sugg = |expr: &Expr<'_>, span: Span, sugg: &str| {
+                        let needs_parens = match expr.kind {
+                            // parenthesize if needed (Issue #46756)
+                            hir::ExprKind::Cast(_, _) | hir::ExprKind::Binary(_, _, _) => true,
+                            // parenthesize borrows of range literals (Issue #54505)
+                            _ if is_range_literal(expr) => true,
+                            _ => false,
+                        };
+
+                        if needs_parens {
+                            (
+                                vec![
+                                    (span.shrink_to_lo(), format!("{prefix}{sugg}(")),
+                                    (span.shrink_to_hi(), ")".to_string()),
+                                ],
+                                false,
+                            )
+                        } else {
+                            (vec![(span.shrink_to_lo(), format!("{prefix}{sugg}"))], true)
+                        }
                     };
+
+                    // Suggest dereferencing the lhs for expressions such as `&T <= T`
+                    if let Some(hir::Node::Expr(hir::Expr {
+                        kind: hir::ExprKind::Binary(_, lhs, ..),
+                        ..
+                    })) = self.tcx.hir().find_parent(expr.hir_id)
+                        && let &ty::Ref(..) = self.check_expr(lhs).kind()
+                    {
+                        let (sugg, verbose) = make_sugg(lhs, lhs.span, "*");
+
+                        return Some((
+                            sugg,
+                            "consider dereferencing the borrow".to_string(),
+                            Applicability::MachineApplicable,
+                            verbose,
+                            false,
+                        ));
+                    }
+
+                    let sugg = mutability.ref_prefix_str();
+                    let (sugg, verbose) = make_sugg(expr, sp, sugg);
                     return Some((
                         sugg,
                         format!("consider {}borrowing here", mutability.mutably_str()),
@@ -2382,11 +2472,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ));
                 }
             }
-            (
-                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, ref expr),
-                _,
-                &ty::Ref(_, checked, _),
-            ) if self.can_sub(self.param_env, checked, expected) => {
+            (hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, expr), _, &ty::Ref(_, checked, _))
+                if self.can_sub(self.param_env, checked, expected) =>
+            {
                 let make_sugg = |start: Span, end: BytePos| {
                     // skip `(` for tuples such as `(c) = (&123)`.
                     // make sure we won't suggest like `(c) = 123)` which is incorrect.
@@ -2581,7 +2669,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let Some(Node::Expr(hir::Expr {
                 kind: hir::ExprKind::If(_, _, Some(else_expr)),
                 ..
-            })) = self.tcx.hir().find(parent_id)
+            })) = self.tcx.opt_hir_node(parent_id)
             {
                 return else_expr.hir_id == expr.hir_id;
             }
@@ -2971,7 +3059,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         };
         let parent = self.tcx.hir().parent_id(expr.hir_id);
-        if let Some(hir::Node::ExprField(_)) = self.tcx.hir().find(parent) {
+        if let Some(hir::Node::ExprField(_)) = self.tcx.opt_hir_node(parent) {
             // Ignore `Foo { field: a..Default::default() }`
             return;
         }
@@ -3050,7 +3138,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir::def::Res::Local(hir_id) = path.res else {
             return;
         };
-        let Some(hir::Node::Pat(pat)) = self.tcx.hir().find(hir_id) else {
+        let Some(hir::Node::Pat(pat)) = self.tcx.opt_hir_node(hir_id) else {
             return;
         };
         let Some(hir::Node::Local(hir::Local { ty: None, init: Some(init), .. })) =

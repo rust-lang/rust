@@ -2,18 +2,19 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then, span_lin
 use clippy_utils::source::{snippet_opt, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::visitors::{for_each_expr_with_closures, Descend};
-use clippy_utils::{fn_def_id, is_from_proc_macro, path_to_local_id, span_find_starting_semi};
+use clippy_utils::{fn_def_id, is_from_proc_macro, is_inside_let_else, path_to_local_id, span_find_starting_semi};
 use core::ops::ControlFlow;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    Block, Body, Expr, ExprKind, FnDecl, ItemKind, LangItem, MatchSource, OwnerNode, PatKind, QPath, Stmt, StmtKind,
+    Block, Body, Expr, ExprKind, FnDecl, HirId, ItemKind, LangItem, MatchSource, Node, OwnerNode, PatKind, QPath, Stmt,
+    StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
+use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{BytePos, Pos, Span};
 use std::borrow::Cow;
@@ -159,6 +160,22 @@ impl<'tcx> ToString for RetReplacement<'tcx> {
 
 declare_lint_pass!(Return => [LET_AND_RETURN, NEEDLESS_RETURN, NEEDLESS_RETURN_WITH_QUESTION_MARK]);
 
+/// Checks if a return statement is "needed" in the middle of a block, or if it can be removed. This
+/// is the case when the enclosing block expression is coerced to some other type, which only works
+/// because of the never-ness of `return` expressions
+fn stmt_needs_never_type(cx: &LateContext<'_>, stmt_hir_id: HirId) -> bool {
+    cx.tcx
+        .hir()
+        .parent_iter(stmt_hir_id)
+        .find_map(|(_, node)| if let Node::Expr(expr) = node { Some(expr) } else { None })
+        .is_some_and(|e| {
+            cx.typeck_results()
+                .expr_adjustments(e)
+                .iter()
+                .any(|adjust| adjust.target != cx.tcx.types.unit && matches!(adjust.kind, Adjust::NeverToAny))
+        })
+}
+
 impl<'tcx> LateLintPass<'tcx> for Return {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
         if !in_external_macro(cx.sess(), stmt.span)
@@ -170,9 +187,11 @@ impl<'tcx> LateLintPass<'tcx> for Return {
             && let ItemKind::Fn(_, _, body) = item.kind
             && let block = cx.tcx.hir().body(body).value
             && let ExprKind::Block(block, _) = block.kind
+            && !is_inside_let_else(cx.tcx, expr)
             && let [.., final_stmt] = block.stmts
             && final_stmt.hir_id != stmt.hir_id
             && !is_from_proc_macro(cx, expr)
+            && !stmt_needs_never_type(cx, stmt.hir_id)
         {
             span_lint_and_sugg(
                 cx,
@@ -188,50 +207,45 @@ impl<'tcx> LateLintPass<'tcx> for Return {
 
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'_>) {
         // we need both a let-binding stmt and an expr
-        if_chain! {
-            if let Some(retexpr) = block.expr;
-            if let Some(stmt) = block.stmts.iter().last();
-            if let StmtKind::Local(local) = &stmt.kind;
-            if local.ty.is_none();
-            if cx.tcx.hir().attrs(local.hir_id).is_empty();
-            if let Some(initexpr) = &local.init;
-            if let PatKind::Binding(_, local_id, _, _) = local.pat.kind;
-            if path_to_local_id(retexpr, local_id);
-            if !last_statement_borrows(cx, initexpr);
-            if !in_external_macro(cx.sess(), initexpr.span);
-            if !in_external_macro(cx.sess(), retexpr.span);
-            if !local.span.from_expansion();
-            then {
-                span_lint_hir_and_then(
-                    cx,
-                    LET_AND_RETURN,
-                    retexpr.hir_id,
-                    retexpr.span,
-                    "returning the result of a `let` binding from a block",
-                    |err| {
-                        err.span_label(local.span, "unnecessary `let` binding");
+        if let Some(retexpr) = block.expr
+            && let Some(stmt) = block.stmts.iter().last()
+            && let StmtKind::Local(local) = &stmt.kind
+            && local.ty.is_none()
+            && cx.tcx.hir().attrs(local.hir_id).is_empty()
+            && let Some(initexpr) = &local.init
+            && let PatKind::Binding(_, local_id, _, _) = local.pat.kind
+            && path_to_local_id(retexpr, local_id)
+            && !last_statement_borrows(cx, initexpr)
+            && !in_external_macro(cx.sess(), initexpr.span)
+            && !in_external_macro(cx.sess(), retexpr.span)
+            && !local.span.from_expansion()
+        {
+            span_lint_hir_and_then(
+                cx,
+                LET_AND_RETURN,
+                retexpr.hir_id,
+                retexpr.span,
+                "returning the result of a `let` binding from a block",
+                |err| {
+                    err.span_label(local.span, "unnecessary `let` binding");
 
-                        if let Some(mut snippet) = snippet_opt(cx, initexpr.span) {
-                            if !cx.typeck_results().expr_adjustments(retexpr).is_empty() {
-                                if !has_enclosing_paren(&snippet) {
-                                    snippet = format!("({snippet})");
-                                }
-                                snippet.push_str(" as _");
+                    if let Some(mut snippet) = snippet_opt(cx, initexpr.span) {
+                        if !cx.typeck_results().expr_adjustments(retexpr).is_empty() {
+                            if !has_enclosing_paren(&snippet) {
+                                snippet = format!("({snippet})");
                             }
-                            err.multipart_suggestion(
-                                "return the expression directly",
-                                vec![
-                                    (local.span, String::new()),
-                                    (retexpr.span, snippet),
-                                ],
-                                Applicability::MachineApplicable,
-                            );
-                        } else {
-                            err.span_help(initexpr.span, "this expression can be directly returned");
+                            snippet.push_str(" as _");
                         }
-                    },
-                );
-            }
+                        err.multipart_suggestion(
+                            "return the expression directly",
+                            vec![(local.span, String::new()), (retexpr.span, snippet)],
+                            Applicability::MachineApplicable,
+                        );
+                    } else {
+                        err.span_help(initexpr.span, "this expression can be directly returned");
+                    }
+                },
+            );
         }
     }
 
@@ -314,7 +328,7 @@ fn check_final_expr<'tcx>(
             let replacement = if let Some(inner_expr) = inner {
                 // if desugar of `do yeet`, don't lint
                 if let ExprKind::Call(path_expr, _) = inner_expr.kind
-                    && let ExprKind::Path(QPath::LangItem(LangItem::TryTraitFromYeet, _, _)) = path_expr.kind
+                    && let ExprKind::Path(QPath::LangItem(LangItem::TryTraitFromYeet, ..)) = path_expr.kind
                 {
                     return;
                 }

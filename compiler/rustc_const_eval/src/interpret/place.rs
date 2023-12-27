@@ -7,22 +7,21 @@ use std::assert_matches::assert_matches;
 use either::{Either, Left, Right};
 
 use rustc_ast::Mutability;
-use rustc_index::IndexSlice;
 use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::Ty;
-use rustc_target::abi::{Abi, Align, FieldIdx, HasDataLayout, Size, FIRST_VARIANT};
+use rustc_target::abi::{Abi, Align, HasDataLayout, Size};
 
 use super::{
-    alloc_range, mir_assign_valid_types, AllocId, AllocRef, AllocRefMut, CheckAlignMsg, ImmTy,
-    Immediate, InterpCx, InterpResult, Machine, MemoryKind, Misalignment, OffsetMode, OpTy,
+    alloc_range, mir_assign_valid_types, AllocRef, AllocRefMut, CheckAlignMsg, CtfeProvenance,
+    ImmTy, Immediate, InterpCx, InterpResult, Machine, MemoryKind, Misalignment, OffsetMode, OpTy,
     Operand, Pointer, PointerArithmetic, Projectable, Provenance, Readable, Scalar,
 };
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
 /// Information required for the sound usage of a `MemPlace`.
-pub enum MemPlaceMeta<Prov: Provenance = AllocId> {
+pub enum MemPlaceMeta<Prov: Provenance = CtfeProvenance> {
     /// The unsized payload (e.g. length for slices or vtable pointer for trait objects).
     Meta(Scalar<Prov>),
     /// `Sized` types or unsized `extern type`
@@ -50,7 +49,7 @@ impl<Prov: Provenance> MemPlaceMeta<Prov> {
 }
 
 #[derive(Copy, Clone, Hash, PartialEq, Eq, Debug)]
-pub(super) struct MemPlace<Prov: Provenance = AllocId> {
+pub(super) struct MemPlace<Prov: Provenance = CtfeProvenance> {
     /// The pointer can be a pure integer, with the `None` provenance.
     pub ptr: Pointer<Option<Prov>>,
     /// Metadata for unsized places. Interpretation is up to the type.
@@ -101,7 +100,7 @@ impl<Prov: Provenance> MemPlace<Prov> {
 
 /// A MemPlace with its layout. Constructing it is only possible in this module.
 #[derive(Clone, Hash, Eq, PartialEq)]
-pub struct MPlaceTy<'tcx, Prov: Provenance = AllocId> {
+pub struct MPlaceTy<'tcx, Prov: Provenance = CtfeProvenance> {
     mplace: MemPlace<Prov>,
     pub layout: TyAndLayout<'tcx>,
 }
@@ -180,7 +179,7 @@ impl<'tcx, Prov: Provenance> Projectable<'tcx, Prov> for MPlaceTy<'tcx, Prov> {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub(super) enum Place<Prov: Provenance = AllocId> {
+pub(super) enum Place<Prov: Provenance = CtfeProvenance> {
     /// A place referring to a value allocated in the `Memory` system.
     Ptr(MemPlace<Prov>),
 
@@ -196,7 +195,7 @@ pub(super) enum Place<Prov: Provenance = AllocId> {
 }
 
 #[derive(Clone)]
-pub struct PlaceTy<'tcx, Prov: Provenance = AllocId> {
+pub struct PlaceTy<'tcx, Prov: Provenance = CtfeProvenance> {
     place: Place<Prov>, // Keep this private; it helps enforce invariants.
     pub layout: TyAndLayout<'tcx>,
 }
@@ -407,11 +406,7 @@ where
         let pointee_type =
             val.layout.ty.builtin_deref(true).expect("`ref_to_mplace` called on non-ptr type").ty;
         let layout = self.layout_of(pointee_type)?;
-        let (ptr, meta) = match **val {
-            Immediate::Scalar(ptr) => (ptr, MemPlaceMeta::None),
-            Immediate::ScalarPair(ptr, meta) => (ptr, MemPlaceMeta::Meta(meta)),
-            Immediate::Uninit => throw_ub!(InvalidUninitBytes(None)),
-        };
+        let (ptr, meta) = val.to_scalar_and_meta();
 
         // `ref_to_mplace` is called on raw pointers even if they don't actually get dereferenced;
         // we hence can't call `size_and_align_of` since that asserts more validity than we want.
@@ -456,7 +451,7 @@ where
     ) -> InterpResult<'tcx, Option<AllocRef<'_, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
     {
         let (size, _align) = self
-            .size_and_align_of_mplace(&mplace)?
+            .size_and_align_of_mplace(mplace)?
             .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
         // We check alignment separately, and *after* checking everything else.
         // If an access is both OOB and misaligned, we want to see the bounds error.
@@ -472,7 +467,7 @@ where
     ) -> InterpResult<'tcx, Option<AllocRefMut<'_, 'tcx, M::Provenance, M::AllocExtra, M::Bytes>>>
     {
         let (size, _align) = self
-            .size_and_align_of_mplace(&mplace)?
+            .size_and_align_of_mplace(mplace)?
             .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
         // We check alignment separately, and raise that error *after* checking everything else.
         // If an access is both OOB and misaligned, we want to see the bounds error.
@@ -975,34 +970,6 @@ where
         let meta = Scalar::from_target_usize(u64::try_from(str.len()).unwrap(), self);
         let layout = self.layout_of(self.tcx.types.str_).unwrap();
         Ok(self.ptr_with_meta_to_mplace(ptr.into(), MemPlaceMeta::Meta(meta), layout))
-    }
-
-    /// Writes the aggregate to the destination.
-    #[instrument(skip(self), level = "trace")]
-    pub fn write_aggregate(
-        &mut self,
-        kind: &mir::AggregateKind<'tcx>,
-        operands: &IndexSlice<FieldIdx, mir::Operand<'tcx>>,
-        dest: &PlaceTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx> {
-        self.write_uninit(dest)?;
-        let (variant_index, variant_dest, active_field_index) = match *kind {
-            mir::AggregateKind::Adt(_, variant_index, _, _, active_field_index) => {
-                let variant_dest = self.project_downcast(dest, variant_index)?;
-                (variant_index, variant_dest, active_field_index)
-            }
-            _ => (FIRST_VARIANT, dest.clone(), None),
-        };
-        if active_field_index.is_some() {
-            assert_eq!(operands.len(), 1);
-        }
-        for (field_index, operand) in operands.iter_enumerated() {
-            let field_index = active_field_index.unwrap_or(field_index);
-            let field_dest = self.project_field(&variant_dest, field_index.as_usize())?;
-            let op = self.eval_operand(operand, Some(field_dest.layout))?;
-            self.copy_op(&op, &field_dest, /*allow_transmute*/ false)?;
-        }
-        self.write_discriminant(variant_index, dest)
     }
 
     pub fn raw_const_to_mplace(

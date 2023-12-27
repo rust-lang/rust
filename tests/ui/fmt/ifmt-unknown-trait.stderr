@@ -15,5 +15,5 @@ LL |     format!("{:notimplemented}", "3");
            - `x`, which uses the `LowerHex` trait
            - `X`, which uses the `UpperHex` trait
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

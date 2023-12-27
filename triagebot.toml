@@ -18,6 +18,7 @@ allow-unauthenticated = [
     "relnotes",
     "requires-*",
     "regression-*",
+    "rla-*",
     "perf-*",
     "AsyncAwait-OnDeck",
     "needs-triage",
@@ -430,7 +431,7 @@ changelog-branch = "master"
 cc = ["@bjorn3"]
 
 [mentions."compiler/rustc_codegen_gcc"]
-cc = ["@antoyo"]
+cc = ["@antoyo", "@GuillaumeGomez"]
 
 [mentions."compiler/rustc_const_eval/src/interpret"]
 message = "Some changes occurred to the CTFE / Miri engine"
@@ -439,6 +440,14 @@ cc = ["@rust-lang/miri"]
 [mentions."compiler/rustc_infer/src/infer/error_reporting/need_type_info.rs"]
 message = "Some changes occurred in need_type_info.rs"
 cc = ["@lcnr"]
+
+[mentions."compiler/rustc_middle/src/ty/relate.rs"]
+message = "Type relation code was changed"
+cc = ["@compiler-errors", "@lcnr"]
+
+[mentions."compiler/rustc_infer/src/infer/relate"]
+message = "Type relation code was changed"
+cc = ["@compiler-errors", "@lcnr"]
 
 [mentions."compiler/rustc_middle/src/mir/interpret"]
 message = "Some changes occurred to the CTFE / Miri engine"
@@ -476,6 +485,10 @@ message = "Some changes occurred in diagnostic error codes"
 cc = ["@GuillaumeGomez"]
 
 [mentions."compiler/rustc_mir_build/src/thir/pattern"]
+message = "Some changes might have occurred in exhaustiveness checking"
+cc = ["@Nadrieril"]
+
+[mentions."compiler/rustc_pattern_analysis"]
 message = "Some changes might have occurred in exhaustiveness checking"
 cc = ["@Nadrieril"]
 
@@ -533,6 +546,12 @@ message = "The Miri subtree was changed"
 cc = ["@rust-lang/miri"]
 
 [mentions."src/tools/rust-analyzer"]
+message = """
+rust-analyzer is developed in its own repository. If possible, consider making \
+this change to [rust-lang/rust-analyzer] instead.
+
+[rust-lang/rust-analyzer]: https://github.com/rust-lang/rust-analyzer
+"""
 cc = ["@rust-lang/rust-analyzer"]
 
 [mentions."src/tools/rustfmt"]
@@ -544,15 +563,15 @@ cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@davidtwco", "@celinval", "@vakar
 
 [mentions."compiler/rustc_error_messages"]
 message = "`rustc_error_messages` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@TaKO8Ki"]
+cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_errors/src/translation.rs"]
 message = "`rustc_errors::translation` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@TaKO8Ki"]
+cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
 
 [mentions."compiler/rustc_macros/src/diagnostics"]
 message = "`rustc_macros::diagnostics` was changed"
-cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@TaKO8Ki"]
+cc = ["@davidtwco", "@compiler-errors", "@TaKO8Ki"]
 
 [mentions."compiler/stable_mir"]
 message = "This PR changes Stable MIR"
@@ -583,11 +602,23 @@ message = "The list of allowed third-party dependencies may have been modified! 
 cc = ["@davidtwco", "@wesleywiser"]
 
 [mentions."src/bootstrap/src/core/config"]
-message = "This PR modifies `src/bootstrap/src/core/config`. If appropriate, please also update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/lib.rs` and `change-id` in `config.example.toml`."
+message = """
+This PR modifies `src/bootstrap/src/core/config`.
+
+If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs`.
+"""
 [mentions."src/bootstrap/defaults"]
-message = "This PR modifies `src/bootstrap/defaults`. If appropriate, please also update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/lib.rs` and `change-id` in `config.example.toml`."
+message = """
+This PR modifies `src/bootstrap/defaults`.
+
+If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs`.
+"""
 [mentions."config.example.toml"]
-message = "This PR changes `config.example.toml`. If appropriate, please also update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/lib.rs` and `change-id` in `config.example.toml`."
+message = """
+This PR modifies `config.example.toml`.
+
+If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs`.
+"""
 
 [mentions."src/bootstrap/defaults/config.compiler.toml"]
 message = "This PR changes src/bootstrap/defaults/config.compiler.toml. If appropriate, please also update `config.codegen.toml` so the defaults are in sync."
@@ -608,7 +639,7 @@ cc = ["@nnethercote"]
 [assign]
 warn_non_default_branch = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
-users_on_vacation = ["jyn514", "WaffleLapkin", "oli-obk"]
+users_on_vacation = ["jyn514", "oli-obk", "spastorino"]
 
 [assign.adhoc_groups]
 compiler-team = [
@@ -713,6 +744,13 @@ style-team = [
     "@yaahc",
 ]
 
+project-stable-mir = [
+    "@celinval",
+    "@oli-obk",
+    "@spastorino",
+    "@ouz-a",
+]
+
 [assign.owners]
 "/.github/workflows" =                       ["infra-ci"]
 "/Cargo.lock" =                              ["@Mark-Simulacrum"]
@@ -729,6 +767,7 @@ style-team = [
 "/compiler/rustc_const_eval/src/interpret" = ["compiler", "mir"]
 "/compiler/rustc_const_eval/src/transform" = ["compiler", "mir-opt"]
 "/compiler/rustc_mir_build/src/build" =      ["compiler", "mir"]
+"/compiler/rustc_smir" =                     ["project-stable-mir"]
 "/compiler/rustc_parse" =                    ["compiler", "parser"]
 "/compiler/rustc_parse/src/lexer" =          ["compiler", "lexer"]
 "/compiler/rustc_query_impl" =               ["compiler", "query-system"]
@@ -736,6 +775,7 @@ style-team = [
 "/compiler/rustc_trait_selection" =          ["compiler", "types"]
 "/compiler/rustc_traits" =                   ["compiler", "types"]
 "/compiler/rustc_type_ir" =                  ["compiler", "types"]
+"/compiler/stable_mir" =                     ["project-stable-mir"]
 "/library/alloc" =                           ["libs"]
 "/library/core" =                            ["libs"]
 "/library/panic_abort" =                     ["libs"]

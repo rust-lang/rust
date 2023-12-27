@@ -6,7 +6,7 @@ use clippy_utils::ty;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::source_map::Spanned;
 use rustc_span::sym;
 
@@ -89,27 +89,17 @@ impl LateLintPass<'_> for InstantSubtraction {
             rhs,
         ) = expr.kind
         {
-            if_chain! {
-                if is_instant_now_call(cx, lhs);
-
-                if is_an_instant(cx, rhs);
-                if let Some(sugg) = Sugg::hir_opt(cx, rhs);
-
-                then {
-                    print_manual_instant_elapsed_sugg(cx, expr, sugg)
-                } else {
-                    if_chain! {
-                        if !expr.span.from_expansion();
-                        if self.msrv.meets(msrvs::TRY_FROM);
-
-                        if is_an_instant(cx, lhs);
-                        if is_a_duration(cx, rhs);
-
-                        then {
-                            print_unchecked_duration_subtraction_sugg(cx, lhs, rhs, expr)
-                        }
-                    }
-                }
+            if is_instant_now_call(cx, lhs)
+                && is_an_instant(cx, rhs)
+                && let Some(sugg) = Sugg::hir_opt(cx, rhs)
+            {
+                print_manual_instant_elapsed_sugg(cx, expr, sugg);
+            } else if !expr.span.from_expansion()
+                && self.msrv.meets(msrvs::TRY_FROM)
+                && is_an_instant(cx, lhs)
+                && is_a_duration(cx, rhs)
+            {
+                print_unchecked_duration_subtraction_sugg(cx, lhs, rhs, expr);
             }
         }
     }

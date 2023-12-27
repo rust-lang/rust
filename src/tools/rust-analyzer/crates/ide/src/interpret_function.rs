@@ -1,10 +1,10 @@
 use hir::Semantics;
-use ide_db::base_db::SourceDatabaseExt;
-use ide_db::RootDatabase;
-use ide_db::{base_db::FilePosition, LineIndexDatabase};
+use ide_db::{
+    base_db::{FilePosition, SourceDatabaseExt},
+    LineIndexDatabase, RootDatabase,
+};
 use std::{fmt::Write, time::Instant};
-use syntax::TextRange;
-use syntax::{algo::find_node_at_offset, ast, AstNode};
+use syntax::{algo::ancestors_at_offset, ast, AstNode, TextRange};
 
 // Feature: Interpret Function
 //
@@ -28,7 +28,9 @@ fn find_and_interpret(db: &RootDatabase, position: FilePosition) -> Option<Strin
     let sema = Semantics::new(db);
     let source_file = sema.parse(position.file_id);
 
-    let item = find_node_at_offset::<ast::Item>(source_file.syntax(), position.offset)?;
+    let item = ancestors_at_offset(source_file.syntax(), position.offset)
+        .filter(|it| !ast::MacroCall::can_cast(it.kind()))
+        .find_map(ast::Item::cast)?;
     let def = match item {
         ast::Item::Fn(it) => sema.to_def(&it)?,
         _ => return None,

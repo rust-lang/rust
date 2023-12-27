@@ -40,7 +40,7 @@ pub(crate) struct ScrapeExamplesOptions {
 impl ScrapeExamplesOptions {
     pub(crate) fn new(
         matches: &getopts::Matches,
-        diag: &rustc_errors::Handler,
+        dcx: &rustc_errors::DiagCtxt,
     ) -> Result<Option<Self>, i32> {
         let output_path = matches.opt_str("scrape-examples-output-path");
         let target_crates = matches.opt_strs("scrape-examples-target-crate");
@@ -52,11 +52,11 @@ impl ScrapeExamplesOptions {
                 scrape_tests,
             })),
             (Some(_), false, _) | (None, true, _) => {
-                diag.err("must use --scrape-examples-output-path and --scrape-examples-target-crate together");
+                dcx.err("must use --scrape-examples-output-path and --scrape-examples-target-crate together");
                 Err(1)
             }
             (None, false, true) => {
-                diag.err("must use --scrape-examples-output-path and --scrape-examples-target-crate with --scrape-tests");
+                dcx.err("must use --scrape-examples-output-path and --scrape-examples-target-crate with --scrape-tests");
                 Err(1)
             }
             (None, false, false) => Ok(None),
@@ -311,7 +311,7 @@ pub(crate) fn run(
 
         // The visitor might have found a type error, which we need to
         // promote to a fatal error
-        if tcx.sess.diagnostic().has_errors_or_lint_errors().is_some() {
+        if tcx.dcx().has_errors_or_lint_errors().is_some() {
             return Err(String::from("Compilation failed, aborting rustdoc"));
         }
 
@@ -325,22 +325,23 @@ pub(crate) fn run(
         // Save output to provided path
         let mut encoder = FileEncoder::new(options.output_path).map_err(|e| e.to_string())?;
         calls.encode(&mut encoder);
-        encoder.finish().map_err(|e| e.to_string())?;
+        encoder.finish().map_err(|(_path, e)| e.to_string())?;
 
         Ok(())
     };
 
     if let Err(e) = inner() {
-        tcx.sess.fatal(e);
+        tcx.dcx().fatal(e);
     }
 
     Ok(())
 }
 
-// Note: the Handler must be passed in explicitly because sess isn't available while parsing options
+// Note: the DiagCtxt must be passed in explicitly because sess isn't available while parsing
+// options.
 pub(crate) fn load_call_locations(
     with_examples: Vec<String>,
-    diag: &rustc_errors::Handler,
+    dcx: &rustc_errors::DiagCtxt,
 ) -> Result<AllCallLocations, i32> {
     let inner = || {
         let mut all_calls: AllCallLocations = FxHashMap::default();
@@ -358,7 +359,7 @@ pub(crate) fn load_call_locations(
     };
 
     inner().map_err(|e: String| {
-        diag.err(format!("failed to load examples: {e}"));
+        dcx.err(format!("failed to load examples: {e}"));
         1
     })
 }

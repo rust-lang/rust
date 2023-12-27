@@ -1,12 +1,13 @@
+// check-pass
+
 #![crate_type = "lib"]
-#![feature(no_core, lang_items, unboxed_closures, auto_traits, intrinsics, rustc_attrs)]
+#![feature(no_core, lang_items, unboxed_closures, auto_traits, intrinsics, rustc_attrs, staged_api)]
 #![feature(fundamental)]
 #![feature(const_trait_impl, effects, const_mut_refs)]
 #![allow(internal_features)]
 #![no_std]
 #![no_core]
-
-// known-bug: #110395
+#![stable(feature = "minicore", since = "1.0.0")]
 
 #[lang = "sized"]
 trait Sized {}
@@ -21,8 +22,7 @@ trait Add<Rhs = Self> {
     fn add(self, rhs: Rhs) -> Self::Output;
 }
 
-// FIXME we shouldn't need to have to specify `Rhs`.
-impl const Add<i32> for i32 {
+impl const Add for i32 {
     type Output = i32;
     fn add(self, rhs: i32) -> i32 {
         loop {}
@@ -83,6 +83,7 @@ trait FnMut<Args: Tuple>: ~const FnOnce<Args> {
 #[lang = "fn_once"]
 #[rustc_paren_sugar]
 trait FnOnce<Args: Tuple> {
+    #[lang = "fn_once_output"]
     type Output;
 
     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
@@ -94,7 +95,7 @@ struct ConstFnMutClosure<CapturedData, Function> {
 }
 
 #[lang = "tuple_trait"]
-pub trait Tuple {}
+trait Tuple {}
 
 macro_rules! impl_fn_mut_tuple {
     ($($var:ident)*) => {
@@ -344,8 +345,16 @@ trait PartialEq<Rhs: ?Sized = Self> {
     }
 }
 
-// FIXME(effects): again, this should not error without Rhs specified
-impl PartialEq<str> for str {
+impl<A: ?Sized, B: ?Sized> const PartialEq<&B> for &A
+where
+    A: ~const PartialEq<B>,
+{
+    fn eq(&self, other: &&B) -> bool {
+        PartialEq::eq(*self, *other)
+    }
+}
+
+impl PartialEq for str {
     fn eq(&self, other: &str) -> bool {
         loop {}
     }
@@ -502,3 +511,17 @@ trait StructuralPartialEq {}
 trait StructuralEq {}
 
 const fn drop<T: ~const Destruct>(_: T) {}
+
+extern "rust-intrinsic" {
+    #[rustc_const_stable(feature = "const_eval_select", since = "1.0.0")]
+    fn const_eval_select<ARG: Tuple, F, G, RET>(
+        arg: ARG,
+        called_in_const: F,
+        called_at_rt: G,
+    ) -> RET
+    /* where clauses enforced by built-in method confirmation:
+    where
+        F: const FnOnce<Arg, Output = RET>,
+        G: FnOnce<Arg, Output = RET>,
+     */;
+}

@@ -10,5 +10,5 @@ LL |     let _ = ();
 LL | }
    | ^ unexpected closing delimiter
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

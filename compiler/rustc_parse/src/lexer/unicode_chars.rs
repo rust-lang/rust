@@ -350,8 +350,7 @@ pub(super) fn check_for_substitution(
 
     let Some((_, ascii_name, token)) = ASCII_ARRAY.iter().find(|&&(s, _, _)| s == ascii_str) else {
         let msg = format!("substitution character not found for '{ch}'");
-        reader.sess.span_diagnostic.span_bug_no_panic(span, msg);
-        return (None, None);
+        reader.sess.dcx.span_bug(span, msg);
     };
 
     // special help suggestion for "directed" double quotes

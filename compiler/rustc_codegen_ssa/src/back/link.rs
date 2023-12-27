@@ -4,7 +4,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
-use rustc_errors::{ErrorGuaranteed, Handler};
+use rustc_errors::{DiagCtxt, ErrorGuaranteed};
 use rustc_fs_util::{fix_windows_verbatim_for_gcc, try_canonicalize};
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_metadata::find_native_static_library;
@@ -44,7 +44,7 @@ use tempfile::Builder as TempFileBuilder;
 use itertools::Itertools;
 use std::cell::OnceCell;
 use std::collections::BTreeSet;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs::{read, File, OpenOptions};
 use std::io::{BufWriter, Write};
 use std::ops::Deref;
@@ -52,10 +52,10 @@ use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
 use std::{env, fmt, fs, io, mem, str};
 
-pub fn ensure_removed(diag_handler: &Handler, path: &Path) {
+pub fn ensure_removed(dcx: &DiagCtxt, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
         if e.kind() != io::ErrorKind::NotFound {
-            diag_handler.err(format!("failed to remove {}: {}", path.display(), e));
+            dcx.err(format!("failed to remove {}: {}", path.display(), e));
         }
     }
 }
@@ -98,7 +98,7 @@ pub fn link_binary<'a>(
             let tmpdir = TempFileBuilder::new()
                 .prefix("rustc")
                 .tempdir()
-                .unwrap_or_else(|error| sess.emit_fatal(errors::CreateTempDir { error }));
+                .unwrap_or_else(|error| sess.dcx().emit_fatal(errors::CreateTempDir { error }));
             let path = MaybeTempDir::new(tmpdir, sess.opts.cg.save_temps);
             let output = out_filename(
                 sess,
@@ -143,7 +143,7 @@ pub fn link_binary<'a>(
                 }
             }
             if sess.opts.json_artifact_notifications {
-                sess.parse_sess.span_diagnostic.emit_artifact_notification(&out_filename, "link");
+                sess.dcx().emit_artifact_notification(&out_filename, "link");
             }
 
             if sess.prof.enabled() {
@@ -161,11 +161,11 @@ pub fn link_binary<'a>(
 
             if output.is_stdout() {
                 if output.is_tty() {
-                    sess.emit_err(errors::BinaryOutputToTty {
+                    sess.dcx().emit_err(errors::BinaryOutputToTty {
                         shorthand: OutputType::Exe.shorthand(),
                     });
                 } else if let Err(e) = copy_to_stdout(&out_filename) {
-                    sess.emit_err(errors::CopyPath::new(&out_filename, output.as_path(), e));
+                    sess.dcx().emit_err(errors::CopyPath::new(&out_filename, output.as_path(), e));
                 }
                 tempfiles_for_stdout_output.push(out_filename);
             }
@@ -183,13 +183,13 @@ pub fn link_binary<'a>(
             |preserve_objects: bool, preserve_dwarf_objects: bool, module: &CompiledModule| {
                 if !preserve_objects {
                     if let Some(ref obj) = module.object {
-                        ensure_removed(sess.diagnostic(), obj);
+                        ensure_removed(sess.dcx(), obj);
                     }
                 }
 
                 if !preserve_dwarf_objects {
                     if let Some(ref dwo_obj) = module.dwarf_object {
-                        ensure_removed(sess.diagnostic(), dwo_obj);
+                        ensure_removed(sess.dcx(), dwo_obj);
                     }
                 }
             };
@@ -208,7 +208,7 @@ pub fn link_binary<'a>(
 
         // Remove the temporary files if output goes to stdout
         for temp in tempfiles_for_stdout_output {
-            ensure_removed(sess.diagnostic(), &temp);
+            ensure_removed(sess.dcx(), &temp);
         }
 
         // If no requested outputs require linking, then the object temporaries should
@@ -270,14 +270,20 @@ pub fn each_linked_rlib(
 
     for &cnum in crates {
         match fmts.get(cnum.as_usize() - 1) {
-            Some(&Linkage::NotLinked | &Linkage::Dynamic | &Linkage::IncludedFromDylib) => continue,
-            Some(_) => {}
+            Some(&Linkage::NotLinked | &Linkage::Dynamic) => continue,
+            Some(&Linkage::IncludedFromDylib) => {
+                // We always link crate `compiler_builtins` statically. When enabling LTO, we include it as well.
+                if info.compiler_builtins != Some(cnum) {
+                    continue;
+                }
+            }
+            Some(&Linkage::Static) => {}
             None => return Err(errors::LinkRlibError::MissingFormat),
         }
         let crate_name = info.crate_name[&cnum];
         let used_crate_source = &info.used_crate_source[&cnum];
         if let Some((path, _)) = &used_crate_source.rlib {
-            f(cnum, &path);
+            f(cnum, path);
         } else {
             if used_crate_source.rmeta.is_some() {
                 return Err(errors::LinkRlibError::OnlyRmetaFound { crate_name });
@@ -374,8 +380,8 @@ fn link_rlib<'a>(
             && let Some(filename) = lib.filename
         {
             let path = find_native_static_library(filename.as_str(), true, &lib_search_paths, sess);
-            let src =
-                read(path).map_err(|e| sess.emit_fatal(errors::ReadFileError { message: e }))?;
+            let src = read(path)
+                .map_err(|e| sess.dcx().emit_fatal(errors::ReadFileError { message: e }))?;
             let (data, _) = create_wrapper_file(sess, b".bundled_lib".to_vec(), &src);
             let wrapper_file = emit_wrapper_file(sess, &data, tmpdir, filename.as_str());
             packed_bundled_libs.push(wrapper_file);
@@ -387,7 +393,7 @@ fn link_rlib<'a>(
                 sess,
             );
             ab.add_archive(&path, Box::new(|_| false)).unwrap_or_else(|error| {
-                sess.emit_fatal(errors::AddNativeLibrary { library_path: path, error })
+                sess.dcx().emit_fatal(errors::AddNativeLibrary { library_path: path, error })
             });
         }
     }
@@ -404,7 +410,7 @@ fn link_rlib<'a>(
         );
 
         ab.add_archive(&output_path, Box::new(|_| false)).unwrap_or_else(|error| {
-            sess.emit_fatal(errors::AddNativeLibrary { library_path: output_path, error });
+            sess.dcx().emit_fatal(errors::AddNativeLibrary { library_path: output_path, error });
         });
     }
 
@@ -469,7 +475,7 @@ fn collate_raw_dylibs<'a, 'b>(
                     // FIXME: when we add support for ordinals, figure out if we need to do anything
                     // if we have two DllImport values with the same name but different ordinals.
                     if import.calling_convention != old_import.calling_convention {
-                        sess.emit_err(errors::MultipleExternalFuncDecl {
+                        sess.dcx().emit_err(errors::MultipleExternalFuncDecl {
                             span: import.span,
                             function: import.name,
                             library_name: &name,
@@ -520,11 +526,10 @@ fn link_staticlib<'a>(
         &codegen_results.crate_info,
         Some(CrateType::Staticlib),
         &mut |cnum, path| {
-            let lto = are_upstream_rust_objects_already_included(sess)
-                && !ignored_for_lto(sess, &codegen_results.crate_info, cnum);
+            let lto = are_upstream_rust_objects_already_included(sess);
 
             let native_libs = codegen_results.crate_info.native_libraries[&cnum].iter();
-            let relevant = native_libs.clone().filter(|lib| relevant_lib(sess, &lib));
+            let relevant = native_libs.clone().filter(|lib| relevant_lib(sess, lib));
             let relevant_libs: FxHashSet<_> = relevant.filter_map(|lib| lib.filename).collect();
 
             let bundled_libs: FxHashSet<_> = native_libs.filter_map(|lib| lib.filename).collect();
@@ -553,7 +558,7 @@ fn link_staticlib<'a>(
 
             archive_builder_builder
                 .extract_bundled_libs(path, tempdir.as_ref(), &relevant_libs)
-                .unwrap_or_else(|e| sess.emit_fatal(e));
+                .unwrap_or_else(|e| sess.dcx().emit_fatal(e));
             for filename in relevant_libs {
                 let joined = tempdir.as_ref().join(filename.as_str());
                 let path = joined.as_path();
@@ -565,7 +570,7 @@ fn link_staticlib<'a>(
         },
     );
     if let Err(e) = res {
-        sess.emit_fatal(e);
+        sess.dcx().emit_fatal(e);
     }
 
     ab.build(out_filename);
@@ -591,9 +596,9 @@ fn link_staticlib<'a>(
             all_rust_dylibs.push(&**path);
         } else {
             if used_crate_source.rmeta.is_some() {
-                sess.emit_fatal(errors::LinkRlibError::OnlyRmetaFound { crate_name });
+                sess.dcx().emit_fatal(errors::LinkRlibError::OnlyRmetaFound { crate_name });
             } else {
-                sess.emit_fatal(errors::LinkRlibError::NotFound { crate_name });
+                sess.dcx().emit_fatal(errors::LinkRlibError::NotFound { crate_name });
             }
         }
     }
@@ -689,7 +694,7 @@ fn link_dwarf_object<'a>(
         // Adding an executable is primarily done to make `thorin` check that all the referenced
         // dwarf objects are found in the end.
         package.add_executable(
-            &executable_out_filename,
+            executable_out_filename,
             thorin::MissingReferencedObjectBehaviour::Skip,
         )?;
 
@@ -710,8 +715,8 @@ fn link_dwarf_object<'a>(
     }) {
         Ok(()) => {}
         Err(e) => {
-            sess.emit_err(errors::ThorinErrorWrapper(e));
-            sess.abort_if_errors();
+            sess.dcx().emit_err(errors::ThorinErrorWrapper(e));
+            sess.dcx().abort_if_errors();
         }
     }
 }
@@ -760,7 +765,7 @@ fn link_natively<'a>(
     }
 
     // May have not found libraries in the right formats.
-    sess.abort_if_errors();
+    sess.dcx().abort_if_errors();
 
     // Invoke the system linker
     info!("{:?}", &cmd);
@@ -928,7 +933,7 @@ fn link_natively<'a>(
                     command: &cmd,
                     escaped_output,
                 };
-                sess.diagnostic().emit_err(err);
+                sess.dcx().emit_err(err);
                 // If MSVC's `link.exe` was expected but the return code
                 // is not a Microsoft LNK error then suggest a way to fix or
                 // install the Visual Studio build tools.
@@ -945,27 +950,27 @@ fn link_natively<'a>(
                     {
                         let is_vs_installed = windows_registry::find_vs_version().is_ok();
                         let has_linker = windows_registry::find_tool(
-                            &sess.opts.target_triple.triple(),
+                            sess.opts.target_triple.triple(),
                             "link.exe",
                         )
                         .is_some();
 
-                        sess.emit_note(errors::LinkExeUnexpectedError);
+                        sess.dcx().emit_note(errors::LinkExeUnexpectedError);
                         if is_vs_installed && has_linker {
                             // the linker is broken
-                            sess.emit_note(errors::RepairVSBuildTools);
-                            sess.emit_note(errors::MissingCppBuildToolComponent);
+                            sess.dcx().emit_note(errors::RepairVSBuildTools);
+                            sess.dcx().emit_note(errors::MissingCppBuildToolComponent);
                         } else if is_vs_installed {
                             // the linker is not installed
-                            sess.emit_note(errors::SelectCppBuildToolWorkload);
+                            sess.dcx().emit_note(errors::SelectCppBuildToolWorkload);
                         } else {
                             // visual studio is not installed
-                            sess.emit_note(errors::VisualStudioNotInstalled);
+                            sess.dcx().emit_note(errors::VisualStudioNotInstalled);
                         }
                     }
                 }
 
-                sess.abort_if_errors();
+                sess.dcx().abort_if_errors();
             }
             info!("linker stderr:\n{}", escape_string(&prog.stderr));
             info!("linker stdout:\n{}", escape_string(&prog.stdout));
@@ -974,9 +979,9 @@ fn link_natively<'a>(
             let linker_not_found = e.kind() == io::ErrorKind::NotFound;
 
             if linker_not_found {
-                sess.emit_err(errors::LinkerNotFound { linker_path, error: e });
+                sess.dcx().emit_err(errors::LinkerNotFound { linker_path, error: e });
             } else {
-                sess.emit_err(errors::UnableToExeLinker {
+                sess.dcx().emit_err(errors::UnableToExeLinker {
                     linker_path,
                     error: e,
                     command_formatted: format!("{:?}", &cmd),
@@ -984,11 +989,11 @@ fn link_natively<'a>(
             }
 
             if sess.target.is_like_msvc && linker_not_found {
-                sess.emit_note(errors::MsvcMissingLinker);
-                sess.emit_note(errors::CheckInstalledVisualStudio);
-                sess.emit_note(errors::InsufficientVSCodeProduct);
+                sess.dcx().emit_note(errors::MsvcMissingLinker);
+                sess.dcx().emit_note(errors::CheckInstalledVisualStudio);
+                sess.dcx().emit_note(errors::InsufficientVSCodeProduct);
             }
-            sess.abort_if_errors();
+            sess.dcx().abort_if_errors();
         }
     }
 
@@ -1011,13 +1016,13 @@ fn link_natively<'a>(
                     if !prog.status.success() {
                         let mut output = prog.stderr.clone();
                         output.extend_from_slice(&prog.stdout);
-                        sess.emit_warning(errors::ProcessingDymutilFailed {
+                        sess.dcx().emit_warning(errors::ProcessingDymutilFailed {
                             status: prog.status,
                             output: escape_string(&output),
                         });
                     }
                 }
-                Err(error) => sess.emit_fatal(errors::UnableToRunDsymutil { error }),
+                Err(error) => sess.dcx().emit_fatal(errors::UnableToRunDsymutil { error }),
             }
         }
 
@@ -1033,19 +1038,19 @@ fn link_natively<'a>(
         SplitDebuginfo::Packed => link_dwarf_object(sess, codegen_results, out_filename),
     }
 
-    let strip = strip_value(sess);
+    let strip = sess.opts.cg.strip;
 
     if sess.target.is_like_osx {
         match (strip, crate_type) {
             (Strip::Debuginfo, _) => {
-                strip_symbols_with_external_utility(sess, "strip", &out_filename, Some("-S"))
+                strip_symbols_with_external_utility(sess, "strip", out_filename, Some("-S"))
             }
             // Per the manpage, `-x` is the maximum safe strip level for dynamic libraries. (#93988)
             (Strip::Symbols, CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro) => {
-                strip_symbols_with_external_utility(sess, "strip", &out_filename, Some("-x"))
+                strip_symbols_with_external_utility(sess, "strip", out_filename, Some("-x"))
             }
             (Strip::Symbols, _) => {
-                strip_symbols_with_external_utility(sess, "strip", &out_filename, None)
+                strip_symbols_with_external_utility(sess, "strip", out_filename, None)
             }
             (Strip::None, _) => {}
         }
@@ -1059,7 +1064,7 @@ fn link_natively<'a>(
         match strip {
             // Always preserve the symbol table (-x).
             Strip::Debuginfo => {
-                strip_symbols_with_external_utility(sess, stripcmd, &out_filename, Some("-x"))
+                strip_symbols_with_external_utility(sess, stripcmd, out_filename, Some("-x"))
             }
             // Strip::Symbols is handled via the --strip-all linker option.
             Strip::Symbols => {}
@@ -1068,14 +1073,6 @@ fn link_natively<'a>(
     }
 
     Ok(())
-}
-
-// Temporarily support both -Z strip and -C strip
-fn strip_value(sess: &Session) -> Strip {
-    match (sess.opts.unstable_opts.strip, sess.opts.cg.strip) {
-        (s, Strip::None) => s,
-        (_, s) => s,
-    }
 }
 
 fn strip_symbols_with_external_utility<'a>(
@@ -1094,14 +1091,14 @@ fn strip_symbols_with_external_utility<'a>(
             if !prog.status.success() {
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
-                sess.emit_warning(errors::StrippingDebugInfoFailed {
+                sess.dcx().emit_warning(errors::StrippingDebugInfoFailed {
                     util,
                     status: prog.status,
                     output: escape_string(&output),
                 });
             }
         }
-        Err(error) => sess.emit_fatal(errors::UnableToRun { util, error }),
+        Err(error) => sess.dcx().emit_fatal(errors::UnableToRun { util, error }),
     }
 }
 
@@ -1253,33 +1250,15 @@ fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
         // rpath to the library as well (the rpath should be absolute, see
         // PR #41352 for details).
         let filename = format!("rustc{channel}_rt.{name}");
-        let path = find_sanitizer_runtime(&sess, &filename);
+        let path = find_sanitizer_runtime(sess, &filename);
         let rpath = path.to_str().expect("non-utf8 component in path");
         linker.args(&["-Wl,-rpath", "-Xlinker", rpath]);
         linker.link_dylib(&filename, false, true);
     } else {
         let filename = format!("librustc{channel}_rt.{name}.a");
-        let path = find_sanitizer_runtime(&sess, &filename).join(&filename);
+        let path = find_sanitizer_runtime(sess, &filename).join(&filename);
         linker.link_whole_rlib(&path);
     }
-}
-
-/// Returns a boolean indicating whether the specified crate should be ignored
-/// during LTO.
-///
-/// Crates ignored during LTO are not lumped together in the "massive object
-/// file" that we create and are linked in their normal rlib states. See
-/// comments below for what crates do not participate in LTO.
-///
-/// It's unusual for a crate to not participate in LTO. Typically only
-/// compiler-specific and unstable crates have a reason to not participate in
-/// LTO.
-pub fn ignored_for_lto(sess: &Session, info: &CrateInfo, cnum: CrateNum) -> bool {
-    // If our target enables builtin function lowering in LLVM then the
-    // crates providing these functions don't participate in LTO (e.g.
-    // no_builtins or compiler builtins crates).
-    !sess.target.no_builtins
-        && (info.compiler_builtins == Some(cnum) || info.is_no_builtins.contains(&cnum))
 }
 
 /// This functions tries to determine the appropriate linker (and corresponding LinkerFlavor) to use
@@ -1332,7 +1311,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
             )),
             (Some(linker), None) => {
                 let stem = linker.file_stem().and_then(|stem| stem.to_str()).unwrap_or_else(|| {
-                    sess.emit_fatal(errors::LinkerFileStem);
+                    sess.dcx().emit_fatal(errors::LinkerFileStem);
                 });
                 let flavor = sess.target.linker_flavor.with_linker_hints(stem);
                 Some((linker, flavor))
@@ -1477,15 +1456,15 @@ fn print_native_static_libs(
         OutFileName::Real(path) => {
             out.overwrite(&lib_args.join(" "), sess);
             if !lib_args.is_empty() {
-                sess.emit_note(errors::StaticLibraryNativeArtifactsToFile { path });
+                sess.dcx().emit_note(errors::StaticLibraryNativeArtifactsToFile { path });
             }
         }
         OutFileName::Stdout => {
             if !lib_args.is_empty() {
-                sess.emit_note(errors::StaticLibraryNativeArtifacts);
+                sess.dcx().emit_note(errors::StaticLibraryNativeArtifacts);
                 // Prefix for greppability
                 // Note: This must not be translated as tools are allowed to depend on this exact string.
-                sess.note_without_error(format!("native-static-libs: {}", &lib_args.join(" ")));
+                sess.dcx().note(format!("native-static-libs: {}", &lib_args.join(" ")));
             }
         }
     }
@@ -1693,7 +1672,7 @@ fn link_output_kind(sess: &Session, crate_type: CrateType) -> LinkOutputKind {
 
 // Returns true if linker is located within sysroot
 fn detect_self_contained_mingw(sess: &Session) -> bool {
-    let (linker, _) = linker_and_flavor(&sess);
+    let (linker, _) = linker_and_flavor(sess);
     // Assume `-C linker=rust-lld` as self-contained mode
     if linker == Path::new("rust-lld") {
         return true;
@@ -1724,7 +1703,7 @@ fn self_contained_components(sess: &Session, crate_type: CrateType) -> LinkSelfC
             // Emit an error if the user requested self-contained mode on the CLI but the target
             // explicitly refuses it.
             if sess.target.link_self_contained.is_disabled() {
-                sess.emit_err(errors::UnsupportedLinkSelfContained);
+                sess.dcx().emit_err(errors::UnsupportedLinkSelfContained);
             }
             self_contained
         } else {
@@ -1745,7 +1724,7 @@ fn self_contained_components(sess: &Session, crate_type: CrateType) -> LinkSelfC
                 LinkSelfContainedDefault::InferredForMingw => {
                     sess.host == sess.target
                         && sess.target.vendor != "uwp"
-                        && detect_self_contained_mingw(&sess)
+                        && detect_self_contained_mingw(sess)
                 }
             }
         };
@@ -1811,14 +1790,14 @@ fn add_link_script(cmd: &mut dyn Linker, sess: &Session, tmpdir: &Path, crate_ty
     match (crate_type, &sess.target.link_script) {
         (CrateType::Cdylib | CrateType::Executable, Some(script)) => {
             if !sess.target.linker_flavor.is_gnu() {
-                sess.emit_fatal(errors::LinkScriptUnavailable);
+                sess.dcx().emit_fatal(errors::LinkScriptUnavailable);
             }
 
             let file_name = ["rustc", &sess.target.llvm_target, "linkfile.ld"].join("-");
 
             let path = tmpdir.join(file_name);
             if let Err(error) = fs::write(&path, script.as_ref()) {
-                sess.emit_fatal(errors::LinkScriptWriteFailure { path, error });
+                sess.dcx().emit_fatal(errors::LinkScriptWriteFailure { path, error });
             }
 
             cmd.arg("--script");
@@ -1942,7 +1921,7 @@ fn add_linked_symbol_object(
     let path = tmpdir.join("symbols.o");
     let result = std::fs::write(&path, file.write().unwrap());
     if let Err(error) = result {
-        sess.emit_fatal(errors::FailedToWrite { path, error });
+        sess.dcx().emit_fatal(errors::FailedToWrite { path, error });
     }
     cmd.add_object(&path);
 }
@@ -2251,9 +2230,9 @@ fn linker_with_args<'a>(
     // ------------ Late order-dependent options ------------
 
     // Doesn't really make sense.
-    // FIXME: In practice built-in target specs use this for arbitrary order-independent options,
-    // introduce a target spec option for order-independent linker options, migrate built-in specs
-    // to it and remove the option.
+    // FIXME: In practice built-in target specs use this for arbitrary order-independent options.
+    // Introduce a target spec option for order-independent linker options, migrate built-in specs
+    // to it and remove the option. Currently the last holdout is wasm32-unknown-emscripten.
     add_post_link_args(cmd, sess, flavor);
 
     Ok(cmd.take_cmd())
@@ -2370,7 +2349,7 @@ fn add_order_independent_options(
     );
 
     // Pass debuginfo, NatVis debugger visualizers and strip flags down to the linker.
-    cmd.debuginfo(strip_value(sess), &natvis_visualizers);
+    cmd.debuginfo(sess.opts.cg.strip, &natvis_visualizers);
 
     // We want to prevent the compiler from accidentally leaking in any system libraries,
     // so by default we tell linkers not to link to any default libraries.
@@ -2384,6 +2363,11 @@ fn add_order_independent_options(
 
     if sess.opts.cg.control_flow_guard != CFGuard::Disabled {
         cmd.control_flow_guard();
+    }
+
+    // OBJECT-FILES-NO, AUDIT-ORDER
+    if sess.opts.unstable_opts.ehcont_guard {
+        cmd.ehcont_guard();
     }
 
     add_rpath_args(cmd, sess, codegen_results, out_filename);
@@ -2406,7 +2390,7 @@ fn collect_natvis_visualizers(
                 visualizer_paths.push(visualizer_out_file);
             }
             Err(error) => {
-                sess.emit_warning(errors::UnableToWriteDebuggerVisualizer {
+                sess.dcx().emit_warning(errors::UnableToWriteDebuggerVisualizer {
                     path: visualizer_out_file,
                     error,
                 });
@@ -2440,8 +2424,8 @@ fn add_native_libs_from_crate(
         // If rlib contains native libs as archives, unpack them to tmpdir.
         let rlib = &codegen_results.crate_info.used_crate_source[&cnum].rlib.as_ref().unwrap().0;
         archive_builder_builder
-            .extract_bundled_libs(rlib, tmpdir, &bundled_libs)
-            .unwrap_or_else(|e| sess.emit_fatal(e));
+            .extract_bundled_libs(rlib, tmpdir, bundled_libs)
+            .unwrap_or_else(|e| sess.dcx().emit_fatal(e));
     }
 
     let native_libs = match cnum {
@@ -2493,7 +2477,7 @@ fn add_native_libs_from_crate(
                             cmd.link_whole_staticlib(
                                 name,
                                 verbatim,
-                                &search_paths.get_or_init(|| archive_search_paths(sess)),
+                                search_paths.get_or_init(|| archive_search_paths(sess)),
                             );
                         } else {
                             cmd.link_staticlib(name, verbatim)
@@ -2530,7 +2514,7 @@ fn add_native_libs_from_crate(
             NativeLibKind::WasmImportModule => {}
             NativeLibKind::LinkArg => {
                 if link_static {
-                    cmd.arg(name);
+                    cmd.linker_arg(OsStr::new(name), verbatim);
                 }
             }
         }
@@ -2727,7 +2711,7 @@ fn rehome_sysroot_lib_dir<'a>(sess: &'a Session, lib_dir: &Path) -> PathBuf {
         // already had `fix_windows_verbatim_for_gcc()` applied if needed.
         sysroot_lib_path
     } else {
-        fix_windows_verbatim_for_gcc(&lib_dir)
+        fix_windows_verbatim_for_gcc(lib_dir)
     }
 }
 
@@ -2741,10 +2725,6 @@ fn rehome_sysroot_lib_dir<'a>(sess: &'a Session, lib_dir: &Path) -> PathBuf {
 // the linker doesn't try to include them twice (or whine about duplicate
 // symbols). We must continue to include the rest of the rlib, however, as
 // it may contain static native libraries which must be linked in.
-//
-// (*) Crates marked with `#![no_builtins]` don't participate in LTO and
-// their bytecode wasn't included. The object files in those libraries must
-// still be passed to the linker.
 //
 // Note, however, that if we're not doing LTO we can just pass the rlib
 // blindly to the linker (fast) because it's fine if it's not actually
@@ -2764,16 +2744,14 @@ fn add_static_crate<'a>(
     let mut link_upstream = |path: &Path| {
         let rlib_path = if let Some(dir) = path.parent() {
             let file_name = path.file_name().expect("rlib path has no file name path component");
-            rehome_sysroot_lib_dir(sess, &dir).join(file_name)
+            rehome_sysroot_lib_dir(sess, dir).join(file_name)
         } else {
             fix_windows_verbatim_for_gcc(path)
         };
         cmd.link_rlib(&rlib_path);
     };
 
-    if !are_upstream_rust_objects_already_included(sess)
-        || ignored_for_lto(sess, &codegen_results.crate_info, cnum)
-    {
+    if !are_upstream_rust_objects_already_included(sess) {
         link_upstream(cratepath);
         return;
     }
@@ -2787,8 +2765,6 @@ fn add_static_crate<'a>(
         let canonical_name = name.replace('-', "_");
         let upstream_rust_objects_already_included =
             are_upstream_rust_objects_already_included(sess);
-        let is_builtins =
-            sess.target.no_builtins || !codegen_results.crate_info.is_no_builtins.contains(&cnum);
 
         let mut archive = archive_builder_builder.new_archive_builder(sess);
         if let Err(error) = archive.add_archive(
@@ -2801,13 +2777,12 @@ fn add_static_crate<'a>(
                 let canonical = f.replace('-', "_");
 
                 let is_rust_object =
-                    canonical.starts_with(&canonical_name) && looks_like_rust_object_file(&f);
+                    canonical.starts_with(&canonical_name) && looks_like_rust_object_file(f);
 
                 // If we're performing LTO and this is a rust-generated object
                 // file, then we don't need the object file as it's part of the
-                // LTO module. Note that `#![no_builtins]` is excluded from LTO,
-                // though, so we let that object file slide.
-                if upstream_rust_objects_already_included && is_rust_object && is_builtins {
+                // LTO module.
+                if upstream_rust_objects_already_included && is_rust_object {
                     return true;
                 }
 
@@ -2823,7 +2798,7 @@ fn add_static_crate<'a>(
                 false
             }),
         ) {
-            sess.emit_fatal(errors::RlibArchiveBuildFailure { error });
+            sess.dcx().emit_fatal(errors::RlibArchiveBuildFailure { error });
         }
         if archive.build(&dst) {
             link_upstream(&dst);
@@ -2897,14 +2872,14 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) {
         ("arm", "watchos") => "watchos",
         (_, "macos") => "macosx",
         _ => {
-            sess.emit_err(errors::UnsupportedArch { arch, os });
+            sess.dcx().emit_err(errors::UnsupportedArch { arch, os });
             return;
         }
     };
     let sdk_root = match get_apple_sdk_root(sdk_name) {
         Ok(s) => s,
         Err(e) => {
-            sess.emit_err(e);
+            sess.dcx().emit_err(e);
             return;
         }
     };

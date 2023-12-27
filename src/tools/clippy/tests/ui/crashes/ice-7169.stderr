@@ -7,5 +7,5 @@ LL |     if let Ok(_) = Ok::<_, ()>(A::<String>::default()) {}
    = note: `-D clippy::redundant-pattern-matching` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::redundant_pattern_matching)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

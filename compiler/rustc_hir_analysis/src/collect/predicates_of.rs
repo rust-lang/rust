@@ -134,8 +134,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         None => {}
     }
 
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let node = tcx.hir().get(hir_id);
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
+    let node = tcx.hir_node(hir_id);
 
     let mut is_trait = None;
     let mut is_default_impl_trait = None;
@@ -290,13 +290,18 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             }
 
             hir::WherePredicate::RegionPredicate(region_pred) => {
-                let r1 = icx.astconv().ast_region_to_region(&region_pred.lifetime, None);
+                let r1 = icx.astconv().ast_region_to_region(region_pred.lifetime, None);
                 predicates.extend(region_pred.bounds.iter().map(|bound| {
                     let (r2, span) = match bound {
                         hir::GenericBound::Outlives(lt) => {
                             (icx.astconv().ast_region_to_region(lt, None), lt.ident.span)
                         }
-                        _ => bug!(),
+                        bound => {
+                            span_bug!(
+                                bound.span(),
+                                "lifetime param bounds must be outlives, but found {bound:?}"
+                            )
+                        }
                     };
                     let pred = ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(r1, r2))
                         .to_predicate(tcx);
@@ -337,7 +342,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // and the duplicated parameter, to ensure that they do not get out of sync.
     if let Node::Item(&Item { kind: ItemKind::OpaqueTy(..), .. }) = node {
         let opaque_ty_id = tcx.hir().parent_id(hir_id);
-        let opaque_ty_node = tcx.hir().get(opaque_ty_id);
+        let opaque_ty_node = tcx.hir_node(opaque_ty_id);
         let Node::Ty(&Ty { kind: TyKind::OpaqueDef(_, lifetimes, _), .. }) = opaque_ty_node else {
             bug!("unexpected {opaque_ty_node:?}")
         };
@@ -362,10 +367,10 @@ fn compute_bidirectional_outlives_predicates<'tcx>(
 ) {
     for param in opaque_own_params {
         let orig_lifetime = tcx.map_rpit_lifetime_to_fn_lifetime(param.def_id.expect_local());
-        if let ty::ReEarlyBound(..) = *orig_lifetime {
-            let dup_lifetime = ty::Region::new_early_bound(
+        if let ty::ReEarlyParam(..) = *orig_lifetime {
+            let dup_lifetime = ty::Region::new_early_param(
                 tcx,
-                ty::EarlyBoundRegion { def_id: param.def_id, index: param.index, name: param.name },
+                ty::EarlyParamRegion { def_id: param.def_id, index: param.index, name: param.name },
             );
             let span = tcx.def_span(param.def_id);
             predicates.push((
@@ -412,8 +417,8 @@ fn const_evaluatable_predicates_of(
         }
     }
 
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let node = tcx.hir().get(hir_id);
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
+    let node = tcx.hir_node(hir_id);
 
     let mut collector = ConstCollector { tcx, preds: FxIndexSet::default() };
     if let hir::Node::Item(item) = node
@@ -503,7 +508,7 @@ pub(super) fn explicit_predicates_of<'tcx>(
         }
     } else {
         if matches!(def_kind, DefKind::AnonConst) && tcx.features().generic_const_exprs {
-            let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+            let hir_id = tcx.local_def_id_to_hir_id(def_id);
             let parent_def_id = tcx.hir().get_parent_item(hir_id);
 
             if let Some(defaulted_param_def_id) =
@@ -571,7 +576,7 @@ pub(super) fn explicit_predicates_of<'tcx>(
                 // To fix this, we call `explicit_predicates_of` directly on `foo`, the parent's parent.
 
                 // In the above example this is `foo::{opaque#0}` or `impl Iterator`
-                let parent_hir_id = tcx.hir().local_def_id_to_hir_id(parent_def_id.def_id);
+                let parent_hir_id = tcx.local_def_id_to_hir_id(parent_def_id.def_id);
 
                 // In the above example this is the function `foo`
                 let item_def_id = tcx.hir().get_parent_item(parent_hir_id);
@@ -631,9 +636,9 @@ pub(super) fn implied_predicates_with_filter(
         return tcx.super_predicates_of(trait_def_id);
     };
 
-    let trait_hir_id = tcx.hir().local_def_id_to_hir_id(trait_def_id);
+    let trait_hir_id = tcx.local_def_id_to_hir_id(trait_def_id);
 
-    let Node::Item(item) = tcx.hir().get(trait_hir_id) else {
+    let Node::Item(item) = tcx.hir_node(trait_hir_id) else {
         bug!("trait_node_id {} is not an item", trait_hir_id);
     };
 
@@ -691,7 +696,7 @@ pub(super) fn type_param_predicates(
     // written inline like `<T: Foo>` or in a where-clause like
     // `where T: Foo`.
 
-    let param_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let param_id = tcx.local_def_id_to_hir_id(def_id);
     let param_owner = tcx.hir().ty_param_owner(def_id);
     let generics = tcx.generics_of(param_owner);
     let index = generics.param_def_id_to_index[&def_id.to_def_id()];
@@ -712,11 +717,11 @@ pub(super) fn type_param_predicates(
         .unwrap_or_default();
     let mut extend = None;
 
-    let item_hir_id = tcx.hir().local_def_id_to_hir_id(item_def_id);
-    let ast_generics = match tcx.hir().get(item_hir_id) {
-        Node::TraitItem(item) => &item.generics,
+    let item_hir_id = tcx.local_def_id_to_hir_id(item_def_id);
+    let ast_generics = match tcx.hir_node(item_hir_id) {
+        Node::TraitItem(item) => item.generics,
 
-        Node::ImplItem(item) => &item.generics,
+        Node::ImplItem(item) => item.generics,
 
         Node::Item(item) => {
             match item.kind {

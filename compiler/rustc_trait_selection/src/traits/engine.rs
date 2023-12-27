@@ -25,7 +25,6 @@ use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::Variance;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_session::config::TraitSolver;
 
 pub trait TraitEngineExt<'tcx> {
     fn new(infcx: &InferCtxt<'tcx>) -> Box<Self>;
@@ -33,18 +32,16 @@ pub trait TraitEngineExt<'tcx> {
 
 impl<'tcx> TraitEngineExt<'tcx> for dyn TraitEngine<'tcx> {
     fn new(infcx: &InferCtxt<'tcx>) -> Box<Self> {
-        match (infcx.tcx.sess.opts.unstable_opts.trait_solver, infcx.next_trait_solver()) {
-            (TraitSolver::Classic, false) | (TraitSolver::NextCoherence, false) => {
-                Box::new(FulfillmentContext::new(infcx))
-            }
-            (TraitSolver::Classic | TraitSolver::Next | TraitSolver::NextCoherence, true) => {
-                Box::new(NextFulfillmentCtxt::new(infcx))
-            }
-            (TraitSolver::Next, false) => bug!(
-                "incompatible combination of -Ztrait-solver flag ({:?}) and InferCtxt::next_trait_solver ({:?})",
-                infcx.tcx.sess.opts.unstable_opts.trait_solver,
-                infcx.next_trait_solver()
-            ),
+        if infcx.next_trait_solver() {
+            Box::new(NextFulfillmentCtxt::new(infcx))
+        } else {
+            let new_solver_globally =
+                infcx.tcx.sess.opts.unstable_opts.next_solver.map_or(false, |c| c.globally);
+            assert!(
+                !new_solver_globally,
+                "using old solver even though new solver is enabled globally"
+            );
+            Box::new(FulfillmentContext::new(infcx))
         }
     }
 }
@@ -108,7 +105,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         value: T,
     ) -> T {
-        let infer_ok = self.infcx.at(&cause, param_env).normalize(value);
+        let infer_ok = self.infcx.at(cause, param_env).normalize(value);
         self.register_infer_ok_obligations(infer_ok)
     }
 
@@ -204,7 +201,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         generic_param_scope: LocalDefId,
         outlives_env: &OutlivesEnvironment<'tcx>,
     ) -> Result<(), ErrorGuaranteed> {
-        let errors = self.infcx.resolve_regions(&outlives_env);
+        let errors = self.infcx.resolve_regions(outlives_env);
         if errors.is_empty() {
             Ok(())
         } else {

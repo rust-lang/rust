@@ -3,7 +3,7 @@ use clippy_utils::{get_parent_as_impl, has_repr_attr, is_bool};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, Item, ItemKind, TraitFn, TraitItem, TraitItemKind, Ty};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
@@ -171,7 +171,7 @@ impl<'tcx> LateLintPass<'tcx> for ExcessiveBools {
         span: Span,
         def_id: LocalDefId,
     ) {
-        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(def_id);
+        let hir_id = cx.tcx.local_def_id_to_hir_id(def_id);
         if let Some(fn_header) = fn_kind.header()
             && fn_header.abi == Abi::Rust
             && get_parent_as_impl(cx.tcx, hir_id).map_or(true, |impl_item| impl_item.of_trait.is_none())

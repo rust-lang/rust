@@ -10,10 +10,10 @@
 //! * By **copying** the whole rustc `lib_proc_macro` code, we are able to build this with `stable`
 //!   rustc rather than `unstable`. (Although in general ABI compatibility is still an issue)…
 
-#![cfg(feature = "sysroot-abi")]
+#![cfg(any(feature = "sysroot-abi", rust_analyzer))]
 #![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)]
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
-#![allow(unreachable_pub)]
+#![warn(rust_2018_idioms, unused_lifetimes)]
+#![allow(unreachable_pub, internal_features)]
 
 extern crate proc_macro;
 
@@ -32,11 +32,23 @@ use std::{
 };
 
 use proc_macro_api::{
-    msg::{self, CURRENT_API_VERSION},
+    msg::{self, ExpnGlobals, TokenId, CURRENT_API_VERSION},
     ProcMacroKind,
 };
 
-use ::tt::token_id as tt;
+mod tt {
+    pub use proc_macro_api::msg::TokenId;
+
+    pub use ::tt::*;
+
+    pub type Subtree = ::tt::Subtree<TokenId>;
+    pub type TokenTree = ::tt::TokenTree<TokenId>;
+    pub type Delimiter = ::tt::Delimiter<TokenId>;
+    pub type Leaf = ::tt::Leaf<TokenId>;
+    pub type Literal = ::tt::Literal<TokenId>;
+    pub type Punct = ::tt::Punct<TokenId>;
+    pub type Ident = ::tt::Ident<TokenId>;
+}
 
 // see `build.rs`
 include!(concat!(env!("OUT_DIR"), "/rustc_version.rs"));
@@ -70,16 +82,28 @@ impl ProcMacroSrv {
             None => None,
         };
 
-        let macro_body = task.macro_body.to_subtree(CURRENT_API_VERSION);
-        let attributes = task.attributes.map(|it| it.to_subtree(CURRENT_API_VERSION));
+        let ExpnGlobals { def_site, call_site, mixed_site, .. } = task.has_global_spans;
+        let def_site = TokenId(def_site as u32);
+        let call_site = TokenId(call_site as u32);
+        let mixed_site = TokenId(mixed_site as u32);
+
+        let macro_body = task.macro_body.to_subtree_unresolved(CURRENT_API_VERSION);
+        let attributes = task.attributes.map(|it| it.to_subtree_unresolved(CURRENT_API_VERSION));
         let result = thread::scope(|s| {
             let thread = thread::Builder::new()
                 .stack_size(EXPANDER_STACK_SIZE)
                 .name(task.macro_name.clone())
                 .spawn_scoped(s, || {
                     expander
-                        .expand(&task.macro_name, &macro_body, attributes.as_ref())
-                        .map(|it| msg::FlatTree::new(&it, CURRENT_API_VERSION))
+                        .expand(
+                            &task.macro_name,
+                            &macro_body,
+                            attributes.as_ref(),
+                            def_site,
+                            call_site,
+                            mixed_site,
+                        )
+                        .map(|it| msg::FlatTree::new_raw(&it, CURRENT_API_VERSION))
                 });
             let res = match thread {
                 Ok(handle) => handle.join(),
@@ -136,8 +160,8 @@ pub struct PanicMessage {
 }
 
 impl PanicMessage {
-    pub fn as_str(&self) -> Option<String> {
-        self.message.clone()
+    pub fn into_string(self) -> Option<String> {
+        self.message
     }
 }
 

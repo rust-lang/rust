@@ -67,5 +67,5 @@ LL | | }
    |
    = help: a `loop` may express intention better if this is on purpose
 
-error: aborting due to previous error; 4 warnings emitted
+error: aborting due to 1 previous error; 4 warnings emitted
 

@@ -9,5 +9,5 @@ help: consider importing this macro
 LL +     use std::print;
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

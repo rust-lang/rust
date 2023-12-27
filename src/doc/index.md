@@ -4,12 +4,6 @@
 nav {
     display: none;
 }
-body {
-    font-family: serif;
-}
-h1, h2, h3, h4, h5, h6 {
-    font-family: sans-serif;
-}
 h3 {
     font-size: 1.35rem;
 }
@@ -119,10 +113,14 @@ documentation for your project _and_ all its dependencies in their correct
 version, and open it in your browser. Add the flag `--document-private-items` to
 also show items not marked `pub`.
 
-### The Edition Guide
+### Rust Version History
+
+[The Release Notes](releases.html) describes the change history of the Rust
+toolchain and language.
 
 [The Edition Guide](edition-guide/index.html) describes the Rust editions and
-their differences.
+their differences. The latest version of the toolchain supports all
+historical editions.
 
 ### The `rustc` Book
 

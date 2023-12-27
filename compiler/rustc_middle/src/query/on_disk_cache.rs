@@ -1,6 +1,5 @@
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::memmap::Mmap;
-use rustc_data_structures::stable_hasher::Hash64;
 use rustc_data_structures::sync::{HashMapExt, Lock, Lrc, RwLock};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_data_structures::unord::UnordSet;
@@ -21,11 +20,12 @@ use rustc_session::Session;
 use rustc_span::hygiene::{
     ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextData,
 };
-use rustc_span::source_map::{SourceMap, StableSourceFileId};
-use rustc_span::{BytePos, ExpnData, ExpnHash, Pos, RelativeBytePos, SourceFile, Span};
+use rustc_span::source_map::SourceMap;
+use rustc_span::{
+    BytePos, ExpnData, ExpnHash, Pos, RelativeBytePos, SourceFile, Span, StableSourceFileId,
+};
 use rustc_span::{CachingSourceMapView, Symbol};
 use std::collections::hash_map::Entry;
-use std::io;
 use std::mem;
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
@@ -134,30 +134,18 @@ impl AbsoluteBytePos {
     }
 }
 
-/// An `EncodedSourceFileId` is the same as a `StableSourceFileId` except that
-/// the source crate is represented as a [StableCrateId] instead of as a
-/// `CrateNum`. This way `EncodedSourceFileId` can be encoded and decoded
-/// without any additional context, i.e. with a simple `opaque::Decoder` (which
-/// is the only thing available when decoding the cache's [Footer].
 #[derive(Encodable, Decodable, Clone, Debug)]
 struct EncodedSourceFileId {
-    file_name_hash: Hash64,
+    stable_source_file_id: StableSourceFileId,
     stable_crate_id: StableCrateId,
 }
 
 impl EncodedSourceFileId {
     #[inline]
-    fn translate(&self, tcx: TyCtxt<'_>) -> StableSourceFileId {
-        let cnum = tcx.stable_crate_id_to_crate_num(self.stable_crate_id);
-        StableSourceFileId { file_name_hash: self.file_name_hash, cnum }
-    }
-
-    #[inline]
     fn new(tcx: TyCtxt<'_>, file: &SourceFile) -> EncodedSourceFileId {
-        let source_file_id = StableSourceFileId::new(file);
         EncodedSourceFileId {
-            file_name_hash: source_file_id.file_name_hash,
-            stable_crate_id: tcx.stable_crate_id(source_file_id.cnum),
+            stable_source_file_id: file.stable_id,
+            stable_crate_id: tcx.stable_crate_id(file.cnum),
         }
     }
 }
@@ -246,7 +234,7 @@ impl<'sess> OnDiskCache<'sess> {
                     let index = SourceFileIndex(index as u32);
                     let file_ptr: *const SourceFile = &**file as *const _;
                     file_to_file_index.insert(file_ptr, index);
-                    let source_file_id = EncodedSourceFileId::new(tcx, &file);
+                    let source_file_id = EncodedSourceFileId::new(tcx, file);
                     file_index_to_stable_id.insert(index, source_file_id);
                 }
 
@@ -482,19 +470,16 @@ pub struct CacheDecoder<'a, 'tcx> {
 impl<'a, 'tcx> CacheDecoder<'a, 'tcx> {
     #[inline]
     fn file_index_to_file(&self, index: SourceFileIndex) -> Lrc<SourceFile> {
-        let CacheDecoder {
-            tcx,
-            ref file_index_to_file,
-            ref file_index_to_stable_id,
-            ref source_map,
-            ..
-        } = *self;
+        let CacheDecoder { tcx, file_index_to_file, file_index_to_stable_id, source_map, .. } =
+            *self;
 
         file_index_to_file
             .borrow_mut()
             .entry(index)
             .or_insert_with(|| {
-                let stable_id = file_index_to_stable_id[&index].translate(tcx);
+                let source_file_id = &file_index_to_stable_id[&index];
+                let source_file_cnum =
+                    tcx.stable_crate_id_to_crate_num(source_file_id.stable_crate_id);
 
                 // If this `SourceFile` is from a foreign crate, then make sure
                 // that we've imported all of the source files from that crate.
@@ -505,12 +490,14 @@ impl<'a, 'tcx> CacheDecoder<'a, 'tcx> {
                 // that we will load the source files from that crate during macro
                 // expansion, so we use `import_source_files` to ensure that the foreign
                 // source files are actually imported before we call `source_file_by_stable_id`.
-                if stable_id.cnum != LOCAL_CRATE {
-                    self.tcx.cstore_untracked().import_source_files(self.tcx.sess, stable_id.cnum);
+                if source_file_cnum != LOCAL_CRATE {
+                    self.tcx
+                        .cstore_untracked()
+                        .import_source_files(self.tcx.sess, source_file_cnum);
                 }
 
                 source_map
-                    .source_file_by_stable_id(stable_id)
+                    .source_file_by_stable_id(source_file_id.stable_source_file_id)
                     .expect("failed to lookup `SourceFile` in new context")
             })
             .clone()
@@ -867,7 +854,7 @@ impl<'a, 'tcx> CacheEncoder<'a, 'tcx> {
     }
 
     #[inline]
-    fn finish(self) -> Result<usize, io::Error> {
+    fn finish(mut self) -> FileEncodeResult {
         self.encoder.finish()
     }
 }

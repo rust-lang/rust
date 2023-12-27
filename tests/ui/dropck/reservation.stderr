@@ -4,5 +4,5 @@ error: reservation `Drop` impls are not supported
 LL | impl Drop for ReservedDrop {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

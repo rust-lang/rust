@@ -4,5 +4,5 @@ error: overflow evaluating associated type `T::This`
 LL |     type This = Self::This;
    |                 ^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

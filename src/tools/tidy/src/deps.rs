@@ -16,6 +16,7 @@ const LICENSES: &[&str] = &[
     "Apache-2.0 OR MIT",
     "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT", // wasi license
     "Apache-2.0/MIT",
+    "BSD-2-Clause OR Apache-2.0 OR MIT",                   // zerocopy
     "ISC",
     "MIT / Apache-2.0",
     "MIT OR Apache-2.0 OR LGPL-2.1-or-later",              // r-efi, r-efi-alloc
@@ -121,15 +122,14 @@ const EXCEPTIONS_CARGO: ExceptionList = &[
     ("similar", "Apache-2.0"),
     ("sized-chunks", "MPL-2.0+"),
     ("subtle", "BSD-3-Clause"),
+    ("supports-hyperlinks", "Apache-2.0"),
     ("unicode-bom", "Apache-2.0"),
     // tidy-alphabetical-end
 ];
 
 const EXCEPTIONS_RUST_ANALYZER: ExceptionList = &[
     // tidy-alphabetical-start
-    ("anymap", "BlueOak-1.0.0 OR MIT OR Apache-2.0"), // BlueOak is not acceptable, but we use it under MIT OR Apache-2 .0
     ("dissimilar", "Apache-2.0"),
-    ("instant", "BSD-3-Clause"),
     ("notify", "CC0-1.0"),
     ("pulldown-cmark-to-cmark", "Apache-2.0"),
     ("ryu", "Apache-2.0 OR BSL-1.0"), // BSL is not acceptble, but we use it under Apache-2.0
@@ -211,7 +211,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "crossbeam-epoch",
     "crossbeam-utils",
     "crypto-common",
-    "cstr",
     "darling",
     "darling_core",
     "darling_macro",
@@ -246,13 +245,15 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "hashbrown",
     "hermit-abi",
     "icu_list",
+    "icu_list_data",
     "icu_locid",
+    "icu_locid_transform",
+    "icu_locid_transform_data",
     "icu_provider",
     "icu_provider_adapters",
     "icu_provider_macros",
     "ident_case",
     "indexmap",
-    "instant",
     "intl-memoizer",
     "intl_pluralrules",
     "is-terminal",
@@ -356,6 +357,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "tracing-tree",
     "twox-hash",
     "type-map",
+    "typed-arena",
     "typenum",
     "unic-langid",
     "unic-langid-impl",
@@ -369,6 +371,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "unicode-security",
     "unicode-width",
     "unicode-xid",
+    "unwinding",
     "valuable",
     "version_check",
     "wasi",
@@ -388,6 +391,34 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "windows_x86_64_msvc",
     "writeable",
     "yansi-term", // this is a false-positive: it's only used by rustfmt, but because it's enabled through a feature, tidy thinks it's used by rustc as well.
+    "yoke",
+    "yoke-derive",
+    "zerocopy",
+    "zerocopy-derive",
+    "zerofrom",
+    "zerofrom-derive",
+    "zerovec",
+    "zerovec-derive",
+    // tidy-alphabetical-end
+];
+
+// These crates come from ICU4X and are licensed under the unicode license.
+// It currently doesn't have an SPDX identifier, so they cannot put one there.
+// See https://github.com/unicode-org/icu4x/pull/3875
+// FIXME: This should be removed once ICU4X crates update.
+const ICU4X_UNICODE_LICENSE_DEPENDENCIES: &[&str] = &[
+    // tidy-alphabetical-start
+    "icu_list",
+    "icu_list_data",
+    "icu_locid",
+    "icu_locid_transform",
+    "icu_locid_transform_data",
+    "icu_provider",
+    "icu_provider_adapters",
+    "icu_provider_macros",
+    "litemap",
+    "tinystr",
+    "writeable",
     "yoke",
     "yoke-derive",
     "zerofrom",
@@ -459,7 +490,6 @@ const PERMITTED_CRANELIFT_DEPENDENCIES: &[&str] = &[
 /// to the cargo executable.
 pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
     let mut checked_runtime_licenses = false;
-    let mut rust_metadata = None;
 
     for &(workspace, exceptions, permitted_deps) in WORKSPACES {
         if !root.join(workspace).join("Cargo.lock").exists() {
@@ -483,15 +513,6 @@ pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
             let runtime_ids = compute_runtime_crates(&metadata);
             check_runtime_license_exceptions(&metadata, runtime_ids, bad);
             checked_runtime_licenses = true;
-            rust_metadata = Some(metadata);
-        } else if workspace == "src/tools/cargo" {
-            check_rustfix(
-                rust_metadata
-                    .as_ref()
-                    .expect("The root workspace should be the first to be checked"),
-                &metadata,
-                bad,
-            );
         }
     }
 
@@ -589,6 +610,10 @@ fn check_license_exceptions(metadata: &Metadata, exceptions: &[(&str, &str)], ba
         let license = match &pkg.license {
             Some(license) => license,
             None => {
+                if ICU4X_UNICODE_LICENSE_DEPENDENCIES.contains(&pkg.name.as_str()) {
+                    // See the comment on ICU4X_UNICODE_LICENSE_DEPENDENCIES.
+                    continue;
+                }
                 tidy_error!(bad, "dependency `{}` does not define a license expression", pkg.id);
                 continue;
             }
@@ -714,35 +739,5 @@ fn deps_of_filtered<'a>(
             continue;
         }
         deps_of_filtered(metadata, &dep.pkg, result, filter);
-    }
-}
-
-fn direct_deps_of<'a>(
-    metadata: &'a Metadata,
-    pkg_id: &'a PackageId,
-) -> impl Iterator<Item = &'a Package> {
-    let resolve = metadata.resolve.as_ref().unwrap();
-    let node = resolve.nodes.iter().find(|n| &n.id == pkg_id).unwrap();
-    node.deps.iter().map(|dep| pkg_from_id(metadata, &dep.pkg))
-}
-
-fn check_rustfix(rust_metadata: &Metadata, cargo_metadata: &Metadata, bad: &mut bool) {
-    let cargo = pkg_from_name(cargo_metadata, "cargo");
-    let cargo_rustfix =
-        direct_deps_of(cargo_metadata, &cargo.id).find(|p| p.name == "rustfix").unwrap();
-
-    let compiletest = pkg_from_name(rust_metadata, "compiletest");
-    let compiletest_rustfix =
-        direct_deps_of(rust_metadata, &compiletest.id).find(|p| p.name == "rustfix").unwrap();
-
-    if cargo_rustfix.version != compiletest_rustfix.version {
-        tidy_error!(
-            bad,
-            "cargo's rustfix version {} does not match compiletest's rustfix version {}\n\
-             rustfix should be kept in sync, update the cargo side first, and then update \
-             compiletest along with cargo.",
-            cargo_rustfix.version,
-            compiletest_rustfix.version
-        );
     }
 }

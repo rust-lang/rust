@@ -1,0 +1,29 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-118145-unwrap-for-shorthand.rs:12:16
+   |
+LL |     Ok(Stuff { count })
+   |                ^^^^^ expected `i32`, found `Result<{integer}, _>`
+   |
+   = note: expected type `i32`
+              found enum `Result<{integer}, _>`
+help: use the `?` operator to extract the `Result<{integer}, _>` value, propagating a `Result::Err` value to the caller
+   |
+LL |     Ok(Stuff { count: count? })
+   |                     ++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/issue-118145-unwrap-for-shorthand.rs:17:13
+   |
+LL |     Stuff { count }
+   |             ^^^^^ expected `i32`, found `Option<{integer}>`
+   |
+   = note: expected type `i32`
+              found enum `Option<{integer}>`
+help: consider using `Option::expect` to unwrap the `Option<{integer}>` value, panicking if the value is an `Option::None`
+   |
+LL |     Stuff { count: count.expect("REASON") }
+   |                  ++++++++++++++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

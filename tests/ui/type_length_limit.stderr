@@ -4,5 +4,5 @@ error: reached the type-length limit while instantiating `std::mem::drop::<Optio
    = help: consider adding a `#![type_length_limit="10"]` attribute to your crate
    = note: the full type name has been written to '$TEST_BUILD_DIR/type_length_limit/type_length_limit.long-type.txt'
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -6,6 +6,6 @@ LL |     container[&mut val].test();
    |
    = help: trait `IndexMut` is required to modify indexed content, but it is not implemented for `Container`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0596`.

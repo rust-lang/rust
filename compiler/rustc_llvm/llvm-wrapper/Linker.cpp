@@ -1,3 +1,4 @@
+#include "SuppressLLVMWarnings.h"
 #include "llvm/Linker/Linker.h"
 
 #include "LLVMWrapper.h"

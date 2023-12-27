@@ -1,6 +1,4 @@
-#![feature(if_let_guard)]
 #![feature(let_chains)]
-#![feature(min_specialization)]
 #![feature(never_type)]
 #![feature(lazy_cell)]
 #![feature(option_get_or_insert_default)]
@@ -8,7 +6,6 @@
 #![feature(map_many_mut)]
 #![feature(iter_intersperse)]
 #![recursion_limit = "256"]
-#![allow(rustc::potential_query_instability)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 #![allow(internal_features)]
@@ -19,9 +16,6 @@ pub mod errors;
 
 #[macro_use]
 extern crate tracing;
-
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_fluent_macro::fluent_messages;
 
 pub mod utils;
 pub use lint::{declare_lint, declare_lint_pass, declare_tool_lint, impl_lint_pass};
@@ -46,7 +40,7 @@ pub use getopts;
 mod version;
 pub use version::RustcVersion;
 
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro

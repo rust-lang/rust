@@ -4,6 +4,6 @@ error[E0752]: `#[start]` function is not allowed to be `async`
 LL | pub async fn start(_: isize, _: *const *const u8) -> isize {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `#[start]` is not allowed to be `async`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0752`.

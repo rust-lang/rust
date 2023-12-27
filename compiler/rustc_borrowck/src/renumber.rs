@@ -28,6 +28,9 @@ pub fn renumber_mir<'tcx>(
     renumberer.visit_body(body);
 }
 
+// FIXME(@lcnr): A lot of these variants overlap and it seems like
+// this type is only used to decide which region should be used
+// as representative. This should be cleaned up.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub(crate) enum RegionCtxt {
     Location(Location),

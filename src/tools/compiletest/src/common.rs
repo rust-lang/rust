@@ -8,6 +8,7 @@ use std::process::Command;
 use std::str::FromStr;
 
 use crate::util::{add_dylib_path, PathBufExt};
+use build_helper::git::GitConfig;
 use lazycell::AtomicLazyCell;
 use serde::de::{Deserialize, Deserializer, Error as _};
 use std::collections::{HashMap, HashSet};
@@ -241,6 +242,9 @@ pub struct Config {
     /// Run ignored tests
     pub run_ignored: bool,
 
+    /// Whether to run tests with `ignore-debug` header
+    pub with_debug_assertions: bool,
+
     /// Only run tests that match these filters
     pub filters: Vec<String>,
 
@@ -379,6 +383,10 @@ pub struct Config {
     pub target_cfgs: AtomicLazyCell<TargetCfgs>,
 
     pub nocapture: bool,
+
+    // Needed both to construct build_helper::git::GitConfig
+    pub git_repository: String,
+    pub nightly_branch: String,
 }
 
 impl Config {
@@ -405,9 +413,6 @@ impl Config {
 
     pub fn matches_arch(&self, arch: &str) -> bool {
         self.target_cfg().arch == arch ||
-        // Shorthand for convenience. The arch for
-        // asmjs-unknown-emscripten is actually wasm32.
-        (arch == "asmjs" && self.target.starts_with("asmjs")) ||
         // Matching all the thumb variants as one can be convenient.
         // (thumbv6m, thumbv7em, thumbv7m, etc.)
         (arch == "thumb" && self.target.starts_with("thumb"))
@@ -449,6 +454,10 @@ impl Config {
             // "nvptx64", "hexagon", "mips", "mips64", "spirv", "wasm32",
         ];
         ASM_SUPPORTED_ARCHS.contains(&self.target_cfg().arch.as_str())
+    }
+
+    pub fn git_config(&self) -> GitConfig<'_> {
+        GitConfig { git_repository: &self.git_repository, nightly_branch: &self.nightly_branch }
     }
 }
 

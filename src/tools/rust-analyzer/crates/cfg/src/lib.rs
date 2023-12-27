@@ -1,6 +1,6 @@
 //! cfg defines conditional compiling options, `cfg` attribute parser and evaluator
 
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 
 mod cfg_expr;
 mod dnf;
@@ -56,6 +56,13 @@ impl CfgOptions {
 
     pub fn insert_key_value(&mut self, key: SmolStr, value: SmolStr) {
         self.enabled.insert(CfgAtom::KeyValue { key, value });
+    }
+
+    pub fn difference<'a>(
+        &'a self,
+        other: &'a CfgOptions,
+    ) -> impl Iterator<Item = &'a CfgAtom> + 'a {
+        self.enabled.difference(&other.enabled)
     }
 
     pub fn apply_diff(&mut self, diff: CfgDiff) {

@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `NotIntoDiagnosticArg: IntoDiagnosticArg` is not satisfied
-  --> $DIR/diagnostic-derive-doc-comment-field.rs:37:10
+  --> $DIR/diagnostic-derive-doc-comment-field.rs:36:10
    |
 LL | #[derive(Diagnostic)]
    |          ---------- required by a bound introduced by this call
@@ -13,7 +13,7 @@ note: required by a bound in `DiagnosticBuilder::<'a, G>::set_arg`
    = note: this error originates in the macro `forward` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `NotIntoDiagnosticArg: IntoDiagnosticArg` is not satisfied
-  --> $DIR/diagnostic-derive-doc-comment-field.rs:47:10
+  --> $DIR/diagnostic-derive-doc-comment-field.rs:46:10
    |
 LL | #[derive(Subdiagnostic)]
    |          ------------- required by a bound introduced by this call

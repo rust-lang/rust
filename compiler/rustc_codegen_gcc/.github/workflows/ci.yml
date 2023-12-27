@@ -99,8 +99,10 @@ jobs:
     - name: Build
       run: |
         ./y.sh prepare --only-libcore
-        ./y.sh build
-        cargo test
+        # TODO: remove --features master when it is back to the default.
+        ./y.sh build --features master
+        # TODO: remove --features master when it is back to the default.
+        cargo test --features master
         ./clean_all.sh
 
     - name: Prepare dependencies
@@ -121,7 +123,8 @@ jobs:
 
     - name: Run tests
       run: |
-        ./test.sh --release --clean --build-sysroot ${{ matrix.commands }}
+        # TODO: remove --features master when it is back to the default.
+        ./test.sh --features master --release --clean --build-sysroot ${{ matrix.commands }}
 
   duplicates:
     runs-on: ubuntu-latest

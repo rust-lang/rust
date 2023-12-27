@@ -19,8 +19,8 @@
 //! [canonicalized]: https://rustc-dev-guide.rust-lang.org/solve/canonicalization.html
 
 use super::{
-    CandidateSource, Canonical, CanonicalInput, Certainty, Goal, IsNormalizesToHack, NoSolution,
-    QueryInput, QueryResult,
+    CandidateSource, Canonical, CanonicalInput, Certainty, Goal, GoalSource, IsNormalizesToHack,
+    NoSolution, QueryInput, QueryResult,
 };
 use crate::{infer::canonical::CanonicalVarValues, ty};
 use format::ProofTreeFormatter;
@@ -115,13 +115,15 @@ impl Debug for Probe<'_> {
 pub enum ProbeStep<'tcx> {
     /// We added a goal to the `EvalCtxt` which will get proven
     /// the next time `EvalCtxt::try_evaluate_added_goals` is called.
-    AddGoal(CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>),
+    AddGoal(GoalSource, CanonicalState<'tcx, Goal<'tcx, ty::Predicate<'tcx>>>),
     /// The inside of a `EvalCtxt::try_evaluate_added_goals` call.
     EvaluateGoals(AddedGoalsEvaluation<'tcx>),
     /// A call to `probe` while proving the current goal. This is
     /// used whenever there are multiple candidates to prove the
     /// current goalby .
     NestedProbe(Probe<'tcx>),
+    CommitIfOkStart,
+    CommitIfOkSuccess,
 }
 
 /// What kind of probe we're in. In case the probe represents a candidate, or
@@ -142,6 +144,9 @@ pub enum ProbeKind<'tcx> {
     /// Used in the probe that wraps normalizing the non-self type for the unsize
     /// trait, which is also structurally matched on.
     UnsizeAssembly,
+    /// A call to `EvalCtxt::commit_if_ok` which failed, causing the work
+    /// to be discarded.
+    CommitIfOk,
     /// During upcasting from some source object to target object type, used to
     /// do a probe to find out what projection type(s) may be used to prove that
     /// the source type upholds all of the target type's object bounds.

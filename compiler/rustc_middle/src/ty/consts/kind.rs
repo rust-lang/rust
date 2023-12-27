@@ -3,7 +3,6 @@ use crate::mir;
 use crate::ty::abstract_const::CastKind;
 use crate::ty::GenericArgsRef;
 use crate::ty::{self, visit::TypeVisitableExt as _, List, Ty, TyCtxt};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 
@@ -77,28 +76,3 @@ static_assert_size!(Expr<'_>, 24);
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 static_assert_size!(super::ConstKind<'_>, 32);
-
-/// An inference variable for a const, for use in const generics.
-#[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, TyEncodable, TyDecodable, Hash)]
-pub enum InferConst {
-    /// Infer the value of the const.
-    Var(ty::ConstVid),
-    /// Infer the value of the effect.
-    ///
-    /// For why this is separate from the `Var` variant above, see the
-    /// documentation on `EffectVid`.
-    EffectVar(ty::EffectVid),
-    /// A fresh const variable. See `infer::freshen` for more details.
-    Fresh(u32),
-}
-
-impl<CTX> HashStable<CTX> for InferConst {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        match self {
-            InferConst::Var(_) | InferConst::EffectVar(_) => {
-                panic!("const variables should not be hashed: {self:?}")
-            }
-            InferConst::Fresh(i) => i.hash_stable(hcx, hasher),
-        }
-    }
-}

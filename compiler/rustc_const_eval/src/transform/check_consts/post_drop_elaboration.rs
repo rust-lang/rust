@@ -5,7 +5,7 @@ use rustc_span::{symbol::sym, Span};
 
 use super::check::Qualifs;
 use super::ops::{self, NonConstOp};
-use super::qualifs::{NeedsDrop, Qualif};
+use super::qualifs::{NeedsNonConstDrop, Qualif};
 use super::ConstCx;
 
 /// Returns `true` if we should use the more precise live drop checker that runs after drop
@@ -54,7 +54,7 @@ impl<'mir, 'tcx> std::ops::Deref for CheckLiveDrops<'mir, 'tcx> {
     type Target = ConstCx<'mir, 'tcx>;
 
     fn deref(&self) -> &Self::Target {
-        &self.ccx
+        self.ccx
     }
 }
 
@@ -83,8 +83,7 @@ impl<'tcx> Visitor<'tcx> for CheckLiveDrops<'_, 'tcx> {
             mir::TerminatorKind::Drop { place: dropped_place, .. } => {
                 let dropped_ty = dropped_place.ty(self.body, self.tcx).ty;
 
-                // FIXME(effects) use `NeedsNonConstDrop`
-                if !NeedsDrop::in_any_value_of_ty(self.ccx, dropped_ty) {
+                if !NeedsNonConstDrop::in_any_value_of_ty(self.ccx, dropped_ty) {
                     // Instead of throwing a bug, we just return here. This is because we have to
                     // run custom `const Drop` impls.
                     return;

@@ -14,7 +14,6 @@ pub(crate) struct BlanketImplFinder<'a, 'tcx> {
 impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
     pub(crate) fn get_blanket_impls(&mut self, item_def_id: DefId) -> Vec<Item> {
         let cx = &mut self.cx;
-        let param_env = cx.tcx.param_env(item_def_id);
         let ty = cx.tcx.type_of(item_def_id);
 
         trace!("get_blanket_impls({ty:?})");
@@ -40,7 +39,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                 let infcx = cx.tcx.infer_ctxt().build();
                 let args = infcx.fresh_args_for_item(DUMMY_SP, item_def_id);
                 let impl_ty = ty.instantiate(infcx.tcx, args);
-                let param_env = EarlyBinder::bind(param_env).instantiate(infcx.tcx, args);
+                let param_env = ty::ParamEnv::empty();
 
                 let impl_args = infcx.fresh_args_for_item(DUMMY_SP, impl_def_id);
                 let impl_trait_ref = trait_ref.instantiate(infcx.tcx, impl_args);

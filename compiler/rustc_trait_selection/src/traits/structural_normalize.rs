@@ -3,7 +3,7 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_infer::traits::{FulfillmentError, TraitEngine};
 use rustc_middle::ty::{self, Ty};
 
-use crate::traits::{query::evaluate_obligation::InferCtxtExt, NormalizeExt, Obligation};
+use crate::traits::{NormalizeExt, Obligation};
 
 pub trait StructurallyNormalizeExt<'tcx> {
     fn structurally_normalize(
@@ -16,46 +16,43 @@ pub trait StructurallyNormalizeExt<'tcx> {
 impl<'tcx> StructurallyNormalizeExt<'tcx> for At<'_, 'tcx> {
     fn structurally_normalize(
         &self,
-        mut ty: Ty<'tcx>,
+        ty: Ty<'tcx>,
         fulfill_cx: &mut dyn TraitEngine<'tcx>,
     ) -> Result<Ty<'tcx>, Vec<FulfillmentError<'tcx>>> {
         assert!(!ty.is_ty_var(), "should have resolved vars before calling");
 
         if self.infcx.next_trait_solver() {
-            // FIXME(-Ztrait-solver=next): correctly handle
-            // overflow here.
-            for _ in 0..256 {
-                let ty::Alias(ty::Projection | ty::Inherent | ty::Weak, projection_ty) = *ty.kind()
-                else {
-                    break;
-                };
+            // FIXME(-Znext-solver): Should we resolve opaques here?
+            let ty::Alias(ty::Projection | ty::Inherent | ty::Weak, _) = *ty.kind() else {
+                return Ok(ty);
+            };
 
-                let new_infer_ty = self.infcx.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::NormalizeProjectionType,
-                    span: self.cause.span,
-                });
-                let obligation = Obligation::new(
-                    self.infcx.tcx,
-                    self.cause.clone(),
-                    self.param_env,
-                    ty::Binder::dummy(ty::ProjectionPredicate {
-                        projection_ty,
-                        term: new_infer_ty.into(),
-                    }),
-                );
-                if self.infcx.predicate_may_hold(&obligation) {
-                    fulfill_cx.register_predicate_obligation(self.infcx, obligation);
-                    let errors = fulfill_cx.select_where_possible(self.infcx);
-                    if !errors.is_empty() {
-                        return Err(errors);
-                    }
-                    ty = self.infcx.resolve_vars_if_possible(new_infer_ty);
-                } else {
-                    break;
-                }
+            let new_infer_ty = self.infcx.next_ty_var(TypeVariableOrigin {
+                kind: TypeVariableOriginKind::NormalizeProjectionType,
+                span: self.cause.span,
+            });
+
+            // We simply emit an `alias-eq` goal here, since that will take care of
+            // normalizing the LHS of the projection until it is a rigid projection
+            // (or a not-yet-defined opaque in scope).
+            let obligation = Obligation::new(
+                self.infcx.tcx,
+                self.cause.clone(),
+                self.param_env,
+                ty::PredicateKind::AliasRelate(
+                    ty.into(),
+                    new_infer_ty.into(),
+                    ty::AliasRelationDirection::Equate,
+                ),
+            );
+
+            fulfill_cx.register_predicate_obligation(self.infcx, obligation);
+            let errors = fulfill_cx.select_where_possible(self.infcx);
+            if !errors.is_empty() {
+                return Err(errors);
             }
 
-            Ok(ty)
+            Ok(self.infcx.resolve_vars_if_possible(new_infer_ty))
         } else {
             Ok(self.normalize(ty).into_value_registering_obligations(self.infcx, fulfill_cx))
         }

@@ -1,8 +1,6 @@
-use std::borrow::Borrow;
-
 use rustc_middle::mir::{self, BasicBlock, Location};
 
-use super::{Analysis, Direction, EntrySets, Results};
+use super::{Analysis, Direction, Results};
 
 /// Calls the corresponding method in `ResultsVisitor` for every location in a `mir::Body` with the
 /// dataflow state at that location.
@@ -33,14 +31,7 @@ pub fn visit_results<'mir, 'tcx, F, R>(
 pub trait ResultsVisitor<'mir, 'tcx, R> {
     type FlowState;
 
-    fn visit_block_start(
-        &mut self,
-        _results: &mut R,
-        _state: &Self::FlowState,
-        _block_data: &'mir mir::BasicBlockData<'tcx>,
-        _block: BasicBlock,
-    ) {
-    }
+    fn visit_block_start(&mut self, _state: &Self::FlowState) {}
 
     /// Called with the `before_statement_effect` of the given statement applied to `state` but not
     /// its `statement_effect`.
@@ -88,20 +79,13 @@ pub trait ResultsVisitor<'mir, 'tcx, R> {
     ) {
     }
 
-    fn visit_block_end(
-        &mut self,
-        _results: &mut R,
-        _state: &Self::FlowState,
-        _block_data: &'mir mir::BasicBlockData<'tcx>,
-        _block: BasicBlock,
-    ) {
-    }
+    fn visit_block_end(&mut self, _state: &Self::FlowState) {}
 }
 
 /// Things that can be visited by a `ResultsVisitor`.
 ///
-/// This trait exists so that we can visit the results of multiple dataflow analyses simultaneously.
-/// DO NOT IMPLEMENT MANUALLY. Instead, use the `impl_visitable` macro below.
+/// This trait exists so that we can visit the results of one or more dataflow analyses
+/// simultaneously.
 pub trait ResultsVisitable<'tcx> {
     type Direction: Direction;
     type FlowState;
@@ -143,10 +127,9 @@ pub trait ResultsVisitable<'tcx> {
     );
 }
 
-impl<'tcx, A, E> ResultsVisitable<'tcx> for Results<'tcx, A, E>
+impl<'tcx, A> ResultsVisitable<'tcx> for Results<'tcx, A>
 where
     A: Analysis<'tcx>,
-    E: Borrow<EntrySets<'tcx, A>>,
 {
     type FlowState = A::Domain;
 

@@ -4,12 +4,18 @@ use crate::abi::{HasDataLayout, TyAbiInterface};
 fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     if ret.layout.is_aggregate() && ret.layout.size.bits() > 64 {
         ret.make_indirect();
+    } else {
+        // FIXME: this is wrong! Need to decide which ABI we really want here.
+        ret.make_direct_deprecated();
     }
 }
 
 fn classify_arg<Ty>(arg: &mut ArgAbi<'_, Ty>) {
     if arg.layout.is_aggregate() && arg.layout.size.bits() > 64 {
         arg.make_indirect();
+    } else {
+        // FIXME: this is wrong! Need to decide which ABI we really want here.
+        arg.make_direct_deprecated();
     }
 }
 
@@ -30,6 +36,9 @@ where
             _ => unreachable!("Align is given as power of 2 no larger than 16 bytes"),
         };
         arg.cast_to(Uniform { unit, total: Size::from_bytes(2 * align_bytes) });
+    } else {
+        // FIXME: find a better way to do this. See https://github.com/rust-lang/rust/issues/117271.
+        arg.make_direct_deprecated();
     }
 }
 

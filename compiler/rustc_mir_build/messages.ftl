@@ -30,12 +30,32 @@ mir_build_borrow_of_moved_value = borrow of moved value
 
 mir_build_call_to_fn_with_requires_unsafe =
     call to function `{$function}` with `#[target_feature]` is unsafe and requires unsafe block
-    .note = can only be called if the required target features are available
+    .help = in order for the call to be safe, the context requires the following additional target {$missing_target_features_count ->
+        [1] feature
+        *[count] features
+        }: {$missing_target_features}
+    .note = the {$build_target_features} target {$build_target_features_count ->
+        [1] feature
+        *[count] features
+        } being enabled in the build configuration does not remove the requirement to list {$build_target_features_count ->
+        [1] it
+        *[count] them
+        } in `#[target_feature]`
     .label = call to function with `#[target_feature]`
 
 mir_build_call_to_fn_with_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
     call to function `{$function}` with `#[target_feature]` is unsafe and requires unsafe function or block
-    .note = can only be called if the required target features are available
+    .help = in order for the call to be safe, the context requires the following additional target {$missing_target_features_count ->
+        [1] feature
+        *[count] features
+        }: {$missing_target_features}
+    .note = the {$build_target_features} target {$build_target_features_count ->
+        [1] feature
+        *[count] features
+        } being enabled in the build configuration does not remove the requirement to list {$build_target_features_count ->
+        [1] it
+        *[count] them
+        } in `#[target_feature]`
     .label = call to function with `#[target_feature]`
 
 mir_build_call_to_unsafe_fn_requires_unsafe =
@@ -217,15 +237,6 @@ mir_build_non_const_path = runtime values cannot be referenced in patterns
 mir_build_non_exhaustive_match_all_arms_guarded =
     match arms with guards don't count towards exhaustivity
 
-mir_build_non_exhaustive_omitted_pattern = some variants are not matched explicitly
-    .help = ensure that all variants are matched explicitly by adding the suggested match arms
-    .note = the matched value is of type `{$scrut_ty}` and the `non_exhaustive_omitted_patterns` attribute was found
-
-mir_build_non_exhaustive_omitted_pattern_lint_on_arm = the lint level must be set on the whole match
-    .help = it no longer has any effect to set the lint level on an individual match arm
-    .label = remove this attribute
-    .suggestion = set the lint level on the whole match
-
 mir_build_non_exhaustive_patterns_type_not_empty = non-exhaustive patterns: type `{$ty}` is non-empty
     .def_note = `{$peeled_ty}` defined here
     .type_note = the matched value is of type `{$ty}`
@@ -239,10 +250,6 @@ mir_build_non_partial_eq_match =
 
 mir_build_nontrivial_structural_match =
     to use a constant of type `{$non_sm_ty}` in a pattern, the constant's initializer must be trivial or `{$non_sm_ty}` must be annotated with `#[derive(PartialEq, Eq)]`
-
-mir_build_overlapping_range_endpoints = multiple patterns overlap on their endpoints
-    .range = ... with this range
-    .note = you likely meant to write mutually exclusive ranges
 
 mir_build_pattern_not_covered = refutable pattern in {$origin}
     .pattern_ty = the matched value is of type `{$pattern_ty}`
@@ -297,13 +304,6 @@ mir_build_unconditional_recursion = function cannot return without recursing
 
 mir_build_unconditional_recursion_call_site_label = recursive call site
 
-mir_build_uncovered = {$count ->
-        [1] pattern `{$witness_1}`
-        [2] patterns `{$witness_1}` and `{$witness_2}`
-        [3] patterns `{$witness_1}`, `{$witness_2}` and `{$witness_3}`
-        *[other] patterns `{$witness_1}`, `{$witness_2}`, `{$witness_3}` and {$remainder} more
-    } not covered
-
 mir_build_union_field_requires_unsafe =
     access to union field is unsafe and requires unsafe block
     .note = the field may not be properly initialized: using uninitialized data will cause undefined behavior
@@ -330,7 +330,17 @@ mir_build_unsafe_op_in_unsafe_fn_borrow_of_layout_constrained_field_requires_uns
 
 mir_build_unsafe_op_in_unsafe_fn_call_to_fn_with_requires_unsafe =
     call to function `{$function}` with `#[target_feature]` is unsafe and requires unsafe block (error E0133)
-    .note = can only be called if the required target features are available
+    .help = in order for the call to be safe, the context requires the following additional target {$missing_target_features_count ->
+        [1] feature
+        *[count] features
+        }: {$missing_target_features}
+    .note = the {$build_target_features} target {$build_target_features_count ->
+        [1] feature
+        *[count] features
+        } being enabled in the build configuration does not remove the requirement to list {$build_target_features_count ->
+        [1] it
+        *[count] them
+        } in `#[target_feature]`
     .label = call to function with `#[target_feature]`
 
 mir_build_unsafe_op_in_unsafe_fn_call_to_unsafe_fn_requires_unsafe =

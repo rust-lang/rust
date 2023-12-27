@@ -15,5 +15,5 @@ LL | | fn(&'y u32)) }
    = help: consider adding the following bound: `'x: 'y`
    = note: this error originates in the macro `check` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

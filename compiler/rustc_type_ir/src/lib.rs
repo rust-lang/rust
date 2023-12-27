@@ -1,25 +1,29 @@
-#![feature(associated_type_defaults)]
-#![feature(fmt_helpers_for_derive)]
-#![feature(get_mut_unchecked)]
-#![feature(min_specialization)]
-#![feature(never_type)]
-#![feature(new_uninit)]
-#![feature(rustc_attrs)]
-#![feature(unwrap_infallible)]
+#![cfg_attr(
+    feature = "nightly",
+    feature(associated_type_defaults, min_specialization, never_type, rustc_attrs)
+)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
-#![allow(internal_features)]
+#![allow(rustc::usage_of_ty_tykind)]
+#![cfg_attr(feature = "nightly", allow(internal_features))]
 
+#[cfg(feature = "nightly")]
 extern crate self as rustc_type_ir;
 
 #[macro_use]
 extern crate bitflags;
+#[cfg(feature = "nightly")]
 #[macro_use]
 extern crate rustc_macros;
 
+#[cfg(feature = "nightly")]
+use rustc_data_structures::sync::Lrc;
 use std::fmt;
 use std::hash::Hash;
+#[cfg(not(feature = "nightly"))]
+use std::sync::Arc as Lrc;
 
+#[cfg(feature = "nightly")]
 pub mod codec;
 pub mod fold;
 pub mod ty_info;
@@ -32,23 +36,28 @@ mod canonical;
 mod const_kind;
 mod debug;
 mod flags;
+mod infcx;
 mod interner;
 mod predicate_kind;
 mod region_kind;
 
 pub use canonical::*;
+#[cfg(feature = "nightly")]
 pub use codec::*;
 pub use const_kind::*;
-pub use debug::{DebugWithInfcx, InferCtxtLike, WithInfcx};
+pub use debug::{DebugWithInfcx, WithInfcx};
 pub use flags::*;
+pub use infcx::InferCtxtLike;
 pub use interner::*;
 pub use predicate_kind::*;
 pub use region_kind::*;
 pub use ty_info::*;
 pub use ty_kind::*;
-
-/// Needed so we can use #[derive(HashStable_Generic)]
-pub trait HashStableContext {}
+pub use AliasKind::*;
+pub use DynKind::*;
+pub use InferTy::*;
+pub use RegionKind::*;
+pub use TyKind::*;
 
 rustc_index::newtype_index! {
     /// A [De Bruijn index][dbi] is a standard means of representing
@@ -90,8 +99,11 @@ rustc_index::newtype_index! {
     /// is the outer fn.
     ///
     /// [dbi]: https://en.wikipedia.org/wiki/De_Bruijn_index
-    #[derive(HashStable_Generic)]
+    #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+    #[encodable]
+    #[orderable]
     #[debug_format = "DebruijnIndex({})"]
+    #[gate_rustc_only]
     pub struct DebruijnIndex {
         const INNERMOST = 0;
     }
@@ -173,8 +185,9 @@ pub fn debug_bound_var<T: std::fmt::Write>(
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Decodable, Encodable, Hash, HashStable_Generic)]
-#[rustc_pass_by_value]
+#[derive(Copy, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "nightly", derive(Decodable, Encodable, Hash, HashStable_NoContext))]
+#[cfg_attr(feature = "nightly", rustc_pass_by_value)]
 pub enum Variance {
     Covariant,     // T<A> <: T<B> iff A <: B -- e.g., function return type
     Invariant,     // T<A> <: T<B> iff B == A -- e.g., type of mutable cell
@@ -289,8 +302,11 @@ rustc_index::newtype_index! {
     /// declared, but a type name in a non-zero universe is a placeholder
     /// type -- an idealized representative of "types in general" that we
     /// use for checking generic functions.
-    #[derive(HashStable_Generic)]
+    #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+    #[encodable]
+    #[orderable]
     #[debug_format = "U{}"]
+    #[gate_rustc_only]
     pub struct UniverseIndex {}
 }
 
@@ -326,5 +342,62 @@ impl UniverseIndex {
     /// those in `other` (`self < other`).
     pub fn cannot_name(self, other: UniverseIndex) -> bool {
         self.private < other.private
+    }
+}
+
+impl Default for UniverseIndex {
+    fn default() -> Self {
+        Self::ROOT
+    }
+}
+
+rustc_index::newtype_index! {
+    #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+    #[encodable]
+    #[orderable]
+    #[debug_format = "{}"]
+    #[gate_rustc_only]
+    pub struct BoundVar {}
+}
+
+/// Represents the various closure traits in the language. This
+/// will determine the type of the environment (`self`, in the
+/// desugaring) argument that the closure expects.
+///
+/// You can get the environment type of a closure using
+/// `tcx.closure_env_ty()`.
+#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash, Debug)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
+pub enum ClosureKind {
+    // Warning: Ordering is significant here! The ordering is chosen
+    // because the trait Fn is a subtrait of FnMut and so in turn, and
+    // hence we order it so that Fn < FnMut < FnOnce.
+    Fn,
+    FnMut,
+    FnOnce,
+}
+
+impl ClosureKind {
+    /// This is the initial value used when doing upvar inference.
+    pub const LATTICE_BOTTOM: ClosureKind = ClosureKind::Fn;
+
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            ClosureKind::Fn => "Fn",
+            ClosureKind::FnMut => "FnMut",
+            ClosureKind::FnOnce => "FnOnce",
+        }
+    }
+
+    /// Returns `true` if a type that impls this closure kind
+    /// must also implement `other`.
+    pub fn extends(self, other: ClosureKind) -> bool {
+        self <= other
+    }
+}
+
+impl fmt::Display for ClosureKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.as_str().fmt(f)
     }
 }

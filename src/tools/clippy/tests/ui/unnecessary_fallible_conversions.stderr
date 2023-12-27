@@ -4,6 +4,7 @@ error: use of a fallible conversion when an infallible one could be used
 LL |     let _: i64 = 0i32.try_into().unwrap();
    |                       ^^^^^^^^^^^^^^^^^^^ help: use: `into()`
    |
+   = note: converting `i32` to `i64` cannot fail
    = note: `-D clippy::unnecessary-fallible-conversions` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_fallible_conversions)]`
 
@@ -12,6 +13,8 @@ error: use of a fallible conversion when an infallible one could be used
    |
 LL |     let _: i64 = 0i32.try_into().expect("can't happen");
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `into()`
+   |
+   = note: converting `i32` to `i64` cannot fail
 
 error: aborting due to 2 previous errors
 

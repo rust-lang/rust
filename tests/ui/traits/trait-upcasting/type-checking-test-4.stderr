@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/type-checking-test-4.rs:15:13
+  --> $DIR/type-checking-test-4.rs:13:13
    |
 LL | fn test_wrong1<'a>(x: &dyn Foo<'static>, y: &'a u32) {
    |                -- lifetime `'a` defined here
@@ -7,7 +7,7 @@ LL |     let _ = x as &dyn Bar<'static, 'a>; // Error
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/type-checking-test-4.rs:20:13
+  --> $DIR/type-checking-test-4.rs:18:13
    |
 LL | fn test_wrong2<'a>(x: &dyn Foo<'static>, y: &'a u32) {
    |                -- lifetime `'a` defined here
@@ -15,7 +15,7 @@ LL |     let _ = x as &dyn Bar<'a, 'static>; // Error
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/type-checking-test-4.rs:26:5
+  --> $DIR/type-checking-test-4.rs:24:5
    |
 LL | fn test_wrong3<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
    |                -- lifetime `'a` defined here
@@ -24,7 +24,7 @@ LL |     y.get_b() // ERROR
    |     ^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/type-checking-test-4.rs:31:5
+  --> $DIR/type-checking-test-4.rs:29:5
    |
 LL | fn test_wrong4<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
    |                -- lifetime `'a` defined here
@@ -32,7 +32,7 @@ LL |     <_ as Bar>::get_b(x) // ERROR
    |     ^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/type-checking-test-4.rs:36:5
+  --> $DIR/type-checking-test-4.rs:34:5
    |
 LL | fn test_wrong5<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
    |                -- lifetime `'a` defined here
@@ -40,7 +40,7 @@ LL |     <_ as Bar<'_, '_>>::get_b(x) // ERROR
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/type-checking-test-4.rs:44:5
+  --> $DIR/type-checking-test-4.rs:42:5
    |
 LL | fn test_wrong6<'a>(x: &dyn Foo<'a>) -> Option<&'static u32> {
    |                -- lifetime `'a` defined here

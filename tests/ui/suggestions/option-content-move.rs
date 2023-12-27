@@ -1,3 +1,4 @@
+// run-rustfix
 pub struct LipogramCorpora {
     selections: Vec<(char, Option<String>)>,
 }

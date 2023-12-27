@@ -2,7 +2,7 @@
 
 use std::{fmt::Write, iter, mem};
 
-use base_db::FileId;
+use base_db::{salsa::Cycle, FileId};
 use chalk_ir::{BoundVar, ConstData, DebruijnIndex, TyKind};
 use hir_def::{
     body::Body,
@@ -105,9 +105,14 @@ pub enum MirLowerError {
 /// A token to ensuring that each drop scope is popped at most once, thanks to the compiler that checks moves.
 struct DropScopeToken;
 impl DropScopeToken {
-    fn pop_and_drop(self, ctx: &mut MirLowerCtx<'_>, current: BasicBlockId) -> BasicBlockId {
+    fn pop_and_drop(
+        self,
+        ctx: &mut MirLowerCtx<'_>,
+        current: BasicBlockId,
+        span: MirSpan,
+    ) -> BasicBlockId {
         std::mem::forget(self);
-        ctx.pop_drop_scope_internal(current)
+        ctx.pop_drop_scope_internal(current, span)
     }
 
     /// It is useful when we want a drop scope is syntaxically closed, but we don't want to execute any drop
@@ -529,6 +534,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 else {
                     return Ok(None);
                 };
+                self.push_fake_read(current, cond_place, expr_id.into());
                 let (then_target, else_target) =
                     self.pattern_match(current, None, cond_place, *pat)?;
                 self.write_bytes_to_place(
@@ -581,7 +587,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 self.lower_loop(current, place, *label, expr_id.into(), |this, begin| {
                     let scope = this.push_drop_scope();
                     if let Some((_, mut current)) = this.lower_expr_as_place(begin, *body, true)? {
-                        current = scope.pop_and_drop(this, current);
+                        current = scope.pop_and_drop(this, current, body.into());
                         this.set_goto(current, begin, expr_id.into());
                     } else {
                         scope.pop_assume_dropped(this);
@@ -668,6 +674,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 else {
                     return Ok(None);
                 };
+                self.push_fake_read(current, cond_place, expr_id.into());
                 let mut end = None;
                 for MatchArm { pat, guard, expr } in arms.iter() {
                     let (then, mut otherwise) =
@@ -718,7 +725,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         .ok_or(MirLowerError::ContinueWithoutLoop)?,
                 };
                 let begin = loop_data.begin;
-                current = self.drop_until_scope(loop_data.drop_scope_index, current);
+                current =
+                    self.drop_until_scope(loop_data.drop_scope_index, current, expr_id.into());
                 self.set_goto(current, begin, expr_id.into());
                 Ok(None)
             }
@@ -757,7 +765,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         self.current_loop_blocks.as_ref().unwrap().drop_scope_index,
                     ),
                 };
-                current = self.drop_until_scope(drop_scope, current);
+                current = self.drop_until_scope(drop_scope, current, expr_id.into());
                 self.set_goto(current, end, expr_id.into());
                 Ok(None)
             }
@@ -771,7 +779,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         return Ok(None);
                     }
                 }
-                current = self.drop_until_scope(0, current);
+                current = self.drop_until_scope(0, current, expr_id.into());
                 self.set_terminator(current, TerminatorKind::Return, expr_id.into());
                 Ok(None)
             }
@@ -1299,6 +1307,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
             return Ok(None);
         };
         if matches!(&self.body.exprs[lhs], Expr::Underscore) {
+            self.push_fake_read_for_operand(current, rhs_op, span);
             return Ok(Some(current));
         }
         if matches!(
@@ -1575,6 +1584,16 @@ impl<'ctx> MirLowerCtx<'ctx> {
         self.result.basic_blocks[block].statements.push(statement);
     }
 
+    fn push_fake_read(&mut self, block: BasicBlockId, p: Place, span: MirSpan) {
+        self.push_statement(block, StatementKind::FakeRead(p).with_span(span));
+    }
+
+    fn push_fake_read_for_operand(&mut self, block: BasicBlockId, operand: Operand, span: MirSpan) {
+        if let Operand::Move(p) | Operand::Copy(p) = operand {
+            self.push_fake_read(block, p, span);
+        }
+    }
+
     fn push_assignment(
         &mut self,
         block: BasicBlockId,
@@ -1733,6 +1752,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                             return Ok(None);
                         };
                         current = c;
+                        self.push_fake_read(current, init_place, span);
                         (current, else_block) =
                             self.pattern_match(current, None, init_place, *pat)?;
                         match (else_block, else_branch) {
@@ -1760,14 +1780,15 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         }
                     }
                 }
-                hir_def::hir::Statement::Expr { expr, has_semi: _ } => {
+                &hir_def::hir::Statement::Expr { expr, has_semi: _ } => {
                     let scope2 = self.push_drop_scope();
-                    let Some((_, c)) = self.lower_expr_as_place(current, *expr, true)? else {
+                    let Some((p, c)) = self.lower_expr_as_place(current, expr, true)? else {
                         scope2.pop_assume_dropped(self);
                         scope.pop_assume_dropped(self);
                         return Ok(None);
                     };
-                    current = scope2.pop_and_drop(self, c);
+                    self.push_fake_read(c, p, expr.into());
+                    current = scope2.pop_and_drop(self, c, expr.into());
                 }
             }
         }
@@ -1778,7 +1799,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
             };
             current = c;
         }
-        current = scope.pop_and_drop(self, current);
+        current = scope.pop_and_drop(self, current, span);
         Ok(Some(current))
     }
 
@@ -1858,9 +1879,14 @@ impl<'ctx> MirLowerCtx<'ctx> {
         }
     }
 
-    fn drop_until_scope(&mut self, scope_index: usize, mut current: BasicBlockId) -> BasicBlockId {
+    fn drop_until_scope(
+        &mut self,
+        scope_index: usize,
+        mut current: BasicBlockId,
+        span: MirSpan,
+    ) -> BasicBlockId {
         for scope in self.drop_scopes[scope_index..].to_vec().iter().rev() {
-            self.emit_drop_and_storage_dead_for_scope(scope, &mut current);
+            self.emit_drop_and_storage_dead_for_scope(scope, &mut current, span);
         }
         current
     }
@@ -1876,17 +1902,22 @@ impl<'ctx> MirLowerCtx<'ctx> {
     }
 
     /// Don't call directly
-    fn pop_drop_scope_internal(&mut self, mut current: BasicBlockId) -> BasicBlockId {
+    fn pop_drop_scope_internal(
+        &mut self,
+        mut current: BasicBlockId,
+        span: MirSpan,
+    ) -> BasicBlockId {
         let scope = self.drop_scopes.pop().unwrap();
-        self.emit_drop_and_storage_dead_for_scope(&scope, &mut current);
+        self.emit_drop_and_storage_dead_for_scope(&scope, &mut current, span);
         current
     }
 
     fn pop_drop_scope_assert_finished(
         &mut self,
         mut current: BasicBlockId,
+        span: MirSpan,
     ) -> Result<BasicBlockId> {
-        current = self.pop_drop_scope_internal(current);
+        current = self.pop_drop_scope_internal(current, span);
         if !self.drop_scopes.is_empty() {
             implementation_error!("Mismatched count between drop scope push and pops");
         }
@@ -1897,6 +1928,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
         &mut self,
         scope: &DropScope,
         current: &mut Idx<BasicBlock>,
+        span: MirSpan,
     ) {
         for &l in scope.locals.iter().rev() {
             if !self.result.locals[l].ty.clone().is_copy(self.db, self.owner) {
@@ -1904,13 +1936,10 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 self.set_terminator(
                     prev,
                     TerminatorKind::Drop { place: l.into(), target: *current, unwind: None },
-                    MirSpan::Unknown,
+                    span,
                 );
             }
-            self.push_statement(
-                *current,
-                StatementKind::StorageDead(l).with_span(MirSpan::Unknown),
-            );
+            self.push_statement(*current, StatementKind::StorageDead(l).with_span(span));
         }
     }
 }
@@ -1987,7 +2016,7 @@ pub fn mir_body_for_closure_query(
         |_| true,
     )?;
     if let Some(current) = ctx.lower_expr_to_place(*root, return_slot().into(), current)? {
-        let current = ctx.pop_drop_scope_assert_finished(current)?;
+        let current = ctx.pop_drop_scope_assert_finished(current, root.into())?;
         ctx.set_terminator(current, TerminatorKind::Return, (*root).into());
     }
     let mut upvar_map: FxHashMap<LocalId, Vec<(&CapturedItem, usize)>> = FxHashMap::default();
@@ -2081,7 +2110,7 @@ pub fn mir_body_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Result<Arc<Mi
 
 pub fn mir_body_recover(
     _db: &dyn HirDatabase,
-    _cycle: &[String],
+    _cycle: &Cycle,
     _def: &DefWithBodyId,
 ) -> Result<Arc<MirBody>> {
     Err(MirLowerError::Loop)
@@ -2131,7 +2160,7 @@ pub fn lower_to_mir(
         ctx.lower_params_and_bindings([].into_iter(), binding_picker)?
     };
     if let Some(current) = ctx.lower_expr_to_place(root_expr, return_slot().into(), current)? {
-        let current = ctx.pop_drop_scope_assert_finished(current)?;
+        let current = ctx.pop_drop_scope_assert_finished(current, root_expr.into())?;
         ctx.set_terminator(current, TerminatorKind::Return, root_expr.into());
     }
     Ok(ctx.result)

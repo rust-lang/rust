@@ -6,18 +6,14 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::cmp::Ordering::{self, Greater, Less};
+use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::fmt;
-use crate::intrinsics::{assert_unsafe_precondition, exact_div};
-use crate::marker::Copy;
+use crate::intrinsics::exact_div;
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZeroUsize;
-use crate::ops::{Bound, FnMut, OneSidedRange, Range, RangeBounds};
-use crate::option::Option;
-use crate::option::Option::{None, Some};
+use crate::ops::{Bound, OneSidedRange, Range, RangeBounds};
+use crate::panic::debug_assert_nounwind;
 use crate::ptr;
-use crate::result::Result;
-use crate::result::Result::{Err, Ok};
 use crate::simd::{self, Simd};
 use crate::slice;
 
@@ -640,6 +636,11 @@ impl<T> [T] {
     /// Calling this method with an out-of-bounds index is *[undefined behavior]*
     /// even if the resulting reference is not used.
     ///
+    /// You can think of this like `.get(index).unwrap_unchecked()`.  It's UB
+    /// to call `.get_unchecked(len)`, even if you immediately convert to a
+    /// pointer.  And it's UB to call `.get_unchecked(..len + 1)`,
+    /// `.get_unchecked(..=len)`, or similar.
+    ///
     /// [`get`]: slice::get
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     ///
@@ -674,6 +675,11 @@ impl<T> [T] {
     ///
     /// Calling this method with an out-of-bounds index is *[undefined behavior]*
     /// even if the resulting reference is not used.
+    ///
+    /// You can think of this like `.get_mut(index).unwrap_unchecked()`.  It's
+    /// UB to call `.get_unchecked_mut(len)`, even if you immediately convert
+    /// to a pointer.  And it's UB to call `.get_unchecked_mut(..len + 1)`,
+    /// `.get_unchecked_mut(..=len)`, or similar.
     ///
     /// [`get_mut`]: slice::get_mut
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
@@ -919,14 +925,14 @@ impl<T> [T] {
     #[unstable(feature = "slice_swap_unchecked", issue = "88539")]
     #[rustc_const_unstable(feature = "const_swap", issue = "83163")]
     pub const unsafe fn swap_unchecked(&mut self, a: usize, b: usize) {
-        let this = self;
-        let ptr = this.as_mut_ptr();
+        debug_assert_nounwind!(
+            a < self.len() && b < self.len(),
+            "slice::swap_unchecked requires that the indices are within the slice",
+        );
+
+        let ptr = self.as_mut_ptr();
         // SAFETY: caller has to guarantee that `a < self.len()` and `b < self.len()`
         unsafe {
-            assert_unsafe_precondition!(
-                "slice::swap_unchecked requires that the indices are within the slice",
-                [T](a: usize, b: usize, this: &mut [T]) => a < this.len() && b < this.len()
-            );
             ptr::swap(ptr.add(a), ptr.add(b));
         }
     }
@@ -1034,11 +1040,11 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// let slice = ['r', 'u', 's', 't'];
-    /// let mut iter = slice.windows(2);
-    /// assert_eq!(iter.next().unwrap(), &['r', 'u']);
-    /// assert_eq!(iter.next().unwrap(), &['u', 's']);
-    /// assert_eq!(iter.next().unwrap(), &['s', 't']);
+    /// let slice = ['l', 'o', 'r', 'e', 'm'];
+    /// let mut iter = slice.windows(3);
+    /// assert_eq!(iter.next().unwrap(), &['l', 'o', 'r']);
+    /// assert_eq!(iter.next().unwrap(), &['o', 'r', 'e']);
+    /// assert_eq!(iter.next().unwrap(), &['r', 'e', 'm']);
     /// assert!(iter.next().is_none());
     /// ```
     ///
@@ -1259,15 +1265,12 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub const unsafe fn as_chunks_unchecked<const N: usize>(&self) -> &[[T; N]] {
-        let this = self;
+        debug_assert_nounwind!(
+            N != 0 && self.len() % N == 0,
+            "slice::as_chunks_unchecked requires `N != 0` and the slice to split exactly into `N`-element chunks",
+        );
         // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
-        let new_len = unsafe {
-            assert_unsafe_precondition!(
-                "slice::as_chunks_unchecked requires `N != 0` and the slice to split exactly into `N`-element chunks",
-                [T](this: &[T], N: usize) => N != 0 && this.len() % N == 0
-            );
-            exact_div(self.len(), N)
-        };
+        let new_len = unsafe { exact_div(self.len(), N) };
         // SAFETY: We cast a slice of `new_len * N` elements into
         // a slice of `new_len` many `N` elements chunks.
         unsafe { from_raw_parts(self.as_ptr().cast(), new_len) }
@@ -1416,15 +1419,12 @@ impl<T> [T] {
     #[inline]
     #[must_use]
     pub const unsafe fn as_chunks_unchecked_mut<const N: usize>(&mut self) -> &mut [[T; N]] {
-        let this = &*self;
+        debug_assert_nounwind!(
+            N != 0 && self.len() % N == 0,
+            "slice::as_chunks_unchecked requires `N != 0` and the slice to split exactly into `N`-element chunks",
+        );
         // SAFETY: Caller must guarantee that `N` is nonzero and exactly divides the slice length
-        let new_len = unsafe {
-            assert_unsafe_precondition!(
-                "slice::as_chunks_unchecked_mut requires `N != 0` and the slice to split exactly into `N`-element chunks",
-                [T](this: &[T], N: usize) => N != 0 && this.len() % N == 0
-            );
-            exact_div(this.len(), N)
-        };
+        let new_len = unsafe { exact_div(self.len(), N) };
         // SAFETY: We cast a slice of `new_len * N` elements into
         // a slice of `new_len` many `N` elements chunks.
         unsafe { from_raw_parts_mut(self.as_mut_ptr().cast(), new_len) }
@@ -1957,14 +1957,13 @@ impl<T> [T] {
         let len = self.len();
         let ptr = self.as_ptr();
 
+        debug_assert_nounwind!(
+            mid <= len,
+            "slice::split_at_unchecked requires the index to be within the slice",
+        );
+
         // SAFETY: Caller has to check that `0 <= mid <= self.len()`
-        unsafe {
-            assert_unsafe_precondition!(
-                "slice::split_at_unchecked requires the index to be within the slice",
-                (mid: usize, len: usize) => mid <= len
-            );
-            (from_raw_parts(ptr, mid), from_raw_parts(ptr.add(mid), len - mid))
-        }
+        unsafe { (from_raw_parts(ptr, mid), from_raw_parts(ptr.add(mid), len - mid)) }
     }
 
     /// Divides one mutable slice into two at an index, without doing bounds checking.
@@ -2008,17 +2007,16 @@ impl<T> [T] {
         let len = self.len();
         let ptr = self.as_mut_ptr();
 
+        debug_assert_nounwind!(
+            mid <= len,
+            "slice::split_at_mut_unchecked requires the index to be within the slice",
+        );
+
         // SAFETY: Caller has to check that `0 <= mid <= self.len()`.
         //
         // `[ptr; mid]` and `[mid; len]` are not overlapping, so returning a mutable reference
         // is fine.
-        unsafe {
-            assert_unsafe_precondition!(
-                "slice::split_at_mut_unchecked requires the index to be within the slice",
-                (mid: usize, len: usize) => mid <= len
-            );
-            (from_raw_parts_mut(ptr, mid), from_raw_parts_mut(ptr.add(mid), len - mid))
-        }
+        unsafe { (from_raw_parts_mut(ptr, mid), from_raw_parts_mut(ptr.add(mid), len - mid)) }
     }
 
     /// Divides one slice into an array and a remainder slice at an index.
@@ -2844,14 +2842,13 @@ impl<T> [T] {
             // we have `left + size/2 < self.len()`, and this is in-bounds.
             let cmp = f(unsafe { self.get_unchecked(mid) });
 
-            // The reason why we use if/else control flow rather than match
-            // is because match reorders comparison operations, which is perf sensitive.
-            // This is x86 asm for u8: https://rust.godbolt.org/z/8Y8Pra.
-            if cmp == Less {
-                left = mid + 1;
-            } else if cmp == Greater {
-                right = mid;
-            } else {
+            // This control flow produces conditional moves, which results in
+            // fewer branches and instructions than if/else or matching on
+            // cmp::Ordering.
+            // This is x86 asm for u8: https://rust.godbolt.org/z/698eYffTx.
+            left = if cmp == Less { mid + 1 } else { left };
+            right = if cmp == Greater { mid } else { right };
+            if cmp == Equal {
                 // SAFETY: same as the `get_unchecked` above
                 unsafe { crate::intrinsics::assume(mid < self.len()) };
                 return Ok(mid);
@@ -3866,6 +3863,12 @@ impl<T> [T] {
         } else {
             let (left, rest) = self.split_at(offset);
             let (us_len, ts_len) = rest.align_to_offsets::<U>();
+            // Inform Miri that we want to consider the "middle" pointer to be suitably aligned.
+            #[cfg(miri)]
+            crate::intrinsics::miri_promise_symbolic_alignment(
+                rest.as_ptr().cast(),
+                mem::align_of::<U>(),
+            );
             // SAFETY: now `rest` is definitely aligned, so `from_raw_parts` below is okay,
             // since the caller guarantees that we can transmute `T` to `U` safely.
             unsafe {
@@ -3936,6 +3939,12 @@ impl<T> [T] {
             let (us_len, ts_len) = rest.align_to_offsets::<U>();
             let rest_len = rest.len();
             let mut_ptr = rest.as_mut_ptr();
+            // Inform Miri that we want to consider the "middle" pointer to be suitably aligned.
+            #[cfg(miri)]
+            crate::intrinsics::miri_promise_symbolic_alignment(
+                mut_ptr.cast() as *const (),
+                mem::align_of::<U>(),
+            );
             // We can't use `rest` again after this, that would invalidate its alias `mut_ptr`!
             // SAFETY: see comments for `align_to`.
             unsafe {
@@ -3977,7 +3986,7 @@ impl<T> [T] {
     ///
     /// ```
     /// #![feature(portable_simd)]
-    /// use core::simd::SimdFloat;
+    /// use core::simd::prelude::*;
     ///
     /// let short = &[1, 2, 3];
     /// let (prefix, middle, suffix) = short.as_simd::<4>();
@@ -3989,7 +3998,6 @@ impl<T> [T] {
     ///
     /// fn basic_simd_sum(x: &[f32]) -> f32 {
     ///     use std::ops::Add;
-    ///     use std::simd::f32x4;
     ///     let (prefix, middle, suffix) = x.as_simd();
     ///     let sums = f32x4::from_array([
     ///         prefix.iter().copied().sum(),

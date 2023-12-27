@@ -6,6 +6,6 @@ LL | fn foo<'a, 'b, 'a>(x: &'a str, y: &'b str) {
    |        |
    |        first use of `'a`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0403`.

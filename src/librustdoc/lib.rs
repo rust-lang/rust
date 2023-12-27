@@ -53,6 +53,7 @@ extern crate rustc_interface;
 extern crate rustc_lexer;
 extern crate rustc_lint;
 extern crate rustc_lint_defs;
+extern crate rustc_log;
 extern crate rustc_macros;
 extern crate rustc_metadata;
 extern crate rustc_middle;
@@ -81,7 +82,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::{make_crate_type_option, ErrorOutputType, RustcOptGroup};
-use rustc_session::{getopts, EarlyErrorHandler};
+use rustc_session::{getopts, EarlyDiagCtxt};
 
 use crate::clean::utils::DOC_RUST_LANG_ORG_CHANNEL;
 
@@ -156,7 +157,7 @@ pub fn main() {
         }
     }
 
-    let mut handler = EarlyErrorHandler::new(ErrorOutputType::default());
+    let mut early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
 
     let using_internal_features = rustc_driver::install_ice_hook(
         "https://github.com/rust-lang/rust/issues/new\
@@ -174,11 +175,11 @@ pub fn main() {
     // `debug_logging = true` is because all rustc logging goes to its version of tracing (the one
     // in the sysroot), and all of rustdoc's logging goes to its version (the one in Cargo.toml).
 
-    init_logging(&handler);
-    rustc_driver::init_env_logger(&handler, "RUSTDOC_LOG");
+    init_logging(&early_dcx);
+    rustc_driver::init_logger(&early_dcx, rustc_log::LoggerConfig::from_env("RUSTDOC_LOG"));
 
-    let exit_code = rustc_driver::catch_with_exit_code(|| match get_args(&handler) {
-        Some(args) => main_args(&mut handler, &args, using_internal_features),
+    let exit_code = rustc_driver::catch_with_exit_code(|| match get_args(&early_dcx) {
+        Some(args) => main_args(&mut early_dcx, &args, using_internal_features),
         _ =>
         {
             #[allow(deprecated)]
@@ -188,15 +189,15 @@ pub fn main() {
     process::exit(exit_code);
 }
 
-fn init_logging(handler: &EarlyErrorHandler) {
+fn init_logging(early_dcx: &EarlyDiagCtxt) {
     let color_logs = match std::env::var("RUSTDOC_LOG_COLOR").as_deref() {
         Ok("always") => true,
         Ok("never") => false,
         Ok("auto") | Err(VarError::NotPresent) => io::stdout().is_terminal(),
-        Ok(value) => handler.early_error(format!(
+        Ok(value) => early_dcx.early_fatal(format!(
             "invalid log color value '{value}': expected one of always, never, or auto",
         )),
-        Err(VarError::NotUnicode(value)) => handler.early_error(format!(
+        Err(VarError::NotUnicode(value)) => early_dcx.early_fatal(format!(
             "invalid log color value '{}': expected one of always, never, or auto",
             value.to_string_lossy()
         )),
@@ -219,13 +220,13 @@ fn init_logging(handler: &EarlyErrorHandler) {
     tracing::subscriber::set_global_default(subscriber).unwrap();
 }
 
-fn get_args(handler: &EarlyErrorHandler) -> Option<Vec<String>> {
+fn get_args(early_dcx: &EarlyDiagCtxt) -> Option<Vec<String>> {
     env::args_os()
         .enumerate()
         .map(|(i, arg)| {
             arg.into_string()
                 .map_err(|arg| {
-                    handler.early_warn(format!("Argument {i} is not valid Unicode: {arg:?}"));
+                    early_dcx.early_warn(format!("Argument {i} is not valid Unicode: {arg:?}"));
                 })
                 .ok()
         })
@@ -672,11 +673,11 @@ fn usage(argv0: &str) {
 /// A result type used by several functions under `main()`.
 type MainResult = Result<(), ErrorGuaranteed>;
 
-fn wrap_return(diag: &rustc_errors::Handler, res: Result<(), String>) -> MainResult {
+fn wrap_return(dcx: &rustc_errors::DiagCtxt, res: Result<(), String>) -> MainResult {
     match res {
-        Ok(()) => diag.has_errors().map_or(Ok(()), Err),
+        Ok(()) => dcx.has_errors().map_or(Ok(()), Err),
         Err(err) => {
-            let reported = diag.struct_err(err).emit();
+            let reported = dcx.struct_err(err).emit();
             Err(reported)
         }
     }
@@ -689,10 +690,10 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
     tcx: TyCtxt<'tcx>,
 ) -> MainResult {
     match formats::run_format::<T>(krate, renderopts, cache, tcx) {
-        Ok(_) => tcx.sess.has_errors().map_or(Ok(()), Err),
+        Ok(_) => tcx.dcx().has_errors().map_or(Ok(()), Err),
         Err(e) => {
             let mut msg =
-                tcx.sess.struct_err(format!("couldn't generate documentation: {}", e.error));
+                tcx.dcx().struct_err(format!("couldn't generate documentation: {}", e.error));
             let file = e.file.display().to_string();
             if !file.is_empty() {
                 msg.note(format!("failed to create or modify \"{file}\""));
@@ -703,7 +704,7 @@ fn run_renderer<'tcx, T: formats::FormatRenderer<'tcx>>(
 }
 
 fn main_args(
-    handler: &mut EarlyErrorHandler,
+    early_dcx: &mut EarlyDiagCtxt,
     at_args: &[String],
     using_internal_features: Arc<AtomicBool>,
 ) -> MainResult {
@@ -717,7 +718,7 @@ fn main_args(
     // the compiler with @empty_file as argv[0] and no more arguments.
     let at_args = at_args.get(1..).unwrap_or_default();
 
-    let args = rustc_driver::args::arg_expand_all(handler, at_args);
+    let args = rustc_driver::args::arg_expand_all(early_dcx, at_args);
 
     let mut options = getopts::Options::new();
     for option in opts() {
@@ -726,13 +727,13 @@ fn main_args(
     let matches = match options.parse(&args) {
         Ok(m) => m,
         Err(err) => {
-            handler.early_error(err.to_string());
+            early_dcx.early_fatal(err.to_string());
         }
     };
 
     // Note that we discard any distinction between different non-zero exit
     // codes from `from_matches` here.
-    let (options, render_options) = match config::Options::from_matches(handler, &matches, args) {
+    let (options, render_options) = match config::Options::from_matches(early_dcx, &matches, args) {
         Ok(opts) => opts,
         Err(code) => {
             return if code == 0 {
@@ -744,12 +745,8 @@ fn main_args(
         }
     };
 
-    let diag = core::new_handler(
-        options.error_format,
-        None,
-        options.diagnostic_width,
-        &options.unstable_opts,
-    );
+    let diag =
+        core::new_dcx(options.error_format, None, options.diagnostic_width, &options.unstable_opts);
 
     match (options.should_test, options.markdown_input()) {
         (true, true) => return wrap_return(&diag, markdown::test(options)),
@@ -773,7 +770,7 @@ fn main_args(
     }
 
     // need to move these items separately because we lose them by the time the closure is called,
-    // but we can't create the Handler ahead of time because it's not Send
+    // but we can't create the dcx ahead of time because it's not Send
     let show_coverage = options.show_coverage;
     let run_check = options.run_check;
 
@@ -793,24 +790,17 @@ fn main_args(
     let config = core::create_config(options, &render_options, using_internal_features);
 
     interface::run_compiler(config, |compiler| {
-        let sess = compiler.session();
+        let sess = &compiler.sess;
 
         if sess.opts.describe_lints {
-            let mut lint_store = rustc_lint::new_lint_store(sess.enable_internal_lints());
-            let registered_lints = if let Some(register_lints) = compiler.register_lints() {
-                register_lints(sess, &mut lint_store);
-                true
-            } else {
-                false
-            };
-            rustc_driver::describe_lints(sess, &lint_store, registered_lints);
+            rustc_driver::describe_lints(sess);
             return Ok(());
         }
 
         compiler.enter(|queries| {
             let mut gcx = abort_on_err(queries.global_ctxt(), sess);
-            if sess.diagnostic().has_errors_or_lint_errors().is_some() {
-                sess.fatal("Compilation failed, aborting rustdoc");
+            if sess.dcx().has_errors_or_lint_errors().is_some() {
+                sess.dcx().fatal("Compilation failed, aborting rustdoc");
             }
 
             gcx.enter(|tcx| {

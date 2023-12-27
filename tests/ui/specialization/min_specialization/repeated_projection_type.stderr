@@ -4,5 +4,5 @@ error: cannot specialize on associated type `<V as Id>::This == (I,)`
 LL | impl<I, V: Id<This = (I,)>> X for V {
    |               ^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

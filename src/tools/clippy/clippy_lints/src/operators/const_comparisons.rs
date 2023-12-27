@@ -3,13 +3,12 @@
 use std::cmp::Ordering;
 
 use clippy_utils::consts::{constant, Constant};
-use if_chain::if_chain;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::layout::HasTyCtxt;
 use rustc_middle::ty::{Ty, TypeckResults};
-use rustc_span::Span;
 use rustc_span::source_map::Spanned;
+use rustc_span::Span;
 
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::source::snippet;
@@ -24,19 +23,17 @@ fn comparison_to_const<'tcx>(
     typeck: &TypeckResults<'tcx>,
     expr: &'tcx Expr<'tcx>,
 ) -> Option<(CmpOp, &'tcx Expr<'tcx>, &'tcx Expr<'tcx>, Constant<'tcx>, Ty<'tcx>)> {
-    if_chain! {
-        if let ExprKind::Binary(operator, left, right) = expr.kind;
-        if let Ok(cmp_op) = CmpOp::try_from(operator.node);
-        then {
-            match (constant(cx, typeck, left), constant(cx, typeck, right)) {
-                (Some(_), Some(_)) => None,
-                (_, Some(con)) => Some((cmp_op, left, right, con, typeck.expr_ty(right))),
-                (Some(con), _) => Some((cmp_op.reverse(), right, left, con, typeck.expr_ty(left))),
-                _ => None,
-            }
-        } else {
-            None
+    if let ExprKind::Binary(operator, left, right) = expr.kind
+        && let Ok(cmp_op) = CmpOp::try_from(operator.node)
+    {
+        match (constant(cx, typeck, left), constant(cx, typeck, right)) {
+            (Some(_), Some(_)) => None,
+            (_, Some(con)) => Some((cmp_op, left, right, con, typeck.expr_ty(right))),
+            (Some(con), _) => Some((cmp_op.reverse(), right, left, con, typeck.expr_ty(left))),
+            _ => None,
         }
+    } else {
+        None
     }
 }
 
@@ -47,87 +44,89 @@ pub(super) fn check<'tcx>(
     right_cond: &'tcx Expr<'tcx>,
     span: Span,
 ) {
-    if_chain! {
+    if and_op.node == BinOpKind::And
         // Ensure that the binary operator is &&
-        if and_op.node == BinOpKind::And;
 
         // Check that both operands to '&&' are themselves a binary operation
         // The `comparison_to_const` step also checks this, so this step is just an optimization
-        if let ExprKind::Binary(_, _, _) = left_cond.kind;
-        if let ExprKind::Binary(_, _, _) = right_cond.kind;
+        && let ExprKind::Binary(_, _, _) = left_cond.kind
+        && let ExprKind::Binary(_, _, _) = right_cond.kind
 
-        let typeck = cx.typeck_results();
+        && let typeck = cx.typeck_results()
 
         // Check that both operands to '&&' compare a non-literal to a literal
-        if let Some((left_cmp_op, left_expr, left_const_expr, left_const, left_type)) =
-            comparison_to_const(cx, typeck, left_cond);
-        if let Some((right_cmp_op, right_expr, right_const_expr, right_const, right_type)) =
-            comparison_to_const(cx, typeck, right_cond);
+        && let Some((left_cmp_op, left_expr, left_const_expr, left_const, left_type)) =
+            comparison_to_const(cx, typeck, left_cond)
+        && let Some((right_cmp_op, right_expr, right_const_expr, right_const, right_type)) =
+            comparison_to_const(cx, typeck, right_cond)
 
-        if left_type == right_type;
+        && left_type == right_type
 
         // Check that the same expression is compared in both comparisons
-        if SpanlessEq::new(cx).eq_expr(left_expr, right_expr);
+        && SpanlessEq::new(cx).eq_expr(left_expr, right_expr)
 
-        if !left_expr.can_have_side_effects();
+        && !left_expr.can_have_side_effects()
 
         // Compare the two constant expressions
-        if let Some(ordering) = Constant::partial_cmp(cx.tcx(), left_type, &left_const, &right_const);
+        && let Some(ordering) = Constant::partial_cmp(cx.tcx(), left_type, &left_const, &right_const)
 
         // Rule out the `x >= 42 && x <= 42` corner case immediately
         // Mostly to simplify the implementation, but it is also covered by `clippy::double_comparisons`
-        if !matches!(
+        && !matches!(
             (&left_cmp_op, &right_cmp_op, ordering),
             (CmpOp::Le | CmpOp::Ge, CmpOp::Le | CmpOp::Ge, Ordering::Equal)
-        );
-
-        then {
-            if left_cmp_op.direction() == right_cmp_op.direction() {
-                let lhs_str = snippet(cx, left_cond.span, "<lhs>");
-                let rhs_str = snippet(cx, right_cond.span, "<rhs>");
-                // We already know that either side of `&&` has no effect,
-                // but emit a different error message depending on which side it is
-                if left_side_is_useless(left_cmp_op, ordering) {
-                    span_lint_and_note(
-                        cx,
-                        REDUNDANT_COMPARISONS,
-                        span,
-                        "left-hand side of `&&` operator has no effect",
-                        Some(left_cond.span.until(right_cond.span)),
-                        &format!("`if `{rhs_str}` evaluates to true, {lhs_str}` will always evaluate to true as well"),
-                    );
-                } else {
-                    span_lint_and_note(
-                        cx,
-                        REDUNDANT_COMPARISONS,
-                        span,
-                        "right-hand side of `&&` operator has no effect",
-                        Some(and_op.span.to(right_cond.span)),
-                        &format!("`if `{lhs_str}` evaluates to true, {rhs_str}` will always evaluate to true as well"),
-                    );
-                }
-                // We could autofix this error but choose not to,
-                // because code triggering this lint probably not behaving correctly in the first place
-            }
-            else if !comparison_is_possible(left_cmp_op.direction(), ordering) {
-                let expr_str = snippet(cx, left_expr.span, "..");
-                let lhs_str = snippet(cx, left_const_expr.span, "<lhs>");
-                let rhs_str = snippet(cx, right_const_expr.span, "<rhs>");
-                let note = match ordering {
-                    Ordering::Less => format!("since `{lhs_str}` < `{rhs_str}`, the expression evaluates to false for any value of `{expr_str}`"),
-                    Ordering::Equal => format!("`{expr_str}` cannot simultaneously be greater than and less than `{lhs_str}`"),
-                    Ordering::Greater => format!("since `{lhs_str}` > `{rhs_str}`, the expression evaluates to false for any value of `{expr_str}`"),
-                };
+        )
+    {
+        if left_cmp_op.direction() == right_cmp_op.direction() {
+            let lhs_str = snippet(cx, left_cond.span, "<lhs>");
+            let rhs_str = snippet(cx, right_cond.span, "<rhs>");
+            // We already know that either side of `&&` has no effect,
+            // but emit a different error message depending on which side it is
+            if left_side_is_useless(left_cmp_op, ordering) {
                 span_lint_and_note(
                     cx,
-                    IMPOSSIBLE_COMPARISONS,
+                    REDUNDANT_COMPARISONS,
                     span,
-                    "boolean expression will never evaluate to 'true'",
-                    None,
-                    &note,
+                    "left-hand side of `&&` operator has no effect",
+                    Some(left_cond.span.until(right_cond.span)),
+                    &format!("`if `{rhs_str}` evaluates to true, {lhs_str}` will always evaluate to true as well"),
                 );
+            } else {
+                span_lint_and_note(
+                    cx,
+                    REDUNDANT_COMPARISONS,
+                    span,
+                    "right-hand side of `&&` operator has no effect",
+                    Some(and_op.span.to(right_cond.span)),
+                    &format!("`if `{lhs_str}` evaluates to true, {rhs_str}` will always evaluate to true as well"),
+                );
+            }
+            // We could autofix this error but choose not to,
+            // because code triggering this lint probably not behaving correctly in the first place
+        } else if !comparison_is_possible(left_cmp_op.direction(), ordering) {
+            let expr_str = snippet(cx, left_expr.span, "..");
+            let lhs_str = snippet(cx, left_const_expr.span, "<lhs>");
+            let rhs_str = snippet(cx, right_const_expr.span, "<rhs>");
+            let note = match ordering {
+                Ordering::Less => format!(
+                    "since `{lhs_str}` < `{rhs_str}`, the expression evaluates to false for any value of `{expr_str}`"
+                ),
+                Ordering::Equal => {
+                    format!("`{expr_str}` cannot simultaneously be greater than and less than `{lhs_str}`")
+                },
+                Ordering::Greater => format!(
+                    "since `{lhs_str}` > `{rhs_str}`, the expression evaluates to false for any value of `{expr_str}`"
+                ),
             };
-        }
+            span_lint_and_note(
+                cx,
+                IMPOSSIBLE_COMPARISONS,
+                span,
+                "boolean expression will never evaluate to 'true'",
+                None,
+                &note,
+            );
+        };
     }
 }
 

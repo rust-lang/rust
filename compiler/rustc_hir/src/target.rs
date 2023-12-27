@@ -67,6 +67,42 @@ impl Display for Target {
 }
 
 impl Target {
+    pub fn is_associated_item(self) -> bool {
+        match self {
+            Target::AssocConst | Target::AssocTy | Target::Method(_) => true,
+            Target::ExternCrate
+            | Target::Use
+            | Target::Static
+            | Target::Const
+            | Target::Fn
+            | Target::Closure
+            | Target::Mod
+            | Target::ForeignMod
+            | Target::GlobalAsm
+            | Target::TyAlias
+            | Target::OpaqueTy
+            | Target::Enum
+            | Target::Variant
+            | Target::Struct
+            | Target::Field
+            | Target::Union
+            | Target::Trait
+            | Target::TraitAlias
+            | Target::Impl
+            | Target::Expression
+            | Target::Statement
+            | Target::Arm
+            | Target::ForeignFn
+            | Target::ForeignStatic
+            | Target::ForeignTy
+            | Target::GenericParam(_)
+            | Target::MacroDef
+            | Target::Param
+            | Target::PatField
+            | Target::ExprField => false,
+        }
+    }
+
     pub fn from_item(item: &Item<'_>) -> Target {
         match item.kind {
             ItemKind::ExternCrate(..) => Target::ExternCrate,

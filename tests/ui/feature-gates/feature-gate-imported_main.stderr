@@ -7,6 +7,6 @@ LL | use foo::bar as main;
    = note: see issue #28937 <https://github.com/rust-lang/rust/issues/28937> for more information
    = help: add `#![feature(imported_main)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

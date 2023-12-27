@@ -13,42 +13,32 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         ast_block: BlockId,
         source_info: SourceInfo,
     ) -> BlockAnd<()> {
-        let Block {
-            region_scope,
-            opt_destruction_scope,
-            span,
-            ref stmts,
-            expr,
-            targeted_by_break,
-            safety_mode,
-        } = self.thir[ast_block];
-        let expr = expr.map(|expr| &self.thir[expr]);
-        self.in_opt_scope(opt_destruction_scope.map(|de| (de, source_info)), move |this| {
-            this.in_scope((region_scope, source_info), LintLevel::Inherited, move |this| {
-                if targeted_by_break {
-                    this.in_breakable_scope(None, destination, span, |this| {
-                        Some(this.ast_block_stmts(
-                            destination,
-                            block,
-                            span,
-                            &stmts,
-                            expr,
-                            safety_mode,
-                            region_scope,
-                        ))
-                    })
-                } else {
-                    this.ast_block_stmts(
+        let Block { region_scope, span, ref stmts, expr, targeted_by_break, safety_mode } =
+            self.thir[ast_block];
+        self.in_scope((region_scope, source_info), LintLevel::Inherited, move |this| {
+            if targeted_by_break {
+                this.in_breakable_scope(None, destination, span, |this| {
+                    Some(this.ast_block_stmts(
                         destination,
                         block,
                         span,
-                        &stmts,
+                        stmts,
                         expr,
                         safety_mode,
                         region_scope,
-                    )
-                }
-            })
+                    ))
+                })
+            } else {
+                this.ast_block_stmts(
+                    destination,
+                    block,
+                    span,
+                    stmts,
+                    expr,
+                    safety_mode,
+                    region_scope,
+                )
+            }
         })
     }
 
@@ -58,7 +48,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mut block: BasicBlock,
         span: Span,
         stmts: &[StmtId],
-        expr: Option<&Expr<'tcx>>,
+        expr: Option<ExprId>,
         safety_mode: BlockSafety,
         region_scope: Scope,
     ) -> BlockAnd<()> {
@@ -92,20 +82,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let source_info = this.source_info(span);
         for stmt in stmts {
-            let Stmt { ref kind, opt_destruction_scope } = this.thir[*stmt];
+            let Stmt { ref kind } = this.thir[*stmt];
             match kind {
                 StmtKind::Expr { scope, expr } => {
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result: true });
+                    let si = (*scope, source_info);
                     unpack!(
-                        block = this.in_opt_scope(
-                            opt_destruction_scope.map(|de| (de, source_info)),
-                            |this| {
-                                let si = (*scope, source_info);
-                                this.in_scope(si, LintLevel::Inherited, |this| {
-                                    this.stmt_expr(block, &this.thir[*expr], Some(*scope))
-                                })
-                            }
-                        )
+                        block = this.in_scope(si, LintLevel::Inherited, |this| {
+                            this.stmt_expr(block, *expr, Some(*scope))
+                        })
                     );
                 }
                 StmtKind::Let {
@@ -219,45 +204,39 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let visibility_scope =
                         Some(this.new_source_scope(remainder_span, LintLevel::Inherited, None));
 
-                    let init = &this.thir[*initializer];
-                    let initializer_span = init.span;
+                    let initializer_span = this.thir[*initializer].span;
+                    let scope = (*init_scope, source_info);
                     let failure = unpack!(
-                        block = this.in_opt_scope(
-                            opt_destruction_scope.map(|de| (de, source_info)),
-                            |this| {
-                                let scope = (*init_scope, source_info);
-                                this.in_scope(scope, *lint_level, |this| {
-                                    this.declare_bindings(
-                                        visibility_scope,
-                                        remainder_span,
-                                        pattern,
-                                        None,
-                                        Some((Some(&destination), initializer_span)),
-                                    );
-                                    this.visit_primary_bindings(
-                                        pattern,
-                                        UserTypeProjections::none(),
-                                        &mut |this, _, _, _, node, span, _, _| {
-                                            this.storage_live_binding(
-                                                block,
-                                                node,
-                                                span,
-                                                OutsideGuard,
-                                                true,
-                                            );
-                                        },
-                                    );
-                                    this.ast_let_else(
+                        block = this.in_scope(scope, *lint_level, |this| {
+                            this.declare_bindings(
+                                visibility_scope,
+                                remainder_span,
+                                pattern,
+                                None,
+                                Some((Some(&destination), initializer_span)),
+                            );
+                            this.visit_primary_bindings(
+                                pattern,
+                                UserTypeProjections::none(),
+                                &mut |this, _, _, _, node, span, _, _| {
+                                    this.storage_live_binding(
                                         block,
-                                        init,
-                                        initializer_span,
-                                        *else_block,
-                                        &last_remainder_scope,
-                                        pattern,
-                                    )
-                                })
-                            }
-                        )
+                                        node,
+                                        span,
+                                        OutsideGuard,
+                                        true,
+                                    );
+                                },
+                            );
+                            this.ast_let_else(
+                                block,
+                                *initializer,
+                                initializer_span,
+                                *else_block,
+                                &last_remainder_scope,
+                                pattern,
+                            )
+                        })
                     );
                     this.cfg.goto(failure, source_info, failure_entry);
 
@@ -295,28 +274,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Some(this.new_source_scope(remainder_span, LintLevel::Inherited, None));
 
                     // Evaluate the initializer, if present.
-                    if let Some(init) = initializer {
-                        let init = &this.thir[*init];
-                        let initializer_span = init.span;
+                    if let Some(init) = *initializer {
+                        let initializer_span = this.thir[init].span;
+                        let scope = (*init_scope, source_info);
 
                         unpack!(
-                            block = this.in_opt_scope(
-                                opt_destruction_scope.map(|de| (de, source_info)),
-                                |this| {
-                                    let scope = (*init_scope, source_info);
-                                    this.in_scope(scope, *lint_level, |this| {
-                                        this.declare_bindings(
-                                            visibility_scope,
-                                            remainder_span,
-                                            pattern,
-                                            None,
-                                            Some((None, initializer_span)),
-                                        );
-                                        this.expr_into_pattern(block, &pattern, init)
-                                        // irrefutable pattern
-                                    })
-                                },
-                            )
+                            block = this.in_scope(scope, *lint_level, |this| {
+                                this.declare_bindings(
+                                    visibility_scope,
+                                    remainder_span,
+                                    pattern,
+                                    None,
+                                    Some((None, initializer_span)),
+                                );
+                                this.expr_into_pattern(block, &pattern, init)
+                                // irrefutable pattern
+                            })
                         )
                     } else {
                         let scope = (*init_scope, source_info);
@@ -358,13 +331,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // of the block, which is stored into `destination`.
         let tcx = this.tcx;
         let destination_ty = destination.ty(&this.local_decls, tcx).ty;
-        if let Some(expr) = expr {
+        if let Some(expr_id) = expr {
+            let expr = &this.thir[expr_id];
             let tail_result_is_ignored =
                 destination_ty.is_unit() || this.block_context.currently_ignores_tail_results();
             this.block_context
                 .push(BlockFrame::TailExpr { tail_result_is_ignored, span: expr.span });
 
-            unpack!(block = this.expr_into_dest(destination, block, expr));
+            unpack!(block = this.expr_into_dest(destination, block, expr_id));
             let popped = this.block_context.pop();
 
             assert!(popped.is_some_and(|bf| bf.is_tail_expr()));

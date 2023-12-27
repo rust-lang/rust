@@ -68,6 +68,12 @@ macro_rules! clean_crate_tree {
                 let compiler = self.compiler;
                 let target = compiler.host;
                 let mut cargo = builder.bare_cargo(compiler, $mode, target, "clean");
+
+                // Since https://github.com/rust-lang/rust/pull/111076 enables
+                // unstable cargo feature (`public-dependency`), we need to ensure
+                // that unstable features are enabled before reading libstd Cargo.toml.
+                cargo.env("RUSTC_BOOTSTRAP", "1");
+
                 for krate in &*self.crates {
                     cargo.arg("-p");
                     cargo.arg(krate);
@@ -139,10 +145,18 @@ fn clean_specific_stage(build: &Build, stage: u32) {
 fn clean_default(build: &Build) {
     rm_rf(&build.out.join("tmp"));
     rm_rf(&build.out.join("dist"));
+    rm_rf(&build.out.join("bootstrap").join(".last-warned-change-id"));
+    rm_rf(&build.out.join("bootstrap-shims-dump"));
     rm_rf(&build.out.join("rustfmt.stamp"));
 
-    for host in &build.hosts {
-        let entries = match build.out.join(host.triple).read_dir() {
+    let mut hosts: Vec<_> = build.hosts.iter().map(|t| build.out.join(t.triple)).collect();
+    // After cross-compilation, artifacts of the host architecture (which may differ from build.host)
+    // might not get removed.
+    // Adding its path (linked one for easier accessibility) will solve this problem.
+    hosts.push(build.out.join("host"));
+
+    for host in hosts {
+        let entries = match host.read_dir() {
             Ok(iter) => iter,
             Err(_) => continue,
         };
@@ -177,7 +191,7 @@ fn rm_rf(path: &Path) {
                             && p.file_name().and_then(std::ffi::OsStr::to_str)
                                 == Some("bootstrap.exe")
                         {
-                            eprintln!("warning: failed to delete '{}'.", p.display());
+                            eprintln!("WARNING: failed to delete '{}'.", p.display());
                             return Ok(());
                         }
                         Err(e)

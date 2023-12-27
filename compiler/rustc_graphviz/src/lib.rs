@@ -273,9 +273,9 @@
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(attr(allow(unused_variables), deny(warnings)))
 )]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), allow(internal_features))]
+#![feature(rustdoc_internals)]
+#![doc(rust_logo)]
+#![allow(internal_features)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 
@@ -521,33 +521,6 @@ impl<'a> LabelText<'a> {
             EscStr(ref s) => format!("\"{}\"", LabelText::escape_str(s)),
             HtmlStr(ref s) => format!("<{s}>"),
         }
-    }
-
-    /// Decomposes content into string suitable for making EscStr that
-    /// yields same content as self. The result obeys the law
-    /// render(`lt`) == render(`EscStr(lt.pre_escaped_content())`) for
-    /// all `lt: LabelText`.
-    fn pre_escaped_content(self) -> Cow<'a, str> {
-        match self {
-            EscStr(s) => s,
-            LabelStr(s) => {
-                if s.contains('\\') {
-                    s.escape_default().to_string().into()
-                } else {
-                    s
-                }
-            }
-            HtmlStr(s) => s,
-        }
-    }
-
-    /// Puts `suffix` on a line below this label, with a blank line separator.
-    pub fn suffix_line(self, suffix: LabelText<'_>) -> LabelText<'static> {
-        let mut prefix = self.pre_escaped_content().into_owned();
-        let suffix = suffix.pre_escaped_content();
-        prefix.push_str(r"\n\n");
-        prefix.push_str(&suffix);
-        EscStr(prefix.into())
     }
 }
 

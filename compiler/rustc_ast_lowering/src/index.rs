@@ -1,8 +1,7 @@
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sorted_map::SortedMap;
 use rustc_hir as hir;
-use rustc_hir::def_id::LocalDefId;
-use rustc_hir::intravisit::{self, Visitor};
+use rustc_hir::def_id::{LocalDefId, LocalDefIdMap};
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::*;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::span_bug;
@@ -10,14 +9,14 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::{Span, DUMMY_SP};
 
 /// A visitor that walks over the HIR and collects `Node`s into a HIR map.
-pub(super) struct NodeCollector<'a, 'hir> {
+struct NodeCollector<'a, 'hir> {
     tcx: TyCtxt<'hir>,
 
     bodies: &'a SortedMap<ItemLocalId, &'hir Body<'hir>>,
 
     /// Outputs
     nodes: IndexVec<ItemLocalId, Option<ParentedNode<'hir>>>,
-    parenting: FxHashMap<LocalDefId, ItemLocalId>,
+    parenting: LocalDefIdMap<ItemLocalId>,
 
     /// The parent of this node
     parent_node: hir::ItemLocalId,
@@ -30,7 +29,7 @@ pub(super) fn index_hir<'hir>(
     tcx: TyCtxt<'hir>,
     item: hir::OwnerNode<'hir>,
     bodies: &SortedMap<ItemLocalId, &'hir Body<'hir>>,
-) -> (IndexVec<ItemLocalId, Option<ParentedNode<'hir>>>, FxHashMap<LocalDefId, ItemLocalId>) {
+) -> (IndexVec<ItemLocalId, Option<ParentedNode<'hir>>>, LocalDefIdMap<ItemLocalId>) {
     let mut nodes = IndexVec::new();
     // This node's parent should never be accessed: the owner's parent is computed by the
     // hir_owner_parent query. Make it invalid (= ItemLocalId::MAX) to force an ICE whenever it is
@@ -42,12 +41,12 @@ pub(super) fn index_hir<'hir>(
         parent_node: ItemLocalId::new(0),
         nodes,
         bodies,
-        parenting: FxHashMap::default(),
+        parenting: Default::default(),
     };
 
     match item {
         OwnerNode::Crate(citem) => {
-            collector.visit_mod(&citem, citem.spans.inner_span, hir::CRATE_HIR_ID)
+            collector.visit_mod(citem, citem.spans.inner_span, hir::CRATE_HIR_ID)
         }
         OwnerNode::Item(item) => collector.visit_item(item),
         OwnerNode::TraitItem(item) => collector.visit_trait_item(item),
@@ -89,7 +88,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
             }
         }
 
-        self.nodes.insert(hir_id.local_id, ParentedNode { parent: self.parent_node, node: node });
+        self.nodes.insert(hir_id.local_id, ParentedNode { parent: self.parent_node, node });
     }
 
     fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_node_id: HirId, f: F) {

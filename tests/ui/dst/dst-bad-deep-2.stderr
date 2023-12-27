@@ -9,6 +9,6 @@ LL |     let h: &(([isize],),) = &(*g,);
    = note: required because it appears within the type `(([isize],),)`
    = note: tuples must have a statically known size to be initialized
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

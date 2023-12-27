@@ -33,7 +33,7 @@ use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_span::symbol::{kw, Ident};
-use rustc_span::{self, sym, BytePos, Span};
+use rustc_span::{sym, BytePos, Span};
 use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext};
 
 use std::iter;
@@ -205,7 +205,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Otherwise, there's a mismatch, so clear out what we're expecting, and set
                     // our input types to err_args so we don't blow up the error messages
                     struct_span_err!(
-                        tcx.sess,
+                        tcx.dcx(),
                         call_span,
                         E0059,
                         "cannot use call notation; the first type parameter \
@@ -229,11 +229,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let minimum_input_count = expected_input_tys.len();
         let provided_arg_count = provided_args.len();
-
-        let is_const_eval_select = matches!(fn_def_id, Some(def_id) if
-            self.tcx.def_kind(def_id) == hir::def::DefKind::Fn
-            && self.tcx.is_intrinsic(def_id)
-            && self.tcx.item_name(def_id) == sym::const_eval_select);
 
         // We introduce a helper function to demand that a given argument satisfy a given input
         // This is more complicated than just checking type equality, as arguments could be coerced
@@ -267,35 +262,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             if coerce_error.is_some() {
                 return Compatibility::Incompatible(coerce_error);
-            }
-
-            // Check that second and third argument of `const_eval_select` must be `FnDef`, and additionally that
-            // the second argument must be `const fn`. The first argument must be a tuple, but this is already expressed
-            // in the function signature (`F: FnOnce<ARG>`), so I did not bother to add another check here.
-            //
-            // This check is here because there is currently no way to express a trait bound for `FnDef` types only.
-            if is_const_eval_select && (1..=2).contains(&idx) {
-                if let ty::FnDef(def_id, args) = *checked_ty.kind() {
-                    if idx == 1 {
-                        if !self.tcx.is_const_fn_raw(def_id) {
-                            self.tcx.sess.emit_err(errors::ConstSelectMustBeConst {
-                                span: provided_arg.span,
-                            });
-                        } else {
-                            self.enforce_context_effects(
-                                provided_arg.hir_id,
-                                provided_arg.span,
-                                def_id,
-                                args,
-                            )
-                        }
-                    }
-                } else {
-                    self.tcx.sess.emit_err(errors::ConstSelectMustBeFn {
-                        span: provided_arg.span,
-                        ty: checked_ty,
-                    });
-                }
             }
 
             // 3. Check if the formal type is a supertype of the checked one
@@ -397,7 +363,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         for arg in provided_args.iter().skip(minimum_input_count) {
             // Make sure we've checked this expr at least once.
-            let arg_ty = self.check_expr(&arg);
+            let arg_ty = self.check_expr(arg);
 
             // If the function is c-style variadic, we skipped a bunch of arguments
             // so we need to check those, and write out the types
@@ -522,7 +488,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         // FIXME: taint after emitting errors and pass through an `ErrorGuaranteed`
         self.set_tainted_by_errors(
-            tcx.sess.delay_span_bug(call_span, "no errors reported for args"),
+            tcx.dcx().span_delayed_bug(call_span, "no errors reported for args"),
         );
 
         // Get the argument span in the context of the call span so that
@@ -698,7 +664,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             format!("arguments to this {call_name} are incorrect"),
                         );
                     } else {
-                        err = tcx.sess.struct_span_err_with_code(
+                        err = tcx.dcx().struct_span_err_with_code(
                             full_call_span,
                             format!(
                                 "{call_name} takes {}{} but {} {} supplied",
@@ -755,7 +721,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if cfg!(debug_assertions) {
                 span_bug!(error_span, "expected errors from argument matrix");
             } else {
-                tcx.sess.emit_err(errors::ArgMismatchIndeterminate { span: error_span });
+                tcx.dcx().emit_err(errors::ArgMismatchIndeterminate { span: error_span });
             }
             return;
         }
@@ -796,7 +762,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut err = self.err_ctxt().report_and_explain_type_error(trace, *err);
             self.emit_coerce_suggestions(
                 &mut err,
-                &provided_args[*provided_idx],
+                provided_args[*provided_idx],
                 provided_ty,
                 Expectation::rvalue_hint(self, expected_ty)
                     .only_has_type(self)
@@ -842,14 +808,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut err = if formal_and_expected_inputs.len() == provided_args.len() {
             struct_span_err!(
-                tcx.sess,
+                tcx.dcx(),
                 full_call_span,
                 E0308,
                 "arguments to this {} are incorrect",
                 call_name,
             )
         } else {
-            tcx.sess.struct_span_err_with_code(
+            tcx.dcx().struct_span_err_with_code(
                 full_call_span,
                 format!(
                     "this {} takes {}{} but {} {} supplied",
@@ -925,7 +891,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     self.emit_coerce_suggestions(
                         &mut err,
-                        &provided_args[provided_idx],
+                        provided_args[provided_idx],
                         provided_ty,
                         Expectation::rvalue_hint(self, expected_ty)
                             .only_has_type(self)
@@ -998,7 +964,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }) {
                         match e {
                             Error::Missing(expected_idx) => missing_idxs.push(expected_idx),
-                            _ => unreachable!(),
+                            _ => unreachable!(
+                                "control flow ensures that we should always get an `Error::Missing`"
+                            ),
                         }
                     }
 
@@ -1290,7 +1258,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
         provided_ty: Ty<'tcx>,
         arg: &hir::Expr<'tcx>,
-        err: &mut rustc_errors::DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+        err: &mut rustc_errors::DiagnosticBuilder<'tcx>,
     ) {
         if let ty::RawPtr(ty::TypeAndMut { mutbl: hir::Mutability::Mut, .. }) = expected_ty.kind()
             && let ty::RawPtr(ty::TypeAndMut { mutbl: hir::Mutability::Not, .. }) =
@@ -1366,7 +1334,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let variant = match def {
             Res::Err => {
                 let guar =
-                    self.tcx.sess.delay_span_bug(path_span, "`Res::Err` but no error emitted");
+                    self.dcx().span_delayed_bug(path_span, "`Res::Err` but no error emitted");
                 self.set_tainted_by_errors(guar);
                 return Err(guar);
             }
@@ -1410,7 +1378,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     guar
                 }
                 _ => struct_span_err!(
-                    self.tcx.sess,
+                    self.dcx(),
                     path_span,
                     E0071,
                     "expected struct, variant or union type, found {}",
@@ -1469,7 +1437,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type check the initializer.
         if let Some(ref init) = decl.init {
-            let init_ty = self.check_decl_initializer(decl.hir_id, decl.pat, &init);
+            let init_ty = self.check_decl_initializer(decl.hir_id, decl.pat, init);
             self.overwrite_local_ty_if_err(decl.hir_id, decl.pat, init_ty);
         }
 
@@ -1483,7 +1451,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Type check the pattern. Override if necessary to avoid knock-on errors.
-        self.check_pat_top(&decl.pat, decl_ty, ty_span, origin_expr, Some(decl.origin));
+        self.check_pat_top(decl.pat, decl_ty, ty_span, origin_expr, Some(decl.origin));
         let pat_ty = self.node_ty(decl.pat.hir_id);
         self.overwrite_local_ty_if_err(decl.hir_id, decl.pat, pat_ty);
 
@@ -1525,13 +1493,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::StmtKind::Item(_) => {}
             hir::StmtKind::Expr(ref expr) => {
                 // Check with expected type of `()`.
-                self.check_expr_has_type_or_error(&expr, Ty::new_unit(self.tcx), |err| {
+                self.check_expr_has_type_or_error(expr, Ty::new_unit(self.tcx), |err| {
                     if expr.can_have_side_effects() {
                         self.suggest_semicolon_at_end(expr.span, err);
                     }
                 });
             }
-            hir::StmtKind::Semi(ref expr) => {
+            hir::StmtKind::Semi(expr) => {
                 self.check_expr(expr);
             }
         }
@@ -1739,7 +1707,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn parent_item_span(&self, id: hir::HirId) -> Option<Span> {
-        let node = self.tcx.hir().get_by_def_id(self.tcx.hir().get_parent_item(id).def_id);
+        let node = self.tcx.hir_node_by_def_id(self.tcx.hir().get_parent_item(id).def_id);
         match node {
             Node::Item(&hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. })
             | Node::ImplItem(&hir::ImplItem { kind: hir::ImplItemKind::Fn(_, body_id), .. }) => {
@@ -1755,7 +1723,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Given a function block's `HirId`, returns its `FnDecl` if it exists, or `None` otherwise.
     fn get_parent_fn_decl(&self, blk_id: hir::HirId) -> Option<(&'tcx hir::FnDecl<'tcx>, Ident)> {
-        let parent = self.tcx.hir().get_by_def_id(self.tcx.hir().get_parent_item(blk_id).def_id);
+        let parent = self.tcx.hir_node_by_def_id(self.tcx.hir().get_parent_item(blk_id).def_id);
         self.get_node_fn_decl(parent).map(|(_, fn_decl, ident, _)| (fn_decl, ident))
     }
 
@@ -1820,12 +1788,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         hir_id: hir::HirId,
     ) -> (Res, RawTy<'tcx>) {
         match *qpath {
-            QPath::Resolved(ref maybe_qself, ref path) => {
+            QPath::Resolved(ref maybe_qself, path) => {
                 let self_ty = maybe_qself.as_ref().map(|qself| self.to_ty(qself).raw);
                 let ty = self.astconv().res_to_ty(self_ty, path, hir_id, true);
                 (path.res, self.handle_raw_ty(path_span, ty))
             }
-            QPath::TypeRelative(ref qself, ref segment) => {
+            QPath::TypeRelative(qself, segment) => {
                 let ty = self.to_ty(qself);
 
                 let result = self
@@ -1842,8 +1810,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 (result.map_or(Res::Err, |(kind, def_id)| Res::Def(kind, def_id)), ty)
             }
-            QPath::LangItem(lang_item, span, id) => {
-                let (res, ty) = self.resolve_lang_item_path(lang_item, span, hir_id, id);
+            QPath::LangItem(lang_item, span) => {
+                let (res, ty) = self.resolve_lang_item_path(lang_item, span, hir_id);
                 (res, self.handle_raw_ty(path_span, ty))
             }
         }
@@ -1854,8 +1822,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         errors_causecode: Vec<(Span, ObligationCauseCode<'tcx>)>,
     ) {
         for (span, code) in errors_causecode {
-            let Some(mut diag) =
-                self.tcx.sess.diagnostic().steal_diagnostic(span, StashKey::MaybeForgetReturn)
+            let Some(mut diag) = self.dcx().steal_diagnostic(span, StashKey::MaybeForgetReturn)
             else {
                 continue;
             };
@@ -1864,35 +1831,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && let ExprBindingObligation(_, _, hir_id, ..) = code
                 && !fn_sig.output().is_unit()
             {
-                    let mut block_num = 0;
-                    let mut found_semi = false;
-                    for (_, node) in self.tcx.hir().parent_iter(hir_id) {
-                        match node {
-                            hir::Node::Stmt(stmt) => if let hir::StmtKind::Semi(ref expr) = stmt.kind {
+                let mut block_num = 0;
+                let mut found_semi = false;
+                for (_, node) in self.tcx.hir().parent_iter(hir_id) {
+                    match node {
+                        hir::Node::Stmt(stmt) => {
+                            if let hir::StmtKind::Semi(expr) = stmt.kind {
                                 let expr_ty = self.typeck_results.borrow().expr_ty(expr);
                                 let return_ty = fn_sig.output();
-                                if !matches!(expr.kind, hir::ExprKind::Ret(..)) &&
-                                    self.can_coerce(expr_ty, return_ty) {
+                                if !matches!(expr.kind, hir::ExprKind::Ret(..))
+                                    && self.can_coerce(expr_ty, return_ty)
+                                {
                                     found_semi = true;
                                 }
-                            },
-                            hir::Node::Block(_block) => if found_semi {
+                            }
+                        }
+                        hir::Node::Block(_block) => {
+                            if found_semi {
                                 block_num += 1;
                             }
-                            hir::Node::Item(item) => if let hir::ItemKind::Fn(..) = item.kind {
+                        }
+                        hir::Node::Item(item) => {
+                            if let hir::ItemKind::Fn(..) = item.kind {
                                 break;
                             }
-                            _ => {}
                         }
+                        _ => {}
                     }
-                    if block_num > 1 && found_semi {
-                        diag.span_suggestion_verbose(
-                            span.shrink_to_lo(),
-                            "you might have meant to return this to infer its type parameters",
-                            "return ",
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
+                }
+                if block_num > 1 && found_semi {
+                    diag.span_suggestion_verbose(
+                        span.shrink_to_lo(),
+                        "you might have meant to return this to infer its type parameters",
+                        "return ",
+                        Applicability::MaybeIncorrect,
+                    );
+                }
             }
             diag.emit();
         }
@@ -2016,7 +1990,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let new_def_id = self.probe(|_| {
                         let trait_ref = ty::TraitRef::new(
                             self.tcx,
-                            call_kind.to_def_id(self.tcx),
+                            self.tcx.fn_trait_kind_to_def_id(call_kind)?,
                             [
                                 callee_ty,
                                 self.next_ty_var(TypeVariableOrigin {
@@ -2031,7 +2005,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.param_env,
                             trait_ref,
                         );
-                        match SelectionContext::new(&self).select(&obligation) {
+                        match SelectionContext::new(self).select(&obligation) {
                             Ok(Some(traits::ImplSource::UserDefined(impl_source))) => {
                                 Some(impl_source.impl_def_id)
                             }
@@ -2082,7 +2056,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let node = self
                     .tcx
                     .opt_local_def_id_to_hir_id(self.tcx.hir().get_parent_item(call_expr.hir_id))
-                    .and_then(|hir_id| self.tcx.hir().find(hir_id));
+                    .and_then(|hir_id| self.tcx.opt_hir_node(hir_id));
                 match node {
                     Some(hir::Node::Item(item)) => call_finder.visit_item(item),
                     Some(hir::Node::TraitItem(item)) => call_finder.visit_trait_item(item),

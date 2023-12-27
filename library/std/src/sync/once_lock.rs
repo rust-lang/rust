@@ -13,22 +13,65 @@ use crate::sync::Once;
 ///
 /// # Examples
 ///
+/// Using `OnceCell` to store a function’s previously computed value (a.k.a.
+/// ‘lazy static’ or ‘memoizing’):
+///
 /// ```
 /// use std::sync::OnceLock;
 ///
-/// static CELL: OnceLock<String> = OnceLock::new();
+/// struct DeepThought {
+///     answer: String,
+/// }
+///
+/// impl DeepThought {
+/// #   fn great_question() -> String {
+/// #       "42".to_string()
+/// #   }
+/// #
+///     fn new() -> Self {
+///         Self {
+///             // M3 Ultra takes about 16 million years in --release config
+///             answer: Self::great_question(),
+///         }
+///     }
+/// }
+///
+/// fn computation() -> &'static DeepThought {
+///     // n.b. static items do not call [`Drop`] on program termination, so if
+///     // [`DeepThought`] impls Drop, that will not be used for this instance.
+///     static COMPUTATION: OnceLock<DeepThought> = OnceLock::new();
+///     COMPUTATION.get_or_init(|| DeepThought::new())
+/// }
+///
+/// // The `DeepThought` is built, stored in the `OnceLock`, and returned.
+/// let _ = computation().answer;
+/// // The `DeepThought` is retrieved from the `OnceLock` and returned.
+/// let _ = computation().answer;
+/// ```
+///
+/// Writing to a `OnceLock` from a separate thread:
+///
+/// ```
+/// use std::sync::OnceLock;
+///
+/// static CELL: OnceLock<usize> = OnceLock::new();
+///
+/// // `OnceLock` has not been written to yet.
 /// assert!(CELL.get().is_none());
 ///
+/// // Spawn a thread and write to `OnceLock`.
 /// std::thread::spawn(|| {
-///     let value: &String = CELL.get_or_init(|| {
-///         "Hello, World!".to_string()
-///     });
-///     assert_eq!(value, "Hello, World!");
-/// }).join().unwrap();
+///     let value = CELL.get_or_init(|| 12345);
+///     assert_eq!(value, &12345);
+/// })
+/// .join()
+/// .unwrap();
 ///
-/// let value: Option<&String> = CELL.get();
-/// assert!(value.is_some());
-/// assert_eq!(value.unwrap().as_str(), "Hello, World!");
+/// // `OnceLock` now contains the value.
+/// assert_eq!(
+///     CELL.get(),
+///     Some(&12345),
+/// );
 /// ```
 #[stable(feature = "once_cell", since = "1.70.0")]
 pub struct OnceLock<T> {

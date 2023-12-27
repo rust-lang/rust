@@ -34,7 +34,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
             }
             MonoItem::GlobalAsm(item_id) => {
                 let item = cx.tcx().hir().item(item_id);
-                if let hir::ItemKind::GlobalAsm(ref asm) = item.kind {
+                if let hir::ItemKind::GlobalAsm(asm) = item.kind {
                     let operands: Vec<_> = asm
                         .operands
                         .iter()
@@ -88,7 +88,7 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                 }
             }
             MonoItem::Fn(instance) => {
-                base::codegen_instance::<Bx>(&cx, instance);
+                base::codegen_instance::<Bx>(cx, instance);
             }
         }
 
@@ -119,10 +119,10 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
 
         match *self {
             MonoItem::Static(def_id) => {
-                cx.predefine_static(def_id, linkage, visibility, &symbol_name);
+                cx.predefine_static(def_id, linkage, visibility, symbol_name);
             }
             MonoItem::Fn(instance) => {
-                cx.predefine_fn(instance, linkage, visibility, &symbol_name);
+                cx.predefine_fn(instance, linkage, visibility, symbol_name);
             }
             MonoItem::GlobalAsm(..) => {}
         }

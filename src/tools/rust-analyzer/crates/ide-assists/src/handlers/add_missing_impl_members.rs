@@ -2249,4 +2249,35 @@ impl b::LocalTrait for B {
             "#,
         )
     }
+
+    #[test]
+    fn doc_hidden_nondefault_member() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+//- /lib.rs crate:b new_source_root:local
+trait LocalTrait {
+    #[doc(hidden)]
+    fn no_skip_non_default() -> Option<()>;
+
+    #[doc(hidden)]
+    fn skip_default() -> Option<()> {
+        todo!()
+    }
+}
+
+//- /main.rs crate:a deps:b
+struct B;
+impl b::Loc$0alTrait for B {}
+            "#,
+            r#"
+struct B;
+impl b::LocalTrait for B {
+    fn no_skip_non_default() -> Option<()> {
+        ${0:todo!()}
+    }
+}
+            "#,
+        )
+    }
 }

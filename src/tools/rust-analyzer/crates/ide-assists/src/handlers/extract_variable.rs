@@ -29,22 +29,31 @@ use crate::{utils::suggest_name, AssistContext, AssistId, AssistKind, Assists};
 // }
 // ```
 pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    if ctx.has_empty_selection() {
-        return None;
-    }
-
-    let node = match ctx.covering_element() {
-        NodeOrToken::Node(it) => it,
-        NodeOrToken::Token(it) if it.kind() == COMMENT => {
-            cov_mark::hit!(extract_var_in_comment_is_not_applicable);
+    let node = if ctx.has_empty_selection() {
+        if let Some(expr_stmt) = ctx.find_node_at_offset::<ast::ExprStmt>() {
+            expr_stmt.syntax().clone()
+        } else if let Some(expr) = ctx.find_node_at_offset::<ast::Expr>() {
+            expr.syntax().ancestors().find_map(valid_target_expr)?.syntax().clone()
+        } else {
             return None;
         }
-        NodeOrToken::Token(it) => it.parent()?,
+    } else {
+        match ctx.covering_element() {
+            NodeOrToken::Node(it) => it,
+            NodeOrToken::Token(it) if it.kind() == COMMENT => {
+                cov_mark::hit!(extract_var_in_comment_is_not_applicable);
+                return None;
+            }
+            NodeOrToken::Token(it) => it.parent()?,
+        }
     };
+
     let node = node.ancestors().take_while(|anc| anc.text_range() == node.text_range()).last()?;
+    let range = node.text_range();
+
     let to_extract = node
         .descendants()
-        .take_while(|it| ctx.selection_trimmed().contains_range(it.text_range()))
+        .take_while(|it| range.contains_range(it.text_range()))
         .find_map(valid_target_expr)?;
 
     let ty = ctx.sema.type_of_expr(&to_extract).map(TypeInfo::adjusted);
@@ -234,6 +243,138 @@ mod tests {
     use crate::tests::{check_assist, check_assist_not_applicable, check_assist_target};
 
     use super::*;
+
+    #[test]
+    fn test_extract_var_simple_without_select() {
+        check_assist(
+            extract_variable,
+            r#"
+fn main() -> i32 {
+    if true {
+        1
+    } else {
+        2
+    }$0
+}
+"#,
+            r#"
+fn main() -> i32 {
+    let $0var_name = if true {
+        1
+    } else {
+        2
+    };
+    var_name
+}
+"#,
+        );
+
+        check_assist(
+            extract_variable,
+            r#"
+fn foo() -> i32 { 1 }
+fn main() {
+    foo();$0
+}
+"#,
+            r#"
+fn foo() -> i32 { 1 }
+fn main() {
+    let $0foo = foo();
+}
+"#,
+        );
+
+        check_assist(
+            extract_variable,
+            r#"
+fn main() {
+    let a = Some(2);
+    a.is_some();$0
+}
+"#,
+            r#"
+fn main() {
+    let a = Some(2);
+    let $0is_some = a.is_some();
+}
+"#,
+        );
+
+        check_assist(
+            extract_variable,
+            r#"
+fn main() {
+    "hello"$0;
+}
+"#,
+            r#"
+fn main() {
+    let $0var_name = "hello";
+}
+"#,
+        );
+
+        check_assist(
+            extract_variable,
+            r#"
+fn main() {
+    1  + 2$0;
+}
+"#,
+            r#"
+fn main() {
+    let $0var_name = 1  + 2;
+}
+"#,
+        );
+
+        check_assist(
+            extract_variable,
+            r#"
+fn main() {
+    match () {
+        () if true => 1,
+        _ => 2,
+    };$0
+}
+"#,
+            r#"
+fn main() {
+    let $0var_name = match () {
+        () if true => 1,
+        _ => 2,
+    };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_extract_var_unit_expr_without_select_not_applicable() {
+        check_assist_not_applicable(
+            extract_variable,
+            r#"
+fn foo() {}
+fn main() {
+    foo()$0;
+}
+"#,
+        );
+
+        check_assist_not_applicable(
+            extract_variable,
+            r#"
+fn foo() {
+    let mut i = 3;
+    if i >= 0 {
+        i += 1;
+    } else {
+        i -= 1;
+    }$0
+}"#,
+        );
+    }
 
     #[test]
     fn test_extract_var_simple() {

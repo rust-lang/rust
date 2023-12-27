@@ -17,7 +17,7 @@ use rustc_middle::hir::map::associated_body;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, Ty, TyCtxt, UpvarId, UpvarPath};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
 use rustc_span::Span;
@@ -113,8 +113,9 @@ fn check_closures<'tcx>(
         }
         ctx.prev_bind = None;
         ctx.prev_move_to_closure.clear();
-        if let Some(body) = hir
-            .find_by_def_id(closure)
+        if let Some(body) = cx
+            .tcx
+            .opt_hir_node_by_def_id(closure)
             .and_then(associated_body)
             .map(|(_, body_id)| hir.body(body_id))
         {
@@ -137,7 +138,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
             return;
         }
 
-        let hir_id = cx.tcx.hir().local_def_id_to_hir_id(fn_def_id);
+        let hir_id = cx.tcx.local_def_id_to_hir_id(fn_def_id);
         let is_async = match kind {
             FnKind::ItemFn(.., header) => {
                 if header.is_unsafe() {
@@ -256,7 +257,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                     span_lint_hir_and_then(
                         cx,
                         NEEDLESS_PASS_BY_REF_MUT,
-                        cx.tcx.hir().local_def_id_to_hir_id(*fn_def_id),
+                        cx.tcx.local_def_id_to_hir_id(*fn_def_id),
                         sp,
                         "this argument is a mutable reference, but not used mutably",
                         |diag| {
@@ -412,7 +413,7 @@ impl<'tcx> euv::Delegate<'tcx> for MutablyUsedVariablesCtxt<'tcx> {
                         ],
                     ),
                 ..
-            }) = self.tcx.hir().get(cmt.hir_id)
+            }) = self.tcx.hir_node(cmt.hir_id)
             {
                 self.async_closures.insert(*def_id);
             }
@@ -521,7 +522,7 @@ impl<'tcx> Visitor<'tcx> for FnNeedsMutVisitor<'_, 'tcx> {
         let Self { cx, used_fn_def_ids } = self;
 
         // #11182; do not lint if mutability is required elsewhere
-        if let Node::Expr(expr) = cx.tcx.hir().get(hir_id)
+        if let Node::Expr(expr) = cx.tcx.hir_node(hir_id)
             && let Some(parent) = get_parent_node(cx.tcx, expr.hir_id)
             && let ty::FnDef(def_id, _) = cx
                 .tcx

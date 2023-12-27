@@ -6,7 +6,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Representability, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers =
         Providers { representability, representability_adt_ty, params_in_repr, ..*providers };
 }

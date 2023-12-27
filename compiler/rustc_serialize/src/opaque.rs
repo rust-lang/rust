@@ -5,12 +5,13 @@ use std::io::{self, Write};
 use std::marker::PhantomData;
 use std::ops::Range;
 use std::path::Path;
+use std::path::PathBuf;
 
 // -----------------------------------------------------------------------------
 // Encoder
 // -----------------------------------------------------------------------------
 
-pub type FileEncodeResult = Result<usize, io::Error>;
+pub type FileEncodeResult = Result<usize, (PathBuf, io::Error)>;
 
 /// The size of the buffer in `FileEncoder`.
 const BUF_SIZE: usize = 8192;
@@ -34,6 +35,9 @@ pub struct FileEncoder {
     // This is used to implement delayed error handling, as described in the
     // comment on `trait Encoder`.
     res: Result<(), io::Error>,
+    path: PathBuf,
+    #[cfg(debug_assertions)]
+    finished: bool,
 }
 
 impl FileEncoder {
@@ -41,14 +45,18 @@ impl FileEncoder {
         // File::create opens the file for writing only. When -Zmeta-stats is enabled, the metadata
         // encoder rewinds the file to inspect what was written. So we need to always open the file
         // for reading and writing.
-        let file = File::options().read(true).write(true).create(true).truncate(true).open(path)?;
+        let file =
+            File::options().read(true).write(true).create(true).truncate(true).open(&path)?;
 
         Ok(FileEncoder {
             buf: vec![0u8; BUF_SIZE].into_boxed_slice().try_into().unwrap(),
+            path: path.as_ref().into(),
             buffered: 0,
             flushed: 0,
             file,
             res: Ok(()),
+            #[cfg(debug_assertions)]
+            finished: false,
         })
     }
 
@@ -63,6 +71,10 @@ impl FileEncoder {
     #[cold]
     #[inline(never)]
     pub fn flush(&mut self) {
+        #[cfg(debug_assertions)]
+        {
+            self.finished = false;
+        }
         if self.res.is_ok() {
             self.res = self.file.write_all(&self.buf[..self.buffered]);
         }
@@ -72,6 +84,10 @@ impl FileEncoder {
 
     pub fn file(&self) -> &File {
         &self.file
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.path
     }
 
     #[inline]
@@ -97,6 +113,10 @@ impl FileEncoder {
 
     #[inline]
     fn write_all(&mut self, buf: &[u8]) {
+        #[cfg(debug_assertions)]
+        {
+            self.finished = false;
+        }
         if let Some(dest) = self.buffer_empty().get_mut(..buf.len()) {
             dest.copy_from_slice(buf);
             self.buffered += buf.len();
@@ -121,6 +141,10 @@ impl FileEncoder {
     /// with one instruction, so while this does in some sense do wasted work, we come out ahead.
     #[inline]
     pub fn write_with<const N: usize>(&mut self, visitor: impl FnOnce(&mut [u8; N]) -> usize) {
+        #[cfg(debug_assertions)]
+        {
+            self.finished = false;
+        }
         let flush_threshold = const { BUF_SIZE.checked_sub(N).unwrap() };
         if std::intrinsics::unlikely(self.buffered > flush_threshold) {
             self.flush();
@@ -152,20 +176,25 @@ impl FileEncoder {
         })
     }
 
-    pub fn finish(mut self) -> Result<usize, io::Error> {
+    pub fn finish(&mut self) -> FileEncodeResult {
         self.flush();
+        #[cfg(debug_assertions)]
+        {
+            self.finished = true;
+        }
         match std::mem::replace(&mut self.res, Ok(())) {
             Ok(()) => Ok(self.position()),
-            Err(e) => Err(e),
+            Err(e) => Err((self.path.clone(), e)),
         }
     }
 }
 
+#[cfg(debug_assertions)]
 impl Drop for FileEncoder {
     fn drop(&mut self) {
-        // Likely to be a no-op, because `finish` should have been called and
-        // it also flushes. But do it just in case.
-        self.flush();
+        if !std::thread::panicking() {
+            assert!(self.finished);
+        }
     }
 }
 

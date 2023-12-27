@@ -7,6 +7,6 @@ LL | impl<T> Value for T {
 LL | impl const Value for FortyTwo {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `FortyTwo`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0119`.

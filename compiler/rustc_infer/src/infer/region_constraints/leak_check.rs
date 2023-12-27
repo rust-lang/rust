@@ -81,7 +81,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
             return Ok(());
         }
 
-        let mini_graph = &MiniGraph::new(tcx, &self, only_consider_snapshot);
+        let mini_graph = &MiniGraph::new(tcx, self, only_consider_snapshot);
 
         let mut leak_check = LeakCheck::new(tcx, outer_universe, max_universe, mini_graph, self);
         leak_check.assign_placeholder_values()?;
@@ -341,11 +341,13 @@ impl<'tcx> SccUniverse<'tcx> {
 }
 
 rustc_index::newtype_index! {
+    #[orderable]
     #[debug_format = "LeakCheckNode({})"]
     struct LeakCheckNode {}
 }
 
 rustc_index::newtype_index! {
+    #[orderable]
     #[debug_format = "LeakCheckScc({})"]
     struct LeakCheckScc {}
 }
@@ -414,8 +416,8 @@ impl<'tcx> MiniGraph<'tcx> {
                 region_constraints.undo_log.region_constraints_in_snapshot(&snapshot.undo_snapshot)
             {
                 match undo_entry {
-                    AddConstraint(constraint) => {
-                        each_constraint(constraint);
+                    &AddConstraint(i) => {
+                        each_constraint(&region_constraints.data().constraints[i].0);
                     }
                     &AddVerify(i) => span_bug!(
                         region_constraints.data().verifys[i].origin.span(),
@@ -428,8 +430,8 @@ impl<'tcx> MiniGraph<'tcx> {
             region_constraints
                 .data()
                 .constraints
-                .keys()
-                .for_each(|constraint| each_constraint(constraint));
+                .iter()
+                .for_each(|(constraint, _)| each_constraint(constraint));
         }
     }
 

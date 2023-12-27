@@ -19,6 +19,6 @@ note: the implementor must specify the same requirement
 LL | struct Bar<T>(T) where T: Foo;
    | ^^^^^^^^^^^^^
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0367`.

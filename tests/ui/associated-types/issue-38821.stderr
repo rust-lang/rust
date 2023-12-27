@@ -17,6 +17,6 @@ help: consider further restricting the associated type
 LL |     Expr: Expression<SqlType=<Col::SqlType as IntoNullable>::Nullable>, <Col as Expression>::SqlType: NotNull,
    |                                                                       +++++++++++++++++++++++++++++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

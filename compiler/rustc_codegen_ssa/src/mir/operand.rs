@@ -2,7 +2,7 @@ use super::place::PlaceRef;
 use super::{FunctionCx, LocalRef};
 
 use crate::base;
-use crate::glue;
+use crate::size_of_val;
 use crate::traits::*;
 use crate::MemFlags;
 
@@ -105,7 +105,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                     bug!("from_const: invalid ScalarPair layout: {:#?}", layout);
                 };
                 let a = Scalar::from_pointer(
-                    Pointer::new(bx.tcx().reserve_and_set_memory_alloc(data), Size::ZERO),
+                    Pointer::new(bx.tcx().reserve_and_set_memory_alloc(data).into(), Size::ZERO),
                     &bx.tcx(),
                 );
                 let a_llval = bx.scalar_to_backend(
@@ -132,7 +132,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         offset: Size,
     ) -> Self {
         let alloc_align = alloc.inner().align;
-        assert_eq!(alloc_align, layout.align.abi);
+        assert!(alloc_align >= layout.align.abi);
 
         let read_scalar = |start, size, s: abi::Scalar, ty| {
             match alloc.0.read_scalar(
@@ -155,7 +155,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             Abi::Scalar(s @ abi::Scalar::Initialized { .. }) => {
                 let size = s.size(bx);
                 assert_eq!(size, layout.size, "abi::Scalar size does not match layout size");
-                let val = read_scalar(offset, size, s, bx.backend_type(layout));
+                let val = read_scalar(offset, size, s, bx.immediate_backend_type(layout));
                 OperandRef { val: OperandValue::Immediate(val), layout }
             }
             Abi::ScalarPair(
@@ -414,6 +414,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
                 // value is through `undef`/`poison`, and the store itself is useless.
             }
             OperandValue::Ref(r, None, source_align) => {
+                assert!(dest.layout.is_sized(), "cannot directly store unsized values");
                 if flags.contains(MemFlags::NONTEMPORAL) {
                     // HACK(nox): This is inefficient but there is no nontemporal memcpy.
                     let ty = bx.backend_type(dest.layout);
@@ -465,13 +466,13 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
             .ty;
 
         let OperandValue::Ref(llptr, Some(llextra), _) = self else {
-            bug!("store_unsized called with a sized value")
+            bug!("store_unsized called with a sized value (or with an extern type)")
         };
 
         // Allocate an appropriate region on the stack, and copy the value into it. Since alloca
         // doesn't support dynamic alignment, we allocate an extra align - 1 bytes, and align the
         // pointer manually.
-        let (size, align) = glue::size_and_align_of_dst(bx, unsized_ty, Some(llextra));
+        let (size, align) = size_of_val::size_and_align_of_dst(bx, unsized_ty, Some(llextra));
         let one = bx.const_usize(1);
         let align_minus_1 = bx.sub(align, one);
         let size_extra = bx.add(size, align_minus_1);

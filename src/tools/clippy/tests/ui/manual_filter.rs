@@ -135,7 +135,7 @@ fn main() {
         };
     }
 
-    #[allow(clippy::blocks_in_if_conditions)]
+    #[allow(clippy::blocks_in_conditions)]
     match Some(11) {
         // Lint, statement is preserved by `.filter`
         Some(x) => {

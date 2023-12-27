@@ -11,5 +11,5 @@ help: escape `fn` to use it as an identifier
 LL |     r#fn: u8
    |     ++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

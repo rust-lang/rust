@@ -29,7 +29,7 @@ fn main() {
     doc_hidden_fields::B::default().hey;
     //~^ ERROR no field `hey` on type `B`
     //~| NOTE unknown field
-    //~| NOTE available fields are: `bye`
+    //~| NOTE available field is: `bye`
 
     C::default().hey;
     //~^ ERROR no field `hey` on type `C`

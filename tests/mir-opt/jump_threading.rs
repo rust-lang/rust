@@ -52,19 +52,19 @@ fn identity(x: Result<i32, i32>) -> Result<i32, i32> {
     // CHECK:     [[x:_.*]] = _1;
     // CHECK:     switchInt(move {{_.*}}) -> [0: bb8, 1: bb6, otherwise: bb7];
     // CHECK: bb1: {
-    // CHECK:     goto -> bb2;
-    // CHECK: bb2: {
     // CHECK:     {{_.*}} = (([[controlflow:_.*]] as Continue).0: i32);
     // CHECK:     _0 = Result::<i32, i32>::Ok(
-    // CHECK:     goto -> bb5;
-    // CHECK: bb3: {
+    // CHECK:     goto -> bb4;
+    // CHECK: bb2: {
     // CHECK:     unreachable;
-    // CHECK: bb4: {
+    // CHECK: bb3: {
     // CHECK:     {{_.*}} = (([[controlflow]] as Break).0: std::result::Result<std::convert::Infallible, i32>);
     // CHECK:     _0 = Result::<i32, i32>::Err(
-    // CHECK:     goto -> bb5;
-    // CHECK: bb5: {
+    // CHECK:     goto -> bb4;
+    // CHECK: bb4: {
     // CHECK:     return;
+    // CHECK: bb5: {
+    // CHECK:     goto -> bb1;
     // CHECK: bb6: {
     // CHECK:     {{_.*}} = move (([[x]] as Err).0: i32);
     // CHECK:     [[controlflow]] = ControlFlow::<Result<Infallible, i32>, i32>::Break(
@@ -74,9 +74,9 @@ fn identity(x: Result<i32, i32>) -> Result<i32, i32> {
     // CHECK: bb8: {
     // CHECK:     {{_.*}} = move (([[x]] as Ok).0: i32);
     // CHECK:     [[controlflow]] = ControlFlow::<Result<Infallible, i32>, i32>::Continue(
-    // CHECK:     goto -> bb1;
+    // CHECK:     goto -> bb5;
     // CHECK: bb9: {
-    // CHECK:     goto -> bb4;
+    // CHECK:     goto -> bb3;
     Ok(x?)
 }
 

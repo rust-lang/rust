@@ -48,18 +48,32 @@ pub struct TraitEnvironment {
     pub krate: CrateId,
     pub block: Option<BlockId>,
     // FIXME make this a BTreeMap
-    pub(crate) traits_from_clauses: Vec<(Ty, TraitId)>,
+    traits_from_clauses: Box<[(Ty, TraitId)]>,
     pub env: chalk_ir::Environment<Interner>,
 }
 
 impl TraitEnvironment {
-    pub fn empty(krate: CrateId) -> Self {
-        TraitEnvironment {
+    pub fn empty(krate: CrateId) -> Arc<Self> {
+        Arc::new(TraitEnvironment {
             krate,
             block: None,
-            traits_from_clauses: Vec::new(),
+            traits_from_clauses: Box::default(),
             env: chalk_ir::Environment::new(Interner),
-        }
+        })
+    }
+
+    pub fn new(
+        krate: CrateId,
+        block: Option<BlockId>,
+        traits_from_clauses: Box<[(Ty, TraitId)]>,
+        env: chalk_ir::Environment<Interner>,
+    ) -> Arc<Self> {
+        Arc::new(TraitEnvironment { krate, block, traits_from_clauses, env })
+    }
+
+    // pub fn with_block(self: &mut Arc<Self>, block: BlockId) {
+    pub fn with_block(this: &mut Arc<Self>, block: BlockId) {
+        Arc::make_mut(this).block = Some(block);
     }
 
     pub fn traits_in_scope_from_clauses(&self, ty: Ty) -> impl Iterator<Item = TraitId> + '_ {

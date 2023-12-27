@@ -11,6 +11,6 @@ LL |     x * y
              <&'a i32 as Mul<i32>>
              <&i32 as Mul<&i32>>
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

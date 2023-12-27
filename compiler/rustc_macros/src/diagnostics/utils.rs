@@ -17,7 +17,7 @@ use synstructure::{BindingInfo, VariantInfo};
 use super::error::invalid_attr;
 
 thread_local! {
-    pub static CODE_IDENT_COUNT: RefCell<u32> = RefCell::new(0);
+    pub(crate) static CODE_IDENT_COUNT: RefCell<u32> = RefCell::new(0);
 }
 
 /// Returns an ident of the form `__code_N` where `N` is incremented once with every call.
@@ -208,7 +208,7 @@ impl<'ty> FieldInnerTy<'ty> {
         }
     }
 
-    pub fn span(&self) -> proc_macro2::Span {
+    pub(crate) fn span(&self) -> proc_macro2::Span {
         match self {
             FieldInnerTy::Option(ty) | FieldInnerTy::Vec(ty) | FieldInnerTy::Plain(ty) => ty.span(),
         }
@@ -537,7 +537,7 @@ impl fmt::Display for SuggestionKind {
 }
 
 impl SuggestionKind {
-    pub fn to_suggestion_style(&self) -> TokenStream {
+    pub(crate) fn to_suggestion_style(&self) -> TokenStream {
         match self {
             SuggestionKind::Normal => {
                 quote! { rustc_errors::SuggestionStyle::ShowCode }

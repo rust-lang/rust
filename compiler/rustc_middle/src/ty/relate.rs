@@ -23,8 +23,6 @@ pub enum Cause {
 pub trait TypeRelation<'tcx>: Sized {
     fn tcx(&self) -> TyCtxt<'tcx>;
 
-    fn param_env(&self) -> ty::ParamEnv<'tcx>;
-
     /// Returns a static string we can use for printouts.
     fn tag(&self) -> &'static str;
 
@@ -482,7 +480,7 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
             // the (anonymous) type of the same closure expression. So
             // all of their regions should be equated.
             let args = relate_args_invariantly(relation, a_args, b_args)?;
-            Ok(Ty::new_closure(tcx, a_id, &args))
+            Ok(Ty::new_closure(tcx, a_id, args))
         }
 
         (&ty::RawPtr(a_mt), &ty::RawPtr(b_mt)) => {
@@ -505,13 +503,9 @@ pub fn structurally_relate_tys<'tcx, R: TypeRelation<'tcx>>(
                 Err(err) => {
                     // Check whether the lengths are both concrete/known values,
                     // but are unequal, for better diagnostics.
-                    //
-                    // It might seem dubious to eagerly evaluate these constants here,
-                    // we however cannot end up with errors in `Relate` during both
-                    // `type_of` and `predicates_of`. This means that evaluating the
-                    // constants should not cause cycle errors here.
-                    let sz_a = sz_a.try_eval_target_usize(tcx, relation.param_env());
-                    let sz_b = sz_b.try_eval_target_usize(tcx, relation.param_env());
+                    let sz_a = sz_a.try_to_target_usize(tcx);
+                    let sz_b = sz_b.try_to_target_usize(tcx);
+
                     match (sz_a, sz_b) {
                         (Some(sz_a_val), Some(sz_b_val)) if sz_a_val != sz_b_val => Err(
                             TypeError::FixedArraySize(expected_found(relation, sz_a_val, sz_b_val)),

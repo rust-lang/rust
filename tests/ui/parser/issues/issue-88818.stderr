@@ -14,5 +14,5 @@ LL - impl for S { }
 LL + impl S { }
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

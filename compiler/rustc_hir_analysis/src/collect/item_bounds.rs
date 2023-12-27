@@ -34,17 +34,14 @@ fn associated_type_bounds<'tcx>(
     let trait_def_id = tcx.local_parent(assoc_item_def_id);
     let trait_predicates = tcx.trait_explicit_predicates_and_bounds(trait_def_id);
 
-    let bounds_from_parent = trait_predicates
-        .predicates
-        .iter()
-        .copied()
-        .filter(|(pred, _)| match pred.kind().skip_binder() {
+    let bounds_from_parent = trait_predicates.predicates.iter().copied().filter(|(pred, _)| {
+        match pred.kind().skip_binder() {
             ty::ClauseKind::Trait(tr) => tr.self_ty() == item_ty,
             ty::ClauseKind::Projection(proj) => proj.projection_ty.self_ty() == item_ty,
             ty::ClauseKind::TypeOutlives(outlives) => outlives.0 == item_ty,
             _ => false,
-        })
-        .map(|(clause, span)| (clause, span));
+        }
+    });
 
     let all_bounds = tcx.arena.alloc_from_iter(bounds.clauses().chain(bounds_from_parent));
     debug!(
@@ -86,7 +83,7 @@ pub(super) fn explicit_item_bounds(
         // RPITIT's bounds are the same as opaque type bounds, but with
         // a projection self type.
         Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
-            let item = tcx.hir().get_by_def_id(opaque_def_id.expect_local()).expect_item();
+            let item = tcx.hir_node_by_def_id(opaque_def_id.expect_local()).expect_item();
             let opaque_ty = item.expect_opaque_ty();
             return ty::EarlyBinder::bind(opaque_type_bounds(
                 tcx,
@@ -100,13 +97,14 @@ pub(super) fn explicit_item_bounds(
                 item.span,
             ));
         }
-        // These should have been fed!
-        Some(ty::ImplTraitInTraitData::Impl { .. }) => unreachable!(),
+        Some(ty::ImplTraitInTraitData::Impl { .. }) => span_bug!(
+            tcx.def_span(def_id),
+            "item bounds for RPITIT in impl to be fed on def-id creation"
+        ),
         None => {}
     }
 
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-    let bounds = match tcx.hir().get(hir_id) {
+    let bounds = match tcx.hir_node_by_def_id(def_id) {
         hir::Node::TraitItem(hir::TraitItem {
             kind: hir::TraitItemKind::Type(bounds, _),
             span,
@@ -132,7 +130,7 @@ pub(super) fn explicit_item_bounds(
             let (hir::OpaqueTyOrigin::FnReturn(fn_def_id)
             | hir::OpaqueTyOrigin::AsyncFn(fn_def_id)) = *origin
             else {
-                bug!()
+                span_bug!(*span, "RPITIT cannot be a TAIT, but got origin {origin:?}");
             };
             let args = GenericArgs::identity_for_item(tcx, def_id);
             let item_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);

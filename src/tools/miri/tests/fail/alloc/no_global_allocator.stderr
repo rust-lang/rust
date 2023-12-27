@@ -8,5 +8,5 @@ LL |         __rust_alloc(1, 1);
    = note: BACKTRACE:
    = note: inside `start` at $DIR/no_global_allocator.rs:LL:CC
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -9,12 +9,11 @@ extern crate rustc_driver;
 extern crate rustc_fluent_macro;
 extern crate rustc_macros;
 extern crate rustc_errors;
-use rustc_fluent_macro::fluent_messages;
 use rustc_macros::Diagnostic;
 use rustc_errors::{SubdiagnosticMessage, DiagnosticMessage};
 extern crate rustc_session;
 
-fluent_messages! { "./example.ftl" }
+rustc_fluent_macro::fluent_messages! { "./example.ftl" }
 
 #[derive(Diagnostic)]
 #[diag(no_crate_bad_reference)]

@@ -37,7 +37,7 @@ where
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         match *r {
             // ignore bound regions, keep visiting
-            ty::ReLateBound(_, _) => ControlFlow::Continue(()),
+            ty::ReBound(_, _) => ControlFlow::Continue(()),
             _ => {
                 (self.op)(r);
                 ControlFlow::Continue(())
@@ -84,7 +84,6 @@ where
                         } else {
                             test_type_match::extract_verify_if_eq(
                                 tcx,
-                                param_env,
                                 &outlives.map_bound(|ty::OutlivesPredicate(ty, bound)| {
                                     VerifyIfEq { ty, bound }
                                 }),
@@ -112,7 +111,9 @@ where
                     };
 
                     for (idx, s) in args.iter().enumerate() {
-                        if variances.map(|variances| variances[idx]) != Some(ty::Variance::Bivariant) {
+                        if variances.map(|variances| variances[idx])
+                            != Some(ty::Variance::Bivariant)
+                        {
                             s.visit_with(self)?;
                         }
                     }

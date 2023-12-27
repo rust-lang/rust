@@ -28,7 +28,7 @@ LL |     fn test() {
 LL |         let _: Self::Err;
    |                ^^^^^^^^^ ambiguous associated type `Err`
    |
-   = note: associated type `Self` could derive from `FromStr`
+   = note: associated type `Err` could derive from `FromStr`
 help: use fully-qualified syntax to disambiguate
    |
 LL |         let _: <Self as My>::Err;

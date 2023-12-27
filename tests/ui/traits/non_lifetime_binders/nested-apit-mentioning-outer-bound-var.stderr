@@ -13,5 +13,5 @@ error: `impl Trait` can only mention type parameters from an fn or impl
 LL | fn uwu(_: impl for<T> Trait<(), Assoc = impl Trait<T>>) {}
    |                    - type parameter declared here  ^
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 

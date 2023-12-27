@@ -7,6 +7,6 @@ LL | pub fn boilerplate(x: u8) {}
    = note: expected signature `fn()`
               found signature `fn(u8)`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0580`.

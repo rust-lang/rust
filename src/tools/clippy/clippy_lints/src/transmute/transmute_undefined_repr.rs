@@ -299,14 +299,12 @@ fn reduce_ty<'tcx>(cx: &LateContext<'tcx>, mut ty: Ty<'tcx>) -> ReducedTy<'tcx> 
 }
 
 fn is_zero_sized_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    if_chain! {
-        if let Ok(ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, ty);
-        if let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty));
-        then {
-            layout.layout.size().bytes() == 0
-        } else {
-            false
-        }
+    if let Ok(ty) = cx.tcx.try_normalize_erasing_regions(cx.param_env, ty)
+        && let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty))
+    {
+        layout.layout.size().bytes() == 0
+    } else {
+        false
     }
 }
 

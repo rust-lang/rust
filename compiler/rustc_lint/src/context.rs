@@ -36,7 +36,7 @@ use rustc_middle::ty::{self, print::Printer, GenericArg, RegisteredTools, Ty, Ty
 use rustc_session::config::ExpectedValues;
 use rustc_session::lint::{BuiltinLintDiagnostics, LintExpectationId};
 use rustc_session::lint::{FutureIncompatibleInfo, Level, Lint, LintBuffer, LintId};
-use rustc_session::Session;
+use rustc_session::{LintStoreMarker, Session};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{BytePos, Span};
@@ -76,6 +76,8 @@ pub struct LintStore {
     /// Map of registered lint groups to what lints they expand to.
     lint_groups: FxHashMap<&'static str, LintGroup>,
 }
+
+impl LintStoreMarker for LintStore {}
 
 /// The target of the `by_name` map, which accounts for renaming/deprecation.
 #[derive(Debug)]
@@ -385,7 +387,7 @@ impl LintStore {
                         };
                     }
                     Some(LintGroup { lint_ids, .. }) => {
-                        return CheckLintNameResult::Tool(Ok(&lint_ids));
+                        return CheckLintNameResult::Tool(Ok(lint_ids));
                     }
                 },
                 Some(Id(id)) => return CheckLintNameResult::Tool(Ok(slice::from_ref(id))),
@@ -406,12 +408,12 @@ impl LintStore {
                     if let Some(LintAlias { name, silent }) = depr {
                         let LintGroup { lint_ids, .. } = self.lint_groups.get(name).unwrap();
                         return if *silent {
-                            CheckLintNameResult::Ok(&lint_ids)
+                            CheckLintNameResult::Ok(lint_ids)
                         } else {
-                            CheckLintNameResult::Tool(Err((Some(&lint_ids), (*name).to_string())))
+                            CheckLintNameResult::Tool(Err((Some(lint_ids), (*name).to_string())))
                         };
                     }
-                    CheckLintNameResult::Ok(&lint_ids)
+                    CheckLintNameResult::Ok(lint_ids)
                 }
             },
             Some(Id(id)) => CheckLintNameResult::Ok(slice::from_ref(id)),
@@ -458,12 +460,12 @@ impl LintStore {
                     if let Some(LintAlias { name, silent }) = depr {
                         let LintGroup { lint_ids, .. } = self.lint_groups.get(name).unwrap();
                         return if *silent {
-                            CheckLintNameResult::Tool(Err((Some(&lint_ids), complete_name)))
+                            CheckLintNameResult::Tool(Err((Some(lint_ids), complete_name)))
                         } else {
-                            CheckLintNameResult::Tool(Err((Some(&lint_ids), (*name).to_string())))
+                            CheckLintNameResult::Tool(Err((Some(lint_ids), (*name).to_string())))
                         };
                     }
-                    CheckLintNameResult::Tool(Err((Some(&lint_ids), complete_name)))
+                    CheckLintNameResult::Tool(Err((Some(lint_ids), complete_name)))
                 }
             },
             Some(Id(id)) => {
@@ -497,9 +499,6 @@ pub struct LateContext<'tcx> {
     /// Items accessible from the crate being checked.
     pub effective_visibilities: &'tcx EffectiveVisibilities,
 
-    /// The store of registered lints and the lint levels.
-    pub lint_store: &'tcx LintStore,
-
     pub last_node_with_lint_attrs: hir::HirId,
 
     /// Generic type parameters in scope for the item we are in.
@@ -515,21 +514,11 @@ pub struct EarlyContext<'a> {
     pub buffered: LintBuffer,
 }
 
-pub trait LintPassObject: Sized {}
-
-impl LintPassObject for EarlyLintPassObject {}
-
-impl LintPassObject for LateLintPassObject<'_> {}
-
-pub trait LintContext: Sized {
-    type PassObject: LintPassObject;
-
+pub trait LintContext {
     fn sess(&self) -> &Session;
-    fn lints(&self) -> &LintStore;
 
-    /// Emit a lint at the appropriate level, with an optional associated span and an existing diagnostic.
-    ///
-    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
+    /// Emit a lint at the appropriate level, with an optional associated span and an existing
+    /// diagnostic.
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     #[rustc_lint_diagnostics]
@@ -538,9 +527,7 @@ pub trait LintContext: Sized {
         lint: &'static Lint,
         span: Option<impl Into<MultiSpan>>,
         msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(
-            &'b mut DiagnosticBuilder<'a, ()>,
-        ) -> &'b mut DiagnosticBuilder<'a, ()>,
+        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
         diagnostic: BuiltinLintDiagnostics,
     ) {
         // We first generate a blank diagnostic.
@@ -713,10 +700,14 @@ pub trait LintContext: Sized {
                     db.note("see the asm section of Rust By Example <https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html#labels> for more information");
                 },
                 BuiltinLintDiagnostics::UnexpectedCfgName((name, name_span), value) => {
-                    let possibilities: Vec<Symbol> = sess.parse_sess.check_config.expecteds.keys().map(|s| *s).collect();
+                    let possibilities: Vec<Symbol> = sess.parse_sess.check_config.expecteds.keys().copied().collect();
+                    let is_from_cargo = std::env::var_os("CARGO").is_some();
+                    let mut is_feature_cfg = name == sym::feature;
 
+                    if is_feature_cfg && is_from_cargo {
+                        db.help("consider defining some features in `Cargo.toml`");
                     // Suggest the most probable if we found one
-                    if let Some(best_match) = find_best_match_for_name(&possibilities, name, None) {
+                    } else if let Some(best_match) = find_best_match_for_name(&possibilities, name, None) {
                         if let Some(ExpectedValues::Some(best_match_values)) =
                             sess.parse_sess.check_config.expecteds.get(&best_match) {
                             let mut possibilities = best_match_values.iter()
@@ -749,6 +740,8 @@ pub trait LintContext: Sized {
                         } else {
                             db.span_suggestion(name_span, "there is a config with a similar name", best_match, Applicability::MaybeIncorrect);
                         }
+
+                        is_feature_cfg |= best_match == sym::feature;
                     } else if !possibilities.is_empty() {
                         let mut possibilities = possibilities.iter()
                             .map(Symbol::as_str)
@@ -762,6 +755,23 @@ pub trait LintContext: Sized {
                         // once.
                         db.help_once(format!("expected names are: `{possibilities}`"));
                     }
+
+                    let inst = if let Some((value, _value_span)) = value {
+                        let pre = if is_from_cargo { "\\" } else { "" };
+                        format!("cfg({name}, values({pre}\"{value}{pre}\"))")
+                    } else {
+                        format!("cfg({name})")
+                    };
+
+                    if is_from_cargo {
+                        if !is_feature_cfg {
+                            db.help(format!("consider using a Cargo feature instead or adding `println!(\"cargo:rustc-check-cfg={inst}\");` to the top of a `build.rs`"));
+                        }
+                        db.note("see <https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#check-cfg> for more information about checking conditional configuration");
+                    } else {
+                        db.help(format!("to expect this configuration use `--check-cfg={inst}`"));
+                        db.note("see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration");
+                    }
                 },
                 BuiltinLintDiagnostics::UnexpectedCfgValue((name, name_span), value) => {
                     let Some(ExpectedValues::Some(values)) = &sess.parse_sess.check_config.expecteds.get(&name) else {
@@ -773,6 +783,7 @@ pub trait LintContext: Sized {
                         .copied()
                         .flatten()
                         .collect();
+                    let is_from_cargo = std::env::var_os("CARGO").is_some();
 
                     // Show the full list if all possible values for a given name, but don't do it
                     // for names as the possibilities could be very long
@@ -793,6 +804,8 @@ pub trait LintContext: Sized {
                                 db.span_suggestion(value_span, "there is a expected value with a similar name", format!("\"{best_match}\""), Applicability::MaybeIncorrect);
 
                             }
+                        } else if name == sym::feature && is_from_cargo {
+                            db.help(format!("consider defining `{name}` as feature in `Cargo.toml`"));
                         } else if let &[first_possibility] = &possibilities[..] {
                             db.span_suggestion(name_span.shrink_to_hi(), "specify a config value", format!(" = \"{first_possibility}\""), Applicability::MaybeIncorrect);
                         }
@@ -801,6 +814,27 @@ pub trait LintContext: Sized {
                         if let Some((_value, value_span)) = value {
                             db.span_suggestion(name_span.shrink_to_hi().to(value_span), "remove the value", "", Applicability::MaybeIncorrect);
                         }
+                    }
+
+                    let inst = if let Some((value, _value_span)) = value {
+                        let pre = if is_from_cargo { "\\" } else { "" };
+                        format!("cfg({name}, values({pre}\"{value}{pre}\"))")
+                    } else {
+                        format!("cfg({name})")
+                    };
+
+                    if is_from_cargo {
+                        if name == sym::feature {
+                            if let Some((value, _value_span)) = value {
+                                db.help(format!("consider adding `{value}` as a feature in `Cargo.toml`"));
+                            }
+                        } else {
+                            db.help(format!("consider using a Cargo feature instead or adding `println!(\"cargo:rustc-check-cfg={inst}\");` to the top of a `build.rs`"));
+                        }
+                        db.note("see <https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#check-cfg> for more information about checking conditional configuration");
+                    } else {
+                        db.help(format!("to expect this configuration use `--check-cfg={inst}`"));
+                        db.note("see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration");
                     }
                 },
                 BuiltinLintDiagnostics::DeprecatedWhereclauseLocation(new_span, suggestion) => {
@@ -932,6 +966,10 @@ pub trait LintContext: Sized {
                         if elided { "'static " } else { "'static" },
                         Applicability::MachineApplicable
                     );
+                },
+                BuiltinLintDiagnostics::RedundantImportVisibility { max_vis, span } => {
+                    db.span_note(span, format!("the most public imported item is `{max_vis}`"));
+                    db.help("reduce the glob import's visibility or increase visibility of imported items");
                 }
             }
             // Rewrap `db`, and pass control to the user.
@@ -943,8 +981,6 @@ pub trait LintContext: Sized {
     // set the span in their `decorate` function (preferably using set_span).
     /// Emit a lint at the appropriate level, with an optional associated span.
     ///
-    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
-    ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     #[rustc_lint_diagnostics]
     fn lookup<S: Into<MultiSpan>>(
@@ -952,9 +988,7 @@ pub trait LintContext: Sized {
         lint: &'static Lint,
         span: Option<S>,
         msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(
-            &'b mut DiagnosticBuilder<'a, ()>,
-        ) -> &'b mut DiagnosticBuilder<'a, ()>,
+        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     );
 
     /// Emit a lint at `span` from a lint struct (some type that implements `DecorateLint`,
@@ -965,12 +999,12 @@ pub trait LintContext: Sized {
         span: S,
         decorator: impl for<'a> DecorateLint<'a, ()>,
     ) {
-        self.lookup(lint, Some(span), decorator.msg(), |diag| decorator.decorate_lint(diag));
+        self.lookup(lint, Some(span), decorator.msg(), |diag| {
+            decorator.decorate_lint(diag);
+        });
     }
 
     /// Emit a lint at the appropriate level, with an associated span.
-    ///
-    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     #[rustc_lint_diagnostics]
@@ -979,9 +1013,7 @@ pub trait LintContext: Sized {
         lint: &'static Lint,
         span: S,
         msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(
-            &'b mut DiagnosticBuilder<'a, ()>,
-        ) -> &'b mut DiagnosticBuilder<'a, ()>,
+        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
         self.lookup(lint, Some(span), msg, decorate);
     }
@@ -990,13 +1022,11 @@ pub trait LintContext: Sized {
     /// generated by `#[derive(LintDiagnostic)]`).
     fn emit_lint(&self, lint: &'static Lint, decorator: impl for<'a> DecorateLint<'a, ()>) {
         self.lookup(lint, None as Option<Span>, decorator.msg(), |diag| {
-            decorator.decorate_lint(diag)
+            decorator.decorate_lint(diag);
         });
     }
 
     /// Emit a lint at the appropriate level, with no associated span.
-    ///
-    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     #[rustc_lint_diagnostics]
@@ -1004,9 +1034,7 @@ pub trait LintContext: Sized {
         &self,
         lint: &'static Lint,
         msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(
-            &'b mut DiagnosticBuilder<'a, ()>,
-        ) -> &'b mut DiagnosticBuilder<'a, ()>,
+        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
         self.lookup(lint, None as Option<Span>, msg, decorate);
     }
@@ -1028,6 +1056,7 @@ pub trait LintContext: Sized {
         // a dummy diagnostic and emit is as usual, which will be suppressed and stored like a normal
         // expected lint diagnostic.
         self.sess()
+            .dcx()
             .struct_expect(
                 "this is a dummy diagnostic, to submit and store an expectation",
                 expectation,
@@ -1059,15 +1088,9 @@ impl<'a> EarlyContext<'a> {
 }
 
 impl<'tcx> LintContext for LateContext<'tcx> {
-    type PassObject = LateLintPassObject<'tcx>;
-
     /// Gets the overall compiler `Session` object.
     fn sess(&self) -> &Session {
-        &self.tcx.sess
-    }
-
-    fn lints(&self) -> &LintStore {
-        &*self.lint_store
+        self.tcx.sess
     }
 
     #[rustc_lint_diagnostics]
@@ -1076,9 +1099,7 @@ impl<'tcx> LintContext for LateContext<'tcx> {
         lint: &'static Lint,
         span: Option<S>,
         msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(
-            &'b mut DiagnosticBuilder<'a, ()>,
-        ) -> &'b mut DiagnosticBuilder<'a, ()>,
+        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
         let hir_id = self.last_node_with_lint_attrs;
 
@@ -1094,15 +1115,9 @@ impl<'tcx> LintContext for LateContext<'tcx> {
 }
 
 impl LintContext for EarlyContext<'_> {
-    type PassObject = EarlyLintPassObject;
-
     /// Gets the overall compiler `Session` object.
     fn sess(&self) -> &Session {
-        &self.builder.sess()
-    }
-
-    fn lints(&self) -> &LintStore {
-        self.builder.lint_store()
+        self.builder.sess()
     }
 
     #[rustc_lint_diagnostics]
@@ -1111,9 +1126,7 @@ impl LintContext for EarlyContext<'_> {
         lint: &'static Lint,
         span: Option<S>,
         msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(
-            &'b mut DiagnosticBuilder<'a, ()>,
-        ) -> &'b mut DiagnosticBuilder<'a, ()>,
+        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
         self.builder.struct_lint(lint, span.map(|s| s.into()), msg, decorate)
     }
@@ -1149,7 +1162,7 @@ impl<'tcx> LateContext<'tcx> {
     /// bodies (e.g. for paths in `hir::Ty`), without any risk of ICE-ing.
     pub fn qpath_res(&self, qpath: &hir::QPath<'_>, id: hir::HirId) -> Res {
         match *qpath {
-            hir::QPath::Resolved(_, ref path) => path.res,
+            hir::QPath::Resolved(_, path) => path.res,
             hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => self
                 .maybe_typeck_results()
                 .filter(|typeck_results| typeck_results.hir_owner == id.owner)

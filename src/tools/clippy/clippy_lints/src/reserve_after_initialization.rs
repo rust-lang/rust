@@ -7,7 +7,7 @@ use rustc_hir::def::Res;
 use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, Local, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// ```no_run
     /// let mut v: Vec<usize> = Vec::with_capacity(10);
     /// ```
-    #[clippy::version = "1.73.0"]
+    #[clippy::version = "1.74.0"]
     pub RESERVE_AFTER_INITIALIZATION,
     complexity,
     "`reserve` called immediately after `Vec` creation"

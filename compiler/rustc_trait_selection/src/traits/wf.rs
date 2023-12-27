@@ -624,7 +624,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // Note that we handle the len is implicitly checked while walking `arg`.
                 }
 
-                ty::Tuple(ref tys) => {
+                ty::Tuple(tys) => {
                     if let Some((_last, rest)) = tys.split_last() {
                         for &elem in rest {
                             self.require_sized(elem, traits::TupleElem);
@@ -761,18 +761,15 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     let defer_to_coercion = self.tcx().features().object_safe_for_dispatch;
 
                     if !defer_to_coercion {
-                        let cause = self.cause(traits::WellFormed(None));
-                        let component_traits = data.auto_traits().chain(data.principal_def_id());
-                        let tcx = self.tcx();
-                        self.out.extend(component_traits.map(|did| {
-                            traits::Obligation::with_depth(
-                                tcx,
-                                cause.clone(),
+                        if let Some(principal) = data.principal_def_id() {
+                            self.out.push(traits::Obligation::with_depth(
+                                self.tcx(),
+                                self.cause(traits::WellFormed(None)),
                                 depth,
                                 param_env,
-                                ty::Binder::dummy(ty::PredicateKind::ObjectSafe(did)),
-                            )
-                        }));
+                                ty::Binder::dummy(ty::PredicateKind::ObjectSafe(principal)),
+                            ));
+                        }
                     }
                 }
 
@@ -913,20 +910,15 @@ pub fn object_region_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     existential_predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
 ) -> Vec<ty::Region<'tcx>> {
-    // Since we don't actually *know* the self type for an object,
-    // this "open(err)" serves as a kind of dummy standin -- basically
-    // a placeholder type.
-    let open_ty = Ty::new_fresh(tcx, 0);
-
     let predicates = existential_predicates.iter().filter_map(|predicate| {
         if let ty::ExistentialPredicate::Projection(_) = predicate.skip_binder() {
             None
         } else {
-            Some(predicate.with_self_ty(tcx, open_ty))
+            Some(predicate.with_self_ty(tcx, tcx.types.trait_object_dummy_self))
         }
     });
 
-    required_region_bounds(tcx, open_ty, predicates)
+    required_region_bounds(tcx, tcx.types.trait_object_dummy_self, predicates)
 }
 
 /// Given a set of predicates that apply to an object type, returns

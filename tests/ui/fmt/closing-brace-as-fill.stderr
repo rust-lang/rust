@@ -8,5 +8,5 @@ LL |     println!("Hello, world! {0:}<3", 2);
    |
    = note: the character `'}'` is interpreted as a fill character because of the `:` that precedes it
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

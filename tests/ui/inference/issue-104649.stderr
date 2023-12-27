@@ -9,6 +9,6 @@ help: consider giving `a` an explicit type, where the type for type parameter `E
 LL |     let a: A<std::result::Result<std::result::Result<(), E>, Error>> = A(Result::Ok(Result::Ok(())));
    |          +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0282`.

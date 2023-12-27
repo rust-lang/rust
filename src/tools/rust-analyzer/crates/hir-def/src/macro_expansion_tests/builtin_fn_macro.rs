@@ -17,7 +17,7 @@ fn main() { column!(); }
 #[rustc_builtin_macro]
 macro_rules! column {() => {}}
 
-fn main() { 0 as u32; }
+fn main() { 0u32; }
 "#]],
     );
 }
@@ -74,7 +74,7 @@ fn main() { line!() }
 #[rustc_builtin_macro]
 macro_rules! line {() => {}}
 
-fn main() { 0 as u32 }
+fn main() { 0u32 }
 "#]],
     );
 }
@@ -468,12 +468,12 @@ macro_rules! concat_bytes {}
 
 fn main() { concat_bytes!(b'A', b"BC", [68, b'E', 70]); }
 "##,
-        expect![[r##"
+        expect![[r#"
 #[rustc_builtin_macro]
 macro_rules! concat_bytes {}
 
 fn main() { [b'A', 66, 67, 68, b'E', 70]; }
-"##]],
+"#]],
     );
 }
 

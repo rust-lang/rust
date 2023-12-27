@@ -199,7 +199,8 @@ impl<'gcc, 'tcx> ConstMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 }
             }
             Scalar::Ptr(ptr, _size) => {
-                let (alloc_id, offset) = ptr.into_parts();
+                let (prov, offset) = ptr.into_parts(); // we know the `offset` is relative
+                let alloc_id = prov.alloc_id();
                 let base_addr =
                     match self.tcx.global_alloc(alloc_id) {
                         GlobalAlloc::Memory(alloc) => {
@@ -376,9 +377,6 @@ pub trait TypeReflection<'gcc, 'tcx>  {
     fn is_i128(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
     fn is_u128(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
 
-    fn is_f32(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
-    fn is_f64(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool;
-
     fn is_vector(&self) -> bool;
 }
 
@@ -461,14 +459,6 @@ impl<'gcc, 'tcx> TypeReflection<'gcc, 'tcx> for Type<'gcc> {
 
     fn is_u128(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
         self.unqualified() == cx.u128_type.unqualified()
-    }
-
-    fn is_f32(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
-        self.unqualified() == cx.context.new_type::<f32>()
-    }
-
-    fn is_f64(&self, cx: &CodegenCx<'gcc, 'tcx>) -> bool {
-        self.unqualified() == cx.context.new_type::<f64>()
     }
 
     fn is_vector(&self) -> bool {

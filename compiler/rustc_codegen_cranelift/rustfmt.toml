@@ -1,4 +1,7 @@
-ignore = ["y.rs"]
+ignore = [
+    "y.rs",
+    "example/gen_block_iterate.rs", # uses edition 2024
+]
 
 # Matches rustfmt.toml of rustc
 version = "Two"

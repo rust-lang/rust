@@ -23,8 +23,7 @@ pub fn in_any_value_of_ty<'tcx>(
     ConstQualifs {
         has_mut_interior: HasMutInterior::in_any_value_of_ty(cx, ty),
         needs_drop: NeedsDrop::in_any_value_of_ty(cx, ty),
-        // FIXME(effects)
-        needs_non_const_drop: NeedsDrop::in_any_value_of_ty(cx, ty),
+        needs_non_const_drop: NeedsNonConstDrop::in_any_value_of_ty(cx, ty),
         custom_eq: CustomEq::in_any_value_of_ty(cx, ty),
         tainted_by_errors,
     }
@@ -155,12 +154,27 @@ impl Qualif for NeedsNonConstDrop {
             return false;
         }
 
-        // FIXME(effects) constness
+        // FIXME(effects): If `destruct` is not a `const_trait`,
+        // or effects are disabled in this crate, then give up.
+        let destruct_def_id = cx.tcx.require_lang_item(LangItem::Destruct, Some(cx.body.span));
+        if cx.tcx.generics_of(destruct_def_id).host_effect_index.is_none()
+            || !cx.tcx.features().effects
+        {
+            return NeedsDrop::in_any_value_of_ty(cx, ty);
+        }
+
         let obligation = Obligation::new(
             cx.tcx,
             ObligationCause::dummy_with_span(cx.body.span),
             cx.param_env,
-            ty::TraitRef::from_lang_item(cx.tcx, LangItem::Destruct, cx.body.span, [ty]),
+            ty::TraitRef::new(
+                cx.tcx,
+                destruct_def_id,
+                [
+                    ty::GenericArg::from(ty),
+                    ty::GenericArg::from(cx.tcx.expected_host_effect_param_for_body(cx.def_id())),
+                ],
+            ),
         );
 
         let infcx = cx.tcx.infer_ctxt().build();

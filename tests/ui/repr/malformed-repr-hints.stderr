@@ -1,0 +1,64 @@
+error[E0552]: incorrect `repr(packed)` attribute format: `packed` takes exactly one parenthesized argument, or no parentheses at all
+  --> $DIR/malformed-repr-hints.rs:6:8
+   |
+LL | #[repr(packed())]
+   |        ^^^^^^^^
+
+error[E0589]: invalid `repr(align)` attribute: `align` needs an argument
+  --> $DIR/malformed-repr-hints.rs:10:8
+   |
+LL | #[repr(align)]
+   |        ^^^^^ help: supply an argument here: `align(...)`
+
+error[E0693]: incorrect `repr(align)` attribute format: `align` takes exactly one argument in parentheses
+  --> $DIR/malformed-repr-hints.rs:14:8
+   |
+LL | #[repr(align(2, 4))]
+   |        ^^^^^^^^^^^
+
+error[E0693]: incorrect `repr(align)` attribute format: `align` takes exactly one argument in parentheses
+  --> $DIR/malformed-repr-hints.rs:18:8
+   |
+LL | #[repr(align())]
+   |        ^^^^^^^
+
+error[E0552]: invalid representation hint: `Rust` does not take a parenthesized argument list
+  --> $DIR/malformed-repr-hints.rs:23:8
+   |
+LL | #[repr(Rust(u8))]
+   |        ^^^^^^^^
+
+error[E0552]: invalid representation hint: `Rust` does not take a parenthesized argument list
+  --> $DIR/malformed-repr-hints.rs:25:8
+   |
+LL | #[repr(Rust(0))]
+   |        ^^^^^^^
+
+error[E0552]: invalid representation hint: `Rust` does not take a value
+  --> $DIR/malformed-repr-hints.rs:27:8
+   |
+LL | #[repr(Rust = 0)]
+   |        ^^^^^^^^
+
+error[E0552]: invalid representation hint: `i8` does not take a parenthesized argument list
+  --> $DIR/malformed-repr-hints.rs:31:8
+   |
+LL | #[repr(i8())]
+   |        ^^^^
+
+error[E0552]: invalid representation hint: `u32` does not take a parenthesized argument list
+  --> $DIR/malformed-repr-hints.rs:35:8
+   |
+LL | #[repr(u32(42))]
+   |        ^^^^^^^
+
+error[E0552]: invalid representation hint: `i64` does not take a value
+  --> $DIR/malformed-repr-hints.rs:39:8
+   |
+LL | #[repr(i64 = 2)]
+   |        ^^^^^^^
+
+error: aborting due to 10 previous errors
+
+Some errors have detailed explanations: E0552, E0589, E0693.
+For more information about an error, try `rustc --explain E0552`.

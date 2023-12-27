@@ -450,7 +450,11 @@ impl Layout {
                 return Err(LayoutError);
             }
 
-            let array_size = element_size * n;
+            // SAFETY: We just checked that we won't overflow `usize` when we multiply.
+            // This is a useless hint inside this function, but after inlining this helps
+            // deduplicate checks for whether the overall capacity is zero (e.g., in RawVec's
+            // allocation path) before/after this multiplication.
+            let array_size = unsafe { element_size.unchecked_mul(n) };
 
             // SAFETY: We just checked above that the `array_size` will not
             // exceed `isize::MAX` even when rounded up to the alignment.

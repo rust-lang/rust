@@ -22,6 +22,7 @@ use ide_db::{
     base_db::{salsa::Durability, CrateGraph, ProcMacroPaths, ProcMacros},
     FxHashMap,
 };
+use itertools::Itertools;
 use load_cargo::{load_proc_macro, ProjectFolders};
 use proc_macro_api::ProcMacroServer;
 use project_model::{ProjectWorkspace, WorkspaceBuildScripts};
@@ -227,16 +228,12 @@ impl GlobalState {
                 let mut i = 0;
                 while i < workspaces.len() {
                     if let Ok(w) = &workspaces[i] {
-                        let dupes: Vec<_> = workspaces
+                        let dupes: Vec<_> = workspaces[i + 1..]
                             .iter()
-                            .enumerate()
-                            .skip(i + 1)
-                            .filter_map(|(i, it)| {
-                                it.as_ref().ok().filter(|ws| ws.eq_ignore_build_data(w)).map(|_| i)
-                            })
+                            .positions(|it| it.as_ref().is_ok_and(|ws| ws.eq_ignore_build_data(w)))
                             .collect();
                         dupes.into_iter().rev().for_each(|d| {
-                            _ = workspaces.remove(d);
+                            _ = workspaces.remove(d + i + 1);
                         });
                     }
                     i += 1;
@@ -380,7 +377,6 @@ impl GlobalState {
                         ws
                     })
                     .collect::<Vec<_>>();
-
                 // Workspaces are the same, but we've updated build data.
                 self.workspaces = Arc::new(workspaces);
             } else {
@@ -441,28 +437,22 @@ impl GlobalState {
             if self.config.expand_proc_macros() {
                 tracing::info!("Spawning proc-macro servers");
 
-                // FIXME: use `Arc::from_iter` when it becomes available
-                self.proc_macro_clients = Arc::from(
-                    self.workspaces
-                        .iter()
-                        .map(|ws| {
-                            let path = match self.config.proc_macro_srv() {
-                                Some(path) => path,
-                                None => ws.find_sysroot_proc_macro_srv()?,
-                            };
+                self.proc_macro_clients = Arc::from_iter(self.workspaces.iter().map(|ws| {
+                    let path = match self.config.proc_macro_srv() {
+                        Some(path) => path,
+                        None => ws.find_sysroot_proc_macro_srv()?,
+                    };
 
-                            tracing::info!("Using proc-macro server at {path}");
-                            ProcMacroServer::spawn(path.clone()).map_err(|err| {
-                                tracing::error!(
-                                    "Failed to run proc-macro server from path {path}, error: {err:?}",
-                                );
-                                anyhow::format_err!(
-                                    "Failed to run proc-macro server from path {path}, error: {err:?}",
-                                )
-                            })
-                        })
-                        .collect::<Vec<_>>(),
-                )
+                    tracing::info!("Using proc-macro server at {path}");
+                    ProcMacroServer::spawn(path.clone()).map_err(|err| {
+                        tracing::error!(
+                            "Failed to run proc-macro server from path {path}, error: {err:?}",
+                        );
+                        anyhow::format_err!(
+                            "Failed to run proc-macro server from path {path}, error: {err:?}",
+                        )
+                    })
+                }))
             };
         }
 

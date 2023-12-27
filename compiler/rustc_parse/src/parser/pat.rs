@@ -5,8 +5,8 @@ use crate::errors::{
     ExpectedCommaAfterPatternField, GenericArgsInPatRequireTurbofishSyntax,
     InclusiveRangeExtraEquals, InclusiveRangeMatchArrow, InclusiveRangeNoEnd, InvalidMutInPattern,
     PatternOnWrongSideOfAt, RefMutOrderIncorrect, RemoveLet, RepeatedMutInPattern,
-    TopLevelOrPatternNotAllowed, TopLevelOrPatternNotAllowedSugg, TrailingVertNotAllowed,
-    UnexpectedLifetimeInPattern, UnexpectedVertVertBeforeFunctionParam,
+    SwitchRefBoxOrder, TopLevelOrPatternNotAllowed, TopLevelOrPatternNotAllowedSugg,
+    TrailingVertNotAllowed, UnexpectedLifetimeInPattern, UnexpectedVertVertBeforeFunctionParam,
     UnexpectedVertVertInPattern,
 };
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
@@ -15,10 +15,10 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
 use rustc_ast::{
     self as ast, AttrVec, BindingAnnotation, ByRef, Expr, ExprKind, MacCall, Mutability, Pat,
-    PatField, PatKind, Path, QSelf, RangeEnd, RangeSyntax,
+    PatField, PatFieldsRest, PatKind, Path, QSelf, RangeEnd, RangeSyntax,
 };
 use rustc_ast_pretty::pprust;
-use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, PResult};
+use rustc_errors::{Applicability, DiagnosticBuilder, PResult};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident};
@@ -141,13 +141,21 @@ impl<'a> Parser<'a> {
         };
 
         // Parse the first pattern (`p_0`).
-        let mut first_pat = self.parse_pat_no_top_alt(expected, syntax_loc)?;
-        if rc == RecoverComma::Yes {
-            self.maybe_recover_unexpected_comma(
-                first_pat.span,
-                matches!(first_pat.kind, PatKind::MacCall(_)),
-                rt,
-            )?;
+        let mut first_pat = match self.parse_pat_no_top_alt(expected, syntax_loc) {
+            Ok(pat) => pat,
+            Err(mut err)
+                if self.token.is_reserved_ident()
+                    && !self.token.is_keyword(kw::In)
+                    && !self.token.is_keyword(kw::If) =>
+            {
+                err.emit();
+                self.bump();
+                self.mk_pat(self.token.span, PatKind::Wild)
+            }
+            Err(err) => return Err(err),
+        };
+        if rc == RecoverComma::Yes && !first_pat.could_be_never_pattern() {
+            self.maybe_recover_unexpected_comma(first_pat.span, rt)?;
         }
 
         // If the next token is not a `|`,
@@ -188,8 +196,8 @@ impl<'a> Parser<'a> {
                 err.span_label(lo, WHILE_PARSING_OR_MSG);
                 err
             })?;
-            if rc == RecoverComma::Yes {
-                self.maybe_recover_unexpected_comma(pat.span, false, rt)?;
+            if rc == RecoverComma::Yes && !pat.could_be_never_pattern() {
+                self.maybe_recover_unexpected_comma(pat.span, rt)?;
             }
             pats.push(pat);
         }
@@ -233,7 +241,7 @@ impl<'a> Parser<'a> {
                 Some(TopLevelOrPatternNotAllowedSugg::WrapInParens { span, pat })
             };
 
-            let mut err = self.sess.create_err(match syntax_loc {
+            let mut err = self.dcx().create_err(match syntax_loc {
                 PatternLocation::LetBinding => {
                     TopLevelOrPatternNotAllowed::LetBinding { span, sub }
                 }
@@ -260,7 +268,7 @@ impl<'a> Parser<'a> {
         // a leading `||` probably doesn't indicate an or-pattern attempt, so we handle that
         // separately.
         if let token::OrOr = self.token.kind {
-            self.sess.emit_err(UnexpectedVertVertBeforeFunctionParam { span: self.token.span });
+            self.dcx().emit_err(UnexpectedVertVertBeforeFunctionParam { span: self.token.span });
             self.bump();
         }
 
@@ -278,7 +286,7 @@ impl<'a> Parser<'a> {
             EatOrResult::TrailingVert
         } else if matches!(self.token.kind, token::OrOr) {
             // Found `||`; Recover and pretend we parsed `|`.
-            self.sess.emit_err(UnexpectedVertVertInPattern { span: self.token.span, start: lo });
+            self.dcx().emit_err(UnexpectedVertVertInPattern { span: self.token.span, start: lo });
             self.bump();
             EatOrResult::AteOr
         } else if self.eat(&token::BinOp(token::Or)) {
@@ -313,7 +321,7 @@ impl<'a> Parser<'a> {
         match (is_end_ahead, &self.token.kind) {
             (true, token::BinOp(token::Or) | token::OrOr) => {
                 // A `|` or possibly `||` token shouldn't be here. Ban it.
-                self.sess.emit_err(TrailingVertNotAllowed {
+                self.dcx().emit_err(TrailingVertNotAllowed {
                     span: self.token.span,
                     start: lo,
                     token: self.token.clone(),
@@ -341,7 +349,7 @@ impl<'a> Parser<'a> {
 
         if self.token.is_keyword(kw::Let) && self.look_ahead(1, |tok| tok.can_begin_pattern()) {
             self.bump();
-            self.sess.emit_err(RemoveLet { span: lo });
+            self.dcx().emit_err(RemoveLet { span: lo });
             lo = self.token.span;
         }
 
@@ -368,12 +376,22 @@ impl<'a> Parser<'a> {
             self.recover_dotdotdot_rest_pat(lo)
         } else if let Some(form) = self.parse_range_end() {
             self.parse_pat_range_to(form)? // `..=X`, `...X`, or `..X`.
+        } else if self.eat(&token::Not) {
+            // Parse `!`
+            self.sess.gated_spans.gate(sym::never_patterns, self.prev_token.span);
+            PatKind::Never
         } else if self.eat_keyword(kw::Underscore) {
-            // Parse _
+            // Parse `_`
             PatKind::Wild
         } else if self.eat_keyword(kw::Mut) {
             self.parse_pat_ident_mut(syntax_loc)?
         } else if self.eat_keyword(kw::Ref) {
+            if self.check_keyword(kw::Box) {
+                // Suggest `box ref`.
+                let span = self.prev_token.span.to(self.token.span);
+                self.bump();
+                self.dcx().emit_err(SwitchRefBoxOrder { span });
+            }
             // Parse ref ident @ pat / ref mut ident @ pat
             let mutbl = self.parse_mutability();
             self.parse_pat_ident(BindingAnnotation(ByRef::Yes, mutbl), syntax_loc)?
@@ -441,7 +459,7 @@ impl<'a> Parser<'a> {
                         super::token_descr(&self_.token)
                     );
 
-                    let mut err = self_.struct_span_err(self_.token.span, msg);
+                    let mut err = self_.dcx().struct_span_err(self_.token.span, msg);
                     err.span_label(self_.token.span, format!("expected {expected}"));
                     err
                 });
@@ -475,7 +493,7 @@ impl<'a> Parser<'a> {
         self.bump(); // `...`
 
         // The user probably mistook `...` for a rest pattern `..`.
-        self.sess.emit_err(DotDotDotRestPattern { span: lo });
+        self.dcx().emit_err(DotDotDotRestPattern { span: lo });
         PatKind::Rest
     }
 
@@ -509,7 +527,7 @@ impl<'a> Parser<'a> {
             // The RHS is now the full pattern.
             *sub = Some(lhs);
 
-            self.sess.emit_err(PatternOnWrongSideOfAt {
+            self.dcx().emit_err(PatternOnWrongSideOfAt {
                 whole_span,
                 whole_pat: pprust::pat_to_string(&rhs),
                 pattern: lhs_span,
@@ -518,7 +536,7 @@ impl<'a> Parser<'a> {
         } else {
             // The special case above doesn't apply so we may have e.g. `A(x) @ B(y)`.
             rhs.kind = PatKind::Wild;
-            self.sess.emit_err(ExpectedBindingLeftOfAt {
+            self.dcx().emit_err(ExpectedBindingLeftOfAt {
                 whole_span,
                 lhs: lhs.span,
                 rhs: rhs.span,
@@ -540,8 +558,8 @@ impl<'a> Parser<'a> {
             _ => return,
         }
 
-        self.sess
-            .emit_err(AmbiguousRangePattern { span: pat.span, pat: pprust::pat_to_string(&pat) });
+        self.dcx()
+            .emit_err(AmbiguousRangePattern { span: pat.span, pat: pprust::pat_to_string(pat) });
     }
 
     /// Parse `&pat` / `&mut pat`.
@@ -550,7 +568,7 @@ impl<'a> Parser<'a> {
         if let token::Lifetime(name) = self.token.kind {
             self.bump(); // `'a`
 
-            self.sess
+            self.dcx()
                 .emit_err(UnexpectedLifetimeInPattern { span: self.prev_token.span, symbol: name });
         }
 
@@ -584,7 +602,7 @@ impl<'a> Parser<'a> {
         let mut_span = self.prev_token.span;
 
         if self.eat_keyword(kw::Ref) {
-            self.sess.emit_err(RefMutOrderIncorrect { span: mut_span.to(self.prev_token.span) });
+            self.dcx().emit_err(RefMutOrderIncorrect { span: mut_span.to(self.prev_token.span) });
             return self.parse_pat_ident(BindingAnnotation::REF_MUT, syntax_loc);
         }
 
@@ -592,7 +610,7 @@ impl<'a> Parser<'a> {
 
         // Make sure we don't allow e.g. `let mut $p;` where `$p:pat`.
         if let token::Interpolated(nt) = &self.token.kind {
-            if let token::NtPat(_) = **nt {
+            if let token::NtPat(..) = &nt.0 {
                 self.expected_ident_found_err().emit();
             }
         }
@@ -638,13 +656,13 @@ impl<'a> Parser<'a> {
 
     /// Error on `mut $pat` where `$pat` is not an ident.
     fn ban_mut_general_pat(&self, lo: Span, pat: &Pat, changed_any_binding: bool) {
-        let span = lo.to(pat.span);
-        let pat = pprust::pat_to_string(&pat);
-
-        self.sess.emit_err(if changed_any_binding {
-            InvalidMutInPattern::NestedIdent { span, pat }
+        self.dcx().emit_err(if changed_any_binding {
+            InvalidMutInPattern::NestedIdent {
+                span: lo.to(pat.span),
+                pat: pprust::pat_to_string(pat),
+            }
         } else {
-            InvalidMutInPattern::NonIdent { span, pat }
+            InvalidMutInPattern::NonIdent { span: lo.until(pat.span) }
         });
     }
 
@@ -656,7 +674,7 @@ impl<'a> Parser<'a> {
             return;
         }
 
-        self.sess.emit_err(RepeatedMutInPattern { span: lo.to(self.prev_token.span) });
+        self.dcx().emit_err(RepeatedMutInPattern { span: lo.to(self.prev_token.span) });
     }
 
     /// Parse macro invocation
@@ -669,7 +687,7 @@ impl<'a> Parser<'a> {
 
     fn fatal_unexpected_non_pat(
         &mut self,
-        err: DiagnosticBuilder<'a, ErrorGuaranteed>,
+        err: DiagnosticBuilder<'a>,
         expected: Option<Expected>,
     ) -> PResult<'a, P<Pat>> {
         err.cancel();
@@ -677,7 +695,7 @@ impl<'a> Parser<'a> {
         let expected = Expected::to_string_or_fallback(expected);
         let msg = format!("expected {}, found {}", expected, super::token_descr(&self.token));
 
-        let mut err = self.struct_span_err(self.token.span, msg);
+        let mut err = self.dcx().struct_span_err(self.token.span, msg);
         err.span_label(self.token.span, format!("expected {expected}"));
 
         let sp = self.sess.source_map().start_point(self.token.span);
@@ -742,14 +760,14 @@ impl<'a> Parser<'a> {
                     let _ = self.parse_pat_range_end().map_err(|e| e.cancel());
                 }
 
-                self.sess.emit_err(InclusiveRangeExtraEquals { span: span_with_eq });
+                self.dcx().emit_err(InclusiveRangeExtraEquals { span: span_with_eq });
             }
             token::Gt if no_space => {
                 let after_pat = span.with_hi(span.hi() - rustc_span::BytePos(1)).shrink_to_hi();
-                self.sess.emit_err(InclusiveRangeMatchArrow { span, arrow: tok.span, after_pat });
+                self.dcx().emit_err(InclusiveRangeMatchArrow { span, arrow: tok.span, after_pat });
             }
             _ => {
-                self.sess.emit_err(InclusiveRangeNoEnd { span });
+                self.dcx().emit_err(InclusiveRangeNoEnd { span });
             }
         }
     }
@@ -762,7 +780,7 @@ impl<'a> Parser<'a> {
         let end = self.parse_pat_range_end()?;
         if let RangeEnd::Included(syn @ RangeSyntax::DotDotDot) = &mut re.node {
             *syn = RangeSyntax::DotDotEq;
-            self.sess.emit_err(DotDotDotRangeToPatternNotAllowed { span: re.span });
+            self.dcx().emit_err(DotDotDotRangeToPatternNotAllowed { span: re.span });
         }
         Ok(PatKind::Range(None, Some(end), re))
     }
@@ -829,14 +847,14 @@ impl<'a> Parser<'a> {
         binding_annotation: BindingAnnotation,
         syntax_loc: Option<PatternLocation>,
     ) -> PResult<'a, PatKind> {
-        let ident = self.parse_ident()?;
+        let ident = self.parse_ident_common(false)?;
 
         if self.may_recover()
             && !matches!(syntax_loc, Some(PatternLocation::FunctionParameter))
             && self.check_noexpect(&token::Lt)
             && self.look_ahead(1, |t| t.can_begin_type())
         {
-            return Err(self.sess.create_err(GenericArgsInPatRequireTurbofishSyntax {
+            return Err(self.dcx().create_err(GenericArgsInPatRequireTurbofishSyntax {
                 span: self.token.span,
                 suggest_turbofish: self.token.span.shrink_to_lo(),
             }));
@@ -854,8 +872,9 @@ impl<'a> Parser<'a> {
         // binding mode then we do not end up here, because the lookahead
         // will direct us over to `parse_enum_variant()`.
         if self.token == token::OpenDelim(Delimiter::Parenthesis) {
-            return Err(EnumPatternInsteadOfIdentifier { span: self.prev_token.span }
-                .into_diagnostic(&self.sess.span_diagnostic));
+            return Err(self
+                .dcx()
+                .create_err(EnumPatternInsteadOfIdentifier { span: self.prev_token.span }));
         }
 
         Ok(PatKind::Ident(binding_annotation, ident, sub))
@@ -872,7 +891,8 @@ impl<'a> Parser<'a> {
             e.span_label(path.span, "while parsing the fields for this pattern");
             e.emit();
             self.recover_stmt();
-            (ThinVec::new(), true)
+            // When recovering, pretend we had `Foo { .. }`, to avoid cascading errors.
+            (ThinVec::new(), PatFieldsRest::Rest)
         });
         self.bump();
         Ok(PatKind::Struct(qself, path, fields, etc))
@@ -922,7 +942,7 @@ impl<'a> Parser<'a> {
 
         if self.isnt_pattern_start() {
             let descr = super::token_descr(&self.token);
-            self.sess.emit_err(errors::BoxNotPat {
+            self.dcx().emit_err(errors::BoxNotPat {
                 span: self.token.span,
                 kw: box_span,
                 lo: box_span.shrink_to_lo(),
@@ -946,11 +966,11 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses the fields of a struct-like pattern.
-    fn parse_pat_fields(&mut self) -> PResult<'a, (ThinVec<PatField>, bool)> {
+    fn parse_pat_fields(&mut self) -> PResult<'a, (ThinVec<PatField>, PatFieldsRest)> {
         let mut fields = ThinVec::new();
-        let mut etc = false;
+        let mut etc = PatFieldsRest::None;
         let mut ate_comma = true;
-        let mut delayed_err: Option<DiagnosticBuilder<'a, ErrorGuaranteed>> = None;
+        let mut delayed_err: Option<DiagnosticBuilder<'a>> = None;
         let mut first_etc_and_maybe_comma_span = None;
         let mut last_non_comma_dotdot_span = None;
 
@@ -968,8 +988,8 @@ impl<'a> Parser<'a> {
 
             // check that a comma comes after every field
             if !ate_comma {
-                let mut err = ExpectedCommaAfterPatternField { span: self.token.span }
-                    .into_diagnostic(&self.sess.span_diagnostic);
+                let mut err =
+                    self.dcx().create_err(ExpectedCommaAfterPatternField { span: self.token.span });
                 if let Some(mut delayed) = delayed_err {
                     delayed.emit();
                 }
@@ -982,7 +1002,7 @@ impl<'a> Parser<'a> {
                 || self.check_noexpect(&token::DotDotDot)
                 || self.check_keyword(kw::Underscore)
             {
-                etc = true;
+                etc = PatFieldsRest::Rest;
                 let mut etc_sp = self.token.span;
                 if first_etc_and_maybe_comma_span.is_none() {
                     if let Some(comma_tok) = self
@@ -1009,7 +1029,7 @@ impl<'a> Parser<'a> {
                 }
                 let token_str = super::token_descr(&self.token);
                 let msg = format!("expected `}}`, found {token_str}");
-                let mut err = self.struct_span_err(self.token.span, msg);
+                let mut err = self.dcx().struct_span_err(self.token.span, msg);
 
                 err.span_label(self.token.span, "expected `}`");
                 let mut comma_sp = None;
@@ -1116,7 +1136,7 @@ impl<'a> Parser<'a> {
     fn recover_misplaced_pattern_modifiers(
         &self,
         fields: &ThinVec<PatField>,
-        err: &mut DiagnosticBuilder<'a, ErrorGuaranteed>,
+        err: &mut DiagnosticBuilder<'a>,
     ) {
         if let Some(last) = fields.iter().last()
             && last.is_shorthand
@@ -1150,7 +1170,7 @@ impl<'a> Parser<'a> {
         }
 
         let token_str = pprust::token_to_string(&self.token);
-        self.sess.emit_err(DotDotDotForRemainingFields { span: self.token.span, token_str });
+        self.dcx().emit_err(DotDotDotForRemainingFields { span: self.token.span, token_str });
     }
 
     fn parse_pat_field(&mut self, lo: Span, attrs: AttrVec) -> PResult<'a, PatField> {

@@ -11,7 +11,6 @@ mod stmt;
 mod ty;
 
 use crate::lexer::UnmatchedDelim;
-use ast::Gen;
 pub use attr_wrapper::AttrWrapper;
 pub use diagnostics::AttemptLocalParseRecovery;
 pub(crate) use expr::ForbiddenLetReason;
@@ -21,20 +20,19 @@ pub use path::PathStyle;
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Nonterminal, Token, TokenKind};
-use rustc_ast::tokenstream::{AttributesData, DelimSpan, Spacing};
+use rustc_ast::tokenstream::{AttributesData, DelimSpacing, DelimSpan, Spacing};
 use rustc_ast::tokenstream::{TokenStream, TokenTree, TokenTreeCursor};
 use rustc_ast::util::case::Case;
 use rustc_ast::AttrId;
+use rustc_ast::CoroutineKind;
 use rustc_ast::DUMMY_NODE_ID;
 use rustc_ast::{self as ast, AnonConst, Const, DelimArgs, Extern};
-use rustc_ast::{Async, AttrArgs, AttrArgsEq, Expr, ExprKind, Mutability, StrLit};
+use rustc_ast::{AttrArgs, AttrArgsEq, Expr, ExprKind, Mutability, StrLit};
 use rustc_ast::{HasAttrs, HasTokens, Unsafe, Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::PResult;
-use rustc_errors::{
-    Applicability, DiagnosticBuilder, ErrorGuaranteed, FatalError, IntoDiagnostic, MultiSpan,
-};
+use rustc_errors::{Applicability, DiagnosticBuilder, FatalError, MultiSpan};
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
@@ -93,7 +91,7 @@ pub enum TrailingToken {
 macro_rules! maybe_whole {
     ($p:expr, $constructor:ident, |$x:ident| $e:expr) => {
         if let token::Interpolated(nt) = &$p.token.kind {
-            if let token::$constructor(x) = &**nt {
+            if let token::$constructor(x) = &nt.0 {
                 let $x = x.clone();
                 $p.bump();
                 return Ok($e);
@@ -107,15 +105,15 @@ macro_rules! maybe_whole {
 macro_rules! maybe_recover_from_interpolated_ty_qpath {
     ($self: expr, $allow_qpath_recovery: expr) => {
         if $allow_qpath_recovery
-                    && $self.may_recover()
-                    && $self.look_ahead(1, |t| t == &token::ModSep)
-                    && let token::Interpolated(nt) = &$self.token.kind
-                    && let token::NtTy(ty) = &**nt
-                {
-                    let ty = ty.clone();
-                    $self.bump();
-                    return $self.maybe_recover_from_bad_qpath_stage_2($self.prev_token.span, ty);
-                }
+            && $self.may_recover()
+            && $self.look_ahead(1, |t| t == &token::ModSep)
+            && let token::Interpolated(nt) = &$self.token.kind
+            && let token::NtTy(ty) = &nt.0
+        {
+            let ty = ty.clone();
+            $self.bump();
+            return $self.maybe_recover_from_bad_qpath_stage_2($self.prev_token.span, ty);
+        }
     };
 }
 
@@ -130,7 +128,7 @@ pub struct Parser<'a> {
     pub sess: &'a ParseSess,
     /// The current token.
     pub token: Token,
-    /// The spacing for the current token
+    /// The spacing for the current token.
     pub token_spacing: Spacing,
     /// The previous token.
     pub prev_token: Token,
@@ -240,7 +238,7 @@ struct TokenCursor {
     // Token streams surrounding the current one. The delimiters for stack[n]'s
     // tokens are in `stack[n-1]`. `stack[0]` (when present) has no delimiters
     // because it's the outermost token stream which never has delimiters.
-    stack: Vec<(TokenTreeCursor, Delimiter, DelimSpan)>,
+    stack: Vec<(TokenTreeCursor, DelimSpan, DelimSpacing, Delimiter)>,
 }
 
 impl TokenCursor {
@@ -264,24 +262,31 @@ impl TokenCursor {
                         ));
                         return (token.clone(), spacing);
                     }
-                    &TokenTree::Delimited(sp, delim, ref tts) => {
+                    &TokenTree::Delimited(sp, spacing, delim, ref tts) => {
                         let trees = tts.clone().into_trees();
-                        self.stack.push((mem::replace(&mut self.tree_cursor, trees), delim, sp));
+                        self.stack.push((
+                            mem::replace(&mut self.tree_cursor, trees),
+                            sp,
+                            spacing,
+                            delim,
+                        ));
                         if delim != Delimiter::Invisible {
-                            return (Token::new(token::OpenDelim(delim), sp.open), Spacing::Alone);
+                            return (Token::new(token::OpenDelim(delim), sp.open), spacing.open);
                         }
                         // No open delimiter to return; continue on to the next iteration.
                     }
                 };
-            } else if let Some((tree_cursor, delim, span)) = self.stack.pop() {
+            } else if let Some((tree_cursor, span, spacing, delim)) = self.stack.pop() {
                 // We have exhausted this token stream. Move back to its parent token stream.
                 self.tree_cursor = tree_cursor;
                 if delim != Delimiter::Invisible {
-                    return (Token::new(token::CloseDelim(delim), span.close), Spacing::Alone);
+                    return (Token::new(token::CloseDelim(delim), span.close), spacing.close);
                 }
                 // No close delimiter to return; continue on to the next iteration.
             } else {
-                // We have exhausted the outermost token stream.
+                // We have exhausted the outermost token stream. The use of
+                // `Spacing::Alone` is arbitrary and immaterial, because the
+                // `Eof` token's spacing is never used.
                 return (Token::new(token::Eof, DUMMY_SP), Spacing::Alone);
             }
         }
@@ -367,12 +372,14 @@ impl TokenDescription {
 pub(super) fn token_descr(token: &Token) -> String {
     let name = pprust::token_to_string(token).to_string();
 
-    let kind = TokenDescription::from_token(token).map(|kind| match kind {
-        TokenDescription::ReservedIdentifier => "reserved identifier",
-        TokenDescription::Keyword => "keyword",
-        TokenDescription::ReservedKeyword => "reserved keyword",
-        TokenDescription::DocComment => "doc comment",
-    });
+    let kind = match (TokenDescription::from_token(token), &token.kind) {
+        (Some(TokenDescription::ReservedIdentifier), _) => Some("reserved identifier"),
+        (Some(TokenDescription::Keyword), _) => Some("keyword"),
+        (Some(TokenDescription::ReservedKeyword), _) => Some("reserved keyword"),
+        (Some(TokenDescription::DocComment), _) => Some("doc comment"),
+        (None, TokenKind::Interpolated(node)) => Some(node.0.descr()),
+        (None, _) => None,
+    };
 
     if let Some(kind) = kind { format!("{kind} `{name}`") } else { format!("`{name}`") }
 }
@@ -594,7 +601,7 @@ impl<'a> Parser<'a> {
             && let Some((ident, /* is_raw */ false)) = self.token.ident()
             && ident.as_str().to_lowercase() == kw.as_str().to_lowercase()
         {
-            self.sess.emit_err(errors::KwBadCase { span: ident.span, kw: kw.as_str() });
+            self.dcx().emit_err(errors::KwBadCase { span: ident.span, kw: kw.as_str() });
             self.bump();
             return true;
         }
@@ -662,7 +669,7 @@ impl<'a> Parser<'a> {
     fn check_inline_const(&self, dist: usize) -> bool {
         self.is_keyword_ahead(dist, &[kw::Const])
             && self.look_ahead(dist + 1, |t| match &t.kind {
-                token::Interpolated(nt) => matches!(**nt, token::NtBlock(..)),
+                token::Interpolated(nt) => matches!(&nt.0, token::NtBlock(..)),
                 token::OpenDelim(Delimiter::Brace) => true,
                 _ => false,
             })
@@ -697,8 +704,8 @@ impl<'a> Parser<'a> {
                 // is not needed (we'll capture the entire 'glued' token),
                 // and `bump` will set this field to `None`
                 self.break_last_token = true;
-                // Use the spacing of the glued token as the spacing
-                // of the unglued second token.
+                // Use the spacing of the glued token as the spacing of the
+                // unglued second token.
                 self.bump_with((Token::new(second, second_span), self.token_spacing));
                 true
             }
@@ -830,8 +837,8 @@ impl<'a> Parser<'a> {
                             // https://github.com/rust-lang/rust/issues/72373
                             if self.prev_token.is_ident() && self.token.kind == token::DotDot {
                                 let msg = format!(
-                                    "if you meant to bind the contents of \
-                                    the rest of the array pattern into `{}`, use `@`",
+                                    "if you meant to bind the contents of the rest of the array \
+                                     pattern into `{}`, use `@`",
                                     pprust::token_to_string(&self.prev_token)
                                 );
                                 expect_err
@@ -873,6 +880,9 @@ impl<'a> Parser<'a> {
                                     if self.token == token::Colon {
                                         // we will try to recover in `maybe_recover_struct_lit_bad_delims`
                                         return Err(expect_err);
+                                    } else if let [token::CloseDelim(Delimiter::Parenthesis)] = kets
+                                    {
+                                        return Err(expect_err);
                                     } else {
                                         expect_err.emit();
                                         break;
@@ -898,7 +908,7 @@ impl<'a> Parser<'a> {
     fn recover_missing_braces_around_closure_body(
         &mut self,
         closure_spans: ClosureSpans,
-        mut expect_err: DiagnosticBuilder<'_, ErrorGuaranteed>,
+        mut expect_err: DiagnosticBuilder<'_>,
     ) -> PResult<'a, ()> {
         let initial_semicolon = self.token.span;
 
@@ -1063,7 +1073,7 @@ impl<'a> Parser<'a> {
             return looker(&self.token);
         }
 
-        if let Some(&(_, delim, span)) = self.token_cursor.stack.last()
+        if let Some(&(_, span, _, delim)) = self.token_cursor.stack.last()
             && delim != Delimiter::Invisible
         {
             // We are not in the outermost token stream, and the token stream
@@ -1072,7 +1082,7 @@ impl<'a> Parser<'a> {
             let tree_cursor = &self.token_cursor.tree_cursor;
             let all_normal = (0..dist).all(|i| {
                 let token = tree_cursor.look_ahead(i);
-                !matches!(token, Some(TokenTree::Delimited(_, Delimiter::Invisible, _)))
+                !matches!(token, Some(TokenTree::Delimited(.., Delimiter::Invisible, _)))
             });
             if all_normal {
                 // There were no skipped delimiters. Do lookahead by plain indexing.
@@ -1081,7 +1091,7 @@ impl<'a> Parser<'a> {
                         // Indexing stayed within the current token stream.
                         match tree {
                             TokenTree::Token(token, _) => looker(token),
-                            TokenTree::Delimited(dspan, delim, _) => {
+                            TokenTree::Delimited(dspan, _, delim, _) => {
                                 looker(&Token::new(token::OpenDelim(*delim), dspan.open))
                             }
                         }
@@ -1115,27 +1125,42 @@ impl<'a> Parser<'a> {
     }
 
     /// Returns whether any of the given keywords are `dist` tokens ahead of the current one.
-    fn is_keyword_ahead(&self, dist: usize, kws: &[Symbol]) -> bool {
+    pub(crate) fn is_keyword_ahead(&self, dist: usize, kws: &[Symbol]) -> bool {
         self.look_ahead(dist, |t| kws.iter().any(|&kw| t.is_keyword(kw)))
     }
 
     /// Parses asyncness: `async` or nothing.
-    fn parse_asyncness(&mut self, case: Case) -> Async {
+    fn parse_coroutine_kind(&mut self, case: Case) -> Option<CoroutineKind> {
+        let span = self.token.uninterpolated_span();
         if self.eat_keyword_case(kw::Async, case) {
-            let span = self.prev_token.uninterpolated_span();
-            Async::Yes { span, closure_id: DUMMY_NODE_ID, return_impl_trait_id: DUMMY_NODE_ID }
+            // FIXME(gen_blocks): Do we want to unconditionally parse `gen` and then
+            // error if edition <= 2024, like we do with async and edition <= 2018?
+            if self.token.uninterpolated_span().at_least_rust_2024()
+                && self.eat_keyword_case(kw::Gen, case)
+            {
+                let gen_span = self.prev_token.uninterpolated_span();
+                Some(CoroutineKind::AsyncGen {
+                    span: span.to(gen_span),
+                    closure_id: DUMMY_NODE_ID,
+                    return_impl_trait_id: DUMMY_NODE_ID,
+                })
+            } else {
+                Some(CoroutineKind::Async {
+                    span,
+                    closure_id: DUMMY_NODE_ID,
+                    return_impl_trait_id: DUMMY_NODE_ID,
+                })
+            }
+        } else if self.token.uninterpolated_span().at_least_rust_2024()
+            && self.eat_keyword_case(kw::Gen, case)
+        {
+            Some(CoroutineKind::Gen {
+                span,
+                closure_id: DUMMY_NODE_ID,
+                return_impl_trait_id: DUMMY_NODE_ID,
+            })
         } else {
-            Async::No
-        }
-    }
-
-    /// Parses genness: `gen` or nothing.
-    fn parse_genness(&mut self, case: Case) -> Gen {
-        if self.token.span.at_least_rust_2024() && self.eat_keyword_case(kw::Gen, case) {
-            let span = self.prev_token.uninterpolated_span();
-            Gen::Yes { span, closure_id: DUMMY_NODE_ID, return_impl_trait_id: DUMMY_NODE_ID }
-        } else {
-            Gen::No
+            None
         }
     }
 
@@ -1244,7 +1269,7 @@ impl<'a> Parser<'a> {
             || self.check(&token::OpenDelim(Delimiter::Brace));
 
         delimited.then(|| {
-            let TokenTree::Delimited(dspan, delim, tokens) = self.parse_token_tree() else {
+            let TokenTree::Delimited(dspan, _, delim, tokens) = self.parse_token_tree() else {
                 unreachable!()
             };
             DelimArgs { dspan, delim, tokens }
@@ -1268,7 +1293,7 @@ impl<'a> Parser<'a> {
             token::OpenDelim(..) => {
                 // Grab the tokens within the delimiters.
                 let stream = self.token_cursor.tree_cursor.stream.clone();
-                let (_, delim, span) = *self.token_cursor.stack.last().unwrap();
+                let (_, span, spacing, delim) = *self.token_cursor.stack.last().unwrap();
 
                 // Advance the token cursor through the entire delimited
                 // sequence. After getting the `OpenDelim` we are *within* the
@@ -1288,12 +1313,13 @@ impl<'a> Parser<'a> {
 
                 // Consume close delimiter
                 self.bump();
-                TokenTree::Delimited(span, delim, stream)
+                TokenTree::Delimited(span, spacing, delim, stream)
             }
             token::CloseDelim(_) | token::Eof => unreachable!(),
             _ => {
+                let prev_spacing = self.token_spacing;
                 self.bump();
-                TokenTree::Token(self.prev_token.clone(), Spacing::Alone)
+                TokenTree::Token(self.prev_token.clone(), prev_spacing)
             }
         }
     }
@@ -1397,7 +1423,8 @@ impl<'a> Parser<'a> {
         self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
 
         let path_str = pprust::path_to_string(&path);
-        self.sess.emit_err(IncorrectVisibilityRestriction { span: path.span, inner_str: path_str });
+        self.dcx()
+            .emit_err(IncorrectVisibilityRestriction { span: path.span, inner_str: path_str });
 
         Ok(())
     }
@@ -1423,7 +1450,7 @@ impl<'a> Parser<'a> {
             Err(Some(lit)) => match lit.kind {
                 ast::LitKind::Err => None,
                 _ => {
-                    self.sess.emit_err(NonStringAbiLiteral { span: lit.span });
+                    self.dcx().emit_err(NonStringAbiLiteral { span: lit.span });
                     None
                 }
             },
@@ -1464,7 +1491,7 @@ impl<'a> Parser<'a> {
 pub(crate) fn make_unclosed_delims_error(
     unmatched: UnmatchedDelim,
     sess: &ParseSess,
-) -> Option<DiagnosticBuilder<'_, ErrorGuaranteed>> {
+) -> Option<DiagnosticBuilder<'_>> {
     // `None` here means an `Eof` was found. We already emit those errors elsewhere, we add them to
     // `unmatched_delims` only for error recovery in the `Parser`.
     let found_delim = unmatched.found_delim?;
@@ -1472,14 +1499,13 @@ pub(crate) fn make_unclosed_delims_error(
     if let Some(sp) = unmatched.unclosed_span {
         spans.push(sp);
     };
-    let err = MismatchedClosingDelimiter {
+    let err = sess.dcx.create_err(MismatchedClosingDelimiter {
         spans,
         delimiter: pprust::token_kind_to_string(&token::CloseDelim(found_delim)).to_string(),
         unmatched: unmatched.found_span,
         opening_candidate: unmatched.candidate_span,
         unclosed: unmatched.unclosed_span,
-    }
-    .into_diagnostic(&sess.span_diagnostic);
+    });
     Some(err)
 }
 

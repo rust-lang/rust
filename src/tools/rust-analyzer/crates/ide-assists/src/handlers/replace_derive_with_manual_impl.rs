@@ -1,4 +1,4 @@
-use hir::{InFile, ModuleDef};
+use hir::{InFile, MacroFileIdExt, ModuleDef};
 use ide_db::{helpers::mod_path_to_ast, imports::import_assets::NameToImport, items_locator};
 use itertools::Itertools;
 use syntax::{
@@ -43,12 +43,12 @@ pub(crate) fn replace_derive_with_manual_impl(
 ) -> Option<()> {
     let attr = ctx.find_node_at_offset_with_descend::<ast::Attr>()?;
     let path = attr.path()?;
-    let hir_file = ctx.sema.hir_file_for(attr.syntax());
-    if !hir_file.is_derive_attr_pseudo_expansion(ctx.db()) {
+    let macro_file = ctx.sema.hir_file_for(attr.syntax()).macro_file()?;
+    if !macro_file.is_derive_attr_pseudo_expansion(ctx.db()) {
         return None;
     }
 
-    let InFile { file_id, value } = hir_file.call_node(ctx.db())?;
+    let InFile { file_id, value } = macro_file.call_node(ctx.db());
     if file_id.is_macro() {
         // FIXME: make this work in macro files
         return None;
@@ -56,7 +56,7 @@ pub(crate) fn replace_derive_with_manual_impl(
     // collect the derive paths from the #[derive] expansion
     let current_derives = ctx
         .sema
-        .parse_or_expand(hir_file)
+        .parse_or_expand(macro_file.into())
         .descendants()
         .filter_map(ast::Attr::cast)
         .filter_map(|attr| attr.path())
@@ -82,7 +82,12 @@ pub(crate) fn replace_derive_with_manual_impl(
     })
     .flat_map(|trait_| {
         current_module
-            .find_use_path(ctx.sema.db, hir::ModuleDef::Trait(trait_), ctx.config.prefer_no_std)
+            .find_use_path(
+                ctx.sema.db,
+                hir::ModuleDef::Trait(trait_),
+                ctx.config.prefer_no_std,
+                ctx.config.prefer_prelude,
+            )
             .as_ref()
             .map(mod_path_to_ast)
             .zip(Some(trait_))

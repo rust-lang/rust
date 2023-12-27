@@ -71,16 +71,31 @@ function createDirEntry(elem, parent, fullPath, hasFoundFile) {
     return hasFoundFile;
 }
 
+let toggleLabel;
+
+function getToggleLabel() {
+    toggleLabel = toggleLabel || document.querySelector("#src-sidebar-toggle button");
+    return toggleLabel;
+}
+
+window.rustdocCloseSourceSidebar = () => {
+    removeClass(document.documentElement, "src-sidebar-expanded");
+    getToggleLabel().innerText = ">";
+    updateLocalStorage("source-sidebar-show", "false");
+};
+
+window.rustdocShowSourceSidebar = () => {
+    addClass(document.documentElement, "src-sidebar-expanded");
+    getToggleLabel().innerText = "<";
+    updateLocalStorage("source-sidebar-show", "true");
+};
+
 function toggleSidebar() {
     const child = this.parentNode.children[0];
     if (child.innerText === ">") {
-        addClass(document.documentElement, "src-sidebar-expanded");
-        child.innerText = "<";
-        updateLocalStorage("source-sidebar-show", "true");
+        window.rustdocShowSourceSidebar();
     } else {
-        removeClass(document.documentElement, "src-sidebar-expanded");
-        child.innerText = ">";
-        updateLocalStorage("source-sidebar-show", "false");
+        window.rustdocCloseSourceSidebar();
     }
 }
 
@@ -118,10 +133,10 @@ function createSrcSidebar() {
     title.className = "title";
     title.innerText = "Files";
     sidebar.appendChild(title);
-    Object.keys(srcIndex).forEach(key => {
-        srcIndex[key][NAME_OFFSET] = key;
-        hasFoundFile = createDirEntry(srcIndex[key], sidebar, "", hasFoundFile);
-    });
+    for (const [key, source] of srcIndex) {
+        source[NAME_OFFSET] = key;
+        hasFoundFile = createDirEntry(source, sidebar, "", hasFoundFile);
+    }
 
     container.appendChild(sidebar);
     // Focus on the current file in the source files sidebar.
@@ -131,12 +146,8 @@ function createSrcSidebar() {
     }
 }
 
-const lineNumbersRegex = /^#?(\d+)(?:-(\d+))?$/;
-
-function highlightSrcLines(match) {
-    if (typeof match === "undefined") {
-        match = window.location.hash.match(lineNumbersRegex);
-    }
+function highlightSrcLines() {
+    const match = window.location.hash.match(/^#?(\d+)(?:-(\d+))?$/);
     if (!match) {
         return;
     }
@@ -218,12 +229,7 @@ const handleSrcHighlight = (function() {
     };
 }());
 
-window.addEventListener("hashchange", () => {
-    const match = window.location.hash.match(lineNumbersRegex);
-    if (match) {
-        return highlightSrcLines(match);
-    }
-});
+window.addEventListener("hashchange", highlightSrcLines);
 
 onEachLazy(document.getElementsByClassName("src-line-numbers"), el => {
     el.addEventListener("click", handleSrcHighlight);

@@ -20,7 +20,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for Subtype<'tcx> {
         tcx.type_op_subtype(canonicalized)
     }
 
-    fn perform_locally_in_new_solver(
+    fn perform_locally_with_next_solver(
         ocx: &ObligationCtxt<'_, 'tcx>,
         key: ParamEnvAnd<'tcx, Self>,
     ) -> Result<Self::QueryResponse, NoSolution> {

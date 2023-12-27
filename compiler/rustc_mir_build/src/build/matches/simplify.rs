@@ -69,7 +69,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             {
                 existing_bindings.extend_from_slice(&new_bindings);
                 mem::swap(&mut candidate.bindings, &mut existing_bindings);
-                candidate.subcandidates = self.create_or_subcandidates(candidate, &place, pats);
+                candidate.subcandidates = self.create_or_subcandidates(candidate, place, pats);
                 return true;
             }
 
@@ -191,6 +191,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     candidate.match_pairs.push(MatchPair::new(match_pair.place, subpattern, self));
                 }
 
+                Ok(())
+            }
+
+            PatKind::Never => {
+                // A never pattern acts like a load from the place.
+                // FIXME(never_patterns): load from the place
                 Ok(())
             }
 

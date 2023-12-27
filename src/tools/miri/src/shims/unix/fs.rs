@@ -1,7 +1,6 @@
 use std::any::Any;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
-use std::convert::TryInto;
 use std::fs::{
     read_dir, remove_dir, remove_file, rename, DirBuilder, File, FileType, OpenOptions, ReadDir,
 };
@@ -65,11 +64,6 @@ pub trait FileDescriptor: std::fmt::Debug + Any {
 
     fn is_tty(&self, _communicate_allowed: bool) -> bool {
         false
-    }
-
-    #[cfg(unix)]
-    fn as_unix_host_fd(&self) -> Option<i32> {
-        None
     }
 }
 
@@ -150,12 +144,6 @@ impl FileDescriptor for FileHandle {
         Ok(Box::new(FileHandle { file: duplicated, writable: self.writable }))
     }
 
-    #[cfg(unix)]
-    fn as_unix_host_fd(&self) -> Option<i32> {
-        use std::os::unix::io::AsRawFd;
-        Some(self.file.as_raw_fd())
-    }
-
     fn is_tty(&self, communicate_allowed: bool) -> bool {
         communicate_allowed && self.file.is_terminal()
     }
@@ -181,11 +169,6 @@ impl FileDescriptor for io::Stdin {
 
     fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         Ok(Box::new(io::stdin()))
-    }
-
-    #[cfg(unix)]
-    fn as_unix_host_fd(&self) -> Option<i32> {
-        Some(libc::STDIN_FILENO)
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
@@ -220,11 +203,6 @@ impl FileDescriptor for io::Stdout {
         Ok(Box::new(io::stdout()))
     }
 
-    #[cfg(unix)]
-    fn as_unix_host_fd(&self) -> Option<i32> {
-        Some(libc::STDOUT_FILENO)
-    }
-
     fn is_tty(&self, communicate_allowed: bool) -> bool {
         communicate_allowed && self.is_terminal()
     }
@@ -248,11 +226,6 @@ impl FileDescriptor for io::Stderr {
 
     fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         Ok(Box::new(io::stderr()))
-    }
-
-    #[cfg(unix)]
-    fn as_unix_host_fd(&self) -> Option<i32> {
-        Some(libc::STDERR_FILENO)
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
@@ -288,8 +261,8 @@ pub struct FileHandler {
     pub handles: BTreeMap<i32, Box<dyn FileDescriptor>>,
 }
 
-impl VisitTags for FileHandler {
-    fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {
+impl VisitProvenance for FileHandler {
+    fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {
         // All our FileDescriptor do not have any tags.
     }
 }
@@ -490,12 +463,12 @@ impl Default for DirHandler {
     }
 }
 
-impl VisitTags for DirHandler {
-    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+impl VisitProvenance for DirHandler {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         let DirHandler { streams, next_id: _ } = self;
 
         for dir in streams.values() {
-            dir.entry.visit_tags(visit);
+            dir.entry.visit_provenance(visit);
         }
     }
 }
@@ -1504,15 +1477,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    fn ftruncate64(
-        &mut self,
-        fd_op: &OpTy<'tcx, Provenance>,
-        length_op: &OpTy<'tcx, Provenance>,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+    fn ftruncate64(&mut self, fd: i32, length: i128) -> InterpResult<'tcx, Scalar<Provenance>> {
         let this = self.eval_context_mut();
-
-        let fd = this.read_scalar(fd_op)?.to_i32()?;
-        let length = this.read_scalar(length_op)?.to_i64()?;
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {

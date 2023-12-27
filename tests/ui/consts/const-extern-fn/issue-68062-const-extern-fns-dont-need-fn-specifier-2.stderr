@@ -4,5 +4,5 @@ error: expected one of `extern` or `fn`, found `WhereIsFerris`
 LL |     const unsafe WhereIsFerris Now() {}
    |                  ^^^^^^^^^^^^^ expected one of `extern` or `fn`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

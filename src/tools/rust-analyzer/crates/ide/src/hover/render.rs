@@ -402,10 +402,9 @@ pub(super) fn definition(
             |&it| it.layout(db),
             |_| {
                 let var_def = it.parent_def(db);
-                let id = it.index();
                 match var_def {
                     hir::VariantDef::Struct(s) => {
-                        Adt::from(s).layout(db).ok().and_then(|layout| layout.field_offset(id))
+                        Adt::from(s).layout(db).ok().and_then(|layout| layout.field_offset(it))
                     }
                     _ => None,
                 }

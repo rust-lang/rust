@@ -15,11 +15,11 @@ use rustc_session::config::{
 use rustc_session::getopts;
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
-use rustc_session::EarlyErrorHandler;
+use rustc_session::EarlyDiagCtxt;
 use rustc_span::edition::Edition;
 use rustc_target::spec::TargetTriple;
 
-use crate::core::new_handler;
+use crate::core::new_dcx;
 use crate::externalfiles::ExternalHtml;
 use crate::html;
 use crate::html::markdown::IdMap;
@@ -320,38 +320,38 @@ impl Options {
     /// Parses the given command-line for options. If an error message or other early-return has
     /// been printed, returns `Err` with the exit code.
     pub(crate) fn from_matches(
-        handler: &mut EarlyErrorHandler,
+        early_dcx: &mut EarlyDiagCtxt,
         matches: &getopts::Matches,
         args: Vec<String>,
     ) -> Result<(Options, RenderOptions), i32> {
         // Check for unstable options.
-        nightly_options::check_nightly_options(handler, matches, &opts());
+        nightly_options::check_nightly_options(early_dcx, matches, &opts());
 
         if args.is_empty() || matches.opt_present("h") || matches.opt_present("help") {
             crate::usage("rustdoc");
             return Err(0);
         } else if matches.opt_present("version") {
-            rustc_driver::version!(&handler, "rustdoc", matches);
+            rustc_driver::version!(&early_dcx, "rustdoc", matches);
             return Err(0);
         }
 
-        if rustc_driver::describe_flag_categories(handler, &matches) {
+        if rustc_driver::describe_flag_categories(early_dcx, &matches) {
             return Err(0);
         }
 
-        let color = config::parse_color(handler, matches);
+        let color = config::parse_color(early_dcx, matches);
         let config::JsonConfig { json_rendered, json_unused_externs, .. } =
-            config::parse_json(handler, matches);
-        let error_format = config::parse_error_format(handler, matches, color, json_rendered);
+            config::parse_json(early_dcx, matches);
+        let error_format = config::parse_error_format(early_dcx, matches, color, json_rendered);
         let diagnostic_width = matches.opt_get("diagnostic-width").unwrap_or_default();
 
-        let codegen_options = CodegenOptions::build(handler, matches);
-        let unstable_opts = UnstableOptions::build(handler, matches);
+        let codegen_options = CodegenOptions::build(early_dcx, matches);
+        let unstable_opts = UnstableOptions::build(early_dcx, matches);
 
-        let diag = new_handler(error_format, None, diagnostic_width, &unstable_opts);
+        let dcx = new_dcx(error_format, None, diagnostic_width, &unstable_opts);
 
         // check for deprecated options
-        check_deprecated_options(matches, &diag);
+        check_deprecated_options(matches, &dcx);
 
         if matches.opt_strs("passes") == ["list"] {
             println!("Available passes for running rustdoc:");
@@ -391,7 +391,7 @@ impl Options {
                 match kind.parse() {
                     Ok(kind) => emit.push(kind),
                     Err(()) => {
-                        diag.err(format!("unrecognized emission type: {kind}"));
+                        dcx.err(format!("unrecognized emission type: {kind}"));
                         return Err(1);
                     }
                 }
@@ -403,7 +403,7 @@ impl Options {
             && !matches.opt_present("show-coverage")
             && !nightly_options::is_unstable_enabled(matches)
         {
-            handler.early_error(
+            early_dcx.early_fatal(
                 "the -Z unstable-options flag must be passed to enable --output-format for documentation generation (see https://github.com/rust-lang/rust/issues/76578)",
             );
         }
@@ -421,7 +421,7 @@ impl Options {
             let paths = match theme::load_css_paths(content) {
                 Ok(p) => p,
                 Err(e) => {
-                    diag.struct_err(e).emit();
+                    dcx.struct_err(e).emit();
                     return Err(1);
                 }
             };
@@ -430,7 +430,7 @@ impl Options {
             println!("rustdoc: [check-theme] Starting tests! (Ignoring all other arguments)");
             for theme_file in to_check.iter() {
                 print!(" - Checking \"{theme_file}\"...");
-                let (success, differences) = theme::test_theme_against(theme_file, &paths, &diag);
+                let (success, differences) = theme::test_theme_against(theme_file, &paths, &dcx);
                 if !differences.is_empty() || !success {
                     println!(" FAILED");
                     errors += 1;
@@ -447,27 +447,27 @@ impl Options {
             return Err(0);
         }
 
-        let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(handler, matches);
+        let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(early_dcx, matches);
 
         let input = PathBuf::from(if describe_lints {
             "" // dummy, this won't be used
         } else if matches.free.is_empty() {
-            diag.struct_err("missing file operand").emit();
+            dcx.struct_err("missing file operand").emit();
             return Err(1);
         } else if matches.free.len() > 1 {
-            diag.struct_err("too many file operands").emit();
+            dcx.struct_err("too many file operands").emit();
             return Err(1);
         } else {
             &matches.free[0]
         });
 
         let libs =
-            matches.opt_strs("L").iter().map(|s| SearchPath::from_cli_opt(handler, s)).collect();
-        let externs = parse_externs(handler, matches, &unstable_opts);
+            matches.opt_strs("L").iter().map(|s| SearchPath::from_cli_opt(early_dcx, s)).collect();
+        let externs = parse_externs(early_dcx, matches, &unstable_opts);
         let extern_html_root_urls = match parse_extern_html_roots(matches) {
             Ok(ex) => ex,
             Err(err) => {
-                diag.struct_err(err).emit();
+                dcx.struct_err(err).emit();
                 return Err(1);
             }
         };
@@ -526,7 +526,7 @@ impl Options {
         let no_run = matches.opt_present("no-run");
 
         if !should_test && no_run {
-            diag.err("the `--test` flag must be passed to enable `--no-run`");
+            dcx.err("the `--test` flag must be passed to enable `--no-run`");
             return Err(1);
         }
 
@@ -534,7 +534,7 @@ impl Options {
         let output = matches.opt_str("output").map(|s| PathBuf::from(&s));
         let output = match (out_dir, output) {
             (Some(_), Some(_)) => {
-                diag.struct_err("cannot use both 'out-dir' and 'output' at once").emit();
+                dcx.struct_err("cannot use both 'out-dir' and 'output' at once").emit();
                 return Err(1);
             }
             (Some(out_dir), None) => out_dir,
@@ -549,7 +549,7 @@ impl Options {
 
         if let Some(ref p) = extension_css {
             if !p.is_file() {
-                diag.struct_err("option --extend-css argument must be a file").emit();
+                dcx.struct_err("option --extend-css argument must be a file").emit();
                 return Err(1);
             }
         }
@@ -567,7 +567,7 @@ impl Options {
             let paths = match theme::load_css_paths(content) {
                 Ok(p) => p,
                 Err(e) => {
-                    diag.struct_err(e).emit();
+                    dcx.struct_err(e).emit();
                     return Err(1);
                 }
             };
@@ -576,23 +576,23 @@ impl Options {
                 matches.opt_strs("theme").iter().map(|s| (PathBuf::from(&s), s.to_owned()))
             {
                 if !theme_file.is_file() {
-                    diag.struct_err(format!("invalid argument: \"{theme_s}\""))
+                    dcx.struct_err(format!("invalid argument: \"{theme_s}\""))
                         .help("arguments to --theme must be files")
                         .emit();
                     return Err(1);
                 }
                 if theme_file.extension() != Some(OsStr::new("css")) {
-                    diag.struct_err(format!("invalid argument: \"{theme_s}\""))
+                    dcx.struct_err(format!("invalid argument: \"{theme_s}\""))
                         .help("arguments to --theme must have a .css extension")
                         .emit();
                     return Err(1);
                 }
-                let (success, ret) = theme::test_theme_against(&theme_file, &paths, &diag);
+                let (success, ret) = theme::test_theme_against(&theme_file, &paths, &dcx);
                 if !success {
-                    diag.struct_err(format!("error loading theme file: \"{theme_s}\"")).emit();
+                    dcx.struct_err(format!("error loading theme file: \"{theme_s}\"")).emit();
                     return Err(1);
                 } else if !ret.is_empty() {
-                    diag.struct_warn(format!(
+                    dcx.struct_warn(format!(
                         "theme file \"{theme_s}\" is missing CSS rules from the default theme",
                     ))
                     .warn("the theme may appear incorrect when loaded")
@@ -605,7 +605,7 @@ impl Options {
             }
         }
 
-        let edition = config::parse_crate_edition(handler, matches);
+        let edition = config::parse_crate_edition(early_dcx, matches);
 
         let mut id_map = html::markdown::IdMap::new();
         let Some(external_html) = ExternalHtml::load(
@@ -615,7 +615,7 @@ impl Options {
             &matches.opt_strs("markdown-before-content"),
             &matches.opt_strs("markdown-after-content"),
             nightly_options::match_is_nightly_build(matches),
-            &diag,
+            &dcx,
             &mut id_map,
             edition,
             &None,
@@ -626,7 +626,7 @@ impl Options {
         match matches.opt_str("r").as_deref() {
             Some("rust") | None => {}
             Some(s) => {
-                diag.struct_err(format!("unknown input format: {s}")).emit();
+                dcx.struct_err(format!("unknown input format: {s}")).emit();
                 return Err(1);
             }
         }
@@ -634,19 +634,19 @@ impl Options {
         let index_page = matches.opt_str("index-page").map(|s| PathBuf::from(&s));
         if let Some(ref index_page) = index_page {
             if !index_page.is_file() {
-                diag.struct_err("option `--index-page` argument must be a file").emit();
+                dcx.struct_err("option `--index-page` argument must be a file").emit();
                 return Err(1);
             }
         }
 
-        let target = parse_target_triple(handler, matches);
+        let target = parse_target_triple(early_dcx, matches);
 
         let show_coverage = matches.opt_present("show-coverage");
 
         let crate_types = match parse_crate_types_from_list(matches.opt_strs("crate-type")) {
             Ok(types) => types,
             Err(e) => {
-                diag.struct_err(format!("unknown crate type: {e}")).emit();
+                dcx.struct_err(format!("unknown crate type: {e}")).emit();
                 return Err(1);
             }
         };
@@ -655,7 +655,7 @@ impl Options {
             Some(s) => match OutputFormat::try_from(s.as_str()) {
                 Ok(out_fmt) => {
                     if !out_fmt.is_json() && show_coverage {
-                        diag.struct_err(
+                        dcx.struct_err(
                             "html output format isn't supported for the --show-coverage option",
                         )
                         .emit();
@@ -664,7 +664,7 @@ impl Options {
                     out_fmt
                 }
                 Err(e) => {
-                    diag.struct_err(e).emit();
+                    dcx.struct_err(e).emit();
                     return Err(1);
                 }
             },
@@ -709,16 +709,16 @@ impl Options {
         let html_no_source = matches.opt_present("html-no-source");
 
         if generate_link_to_definition && (show_coverage || output_format != OutputFormat::Html) {
-            diag.struct_err(
+            dcx.struct_err(
                 "--generate-link-to-definition option can only be used with HTML output format",
             )
             .emit();
             return Err(1);
         }
 
-        let scrape_examples_options = ScrapeExamplesOptions::new(matches, &diag)?;
+        let scrape_examples_options = ScrapeExamplesOptions::new(matches, &dcx)?;
         let with_examples = matches.opt_strs("with-examples");
-        let call_locations = crate::scrape_examples::load_call_locations(with_examples, &diag)?;
+        let call_locations = crate::scrape_examples::load_call_locations(with_examples, &dcx)?;
 
         let unstable_features =
             rustc_feature::UnstableFeatures::from_environment(crate_name.as_deref());
@@ -798,17 +798,17 @@ impl Options {
 
     /// Returns `true` if the file given as `self.input` is a Markdown file.
     pub(crate) fn markdown_input(&self) -> bool {
-        self.input.extension().map_or(false, |e| e == "md" || e == "markdown")
+        self.input.extension().is_some_and(|e| e == "md" || e == "markdown")
     }
 }
 
 /// Prints deprecation warnings for deprecated options
-fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Handler) {
+fn check_deprecated_options(matches: &getopts::Matches, dcx: &rustc_errors::DiagCtxt) {
     let deprecated_flags = [];
 
     for &flag in deprecated_flags.iter() {
         if matches.opt_present(flag) {
-            diag.struct_warn(format!("the `{flag}` flag is deprecated"))
+            dcx.struct_warn(format!("the `{flag}` flag is deprecated"))
                 .note(
                     "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
                     for more information",
@@ -821,7 +821,7 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &rustc_errors::Han
 
     for &flag in removed_flags.iter() {
         if matches.opt_present(flag) {
-            let mut err = diag.struct_warn(format!("the `{flag}` flag no longer functions"));
+            let mut err = dcx.struct_warn(format!("the `{flag}` flag no longer functions"));
             err.note(
                 "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
                 for more information",

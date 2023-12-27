@@ -1,5 +1,4 @@
 use rustc_middle::ty::TyCtxt;
-use rustc_span::Symbol;
 
 use crate::clean;
 use crate::config::RenderOptions;
@@ -68,7 +67,6 @@ pub(crate) fn run_format<'tcx, T: FormatRenderer<'tcx>>(
     // Render the crate documentation
     let mut work = vec![(format_renderer.make_child_renderer(), krate.module)];
 
-    let unknown = Symbol::intern("<unknown item>");
     while let Some((mut cx, item)) = work.pop() {
         if item.is_mod() && T::RUN_ON_MODULE {
             // modules are special because they add a namespace. We also need to
@@ -90,8 +88,10 @@ pub(crate) fn run_format<'tcx, T: FormatRenderer<'tcx>>(
             cx.mod_item_out()?;
         // FIXME: checking `item.name.is_some()` is very implicit and leads to lots of special
         // cases. Use an explicit match instead.
-        } else if item.name.is_some() && !item.is_extern_crate() {
-            prof.generic_activity_with_arg("render_item", item.name.unwrap_or(unknown).as_str())
+        } else if let Some(item_name) = item.name
+            && !item.is_extern_crate()
+        {
+            prof.generic_activity_with_arg("render_item", item_name.as_str())
                 .run(|| cx.item(item))?;
         }
     }

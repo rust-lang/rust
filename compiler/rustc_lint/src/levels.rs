@@ -56,7 +56,6 @@ struct LintLevelSets {
 }
 
 rustc_index::newtype_index! {
-    #[custom_encodable] // we don't need encoding
     struct LintStackIndex {
         const COMMAND_LINE = 0;
     }
@@ -123,7 +122,7 @@ impl LintLevelSets {
 }
 
 fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExpectation)> {
-    let store = unerased_lint_store(tcx);
+    let store = unerased_lint_store(tcx.sess);
 
     let mut builder = LintLevelsBuilder {
         sess: tcx.sess,
@@ -138,21 +137,21 @@ fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExp
         },
         warn_about_weird_lints: false,
         store,
-        registered_tools: &tcx.registered_tools(()),
+        registered_tools: tcx.registered_tools(()),
     };
 
     builder.add_command_line();
     builder.add_id(hir::CRATE_HIR_ID);
     tcx.hir().walk_toplevel_module(&mut builder);
 
-    tcx.sess.diagnostic().update_unstable_expectation_id(&builder.provider.unstable_to_stable_ids);
+    tcx.dcx().update_unstable_expectation_id(&builder.provider.unstable_to_stable_ids);
 
     builder.provider.expectations
 }
 
 #[instrument(level = "trace", skip(tcx), ret)]
 fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLevelMap {
-    let store = unerased_lint_store(tcx);
+    let store = unerased_lint_store(tcx.sess);
     let attrs = tcx.hir_attrs(owner);
 
     let mut levels = LintLevelsBuilder {
@@ -167,7 +166,7 @@ fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLe
         },
         warn_about_weird_lints: false,
         store,
-        registered_tools: &tcx.registered_tools(()),
+        registered_tools: tcx.registered_tools(()),
     };
 
     if owner == hir::CRATE_OWNER_ID {
@@ -548,10 +547,6 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         self.features
     }
 
-    pub(crate) fn lint_store(&self) -> &LintStore {
-        self.store
-    }
-
     fn current_specs(&self) -> &FxHashMap<LintId, LevelAndSource> {
         self.provider.current_specs()
     }
@@ -567,7 +562,9 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
             if lint_name_only == crate::WARNINGS.name_lower()
                 && matches!(level, Level::ForceWarn(_))
             {
-                self.sess.emit_err(UnsupportedGroup { lint_group: crate::WARNINGS.name_lower() });
+                self.sess
+                    .dcx()
+                    .emit_err(UnsupportedGroup { lint_group: crate::WARNINGS.name_lower() });
             }
             match self.store.check_lint_name(lint_name_only, tool_name, self.registered_tools) {
                 CheckLintNameResult::Renamed(ref replace) => {
@@ -598,7 +595,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     self.emit_lint(RENAMED_AND_REMOVED_LINTS, lint);
                 }
                 CheckLintNameResult::NoTool => {
-                    self.sess.emit_err(CheckNameUnknownTool {
+                    self.sess.dcx().emit_err(CheckNameUnknownTool {
                         tool_name: tool_name.unwrap(),
                         sub: RequestedLevel { level, lint_name },
                     });
@@ -609,7 +606,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
             let orig_level = level;
             let lint_flag_val = Symbol::intern(lint_name);
 
-            let Ok(ids) = self.store.find_lints(&lint_name) else {
+            let Ok(ids) = self.store.find_lints(lint_name) else {
                 // errors already handled above
                 continue;
             };
@@ -633,7 +630,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     /// (e.g. if a forbid was already inserted on the same scope), then emits a
     /// diagnostic with no change to `specs`.
     fn insert_spec(&mut self, id: LintId, (mut level, src): LevelAndSource) {
-        let (old_level, old_src) = self.provider.get_lint_level(id.lint, &self.sess);
+        let (old_level, old_src) = self.provider.get_lint_level(id.lint, self.sess);
         if let Level::Expect(id) = &mut level
             && let LintExpectationId::Stable { .. } = id
         {
@@ -676,7 +673,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     LintLevelSource::CommandLine(_, _) => OverruledAttributeSub::CommandLineSource,
                 };
                 if !fcw_warning {
-                    self.sess.emit_err(OverruledAttribute {
+                    self.sess.dcx().emit_err(OverruledAttribute {
                         span: src.span(),
                         overruled: src.span(),
                         lint_level: level.as_str(),
@@ -741,7 +738,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
             if attr.has_name(sym::doc)
                 && attr
                     .meta_item_list()
-                    .map_or(false, |l| ast::attr::list_contains_name(&l, sym::hidden))
+                    .is_some_and(|l| ast::attr::list_contains_name(&l, sym::hidden))
             {
                 self.insert(LintId::of(MISSING_DOCS), (Level::Allow, LintLevelSource::Default));
                 continue;
@@ -797,7 +794,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                                 }
                                 reason = Some(rationale);
                             } else {
-                                sess.emit_err(MalformedAttribute {
+                                sess.dcx().emit_err(MalformedAttribute {
                                     span: name_value.span,
                                     sub: MalformedAttributeSub::ReasonMustBeStringLiteral(
                                         name_value.span,
@@ -807,14 +804,14 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                             // found reason, reslice meta list to exclude it
                             metas.pop().unwrap();
                         } else {
-                            sess.emit_err(MalformedAttribute {
+                            sess.dcx().emit_err(MalformedAttribute {
                                 span: item.span,
                                 sub: MalformedAttributeSub::BadAttributeArgument(item.span),
                             });
                         }
                     }
                     ast::MetaItemKind::List(_) => {
-                        sess.emit_err(MalformedAttribute {
+                        sess.dcx().emit_err(MalformedAttribute {
                             span: item.span,
                             sub: MalformedAttributeSub::BadAttributeArgument(item.span),
                         });
@@ -838,7 +835,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                         if let Some(item) = li.meta_item() {
                             if let ast::MetaItemKind::NameValue(_) = item.kind {
                                 if item.path == sym::reason {
-                                    sess.emit_err(MalformedAttribute {
+                                    sess.dcx().emit_err(MalformedAttribute {
                                         span: sp,
                                         sub: MalformedAttributeSub::ReasonMustComeLast(sp),
                                     });
@@ -846,7 +843,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                                 }
                             }
                         }
-                        sess.emit_err(MalformedAttribute {
+                        sess.dcx().emit_err(MalformedAttribute {
                             span: sp,
                             sub: MalformedAttributeSub::BadAttributeArgument(sp),
                         });
@@ -933,12 +930,12 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                                     DeprecatedLintName {
                                         name,
                                         suggestion: sp,
-                                        replace: &new_lint_name,
+                                        replace: new_lint_name,
                                     },
                                 );
 
                                 let src = LintLevelSource::Node {
-                                    name: Symbol::intern(&new_lint_name),
+                                    name: Symbol::intern(new_lint_name),
                                     span: sp,
                                     reason,
                                 };
@@ -962,7 +959,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     }
 
                     &CheckLintNameResult::NoTool => {
-                        sess.emit_err(UnknownToolInScopedLint {
+                        sess.dcx().emit_err(UnknownToolInScopedLint {
                             span: tool_ident.map(|ident| ident.span),
                             tool_name: tool_name.unwrap(),
                             lint_name: pprust::path_to_string(&meta_item.path),
@@ -1082,7 +1079,6 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                             GateIssue::Language,
                             lint_from_cli,
                         );
-                        lint
                     },
                 );
                 return false;
@@ -1099,8 +1095,6 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     /// Used to emit a lint-related diagnostic based on the current state of
     /// this lint context.
     ///
-    /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
-    ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     #[rustc_lint_diagnostics]
     #[track_caller]
@@ -1109,9 +1103,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         lint: &'static Lint,
         span: Option<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
-        decorate: impl for<'a, 'b> FnOnce(
-            &'b mut DiagnosticBuilder<'a, ()>,
-        ) -> &'b mut DiagnosticBuilder<'a, ()>,
+        decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
         let (level, src) = self.lint_level(lint);
         struct_lint_level(self.sess, lint, level, src, span, msg, decorate)
@@ -1126,7 +1118,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     ) {
         let (level, src) = self.lint_level(lint);
         struct_lint_level(self.sess, lint, level, src, Some(span), decorate.msg(), |lint| {
-            decorate.decorate_lint(lint)
+            decorate.decorate_lint(lint);
         });
     }
 
@@ -1134,7 +1126,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     pub fn emit_lint(&self, lint: &'static Lint, decorate: impl for<'a> DecorateLint<'a, ()>) {
         let (level, src) = self.lint_level(lint);
         struct_lint_level(self.sess, lint, level, src, None, decorate.msg(), |lint| {
-            decorate.decorate_lint(lint)
+            decorate.decorate_lint(lint);
         });
     }
 }

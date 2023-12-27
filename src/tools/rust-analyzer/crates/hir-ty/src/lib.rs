@@ -1,6 +1,7 @@
 //! The type system. We currently use this to infer types for completion, hover
 //! information and various assists.
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![warn(rust_2018_idioms, unused_lifetimes)]
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
 #[allow(unused)]
 macro_rules! eprintln {
@@ -72,14 +73,15 @@ pub use infer::{
 };
 pub use interner::Interner;
 pub use lower::{
-    associated_type_shorthand_candidates, CallableDefId, ImplTraitLoweringMode, TyDefId,
-    TyLoweringContext, ValueTyDefId,
+    associated_type_shorthand_candidates, CallableDefId, ImplTraitLoweringMode, ParamLoweringMode,
+    TyDefId, TyLoweringContext, ValueTyDefId,
 };
 pub use mapping::{
     from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,
     lt_from_placeholder_idx, to_assoc_type_id, to_chalk_trait_id, to_foreign_def_id,
     to_placeholder_idx,
 };
+pub use method_resolution::check_orphan_rules;
 pub use traits::TraitEnvironment;
 pub use utils::{all_super_traits, is_fn_unsafe_to_call};
 
@@ -120,7 +122,7 @@ pub type TyKind = chalk_ir::TyKind<Interner>;
 pub type TypeFlags = chalk_ir::TypeFlags;
 pub type DynTy = chalk_ir::DynTy<Interner>;
 pub type FnPointer = chalk_ir::FnPointer<Interner>;
-// pub type FnSubst = chalk_ir::FnSubst<Interner>;
+// pub type FnSubst = chalk_ir::FnSubst<Interner>; // a re-export so we don't lose the tuple constructor
 pub use chalk_ir::FnSubst;
 pub type ProjectionTy = chalk_ir::ProjectionTy<Interner>;
 pub type AliasTy = chalk_ir::AliasTy<Interner>;
@@ -320,8 +322,7 @@ impl CallableSig {
     pub fn from_fn_ptr(fn_ptr: &FnPointer) -> CallableSig {
         CallableSig {
             // FIXME: what to do about lifetime params? -> return PolyFnSig
-            // FIXME: use `Arc::from_iter` when it becomes available
-            params_and_return: Arc::from(
+            params_and_return: Arc::from_iter(
                 fn_ptr
                     .substitution
                     .clone()
@@ -330,8 +331,7 @@ impl CallableSig {
                     .0
                     .as_slice(Interner)
                     .iter()
-                    .map(|arg| arg.assert_ty_ref(Interner).clone())
-                    .collect::<Vec<_>>(),
+                    .map(|arg| arg.assert_ty_ref(Interner).clone()),
             ),
             is_varargs: fn_ptr.sig.variadic,
             safety: fn_ptr.sig.safety,

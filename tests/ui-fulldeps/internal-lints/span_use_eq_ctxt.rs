@@ -1,7 +1,6 @@
 // Test the `rustc::span_use_eq_ctxt` internal lint
-// #[cfg(bootstrap)]
-// ignore-stage1
 // compile-flags: -Z unstable-options
+// ignore-stage1
 
 #![feature(rustc_private)]
 #![deny(rustc::span_use_eq_ctxt)]

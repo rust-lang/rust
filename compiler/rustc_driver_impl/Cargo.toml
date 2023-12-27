@@ -16,7 +16,6 @@ rustc_codegen_ssa = { path = "../rustc_codegen_ssa" }
 rustc_const_eval = { path = "../rustc_const_eval" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_error_codes = { path = "../rustc_error_codes" }
-rustc_error_messages = { path = "../rustc_error_messages" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_expand = { path = "../rustc_expand" }
 rustc_feature = { path = "../rustc_feature" }
@@ -39,10 +38,12 @@ rustc_mir_transform = { path = "../rustc_mir_transform" }
 rustc_monomorphize = { path = "../rustc_monomorphize" }
 rustc_parse = { path = "../rustc_parse" }
 rustc_passes = { path = "../rustc_passes" }
+rustc_pattern_analysis = { path = "../rustc_pattern_analysis" }
 rustc_privacy = { path = "../rustc_privacy" }
 rustc_query_system = { path = "../rustc_query_system" }
 rustc_resolve = { path = "../rustc_resolve" }
 rustc_session = { path = "../rustc_session" }
+rustc_smir ={ path = "../rustc_smir" }
 rustc_span = { path = "../rustc_span" }
 rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
 rustc_target = { path = "../rustc_target" }

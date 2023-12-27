@@ -7,6 +7,6 @@ LL |         core::mem::transmute::<usize, extern "C-cmse-nonsecure-call" fn(i32
    = note: see issue #81391 <https://github.com/rust-lang/rust/issues/81391> for more information
    = help: add `#![feature(abi_c_cmse_nonsecure_call)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

@@ -98,6 +98,7 @@ macro_rules! add_impl {
             type Output = $t;
 
             #[inline]
+            #[track_caller]
             #[rustc_inherit_overflow_checks]
             fn add(self, other: $t) -> $t { self + other }
         }
@@ -206,6 +207,7 @@ macro_rules! sub_impl {
             type Output = $t;
 
             #[inline]
+            #[track_caller]
             #[rustc_inherit_overflow_checks]
             fn sub(self, other: $t) -> $t { self - other }
         }
@@ -335,6 +337,7 @@ macro_rules! mul_impl {
             type Output = $t;
 
             #[inline]
+            #[track_caller]
             #[rustc_inherit_overflow_checks]
             fn mul(self, other: $t) -> $t { self * other }
         }
@@ -474,6 +477,7 @@ macro_rules! div_impl_integer {
             type Output = $t;
 
             #[inline]
+            #[track_caller]
             fn div(self, other: $t) -> $t { self / other }
         }
 
@@ -575,6 +579,7 @@ macro_rules! rem_impl_integer {
             type Output = $t;
 
             #[inline]
+            #[track_caller]
             fn rem(self, other: $t) -> $t { self % other }
         }
 
@@ -749,6 +754,7 @@ macro_rules! add_assign_impl {
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl AddAssign for $t {
             #[inline]
+            #[track_caller]
             #[rustc_inherit_overflow_checks]
             fn add_assign(&mut self, other: $t) { *self += other }
         }
@@ -815,6 +821,7 @@ macro_rules! sub_assign_impl {
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl SubAssign for $t {
             #[inline]
+            #[track_caller]
             #[rustc_inherit_overflow_checks]
             fn sub_assign(&mut self, other: $t) { *self -= other }
         }
@@ -872,6 +879,7 @@ macro_rules! mul_assign_impl {
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl MulAssign for $t {
             #[inline]
+            #[track_caller]
             #[rustc_inherit_overflow_checks]
             fn mul_assign(&mut self, other: $t) { *self *= other }
         }
@@ -929,6 +937,7 @@ macro_rules! div_assign_impl {
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl DivAssign for $t {
             #[inline]
+            #[track_caller]
             fn div_assign(&mut self, other: $t) { *self /= other }
         }
 
@@ -989,6 +998,7 @@ macro_rules! rem_assign_impl {
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl RemAssign for $t {
             #[inline]
+            #[track_caller]
             fn rem_assign(&mut self, other: $t) { *self %= other }
         }
 

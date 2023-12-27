@@ -11,6 +11,6 @@ LL |         let Test = 1;
    |             `Test` is interpreted as a unit struct, not a new binding
    |             help: introduce a new binding instead: `other_test`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

@@ -16,11 +16,11 @@
 //! never get replaced.
 
 use std::env;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 use std::time::Instant;
 
-use dylib_util::{dylib_path, dylib_path_var};
+use dylib_util::{dylib_path, dylib_path_var, exe};
 
 #[path = "../utils/bin_helpers.rs"]
 mod bin_helpers;
@@ -29,12 +29,12 @@ mod bin_helpers;
 mod dylib_util;
 
 fn main() {
-    let args = env::args_os().skip(1).collect::<Vec<_>>();
-    let arg = |name| args.windows(2).find(|args| args[0] == name).and_then(|args| args[1].to_str());
+    let orig_args = env::args_os().skip(1).collect::<Vec<_>>();
+    let mut args = orig_args.clone();
+    let arg =
+        |name| orig_args.windows(2).find(|args| args[0] == name).and_then(|args| args[1].to_str());
 
-    // We don't use the stage in this shim, but let's parse it to make sure that we're invoked
-    // by bootstrap, or that we provide a helpful error message if not.
-    bin_helpers::parse_rustc_stage();
+    let stage = bin_helpers::parse_rustc_stage();
     let verbose = bin_helpers::parse_rustc_verbose();
 
     // Detect whether or not we're a build script depending on whether --target
@@ -47,7 +47,8 @@ fn main() {
     // determine the version of the compiler, the real compiler needs to be
     // used. Currently, these two states are differentiated based on whether
     // --target and -vV is/isn't passed.
-    let (rustc, libdir) = if target.is_none() && version.is_none() {
+    let is_build_script = target.is_none() && version.is_none();
+    let (rustc, libdir) = if is_build_script {
         ("RUSTC_SNAPSHOT", "RUSTC_SNAPSHOT_LIBDIR")
     } else {
         ("RUSTC_REAL", "RUSTC_LIBDIR")
@@ -56,12 +57,47 @@ fn main() {
     let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
     let on_fail = env::var_os("RUSTC_ON_FAIL").map(Command::new);
 
-    let rustc = env::var_os(rustc).unwrap_or_else(|| panic!("{:?} was not set", rustc));
+    let rustc_real = env::var_os(rustc).unwrap_or_else(|| panic!("{:?} was not set", rustc));
     let libdir = env::var_os(libdir).unwrap_or_else(|| panic!("{:?} was not set", libdir));
     let mut dylib_path = dylib_path();
     dylib_path.insert(0, PathBuf::from(&libdir));
 
-    let mut cmd = Command::new(rustc);
+    // if we're running clippy, trust cargo-clippy to set clippy-driver appropriately (and don't override it with rustc).
+    // otherwise, substitute whatever cargo thinks rustc should be with RUSTC_REAL.
+    // NOTE: this means we ignore RUSTC in the environment.
+    // FIXME: We might want to consider removing RUSTC_REAL and setting RUSTC directly?
+    // NOTE: we intentionally pass the name of the host, not the target.
+    let host = env::var("CFG_COMPILER_BUILD_TRIPLE").unwrap();
+    let is_clippy = args[0].to_string_lossy().ends_with(&exe("clippy-driver", &host));
+    let rustc_driver = if is_clippy {
+        if is_build_script {
+            // Don't run clippy on build scripts (for one thing, we may not have libstd built with
+            // the appropriate version yet, e.g. for stage 1 std).
+            // Also remove the `clippy-driver` param in addition to the RUSTC param.
+            args.drain(..2);
+            rustc_real
+        } else {
+            args.remove(0)
+        }
+    } else {
+        // Cargo doesn't respect RUSTC_WRAPPER for version information >:(
+        // don't remove the first arg if we're being run as RUSTC instead of RUSTC_WRAPPER.
+        // Cargo also sometimes doesn't pass the `.exe` suffix on Windows - add it manually.
+        let current_exe = env::current_exe().expect("couldn't get path to rustc shim");
+        let arg0 = exe(args[0].to_str().expect("only utf8 paths are supported"), &host);
+        if Path::new(&arg0) == current_exe {
+            args.remove(0);
+        }
+        rustc_real
+    };
+
+    let mut cmd = if let Some(wrapper) = env::var_os("RUSTC_WRAPPER_REAL") {
+        let mut cmd = Command::new(wrapper);
+        cmd.arg(rustc_driver);
+        cmd
+    } else {
+        Command::new(rustc_driver)
+    };
     cmd.args(&args).env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
 
     // Get the name of the crate we're compiling, if any.
@@ -114,7 +150,7 @@ fn main() {
         {
             cmd.arg("-Ztls-model=initial-exec");
         }
-    } else {
+    } else if std::env::var("MIRI").is_err() {
         // Find any host flags that were passed by bootstrap.
         // The flags are stored in a RUSTC_HOST_FLAGS variable, separated by spaces.
         if let Ok(flags) = std::env::var("RUSTC_HOST_FLAGS") {
@@ -214,6 +250,8 @@ fn main() {
         }
     }
 
+    bin_helpers::maybe_dump(format!("stage{stage}-rustc"), &cmd);
+
     let start = Instant::now();
     let (child, status) = {
         let errmsg = format!("\nFailed to run:\n{cmd:?}\n-------------");
@@ -245,7 +283,7 @@ fn main() {
 
     if status.success() {
         std::process::exit(0);
-        // note: everything below here is unreachable. do not put code that
+        // NOTE: everything below here is unreachable. do not put code that
         // should run on success, after this block.
     }
     if verbose > 0 {

@@ -75,6 +75,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | PatKind::Array { .. }
             | PatKind::Wild
             | PatKind::Binding { .. }
+            | PatKind::Never
             | PatKind::Leaf { .. }
             | PatKind::Deref { .. }
             | PatKind::Error(_) => self.error_simplifiable(match_pair),
@@ -107,6 +108,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             PatKind::Slice { .. }
             | PatKind::Array { .. }
             | PatKind::Wild
+            | PatKind::Never
             | PatKind::Or { .. }
             | PatKind::Binding { .. }
             | PatKind::AscribeUserType { .. }
@@ -145,7 +147,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    #[instrument(skip(self, make_target_blocks, place_builder), level = "debug")]
+    #[instrument(skip(self, target_blocks, place_builder), level = "debug")]
     pub(super) fn perform_test(
         &mut self,
         match_start_span: Span,
@@ -153,7 +155,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         block: BasicBlock,
         place_builder: &PlaceBuilder<'tcx>,
         test: &Test<'tcx>,
-        make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
+        target_blocks: Vec<BasicBlock>,
     ) {
         let place = place_builder.to_place(self);
         let place_ty = place.ty(&self.local_decls, self.tcx);
@@ -162,7 +164,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let source_info = self.source_info(test.span);
         match test.kind {
             TestKind::Switch { adt_def, ref variants } => {
-                let target_blocks = make_target_blocks(self);
                 // Variants is a BitVec of indexes into adt_def.variants.
                 let num_enum_variants = adt_def.variants().len();
                 debug_assert_eq!(target_blocks.len(), num_enum_variants + 1);
@@ -208,7 +209,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             TestKind::SwitchInt { switch_ty, ref options } => {
-                let target_blocks = make_target_blocks(self);
                 let terminator = if *switch_ty.kind() == ty::Bool {
                     assert!(!options.is_empty() && options.len() <= 2);
                     let [first_bb, second_bb] = *target_blocks else {
@@ -238,6 +238,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             TestKind::Eq { value, ty } => {
                 let tcx = self.tcx;
+                let [success_block, fail_block] = *target_blocks else {
+                    bug!("`TestKind::Eq` should have two target blocks")
+                };
                 if let ty::Adt(def, _) = ty.kind()
                     && Some(def.did()) == tcx.lang_items().string()
                 {
@@ -278,38 +281,43 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     );
                     self.non_scalar_compare(
                         eq_block,
-                        make_target_blocks,
+                        success_block,
+                        fail_block,
                         source_info,
                         value,
                         ref_str,
                         ref_str_ty,
                     );
-                    return;
-                }
-                if !ty.is_scalar() {
+                } else if !ty.is_scalar() {
                     // Use `PartialEq::eq` instead of `BinOp::Eq`
                     // (the binop can only handle primitives)
                     self.non_scalar_compare(
                         block,
-                        make_target_blocks,
+                        success_block,
+                        fail_block,
                         source_info,
                         value,
                         place,
                         ty,
                     );
-                } else if let [success, fail] = *make_target_blocks(self) {
+                } else {
                     assert_eq!(value.ty(), ty);
                     let expect = self.literal_operand(test.span, value);
                     let val = Operand::Copy(place);
-                    self.compare(block, success, fail, source_info, BinOp::Eq, expect, val);
-                } else {
-                    bug!("`TestKind::Eq` should have two target blocks");
+                    self.compare(
+                        block,
+                        success_block,
+                        fail_block,
+                        source_info,
+                        BinOp::Eq,
+                        expect,
+                        val,
+                    );
                 }
             }
 
             TestKind::Range(ref range) => {
                 let lower_bound_success = self.cfg.start_new_block();
-                let target_blocks = make_target_blocks(self);
 
                 // Test `val` by computing `lo <= val && val <= hi`, using primitive comparisons.
                 // FIXME: skip useless comparison when the range is half-open.
@@ -339,8 +347,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             TestKind::Len { len, op } => {
-                let target_blocks = make_target_blocks(self);
-
                 let usize_ty = self.tcx.types.usize;
                 let actual = self.temp(usize_ty, test.span);
 
@@ -404,7 +410,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn non_scalar_compare(
         &mut self,
         block: BasicBlock,
-        make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
+        success_block: BasicBlock,
+        fail_block: BasicBlock,
         source_info: SourceInfo,
         value: Const<'tcx>,
         mut val: Place<'tcx>,
@@ -494,7 +501,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let eq_def_id = self.tcx.require_lang_item(LangItem::PartialEq, Some(source_info.span));
-        let method = trait_method(self.tcx, eq_def_id, sym::eq, [ty, ty]);
+        let method = trait_method(
+            self.tcx,
+            eq_def_id,
+            sym::eq,
+            self.tcx.with_opt_host_effect_param(self.def_id, eq_def_id, [ty, ty]),
+        );
 
         let bool_ty = self.tcx.types.bool;
         let eq_result = self.temp(bool_ty, source_info.span);
@@ -524,9 +536,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
         self.diverge_from(block);
 
-        let [success_block, fail_block] = *make_target_blocks(self) else {
-            bug!("`TestKind::Eq` should have two target blocks")
-        };
         // check the result
         self.cfg.terminate(
             eq_block,
@@ -736,7 +745,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // These are all binary tests.
                 //
                 // FIXME(#29623) we can be more clever here
-                let pattern_test = self.test(&match_pair);
+                let pattern_test = self.test(match_pair);
                 if pattern_test.kind == test.kind {
                     self.candidate_without_match_pair(match_pair_index, candidate);
                     Some(0)

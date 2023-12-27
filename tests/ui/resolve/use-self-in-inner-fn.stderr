@@ -10,6 +10,6 @@ LL |         fn peach(this: &Self) {
    |                         use of generic parameter from outer item
    |                         refer to the type directly here instead
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0401`.

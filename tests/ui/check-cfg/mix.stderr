@@ -1,0 +1,249 @@
+warning: unexpected `cfg` condition name: `widnows`
+  --> $DIR/mix.rs:12:7
+   |
+LL | #[cfg(widnows)]
+   |       ^^^^^^^ help: there is a config with a similar name: `windows`
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(widnows)`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: (none)
+  --> $DIR/mix.rs:16:7
+   |
+LL | #[cfg(feature)]
+   |       ^^^^^^^- help: specify a config value: `= "foo"`
+   |
+   = note: expected values for `feature` are: `foo`
+   = help: to expect this configuration use `--check-cfg=cfg(feature)`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `bar`
+  --> $DIR/mix.rs:23:7
+   |
+LL | #[cfg(feature = "bar")]
+   |       ^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `foo`
+   = help: to expect this configuration use `--check-cfg=cfg(feature, values("bar"))`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `zebra`
+  --> $DIR/mix.rs:27:7
+   |
+LL | #[cfg(feature = "zebra")]
+   |       ^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `foo`
+   = help: to expect this configuration use `--check-cfg=cfg(feature, values("zebra"))`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `uu`
+  --> $DIR/mix.rs:31:12
+   |
+LL | #[cfg_attr(uu, test)]
+   |            ^^
+   |
+   = help: expected names are: `debug_assertions`, `doc`, `doctest`, `feature`, `miri`, `overflow_checks`, `panic`, `proc_macro`, `relocation_model`, `sanitize`, `sanitizer_cfi_generalize_pointers`, `sanitizer_cfi_normalize_integers`, `target_abi`, `target_arch`, `target_endian`, `target_env`, `target_family`, `target_feature`, `target_has_atomic`, `target_has_atomic_equal_alignment`, `target_has_atomic_load_store`, `target_os`, `target_pointer_width`, `target_thread_local`, `target_vendor`, `test`, `unix`, `windows`
+   = help: to expect this configuration use `--check-cfg=cfg(uu)`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `widnows`
+  --> $DIR/mix.rs:40:10
+   |
+LL |     cfg!(widnows);
+   |          ^^^^^^^ help: there is a config with a similar name: `windows`
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(widnows)`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `bar`
+  --> $DIR/mix.rs:43:10
+   |
+LL |     cfg!(feature = "bar");
+   |          ^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `foo`
+   = help: to expect this configuration use `--check-cfg=cfg(feature, values("bar"))`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `zebra`
+  --> $DIR/mix.rs:45:10
+   |
+LL |     cfg!(feature = "zebra");
+   |          ^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `foo`
+   = help: to expect this configuration use `--check-cfg=cfg(feature, values("zebra"))`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `xxx`
+  --> $DIR/mix.rs:47:10
+   |
+LL |     cfg!(xxx = "foo");
+   |          ^^^^^^^^^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(xxx, values("foo"))`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `xxx`
+  --> $DIR/mix.rs:49:10
+   |
+LL |     cfg!(xxx);
+   |          ^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(xxx)`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `xxx`
+  --> $DIR/mix.rs:51:14
+   |
+LL |     cfg!(any(xxx, windows));
+   |              ^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(xxx)`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `bad`
+  --> $DIR/mix.rs:53:14
+   |
+LL |     cfg!(any(feature = "bad", windows));
+   |              ^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `foo`
+   = help: to expect this configuration use `--check-cfg=cfg(feature, values("bad"))`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `xxx`
+  --> $DIR/mix.rs:55:23
+   |
+LL |     cfg!(any(windows, xxx));
+   |                       ^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(xxx)`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `xxx`
+  --> $DIR/mix.rs:57:20
+   |
+LL |     cfg!(all(unix, xxx));
+   |                    ^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(xxx)`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `aa`
+  --> $DIR/mix.rs:59:14
+   |
+LL |     cfg!(all(aa, bb));
+   |              ^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(aa)`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `bb`
+  --> $DIR/mix.rs:59:18
+   |
+LL |     cfg!(all(aa, bb));
+   |                  ^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(bb)`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `aa`
+  --> $DIR/mix.rs:62:14
+   |
+LL |     cfg!(any(aa, bb));
+   |              ^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(aa)`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `bb`
+  --> $DIR/mix.rs:62:18
+   |
+LL |     cfg!(any(aa, bb));
+   |                  ^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(bb)`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `zebra`
+  --> $DIR/mix.rs:65:20
+   |
+LL |     cfg!(any(unix, feature = "zebra"));
+   |                    ^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `foo`
+   = help: to expect this configuration use `--check-cfg=cfg(feature, values("zebra"))`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `xxx`
+  --> $DIR/mix.rs:67:14
+   |
+LL |     cfg!(any(xxx, feature = "zebra"));
+   |              ^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(xxx)`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `zebra`
+  --> $DIR/mix.rs:67:19
+   |
+LL |     cfg!(any(xxx, feature = "zebra"));
+   |                   ^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `foo`
+   = help: to expect this configuration use `--check-cfg=cfg(feature, values("zebra"))`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `xxx`
+  --> $DIR/mix.rs:70:14
+   |
+LL |     cfg!(any(xxx, unix, xxx));
+   |              ^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(xxx)`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `xxx`
+  --> $DIR/mix.rs:70:25
+   |
+LL |     cfg!(any(xxx, unix, xxx));
+   |                         ^^^
+   |
+   = help: to expect this configuration use `--check-cfg=cfg(xxx)`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `zebra`
+  --> $DIR/mix.rs:73:14
+   |
+LL |     cfg!(all(feature = "zebra", feature = "zebra", feature = "zebra"));
+   |              ^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `foo`
+   = help: to expect this configuration use `--check-cfg=cfg(feature, values("zebra"))`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `zebra`
+  --> $DIR/mix.rs:73:33
+   |
+LL |     cfg!(all(feature = "zebra", feature = "zebra", feature = "zebra"));
+   |                                 ^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `foo`
+   = help: to expect this configuration use `--check-cfg=cfg(feature, values("zebra"))`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition value: `zebra`
+  --> $DIR/mix.rs:73:52
+   |
+LL |     cfg!(all(feature = "zebra", feature = "zebra", feature = "zebra"));
+   |                                                    ^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `foo`
+   = help: to expect this configuration use `--check-cfg=cfg(feature, values("zebra"))`
+   = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
+
+warning: 26 warnings emitted
+

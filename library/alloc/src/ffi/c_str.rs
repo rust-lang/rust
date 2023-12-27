@@ -421,7 +421,7 @@ impl CString {
     /// Failure to call [`CString::from_raw`] will lead to a memory leak.
     ///
     /// The C side must **not** modify the length of the string (by writing a
-    /// `null` somewhere inside the string or removing the final one) before
+    /// nul byte somewhere inside the string or removing the final one) before
     /// it makes it back into Rust using [`CString::from_raw`]. See the safety section
     /// in [`CString::from_raw`].
     ///
@@ -797,7 +797,7 @@ impl From<Box<CStr>> for CString {
 #[stable(feature = "cstring_from_vec_of_nonzerou8", since = "1.43.0")]
 impl From<Vec<NonZeroU8>> for CString {
     /// Converts a <code>[Vec]<[NonZeroU8]></code> into a [`CString`] without
-    /// copying nor checking for inner null bytes.
+    /// copying nor checking for inner nul bytes.
     #[inline]
     fn from(v: Vec<NonZeroU8>) -> CString {
         unsafe {
@@ -809,7 +809,7 @@ impl From<Vec<NonZeroU8>> for CString {
                 let (ptr, len, cap): (*mut NonZeroU8, _, _) = Vec::into_raw_parts(v);
                 Vec::from_raw_parts(ptr.cast::<u8>(), len, cap)
             };
-            // SAFETY: `v` cannot contain null bytes, given the type-level
+            // SAFETY: `v` cannot contain nul bytes, given the type-level
             // invariant of `NonZeroU8`.
             Self::_from_vec_unchecked(v)
         }

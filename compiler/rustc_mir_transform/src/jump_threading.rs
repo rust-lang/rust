@@ -45,7 +45,6 @@ use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{Map, PlaceIndex, State, TrackElem};
 
 use crate::cost_checker::CostChecker;
-use crate::MirPass;
 
 pub struct JumpThreading;
 
@@ -95,7 +94,7 @@ impl<'tcx> MirPass<'tcx> for JumpThreading {
 
             let cost = CostChecker::new(tcx, param_env, None, body);
 
-            let mut state = State::new(ConditionSet::default(), &finder.map);
+            let mut state = State::new(ConditionSet::default(), finder.map);
 
             let conds = if let Some((value, then, else_)) = targets.as_static_if() {
                 let Some(value) = ScalarInt::try_from_uint(value, discr_layout.size) else {
@@ -112,7 +111,7 @@ impl<'tcx> MirPass<'tcx> for JumpThreading {
                 }))
             };
             let conds = ConditionSet(conds);
-            state.insert_value_idx(discr, conds, &finder.map);
+            state.insert_value_idx(discr, conds, finder.map);
 
             finder.find_opportunity(bb, state, cost, 0);
         }
@@ -247,7 +246,9 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
         let last_non_rec = self.opportunities.len();
 
         let predecessors = &self.body.basic_blocks.predecessors()[bb];
-        if let &[pred] = &predecessors[..] && bb != START_BLOCK {
+        if let &[pred] = &predecessors[..]
+            && bb != START_BLOCK
+        {
             let term = self.body.basic_blocks[pred].terminator();
             match term.kind {
                 TerminatorKind::SwitchInt { ref discr, ref targets } => {
@@ -419,8 +420,10 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
                                 // Do not support unions.
                                 AggregateKind::Adt(.., Some(_)) => return None,
                                 AggregateKind::Adt(_, variant_index, ..) if agg_ty.is_enum() => {
-                                    if let Some(discr_target) = self.map.apply(lhs, TrackElem::Discriminant)
-                                        && let Some(discr_value) = discriminant_for_variant(agg_ty, *variant_index)
+                                    if let Some(discr_target) =
+                                        self.map.apply(lhs, TrackElem::Discriminant)
+                                        && let Some(discr_value) =
+                                            discriminant_for_variant(agg_ty, *variant_index)
                                     {
                                         self.process_operand(bb, discr_target, &discr_value, state);
                                     }
@@ -646,7 +649,7 @@ impl OpportunitySet {
 
             // `succ` must be a successor of `current`. If it is not, this means this TO is not
             // satisfiable and a previous TO erased this edge, so we bail out.
-            if basic_blocks[current].terminator().successors().find(|s| *s == succ).is_none() {
+            if !basic_blocks[current].terminator().successors().any(|s| s == succ) {
                 debug!("impossible");
                 return;
             }

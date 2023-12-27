@@ -12,5 +12,5 @@ LL |     let _: qpath!(ty, <str as !>::Owned);
    |
    = note: this error originates in the macro `qpath` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

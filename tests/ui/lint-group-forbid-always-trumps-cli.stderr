@@ -7,5 +7,5 @@ LL |     let x = 1;
    = note: `-F unused-variables` implied by `-F unused`
    = help: to override `-F unused` add `#[allow(unused_variables)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

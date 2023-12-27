@@ -7,7 +7,7 @@ note: inside `std::ptr::read::<MaybeUninit<MaybeUninit<u8>>>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `mem::swap_simple::<MaybeUninit<MaybeUninit<u8>>>`
   --> $SRC_DIR/core/src/mem/mod.rs:LL:COL
-note: inside `ptr::swap_nonoverlapping_simple_untyped::<MaybeUninit<u8>>`
+note: inside `std::ptr::swap_nonoverlapping_simple_untyped::<MaybeUninit<u8>>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 note: inside `swap_nonoverlapping::<MaybeUninit<u8>>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
@@ -23,6 +23,6 @@ note: inside `X`
    = help: this code performed an operation that depends on the underlying bytes representing a pointer
    = help: the absolute address of a pointer is not known at compile-time, so such operations are not supported
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0080`.

@@ -11,8 +11,8 @@
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(no_crate_inject, attr(deny(warnings)))
 )]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
+#![doc(rust_logo)]
+#![feature(rustdoc_internals)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
 #![feature(new_uninit)]
@@ -197,23 +197,24 @@ impl<T> TypedArena<T> {
         start_ptr
     }
 
+    /// Allocates the elements of this iterator into a contiguous slice in the `TypedArena`.
+    ///
+    /// Note: for reasons of reentrancy and panic safety we collect into a `SmallVec<[_; 8]>` before
+    /// storing the elements in the arena.
     #[inline]
     pub fn alloc_from_iter<I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
-        // This implementation is entirely separate to
-        // `DroplessIterator::alloc_from_iter`, even though conceptually they
-        // are the same.
+        // Despite the similarlty with `DroplessArena`, we cannot reuse their fast case. The reason
+        // is subtle: these arenas are reentrant. In other words, `iter` may very well be holding a
+        // reference to `self` and adding elements to the arena during iteration.
         //
-        // `DroplessIterator` (in the fast case) writes elements from the
-        // iterator one at a time into the allocated memory. That's easy
-        // because the elements don't implement `Drop`. But for `TypedArena`
-        // they do implement `Drop`, which means that if the iterator panics we
-        // could end up with some allocated-but-uninitialized elements, which
-        // will then cause UB in `TypedArena::drop`.
+        // For this reason, if we pre-allocated any space for the elements of this iterator, we'd
+        // have to track that some uninitialized elements are followed by some initialized elements,
+        // else we might accidentally drop uninitialized memory if something panics or if the
+        // iterator doesn't fill all the length we expected.
         //
-        // Instead we use an approach where any iterator panic will occur
-        // before the memory is allocated. This function is much less hot than
-        // `DroplessArena::alloc_from_iter`, so it doesn't need to be
-        // hyper-optimized.
+        // So we collect all the elements beforehand, which takes care of reentrancy and panic
+        // safety. This function is much less hot than `DroplessArena::alloc_from_iter`, so it
+        // doesn't need to be hyper-optimized.
         assert!(mem::size_of::<T>() != 0);
 
         let mut vec: SmallVec<[_; 8]> = iter.into_iter().collect();
@@ -483,10 +484,25 @@ impl DroplessArena {
         }
     }
 
+    /// Allocates a string slice that is copied into the `DroplessArena`, returning a
+    /// reference to it. Will panic if passed an empty string.
+    ///
+    /// Panics:
+    ///
+    ///  - Zero-length string
+    #[inline]
+    pub fn alloc_str(&self, string: &str) -> &str {
+        let slice = self.alloc_slice(string.as_bytes());
+
+        // SAFETY: the result has a copy of the same valid UTF-8 bytes.
+        unsafe { std::str::from_utf8_unchecked(slice) }
+    }
+
     /// # Safety
     ///
-    /// The caller must ensure that `mem` is valid for writes up to
-    /// `size_of::<T>() * len`.
+    /// The caller must ensure that `mem` is valid for writes up to `size_of::<T>() * len`, and that
+    /// that memory stays allocated and not shared for the lifetime of `self`. This must hold even
+    /// if `iter.next()` allocates onto `self`.
     #[inline]
     unsafe fn write_from_iter<T, I: Iterator<Item = T>>(
         &self,
@@ -516,6 +532,8 @@ impl DroplessArena {
 
     #[inline]
     pub fn alloc_from_iter<T, I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
+        // Warning: this function is reentrant: `iter` could hold a reference to `&self` and
+        // allocate additional elements while we're iterating.
         let iter = iter.into_iter();
         assert!(mem::size_of::<T>() != 0);
         assert!(!mem::needs_drop::<T>());
@@ -524,7 +542,7 @@ impl DroplessArena {
 
         match size_hint {
             (min, Some(max)) if min == max => {
-                // We know the exact number of elements the iterator will produce here
+                // We know the exact number of elements the iterator expects to produce here.
                 let len = min;
 
                 if len == 0 {
@@ -532,10 +550,15 @@ impl DroplessArena {
                 }
 
                 let mem = self.alloc_raw(Layout::array::<T>(len).unwrap()) as *mut T;
+                // SAFETY: `write_from_iter` doesn't touch `self`. It only touches the slice we just
+                // reserved. If the iterator panics or doesn't output `len` elements, this will
+                // leave some unallocated slots in the arena, which is fine because we do not call
+                // `drop`.
                 unsafe { self.write_from_iter(iter, len, mem) }
             }
             (_, _) => {
                 outline(move || -> &mut [T] {
+                    // Takes care of reentrancy.
                     let mut vec: SmallVec<[_; 8]> = iter.collect();
                     if vec.is_empty() {
                         return &mut [];
@@ -644,6 +667,14 @@ pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
                 return &mut [];
             }
             self.dropless.alloc_slice(value)
+        }
+
+        #[inline]
+        pub fn alloc_str(&self, string: &str) -> &str {
+            if string.is_empty() {
+                return "";
+            }
+            self.dropless.alloc_str(string)
         }
 
         #[allow(clippy::mut_from_ref)]

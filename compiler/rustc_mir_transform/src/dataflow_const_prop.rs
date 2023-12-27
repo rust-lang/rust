@@ -8,6 +8,7 @@ use rustc_hir::def::DefKind;
 use rustc_middle::mir::interpret::{AllocId, ConstAllocation, InterpResult, Scalar};
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
+use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{
@@ -19,7 +20,6 @@ use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Abi, FieldIdx, Size, VariantIdx, FIRST_VARIANT};
 
 use crate::const_prop::throw_machine_stop_str;
-use crate::MirPass;
 
 // These constants are somewhat random guesses and have not been optimized.
 // If `tcx.sess.mir_opt_level() >= 4`, we ignore the limits (this can become very expensive).
@@ -362,7 +362,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                     && let Ok(rhs_layout) = self.tcx.layout_of(self.param_env.and(rhs_ty))
                 {
                     let op = ImmTy::from_scalar(pointer, rhs_layout).into();
-                    self.assign_constant(state, place, op, &rhs.projection);
+                    self.assign_constant(state, place, op, rhs.projection);
                 }
             }
             Operand::Constant(box constant) => {
@@ -496,7 +496,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
             FlatSet::Elem(scalar) => {
                 let ty = op.ty(self.local_decls, self.tcx);
                 self.tcx.layout_of(self.param_env.and(ty)).map_or(FlatSet::Top, |layout| {
-                    FlatSet::Elem(ImmTy::from_scalar(scalar.into(), layout))
+                    FlatSet::Elem(ImmTy::from_scalar(scalar, layout))
                 })
             }
             FlatSet::Bottom => FlatSet::Bottom,
@@ -597,7 +597,9 @@ fn propagatable_scalar(
     state: &State<FlatSet<Scalar>>,
     map: &Map,
 ) -> Option<Scalar> {
-    if let FlatSet::Elem(value) = state.get_idx(place, map) && value.try_to_int().is_ok() {
+    if let FlatSet::Elem(value) = state.get_idx(place, map)
+        && value.try_to_int().is_ok()
+    {
         // Do not attempt to propagate pointers, as we may fail to preserve their identity.
         Some(value)
     } else {
@@ -836,7 +838,8 @@ impl<'tcx> Visitor<'tcx> for OperandCollector<'tcx, '_, '_, '_> {
         location: Location,
     ) {
         if let PlaceElem::Index(local) = elem
-            && let Some(value) = self.visitor.try_make_constant(self.ecx, local.into(), self.state, self.map)
+            && let Some(value) =
+                self.visitor.try_make_constant(self.ecx, local.into(), self.state, self.map)
         {
             self.visitor.patch.before_effect.insert((location, local.into()), value);
         }
@@ -873,7 +876,7 @@ impl<'mir, 'tcx: 'mir> rustc_const_eval::interpret::Machine<'mir, 'tcx> for Dumm
     }
 
     fn before_access_global(
-        _tcx: TyCtxt<'tcx>,
+        _tcx: TyCtxtAt<'tcx>,
         _machine: &Self,
         _alloc_id: AllocId,
         alloc: ConstAllocation<'tcx>,

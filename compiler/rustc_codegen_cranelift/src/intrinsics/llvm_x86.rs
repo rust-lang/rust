@@ -1,7 +1,9 @@
 //! Emulate x86 LLVM intrinsics
 
-use rustc_middle::ty::GenericArgsRef;
+use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_target::asm::*;
 
+use crate::inline_asm::{codegen_inline_asm_inner, CInlineAsmOperand};
 use crate::intrinsics::*;
 use crate::prelude::*;
 
@@ -12,24 +14,160 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
     args: &[mir::Operand<'tcx>],
     ret: CPlace<'tcx>,
     target: Option<BasicBlock>,
+    span: Span,
 ) {
     match intrinsic {
         "llvm.x86.sse2.pause" | "llvm.aarch64.isb" => {
             // Spin loop hint
         }
 
+        "llvm.x86.avx.vzeroupper" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_zeroupper&ig_expand=7218
+            // Do nothing. It is a perf hint anyway.
+        }
+
         // Used by is_x86_feature_detected!();
         "llvm.x86.xgetbv" => {
-            // FIXME use the actual xgetbv instruction
-            intrinsic_args!(fx, args => (v); intrinsic);
+            intrinsic_args!(fx, args => (xcr_no); intrinsic);
 
-            let v = v.load_scalar(fx);
+            let xcr_no = xcr_no.load_scalar(fx);
 
-            // As of writing on XCR0 exists
-            fx.bcx.ins().trapnz(v, TrapCode::UnreachableCodeReached);
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(
+                    "
+                    xgetbv
+                    // out = rdx << 32 | rax
+                    shl rdx, 32
+                    or rax, rdx
+                    "
+                    .to_string(),
+                )],
+                &[
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::cx)),
+                        value: xcr_no,
+                    },
+                    CInlineAsmOperand::Out {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::ax)),
+                        late: true,
+                        place: Some(ret),
+                    },
+                    CInlineAsmOperand::Out {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::dx)),
+                        late: true,
+                        place: None,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
 
-            let res = fx.bcx.ins().iconst(types::I64, 1 /* bit 0 must be set */);
-            ret.write_cvalue(fx, CValue::by_val(res, fx.layout_of(fx.tcx.types.i64)));
+        "llvm.x86.sse3.ldu.dq" | "llvm.x86.avx.ldu.dq.256" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_lddqu_si128&ig_expand=4009
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_lddqu_si256&ig_expand=4010
+            intrinsic_args!(fx, args => (ptr); intrinsic);
+
+            // FIXME correctly handle unalignedness
+            let val = CValue::by_ref(Pointer::new(ptr.load_scalar(fx)), ret.layout());
+            ret.write_cvalue(fx, val);
+        }
+
+        "llvm.x86.avx2.gather.d.d"
+        | "llvm.x86.avx2.gather.d.q"
+        | "llvm.x86.avx2.gather.d.ps"
+        | "llvm.x86.avx2.gather.d.pd"
+        | "llvm.x86.avx2.gather.d.d.256"
+        | "llvm.x86.avx2.gather.d.q.256"
+        | "llvm.x86.avx2.gather.d.ps.256"
+        | "llvm.x86.avx2.gather.d.pd.256"
+        | "llvm.x86.avx2.gather.q.d"
+        | "llvm.x86.avx2.gather.q.q"
+        | "llvm.x86.avx2.gather.q.ps"
+        | "llvm.x86.avx2.gather.q.pd"
+        | "llvm.x86.avx2.gather.q.d.256"
+        | "llvm.x86.avx2.gather.q.q.256"
+        | "llvm.x86.avx2.gather.q.ps.256"
+        | "llvm.x86.avx2.gather.q.pd.256" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_i64gather_pd&ig_expand=3818
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mask_i64gather_pd&ig_expand=3819
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_i64gather_pd&ig_expand=3821
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_mask_i64gather_pd&ig_expand=3822
+            // ...
+
+            intrinsic_args!(fx, args => (src, ptr, index, mask, scale); intrinsic);
+
+            let (src_lane_count, src_lane_ty) = src.layout().ty.simd_size_and_type(fx.tcx);
+            let (index_lane_count, index_lane_ty) = index.layout().ty.simd_size_and_type(fx.tcx);
+            let (mask_lane_count, mask_lane_ty) = mask.layout().ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert_eq!(src_lane_ty, ret_lane_ty);
+            assert!(index_lane_ty.is_integral());
+            assert_eq!(src_lane_count, mask_lane_count);
+            assert_eq!(src_lane_count, ret_lane_count);
+
+            let lane_clif_ty = fx.clif_type(ret_lane_ty).unwrap();
+            let index_lane_clif_ty = fx.clif_type(index_lane_ty).unwrap();
+            let mask_lane_clif_ty = fx.clif_type(mask_lane_ty).unwrap();
+            let ret_lane_layout = fx.layout_of(ret_lane_ty);
+
+            let ptr = ptr.load_scalar(fx);
+            let scale = scale.load_scalar(fx);
+            let scale = fx.bcx.ins().uextend(types::I64, scale);
+            for lane_idx in 0..std::cmp::min(src_lane_count, index_lane_count) {
+                let src_lane = src.value_lane(fx, lane_idx).load_scalar(fx);
+                let index_lane = index.value_lane(fx, lane_idx).load_scalar(fx);
+                let mask_lane = mask.value_lane(fx, lane_idx).load_scalar(fx);
+                let mask_lane =
+                    fx.bcx.ins().bitcast(mask_lane_clif_ty.as_int(), MemFlags::new(), mask_lane);
+
+                let if_enabled = fx.bcx.create_block();
+                let if_disabled = fx.bcx.create_block();
+                let next = fx.bcx.create_block();
+                let res_lane = fx.bcx.append_block_param(next, lane_clif_ty);
+
+                let mask_lane = match mask_lane_clif_ty {
+                    types::I32 | types::F32 => {
+                        fx.bcx.ins().band_imm(mask_lane, 0x8000_0000u64 as i64)
+                    }
+                    types::I64 | types::F64 => {
+                        fx.bcx.ins().band_imm(mask_lane, 0x8000_0000_0000_0000u64 as i64)
+                    }
+                    _ => unreachable!(),
+                };
+                fx.bcx.ins().brif(mask_lane, if_enabled, &[], if_disabled, &[]);
+                fx.bcx.seal_block(if_enabled);
+                fx.bcx.seal_block(if_disabled);
+
+                fx.bcx.switch_to_block(if_enabled);
+                let index_lane = if index_lane_clif_ty != types::I64 {
+                    fx.bcx.ins().sextend(types::I64, index_lane)
+                } else {
+                    index_lane
+                };
+                let offset = fx.bcx.ins().imul(index_lane, scale);
+                let lane_ptr = fx.bcx.ins().iadd(ptr, offset);
+                let res = fx.bcx.ins().load(lane_clif_ty, MemFlags::trusted(), lane_ptr, 0);
+                fx.bcx.ins().jump(next, &[res]);
+
+                fx.bcx.switch_to_block(if_disabled);
+                fx.bcx.ins().jump(next, &[src_lane]);
+
+                fx.bcx.seal_block(next);
+                fx.bcx.switch_to_block(next);
+
+                fx.bcx.ins().nop();
+
+                ret.place_lane(fx, lane_idx)
+                    .write_cvalue(fx, CValue::by_val(res_lane, ret_lane_layout));
+            }
+
+            for lane_idx in std::cmp::min(src_lane_count, index_lane_count)..ret_lane_count {
+                let zero_lane = fx.bcx.ins().iconst(mask_lane_clif_ty.as_int(), 0);
+                let zero_lane = fx.bcx.ins().bitcast(mask_lane_clif_ty, MemFlags::new(), zero_lane);
+                ret.place_lane(fx, lane_idx)
+                    .write_cvalue(fx, CValue::by_val(zero_lane, ret_lane_layout));
+            }
         }
 
         "llvm.x86.sse.cmp.ps" | "llvm.x86.sse2.cmp.pd" => {
@@ -177,8 +315,12 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 }
             }
         }
-        "llvm.x86.avx2.vperm2i128" => {
+        "llvm.x86.avx2.vperm2i128"
+        | "llvm.x86.avx.vperm2f128.ps.256"
+        | "llvm.x86.avx.vperm2f128.pd.256" => {
             // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permute2x128_si256
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permute2f128_ps
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_permute2f128_pd
             let (a, b, imm8) = match args {
                 [a, b, imm8] => (a, b, imm8),
                 _ => bug!("wrong number of args for intrinsic {intrinsic}"),
@@ -187,19 +329,11 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             let b = codegen_operand(fx, b);
             let imm8 = codegen_operand(fx, imm8).load_scalar(fx);
 
-            let a_0 = a.value_lane(fx, 0).load_scalar(fx);
-            let a_1 = a.value_lane(fx, 1).load_scalar(fx);
-            let a_low = fx.bcx.ins().iconcat(a_0, a_1);
-            let a_2 = a.value_lane(fx, 2).load_scalar(fx);
-            let a_3 = a.value_lane(fx, 3).load_scalar(fx);
-            let a_high = fx.bcx.ins().iconcat(a_2, a_3);
+            let a_low = a.value_typed_lane(fx, fx.tcx.types.u128, 0).load_scalar(fx);
+            let a_high = a.value_typed_lane(fx, fx.tcx.types.u128, 1).load_scalar(fx);
 
-            let b_0 = b.value_lane(fx, 0).load_scalar(fx);
-            let b_1 = b.value_lane(fx, 1).load_scalar(fx);
-            let b_low = fx.bcx.ins().iconcat(b_0, b_1);
-            let b_2 = b.value_lane(fx, 2).load_scalar(fx);
-            let b_3 = b.value_lane(fx, 3).load_scalar(fx);
-            let b_high = fx.bcx.ins().iconcat(b_2, b_3);
+            let b_low = b.value_typed_lane(fx, fx.tcx.types.u128, 0).load_scalar(fx);
+            let b_high = b.value_typed_lane(fx, fx.tcx.types.u128, 1).load_scalar(fx);
 
             fn select4(
                 fx: &mut FunctionCx<'_, '_, '_>,
@@ -224,27 +358,46 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             let control0 = imm8;
             let res_low = select4(fx, a_high, a_low, b_high, b_low, control0);
-            let (res_0, res_1) = fx.bcx.ins().isplit(res_low);
 
             let control1 = fx.bcx.ins().ushr_imm(imm8, 4);
             let res_high = select4(fx, a_high, a_low, b_high, b_low, control1);
-            let (res_2, res_3) = fx.bcx.ins().isplit(res_high);
 
-            ret.place_lane(fx, 0).to_ptr().store(fx, res_0, MemFlags::trusted());
-            ret.place_lane(fx, 1).to_ptr().store(fx, res_1, MemFlags::trusted());
-            ret.place_lane(fx, 2).to_ptr().store(fx, res_2, MemFlags::trusted());
-            ret.place_lane(fx, 3).to_ptr().store(fx, res_3, MemFlags::trusted());
+            ret.place_typed_lane(fx, fx.tcx.types.u128, 0).to_ptr().store(
+                fx,
+                res_low,
+                MemFlags::trusted(),
+            );
+            ret.place_typed_lane(fx, fx.tcx.types.u128, 1).to_ptr().store(
+                fx,
+                res_high,
+                MemFlags::trusted(),
+            );
         }
         "llvm.x86.ssse3.pabs.b.128" | "llvm.x86.ssse3.pabs.w.128" | "llvm.x86.ssse3.pabs.d.128" => {
-            let a = match args {
-                [a] => a,
-                _ => bug!("wrong number of args for intrinsic {intrinsic}"),
-            };
-            let a = codegen_operand(fx, a);
+            intrinsic_args!(fx, args => (a); intrinsic);
 
             simd_for_each_lane(fx, a, ret, &|fx, _lane_ty, _res_lane_ty, lane| {
                 fx.bcx.ins().iabs(lane)
             });
+        }
+        "llvm.x86.sse2.cvttps2dq" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cvttps_epi32&ig_expand=2429
+            intrinsic_args!(fx, args => (a); intrinsic);
+            let a = a.load_scalar(fx);
+
+            // Using inline asm instead of fcvt_to_sint_sat as unrepresentable values are turned
+            // into 0x80000000 for which Cranelift doesn't have a native instruction.
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(format!("cvttps2dq xmm0, xmm0"))],
+                &[CInlineAsmOperand::InOut {
+                    reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
+                    _late: true,
+                    in_value: a,
+                    out_place: Some(ret),
+                }],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
         }
         "llvm.x86.addcarry.32" | "llvm.x86.addcarry.64" => {
             intrinsic_args!(fx, args => (c_in, a, b); intrinsic);
@@ -309,7 +462,9 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 fx.bcx.ins().sshr(a_lane, saturated_count)
             });
         }
-        "llvm.x86.sse2.psad.bw" => {
+        "llvm.x86.sse2.psad.bw" | "llvm.x86.avx2.psad.bw" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sad_epu8&ig_expand=5770
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_sad_epu8&ig_expand=5771
             intrinsic_args!(fx, args => (a, b); intrinsic);
 
             assert_eq!(a.layout(), b.layout());
@@ -325,9 +480,11 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             for out_lane_idx in 0..lane_count / 8 {
                 let mut lane_diff_acc = fx.bcx.ins().iconst(types::I64, 0);
 
-                for lane_idx in out_lane_idx * 8..out_lane_idx * 8 + 1 {
+                for lane_idx in out_lane_idx * 8..out_lane_idx * 8 + 8 {
                     let a_lane = a.value_lane(fx, lane_idx).load_scalar(fx);
+                    let a_lane = fx.bcx.ins().uextend(types::I16, a_lane);
                     let b_lane = b.value_lane(fx, lane_idx).load_scalar(fx);
+                    let b_lane = fx.bcx.ins().uextend(types::I16, b_lane);
 
                     let lane_diff = fx.bcx.ins().isub(a_lane, b_lane);
                     let abs_lane_diff = fx.bcx.ins().iabs(lane_diff);
@@ -340,7 +497,9 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 ret.place_lane(fx, out_lane_idx).write_cvalue(fx, res_lane);
             }
         }
-        "llvm.x86.ssse3.pmadd.ub.sw.128" => {
+        "llvm.x86.ssse3.pmadd.ub.sw.128" | "llvm.x86.avx2.pmadd.ub.sw" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_maddubs_epi16&ig_expand=4267
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_maddubs_epi16&ig_expand=4270
             intrinsic_args!(fx, args => (a, b); intrinsic);
 
             let (lane_count, lane_ty) = a.layout().ty.simd_size_and_type(fx.tcx);
@@ -379,7 +538,9 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 ret.place_lane(fx, out_lane_idx).write_cvalue(fx, res_lane);
             }
         }
-        "llvm.x86.sse2.pmadd.wd" => {
+        "llvm.x86.sse2.pmadd.wd" | "llvm.x86.avx2.pmadd.wd" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_madd_epi16&ig_expand=4231
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_madd_epi16&ig_expand=4234
             intrinsic_args!(fx, args => (a, b); intrinsic);
 
             assert_eq!(a.layout(), b.layout());
@@ -394,12 +555,12 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             let ret_lane_layout = fx.layout_of(fx.tcx.types.i32);
             for out_lane_idx in 0..lane_count / 2 {
                 let a_lane0 = a.value_lane(fx, out_lane_idx * 2).load_scalar(fx);
-                let a_lane0 = fx.bcx.ins().uextend(types::I32, a_lane0);
+                let a_lane0 = fx.bcx.ins().sextend(types::I32, a_lane0);
                 let b_lane0 = b.value_lane(fx, out_lane_idx * 2).load_scalar(fx);
                 let b_lane0 = fx.bcx.ins().sextend(types::I32, b_lane0);
 
                 let a_lane1 = a.value_lane(fx, out_lane_idx * 2 + 1).load_scalar(fx);
-                let a_lane1 = fx.bcx.ins().uextend(types::I32, a_lane1);
+                let a_lane1 = fx.bcx.ins().sextend(types::I32, a_lane1);
                 let b_lane1 = b.value_lane(fx, out_lane_idx * 2 + 1).load_scalar(fx);
                 let b_lane1 = fx.bcx.ins().sextend(types::I32, b_lane1);
 
@@ -412,9 +573,799 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 ret.place_lane(fx, out_lane_idx).write_cvalue(fx, res_lane);
             }
         }
+
+        "llvm.x86.ssse3.pmul.hr.sw.128" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_mulhrs_epi16&ig_expand=4782
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            let layout = a.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert_eq!(lane_ty, fx.tcx.types.i16);
+            assert_eq!(ret_lane_ty, fx.tcx.types.i16);
+            assert_eq!(lane_count, ret_lane_count);
+
+            let ret_lane_layout = fx.layout_of(fx.tcx.types.i16);
+            for out_lane_idx in 0..lane_count {
+                let a_lane = a.value_lane(fx, out_lane_idx).load_scalar(fx);
+                let a_lane = fx.bcx.ins().sextend(types::I32, a_lane);
+                let b_lane = b.value_lane(fx, out_lane_idx).load_scalar(fx);
+                let b_lane = fx.bcx.ins().sextend(types::I32, b_lane);
+
+                let mul: Value = fx.bcx.ins().imul(a_lane, b_lane);
+                let shifted = fx.bcx.ins().ushr_imm(mul, 14);
+                let incremented = fx.bcx.ins().iadd_imm(shifted, 1);
+                let shifted_again = fx.bcx.ins().ushr_imm(incremented, 1);
+
+                let res_lane = fx.bcx.ins().ireduce(types::I16, shifted_again);
+                let res_lane = CValue::by_val(res_lane, ret_lane_layout);
+
+                ret.place_lane(fx, out_lane_idx).write_cvalue(fx, res_lane);
+            }
+        }
+
+        "llvm.x86.sse2.packuswb.128" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_packus_epi16&ig_expand=4903
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            let layout = a.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert_eq!(lane_ty, fx.tcx.types.i16);
+            assert_eq!(ret_lane_ty, fx.tcx.types.u8);
+            assert_eq!(lane_count * 2, ret_lane_count);
+
+            let zero = fx.bcx.ins().iconst(types::I16, 0);
+            let max_u8 = fx.bcx.ins().iconst(types::I16, 255);
+            let ret_lane_layout = fx.layout_of(fx.tcx.types.u8);
+
+            for idx in 0..lane_count {
+                let lane = a.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, zero);
+                let sat = fx.bcx.ins().umin(sat, max_u8);
+                let res = fx.bcx.ins().ireduce(types::I8, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, idx).write_cvalue(fx, res_lane);
+            }
+
+            for idx in 0..lane_count {
+                let lane = b.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, zero);
+                let sat = fx.bcx.ins().umin(sat, max_u8);
+                let res = fx.bcx.ins().ireduce(types::I8, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, lane_count + idx).write_cvalue(fx, res_lane);
+            }
+        }
+
+        "llvm.x86.avx2.packuswb" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packus_epi16&ig_expand=4906
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            let layout = a.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert_eq!(lane_ty, fx.tcx.types.i16);
+            assert_eq!(ret_lane_ty, fx.tcx.types.u8);
+            assert_eq!(lane_count * 2, ret_lane_count);
+
+            let zero = fx.bcx.ins().iconst(types::I16, 0);
+            let max_u8 = fx.bcx.ins().iconst(types::I16, 255);
+            let ret_lane_layout = fx.layout_of(fx.tcx.types.u8);
+
+            for idx in 0..lane_count / 2 {
+                let lane = a.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, zero);
+                let sat = fx.bcx.ins().umin(sat, max_u8);
+                let res = fx.bcx.ins().ireduce(types::I8, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, idx).write_cvalue(fx, res_lane);
+            }
+
+            for idx in 0..lane_count / 2 {
+                let lane = b.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, zero);
+                let sat = fx.bcx.ins().umin(sat, max_u8);
+                let res = fx.bcx.ins().ireduce(types::I8, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, lane_count / 2 + idx).write_cvalue(fx, res_lane);
+            }
+
+            for idx in 0..lane_count / 2 {
+                let lane = a.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, zero);
+                let sat = fx.bcx.ins().umin(sat, max_u8);
+                let res = fx.bcx.ins().ireduce(types::I8, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, lane_count / 2 * 2 + idx).write_cvalue(fx, res_lane);
+            }
+
+            for idx in 0..lane_count / 2 {
+                let lane = b.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, zero);
+                let sat = fx.bcx.ins().umin(sat, max_u8);
+                let res = fx.bcx.ins().ireduce(types::I8, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, lane_count / 2 * 3 + idx).write_cvalue(fx, res_lane);
+            }
+        }
+
+        "llvm.x86.sse2.packssdw.128" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_packs_epi32&ig_expand=4889
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            let layout = a.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert_eq!(lane_ty, fx.tcx.types.i32);
+            assert_eq!(ret_lane_ty, fx.tcx.types.i16);
+            assert_eq!(lane_count * 2, ret_lane_count);
+
+            let min_i16 = fx.bcx.ins().iconst(types::I32, i32::from(i16::MIN) as u32 as i64);
+            let max_i16 = fx.bcx.ins().iconst(types::I32, i32::from(i16::MAX) as u32 as i64);
+            let ret_lane_layout = fx.layout_of(fx.tcx.types.i16);
+
+            for idx in 0..lane_count {
+                let lane = a.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, min_i16);
+                let sat = fx.bcx.ins().smin(sat, max_i16);
+                let res = fx.bcx.ins().ireduce(types::I16, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, idx).write_cvalue(fx, res_lane);
+            }
+
+            for idx in 0..lane_count {
+                let lane = b.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, min_i16);
+                let sat = fx.bcx.ins().smin(sat, max_i16);
+                let res = fx.bcx.ins().ireduce(types::I16, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, lane_count + idx).write_cvalue(fx, res_lane);
+            }
+        }
+
+        "llvm.x86.sse41.packusdw" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_packus_epi32&ig_expand=4912
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            let layout = a.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert_eq!(lane_ty, fx.tcx.types.i32);
+            assert_eq!(ret_lane_ty, fx.tcx.types.u16);
+            assert_eq!(lane_count * 2, ret_lane_count);
+
+            let min_u16 = fx.bcx.ins().iconst(types::I32, i64::from(u16::MIN));
+            let max_u16 = fx.bcx.ins().iconst(types::I32, i64::from(u16::MAX));
+            let ret_lane_layout = fx.layout_of(fx.tcx.types.u16);
+
+            for idx in 0..lane_count {
+                let lane = a.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, min_u16);
+                let sat = fx.bcx.ins().smin(sat, max_u16);
+                let res = fx.bcx.ins().ireduce(types::I16, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, idx).write_cvalue(fx, res_lane);
+            }
+
+            for idx in 0..lane_count {
+                let lane = b.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, min_u16);
+                let sat = fx.bcx.ins().smin(sat, max_u16);
+                let res = fx.bcx.ins().ireduce(types::I16, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, lane_count + idx).write_cvalue(fx, res_lane);
+            }
+        }
+
+        "llvm.x86.avx2.packssdw" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_packs_epi32&ig_expand=4892
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            let layout = a.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert_eq!(lane_ty, fx.tcx.types.i32);
+            assert_eq!(ret_lane_ty, fx.tcx.types.i16);
+            assert_eq!(lane_count * 2, ret_lane_count);
+
+            let min_i16 = fx.bcx.ins().iconst(types::I32, i32::from(i16::MIN) as u32 as i64);
+            let max_i16 = fx.bcx.ins().iconst(types::I32, i32::from(i16::MAX) as u32 as i64);
+            let ret_lane_layout = fx.layout_of(fx.tcx.types.i16);
+
+            for idx in 0..lane_count / 2 {
+                let lane = a.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, min_i16);
+                let sat = fx.bcx.ins().smin(sat, max_i16);
+                let res = fx.bcx.ins().ireduce(types::I16, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, idx).write_cvalue(fx, res_lane);
+            }
+
+            for idx in 0..lane_count / 2 {
+                let lane = b.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, min_i16);
+                let sat = fx.bcx.ins().smin(sat, max_i16);
+                let res = fx.bcx.ins().ireduce(types::I16, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, lane_count / 2 + idx).write_cvalue(fx, res_lane);
+            }
+
+            for idx in 0..lane_count / 2 {
+                let lane = a.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, min_i16);
+                let sat = fx.bcx.ins().smin(sat, max_i16);
+                let res = fx.bcx.ins().ireduce(types::I16, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, lane_count / 2 * 2 + idx).write_cvalue(fx, res_lane);
+            }
+
+            for idx in 0..lane_count / 2 {
+                let lane = b.value_lane(fx, idx).load_scalar(fx);
+                let sat = fx.bcx.ins().smax(lane, min_i16);
+                let sat = fx.bcx.ins().smin(sat, max_i16);
+                let res = fx.bcx.ins().ireduce(types::I16, sat);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, lane_count / 2 * 3 + idx).write_cvalue(fx, res_lane);
+            }
+        }
+
+        "llvm.x86.fma.vfmaddsub.ps"
+        | "llvm.x86.fma.vfmaddsub.pd"
+        | "llvm.x86.fma.vfmaddsub.ps.256"
+        | "llvm.x86.fma.vfmaddsub.pd.256" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_fmaddsub_ps&ig_expand=3205
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_fmaddsub_pd&ig_expand=3181
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_fmaddsub_ps&ig_expand=3209
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_fmaddsub_pd&ig_expand=3185
+            intrinsic_args!(fx, args => (a, b, c); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            assert_eq!(a.layout(), c.layout());
+            let layout = a.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert!(lane_ty.is_floating_point());
+            assert!(ret_lane_ty.is_floating_point());
+            assert_eq!(lane_count, ret_lane_count);
+            let ret_lane_layout = fx.layout_of(ret_lane_ty);
+
+            for idx in 0..lane_count {
+                let a_lane = a.value_lane(fx, idx).load_scalar(fx);
+                let b_lane = b.value_lane(fx, idx).load_scalar(fx);
+                let c_lane = c.value_lane(fx, idx).load_scalar(fx);
+
+                let mul = fx.bcx.ins().fmul(a_lane, b_lane);
+                let res = if idx & 1 == 0 {
+                    fx.bcx.ins().fsub(mul, c_lane)
+                } else {
+                    fx.bcx.ins().fadd(mul, c_lane)
+                };
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, idx).write_cvalue(fx, res_lane);
+            }
+        }
+
+        "llvm.x86.fma.vfmsubadd.ps"
+        | "llvm.x86.fma.vfmsubadd.pd"
+        | "llvm.x86.fma.vfmsubadd.ps.256"
+        | "llvm.x86.fma.vfmsubadd.pd.256" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_fmsubadd_ps&ig_expand=3325
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_fmsubadd_pd&ig_expand=3301
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_fmsubadd_ps&ig_expand=3329
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_fmsubadd_pd&ig_expand=3305
+            intrinsic_args!(fx, args => (a, b, c); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            assert_eq!(a.layout(), c.layout());
+            let layout = a.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert!(lane_ty.is_floating_point());
+            assert!(ret_lane_ty.is_floating_point());
+            assert_eq!(lane_count, ret_lane_count);
+            let ret_lane_layout = fx.layout_of(ret_lane_ty);
+
+            for idx in 0..lane_count {
+                let a_lane = a.value_lane(fx, idx).load_scalar(fx);
+                let b_lane = b.value_lane(fx, idx).load_scalar(fx);
+                let c_lane = c.value_lane(fx, idx).load_scalar(fx);
+
+                let mul = fx.bcx.ins().fmul(a_lane, b_lane);
+                let res = if idx & 1 == 0 {
+                    fx.bcx.ins().fadd(mul, c_lane)
+                } else {
+                    fx.bcx.ins().fsub(mul, c_lane)
+                };
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, idx).write_cvalue(fx, res_lane);
+            }
+        }
+
+        "llvm.x86.fma.vfnmadd.ps"
+        | "llvm.x86.fma.vfnmadd.pd"
+        | "llvm.x86.fma.vfnmadd.ps.256"
+        | "llvm.x86.fma.vfnmadd.pd.256" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_fnmadd_ps&ig_expand=3391
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_fnmadd_pd&ig_expand=3367
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_fnmadd_ps&ig_expand=3395
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_fnmadd_pd&ig_expand=3371
+            intrinsic_args!(fx, args => (a, b, c); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            assert_eq!(a.layout(), c.layout());
+            let layout = a.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            assert!(lane_ty.is_floating_point());
+            assert!(ret_lane_ty.is_floating_point());
+            assert_eq!(lane_count, ret_lane_count);
+            let ret_lane_layout = fx.layout_of(ret_lane_ty);
+
+            for idx in 0..lane_count {
+                let a_lane = a.value_lane(fx, idx).load_scalar(fx);
+                let b_lane = b.value_lane(fx, idx).load_scalar(fx);
+                let c_lane = c.value_lane(fx, idx).load_scalar(fx);
+
+                let mul = fx.bcx.ins().fmul(a_lane, b_lane);
+                let neg_mul = fx.bcx.ins().fneg(mul);
+                let res = fx.bcx.ins().fadd(neg_mul, c_lane);
+
+                let res_lane = CValue::by_val(res, ret_lane_layout);
+                ret.place_lane(fx, idx).write_cvalue(fx, res_lane);
+            }
+        }
+
+        "llvm.x86.sse42.pcmpestri128" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmpestri&ig_expand=939
+            intrinsic_args!(fx, args => (a, la, b, lb, _imm8); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let la = la.load_scalar(fx);
+            let b = b.load_scalar(fx);
+            let lb = lb.load_scalar(fx);
+
+            let imm8 = if let Some(imm8) = crate::constant::mir_operand_get_const_val(fx, &args[4])
+            {
+                imm8
+            } else {
+                fx.tcx
+                    .dcx()
+                    .span_fatal(span, "Index argument for `_mm_cmpestri` is not a constant");
+            };
+
+            let imm8 = imm8.try_to_u8().unwrap_or_else(|_| panic!("kind not scalar: {:?}", imm8));
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(format!("pcmpestri xmm0, xmm1, {imm8}"))],
+                &[
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
+                        value: a,
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        value: b,
+                    },
+                    // Implicit argument to the pcmpestri intrinsic
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::ax)),
+                        value: la,
+                    },
+                    // Implicit argument to the pcmpestri intrinsic
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::dx)),
+                        value: lb,
+                    },
+                    // Implicit result of the pcmpestri intrinsic
+                    CInlineAsmOperand::Out {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::cx)),
+                        late: true,
+                        place: Some(ret),
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.sse42.pcmpestrm128" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_cmpestrm&ig_expand=940
+            intrinsic_args!(fx, args => (a, la, b, lb, _imm8); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let la = la.load_scalar(fx);
+            let b = b.load_scalar(fx);
+            let lb = lb.load_scalar(fx);
+
+            let imm8 = if let Some(imm8) = crate::constant::mir_operand_get_const_val(fx, &args[4])
+            {
+                imm8
+            } else {
+                fx.tcx
+                    .dcx()
+                    .span_fatal(span, "Index argument for `_mm_cmpestrm` is not a constant");
+            };
+
+            let imm8 = imm8.try_to_u8().unwrap_or_else(|_| panic!("kind not scalar: {:?}", imm8));
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(format!("pcmpestrm xmm0, xmm1, {imm8}"))],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        value: b,
+                    },
+                    // Implicit argument to the pcmpestri intrinsic
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::ax)),
+                        value: la,
+                    },
+                    // Implicit argument to the pcmpestri intrinsic
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::dx)),
+                        value: lb,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.pclmulqdq" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_clmulepi64_si128&ig_expand=772
+            intrinsic_args!(fx, args => (a, b, _imm8); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            let imm8 = if let Some(imm8) = crate::constant::mir_operand_get_const_val(fx, &args[2])
+            {
+                imm8
+            } else {
+                fx.tcx.dcx().span_fatal(
+                    span,
+                    "Index argument for `_mm_clmulepi64_si128` is not a constant",
+                );
+            };
+
+            let imm8 = imm8.try_to_u8().unwrap_or_else(|_| panic!("kind not scalar: {:?}", imm8));
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(format!("pclmulqdq xmm0, xmm1, {imm8}"))],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        value: b,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.aesni.aeskeygenassist" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aeskeygenassist_si128&ig_expand=261
+            intrinsic_args!(fx, args => (a, _imm8); intrinsic);
+
+            let a = a.load_scalar(fx);
+
+            let imm8 = if let Some(imm8) = crate::constant::mir_operand_get_const_val(fx, &args[1])
+            {
+                imm8
+            } else {
+                fx.tcx.dcx().span_fatal(
+                    span,
+                    "Index argument for `_mm_aeskeygenassist_si128` is not a constant",
+                );
+            };
+
+            let imm8 = imm8.try_to_u8().unwrap_or_else(|_| panic!("kind not scalar: {:?}", imm8));
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String(format!("aeskeygenassist xmm0, xmm0, {imm8}"))],
+                &[CInlineAsmOperand::InOut {
+                    reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
+                    _late: true,
+                    in_value: a,
+                    out_place: Some(ret),
+                }],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.aesni.aesimc" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aesimc_si128&ig_expand=260
+            intrinsic_args!(fx, args => (a); intrinsic);
+
+            let a = a.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("aesimc xmm0, xmm0".to_string())],
+                &[CInlineAsmOperand::InOut {
+                    reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
+                    _late: true,
+                    in_value: a,
+                    out_place: Some(ret),
+                }],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.aesni.aesenc" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aesenc_si128&ig_expand=252
+            intrinsic_args!(fx, args => (a, round_key); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let round_key = round_key.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("aesenc xmm0, xmm1".to_string())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        value: round_key,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.aesni.aesenclast" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aesenclast_si128&ig_expand=257
+            intrinsic_args!(fx, args => (a, round_key); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let round_key = round_key.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("aesenclast xmm0, xmm1".to_string())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        value: round_key,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.aesni.aesdec" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aesdec_si128&ig_expand=242
+            intrinsic_args!(fx, args => (a, round_key); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let round_key = round_key.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("aesdec xmm0, xmm1".to_string())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        value: round_key,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.aesni.aesdeclast" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_aesdeclast_si128&ig_expand=247
+            intrinsic_args!(fx, args => (a, round_key); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let round_key = round_key.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("aesdeclast xmm0, xmm1".to_string())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        value: round_key,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.sha256rnds2" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sha256rnds2_epu32&ig_expand=5977
+            intrinsic_args!(fx, args => (a, b, k); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+            let k = k.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("sha256rnds2 xmm1, xmm2".to_string())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm2)),
+                        value: b,
+                    },
+                    // Implicit argument to the sha256rnds2 instruction
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm0)),
+                        value: k,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.sha256msg1" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sha256msg1_epu32&ig_expand=5975
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("sha256msg1 xmm1, xmm2".to_string())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm2)),
+                        value: b,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.sha256msg2" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_sha256msg2_epu32&ig_expand=5976
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            let a = a.load_scalar(fx);
+            let b = b.load_scalar(fx);
+
+            codegen_inline_asm_inner(
+                fx,
+                &[InlineAsmTemplatePiece::String("sha256msg2 xmm1, xmm2".to_string())],
+                &[
+                    CInlineAsmOperand::InOut {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm1)),
+                        _late: true,
+                        in_value: a,
+                        out_place: Some(ret),
+                    },
+                    CInlineAsmOperand::In {
+                        reg: InlineAsmRegOrRegClass::Reg(InlineAsmReg::X86(X86InlineAsmReg::xmm2)),
+                        value: b,
+                    },
+                ],
+                InlineAsmOptions::NOSTACK | InlineAsmOptions::PURE | InlineAsmOptions::NOMEM,
+            );
+        }
+
+        "llvm.x86.avx.ptestz.256" => {
+            // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm256_testz_si256&ig_expand=6945
+            intrinsic_args!(fx, args => (a, b); intrinsic);
+
+            assert_eq!(a.layout(), b.layout());
+            let layout = a.layout();
+
+            let (lane_count, lane_ty) = layout.ty.simd_size_and_type(fx.tcx);
+            assert_eq!(lane_ty, fx.tcx.types.i64);
+            assert_eq!(ret.layout().ty, fx.tcx.types.i32);
+            assert_eq!(lane_count, 4);
+
+            let a_lane0 = a.value_lane(fx, 0).load_scalar(fx);
+            let a_lane1 = a.value_lane(fx, 1).load_scalar(fx);
+            let a_lane2 = a.value_lane(fx, 2).load_scalar(fx);
+            let a_lane3 = a.value_lane(fx, 3).load_scalar(fx);
+            let b_lane0 = b.value_lane(fx, 0).load_scalar(fx);
+            let b_lane1 = b.value_lane(fx, 1).load_scalar(fx);
+            let b_lane2 = b.value_lane(fx, 2).load_scalar(fx);
+            let b_lane3 = b.value_lane(fx, 3).load_scalar(fx);
+
+            let zero0 = fx.bcx.ins().band(a_lane0, b_lane0);
+            let zero1 = fx.bcx.ins().band(a_lane1, b_lane1);
+            let zero2 = fx.bcx.ins().band(a_lane2, b_lane2);
+            let zero3 = fx.bcx.ins().band(a_lane3, b_lane3);
+
+            let all_zero0 = fx.bcx.ins().bor(zero0, zero1);
+            let all_zero1 = fx.bcx.ins().bor(zero2, zero3);
+            let all_zero = fx.bcx.ins().bor(all_zero0, all_zero1);
+
+            let res = fx.bcx.ins().icmp_imm(IntCC::Equal, all_zero, 0);
+            let res = CValue::by_val(
+                fx.bcx.ins().uextend(types::I32, res),
+                fx.layout_of(fx.tcx.types.i32),
+            );
+            ret.write_cvalue(fx, res);
+        }
+
         _ => {
             fx.tcx
-                .sess
+                .dcx()
                 .warn(format!("unsupported x86 llvm intrinsic {}; replacing with trap", intrinsic));
             crate::trap::trap_unimplemented(fx, intrinsic);
             return;

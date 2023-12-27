@@ -8,9 +8,6 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::visit::{NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitableExt, Variance};
-use rustc_mir_dataflow::impls::MaybeStorageLive;
-use rustc_mir_dataflow::storage::always_storage_live_locals;
-use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_target::abi::{Size, FIRST_VARIANT};
 use rustc_target::spec::abi::Abi;
 
@@ -51,12 +48,6 @@ impl<'tcx> MirPass<'tcx> for Validator {
             Reveal::All => tcx.param_env_reveal_all_normalized(def_id),
         };
 
-        let always_live_locals = always_storage_live_locals(body);
-        let storage_liveness = MaybeStorageLive::new(std::borrow::Cow::Owned(always_live_locals))
-            .into_engine(tcx, body)
-            .iterate_to_fixpoint()
-            .into_results_cursor(body);
-
         let can_unwind = if mir_phase <= MirPhase::Runtime(RuntimePhase::Initial) {
             // In this case `AbortUnwindingCalls` haven't yet been executed.
             true
@@ -83,7 +74,6 @@ impl<'tcx> MirPass<'tcx> for Validator {
             mir_phase,
             unwind_edge_count: 0,
             reachable_blocks: traversal::reachable_as_bitset(body),
-            storage_liveness,
             place_cache: FxHashSet::default(),
             value_cache: FxHashSet::default(),
             can_unwind,
@@ -116,7 +106,6 @@ struct CfgChecker<'a, 'tcx> {
     mir_phase: MirPhase,
     unwind_edge_count: usize,
     reachable_blocks: BitSet<BasicBlock>,
-    storage_liveness: ResultsCursor<'a, 'tcx, MaybeStorageLive<'static>>,
     place_cache: FxHashSet<PlaceRef<'tcx>>,
     value_cache: FxHashSet<u128>,
     // If `false`, then the MIR must not contain `UnwindAction::Continue` or
@@ -128,9 +117,9 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
     #[track_caller]
     fn fail(&self, location: Location, msg: impl AsRef<str>) {
         let span = self.body.source_info(location).span;
-        // We use `delay_span_bug` as we might see broken MIR when other errors have already
+        // We use `span_delayed_bug` as we might see broken MIR when other errors have already
         // occurred.
-        self.tcx.sess.diagnostic().delay_span_bug(
+        self.tcx.dcx().span_delayed_bug(
             span,
             format!(
                 "broken MIR in {:?} ({}) at {:?}:\n{}",
@@ -285,30 +274,21 @@ impl<'a, 'tcx> CfgChecker<'a, 'tcx> {
             UnwindAction::Unreachable | UnwindAction::Terminate(UnwindTerminateReason::Abi) => (),
         }
     }
+
+    fn is_critical_call_edge(&self, target: Option<BasicBlock>, unwind: UnwindAction) -> bool {
+        let Some(target) = target else { return false };
+        matches!(unwind, UnwindAction::Cleanup(_) | UnwindAction::Terminate(_))
+            && self.body.basic_blocks.predecessors()[target].len() > 1
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
-    fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
+    fn visit_local(&mut self, local: Local, _context: PlaceContext, location: Location) {
         if self.body.local_decls.get(local).is_none() {
             self.fail(
                 location,
                 format!("local {local:?} has no corresponding declaration in `body.local_decls`"),
             );
-        }
-
-        if self.reachable_blocks.contains(location.block) && context.is_use() {
-            // We check that the local is live whenever it is used. Technically, violating this
-            // restriction is only UB and not actually indicative of not well-formed MIR. This means
-            // that an optimization which turns MIR that already has UB into MIR that fails this
-            // check is not necessarily wrong. However, we have no such optimizations at the moment,
-            // and so we include this check anyway to help us catch bugs. If you happen to write an
-            // optimization that might cause this to incorrectly fire, feel free to remove this
-            // check.
-            self.storage_liveness.seek_after_primary_effect(location);
-            let locals_with_storage = self.storage_liveness.get();
-            if !locals_with_storage.contains(local) {
-                self.fail(location, format!("use of local {local:?}, which has no storage here"));
-            }
         }
     }
 
@@ -361,26 +341,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     self.fail(location, format!("explicit `{kind:?}` is forbidden"));
                 }
             }
-            StatementKind::StorageLive(local) => {
-                // We check that the local is not live when entering a `StorageLive` for it.
-                // Technically, violating this restriction is only UB and not actually indicative
-                // of not well-formed MIR. This means that an optimization which turns MIR that
-                // already has UB into MIR that fails this check is not necessarily wrong. However,
-                // we have no such optimizations at the moment, and so we include this check anyway
-                // to help us catch bugs. If you happen to write an optimization that might cause
-                // this to incorrectly fire, feel free to remove this check.
-                if self.reachable_blocks.contains(location.block) {
-                    self.storage_liveness.seek_before_primary_effect(location);
-                    let locals_with_storage = self.storage_liveness.get();
-                    if locals_with_storage.contains(*local) {
-                        self.fail(
-                            location,
-                            format!("StorageLive({local:?}) which already has storage here"),
-                        );
-                    }
-                }
-            }
-            StatementKind::StorageDead(_)
+            StatementKind::StorageLive(_)
+            | StatementKind::StorageDead(_)
             | StatementKind::Intrinsic(_)
             | StatementKind::Coverage(_)
             | StatementKind::ConstEvalCounter
@@ -424,6 +386,22 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     self.check_edge(location, *target, EdgeKind::Normal);
                 }
                 self.check_unwind_edge(location, *unwind);
+
+                // The code generation assumes that there are no critical call edges. The assumption
+                // is used to simplify inserting code that should be executed along the return edge
+                // from the call. FIXME(tmiasko): Since this is a strictly code generation concern,
+                // the code generation should be responsible for handling it.
+                if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Optimized)
+                    && self.is_critical_call_edge(*target, *unwind)
+                {
+                    self.fail(
+                        location,
+                        format!(
+                            "encountered critical edge in `Call` terminator {:?}",
+                            terminator.kind,
+                        ),
+                    );
+                }
 
                 // The call destination place and Operand::Move place used as an argument might be
                 // passed by a reference to the callee. Consequently they must be non-overlapping
@@ -549,7 +527,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
 
     fn visit_source_scope(&mut self, scope: SourceScope) {
         if self.body.source_scopes.get(scope).is_none() {
-            self.tcx.sess.diagnostic().delay_span_bug(
+            self.tcx.dcx().span_delayed_bug(
                 self.body.span,
                 format!(
                     "broken MIR in {:?} ({}):\ninvalid source scope {:?}",
@@ -848,11 +826,11 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         }
         match rvalue {
             Rvalue::Use(_) | Rvalue::CopyForDeref(_) | Rvalue::Aggregate(..) => {}
-            Rvalue::Ref(_, BorrowKind::Shallow, _) => {
+            Rvalue::Ref(_, BorrowKind::Fake, _) => {
                 if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
                         location,
-                        "`Assign` statement with a `Shallow` borrow should have been removed in runtime MIR",
+                        "`Assign` statement with a `Fake` borrow should have been removed in runtime MIR",
                     );
                 }
             }

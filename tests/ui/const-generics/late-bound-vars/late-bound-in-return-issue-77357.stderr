@@ -4,5 +4,5 @@ error: cannot capture late-bound lifetime in constant
 LL | fn bug<'a, T>() -> &'static dyn MyTrait<[(); { |x: &'a u32| { x }; 4 }]> {
    |        -- lifetime defined here                     ^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

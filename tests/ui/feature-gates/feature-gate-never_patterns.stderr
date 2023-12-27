@@ -1,0 +1,117 @@
+error: unexpected `,` in pattern
+  --> $DIR/feature-gate-never_patterns.rs:34:16
+   |
+LL |         Some(_),
+   |                ^
+   |
+help: try adding parentheses to match on a tuple...
+   |
+LL |         (Some(_),)
+   |         +        +
+help: ...or a vertical bar to match on multiple alternatives
+   |
+LL |         Some(_) |
+   |
+
+error[E0408]: variable `_x` is not bound in all patterns
+  --> $DIR/feature-gate-never_patterns.rs:8:19
+   |
+LL |     let (Ok(_x) | Err(&!)) = res.as_ref();
+   |             --    ^^^^^^^ pattern doesn't bind `_x`
+   |             |
+   |             variable not in all patterns
+
+error[E0658]: `!` patterns are experimental
+  --> $DIR/feature-gate-never_patterns.rs:8:24
+   |
+LL |     let (Ok(_x) | Err(&!)) = res.as_ref();
+   |                        ^
+   |
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
+   = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+
+error[E0658]: `!` patterns are experimental
+  --> $DIR/feature-gate-never_patterns.rs:15:13
+   |
+LL |             !
+   |             ^
+   |
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
+   = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+
+error[E0658]: `!` patterns are experimental
+  --> $DIR/feature-gate-never_patterns.rs:21:13
+   |
+LL |             !
+   |             ^
+   |
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
+   = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+
+error[E0658]: `!` patterns are experimental
+  --> $DIR/feature-gate-never_patterns.rs:26:13
+   |
+LL |             ! => {}
+   |             ^
+   |
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
+   = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+
+error: `match` arm with no body
+  --> $DIR/feature-gate-never_patterns.rs:39:9
+   |
+LL |         Some(_)
+   |         ^^^^^^^- help: add a body after the pattern: `=> todo!(),`
+
+error: `match` arm with no body
+  --> $DIR/feature-gate-never_patterns.rs:44:9
+   |
+LL |         Some(_) if false,
+   |         ^^^^^^^- help: add a body after the pattern: `=> todo!(),`
+
+error: `match` arm with no body
+  --> $DIR/feature-gate-never_patterns.rs:46:9
+   |
+LL |         Some(_) if false
+   |         ^^^^^^^- help: add a body after the pattern: `=> todo!(),`
+
+error[E0658]: `!` patterns are experimental
+  --> $DIR/feature-gate-never_patterns.rs:51:13
+   |
+LL |         Err(!),
+   |             ^
+   |
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
+   = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+
+error[E0658]: `!` patterns are experimental
+  --> $DIR/feature-gate-never_patterns.rs:55:13
+   |
+LL |         Err(!) if false,
+   |             ^
+   |
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
+   = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+
+error: `match` arm with no body
+  --> $DIR/feature-gate-never_patterns.rs:65:9
+   |
+LL |         Some(_)
+   |         ^^^^^^^- help: add a body after the pattern: `=> todo!(),`
+
+error: `match` arm with no body
+  --> $DIR/feature-gate-never_patterns.rs:71:9
+   |
+LL |         Some(_) if false
+   |         ^^^^^^^- help: add a body after the pattern: `=> todo!(),`
+
+error: a guard on a never pattern will never be run
+  --> $DIR/feature-gate-never_patterns.rs:55:19
+   |
+LL |         Err(!) if false,
+   |                   ^^^^^ help: remove this guard
+
+error: aborting due to 14 previous errors
+
+Some errors have detailed explanations: E0408, E0658.
+For more information about an error, try `rustc --explain E0408`.

@@ -6,9 +6,9 @@ use clippy_utils::source::is_present_in_source;
 use clippy_utils::str_utils::{camel_case_split, count_match_end, count_match_start, to_camel_case, to_snake_case};
 use rustc_hir::{EnumDef, FieldDef, Item, ItemKind, OwnerId, Variant, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::Span;
+use rustc_session::impl_lint_pass;
 use rustc_span::symbol::Symbol;
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -436,7 +436,7 @@ impl LateLintPass<'_> for ItemNameRepetitions {
         {
             match item.kind {
                 ItemKind::Enum(def, _) => check_variant(cx, self.enum_threshold, &def, item_name, item.span),
-                ItemKind::Struct(VariantData::Struct(fields, _), _) => {
+                ItemKind::Struct(VariantData::Struct { fields, .. }, _) => {
                     check_fields(cx, self.struct_threshold, item, fields);
                 },
                 _ => (),

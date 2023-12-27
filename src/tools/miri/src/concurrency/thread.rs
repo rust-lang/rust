@@ -33,8 +33,17 @@ enum SchedulingAction {
     Sleep(Duration),
 }
 
+/// What to do with TLS allocations from terminated threads
+pub enum TlsAllocAction {
+    /// Deallocate backing memory of thread-local statics as usual
+    Deallocate,
+    /// Skip deallocating backing memory of thread-local statics and consider all memory reachable
+    /// from them as "allowed to leak" (like global `static`s).
+    Leak,
+}
+
 /// Trait for callbacks that can be executed when some event happens, such as after a timeout.
-pub trait MachineCallback<'mir, 'tcx>: VisitTags {
+pub trait MachineCallback<'mir, 'tcx>: VisitProvenance {
     fn call(&self, ecx: &mut InterpCx<'mir, 'tcx, MiriMachine<'mir, 'tcx>>) -> InterpResult<'tcx>;
 }
 
@@ -219,8 +228,8 @@ impl<'mir, 'tcx> Thread<'mir, 'tcx> {
     }
 }
 
-impl VisitTags for Thread<'_, '_> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+impl VisitProvenance for Thread<'_, '_> {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         let Thread {
             panic_payloads: panic_payload,
             last_error,
@@ -233,17 +242,17 @@ impl VisitTags for Thread<'_, '_> {
         } = self;
 
         for payload in panic_payload {
-            payload.visit_tags(visit);
+            payload.visit_provenance(visit);
         }
-        last_error.visit_tags(visit);
+        last_error.visit_provenance(visit);
         for frame in stack {
-            frame.visit_tags(visit)
+            frame.visit_provenance(visit)
         }
     }
 }
 
-impl VisitTags for Frame<'_, '_, Provenance, FrameExtra<'_>> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+impl VisitProvenance for Frame<'_, '_, Provenance, FrameExtra<'_>> {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         let Frame {
             return_place,
             locals,
@@ -257,22 +266,22 @@ impl VisitTags for Frame<'_, '_, Provenance, FrameExtra<'_>> {
         } = self;
 
         // Return place.
-        return_place.visit_tags(visit);
+        return_place.visit_provenance(visit);
         // Locals.
         for local in locals.iter() {
             match local.as_mplace_or_imm() {
                 None => {}
                 Some(Either::Left((ptr, meta))) => {
-                    ptr.visit_tags(visit);
-                    meta.visit_tags(visit);
+                    ptr.visit_provenance(visit);
+                    meta.visit_provenance(visit);
                 }
                 Some(Either::Right(imm)) => {
-                    imm.visit_tags(visit);
+                    imm.visit_provenance(visit);
                 }
             }
         }
 
-        extra.visit_tags(visit);
+        extra.visit_provenance(visit);
     }
 }
 
@@ -332,8 +341,8 @@ pub struct ThreadManager<'mir, 'tcx> {
     timeout_callbacks: FxHashMap<ThreadId, TimeoutCallbackInfo<'mir, 'tcx>>,
 }
 
-impl VisitTags for ThreadManager<'_, '_> {
-    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+impl VisitProvenance for ThreadManager<'_, '_> {
+    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
         let ThreadManager {
             threads,
             thread_local_alloc_ids,
@@ -344,15 +353,15 @@ impl VisitTags for ThreadManager<'_, '_> {
         } = self;
 
         for thread in threads {
-            thread.visit_tags(visit);
+            thread.visit_provenance(visit);
         }
         for ptr in thread_local_alloc_ids.borrow().values() {
-            ptr.visit_tags(visit);
+            ptr.visit_provenance(visit);
         }
         for callback in timeout_callbacks.values() {
-            callback.callback.visit_tags(visit);
+            callback.callback.visit_provenance(visit);
         }
-        sync.visit_tags(visit);
+        sync.visit_provenance(visit);
     }
 }
 
@@ -1051,7 +1060,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         // See if this thread can do something else.
                         match this.run_on_stack_empty()? {
                             Poll::Pending => {} // keep going
-                            Poll::Ready(()) => this.terminate_active_thread()?,
+                            Poll::Ready(()) =>
+                                this.terminate_active_thread(TlsAllocAction::Deallocate)?,
                         }
                     }
                 }
@@ -1066,21 +1076,29 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     }
 
     /// Handles thread termination of the active thread: wakes up threads joining on this one,
-    /// and deallocated thread-local statics.
+    /// and deals with the thread's thread-local statics according to `tls_alloc_action`.
     ///
     /// This is called by the eval loop when a thread's on_stack_empty returns `Ready`.
     #[inline]
-    fn terminate_active_thread(&mut self) -> InterpResult<'tcx> {
+    fn terminate_active_thread(&mut self, tls_alloc_action: TlsAllocAction) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let thread = this.active_thread_mut();
         assert!(thread.stack.is_empty(), "only threads with an empty stack can be terminated");
         thread.state = ThreadState::Terminated;
 
         let current_span = this.machine.current_span();
-        for ptr in
-            this.machine.threads.thread_terminated(this.machine.data_race.as_mut(), current_span)
-        {
-            this.deallocate_ptr(ptr.into(), None, MiriMemoryKind::Tls.into())?;
+        let thread_local_allocations =
+            this.machine.threads.thread_terminated(this.machine.data_race.as_mut(), current_span);
+        for ptr in thread_local_allocations {
+            match tls_alloc_action {
+                TlsAllocAction::Deallocate =>
+                    this.deallocate_ptr(ptr.into(), None, MiriMemoryKind::Tls.into())?,
+                TlsAllocAction::Leak =>
+                    if let Some(alloc) = ptr.provenance.get_alloc_id() {
+                        trace!("Thread-local static leaked and stored as static root: {:?}", alloc);
+                        this.machine.static_roots.push(alloc);
+                    },
+            }
         }
         Ok(())
     }

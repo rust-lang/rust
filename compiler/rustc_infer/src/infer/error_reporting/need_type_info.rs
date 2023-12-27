@@ -5,8 +5,7 @@ use crate::errors::{
 use crate::infer::error_reporting::TypeErrCtxt;
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::InferCtxt;
-use rustc_errors::IntoDiagnostic;
-use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, IntoDiagnosticArg};
+use rustc_errors::{DiagnosticBuilder, IntoDiagnosticArg};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def::{CtorOf, DefKind, Namespace};
@@ -232,7 +231,9 @@ fn ty_to_string<'tcx>(
 /// something users are familiar with. Directly printing the `fn_sig` of closures also
 /// doesn't work as they actually use the "rust-call" API.
 fn closure_as_fn_str<'tcx>(infcx: &InferCtxt<'tcx>, ty: Ty<'tcx>) -> String {
-    let ty::Closure(_, args) = ty.kind() else { unreachable!() };
+    let ty::Closure(_, args) = ty.kind() else {
+        bug!("cannot convert non-closure to fn str in `closure_as_fn_str`")
+    };
     let fn_sig = args.as_closure().sig();
     let args = fn_sig
         .inputs()
@@ -357,7 +358,7 @@ impl<'tcx> InferCtxt<'tcx> {
         span: Span,
         arg_data: InferenceDiagnosticsData,
         error_code: TypeAnnotationNeeded,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'tcx> {
         let source_kind = "other";
         let source_name = "";
         let failure_span = None;
@@ -365,7 +366,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let multi_suggestions = Vec::new();
         let bad_label = Some(arg_data.make_bad_error(span));
         match error_code {
-            TypeAnnotationNeeded::E0282 => AnnotationRequired {
+            TypeAnnotationNeeded::E0282 => self.dcx().create_err(AnnotationRequired {
                 span,
                 source_kind,
                 source_name,
@@ -373,9 +374,8 @@ impl<'tcx> InferCtxt<'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
-            }
-            .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
-            TypeAnnotationNeeded::E0283 => AmbiguousImpl {
+            }),
+            TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
                 span,
                 source_kind,
                 source_name,
@@ -383,9 +383,8 @@ impl<'tcx> InferCtxt<'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
-            }
-            .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
-            TypeAnnotationNeeded::E0284 => AmbiguousReturn {
+            }),
+            TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
                 span,
                 source_kind,
                 source_name,
@@ -393,8 +392,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label,
-            }
-            .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
+            }),
         }
     }
 }
@@ -408,7 +406,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         arg: GenericArg<'tcx>,
         error_code: TypeAnnotationNeeded,
         should_label_span: bool,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'tcx> {
         let arg = self.resolve_vars_if_possible(arg);
         let arg_data = self.extract_inference_diagnostics_data(arg, None);
 
@@ -419,7 +417,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             return self.bad_inference_failure_err(failure_span, arg_data, error_code);
         };
 
-        let mut local_visitor = FindInferSourceVisitor::new(&self, typeck_results, arg);
+        let mut local_visitor = FindInferSourceVisitor::new(self, typeck_results, arg);
         if let Some(body_id) = self.tcx.hir().maybe_body_owned_by(
             self.tcx.typeck_root_def_id(body_def_id.to_def_id()).expect_local(),
         ) {
@@ -572,7 +570,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
         match error_code {
-            TypeAnnotationNeeded::E0282 => AnnotationRequired {
+            TypeAnnotationNeeded::E0282 => self.dcx().create_err(AnnotationRequired {
                 span,
                 source_kind,
                 source_name: &name,
@@ -580,9 +578,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
-            }
-            .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
-            TypeAnnotationNeeded::E0283 => AmbiguousImpl {
+            }),
+            TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
                 span,
                 source_kind,
                 source_name: &name,
@@ -590,9 +587,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
-            }
-            .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
-            TypeAnnotationNeeded::E0284 => AmbiguousReturn {
+            }),
+            TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
                 span,
                 source_kind,
                 source_name: &name,
@@ -600,8 +596,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 infer_subdiags,
                 multi_suggestions,
                 bad_label: None,
-            }
-            .into_diagnostic(&self.tcx.sess.parse_sess.span_diagnostic),
+            }),
         }
     }
 }
@@ -1087,7 +1082,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
 
                 Box::new(segment.into_iter())
             }
-            hir::QPath::LangItem(_, _, _) => Box::new(iter::empty()),
+            hir::QPath::LangItem(_, _) => Box::new(iter::empty()),
         }
     }
 }

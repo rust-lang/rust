@@ -7,6 +7,6 @@ LL | fn test(shouldwe: Option<u32>, shouldwe2: Option<u32>) -> u32 {
 LL |                 None => (),
    |                         ^^ expected `u32`, found `()`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

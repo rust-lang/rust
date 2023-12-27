@@ -111,8 +111,6 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
                     }
 
                     suggest_insertion(cx, item, &dox, lint, backtick_index, '\\', "if you meant to use a literal backtick, escape it");
-
-                    lint
                 });
             }
             Event::Code(_) => {

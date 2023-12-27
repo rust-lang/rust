@@ -4,19 +4,19 @@
 // to run rust-analyzer as a library.
 use std::{collections::hash_map::Entry, mem, path::Path, sync};
 
-use ::tt::token_id as tt;
 use crossbeam_channel::{unbounded, Receiver};
 use ide::{AnalysisHost, Change, SourceRoot};
 use ide_db::{
     base_db::{
-        CrateGraph, Env, ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind,
-        ProcMacroLoadResult, ProcMacros,
+        span::SpanData, CrateGraph, Env, ProcMacro, ProcMacroExpander, ProcMacroExpansionError,
+        ProcMacroKind, ProcMacroLoadResult, ProcMacros,
     },
     FxHashMap,
 };
 use itertools::Itertools;
 use proc_macro_api::{MacroDylib, ProcMacroServer};
 use project_model::{CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace};
+use tt::DelimSpan;
 use vfs::{file_set::FileSetConfig, loader::Handle, AbsPath, AbsPathBuf, VfsPath};
 
 pub struct LoadCargoConfig {
@@ -208,6 +208,7 @@ impl ProjectFolders {
             let entry = {
                 let mut dirs = vfs::loader::Directories::default();
                 dirs.extensions.push("rs".into());
+                dirs.extensions.push("toml".into());
                 dirs.include.extend(root.include);
                 dirs.exclude.extend(root.exclude);
                 for excl in global_excludes {
@@ -373,12 +374,15 @@ struct Expander(proc_macro_api::ProcMacro);
 impl ProcMacroExpander for Expander {
     fn expand(
         &self,
-        subtree: &tt::Subtree,
-        attrs: Option<&tt::Subtree>,
+        subtree: &tt::Subtree<SpanData>,
+        attrs: Option<&tt::Subtree<SpanData>>,
         env: &Env,
-    ) -> Result<tt::Subtree, ProcMacroExpansionError> {
+        def_site: SpanData,
+        call_site: SpanData,
+        mixed_site: SpanData,
+    ) -> Result<tt::Subtree<SpanData>, ProcMacroExpansionError> {
         let env = env.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
-        match self.0.expand(subtree, attrs, env) {
+        match self.0.expand(subtree, attrs, env, def_site, call_site, mixed_site) {
             Ok(Ok(subtree)) => Ok(subtree),
             Ok(Err(err)) => Err(ProcMacroExpansionError::Panic(err.0)),
             Err(err) => Err(ProcMacroExpansionError::System(err.to_string())),
@@ -393,10 +397,13 @@ struct IdentityExpander;
 impl ProcMacroExpander for IdentityExpander {
     fn expand(
         &self,
-        subtree: &tt::Subtree,
-        _: Option<&tt::Subtree>,
+        subtree: &tt::Subtree<SpanData>,
+        _: Option<&tt::Subtree<SpanData>>,
         _: &Env,
-    ) -> Result<tt::Subtree, ProcMacroExpansionError> {
+        _: SpanData,
+        _: SpanData,
+        _: SpanData,
+    ) -> Result<tt::Subtree<SpanData>, ProcMacroExpansionError> {
         Ok(subtree.clone())
     }
 }
@@ -408,11 +415,14 @@ struct EmptyExpander;
 impl ProcMacroExpander for EmptyExpander {
     fn expand(
         &self,
-        _: &tt::Subtree,
-        _: Option<&tt::Subtree>,
+        _: &tt::Subtree<SpanData>,
+        _: Option<&tt::Subtree<SpanData>>,
         _: &Env,
-    ) -> Result<tt::Subtree, ProcMacroExpansionError> {
-        Ok(tt::Subtree::empty())
+        call_site: SpanData,
+        _: SpanData,
+        _: SpanData,
+    ) -> Result<tt::Subtree<SpanData>, ProcMacroExpansionError> {
+        Ok(tt::Subtree::empty(DelimSpan { open: call_site, close: call_site }))
     }
 }
 

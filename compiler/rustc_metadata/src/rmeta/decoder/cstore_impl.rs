@@ -231,7 +231,7 @@ provide! { tcx, def_id, other, cdata,
     lookup_deprecation_entry => { table }
     params_in_repr => { table }
     unused_generic_params => { cdata.root.tables.unused_generic_params.get(cdata, def_id.index) }
-    opt_def_kind => { table_direct }
+    def_kind => { cdata.def_kind(def_id.index) }
     impl_parent => { table }
     impl_polarity => { table_direct }
     defaultness => { table_direct }
@@ -241,7 +241,7 @@ provide! { tcx, def_id, other, cdata,
     rendered_const => { table }
     asyncness => { table_direct }
     fn_arg_names => { table }
-    coroutine_kind => { table }
+    coroutine_kind => { table_direct }
     trait_def => { table }
     deduced_param_attrs => { table }
     is_type_alias_impl_trait => {
@@ -346,7 +346,7 @@ provide! { tcx, def_id, other, cdata,
     module_children => {
         tcx.arena.alloc_from_iter(cdata.get_module_children(def_id.index, tcx.sess))
     }
-    defined_lib_features => { cdata.get_lib_features(tcx) }
+    lib_features => { cdata.get_lib_features() }
     stability_implications => {
         cdata.get_stability_implications(tcx).iter().copied().collect()
     }
@@ -394,7 +394,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
         native_library: |tcx, id| {
             tcx.native_libraries(id.krate)
                 .iter()
-                .filter(|lib| native_libs::relevant_lib(&tcx.sess, lib))
+                .filter(|lib| native_libs::relevant_lib(tcx.sess, lib))
                 .find(|lib| {
                     let Some(fm_id) = lib.foreign_module else {
                         return false;

@@ -3,7 +3,6 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{get_parent_expr, higher};
-use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
@@ -26,29 +25,36 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>, cal
 
     if derefs_to_slice(cx, caller_expr, cx.typeck_results().expr_ty(caller_expr)).is_some() {
         // caller is a Slice
-        if_chain! {
-            if let hir::ExprKind::Index(caller_var, index_expr, _) = &caller_expr.kind;
-            if let Some(higher::Range { start: Some(start_expr), end: None, limits: ast::RangeLimits::HalfOpen })
-                = higher::Range::hir(index_expr);
-            if let hir::ExprKind::Lit(start_lit) = &start_expr.kind;
-            if let ast::LitKind::Int(start_idx, _) = start_lit.node;
-            then {
-                let mut applicability = Applicability::MachineApplicable;
-                let suggest = if start_idx == 0 {
-                    format!("{}.first()", snippet_with_applicability(cx, caller_var.span, "..", &mut applicability))
-                } else {
-                    format!("{}.get({start_idx})", snippet_with_applicability(cx, caller_var.span, "..", &mut applicability))
-                };
-                span_lint_and_sugg(
-                    cx,
-                    ITER_NEXT_SLICE,
-                    expr.span,
-                    "using `.iter().next()` on a Slice without end index",
-                    "try calling",
-                    suggest,
-                    applicability,
-                );
-            }
+        if let hir::ExprKind::Index(caller_var, index_expr, _) = &caller_expr.kind
+            && let Some(higher::Range {
+                start: Some(start_expr),
+                end: None,
+                limits: ast::RangeLimits::HalfOpen,
+            }) = higher::Range::hir(index_expr)
+            && let hir::ExprKind::Lit(start_lit) = &start_expr.kind
+            && let ast::LitKind::Int(start_idx, _) = start_lit.node
+        {
+            let mut applicability = Applicability::MachineApplicable;
+            let suggest = if start_idx == 0 {
+                format!(
+                    "{}.first()",
+                    snippet_with_applicability(cx, caller_var.span, "..", &mut applicability)
+                )
+            } else {
+                format!(
+                    "{}.get({start_idx})",
+                    snippet_with_applicability(cx, caller_var.span, "..", &mut applicability)
+                )
+            };
+            span_lint_and_sugg(
+                cx,
+                ITER_NEXT_SLICE,
+                expr.span,
+                "using `.iter().next()` on a Slice without end index",
+                "try calling",
+                suggest,
+                applicability,
+            );
         }
     } else if is_vec_or_array(cx, caller_expr) {
         // caller is a Vec or an Array

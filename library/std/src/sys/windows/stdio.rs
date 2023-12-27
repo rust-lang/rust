@@ -195,7 +195,7 @@ fn write_valid_utf8_to_console(handle: c::HANDLE, utf8: &str) -> io::Result<usiz
         MaybeUninit::slice_assume_init_ref(&utf16[..result as usize])
     };
 
-    let mut written = write_u16s(handle, &utf16)?;
+    let mut written = write_u16s(handle, utf16)?;
 
     // Figure out how many bytes of as UTF-8 were written away as UTF-16.
     if written == utf16.len() {
@@ -207,7 +207,7 @@ fn write_valid_utf8_to_console(handle: c::HANDLE, utf8: &str) -> io::Result<usiz
         // write the missing surrogate out now.
         // Buffering it would mean we have to lie about the number of bytes written.
         let first_code_unit_remaining = utf16[written];
-        if first_code_unit_remaining >= 0xDCEE && first_code_unit_remaining <= 0xDFFF {
+        if matches!(first_code_unit_remaining, 0xDCEE..=0xDFFF) {
             // low surrogate
             // We just hope this works, and give up otherwise
             let _ = write_u16s(handle, &utf16[written..written + 1]);
@@ -266,7 +266,7 @@ impl io::Read for Stdin {
         let mut bytes_copied = self.incomplete_utf8.read(buf);
 
         if bytes_copied == buf.len() {
-            return Ok(bytes_copied);
+            Ok(bytes_copied)
         } else if buf.len() - bytes_copied < 4 {
             // Not enough space to get a UTF-8 byte. We will use the incomplete UTF8.
             let mut utf16_buf = [MaybeUninit::new(0); 1];
@@ -332,7 +332,7 @@ fn read_u16s_fixup_surrogates(
         // and it is not 0, so we know that `buf[amount - 1]` have been
         // initialized.
         let last_char = unsafe { buf[amount - 1].assume_init() };
-        if last_char >= 0xD800 && last_char <= 0xDBFF {
+        if matches!(last_char, 0xD800..=0xDBFF) {
             // high surrogate
             *surrogate = last_char;
             amount -= 1;

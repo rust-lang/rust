@@ -22,8 +22,8 @@ impl<'a, 'tcx> RegionRelations<'a, 'tcx> {
         Self { tcx, free_regions }
     }
 
-    pub fn lub_free_regions(&self, r_a: Region<'tcx>, r_b: Region<'tcx>) -> Region<'tcx> {
-        self.free_regions.lub_free_regions(self.tcx, r_a, r_b)
+    pub fn lub_param_regions(&self, r_a: Region<'tcx>, r_b: Region<'tcx>) -> Region<'tcx> {
+        self.free_regions.lub_param_regions(self.tcx, r_a, r_b)
     }
 }
 
@@ -59,7 +59,7 @@ impl<'tcx> FreeRegionMap<'tcx> {
         r_a: Region<'tcx>,
         r_b: Region<'tcx>,
     ) -> bool {
-        assert!(r_a.is_free_or_static() && r_b.is_free_or_static());
+        assert!(r_a.is_free() && r_b.is_free());
         let re_static = tcx.lifetimes.re_static;
         if self.check_relation(re_static, r_b) {
             // `'a <= 'static` is always true, and not stored in the
@@ -80,15 +80,15 @@ impl<'tcx> FreeRegionMap<'tcx> {
     /// cases, this is more conservative than necessary, in order to
     /// avoid making arbitrary choices. See
     /// `TransitiveRelation::postdom_upper_bound` for more details.
-    pub fn lub_free_regions(
+    pub fn lub_param_regions(
         &self,
         tcx: TyCtxt<'tcx>,
         r_a: Region<'tcx>,
         r_b: Region<'tcx>,
     ) -> Region<'tcx> {
-        debug!("lub_free_regions(r_a={:?}, r_b={:?})", r_a, r_b);
-        assert!(r_a.is_free());
-        assert!(r_b.is_free());
+        debug!("lub_param_regions(r_a={:?}, r_b={:?})", r_a, r_b);
+        assert!(r_a.is_param());
+        assert!(r_b.is_param());
         let result = if r_a == r_b {
             r_a
         } else {
@@ -97,7 +97,7 @@ impl<'tcx> FreeRegionMap<'tcx> {
                 Some(r) => r,
             }
         };
-        debug!("lub_free_regions(r_a={:?}, r_b={:?}) = {:?}", r_a, r_b, result);
+        debug!("lub_param_regions(r_a={:?}, r_b={:?}) = {:?}", r_a, r_b, result);
         result
     }
 }

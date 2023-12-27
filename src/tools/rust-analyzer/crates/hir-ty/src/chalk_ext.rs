@@ -28,6 +28,7 @@ pub trait TyExt {
     fn is_unknown(&self) -> bool;
     fn contains_unknown(&self) -> bool;
     fn is_ty_var(&self) -> bool;
+    fn is_union(&self) -> bool;
 
     fn as_adt(&self) -> Option<(hir_def::AdtId, &Substitution)>;
     fn as_builtin(&self) -> Option<BuiltinType>;
@@ -94,6 +95,10 @@ impl TyExt for Ty {
 
     fn is_ty_var(&self) -> bool {
         matches!(self.kind(Interner), TyKind::InferenceVar(_, _))
+    }
+
+    fn is_union(&self) -> bool {
+        matches!(self.adt_id(Interner), Some(AdtId(hir_def::AdtId::UnionId(_))))
     }
 
     fn as_adt(&self) -> Option<(hir_def::AdtId, &Substitution)> {

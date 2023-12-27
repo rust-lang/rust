@@ -9,5 +9,5 @@ help: write `pub` instead of `public` to make the item public
 LL | pub struct X;
    | ~~~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

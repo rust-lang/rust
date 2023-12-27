@@ -7,6 +7,6 @@ LL |             let _bar: u32 = $arg;
 LL | foo!("baz");
    |      ^^^^^ expected `u32`, found `&str`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

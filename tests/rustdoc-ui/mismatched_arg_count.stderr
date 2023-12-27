@@ -12,6 +12,6 @@ note: type alias defined here, with 1 lifetime parameter: `'a`
 LL | type Alias<'a, T> = <T as Trait<'a>>::Assoc;
    |      ^^^^^ --
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0107`.

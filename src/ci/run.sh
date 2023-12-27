@@ -145,7 +145,7 @@ else
   # LLVM continuously on at least some builders to ensure it works, though.
   # (And PGO is its own can of worms).
   if [ "$NO_DOWNLOAD_CI_LLVM" = "" ]; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.download-ci-llvm=if-available"
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.download-ci-llvm=if-unchanged"
   else
     # When building for CI we want to use the static C++ Standard library
     # included with LLVM, since a dynamic libstdcpp may not be available.
@@ -161,6 +161,14 @@ fi
 # used by tests are available.
 if [ "$IS_NOT_LATEST_LLVM" = "" ]; then
   export COMPILETEST_NEEDS_ALL_LLVM_COMPONENTS=1
+fi
+
+if [ "$ENABLE_GCC_CODEGEN" = "1" ]; then
+  # If `ENABLE_GCC_CODEGEN` is set and not empty, we add the `--enable-new-symbol-mangling`
+  # argument to `RUST_CONFIGURE_ARGS` and set the `GCC_EXEC_PREFIX` environment variable.
+  # `cg_gcc` doesn't support the legacy mangling so we need to enforce the new one
+  # if we run `cg_gcc` tests.
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-new-symbol-mangling"
 fi
 
 # Print the date from the local machine and the date from an external source to

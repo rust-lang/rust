@@ -23,6 +23,7 @@ msrv_aliases! {
     1,62,0 { BOOL_THEN_SOME, DEFAULT_ENUM_ATTRIBUTE }
     1,58,0 { FORMAT_ARGS_CAPTURE, PATTERN_TRAIT_CHAR_ARRAY }
     1,55,0 { SEEK_REWIND }
+    1,54,0 { INTO_KEYS }
     1,53,0 { OR_PATTERNS, MANUAL_BITS, BTREE_MAP_RETAIN, BTREE_SET_RETAIN, ARRAY_INTO_ITERATOR }
     1,52,0 { STR_SPLIT_ONCE, REM_EUCLID_CONST }
     1,51,0 { BORROW_AS_PTR, SEEK_FROM_CURRENT, UNSIGNED_ABS }
@@ -82,7 +83,7 @@ impl Msrv {
             (None, Some(cargo_msrv)) => self.stack = vec![cargo_msrv],
             (Some(clippy_msrv), Some(cargo_msrv)) => {
                 if clippy_msrv != cargo_msrv {
-                    sess.warn(format!(
+                    sess.dcx().warn(format!(
                         "the MSRV in `clippy.toml` and `Cargo.toml` differ; using `{clippy_msrv}` from `clippy.toml`"
                     ));
                 }
@@ -105,7 +106,7 @@ impl Msrv {
 
         if let Some(msrv_attr) = msrv_attrs.next() {
             if let Some(duplicate) = msrv_attrs.last() {
-                sess.struct_span_err(duplicate.span, "`clippy::msrv` is defined multiple times")
+                sess.dcx().struct_span_err(duplicate.span, "`clippy::msrv` is defined multiple times")
                     .span_note(msrv_attr.span, "first definition found here")
                     .emit();
             }
@@ -115,9 +116,9 @@ impl Msrv {
                     return Some(version);
                 }
 
-                sess.span_err(msrv_attr.span, format!("`{msrv}` is not a valid Rust version"));
+                sess.dcx().span_err(msrv_attr.span, format!("`{msrv}` is not a valid Rust version"));
             } else {
-                sess.span_err(msrv_attr.span, "bad clippy attribute");
+                sess.dcx().span_err(msrv_attr.span, "bad clippy attribute");
             }
         }
 

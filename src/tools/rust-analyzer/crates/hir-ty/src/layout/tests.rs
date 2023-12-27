@@ -210,16 +210,13 @@ fn recursive() {
         struct BoxLike<T: ?Sized>(*mut T);
         struct Goal(BoxLike<Goal>);
     }
-    check_fail(
-        r#"struct Goal(Goal);"#,
-        LayoutError::UserError("infinite sized recursive type".into()),
-    );
+    check_fail(r#"struct Goal(Goal);"#, LayoutError::RecursiveTypeWithoutIndirection);
     check_fail(
         r#"
         struct Foo<T>(Foo<T>);
         struct Goal(Foo<i32>);
         "#,
-        LayoutError::UserError("infinite sized recursive type".into()),
+        LayoutError::RecursiveTypeWithoutIndirection,
     );
 }
 

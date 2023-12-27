@@ -4,15 +4,14 @@ use clippy_utils::source::{indent_of, reindent_multiline, snippet};
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{higher, is_trait_method, path_to_local_id, peel_blocks, SpanlessEq};
 use hir::{Body, HirId, MatchSource, Pat};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::{Closure, Expr, ExprKind, PatKind, PathSegment, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::Adjust;
-use rustc_span::Span;
 use rustc_span::symbol::{sym, Ident, Symbol};
+use rustc_span::Span;
 use std::borrow::Cow;
 
 use super::{MANUAL_FILTER_MAP, MANUAL_FIND_MAP, OPTION_FILTER_MAP};
@@ -29,13 +28,11 @@ fn is_method(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_name: Symbol) ->
             let arg_id = body.params[0].pat.hir_id;
             match closure_expr.kind {
                 hir::ExprKind::MethodCall(hir::PathSegment { ident, .. }, receiver, ..) => {
-                    if_chain! {
-                        if ident.name == method_name;
-                        if let hir::ExprKind::Path(path) = &receiver.kind;
-                        if let Res::Local(ref local) = cx.qpath_res(path, receiver.hir_id);
-                        then {
-                            return arg_id == *local
-                        }
+                    if ident.name == method_name
+                        && let hir::ExprKind::Path(path) = &receiver.kind
+                        && let Res::Local(ref local) = cx.qpath_res(path, receiver.hir_id)
+                    {
+                        return arg_id == *local;
                     }
                     false
                 },
@@ -139,11 +136,9 @@ impl<'tcx> OffendingFilterExpr<'tcx> {
                         && path_to_local_id(map_arg_peeled, map_param_id))
                     && let eq_fallback = (|a: &Expr<'_>, b: &Expr<'_>| {
                         // in `filter(|x| ..)`, replace `*x` with `x`
-                        let a_path = if_chain! {
-                            if !is_filter_param_ref;
-                            if let ExprKind::Unary(UnOp::Deref, expr_path) = a.kind;
-                            then { expr_path } else { a }
-                        };
+                        let a_path = if !is_filter_param_ref
+                            && let ExprKind::Unary(UnOp::Deref, expr_path) = a.kind
+                        { expr_path } else { a };
                         // let the filter closure arg and the map closure arg be equal
                         path_to_local_id(a_path, filter_param_id)
                             && path_to_local_id(b, map_param_id)
@@ -305,87 +300,98 @@ pub(super) fn check(
         return;
     }
 
-    if_chain! {
-        if is_trait_method(cx, map_recv, sym::Iterator);
+    if is_trait_method(cx, map_recv, sym::Iterator)
 
         // filter(|x| ...is_some())...
-        if let ExprKind::Closure(&Closure { body: filter_body_id, .. }) = filter_arg.kind;
-        let filter_body = cx.tcx.hir().body(filter_body_id);
-        if let [filter_param] = filter_body.params;
+        && let ExprKind::Closure(&Closure { body: filter_body_id, .. }) = filter_arg.kind
+        && let filter_body = cx.tcx.hir().body(filter_body_id)
+        && let [filter_param] = filter_body.params
         // optional ref pattern: `filter(|&x| ..)`
-        let (filter_pat, is_filter_param_ref) = if let PatKind::Ref(ref_pat, _) = filter_param.pat.kind {
+        && let (filter_pat, is_filter_param_ref) = if let PatKind::Ref(ref_pat, _) = filter_param.pat.kind {
             (ref_pat, true)
         } else {
             (filter_param.pat, false)
-        };
-
-        if let PatKind::Binding(_, filter_param_id, _, None) = filter_pat.kind;
-        if let Some(mut offending_expr) = OffendingFilterExpr::hir(cx, filter_body.value, filter_param_id);
-
-        if let ExprKind::Closure(&Closure { body: map_body_id, .. }) = map_arg.kind;
-        let map_body = cx.tcx.hir().body(map_body_id);
-        if let [map_param] = map_body.params;
-        if let PatKind::Binding(_, map_param_id, map_param_ident, None) = map_param.pat.kind;
-
-        if let Some(check_result) =
-            offending_expr.check_map_call(cx, map_body, map_param_id, filter_param_id, is_filter_param_ref);
-
-        then {
-            let span = filter_span.with_hi(expr.span.hi());
-            let (filter_name, lint) = if is_find {
-                ("find", MANUAL_FIND_MAP)
-            } else {
-                ("filter", MANUAL_FILTER_MAP)
-            };
-            let msg = format!("`{filter_name}(..).map(..)` can be simplified as `{filter_name}_map(..)`");
-
-            let (sugg, note_and_span, applicability) = match check_result {
-                CheckResult::Method { map_arg, method, side_effect_expr_span } => {
-                    let (to_opt, deref) = match method {
-                        CalledMethod::ResultIsOk => (".ok()", String::new()),
-                        CalledMethod::OptionIsSome => {
-                            let derefs = cx.typeck_results()
-                                .expr_adjustments(map_arg)
-                                .iter()
-                                .filter(|adj| matches!(adj.kind, Adjust::Deref(_)))
-                                .count();
-
-                            ("", "*".repeat(derefs))
-                        }
-                    };
-
-                    let sugg = format!(
-                        "{filter_name}_map(|{map_param_ident}| {deref}{}{to_opt})",
-                        snippet(cx, map_arg.span, ".."),
-                    );
-                    let (note_and_span, applicability) = if let Some(span) = side_effect_expr_span {
-                        let note = "the suggestion might change the behavior of the program when merging `filter` and `map`, \
-                            because this expression potentially contains side effects and will only execute once";
-
-                        (Some((note, span)), Applicability::MaybeIncorrect)
-                    } else {
-                        (None, Applicability::MachineApplicable)
-                    };
-
-                    (sugg, note_and_span, applicability)
-                }
-                CheckResult::PatternMatching { variant_span, variant_ident } => {
-                    let pat = snippet(cx, variant_span, "<pattern>");
-
-                    (format!("{filter_name}_map(|{map_param_ident}| match {map_param_ident} {{ \
-                        {pat} => Some({variant_ident}), \
-                        _ => None \
-                    }})"), None, Applicability::MachineApplicable)
-                }
-            };
-            span_lint_and_then(cx, lint, span, &msg, |diag| {
-                diag.span_suggestion(span, "try", sugg, applicability);
-
-                if let Some((note, span)) = note_and_span {
-                    diag.span_note(span, note);
-                }
-            });
         }
+
+        && let PatKind::Binding(_, filter_param_id, _, None) = filter_pat.kind
+        && let Some(mut offending_expr) = OffendingFilterExpr::hir(cx, filter_body.value, filter_param_id)
+
+        && let ExprKind::Closure(&Closure { body: map_body_id, .. }) = map_arg.kind
+        && let map_body = cx.tcx.hir().body(map_body_id)
+        && let [map_param] = map_body.params
+        && let PatKind::Binding(_, map_param_id, map_param_ident, None) = map_param.pat.kind
+
+        && let Some(check_result) =
+            offending_expr.check_map_call(cx, map_body, map_param_id, filter_param_id, is_filter_param_ref)
+    {
+        let span = filter_span.with_hi(expr.span.hi());
+        let (filter_name, lint) = if is_find {
+            ("find", MANUAL_FIND_MAP)
+        } else {
+            ("filter", MANUAL_FILTER_MAP)
+        };
+        let msg = format!("`{filter_name}(..).map(..)` can be simplified as `{filter_name}_map(..)`");
+
+        let (sugg, note_and_span, applicability) = match check_result {
+            CheckResult::Method {
+                map_arg,
+                method,
+                side_effect_expr_span,
+            } => {
+                let (to_opt, deref) = match method {
+                    CalledMethod::ResultIsOk => (".ok()", String::new()),
+                    CalledMethod::OptionIsSome => {
+                        let derefs = cx
+                            .typeck_results()
+                            .expr_adjustments(map_arg)
+                            .iter()
+                            .filter(|adj| matches!(adj.kind, Adjust::Deref(_)))
+                            .count();
+
+                        ("", "*".repeat(derefs))
+                    },
+                };
+
+                let sugg = format!(
+                    "{filter_name}_map(|{map_param_ident}| {deref}{}{to_opt})",
+                    snippet(cx, map_arg.span, ".."),
+                );
+                let (note_and_span, applicability) = if let Some(span) = side_effect_expr_span {
+                    let note = "the suggestion might change the behavior of the program when merging `filter` and `map`, \
+                        because this expression potentially contains side effects and will only execute once";
+
+                    (Some((note, span)), Applicability::MaybeIncorrect)
+                } else {
+                    (None, Applicability::MachineApplicable)
+                };
+
+                (sugg, note_and_span, applicability)
+            },
+            CheckResult::PatternMatching {
+                variant_span,
+                variant_ident,
+            } => {
+                let pat = snippet(cx, variant_span, "<pattern>");
+
+                (
+                    format!(
+                        "{filter_name}_map(|{map_param_ident}| match {map_param_ident} {{ \
+                    {pat} => Some({variant_ident}), \
+                    _ => None \
+                }})"
+                    ),
+                    None,
+                    Applicability::MachineApplicable,
+                )
+            },
+        };
+        span_lint_and_then(cx, lint, span, &msg, |diag| {
+            diag.span_suggestion(span, "try", sugg, applicability);
+
+            if let Some((note, span)) = note_and_span {
+                diag.span_note(span, note);
+            }
+        });
     }
 }
 

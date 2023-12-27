@@ -3,6 +3,7 @@ use decoder::Metadata;
 use def_path_hash_map::DefPathHashMapRef;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
+use rustc_middle::middle::lib_features::FeatureStability;
 use table::TableBuilder;
 
 use rustc_ast as ast;
@@ -56,18 +57,19 @@ pub(crate) fn rustc_version(cfg_version: &'static str) -> String {
 /// Metadata encoding version.
 /// N.B., increment this if you change the format of metadata such that
 /// the rustc version can't be found to compare with `rustc_version()`.
-const METADATA_VERSION: u8 = 8;
+const METADATA_VERSION: u8 = 9;
 
 /// Metadata header which includes `METADATA_VERSION`.
 ///
 /// This header is followed by the length of the compressed data, then
-/// the position of the `CrateRoot`, which is encoded as a 32-bit big-endian
+/// the position of the `CrateRoot`, which is encoded as a 64-bit little-endian
 /// unsigned integer, and further followed by the rustc version string.
 pub const METADATA_HEADER: &[u8] = &[b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
 
 #[derive(Encodable, Decodable)]
 enum SpanEncodingMode {
-    Shorthand(usize),
+    RelativeOffset(usize),
+    AbsoluteOffset(usize),
     Direct,
 }
 
@@ -263,7 +265,7 @@ pub(crate) struct CrateRoot {
 
     crate_deps: LazyArray<CrateDep>,
     dylib_dependency_formats: LazyArray<Option<LinkagePreference>>,
-    lib_features: LazyArray<(Symbol, Option<Symbol>)>,
+    lib_features: LazyArray<(Symbol, FeatureStability)>,
     stability_implications: LazyArray<(Symbol, Symbol)>,
     lang_items: LazyArray<(DefIndex, LangItem)>,
     lang_items_missing: LazyArray<LangItem>,
@@ -385,7 +387,12 @@ define_tables! {
     is_type_alias_impl_trait: Table<DefIndex, bool>,
     type_alias_is_lazy: Table<DefIndex, bool>,
     attr_flags: Table<DefIndex, AttrFlags>,
-    def_path_hashes: Table<DefIndex, DefPathHash>,
+    // The u64 is the crate-local part of the DefPathHash. All hashes in this crate have the same
+    // StableCrateId, so we omit encoding those into the table.
+    //
+    // Note also that this table is fully populated (no gaps) as every DefIndex should have a
+    // corresponding DefPathHash.
+    def_path_hashes: Table<DefIndex, u64>,
     explicit_item_bounds: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     inherent_impls: Table<DefIndex, LazyArray<DefIndex>>,
@@ -397,6 +404,7 @@ define_tables! {
     // That's why the encoded list needs to contain `ModChild` structures describing all the names
     // individually instead of `DefId`s.
     module_children_reexports: Table<DefIndex, LazyArray<ModChild>>,
+    cross_crate_inlinable: Table<DefIndex, bool>,
 
 - optional:
     attributes: Table<DefIndex, LazyArray<ast::Attribute>>,
@@ -404,7 +412,7 @@ define_tables! {
     // so we can take their names, visibilities etc from other encoded tables.
     module_children_non_reexports: Table<DefIndex, LazyArray<DefIndex>>,
     associated_item_or_field_def_ids: Table<DefIndex, LazyArray<DefIndex>>,
-    opt_def_kind: Table<DefIndex, DefKind>,
+    def_kind: Table<DefIndex, DefKind>,
     visibility: Table<DefIndex, LazyValue<ty::Visibility<DefIndex>>>,
     def_span: Table<DefIndex, LazyValue<Span>>,
     def_ident_span: Table<DefIndex, LazyValue<Span>>,
@@ -427,7 +435,6 @@ define_tables! {
     object_lifetime_default: Table<DefIndex, LazyValue<ObjectLifetimeDefault>>,
     optimized_mir: Table<DefIndex, LazyValue<mir::Body<'static>>>,
     mir_for_ctfe: Table<DefIndex, LazyValue<mir::Body<'static>>>,
-    cross_crate_inlinable: Table<DefIndex, bool>,
     closure_saved_names_of_captured_variables: Table<DefIndex, LazyValue<IndexVec<FieldIdx, Symbol>>>,
     mir_coroutine_witnesses: Table<DefIndex, LazyValue<mir::CoroutineLayout<'static>>>,
     promoted_mir: Table<DefIndex, LazyValue<IndexVec<mir::Promoted, mir::Body<'static>>>>,
@@ -442,7 +449,7 @@ define_tables! {
     rendered_const: Table<DefIndex, LazyValue<String>>,
     asyncness: Table<DefIndex, ty::Asyncness>,
     fn_arg_names: Table<DefIndex, LazyArray<Ident>>,
-    coroutine_kind: Table<DefIndex, LazyValue<hir::CoroutineKind>>,
+    coroutine_kind: Table<DefIndex, hir::CoroutineKind>,
     trait_def: Table<DefIndex, LazyValue<ty::TraitDef>>,
     trait_item_def_id: Table<DefIndex, RawDefId>,
     expn_that_defined: Table<DefIndex, LazyValue<ExpnId>>,

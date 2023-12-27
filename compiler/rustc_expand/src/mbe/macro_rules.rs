@@ -207,13 +207,13 @@ fn expand_macro<'cx>(
     match try_success_result {
         Ok((i, named_matches)) => {
             let (rhs, rhs_span): (&mbe::Delimited, DelimSpan) = match &rhses[i] {
-                mbe::TokenTree::Delimited(span, delimited) => (&delimited, *span),
-                _ => cx.span_bug(sp, "malformed macro rhs"),
+                mbe::TokenTree::Delimited(span, _, delimited) => (&delimited, *span),
+                _ => cx.dcx().span_bug(sp, "malformed macro rhs"),
             };
             let arm_span = rhses[i].span();
 
             // rhs has holes ( `$id` and `$(...)` that need filled)
-            let mut tts = match transcribe(cx, &named_matches, &rhs, rhs_span, transparency) {
+            let mut tts = match transcribe(cx, &named_matches, rhs, rhs_span, transparency) {
                 Ok(tts) => tts,
                 Err(mut err) => {
                     err.emit();
@@ -235,6 +235,13 @@ fn expand_macro<'cx>(
                         ) => {
                             target_sp.open = source_sp.open.with_ctxt(ctxt);
                             target_sp.close = source_sp.close.with_ctxt(ctxt);
+                        }
+                        (
+                            TokenTree::Delimited(target_sp, ..),
+                            mbe::TokenTree::MetaVar(source_sp, ..),
+                        ) => {
+                            target_sp.open = source_sp.with_ctxt(ctxt);
+                            target_sp.close = source_sp.with_ctxt(ctxt).shrink_to_hi();
                         }
                         _ => {
                             let sp = rhs_tt.span().with_ctxt(ctxt);
@@ -395,7 +402,7 @@ pub fn compile_declarative_macro(
     };
     let dummy_syn_ext = || (mk_syn_ext(Box::new(macro_rules_dummy_expander)), Vec::new());
 
-    let diag = &sess.parse_sess.span_diagnostic;
+    let dcx = &sess.parse_sess.dcx;
     let lhs_nm = Ident::new(sym::lhs, def.span);
     let rhs_nm = Ident::new(sym::rhs, def.span);
     let tt_spec = Some(NonterminalKind::TT);
@@ -475,17 +482,14 @@ pub fn compile_declarative_macro(
 
                 let s = parse_failure_msg(&token);
                 let sp = token.span.substitute_dummy(def.span);
-                let mut err = sess.parse_sess.span_diagnostic.struct_span_err(sp, s);
+                let mut err = sess.dcx().struct_span_err(sp, s);
                 err.span_label(sp, msg);
                 annotate_doc_comment(&mut err, sess.source_map(), sp);
                 err.emit();
                 return dummy_syn_ext();
             }
             Error(sp, msg) => {
-                sess.parse_sess
-                    .span_diagnostic
-                    .struct_span_err(sp.substitute_dummy(def.span), msg)
-                    .emit();
+                sess.dcx().struct_span_err(sp.substitute_dummy(def.span), msg).emit();
                 return dummy_syn_ext();
             }
             ErrorReported(_) => {
@@ -511,13 +515,13 @@ pub fn compile_declarative_macro(
                     )
                     .pop()
                     .unwrap();
-                    valid &= check_lhs_nt_follows(&sess.parse_sess, &def, &tt);
+                    valid &= check_lhs_nt_follows(&sess.parse_sess, def, &tt);
                     return tt;
                 }
-                sess.parse_sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
+                sess.dcx().span_bug(def.span, "wrong-structured lhs")
             })
             .collect::<Vec<mbe::TokenTree>>(),
-        _ => sess.parse_sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs"),
+        _ => sess.dcx().span_bug(def.span, "wrong-structured lhs"),
     };
 
     let rhses = match &argument_map[&MacroRulesNormalizedIdent::new(rhs_nm)] {
@@ -536,10 +540,10 @@ pub fn compile_declarative_macro(
                     .pop()
                     .unwrap();
                 }
-                sess.parse_sess.span_diagnostic.span_bug(def.span, "wrong-structured rhs")
+                sess.dcx().span_bug(def.span, "wrong-structured rhs")
             })
             .collect::<Vec<mbe::TokenTree>>(),
-        _ => sess.parse_sess.span_diagnostic.span_bug(def.span, "wrong-structured rhs"),
+        _ => sess.dcx().span_bug(def.span, "wrong-structured rhs"),
     };
 
     for rhs in &rhses {
@@ -556,10 +560,10 @@ pub fn compile_declarative_macro(
     let (transparency, transparency_error) = attr::find_transparency(&def.attrs, macro_rules);
     match transparency_error {
         Some(TransparencyError::UnknownTransparency(value, span)) => {
-            diag.span_err(span, format!("unknown macro transparency: `{value}`"));
+            dcx.span_err(span, format!("unknown macro transparency: `{value}`"));
         }
         Some(TransparencyError::MultipleTransparencyAttrs(old_span, new_span)) => {
-            diag.span_err(vec![old_span, new_span], "multiple macro transparency attributes");
+            dcx.span_err(vec![old_span, new_span], "multiple macro transparency attributes");
         }
         None => {}
     }
@@ -592,10 +596,10 @@ pub fn compile_declarative_macro(
             .map(|lhs| {
                 // Ignore the delimiters around the matcher.
                 match lhs {
-                    mbe::TokenTree::Delimited(_, delimited) => {
+                    mbe::TokenTree::Delimited(.., delimited) => {
                         mbe::macro_parser::compute_locs(&delimited.tts)
                     }
-                    _ => sess.parse_sess.span_diagnostic.span_bug(def.span, "malformed macro lhs"),
+                    _ => sess.dcx().span_bug(def.span, "malformed macro lhs"),
                 }
             })
             .collect()
@@ -618,11 +622,11 @@ pub fn compile_declarative_macro(
 fn check_lhs_nt_follows(sess: &ParseSess, def: &ast::Item, lhs: &mbe::TokenTree) -> bool {
     // lhs is going to be like TokenTree::Delimited(...), where the
     // entire lhs is those tts. Or, it can be a "bare sequence", not wrapped in parens.
-    if let mbe::TokenTree::Delimited(_, delimited) = lhs {
+    if let mbe::TokenTree::Delimited(.., delimited) = lhs {
         check_matcher(sess, def, &delimited.tts)
     } else {
         let msg = "invalid macro matcher; matchers must be contained in balanced delimiters";
-        sess.span_diagnostic.span_err(lhs.span(), msg);
+        sess.dcx.span_err(lhs.span(), msg);
         false
     }
     // we don't abort on errors on rejection, the driver will do that for us
@@ -648,10 +652,7 @@ fn is_empty_token_tree(sess: &ParseSess, seq: &mbe::SequenceRepetition) -> bool 
                         iter.next();
                     }
                     let span = t.span.to(now.span);
-                    sess.span_diagnostic.span_note_without_error(
-                        span,
-                        "doc comments are ignored in matcher position",
-                    );
+                    sess.dcx.span_note(span, "doc comments are ignored in matcher position");
                 }
                 mbe::TokenTree::Sequence(_, sub_seq)
                     if (sub_seq.kleene.op == mbe::KleeneOp::ZeroOrMore
@@ -673,7 +674,7 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[mbe::TokenTree]) -> bool {
             | TokenTree::MetaVar(..)
             | TokenTree::MetaVarDecl(..)
             | TokenTree::MetaVarExpr(..) => (),
-            TokenTree::Delimited(_, del) => {
+            TokenTree::Delimited(.., del) => {
                 if !check_lhs_no_empty_seq(sess, &del.tts) {
                     return false;
                 }
@@ -681,7 +682,7 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[mbe::TokenTree]) -> bool {
             TokenTree::Sequence(span, seq) => {
                 if is_empty_token_tree(sess, seq) {
                     let sp = span.entire();
-                    sess.span_diagnostic.span_err(sp, "repetition matches empty token tree");
+                    sess.dcx.span_err(sp, "repetition matches empty token tree");
                     return false;
                 }
                 if !check_lhs_no_empty_seq(sess, &seq.tts) {
@@ -698,7 +699,7 @@ fn check_rhs(sess: &ParseSess, rhs: &mbe::TokenTree) -> bool {
     match *rhs {
         mbe::TokenTree::Delimited(..) => return true,
         _ => {
-            sess.span_diagnostic.span_err(rhs.span(), "macro rhs must be delimited");
+            sess.dcx.span_err(rhs.span(), "macro rhs must be delimited");
         }
     }
     false
@@ -707,21 +708,21 @@ fn check_rhs(sess: &ParseSess, rhs: &mbe::TokenTree) -> bool {
 fn check_matcher(sess: &ParseSess, def: &ast::Item, matcher: &[mbe::TokenTree]) -> bool {
     let first_sets = FirstSets::new(matcher);
     let empty_suffix = TokenSet::empty();
-    let err = sess.span_diagnostic.err_count();
+    let err = sess.dcx.err_count();
     check_matcher_core(sess, def, &first_sets, matcher, &empty_suffix);
-    err == sess.span_diagnostic.err_count()
+    err == sess.dcx.err_count()
 }
 
 fn has_compile_error_macro(rhs: &mbe::TokenTree) -> bool {
     match rhs {
-        mbe::TokenTree::Delimited(_sp, d) => {
+        mbe::TokenTree::Delimited(.., d) => {
             let has_compile_error = d.tts.array_windows::<3>().any(|[ident, bang, args]| {
                 if let mbe::TokenTree::Token(ident) = ident
                     && let TokenKind::Ident(ident, _) = ident.kind
                     && ident == sym::compile_error
                     && let mbe::TokenTree::Token(bang) = bang
                     && let TokenKind::Not = bang.kind
-                    && let mbe::TokenTree::Delimited(_, del) = args
+                    && let mbe::TokenTree::Delimited(.., del) = args
                     && del.delim != Delimiter::Invisible
                 {
                     true
@@ -778,7 +779,7 @@ impl<'tt> FirstSets<'tt> {
                     | TokenTree::MetaVarExpr(..) => {
                         first.replace_with(TtHandle::TtRef(tt));
                     }
-                    TokenTree::Delimited(span, delimited) => {
+                    TokenTree::Delimited(span, _, delimited) => {
                         build_recur(sets, &delimited.tts);
                         first.replace_with(TtHandle::from_token_kind(
                             token::OpenDelim(delimited.delim),
@@ -847,7 +848,7 @@ impl<'tt> FirstSets<'tt> {
                     first.add_one(TtHandle::TtRef(tt));
                     return first;
                 }
-                TokenTree::Delimited(span, delimited) => {
+                TokenTree::Delimited(span, _, delimited) => {
                     first.add_one(TtHandle::from_token_kind(
                         token::OpenDelim(delimited.delim),
                         span.open,
@@ -927,7 +928,7 @@ impl<'tt> TtHandle<'tt> {
     fn get(&'tt self) -> &'tt mbe::TokenTree {
         match self {
             TtHandle::TtRef(tt) => tt,
-            TtHandle::Token(token_tt) => &token_tt,
+            TtHandle::Token(token_tt) => token_tt,
         }
     }
 }
@@ -1092,7 +1093,7 @@ fn check_matcher_core<'tt>(
                     suffix_first = build_suffix_first();
                 }
             }
-            TokenTree::Delimited(span, d) => {
+            TokenTree::Delimited(span, _, d) => {
                 let my_suffix = TokenSet::singleton(TtHandle::from_token_kind(
                     token::CloseDelim(d.delim),
                     span.close,
@@ -1170,7 +1171,7 @@ fn check_matcher_core<'tt>(
                             Some(NonterminalKind::PatParam { inferred: false }),
                         ));
                         sess.buffer_lint_with_diagnostic(
-                            &RUST_2021_INCOMPATIBLE_OR_PATTERNS,
+                            RUST_2021_INCOMPATIBLE_OR_PATTERNS,
                             span,
                             ast::CRATE_NODE_ID,
                             "the meaning of the `pat` fragment specifier is changing in Rust 2021, which may affect this macro",
@@ -1188,7 +1189,7 @@ fn check_matcher_core<'tt>(
                             };
 
                             let sp = next_token.span();
-                            let mut err = sess.span_diagnostic.struct_span_err(
+                            let mut err = sess.dcx.struct_span_err(
                                 sp,
                                 format!(
                                     "`${name}:{frag}` {may_be} followed by `{next}`, which \
@@ -1407,7 +1408,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
 
 fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
     match tt {
-        mbe::TokenTree::Token(token) => pprust::token_to_string(&token).into(),
+        mbe::TokenTree::Token(token) => pprust::token_to_string(token).into(),
         mbe::TokenTree::MetaVar(_, name) => format!("${name}"),
         mbe::TokenTree::MetaVarDecl(_, name, Some(kind)) => format!("${name}:{kind}"),
         mbe::TokenTree::MetaVarDecl(_, name, None) => format!("${name}:"),

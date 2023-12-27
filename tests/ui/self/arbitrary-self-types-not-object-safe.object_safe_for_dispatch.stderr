@@ -17,6 +17,6 @@ LL |     fn foo(self: &Rc<Self>) -> usize;
    = help: only type `usize` implements the trait, consider using it directly instead
    = note: required for the cast from `Rc<usize>` to `Rc<dyn Foo>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0038`.

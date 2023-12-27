@@ -27,8 +27,8 @@
 
 #![allow(rustc::potential_query_instability)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
+#![doc(rust_logo)]
+#![feature(rustdoc_internals)]
 #![feature(array_windows)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
@@ -85,18 +85,14 @@ mod redundant_semicolon;
 mod reference_casting;
 mod traits;
 mod types;
+mod unit_bindings;
 mod unused;
 
 pub use array_into_iter::ARRAY_INTO_ITER;
 
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_fluent_macro::fluent_messages;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::lint::builtin::{
-    BARE_TRAIT_OBJECTS, ELIDED_LIFETIMES_IN_PATHS, EXPLICIT_OUTLIVES_REQUIREMENTS,
-};
 
 use array_into_iter::ArrayIntoIter;
 use async_fn_in_trait::AsyncFnInTrait;
@@ -123,6 +119,7 @@ use redundant_semicolon::*;
 use reference_casting::*;
 use traits::*;
 use types::*;
+use unit_bindings::*;
 use unused::*;
 
 /// Useful for other parts of the compiler / Clippy.
@@ -136,7 +133,7 @@ pub use rustc_session::lint::Level::{self, *};
 pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Lint, LintId};
 pub use rustc_session::lint::{LintPass, LintVec};
 
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     levels::provide(providers);
@@ -179,7 +176,6 @@ early_lint_methods!(
             IncompleteInternalFeatures: IncompleteInternalFeatures,
             RedundantSemicolons: RedundantSemicolons,
             UnusedDocComment: UnusedDocComment,
-            UnexpectedCfgs: UnexpectedCfgs,
         ]
     ]
 );
@@ -203,6 +199,7 @@ late_lint_methods!(
             InvalidReferenceCasting: InvalidReferenceCasting,
             // Depends on referenced function signatures in expressions
             UnusedResults: UnusedResults,
+            UnitBindings: UnitBindings,
             NonUpperCaseGlobals: NonUpperCaseGlobals,
             NonShorthandFieldPatterns: NonShorthandFieldPatterns,
             UnusedAllocation: UnusedAllocation,
@@ -510,6 +507,11 @@ fn register_builtins(store: &mut LintStore) {
         "invalid_alignment",
         "converted into hard error, see PR #104616 \
          <https://github.com/rust-lang/rust/pull/104616> for more information",
+    );
+    store.register_removed(
+        "implied_bounds_entailment",
+        "converted into hard error, see PR #117984 \
+        <https://github.com/rust-lang/rust/pull/117984> for more information",
     );
 }
 

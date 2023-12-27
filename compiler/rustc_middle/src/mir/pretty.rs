@@ -1,23 +1,18 @@
 use std::collections::BTreeSet;
-use std::fmt::{self, Debug, Display, Write as _};
+use std::fmt::{Display, Write as _};
 use std::fs;
 use std::io::{self, Write as _};
 use std::path::{Path, PathBuf};
 
 use super::graphviz::write_mir_fn_graphviz;
 use super::spanview::write_mir_fn_spanview;
-use either::Either;
 use rustc_ast::InlineAsmTemplatePiece;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def_id::DefId;
-use rustc_index::Idx;
 use rustc_middle::mir::interpret::{
-    alloc_range, read_target_uint, AllocBytes, AllocId, Allocation, ConstAllocation, GlobalAlloc,
-    Pointer, Provenance,
+    alloc_range, read_target_uint, AllocBytes, AllocId, Allocation, GlobalAlloc, Pointer,
+    Provenance,
 };
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, *};
-use rustc_middle::ty::{self, TyCtxt};
 use rustc_target::abi::Size;
 
 const INDENT: &str = "    ";
@@ -632,7 +627,11 @@ where
                 w,
                 "{:A$} // {}{}",
                 indented_body,
-                if tcx.sess.verbose() { format!("{current_location:?}: ") } else { String::new() },
+                if tcx.sess.verbose_internals() {
+                    format!("{current_location:?}: ")
+                } else {
+                    String::new()
+                },
                 comment(tcx, statement.source_info),
                 A = ALIGN,
             )?;
@@ -657,7 +656,11 @@ where
             w,
             "{:A$} // {}{}",
             indented_terminator,
-            if tcx.sess.verbose() { format!("{current_location:?}: ") } else { String::new() },
+            if tcx.sess.verbose_internals() {
+                format!("{current_location:?}: ")
+            } else {
+                String::new()
+            },
             comment(tcx, data.terminator().source_info),
             A = ALIGN,
         )?;
@@ -942,13 +945,13 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             Ref(region, borrow_kind, ref place) => {
                 let kind_str = match borrow_kind {
                     BorrowKind::Shared => "",
-                    BorrowKind::Shallow => "shallow ",
+                    BorrowKind::Fake => "fake ",
                     BorrowKind::Mut { .. } => "mut ",
                 };
 
                 // When printing regions, add trailing space if necessary.
                 let print_region = ty::tls::with(|tcx| {
-                    tcx.sess.verbose() || tcx.sess.opts.unstable_opts.identify_regions
+                    tcx.sess.verbose_internals() || tcx.sess.opts.unstable_opts.identify_regions
                 });
                 let region = if print_region {
                     let mut region = region.to_string();
@@ -1337,13 +1340,13 @@ pub fn write_allocations<'tcx>(
     fn alloc_ids_from_alloc(
         alloc: ConstAllocation<'_>,
     ) -> impl DoubleEndedIterator<Item = AllocId> + '_ {
-        alloc.inner().provenance().ptrs().values().map(|id| *id)
+        alloc.inner().provenance().ptrs().values().map(|p| p.alloc_id())
     }
 
     fn alloc_ids_from_const_val(val: ConstValue<'_>) -> impl Iterator<Item = AllocId> + '_ {
         match val {
             ConstValue::Scalar(interpret::Scalar::Ptr(ptr, _)) => {
-                Either::Left(std::iter::once(ptr.provenance))
+                Either::Left(std::iter::once(ptr.provenance.alloc_id()))
             }
             ConstValue::Scalar(interpret::Scalar::Int { .. }) => Either::Right(std::iter::empty()),
             ConstValue::ZeroSized => Either::Right(std::iter::empty()),
@@ -1673,7 +1676,7 @@ fn pretty_print_const_value_tcx<'tcx>(
 ) -> fmt::Result {
     use crate::ty::print::PrettyPrinter;
 
-    if tcx.sess.verbose() {
+    if tcx.sess.verbose_internals() {
         fmt.write_str(&format!("ConstValue({ct:?}: {ty})"))?;
         return Ok(());
     }

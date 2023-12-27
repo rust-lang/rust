@@ -11,6 +11,6 @@ help: consider constraining the associated type `<C as O>::M` to `u8`
 LL | impl<C: O<M = u8>> U<C> for u16 {
    |          ++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

@@ -1,9 +1,9 @@
 //! This crate contains implementations of built-in macros and other code generating facilities
 //! injecting code into the crate before it is lowered to HIR.
 
-#![cfg_attr(not(bootstrap), allow(internal_features))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
+#![allow(internal_features)]
+#![feature(rustdoc_internals)]
+#![doc(rust_logo)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(array_windows)]
 #![feature(box_patterns)]
@@ -23,10 +23,8 @@ extern crate tracing;
 
 use crate::deriving::*;
 
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
 use rustc_expand::base::{MacroExpanderFn, ResolverExpand, SyntaxExtensionKind};
 use rustc_expand::proc_macro::BangProcMacro;
-use rustc_fluent_macro::fluent_messages;
 use rustc_span::symbol::sym;
 
 mod alloc_error_handler;
@@ -59,7 +57,7 @@ pub mod proc_macro_harness;
 pub mod standard_library_imports;
 pub mod test_harness;
 
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
     let mut register = |name, kind| resolver.register_builtin_macro(name, kind);

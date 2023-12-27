@@ -7,6 +7,6 @@ LL | fn start<T>(_main: fn() -> T, _argc: isize, _argv: u8, _sigpipe: u8) -> isi
    = note: expected signature `fn(fn() -> _, _, *const *const u8, _) -> _`
               found signature `fn(fn() -> _, _, u8, _) -> _`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

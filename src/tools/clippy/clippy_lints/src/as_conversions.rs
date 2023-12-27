@@ -3,7 +3,7 @@ use clippy_utils::is_from_proc_macro;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -48,11 +48,10 @@ declare_lint_pass!(AsConversions => [AS_CONVERSIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for AsConversions {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
-        if in_external_macro(cx.sess(), expr.span) || is_from_proc_macro(cx, expr) {
-            return;
-        }
-
-        if let ExprKind::Cast(_, _) = expr.kind {
+        if let ExprKind::Cast(_, _) = expr.kind
+            && !in_external_macro(cx.sess(), expr.span)
+            && !is_from_proc_macro(cx, expr)
+        {
             span_lint_and_help(
                 cx,
                 AS_CONVERSIONS,

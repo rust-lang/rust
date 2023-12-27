@@ -13,6 +13,6 @@ LL ~ pub fn print_values<I: IntoIterator>(values: &I)
 LL ~ where <I as IntoIterator>::Item: std::fmt::Display {
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

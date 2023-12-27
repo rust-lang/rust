@@ -41,12 +41,12 @@
 //! - u.visit_with(visitor)
 //! ```
 
-use rustc_data_structures::sync::Lrc;
 use rustc_index::{Idx, IndexVec};
 use std::fmt;
 use std::ops::ControlFlow;
 
 use crate::Interner;
+use crate::Lrc;
 
 /// This trait is implemented for every type that can be visited,
 /// providing the skeleton of the traversal.
@@ -82,7 +82,11 @@ pub trait TypeSuperVisitable<I: Interner>: TypeVisitable<I> {
 /// method defined for every type of interest. Each such method has a default
 /// that recurses into the type's fields in a non-custom fashion.
 pub trait TypeVisitor<I: Interner>: Sized {
+    #[cfg(feature = "nightly")]
     type BreakTy = !;
+
+    #[cfg(not(feature = "nightly"))]
+    type BreakTy;
 
     fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &I::Binder<T>) -> ControlFlow<Self::BreakTy>
     where

@@ -1319,7 +1319,7 @@ impl Step for CodegenBackend {
                 return None;
             }
 
-            if self.compiler.host.contains("windows") {
+            if self.compiler.host.is_windows() {
                 builder.info(
                     "dist currently disabled for windows by rustc_codegen_cranelift. skipping",
                 );
@@ -1630,13 +1630,10 @@ impl Step for Extended {
             prepare("rust-analysis");
             prepare("clippy");
             prepare("rust-analyzer");
-            for tool in &["rust-docs", "rust-demangler", "miri"] {
+            for tool in &["rust-docs", "rust-demangler", "miri", "rustc-codegen-cranelift"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
-            }
-            if builder.config.rust_codegen_backends.contains(&INTERNER.intern_str("cranelift")) {
-                prepare("rustc-codegen-cranelift");
             }
             // create an 'uninstall' package
             builder.install(&etc.join("pkg/postinstall"), &pkg.join("uninstall"), 0o755);
@@ -1661,7 +1658,7 @@ impl Step for Extended {
             builder.run(&mut cmd);
         }
 
-        if target.contains("windows") {
+        if target.is_windows() {
             let exe = tmp.join("exe");
             let _ = fs::remove_dir_all(&exe);
 

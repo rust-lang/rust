@@ -57,9 +57,9 @@ This API is completely unstable and subject to change.
 
 #![allow(rustc::potential_query_instability)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
-#![cfg_attr(not(bootstrap), allow(internal_features))]
+#![doc(rust_logo)]
+#![feature(rustdoc_internals)]
+#![allow(internal_features)]
 #![feature(box_patterns)]
 #![feature(control_flow_enum)]
 #![feature(if_let_guard)]
@@ -99,8 +99,6 @@ pub mod structured_errors;
 mod variance;
 
 use rustc_errors::ErrorGuaranteed;
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_fluent_macro::fluent_messages;
 use rustc_hir as hir;
 use rustc_middle::middle;
 use rustc_middle::query::Providers;
@@ -115,7 +113,7 @@ use astconv::{AstConv, OnlySelfBounds};
 use bounds::Bounds;
 use rustc_hir::def::DefKind;
 
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi, span: Span) {
     const CONVENTIONS_UNSTABLE: &str = "`C`, `cdecl`, `aapcs`, `win64`, `sysv64` or `efiapi`";
@@ -149,7 +147,7 @@ fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi
         (true, false) => CONVENTIONS_UNSTABLE,
     };
 
-    tcx.sess.emit_err(errors::VariadicFunctionCompatibleConvention { span, conventions });
+    tcx.dcx().emit_err(errors::VariadicFunctionCompatibleConvention { span, conventions });
 }
 
 pub fn provide(providers: &mut Providers) {
@@ -211,8 +209,8 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
         tcx.hir().for_each_module(|module| tcx.ensure().check_mod_item_types(module))
     });
 
-    // HACK: `check_mod_type_wf` may spuriously emit errors due to `delay_span_bug`, even if those errors
-    // only actually get emitted in `check_mod_item_types`.
+    // HACK: `check_mod_type_wf` may spuriously emit errors due to `span_delayed_bug`, even if
+    // those errors only actually get emitted in `check_mod_item_types`.
     errs?;
 
     if tcx.features().rustc_attrs {
@@ -236,7 +234,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
 
     tcx.ensure().check_unused_traits(());
 
-    if let Some(reported) = tcx.sess.has_errors() { Err(reported) } else { Ok(()) }
+    if let Some(reported) = tcx.dcx().has_errors() { Err(reported) } else { Ok(()) }
 }
 
 /// A quasi-deprecated helper used in rustdoc and clippy to get

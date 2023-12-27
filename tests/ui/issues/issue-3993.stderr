@@ -10,6 +10,6 @@ note: the function `fly` is defined here
 LL |     fn fly() {}
    |     ^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0603`.

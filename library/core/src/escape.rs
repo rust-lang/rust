@@ -21,12 +21,16 @@ pub(crate) fn escape_ascii_into(output: &mut [ascii::Char; 4], byte: u8) -> Rang
         b'\\' => backslash(ascii::Char::ReverseSolidus),
         b'\'' => backslash(ascii::Char::Apostrophe),
         b'\"' => backslash(ascii::Char::QuotationMark),
-        _ => if let Some(a) = byte.as_ascii() && !byte.is_ascii_control() {
-            ([a, ascii::Char::Null, ascii::Char::Null, ascii::Char::Null], 1)
-        } else {
-            let hi = HEX_DIGITS[usize::from(byte >> 4)];
-            let lo = HEX_DIGITS[usize::from(byte & 0xf)];
-            ([ascii::Char::ReverseSolidus, ascii::Char::SmallX, hi, lo], 4)
+        _ => {
+            if let Some(a) = byte.as_ascii()
+                && !byte.is_ascii_control()
+            {
+                ([a, ascii::Char::Null, ascii::Char::Null, ascii::Char::Null], 1)
+            } else {
+                let hi = HEX_DIGITS[usize::from(byte >> 4)];
+                let lo = HEX_DIGITS[usize::from(byte & 0xf)];
+                ([ascii::Char::ReverseSolidus, ascii::Char::SmallX, hi, lo], 4)
+            }
         }
     };
     *output = data;

@@ -145,7 +145,7 @@
 
 use core::alloc::Allocator;
 use core::fmt;
-use core::iter::{FusedIterator, InPlaceIterable, SourceIter, TrustedLen};
+use core::iter::{FusedIterator, InPlaceIterable, SourceIter, TrustedFused, TrustedLen};
 use core::mem::{self, swap, ManuallyDrop};
 use core::num::NonZeroUsize;
 use core::ops::{Deref, DerefMut};
@@ -1542,6 +1542,10 @@ impl<T, A: Allocator> ExactSizeIterator for IntoIter<T, A> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T, A: Allocator> FusedIterator for IntoIter<T, A> {}
 
+#[doc(hidden)]
+#[unstable(issue = "none", feature = "trusted_fused")]
+unsafe impl<T, A: Allocator> TrustedFused for IntoIter<T, A> {}
+
 #[stable(feature = "default_iters", since = "1.70.0")]
 impl<T> Default for IntoIter<T> {
     /// Creates an empty `binary_heap::IntoIter`.
@@ -1571,7 +1575,10 @@ unsafe impl<T, A: Allocator> SourceIter for IntoIter<T, A> {
 
 #[unstable(issue = "none", feature = "inplace_iteration")]
 #[doc(hidden)]
-unsafe impl<I, A: Allocator> InPlaceIterable for IntoIter<I, A> {}
+unsafe impl<I, A: Allocator> InPlaceIterable for IntoIter<I, A> {
+    const EXPAND_BY: Option<NonZeroUsize> = NonZeroUsize::new(1);
+    const MERGE_BY: Option<NonZeroUsize> = NonZeroUsize::new(1);
+}
 
 unsafe impl<I> AsVecIntoIter for IntoIter<I> {
     type Item = I;

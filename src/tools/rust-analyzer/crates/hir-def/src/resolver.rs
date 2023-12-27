@@ -588,6 +588,24 @@ impl Resolver {
             _ => None,
         })
     }
+
+    pub fn type_owner(&self) -> Option<TypeOwnerId> {
+        self.scopes().find_map(|scope| match scope {
+            Scope::BlockScope(_) => None,
+            &Scope::GenericParams { def, .. } => Some(def.into()),
+            &Scope::ImplDefScope(id) => Some(id.into()),
+            &Scope::AdtScope(adt) => Some(adt.into()),
+            Scope::ExprScope(it) => Some(it.owner.into()),
+        })
+    }
+
+    pub fn impl_def(&self) -> Option<ImplId> {
+        self.scopes().find_map(|scope| match scope {
+            Scope::ImplDefScope(def) => Some(*def),
+            _ => None,
+        })
+    }
+
     /// `expr_id` is required to be an expression id that comes after the top level expression scope in the given resolver
     #[must_use]
     pub fn update_to_inner_scope(
@@ -1071,7 +1089,6 @@ impl HasResolver for TypeOwnerId {
             TypeOwnerId::TypeAliasId(it) => it.resolver(db),
             TypeOwnerId::ImplId(it) => it.resolver(db),
             TypeOwnerId::EnumVariantId(it) => it.resolver(db),
-            TypeOwnerId::ModuleId(it) => it.resolver(db),
         }
     }
 }

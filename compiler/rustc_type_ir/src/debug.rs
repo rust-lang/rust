@@ -1,36 +1,46 @@
-use crate::{Interner, UniverseIndex};
+use crate::{ConstVid, InferCtxtLike, Interner, TyVid, UniverseIndex};
 
 use core::fmt;
 use std::marker::PhantomData;
-
-pub trait InferCtxtLike {
-    type Interner: Interner;
-
-    fn universe_of_ty(&self, ty: <Self::Interner as Interner>::InferTy) -> Option<UniverseIndex>;
-
-    fn universe_of_lt(
-        &self,
-        lt: <Self::Interner as Interner>::InferRegion,
-    ) -> Option<UniverseIndex>;
-
-    fn universe_of_ct(&self, ct: <Self::Interner as Interner>::InferConst)
-    -> Option<UniverseIndex>;
-}
 
 pub struct NoInfcx<I>(PhantomData<I>);
 
 impl<I: Interner> InferCtxtLike for NoInfcx<I> {
     type Interner = I;
 
-    fn universe_of_ty(&self, _ty: <I as Interner>::InferTy) -> Option<UniverseIndex> {
+    fn interner(&self) -> Self::Interner {
+        unreachable!()
+    }
+
+    fn universe_of_ty(&self, _ty: TyVid) -> Option<UniverseIndex> {
         None
     }
 
-    fn universe_of_ct(&self, _ct: <I as Interner>::InferConst) -> Option<UniverseIndex> {
+    fn universe_of_lt(&self, _lt: I::InferRegion) -> Option<UniverseIndex> {
         None
     }
 
-    fn universe_of_lt(&self, _lt: <I as Interner>::InferRegion) -> Option<UniverseIndex> {
+    fn universe_of_ct(&self, _ct: ConstVid) -> Option<UniverseIndex> {
+        None
+    }
+
+    fn root_ty_var(&self, vid: TyVid) -> TyVid {
+        vid
+    }
+
+    fn probe_ty_var(&self, _vid: TyVid) -> Option<I::Ty> {
+        None
+    }
+
+    fn opportunistic_resolve_lt_var(&self, _vid: I::InferRegion) -> Option<I::Region> {
+        None
+    }
+
+    fn root_ct_var(&self, vid: ConstVid) -> ConstVid {
+        vid
+    }
+
+    fn probe_ct_var(&self, _vid: ConstVid) -> Option<I::Const> {
         None
     }
 }

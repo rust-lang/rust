@@ -18,6 +18,6 @@ help: if there were a trait named `Example` with associated type `Item` implemen
 LL |     for<B> <B as Example>::Item: Send,
    |            ~~~~~~~~~~~~~~~~~~~~
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0223`.

@@ -42,7 +42,6 @@ use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap};
-use rustc_hir::Node;
 use rustc_index::IndexVec;
 use rustc_macros::HashStable;
 use rustc_query_system::ich::StableHashingContext;
@@ -66,27 +65,20 @@ use std::ops::ControlFlow;
 use std::{fmt, str};
 
 pub use crate::ty::diagnostics::*;
-pub use rustc_type_ir::AliasKind::*;
 pub use rustc_type_ir::ConstKind::{
     Bound as BoundCt, Error as ErrorCt, Expr as ExprCt, Infer as InferCt, Param as ParamCt,
     Placeholder as PlaceholderCt, Unevaluated, Value,
 };
-pub use rustc_type_ir::DynKind::*;
-pub use rustc_type_ir::InferTy::*;
-pub use rustc_type_ir::RegionKind::*;
-pub use rustc_type_ir::TyKind::*;
 pub use rustc_type_ir::*;
 
 pub use self::binding::BindingMode;
 pub use self::binding::BindingMode::*;
 pub use self::closure::{
     is_ancestor_or_same_capture, place_to_string_for_capture, BorrowKind, CaptureInfo,
-    CapturedPlace, ClosureKind, ClosureTypeInfo, MinCaptureInformationMap, MinCaptureList,
+    CapturedPlace, ClosureTypeInfo, MinCaptureInformationMap, MinCaptureList,
     RootVariableMinCaptureList, UpvarCapture, UpvarId, UpvarPath, CAPTURE_STRUCT_LOCAL,
 };
-pub use self::consts::{
-    Const, ConstData, ConstInt, Expr, InferConst, ScalarInt, UnevaluatedConst, ValTree,
-};
+pub use self::consts::{Const, ConstData, ConstInt, Expr, ScalarInt, UnevaluatedConst, ValTree};
 pub use self::context::{
     tls, CtxtInterners, DeducedParamAttrs, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt, TyCtxtFeed,
 };
@@ -96,13 +88,13 @@ pub use self::parameterized::ParameterizedOverTcx;
 pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::BoundRegionKind::*;
 pub use self::sty::{
-    AliasTy, Article, Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar,
+    AliasTy, Article, Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind,
     BoundVariableKind, CanonicalPolyFnSig, ClauseKind, ClosureArgs, ClosureArgsParts, ConstKind,
-    ConstVid, CoroutineArgs, CoroutineArgsParts, EarlyBoundRegion, EffectVid, ExistentialPredicate,
-    ExistentialProjection, ExistentialTraitRef, FnSig, FreeRegion, GenSig, InlineConstArgs,
-    InlineConstArgsParts, ParamConst, ParamTy, PolyExistentialPredicate, PolyExistentialProjection,
-    PolyExistentialTraitRef, PolyFnSig, PolyGenSig, PolyTraitRef, PredicateKind, Region,
-    RegionKind, RegionVid, TraitRef, TyKind, TypeAndMut, UpvarArgs, VarianceDiagInfo,
+    CoroutineArgs, CoroutineArgsParts, EarlyParamRegion, ExistentialPredicate,
+    ExistentialProjection, ExistentialTraitRef, FnSig, GenSig, InlineConstArgs,
+    InlineConstArgsParts, LateParamRegion, ParamConst, ParamTy, PolyExistentialPredicate,
+    PolyExistentialProjection, PolyExistentialTraitRef, PolyFnSig, PolyTraitRef, PredicateKind,
+    Region, RegionKind, RegionVid, TraitRef, TyKind, TypeAndMut, UpvarArgs, VarianceDiagInfo,
 };
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{
@@ -160,7 +152,7 @@ pub struct ResolverOutputs {
 
 #[derive(Debug)]
 pub struct ResolverGlobalCtxt {
-    pub visibilities: FxHashMap<LocalDefId, Visibility>,
+    pub visibilities_for_hashing: Vec<(LocalDefId, Visibility)>,
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     pub expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
     pub effective_visibilities: EffectiveVisibilities,
@@ -200,13 +192,10 @@ pub struct ResolverAstLowering {
 
     pub next_node_id: ast::NodeId,
 
-    pub node_id_to_def_id: FxHashMap<ast::NodeId, LocalDefId>,
+    pub node_id_to_def_id: NodeMap<LocalDefId>,
     pub def_id_to_node_id: IndexVec<LocalDefId, ast::NodeId>,
 
     pub trait_map: NodeMap<Vec<hir::TraitCandidate>>,
-    /// A small map keeping true kinds of built-in macros that appear to be fn-like on
-    /// the surface (`macro` items in libcore), but are actually attributes or derives.
-    pub builtin_macro_kinds: FxHashMap<LocalDefId, MacroKind>,
     /// List functions and methods for which lifetime elision was successful.
     pub lifetime_elision_allowed: FxHashSet<ast::NodeId>,
 
@@ -301,25 +290,41 @@ pub enum Visibility<Id = LocalDefId> {
     Restricted(Id),
 }
 
+impl Visibility {
+    pub fn to_string(self, def_id: LocalDefId, tcx: TyCtxt<'_>) -> String {
+        match self {
+            ty::Visibility::Restricted(restricted_id) => {
+                if restricted_id.is_top_level_module() {
+                    "pub(crate)".to_string()
+                } else if restricted_id == tcx.parent_module_from_def_id(def_id).to_local_def_id() {
+                    "pub(self)".to_string()
+                } else {
+                    format!("pub({})", tcx.item_name(restricted_id.to_def_id()))
+                }
+            }
+            ty::Visibility::Public => "pub".to_string(),
+        }
+    }
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
 pub enum BoundConstness {
-    /// `T: Trait`
+    /// `Type: Trait`
     NotConst,
-    /// `T: ~const Trait`
+    /// `Type: const Trait`
+    Const,
+    /// `Type: ~const Trait`
     ///
     /// Requires resolving to const only when we are in a const context.
     ConstIfConst,
 }
 
 impl BoundConstness {
-    /// Reduce `self` and `constness` to two possible combined states instead of four.
-    pub fn and(&mut self, constness: hir::Constness) -> hir::Constness {
-        match (constness, self) {
-            (hir::Constness::Const, BoundConstness::ConstIfConst) => hir::Constness::Const,
-            (_, this) => {
-                *this = BoundConstness::NotConst;
-                hir::Constness::NotConst
-            }
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::NotConst => "",
+            Self::Const => "const",
+            Self::ConstIfConst => "~const",
         }
     }
 }
@@ -328,7 +333,7 @@ impl fmt::Display for BoundConstness {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::NotConst => f.write_str("normal"),
-            Self::ConstIfConst => f.write_str("`~const`"),
+            _ => write!(f, "`{self}`"),
         }
     }
 }
@@ -463,7 +468,15 @@ pub struct CReaderCacheKey {
 #[rustc_pass_by_value]
 pub struct Ty<'tcx>(Interned<'tcx, WithCachedTypeInfo<TyKind<'tcx>>>);
 
-impl ty::EarlyBoundRegion {
+impl<'tcx> IntoKind for Ty<'tcx> {
+    type Kind = TyKind<'tcx>;
+
+    fn kind(self) -> TyKind<'tcx> {
+        *self.kind()
+    }
+}
+
+impl EarlyParamRegion {
     /// Does this early bound region have a name? Early bound regions normally
     /// always have names except when using anonymous lifetimes (`'_`).
     pub fn has_name(&self) -> bool {
@@ -542,6 +555,10 @@ impl<'tcx> Predicate<'tcx> {
     pub fn allow_normalization(self) -> bool {
         match self.kind().skip_binder() {
             PredicateKind::Clause(ClauseKind::WellFormed(_)) => false,
+            // `NormalizesTo` is only used in the new solver, so this shouldn't
+            // matter. Normalizing `term` would be 'wrong' however, as it changes whether
+            // `normalizes-to(<T as Trait>::Assoc, <T as Trait>::Assoc)` holds.
+            PredicateKind::NormalizesTo(..) => false,
             PredicateKind::Clause(ClauseKind::Trait(_))
             | PredicateKind::Clause(ClauseKind::RegionOutlives(_))
             | PredicateKind::Clause(ClauseKind::TypeOutlives(_))
@@ -549,7 +566,6 @@ impl<'tcx> Predicate<'tcx> {
             | PredicateKind::Clause(ClauseKind::ConstArgHasType(..))
             | PredicateKind::AliasRelate(..)
             | PredicateKind::ObjectSafe(_)
-            | PredicateKind::ClosureKind(_, _, _)
             | PredicateKind::Subtype(_)
             | PredicateKind::Coerce(_)
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(_))
@@ -902,7 +918,7 @@ impl<'tcx> Term<'tcx> {
                     &*((ptr & !TAG_MASK) as *const WithCachedTypeInfo<ty::TyKind<'tcx>>),
                 ))),
                 CONST_TAG => TermKind::Const(ty::Const(Interned::new_unchecked(
-                    &*((ptr & !TAG_MASK) as *const ty::ConstData<'tcx>),
+                    &*((ptr & !TAG_MASK) as *const WithCachedTypeInfo<ty::ConstData<'tcx>>),
                 ))),
                 _ => core::intrinsics::unreachable(),
             }
@@ -969,7 +985,7 @@ impl<'tcx> TermKind<'tcx> {
             TermKind::Const(ct) => {
                 // Ensure we can use the tag bits.
                 assert_eq!(mem::align_of_val(&*ct.0.0) & TAG_MASK, 0);
-                (CONST_TAG, ct.0.0 as *const ty::ConstData<'tcx> as usize)
+                (CONST_TAG, ct.0.0 as *const WithCachedTypeInfo<ty::ConstData<'tcx>> as usize)
             }
         };
 
@@ -1080,6 +1096,33 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
     pub fn projection_def_id(&self) -> DefId {
         // Ok to skip binder since trait `DefId` does not care about regions.
         self.skip_binder().projection_ty.def_id
+    }
+}
+
+/// Used by the new solver. Unlike a `ProjectionPredicate` this can only be
+/// proven by actually normalizing `alias`.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
+pub struct NormalizesTo<'tcx> {
+    pub alias: AliasTy<'tcx>,
+    pub term: Term<'tcx>,
+}
+
+impl<'tcx> NormalizesTo<'tcx> {
+    pub fn self_ty(self) -> Ty<'tcx> {
+        self.alias.self_ty()
+    }
+
+    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> NormalizesTo<'tcx> {
+        Self { alias: self.alias.with_self_ty(tcx, self_ty), ..self }
+    }
+
+    pub fn trait_def_id(self, tcx: TyCtxt<'tcx>) -> DefId {
+        self.alias.trait_def_id(tcx)
+    }
+
+    pub fn def_id(self) -> DefId {
+        self.alias.def_id
     }
 }
 
@@ -1264,6 +1307,12 @@ impl<'tcx> ToPredicate<'tcx, Clause<'tcx>> for PolyProjectionPredicate<'tcx> {
     }
 }
 
+impl<'tcx> ToPredicate<'tcx> for NormalizesTo<'tcx> {
+    fn to_predicate(self, tcx: TyCtxt<'tcx>) -> Predicate<'tcx> {
+        PredicateKind::NormalizesTo(self).to_predicate(tcx)
+    }
+}
+
 impl<'tcx> Predicate<'tcx> {
     pub fn to_opt_poly_trait_pred(self) -> Option<PolyTraitPredicate<'tcx>> {
         let predicate = self.kind();
@@ -1271,13 +1320,13 @@ impl<'tcx> Predicate<'tcx> {
             PredicateKind::Clause(ClauseKind::Trait(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(ClauseKind::Projection(..))
             | PredicateKind::Clause(ClauseKind::ConstArgHasType(..))
+            | PredicateKind::NormalizesTo(..)
             | PredicateKind::AliasRelate(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(ClauseKind::RegionOutlives(..))
             | PredicateKind::Clause(ClauseKind::WellFormed(..))
             | PredicateKind::ObjectSafe(..)
-            | PredicateKind::ClosureKind(..)
             | PredicateKind::Clause(ClauseKind::TypeOutlives(..))
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)
@@ -1291,34 +1340,14 @@ impl<'tcx> Predicate<'tcx> {
             PredicateKind::Clause(ClauseKind::Projection(t)) => Some(predicate.rebind(t)),
             PredicateKind::Clause(ClauseKind::Trait(..))
             | PredicateKind::Clause(ClauseKind::ConstArgHasType(..))
+            | PredicateKind::NormalizesTo(..)
             | PredicateKind::AliasRelate(..)
             | PredicateKind::Subtype(..)
             | PredicateKind::Coerce(..)
             | PredicateKind::Clause(ClauseKind::RegionOutlives(..))
             | PredicateKind::Clause(ClauseKind::WellFormed(..))
             | PredicateKind::ObjectSafe(..)
-            | PredicateKind::ClosureKind(..)
             | PredicateKind::Clause(ClauseKind::TypeOutlives(..))
-            | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
-            | PredicateKind::ConstEquate(..)
-            | PredicateKind::Ambiguous => None,
-        }
-    }
-
-    pub fn to_opt_type_outlives(self) -> Option<PolyTypeOutlivesPredicate<'tcx>> {
-        let predicate = self.kind();
-        match predicate.skip_binder() {
-            PredicateKind::Clause(ClauseKind::TypeOutlives(data)) => Some(predicate.rebind(data)),
-            PredicateKind::Clause(ClauseKind::Trait(..))
-            | PredicateKind::Clause(ClauseKind::ConstArgHasType(..))
-            | PredicateKind::Clause(ClauseKind::Projection(..))
-            | PredicateKind::AliasRelate(..)
-            | PredicateKind::Subtype(..)
-            | PredicateKind::Coerce(..)
-            | PredicateKind::Clause(ClauseKind::RegionOutlives(..))
-            | PredicateKind::Clause(ClauseKind::WellFormed(..))
-            | PredicateKind::ObjectSafe(..)
-            | PredicateKind::ClosureKind(..)
             | PredicateKind::Clause(ClauseKind::ConstEvaluatable(..))
             | PredicateKind::ConstEquate(..)
             | PredicateKind::Ambiguous => None,
@@ -1377,7 +1406,7 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
     }
 
     pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
-        (&self).into_iter()
+        self.into_iter()
     }
 }
 
@@ -1451,10 +1480,10 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         other: &Self,
         opaque_def_id: LocalDefId,
         tcx: TyCtxt<'tcx>,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'tcx> {
         if let Some(diag) = tcx
             .sess
-            .diagnostic()
+            .dcx()
             .steal_diagnostic(tcx.def_span(opaque_def_id), StashKey::OpaqueHiddenTypeMismatch)
         {
             diag.cancel();
@@ -1465,7 +1494,7 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         } else {
             TypeMismatchReason::PreviousUse { span: self.span }
         };
-        tcx.sess.create_err(OpaqueHiddenTypeMismatch {
+        tcx.dcx().create_err(OpaqueHiddenTypeMismatch {
             self_ty: self.ty,
             other_ty: other.ty,
             other_span: other.span,
@@ -1518,7 +1547,43 @@ pub struct Placeholder<T> {
 
 pub type PlaceholderRegion = Placeholder<BoundRegion>;
 
+impl PlaceholderLike for PlaceholderRegion {
+    fn universe(self) -> UniverseIndex {
+        self.universe
+    }
+
+    fn var(self) -> BoundVar {
+        self.bound.var
+    }
+
+    fn with_updated_universe(self, ui: UniverseIndex) -> Self {
+        Placeholder { universe: ui, ..self }
+    }
+
+    fn new(ui: UniverseIndex, var: BoundVar) -> Self {
+        Placeholder { universe: ui, bound: BoundRegion { var, kind: BoundRegionKind::BrAnon } }
+    }
+}
+
 pub type PlaceholderType = Placeholder<BoundTy>;
+
+impl PlaceholderLike for PlaceholderType {
+    fn universe(self) -> UniverseIndex {
+        self.universe
+    }
+
+    fn var(self) -> BoundVar {
+        self.bound.var
+    }
+
+    fn with_updated_universe(self, ui: UniverseIndex) -> Self {
+        Placeholder { universe: ui, ..self }
+    }
+
+    fn new(ui: UniverseIndex, var: BoundVar) -> Self {
+        Placeholder { universe: ui, bound: BoundTy { var, kind: BoundTyKind::Anon } }
+    }
+}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
 #[derive(TyEncodable, TyDecodable, PartialOrd, Ord)]
@@ -1528,6 +1593,24 @@ pub struct BoundConst<'tcx> {
 }
 
 pub type PlaceholderConst = Placeholder<BoundVar>;
+
+impl PlaceholderLike for PlaceholderConst {
+    fn universe(self) -> UniverseIndex {
+        self.universe
+    }
+
+    fn var(self) -> BoundVar {
+        self.bound
+    }
+
+    fn with_updated_universe(self, ui: UniverseIndex) -> Self {
+        Placeholder { universe: ui, ..self }
+    }
+
+    fn new(ui: UniverseIndex, var: BoundVar) -> Self {
+        Placeholder { universe: ui, bound: var }
+    }
+}
 
 /// When type checking, we use the `ParamEnv` to track
 /// details about the set of where-clauses that are in scope at this
@@ -2021,7 +2104,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
 
         for attr in self.get_attrs(did, sym::repr) {
-            for r in attr::parse_repr_attr(&self.sess, attr) {
+            for r in attr::parse_repr_attr(self.sess, attr) {
                 flags.insert(match r {
                     attr::ReprRust => ReprFlags::empty(),
                     attr::ReprC => ReprFlags::IS_C,
@@ -2256,7 +2339,7 @@ impl<'tcx> TyCtxt<'tcx> {
     // FIXME(@lcnr): Remove this function.
     pub fn get_attrs_unchecked(self, did: DefId) -> &'tcx [ast::Attribute] {
         if let Some(did) = did.as_local() {
-            self.hir().attrs(self.hir().local_def_id_to_hir_id(did))
+            self.hir().attrs(self.local_def_id_to_hir_id(did))
         } else {
             self.item_attrs(did)
         }
@@ -2271,7 +2354,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let did: DefId = did.into();
         let filter_fn = move |a: &&ast::Attribute| a.has_name(attr);
         if let Some(did) = did.as_local() {
-            self.hir().attrs(self.hir().local_def_id_to_hir_id(did)).iter().filter(filter_fn)
+            self.hir().attrs(self.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
         } else if cfg!(debug_assertions) && rustc_feature::is_builtin_only_local(attr) {
             bug!("tried to access the `only_local` attribute `{}` from an extern crate", attr);
         } else {
@@ -2287,9 +2370,9 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         'tcx: 'attr,
     {
-        let filter_fn = move |a: &&ast::Attribute| a.path_matches(&attr);
+        let filter_fn = move |a: &&ast::Attribute| a.path_matches(attr);
         if let Some(did) = did.as_local() {
-            self.hir().attrs(self.hir().local_def_id_to_hir_id(did)).iter().filter(filter_fn)
+            self.hir().attrs(self.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
         } else {
             self.item_attrs(did).iter().filter(filter_fn)
         }
@@ -2495,22 +2578,6 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-/// Yields the parent function's `LocalDefId` if `def_id` is an `impl Trait` definition.
-pub fn is_impl_trait_defn(tcx: TyCtxt<'_>, def_id: DefId) -> Option<LocalDefId> {
-    let def_id = def_id.as_local()?;
-    if let Node::Item(item) = tcx.hir().get_by_def_id(def_id) {
-        if let hir::ItemKind::OpaqueTy(ref opaque_ty) = item.kind {
-            return match opaque_ty.origin {
-                hir::OpaqueTyOrigin::FnReturn(parent) | hir::OpaqueTyOrigin::AsyncFn(parent) => {
-                    Some(parent)
-                }
-                hir::OpaqueTyOrigin::TyAlias { .. } => None,
-            };
-        }
-    }
-    None
-}
-
 pub fn int_ty(ity: ast::IntTy) -> IntTy {
     match ity {
         ast::IntTy::Isize => IntTy::Isize,
@@ -2599,9 +2666,7 @@ pub struct SymbolName<'tcx> {
 
 impl<'tcx> SymbolName<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, name: &str) -> SymbolName<'tcx> {
-        SymbolName {
-            name: unsafe { str::from_utf8_unchecked(tcx.arena.alloc_slice(name.as_bytes())) },
-        }
+        SymbolName { name: tcx.arena.alloc_str(name) }
     }
 }
 

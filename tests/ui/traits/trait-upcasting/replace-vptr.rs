@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(trait_upcasting)]
-
 trait A {
     fn foo_a(&self);
 }

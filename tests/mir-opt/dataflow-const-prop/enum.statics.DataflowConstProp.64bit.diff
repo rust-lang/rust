@@ -118,7 +118,7 @@
   }
   
   ALLOC2 (static: RC, size: 8, align: 8) {
-      ╾ALLOC0╼                         │ ╾──────╼
+      ╾ALLOC0<imm>╼                         │ ╾──────╼
   }
   
   ALLOC0 (size: 8, align: 4) {

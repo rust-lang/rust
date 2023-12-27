@@ -113,7 +113,7 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
             // FIXME(const-generic-body): We should not get the return type in this way.
             ctx.return_ty = c
                 .lookup(db.upcast())
-                .thing
+                .expected_ty
                 .box_any()
                 .downcast::<InTypeConstIdMetadata>()
                 .unwrap()
@@ -420,7 +420,19 @@ pub struct InferenceResult {
     standard_types: InternedStandardTypes,
     /// Stores the types which were implicitly dereferenced in pattern binding modes.
     pub pat_adjustments: FxHashMap<PatId, Vec<Ty>>,
-    pub binding_modes: ArenaMap<BindingId, BindingMode>,
+    /// Stores the binding mode (`ref` in `let ref x = 2`) of bindings.
+    ///
+    /// This one is tied to the `PatId` instead of `BindingId`, because in some rare cases, a binding in an
+    /// or pattern can have multiple binding modes. For example:
+    /// ```
+    /// fn foo(mut slice: &[u32]) -> usize {
+    ///    slice = match slice {
+    ///        [0, rest @ ..] | rest => rest,
+    ///    };
+    /// }
+    /// ```
+    /// the first `rest` has implicit `ref` binding mode, but the second `rest` binding mode is `move`.
+    pub binding_modes: ArenaMap<PatId, BindingMode>,
     pub expr_adjustments: FxHashMap<ExprId, Vec<Adjustment>>,
     pub(crate) closure_info: FxHashMap<ClosureId, (Vec<CapturedItem>, FnTrait)>,
     // FIXME: remove this field
@@ -1140,20 +1152,15 @@ impl<'a> InferenceContext<'a> {
                 (ty, variant)
             }
             TypeNs::TypeAliasId(it) => {
-                let container = it.lookup(self.db.upcast()).container;
-                let parent_subst = match container {
-                    ItemContainerId::TraitId(id) => {
-                        let subst = TyBuilder::subst_for_def(self.db, id, None)
-                            .fill_with_inference_vars(&mut self.table)
-                            .build();
-                        Some(subst)
-                    }
-                    // Type aliases do not exist in impls.
-                    _ => None,
+                let resolved_seg = match unresolved {
+                    None => path.segments().last().unwrap(),
+                    Some(n) => path.segments().get(path.segments().len() - n - 1).unwrap(),
                 };
-                let ty = TyBuilder::def_ty(self.db, it.into(), parent_subst)
-                    .fill_with_inference_vars(&mut self.table)
-                    .build();
+                let substs =
+                    ctx.substs_from_path_segment(resolved_seg, Some(it.into()), true, None);
+                let ty = self.db.ty(it.into());
+                let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
+
                 self.resolve_variant_on_alias(ty, unresolved, mod_path)
             }
             TypeNs::AdtSelfType(_) => {

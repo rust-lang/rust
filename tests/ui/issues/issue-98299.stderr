@@ -9,6 +9,6 @@ help: consider giving this closure parameter an explicit type, where the value o
 LL |     SmallCString::try_from(p).map(|cstr: SmallCString<N>| cstr);
    |                                        +++++++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0282`.

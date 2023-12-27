@@ -34,7 +34,7 @@ def serialize_and_parse(configure_args, bootstrap_args=None):
         # Verify this is actually valid TOML.
         tomllib.loads(build.config_toml)
     except ImportError:
-        print("warning: skipping TOML validation, need at least python 3.11", file=sys.stderr)
+        print("WARNING: skipping TOML validation, need at least python 3.11", file=sys.stderr)
     return build
 
 

@@ -11,402 +11,9 @@ use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
-use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
-
-/// Features that control behaviour of rustc, rather than the codegen.
-pub const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
-
-// When adding features to the below lists
-// check whether they're named already elsewhere in rust
-// e.g. in stdarch and whether the given name matches LLVM's
-// if it doesn't, to_llvm_feature in llvm_util in rustc_codegen_llvm needs to be adapted
-//
-// When adding a new feature, be particularly mindful of features that affect function ABIs. Those
-// need to be treated very carefully to avoid introducing unsoundness! This often affects features
-// that enable/disable hardfloat support (see https://github.com/rust-lang/rust/issues/116344 for an
-// example of this going wrong), but features enabling new SIMD registers are also a concern (see
-// https://github.com/rust-lang/rust/issues/116558 for an example of this going wrong).
-//
-// Stabilizing a target feature (setting the 2nd component of the pair to `None`) requires t-lang
-// approval.
-
-const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
-    // tidy-alphabetical-start
-    ("aclass", Some(sym::arm_target_feature)),
-    ("aes", Some(sym::arm_target_feature)),
-    ("crc", Some(sym::arm_target_feature)),
-    ("d32", Some(sym::arm_target_feature)),
-    ("dotprod", Some(sym::arm_target_feature)),
-    ("dsp", Some(sym::arm_target_feature)),
-    ("fp-armv8", Some(sym::arm_target_feature)),
-    ("i8mm", Some(sym::arm_target_feature)),
-    ("mclass", Some(sym::arm_target_feature)),
-    ("neon", Some(sym::arm_target_feature)),
-    ("rclass", Some(sym::arm_target_feature)),
-    ("sha2", Some(sym::arm_target_feature)),
-    // This is needed for inline assembly, but shouldn't be stabilized as-is
-    // since it should be enabled per-function using #[instruction_set], not
-    // #[target_feature].
-    ("thumb-mode", Some(sym::arm_target_feature)),
-    ("thumb2", Some(sym::arm_target_feature)),
-    ("trustzone", Some(sym::arm_target_feature)),
-    ("v5te", Some(sym::arm_target_feature)),
-    ("v6", Some(sym::arm_target_feature)),
-    ("v6k", Some(sym::arm_target_feature)),
-    ("v6t2", Some(sym::arm_target_feature)),
-    ("v7", Some(sym::arm_target_feature)),
-    ("v8", Some(sym::arm_target_feature)),
-    ("vfp2", Some(sym::arm_target_feature)),
-    ("vfp3", Some(sym::arm_target_feature)),
-    ("vfp4", Some(sym::arm_target_feature)),
-    ("virtualization", Some(sym::arm_target_feature)),
-    // tidy-alphabetical-end
-];
-
-const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
-    // tidy-alphabetical-start
-    // FEAT_AES
-    ("aes", None),
-    // FEAT_BF16
-    ("bf16", None),
-    // FEAT_BTI
-    ("bti", None),
-    // FEAT_CRC
-    ("crc", None),
-    // FEAT_DIT
-    ("dit", None),
-    // FEAT_DotProd
-    ("dotprod", None),
-    // FEAT_DPB
-    ("dpb", None),
-    // FEAT_DPB2
-    ("dpb2", None),
-    // FEAT_F32MM
-    ("f32mm", None),
-    // FEAT_F64MM
-    ("f64mm", None),
-    // FEAT_FCMA
-    ("fcma", None),
-    // FEAT_FHM
-    ("fhm", None),
-    // FEAT_FLAGM
-    ("flagm", None),
-    // FEAT_FP16
-    ("fp16", None),
-    // FEAT_FRINTTS
-    ("frintts", None),
-    // FEAT_I8MM
-    ("i8mm", None),
-    // FEAT_JSCVT
-    ("jsconv", None),
-    // FEAT_LOR
-    ("lor", None),
-    // FEAT_LSE
-    ("lse", None),
-    // FEAT_MTE
-    ("mte", None),
-    // FEAT_AdvSimd & FEAT_FP
-    ("neon", None),
-    // FEAT_PAUTH (address authentication)
-    ("paca", None),
-    // FEAT_PAUTH (generic authentication)
-    ("pacg", None),
-    // FEAT_PAN
-    ("pan", None),
-    // FEAT_PMUv3
-    ("pmuv3", None),
-    // FEAT_RAND
-    ("rand", None),
-    // FEAT_RAS
-    ("ras", None),
-    // FEAT_RCPC
-    ("rcpc", None),
-    // FEAT_RCPC2
-    ("rcpc2", None),
-    // FEAT_RDM
-    ("rdm", None),
-    // FEAT_SB
-    ("sb", None),
-    // FEAT_SHA1 & FEAT_SHA256
-    ("sha2", None),
-    // FEAT_SHA512 & FEAT_SHA3
-    ("sha3", None),
-    // FEAT_SM3 & FEAT_SM4
-    ("sm4", None),
-    // FEAT_SPE
-    ("spe", None),
-    // FEAT_SSBS
-    ("ssbs", None),
-    // FEAT_SVE
-    ("sve", None),
-    // FEAT_SVE2
-    ("sve2", None),
-    // FEAT_SVE2_AES
-    ("sve2-aes", None),
-    // FEAT_SVE2_BitPerm
-    ("sve2-bitperm", None),
-    // FEAT_SVE2_SHA3
-    ("sve2-sha3", None),
-    // FEAT_SVE2_SM4
-    ("sve2-sm4", None),
-    // FEAT_TME
-    ("tme", None),
-    ("v8.1a", Some(sym::aarch64_ver_target_feature)),
-    ("v8.2a", Some(sym::aarch64_ver_target_feature)),
-    ("v8.3a", Some(sym::aarch64_ver_target_feature)),
-    ("v8.4a", Some(sym::aarch64_ver_target_feature)),
-    ("v8.5a", Some(sym::aarch64_ver_target_feature)),
-    ("v8.6a", Some(sym::aarch64_ver_target_feature)),
-    ("v8.7a", Some(sym::aarch64_ver_target_feature)),
-    // FEAT_VHE
-    ("vh", None),
-    // tidy-alphabetical-end
-];
-
-const AARCH64_TIED_FEATURES: &[&[&str]] = &[
-    &["paca", "pacg"], // Together these represent `pauth` in LLVM
-];
-
-const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
-    // tidy-alphabetical-start
-    ("adx", None),
-    ("aes", None),
-    ("avx", None),
-    ("avx2", None),
-    ("avx512bf16", Some(sym::avx512_target_feature)),
-    ("avx512bitalg", Some(sym::avx512_target_feature)),
-    ("avx512bw", Some(sym::avx512_target_feature)),
-    ("avx512cd", Some(sym::avx512_target_feature)),
-    ("avx512dq", Some(sym::avx512_target_feature)),
-    ("avx512er", Some(sym::avx512_target_feature)),
-    ("avx512f", Some(sym::avx512_target_feature)),
-    ("avx512ifma", Some(sym::avx512_target_feature)),
-    ("avx512pf", Some(sym::avx512_target_feature)),
-    ("avx512vbmi", Some(sym::avx512_target_feature)),
-    ("avx512vbmi2", Some(sym::avx512_target_feature)),
-    ("avx512vl", Some(sym::avx512_target_feature)),
-    ("avx512vnni", Some(sym::avx512_target_feature)),
-    ("avx512vp2intersect", Some(sym::avx512_target_feature)),
-    ("avx512vpopcntdq", Some(sym::avx512_target_feature)),
-    ("bmi1", None),
-    ("bmi2", None),
-    ("cmpxchg16b", None),
-    ("ermsb", Some(sym::ermsb_target_feature)),
-    ("f16c", None),
-    ("fma", None),
-    ("fxsr", None),
-    ("gfni", Some(sym::avx512_target_feature)),
-    ("lzcnt", None),
-    ("movbe", None),
-    ("pclmulqdq", None),
-    ("popcnt", None),
-    ("rdrand", None),
-    ("rdseed", None),
-    ("rtm", Some(sym::rtm_target_feature)),
-    ("sha", None),
-    ("sse", None),
-    ("sse2", None),
-    ("sse3", None),
-    ("sse4.1", None),
-    ("sse4.2", None),
-    ("sse4a", Some(sym::sse4a_target_feature)),
-    ("ssse3", None),
-    ("tbm", Some(sym::tbm_target_feature)),
-    ("vaes", Some(sym::avx512_target_feature)),
-    ("vpclmulqdq", Some(sym::avx512_target_feature)),
-    ("xsave", None),
-    ("xsavec", None),
-    ("xsaveopt", None),
-    ("xsaves", None),
-    // tidy-alphabetical-end
-];
-
-const HEXAGON_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
-    // tidy-alphabetical-start
-    ("hvx", Some(sym::hexagon_target_feature)),
-    ("hvx-length128b", Some(sym::hexagon_target_feature)),
-    // tidy-alphabetical-end
-];
-
-const POWERPC_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
-    // tidy-alphabetical-start
-    ("altivec", Some(sym::powerpc_target_feature)),
-    ("power10-vector", Some(sym::powerpc_target_feature)),
-    ("power8-altivec", Some(sym::powerpc_target_feature)),
-    ("power8-vector", Some(sym::powerpc_target_feature)),
-    ("power9-altivec", Some(sym::powerpc_target_feature)),
-    ("power9-vector", Some(sym::powerpc_target_feature)),
-    ("vsx", Some(sym::powerpc_target_feature)),
-    // tidy-alphabetical-end
-];
-
-const MIPS_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
-    // tidy-alphabetical-start
-    ("fp64", Some(sym::mips_target_feature)),
-    ("msa", Some(sym::mips_target_feature)),
-    ("virt", Some(sym::mips_target_feature)),
-    // tidy-alphabetical-end
-];
-
-const RISCV_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
-    // tidy-alphabetical-start
-    ("a", None),
-    ("c", None),
-    ("d", Some(sym::riscv_target_feature)),
-    ("e", Some(sym::riscv_target_feature)),
-    ("f", Some(sym::riscv_target_feature)),
-    ("m", None),
-    ("relax", Some(sym::riscv_target_feature)),
-    ("unaligned-scalar-mem", Some(sym::riscv_target_feature)),
-    ("v", Some(sym::riscv_target_feature)),
-    ("zba", None),
-    ("zbb", None),
-    ("zbc", None),
-    ("zbkb", None),
-    ("zbkc", None),
-    ("zbkx", None),
-    ("zbs", None),
-    ("zdinx", Some(sym::riscv_target_feature)),
-    ("zfh", Some(sym::riscv_target_feature)),
-    ("zfhmin", Some(sym::riscv_target_feature)),
-    ("zfinx", Some(sym::riscv_target_feature)),
-    ("zhinx", Some(sym::riscv_target_feature)),
-    ("zhinxmin", Some(sym::riscv_target_feature)),
-    ("zk", None),
-    ("zkn", None),
-    ("zknd", None),
-    ("zkne", None),
-    ("zknh", None),
-    ("zkr", None),
-    ("zks", None),
-    ("zksed", None),
-    ("zksh", None),
-    ("zkt", None),
-    // tidy-alphabetical-end
-];
-
-const WASM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
-    // tidy-alphabetical-start
-    ("atomics", Some(sym::wasm_target_feature)),
-    ("bulk-memory", Some(sym::wasm_target_feature)),
-    ("exception-handling", Some(sym::wasm_target_feature)),
-    ("multivalue", Some(sym::wasm_target_feature)),
-    ("mutable-globals", Some(sym::wasm_target_feature)),
-    ("nontrapping-fptoint", Some(sym::wasm_target_feature)),
-    ("reference-types", Some(sym::wasm_target_feature)),
-    ("relaxed-simd", Some(sym::wasm_target_feature)),
-    ("sign-ext", Some(sym::wasm_target_feature)),
-    ("simd128", None),
-    // tidy-alphabetical-end
-];
-
-const BPF_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[("alu32", Some(sym::bpf_target_feature))];
-
-const CSKY_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
-    // tidy-alphabetical-start
-    ("10e60", Some(sym::csky_target_feature)),
-    ("2e3", Some(sym::csky_target_feature)),
-    ("3e3r1", Some(sym::csky_target_feature)),
-    ("3e3r2", Some(sym::csky_target_feature)),
-    ("3e3r3", Some(sym::csky_target_feature)),
-    ("3e7", Some(sym::csky_target_feature)),
-    ("7e10", Some(sym::csky_target_feature)),
-    ("cache", Some(sym::csky_target_feature)),
-    ("doloop", Some(sym::csky_target_feature)),
-    ("dsp1e2", Some(sym::csky_target_feature)),
-    ("dspe60", Some(sym::csky_target_feature)),
-    ("e1", Some(sym::csky_target_feature)),
-    ("e2", Some(sym::csky_target_feature)),
-    ("edsp", Some(sym::csky_target_feature)),
-    ("elrw", Some(sym::csky_target_feature)),
-    ("float1e2", Some(sym::csky_target_feature)),
-    ("float1e3", Some(sym::csky_target_feature)),
-    ("float3e4", Some(sym::csky_target_feature)),
-    ("float7e60", Some(sym::csky_target_feature)),
-    ("floate1", Some(sym::csky_target_feature)),
-    ("hard-tp", Some(sym::csky_target_feature)),
-    ("high-registers", Some(sym::csky_target_feature)),
-    ("hwdiv", Some(sym::csky_target_feature)),
-    ("mp", Some(sym::csky_target_feature)),
-    ("mp1e2", Some(sym::csky_target_feature)),
-    ("nvic", Some(sym::csky_target_feature)),
-    ("trust", Some(sym::csky_target_feature)),
-    ("vdsp2e60f", Some(sym::csky_target_feature)),
-    ("vdspv1", Some(sym::csky_target_feature)),
-    ("vdspv2", Some(sym::csky_target_feature)),
-    // tidy-alphabetical-end
-    //fpu
-    // tidy-alphabetical-start
-    ("fdivdu", Some(sym::csky_target_feature)),
-    ("fpuv2_df", Some(sym::csky_target_feature)),
-    ("fpuv2_sf", Some(sym::csky_target_feature)),
-    ("fpuv3_df", Some(sym::csky_target_feature)),
-    ("fpuv3_hf", Some(sym::csky_target_feature)),
-    ("fpuv3_hi", Some(sym::csky_target_feature)),
-    ("fpuv3_sf", Some(sym::csky_target_feature)),
-    ("hard-float", Some(sym::csky_target_feature)),
-    ("hard-float-abi", Some(sym::csky_target_feature)),
-    // tidy-alphabetical-end
-];
-
-const LOONGARCH_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
-    // tidy-alphabetical-start
-    ("d", Some(sym::loongarch_target_feature)),
-    ("f", Some(sym::loongarch_target_feature)),
-    ("lasx", Some(sym::loongarch_target_feature)),
-    ("lbt", Some(sym::loongarch_target_feature)),
-    ("lsx", Some(sym::loongarch_target_feature)),
-    ("lvz", Some(sym::loongarch_target_feature)),
-    ("ual", Some(sym::loongarch_target_feature)),
-    // tidy-alphabetical-end
-];
-
-/// When rustdoc is running, provide a list of all known features so that all their respective
-/// primitives may be documented.
-///
-/// IMPORTANT: If you're adding another feature list above, make sure to add it to this iterator!
-pub fn all_known_features() -> impl Iterator<Item = (&'static str, Option<Symbol>)> {
-    std::iter::empty()
-        .chain(ARM_ALLOWED_FEATURES.iter())
-        .chain(AARCH64_ALLOWED_FEATURES.iter())
-        .chain(X86_ALLOWED_FEATURES.iter())
-        .chain(HEXAGON_ALLOWED_FEATURES.iter())
-        .chain(POWERPC_ALLOWED_FEATURES.iter())
-        .chain(MIPS_ALLOWED_FEATURES.iter())
-        .chain(RISCV_ALLOWED_FEATURES.iter())
-        .chain(WASM_ALLOWED_FEATURES.iter())
-        .chain(BPF_ALLOWED_FEATURES.iter())
-        .chain(CSKY_ALLOWED_FEATURES)
-        .chain(LOONGARCH_ALLOWED_FEATURES)
-        .cloned()
-}
-
-pub fn supported_target_features(sess: &Session) -> &'static [(&'static str, Option<Symbol>)] {
-    match &*sess.target.arch {
-        "arm" => ARM_ALLOWED_FEATURES,
-        "aarch64" => AARCH64_ALLOWED_FEATURES,
-        "x86" | "x86_64" => X86_ALLOWED_FEATURES,
-        "hexagon" => HEXAGON_ALLOWED_FEATURES,
-        "mips" | "mips32r6" | "mips64" | "mips64r6" => MIPS_ALLOWED_FEATURES,
-        "powerpc" | "powerpc64" => POWERPC_ALLOWED_FEATURES,
-        "riscv32" | "riscv64" => RISCV_ALLOWED_FEATURES,
-        "wasm32" | "wasm64" => WASM_ALLOWED_FEATURES,
-        "bpf" => BPF_ALLOWED_FEATURES,
-        "csky" => CSKY_ALLOWED_FEATURES,
-        "loongarch64" => LOONGARCH_ALLOWED_FEATURES,
-        _ => &[],
-    }
-}
-
-pub fn tied_target_features(sess: &Session) -> &'static [&'static [&'static str]] {
-    match &*sess.target.arch {
-        "aarch64" => AARCH64_TIED_FEATURES,
-        _ => &[],
-    }
-}
 
 pub fn from_target_feature(
     tcx: TyCtxt<'_>,
@@ -418,7 +25,7 @@ pub fn from_target_feature(
     let bad_item = |span| {
         let msg = "malformed `target_feature` attribute input";
         let code = "enable = \"..\"";
-        tcx.sess
+        tcx.dcx()
             .struct_span_err(span, msg)
             .span_suggestion(span, "must be of the form", code, Applicability::HasPlaceholders)
             .emit();
@@ -441,7 +48,7 @@ pub fn from_target_feature(
         target_features.extend(value.as_str().split(',').filter_map(|feature| {
             let Some(feature_gate) = supported_target_features.get(feature) else {
                 let msg = format!("the feature named `{feature}` is not valid for this target");
-                let mut err = tcx.sess.struct_span_err(item.span(), msg);
+                let mut err = tcx.dcx().struct_span_err(item.span(), msg);
                 err.span_label(item.span(), format!("`{feature}` is not valid for this target"));
                 if let Some(stripped) = feature.strip_prefix('+') {
                     let valid = supported_target_features.contains_key(stripped);
@@ -514,7 +121,7 @@ pub fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_s
     if let DefKind::AssocFn = tcx.def_kind(id) {
         let parent_id = tcx.local_parent(id);
         if let DefKind::Trait | DefKind::Impl { of_trait: true } = tcx.def_kind(parent_id) {
-            tcx.sess.emit_err(errors::TargetFeatureSafeTrait {
+            tcx.dcx().emit_err(errors::TargetFeatureSafeTrait {
                 span: attr_span,
                 def: tcx.def_span(id),
             });
@@ -529,11 +136,15 @@ pub(crate) fn provide(providers: &mut Providers) {
             if tcx.sess.opts.actually_rustdoc {
                 // rustdoc needs to be able to document functions that use all the features, so
                 // whitelist them all
-                all_known_features().map(|(a, b)| (a.to_string(), b)).collect()
+                rustc_target::target_features::all_known_features()
+                    .map(|(a, b)| (a.to_string(), b.as_feature_name()))
+                    .collect()
             } else {
-                supported_target_features(tcx.sess)
+                tcx.sess
+                    .target
+                    .supported_target_features()
                     .iter()
-                    .map(|&(a, b)| (a.to_string(), b))
+                    .map(|&(a, b)| (a.to_string(), b.as_feature_name()))
                     .collect()
             }
         },

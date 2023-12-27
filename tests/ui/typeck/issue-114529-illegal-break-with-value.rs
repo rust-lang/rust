@@ -17,4 +17,10 @@ fn main() {
         };
         51
     }];
+
+    while true {
+        break (|| { //~ ERROR `break` with value from a `while` loop
+            let local = 9;
+        });
+    }
 }

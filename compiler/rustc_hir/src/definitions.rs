@@ -8,8 +8,8 @@ pub use crate::def_id::DefPathHash;
 use crate::def_id::{CrateNum, DefIndex, LocalDefId, StableCrateId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::def_path_hash_map::DefPathHashMap;
 
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{Hash64, StableHasher};
+use rustc_data_structures::unord::UnordMap;
 use rustc_index::IndexVec;
 use rustc_span::symbol::{kw, sym, Symbol};
 
@@ -95,7 +95,7 @@ impl DefPathTable {
 #[derive(Debug)]
 pub struct Definitions {
     table: DefPathTable,
-    next_disambiguator: FxHashMap<(LocalDefId, DefPathData), u32>,
+    next_disambiguator: UnordMap<(LocalDefId, DefPathData), u32>,
 
     /// The [StableCrateId] of the local crate.
     stable_crate_id: StableCrateId,
@@ -246,6 +246,7 @@ impl DefPath {
     }
 }
 
+/// New variants should only be added in synchronization with `enum DefKind`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Encodable, Decodable)]
 pub enum DefPathData {
     // Root: these should only be used for the root nodes, because
@@ -271,7 +272,7 @@ pub enum DefPathData {
     /// Something in the lifetime namespace.
     LifetimeNs(Symbol),
     /// A closure expression.
-    ClosureExpr,
+    Closure,
 
     // Subportions of items:
     /// Implicit constructor for a unit or tuple-like struct or enum variant.
@@ -280,9 +281,7 @@ pub enum DefPathData {
     AnonConst,
     /// An existential `impl Trait` type node.
     /// Argument position `impl Trait` have a `TypeNs` with their pretty-printed name.
-    ImplTrait,
-    /// `impl Trait` generated associated type node.
-    ImplTraitAssocTy,
+    OpaqueTy,
 }
 
 impl Definitions {
@@ -403,16 +402,17 @@ impl DefPathData {
     pub fn get_opt_name(&self) -> Option<Symbol> {
         use self::DefPathData::*;
         match *self {
+            TypeNs(name) if name == kw::Empty => None,
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
-
-            Impl | ForeignMod | CrateRoot | Use | GlobalAsm | ClosureExpr | Ctor | AnonConst
-            | ImplTrait | ImplTraitAssocTy => None,
+            Impl | ForeignMod | CrateRoot | Use | GlobalAsm | Closure | Ctor | AnonConst
+            | OpaqueTy => None,
         }
     }
 
     pub fn name(&self) -> DefPathDataName {
         use self::DefPathData::*;
         match *self {
+            TypeNs(name) if name == kw::Empty => DefPathDataName::Anon { namespace: sym::opaque },
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => {
                 DefPathDataName::Named(name)
             }
@@ -422,10 +422,10 @@ impl DefPathData {
             ForeignMod => DefPathDataName::Anon { namespace: kw::Extern },
             Use => DefPathDataName::Anon { namespace: kw::Use },
             GlobalAsm => DefPathDataName::Anon { namespace: sym::global_asm },
-            ClosureExpr => DefPathDataName::Anon { namespace: sym::closure },
+            Closure => DefPathDataName::Anon { namespace: sym::closure },
             Ctor => DefPathDataName::Anon { namespace: sym::constructor },
             AnonConst => DefPathDataName::Anon { namespace: sym::constant },
-            ImplTrait | ImplTraitAssocTy => DefPathDataName::Anon { namespace: sym::opaque },
+            OpaqueTy => DefPathDataName::Anon { namespace: sym::opaque },
         }
     }
 }

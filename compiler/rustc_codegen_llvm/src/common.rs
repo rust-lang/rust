@@ -203,6 +203,7 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 unsafe {
                     llvm::LLVMSetInitializer(g, sc);
                     llvm::LLVMSetGlobalConstant(g, True);
+                    llvm::LLVMSetUnnamedAddress(g, llvm::UnnamedAddr::Global);
                     llvm::LLVMRustSetLinkage(g, llvm::Linkage::InternalLinkage);
                 }
                 (s.to_owned(), g)
@@ -245,8 +246,8 @@ impl<'ll, 'tcx> ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 }
             }
             Scalar::Ptr(ptr, _size) => {
-                let (alloc_id, offset) = ptr.into_parts();
-                let (base_addr, base_addr_space) = match self.tcx.global_alloc(alloc_id) {
+                let (prov, offset) = ptr.into_parts();
+                let (base_addr, base_addr_space) = match self.tcx.global_alloc(prov.alloc_id()) {
                     GlobalAlloc::Memory(alloc) => {
                         let init = const_alloc_to_llvm(self, alloc);
                         let alloc = alloc.inner();

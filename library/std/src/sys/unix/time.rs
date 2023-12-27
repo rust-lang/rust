@@ -23,11 +23,11 @@ struct Nanoseconds(u32);
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SystemTime {
-    pub(in crate::sys::unix) t: Timespec,
+    pub(crate) t: Timespec,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub(in crate::sys::unix) struct Timespec {
+pub(crate) struct Timespec {
     tv_sec: i64,
     tv_nsec: Nanoseconds,
 }
@@ -239,11 +239,11 @@ impl From<libc::timespec> for Timespec {
     not(target_arch = "riscv32")
 ))]
 #[repr(C)]
-pub(in crate::sys::unix) struct __timespec64 {
-    pub(in crate::sys::unix) tv_sec: i64,
+pub(crate) struct __timespec64 {
+    pub(crate) tv_sec: i64,
     #[cfg(target_endian = "big")]
     _padding: i32,
-    pub(in crate::sys::unix) tv_nsec: i32,
+    pub(crate) tv_nsec: i32,
     #[cfg(target_endian = "little")]
     _padding: i32,
 }
@@ -255,7 +255,7 @@ pub(in crate::sys::unix) struct __timespec64 {
     not(target_arch = "riscv32")
 ))]
 impl __timespec64 {
-    pub(in crate::sys::unix) fn new(tv_sec: i64, tv_nsec: i32) -> Self {
+    pub(crate) fn new(tv_sec: i64, tv_nsec: i32) -> Self {
         Self { tv_sec, tv_nsec, _padding: 0 }
     }
 }

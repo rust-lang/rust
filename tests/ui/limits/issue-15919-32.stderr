@@ -4,5 +4,5 @@ error: values of the type `[usize; usize::MAX]` are too big for the current arch
 LL |     let x = [0usize; 0xffff_ffff];
    |         ^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

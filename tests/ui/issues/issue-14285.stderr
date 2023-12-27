@@ -6,6 +6,6 @@ LL | fn foo<'a>(a: &dyn Foo) -> B<'a> {
 LL |     B(a)
    |     ^^^^ lifetime `'a` required
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0621`.

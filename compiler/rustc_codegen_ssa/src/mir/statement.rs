@@ -3,7 +3,6 @@ use rustc_middle::mir::NonDivergingIntrinsic;
 
 use super::FunctionCx;
 use super::LocalRef;
-use crate::traits::BuilderMethods;
 use crate::traits::*;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {

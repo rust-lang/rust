@@ -4,6 +4,6 @@ error[E0080]: evaluation of constant value failed
 LL |     = [0; (i8::MAX + 1) as usize];
    |           ^^^^^^^^^^^^^ attempt to compute `i8::MAX + 1_i8`, which would overflow
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0080`.

@@ -227,7 +227,7 @@
     test(no_crate_inject, attr(deny(warnings))),
     test(attr(allow(dead_code, deprecated, unused_variables, unused_mut)))
 )]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
+#![doc(rust_logo)]
 #![doc(cfg_hide(
     not(test),
     not(any(test, bootstrap)),
@@ -265,6 +265,7 @@
 //
 // Language features:
 // tidy-alphabetical-start
+#![cfg_attr(not(bootstrap), feature(cfg_sanitizer_cfi))]
 #![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
@@ -317,6 +318,7 @@
 #![feature(error_iter)]
 #![feature(exact_size_is_empty)]
 #![feature(exclusive_wrapper)]
+#![feature(exposed_provenance)]
 #![feature(extend_one)]
 #![feature(float_gamma)]
 #![feature(float_minimum_maximum)]
@@ -324,7 +326,6 @@
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
 #![feature(ip)]
-#![feature(ip_in_core)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_uninit_array)]
 #![feature(maybe_uninit_write_slice)]
@@ -340,6 +341,7 @@
 #![feature(round_ties_even)]
 #![feature(slice_internals)]
 #![feature(slice_ptr_get)]
+#![feature(slice_range)]
 #![feature(std_internals)]
 #![feature(str_internals)]
 #![feature(strict_provenance)]
@@ -494,8 +496,6 @@ pub use core::convert;
 pub use core::default;
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub use core::future;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::hash;
 #[stable(feature = "core_hint", since = "1.27.0")]
 pub use core::hint;
 #[stable(feature = "i128", since = "1.26.0")]
@@ -565,6 +565,7 @@ pub mod env;
 pub mod error;
 pub mod ffi;
 pub mod fs;
+pub mod hash;
 pub mod io;
 pub mod net;
 pub mod num;
@@ -583,9 +584,10 @@ pub mod time;
 #[unstable(feature = "portable_simd", issue = "86656")]
 mod std_float;
 
-#[doc = include_str!("../../portable-simd/crates/core_simd/src/core_simd_docs.md")]
 #[unstable(feature = "portable_simd", issue = "86656")]
 pub mod simd {
+    #![doc = include_str!("../../portable-simd/crates/core_simd/src/core_simd_docs.md")]
+
     #[doc(inline)]
     pub use crate::std_float::StdFloat;
     #[doc(inline)]
@@ -716,7 +718,7 @@ pub(crate) mod test_helpers {
     #[track_caller]
     pub(crate) fn test_rng() -> rand_xorshift::XorShiftRng {
         use core::hash::{BuildHasher, Hash, Hasher};
-        let mut hasher = crate::collections::hash_map::RandomState::new().build_hasher();
+        let mut hasher = crate::hash::RandomState::new().build_hasher();
         core::panic::Location::caller().hash(&mut hasher);
         let hc64 = hasher.finish();
         let seed_vec = hc64.to_le_bytes().into_iter().chain(0u8..8).collect::<Vec<u8>>();

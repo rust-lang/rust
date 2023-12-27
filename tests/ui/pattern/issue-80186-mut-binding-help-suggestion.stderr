@@ -6,5 +6,5 @@ LL |     let mut &x = &0;
    |
    = note: `mut` may be followed by `variable` and `variable @ pattern`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

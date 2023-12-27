@@ -48,9 +48,7 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         // (T1..Tn) and closures have same properties as T1..Tn --
         // check if *all* of them are trivial.
         ty::Tuple(tys) => tys.iter().all(|t| trivial_dropck_outlives(tcx, t)),
-        ty::Closure(_, ref args) => {
-            trivial_dropck_outlives(tcx, args.as_closure().tupled_upvars_ty())
-        }
+        ty::Closure(_, args) => trivial_dropck_outlives(tcx, args.as_closure().tupled_upvars_ty()),
 
         ty::Adt(def, _) => {
             if Some(def.did()) == tcx.lang_items().manually_drop() {
@@ -239,7 +237,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
                 // By the time this code runs, all type variables ought to
                 // be fully resolved.
 
-                tcx.sess.delay_span_bug(
+                tcx.dcx().span_delayed_bug(
                     span,
                     format!("upvar_tys for closure not found. Expected capture information for closure {ty}",),
                 );
@@ -288,7 +286,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             if !args.is_valid() {
                 // By the time this code runs, all type variables ought to
                 // be fully resolved.
-                tcx.sess.delay_span_bug(
+                tcx.dcx().span_delayed_bug(
                     span,
                     format!("upvar_tys for coroutine not found. Expected capture information for coroutine {ty}",),
                 );

@@ -2,7 +2,7 @@
 
 use std::iter;
 
-use hir_expand::{hygiene::Hygiene, InFile};
+use hir_expand::{span::SpanMapRef, InFile};
 use la_arena::ArenaMap;
 use syntax::ast;
 use triomphe::Arc;
@@ -34,22 +34,22 @@ impl RawVisibility {
         db: &dyn DefDatabase,
         node: InFile<Option<ast::Visibility>>,
     ) -> RawVisibility {
-        Self::from_ast_with_hygiene(db, node.value, &Hygiene::new(db.upcast(), node.file_id))
+        Self::from_ast_with_span_map(db, node.value, db.span_map(node.file_id).as_ref())
     }
 
-    pub(crate) fn from_ast_with_hygiene(
+    pub(crate) fn from_ast_with_span_map(
         db: &dyn DefDatabase,
         node: Option<ast::Visibility>,
-        hygiene: &Hygiene,
+        span_map: SpanMapRef<'_>,
     ) -> RawVisibility {
-        Self::from_ast_with_hygiene_and_default(db, node, RawVisibility::private(), hygiene)
+        Self::from_ast_with_span_map_and_default(db, node, RawVisibility::private(), span_map)
     }
 
-    pub(crate) fn from_ast_with_hygiene_and_default(
+    pub(crate) fn from_ast_with_span_map_and_default(
         db: &dyn DefDatabase,
         node: Option<ast::Visibility>,
         default: RawVisibility,
-        hygiene: &Hygiene,
+        span_map: SpanMapRef<'_>,
     ) -> RawVisibility {
         let node = match node {
             None => return default,
@@ -57,7 +57,7 @@ impl RawVisibility {
         };
         match node.kind() {
             ast::VisibilityKind::In(path) => {
-                let path = ModPath::from_src(db.upcast(), path, hygiene);
+                let path = ModPath::from_src(db.upcast(), path, span_map);
                 let path = match path {
                     None => return RawVisibility::private(),
                     Some(path) => path,
@@ -73,7 +73,7 @@ impl RawVisibility {
                 RawVisibility::Module(path)
             }
             ast::VisibilityKind::PubSelf => {
-                let path = ModPath::from_kind(PathKind::Plain);
+                let path = ModPath::from_kind(PathKind::Super(0));
                 RawVisibility::Module(path)
             }
             ast::VisibilityKind::Pub => RawVisibility::Public,

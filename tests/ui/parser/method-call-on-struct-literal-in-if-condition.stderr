@@ -9,5 +9,5 @@ help: you might need to surround the struct literal with parentheses
 LL |     if (Example { a: one(), }).is_pos() {
    |        +                     +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

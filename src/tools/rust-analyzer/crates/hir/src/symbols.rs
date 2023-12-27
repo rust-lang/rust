@@ -9,7 +9,7 @@ use hir_def::{
 };
 use hir_expand::{HirFileId, InFile};
 use hir_ty::db::HirDatabase;
-use syntax::{ast::HasName, AstNode, SmolStr, SyntaxNode, SyntaxNodePtr};
+use syntax::{ast::HasName, AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr};
 
 use crate::{Module, ModuleDef, Semantics};
 
@@ -23,6 +23,7 @@ pub struct FileSymbol {
     pub loc: DeclarationLocation,
     pub container_name: Option<SmolStr>,
     pub is_alias: bool,
+    pub is_assoc: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -32,7 +33,7 @@ pub struct DeclarationLocation {
     /// This points to the whole syntax node of the declaration.
     pub ptr: SyntaxNodePtr,
     /// This points to the [`syntax::ast::Name`] identifier of the declaration.
-    pub name_ptr: SyntaxNodePtr,
+    pub name_ptr: AstPtr<syntax::ast::Name>,
 }
 
 impl DeclarationLocation {
@@ -48,15 +49,6 @@ impl DeclarationLocation {
         }
         let node = resolve_node(db, self.hir_file_id, &self.ptr);
         node.as_ref().original_file_range(db.upcast())
-    }
-
-    pub fn original_name_range(&self, db: &dyn HirDatabase) -> Option<FileRange> {
-        if let Some(file_id) = self.hir_file_id.file_id() {
-            // fast path to prevent parsing
-            return Some(FileRange { file_id, range: self.name_ptr.text_range() });
-        }
-        let node = resolve_node(db, self.hir_file_id, &self.name_ptr);
-        node.as_ref().original_file_range_opt(db.upcast())
     }
 }
 
@@ -130,34 +122,34 @@ impl<'a> SymbolCollector<'a> {
             match module_def_id {
                 ModuleDefId::ModuleId(id) => self.push_module(id),
                 ModuleDefId::FunctionId(id) => {
-                    self.push_decl(id);
+                    self.push_decl(id, false);
                     self.collect_from_body(id);
                 }
-                ModuleDefId::AdtId(AdtId::StructId(id)) => self.push_decl(id),
-                ModuleDefId::AdtId(AdtId::EnumId(id)) => self.push_decl(id),
-                ModuleDefId::AdtId(AdtId::UnionId(id)) => self.push_decl(id),
+                ModuleDefId::AdtId(AdtId::StructId(id)) => self.push_decl(id, false),
+                ModuleDefId::AdtId(AdtId::EnumId(id)) => self.push_decl(id, false),
+                ModuleDefId::AdtId(AdtId::UnionId(id)) => self.push_decl(id, false),
                 ModuleDefId::ConstId(id) => {
-                    self.push_decl(id);
+                    self.push_decl(id, false);
                     self.collect_from_body(id);
                 }
                 ModuleDefId::StaticId(id) => {
-                    self.push_decl(id);
+                    self.push_decl(id, false);
                     self.collect_from_body(id);
                 }
                 ModuleDefId::TraitId(id) => {
-                    self.push_decl(id);
+                    self.push_decl(id, false);
                     self.collect_from_trait(id);
                 }
                 ModuleDefId::TraitAliasId(id) => {
-                    self.push_decl(id);
+                    self.push_decl(id, false);
                 }
                 ModuleDefId::TypeAliasId(id) => {
-                    self.push_decl(id);
+                    self.push_decl(id, false);
                 }
                 ModuleDefId::MacroId(id) => match id {
-                    MacroId::Macro2Id(id) => self.push_decl(id),
-                    MacroId::MacroRulesId(id) => self.push_decl(id),
-                    MacroId::ProcMacroId(id) => self.push_decl(id),
+                    MacroId::Macro2Id(id) => self.push_decl(id, false),
+                    MacroId::MacroRulesId(id) => self.push_decl(id, false),
+                    MacroId::ProcMacroId(id) => self.push_decl(id, false),
                 },
                 // Don't index these.
                 ModuleDefId::BuiltinType(_) => {}
@@ -190,7 +182,7 @@ impl<'a> SymbolCollector<'a> {
                 let dec_loc = DeclarationLocation {
                     hir_file_id: source.file_id,
                     ptr: SyntaxNodePtr::new(use_tree_src.syntax()),
-                    name_ptr: SyntaxNodePtr::new(name.syntax()),
+                    name_ptr: AstPtr::new(&name),
                 };
 
                 self.symbols.push(FileSymbol {
@@ -199,6 +191,7 @@ impl<'a> SymbolCollector<'a> {
                     container_name: self.current_container_name.clone(),
                     loc: dec_loc,
                     is_alias: false,
+                    is_assoc: false,
                 });
             });
         }
@@ -211,9 +204,9 @@ impl<'a> SymbolCollector<'a> {
             for &id in id {
                 if id.module(self.db.upcast()) == module_id {
                     match id {
-                        MacroId::Macro2Id(id) => self.push_decl(id),
-                        MacroId::MacroRulesId(id) => self.push_decl(id),
-                        MacroId::ProcMacroId(id) => self.push_decl(id),
+                        MacroId::Macro2Id(id) => self.push_decl(id, false),
+                        MacroId::MacroRulesId(id) => self.push_decl(id, false),
+                        MacroId::ProcMacroId(id) => self.push_decl(id, false),
                     }
                 }
             }
@@ -275,13 +268,13 @@ impl<'a> SymbolCollector<'a> {
 
     fn push_assoc_item(&mut self, assoc_item_id: AssocItemId) {
         match assoc_item_id {
-            AssocItemId::FunctionId(id) => self.push_decl(id),
-            AssocItemId::ConstId(id) => self.push_decl(id),
-            AssocItemId::TypeAliasId(id) => self.push_decl(id),
+            AssocItemId::FunctionId(id) => self.push_decl(id, true),
+            AssocItemId::ConstId(id) => self.push_decl(id, true),
+            AssocItemId::TypeAliasId(id) => self.push_decl(id, true),
         }
     }
 
-    fn push_decl<L>(&mut self, id: L)
+    fn push_decl<L>(&mut self, id: L, is_assoc: bool)
     where
         L: Lookup + Into<ModuleDefId>,
         <L as Lookup>::Data: HasSource,
@@ -294,7 +287,7 @@ impl<'a> SymbolCollector<'a> {
         let dec_loc = DeclarationLocation {
             hir_file_id: source.file_id,
             ptr: SyntaxNodePtr::new(source.value.syntax()),
-            name_ptr: SyntaxNodePtr::new(name_node.syntax()),
+            name_ptr: AstPtr::new(&name_node),
         };
 
         if let Some(attrs) = def.attrs(self.db) {
@@ -305,6 +298,7 @@ impl<'a> SymbolCollector<'a> {
                     loc: dec_loc.clone(),
                     container_name: self.current_container_name.clone(),
                     is_alias: true,
+                    is_assoc,
                 });
             }
         }
@@ -315,6 +309,7 @@ impl<'a> SymbolCollector<'a> {
             container_name: self.current_container_name.clone(),
             loc: dec_loc,
             is_alias: false,
+            is_assoc,
         });
     }
 
@@ -327,7 +322,7 @@ impl<'a> SymbolCollector<'a> {
         let dec_loc = DeclarationLocation {
             hir_file_id: declaration.file_id,
             ptr: SyntaxNodePtr::new(module.syntax()),
-            name_ptr: SyntaxNodePtr::new(name_node.syntax()),
+            name_ptr: AstPtr::new(&name_node),
         };
 
         let def = ModuleDef::Module(module_id.into());
@@ -340,6 +335,7 @@ impl<'a> SymbolCollector<'a> {
                     loc: dec_loc.clone(),
                     container_name: self.current_container_name.clone(),
                     is_alias: true,
+                    is_assoc: false,
                 });
             }
         }
@@ -350,6 +346,7 @@ impl<'a> SymbolCollector<'a> {
             container_name: self.current_container_name.clone(),
             loc: dec_loc,
             is_alias: false,
+            is_assoc: false,
         });
     }
 }

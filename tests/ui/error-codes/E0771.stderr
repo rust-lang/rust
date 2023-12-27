@@ -15,6 +15,6 @@ LL | #![feature(adt_const_params)]
    = note: see issue #95174 <https://github.com/rust-lang/rust/issues/95174> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0770`.

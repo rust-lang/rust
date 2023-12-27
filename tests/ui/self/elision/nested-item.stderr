@@ -21,10 +21,19 @@ LL | fn wrap(self: Wrap<{ fn bar(&self) {} }>) -> &() {
    |                                              ^ expected named lifetime parameter
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-help: consider using the `'static` lifetime
+help: consider using the `'static` lifetime, but this is uncommon unless you're returning a borrowed value from a `const` or a `static`
    |
 LL | fn wrap(self: Wrap<{ fn bar(&self) {} }>) -> &'static () {
    |                                               +++++++
+help: instead, you are more likely to want to change the argument to be borrowed...
+   |
+LL | fn wrap(self: &Wrap<{ fn bar(&self) {} }>) -> &() {
+   |               +
+help: ...or alternatively, you might want to return an owned value
+   |
+LL - fn wrap(self: Wrap<{ fn bar(&self) {} }>) -> &() {
+LL + fn wrap(self: Wrap<{ fn bar(&self) {} }>) -> () {
+   |
 
 error[E0412]: cannot find type `Wrap` in this scope
   --> $DIR/nested-item.rs:5:15

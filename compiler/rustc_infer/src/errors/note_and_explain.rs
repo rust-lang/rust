@@ -1,6 +1,6 @@
 use crate::fluent_generated as fluent;
 use crate::infer::error_reporting::nice_region_error::find_anon_type;
-use rustc_errors::{self, AddToDiagnostic, Diagnostic, IntoDiagnosticArg, SubdiagnosticMessage};
+use rustc_errors::{AddToDiagnostic, Diagnostic, IntoDiagnosticArg, SubdiagnosticMessage};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{symbol::kw, Span};
 
@@ -17,7 +17,7 @@ impl<'a> DescriptionCtx<'a> {
         alt_span: Option<Span>,
     ) -> Option<Self> {
         let (span, kind, arg) = match *region {
-            ty::ReEarlyBound(ref br) => {
+            ty::ReEarlyParam(ref br) => {
                 let scope = region.free_region_binding_scope(tcx).expect_local();
                 let span = if let Some(param) =
                     tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
@@ -32,7 +32,7 @@ impl<'a> DescriptionCtx<'a> {
                     (Some(span), "as_defined_anon", String::new())
                 }
             }
-            ty::ReFree(ref fr) => {
+            ty::ReLateParam(ref fr) => {
                 if !fr.bound_region.is_named()
                     && let Some((ty, _)) = find_anon_type(tcx, region, &fr.bound_region)
                 {
@@ -70,11 +70,14 @@ impl<'a> DescriptionCtx<'a> {
             ty::RePlaceholder(_) | ty::ReError(_) => return None,
 
             // FIXME(#13998) RePlaceholder should probably print like
-            // ReFree rather than dumping Debug output on the user.
+            // ReLateParam rather than dumping Debug output on the user.
             //
             // We shouldn't really be having unification failures with ReVar
-            // and ReLateBound though.
-            ty::ReVar(_) | ty::ReLateBound(..) | ty::ReErased => {
+            // and ReBound though.
+            //
+            // FIXME(@lcnr): figure out why we have to handle `ReBound`
+            // here, this feels somewhat off.
+            ty::ReVar(_) | ty::ReBound(..) | ty::ReErased => {
                 (alt_span, "revar", format!("{region:?}"))
             }
         };

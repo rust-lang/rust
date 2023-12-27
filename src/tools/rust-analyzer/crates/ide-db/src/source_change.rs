@@ -140,10 +140,10 @@ impl SnippetEdit {
             .with_position()
             .map(|pos| {
                 let (snippet, index) = match pos {
-                    itertools::Position::First(it) | itertools::Position::Middle(it) => it,
+                    (itertools::Position::First, it) | (itertools::Position::Middle, it) => it,
                     // last/only snippet gets index 0
-                    itertools::Position::Last((snippet, _))
-                    | itertools::Position::Only((snippet, _)) => (snippet, 0),
+                    (itertools::Position::Last, (snippet, _))
+                    | (itertools::Position::Only, (snippet, _)) => (snippet, 0),
                 };
 
                 let range = match snippet {

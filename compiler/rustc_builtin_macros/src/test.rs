@@ -5,7 +5,7 @@ use crate::util::{check_builtin_macro_attribute, warn_on_duplicate_attribute};
 use rustc_ast::ptr::P;
 use rustc_ast::{self as ast, attr, GenericParamKind};
 use rustc_ast_pretty::pprust;
-use rustc_errors::Applicability;
+use rustc_errors::{Applicability, DiagnosticBuilder, Level};
 use rustc_expand::base::*;
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::{ErrorGuaranteed, FileNameDisplayPreference, Span};
@@ -26,7 +26,7 @@ pub fn expand_test_case(
     anno_item: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(ecx, meta_item, sym::test_case);
-    warn_on_duplicate_attribute(&ecx, &anno_item, sym::test_case);
+    warn_on_duplicate_attribute(ecx, &anno_item, sym::test_case);
 
     if !ecx.ecfg.should_test {
         return vec![];
@@ -43,7 +43,7 @@ pub fn expand_test_case(
             }
         }
         _ => {
-            ecx.emit_err(errors::TestCaseNonItem { span: anno_item.span() });
+            ecx.dcx().emit_err(errors::TestCaseNonItem { span: anno_item.span() });
             return vec![];
         }
     };
@@ -79,7 +79,7 @@ pub fn expand_test(
     item: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(cx, meta_item, sym::test);
-    warn_on_duplicate_attribute(&cx, &item, sym::test);
+    warn_on_duplicate_attribute(cx, &item, sym::test);
     expand_test_or_bench(cx, attr_sp, item, false)
 }
 
@@ -90,7 +90,7 @@ pub fn expand_bench(
     item: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(cx, meta_item, sym::bench);
-    warn_on_duplicate_attribute(&cx, &item, sym::bench);
+    warn_on_duplicate_attribute(cx, &item, sym::bench);
     expand_test_or_bench(cx, attr_sp, item, true)
 }
 
@@ -134,9 +134,9 @@ pub fn expand_test_or_bench(
     // will fail. We shouldn't try to expand in this case because the errors
     // would be spurious.
     let check_result = if is_bench {
-        check_bench_signature(cx, &item, &fn_)
+        check_bench_signature(cx, &item, fn_)
     } else {
-        check_test_signature(cx, &item, &fn_)
+        check_test_signature(cx, &item, fn_)
     };
     if check_result.is_err() {
         return if is_stmt {
@@ -389,17 +389,16 @@ pub fn expand_test_or_bench(
 }
 
 fn not_testable_error(cx: &ExtCtxt<'_>, attr_sp: Span, item: Option<&ast::Item>) {
-    let diag = &cx.sess.parse_sess.span_diagnostic;
+    let dcx = cx.dcx();
     let msg = "the `#[test]` attribute may only be used on a non-associated function";
-    let mut err = match item.map(|i| &i.kind) {
+    let level = match item.map(|i| &i.kind) {
         // These were a warning before #92959 and need to continue being that to avoid breaking
         // stable user code (#94508).
-        Some(ast::ItemKind::MacCall(_)) => diag.struct_span_warn(attr_sp, msg),
-        // `.forget_guarantee()` needed to get these two arms to match types. Because of how
-        // locally close the `.emit()` call is I'm comfortable with it, but if it can be
-        // reworked in the future to not need it, it'd be nice.
-        _ => diag.struct_span_err(attr_sp, msg).forget_guarantee(),
+        Some(ast::ItemKind::MacCall(_)) => Level::Warning(None),
+        _ => Level::Error { lint: false },
     };
+    let mut err = DiagnosticBuilder::<()>::new(dcx, level, msg);
+    err.set_span(attr_sp);
     if let Some(item) = item {
         err.span_label(
             item.span,
@@ -466,8 +465,6 @@ fn should_ignore_message(i: &ast::Item) -> Option<Symbol> {
 fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
     match attr::find_by_name(&i.attrs, sym::should_panic) {
         Some(attr) => {
-            let sd = &cx.sess.parse_sess.span_diagnostic;
-
             match attr.meta_item_list() {
                 // Handle #[should_panic(expected = "foo")]
                 Some(list) => {
@@ -477,17 +474,18 @@ fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
                         .and_then(|mi| mi.meta_item())
                         .and_then(|mi| mi.value_str());
                     if list.len() != 1 || msg.is_none() {
-                        sd.struct_span_warn(
-                            attr.span,
-                            "argument must be of the form: \
+                        cx.dcx()
+                            .struct_span_warn(
+                                attr.span,
+                                "argument must be of the form: \
                              `expected = \"error message\"`",
-                        )
-                        .note(
-                            "errors in this attribute were erroneously \
+                            )
+                            .note(
+                                "errors in this attribute were erroneously \
                                 allowed and will become a hard error in a \
                                 future release",
-                        )
-                        .emit();
+                            )
+                            .emit();
                         ShouldPanic::Yes(None)
                     } else {
                         ShouldPanic::Yes(msg)
@@ -535,14 +533,36 @@ fn check_test_signature(
     f: &ast::Fn,
 ) -> Result<(), ErrorGuaranteed> {
     let has_should_panic_attr = attr::contains_name(&i.attrs, sym::should_panic);
-    let sd = &cx.sess.parse_sess.span_diagnostic;
+    let dcx = cx.dcx();
 
     if let ast::Unsafe::Yes(span) = f.sig.header.unsafety {
-        return Err(sd.emit_err(errors::TestBadFn { span: i.span, cause: span, kind: "unsafe" }));
+        return Err(dcx.emit_err(errors::TestBadFn { span: i.span, cause: span, kind: "unsafe" }));
     }
 
-    if let ast::Async::Yes { span, .. } = f.sig.header.asyncness {
-        return Err(sd.emit_err(errors::TestBadFn { span: i.span, cause: span, kind: "async" }));
+    if let Some(coroutine_kind) = f.sig.header.coroutine_kind {
+        match coroutine_kind {
+            ast::CoroutineKind::Async { span, .. } => {
+                return Err(dcx.emit_err(errors::TestBadFn {
+                    span: i.span,
+                    cause: span,
+                    kind: "async",
+                }));
+            }
+            ast::CoroutineKind::Gen { span, .. } => {
+                return Err(dcx.emit_err(errors::TestBadFn {
+                    span: i.span,
+                    cause: span,
+                    kind: "gen",
+                }));
+            }
+            ast::CoroutineKind::AsyncGen { span, .. } => {
+                return Err(dcx.emit_err(errors::TestBadFn {
+                    span: i.span,
+                    cause: span,
+                    kind: "async gen",
+                }));
+            }
+        }
     }
 
     // If the termination trait is active, the compiler will check that the output
@@ -554,15 +574,15 @@ fn check_test_signature(
     };
 
     if !f.sig.decl.inputs.is_empty() {
-        return Err(sd.span_err(i.span, "functions used as tests can not have any arguments"));
+        return Err(dcx.span_err(i.span, "functions used as tests can not have any arguments"));
     }
 
     if has_should_panic_attr && has_output {
-        return Err(sd.span_err(i.span, "functions using `#[should_panic]` must return `()`"));
+        return Err(dcx.span_err(i.span, "functions using `#[should_panic]` must return `()`"));
     }
 
     if f.generics.params.iter().any(|param| !matches!(param.kind, GenericParamKind::Lifetime)) {
-        return Err(sd.span_err(
+        return Err(dcx.span_err(
             i.span,
             "functions used as tests can not have any non-lifetime generic parameters",
         ));
@@ -579,7 +599,7 @@ fn check_bench_signature(
     // N.B., inadequate check, but we're running
     // well before resolve, can't get too deep.
     if f.sig.decl.inputs.len() != 1 {
-        return Err(cx.sess.parse_sess.span_diagnostic.emit_err(errors::BenchSig { span: i.span }));
+        return Err(cx.dcx().emit_err(errors::BenchSig { span: i.span }));
     }
     Ok(())
 }

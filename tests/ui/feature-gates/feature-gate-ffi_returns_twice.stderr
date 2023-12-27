@@ -7,6 +7,6 @@ LL |     #[ffi_returns_twice]
    = note: see issue #58314 <https://github.com/rust-lang/rust/issues/58314> for more information
    = help: add `#![feature(ffi_returns_twice)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

@@ -80,8 +80,8 @@
           _6 = &(_2.1: bool);
           StorageLive(_8);
           _8 = &(_2.2: std::string::String);
--         _3 = &shallow (_2.0: bool);
--         _4 = &shallow (_2.1: bool);
+-         _3 = &fake (_2.0: bool);
+-         _4 = &fake (_2.1: bool);
           StorageLive(_9);
           StorageLive(_10);
           _10 = _1;
@@ -137,8 +137,8 @@
           _6 = &(_2.0: bool);
           StorageLive(_8);
           _8 = &(_2.2: std::string::String);
--         _3 = &shallow (_2.0: bool);
--         _4 = &shallow (_2.1: bool);
+-         _3 = &fake (_2.0: bool);
+-         _4 = &fake (_2.1: bool);
           StorageLive(_12);
           StorageLive(_13);
           _13 = _1;

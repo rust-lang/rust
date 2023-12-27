@@ -46,7 +46,7 @@ case $1 in
         git pull origin master
         branch=sync_cg_clif-$(date +%Y-%m-%d)
         git checkout -b "$branch"
-        "$cg_clif/git-fixed-subtree.sh" pull --prefix=compiler/rustc_codegen_cranelift/ https://github.com/bjorn3/rustc_codegen_cranelift.git master
+        "$cg_clif/git-fixed-subtree.sh" pull --prefix=compiler/rustc_codegen_cranelift/ https://github.com/rust-lang/rustc_codegen_cranelift.git master
         git push -u my "$branch"
 
         # immediately merge the merge commit into cg_clif to prevent merge conflicts when syncing

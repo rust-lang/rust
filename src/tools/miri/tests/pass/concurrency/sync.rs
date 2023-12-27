@@ -83,7 +83,7 @@ fn check_conditional_variables_timed_wait_notimeout() {
         cvar.notify_one();
     });
 
-    let (_guard, timeout) = cvar.wait_timeout(guard, Duration::from_millis(500)).unwrap();
+    let (_guard, timeout) = cvar.wait_timeout(guard, Duration::from_millis(1000)).unwrap();
     assert!(!timeout.timed_out());
     handle.join().unwrap();
 }

@@ -492,7 +492,7 @@ where
             let returned_walk =
                 return_value.take().into_iter().map(|walk| (*successor_node, Some(walk)));
 
-            let successor_walk = successors.by_ref().map(|successor_node| {
+            let successor_walk = successors.map(|successor_node| {
                 debug!(?node, ?successor_node);
                 (successor_node, self.inspect_node(successor_node))
             });

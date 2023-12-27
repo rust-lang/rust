@@ -1,4 +1,5 @@
 // rustc-env:CARGO_CRATE_NAME=rustc_dummy
+// ignore-stage1
 
 #![feature(rustc_private)]
 #![crate_type = "lib"]

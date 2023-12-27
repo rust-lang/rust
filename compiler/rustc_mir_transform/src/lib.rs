@@ -86,6 +86,7 @@ pub mod inline;
 mod instsimplify;
 mod jump_threading;
 mod large_enums;
+mod lint;
 mod lower_intrinsics;
 mod lower_slice_len;
 mod match_branches;
@@ -118,10 +119,7 @@ use rustc_const_eval::transform::promote_consts;
 use rustc_const_eval::transform::validate;
 use rustc_mir_dataflow::rustc_peek;
 
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_fluent_macro::fluent_messages;
-
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 pub fn provide(providers: &mut Providers) {
     check_unsafety::provide(providers);
@@ -269,7 +267,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
     let body = &tcx.mir_const(def).borrow();
 
     if body.return_ty().references_error() {
-        tcx.sess.delay_span_bug(body.span, "mir_const_qualif: MIR had errors");
+        tcx.dcx().span_delayed_bug(body.span, "mir_const_qualif: MIR had errors");
         return Default::default();
     }
 
@@ -398,7 +396,7 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
 /// mir borrowck *before* doing so in order to ensure that borrowck can be run and doesn't
 /// end up missing the source MIR due to stealing happening.
 fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
-    if let DefKind::Coroutine = tcx.def_kind(def) {
+    if tcx.is_coroutine(def.to_def_id()) {
         tcx.ensure_with_value().mir_coroutine_witnesses(def);
     }
     let mir_borrowck = tcx.mir_borrowck(def);
@@ -481,14 +479,14 @@ pub fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
     assert!(body.phase == MirPhase::Analysis(AnalysisPhase::PostCleanup));
 
     // Do a little drop elaboration before const-checking if `const_precise_live_drops` is enabled.
-    if check_consts::post_drop_elaboration::checking_enabled(&ConstCx::new(tcx, &body)) {
+    if check_consts::post_drop_elaboration::checking_enabled(&ConstCx::new(tcx, body)) {
         pm::run_passes(
             tcx,
             body,
             &[&remove_uninit_drops::RemoveUninitDrops, &simplify::SimplifyCfg::RemoveFalseEdges],
             None,
         );
-        check_consts::post_drop_elaboration::check_live_drops(tcx, &body); // FIXME: make this a MIR lint
+        check_consts::post_drop_elaboration::check_live_drops(tcx, body); // FIXME: make this a MIR lint
     }
 
     debug!("runtime_mir_lowering({:?})", did);

@@ -88,8 +88,8 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
+use rustc_index::newtype_index;
 use rustc_index::IndexVec;
-use rustc_macros::newtype_index;
 use rustc_middle::mir::interpret::GlobalAlloc;
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
@@ -103,7 +103,6 @@ use std::borrow::Cow;
 
 use crate::dataflow_const_prop::DummyMachine;
 use crate::ssa::{AssignedValue, SsaLocals};
-use crate::MirPass;
 use either::Either;
 
 pub struct GVN;
@@ -388,7 +387,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                         self.ecx.copy_op(op, &field_dest, /*allow_transmute*/ false).ok()?;
                     }
                     self.ecx.write_discriminant(variant.unwrap_or(FIRST_VARIANT), &dest).ok()?;
-                    self.ecx.alloc_mark_immutable(dest.ptr().provenance.unwrap()).ok()?;
+                    self.ecx
+                        .alloc_mark_immutable(dest.ptr().provenance.unwrap().alloc_id())
+                        .ok()?;
                     dest.into()
                 } else {
                     return None;
@@ -461,7 +462,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
             NullaryOp(null_op, ty) => {
                 let layout = self.ecx.layout_of(ty).ok()?;
-                if let NullOp::SizeOf | NullOp::AlignOf = null_op && layout.is_unsized() {
+                if let NullOp::SizeOf | NullOp::AlignOf = null_op
+                    && layout.is_unsized()
+                {
                     return None;
                 }
                 let val = match null_op {
@@ -641,12 +644,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             {
                 if let Some(offset) = self.evaluated[idx].as_ref()
                     && let Ok(offset) = self.ecx.read_target_usize(offset)
+                    && let Some(min_length) = offset.checked_add(1)
                 {
-                    projection.to_mut()[i] = ProjectionElem::ConstantIndex {
-                        offset,
-                        min_length: offset + 1,
-                        from_end: false,
-                    };
+                    projection.to_mut()[i] =
+                        ProjectionElem::ConstantIndex { offset, min_length, from_end: false };
                 } else if let Some(new_idx) = self.try_as_local(idx, location) {
                     projection.to_mut()[i] = ProjectionElem::Index(new_idx);
                     self.reused_locals.insert(new_idx);
@@ -865,7 +866,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             .collect();
         let fields = fields?;
 
-        if let AggregateTy::Array = ty && fields.len() > 4 {
+        if let AggregateTy::Array = ty
+            && fields.len() > 4
+        {
             let first = fields[0];
             if fields.iter().all(|&v| v == first) {
                 let len = ty::Const::from_target_usize(self.tcx, fields.len().try_into().unwrap());
@@ -924,7 +927,8 @@ fn op_to_prop_const<'tcx>(
         }
 
         let pointer = mplace.ptr().into_pointer_or_addr().ok()?;
-        let (alloc_id, offset) = pointer.into_parts();
+        let (prov, offset) = pointer.into_parts();
+        let alloc_id = prov.alloc_id();
         intern_const_alloc_for_constprop(ecx, alloc_id).ok()?;
         if matches!(ecx.tcx.global_alloc(alloc_id), GlobalAlloc::Memory(_)) {
             // `alloc_id` may point to a static. Codegen will choke on an `Indirect` with anything
@@ -1008,8 +1012,7 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
             // Do not try to simplify a constant, it's already in canonical shape.
             && !matches!(rvalue, Rvalue::Use(Operand::Constant(_)))
         {
-            if let Some(value) = self.simplify_rvalue(rvalue, location)
-            {
+            if let Some(value) = self.simplify_rvalue(rvalue, location) {
                 if let Some(const_) = self.try_as_constant(value) {
                     *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
                 } else if let Some(local) = self.try_as_local(value, location)

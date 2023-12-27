@@ -6,7 +6,7 @@ use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Constness, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -105,7 +105,6 @@ impl<'tcx> LateLintPass<'tcx> for ManualFloatMethods {
             // case somebody does that for some reason
             && (is_infinity(const_1) && is_neg_infinity(const_2)
                 || is_neg_infinity(const_1) && is_infinity(const_2))
-            && !is_from_proc_macro(cx, expr)
             && let Some(local_snippet) = snippet_opt(cx, first.span)
         {
             let variant = match (kind.node, lhs_kind.node, rhs_kind.node) {
@@ -113,6 +112,9 @@ impl<'tcx> LateLintPass<'tcx> for ManualFloatMethods {
                 (BinOpKind::And, BinOpKind::Ne, BinOpKind::Ne) => Variant::ManualIsFinite,
                 _ => return,
             };
+            if is_from_proc_macro(cx, expr) {
+                return;
+            }
 
             span_lint_and_then(cx, variant.lint(), expr.span, variant.msg(), |diag| {
                 match variant {

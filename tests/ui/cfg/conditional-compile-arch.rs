@@ -28,9 +28,6 @@ pub fn main() { }
 #[cfg(target_arch = "s390x")]
 pub fn main() { }
 
-#[cfg(target_arch = "asmjs")]
-pub fn main() { }
-
 #[cfg(target_arch = "wasm32")]
 pub fn main() { }
 

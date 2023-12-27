@@ -4,7 +4,7 @@
 
 #![allow(clippy::almost_complete_range)]
 #![allow(clippy::disallowed_names)]
-#![allow(clippy::blocks_in_if_conditions)]
+#![allow(clippy::blocks_in_conditions)]
 #![allow(clippy::box_collection)]
 #![allow(clippy::redundant_static_lifetimes)]
 #![allow(clippy::cognitive_complexity)]
@@ -51,10 +51,12 @@
 #![allow(undropped_manually_drops)]
 #![allow(unknown_lints)]
 #![allow(unused_labels)]
+#![allow(ambiguous_wide_pointer_comparisons)]
 #![warn(clippy::almost_complete_letter_range)]
 #![warn(clippy::blacklisted_name)]
 #![warn(clippy::block_in_if_condition_expr)]
 #![warn(clippy::block_in_if_condition_stmt)]
+#![warn(clippy::blocks_in_if_conditions)]
 #![warn(clippy::box_vec)]
 #![warn(clippy::const_static_lifetime)]
 #![warn(clippy::cyclomatic_complexity)]
@@ -107,5 +109,6 @@
 #![warn(clippy::undropped_manually_drops)]
 #![warn(clippy::unknown_clippy_lints)]
 #![warn(clippy::unused_label)]
+#![warn(clippy::vtable_address_comparisons)]
 
 fn main() {}

@@ -4,5 +4,5 @@ error: lifetime parameters must be declared prior to type and const parameters
 LL | fn bar<const X: u8, 'a>(_: &'a ()) {
    |       --------------^^- help: reorder the parameters: lifetimes, then consts and types: `<'a, const X: u8>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

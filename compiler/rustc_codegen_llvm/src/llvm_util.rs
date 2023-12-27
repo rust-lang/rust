@@ -5,9 +5,6 @@ use crate::errors::{
 };
 use crate::llvm;
 use libc::c_int;
-use rustc_codegen_ssa::target_features::{
-    supported_target_features, tied_target_features, RUSTC_SPECIFIC_FEATURES,
-};
 use rustc_codegen_ssa::traits::PrintBackendInfo;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -17,6 +14,7 @@ use rustc_session::config::{PrintKind, PrintRequest};
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 use rustc_target::spec::{MergeFunctions, PanicStrategy};
+use rustc_target::target_features::RUSTC_SPECIFIC_FEATURES;
 
 use std::ffi::{c_char, c_void, CStr, CString};
 use std::path::Path;
@@ -121,7 +119,7 @@ unsafe fn configure_llvm(sess: &Session) {
     }
 
     if sess.opts.unstable_opts.llvm_time_trace {
-        llvm::LLVMTimeTraceProfilerInitialize();
+        llvm::LLVMRustTimeTraceProfilerInitialize();
     }
 
     rustc_llvm::initialize_available_targets();
@@ -132,7 +130,7 @@ unsafe fn configure_llvm(sess: &Session) {
 pub fn time_trace_profiler_finish(file_name: &Path) {
     unsafe {
         let file_name = path_to_c_string(file_name);
-        llvm::LLVMTimeTraceProfilerFinish(file_name.as_ptr());
+        llvm::LLVMRustTimeTraceProfilerFinish(file_name.as_ptr());
     }
 }
 
@@ -263,6 +261,10 @@ pub fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> LLVMFeature<'a> {
             "sve2-bitperm",
             TargetFeatureFoldStrength::EnableOnly("neon"),
         ),
+        // The unaligned-scalar-mem feature was renamed to fast-unaligned-access.
+        ("riscv32" | "riscv64", "fast-unaligned-access") if get_version().0 <= 17 => {
+            LLVMFeature::new("unaligned-scalar-mem")
+        }
         (_, s) => LLVMFeature::new(s),
     }
 }
@@ -274,7 +276,7 @@ pub fn check_tied_features(
     features: &FxHashMap<&str, bool>,
 ) -> Option<&'static [&'static str]> {
     if !features.is_empty() {
-        for tied in tied_target_features(sess) {
+        for tied in sess.target.tied_target_features() {
             // Tied features must be set to the same value, or not set at all
             let mut tied_iter = tied.iter();
             let enabled = features.get(tied_iter.next().unwrap());
@@ -290,10 +292,11 @@ pub fn check_tied_features(
 /// Must express features in the way Rust understands them
 pub fn target_features(sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
     let target_machine = create_informational_target_machine(sess);
-    supported_target_features(sess)
+    sess.target
+        .supported_target_features()
         .iter()
         .filter_map(|&(feature, gate)| {
-            if sess.is_nightly_build() || allow_unstable || gate.is_none() {
+            if sess.is_nightly_build() || allow_unstable || gate.is_stable() {
                 Some(feature)
             } else {
                 None
@@ -358,7 +361,9 @@ fn llvm_target_features(tm: &llvm::TargetMachine) -> Vec<(&str, &str)> {
 fn print_target_features(out: &mut dyn PrintBackendInfo, sess: &Session, tm: &llvm::TargetMachine) {
     let mut llvm_target_features = llvm_target_features(tm);
     let mut known_llvm_target_features = FxHashSet::<&'static str>::default();
-    let mut rustc_target_features = supported_target_features(sess)
+    let mut rustc_target_features = sess
+        .target
+        .supported_target_features()
         .iter()
         .map(|(feature, _gate)| {
             // LLVM asserts that these are sorted. LLVM and Rust both use byte comparison for these strings.
@@ -511,7 +516,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
     );
 
     // -Ctarget-features
-    let supported_features = supported_target_features(sess);
+    let supported_features = sess.target.supported_target_features();
     let mut featsmap = FxHashMap::default();
     let feats = sess
         .opts
@@ -524,7 +529,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                 Some(c @ ('+' | '-')) => c,
                 Some(_) => {
                     if diagnostics {
-                        sess.emit_warning(UnknownCTargetFeaturePrefix { feature: s });
+                        sess.dcx().emit_warning(UnknownCTargetFeaturePrefix { feature: s });
                     }
                     return None;
                 }
@@ -537,8 +542,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                 if feature_state.is_none() {
                     let rust_feature = supported_features.iter().find_map(|&(rust_feature, _)| {
                         let llvm_features = to_llvm_features(sess, rust_feature);
-                        if llvm_features.contains(&feature)
-                            && !llvm_features.contains(&rust_feature)
+                        if llvm_features.contains(feature) && !llvm_features.contains(rust_feature)
                         {
                             Some(rust_feature)
                         } else {
@@ -553,11 +557,12 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
                     } else {
                         UnknownCTargetFeature { feature, rust_feature: PossibleFeature::None }
                     };
-                    sess.emit_warning(unknown_feature);
-                } else if feature_state.is_some_and(|(_name, feature_gate)| feature_gate.is_some())
+                    sess.dcx().emit_warning(unknown_feature);
+                } else if feature_state
+                    .is_some_and(|(_name, feature_gate)| !feature_gate.is_stable())
                 {
                     // An unstable feature. Warn about using it.
-                    sess.emit_warning(UnstableCTargetFeature { feature });
+                    sess.dcx().emit_warning(UnstableCTargetFeature { feature });
                 }
             }
 
@@ -593,7 +598,7 @@ pub(crate) fn global_llvm_features(sess: &Session, diagnostics: bool) -> Vec<Str
     features.extend(feats);
 
     if diagnostics && let Some(f) = check_tied_features(sess, &featsmap) {
-        sess.emit_err(TargetFeatureDisableOrEnable {
+        sess.dcx().emit_err(TargetFeatureDisableOrEnable {
             features: f,
             span: None,
             missing_features: None,

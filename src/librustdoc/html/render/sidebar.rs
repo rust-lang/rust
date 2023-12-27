@@ -435,9 +435,9 @@ fn sidebar_deref_methods<'a>(
         }
 
         // Recurse into any further impls that might exist for `target`
-        if let Some(target_did) = target.def_id(c) &&
-            let Some(target_impls) = c.impls.get(&target_did) &&
-            let Some(target_deref_impl) = target_impls.iter().find(|i| {
+        if let Some(target_did) = target.def_id(c)
+            && let Some(target_impls) = c.impls.get(&target_did)
+            && let Some(target_deref_impl) = target_impls.iter().find(|i| {
                 i.inner_impl()
                     .trait_
                     .as_ref()
@@ -445,14 +445,7 @@ fn sidebar_deref_methods<'a>(
                     .unwrap_or(false)
             })
         {
-            sidebar_deref_methods(
-                cx,
-                out,
-                target_deref_impl,
-                target_impls,
-                derefs,
-                used_links,
-            );
+            sidebar_deref_methods(cx, out, target_deref_impl, target_impls, derefs, used_links);
         }
     }
 }
@@ -494,8 +487,13 @@ fn sidebar_module(items: &[clean::Item]) -> LinkBlock<'static> {
                 && it
                     .name
                     .or_else(|| {
-                        if let clean::ImportItem(ref i) = *it.kind &&
-                            let clean::ImportKind::Simple(s) = i.kind { Some(s) } else { None }
+                        if let clean::ImportItem(ref i) = *it.kind
+                            && let clean::ImportKind::Simple(s) = i.kind
+                        {
+                            Some(s)
+                        } else {
+                            None
+                        }
                     })
                     .is_some()
         })

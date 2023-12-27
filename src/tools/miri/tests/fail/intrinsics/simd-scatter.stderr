@@ -22,5 +22,5 @@ LL |         let mut vec: Vec<i8> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -36,7 +36,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// call `infer_opaque_definition_from_instantiation` to get the inferred
     /// type of `_Return<'_a>`. `infer_opaque_definition_from_instantiation`
     /// compares lifetimes directly, so we need to map the inference variables
-    /// back to concrete lifetimes: `'static`, `ReEarlyBound` or `ReFree`.
+    /// back to concrete lifetimes: `'static`, `ReEarlyParam` or `ReLateParam`.
     ///
     /// First we map all the lifetimes in the concrete type to an equal
     /// universal region that occurs in the concrete type's args, in this case
@@ -315,7 +315,7 @@ fn check_opaque_type_well_formed<'tcx>(
         parent_def_id = tcx.local_parent(parent_def_id);
     }
 
-    // FIXME(-Ztrait-solver=next): We probably should use `DefiningAnchor::Error`
+    // FIXME(-Znext-solver): We probably should use `DefiningAnchor::Error`
     // and prepopulate this `InferCtxt` with known opaque values, rather than
     // using the `Bind` anchor here. For now it's fine.
     let infcx = tcx
@@ -386,7 +386,7 @@ fn check_opaque_type_parameter_valid(
         let arg_is_param = match arg.unpack() {
             GenericArgKind::Type(ty) => matches!(ty.kind(), ty::Param(_)),
             GenericArgKind::Lifetime(lt) if is_ty_alias => {
-                matches!(*lt, ty::ReEarlyBound(_) | ty::ReFree(_))
+                matches!(*lt, ty::ReEarlyParam(_) | ty::ReLateParam(_))
             }
             // FIXME(#113916): we can't currently check for unique lifetime params,
             // see that issue for more. We will also have to ignore unused lifetime
@@ -402,7 +402,7 @@ fn check_opaque_type_parameter_valid(
             let opaque_param = opaque_generics.param_at(i, tcx);
             let kind = opaque_param.kind.descr();
 
-            return Err(tcx.sess.emit_err(NonGenericOpaqueTypeParam {
+            return Err(tcx.dcx().emit_err(NonGenericOpaqueTypeParam {
                 ty: arg,
                 kind,
                 span,
@@ -419,7 +419,7 @@ fn check_opaque_type_parameter_valid(
                 .map(|i| tcx.def_span(opaque_generics.param_at(i, tcx).def_id))
                 .collect();
             return Err(tcx
-                .sess
+                .dcx()
                 .struct_span_err(span, "non-defining opaque type use in defining scope")
                 .span_note(spans, format!("{descr} used multiple times"))
                 .emit());

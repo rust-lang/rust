@@ -1,5 +1,4 @@
 use core::cell::Cell;
-use core::clone::Clone;
 use core::mem;
 use core::ops::DerefMut;
 use core::option::*;
@@ -567,4 +566,12 @@ fn zip_unzip_roundtrip() {
 
     let a = z.unzip();
     assert_eq!(a, (x, y));
+}
+
+#[test]
+fn as_slice() {
+    assert_eq!(Some(42).as_slice(), &[42]);
+    assert_eq!(Some(43).as_mut_slice(), &[43]);
+    assert_eq!(None::<i32>.as_slice(), &[]);
+    assert_eq!(None::<i32>.as_mut_slice(), &[]);
 }

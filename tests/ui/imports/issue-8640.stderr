@@ -12,6 +12,6 @@ help: you can use `as` to change the binding name of the import
 LL |     use baz::bar as other_bar;
    |         ~~~~~~~~~~~~~~~~~~~~~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0255`.

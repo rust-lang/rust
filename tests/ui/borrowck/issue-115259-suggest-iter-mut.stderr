@@ -11,6 +11,6 @@ help: you may want to use `iter_mut` here
 LL |         self.layers.iter_mut().fold(0, |result, mut layer| result + layer.process())
    |                     ~~~~~~~~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0596`.

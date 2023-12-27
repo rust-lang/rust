@@ -150,7 +150,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxEscapingBoundVarVisitor {
     #[inline]
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         match *r {
-            ty::ReLateBound(debruijn, _) if debruijn > self.outer_index => {
+            ty::ReBound(debruijn, _) if debruijn > self.outer_index => {
                 self.escaping =
                     self.escaping.max(debruijn.as_usize() - self.outer_index.as_usize());
             }
@@ -160,14 +160,12 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MaxEscapingBoundVarVisitor {
     }
 
     fn visit_const(&mut self, ct: ty::Const<'tcx>) -> ControlFlow<Self::BreakTy> {
-        match ct.kind() {
-            ty::ConstKind::Bound(debruijn, _) if debruijn >= self.outer_index => {
-                self.escaping =
-                    self.escaping.max(debruijn.as_usize() - self.outer_index.as_usize());
-                ControlFlow::Continue(())
-            }
-            _ => ct.super_visit_with(self),
+        if ct.outer_exclusive_binder() > self.outer_index {
+            self.escaping = self
+                .escaping
+                .max(ct.outer_exclusive_binder().as_usize() - self.outer_index.as_usize());
         }
+        ControlFlow::Continue(())
     }
 }
 
@@ -287,14 +285,14 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                     ty::Projection => tcx.normalize_projection_ty(c_data),
                     ty::Weak => tcx.normalize_weak_ty(c_data),
                     ty::Inherent => tcx.normalize_inherent_projection_ty(c_data),
-                    _ => unreachable!(),
+                    kind => unreachable!("did not expect {kind:?} due to match arm above"),
                 }?;
                 // We don't expect ambiguity.
                 if !result.value.is_proven() {
                     // Rustdoc normalizes possibly not well-formed types, so only
                     // treat this as a bug if we're not in rustdoc.
                     if !tcx.sess.opts.actually_rustdoc {
-                        tcx.sess.delay_span_bug(
+                        tcx.dcx().span_delayed_bug(
                             DUMMY_SP,
                             format!("unexpected ambiguity: {c_data:?} {result:?}"),
                         );

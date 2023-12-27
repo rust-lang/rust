@@ -18,18 +18,17 @@
 //!
 //!
 //! See the full discussion : <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Eager.20expansion.20of.20built-in.20macros>
-use base_db::CrateId;
-use rustc_hash::{FxHashMap, FxHashSet};
-use syntax::{ted, Parse, SyntaxNode, TextRange, TextSize, WalkEvent};
+use base_db::{span::SyntaxContextId, CrateId};
+use syntax::{ted, Parse, SyntaxElement, SyntaxNode, TextSize, WalkEvent};
 use triomphe::Arc;
 
 use crate::{
     ast::{self, AstNode},
     db::ExpandDatabase,
-    hygiene::Hygiene,
     mod_path::ModPath,
-    EagerCallInfo, ExpandError, ExpandResult, ExpandTo, InFile, MacroCallId, MacroCallKind,
-    MacroCallLoc, MacroDefId, MacroDefKind,
+    span::SpanMapRef,
+    EagerCallInfo, ExpandError, ExpandResult, ExpandTo, ExpansionSpanMap, InFile, MacroCallId,
+    MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
 };
 
 pub fn expand_eager_macro_input(
@@ -37,6 +36,7 @@ pub fn expand_eager_macro_input(
     krate: CrateId,
     macro_call: InFile<ast::MacroCall>,
     def: MacroDefId,
+    call_site: SyntaxContextId,
     resolver: &dyn Fn(ModPath) -> Option<MacroDefId>,
 ) -> ExpandResult<Option<MacroCallId>> {
     let ast_map = db.ast_id_map(macro_call.file_id);
@@ -53,75 +53,44 @@ pub fn expand_eager_macro_input(
         krate,
         eager: None,
         kind: MacroCallKind::FnLike { ast_id: call_id, expand_to: ExpandTo::Expr },
+        call_site,
     });
     let ExpandResult { value: (arg_exp, arg_exp_map), err: parse_err } =
         db.parse_macro_expansion(arg_id.as_macro_file());
-    // we need this map here as the expansion of the eager input fake file loses whitespace ...
-    let mut ws_mapping = FxHashMap::default();
-    if let Some((_, tm, _)) = db.macro_arg(arg_id).value.as_deref() {
-        ws_mapping.extend(tm.entries().filter_map(|(id, range)| {
-            Some((arg_exp_map.first_range_by_token(id, syntax::SyntaxKind::TOMBSTONE)?, range))
-        }));
-    }
+
+    let mut arg_map = ExpansionSpanMap::empty();
 
     let ExpandResult { value: expanded_eager_input, err } = {
         eager_macro_recur(
             db,
-            &Hygiene::new(db, macro_call.file_id),
+            &arg_exp_map,
+            &mut arg_map,
+            TextSize::new(0),
             InFile::new(arg_id.as_file(), arg_exp.syntax_node()),
             krate,
+            call_site,
             resolver,
         )
     };
     let err = parse_err.or(err);
+    if cfg!(debug_assertions) {
+        arg_map.finish();
+    }
 
-    let Some((expanded_eager_input, mapping)) = expanded_eager_input else {
+    let Some((expanded_eager_input, _mapping)) = expanded_eager_input else {
         return ExpandResult { value: None, err };
     };
 
-    let (mut subtree, expanded_eager_input_token_map) =
-        mbe::syntax_node_to_token_tree(&expanded_eager_input);
+    let mut subtree = mbe::syntax_node_to_token_tree(&expanded_eager_input, arg_map);
 
-    let og_tmap = if let Some(tt) = macro_call.value.token_tree() {
-        let mut ids_used = FxHashSet::default();
-        let mut og_tmap = mbe::syntax_node_to_token_map(tt.syntax());
-        // The tokenmap and ids of subtree point into the expanded syntax node, but that is inaccessible from the outside
-        // so we need to remap them to the original input of the eager macro.
-        subtree.visit_ids(&mut |id| {
-            // Note: we discard all token ids of braces and the like here, but that's not too bad and only a temporary fix
-
-            if let Some(range) = expanded_eager_input_token_map
-                .first_range_by_token(id, syntax::SyntaxKind::TOMBSTONE)
-            {
-                // remap from expanded eager input to eager input expansion
-                if let Some(og_range) = mapping.get(&range) {
-                    // remap from eager input expansion to original eager input
-                    if let Some(&og_range) = ws_mapping.get(og_range) {
-                        if let Some(og_token) = og_tmap.token_by_range(og_range) {
-                            ids_used.insert(og_token);
-                            return og_token;
-                        }
-                    }
-                }
-            }
-            tt::TokenId::UNSPECIFIED
-        });
-        og_tmap.filter(|id| ids_used.contains(&id));
-        og_tmap
-    } else {
-        Default::default()
-    };
-    subtree.delimiter = crate::tt::Delimiter::unspecified();
+    subtree.delimiter = crate::tt::Delimiter::DUMMY_INVISIBLE;
 
     let loc = MacroCallLoc {
         def,
         krate,
-        eager: Some(Box::new(EagerCallInfo {
-            arg: Arc::new((subtree, og_tmap)),
-            arg_id,
-            error: err.clone(),
-        })),
+        eager: Some(Arc::new(EagerCallInfo { arg: Arc::new(subtree), arg_id, error: err.clone() })),
         kind: MacroCallKind::FnLike { ast_id: call_id, expand_to },
+        call_site,
     };
 
     ExpandResult { value: Some(db.intern_macro_call(loc)), err }
@@ -132,12 +101,13 @@ fn lazy_expand(
     def: &MacroDefId,
     macro_call: InFile<ast::MacroCall>,
     krate: CrateId,
-) -> ExpandResult<(InFile<Parse<SyntaxNode>>, Arc<mbe::TokenMap>)> {
+    call_site: SyntaxContextId,
+) -> ExpandResult<(InFile<Parse<SyntaxNode>>, Arc<ExpansionSpanMap>)> {
     let ast_id = db.ast_id_map(macro_call.file_id).ast_id(&macro_call.value);
 
     let expand_to = ExpandTo::from_call_site(&macro_call.value);
     let ast_id = macro_call.with_value(ast_id);
-    let id = def.as_lazy_macro(db, krate, MacroCallKind::FnLike { ast_id, expand_to });
+    let id = def.as_lazy_macro(db, krate, MacroCallKind::FnLike { ast_id, expand_to }, call_site);
     let macro_file = id.as_macro_file();
 
     db.parse_macro_expansion(macro_file)
@@ -146,57 +116,59 @@ fn lazy_expand(
 
 fn eager_macro_recur(
     db: &dyn ExpandDatabase,
-    hygiene: &Hygiene,
+    span_map: &ExpansionSpanMap,
+    expanded_map: &mut ExpansionSpanMap,
+    mut offset: TextSize,
     curr: InFile<SyntaxNode>,
     krate: CrateId,
+    call_site: SyntaxContextId,
     macro_resolver: &dyn Fn(ModPath) -> Option<MacroDefId>,
-) -> ExpandResult<Option<(SyntaxNode, FxHashMap<TextRange, TextRange>)>> {
+) -> ExpandResult<Option<(SyntaxNode, TextSize)>> {
     let original = curr.value.clone_for_update();
-    let mut mapping = FxHashMap::default();
 
     let mut replacements = Vec::new();
 
     // FIXME: We only report a single error inside of eager expansions
     let mut error = None;
-    let mut offset = 0i32;
-    let apply_offset = |it: TextSize, offset: i32| {
-        TextSize::from(u32::try_from(offset + u32::from(it) as i32).unwrap_or_default())
-    };
     let mut children = original.preorder_with_tokens();
 
     // Collect replacement
     while let Some(child) = children.next() {
-        let WalkEvent::Enter(child) = child else { continue };
         let call = match child {
-            syntax::NodeOrToken::Node(node) => match ast::MacroCall::cast(node) {
+            WalkEvent::Enter(SyntaxElement::Node(child)) => match ast::MacroCall::cast(child) {
                 Some(it) => {
                     children.skip_subtree();
                     it
                 }
-                None => continue,
+                _ => continue,
             },
-            syntax::NodeOrToken::Token(t) => {
-                mapping.insert(
-                    TextRange::new(
-                        apply_offset(t.text_range().start(), offset),
-                        apply_offset(t.text_range().end(), offset),
-                    ),
-                    t.text_range(),
-                );
+            WalkEvent::Enter(_) => continue,
+            WalkEvent::Leave(child) => {
+                if let SyntaxElement::Token(t) = child {
+                    let start = t.text_range().start();
+                    offset += t.text_range().len();
+                    expanded_map.push(offset, span_map.span_at(start));
+                }
                 continue;
             }
         };
-        let def = match call.path().and_then(|path| ModPath::from_src(db, path, hygiene)) {
+
+        let def = match call
+            .path()
+            .and_then(|path| ModPath::from_src(db, path, SpanMapRef::ExpansionSpanMap(span_map)))
+        {
             Some(path) => match macro_resolver(path.clone()) {
                 Some(def) => def,
                 None => {
                     error =
                         Some(ExpandError::other(format!("unresolved macro {}", path.display(db))));
+                    offset += call.syntax().text_range().len();
                     continue;
                 }
             },
             None => {
                 error = Some(ExpandError::other("malformed macro invocation"));
+                offset += call.syntax().text_range().len();
                 continue;
             }
         };
@@ -207,29 +179,22 @@ fn eager_macro_recur(
                     krate,
                     curr.with_value(call.clone()),
                     def,
+                    call_site,
                     macro_resolver,
                 );
                 match value {
                     Some(call_id) => {
-                        let ExpandResult { value, err: err2 } =
+                        let ExpandResult { value: (parse, map), err: err2 } =
                             db.parse_macro_expansion(call_id.as_macro_file());
 
-                        if let Some(tt) = call.token_tree() {
-                            let call_tt_start = tt.syntax().text_range().start();
-                            let call_start =
-                                apply_offset(call.syntax().text_range().start(), offset);
-                            if let Some((_, arg_map, _)) = db.macro_arg(call_id).value.as_deref() {
-                                mapping.extend(arg_map.entries().filter_map(|(tid, range)| {
-                                    value
-                                        .1
-                                        .first_range_by_token(tid, syntax::SyntaxKind::TOMBSTONE)
-                                        .map(|r| (r + call_start, range + call_tt_start))
-                                }));
-                            }
-                        }
+                        map.iter().for_each(|(o, span)| expanded_map.push(o + offset, span));
 
+                        let syntax_node = parse.syntax_node();
                         ExpandResult {
-                            value: Some(value.0.syntax_node().clone_for_update()),
+                            value: Some((
+                                syntax_node.clone_for_update(),
+                                offset + syntax_node.text_range().len(),
+                            )),
                             err: err.or(err2),
                         }
                     }
@@ -242,45 +207,23 @@ fn eager_macro_recur(
             | MacroDefKind::BuiltInDerive(..)
             | MacroDefKind::ProcMacro(..) => {
                 let ExpandResult { value: (parse, tm), err } =
-                    lazy_expand(db, &def, curr.with_value(call.clone()), krate);
-                let decl_mac = if let MacroDefKind::Declarative(ast_id) = def.kind {
-                    Some(db.decl_macro_expander(def.krate, ast_id))
-                } else {
-                    None
-                };
+                    lazy_expand(db, &def, curr.with_value(call.clone()), krate, call_site);
 
                 // replace macro inside
-                let hygiene = Hygiene::new(db, parse.file_id);
                 let ExpandResult { value, err: error } = eager_macro_recur(
                     db,
-                    &hygiene,
+                    &tm,
+                    expanded_map,
+                    offset,
                     // FIXME: We discard parse errors here
                     parse.as_ref().map(|it| it.syntax_node()),
                     krate,
+                    call_site,
                     macro_resolver,
                 );
                 let err = err.or(error);
 
-                if let Some(tt) = call.token_tree() {
-                    let call_tt_start = tt.syntax().text_range().start();
-                    let call_start = apply_offset(call.syntax().text_range().start(), offset);
-                    if let Some((_tt, arg_map, _)) = parse
-                        .file_id
-                        .macro_file()
-                        .and_then(|id| db.macro_arg(id.macro_call_id).value)
-                        .as_deref()
-                    {
-                        mapping.extend(arg_map.entries().filter_map(|(tid, range)| {
-                            tm.first_range_by_token(
-                                decl_mac.as_ref().map(|it| it.map_id_down(tid)).unwrap_or(tid),
-                                syntax::SyntaxKind::TOMBSTONE,
-                            )
-                            .map(|r| (r + call_start, range + call_tt_start))
-                        }));
-                    }
-                }
-                // FIXME: Do we need to re-use _m here?
-                ExpandResult { value: value.map(|(n, _m)| n), err }
+                ExpandResult { value, err }
             }
         };
         if err.is_some() {
@@ -288,16 +231,18 @@ fn eager_macro_recur(
         }
         // check if the whole original syntax is replaced
         if call.syntax() == &original {
-            return ExpandResult { value: value.zip(Some(mapping)), err: error };
+            return ExpandResult { value, err: error };
         }
 
-        if let Some(insert) = value {
-            offset += u32::from(insert.text_range().len()) as i32
-                - u32::from(call.syntax().text_range().len()) as i32;
-            replacements.push((call, insert));
+        match value {
+            Some((insert, new_offset)) => {
+                replacements.push((call, insert));
+                offset = new_offset;
+            }
+            None => offset += call.syntax().text_range().len(),
         }
     }
 
     replacements.into_iter().rev().for_each(|(old, new)| ted::replace(old.syntax(), new));
-    ExpandResult { value: Some((original, mapping)), err: error }
+    ExpandResult { value: Some((original, offset)), err: error }
 }

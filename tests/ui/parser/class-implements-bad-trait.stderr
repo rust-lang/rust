@@ -4,5 +4,5 @@ error: expected one of `!` or `::`, found `cat`
 LL | class cat : nonexistent {
    |       ^^^ expected one of `!` or `::`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -165,20 +165,20 @@ enum IndentStyle {
 }
 
 #[derive(Clone, Copy, Default, PartialEq)]
-pub struct BreakToken {
+pub(crate) struct BreakToken {
     offset: isize,
     blank_space: isize,
     pre_break: Option<char>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
-pub struct BeginToken {
+pub(crate) struct BeginToken {
     indent: IndentStyle,
     breaks: Breaks,
 }
 
-#[derive(Clone, PartialEq)]
-pub enum Token {
+#[derive(PartialEq)]
+pub(crate) enum Token {
     // In practice a string token contains either a `&'static str` or a
     // `String`. `Cow` is overkill for this because we never modify the data,
     // but it's more convenient than rolling our own more specialized type.
@@ -229,7 +229,6 @@ pub struct Printer {
     last_printed: Option<Token>,
 }
 
-#[derive(Clone)]
 struct BufEntry {
     token: Token,
     size: isize,
@@ -251,16 +250,16 @@ impl Printer {
         }
     }
 
-    pub fn last_token(&self) -> Option<&Token> {
+    pub(crate) fn last_token(&self) -> Option<&Token> {
         self.last_token_still_buffered().or_else(|| self.last_printed.as_ref())
     }
 
-    pub fn last_token_still_buffered(&self) -> Option<&Token> {
+    pub(crate) fn last_token_still_buffered(&self) -> Option<&Token> {
         self.buf.last().map(|last| &last.token)
     }
 
     /// Be very careful with this!
-    pub fn replace_last_token_still_buffered(&mut self, token: Token) {
+    pub(crate) fn replace_last_token_still_buffered(&mut self, token: Token) {
         self.buf.last_mut().unwrap().token = token;
     }
 
@@ -314,7 +313,7 @@ impl Printer {
         }
     }
 
-    pub fn offset(&mut self, offset: isize) {
+    pub(crate) fn offset(&mut self, offset: isize) {
         if let Some(BufEntry { token: Token::Break(token), .. }) = &mut self.buf.last_mut() {
             token.offset += offset;
         }

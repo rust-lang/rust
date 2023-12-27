@@ -1,4 +1,4 @@
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
 use rustc_mir_dataflow::move_paths::{LookupResult, MovePathIndex};
@@ -288,7 +288,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         &mut self,
         place: Place<'tcx>,
         span: Span,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'a> {
         let description = if place.projection.len() == 1 {
             format!("static item {}", self.describe_any_place(place.as_ref()))
         } else {
@@ -310,7 +310,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         deref_target_place: Place<'tcx>,
         span: Span,
         use_spans: Option<UseSpans<'tcx>>,
-    ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'a> {
         // Inspect the type of the content behind the
         // borrow to provide feedback about why this
         // was a move rather than a copy.
@@ -321,7 +321,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         let deref_base = match deref_target_place.projection.as_ref() {
             [proj_base @ .., ProjectionElem::Deref] => {
-                PlaceRef { local: deref_target_place.local, projection: &proj_base }
+                PlaceRef { local: deref_target_place.local, projection: proj_base }
             }
             _ => bug!("deref_target_place is not a deref projection"),
         };
@@ -363,8 +363,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     format!("captured variable in an `{closure_kind}` closure");
 
                 let upvar = &self.upvars[upvar_field.unwrap().index()];
-                let upvar_hir_id = upvar.place.get_root_variable();
-                let upvar_name = upvar.place.to_string(self.infcx.tcx);
+                let upvar_hir_id = upvar.get_root_variable();
+                let upvar_name = upvar.to_string(self.infcx.tcx);
                 let upvar_span = self.infcx.tcx.hir().span(upvar_hir_id);
 
                 let place_name = self.describe_any_place(move_place.as_ref());
@@ -583,7 +583,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 err.subdiagnostic(crate::session_diagnostics::TypeNoCopy::Label {
                     is_partial_move: false,
                     ty: bind_to.ty,
-                    place: &place_desc,
+                    place: place_desc,
                     span: binding_span,
                 });
             }
@@ -607,7 +607,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         if let Some(adt) = local_ty.ty_adt_def()
             && adt.repr().packed()
-            && let ExpnKind::Macro(MacroKind::Derive, name) = self.body.span.ctxt().outer_expn_data().kind
+            && let ExpnKind::Macro(MacroKind::Derive, name) =
+                self.body.span.ctxt().outer_expn_data().kind
         {
             err.note(format!("`#[derive({name})]` triggers a move because taking references to the fields of a packed struct is undefined behaviour"));
         }

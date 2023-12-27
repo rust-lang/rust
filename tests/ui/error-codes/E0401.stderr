@@ -55,7 +55,7 @@ error[E0283]: type annotations needed
 LL |     bfnr(x);
    |     ^^^^ cannot infer type of the type parameter `W` declared on the function `bfnr`
    |
-   = note: multiple `impl`s satisfying `_: Fn<()>` found in the following crates: `alloc`, `core`:
+   = note: multiple `impl`s satisfying `_: Fn()` found in the following crates: `alloc`, `core`:
            - impl<A, F> Fn<A> for &F
              where A: Tuple, F: Fn<A>, F: ?Sized;
            - impl<Args, F, A> Fn<Args> for Box<F, A>

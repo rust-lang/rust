@@ -1,7 +1,6 @@
 use super::*;
 
 use std::fmt;
-use std::marker::PhantomData;
 
 impl<'a> super::ForestObligation for &'a str {
     type CacheKey = &'a str;

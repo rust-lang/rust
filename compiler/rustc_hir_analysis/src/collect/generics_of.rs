@@ -9,14 +9,14 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, Symbol};
-use rustc_span::{sym, Span};
+use rustc_span::Span;
 
 pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     use rustc_hir::*;
 
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
-    let node = tcx.hir().get(hir_id);
+    let node = tcx.hir_node(hir_id);
     let parent_def_id = match node {
         Node::ImplItem(_)
         | Node::TraitItem(_)
@@ -182,7 +182,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     }
 
     let no_generics = hir::Generics::empty();
-    let ast_generics = node.generics().unwrap_or(&no_generics);
+    let ast_generics = node.generics().unwrap_or(no_generics);
     let (opt_self, allow_defaults) = match node {
         Node::Item(item) => {
             match item.kind {
@@ -279,11 +279,11 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                             param.hir_id,
                             param.span,
                             TYPE_DEFAULT_NOT_ALLOWED,
-                            |lint| lint,
+                            |_| {},
                         );
                     }
                     Defaults::Deny => {
-                        tcx.sess.span_err(param.span, TYPE_DEFAULT_NOT_ALLOWED);
+                        tcx.dcx().span_err(param.span, TYPE_DEFAULT_NOT_ALLOWED);
                     }
                 }
             }
@@ -298,15 +298,13 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 kind,
             })
         }
-        GenericParamKind::Const { default, .. } => {
-            let is_host_param = tcx.has_attr(param.def_id, sym::rustc_host);
-
+        GenericParamKind::Const { ty: _, default, is_host_effect } => {
             if !matches!(allow_defaults, Defaults::Allowed)
                 && default.is_some()
-                // `rustc_host` effect params are allowed to have defaults.
-                && !is_host_param
+                // `host` effect params are allowed to have defaults.
+                && !is_host_effect
             {
-                tcx.sess.span_err(
+                tcx.dcx().span_err(
                     param.span,
                     "defaults for const parameters are only allowed in \
                     `struct`, `enum`, `type`, or `trait` definitions",
@@ -315,7 +313,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
 
             let index = next_index();
 
-            if is_host_param {
+            if is_host_effect {
                 if let Some(idx) = host_effect_index {
                     bug!("parent also has host effect param? index: {idx}, def: {def_id:?}");
                 }
@@ -330,7 +328,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 pure_wrt_drop: param.pure_wrt_drop,
                 kind: ty::GenericParamDefKind::Const {
                     has_default: default.is_some(),
-                    is_host_effect: is_host_param,
+                    is_host_effect,
                 },
             })
         }
@@ -340,14 +338,14 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     // cares about anything but the length is instantiation,
     // and we don't do that for closures.
     if let Node::Expr(&hir::Expr {
-        kind: hir::ExprKind::Closure(hir::Closure { movability: gen, .. }),
-        ..
+        kind: hir::ExprKind::Closure(hir::Closure { kind, .. }), ..
     }) = node
     {
-        let dummy_args = if gen.is_some() {
-            &["<resume_ty>", "<yield_ty>", "<return_ty>", "<witness>", "<upvars>"][..]
-        } else {
-            &["<closure_kind>", "<closure_signature>", "<upvars>"][..]
+        let dummy_args = match kind {
+            ClosureKind::Closure => &["<closure_kind>", "<closure_signature>", "<upvars>"][..],
+            ClosureKind::Coroutine(_) => {
+                &["<resume_ty>", "<yield_ty>", "<return_ty>", "<witness>", "<upvars>"][..]
+            }
         };
 
         params.extend(dummy_args.iter().map(|&arg| ty::GenericParamDef {
@@ -458,11 +456,11 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
 
     match node {
         Node::TraitItem(item) => match &item.kind {
-            hir::TraitItemKind::Fn(sig, _) => has_late_bound_regions(tcx, &item.generics, sig.decl),
+            hir::TraitItemKind::Fn(sig, _) => has_late_bound_regions(tcx, item.generics, sig.decl),
             _ => None,
         },
         Node::ImplItem(item) => match &item.kind {
-            hir::ImplItemKind::Fn(sig, _) => has_late_bound_regions(tcx, &item.generics, sig.decl),
+            hir::ImplItemKind::Fn(sig, _) => has_late_bound_regions(tcx, item.generics, sig.decl),
             _ => None,
         },
         Node::ForeignItem(item) => match item.kind {
@@ -489,7 +487,7 @@ struct AnonConstInParamTyDetector {
 
 impl<'v> Visitor<'v> for AnonConstInParamTyDetector {
     fn visit_generic_param(&mut self, p: &'v hir::GenericParam<'v>) {
-        if let GenericParamKind::Const { ty, default: _ } = p.kind {
+        if let GenericParamKind::Const { ty, default: _, is_host_effect: _ } = p.kind {
             let prev = self.in_param_ty;
             self.in_param_ty = true;
             self.visit_ty(ty);

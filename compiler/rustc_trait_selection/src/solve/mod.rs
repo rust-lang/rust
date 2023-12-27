@@ -1,7 +1,6 @@
 //! The next-generation trait solver, currently still WIP.
 //!
-//! As a user of rust, you can use `-Ztrait-solver=next` or `next-coherence`
-//! to enable the new trait solver always, or just within coherence, respectively.
+//! As a user of rust, you can use `-Znext-solver` to enable the new trait solver.
 //!
 //! As a developer of rustc, you shouldn't be using the new trait
 //! solver without asking the trait-system-refactor-initiative, but it can
@@ -16,31 +15,33 @@
 //! about it on zulip.
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::{Canonical, CanonicalVarValues};
+use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_infer::traits::query::NoSolution;
 use rustc_middle::infer::canonical::CanonicalVarInfos;
 use rustc_middle::traits::solve::{
-    CanonicalResponse, Certainty, ExternalConstraintsData, Goal, IsNormalizesToHack, QueryResult,
-    Response,
+    CanonicalResponse, Certainty, ExternalConstraintsData, Goal, GoalSource, IsNormalizesToHack,
+    QueryResult, Response,
 };
-use rustc_middle::ty::{self, Ty, TyCtxt, UniverseIndex};
+use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt, UniverseIndex};
 use rustc_middle::ty::{
     CoercePredicate, RegionOutlivesPredicate, SubtypePredicate, TypeOutlivesPredicate,
 };
 
 mod alias_relate;
 mod assembly;
-mod canonicalize;
 mod eval_ctxt;
 mod fulfill;
 pub mod inspect;
 mod normalize;
+mod normalizes_to;
 mod project_goals;
 mod search_graph;
 mod trait_goals;
 
 pub use eval_ctxt::{EvalCtxt, GenerateProofTree, InferCtxtEvalExt, InferCtxtSelectExt};
 pub use fulfill::FulfillmentCtxt;
-pub(crate) use normalize::{deeply_normalize, deeply_normalize_with_skipped_universes};
+pub(crate) use normalize::deeply_normalize_for_diagnostics;
+pub use normalize::{deeply_normalize, deeply_normalize_with_skipped_universes};
 
 #[derive(Debug, Clone, Copy)]
 enum SolverMode {
@@ -63,19 +64,12 @@ enum GoalEvaluationKind {
 
 trait CanonicalResponseExt {
     fn has_no_inference_or_external_constraints(&self) -> bool;
-
-    fn has_only_region_constraints(&self) -> bool;
 }
 
 impl<'tcx> CanonicalResponseExt for Canonical<'tcx, Response<'tcx>> {
     fn has_no_inference_or_external_constraints(&self) -> bool {
         self.value.external_constraints.region_constraints.is_empty()
             && self.value.var_values.is_identity()
-            && self.value.external_constraints.opaque_types.is_empty()
-    }
-
-    fn has_only_region_constraints(&self) -> bool {
-        self.value.var_values.is_identity_modulo_regions()
             && self.value.external_constraints.opaque_types.is_empty()
     }
 }
@@ -163,7 +157,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
     ) -> QueryResult<'tcx> {
         match self.well_formed_goals(goal.param_env, goal.predicate) {
             Some(goals) => {
-                self.add_goals(goals);
+                self.add_goals(GoalSource::Misc, goals);
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
             None => self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS),
@@ -220,7 +214,7 @@ impl<'a, 'tcx> EvalCtxt<'a, 'tcx> {
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
     #[instrument(level = "debug", skip(self))]
-    fn set_normalizes_to_hack_goal(&mut self, goal: Goal<'tcx, ty::ProjectionPredicate<'tcx>>) {
+    fn set_normalizes_to_hack_goal(&mut self, goal: Goal<'tcx, ty::NormalizesTo<'tcx>>) {
         assert!(
             self.nested_goals.normalizes_to_hack_goal.is_none(),
             "attempted to set the projection eq hack goal when one already exists"
@@ -229,15 +223,19 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn add_goal(&mut self, goal: Goal<'tcx, ty::Predicate<'tcx>>) {
-        inspect::ProofTreeBuilder::add_goal(self, goal);
-        self.nested_goals.goals.push(goal);
+    fn add_goal(&mut self, source: GoalSource, goal: Goal<'tcx, ty::Predicate<'tcx>>) {
+        inspect::ProofTreeBuilder::add_goal(self, source, goal);
+        self.nested_goals.goals.push((source, goal));
     }
 
     #[instrument(level = "debug", skip(self, goals))]
-    fn add_goals(&mut self, goals: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>) {
+    fn add_goals(
+        &mut self,
+        source: GoalSource,
+        goals: impl IntoIterator<Item = Goal<'tcx, ty::Predicate<'tcx>>>,
+    ) {
         for goal in goals {
-            self.add_goal(goal);
+            self.add_goal(source, goal);
         }
     }
 
@@ -253,7 +251,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             return None;
         }
 
-        // FIXME(-Ztrait-solver=next): We should instead try to find a `Certainty::Yes` response with
+        // FIXME(-Znext-solver): We should instead try to find a `Certainty::Yes` response with
         // a subset of the constraints that all the other responses have.
         let one = responses[0];
         if responses[1..].iter().all(|&resp| resp == one) {
@@ -294,28 +292,61 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
     /// in [`EvalCtxt::assemble_candidates_via_self_ty`] does not have to normalize
     /// the self type. It is required when structurally matching on any other
     /// arguments of a trait goal, e.g. when assembling builtin unsize candidates.
+    #[instrument(level = "debug", skip(self), ret)]
     fn try_normalize_ty(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
-        mut ty: Ty<'tcx>,
-    ) -> Result<Option<Ty<'tcx>>, NoSolution> {
-        for _ in 0..self.local_overflow_limit() {
-            let ty::Alias(_, projection_ty) = *ty.kind() else {
-                return Ok(Some(ty));
-            };
+        ty: Ty<'tcx>,
+    ) -> Option<Ty<'tcx>> {
+        self.try_normalize_ty_recur(param_env, DefineOpaqueTypes::Yes, 0, ty)
+    }
 
-            let normalized_ty = self.next_ty_infer();
-            let normalizes_to_goal = Goal::new(
-                self.tcx(),
-                param_env,
-                ty::ProjectionPredicate { projection_ty, term: normalized_ty.into() },
-            );
-            self.add_goal(normalizes_to_goal);
-            self.try_evaluate_added_goals()?;
-            ty = self.resolve_vars_if_possible(normalized_ty);
+    fn try_normalize_ty_recur(
+        &mut self,
+        param_env: ty::ParamEnv<'tcx>,
+        define_opaque_types: DefineOpaqueTypes,
+        depth: usize,
+        ty: Ty<'tcx>,
+    ) -> Option<Ty<'tcx>> {
+        if !self.tcx().recursion_limit().value_within_limit(depth) {
+            return None;
         }
 
-        Ok(None)
+        let ty::Alias(kind, alias) = *ty.kind() else {
+            return Some(ty);
+        };
+
+        // We do no always define opaque types eagerly to allow non-defining uses in the defining scope.
+        if let (DefineOpaqueTypes::No, ty::AliasKind::Opaque) = (define_opaque_types, kind) {
+            if let Some(def_id) = alias.def_id.as_local() {
+                if self
+                    .unify_existing_opaque_tys(
+                        param_env,
+                        OpaqueTypeKey { def_id, args: alias.args },
+                        self.next_ty_infer(),
+                    )
+                    .is_empty()
+                {
+                    return Some(ty);
+                }
+            }
+        }
+
+        match self.commit_if_ok(|this| {
+            let normalized_ty = this.next_ty_infer();
+            let normalizes_to_goal = Goal::new(
+                this.tcx(),
+                param_env,
+                ty::NormalizesTo { alias, term: normalized_ty.into() },
+            );
+            this.add_goal(GoalSource::Misc, normalizes_to_goal);
+            this.try_evaluate_added_goals()?;
+            let ty = this.resolve_vars_if_possible(normalized_ty);
+            Ok(this.try_normalize_ty_recur(param_env, define_opaque_types, depth + 1, ty))
+        }) {
+            Ok(ty) => ty,
+            Err(NoSolution) => Some(ty),
+        }
     }
 }
 

@@ -15,7 +15,7 @@ use std::cell::RefCell;
 use std::fs::File;
 use std::io::BufWriter;
 use std::time::{Duration, Instant, SystemTime};
-use sysinfo::{CpuExt, System, SystemExt};
+use sysinfo::System;
 
 // Update this number whenever a breaking change is made to the build metrics.
 //
@@ -180,7 +180,7 @@ impl BuildMetrics {
                     t!(serde_json::from_slice::<JsonRoot>(&contents)).invocations
                 } else {
                     println!(
-                        "warning: overriding existing build/metrics.json, as it's not \
+                        "WARNING: overriding existing build/metrics.json, as it's not \
                          compatible with build metrics format version {CURRENT_FORMAT_VERSION}."
                     );
                     Vec::new()

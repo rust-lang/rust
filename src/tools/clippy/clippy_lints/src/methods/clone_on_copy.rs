@@ -61,7 +61,7 @@ pub(super) fn check(
                 // ? is a Call, makes sure not to rec *x?, but rather (*x)?
                 ExprKind::Call(hir_callee, _) => matches!(
                     hir_callee.kind,
-                    ExprKind::Path(QPath::LangItem(rustc_hir::LangItem::TryTraitBranch, _, _))
+                    ExprKind::Path(QPath::LangItem(rustc_hir::LangItem::TryTraitBranch, ..))
                 ),
                 ExprKind::MethodCall(_, self_arg, ..) if expr.hir_id == self_arg.hir_id => true,
                 ExprKind::Match(_, _, MatchSource::TryDesugar(_) | MatchSource::AwaitDesugar)

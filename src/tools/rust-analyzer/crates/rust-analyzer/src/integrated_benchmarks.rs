@@ -30,9 +30,12 @@ fn integrated_highlighting_benchmark() {
 
     // Load rust-analyzer itself.
     let workspace_to_load = project_root();
-    let file = "./crates/ide-db/src/apply_change.rs";
+    let file = "./crates/rust-analyzer/src/config.rs";
 
-    let cargo_config = CargoConfig::default();
+    let cargo_config = CargoConfig {
+        sysroot: Some(project_model::RustLibSource::Discover),
+        ..CargoConfig::default()
+    };
     let load_cargo_config = LoadCargoConfig {
         load_out_dirs_from_check: true,
         with_proc_macro_server: ProcMacroServerChoice::None,
@@ -57,7 +60,6 @@ fn integrated_highlighting_benchmark() {
     }
 
     profile::init_from("*>100");
-    // let _s = profile::heartbeat_span();
 
     {
         let _it = stdx::timeit("change");
@@ -86,7 +88,10 @@ fn integrated_completion_benchmark() {
     let workspace_to_load = project_root();
     let file = "./crates/hir/src/lib.rs";
 
-    let cargo_config = CargoConfig::default();
+    let cargo_config = CargoConfig {
+        sysroot: Some(project_model::RustLibSource::Discover),
+        ..CargoConfig::default()
+    };
     let load_cargo_config = LoadCargoConfig {
         load_out_dirs_from_check: true,
         with_proc_macro_server: ProcMacroServerChoice::None,
@@ -104,10 +109,46 @@ fn integrated_completion_benchmark() {
         vfs.file_id(&path).unwrap_or_else(|| panic!("can't find virtual file for {path}"))
     };
 
+    // kick off parsing and index population
+
+    let completion_offset = {
+        let _it = stdx::timeit("change");
+        let mut text = host.analysis().file_text(file_id).unwrap().to_string();
+        let completion_offset =
+            patch(&mut text, "db.struct_data(self.id)", "sel;\ndb.struct_data(self.id)")
+                + "sel".len();
+        let mut change = Change::new();
+        change.change_file(file_id, Some(Arc::from(text)));
+        host.apply_change(change);
+        completion_offset
+    };
+
     {
-        let _it = stdx::timeit("initial");
+        let _span = profile::cpu_span();
         let analysis = host.analysis();
-        analysis.highlight_as_html(file_id, false).unwrap();
+        let config = CompletionConfig {
+            enable_postfix_completions: true,
+            enable_imports_on_the_fly: true,
+            enable_self_on_the_fly: true,
+            enable_private_editable: true,
+            full_function_signatures: false,
+            callable: Some(CallableSnippets::FillArguments),
+            snippet_cap: SnippetCap::new(true),
+            insert_use: InsertUseConfig {
+                granularity: ImportGranularity::Crate,
+                prefix_kind: hir::PrefixKind::ByCrate,
+                enforce_granularity: true,
+                group: true,
+                skip_glob_imports: true,
+            },
+            snippets: Vec::new(),
+            prefer_no_std: false,
+            prefer_prelude: true,
+            limit: None,
+        };
+        let position =
+            FilePosition { file_id, offset: TextSize::try_from(completion_offset).unwrap() };
+        analysis.completions(&config, position, None).unwrap();
     }
 
     profile::init_from("*>5");
@@ -117,8 +158,8 @@ fn integrated_completion_benchmark() {
         let _it = stdx::timeit("change");
         let mut text = host.analysis().file_text(file_id).unwrap().to_string();
         let completion_offset =
-            patch(&mut text, "db.struct_data(self.id)", "sel;\ndb.struct_data(self.id)")
-                + "sel".len();
+            patch(&mut text, "sel;\ndb.struct_data(self.id)", ";sel;\ndb.struct_data(self.id)")
+                + ";sel".len();
         let mut change = Change::new();
         change.change_file(file_id, Some(Arc::from(text)));
         host.apply_change(change);
@@ -134,6 +175,7 @@ fn integrated_completion_benchmark() {
             enable_imports_on_the_fly: true,
             enable_self_on_the_fly: true,
             enable_private_editable: true,
+            full_function_signatures: false,
             callable: Some(CallableSnippets::FillArguments),
             snippet_cap: SnippetCap::new(true),
             insert_use: InsertUseConfig {
@@ -145,6 +187,7 @@ fn integrated_completion_benchmark() {
             },
             snippets: Vec::new(),
             prefer_no_std: false,
+            prefer_prelude: true,
             limit: None,
         };
         let position =
@@ -173,6 +216,7 @@ fn integrated_completion_benchmark() {
             enable_imports_on_the_fly: true,
             enable_self_on_the_fly: true,
             enable_private_editable: true,
+            full_function_signatures: false,
             callable: Some(CallableSnippets::FillArguments),
             snippet_cap: SnippetCap::new(true),
             insert_use: InsertUseConfig {
@@ -184,6 +228,7 @@ fn integrated_completion_benchmark() {
             },
             snippets: Vec::new(),
             prefer_no_std: false,
+            prefer_prelude: true,
             limit: None,
         };
         let position =

@@ -17,6 +17,6 @@ help: consider adding an explicit lifetime bound
 LL | impl <T: Sync + 'static> Foo for T { }
    |               +++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0310`.

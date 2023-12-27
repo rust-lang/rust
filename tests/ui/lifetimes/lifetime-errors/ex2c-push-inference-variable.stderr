@@ -11,5 +11,5 @@ LL |     x.push(z);
    |
    = help: consider adding the following bound: `'c: 'b`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

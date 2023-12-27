@@ -1108,7 +1108,7 @@ impl fmt::Debug for Command {
     ///
     /// The default format approximates a shell invocation of the program along with its
     /// arguments. It does not include most of the other command properties. The output is not guaranteed to work
-    /// (e.g. due to lack of shell-escaping or differences in path resolution)
+    /// (e.g. due to lack of shell-escaping or differences in path resolution).
     /// On some platforms you can use [the alternate syntax] to show more fields.
     ///
     /// Note that the debug implementation is platform-specific.
@@ -1961,7 +1961,7 @@ impl ExitCode {
 }
 
 /// The default value is [`ExitCode::SUCCESS`]
-#[stable(feature = "process_exitcode_default", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "process_exitcode_default", since = "1.75.0")]
 impl Default for ExitCode {
     fn default() -> Self {
         ExitCode::SUCCESS
@@ -2311,7 +2311,7 @@ pub fn id() -> u32 {
 /// of the `main` function, this trait is likely to be available only on
 /// standard library's runtime for convenience. Other runtimes are not required
 /// to provide similar functionality.
-#[cfg_attr(not(test), lang = "termination")]
+#[cfg_attr(not(any(test, doctest)), lang = "termination")]
 #[stable(feature = "termination_trait_lib", since = "1.61.0")]
 #[rustc_on_unimplemented(on(
     cause = "MainFunctionType",

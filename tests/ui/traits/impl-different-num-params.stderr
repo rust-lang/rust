@@ -7,6 +7,6 @@ LL |     fn bar(&self, x: usize) -> Self;
 LL |     fn bar(&self) -> isize {
    |            ^^^^^ expected 2 parameters, found 1
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0050`.

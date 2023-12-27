@@ -76,6 +76,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 a >> b
             }
         }
+        else if a_type.is_vector() && a_type.is_vector() {
+            a >> b
+        }
         else if a_native && !b_native {
             self.gcc_lshr(a, self.gcc_int_cast(b, a_type))
         }
@@ -144,7 +147,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     fn additive_operation(&self, operation: BinaryOp, a: RValue<'gcc>, mut b: RValue<'gcc>) -> RValue<'gcc> {
         let a_type = a.get_type();
         let b_type = b.get_type();
-        if self.is_native_int_type_or_bool(a_type) && self.is_native_int_type_or_bool(b_type) {
+        if (self.is_native_int_type_or_bool(a_type) && self.is_native_int_type_or_bool(b_type)) || (a_type.is_vector() && b_type.is_vector()) {
             if a_type != b_type {
                 if a_type.is_vector() {
                     // Vector types need to be bitcast.
@@ -158,6 +161,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             self.context.new_binary_op(None, operation, a_type, a, b)
         }
         else {
+            debug_assert!(a_type.dyncast_array().is_some());
+            debug_assert!(b_type.dyncast_array().is_some());
             let signed = a_type.is_compatible_with(self.i128_type);
             let func_name =
                 match (operation, signed) {
@@ -189,10 +194,12 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     fn multiplicative_operation(&self, operation: BinaryOp, operation_name: &str, signed: bool, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         let a_type = a.get_type();
         let b_type = b.get_type();
-        if self.is_native_int_type_or_bool(a_type) && self.is_native_int_type_or_bool(b_type) {
+        if (self.is_native_int_type_or_bool(a_type) && self.is_native_int_type_or_bool(b_type)) || (a_type.is_vector() && b_type.is_vector()) {
             self.context.new_binary_op(None, operation, a_type, a, b)
         }
         else {
+            debug_assert!(a_type.dyncast_array().is_some());
+            debug_assert!(b_type.dyncast_array().is_some());
             let sign =
                 if signed {
                     ""
@@ -337,6 +344,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     pub fn operation_with_overflow(&self, func_name: &str, lhs: RValue<'gcc>, rhs: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
         let a_type = lhs.get_type();
         let b_type = rhs.get_type();
+        debug_assert!(a_type.dyncast_array().is_some());
+        debug_assert!(b_type.dyncast_array().is_some());
         let param_a = self.context.new_parameter(None, a_type, "a");
         let param_b = self.context.new_parameter(None, b_type, "b");
         let result_field = self.context.new_field(None, a_type, "result");
@@ -496,7 +505,11 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     pub fn gcc_xor(&self, a: RValue<'gcc>, b: RValue<'gcc>) -> RValue<'gcc> {
         let a_type = a.get_type();
         let b_type = b.get_type();
-        if self.is_native_int_type_or_bool(a_type) && self.is_native_int_type_or_bool(b_type) {
+        if a_type.is_vector() && b_type.is_vector() {
+            let b = self.bitcast_if_needed(b, a_type);
+            a ^ b
+        }
+        else if self.is_native_int_type_or_bool(a_type) && self.is_native_int_type_or_bool(b_type) {
             a ^ b
         }
         else {
@@ -526,6 +539,9 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             else {
                 a << b
             }
+        }
+        else if a_type.is_vector() && a_type.is_vector() {
+            a << b
         }
         else if a_native && !b_native {
             self.gcc_shl(a, self.gcc_int_cast(b, a_type))
@@ -690,6 +706,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let a_native = self.is_native_int_type_or_bool(a_type);
         let b_native = self.is_native_int_type_or_bool(b_type);
         if a_type.is_vector() && b_type.is_vector() {
+            let b = self.bitcast_if_needed(b, a_type);
             self.context.new_binary_op(None, operation, a_type, a, b)
         }
         else if a_native && b_native {
@@ -748,6 +765,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             return self.context.new_cast(None, value, dest_typ);
         }
 
+        debug_assert!(value_type.dyncast_array().is_some());
         let name_suffix =
             match self.type_kind(dest_typ) {
                 TypeKind::Float => "tisf",
@@ -781,6 +799,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             return self.context.new_cast(None, value, dest_typ);
         }
 
+        debug_assert!(value_type.dyncast_array().is_some());
         let name_suffix =
             match self.type_kind(value_type) {
                 TypeKind::Float => "sfti",

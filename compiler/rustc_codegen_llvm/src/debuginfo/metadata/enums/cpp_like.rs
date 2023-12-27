@@ -26,8 +26,8 @@ use crate::{
             enums::{tag_base_type, DiscrResult},
             file_metadata, size_and_align_of, type_di_node,
             type_map::{self, Stub, UniqueTypeId},
-            unknown_file_metadata, DINodeCreationResult, SmallVec, NO_GENERICS, NO_SCOPE_METADATA,
-            UNKNOWN_LINE_NUMBER,
+            unknown_file_metadata, visibility_di_flags, DINodeCreationResult, SmallVec,
+            NO_GENERICS, NO_SCOPE_METADATA, UNKNOWN_LINE_NUMBER,
         },
         utils::DIB,
     },
@@ -215,7 +215,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
             &enum_type_name,
             cx.size_and_align_of(enum_type),
             NO_SCOPE_METADATA,
-            DIFlags::FlagZero,
+            visibility_di_flags(cx, enum_adt_def.did(), enum_adt_def.did()),
         ),
         |cx, enum_type_di_node| {
             match enum_type_and_layout.variants {
@@ -320,6 +320,7 @@ fn build_single_variant_union_fields<'ll, 'tcx>(
     variant_index: VariantIdx,
 ) -> SmallVec<&'ll DIType> {
     let variant_layout = enum_type_and_layout.for_variant(cx, variant_index);
+    let visibility_flags = visibility_di_flags(cx, enum_adt_def.did(), enum_adt_def.did());
     let variant_struct_type_di_node = super::build_enum_variant_struct_type_di_node(
         cx,
         enum_type_and_layout,
@@ -327,6 +328,7 @@ fn build_single_variant_union_fields<'ll, 'tcx>(
         variant_index,
         enum_adt_def.variant(variant_index),
         variant_layout,
+        visibility_flags,
     );
 
     let tag_base_type = cx.tcx.types.u32;
@@ -364,7 +366,7 @@ fn build_single_variant_union_fields<'ll, 'tcx>(
             //       since the later is sometimes smaller (if it has fewer fields).
             size_and_align_of(enum_type_and_layout),
             Size::ZERO,
-            DIFlags::FlagZero,
+            visibility_flags,
             variant_struct_type_wrapper_di_node,
         ),
         unsafe {
@@ -376,7 +378,7 @@ fn build_single_variant_union_fields<'ll, 'tcx>(
                 unknown_file_metadata(cx),
                 UNKNOWN_LINE_NUMBER,
                 variant_names_type_di_node,
-                DIFlags::FlagZero,
+                visibility_flags,
                 Some(cx.const_u64(SINGLE_VARIANT_VIRTUAL_DISR)),
                 tag_base_type_align.bits() as u32,
             )
@@ -403,6 +405,7 @@ fn build_union_fields_for_enum<'ll, 'tcx>(
             (variant_index, variant_name)
         }),
     );
+    let visibility_flags = visibility_di_flags(cx, enum_adt_def.did(), enum_adt_def.did());
 
     let variant_field_infos: SmallVec<VariantFieldInfo<'ll>> = variant_indices
         .map(|variant_index| {
@@ -417,6 +420,7 @@ fn build_union_fields_for_enum<'ll, 'tcx>(
                 variant_index,
                 variant_def,
                 variant_layout,
+                visibility_flags,
             );
 
             VariantFieldInfo {
@@ -437,6 +441,7 @@ fn build_union_fields_for_enum<'ll, 'tcx>(
         tag_base_type,
         tag_field,
         untagged_variant_index,
+        visibility_flags,
     )
 }
 
@@ -715,7 +720,7 @@ fn build_union_fields_for_direct_tag_coroutine<'ll, 'tcx>(
                 coroutine_type_and_layout,
                 coroutine_type_di_node,
                 coroutine_layout,
-                &common_upvar_names,
+                common_upvar_names,
             );
 
             let span = coroutine_layout.variant_source_info[variant_index].span;
@@ -744,6 +749,7 @@ fn build_union_fields_for_direct_tag_coroutine<'ll, 'tcx>(
         tag_base_type,
         tag_field,
         None,
+        DIFlags::FlagZero,
     )
 }
 
@@ -758,6 +764,7 @@ fn build_union_fields_for_direct_tag_enum_or_coroutine<'ll, 'tcx>(
     tag_base_type: Ty<'tcx>,
     tag_field: usize,
     untagged_variant_index: Option<VariantIdx>,
+    di_flags: DIFlags,
 ) -> SmallVec<&'ll DIType> {
     let tag_base_type_di_node = type_di_node(cx, tag_base_type);
     let mut unions_fields = SmallVec::with_capacity(variant_field_infos.len() + 1);
@@ -801,7 +808,7 @@ fn build_union_fields_for_direct_tag_enum_or_coroutine<'ll, 'tcx>(
                 align.bits() as u32,
                 // Union fields are always at offset zero
                 Size::ZERO.bits(),
-                DIFlags::FlagZero,
+                di_flags,
                 variant_struct_type_wrapper,
             )
         }
@@ -835,7 +842,7 @@ fn build_union_fields_for_direct_tag_enum_or_coroutine<'ll, 'tcx>(
             TAG_FIELD_NAME_128_LO,
             size_and_align,
             lo_offset,
-            DIFlags::FlagZero,
+            di_flags,
             type_di_node,
         ));
 
@@ -855,7 +862,7 @@ fn build_union_fields_for_direct_tag_enum_or_coroutine<'ll, 'tcx>(
             TAG_FIELD_NAME,
             cx.size_and_align_of(enum_type_and_layout.field(cx, tag_field).ty),
             enum_type_and_layout.fields.offset(tag_field),
-            DIFlags::FlagZero,
+            di_flags,
             tag_base_type_di_node,
         ));
     }

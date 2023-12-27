@@ -5,7 +5,6 @@ macro_rules! arena_types {
     ($macro:path) => (
         $macro!([
             // HIR types
-            [] hir_krate: rustc_hir::Crate<'tcx>,
             [] asm_template: rustc_ast::InlineAsmTemplatePiece,
             [] attribute: rustc_ast::Attribute,
             [] owner_info: rustc_hir::OwnerInfo<'tcx>,

@@ -13,7 +13,6 @@ use self::spans::CoverageSpans;
 
 use crate::MirPass;
 
-use rustc_data_structures::sync::Lrc;
 use rustc_middle::hir;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::*;
@@ -22,9 +21,9 @@ use rustc_middle::mir::{
     TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
-use rustc_span::def_id::DefId;
+use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{ExpnKind, SourceFile, Span, Symbol};
+use rustc_span::{ExpnKind, Span, Symbol};
 
 /// Inserts `StatementKind::Coverage` statements that either instrument the binary with injected
 /// counters, via intrinsic `llvm.instrprof.increment`, and/or inject metadata used during codegen
@@ -39,31 +38,19 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, mir_body: &mut mir::Body<'tcx>) {
         let mir_source = mir_body.source;
 
-        // If the InstrumentCoverage pass is called on promoted MIRs, skip them.
-        // See: https://github.com/rust-lang/rust/pull/73011#discussion_r438317601
-        if mir_source.promoted.is_some() {
-            trace!(
-                "InstrumentCoverage skipped for {:?} (already promoted for Miri evaluation)",
-                mir_source.def_id()
-            );
+        // This pass runs after MIR promotion, but before promoted MIR starts to
+        // be transformed, so it should never see promoted MIR.
+        assert!(mir_source.promoted.is_none());
+
+        let def_id = mir_source.def_id().expect_local();
+
+        if !is_eligible_for_coverage(tcx, def_id) {
+            trace!("InstrumentCoverage skipped for {def_id:?} (not eligible)");
             return;
         }
 
-        let is_fn_like =
-            tcx.hir().get_by_def_id(mir_source.def_id().expect_local()).fn_kind().is_some();
-
-        // Only instrument functions, methods, and closures (not constants since they are evaluated
-        // at compile time by Miri).
-        // FIXME(#73156): Handle source code coverage in const eval, but note, if and when const
-        // expressions get coverage spans, we will probably have to "carve out" space for const
-        // expressions from coverage spans in enclosing MIR's, like we do for closures. (That might
-        // be tricky if const expressions have no corresponding statements in the enclosing MIR.
-        // Closures are carved out by their initial `Assign` statement.)
-        if !is_fn_like {
-            trace!("InstrumentCoverage skipped for {:?} (not an fn-like)", mir_source.def_id());
-            return;
-        }
-
+        // An otherwise-eligible function is still skipped if its start block
+        // is known to be unreachable.
         match mir_body.basic_blocks[mir::START_BLOCK].terminator().kind {
             TerminatorKind::Unreachable => {
                 trace!("InstrumentCoverage skipped for unreachable `START_BLOCK`");
@@ -72,81 +59,43 @@ impl<'tcx> MirPass<'tcx> for InstrumentCoverage {
             _ => {}
         }
 
-        let codegen_fn_attrs = tcx.codegen_fn_attrs(mir_source.def_id());
-        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_COVERAGE) {
-            return;
-        }
-
-        trace!("InstrumentCoverage starting for {:?}", mir_source.def_id());
+        trace!("InstrumentCoverage starting for {def_id:?}");
         Instrumentor::new(tcx, mir_body).inject_counters();
-        trace!("InstrumentCoverage done for {:?}", mir_source.def_id());
+        trace!("InstrumentCoverage done for {def_id:?}");
     }
 }
 
 struct Instrumentor<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     mir_body: &'a mut mir::Body<'tcx>,
-    source_file: Lrc<SourceFile>,
-    fn_sig_span: Span,
-    body_span: Span,
-    function_source_hash: u64,
+    hir_info: ExtractedHirInfo,
     basic_coverage_blocks: CoverageGraph,
     coverage_counters: CoverageCounters,
 }
 
 impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     fn new(tcx: TyCtxt<'tcx>, mir_body: &'a mut mir::Body<'tcx>) -> Self {
-        let source_map = tcx.sess.source_map();
-        let def_id = mir_body.source.def_id();
-        let (some_fn_sig, hir_body) = fn_sig_and_body(tcx, def_id);
+        let hir_info = extract_hir_info(tcx, mir_body.source.def_id().expect_local());
 
-        let body_span = get_body_span(tcx, hir_body, mir_body);
+        debug!(?hir_info, "instrumenting {:?}", mir_body.source.def_id());
 
-        let source_file = source_map.lookup_source_file(body_span.lo());
-        let fn_sig_span = match some_fn_sig.filter(|fn_sig| {
-            fn_sig.span.eq_ctxt(body_span)
-                && Lrc::ptr_eq(&source_file, &source_map.lookup_source_file(fn_sig.span.lo()))
-        }) {
-            Some(fn_sig) => fn_sig.span.with_hi(body_span.lo()),
-            None => body_span.shrink_to_lo(),
-        };
-
-        debug!(
-            "instrumenting {}: {:?}, fn sig span: {:?}, body span: {:?}",
-            if tcx.is_closure(def_id) { "closure" } else { "function" },
-            def_id,
-            fn_sig_span,
-            body_span
-        );
-
-        let function_source_hash = hash_mir_source(tcx, hir_body);
         let basic_coverage_blocks = CoverageGraph::from_mir(mir_body);
         let coverage_counters = CoverageCounters::new(&basic_coverage_blocks);
 
-        Self {
-            tcx,
-            mir_body,
-            source_file,
-            fn_sig_span,
-            body_span,
-            function_source_hash,
-            basic_coverage_blocks,
-            coverage_counters,
-        }
+        Self { tcx, mir_body, hir_info, basic_coverage_blocks, coverage_counters }
     }
 
     fn inject_counters(&'a mut self) {
-        let fn_sig_span = self.fn_sig_span;
-        let body_span = self.body_span;
-
         ////////////////////////////////////////////////////
         // Compute coverage spans from the `CoverageGraph`.
-        let coverage_spans = CoverageSpans::generate_coverage_spans(
-            &self.mir_body,
-            fn_sig_span,
-            body_span,
+        let Some(coverage_spans) = CoverageSpans::generate_coverage_spans(
+            self.mir_body,
+            &self.hir_info,
             &self.basic_coverage_blocks,
-        );
+        ) else {
+            // No relevant spans were found in MIR, so skip instrumenting this function.
+            return;
+        };
 
         ////////////////////////////////////////////////////
         // Create an optimized mix of `Counter`s and `Expression`s for the `CoverageGraph`. Ensure
@@ -160,7 +109,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let mappings = self.create_mappings_and_inject_coverage_statements(&coverage_spans);
 
         self.mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
-            function_source_hash: self.function_source_hash,
+            function_source_hash: self.hir_info.function_source_hash,
             num_counters: self.coverage_counters.num_counters(),
             expressions: self.coverage_counters.take_expressions(),
             mappings,
@@ -175,11 +124,12 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         coverage_spans: &CoverageSpans,
     ) -> Vec<Mapping> {
         let source_map = self.tcx.sess.source_map();
-        let body_span = self.body_span;
+        let body_span = self.hir_info.body_span;
 
+        let source_file = source_map.lookup_source_file(body_span.lo());
         use rustc_session::RemapFileNameExt;
         let file_name =
-            Symbol::intern(&self.source_file.name.for_codegen(self.tcx.sess).to_string_lossy());
+            Symbol::intern(&source_file.name.for_codegen(self.tcx.sess).to_string_lossy());
 
         let mut mappings = Vec::new();
 
@@ -240,7 +190,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             );
 
             // Inject a counter into the newly-created BB.
-            inject_statement(self.mir_body, self.make_mir_coverage_kind(&counter_kind), new_bb);
+            inject_statement(self.mir_body, self.make_mir_coverage_kind(counter_kind), new_bb);
         }
 
         mappings
@@ -325,27 +275,77 @@ fn make_code_region(
     }
 }
 
-fn fn_sig_and_body(
-    tcx: TyCtxt<'_>,
-    def_id: DefId,
-) -> (Option<&rustc_hir::FnSig<'_>>, &rustc_hir::Body<'_>) {
+fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+    // Only instrument functions, methods, and closures (not constants since they are evaluated
+    // at compile time by Miri).
+    // FIXME(#73156): Handle source code coverage in const eval, but note, if and when const
+    // expressions get coverage spans, we will probably have to "carve out" space for const
+    // expressions from coverage spans in enclosing MIR's, like we do for closures. (That might
+    // be tricky if const expressions have no corresponding statements in the enclosing MIR.
+    // Closures are carved out by their initial `Assign` statement.)
+    if !tcx.def_kind(def_id).is_fn_like() {
+        trace!("InstrumentCoverage skipped for {def_id:?} (not an fn-like)");
+        return false;
+    }
+
+    if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::NO_COVERAGE) {
+        return false;
+    }
+
+    true
+}
+
+/// Function information extracted from HIR by the coverage instrumentor.
+#[derive(Debug)]
+struct ExtractedHirInfo {
+    function_source_hash: u64,
+    is_async_fn: bool,
+    fn_sig_span: Span,
+    body_span: Span,
+}
+
+fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHirInfo {
     // FIXME(#79625): Consider improving MIR to provide the information needed, to avoid going back
     // to HIR for it.
-    let hir_node = tcx.hir().get_if_local(def_id).expect("expected DefId is local");
+
+    let hir_node = tcx.hir_node_by_def_id(def_id);
     let (_, fn_body_id) =
         hir::map::associated_body(hir_node).expect("HIR node is a function with body");
-    (hir_node.fn_sig(), tcx.hir().body(fn_body_id))
+    let hir_body = tcx.hir().body(fn_body_id);
+
+    let is_async_fn = hir_node.fn_sig().is_some_and(|fn_sig| fn_sig.header.is_async());
+    let body_span = get_body_span(tcx, hir_body, def_id);
+
+    // The actual signature span is only used if it has the same context and
+    // filename as the body, and precedes the body.
+    let maybe_fn_sig_span = hir_node.fn_sig().map(|fn_sig| fn_sig.span);
+    let fn_sig_span = maybe_fn_sig_span
+        .filter(|&fn_sig_span| {
+            let source_map = tcx.sess.source_map();
+            let file_idx = |span: Span| source_map.lookup_source_file_idx(span.lo());
+
+            fn_sig_span.eq_ctxt(body_span)
+                && fn_sig_span.hi() <= body_span.lo()
+                && file_idx(fn_sig_span) == file_idx(body_span)
+        })
+        // If so, extend it to the start of the body span.
+        .map(|fn_sig_span| fn_sig_span.with_hi(body_span.lo()))
+        // Otherwise, create a dummy signature span at the start of the body.
+        .unwrap_or_else(|| body_span.shrink_to_lo());
+
+    let function_source_hash = hash_mir_source(tcx, hir_body);
+
+    ExtractedHirInfo { function_source_hash, is_async_fn, fn_sig_span, body_span }
 }
 
 fn get_body_span<'tcx>(
     tcx: TyCtxt<'tcx>,
     hir_body: &rustc_hir::Body<'tcx>,
-    mir_body: &mut mir::Body<'tcx>,
+    def_id: LocalDefId,
 ) -> Span {
     let mut body_span = hir_body.value.span;
-    let def_id = mir_body.source.def_id();
 
-    if tcx.is_closure(def_id) {
+    if tcx.is_closure(def_id.to_def_id()) {
         // If the MIR function is a closure, and if the closure body span
         // starts from a macro, but it's content is not in that macro, try
         // to find a non-macro callsite, and instrument the spans there

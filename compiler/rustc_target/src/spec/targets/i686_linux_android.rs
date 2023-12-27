@@ -11,7 +11,7 @@ pub fn target() -> Target {
     // https://developer.android.com/ndk/guides/abis.html#x86
     base.cpu = "pentiumpro".into();
     base.features = "+mmx,+sse,+sse2,+sse3,+ssse3".into();
-    base.stack_probes = StackProbeType::X86;
+    base.stack_probes = StackProbeType::Inline;
 
     Target {
         llvm_target: "i686-linux-android".into(),

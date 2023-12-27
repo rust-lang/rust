@@ -18,6 +18,11 @@ pub struct TupleStruct(pub usize, pub &'static str);
 
 #[derive(Copy, Clone)]
 pub struct StructWithFields {
+    pub foo: isize,
+}
+
+#[derive(Copy, Clone)]
+pub struct StructWithPrivFields {
     foo: isize,
 }
 

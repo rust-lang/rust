@@ -1,5 +1,14 @@
 // check-pass
 // revisions: host
+// revisions: i686
+//[i686] compile-flags: --target i686-unknown-linux-gnu
+//[i686] needs-llvm-components: x86
+// revisions: x86-64
+//[x86-64] compile-flags: --target x86_64-unknown-linux-gnu
+//[x86-64] needs-llvm-components: x86
+// revisions: x86-64-win
+//[x86-64-win] compile-flags: --target x86_64-pc-windows-msvc
+//[x86-64-win] needs-llvm-components: x86
 // revisions: arm
 //[arm] compile-flags: --target arm-unknown-linux-gnueabi
 //[arm] needs-llvm-components: arm
@@ -37,9 +46,23 @@
 // revisions: wasi
 //[wasi] compile-flags: --target wasm32-wasi
 //[wasi] needs-llvm-components: webassembly
-// revisions: nvptx64
-//[nvptx64] compile-flags: --target nvptx64-nvidia-cuda
-//[nvptx64] needs-llvm-components: nvptx
+// revisions: bpf
+//[bpf] compile-flags: --target bpfeb-unknown-none
+//[bpf] needs-llvm-components: bpf
+// revisions: m68k
+//[m68k] compile-flags: --target m68k-unknown-linux-gnu
+//[m68k] needs-llvm-components: m68k
+// FIXME: disabled on nvptx64 since the target ABI fails the sanity check
+// see https://github.com/rust-lang/rust/issues/117480
+/* revisions: nvptx64
+  [nvptx64] compile-flags: --target nvptx64-nvidia-cuda
+  [nvptx64] needs-llvm-components: nvptx
+*/
+// FIXME: disabled since it fails on CI saying the csky component is missing
+/* revisions: csky
+  [csky] compile-flags: --target csky-unknown-linux-gnuabiv2
+  [csky] needs-llvm-components: csky
+*/
 #![feature(rustc_attrs, unsized_fn_params, transparent_unions)]
 #![cfg_attr(not(host), feature(no_core, lang_items), no_std, no_core)]
 #![allow(unused, improper_ctypes_definitions, internal_features)]
@@ -231,8 +254,7 @@ macro_rules! test_abi_compatible {
     };
 }
 
-// Compatibility of pointers is probably de-facto guaranteed,
-// but that does not seem to be documented.
+// Compatibility of pointers.
 test_abi_compatible!(ptr_mut, *const i32, *mut i32);
 test_abi_compatible!(ptr_pointee, *const i32, *const Vec<i32>);
 test_abi_compatible!(ref_mut, &i32, &mut i32);
@@ -241,14 +263,22 @@ test_abi_compatible!(box_ptr, Box<i32>, *const i32);
 test_abi_compatible!(nonnull_ptr, NonNull<i32>, *const i32);
 test_abi_compatible!(fn_fn, fn(), fn(i32) -> i32);
 
-// Some further guarantees we will likely (have to) make.
+// Compatibility of integer types.
+test_abi_compatible!(char_uint, char, u32);
+#[cfg(target_pointer_width = "32")]
+test_abi_compatible!(isize_int, isize, i32);
+#[cfg(target_pointer_width = "64")]
+test_abi_compatible!(isize_int, isize, i64);
+
+// Compatibility of 1-ZST.
 test_abi_compatible!(zst_unit, Zst, ());
 #[cfg(not(any(target_arch = "sparc64")))]
 test_abi_compatible!(zst_array, Zst, [u8; 0]);
 test_abi_compatible!(nonzero_int, NonZeroI32, i32);
 
 // `DispatchFromDyn` relies on ABI compatibility.
-// This is interesting since these types are not `repr(transparent)`.
+// This is interesting since these types are not `repr(transparent)`. So this is not part of our
+// public ABI guarantees, but is relied on by the compiler.
 test_abi_compatible!(rc, Rc<i32>, *mut i32);
 test_abi_compatible!(arc, Arc<i32>, *mut i32);
 
@@ -324,6 +354,7 @@ mod unsized_ {
     use super::*;
     test_transparent_unsized!(str_, str);
     test_transparent_unsized!(slice, [u8]);
+    test_transparent_unsized!(slice_with_prefix, (usize, [u8]));
     test_transparent_unsized!(dyn_trait, dyn Any);
 }
 

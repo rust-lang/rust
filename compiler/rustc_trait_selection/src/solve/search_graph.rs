@@ -8,11 +8,13 @@ use rustc_index::IndexVec;
 use rustc_middle::dep_graph::dep_kinds;
 use rustc_middle::traits::solve::CacheData;
 use rustc_middle::traits::solve::{CanonicalInput, Certainty, EvaluationCache, QueryResult};
+use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Limit;
 use std::collections::hash_map::Entry;
 
 rustc_index::newtype_index! {
+    #[orderable]
     pub struct StackDepth {}
 }
 
@@ -37,7 +39,7 @@ struct StackEntry<'tcx> {
     /// If we were to use that result when later trying to prove another cycle
     /// participant, we can end up with unstable query results.
     ///
-    /// See tests/ui/new-solver/coinduction/incompleteness-unstable-result.rs for
+    /// See tests/ui/next-solver/coinduction/incompleteness-unstable-result.rs for
     /// an example of where this is needed.
     cycle_participants: FxHashSet<CanonicalInput<'tcx>>,
 }
@@ -110,37 +112,13 @@ impl<'tcx> SearchGraph<'tcx> {
         self.stack.is_empty()
     }
 
-    /// Whether we're currently in a cycle. This should only be used
-    /// for debug assertions.
-    pub(super) fn in_cycle(&self) -> bool {
-        if let Some(stack_depth) = self.stack.last_index() {
-            // Either the current goal on the stack is the root of a cycle
-            // or it depends on a goal with a lower depth.
-            self.stack[stack_depth].has_been_used
-                || self.stack[stack_depth].cycle_root_depth != stack_depth
-        } else {
-            false
-        }
-    }
-
-    /// Fetches whether the current goal encountered overflow.
-    ///
-    /// This should only be used for the check in `evaluate_goal`.
-    pub(super) fn encountered_overflow(&self) -> bool {
-        if let Some(last) = self.stack.raw.last() { last.encountered_overflow } else { false }
-    }
-
-    /// Resets `encountered_overflow` of the current goal.
-    ///
-    /// This should only be used for the check in `evaluate_goal`.
-    pub(super) fn reset_encountered_overflow(&mut self, encountered_overflow: bool) -> bool {
-        if let Some(last) = self.stack.raw.last_mut() {
-            let prev = last.encountered_overflow;
-            last.encountered_overflow = encountered_overflow;
-            prev
-        } else {
-            false
-        }
+    pub(super) fn current_goal_is_normalizes_to(&self) -> bool {
+        self.stack.raw.last().map_or(false, |e| {
+            matches!(
+                e.input.value.goal.predicate.kind().skip_binder(),
+                ty::PredicateKind::NormalizesTo(..)
+            )
+        })
     }
 
     /// Returns the remaining depth allowed for nested goals.
@@ -269,7 +247,7 @@ impl<'tcx> SearchGraph<'tcx> {
                     // in unstable results due to incompleteness.
                     //
                     // However, a test for this would be an even more complex version of
-                    // tests/ui/traits/new-solver/coinduction/incompleteness-unstable-result.rs.
+                    // tests/ui/traits/next-solver/coinduction/incompleteness-unstable-result.rs.
                     // I did not bother to write such a test and we have no regression test
                     // for this. It would be good to have such a test :)
                     #[allow(rustc::potential_query_instability)]
@@ -280,7 +258,7 @@ impl<'tcx> SearchGraph<'tcx> {
                 // until we reach a fixpoint. It is not enough to simply retry the
                 // `root` goal of this cycle.
                 //
-                // See tests/ui/traits/new-solver/cycles/fixpoint-rerun-all-cycle-heads.rs
+                // See tests/ui/traits/next-solver/cycles/fixpoint-rerun-all-cycle-heads.rs
                 // for an example.
                 self.stack[stack_depth].has_been_used = true;
                 return if let Some(result) = self.stack[stack_depth].provisional_result {

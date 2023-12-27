@@ -44,6 +44,10 @@ fn main() {
         [] => {}
     }
     match s {
+        //~^ ERROR `&[]` and `&[_, ..]` not covered
+        [..] if false => {}
+    }
+    match s {
         //~^ ERROR `&[_, _, ..]` not covered
         [] => {}
         [_] => {}

@@ -4,5 +4,5 @@ error: can't qualify macro_rules invocation with `pub`
 LL |     pub macro_rules! foo {
    |     ^^^ help: try exporting the macro: `#[macro_export]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

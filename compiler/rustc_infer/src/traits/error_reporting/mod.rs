@@ -2,7 +2,7 @@ use super::ObjectSafetyViolation;
 
 use crate::infer::InferCtxt;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{struct_span_err, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{struct_span_err, DiagnosticBuilder, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -18,9 +18,9 @@ impl<'tcx> InferCtxt<'tcx> {
         impl_item_def_id: LocalDefId,
         trait_item_def_id: DefId,
         requirement: &dyn fmt::Display,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'tcx> {
         let mut err = struct_span_err!(
-            self.tcx.sess,
+            self.tcx.dcx(),
             error_span,
             E0276,
             "impl has stricter requirements than trait"
@@ -44,14 +44,14 @@ pub fn report_object_safety_error<'tcx>(
     span: Span,
     trait_def_id: DefId,
     violations: &[ObjectSafetyViolation],
-) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+) -> DiagnosticBuilder<'tcx> {
     let trait_str = tcx.def_path_str(trait_def_id);
     let trait_span = tcx.hir().get_if_local(trait_def_id).and_then(|node| match node {
         hir::Node::Item(item) => Some(item.ident.span),
         _ => None,
     });
     let mut err = struct_span_err!(
-        tcx.sess,
+        tcx.dcx(),
         span,
         E0038,
         "the trait `{}` cannot be made into an object",
@@ -101,12 +101,19 @@ pub fn report_object_safety_error<'tcx>(
          to be resolvable dynamically; for more information visit \
          <https://doc.rust-lang.org/reference/items/traits.html#object-safety>",
     );
+
+    // Only provide the help if its a local trait, otherwise it's not actionable.
     if trait_span.is_some() {
         let mut reported_violations: Vec<_> = reported_violations.into_iter().collect();
         reported_violations.sort();
-        for violation in reported_violations {
-            // Only provide the help if its a local trait, otherwise it's not actionable.
-            violation.solution(&mut err);
+
+        let mut potential_solutions: Vec<_> =
+            reported_violations.into_iter().map(|violation| violation.solution()).collect();
+        potential_solutions.sort();
+        // Allows us to skip suggesting that the same item should be moved to another trait multiple times.
+        potential_solutions.dedup();
+        for solution in potential_solutions {
+            solution.add_to(&mut err);
         }
     }
 

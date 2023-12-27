@@ -11,7 +11,5 @@ rm -r compiler/rustc_codegen_cranelift/{Cargo.*,src}
 cp ../Cargo.* compiler/rustc_codegen_cranelift/
 cp -r ../src compiler/rustc_codegen_cranelift/src
 
-# CG_CLIF_FORCE_GNU_AS will force usage of as instead of the LLVM backend of rustc as we
-# the LLVM backend isn't compiled in here.
-CG_CLIF_FORCE_GNU_AS=1 ./x.py build --stage 1 library/std
+./x.py build --stage 1 library/std
 popd

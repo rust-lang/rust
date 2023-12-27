@@ -14,5 +14,5 @@ help: surround the macro invocation with `{}` to interpret the expansion as a st
 LL |     let _ = { statement!(); };
    |             ~~~~~~~~~~~~~~~~~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

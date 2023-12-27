@@ -11,5 +11,5 @@ LL | #![forbid(nonstandard_style)]
    |           ^^^^^^^^^^^^^^^^^
    = note: `#[forbid(non_snake_case)]` implied by `#[forbid(nonstandard_style)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

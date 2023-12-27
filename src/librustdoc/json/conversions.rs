@@ -250,15 +250,16 @@ pub(crate) fn id_from_item_inner(
                     // their parent module, which isn't present in the output JSON items. So
                     // instead, we directly get the primitive symbol and convert it to u32 to
                     // generate the ID.
-                    if matches!(tcx.def_kind(def_id), DefKind::Mod) &&
-                        let Some(prim) = tcx.get_attrs(*def_id, sym::rustc_doc_primitive)
-                            .find_map(|attr| attr.value_str()) {
+                    if matches!(tcx.def_kind(def_id), DefKind::Mod)
+                        && let Some(prim) = tcx
+                            .get_attrs(*def_id, sym::rustc_doc_primitive)
+                            .find_map(|attr| attr.value_str())
+                    {
                         format!(":{}", prim.as_u32())
                     } else {
-                        tcx
-                        .opt_item_name(*def_id)
-                        .map(|n| format!(":{}", n.as_u32()))
-                        .unwrap_or_default()
+                        tcx.opt_item_name(*def_id)
+                            .map(|n| format!(":{}", n.as_u32()))
+                            .unwrap_or_default()
                     }
                 }
             };
@@ -546,6 +547,9 @@ pub(crate) fn from_trait_bound_modifier(
         None => TraitBoundModifier::None,
         Maybe => TraitBoundModifier::Maybe,
         MaybeConst => TraitBoundModifier::MaybeConst,
+        // FIXME(const_trait_impl): Create rjt::TBM::Const and map to it once always-const bounds
+        // are less experimental.
+        Const => TraitBoundModifier::None,
         // FIXME(negative-bounds): This bound should be rendered negative, but
         // since that's experimental, maybe let's not add it to the rustdoc json
         // API just now...
@@ -647,10 +651,12 @@ impl FromWithTcx<clean::Trait> for Trait {
     fn from_tcx(trait_: clean::Trait, tcx: TyCtxt<'_>) -> Self {
         let is_auto = trait_.is_auto(tcx);
         let is_unsafe = trait_.unsafety(tcx) == rustc_hir::Unsafety::Unsafe;
+        let is_object_safe = trait_.is_object_safe(tcx);
         let clean::Trait { items, generics, bounds, .. } = trait_;
         Trait {
             is_auto,
             is_unsafe,
+            is_object_safe,
             items: ids(items, tcx),
             generics: generics.into_tcx(tcx),
             bounds: bounds.into_tcx(tcx),

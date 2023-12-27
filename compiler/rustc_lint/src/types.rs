@@ -1,12 +1,13 @@
 use crate::{
     fluent_generated as fluent,
     lints::{
-        AtomicOrderingFence, AtomicOrderingLoad, AtomicOrderingStore, ImproperCTypes,
-        InvalidAtomicOrderingDiag, InvalidNanComparisons, InvalidNanComparisonsSuggestion,
-        OnlyCastu8ToChar, OverflowingBinHex, OverflowingBinHexSign, OverflowingBinHexSignBitSub,
-        OverflowingBinHexSub, OverflowingInt, OverflowingIntHelp, OverflowingLiteral,
-        OverflowingUInt, RangeEndpointOutOfRange, UnusedComparisons, UseInclusiveRange,
-        VariantSizeDifferencesDiag,
+        AmbiguousWidePointerComparisons, AmbiguousWidePointerComparisonsAddrMetadataSuggestion,
+        AmbiguousWidePointerComparisonsAddrSuggestion, AtomicOrderingFence, AtomicOrderingLoad,
+        AtomicOrderingStore, ImproperCTypes, InvalidAtomicOrderingDiag, InvalidNanComparisons,
+        InvalidNanComparisonsSuggestion, OnlyCastu8ToChar, OverflowingBinHex,
+        OverflowingBinHexSign, OverflowingBinHexSignBitSub, OverflowingBinHexSub, OverflowingInt,
+        OverflowingIntHelp, OverflowingLiteral, OverflowingUInt, RangeEndpointOutOfRange,
+        UnusedComparisons, UseInclusiveRange, VariantSizeDifferencesDiag,
     },
 };
 use crate::{LateContext, LateLintPass, LintContext};
@@ -17,10 +18,10 @@ use rustc_errors::DiagnosticMessage;
 use rustc_hir as hir;
 use rustc_hir::{is_range_literal, Expr, ExprKind, Node};
 use rustc_middle::ty::layout::{IntegerExt, LayoutOf, SizeSkeleton};
-use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::{
     self, AdtKind, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
 };
+use rustc_middle::ty::{GenericArgsRef, TypeAndMut};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::source_map;
 use rustc_span::symbol::sym;
@@ -28,6 +29,7 @@ use rustc_span::{Span, Symbol};
 use rustc_target::abi::{Abi, Size, WrappingRange};
 use rustc_target::abi::{Integer, TagEncoding, Variants};
 use rustc_target::spec::abi::Abi as SpecAbi;
+use rustc_type_ir::DynKind;
 
 use std::iter;
 use std::ops::ControlFlow;
@@ -136,6 +138,37 @@ declare_lint! {
     "detects invalid floating point NaN comparisons"
 }
 
+declare_lint! {
+    /// The `ambiguous_wide_pointer_comparisons` lint checks comparison
+    /// of `*const/*mut ?Sized` as the operands.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// # struct A;
+    /// # struct B;
+    ///
+    /// # trait T {}
+    /// # impl T for A {}
+    /// # impl T for B {}
+    ///
+    /// let ab = (A, B);
+    /// let a = &ab.0 as *const dyn T;
+    /// let b = &ab.1 as *const dyn T;
+    ///
+    /// let _ = a == b;
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The comparison includes metadata which may not be expected.
+    AMBIGUOUS_WIDE_POINTER_COMPARISONS,
+    Warn,
+    "detects ambiguous wide pointer comparisons"
+}
+
 #[derive(Copy, Clone)]
 pub struct TypeLimits {
     /// Id of the last visited negated expression
@@ -144,7 +177,12 @@ pub struct TypeLimits {
     negated_expr_span: Option<Span>,
 }
 
-impl_lint_pass!(TypeLimits => [UNUSED_COMPARISONS, OVERFLOWING_LITERALS, INVALID_NAN_COMPARISONS]);
+impl_lint_pass!(TypeLimits => [
+    UNUSED_COMPARISONS,
+    OVERFLOWING_LITERALS,
+    INVALID_NAN_COMPARISONS,
+    AMBIGUOUS_WIDE_POINTER_COMPARISONS
+]);
 
 impl TypeLimits {
     pub fn new() -> TypeLimits {
@@ -164,7 +202,7 @@ fn lint_overflowing_range_endpoint<'tcx>(
 ) -> bool {
     // Look past casts to support cases like `0..256 as u8`
     let (expr, lit_span) = if let Node::Expr(par_expr) =
-        cx.tcx.hir().get(cx.tcx.hir().parent_id(expr.hir_id))
+        cx.tcx.hir_node(cx.tcx.hir().parent_id(expr.hir_id))
         && let ExprKind::Cast(_, _) = par_expr.kind
     {
         (par_expr, expr.span)
@@ -175,7 +213,7 @@ fn lint_overflowing_range_endpoint<'tcx>(
     // We only want to handle exclusive (`..`) ranges,
     // which are represented as `ExprKind::Struct`.
     let par_id = cx.tcx.hir().parent_id(expr.hir_id);
-    let Node::ExprField(field) = cx.tcx.hir().get(par_id) else { return false };
+    let Node::ExprField(field) = cx.tcx.hir_node(par_id) else { return false };
     let Node::Expr(struct_expr) = cx.tcx.hir().get_parent(field.hir_id) else { return false };
     if !is_range_literal(struct_expr) {
         return false;
@@ -460,7 +498,7 @@ fn lint_uint_literal<'tcx>(
     };
     if lit_val < min || lit_val > max {
         let parent_id = cx.tcx.hir().parent_id(e.hir_id);
-        if let Node::Expr(par_e) = cx.tcx.hir().get(parent_id) {
+        if let Node::Expr(par_e) = cx.tcx.hir_node(parent_id) {
             match par_e.kind {
                 hir::ExprKind::Cast(..) => {
                     if let ty::Char = cx.typeck_results().expr_ty(par_e).kind() {
@@ -620,10 +658,110 @@ fn lint_nan<'tcx>(
     cx.emit_spanned_lint(INVALID_NAN_COMPARISONS, e.span, lint);
 }
 
+fn lint_wide_pointer<'tcx>(
+    cx: &LateContext<'tcx>,
+    e: &'tcx hir::Expr<'tcx>,
+    binop: hir::BinOpKind,
+    l: &'tcx hir::Expr<'tcx>,
+    r: &'tcx hir::Expr<'tcx>,
+) {
+    let ptr_unsized = |mut ty: Ty<'tcx>| -> Option<(usize, bool)> {
+        let mut refs = 0;
+        // here we remove any "implicit" references and count the number
+        // of them to correctly suggest the right number of deref
+        while let ty::Ref(_, inner_ty, _) = ty.kind() {
+            ty = *inner_ty;
+            refs += 1;
+        }
+        match ty.kind() {
+            ty::RawPtr(TypeAndMut { mutbl: _, ty }) => (!ty.is_sized(cx.tcx, cx.param_env))
+                .then(|| (refs, matches!(ty.kind(), ty::Dynamic(_, _, DynKind::Dyn)))),
+            _ => None,
+        }
+    };
+
+    // PartialEq::{eq,ne} takes references, remove any explicit references
+    let l = l.peel_borrows();
+    let r = r.peel_borrows();
+
+    let Some(l_ty) = cx.typeck_results().expr_ty_opt(l) else {
+        return;
+    };
+    let Some(r_ty) = cx.typeck_results().expr_ty_opt(r) else {
+        return;
+    };
+
+    let Some((l_ty_refs, l_inner_ty_is_dyn)) = ptr_unsized(l_ty) else {
+        return;
+    };
+    let Some((r_ty_refs, r_inner_ty_is_dyn)) = ptr_unsized(r_ty) else {
+        return;
+    };
+
+    let (Some(l_span), Some(r_span)) =
+        (l.span.find_ancestor_inside(e.span), r.span.find_ancestor_inside(e.span))
+    else {
+        return cx.emit_spanned_lint(
+            AMBIGUOUS_WIDE_POINTER_COMPARISONS,
+            e.span,
+            AmbiguousWidePointerComparisons::Spanless,
+        );
+    };
+
+    let ne = if binop == hir::BinOpKind::Ne { "!" } else { "" };
+    let is_eq_ne = matches!(binop, hir::BinOpKind::Eq | hir::BinOpKind::Ne);
+    let is_dyn_comparison = l_inner_ty_is_dyn && r_inner_ty_is_dyn;
+
+    let left = e.span.shrink_to_lo().until(l_span.shrink_to_lo());
+    let middle = l_span.shrink_to_hi().until(r_span.shrink_to_lo());
+    let right = r_span.shrink_to_hi().until(e.span.shrink_to_hi());
+
+    let deref_left = &*"*".repeat(l_ty_refs);
+    let deref_right = &*"*".repeat(r_ty_refs);
+
+    cx.emit_spanned_lint(
+        AMBIGUOUS_WIDE_POINTER_COMPARISONS,
+        e.span,
+        AmbiguousWidePointerComparisons::Spanful {
+            addr_metadata_suggestion: (is_eq_ne && !is_dyn_comparison).then(|| {
+                AmbiguousWidePointerComparisonsAddrMetadataSuggestion {
+                    ne,
+                    deref_left,
+                    deref_right,
+                    left,
+                    middle,
+                    right,
+                }
+            }),
+            addr_suggestion: if is_eq_ne {
+                AmbiguousWidePointerComparisonsAddrSuggestion::AddrEq {
+                    ne,
+                    deref_left,
+                    deref_right,
+                    left,
+                    middle,
+                    right,
+                }
+            } else {
+                AmbiguousWidePointerComparisonsAddrSuggestion::Cast {
+                    deref_left,
+                    deref_right,
+                    // those two Options are required for correctness as having
+                    // an empty span and an empty suggestion is not permitted
+                    left_before: (l_ty_refs != 0).then_some(left),
+                    right_before: (r_ty_refs != 0).then(|| r_span.shrink_to_lo()),
+                    left: l_span.shrink_to_hi(),
+                    right,
+                }
+            },
+        },
+    );
+}
+
 impl<'tcx> LateLintPass<'tcx> for TypeLimits {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx hir::Expr<'tcx>) {
         match e.kind {
-            hir::ExprKind::Unary(hir::UnOp::Neg, ref expr) => {
+            hir::ExprKind::Unary(hir::UnOp::Neg, expr) => {
                 // Propagate negation, if the negation itself isn't negated
                 if self.negated_expr_id != Some(e.hir_id) {
                     self.negated_expr_id = Some(expr.hir_id);
@@ -632,14 +770,30 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             }
             hir::ExprKind::Binary(binop, ref l, ref r) => {
                 if is_comparison(binop) {
-                    if !check_limits(cx, binop, &l, &r) {
+                    if !check_limits(cx, binop, l, r) {
                         cx.emit_spanned_lint(UNUSED_COMPARISONS, e.span, UnusedComparisons);
                     } else {
                         lint_nan(cx, e, binop, l, r);
+                        lint_wide_pointer(cx, e, binop.node, l, r);
                     }
                 }
             }
-            hir::ExprKind::Lit(ref lit) => lint_literal(cx, self, e, lit),
+            hir::ExprKind::Lit(lit) => lint_literal(cx, self, e, lit),
+            hir::ExprKind::Call(path, [l, r])
+                if let ExprKind::Path(ref qpath) = path.kind
+                    && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
+                    && let Some(diag_item) = cx.tcx.get_diagnostic_name(def_id)
+                    && let Some(binop) = partialeq_binop(diag_item) =>
+            {
+                lint_wide_pointer(cx, e, binop, l, r);
+            }
+            hir::ExprKind::MethodCall(_, l, [r], _)
+                if let Some(def_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
+                    && let Some(diag_item) = cx.tcx.get_diagnostic_name(def_id)
+                    && let Some(binop) = partialeq_binop(diag_item) =>
+            {
+                lint_wide_pointer(cx, e, binop, l, r);
+            }
             _ => {}
         };
 
@@ -685,7 +839,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                 ty::Int(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
                     let lit_val: i128 = match lit.kind {
-                        hir::ExprKind::Lit(ref li) => match li.node {
+                        hir::ExprKind::Lit(li) => match li.node {
                             ast::LitKind::Int(
                                 v,
                                 ast::LitIntType::Signed(_) | ast::LitIntType::Unsuffixed,
@@ -699,7 +853,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                 ty::Uint(uint_ty) => {
                     let (min, max): (u128, u128) = uint_ty_range(uint_ty);
                     let lit_val: u128 = match lit.kind {
-                        hir::ExprKind::Lit(ref li) => match li.node {
+                        hir::ExprKind::Lit(li) => match li.node {
                             ast::LitKind::Int(v, _) => v,
                             _ => return true,
                         },
@@ -721,6 +875,16 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                     | hir::BinOpKind::Ge
                     | hir::BinOpKind::Gt
             )
+        }
+
+        fn partialeq_binop(diag_item: Symbol) -> Option<hir::BinOpKind> {
+            if diag_item == sym::cmp_partialeq_eq {
+                Some(hir::BinOpKind::Eq)
+            } else if diag_item == sym::cmp_partialeq_ne {
+                Some(hir::BinOpKind::Ne)
+            } else {
+                None
+            }
         }
     }
 }
@@ -1015,7 +1179,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         // We can't completely trust `repr(C)` markings, so make sure the fields are actually safe.
         let mut all_phantom = !variant.fields.is_empty();
         for field in &variant.fields {
-            all_phantom &= match self.check_field_type_for_ffi(cache, &field, args) {
+            all_phantom &= match self.check_field_type_for_ffi(cache, field, args) {
                 FfiSafe => false,
                 // `()` fields are FFI-safe!
                 FfiUnsafe { ty, .. } if ty.is_unit() => false,
@@ -1234,7 +1398,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     };
                 }
 
-                let sig = tcx.erase_late_bound_regions(sig);
+                let sig = tcx.instantiate_bound_regions_with_erased(sig);
                 for arg in sig.inputs() {
                     match self.check_type_for_ffi(cache, *arg) {
                         FfiSafe => {}
@@ -1391,7 +1555,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     /// types that have external ABIs, as these still need checked.
     fn check_fn(&mut self, def_id: LocalDefId, decl: &'tcx hir::FnDecl<'_>) {
         let sig = self.cx.tcx.fn_sig(def_id).instantiate_identity();
-        let sig = self.cx.tcx.erase_late_bound_regions(sig);
+        let sig = self.cx.tcx.instantiate_bound_regions_with_erased(sig);
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
             for (fn_ptr_ty, span) in self.find_fn_ptr_ty_with_external_abi(input_hir, *input_ty) {
@@ -1399,7 +1563,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
         }
 
-        if let hir::FnRetTy::Return(ref ret_hir) = decl.output {
+        if let hir::FnRetTy::Return(ret_hir) = decl.output {
             for (fn_ptr_ty, span) in self.find_fn_ptr_ty_with_external_abi(ret_hir, sig.output()) {
                 self.check_type_for_ffi_and_report_errors(span, fn_ptr_ty, false, true);
             }
@@ -1409,13 +1573,13 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     /// Check if a function's argument types and result type are "ffi-safe".
     fn check_foreign_fn(&mut self, def_id: LocalDefId, decl: &'tcx hir::FnDecl<'_>) {
         let sig = self.cx.tcx.fn_sig(def_id).instantiate_identity();
-        let sig = self.cx.tcx.erase_late_bound_regions(sig);
+        let sig = self.cx.tcx.instantiate_bound_regions_with_erased(sig);
 
         for (input_ty, input_hir) in iter::zip(sig.inputs(), decl.inputs) {
             self.check_type_for_ffi_and_report_errors(input_hir.span, *input_ty, false, false);
         }
 
-        if let hir::FnRetTy::Return(ref ret_hir) = decl.output {
+        if let hir::FnRetTy::Return(ret_hir) = decl.output {
             self.check_type_for_ffi_and_report_errors(ret_hir.span, sig.output(), false, true);
         }
     }
@@ -1487,13 +1651,13 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
         let abi = cx.tcx.hir().get_foreign_abi(it.hir_id());
 
         match it.kind {
-            hir::ForeignItemKind::Fn(ref decl, _, _) if !vis.is_internal_abi(abi) => {
+            hir::ForeignItemKind::Fn(decl, _, _) if !vis.is_internal_abi(abi) => {
                 vis.check_foreign_fn(it.owner_id.def_id, decl);
             }
-            hir::ForeignItemKind::Static(ref ty, _) if !vis.is_internal_abi(abi) => {
+            hir::ForeignItemKind::Static(ty, _) if !vis.is_internal_abi(abi) => {
                 vis.check_foreign_static(it.owner_id, ty.span);
             }
-            hir::ForeignItemKind::Fn(ref decl, _, _) => vis.check_fn(it.owner_id.def_id, decl),
+            hir::ForeignItemKind::Fn(decl, _, _) => vis.check_fn(it.owner_id.def_id, decl),
             hir::ForeignItemKind::Static(..) | hir::ForeignItemKind::Type => (),
         }
     }
@@ -1705,7 +1869,7 @@ impl InvalidAtomicOrdering {
             sym::AtomicI64,
             sym::AtomicI128,
         ];
-        if let ExprKind::MethodCall(ref method_path, _, args, _) = &expr.kind
+        if let ExprKind::MethodCall(method_path, _, args, _) = &expr.kind
             && recognized_names.contains(&method_path.ident.name)
             && let Some(m_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
             && let Some(impl_did) = cx.tcx.impl_of_method(m_def_id)
@@ -1766,7 +1930,7 @@ impl InvalidAtomicOrdering {
     }
 
     fn check_memory_fence(cx: &LateContext<'_>, expr: &Expr<'_>) {
-        if let ExprKind::Call(ref func, ref args) = expr.kind
+        if let ExprKind::Call(func, args) = expr.kind
             && let ExprKind::Path(ref func_qpath) = func.kind
             && let Some(def_id) = cx.qpath_res(func_qpath, func.hir_id).opt_def_id()
             && matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::fence | sym::compiler_fence))

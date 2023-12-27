@@ -5,9 +5,13 @@ LL | environment!();
    | -------------- in this macro invocation
 ...
 LL |     const CRATE: Crate = Crate { fiel: () };
-   |                                  ^^^^ help: a field with a similar name exists: `field`
+   |                                  ^^^^ unknown field
    |
    = note: this error originates in the macro `environment` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: a field with a similar name exists
+   |
+LL |     const CRATE: Crate = Crate { field: () };
+   |                                  ~~~~~
 
 error[E0609]: no field `field` on type `Compound`
   --> $DIR/dont-suggest-hygienic-fields.rs:24:16

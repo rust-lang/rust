@@ -64,7 +64,7 @@ fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
 
     let impl_ = tcx.hir().expect_item(impl_did).expect_impl();
 
-    tcx.sess.emit_err(errors::DropImplOnWrongItem { span: impl_.self_ty.span });
+    tcx.dcx().emit_err(errors::DropImplOnWrongItem { span: impl_.self_ty.span });
 }
 
 fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
@@ -90,10 +90,10 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
             infringing_fields_error(tcx, fields, LangItem::Copy, impl_did, span);
         }
         Err(CopyImplementationError::NotAnAdt) => {
-            tcx.sess.emit_err(errors::CopyImplOnNonAdt { span });
+            tcx.dcx().emit_err(errors::CopyImplOnNonAdt { span });
         }
         Err(CopyImplementationError::HasDestructor) => {
-            tcx.sess.emit_err(errors::CopyImplOnTypeWithDtor { span });
+            tcx.dcx().emit_err(errors::CopyImplOnTypeWithDtor { span });
         }
     }
 }
@@ -116,7 +116,7 @@ fn visit_implementation_of_const_param_ty(tcx: TyCtxt<'_>, impl_did: LocalDefId)
             infringing_fields_error(tcx, fields, LangItem::ConstParamTy, impl_did, span);
         }
         Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed) => {
-            tcx.sess.emit_err(errors::ConstParamTyImplOnNonAdt { span });
+            tcx.dcx().emit_err(errors::ConstParamTyImplOnNonAdt { span });
         }
     }
 }
@@ -173,7 +173,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                 let source_path = tcx.def_path_str(def_a.did());
                 let target_path = tcx.def_path_str(def_b.did());
 
-                tcx.sess.emit_err(errors::DispatchFromDynCoercion {
+                tcx.dcx().emit_err(errors::DispatchFromDynCoercion {
                     span,
                     trait_name: "DispatchFromDyn",
                     note: true,
@@ -185,7 +185,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
             }
 
             if def_a.repr().c() || def_a.repr().packed() {
-                tcx.sess.emit_err(errors::DispatchFromDynRepr { span });
+                tcx.dcx().emit_err(errors::DispatchFromDynRepr { span });
             }
 
             let fields = &def_a.non_enum_variant().fields;
@@ -207,7 +207,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                         infcx.at(&cause, param_env).eq(DefineOpaqueTypes::No, ty_a, ty_b)
                     {
                         if ok.obligations.is_empty() {
-                            tcx.sess.emit_err(errors::DispatchFromDynZST {
+                            tcx.dcx().emit_err(errors::DispatchFromDynZST {
                                 span,
                                 name: field.name,
                                 ty: ty_a,
@@ -222,13 +222,13 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
                 .collect::<Vec<_>>();
 
             if coerced_fields.is_empty() {
-                tcx.sess.emit_err(errors::DispatchFromDynSingle {
+                tcx.dcx().emit_err(errors::DispatchFromDynSingle {
                     span,
                     trait_name: "DispatchFromDyn",
                     note: true,
                 });
             } else if coerced_fields.len() > 1 {
-                tcx.sess.emit_err(errors::DispatchFromDynMulti {
+                tcx.dcx().emit_err(errors::DispatchFromDynMulti {
                     span,
                     coercions_note: true,
                     number: coerced_fields.len(),
@@ -270,7 +270,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDef
             }
         }
         _ => {
-            tcx.sess.emit_err(errors::CoerceUnsizedMay { span, trait_name: "DispatchFromDyn" });
+            tcx.dcx().emit_err(errors::CoerceUnsizedMay { span, trait_name: "DispatchFromDyn" });
         }
     }
 }
@@ -337,7 +337,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) -> Coe
             if def_a != def_b {
                 let source_path = tcx.def_path_str(def_a.did());
                 let target_path = tcx.def_path_str(def_b.did());
-                tcx.sess.emit_err(errors::DispatchFromDynSame {
+                tcx.dcx().emit_err(errors::DispatchFromDynSame {
                     span,
                     trait_name: "CoerceUnsized",
                     note: true,
@@ -419,7 +419,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) -> Coe
                 .collect::<Vec<_>>();
 
             if diff_fields.is_empty() {
-                tcx.sess.emit_err(errors::CoerceUnsizedOneField {
+                tcx.dcx().emit_err(errors::CoerceUnsizedOneField {
                     span,
                     trait_name: "CoerceUnsized",
                     note: true,
@@ -433,7 +433,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) -> Coe
                     tcx.def_span(impl_did)
                 };
 
-                tcx.sess.emit_err(errors::CoerceUnsizedMulti {
+                tcx.dcx().emit_err(errors::CoerceUnsizedMulti {
                     span,
                     coercions_note: true,
                     number: diff_fields.len(),
@@ -453,7 +453,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) -> Coe
         }
 
         _ => {
-            tcx.sess.emit_err(errors::DispatchFromDynStruct { span, trait_name: "CoerceUnsized" });
+            tcx.dcx().emit_err(errors::DispatchFromDynStruct { span, trait_name: "CoerceUnsized" });
             return err_info;
         }
     };
@@ -550,7 +550,7 @@ fn infringing_fields_error(
                                 .entry((ty.clone(), predicate.clone()))
                                 .or_default()
                                 .push(origin.span());
-                            if let ty::RegionKind::ReEarlyBound(ebr) = *b
+                            if let ty::RegionKind::ReEarlyParam(ebr) = *b
                                 && ebr.has_name()
                             {
                                 bounds.push((b.to_string(), a.to_string(), None));
@@ -583,7 +583,7 @@ fn infringing_fields_error(
         });
     }
 
-    let mut err = tcx.sess.create_err(errors::TraitCannotImplForTy {
+    let mut err = tcx.dcx().create_err(errors::TraitCannotImplForTy {
         span: impl_span,
         trait_name,
         label_spans,

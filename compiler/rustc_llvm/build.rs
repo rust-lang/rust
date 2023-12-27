@@ -102,7 +102,7 @@ fn output(cmd: &mut Command) -> String {
 
 fn main() {
     for component in REQUIRED_COMPONENTS.iter().chain(OPTIONAL_COMPONENTS.iter()) {
-        println!("cargo:rustc-check-cfg=values(llvm_component,\"{component}\")");
+        println!("cargo:rustc-check-cfg=cfg(llvm_component,values(\"{component}\"))");
     }
 
     if tracked_env_var_os("RUST_CHECK").is_some() {
@@ -240,6 +240,12 @@ fn main() {
 
     if !is_crossed {
         cmd.arg("--system-libs");
+    }
+
+    // We need libkstat for getHostCPUName on SPARC builds.
+    // See also: https://github.com/llvm/llvm-project/issues/64186
+    if target.starts_with("sparcv9") && target.contains("solaris") {
+        println!("cargo:rustc-link-lib=kstat");
     }
 
     if (target.starts_with("arm") && !target.contains("freebsd"))

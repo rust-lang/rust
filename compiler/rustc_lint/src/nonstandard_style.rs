@@ -334,7 +334,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
         let crate_ident = if let Some(name) = &cx.tcx.sess.opts.crate_name {
             Some(Ident::from_str(name))
         } else {
-            attr::find_by_name(&cx.tcx.hir().attrs(hir::CRATE_HIR_ID), sym::crate_name)
+            attr::find_by_name(cx.tcx.hir().attrs(hir::CRATE_HIR_ID), sym::crate_name)
                 .and_then(|attr| attr.meta())
                 .and_then(|meta| {
                     meta.name_value_literal().and_then(|lit| {
@@ -473,7 +473,7 @@ impl NonUpperCaseGlobals {
     fn check_upper_case(cx: &LateContext<'_>, sort: &str, ident: &Ident) {
         let name = ident.name.as_str();
         if name.chars().any(|c| c.is_lowercase()) {
-            let uc = NonSnakeCase::to_snake_case(&name).to_uppercase();
+            let uc = NonSnakeCase::to_snake_case(name).to_uppercase();
             // We cannot provide meaningful suggestions
             // if the characters are in the category of "Lowercase Letter".
             let sub = if *name != uc {
@@ -520,7 +520,7 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
 
     fn check_pat(&mut self, cx: &LateContext<'_>, p: &hir::Pat<'_>) {
         // Lint for constants that look like binding identifiers (#7526)
-        if let PatKind::Path(hir::QPath::Resolved(None, ref path)) = p.kind {
+        if let PatKind::Path(hir::QPath::Resolved(None, path)) = p.kind {
             if let Res::Def(DefKind::Const, _) = path.res {
                 if path.segments.len() == 1 {
                     NonUpperCaseGlobals::check_upper_case(
@@ -534,9 +534,9 @@ impl<'tcx> LateLintPass<'tcx> for NonUpperCaseGlobals {
     }
 
     fn check_generic_param(&mut self, cx: &LateContext<'_>, param: &hir::GenericParam<'_>) {
-        if let GenericParamKind::Const { .. } = param.kind {
-            // `rustc_host` params are explicitly allowed to be lowercase.
-            if cx.tcx.has_attr(param.def_id, sym::rustc_host) {
+        if let GenericParamKind::Const { is_host_effect, .. } = param.kind {
+            // `host` params are explicitly allowed to be lowercase.
+            if is_host_effect {
                 return;
             }
             NonUpperCaseGlobals::check_upper_case(cx, "const parameter", &param.name.ident());

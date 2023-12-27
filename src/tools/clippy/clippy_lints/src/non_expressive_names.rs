@@ -5,9 +5,9 @@ use rustc_ast::ast::{
 use rustc_ast::visit::{walk_block, walk_expr, walk_pat, Visitor};
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{sym, Span};
+use rustc_session::impl_lint_pass;
 use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::{sym, Span};
 use std::cmp::Ordering;
 
 declare_clippy_lint! {
@@ -341,7 +341,9 @@ impl<'a, 'tcx> Visitor<'tcx> for SimilarNamesLocalVisitor<'a, 'tcx> {
 
         self.apply(|this| {
             SimilarNamesNameVisitor(this).visit_pat(&arm.pat);
-            this.apply(|this| walk_expr(this, &arm.body));
+            if let Some(body) = &arm.body {
+                this.apply(|this| walk_expr(this, body));
+            }
         });
 
         self.check_single_char_names();

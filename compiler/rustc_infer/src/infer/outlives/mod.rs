@@ -3,7 +3,7 @@ use self::env::OutlivesEnvironment;
 use super::region_constraints::RegionConstraintData;
 use super::{InferCtxt, RegionResolutionError};
 use crate::infer::free_regions::RegionRelations;
-use crate::infer::lexical_region_resolve::{self, LexicalRegionResolutions};
+use crate::infer::lexical_region_resolve;
 use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty;
 
@@ -37,32 +37,6 @@ pub fn explicit_outlives_bounds<'tcx>(
 }
 
 impl<'tcx> InferCtxt<'tcx> {
-    pub fn skip_region_resolution(&self) {
-        let (var_infos, _) = {
-            let mut inner = self.inner.borrow_mut();
-            let inner = &mut *inner;
-            // Note: `inner.region_obligations` may not be empty, because we
-            // didn't necessarily call `process_registered_region_obligations`.
-            // This is okay, because that doesn't introduce new vars.
-            inner
-                .region_constraint_storage
-                .take()
-                .expect("regions already resolved")
-                .with_log(&mut inner.undo_log)
-                .into_infos_and_data()
-        };
-
-        let lexical_region_resolutions = LexicalRegionResolutions {
-            values: rustc_index::IndexVec::from_elem_n(
-                crate::infer::lexical_region_resolve::VarValue::Value(self.tcx.lifetimes.re_erased),
-                var_infos.len(),
-            ),
-        };
-
-        let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
-        assert!(old_value.is_none());
-    }
-
     /// Process the region constraints and return any errors that
     /// result. After this, no more unification operations should be
     /// done -- or the compiler will panic -- but it is legal to use
@@ -93,7 +67,7 @@ impl<'tcx> InferCtxt<'tcx> {
         let region_rels = &RegionRelations::new(self.tcx, outlives_env.free_region_map());
 
         let (lexical_region_resolutions, errors) =
-            lexical_region_resolve::resolve(outlives_env.param_env, region_rels, var_infos, data);
+            lexical_region_resolve::resolve(region_rels, var_infos, data);
 
         let old_value = self.lexical_region_resolutions.replace(Some(lexical_region_resolutions));
         assert!(old_value.is_none());

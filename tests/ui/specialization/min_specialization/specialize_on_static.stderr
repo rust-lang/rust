@@ -4,5 +4,5 @@ error: cannot specialize on `'static` lifetime
 LL | impl X for &'static u8 {
    | ^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -153,9 +153,9 @@ fn reg_component(cls: &[Option<Class>], i: &mut usize, size: Size) -> Option<Reg
     }
 }
 
-fn cast_target(cls: &[Option<Class>], size: Size) -> Option<CastTarget> {
+fn cast_target(cls: &[Option<Class>], size: Size) -> CastTarget {
     let mut i = 0;
-    let lo = reg_component(cls, &mut i, size)?;
+    let lo = reg_component(cls, &mut i, size).unwrap();
     let offset = Size::from_bytes(8) * (i as u64);
     let mut target = CastTarget::from(lo);
     if size > offset {
@@ -164,7 +164,7 @@ fn cast_target(cls: &[Option<Class>], size: Size) -> Option<CastTarget> {
         }
     }
     assert_eq!(reg_component(cls, &mut i, Size::ZERO), None);
-    Some(target)
+    target
 }
 
 const MAX_INT_REGS: usize = 6; // RDI, RSI, RDX, RCX, R8, R9
@@ -179,6 +179,10 @@ where
     let mut sse_regs = MAX_SSE_REGS;
 
     let mut x86_64_arg_or_ret = |arg: &mut ArgAbi<'a, Ty>, is_arg: bool| {
+        if !arg.layout.is_sized() {
+            // Not touching this...
+            return;
+        }
         let mut cls_or_mem = classify_arg(cx, arg);
 
         if is_arg {
@@ -227,9 +231,7 @@ where
                 // split into sized chunks passed individually
                 if arg.layout.is_aggregate() {
                     let size = arg.layout.size;
-                    if let Some(cast_target) = cast_target(cls, size) {
-                        arg.cast_to(cast_target);
-                    }
+                    arg.cast_to(cast_target(cls, size));
                 } else {
                     arg.extend_integer_width_to(32);
                 }

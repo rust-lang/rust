@@ -12,5 +12,5 @@ error: vtable entries for `<S as B>`: [
 LL | trait B: A {
    | ^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

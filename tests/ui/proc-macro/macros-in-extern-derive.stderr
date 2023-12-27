@@ -6,6 +6,6 @@ LL |     #[derive(Copy)]
 LL |     fn f();
    |     ------- not a `struct`, `enum` or `union`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0774`.

@@ -3,26 +3,26 @@ use super::{
     PatKind, Stmt, StmtKind, Thir,
 };
 
-pub trait Visitor<'a, 'tcx: 'a>: Sized {
-    fn thir(&self) -> &'a Thir<'tcx>;
+pub trait Visitor<'thir, 'tcx: 'thir>: Sized {
+    fn thir(&self) -> &'thir Thir<'tcx>;
 
-    fn visit_expr(&mut self, expr: &Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'thir Expr<'tcx>) {
         walk_expr(self, expr);
     }
 
-    fn visit_stmt(&mut self, stmt: &Stmt<'tcx>) {
+    fn visit_stmt(&mut self, stmt: &'thir Stmt<'tcx>) {
         walk_stmt(self, stmt);
     }
 
-    fn visit_block(&mut self, block: &Block) {
+    fn visit_block(&mut self, block: &'thir Block) {
         walk_block(self, block);
     }
 
-    fn visit_arm(&mut self, arm: &Arm<'tcx>) {
+    fn visit_arm(&mut self, arm: &'thir Arm<'tcx>) {
         walk_arm(self, arm);
     }
 
-    fn visit_pat(&mut self, pat: &Pat<'tcx>) {
+    fn visit_pat(&mut self, pat: &'thir Pat<'tcx>) {
         walk_pat(self, pat);
     }
 
@@ -36,7 +36,10 @@ pub trait Visitor<'a, 'tcx: 'a>: Sized {
     // other `visit*` functions.
 }
 
-pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Expr<'tcx>) {
+pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
+    visitor: &mut V,
+    expr: &'thir Expr<'tcx>,
+) {
     use ExprKind::*;
     match expr.kind {
         Scope { value, region_scope: _, lint_level: _ } => {
@@ -168,7 +171,10 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
     }
 }
 
-pub fn walk_stmt<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, stmt: &Stmt<'tcx>) {
+pub fn walk_stmt<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
+    visitor: &mut V,
+    stmt: &'thir Stmt<'tcx>,
+) {
     match &stmt.kind {
         StmtKind::Expr { expr, scope: _ } => visitor.visit_expr(&visitor.thir()[*expr]),
         StmtKind::Let {
@@ -191,7 +197,10 @@ pub fn walk_stmt<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, stmt: &Stm
     }
 }
 
-pub fn walk_block<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, block: &Block) {
+pub fn walk_block<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
+    visitor: &mut V,
+    block: &'thir Block,
+) {
     for &stmt in &*block.stmts {
         visitor.visit_stmt(&visitor.thir()[stmt]);
     }
@@ -200,7 +209,10 @@ pub fn walk_block<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, block: &B
     }
 }
 
-pub fn walk_arm<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, arm: &Arm<'tcx>) {
+pub fn walk_arm<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
+    visitor: &mut V,
+    arm: &'thir Arm<'tcx>,
+) {
     match arm.guard {
         Some(Guard::If(expr)) => visitor.visit_expr(&visitor.thir()[expr]),
         Some(Guard::IfLet(ref pat, expr)) => {
@@ -213,7 +225,10 @@ pub fn walk_arm<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, arm: &Arm<'
     visitor.visit_expr(&visitor.thir()[arm.body]);
 }
 
-pub fn walk_pat<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, pat: &Pat<'tcx>) {
+pub fn walk_pat<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
+    visitor: &mut V,
+    pat: &'thir Pat<'tcx>,
+) {
     use PatKind::*;
     match &pat.kind {
         AscribeUserType { subpattern, ascription: _ }
@@ -226,8 +241,8 @@ pub fn walk_pat<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, pat: &Pat<'
             ty: _,
             is_primary: _,
             name: _,
-        } => visitor.visit_pat(&subpattern),
-        Binding { .. } | Wild | Error(_) => {}
+        } => visitor.visit_pat(subpattern),
+        Binding { .. } | Wild | Never | Error(_) => {}
         Variant { subpatterns, adt_def: _, args: _, variant_index: _ } | Leaf { subpatterns } => {
             for subpattern in subpatterns {
                 visitor.visit_pat(&subpattern.pattern);
@@ -249,7 +264,7 @@ pub fn walk_pat<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, pat: &Pat<'
         }
         Or { pats } => {
             for pat in pats.iter() {
-                visitor.visit_pat(&pat);
+                visitor.visit_pat(pat);
             }
         }
     };

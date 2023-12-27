@@ -7,5 +7,5 @@ LL |     test(Compose(f, |_| {}));
    = note: `fn(&'2 str) -> T` must implement `FnOnce<(&'1 str,)>`, for any lifetime `'1`...
    = note: ...but it actually implements `FnOnce<(&'2 str,)>`, for some specific lifetime `'2`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

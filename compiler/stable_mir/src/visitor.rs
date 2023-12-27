@@ -149,6 +149,7 @@ impl Visitable for RigidTy {
             RigidTy::FnPtr(sig) => sig.visit(visitor),
             RigidTy::Closure(_, args) => args.visit(visitor),
             RigidTy::Coroutine(_, args, _) => args.visit(visitor),
+            RigidTy::CoroutineWitness(_, args) => args.visit(visitor),
             RigidTy::Dynamic(pred, r, _) => {
                 pred.visit(visitor)?;
                 r.visit(visitor)

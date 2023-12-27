@@ -9,6 +9,6 @@ LL |     let _: for<'a, 'b> fn(Inv<'a>, Inv<'b>) = sub;
    = note: expected fn pointer `for<'a, 'b> fn(Inv<'a>, Inv<'b>)`
               found fn pointer `for<'a> fn(Inv<'a>, Inv<'a>)`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

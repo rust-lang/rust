@@ -121,6 +121,8 @@ impl<'k> StatCollector<'k> {
     }
 
     fn print(&self, title: &str, prefix: &str) {
+        // We will soon sort, so the initial order does not matter.
+        #[allow(rustc::potential_query_instability)]
         let mut nodes: Vec<_> = self.nodes.iter().collect();
         nodes.sort_by_key(|(_, node)| node.stats.count * node.stats.size);
 
@@ -147,6 +149,8 @@ impl<'k> StatCollector<'k> {
                 to_readable_str(node.stats.size)
             );
             if !node.subnodes.is_empty() {
+                // We will soon sort, so the initial order does not matter.
+                #[allow(rustc::potential_query_instability)]
                 let mut subnodes: Vec<_> = node.subnodes.iter().collect();
                 subnodes.sort_by_key(|(_, subnode)| subnode.count * subnode.size);
 
@@ -286,7 +290,21 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_pat(&mut self, p: &'v hir::Pat<'v>) {
         record_variants!(
             (self, p, p.kind, Id::Node(p.hir_id), hir, Pat, PatKind),
-            [Wild, Binding, Struct, TupleStruct, Or, Path, Tuple, Box, Ref, Lit, Range, Slice]
+            [
+                Wild,
+                Binding,
+                Struct,
+                TupleStruct,
+                Or,
+                Never,
+                Path,
+                Tuple,
+                Box,
+                Ref,
+                Lit,
+                Range,
+                Slice
+            ]
         );
         hir_visit::walk_pat(self, p)
     }
@@ -411,7 +429,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_param_bound(&mut self, b: &'v hir::GenericBound<'v>) {
         record_variants!(
             (self, b, b, Id::None, hir, GenericBound, GenericBound),
-            [Trait, LangItemTrait, Outlives]
+            [Trait, Outlives]
         );
         hir_visit::walk_param_bound(self, b)
     }
@@ -554,6 +572,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 Range,
                 Slice,
                 Rest,
+                Never,
                 Paren,
                 MacCall
             ]

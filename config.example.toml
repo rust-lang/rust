@@ -29,8 +29,8 @@
 #  - A change in the default values
 #
 # If `change-id` does not match the version that is currently running,
-# `x.py` will prompt you to update it and check the related PR for more details.
-change-id = 116881
+# `x.py` will inform you about the changes made on bootstrap.
+#change-id = <latest change id in src/bootstrap/src/utils/change_tracker.rs>
 
 # =============================================================================
 # Tweaking how LLVM is compiled
@@ -42,18 +42,15 @@ change-id = 116881
 # Unless you're developing for a target where Rust CI doesn't build a compiler
 # toolchain or changing LLVM locally, you probably want to leave this enabled.
 #
-# Set this to `"if-available"` if you are not sure whether you're on a tier 1 
-# target. All tier 1 targets are currently supported;
-#
-# We also currently only support this when building LLVM for the build triple.
-#
-# Set this to `"if-unchanged"` to only download if the llvm-project have not 
-# been modified. (If there are no changes or if built from tarball source, 
-# the logic is the same as "if-available")
+# Set this to `"if-unchanged"` to download only if the llvm-project has not
+# been modified. You can also use this if you are unsure whether you're on a
+# tier 1 target. All tier 1 targets are currently supported.
+
+# Currently, we only support this when building LLVM for the build triple.
 #
 # Note that many of the LLVM options are not currently supported for
 # downloading. Currently only the "assertions" option can be toggled.
-#download-ci-llvm = if rust.channel == "dev" { "if-available" } else { false }
+#download-ci-llvm = if rust.channel == "dev" { "if-unchanged" } else { false }
 
 # Indicates whether the LLVM build is a Release or Debug build
 #optimize = true
@@ -326,6 +323,7 @@ change-id = 116881
 #    "rustdoc",
 #    "rustfmt",
 #    "rust-analyzer",
+#    "rust-analyzer-proc-macro-srv",
 #    "analysis",
 #    "src",
 #    "rust-demangler",  # if profiler = true
@@ -603,6 +601,16 @@ change-id = 116881
 # desired in distributions, for example.
 #rpath = true
 
+# Indicates whether symbols should be stripped using `-Cstrip=symbols`.
+#strip = false
+
+# Indicates whether stack protectors should be used
+# via the unstable option `-Zstack-protector`.
+#
+# Valid options are : `none`(default),`basic`,`strong`, or `all`.
+# `strong` and `basic` options may be buggy and are not recommended, see rust-lang/rust#114903.
+#stack-protector = "none"
+
 # Prints each test name as it is executed, to help debug issues in the test harness itself.
 #verbose-tests = false
 
@@ -641,10 +649,12 @@ change-id = 116881
 #lld = false
 
 # Indicates whether LLD will be used to link Rust crates during bootstrap on
-# supported platforms. The LLD from the bootstrap distribution will be used
-# and not the LLD compiled during the bootstrap.
+# supported platforms.
+# If set to `true` or `"external"`, a global `lld` binary that has to be in $PATH
+# will be used.
+# If set to `"self-contained"`, rust-lld from the snapshot compiler will be used.
 #
-# LLD will not be used if we're cross linking.
+# On MSVC, LLD will not be used if we're cross linking.
 #
 # Explicitly setting the linker for a target will override this option when targeting MSVC.
 #use-lld = false
@@ -688,6 +698,10 @@ change-id = 116881
 # Enable Windows Control Flow Guard checks in the standard library.
 # This only applies from stage 1 onwards, and only for Windows targets.
 #control-flow-guard = false
+
+# Enable Windows EHCont Guard checks in the standard library.
+# This only applies from stage 1 onwards, and only for Windows targets.
+#ehcont-guard = false
 
 # Enable symbol-mangling-version v0. This can be helpful when profiling rustc,
 # as generics will be preserved in symbols (rather than erased into opaque T).

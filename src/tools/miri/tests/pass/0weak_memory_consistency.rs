@@ -1,4 +1,6 @@
-//@compile-flags: -Zmiri-ignore-leaks -Zmiri-disable-stacked-borrows
+//@compile-flags: -Zmiri-ignore-leaks -Zmiri-disable-stacked-borrows -Zmiri-provenance-gc=10000
+// This test's runtime explodes if the GC interval is set to 1 (which we do in CI), so we
+// override it internally back to the default frequency.
 
 // The following tests check whether our weak memory emulation produces
 // any inconsistent execution outcomes

@@ -87,7 +87,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     | (ty::Alias(ty::Projection, proj), ty::Param(p))
                         if !tcx.is_impl_trait_in_trait(proj.def_id) =>
                     {
-                        let parent = tcx.generics_of(body_owner_def_id)
+                        let parent = tcx
+                            .generics_of(body_owner_def_id)
                             .opt_type_param(p, tcx)
                             .and_then(|param| {
                                 let p_def_id = param.def_id;
@@ -104,7 +105,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                     );
                                 }
                                 p_def_id.as_local().and_then(|id| {
-                                    let local_id = tcx.hir().local_def_id_to_hir_id(id);
+                                    let local_id = tcx.local_def_id_to_hir_id(id);
                                     let generics = tcx.hir().find_parent(local_id)?.generics()?;
                                     Some((id, generics))
                                 })
@@ -654,7 +655,7 @@ fn foo(&self) -> Self::T { String::new() }
         // When `body_owner` is an `impl` or `trait` item, look in its associated types for
         // `expected` and point at it.
         let parent_id = tcx.hir().get_parent_item(hir_id);
-        let item = tcx.hir().find_by_def_id(parent_id.def_id);
+        let item = tcx.opt_hir_node_by_def_id(parent_id.def_id);
 
         debug!("expected_projection parent item {:?}", item);
 

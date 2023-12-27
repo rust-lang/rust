@@ -36,6 +36,11 @@ root_dir="`dirname $src_dir`"
 objdir=$root_dir/obj
 dist=$objdir/build/dist
 
+
+if [ -d "$root_dir/.git" ]; then
+    IS_GIT_SOURCE=1
+fi
+
 source "$ci_dir/shared.sh"
 
 CACHE_DOMAIN="${CACHE_DOMAIN:-ci-caches.rust-lang.org}"
@@ -194,6 +199,14 @@ else
     args="$args --env SCCACHE_DIR=/sccache --volume $HOME/.cache/sccache:/sccache"
 fi
 
+# By default, container volumes are bound as read-only; therefore doing experimental work
+# or debugging within the container environment (such as fetching submodules and
+# building them) is not possible. Setting READ_ONLY_SRC to 0 enables this capability by
+# binding the volumes in read-write mode.
+if [ "$READ_ONLY_SRC" != "0" ]; then
+    SRC_MOUNT_OPTION=":ro"
+fi
+
 # Run containers as privileged as it should give them access to some more
 # syscalls such as ptrace and whatnot. In the upgrade to LLVM 5.0 it was
 # discovered that the leak sanitizer apparently needs these syscalls nowadays so
@@ -228,7 +241,7 @@ if [ -f /.dockerenv ]; then
   docker cp . checkout:/checkout
   args="$args --volumes-from checkout"
 else
-  args="$args --volume $root_dir:/checkout:ro"
+  args="$args --volume $root_dir:/checkout$SRC_MOUNT_OPTION"
   args="$args --volume $objdir:/checkout/obj"
   args="$args --volume $HOME/.cargo:/cargo"
   args="$args --volume $HOME/rustsrc:$HOME/rustsrc"
@@ -249,9 +262,13 @@ if [ "$dev" = "1" ]
 then
   # Interactive + TTY
   args="$args -it"
-  command="/bin/bash"
+  if [ $IS_GIT_SOURCE -eq 1 ]; then
+    command=(/bin/bash -c 'git config --global --add safe.directory /checkout;bash')
+  else
+    command=(/bin/bash)
+  fi
 else
-  command="/checkout/src/ci/run.sh"
+  command=(/checkout/src/ci/run.sh)
 fi
 
 if [ "$CI" != "" ]; then
@@ -269,14 +286,9 @@ touch $objdir/${SUMMARY_FILE}
 
 extra_env=""
 if [ "$ENABLE_GCC_CODEGEN" = "1" ]; then
-  extra_env="$EXTRA_ENV --env ENABLE_GCC_CODEGEN=1"
-  # If `ENABLE_GCC_CODEGEN` is set and not empty, we add the `--enable-new-symbol-mangling`
-  # argument to `RUST_CONFIGURE_ARGS` and set the `GCC_EXEC_PREFIX` environment variable.
-  # `cg_gcc` doesn't support the legacy mangling so we need to enforce the new one
-  # if we run `cg_gcc` tests.
-  extra_env="$EXTRA_ENV --env USE_NEW_MANGLING=--enable-new-symbol-mangling"
+  extra_env="$extra_env --env ENABLE_GCC_CODEGEN=1"
   # Fix rustc_codegen_gcc lto issues.
-  extra_env="$EXTRA_ENV --env GCC_EXEC_PREFIX=/usr/lib/gcc/"
+  extra_env="$extra_env --env GCC_EXEC_PREFIX=/usr/lib/gcc/"
   echo "Setting extra environment values for docker: $extra_env"
 fi
 
@@ -306,7 +318,7 @@ docker \
   --init \
   --rm \
   rust-ci \
-  $command
+  "${command[@]}"
 
 cat $objdir/${SUMMARY_FILE} >> "${GITHUB_STEP_SUMMARY}"
 

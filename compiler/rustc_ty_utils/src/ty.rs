@@ -25,7 +25,7 @@ fn sized_constraint_for_ty<'tcx>(
             vec![ty]
         }
 
-        Tuple(ref tys) => match tys.last() {
+        Tuple(tys) => match tys.last() {
             None => vec![],
             Some(&ty) => sized_constraint_for_ty(tcx, adtdef, ty),
         },
@@ -74,7 +74,7 @@ fn sized_constraint_for_ty<'tcx>(
 }
 
 fn defaultness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Defaultness {
-    match tcx.hir().get_by_def_id(def_id) {
+    match tcx.hir_node_by_def_id(def_id) {
         hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(impl_), .. }) => impl_.defaultness,
         hir::Node::ImplItem(hir::ImplItem { defaultness, .. })
         | hir::Node::TraitItem(hir::TraitItem { defaultness, .. }) => *defaultness,
@@ -195,7 +195,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
             // bounds of the RPITIT. Shift these binders back out when
             // constructing the top-level projection predicate.
             let shifted_alias_ty = self.tcx.fold_regions(unshifted_alias_ty, |re, depth| {
-                if let ty::ReLateBound(index, bv) = re.kind() {
+                if let ty::ReBound(index, bv) = re.kind() {
                     if depth != ty::INNERMOST {
                         return ty::Region::new_error_with_message(
                             self.tcx,
@@ -203,11 +203,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
                             "we shouldn't walk non-predicate binders with `impl Trait`...",
                         );
                     }
-                    ty::Region::new_late_bound(
-                        self.tcx,
-                        index.shifted_out_to_binder(self.depth),
-                        bv,
-                    )
+                    ty::Region::new_bound(self.tcx, index.shifted_out_to_binder(self.depth), bv)
                 } else {
                     re
                 }
@@ -289,7 +285,7 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<EarlyBinder<Ty<'
 
     let self_ty = trait_ref.self_ty();
     let self_ty_matches = match self_ty.kind() {
-        ty::Dynamic(ref data, re, _) if re.is_static() => data.principal().is_none(),
+        ty::Dynamic(data, re, _) if re.is_static() => data.principal().is_none(),
         _ => false,
     };
 
@@ -304,7 +300,7 @@ fn issue33140_self_ty(tcx: TyCtxt<'_>, def_id: DefId) -> Option<EarlyBinder<Ty<'
 
 /// Check if a function is async.
 fn asyncness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Asyncness {
-    let node = tcx.hir().get_by_def_id(def_id);
+    let node = tcx.hir_node_by_def_id(def_id);
     node.fn_sig().map_or(ty::Asyncness::No, |sig| match sig.header.asyncness {
         hir::IsAsync::Async(_) => ty::Asyncness::Yes,
         hir::IsAsync::NotAsync => ty::Asyncness::No,
@@ -355,7 +351,7 @@ fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32
     unsizing_params
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         asyncness,
         adt_sized_constraint,

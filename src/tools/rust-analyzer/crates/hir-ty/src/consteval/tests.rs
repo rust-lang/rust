@@ -1159,6 +1159,20 @@ fn pattern_matching_slice() {
         "#,
         33213,
     );
+    check_number(
+        r#"
+    //- minicore: slice, index, coerce_unsized, copy
+    const fn f(mut slice: &[u32]) -> usize {
+        slice = match slice {
+            [0, rest @ ..] | rest => rest,
+        };
+        slice.len()
+    }
+    const GOAL: usize = f(&[]) + f(&[10]) + f(&[0, 100])
+        + f(&[1000, 1000, 1000]) + f(&[0, 57, 34, 46, 10000, 10000]);
+        "#,
+        10,
+    );
 }
 
 #[test]

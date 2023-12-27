@@ -10,6 +10,6 @@ LL |     let x: fn(u8) -> NonZeroAndOneU8 = NonZeroAndOneU8;
            found struct constructor `unsafe fn(_) -> NonZeroAndOneU8 {NonZeroAndOneU8}`
    = note: unsafe functions cannot be coerced into safe function pointers
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

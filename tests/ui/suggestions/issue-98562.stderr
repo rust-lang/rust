@@ -6,6 +6,6 @@ LL | impl TraitA<u8, u16, u32> for X {
    |
    = help: implement the missing item: `fn baz<U: TraitC<I1 = u8, I2 = u16> + TraitD<I3 = u32>, V: TraitD<I3 = u8>>(_: U, _: V) -> Self where U: TraitE, U: TraitB, <U as TraitB>::Item: Copy { todo!() }`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0046`.

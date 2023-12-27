@@ -131,7 +131,7 @@ pub trait Printer<'tcx>: Sized {
 
                     match key.disambiguated_data.data {
                         // Closures' own generics are only captures, don't print them.
-                        DefPathData::ClosureExpr => {}
+                        DefPathData::Closure => {}
                         // This covers both `DefKind::AnonConst` and `DefKind::InlineConst`.
                         // Anon consts doesn't have their own generics, and inline consts' own
                         // generics are their inferred types, so don't print them.
@@ -250,7 +250,7 @@ fn characteristic_def_id_of_type_cached<'a>(
 
         ty::Ref(_, ty, _) => characteristic_def_id_of_type_cached(ty, visited),
 
-        ty::Tuple(ref tys) => tys.iter().find_map(|ty| {
+        ty::Tuple(tys) => tys.iter().find_map(|ty| {
             if visited.insert(ty) {
                 return characteristic_def_id_of_type_cached(ty, visited);
             }

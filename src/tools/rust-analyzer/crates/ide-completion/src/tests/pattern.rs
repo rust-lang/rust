@@ -355,6 +355,35 @@ fn outer(Foo { bar$0 }: Foo) {}
 }
 
 #[test]
+fn completes_in_record_field_pat_with_generic_type_alias() {
+    check_empty(
+        r#"
+type Wrap<T> = T;
+
+enum X {
+    A { cool: u32, stuff: u32 },
+    B,
+}
+
+fn main() {
+    let wrapped = Wrap::<X>::A {
+        cool: 100,
+        stuff: 100,
+    };
+
+    if let Wrap::<X>::A { $0 } = &wrapped {};
+}
+"#,
+        expect![[r#"
+            fd cool  u32
+            fd stuff u32
+            kw mut
+            kw ref
+        "#]],
+    )
+}
+
+#[test]
 fn completes_in_fn_param() {
     check_empty(
         r#"
@@ -406,7 +435,7 @@ fn foo() {
 }
 "#,
         expect![[r#"
-            st Bar
+            st Bar     Bar
             kw crate::
             kw self::
         "#]],
@@ -421,7 +450,7 @@ fn foo() {
 }
 "#,
         expect![[r#"
-            st Foo
+            st Foo     Foo
             kw crate::
             kw self::
         "#]],

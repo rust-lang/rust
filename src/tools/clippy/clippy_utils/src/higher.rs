@@ -5,7 +5,7 @@
 use crate::consts::{constant_simple, Constant};
 use crate::ty::is_type_diagnostic_item;
 use crate::{is_expn_of, match_def_path, paths};
-use if_chain::if_chain;
+
 use rustc_ast::ast;
 use rustc_hir as hir;
 use rustc_hir::{Arm, Block, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, QPath};
@@ -30,24 +30,22 @@ pub struct ForLoop<'tcx> {
 impl<'tcx> ForLoop<'tcx> {
     /// Parses a desugared `for` loop
     pub fn hir(expr: &Expr<'tcx>) -> Option<Self> {
-        if_chain! {
-            if let hir::ExprKind::DropTemps(e) = expr.kind;
-            if let hir::ExprKind::Match(iterexpr, [arm], hir::MatchSource::ForLoopDesugar) = e.kind;
-            if let hir::ExprKind::Call(_, [arg]) = iterexpr.kind;
-            if let hir::ExprKind::Loop(block, ..) = arm.body.kind;
-            if let [stmt] = block.stmts;
-            if let hir::StmtKind::Expr(e) = stmt.kind;
-            if let hir::ExprKind::Match(_, [_, some_arm], _) = e.kind;
-            if let hir::PatKind::Struct(_, [field], _) = some_arm.pat.kind;
-            then {
-                return Some(Self {
-                    pat: field.pat,
-                    arg,
-                    body: some_arm.body,
-                    loop_id: arm.body.hir_id,
-                    span: expr.span.ctxt().outer_expn_data().call_site,
-                });
-            }
+        if let hir::ExprKind::DropTemps(e) = expr.kind
+            && let hir::ExprKind::Match(iterexpr, [arm], hir::MatchSource::ForLoopDesugar) = e.kind
+            && let hir::ExprKind::Call(_, [arg]) = iterexpr.kind
+            && let hir::ExprKind::Loop(block, ..) = arm.body.kind
+            && let [stmt] = block.stmts
+            && let hir::StmtKind::Expr(e) = stmt.kind
+            && let hir::ExprKind::Match(_, [_, some_arm], _) = e.kind
+            && let hir::PatKind::Struct(_, [field], _) = some_arm.pat.kind
+        {
+            return Some(Self {
+                pat: field.pat,
+                arg,
+                body: some_arm.body,
+                loop_id: arm.body.hir_id,
+                span: expr.span.ctxt().outer_expn_data().call_site,
+            });
         }
         None
     }
@@ -277,29 +275,28 @@ impl<'a> VecArgs<'a> {
     /// Returns the arguments of the `vec!` macro if this expression was expanded
     /// from `vec!`.
     pub fn hir(cx: &LateContext<'_>, expr: &'a hir::Expr<'_>) -> Option<VecArgs<'a>> {
-        if_chain! {
-            if let hir::ExprKind::Call(fun, args) = expr.kind;
-            if let hir::ExprKind::Path(ref qpath) = fun.kind;
-            if is_expn_of(fun.span, "vec").is_some();
-            if let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id();
-            then {
-                return if match_def_path(cx, fun_def_id, &paths::VEC_FROM_ELEM) && args.len() == 2 {
-                    // `vec![elem; size]` case
-                    Some(VecArgs::Repeat(&args[0], &args[1]))
-                } else if match_def_path(cx, fun_def_id, &paths::SLICE_INTO_VEC) && args.len() == 1 {
-                    // `vec![a, b, c]` case
-                    if let hir::ExprKind::Call(_, [arg]) = &args[0].kind
-                        && let hir::ExprKind::Array(args) = arg.kind {
-                        Some(VecArgs::Vec(args))
-                    } else {
-                        None
-                    }
-                } else if match_def_path(cx, fun_def_id, &paths::VEC_NEW) && args.is_empty() {
-                    Some(VecArgs::Vec(&[]))
+        if let hir::ExprKind::Call(fun, args) = expr.kind
+            && let hir::ExprKind::Path(ref qpath) = fun.kind
+            && is_expn_of(fun.span, "vec").is_some()
+            && let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id()
+        {
+            return if match_def_path(cx, fun_def_id, &paths::VEC_FROM_ELEM) && args.len() == 2 {
+                // `vec![elem; size]` case
+                Some(VecArgs::Repeat(&args[0], &args[1]))
+            } else if match_def_path(cx, fun_def_id, &paths::SLICE_INTO_VEC) && args.len() == 1 {
+                // `vec![a, b, c]` case
+                if let hir::ExprKind::Call(_, [arg]) = &args[0].kind
+                    && let hir::ExprKind::Array(args) = arg.kind
+                {
+                    Some(VecArgs::Vec(args))
                 } else {
                     None
-                };
-            }
+                }
+            } else if match_def_path(cx, fun_def_id, &paths::VEC_NEW) && args.is_empty() {
+                Some(VecArgs::Vec(&[]))
+            } else {
+                None
+            };
         }
 
         None

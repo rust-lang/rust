@@ -94,6 +94,41 @@ fn foo() {
 }
 
 #[test]
+fn macro_rules_in_attr() {
+    // Regression test for https://github.com/rust-lang/rust-analyzer/issues/12211
+    check(
+        r#"
+//- proc_macros: identity
+macro_rules! id {
+    ($($t:tt)*) => {
+        $($t)*
+    };
+}
+id! {
+    #[proc_macros::identity]
+    impl Foo for WrapBj {
+        async fn foo(&self) {
+            self.id().await;
+        }
+    }
+}
+"#,
+        expect![[r#"
+macro_rules! id {
+    ($($t:tt)*) => {
+        $($t)*
+    };
+}
+#[proc_macros::identity] impl Foo for WrapBj {
+    async fn foo(&self ) {
+        self .id().await ;
+    }
+}
+"#]],
+    );
+}
+
+#[test]
 fn float_parsing_panic() {
     // Regression test for https://github.com/rust-lang/rust-analyzer/issues/12211
     check(
@@ -125,5 +160,29 @@ macro_rules! id {
     }
 }
 "#]],
+    );
+}
+
+#[test]
+fn float_attribute_mapping() {
+    check(
+        r#"
+//- proc_macros: identity
+//+spans+syntaxctxt
+#[proc_macros::identity]
+fn foo(&self) {
+    self.0. 1;
+}
+"#,
+        expect![[r#"
+//+spans+syntaxctxt
+#[proc_macros::identity]
+fn foo(&self) {
+    self.0. 1;
+}
+
+fn#FileId(0):1@45..47\0# foo#FileId(0):1@48..51\0#(#FileId(0):1@51..52\0#&#FileId(0):1@52..53\0#self#FileId(0):1@53..57\0# )#FileId(0):1@57..58\0# {#FileId(0):1@59..60\0#
+    self#FileId(0):1@65..69\0# .#FileId(0):1@69..70\0#0#FileId(0):1@70..71\0#.#FileId(0):1@71..72\0#1#FileId(0):1@73..74\0#;#FileId(0):1@74..75\0#
+}#FileId(0):1@76..77\0#"#]],
     );
 }

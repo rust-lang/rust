@@ -18,7 +18,7 @@ error[E0609]: no field `f` on type `fn() {main}`
   --> $DIR/cast-rfc0401.rs:65:18
    |
 LL |     let _ = main.f as *const u32;
-   |                  ^
+   |                  ^ unknown field
 
 error[E0605]: non-primitive cast: `*const u8` as `&u8`
   --> $DIR/cast-rfc0401.rs:29:13

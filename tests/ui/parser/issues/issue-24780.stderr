@@ -4,5 +4,5 @@ error: expected one of `!`, `+`, `::`, `where`, or `{`, found `>`
 LL | fn foo() -> Vec<usize>> {
    |                       ^ expected one of `!`, `+`, `::`, `where`, or `{`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

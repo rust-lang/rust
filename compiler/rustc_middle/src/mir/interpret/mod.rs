@@ -157,7 +157,7 @@ pub use self::allocation::{
     InitChunk, InitChunkIter,
 };
 
-pub use self::pointer::{Pointer, PointerArithmetic, Provenance};
+pub use self::pointer::{CtfeProvenance, Pointer, PointerArithmetic, Provenance};
 
 /// Uniquely identifies one of the following:
 /// - A constant
@@ -199,7 +199,7 @@ pub struct LitToConstInput<'tcx> {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, HashStable)]
 pub enum LitToConstError {
     /// The literal's inferred type did not match the expected `ty` in the input.
-    /// This is used for graceful error handling (`delay_span_bug`) in
+    /// This is used for graceful error handling (`span_delayed_bug`) in
     /// type checking (`Const::from_anon_const`).
     TypeError,
     Reported(ErrorGuaranteed),

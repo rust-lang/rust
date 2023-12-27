@@ -7,5 +7,5 @@ LL |     true.then_some("a").unwrap_or("b");
    = note: `-D clippy::obfuscated-if-else` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::obfuscated_if_else)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

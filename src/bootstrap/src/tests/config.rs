@@ -1,5 +1,5 @@
-use crate::core::config::TomlConfig;
 use super::{Config, Flags};
+use crate::core::config::{LldMode, TomlConfig};
 
 use clap::CommandFactory;
 use serde::Deserialize;
@@ -24,19 +24,19 @@ fn download_ci_llvm() {
     }
 
     let parse_llvm = |s| parse(s).llvm_from_ci;
-    let if_available = parse_llvm("llvm.download-ci-llvm = \"if-available\"");
+    let if_unchanged = parse_llvm("llvm.download-ci-llvm = \"if-unchanged\"");
 
     assert!(parse_llvm("llvm.download-ci-llvm = true"));
     assert!(!parse_llvm("llvm.download-ci-llvm = false"));
-    assert_eq!(parse_llvm(""), if_available);
-    assert_eq!(parse_llvm("rust.channel = \"dev\""), if_available);
+    assert_eq!(parse_llvm(""), if_unchanged);
+    assert_eq!(parse_llvm("rust.channel = \"dev\""), if_unchanged);
     assert!(!parse_llvm("rust.channel = \"stable\""));
-    assert!(parse_llvm("build.build = \"x86_64-unknown-linux-gnu\""));
-    assert!(parse_llvm(
-        "llvm.assertions = true \r\n build.build = \"x86_64-unknown-linux-gnu\" \r\n llvm.download-ci-llvm = \"if-available\""
-    ));
+    assert_eq!(parse_llvm("build.build = \"x86_64-unknown-linux-gnu\""), if_unchanged);
+    assert_eq!(parse_llvm(
+        "llvm.assertions = true \r\n build.build = \"x86_64-unknown-linux-gnu\" \r\n llvm.download-ci-llvm = \"if-unchanged\""
+    ), if_unchanged);
     assert!(!parse_llvm(
-        "llvm.assertions = true \r\n build.build = \"aarch64-apple-darwin\" \r\n llvm.download-ci-llvm = \"if-available\""
+        "llvm.assertions = true \r\n build.build = \"aarch64-apple-darwin\" \r\n llvm.download-ci-llvm = \"if-unchanged\""
     ));
 }
 
@@ -216,4 +216,13 @@ fn verify_file_integrity() {
     );
 
     remove_file(tempfile).unwrap();
+}
+
+#[test]
+fn rust_lld() {
+    assert!(matches!(parse("").lld_mode, LldMode::Unused));
+    assert!(matches!(parse("rust.use-lld = \"self-contained\"").lld_mode, LldMode::SelfContained));
+    assert!(matches!(parse("rust.use-lld = \"external\"").lld_mode, LldMode::External));
+    assert!(matches!(parse("rust.use-lld = true").lld_mode, LldMode::External));
+    assert!(matches!(parse("rust.use-lld = false").lld_mode, LldMode::Unused));
 }

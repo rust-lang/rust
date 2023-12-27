@@ -7,6 +7,6 @@ LL |     println!("{:?}", bar());
    = help: the trait `Debug` is not implemented for `Bar`
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

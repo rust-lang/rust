@@ -93,7 +93,7 @@ impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
     fn declare(&mut self, decl: Declaration<'tcx>) {
         let local_ty = match decl.ty {
             Some(ref ty) => {
-                let o_ty = self.fcx.to_ty(&ty);
+                let o_ty = self.fcx.to_ty(ty);
 
                 let c_ty =
                     self.fcx.inh.infcx.canonicalize_user_type_annotation(UserType::Ty(o_ty.raw));

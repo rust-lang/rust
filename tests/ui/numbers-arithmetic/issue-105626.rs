@@ -1,6 +1,5 @@
 // run-pass
 // only-x86
-// min-system-llvm-version: 16
 // compile-flags: -Ctarget-feature=+sse2
 
 use std::hint::black_box;

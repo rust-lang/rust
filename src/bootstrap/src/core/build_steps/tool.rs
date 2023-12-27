@@ -203,6 +203,16 @@ pub fn prepare_tool_cargo(
     if !features.is_empty() {
         cargo.arg("--features").arg(&features.join(", "));
     }
+
+    // Enable internal lints for clippy and rustdoc
+    // NOTE: this doesn't enable lints for any other tools unless they explicitly add `#![warn(rustc::internal)]`
+    // See https://github.com/rust-lang/rust/pull/80573#issuecomment-754010776
+    //
+    // NOTE: We unconditionally set this here to avoid recompiling tools between `x check $tool`
+    // and `x test $tool` executions.
+    // See https://github.com/rust-lang/rust/issues/116538
+    cargo.rustflag("-Zunstable-options");
+
     cargo
 }
 
@@ -422,7 +432,7 @@ impl Step for Rustdoc {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Rustdoc {
-            // Note: this is somewhat unique in that we actually want a *target*
+            // NOTE: this is somewhat unique in that we actually want a *target*
             // compiler here, because rustdoc *is* a compiler. We won't be using
             // this as the compiler to build with, but rather this is "what
             // compiler are we producing"?
@@ -454,7 +464,7 @@ impl Step for Rustdoc {
         // compiler, since you do just as much work.
         if !builder.config.dry_run() && builder.download_rustc() && build_compiler.stage == 0 {
             println!(
-                "warning: `download-rustc` does nothing when building stage1 tools; consider using `--stage 2` instead"
+                "WARNING: `download-rustc` does nothing when building stage1 tools; consider using `--stage 2` instead"
             );
         }
 
@@ -603,8 +613,7 @@ pub struct RustAnalyzer {
 }
 
 impl RustAnalyzer {
-    pub const ALLOW_FEATURES: &'static str =
-        "proc_macro_internals,proc_macro_diagnostic,proc_macro_span,proc_macro_span_shrink";
+    pub const ALLOW_FEATURES: &'static str = "rustc_private,proc_macro_internals,proc_macro_diagnostic,proc_macro_span,proc_macro_span_shrink";
 }
 
 impl Step for RustAnalyzer {
@@ -636,7 +645,7 @@ impl Step for RustAnalyzer {
             compiler: self.compiler,
             target: self.target,
             tool: "rust-analyzer",
-            mode: Mode::ToolStd,
+            mode: Mode::ToolRustc,
             path: "src/tools/rust-analyzer",
             extra_features: vec!["rust-analyzer/in-rust-tree".to_owned()],
             is_optional_tool: false,
@@ -662,11 +671,14 @@ impl Step for RustAnalyzerProcMacroSrv {
         // Allow building `rust-analyzer-proc-macro-srv` both as part of the `rust-analyzer` and as a stand-alone tool.
         run.path("src/tools/rust-analyzer")
             .path("src/tools/rust-analyzer/crates/proc-macro-srv-cli")
-            .default_condition(builder.config.tools.as_ref().map_or(true, |tools| {
-                tools
-                    .iter()
-                    .any(|tool| tool == "rust-analyzer" || tool == "rust-analyzer-proc-macro-srv")
-            }))
+            .default_condition(
+                builder.config.extended
+                    && builder.config.tools.as_ref().map_or(true, |tools| {
+                        tools.iter().any(|tool| {
+                            tool == "rust-analyzer" || tool == "rust-analyzer-proc-macro-srv"
+                        })
+                    }),
+            )
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -787,9 +799,9 @@ macro_rules! tool_extended {
     }
 }
 
-// Note: tools need to be also added to `Builder::get_step_descriptions` in `builder.rs`
+// NOTE: tools need to be also added to `Builder::get_step_descriptions` in `builder.rs`
 // to make `./x.py build <tool>` work.
-// Note: Most submodule updates for tools are handled by bootstrap.py, since they're needed just to
+// NOTE: Most submodule updates for tools are handled by bootstrap.py, since they're needed just to
 // invoke Cargo to build bootstrap. See the comment there for more details.
 tool_extended!((self, builder),
     Cargofmt, "src/tools/rustfmt", "cargo-fmt", stable=true;
@@ -824,7 +836,7 @@ impl<'a> Builder<'a> {
         // On MSVC a tool may invoke a C compiler (e.g., compiletest in run-make
         // mode) and that C compiler may need some extra PATH modification. Do
         // so here.
-        if compiler.host.contains("msvc") {
+        if compiler.host.is_msvc() {
             let curpaths = env::var_os("PATH").unwrap_or_default();
             let curpaths = env::split_paths(&curpaths).collect::<Vec<_>>();
             for &(ref k, ref v) in self.cc.borrow()[&compiler.host].env() {

@@ -18,9 +18,9 @@ use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Align, HasDataLayout, Size};
 
 use super::{
-    read_target_uint, write_target_uint, AllocId, BadBytesAccess, InterpError, InterpResult,
-    Pointer, PointerArithmetic, Provenance, ResourceExhaustionInfo, Scalar, ScalarSizeMismatch,
-    UndefinedBehaviorInfo, UnsupportedOpInfo,
+    read_target_uint, write_target_uint, AllocId, BadBytesAccess, CtfeProvenance, InterpError,
+    InterpResult, Pointer, PointerArithmetic, Provenance, ResourceExhaustionInfo, Scalar,
+    ScalarSizeMismatch, UndefinedBehaviorInfo, UnsupportedOpInfo,
 };
 use crate::ty;
 use init_mask::*;
@@ -63,7 +63,7 @@ impl AllocBytes for Box<[u8]> {
 // hashed. (see the `Hash` impl below for more details), so the impl is not derived.
 #[derive(Clone, Eq, PartialEq, TyEncodable, TyDecodable)]
 #[derive(HashStable)]
-pub struct Allocation<Prov: Provenance = AllocId, Extra = (), Bytes = Box<[u8]>> {
+pub struct Allocation<Prov: Provenance = CtfeProvenance, Extra = (), Bytes = Box<[u8]>> {
     /// The actual bytes of the allocation.
     /// Note that the bytes of a pointer represent the offset of the pointer.
     bytes: Bytes,
@@ -315,7 +315,7 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     pub fn try_uninit<'tcx>(size: Size, align: Align) -> InterpResult<'tcx, Self> {
         Self::uninit_inner(size, align, || {
             ty::tls::with(|tcx| {
-                tcx.sess.delay_span_bug(DUMMY_SP, "exhausted memory during interpretation")
+                tcx.dcx().span_delayed_bug(DUMMY_SP, "exhausted memory during interpretation")
             });
             InterpError::ResourceExhaustion(ResourceExhaustionInfo::MemoryExhausted).into()
         })
@@ -336,14 +336,14 @@ impl<Prov: Provenance, Bytes: AllocBytes> Allocation<Prov, (), Bytes> {
     }
 }
 
-impl<Bytes: AllocBytes> Allocation<AllocId, (), Bytes> {
-    /// Adjust allocation from the ones in tcx to a custom Machine instance
-    /// with a different Provenance and Extra type.
+impl<Bytes: AllocBytes> Allocation<CtfeProvenance, (), Bytes> {
+    /// Adjust allocation from the ones in `tcx` to a custom Machine instance
+    /// with a different `Provenance` and `Extra` type.
     pub fn adjust_from_tcx<Prov: Provenance, Extra, Err>(
         self,
         cx: &impl HasDataLayout,
         extra: Extra,
-        mut adjust_ptr: impl FnMut(Pointer<AllocId>) -> Result<Pointer<Prov>, Err>,
+        mut adjust_ptr: impl FnMut(Pointer<CtfeProvenance>) -> Result<Pointer<Prov>, Err>,
     ) -> Result<Allocation<Prov, Extra, Bytes>, Err> {
         let mut bytes = self.bytes;
         // Adjust provenance of pointers stored in this allocation.

@@ -7,6 +7,6 @@ LL | use core::slice::index::private_slice_index::Sealed;
 note: the module `index` is defined here
   --> $SRC_DIR/core/src/slice/mod.rs:LL:COL
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0603`.

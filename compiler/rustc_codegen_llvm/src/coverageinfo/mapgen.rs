@@ -58,6 +58,11 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
         return;
     }
 
+    // The entries of the map are only used to get a list of all files with
+    // coverage info. In the end the list of files is passed into
+    // `GlobalFileTable::new()` which internally do `.sort_unstable_by()`, so
+    // the iteration order here does not matter.
+    #[allow(rustc::potential_query_instability)]
     let function_coverage_entries = function_coverage_map
         .into_iter()
         .map(|(instance, function_coverage)| (instance, function_coverage.into_finished()))
@@ -176,7 +181,7 @@ impl GlobalFileTable {
         // compilation directory can be combined with the relative paths
         // to get absolute paths, if needed.
         use rustc_session::RemapFileNameExt;
-        let working_dir: &str = &tcx.sess.opts.working_dir.for_codegen(&tcx.sess).to_string_lossy();
+        let working_dir: &str = &tcx.sess.opts.working_dir.for_codegen(tcx.sess).to_string_lossy();
 
         llvm::build_byte_buffer(|buffer| {
             coverageinfo::write_filenames_section_to_buffer(
@@ -189,8 +194,6 @@ impl GlobalFileTable {
 }
 
 rustc_index::newtype_index! {
-    // Tell the newtype macro to not generate `Encode`/`Decode` impls.
-    #[custom_encodable]
     struct LocalFileId {}
 }
 
@@ -375,10 +378,7 @@ fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
             // just "functions", like consts, statics, etc. Filter those out.
             // If `ignore_unused_generics` was specified, filter out any
             // generic functions from consideration as well.
-            if !matches!(
-                kind,
-                DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Coroutine
-            ) {
+            if !matches!(kind, DefKind::Fn | DefKind::AssocFn | DefKind::Closure) {
                 return None;
             }
             if ignore_unused_generics && tcx.generics_of(def_id).requires_monomorphization(tcx) {

@@ -1,7 +1,7 @@
 #![stable(feature = "futures_api", since = "1.36.0")]
 
 use crate::fmt;
-use crate::marker::{PhantomData, Unpin};
+use crate::marker::PhantomData;
 use crate::ptr;
 
 /// A `RawWaker` allows the implementor of a task executor to create a [`Waker`]
@@ -48,7 +48,7 @@ impl RawWaker {
     /// Get the `data` pointer used to create this `RawWaker`.
     #[inline]
     #[must_use]
-    #[unstable(feature = "waker_getters", issue = "87021")]
+    #[unstable(feature = "waker_getters", issue = "96992")]
     pub fn data(&self) -> *const () {
         self.data
     }
@@ -56,7 +56,7 @@ impl RawWaker {
     /// Get the `vtable` pointer used to create this `RawWaker`.
     #[inline]
     #[must_use]
-    #[unstable(feature = "waker_getters", issue = "87021")]
+    #[unstable(feature = "waker_getters", issue = "96992")]
     pub fn vtable(&self) -> &'static RawWakerVTable {
         self.vtable
     }
@@ -371,7 +371,7 @@ impl Waker {
     /// Get a reference to the underlying [`RawWaker`].
     #[inline]
     #[must_use]
-    #[unstable(feature = "waker_getters", issue = "87021")]
+    #[unstable(feature = "waker_getters", issue = "96992")]
     pub fn as_raw(&self) -> &RawWaker {
         &self.waker
     }

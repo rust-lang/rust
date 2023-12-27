@@ -67,7 +67,7 @@ pub(crate) unsafe fn codegen(
         llcx,
         llmod,
         "__rust_alloc_error_handler",
-        &alloc_error_handler_name(alloc_error_handler_kind),
+        alloc_error_handler_name(alloc_error_handler_kind),
         &[usize, usize], // size, align
         None,
         true,
@@ -76,7 +76,7 @@ pub(crate) unsafe fn codegen(
     // __rust_alloc_error_handler_should_panic
     let name = OomStrategy::SYMBOL;
     let ll_g = llvm::LLVMRustGetOrInsertGlobal(llmod, name.as_ptr().cast(), name.len(), i8);
-    if tcx.sess.target.default_hidden_visibility {
+    if tcx.sess.default_hidden_visibility() {
         llvm::LLVMRustSetVisibility(ll_g, llvm::Visibility::Hidden);
     }
     let val = tcx.sess.opts.unstable_opts.oom.should_panic();
@@ -85,7 +85,7 @@ pub(crate) unsafe fn codegen(
 
     let name = NO_ALLOC_SHIM_IS_UNSTABLE;
     let ll_g = llvm::LLVMRustGetOrInsertGlobal(llmod, name.as_ptr().cast(), name.len(), i8);
-    if tcx.sess.target.default_hidden_visibility {
+    if tcx.sess.default_hidden_visibility() {
         llvm::LLVMRustSetVisibility(ll_g, llvm::Visibility::Hidden);
     }
     let llval = llvm::LLVMConstInt(i8, 0, False);
@@ -130,7 +130,7 @@ fn create_wrapper_function(
             None
         };
 
-        if tcx.sess.target.default_hidden_visibility {
+        if tcx.sess.default_hidden_visibility() {
             llvm::LLVMRustSetVisibility(llfn, llvm::Visibility::Hidden);
         }
         if tcx.sess.must_emit_unwind_tables() {
@@ -146,7 +146,7 @@ fn create_wrapper_function(
         }
         llvm::LLVMRustSetVisibility(callee, llvm::Visibility::Hidden);
 
-        let llbb = llvm::LLVMAppendBasicBlockInContext(llcx, llfn, "entry\0".as_ptr().cast());
+        let llbb = llvm::LLVMAppendBasicBlockInContext(llcx, llfn, c"entry".as_ptr().cast());
 
         let llbuilder = llvm::LLVMCreateBuilderInContext(llcx);
         llvm::LLVMPositionBuilderAtEnd(llbuilder, llbb);

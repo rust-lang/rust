@@ -9,5 +9,5 @@ LL |     fn set_f_bad(&mut self, b: Box<B>) {
 LL |         self.f = b;
    |         ^^^^^^ assignment requires that `'1` must outlive `'a`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

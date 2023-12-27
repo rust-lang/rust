@@ -1,0 +1,22 @@
+error[E0407]: method `unresolved` is not a member of trait `MyTrait`
+  --> $DIR/unresolved-trait-impl-item.rs:11:5
+   |
+LL |     async fn unresolved(&self) {}
+   |     ^^^^^^^^^----------^^^^^^^^^^
+   |     |        |
+   |     |        help: there is an associated function with a similar name: `resolved`
+   |     not a member of trait `MyTrait`
+
+error[E0324]: item `RESOLVED_WRONG` is an associated method, which doesn't match its trait `MyTrait`
+  --> $DIR/unresolved-trait-impl-item.rs:12:5
+   |
+LL |     const RESOLVED_WRONG: u8 = 0;
+   |     ----------------------------- item in trait
+...
+LL |     async fn RESOLVED_WRONG() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ does not match trait
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0324, E0407.
+For more information about an error, try `rustc --explain E0324`.

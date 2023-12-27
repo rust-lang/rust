@@ -4,5 +4,5 @@ error: OK
 LL | #[rustc_then_this_would_need(variances_of)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

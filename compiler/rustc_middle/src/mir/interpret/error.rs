@@ -47,7 +47,7 @@ impl ErrorHandled {
         match self {
             &ErrorHandled::Reported(err, span) => {
                 if !err.is_tainted_by_errors && !span.is_dummy() {
-                    tcx.sess.emit_note(error::ErroneousConstant { span });
+                    tcx.dcx().emit_note(error::ErroneousConstant { span });
                 }
             }
             &ErrorHandled::TooGeneric(_) => {}
@@ -90,11 +90,8 @@ pub type EvalToConstValueResult<'tcx> = Result<ConstValue<'tcx>, ErrorHandled>;
 /// This is needed in `thir::pattern::lower_inline_const`.
 pub type EvalToValTreeResult<'tcx> = Result<Option<ValTree<'tcx>>, ErrorHandled>;
 
-pub fn struct_error<'tcx>(
-    tcx: TyCtxtAt<'tcx>,
-    msg: &str,
-) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-    struct_span_err!(tcx.sess, tcx.span, E0080, "{}", msg)
+pub fn struct_error<'tcx>(tcx: TyCtxtAt<'tcx>, msg: &str) -> DiagnosticBuilder<'tcx> {
+    struct_span_err!(tcx.dcx(), tcx.span, E0080, "{}", msg)
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
@@ -290,7 +287,7 @@ macro_rules! impl_into_diagnostic_arg_through_debug {
 // These types have nice `Debug` output so we can just use them in diagnostics.
 impl_into_diagnostic_arg_through_debug! {
     AllocId,
-    Pointer,
+    Pointer<AllocId>,
     AllocRange,
 }
 
@@ -323,7 +320,7 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Invalid metadata in a wide pointer
     InvalidMeta(InvalidMetaKind),
     /// Reading a C string that does not end within its allocation.
-    UnterminatedCString(Pointer),
+    UnterminatedCString(Pointer<AllocId>),
     /// Using a pointer after it got freed.
     PointerUseAfterFree(AllocId, CheckInAllocMsg),
     /// Used a pointer outside the bounds it is valid for.
@@ -350,11 +347,11 @@ pub enum UndefinedBehaviorInfo<'tcx> {
     /// Using a non-character `u32` as character.
     InvalidChar(u32),
     /// The tag of an enum does not encode an actual discriminant.
-    InvalidTag(Scalar),
+    InvalidTag(Scalar<AllocId>),
     /// Using a pointer-not-to-a-function as function pointer.
-    InvalidFunctionPointer(Pointer),
+    InvalidFunctionPointer(Pointer<AllocId>),
     /// Using a pointer-not-to-a-vtable as vtable pointer.
-    InvalidVTablePointer(Pointer),
+    InvalidVTablePointer(Pointer<AllocId>),
     /// Using a string that is not valid UTF-8,
     InvalidStr(std::str::Utf8Error),
     /// Using uninitialized data where it is not allowed.

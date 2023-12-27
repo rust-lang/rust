@@ -14,7 +14,7 @@ use rustc_session::{filesearch, output, Session};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::symbol::{sym, Symbol};
-use session::EarlyErrorHandler;
+use session::EarlyDiagCtxt;
 use std::env;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 use std::mem;
@@ -107,7 +107,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     use rustc_query_impl::QueryCtxt;
     use rustc_query_system::query::{deadlock, QueryContext};
 
-    let registry = sync::Registry::new(threads);
+    let registry = sync::Registry::new(std::num::NonZeroUsize::new(threads).unwrap());
 
     if !sync::is_dyn_thread_safe() {
         return run_in_thread_with_globals(edition, || {
@@ -126,11 +126,8 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
         .deadlock_handler(|| {
             // On deadlock, creates a new thread and forwards information in thread
             // locals to it. The new thread runs the deadlock handler.
-            let query_map = FromDyn::from(tls::with(|tcx| {
-                QueryCtxt::new(tcx)
-                    .try_collect_active_jobs()
-                    .expect("active jobs shouldn't be locked in deadlock handler")
-            }));
+            let query_map =
+                FromDyn::from(tls::with(|tcx| QueryCtxt::new(tcx).collect_active_jobs()));
             let registry = rayon_core::Registry::current();
             thread::spawn(move || deadlock(query_map.into_inner(), &registry));
         });
@@ -164,16 +161,16 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     })
 }
 
-fn load_backend_from_dylib(handler: &EarlyErrorHandler, path: &Path) -> MakeBackendFn {
+fn load_backend_from_dylib(early_dcx: &EarlyDiagCtxt, path: &Path) -> MakeBackendFn {
     let lib = unsafe { Library::new(path) }.unwrap_or_else(|err| {
         let err = format!("couldn't load codegen backend {path:?}: {err}");
-        handler.early_error(err);
+        early_dcx.early_fatal(err);
     });
 
     let backend_sym = unsafe { lib.get::<MakeBackendFn>(b"__rustc_codegen_backend") }
         .unwrap_or_else(|e| {
             let err = format!("couldn't load codegen backend: {e}");
-            handler.early_error(err);
+            early_dcx.early_fatal(err);
         });
 
     // Intentionally leak the dynamic library. We can't ever unload it
@@ -188,7 +185,7 @@ fn load_backend_from_dylib(handler: &EarlyErrorHandler, path: &Path) -> MakeBack
 ///
 /// A name of `None` indicates that the default backend should be used.
 pub fn get_codegen_backend(
-    handler: &EarlyErrorHandler,
+    early_dcx: &EarlyDiagCtxt,
     maybe_sysroot: &Option<PathBuf>,
     backend_name: Option<&str>,
 ) -> Box<dyn CodegenBackend> {
@@ -199,11 +196,11 @@ pub fn get_codegen_backend(
 
         match backend_name.unwrap_or(default_codegen_backend) {
             filename if filename.contains('.') => {
-                load_backend_from_dylib(handler, filename.as_ref())
+                load_backend_from_dylib(early_dcx, filename.as_ref())
             }
             #[cfg(feature = "llvm")]
             "llvm" => rustc_codegen_llvm::LlvmCodegenBackend::new,
-            backend_name => get_codegen_sysroot(handler, maybe_sysroot, backend_name),
+            backend_name => get_codegen_sysroot(early_dcx, maybe_sysroot, backend_name),
         }
     });
 
@@ -236,7 +233,7 @@ fn get_rustc_path_inner(bin_path: &str) -> Option<PathBuf> {
 }
 
 fn get_codegen_sysroot(
-    handler: &EarlyErrorHandler,
+    early_dcx: &EarlyDiagCtxt,
     maybe_sysroot: &Option<PathBuf>,
     backend_name: &str,
 ) -> MakeBackendFn {
@@ -274,7 +271,7 @@ fn get_codegen_sysroot(
             "failed to find a `codegen-backends` folder \
                            in the sysroot candidates:\n* {candidates}"
         );
-        handler.early_error(err);
+        early_dcx.early_fatal(err);
     });
     info!("probing {} for a codegen backend", sysroot.display());
 
@@ -285,7 +282,7 @@ fn get_codegen_sysroot(
             sysroot.display(),
             e
         );
-        handler.early_error(err);
+        early_dcx.early_fatal(err);
     });
 
     let mut file: Option<PathBuf> = None;
@@ -313,16 +310,16 @@ fn get_codegen_sysroot(
                 prev.display(),
                 path.display()
             );
-            handler.early_error(err);
+            early_dcx.early_fatal(err);
         }
         file = Some(path.clone());
     }
 
     match file {
-        Some(ref s) => load_backend_from_dylib(handler, s),
+        Some(ref s) => load_backend_from_dylib(early_dcx, s),
         None => {
             let err = format!("unsupported builtin codegen backend `{backend_name}`");
-            handler.early_error(err);
+            early_dcx.early_fatal(err);
         }
     }
 }
@@ -415,7 +412,9 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<C
     let mut base = session.opts.crate_types.clone();
     if base.is_empty() {
         let attr_types = attrs.iter().filter_map(|a| {
-            if a.has_name(sym::crate_type) && let Some(s) = a.value_str() {
+            if a.has_name(sym::crate_type)
+                && let Some(s) = a.value_str()
+            {
                 categorize_crate_type(s)
             } else {
                 None
@@ -432,7 +431,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<C
 
     base.retain(|crate_type| {
         if output::invalid_output_for_target(session, *crate_type) {
-            session.emit_warning(errors::UnsupportedCrateTypeForTarget {
+            session.dcx().emit_warning(errors::UnsupportedCrateTypeForTarget {
                 crate_type: *crate_type,
                 target_triple: &session.opts.target_triple,
             });
@@ -474,7 +473,7 @@ pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> Outpu
         &sess.opts.output_types,
         sess.io.output_file == Some(OutFileName::Stdout),
     ) {
-        sess.emit_fatal(errors::MultipleOutputTypesToStdout);
+        sess.dcx().emit_fatal(errors::MultipleOutputTypesToStdout);
     }
 
     let crate_name = sess
@@ -508,16 +507,16 @@ pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> Outpu
             let unnamed_output_types =
                 sess.opts.output_types.values().filter(|a| a.is_none()).count();
             let ofile = if unnamed_output_types > 1 {
-                sess.emit_warning(errors::MultipleOutputTypesAdaption);
+                sess.dcx().emit_warning(errors::MultipleOutputTypesAdaption);
                 None
             } else {
                 if !sess.opts.cg.extra_filename.is_empty() {
-                    sess.emit_warning(errors::IgnoringExtraFilename);
+                    sess.dcx().emit_warning(errors::IgnoringExtraFilename);
                 }
                 Some(out_file.clone())
             };
             if sess.io.output_dir != None {
-                sess.emit_warning(errors::IgnoringOutDir);
+                sess.dcx().emit_warning(errors::IgnoringOutDir);
             }
 
             let out_filestem =

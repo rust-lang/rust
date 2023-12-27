@@ -7,6 +7,6 @@ LL |     [1; || {}];
    = note: expected type `usize`
            found closure `{closure@$DIR/issue-50688.rs:2:9: 2:11}`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

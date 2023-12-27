@@ -312,22 +312,30 @@
 //!   For instance, ARM explicitly supports high-bit tagging, and so CHERI on ARM inherits
 //!   that and should support it.
 //!
-//! ## Pointer-usize-pointer roundtrips and 'exposed' provenance
+//! ## Exposed Provenance
 //!
-//! **This section is *non-normative* and is part of the [Strict Provenance] experiment.**
+//! **This section is *non-normative* and is an extension to the [Strict Provenance] experiment.**
 //!
 //! As discussed above, pointer-usize-pointer roundtrips are not possible under [Strict Provenance].
-//! However, there exists legacy Rust code that is full of such roundtrips, and legacy platform APIs
-//! regularly assume that `usize` can capture all the information that makes up a pointer. There
-//! also might be code that cannot be ported to Strict Provenance (which is something we would [like
-//! to hear about][Strict Provenance]).
+//! This is by design: the goal of Strict Provenance is to provide a clear specification that we are
+//! confident can be formalized unambiguously and can be subject to  precise formal reasoning.
 //!
-//! For situations like this, there is a fallback plan, a way to 'opt out' of Strict Provenance.
-//! However, note that this makes your code a lot harder to specify, and the code will not work
-//! (well) with tools like [Miri] and [CHERI].
+//! However, there exist situations where pointer-usize-pointer roundtrips cannot be avoided, or
+//! where avoiding them would require major refactoring. Legacy platform APIs also regularly assume
+//! that `usize` can capture all the information that makes up a pointer. The goal of Strict
+//! Provenance is not to rule out such code; the goal is to put all the *other* pointer-manipulating
+//! code onto a more solid foundation. Strict Provenance is about improving the situation where
+//! possible (all the code that can be written with Strict Provenance) without making things worse
+//! for situations where Strict Provenance is insufficient.
 //!
-//! This fallback plan is provided by the [`expose_addr`] and [`from_exposed_addr`] methods (which
-//! are equivalent to `as` casts between pointers and integers). [`expose_addr`] is a lot like
+//! For these situations, there is a highly experimental extension to Strict Provenance called
+//! *Exposed Provenance*. This extension permits pointer-usize-pointer roundtrips. However, its
+//! semantics are on much less solid footing than Strict Provenance, and at this point it is not yet
+//! clear where a satisfying unambiguous semantics can be defined for Exposed Provenance.
+//! Furthermore, Exposed Provenance will not work (well) with tools like [Miri] and [CHERI].
+//!
+//! Exposed Provenance is provided by the [`expose_addr`] and [`from_exposed_addr`] methods, which
+//! are meant to replace `as` casts between pointers and integers. [`expose_addr`] is a lot like
 //! [`addr`], but additionally adds the provenance of the pointer to a global list of 'exposed'
 //! provenances. (This list is purely conceptual, it exists for the purpose of specifying Rust but
 //! is not materialized in actual executions, except in tools like [Miri].) [`from_exposed_addr`]
@@ -341,10 +349,11 @@
 //! there is *no* previously 'exposed' provenance that justifies the way the returned pointer will
 //! be used, the program has undefined behavior.
 //!
-//! Using [`expose_addr`] or [`from_exposed_addr`] (or the equivalent `as` casts) means that code is
+//! Using [`expose_addr`] or [`from_exposed_addr`] (or the `as` casts) means that code is
 //! *not* following Strict Provenance rules. The goal of the Strict Provenance experiment is to
-//! determine whether it is possible to use Rust without [`expose_addr`] and [`from_exposed_addr`].
-//! If this is successful, it would be a major win for avoiding specification complexity and to
+//! determine how far one can get in Rust without the use of [`expose_addr`] and
+//! [`from_exposed_addr`], and to encourage code to be written with Strict Provenance APIs only.
+//! Maximizing the amount of such code is a major win for avoiding specification complexity and to
 //! facilitate adoption of tools like [CHERI] and [Miri] that can be a big help in increasing the
 //! confidence in (unsafe) Rust code.
 //!
@@ -619,12 +628,12 @@ pub const fn invalid_mut<T>(addr: usize) -> *mut T {
 
 /// Convert an address back to a pointer, picking up a previously 'exposed' provenance.
 ///
-/// This is equivalent to `addr as *const T`. The provenance of the returned pointer is that of *any*
-/// pointer that was previously exposed by passing it to [`expose_addr`][pointer::expose_addr],
-/// or a `ptr as usize` cast. In addition, memory which is outside the control of the Rust abstract
-/// machine (MMIO registers, for example) is always considered to be exposed, so long as this memory
-/// is disjoint from memory that will be used by the abstract machine such as the stack, heap,
-/// and statics.
+/// This is a more rigorously specified alternative to `addr as *const T`. The provenance of the
+/// returned pointer is that of *any* pointer that was previously exposed by passing it to
+/// [`expose_addr`][pointer::expose_addr], or a `ptr as usize` cast. In addition, memory which is
+/// outside the control of the Rust abstract machine (MMIO registers, for example) is always
+/// considered to be exposed, so long as this memory is disjoint from memory that will be used by
+/// the abstract machine such as the stack, heap, and statics.
 ///
 /// If there is no 'exposed' provenance that justifies the way this pointer will be used,
 /// the program has undefined behavior. In particular, the aliasing rules still apply: pointers
@@ -639,7 +648,8 @@ pub const fn invalid_mut<T>(addr: usize) -> *mut T {
 /// On platforms with multiple address spaces, it is your responsibility to ensure that the
 /// address makes sense in the address space that this pointer will be used with.
 ///
-/// Using this method means that code is *not* following strict provenance rules. "Guessing" a
+/// Using this function means that code is *not* following [Strict
+/// Provenance][../index.html#strict-provenance] rules. "Guessing" a
 /// suitable provenance complicates specification and reasoning and may not be supported by
 /// tools that help you to stay conformant with the Rust memory model, so it is recommended to
 /// use [`with_addr`][pointer::with_addr] wherever possible.
@@ -649,13 +659,13 @@ pub const fn invalid_mut<T>(addr: usize) -> *mut T {
 /// since it is generally not possible to actually *compute* which provenance the returned
 /// pointer has to pick up.
 ///
-/// This API and its claimed semantics are part of the Strict Provenance experiment, see the
-/// [module documentation][crate::ptr] for details.
+/// It is unclear whether this function can be given a satisfying unambiguous specification. This
+/// API and its claimed semantics are part of [Exposed Provenance][../index.html#exposed-provenance].
 #[must_use]
 #[inline(always)]
-#[unstable(feature = "strict_provenance", issue = "95228")]
+#[unstable(feature = "exposed_provenance", issue = "95228")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-#[allow(fuzzy_provenance_casts)] // this *is* the strict provenance API one should use instead
+#[allow(fuzzy_provenance_casts)] // this *is* the explicit provenance API one should use instead
 pub fn from_exposed_addr<T>(addr: usize) -> *const T
 where
     T: Sized,
@@ -666,18 +676,20 @@ where
 
 /// Convert an address back to a mutable pointer, picking up a previously 'exposed' provenance.
 ///
-/// This is equivalent to `addr as *mut T`. The provenance of the returned pointer is that of *any*
-/// pointer that was previously passed to [`expose_addr`][pointer::expose_addr] or a `ptr as usize`
-/// cast. If there is no previously 'exposed' provenance that justifies the way this pointer will be
-/// used, the program has undefined behavior. Note that there is no algorithm that decides which
-/// provenance will be used. You can think of this as "guessing" the right provenance, and the guess
-/// will be "maximally in your favor", in the sense that if there is any way to avoid undefined
-/// behavior, then that is the guess that will be taken.
+/// This is a more rigorously specified alternative to `addr as *mut T`. The provenance of the
+/// returned pointer is that of *any* pointer that was previously passed to
+/// [`expose_addr`][pointer::expose_addr] or a `ptr as usize` cast. If there is no previously
+/// 'exposed' provenance that justifies the way this pointer will be used, the program has undefined
+/// behavior. Note that there is no algorithm that decides which provenance will be used. You can
+/// think of this as "guessing" the right provenance, and the guess will be "maximally in your
+/// favor", in the sense that if there is any way to avoid undefined behavior, then that is the
+/// guess that will be taken.
 ///
 /// On platforms with multiple address spaces, it is your responsibility to ensure that the
 /// address makes sense in the address space that this pointer will be used with.
 ///
-/// Using this method means that code is *not* following strict provenance rules. "Guessing" a
+/// Using this function means that code is *not* following [Strict
+/// Provenance][../index.html#strict-provenance] rules. "Guessing" a
 /// suitable provenance complicates specification and reasoning and may not be supported by
 /// tools that help you to stay conformant with the Rust memory model, so it is recommended to
 /// use [`with_addr`][pointer::with_addr] wherever possible.
@@ -687,13 +699,13 @@ where
 /// since it is generally not possible to actually *compute* which provenance the returned
 /// pointer has to pick up.
 ///
-/// This API and its claimed semantics are part of the Strict Provenance experiment, see the
-/// [module documentation][crate::ptr] for details.
+/// It is unclear whether this function can be given a satisfying unambiguous specification. This
+/// API and its claimed semantics are part of [Exposed Provenance][../index.html#exposed-provenance].
 #[must_use]
 #[inline(always)]
-#[unstable(feature = "strict_provenance", issue = "95228")]
+#[unstable(feature = "exposed_provenance", issue = "95228")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
-#[allow(fuzzy_provenance_casts)] // this *is* the strict provenance API one should use instead
+#[allow(fuzzy_provenance_casts)] // this *is* the explicit provenance API one should use instead
 pub fn from_exposed_addr_mut<T>(addr: usize) -> *mut T
 where
     T: Sized,
@@ -708,7 +720,8 @@ where
 /// type or mutability, in particular if the code is refactored.
 #[inline(always)]
 #[must_use]
-#[unstable(feature = "ptr_from_ref", issue = "106116")]
+#[stable(feature = "ptr_from_ref", since = "1.76.0")]
+#[rustc_const_stable(feature = "ptr_from_ref", since = "1.76.0")]
 #[rustc_never_returns_null_ptr]
 #[rustc_diagnostic_item = "ptr_from_ref"]
 pub const fn from_ref<T: ?Sized>(r: &T) -> *const T {
@@ -721,7 +734,9 @@ pub const fn from_ref<T: ?Sized>(r: &T) -> *const T {
 /// type or mutability, in particular if the code is refactored.
 #[inline(always)]
 #[must_use]
-#[unstable(feature = "ptr_from_ref", issue = "106116")]
+#[stable(feature = "ptr_from_ref", since = "1.76.0")]
+#[rustc_const_stable(feature = "ptr_from_ref", since = "1.76.0")]
+#[rustc_allow_const_fn_unstable(const_mut_refs)]
 #[rustc_never_returns_null_ptr]
 pub const fn from_mut<T: ?Sized>(r: &mut T) -> *mut T {
     r
@@ -1885,6 +1900,7 @@ pub(crate) const unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usiz
 #[inline(always)]
 #[must_use = "pointer comparison produces a value"]
 #[rustc_diagnostic_item = "ptr_eq"]
+#[allow(ambiguous_wide_pointer_comparisons)] // it's actually clear here
 pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
     a == b
 }
@@ -1898,14 +1914,15 @@ pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
 /// # Examples
 ///
 /// ```
-/// #![feature(ptr_addr_eq)]
+/// use std::ptr;
 ///
 /// let whole: &[i32; 3] = &[1, 2, 3];
 /// let first: &i32 = &whole[0];
-/// assert!(std::ptr::addr_eq(whole, first));
-/// assert!(!std::ptr::eq::<dyn std::fmt::Debug>(whole, first));
+///
+/// assert!(ptr::addr_eq(whole, first));
+/// assert!(!ptr::eq::<dyn std::fmt::Debug>(whole, first));
 /// ```
-#[unstable(feature = "ptr_addr_eq", issue = "116324")]
+#[stable(feature = "ptr_addr_eq", since = "1.76.0")]
 #[inline(always)]
 #[must_use = "pointer comparison produces a value"]
 pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {
@@ -1921,8 +1938,7 @@ pub fn addr_eq<T: ?Sized, U: ?Sized>(p: *const T, q: *const U) -> bool {
 /// # Examples
 ///
 /// ```
-/// use std::collections::hash_map::DefaultHasher;
-/// use std::hash::{Hash, Hasher};
+/// use std::hash::{DefaultHasher, Hash, Hasher};
 /// use std::ptr;
 ///
 /// let five = 5;
@@ -1999,9 +2015,18 @@ impl<F: FnPtr> fmt::Debug for F {
 /// as all other references. This macro can create a raw pointer *without* creating
 /// a reference first.
 ///
-/// Note, however, that the `expr` in `addr_of!(expr)` is still subject to all
-/// the usual rules. In particular, `addr_of!(*ptr::null())` is Undefined
-/// Behavior because it dereferences a null pointer.
+/// The `expr` in `addr_of!(expr)` is evaluated as a place expression, but never loads
+/// from the place or requires the place to be dereferenceable. This means that
+/// `addr_of!(*ptr)` is defined behavior even if `ptr` is null, dangling, or misaligned.
+/// Note however that `addr_of!((*ptr).field)` still requires the projection to
+/// `field` to be in-bounds, using the same rules as [`offset`].
+///
+/// Note that `Deref`/`Index` coercions (and their mutable counterparts) are applied inside
+/// `addr_of!` like everywhere else, in which case a reference is created to call `Deref::deref` or
+/// `Index::index`, respectively. The statements above only apply when no such coercions are
+/// applied.
+///
+/// [`offset`]: pointer::offset
 ///
 /// # Example
 ///
@@ -2039,9 +2064,18 @@ pub macro addr_of($place:expr) {
 /// as all other references. This macro can create a raw pointer *without* creating
 /// a reference first.
 ///
-/// Note, however, that the `expr` in `addr_of_mut!(expr)` is still subject to all
-/// the usual rules. In particular, `addr_of_mut!(*ptr::null_mut())` is Undefined
-/// Behavior because it dereferences a null pointer.
+/// The `expr` in `addr_of_mut!(expr)` is evaluated as a place expression, but never loads
+/// from the place or requires the place to be dereferenceable. This means that
+/// `addr_of_mut!(*ptr)` is defined behavior even if `ptr` is null, dangling, or misaligned.
+/// Note however that `addr_of_mut!((*ptr).field)` still requires the projection to
+/// `field` to be in-bounds, using the same rules as [`offset`].
+///
+/// Note that `Deref`/`Index` coercions (and their mutable counterparts) are applied inside
+/// `addr_of_mut!` like everywhere else, in which case a reference is created to call `Deref::deref`
+/// or `Index::index`, respectively. The statements above only apply when no such coercions are
+/// applied.
+///
+/// [`offset`]: pointer::offset
 ///
 /// # Examples
 ///

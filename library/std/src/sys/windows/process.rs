@@ -245,7 +245,7 @@ impl Command {
     }
 
     pub fn get_current_dir(&self) -> Option<&Path> {
-        self.cwd.as_ref().map(|cwd| Path::new(cwd))
+        self.cwd.as_ref().map(Path::new)
     }
 
     pub unsafe fn raw_attribute<T: Copy + Send + Sync + 'static>(
@@ -463,7 +463,7 @@ fn resolve_exe<'a>(
 
         // Search the directories given by `search_paths`.
         let result = search_paths(parent_paths, child_paths, |mut path| {
-            path.push(&exe_path);
+            path.push(exe_path);
             if !has_extension {
                 path.set_extension(EXE_EXTENSION);
             }
@@ -597,7 +597,7 @@ impl Stdio {
                 opts.read(stdio_id == c::STD_INPUT_HANDLE);
                 opts.write(stdio_id != c::STD_INPUT_HANDLE);
                 opts.security_attributes(&mut sa);
-                File::open(Path::new("NUL"), &opts).map(|file| file.into_inner())
+                File::open(Path::new(r"\\.\NUL"), &opts).map(|file| file.into_inner())
             }
         }
     }
@@ -657,7 +657,7 @@ impl Process {
     }
 
     pub fn id(&self) -> u32 {
-        unsafe { c::GetProcessId(self.handle.as_raw_handle()) as u32 }
+        unsafe { c::GetProcessId(self.handle.as_raw_handle()) }
     }
 
     pub fn main_thread_handle(&self) -> BorrowedHandle<'_> {
@@ -917,9 +917,8 @@ fn make_proc_thread_attribute_list(
         )
     };
 
-    let mut proc_thread_attribute_list = ProcThreadAttributeList(
-        vec![MaybeUninit::uninit(); required_size as usize].into_boxed_slice(),
-    );
+    let mut proc_thread_attribute_list =
+        ProcThreadAttributeList(vec![MaybeUninit::uninit(); required_size].into_boxed_slice());
 
     // Once we've allocated the necessary memory, it's safe to invoke
     // `InitializeProcThreadAttributeList` to properly initialize the list.

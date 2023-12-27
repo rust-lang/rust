@@ -20,5 +20,5 @@ note: the lint level is defined here
 LL | #![warn(overflowing_literals)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 

@@ -1,60 +1,14 @@
 //! Random access inspection of the results of a dataflow analysis.
 
-use crate::{framework::BitSetExt, CloneAnalysis};
+use crate::framework::BitSetExt;
 
-use std::borrow::{Borrow, BorrowMut};
 use std::cmp::Ordering;
 
 #[cfg(debug_assertions)]
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{self, BasicBlock, Location};
 
-use super::{Analysis, Direction, Effect, EffectIndex, EntrySets, Results, ResultsCloned};
-
-// `AnalysisResults` is needed as an impl such as the following has an unconstrained type
-// parameter:
-// ```
-// impl<'tcx, A, E, R> ResultsCursor<'_, 'tcx, A, R>
-// where
-//     A: Analysis<'tcx>,
-//     E: Borrow<EntrySets<'tcx, A>>,
-//     R: Results<'tcx, A, E>,
-// {}
-// ```
-
-/// A type representing the analysis results consumed by a `ResultsCursor`.
-pub trait AnalysisResults<'tcx, A>: BorrowMut<Results<'tcx, A, Self::EntrySets>>
-where
-    A: Analysis<'tcx>,
-{
-    /// The type containing the entry sets for this `Results` type.
-    ///
-    /// Should be either `EntrySets<'tcx, A>` or `&EntrySets<'tcx, A>`.
-    type EntrySets: Borrow<EntrySets<'tcx, A>>;
-}
-impl<'tcx, A, E> AnalysisResults<'tcx, A> for Results<'tcx, A, E>
-where
-    A: Analysis<'tcx>,
-    E: Borrow<EntrySets<'tcx, A>>,
-{
-    type EntrySets = E;
-}
-impl<'a, 'tcx, A, E> AnalysisResults<'tcx, A> for &'a mut Results<'tcx, A, E>
-where
-    A: Analysis<'tcx>,
-    E: Borrow<EntrySets<'tcx, A>>,
-{
-    type EntrySets = E;
-}
-
-/// A `ResultsCursor` that borrows the underlying `Results`.
-pub type ResultsRefCursor<'res, 'mir, 'tcx, A> =
-    ResultsCursor<'mir, 'tcx, A, &'res mut Results<'tcx, A>>;
-
-/// A `ResultsCursor` which uses a cloned `Analysis` while borrowing the underlying `Results`. This
-/// allows multiple cursors over the same `Results`.
-pub type ResultsClonedCursor<'res, 'mir, 'tcx, A> =
-    ResultsCursor<'mir, 'tcx, A, ResultsCloned<'res, 'tcx, A>>;
+use super::{Analysis, Direction, Effect, EffectIndex, Results};
 
 /// Allows random access inspection of the results of a dataflow analysis.
 ///
@@ -62,15 +16,12 @@ pub type ResultsClonedCursor<'res, 'mir, 'tcx, A> =
 /// the same order as the `DIRECTION` of the analysis. In the worst case—when statements are
 /// visited in *reverse* order—performance will be quadratic in the number of statements in the
 /// block. The order in which basic blocks are inspected has no impact on performance.
-///
-/// A `ResultsCursor` can either own (the default) or borrow the dataflow results it inspects. The
-/// type of ownership is determined by `R` (see `ResultsRefCursor` above).
-pub struct ResultsCursor<'mir, 'tcx, A, R = Results<'tcx, A>>
+pub struct ResultsCursor<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
     body: &'mir mir::Body<'tcx>,
-    results: R,
+    results: Results<'tcx, A>,
     state: A::Domain,
 
     pos: CursorPosition,
@@ -84,7 +35,7 @@ where
     reachable_blocks: BitSet<BasicBlock>,
 }
 
-impl<'mir, 'tcx, A, R> ResultsCursor<'mir, 'tcx, A, R>
+impl<'mir, 'tcx, A> ResultsCursor<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
@@ -99,30 +50,13 @@ where
     }
 
     /// Unwraps this cursor, returning the underlying `Results`.
-    pub fn into_results(self) -> R {
+    pub fn into_results(self) -> Results<'tcx, A> {
         self.results
     }
-}
 
-impl<'res, 'mir, 'tcx, A> ResultsCursor<'mir, 'tcx, A, ResultsCloned<'res, 'tcx, A>>
-where
-    A: Analysis<'tcx> + CloneAnalysis,
-{
-    /// Creates a new cursor over the same `Results`. Note that the cursor's position is *not*
-    /// copied.
-    pub fn new_cursor(&self) -> Self {
-        Self::new(self.body, self.results.reclone_analysis())
-    }
-}
-
-impl<'mir, 'tcx, A, R> ResultsCursor<'mir, 'tcx, A, R>
-where
-    A: Analysis<'tcx>,
-    R: AnalysisResults<'tcx, A>,
-{
     /// Returns a new cursor that can inspect `results`.
-    pub fn new(body: &'mir mir::Body<'tcx>, results: R) -> Self {
-        let bottom_value = results.borrow().analysis.bottom_value(body);
+    pub fn new(body: &'mir mir::Body<'tcx>, results: Results<'tcx, A>) -> Self {
+        let bottom_value = results.analysis.bottom_value(body);
         ResultsCursor {
             body,
             results,
@@ -147,28 +81,23 @@ where
     }
 
     /// Returns the underlying `Results`.
-    pub fn results(&mut self) -> &Results<'tcx, A, R::EntrySets> {
-        self.results.borrow()
+    pub fn results(&self) -> &Results<'tcx, A> {
+        &self.results
     }
 
     /// Returns the underlying `Results`.
-    pub fn mut_results(&mut self) -> &mut Results<'tcx, A, R::EntrySets> {
-        self.results.borrow_mut()
+    pub fn mut_results(&mut self) -> &mut Results<'tcx, A> {
+        &mut self.results
     }
 
     /// Returns the `Analysis` used to generate the underlying `Results`.
     pub fn analysis(&self) -> &A {
-        &self.results.borrow().analysis
+        &self.results.analysis
     }
 
     /// Returns the `Analysis` used to generate the underlying `Results`.
     pub fn mut_analysis(&mut self) -> &mut A {
-        &mut self.results.borrow_mut().analysis
-    }
-
-    /// Returns both the dataflow state at the current location and the `Analysis`.
-    pub fn get_with_analysis(&mut self) -> (&A::Domain, &mut A) {
-        (&self.state, &mut self.results.borrow_mut().analysis)
+        &mut self.results.analysis
     }
 
     /// Resets the cursor to hold the entry set for the given basic block.
@@ -180,7 +109,7 @@ where
         #[cfg(debug_assertions)]
         assert!(self.reachable_blocks.contains(block));
 
-        self.state.clone_from(self.results.borrow().entry_set_for_block(block));
+        self.state.clone_from(self.results.entry_set_for_block(block));
         self.pos = CursorPosition::block_entry(block);
         self.state_needs_reset = false;
     }
@@ -269,11 +198,10 @@ where
             )
         };
 
-        let analysis = &mut self.results.borrow_mut().analysis;
         let target_effect_index = effect.at_index(target.statement_index);
 
         A::Direction::apply_effects_in_range(
-            analysis,
+            &mut self.results.analysis,
             &mut self.state,
             target.block,
             block_data,
@@ -289,12 +217,12 @@ where
     /// This can be used, e.g., to apply the call return effect directly to the cursor without
     /// creating an extra copy of the dataflow state.
     pub fn apply_custom_effect(&mut self, f: impl FnOnce(&mut A, &mut A::Domain)) {
-        f(&mut self.results.borrow_mut().analysis, &mut self.state);
+        f(&mut self.results.analysis, &mut self.state);
         self.state_needs_reset = true;
     }
 }
 
-impl<'mir, 'tcx, A, R> ResultsCursor<'mir, 'tcx, A, R>
+impl<'mir, 'tcx, A> ResultsCursor<'mir, 'tcx, A>
 where
     A: crate::GenKillAnalysis<'tcx>,
     A::Domain: BitSetExt<A::Idx>,

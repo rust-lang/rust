@@ -11,6 +11,7 @@
 use proc_macro::bridge::{self, server};
 
 mod token_stream;
+use proc_macro_api::msg::TokenId;
 pub use token_stream::TokenStream;
 use token_stream::TokenStreamBuilder;
 
@@ -43,6 +44,9 @@ pub struct FreeFunctions;
 pub struct RustAnalyzer {
     // FIXME: store span information here.
     pub(crate) interner: SymbolInternerRef,
+    pub call_site: TokenId,
+    pub def_site: TokenId,
+    pub mixed_site: TokenId,
 }
 
 impl server::Types for RustAnalyzer {
@@ -54,6 +58,10 @@ impl server::Types for RustAnalyzer {
 }
 
 impl server::FreeFunctions for RustAnalyzer {
+    fn injected_env_var(&mut self, _var: &str) -> Option<String> {
+        None
+    }
+
     fn track_env_var(&mut self, _var: &str, _value: Option<&str>) {
         // FIXME: track env var accesses
         // https://github.com/rust-lang/rust/pull/71858
@@ -69,7 +77,7 @@ impl server::FreeFunctions for RustAnalyzer {
             kind: bridge::LitKind::Err,
             symbol: Symbol::intern(self.interner, s),
             suffix: None,
-            span: tt::TokenId::unspecified(),
+            span: self.call_site,
         })
     }
 
@@ -83,7 +91,7 @@ impl server::TokenStream for RustAnalyzer {
         stream.is_empty()
     }
     fn from_str(&mut self, src: &str) -> Self::TokenStream {
-        src.parse().expect("cannot parse string")
+        Self::TokenStream::from_str(src, self.call_site).expect("cannot parse string")
     }
     fn to_string(&mut self, stream: &Self::TokenStream) -> String {
         stream.to_string()
@@ -280,7 +288,7 @@ impl server::Span for RustAnalyzer {
     }
     fn recover_proc_macro_span(&mut self, _id: usize) -> Self::Span {
         // FIXME stub
-        tt::TokenId::unspecified()
+        self.call_site
     }
     /// Recent feature, not yet in the proc_macro
     ///
@@ -317,15 +325,15 @@ impl server::Span for RustAnalyzer {
     }
     fn resolved_at(&mut self, _span: Self::Span, _at: Self::Span) -> Self::Span {
         // FIXME handle span
-        tt::TokenId::unspecified()
+        self.call_site
     }
 
     fn end(&mut self, _self_: Self::Span) -> Self::Span {
-        tt::TokenId::unspecified()
+        self.call_site
     }
 
     fn start(&mut self, _self_: Self::Span) -> Self::Span {
-        tt::TokenId::unspecified()
+        self.call_site
     }
 
     fn line(&mut self, _span: Self::Span) -> usize {
@@ -349,9 +357,9 @@ impl server::Symbol for RustAnalyzer {
 impl server::Server for RustAnalyzer {
     fn globals(&mut self) -> bridge::ExpnGlobals<Self::Span> {
         bridge::ExpnGlobals {
-            def_site: Span::unspecified(),
-            call_site: Span::unspecified(),
-            mixed_site: Span::unspecified(),
+            def_site: self.def_site,
+            call_site: self.call_site,
+            mixed_site: self.mixed_site,
         }
     }
 
@@ -430,16 +438,16 @@ mod tests {
             token_trees: vec![
                 tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                     text: "struct".into(),
-                    span: tt::TokenId::unspecified(),
+                    span: tt::TokenId(0),
                 })),
                 tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                     text: "T".into(),
-                    span: tt::TokenId::unspecified(),
+                    span: tt::TokenId(0),
                 })),
                 tt::TokenTree::Subtree(tt::Subtree {
                     delimiter: tt::Delimiter {
-                        open: tt::TokenId::unspecified(),
-                        close: tt::TokenId::unspecified(),
+                        open: tt::TokenId(0),
+                        close: tt::TokenId(0),
                         kind: tt::DelimiterKind::Brace,
                     },
                     token_trees: vec![],
@@ -452,33 +460,32 @@ mod tests {
 
     #[test]
     fn test_ra_server_from_str() {
-        use std::str::FromStr;
         let subtree_paren_a = tt::TokenTree::Subtree(tt::Subtree {
             delimiter: tt::Delimiter {
-                open: tt::TokenId::unspecified(),
-                close: tt::TokenId::unspecified(),
+                open: tt::TokenId(0),
+                close: tt::TokenId(0),
                 kind: tt::DelimiterKind::Parenthesis,
             },
             token_trees: vec![tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                 text: "a".into(),
-                span: tt::TokenId::unspecified(),
+                span: tt::TokenId(0),
             }))],
         });
 
-        let t1 = TokenStream::from_str("(a)").unwrap();
+        let t1 = TokenStream::from_str("(a)", tt::TokenId(0)).unwrap();
         assert_eq!(t1.token_trees.len(), 1);
         assert_eq!(t1.token_trees[0], subtree_paren_a);
 
-        let t2 = TokenStream::from_str("(a);").unwrap();
+        let t2 = TokenStream::from_str("(a);", tt::TokenId(0)).unwrap();
         assert_eq!(t2.token_trees.len(), 2);
         assert_eq!(t2.token_trees[0], subtree_paren_a);
 
-        let underscore = TokenStream::from_str("_").unwrap();
+        let underscore = TokenStream::from_str("_", tt::TokenId(0)).unwrap();
         assert_eq!(
             underscore.token_trees[0],
             tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
                 text: "_".into(),
-                span: tt::TokenId::unspecified(),
+                span: tt::TokenId(0),
             }))
         );
     }

@@ -4,7 +4,7 @@ use std::iter;
 
 use hir::{db::DefDatabase, DefMap, InFile, ModuleSource};
 use ide_db::{
-    base_db::{FileId, FileLoader, SourceDatabase, SourceDatabaseExt},
+    base_db::{FileId, FileLoader, FileRange, SourceDatabase, SourceDatabaseExt},
     source_change::SourceChange,
     RootDatabase,
 };
@@ -46,8 +46,12 @@ pub(crate) fn unlinked_file(
         .unwrap_or(range);
 
     acc.push(
-        Diagnostic::new(DiagnosticCode::Ra("unlinked-file", Severity::WeakWarning), message, range)
-            .with_fixes(fixes),
+        Diagnostic::new(
+            DiagnosticCode::Ra("unlinked-file", Severity::WeakWarning),
+            message,
+            FileRange { file_id, range },
+        )
+        .with_fixes(fixes),
     );
 }
 

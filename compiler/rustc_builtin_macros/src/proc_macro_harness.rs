@@ -38,7 +38,7 @@ enum ProcMacro {
 struct CollectProcMacros<'a> {
     macros: Vec<ProcMacro>,
     in_root: bool,
-    handler: &'a rustc_errors::Handler,
+    dcx: &'a rustc_errors::DiagCtxt,
     source_map: &'a SourceMap,
     is_proc_macro_crate: bool,
     is_test_crate: bool,
@@ -52,7 +52,7 @@ pub fn inject(
     is_proc_macro_crate: bool,
     has_proc_macro_decls: bool,
     is_test_crate: bool,
-    handler: &rustc_errors::Handler,
+    dcx: &rustc_errors::DiagCtxt,
 ) {
     let ecfg = ExpansionConfig::default("proc_macro".to_string(), features);
     let mut cx = ExtCtxt::new(sess, ecfg, resolver, None);
@@ -60,7 +60,7 @@ pub fn inject(
     let mut collect = CollectProcMacros {
         macros: Vec::new(),
         in_root: true,
-        handler,
+        dcx,
         source_map: sess.source_map(),
         is_proc_macro_crate,
         is_test_crate,
@@ -86,13 +86,13 @@ pub fn inject(
 impl<'a> CollectProcMacros<'a> {
     fn check_not_pub_in_root(&self, vis: &ast::Visibility, sp: Span) {
         if self.is_proc_macro_crate && self.in_root && vis.kind.is_pub() {
-            self.handler.emit_err(errors::ProcMacro { span: sp });
+            self.dcx.emit_err(errors::ProcMacro { span: sp });
         }
     }
 
     fn collect_custom_derive(&mut self, item: &'a ast::Item, attr: &'a ast::Attribute) {
         let Some((trait_name, proc_attrs)) =
-            parse_macro_name_and_helper_attrs(self.handler, attr, "derive")
+            parse_macro_name_and_helper_attrs(self.dcx, attr, "derive")
         else {
             return;
         };
@@ -112,7 +112,7 @@ impl<'a> CollectProcMacros<'a> {
             } else {
                 "functions tagged with `#[proc_macro_derive]` must be `pub`"
             };
-            self.handler.span_err(self.source_map.guess_head_span(item.span), msg);
+            self.dcx.span_err(self.source_map.guess_head_span(item.span), msg);
         }
     }
 
@@ -130,7 +130,7 @@ impl<'a> CollectProcMacros<'a> {
             } else {
                 "functions tagged with `#[proc_macro_attribute]` must be `pub`"
             };
-            self.handler.span_err(self.source_map.guess_head_span(item.span), msg);
+            self.dcx.span_err(self.source_map.guess_head_span(item.span), msg);
         }
     }
 
@@ -148,7 +148,7 @@ impl<'a> CollectProcMacros<'a> {
             } else {
                 "functions tagged with `#[proc_macro]` must be `pub`"
             };
-            self.handler.span_err(self.source_map.guess_head_span(item.span), msg);
+            self.dcx.span_err(self.source_map.guess_head_span(item.span), msg);
         }
     }
 }
@@ -157,7 +157,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
     fn visit_item(&mut self, item: &'a ast::Item) {
         if let ast::ItemKind::MacroDef(..) = item.kind {
             if self.is_proc_macro_crate && attr::contains_name(&item.attrs, sym::macro_export) {
-                self.handler.emit_err(errors::ExportMacroRules {
+                self.dcx.emit_err(errors::ExportMacroRules {
                     span: self.source_map.guess_head_span(item.span),
                 });
             }
@@ -192,7 +192,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
                         )
                     };
 
-                    self.handler
+                    self.dcx
                         .struct_span_err(attr.span, msg)
                         .span_label(prev_attr.span, "previous attribute here")
                         .emit();
@@ -218,7 +218,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
                 pprust::path_to_string(&attr.get_normal_item().path),
             );
 
-            self.handler.span_err(attr.span, msg);
+            self.dcx.span_err(attr.span, msg);
             return;
         }
 
@@ -232,7 +232,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
                 pprust::path_to_string(&attr.get_normal_item().path),
             );
 
-            self.handler.span_err(attr.span, msg);
+            self.dcx.span_err(attr.span, msg);
             return;
         }
 

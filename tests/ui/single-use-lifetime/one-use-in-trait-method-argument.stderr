@@ -17,5 +17,5 @@ LL -     fn next<'g>(&'g mut self) -> Option<Self::Item> {
 LL +     fn next(&mut self) -> Option<Self::Item> {
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

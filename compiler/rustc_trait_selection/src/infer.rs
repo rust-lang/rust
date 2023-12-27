@@ -1,8 +1,10 @@
+use crate::solve::FulfillmentCtxt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
 use crate::traits::{self, DefiningAnchor, ObligationCtxt};
 
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
+use rustc_infer::traits::{TraitEngine, TraitEngineExt};
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::infer::canonical::{Canonical, CanonicalQueryResponse, QueryResponse};
 use rustc_middle::traits::query::NoSolution;
@@ -27,7 +29,7 @@ pub trait InferCtxtExt<'tcx> {
     /// - the parameter environment
     ///
     /// Invokes `evaluate_obligation`, so in the event that evaluating
-    /// `Ty: Trait` causes overflow, EvaluatedToRecur (or EvaluatedToUnknown)
+    /// `Ty: Trait` causes overflow, EvaluatedToErrStackDependent (or EvaluatedToAmbigStackDependent)
     /// will be returned.
     fn type_implements_trait(
         &self,
@@ -35,6 +37,13 @@ pub trait InferCtxtExt<'tcx> {
         params: impl IntoIterator<Item: Into<GenericArg<'tcx>>>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> traits::EvaluationResult;
+
+    fn could_impl_trait(
+        &self,
+        trait_def_id: DefId,
+        ty: Ty<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> Option<Vec<traits::FulfillmentError<'tcx>>>;
 }
 
 impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
@@ -75,6 +84,68 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             predicate: ty::Binder::dummy(trait_ref).to_predicate(self.tcx),
         };
         self.evaluate_obligation(&obligation).unwrap_or(traits::EvaluationResult::EvaluatedToErr)
+    }
+
+    fn could_impl_trait(
+        &self,
+        trait_def_id: DefId,
+        ty: Ty<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> Option<Vec<traits::FulfillmentError<'tcx>>> {
+        self.probe(|_snapshot| {
+            if let ty::Adt(def, args) = ty.kind()
+                && let Some((impl_def_id, _)) = self
+                    .tcx
+                    .all_impls(trait_def_id)
+                    .filter_map(|impl_def_id| {
+                        self.tcx.impl_trait_ref(impl_def_id).map(|r| (impl_def_id, r))
+                    })
+                    .map(|(impl_def_id, imp)| (impl_def_id, imp.skip_binder()))
+                    .find(|(_, imp)| match imp.self_ty().peel_refs().kind() {
+                        ty::Adt(i_def, _) if i_def.did() == def.did() => true,
+                        _ => false,
+                    })
+            {
+                let mut fulfill_cx = FulfillmentCtxt::new(self);
+                // We get all obligations from the impl to talk about specific
+                // trait bounds.
+                let obligations = self
+                    .tcx
+                    .predicates_of(impl_def_id)
+                    .instantiate(self.tcx, args)
+                    .into_iter()
+                    .map(|(clause, span)| {
+                        traits::Obligation::new(
+                            self.tcx,
+                            traits::ObligationCause::dummy_with_span(span),
+                            param_env,
+                            clause,
+                        )
+                    })
+                    .collect::<Vec<_>>();
+                fulfill_cx.register_predicate_obligations(self, obligations);
+                let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, [ty]);
+                let obligation = traits::Obligation::new(
+                    self.tcx,
+                    traits::ObligationCause::dummy(),
+                    param_env,
+                    trait_ref,
+                );
+                fulfill_cx.register_predicate_obligation(self, obligation);
+                let mut errors = fulfill_cx.select_all_or_error(self);
+                // We remove the last predicate failure, which corresponds to
+                // the top-level obligation, because most of the type we only
+                // care about the other ones, *except* when it is the only one.
+                // This seems to only be relevant for arbitrary self-types.
+                // Look at `tests/ui/moves/move-fn-self-receiver.rs`.
+                if errors.len() > 1 {
+                    errors.truncate(errors.len() - 1);
+                }
+                Some(errors)
+            } else {
+                None
+            }
+        })
     }
 }
 

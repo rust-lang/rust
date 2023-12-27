@@ -4,6 +4,6 @@ error[E0528]: pattern requires at least 3 elements but array has 2
 LL |         &[a, b, c, rest @ ..] => {
    |          ^^^^^^^^^^^^^^^^^^^^ pattern cannot match array of 2 elements
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0528`.

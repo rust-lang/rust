@@ -4,5 +4,5 @@ error: valid values for `#[unix_sigpipe = "..."]` are `inherit`, `sig_ign`, or `
 LL | #[unix_sigpipe]
    | ^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

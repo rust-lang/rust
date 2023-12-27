@@ -9,5 +9,5 @@ help: you need `&mut dyn Iterator<Item = &u64>` instead of `&dyn Iterator<Item =
 LL | fn test(t: &mut dyn Iterator<Item=&u64>) -> u64 {
    |             +++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

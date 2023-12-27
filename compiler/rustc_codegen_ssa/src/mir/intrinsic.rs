@@ -4,8 +4,8 @@ use super::FunctionCx;
 use crate::common::IntPredicate;
 use crate::errors;
 use crate::errors::InvalidMonomorphization;
-use crate::glue;
 use crate::meth;
+use crate::size_of_val;
 use crate::traits::*;
 use crate::MemFlags;
 
@@ -88,21 +88,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             sym::va_end => bx.va_end(args[0].immediate()),
             sym::size_of_val => {
                 let tp_ty = fn_args.type_at(0);
-                if let OperandValue::Pair(_, meta) = args[0].val {
-                    let (llsize, _) = glue::size_and_align_of_dst(bx, tp_ty, Some(meta));
-                    llsize
-                } else {
-                    bx.const_usize(bx.layout_of(tp_ty).size.bytes())
-                }
+                let meta =
+                    if let OperandValue::Pair(_, meta) = args[0].val { Some(meta) } else { None };
+                let (llsize, _) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta);
+                llsize
             }
             sym::min_align_of_val => {
                 let tp_ty = fn_args.type_at(0);
-                if let OperandValue::Pair(_, meta) = args[0].val {
-                    let (_, llalign) = glue::size_and_align_of_dst(bx, tp_ty, Some(meta));
-                    llalign
-                } else {
-                    bx.const_usize(bx.layout_of(tp_ty).align.abi.bytes())
-                }
+                let meta =
+                    if let OperandValue::Pair(_, meta) = args[0].val { Some(meta) } else { None };
+                let (_, llalign) = size_of_val::size_and_align_of_dst(bx, tp_ty, meta);
+                llalign
             }
             sym::vtable_size | sym::vtable_align => {
                 let vtable = args[0].immediate();
@@ -224,7 +220,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         }
                     }
                     None => {
-                        bx.tcx().sess.emit_err(InvalidMonomorphization::BasicIntegerType {
+                        bx.tcx().dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
                             span,
                             name,
                             ty,
@@ -244,7 +240,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         _ => bug!(),
                     },
                     None => {
-                        bx.tcx().sess.emit_err(InvalidMonomorphization::BasicFloatType {
+                        bx.tcx().dcx().emit_err(InvalidMonomorphization::BasicFloatType {
                             span,
                             name,
                             ty: arg_tys[0],
@@ -256,14 +252,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             sym::float_to_int_unchecked => {
                 if float_type_width(arg_tys[0]).is_none() {
-                    bx.tcx().sess.emit_err(InvalidMonomorphization::FloatToIntUnchecked {
+                    bx.tcx().dcx().emit_err(InvalidMonomorphization::FloatToIntUnchecked {
                         span,
                         ty: arg_tys[0],
                     });
                     return;
                 }
                 let Some((_width, signed)) = int_type_width_signed(ret_ty, bx.tcx()) else {
-                    bx.tcx().sess.emit_err(InvalidMonomorphization::FloatToIntUnchecked {
+                    bx.tcx().dcx().emit_err(InvalidMonomorphization::FloatToIntUnchecked {
                         span,
                         ty: ret_ty,
                     });
@@ -301,7 +297,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 use crate::common::{AtomicRmwBinOp, SynchronizationScope};
 
                 let Some((instruction, ordering)) = atomic.split_once('_') else {
-                    bx.sess().emit_fatal(errors::MissingMemoryOrdering);
+                    bx.sess().dcx().emit_fatal(errors::MissingMemoryOrdering);
                 };
 
                 let parse_ordering = |bx: &Bx, s| match s {
@@ -311,11 +307,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     "release" => Release,
                     "acqrel" => AcquireRelease,
                     "seqcst" => SequentiallyConsistent,
-                    _ => bx.sess().emit_fatal(errors::UnknownAtomicOrdering),
+                    _ => bx.sess().dcx().emit_fatal(errors::UnknownAtomicOrdering),
                 };
 
                 let invalid_monomorphization = |ty| {
-                    bx.tcx().sess.emit_err(InvalidMonomorphization::BasicIntegerType {
+                    bx.tcx().dcx().emit_err(InvalidMonomorphization::BasicIntegerType {
                         span,
                         name,
                         ty,
@@ -325,7 +321,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 match instruction {
                     "cxchg" | "cxchgweak" => {
                         let Some((success, failure)) = ordering.split_once('_') else {
-                            bx.sess().emit_fatal(errors::AtomicCompareExchange);
+                            bx.sess().dcx().emit_fatal(errors::AtomicCompareExchange);
                         };
                         let ty = fn_args.type_at(0);
                         if int_type_width_signed(ty, bx.tcx()).is_some() || ty.is_unsafe_ptr() {
@@ -441,7 +437,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             "min" => AtomicRmwBinOp::AtomicMin,
                             "umax" => AtomicRmwBinOp::AtomicUMax,
                             "umin" => AtomicRmwBinOp::AtomicUMin,
-                            _ => bx.sess().emit_fatal(errors::UnknownAtomicOperation),
+                            _ => bx.sess().dcx().emit_fatal(errors::UnknownAtomicOperation),
                         };
 
                         let ty = fn_args.type_at(0);

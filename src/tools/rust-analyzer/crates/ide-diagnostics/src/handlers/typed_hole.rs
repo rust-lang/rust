@@ -26,14 +26,14 @@ pub(crate) fn typed_hole(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Di
         )
     };
 
-    Diagnostic::new(DiagnosticCode::RustcHardError("typed-hole"), message, display_range.range)
+    Diagnostic::new(DiagnosticCode::RustcHardError("typed-hole"), message, display_range)
         .with_fixes(fixes)
 }
 
 fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Option<Vec<Assist>> {
     let db = ctx.sema.db;
     let root = db.parse_or_expand(d.expr.file_id);
-    let original_range =
+    let (original_range, _) =
         d.expr.as_ref().map(|it| it.to_node(&root)).syntax().original_file_range_opt(db)?;
     let scope = ctx.sema.scope(d.expr.value.to_node(&root).syntax())?;
     let mut assists = vec![];
@@ -142,8 +142,8 @@ fn t<T>() -> T { loop {} }
         check_diagnostics(
             r#"
 fn main() {
-    let x = [(); _];
-    let y: [(); 10] = [(); _];
+    let _x = [(); _];
+    let _y: [(); 10] = [(); _];
     _ = 0;
     (_,) = (1,);
 }

@@ -4,6 +4,6 @@ error[E0617]: can't pass `fn(*const u8) {bar}` to variadic function
 LL |         foo(0, bar);
    |                ^^^ help: cast the value to `fn(*const u8)`: `bar as fn(*const u8)`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0617`.

@@ -14,10 +14,12 @@ pub struct CompletionConfig {
     pub enable_imports_on_the_fly: bool,
     pub enable_self_on_the_fly: bool,
     pub enable_private_editable: bool,
+    pub full_function_signatures: bool,
     pub callable: Option<CallableSnippets>,
     pub snippet_cap: Option<SnippetCap>,
     pub insert_use: InsertUseConfig,
     pub prefer_no_std: bool,
+    pub prefer_prelude: bool,
     pub snippets: Vec<Snippet>,
     pub limit: Option<usize>,
 }

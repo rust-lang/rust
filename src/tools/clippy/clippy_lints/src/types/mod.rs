@@ -16,7 +16,7 @@ use rustc_hir::{
     TraitItemKind, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
 
@@ -321,10 +321,10 @@ impl<'tcx> LateLintPass<'tcx> for Types {
         _: Span,
         def_id: LocalDefId,
     ) {
-        let is_in_trait_impl = if let Some(hir::Node::Item(item)) = cx.tcx.hir().find_by_def_id(
+        let is_in_trait_impl = if let Some(hir::Node::Item(item)) = cx.tcx.opt_hir_node_by_def_id(
             cx.tcx
                 .hir()
-                .get_parent_item(cx.tcx.hir().local_def_id_to_hir_id(def_id))
+                .get_parent_item(cx.tcx.local_def_id_to_hir_id(def_id))
                 .def_id,
         ) {
             matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
@@ -368,8 +368,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
             ImplItemKind::Const(ty, _) => {
                 let is_in_trait_impl = if let Some(hir::Node::Item(item)) = cx
                     .tcx
-                    .hir()
-                    .find_by_def_id(cx.tcx.hir().get_parent_item(item.hir_id()).def_id)
+                    .opt_hir_node_by_def_id(cx.tcx.hir().get_parent_item(item.hir_id()).def_id)
                 {
                     matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
                 } else {
@@ -490,7 +489,7 @@ impl Types {
                         // All lints that are being checked in this block are guarded by
                         // the `avoid_breaking_exported_api` configuration. When adding a
                         // new lint, please also add the name to the configuration documentation
-                        // in `clippy_lints::utils::conf.rs`
+                        // in `clippy_config::conf`
 
                         let mut triggered = false;
                         triggered |= box_collection::check(cx, hir_ty, qpath, def_id);

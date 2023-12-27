@@ -6,7 +6,7 @@
 //! Use the `render_with_highlighting` to highlight some rust code.
 
 use crate::clean::PrimitiveType;
-use crate::html::escape::Escape;
+use crate::html::escape::EscapeBodyText;
 use crate::html::render::{Context, LinkFromSrc};
 
 use std::collections::VecDeque;
@@ -185,22 +185,30 @@ impl<'a, 'tcx, F: Write> TokenHandler<'a, 'tcx, F> {
         if self.pending_elems.is_empty() {
             return false;
         }
-        if let Some((_, parent_class)) = self.closing_tags.last() &&
-            can_merge(current_class, Some(*parent_class), "")
+        if let Some((_, parent_class)) = self.closing_tags.last()
+            && can_merge(current_class, Some(*parent_class), "")
         {
             for (text, class) in self.pending_elems.iter() {
-                string(self.out, Escape(text), *class, &self.href_context, false);
+                string(self.out, EscapeBodyText(text), *class, &self.href_context, false);
             }
         } else {
             // We only want to "open" the tag ourselves if we have more than one pending and if the
             // current parent tag is not the same as our pending content.
-            let close_tag = if self.pending_elems.len() > 1 && let Some(current_class) = current_class {
+            let close_tag = if self.pending_elems.len() > 1
+                && let Some(current_class) = current_class
+            {
                 Some(enter_span(self.out, current_class, &self.href_context))
             } else {
                 None
             };
             for (text, class) in self.pending_elems.iter() {
-                string(self.out, Escape(text), *class, &self.href_context, close_tag.is_none());
+                string(
+                    self.out,
+                    EscapeBodyText(text),
+                    *class,
+                    &self.href_context,
+                    close_tag.is_none(),
+                );
             }
             if let Some(close_tag) = close_tag {
                 exit_span(self.out, close_tag);
@@ -260,10 +268,12 @@ pub(super) fn write_code(
             Highlight::Token { text, class } => {
                 // If we received a `ExitSpan` event and then have a non-compatible `Class`, we
                 // need to close the `<span>`.
-                let need_current_class_update = if let Some(pending) = token_handler.pending_exit_span &&
-                    !can_merge(Some(pending), class, text) {
-                        token_handler.handle_exit_span();
-                        true
+                let need_current_class_update = if let Some(pending) =
+                    token_handler.pending_exit_span
+                    && !can_merge(Some(pending), class, text)
+                {
+                    token_handler.handle_exit_span();
+                    true
                 // If the two `Class` are different, time to flush the current content and start
                 // a new one.
                 } else if !can_merge(token_handler.current_class, class, text) {
@@ -293,7 +303,8 @@ pub(super) fn write_code(
                     }
                 }
                 if should_add {
-                    let closing_tag = enter_span(token_handler.out, class, &token_handler.href_context);
+                    let closing_tag =
+                        enter_span(token_handler.out, class, &token_handler.href_context);
                     token_handler.closing_tags.push((closing_tag, class));
                 }
 
@@ -302,8 +313,14 @@ pub(super) fn write_code(
             }
             Highlight::ExitSpan => {
                 token_handler.current_class = None;
-                token_handler.pending_exit_span =
-                    Some(token_handler.closing_tags.last().as_ref().expect("ExitSpan without EnterSpan").1);
+                token_handler.pending_exit_span = Some(
+                    token_handler
+                        .closing_tags
+                        .last()
+                        .as_ref()
+                        .expect("ExitSpan without EnterSpan")
+                        .1,
+                );
             }
         };
     });
@@ -466,7 +483,9 @@ impl<'a> PeekIter<'a> {
     }
     /// Returns the next item after the current one. It doesn't interfere with `peek_next` output.
     fn peek(&mut self) -> Option<&(TokenKind, &'a str)> {
-        if self.stored.is_empty() && let Some(next) = self.iter.next() {
+        if self.stored.is_empty()
+            && let Some(next) = self.iter.next()
+        {
             self.stored.push_back(next);
         }
         self.stored.front()

@@ -198,7 +198,7 @@ impl<K: Ord, V> SortedMap<K, V> {
                 if index == self.data.len() || elements.last().unwrap().0 < self.data[index].0 {
                     // We can copy the whole range without having to mix with
                     // existing elements.
-                    self.data.splice(index..index, elements.into_iter());
+                    self.data.splice(index..index, elements);
                     return;
                 }
 

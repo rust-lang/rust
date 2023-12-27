@@ -4,10 +4,9 @@ mod arg_matrix;
 mod checks;
 mod suggestions;
 
-use rustc_errors::ErrorGuaranteed;
-
 use crate::coercion::DynamicCoerceMany;
 use crate::{Diverges, EnclosingBreakables, Inherited};
+use rustc_errors::{DiagCtxt, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir_analysis::astconv::AstConv;
@@ -120,7 +119,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         FnCtxt {
             body_id,
             param_env,
-            err_count_on_creation: inh.tcx.sess.err_count(),
+            err_count_on_creation: inh.tcx.dcx().err_count(),
             ret_coercion: None,
             ret_coercion_span: Cell::new(None),
             resume_yield_tys: None,
@@ -134,6 +133,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    pub(crate) fn dcx(&self) -> &'tcx DiagCtxt {
+        self.tcx.dcx()
+    }
+
     pub fn cause(&self, span: Span, code: ObligationCauseCode<'tcx>) -> ObligationCause<'tcx> {
         ObligationCause::new(span, self.body_id, code)
     }
@@ -143,7 +146,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn sess(&self) -> &Session {
-        &self.tcx.sess
+        self.tcx.sess
     }
 
     /// Creates an `TypeErrCtxt` with a reference to the in-progress
@@ -185,7 +188,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn errors_reported_since_creation(&self) -> bool {
-        self.tcx.sess.err_count() > self.err_count_on_creation
+        self.dcx().err_count() > self.err_count_on_creation
     }
 
     pub fn next_root_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
@@ -196,7 +199,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 impl<'a, 'tcx> Deref for FnCtxt<'a, 'tcx> {
     type Target = Inherited<'tcx>;
     fn deref(&self) -> &Self::Target {
-        &self.inh
+        self.inh
     }
 }
 
@@ -238,7 +241,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
 
     fn re_infer(&self, def: Option<&ty::GenericParamDef>, span: Span) -> Option<ty::Region<'tcx>> {
         let v = match def {
-            Some(def) => infer::EarlyBoundRegion(span, def.name),
+            Some(def) => infer::RegionParameterDefinition(span, def.name),
             None => infer::MiscVariable(span),
         };
         Some(self.next_region_var(v))
@@ -289,7 +292,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let trait_ref = self.instantiate_binder_with_fresh_vars(
             span,
-            infer::LateBoundRegionConversionTime::AssocTypeProjection(item_def_id),
+            infer::BoundRegionConversionTime::AssocTypeProjection(item_def_id),
             poly_trait_ref,
         );
 

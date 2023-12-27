@@ -11,6 +11,6 @@ LL |     async fn connection_handler(handler: impl Sized) -> Result<core::result
 LL |     async fn connection_handler(handler: impl Sized) -> Result<std::result::Result, std::io::Error> {
    |                                                                ~~~~~~~~~~~~~~~~~~~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0573`.

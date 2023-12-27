@@ -188,7 +188,7 @@ impl<'a, 'tcx> std::ops::Deref for Validator<'a, 'tcx> {
     type Target = ConstCx<'a, 'tcx>;
 
     fn deref(&self) -> &Self::Target {
-        &self.ccx
+        self.ccx
     }
 }
 
@@ -229,7 +229,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 let statement = &self.body[loc.block].statements[loc.statement_index];
                 match &statement.kind {
                     StatementKind::Assign(box (_, rhs)) => qualifs::in_rvalue::<Q, _>(
-                        &self.ccx,
+                        self.ccx,
                         &mut |l| self.qualif_local::<Q>(l),
                         rhs,
                     ),
@@ -246,7 +246,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 match &terminator.kind {
                     TerminatorKind::Call { .. } => {
                         let return_ty = self.body.local_decls[local].ty;
-                        Q::in_any_value_of_ty(&self.ccx, return_ty)
+                        Q::in_any_value_of_ty(self.ccx, return_ty)
                     }
                     kind => {
                         span_bug!(terminator.source_info.span, "{:?} not promotable", kind);
@@ -456,7 +456,7 @@ impl<'tcx> Validator<'_, 'tcx> {
         match kind {
             // Reject these borrow types just to be safe.
             // FIXME(RalfJung): could we allow them? Should we? No point in it until we have a usecase.
-            BorrowKind::Shallow | BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture } => {
+            BorrowKind::Fake | BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture } => {
                 return Err(Unpromotable);
             }
 
@@ -864,6 +864,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             };
 
             // Use the underlying local for this (necessarily interior) borrow.
+            debug_assert!(region.is_erased());
             let ty = local_decls[place.local].ty;
             let span = statement.source_info.span;
 
@@ -872,8 +873,6 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 tcx.lifetimes.re_erased,
                 ty::TypeAndMut { ty, mutbl: borrow_kind.to_mutbl_lossy() },
             );
-
-            *region = tcx.lifetimes.re_erased;
 
             let mut projection = vec![PlaceElem::Deref];
             projection.extend(place.projection);
@@ -1023,37 +1022,4 @@ pub fn promote_candidates<'tcx>(
     }
 
     promotions
-}
-
-/// This function returns `true` if the function being called in the array
-/// repeat expression is a `const` function.
-pub fn is_const_fn_in_array_repeat_expression<'tcx>(
-    ccx: &ConstCx<'_, 'tcx>,
-    place: &Place<'tcx>,
-    body: &Body<'tcx>,
-) -> bool {
-    match place.as_local() {
-        // rule out cases such as: `let my_var = some_fn(); [my_var; N]`
-        Some(local) if body.local_decls[local].is_user_variable() => return false,
-        None => return false,
-        _ => {}
-    }
-
-    for block in body.basic_blocks.iter() {
-        if let Some(Terminator { kind: TerminatorKind::Call { func, destination, .. }, .. }) =
-            &block.terminator
-        {
-            if let Operand::Constant(box ConstOperand { const_, .. }) = func {
-                if let ty::FnDef(def_id, _) = *const_.ty().kind() {
-                    if destination == place {
-                        if ccx.tcx.is_const_fn(def_id) {
-                            return true;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    false
 }

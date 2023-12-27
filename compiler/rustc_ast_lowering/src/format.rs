@@ -1,6 +1,6 @@
 use super::LoweringContext;
 use rustc_ast as ast;
-use rustc_ast::visit::{self, Visitor};
+use rustc_ast::visit::Visitor;
 use rustc_ast::*;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
@@ -267,7 +267,7 @@ fn make_count<'hir>(
                 ctx.expr(
                     sp,
                     hir::ExprKind::Err(
-                        ctx.tcx.sess.delay_span_bug(sp, "lowered bad format_args count"),
+                        ctx.dcx().span_delayed_bug(sp, "lowered bad format_args count"),
                     ),
                 )
             }
@@ -306,7 +306,7 @@ fn make_format_spec<'hir>(
         }
         Err(_) => ctx.expr(
             sp,
-            hir::ExprKind::Err(ctx.tcx.sess.delay_span_bug(sp, "lowered bad format_args count")),
+            hir::ExprKind::Err(ctx.dcx().span_delayed_bug(sp, "lowered bad format_args count")),
         ),
     };
     let &FormatOptions {
@@ -338,8 +338,8 @@ fn make_format_spec<'hir>(
         | ((debug_hex == Some(FormatDebugHex::Lower)) as u32) << 4
         | ((debug_hex == Some(FormatDebugHex::Upper)) as u32) << 5;
     let flags = ctx.expr_u32(sp, flags);
-    let precision = make_count(ctx, sp, &precision, argmap);
-    let width = make_count(ctx, sp, &width, argmap);
+    let precision = make_count(ctx, sp, precision, argmap);
+    let width = make_count(ctx, sp, width, argmap);
     let format_placeholder_new = ctx.arena.alloc(ctx.expr_lang_item_type_relative(
         sp,
         hir::LangItem::FormatPlaceholder,

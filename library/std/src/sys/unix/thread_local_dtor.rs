@@ -11,8 +11,14 @@
 // Note, however, that we run on lots older linuxes, as well as cross
 // compiling from a newer linux to an older linux, so we also have a
 // fallback implementation to use as well.
-#[allow(unexpected_cfgs)]
-#[cfg(any(target_os = "linux", target_os = "fuchsia", target_os = "redox", target_os = "hurd"))]
+#[cfg_attr(bootstrap, allow(unexpected_cfgs))]
+#[cfg(any(
+    target_os = "linux",
+    target_os = "android",
+    target_os = "fuchsia",
+    target_os = "redox",
+    target_os = "hurd"
+))]
 // FIXME: The Rust compiler currently omits weakly function definitions (i.e.,
 // __cxa_thread_atexit_impl) and its metadata from LLVM IR.
 #[no_sanitize(cfi, kcfi)]
@@ -23,6 +29,8 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     /// This is necessary because the __cxa_thread_atexit_impl implementation
     /// std links to by default may be a C or C++ implementation that was not
     /// compiled using the Clang integer normalization option.
+    #[cfg(sanitizer_cfi_normalize_integers)]
+    use core::ffi::c_int;
     #[cfg(not(sanitizer_cfi_normalize_integers))]
     #[cfi_encoding = "i"]
     #[repr(transparent)]

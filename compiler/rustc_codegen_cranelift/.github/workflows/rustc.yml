@@ -11,6 +11,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: CPU features
+      run: cat /proc/cpuinfo
+
     - name: Cache cargo target dir
       uses: actions/cache@v3
       with:
@@ -30,6 +33,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+
+    - name: CPU features
+      run: cat /proc/cpuinfo
 
     - name: Cache cargo target dir
       uses: actions/cache@v3

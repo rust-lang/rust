@@ -220,9 +220,8 @@ pub fn impl_subject_and_oblig<'a, 'tcx>(
         selcx.infcx.at(&ObligationCause::dummy(), param_env).normalize(predicates);
     let impl_obligations = super::predicates_for_generics(cause, param_env, predicates);
 
-    let impl_obligations = impl_obligations
-        .chain(normalization_obligations1.into_iter())
-        .chain(normalization_obligations2.into_iter());
+    let impl_obligations =
+        impl_obligations.chain(normalization_obligations1).chain(normalization_obligations2);
 
     (subject, impl_obligations)
 }
@@ -265,13 +264,26 @@ pub fn closure_trait_ref_and_return_type<'tcx>(
     self_ty: Ty<'tcx>,
     sig: ty::PolyFnSig<'tcx>,
     tuple_arguments: TupleArgumentsFlag,
+    fn_host_effect: ty::Const<'tcx>,
 ) -> ty::Binder<'tcx, (ty::TraitRef<'tcx>, Ty<'tcx>)> {
     assert!(!self_ty.has_escaping_bound_vars());
     let arguments_tuple = match tuple_arguments {
         TupleArgumentsFlag::No => sig.skip_binder().inputs()[0],
         TupleArgumentsFlag::Yes => Ty::new_tup(tcx, sig.skip_binder().inputs()),
     };
-    let trait_ref = ty::TraitRef::new(tcx, fn_trait_def_id, [self_ty, arguments_tuple]);
+    let trait_ref = if tcx.generics_of(fn_trait_def_id).host_effect_index.is_some() {
+        ty::TraitRef::new(
+            tcx,
+            fn_trait_def_id,
+            [
+                ty::GenericArg::from(self_ty),
+                ty::GenericArg::from(arguments_tuple),
+                ty::GenericArg::from(fn_host_effect),
+            ],
+        )
+    } else {
+        ty::TraitRef::new(tcx, fn_trait_def_id, [self_ty, arguments_tuple])
+    };
     sig.map_bound(|sig| (trait_ref, sig.output()))
 }
 
@@ -279,33 +291,44 @@ pub fn coroutine_trait_ref_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_trait_def_id: DefId,
     self_ty: Ty<'tcx>,
-    sig: ty::PolyGenSig<'tcx>,
-) -> ty::Binder<'tcx, (ty::TraitRef<'tcx>, Ty<'tcx>, Ty<'tcx>)> {
+    sig: ty::GenSig<'tcx>,
+) -> (ty::TraitRef<'tcx>, Ty<'tcx>, Ty<'tcx>) {
     assert!(!self_ty.has_escaping_bound_vars());
-    let trait_ref = ty::TraitRef::new(tcx, fn_trait_def_id, [self_ty, sig.skip_binder().resume_ty]);
-    sig.map_bound(|sig| (trait_ref, sig.yield_ty, sig.return_ty))
+    let trait_ref = ty::TraitRef::new(tcx, fn_trait_def_id, [self_ty, sig.resume_ty]);
+    (trait_ref, sig.yield_ty, sig.return_ty)
 }
 
 pub fn future_trait_ref_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_trait_def_id: DefId,
     self_ty: Ty<'tcx>,
-    sig: ty::PolyGenSig<'tcx>,
-) -> ty::Binder<'tcx, (ty::TraitRef<'tcx>, Ty<'tcx>)> {
+    sig: ty::GenSig<'tcx>,
+) -> (ty::TraitRef<'tcx>, Ty<'tcx>) {
     assert!(!self_ty.has_escaping_bound_vars());
     let trait_ref = ty::TraitRef::new(tcx, fn_trait_def_id, [self_ty]);
-    sig.map_bound(|sig| (trait_ref, sig.return_ty))
+    (trait_ref, sig.return_ty)
 }
 
 pub fn iterator_trait_ref_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
     iterator_def_id: DefId,
     self_ty: Ty<'tcx>,
-    sig: ty::PolyGenSig<'tcx>,
-) -> ty::Binder<'tcx, (ty::TraitRef<'tcx>, Ty<'tcx>)> {
+    sig: ty::GenSig<'tcx>,
+) -> (ty::TraitRef<'tcx>, Ty<'tcx>) {
     assert!(!self_ty.has_escaping_bound_vars());
     let trait_ref = ty::TraitRef::new(tcx, iterator_def_id, [self_ty]);
-    sig.map_bound(|sig| (trait_ref, sig.yield_ty))
+    (trait_ref, sig.yield_ty)
+}
+
+pub fn async_iterator_trait_ref_and_outputs<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    async_iterator_def_id: DefId,
+    self_ty: Ty<'tcx>,
+    sig: ty::GenSig<'tcx>,
+) -> (ty::TraitRef<'tcx>, Ty<'tcx>) {
+    assert!(!self_ty.has_escaping_bound_vars());
+    let trait_ref = ty::TraitRef::new(tcx, async_iterator_def_id, [self_ty]);
+    (trait_ref, sig.yield_ty)
 }
 
 pub fn impl_item_is_final(tcx: TyCtxt<'_>, assoc_item: &ty::AssocItem) -> bool {

@@ -37,7 +37,7 @@ pub struct OverlapError<'tcx> {
     pub with_impl: DefId,
     pub trait_ref: ty::TraitRef<'tcx>,
     pub self_ty: Option<Ty<'tcx>>,
-    pub intercrate_ambiguity_causes: FxIndexSet<IntercrateAmbiguityCause>,
+    pub intercrate_ambiguity_causes: FxIndexSet<IntercrateAmbiguityCause<'tcx>>,
     pub involves_placeholder: bool,
 }
 
@@ -107,7 +107,7 @@ pub fn translate_args_with_cause<'tcx>(
         param_env, source_impl, source_args, target_node
     );
     let source_trait_ref =
-        infcx.tcx.impl_trait_ref(source_impl).unwrap().instantiate(infcx.tcx, &source_args);
+        infcx.tcx.impl_trait_ref(source_impl).unwrap().instantiate(infcx.tcx, source_args);
 
     // translate the Self and Param parts of the substitution, since those
     // vary across impls
@@ -197,25 +197,22 @@ fn fulfill_implication<'tcx>(
         param_env, source_trait_ref, target_impl
     );
 
-    let source_trait_ref = match traits::fully_normalize(
-        &infcx,
-        ObligationCause::dummy(),
-        param_env,
-        source_trait_ref,
-    ) {
-        Ok(source_trait_ref) => source_trait_ref,
-        Err(_errors) => {
-            infcx.tcx.sess.delay_span_bug(
-                infcx.tcx.def_span(source_impl),
-                format!("failed to fully normalize {source_trait_ref}"),
-            );
-            source_trait_ref
-        }
-    };
+    let source_trait_ref =
+        match traits::fully_normalize(infcx, ObligationCause::dummy(), param_env, source_trait_ref)
+        {
+            Ok(source_trait_ref) => source_trait_ref,
+            Err(_errors) => {
+                infcx.dcx().span_delayed_bug(
+                    infcx.tcx.def_span(source_impl),
+                    format!("failed to fully normalize {source_trait_ref}"),
+                );
+                source_trait_ref
+            }
+        };
 
     let source_trait = ImplSubject::Trait(source_trait_ref);
 
-    let selcx = &mut SelectionContext::new(&infcx);
+    let selcx = &mut SelectionContext::new(infcx);
     let target_args = infcx.fresh_args_for_item(DUMMY_SP, target_impl);
     let (target_trait, obligations) =
         util::impl_subject_and_oblig(selcx, param_env, target_impl, target_args, error_cause);
@@ -348,7 +345,7 @@ fn report_negative_positive_conflict<'tcx>(
     positive_impl_def_id: DefId,
     sg: &mut specialization_graph::Graph,
 ) {
-    let mut err = tcx.sess.create_err(NegativePositiveConflict {
+    let mut err = tcx.dcx().create_err(NegativePositiveConflict {
         impl_span: tcx.def_span(local_impl_def_id),
         trait_desc: overlap.trait_ref,
         self_ty: overlap.self_ty,
@@ -415,7 +412,7 @@ fn report_conflicting_impls<'tcx>(
     let msg = DelayDm(|| {
         format!(
             "conflicting implementations of trait `{}`{}{}",
-            overlap.trait_ref.print_only_trait_path(),
+            overlap.trait_ref.print_trait_sugared(),
             overlap.self_ty.map_or_else(String::new, |ty| format!(" for type `{ty}`")),
             match used_to_be_allowed {
                 Some(FutureCompatOverlapErrorKind::Issue33140) => ": (E0119)",
@@ -429,12 +426,15 @@ fn report_conflicting_impls<'tcx>(
             let reported = if overlap.with_impl.is_local()
                 || tcx.orphan_check_impl(impl_def_id).is_ok()
             {
-                let mut err = tcx.sess.struct_span_err(impl_span, msg);
+                let mut err = tcx.dcx().struct_span_err(impl_span, msg);
                 err.code(error_code!(E0119));
                 decorate(tcx, &overlap, impl_span, &mut err);
                 Some(err.emit())
             } else {
-                Some(tcx.sess.delay_span_bug(impl_span, "impl should have failed the orphan check"))
+                Some(
+                    tcx.dcx()
+                        .span_delayed_bug(impl_span, "impl should have failed the orphan check"),
+                )
             };
             sg.has_errored = reported;
         }
@@ -445,12 +445,11 @@ fn report_conflicting_impls<'tcx>(
             };
             tcx.struct_span_lint_hir(
                 lint,
-                tcx.hir().local_def_id_to_hir_id(impl_def_id),
+                tcx.local_def_id_to_hir_id(impl_def_id),
                 impl_span,
                 msg,
                 |err| {
                     decorate(tcx, &overlap, impl_span, err);
-                    err
                 },
             );
         }

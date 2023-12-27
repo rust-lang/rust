@@ -4,5 +4,5 @@ error: negative `Drop` impls are not supported
 LL | impl !Drop for NonDrop {}
    | ^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

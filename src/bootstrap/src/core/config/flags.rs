@@ -85,6 +85,9 @@ pub struct Flags {
     #[arg(global(true), long)]
     /// dry run; don't build anything
     pub dry_run: bool,
+    /// Indicates whether to dump the work done from bootstrap shims
+    #[arg(global(true), long)]
+    pub dump_bootstrap_shims: bool,
     #[arg(global(true), value_hint = clap::ValueHint::Other, long, value_name = "N")]
     /// stage to build (indicates compiler to use/test, e.g., stage 0 uses the
     /// bootstrap compiler, stage 1 the stage 0 rustc artifacts, etc.)
@@ -132,6 +135,13 @@ pub struct Flags {
     #[clap(value_enum, default_value_t = Color::Auto)]
     /// whether to use color in cargo and rustc output
     pub color: Color,
+
+    #[arg(global(true), long)]
+    /// Bootstrap uses this value to decide whether it should bypass locking the build process.
+    /// This is rarely needed (e.g., compiling the std library for different targets in parallel).
+    ///
+    /// Unless you know exactly what you are doing, you probably don't need this.
+    pub bypass_bootstrap_lock: bool,
 
     /// whether rebuilding llvm should be skipped, overriding `skip-rebuld` in config.toml
     #[arg(global(true), long, value_name = "VALUE")]
@@ -190,7 +200,7 @@ impl Flags {
         if let Ok(HelpVerboseOnly { help: true, verbose: 1.., cmd: subcommand }) =
             HelpVerboseOnly::try_parse_from(it.clone())
         {
-            println!("note: updating submodules before printing available paths");
+            println!("NOTE: updating submodules before printing available paths");
             let config = Config::parse(&[String::from("build")]);
             let build = Build::new(config);
             let paths = Builder::get_help(&build, subcommand);

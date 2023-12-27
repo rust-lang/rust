@@ -11,6 +11,6 @@ LL ~         (T::T2(()), V::V2(b)) => (),
 LL ~         (T::T1(()), V::V2(_)) | (T::T2(()), V::V1(_)) => todo!(),
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0004`.

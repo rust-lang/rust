@@ -50,7 +50,9 @@ static HOSTS: &[&str] = &[
 
 static TARGETS: &[&str] = &[
     "aarch64-apple-darwin",
+    "arm64e-apple-darwin",
     "aarch64-apple-ios",
+    "arm64e-apple-ios",
     "aarch64-apple-ios-sim",
     "aarch64-unknown-fuchsia",
     "aarch64-linux-android",
@@ -82,7 +84,6 @@ static TARGETS: &[&str] = &[
     "armv7r-none-eabi",
     "armv7r-none-eabihf",
     "armv7s-apple-ios",
-    "asmjs-unknown-emscripten",
     "bpfeb-unknown-none",
     "bpfel-unknown-none",
     "i386-apple-ios",
@@ -123,6 +124,7 @@ static TARGETS: &[&str] = &[
     "riscv32im-unknown-none-elf",
     "riscv32imc-unknown-none-elf",
     "riscv32imac-unknown-none-elf",
+    "riscv32imafc-unknown-none-elf",
     "riscv32gc-unknown-linux-gnu",
     "riscv64imac-unknown-none-elf",
     "riscv64gc-unknown-hermit",
@@ -150,7 +152,6 @@ static TARGETS: &[&str] = &[
     "x86_64-linux-android",
     "x86_64-pc-windows-gnu",
     "x86_64-pc-windows-msvc",
-    "x86_64-sun-solaris",
     "x86_64-pc-solaris",
     "x86_64-unikraft-linux-musl",
     "x86_64-unknown-freebsd",

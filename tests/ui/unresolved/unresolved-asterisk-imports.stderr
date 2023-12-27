@@ -6,6 +6,6 @@ LL | use not_existing_crate::*;
    |
    = help: consider adding `extern crate not_existing_crate` to use the `not_existing_crate` crate
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0432`.

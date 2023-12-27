@@ -2598,6 +2598,34 @@ fn test<T: Trait>() {
 }
 
 #[test]
+fn associated_type_in_type_bound() {
+    check_types(
+        r#"
+//- minicore: deref
+fn fb(f: Foo<&u8>) {
+    f.foobar();
+  //^^^^^^^^^^ u8
+}
+trait Bar {
+    fn bar(&self) -> u8;
+}
+impl Bar for u8 {
+    fn bar(&self) -> u8 { *self }
+}
+
+struct Foo<F> {
+    foo: F,
+}
+impl<F: core::ops::Deref<Target = impl Bar>> Foo<F> {
+    fn foobar(&self) -> u8 {
+        self.foo.deref().bar()
+    }
+}
+"#,
+    )
+}
+
+#[test]
 fn dyn_trait_through_chalk() {
     check_types(
         r#"
@@ -4439,42 +4467,42 @@ fn test(v: S<i32>) {
 fn associated_type_in_argument() {
     check(
         r#"
-    trait A {
-        fn m(&self) -> i32;
-    }
+trait A {
+    fn m(&self) -> i32;
+}
 
-    fn x<T: B>(k: &<T as B>::Ty) {
-        k.m();
-    }
+fn x<T: B>(k: &<T as B>::Ty) {
+    k.m();
+}
 
-    struct X;
-    struct Y;
+struct X;
+struct Y;
 
-    impl A for X {
-        fn m(&self) -> i32 {
-            8
-        }
+impl A for X {
+    fn m(&self) -> i32 {
+        8
     }
+}
 
-    impl A for Y {
-        fn m(&self) -> i32 {
-            32
-        }
+impl A for Y {
+    fn m(&self) -> i32 {
+        32
     }
+}
 
-    trait B {
-        type Ty: A;
-    }
+trait B {
+    type Ty: A;
+}
 
-    impl B for u16 {
-        type Ty = X;
-    }
+impl B for u16 {
+    type Ty = X;
+}
 
-    fn ttt() {
-        let inp = Y;
-        x::<u16>(&inp);
-               //^^^^ expected &X, got &Y
-    }
-    "#,
+fn ttt() {
+    let inp = Y;
+    x::<u16>(&inp);
+           //^^^^ expected &X, got &Y
+}
+"#,
     );
 }

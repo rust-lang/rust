@@ -85,6 +85,14 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
 
         let bx = self;
 
+        match coverage.kind {
+            // Marker statements have no effect during codegen,
+            // so return early and don't create `func_coverage`.
+            CoverageKind::SpanMarker => return,
+            // Match exhaustively to ensure that newly-added kinds are classified correctly.
+            CoverageKind::CounterIncrement { .. } | CoverageKind::ExpressionUsed { .. } => {}
+        }
+
         let Some(function_coverage_info) =
             bx.tcx.instance_mir(instance.def).function_coverage_info.as_deref()
         else {
@@ -100,6 +108,9 @@ impl<'tcx> CoverageInfoBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
 
         let Coverage { kind } = coverage;
         match *kind {
+            CoverageKind::SpanMarker => unreachable!(
+                "unexpected marker statement {kind:?} should have caused an early return"
+            ),
             CoverageKind::CounterIncrement { id } => {
                 func_coverage.mark_counter_id_seen(id);
                 // We need to explicitly drop the `RefMut` before calling into `instrprof_increment`,

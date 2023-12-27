@@ -8,7 +8,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 use rustc_type_ir::visit::TypeVisitable;
 
-pub trait SpannedTypeVisitor<'tcx> {
+pub(crate) trait SpannedTypeVisitor<'tcx> {
     type BreakTy = !;
     fn visit(
         &mut self,
@@ -17,7 +17,7 @@ pub trait SpannedTypeVisitor<'tcx> {
     ) -> ControlFlow<Self::BreakTy>;
 }
 
-pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
+pub(crate) fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
     tcx: TyCtxt<'tcx>,
     item: LocalDefId,
     visitor: &mut V,
@@ -28,7 +28,7 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
         // Walk over the signature of the function
         DefKind::AssocFn | DefKind::Fn => {
             let ty_sig = tcx.fn_sig(item).instantiate_identity();
-            let hir_sig = tcx.hir().get_by_def_id(item).fn_decl().unwrap();
+            let hir_sig = tcx.hir_node_by_def_id(item).fn_decl().unwrap();
             // Walk over the inputs and outputs manually in order to get good spans for them.
             visitor.visit(hir_sig.output.span(), ty_sig.output());
             for (hir, ty) in hir_sig.inputs.iter().zip(ty_sig.inputs().iter()) {
@@ -42,7 +42,7 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
         DefKind::TyAlias {..} | DefKind::AssocTy |
         // Walk over the type of the item
         DefKind::Static(_) | DefKind::Const | DefKind::AssocConst | DefKind::AnonConst => {
-            let span = match tcx.hir().get_by_def_id(item).ty() {
+            let span = match tcx.hir_node_by_def_id(item).ty() {
                 Some(ty) => ty.span,
                 _ => tcx.def_span(item),
             };
@@ -67,14 +67,14 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
         // These are not part of a public API, they can only appear as hidden types, and there
         // the interesting parts are solely in the signature of the containing item's opaque type
         // or dyn type.
-        DefKind::InlineConst | DefKind::Closure | DefKind::Coroutine => {}
+        DefKind::InlineConst | DefKind::Closure => {}
         DefKind::Impl { of_trait } => {
             if of_trait {
-                let span = tcx.hir().get_by_def_id(item).expect_item().expect_impl().of_trait.unwrap().path.span;
+                let span = tcx.hir_node_by_def_id(item).expect_item().expect_impl().of_trait.unwrap().path.span;
                 let args = &tcx.impl_trait_ref(item).unwrap().instantiate_identity().args[1..];
                 visitor.visit(span, args)?;
             }
-            let span = match tcx.hir().get_by_def_id(item).ty() {
+            let span = match tcx.hir_node_by_def_id(item).ty() {
                 Some(ty) => ty.span,
                 _ => tcx.def_span(item),
             };

@@ -4,7 +4,7 @@
 
 #![allow(clippy::almost_complete_range)]
 #![allow(clippy::disallowed_names)]
-#![allow(clippy::blocks_in_if_conditions)]
+#![allow(clippy::blocks_in_conditions)]
 #![allow(clippy::box_collection)]
 #![allow(clippy::redundant_static_lifetimes)]
 #![allow(clippy::cognitive_complexity)]
@@ -51,10 +51,12 @@
 #![allow(undropped_manually_drops)]
 #![allow(unknown_lints)]
 #![allow(unused_labels)]
+#![allow(ambiguous_wide_pointer_comparisons)]
 #![warn(clippy::almost_complete_range)]
 #![warn(clippy::disallowed_names)]
-#![warn(clippy::blocks_in_if_conditions)]
-#![warn(clippy::blocks_in_if_conditions)]
+#![warn(clippy::blocks_in_conditions)]
+#![warn(clippy::blocks_in_conditions)]
+#![warn(clippy::blocks_in_conditions)]
 #![warn(clippy::box_collection)]
 #![warn(clippy::redundant_static_lifetimes)]
 #![warn(clippy::cognitive_complexity)]
@@ -107,5 +109,6 @@
 #![warn(undropped_manually_drops)]
 #![warn(unknown_lints)]
 #![warn(unused_labels)]
+#![warn(ambiguous_wide_pointer_comparisons)]
 
 fn main() {}

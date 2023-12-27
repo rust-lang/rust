@@ -189,7 +189,7 @@ impl<'tcx> SymbolMangler<'tcx> {
         self.push("N");
         self.out.push(ns);
         print_prefix(self)?;
-        self.push_disambiguator(disambiguator as u64);
+        self.push_disambiguator(disambiguator);
         self.push_ident(name);
         Ok(())
     }
@@ -319,9 +319,9 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             // shorter mangling of `L_`.
             ty::ReErased => 0,
 
-            // Late-bound lifetimes use indices starting at 1,
+            // Bound lifetimes use indices starting at 1,
             // see `BinderLevel` for more details.
-            ty::ReLateBound(debruijn, ty::BoundRegion { var, kind: ty::BrAnon }) => {
+            ty::ReBound(debruijn, ty::BoundRegion { var, kind: ty::BrAnon }) => {
                 let binder = &self.binders[self.binders.len() - 1 - debruijn.index()];
                 let depth = binder.lifetime_depths.start + var.as_u32();
 
@@ -770,17 +770,16 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             // Uppercase categories are more stable than lowercase ones.
             DefPathData::TypeNs(_) => 't',
             DefPathData::ValueNs(_) => 'v',
-            DefPathData::ClosureExpr => 'C',
+            DefPathData::Closure => 'C',
             DefPathData::Ctor => 'c',
             DefPathData::AnonConst => 'k',
-            DefPathData::ImplTrait => 'i',
+            DefPathData::OpaqueTy => 'i',
 
             // These should never show up as `path_append` arguments.
             DefPathData::CrateRoot
             | DefPathData::Use
             | DefPathData::GlobalAsm
             | DefPathData::Impl
-            | DefPathData::ImplTraitAssocTy
             | DefPathData::MacroNs(_)
             | DefPathData::LifetimeNs(_) => {
                 bug!("symbol_names: unexpected DefPathData: {:?}", disambiguated_data.data)

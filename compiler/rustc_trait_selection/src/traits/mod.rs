@@ -215,7 +215,7 @@ fn do_normalize_predicates<'tcx>(
     // the normalized predicates.
     let errors = infcx.resolve_regions(&outlives_env);
     if !errors.is_empty() {
-        tcx.sess.delay_span_bug(
+        tcx.dcx().span_delayed_bug(
             span,
             format!("failed region resolution while normalizing {elaborated_env:?}: {errors:?}"),
         );
@@ -315,7 +315,7 @@ pub fn normalize_param_env_or_error<'tcx>(
             // We do not normalize types here as there is no backwards compatibility requirement
             // for us to do so.
             //
-            // FIXME(-Ztrait-solver=next): remove this hack since we have deferred projection equality
+            // FIXME(-Znext-solver): remove this hack since we have deferred projection equality
             predicate.fold_with(&mut ConstNormalizer(tcx))
         }),
     )
@@ -386,7 +386,7 @@ pub fn normalize_param_env_or_error<'tcx>(
 
 /// Normalize a type and process all resulting obligations, returning any errors.
 ///
-/// FIXME(-Ztrait-solver=next): This should be replaced by `At::deeply_normalize`
+/// FIXME(-Znext-solver): This should be replaced by `At::deeply_normalize`
 /// which has the same behavior with the new solver. Because using a separate
 /// fulfillment context worsens caching in the old solver, `At::deeply_normalize`
 /// is still lazy with the old solver as it otherwise negatively impacts perf.
@@ -484,7 +484,7 @@ fn is_impossible_associated_item(
             t.super_visit_with(self)
         }
         fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
-            if let ty::ReEarlyBound(param) = r.kind()
+            if let ty::ReEarlyParam(param) = r.kind()
                 && let param_def_id = self.generics.region_param(&param, self.tcx).def_id
                 && self.tcx.parent(param_def_id) == self.trait_item_def_id
             {

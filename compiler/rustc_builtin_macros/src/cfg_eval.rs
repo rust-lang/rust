@@ -25,7 +25,7 @@ pub(crate) fn expand(
     annotatable: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(ecx, meta_item, sym::cfg_eval);
-    warn_on_duplicate_attribute(&ecx, &annotatable, sym::cfg_eval);
+    warn_on_duplicate_attribute(ecx, &annotatable, sym::cfg_eval);
     vec![cfg_eval(ecx.sess, ecx.ecfg.features, annotatable, ecx.current_expansion.lint_node_id)]
 }
 
@@ -95,19 +95,19 @@ impl CfgFinder {
     fn has_cfg_or_cfg_attr(annotatable: &Annotatable) -> bool {
         let mut finder = CfgFinder { has_cfg_or_cfg_attr: false };
         match annotatable {
-            Annotatable::Item(item) => finder.visit_item(&item),
-            Annotatable::TraitItem(item) => finder.visit_assoc_item(&item, visit::AssocCtxt::Trait),
-            Annotatable::ImplItem(item) => finder.visit_assoc_item(&item, visit::AssocCtxt::Impl),
-            Annotatable::ForeignItem(item) => finder.visit_foreign_item(&item),
-            Annotatable::Stmt(stmt) => finder.visit_stmt(&stmt),
-            Annotatable::Expr(expr) => finder.visit_expr(&expr),
-            Annotatable::Arm(arm) => finder.visit_arm(&arm),
-            Annotatable::ExprField(field) => finder.visit_expr_field(&field),
-            Annotatable::PatField(field) => finder.visit_pat_field(&field),
-            Annotatable::GenericParam(param) => finder.visit_generic_param(&param),
-            Annotatable::Param(param) => finder.visit_param(&param),
-            Annotatable::FieldDef(field) => finder.visit_field_def(&field),
-            Annotatable::Variant(variant) => finder.visit_variant(&variant),
+            Annotatable::Item(item) => finder.visit_item(item),
+            Annotatable::TraitItem(item) => finder.visit_assoc_item(item, visit::AssocCtxt::Trait),
+            Annotatable::ImplItem(item) => finder.visit_assoc_item(item, visit::AssocCtxt::Impl),
+            Annotatable::ForeignItem(item) => finder.visit_foreign_item(item),
+            Annotatable::Stmt(stmt) => finder.visit_stmt(stmt),
+            Annotatable::Expr(expr) => finder.visit_expr(expr),
+            Annotatable::Arm(arm) => finder.visit_arm(arm),
+            Annotatable::ExprField(field) => finder.visit_expr_field(field),
+            Annotatable::PatField(field) => finder.visit_pat_field(field),
+            Annotatable::GenericParam(param) => finder.visit_generic_param(param),
+            Annotatable::Param(param) => finder.visit_param(param),
+            Annotatable::FieldDef(field) => finder.visit_field_def(field),
+            Annotatable::Variant(variant) => finder.visit_variant(variant),
             Annotatable::Crate(krate) => finder.visit_crate(krate),
         };
         finder.has_cfg_or_cfg_attr

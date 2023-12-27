@@ -14,5 +14,5 @@ help: if this is a type, explicitly ignore the parameter name
 LL | fn a(_: B<) {}
    |      ++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

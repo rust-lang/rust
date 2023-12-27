@@ -49,6 +49,12 @@ RUN ./install-x86_64-redox.sh
 COPY host-x86_64/dist-various-1/install-aarch64-none-elf.sh /build
 RUN ./install-aarch64-none-elf.sh
 
+COPY host-x86_64/dist-various-1/install-riscv64-none-elf.sh /build
+RUN ./install-riscv64-none-elf.sh
+
+COPY host-x86_64/dist-various-1/install-riscv32-none-elf.sh /build
+RUN ./install-riscv32-none-elf.sh
+
 # Suppress some warnings in the openwrt toolchains we downloaded
 ENV STAGING_DIR=/tmp
 
@@ -75,8 +81,7 @@ ENV RUN_MAKE_TARGETS=$RUN_MAKE_TARGETS,thumbv7m-none-eabi
 ENV RUN_MAKE_TARGETS=$RUN_MAKE_TARGETS,thumbv7em-none-eabi
 ENV RUN_MAKE_TARGETS=$RUN_MAKE_TARGETS,thumbv7em-none-eabihf
 
-ENV TARGETS=asmjs-unknown-emscripten
-ENV TARGETS=$TARGETS,wasm32-unknown-emscripten
+ENV TARGETS=wasm32-unknown-emscripten
 ENV TARGETS=$TARGETS,arm-unknown-linux-musleabi
 ENV TARGETS=$TARGETS,arm-unknown-linux-musleabihf
 ENV TARGETS=$TARGETS,armv5te-unknown-linux-gnueabi
@@ -96,6 +101,7 @@ ENV TARGETS=$TARGETS,thumbv8m.main-none-eabihf
 ENV TARGETS=$TARGETS,riscv32i-unknown-none-elf
 ENV TARGETS=$TARGETS,riscv32imc-unknown-none-elf
 ENV TARGETS=$TARGETS,riscv32imac-unknown-none-elf
+ENV TARGETS=$TARGETS,riscv32imafc-unknown-none-elf
 ENV TARGETS=$TARGETS,riscv64imac-unknown-none-elf
 ENV TARGETS=$TARGETS,riscv64gc-unknown-none-elf
 ENV TARGETS=$TARGETS,armebv7r-none-eabi
@@ -105,9 +111,6 @@ ENV TARGETS=$TARGETS,armv7r-none-eabihf
 ENV TARGETS=$TARGETS,thumbv7neon-unknown-linux-gnueabihf
 ENV TARGETS=$TARGETS,armv7a-none-eabi
 
-# riscv targets currently do not need a C compiler, as compiler_builtins
-# doesn't currently have it enabled, and the riscv gcc compiler is not
-# installed.
 ENV CFLAGS_armv5te_unknown_linux_musleabi="-march=armv5te -marm -mfloat-abi=soft" \
     CFLAGS_arm_unknown_linux_musleabi="-march=armv6 -marm" \
     CFLAGS_arm_unknown_linux_musleabihf="-march=armv6 -marm -mfpu=vfp" \
@@ -125,11 +128,16 @@ ENV CFLAGS_armv5te_unknown_linux_musleabi="-march=armv5te -marm -mfloat-abi=soft
     CFLAGS_aarch64_unknown_none_softfloat=-mstrict-align -march=armv8-a+nofp+nosimd \
     CC_aarch64_unknown_none=aarch64-none-elf-gcc \
     CFLAGS_aarch64_unknown_none=-mstrict-align -march=armv8-a+fp+simd \
-    CC_riscv32i_unknown_none_elf=false \
-    CC_riscv32imc_unknown_none_elf=false \
-    CC_riscv32imac_unknown_none_elf=false \
-    CC_riscv64imac_unknown_none_elf=false \
-    CC_riscv64gc_unknown_none_elf=false
+    CC_riscv32i_unknown_none_elf=riscv32-unknown-elf-gcc \
+    CFLAGS_riscv32i_unknown_none_elf=-march=rv32i -mabi=ilp32 \
+    CC_riscv32imc_unknown_none_elf=riscv32-unknown-elf-gcc \
+    CFLAGS_riscv32imc_unknown_none_elf=-march=rv32imc -mabi=ilp32 \
+    CC_riscv32imac_unknown_none_elf=riscv32-unknown-elf-gcc \
+    CFLAGS_riscv32imac_unknown_none_elf=-march=rv32imac -mabi=ilp32 \
+    CC_riscv64imac_unknown_none_elf=riscv64-unknown-elf-gcc \
+    CFLAGS_riscv64imac_unknown_none_elf=-march=rv64imac -mabi=lp64 \
+    CC_riscv64gc_unknown_none_elf=riscv64-unknown-elf-gcc \
+    CFLAGS_riscv64gc_unknown_none_elf=-march=rv64gc -mabi=lp64
 
 ENV RUST_CONFIGURE_ARGS \
       --musl-root-armv5te=/musl-armv5te \

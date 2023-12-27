@@ -14,9 +14,9 @@ note: `into_iter` takes ownership of the receiver `self`, which moves `y`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
-LL |         y.clone().into_iter();
-   |          ++++++++
+LL |         <Vec<String> as Clone>::clone(&y).into_iter();
+   |         +++++++++++++++++++++++++++++++ +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0507`.

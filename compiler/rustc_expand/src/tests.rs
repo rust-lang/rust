@@ -8,7 +8,7 @@ use rustc_span::{BytePos, Span};
 
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::EmitterWriter;
-use rustc_errors::{Handler, MultiSpan, PResult};
+use rustc_errors::{DiagCtxt, MultiSpan, PResult};
 use termcolor::WriteColor;
 
 use std::io;
@@ -23,7 +23,7 @@ fn string_to_parser(ps: &ParseSess, source_str: String) -> Parser<'_> {
     new_parser_from_source_str(ps, PathBuf::from("bogofile").into(), source_str)
 }
 
-fn create_test_handler() -> (Handler, Lrc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
+fn create_test_handler() -> (DiagCtxt, Lrc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
     let output = Arc::new(Mutex::new(Vec::new()));
     let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
     let fallback_bundle = rustc_errors::fallback_fluent_bundle(
@@ -33,8 +33,8 @@ fn create_test_handler() -> (Handler, Lrc<SourceMap>, Arc<Mutex<Vec<u8>>>) {
     let emitter = EmitterWriter::new(Box::new(Shared { data: output.clone() }), fallback_bundle)
         .sm(Some(source_map.clone()))
         .diagnostic_width(Some(140));
-    let handler = Handler::with_emitter(Box::new(emitter));
-    (handler, source_map, output)
+    let dcx = DiagCtxt::with_emitter(Box::new(emitter));
+    (dcx, source_map, output)
 }
 
 /// Returns the result of parsing the given string via the given callback.
@@ -46,7 +46,7 @@ where
 {
     let mut p = string_to_parser(&ps, s);
     let x = f(&mut p).unwrap();
-    p.sess.span_diagnostic.abort_if_errors();
+    p.sess.dcx.abort_if_errors();
     x
 }
 
@@ -57,7 +57,7 @@ where
     F: for<'a> FnOnce(&mut Parser<'a>) -> PResult<'a, T>,
 {
     let (handler, source_map, output) = create_test_handler();
-    let ps = ParseSess::with_span_handler(handler, source_map);
+    let ps = ParseSess::with_dcx(handler, source_map);
     let mut p = string_to_parser(&ps, source_str.to_string());
     let result = f(&mut p);
     assert!(result.is_ok());
@@ -135,7 +135,7 @@ pub(crate) fn matches_codepattern(a: &str, b: &str) -> bool {
 
 /// Advances the given peekable `Iterator` until it reaches a non-whitespace character.
 fn scan_for_non_ws_or_end<I: Iterator<Item = char>>(iter: &mut Peekable<I>) {
-    while iter.peek().copied().map(rustc_lexer::is_whitespace) == Some(true) {
+    while iter.peek().copied().is_some_and(rustc_lexer::is_whitespace) {
         iter.next();
     }
 }

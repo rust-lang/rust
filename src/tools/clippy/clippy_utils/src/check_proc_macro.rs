@@ -12,14 +12,14 @@
 //! code was written, and check if the span contains that text. Note this will only work correctly
 //! if the span is not from a `macro_rules` based macro.
 
-use rustc_ast::ast::{AttrKind, Attribute, IntTy, LitIntType, LitKind, StrStyle, UintTy};
+use rustc_ast::ast::{AttrKind, Attribute, IntTy, LitIntType, LitKind, StrStyle, TraitObjectSyntax, UintTy};
 use rustc_ast::token::CommentKind;
 use rustc_ast::AttrStyle;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    Block, BlockCheckMode, Body, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, HirId, Impl, ImplItem,
-    ImplItemKind, IsAuto, Item, ItemKind, LoopSource, MatchSource, MutTy, Node, QPath, TraitItem, TraitItemKind, Ty,
-    TyKind, UnOp, UnsafeSource, Unsafety, Variant, VariantData, YieldSource,
+    Block, BlockCheckMode, Body, Closure, Destination, Expr, ExprKind, FieldDef, FnHeader, FnRetTy, HirId, Impl,
+    ImplItem, ImplItemKind, IsAuto, Item, ItemKind, LoopSource, MatchSource, MutTy, Node, QPath, TraitItem,
+    TraitItemKind, Ty, TyKind, UnOp, UnsafeSource, Unsafety, Variant, VariantData, YieldSource,
 };
 use rustc_lint::{LateContext, LintContext};
 use rustc_middle::ty::TyCtxt;
@@ -33,8 +33,6 @@ use rustc_target::spec::abi::Abi;
 pub enum Pat {
     /// A single string.
     Str(&'static str),
-    /// A single string.
-    OwnedStr(String),
     /// Any of the given strings.
     MultiStr(&'static [&'static str]),
     /// Any of the given strings.
@@ -59,14 +57,12 @@ fn span_matches_pat(sess: &Session, span: Span, start_pat: Pat, end_pat: Pat) ->
         let end_str = s.trim_end_matches(|c: char| c.is_whitespace() || c == ')' || c == ',');
         (match start_pat {
             Pat::Str(text) => start_str.starts_with(text),
-            Pat::OwnedStr(text) => start_str.starts_with(&text),
             Pat::MultiStr(texts) => texts.iter().any(|s| start_str.starts_with(s)),
             Pat::OwnedMultiStr(texts) => texts.iter().any(|s| start_str.starts_with(s)),
             Pat::Sym(sym) => start_str.starts_with(sym.as_str()),
             Pat::Num => start_str.as_bytes().first().map_or(false, u8::is_ascii_digit),
         } && match end_pat {
             Pat::Str(text) => end_str.ends_with(text),
-            Pat::OwnedStr(text) => end_str.starts_with(&text),
             Pat::MultiStr(texts) => texts.iter().any(|s| start_str.ends_with(s)),
             Pat::OwnedMultiStr(texts) => texts.iter().any(|s| start_str.starts_with(s)),
             Pat::Sym(sym) => end_str.ends_with(sym.as_str()),
@@ -125,6 +121,8 @@ fn qpath_search_pat(path: &QPath<'_>) -> (Pat, Pat) {
 fn expr_search_pat(tcx: TyCtxt<'_>, e: &Expr<'_>) -> (Pat, Pat) {
     match e.kind {
         ExprKind::ConstBlock(_) => (Pat::Str("const"), Pat::Str("}")),
+        // Parenthesis are trimmed from the text before the search patterns are matched.
+        // See: `span_matches_pat`
         ExprKind::Tup([]) => (Pat::Str(")"), Pat::Str("(")),
         ExprKind::Unary(UnOp::Deref, e) => (Pat::Str("*"), expr_search_pat(tcx, e).1),
         ExprKind::Unary(UnOp::Not, e) => (Pat::Str("!"), expr_search_pat(tcx, e).1),
@@ -202,7 +200,7 @@ fn item_search_pat(item: &Item<'_>) -> (Pat, Pat) {
         ItemKind::ForeignMod { .. } => (Pat::Str("extern"), Pat::Str("}")),
         ItemKind::TyAlias(..) | ItemKind::OpaqueTy(_) => (Pat::Str("type"), Pat::Str(";")),
         ItemKind::Enum(..) => (Pat::Str("enum"), Pat::Str("}")),
-        ItemKind::Struct(VariantData::Struct(..), _) => (Pat::Str("struct"), Pat::Str("}")),
+        ItemKind::Struct(VariantData::Struct { .. }, _) => (Pat::Str("struct"), Pat::Str("}")),
         ItemKind::Struct(..) => (Pat::Str("struct"), Pat::Str(";")),
         ItemKind::Union(..) => (Pat::Str("union"), Pat::Str("}")),
         ItemKind::Trait(_, Unsafety::Unsafe, ..)
@@ -257,7 +255,7 @@ fn field_def_search_pat(def: &FieldDef<'_>) -> (Pat, Pat) {
 
 fn variant_search_pat(v: &Variant<'_>) -> (Pat, Pat) {
     match v.data {
-        VariantData::Struct(..) => (Pat::Sym(v.ident.name), Pat::Str("}")),
+        VariantData::Struct { .. } => (Pat::Sym(v.ident.name), Pat::Str("}")),
         VariantData::Tuple(..) => (Pat::Sym(v.ident.name), Pat::Str("")),
         VariantData::Unit(..) => (Pat::Sym(v.ident.name), Pat::Sym(v.ident.name)),
     }
@@ -269,7 +267,7 @@ fn fn_kind_pat(tcx: TyCtxt<'_>, kind: &FnKind<'_>, body: &Body<'_>, hir_id: HirI
         FnKind::Method(.., sig) => (fn_header_search_pat(sig.header), Pat::Str("")),
         FnKind::Closure => return (Pat::Str(""), expr_search_pat(tcx, body.value).1),
     };
-    let start_pat = match tcx.hir().get(hir_id) {
+    let start_pat = match tcx.hir_node(hir_id) {
         Node::Item(Item { vis_span, .. }) | Node::ImplItem(ImplItem { vis_span, .. }) => {
             if vis_span.is_empty() {
                 start_pat
@@ -286,23 +284,17 @@ fn fn_kind_pat(tcx: TyCtxt<'_>, kind: &FnKind<'_>, body: &Body<'_>, hir_id: HirI
 fn attr_search_pat(attr: &Attribute) -> (Pat, Pat) {
     match attr.kind {
         AttrKind::Normal(..) => {
-            let mut pat = if matches!(attr.style, AttrStyle::Outer) {
-                (Pat::Str("#["), Pat::Str("]"))
-            } else {
-                (Pat::Str("#!["), Pat::Str("]"))
-            };
-
-            if let Some(ident) = attr.ident()
-                && let Pat::Str(old_pat) = pat.0
-            {
+            if let Some(ident) = attr.ident() {
                 // TODO: I feel like it's likely we can use `Cow` instead but this will require quite a bit of
                 // refactoring
                 // NOTE: This will likely have false positives, like `allow = 1`
-                pat.0 = Pat::OwnedMultiStr(vec![ident.to_string(), old_pat.to_owned()]);
-                pat.1 = Pat::Str("");
+                (
+                    Pat::OwnedMultiStr(vec![ident.to_string(), "#".to_owned()]),
+                    Pat::Str(""),
+                )
+            } else {
+                (Pat::Str("#"), Pat::Str("]"))
             }
-
-            pat
         },
         AttrKind::DocComment(_kind @ CommentKind::Line, ..) => {
             if matches!(attr.style, AttrStyle::Outer) {
@@ -324,30 +316,40 @@ fn attr_search_pat(attr: &Attribute) -> (Pat, Pat) {
 fn ty_search_pat(ty: &Ty<'_>) -> (Pat, Pat) {
     match ty.kind {
         TyKind::Slice(..) | TyKind::Array(..) => (Pat::Str("["), Pat::Str("]")),
-        TyKind::Ptr(MutTy { mutbl, ty }) => (
-            if mutbl.is_mut() {
-                Pat::Str("*const")
-            } else {
-                Pat::Str("*mut")
-            },
-            ty_search_pat(ty).1,
-        ),
+        TyKind::Ptr(MutTy { ty, .. }) => (Pat::Str("*"), ty_search_pat(ty).1),
         TyKind::Ref(_, MutTy { ty, .. }) => (Pat::Str("&"), ty_search_pat(ty).1),
         TyKind::BareFn(bare_fn) => (
-            Pat::OwnedStr(format!("{}{} fn", bare_fn.unsafety.prefix_str(), bare_fn.abi.name())),
-            ty_search_pat(ty).1,
+            if bare_fn.unsafety == Unsafety::Unsafe {
+                Pat::Str("unsafe")
+            } else if bare_fn.abi != Abi::Rust {
+                Pat::Str("extern")
+            } else {
+                Pat::MultiStr(&["fn", "extern"])
+            },
+            match bare_fn.decl.output {
+                FnRetTy::DefaultReturn(_) => {
+                    if let [.., ty] = bare_fn.decl.inputs {
+                        ty_search_pat(ty).1
+                    } else {
+                        Pat::Str("(")
+                    }
+                },
+                FnRetTy::Return(ty) => ty_search_pat(ty).1,
+            },
         ),
-        TyKind::Never => (Pat::Str("!"), Pat::Str("")),
-        TyKind::Tup(..) => (Pat::Str("("), Pat::Str(")")),
+        TyKind::Never => (Pat::Str("!"), Pat::Str("!")),
+        // Parenthesis are trimmed from the text before the search patterns are matched.
+        // See: `span_matches_pat`
+        TyKind::Tup([]) => (Pat::Str(")"), Pat::Str("(")),
+        TyKind::Tup([ty]) => ty_search_pat(ty),
+        TyKind::Tup([head, .., tail]) => (ty_search_pat(head).0, ty_search_pat(tail).1),
         TyKind::OpaqueDef(..) => (Pat::Str("impl"), Pat::Str("")),
         TyKind::Path(qpath) => qpath_search_pat(&qpath),
-        // NOTE: This is missing `TraitObject`. It will always return true then.
+        TyKind::Infer => (Pat::Str("_"), Pat::Str("_")),
+        TyKind::TraitObject(_, _, TraitObjectSyntax::Dyn) => (Pat::Str("dyn"), Pat::Str("")),
+        // NOTE: `TraitObject` is incomplete. It will always return true then.
         _ => (Pat::Str(""), Pat::Str("")),
     }
-}
-
-fn ident_search_pat(ident: Ident) -> (Pat, Pat) {
-    (Pat::OwnedStr(ident.name.as_str().to_owned()), Pat::Str(""))
 }
 
 pub trait WithSearchPat<'cx> {
@@ -408,7 +410,7 @@ impl<'cx> WithSearchPat<'cx> for Ident {
     type Context = LateContext<'cx>;
 
     fn search_pat(&self, _cx: &Self::Context) -> (Pat, Pat) {
-        ident_search_pat(*self)
+        (Pat::Sym(self.name), Pat::Sym(self.name))
     }
 
     fn span(&self) -> Span {

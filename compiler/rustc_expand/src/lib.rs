@@ -1,5 +1,5 @@
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
+#![doc(rust_logo)]
+#![feature(rustdoc_internals)]
 #![feature(array_windows)]
 #![feature(associated_type_bounds)]
 #![feature(associated_type_defaults)]
@@ -22,9 +22,6 @@ extern crate rustc_macros;
 extern crate tracing;
 
 extern crate proc_macro as pm;
-
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_fluent_macro::fluent_messages;
 
 mod placeholders;
 mod proc_macro_server;
@@ -67,4 +64,4 @@ mod mut_visit {
     mod tests;
 }
 
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

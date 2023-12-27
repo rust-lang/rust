@@ -1140,7 +1140,7 @@ impl File {
         cfg_has_statx! {
             if let Some(ret) = unsafe { try_statx(
                 fd,
-                b"\0" as *const _ as *const c_char,
+                c"".as_ptr() as *const c_char,
                 libc::AT_EMPTY_PATH | libc::AT_STATX_SYNC_AS_STAT,
                 libc::STATX_ALL,
             ) } {
@@ -1300,13 +1300,17 @@ impl File {
 
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
         #[cfg(not(any(target_os = "redox", target_os = "espidf", target_os = "horizon")))]
-        let to_timespec = |time: Option<SystemTime>| {
-            match time {
-                Some(time) if let Some(ts) = time.t.to_timespec() => Ok(ts),
-                Some(time) if time > crate::sys::time::UNIX_EPOCH => Err(io::const_io_error!(io::ErrorKind::InvalidInput, "timestamp is too large to set as a file time")),
-                Some(_) => Err(io::const_io_error!(io::ErrorKind::InvalidInput, "timestamp is too small to set as a file time")),
-                None => Ok(libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ }),
-            }
+        let to_timespec = |time: Option<SystemTime>| match time {
+            Some(time) if let Some(ts) = time.t.to_timespec() => Ok(ts),
+            Some(time) if time > crate::sys::time::UNIX_EPOCH => Err(io::const_io_error!(
+                io::ErrorKind::InvalidInput,
+                "timestamp is too large to set as a file time"
+            )),
+            Some(_) => Err(io::const_io_error!(
+                io::ErrorKind::InvalidInput,
+                "timestamp is too small to set as a file time"
+            )),
+            None => Ok(libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT as _ }),
         };
         cfg_if::cfg_if! {
             if #[cfg(any(target_os = "redox", target_os = "espidf", target_os = "horizon"))] {

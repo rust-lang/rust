@@ -1,43 +1,35 @@
 // Decoding metadata from a single crate's metadata
 
-use crate::creader::{CStore, CrateMetadataRef};
+use crate::creader::CStore;
 use crate::rmeta::table::IsDefault;
 use crate::rmeta::*;
 
 use rustc_ast as ast;
 use rustc_data_structures::captures::Captures;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::owned_slice::OwnedSlice;
-use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{AppendOnlyVec, AtomicBool, Lock, Lrc, OnceLock};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
-use rustc_hir::def::{CtorKind, DefKind, DocLinkResMap, Res};
-use rustc_hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc_hir::definitions::{DefKey, DefPath, DefPathData, DefPathHash};
+use rustc_hir::def::Res;
+use rustc_hir::def_id::{DefIdMap, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::diagnostic_items::DiagnosticItems;
-use rustc_index::{Idx, IndexVec};
-use rustc_middle::metadata::ModChild;
-use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
-use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
+use rustc_index::Idx;
+use rustc_middle::middle::lib_features::LibFeatures;
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc_middle::ty::codec::TyDecoder;
-use rustc_middle::ty::fast_reject::SimplifiedType;
-use rustc_middle::ty::{self, ParameterizedOverTcx, Ty, TyCtxt, Visibility};
+use rustc_middle::ty::Visibility;
 use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::{Decodable, Decoder};
-use rustc_session::cstore::{
-    CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
-};
+use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_session::Session;
-use rustc_span::hygiene::ExpnIndex;
-use rustc_span::symbol::{kw, Ident, Symbol};
-use rustc_span::{self, BytePos, ExpnId, Pos, Span, SpanData, SyntaxContext, DUMMY_SP};
+use rustc_span::symbol::kw;
+use rustc_span::{BytePos, Pos, SpanData, SyntaxContext, DUMMY_SP};
 
 use proc_macro::bridge::client::ProcMacro;
 use std::iter::TrustedLen;
-use std::num::NonZeroUsize;
 use std::path::Path;
 use std::sync::atomic::Ordering;
 use std::{io, iter, mem};
@@ -96,8 +88,6 @@ pub(crate) struct CrateMetadata {
     alloc_decoding_state: AllocDecodingState,
     /// Caches decoded `DefKey`s.
     def_key_cache: Lock<FxHashMap<DefIndex, DefKey>>,
-    /// Caches decoded `DefPathHash`es.
-    def_path_hash_cache: Lock<FxHashMap<DefIndex, DefPathHash>>,
 
     // --- Other significant crate properties ---
     /// ID of this crate, from the current compilation session's point of view.
@@ -517,10 +507,18 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnId {
 
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Span {
+        let start = decoder.position();
         let mode = SpanEncodingMode::decode(decoder);
         let data = match mode {
             SpanEncodingMode::Direct => SpanData::decode(decoder),
-            SpanEncodingMode::Shorthand(position) => decoder.with_position(position, |decoder| {
+            SpanEncodingMode::RelativeOffset(offset) => {
+                decoder.with_position(start - offset, |decoder| {
+                    let mode = SpanEncodingMode::decode(decoder);
+                    debug_assert!(matches!(mode, SpanEncodingMode::Direct));
+                    SpanData::decode(decoder)
+                })
+            }
+            SpanEncodingMode::AbsoluteOffset(addr) => decoder.with_position(addr, |decoder| {
                 let mode = SpanEncodingMode::decode(decoder);
                 debug_assert!(matches!(mode, SpanEncodingMode::Direct));
                 SpanData::decode(decoder)
@@ -699,28 +697,25 @@ impl MetadataBlob {
     }
 
     pub(crate) fn get_rustc_version(&self) -> String {
-        LazyValue::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 4).unwrap())
+        LazyValue::<String>::from_position(NonZeroUsize::new(METADATA_HEADER.len() + 8).unwrap())
             .decode(self)
     }
 
-    pub(crate) fn get_header(&self) -> CrateHeader {
-        let slice = &self.blob()[..];
+    fn root_pos(&self) -> NonZeroUsize {
         let offset = METADATA_HEADER.len();
+        let pos_bytes = self.blob()[offset..][..8].try_into().unwrap();
+        let pos = u64::from_le_bytes(pos_bytes);
+        NonZeroUsize::new(pos as usize).unwrap()
+    }
 
-        let pos_bytes = slice[offset..][..4].try_into().unwrap();
-        let pos = u32::from_be_bytes(pos_bytes) as usize;
-
-        LazyValue::<CrateHeader>::from_position(NonZeroUsize::new(pos).unwrap()).decode(self)
+    pub(crate) fn get_header(&self) -> CrateHeader {
+        let pos = self.root_pos();
+        LazyValue::<CrateHeader>::from_position(pos).decode(self)
     }
 
     pub(crate) fn get_root(&self) -> CrateRoot {
-        let slice = &self.blob()[..];
-        let offset = METADATA_HEADER.len();
-
-        let pos_bytes = slice[offset..][..4].try_into().unwrap();
-        let pos = u32::from_be_bytes(pos_bytes) as usize;
-
-        LazyValue::<CrateRoot>::from_position(NonZeroUsize::new(pos).unwrap()).decode(self)
+        let pos = self.root_pos();
+        LazyValue::<CrateRoot>::from_position(pos).decode(self)
     }
 
     pub(crate) fn list_crate_metadata(
@@ -828,7 +823,7 @@ impl MetadataBlob {
                             out,
                             "{}{}",
                             feature,
-                            if let Some(since) = since {
+                            if let FeatureStability::AcceptedSince(since) = since {
                                 format!(" since {since}")
                             } else {
                                 String::new()
@@ -849,7 +844,7 @@ impl MetadataBlob {
                     ) -> io::Result<()> {
                         let root = blob.get_root();
 
-                        let def_kind = root.tables.opt_def_kind.get(blob, item).unwrap();
+                        let def_kind = root.tables.def_kind.get(blob, item).unwrap();
                         let def_key = root.tables.def_keys.get(blob, item).unwrap().decode(blob);
                         let def_name = if item == CRATE_DEF_INDEX {
                             rustc_span::symbol::kw::Crate
@@ -1000,14 +995,11 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn def_kind(self, item_id: DefIndex) -> DefKind {
-        self.root.tables.opt_def_kind.get(self, item_id).unwrap_or_else(|| {
-            bug!(
-                "CrateMetadata::def_kind({:?}): id not found, in crate {:?} with number {}",
-                item_id,
-                self.root.name(),
-                self.cnum,
-            )
-        })
+        self.root
+            .tables
+            .def_kind
+            .get(self, item_id)
+            .unwrap_or_else(|| self.missing("def_kind", item_id))
     }
 
     fn get_span(self, index: DefIndex, sess: &Session) -> Span {
@@ -1176,8 +1168,15 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     /// Iterates over all the stability attributes in the given crate.
-    fn get_lib_features(self, tcx: TyCtxt<'tcx>) -> &'tcx [(Symbol, Option<Symbol>)] {
-        tcx.arena.alloc_from_iter(self.root.lib_features.decode(self))
+    fn get_lib_features(self) -> LibFeatures {
+        LibFeatures {
+            stability: self
+                .root
+                .lib_features
+                .decode(self)
+                .map(|(sym, stab)| (sym, (stab, DUMMY_SP)))
+                .collect(),
+        }
     }
 
     /// Iterates over the stability implications in the given crate (when a `#[unstable]` attribute
@@ -1208,7 +1207,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
 
     /// Iterates over the diagnostic items in the given crate.
     fn get_diagnostic_items(self) -> DiagnosticItems {
-        let mut id_to_name = FxHashMap::default();
+        let mut id_to_name = DefIdMap::default();
         let name_to_id = self
             .root
             .diagnostic_items
@@ -1274,7 +1273,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
     }
 
     fn cross_crate_inlinable(self, id: DefIndex) -> bool {
-        self.root.tables.cross_crate_inlinable.get(self, id).unwrap_or(false)
+        self.root.tables.cross_crate_inlinable.get(self, id)
     }
 
     fn get_fn_has_self_parameter(self, id: DefIndex, sess: &'a Session) -> bool {
@@ -1492,20 +1491,16 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         DefPath::make(self.cnum, id, |parent| self.def_key(parent))
     }
 
-    fn def_path_hash_unlocked(
-        self,
-        index: DefIndex,
-        def_path_hashes: &mut FxHashMap<DefIndex, DefPathHash>,
-    ) -> DefPathHash {
-        *def_path_hashes
-            .entry(index)
-            .or_insert_with(|| self.root.tables.def_path_hashes.get(self, index))
-    }
-
     #[inline]
     fn def_path_hash(self, index: DefIndex) -> DefPathHash {
-        let mut def_path_hashes = self.def_path_hash_cache.lock();
-        self.def_path_hash_unlocked(index, &mut def_path_hashes)
+        // This is a hack to workaround the fact that we can't easily encode/decode a Hash64
+        // into the FixedSizeEncoding, as Hash64 lacks a Default impl. A future refactor to
+        // relax the Default restriction will likely fix this.
+        let fingerprint = Fingerprint::new(
+            self.root.stable_crate_id.as_u64(),
+            self.root.tables.def_path_hashes.get(self, index),
+        );
+        DefPathHash::new(self.root.stable_crate_id, fingerprint.split().1)
     }
 
     #[inline]
@@ -1684,7 +1679,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                     multibyte_chars,
                     non_narrow_chars,
                     normalized_pos,
-                    name_hash,
+                    stable_id,
                     ..
                 } = source_file_to_import;
 
@@ -1729,7 +1724,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
                 let local_version = sess.source_map().new_imported_source_file(
                     name,
                     src_hash,
-                    name_hash,
+                    stable_id,
                     source_len.to_u32(),
                     self.cnum,
                     lines,
@@ -1832,7 +1827,6 @@ impl CrateMetadata {
             extern_crate: Lock::new(None),
             hygiene_context: Default::default(),
             def_key_cache: Default::default(),
-            def_path_hash_cache: Default::default(),
         };
 
         // Need `CrateMetadataRef` to decode `DefId`s in simplified types.

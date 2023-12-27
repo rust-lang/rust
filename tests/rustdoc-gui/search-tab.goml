@@ -80,7 +80,7 @@ set-window-size: (851, 600)
 
 // Check the size and count in tabs
 assert-text: ("#search-tabs > button:nth-child(1) > .count", " (25) ")
-assert-text: ("#search-tabs > button:nth-child(2) > .count", " (5)  ")
+assert-text: ("#search-tabs > button:nth-child(2) > .count", " (6)  ")
 assert-text: ("#search-tabs > button:nth-child(3) > .count", " (0)  ")
 store-property: ("#search-tabs > button:nth-child(1)", {"offsetWidth": buttonWidth})
 assert-property: ("#search-tabs > button:nth-child(2)", {"offsetWidth": |buttonWidth|})

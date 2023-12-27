@@ -6,5 +6,5 @@ query stack during panic:
 #0 [eval_to_allocation_raw] const-evaluating + checking `<impl at $DIR/issue-80742.rs:26:1: 28:32>::{constant#0}`
 #1 [eval_to_valtree] evaluating type-level constant
 end of query stack
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

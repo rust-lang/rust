@@ -63,11 +63,8 @@ metadata_extern_location_not_file =
 metadata_fail_create_file_encoder =
     failed to create file encoder: {$err}
 
-metadata_fail_seek_file =
-    failed to seek the file: {$err}
-
 metadata_fail_write_file =
-    failed to write to the file: {$err}
+    failed to write to `{$path}`: {$err}
 
 metadata_failed_copy_to_stdout =
     failed to copy {$filename} to stdout: {$err}
@@ -272,7 +269,7 @@ metadata_unknown_import_name_type =
     unknown import name type `{$import_name_type}`, expected one of: decorated, noprefix, undecorated
 
 metadata_unknown_link_kind =
-    unknown link kind `{$kind}`, expected one of: static, dylib, framework, raw-dylib
+    unknown link kind `{$kind}`, expected one of: static, dylib, framework, raw-dylib, link-arg
     .label = unknown link kind
 
 metadata_unknown_link_modifier =

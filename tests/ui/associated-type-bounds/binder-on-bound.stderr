@@ -4,5 +4,5 @@ error: `for<...>` is not allowed on associated type bounds
 LL | fn foo() where Trait<for<'a> Bound<'a> = &'a ()> {
    |                      ^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

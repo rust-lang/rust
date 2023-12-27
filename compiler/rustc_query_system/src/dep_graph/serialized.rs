@@ -37,7 +37,7 @@
 
 use super::query::DepGraphQuery;
 use super::{DepKind, DepNode, DepNodeIndex, Deps};
-use crate::dep_graph::EdgesVec;
+use crate::dep_graph::edges::EdgesVec;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fingerprint::PackedFingerprint;
 use rustc_data_structures::fx::FxHashMap;
@@ -54,6 +54,7 @@ use std::marker::PhantomData;
 // unused so that we can store multiple index types in `CompressedHybridIndex`,
 // and use those bits to encode which index type it contains.
 rustc_index::newtype_index! {
+    #[encodable]
     #[max = 0x7FFF_FFFF]
     pub struct SerializedDepNodeIndex {}
 }
@@ -69,7 +70,7 @@ const DEP_NODE_PAD: usize = DEP_NODE_SIZE - 1;
 const DEP_NODE_WIDTH_BITS: usize = DEP_NODE_SIZE / 2;
 
 /// Data for use when recompiling the **current crate**.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct SerializedDepGraph {
     /// The set of all DepNodes in the graph
     nodes: IndexVec<SerializedDepNodeIndex, DepNode>,
@@ -86,18 +87,6 @@ pub struct SerializedDepGraph {
     /// Stores a map from fingerprints to nodes per dep node kind.
     /// This is the reciprocal of `nodes`.
     index: Vec<UnhashMap<PackedFingerprint, SerializedDepNodeIndex>>,
-}
-
-impl Default for SerializedDepGraph {
-    fn default() -> Self {
-        SerializedDepGraph {
-            nodes: Default::default(),
-            fingerprints: Default::default(),
-            edge_list_indices: Default::default(),
-            edge_list_data: Default::default(),
-            index: Default::default(),
-        }
-    }
 }
 
 impl SerializedDepGraph {

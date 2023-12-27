@@ -7,8 +7,8 @@ use crate::{
             enums::tag_base_type,
             file_metadata, size_and_align_of, type_di_node,
             type_map::{self, Stub, StubInfo, UniqueTypeId},
-            unknown_file_metadata, DINodeCreationResult, SmallVec, NO_GENERICS,
-            UNKNOWN_LINE_NUMBER,
+            unknown_file_metadata, visibility_di_flags, DINodeCreationResult, SmallVec,
+            NO_GENERICS, UNKNOWN_LINE_NUMBER,
         },
         utils::{create_DIArray, get_namespace_for_item, DIB},
     },
@@ -63,6 +63,8 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
     let enum_type_and_layout = cx.layout_of(enum_type);
     let enum_type_name = compute_debuginfo_type_name(cx.tcx, enum_type, false);
 
+    let visibility_flags = visibility_di_flags(cx, enum_adt_def.did(), enum_adt_def.did());
+
     debug_assert!(!wants_c_like_enum_debuginfo(enum_type_and_layout));
 
     type_map::build_type_with_children(
@@ -74,7 +76,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
             &enum_type_name,
             size_and_align_of(enum_type_and_layout),
             Some(containing_scope),
-            DIFlags::FlagZero,
+            visibility_flags,
         ),
         |cx, enum_type_di_node| {
             // Build the struct type for each variant. These will be referenced by the
@@ -92,6 +94,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
                         variant_index,
                         enum_adt_def.variant(variant_index),
                         enum_type_and_layout.for_variant(cx, variant_index),
+                        visibility_flags,
                     ),
                     source_info: None,
                 })
@@ -197,7 +200,7 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
                                 coroutine_type_and_layout,
                                 coroutine_type_di_node,
                                 coroutine_layout,
-                                &common_upvar_names,
+                                common_upvar_names,
                             ),
                         source_info,
                     }

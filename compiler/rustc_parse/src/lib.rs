@@ -20,8 +20,6 @@ use rustc_ast::{AttrItem, Attribute, MetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Diagnostic, FatalError, Level, PResult};
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_fluent_macro::fluent_messages;
 use rustc_session::parse::ParseSess;
 use rustc_span::{FileName, SourceFile, Span};
 
@@ -37,7 +35,7 @@ pub mod validate_attr;
 
 mod errors;
 
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 // A bunch of utility functions of the form `parse_<thing>_from_<source>`
 // where <thing> includes crate, expr, item, stmt, tts, and one that
@@ -53,8 +51,8 @@ macro_rules! panictry_buffer {
         match $e {
             Ok(e) => e,
             Err(errs) => {
-                for mut e in errs {
-                    $handler.emit_diagnostic(&mut e);
+                for e in errs {
+                    $handler.emit_diagnostic(e);
                 }
                 FatalError.raise()
             }
@@ -102,7 +100,7 @@ pub fn parse_stream_from_source_str(
 
 /// Creates a new parser from a source string.
 pub fn new_parser_from_source_str(sess: &ParseSess, name: FileName, source: String) -> Parser<'_> {
-    panictry_buffer!(&sess.span_diagnostic, maybe_new_parser_from_source_str(sess, name, source))
+    panictry_buffer!(&sess.dcx, maybe_new_parser_from_source_str(sess, name, source))
 }
 
 /// Creates a new parser from a source string. Returns any buffered errors from lexing the initial
@@ -123,7 +121,7 @@ pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path, sp: Option<Spa
 
 /// Given a session and a `source_file`, returns a parser.
 fn source_file_to_parser(sess: &ParseSess, source_file: Lrc<SourceFile>) -> Parser<'_> {
-    panictry_buffer!(&sess.span_diagnostic, maybe_source_file_to_parser(sess, source_file))
+    panictry_buffer!(&sess.dcx, maybe_source_file_to_parser(sess, source_file))
 }
 
 /// Given a session and a `source_file`, return a parser. Returns any buffered errors from lexing the
@@ -167,8 +165,8 @@ fn try_file_to_source_file(
 fn file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>) -> Lrc<SourceFile> {
     match try_file_to_source_file(sess, path, spanopt) {
         Ok(source_file) => source_file,
-        Err(mut d) => {
-            sess.span_diagnostic.emit_diagnostic(&mut d);
+        Err(d) => {
+            sess.dcx.emit_diagnostic(d);
             FatalError.raise();
         }
     }
@@ -180,7 +178,7 @@ pub fn source_file_to_stream(
     source_file: Lrc<SourceFile>,
     override_span: Option<Span>,
 ) -> TokenStream {
-    panictry_buffer!(&sess.span_diagnostic, maybe_file_to_stream(sess, source_file, override_span))
+    panictry_buffer!(&sess.dcx, maybe_file_to_stream(sess, source_file, override_span))
 }
 
 /// Given a source file, produces a sequence of token trees. Returns any buffered errors from
@@ -191,7 +189,7 @@ pub fn maybe_file_to_stream(
     override_span: Option<Span>,
 ) -> Result<TokenStream, Vec<Diagnostic>> {
     let src = source_file.src.as_ref().unwrap_or_else(|| {
-        sess.span_diagnostic.bug(format!(
+        sess.dcx.bug(format!(
             "cannot lex `source_file` without source: {}",
             sess.source_map().filename_for_diagnostics(&source_file.name)
         ));
@@ -265,5 +263,5 @@ const CFG_ATTR_NOTE_REF: &str = "for more information, visit \
     #the-cfg_attr-attribute>";
 
 fn error_malformed_cfg_attr_missing(span: Span, parse_sess: &ParseSess) {
-    parse_sess.emit_err(errors::MalformedCfgAttr { span, sugg: CFG_ATTR_GRAMMAR_HELP });
+    parse_sess.dcx.emit_err(errors::MalformedCfgAttr { span, sugg: CFG_ATTR_GRAMMAR_HELP });
 }

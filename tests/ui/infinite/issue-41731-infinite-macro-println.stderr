@@ -14,13 +14,13 @@ LL |     stack!("overflow");
    |     ^^^^^^^^^^^^^^^^^^
    |
    = note: expanding `stack! { "overflow" }`
-   = note: to `println! (stack! ("overflow")) ;`
+   = note: to `println! (stack! ("overflow"));`
    = note: expanding `println! { stack! ("overflow") }`
-   = note: to `{ $crate :: io :: _print($crate :: format_args_nl! (stack! ("overflow"))) ; }`
+   = note: to `{ $crate :: io :: _print($crate :: format_args_nl! (stack! ("overflow"))); }`
    = note: expanding `stack! { "overflow" }`
-   = note: to `println! (stack! ("overflow")) ;`
+   = note: to `println! (stack! ("overflow"));`
    = note: expanding `println! { stack! ("overflow") }`
-   = note: to `{ $crate :: io :: _print($crate :: format_args_nl! (stack! ("overflow"))) ; }`
+   = note: to `{ $crate :: io :: _print($crate :: format_args_nl! (stack! ("overflow"))); }`
 
 error: format argument must be a string literal
   --> $DIR/issue-41731-infinite-macro-println.rs:14:5

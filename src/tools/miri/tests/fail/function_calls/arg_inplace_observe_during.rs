@@ -14,7 +14,7 @@ fn main() {
             let non_copy = S(42);
             let ptr = std::ptr::addr_of_mut!(non_copy);
             // This could change `non_copy` in-place
-            Call(_unit = change_arg(Move(*ptr), ptr), after_call)
+            Call(_unit = change_arg(Move(*ptr), ptr), after_call, UnwindContinue())
         }
         after_call = {
             Return()

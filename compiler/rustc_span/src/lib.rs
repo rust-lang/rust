@@ -17,11 +17,10 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
 #![deny(rustc::diagnostic_outside_of_impl)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![doc(rust_logo)]
 #![feature(array_windows)]
 #![feature(cfg_match)]
 #![feature(core_io_borrowed_buf)]
@@ -33,6 +32,7 @@
 #![feature(read_buf)]
 #![feature(round_char_boundary)]
 #![feature(rustc_attrs)]
+#![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 
 #[macro_use]
@@ -58,7 +58,7 @@ pub use hygiene::{DesugaringKind, ExpnKind, MacroKind};
 pub use hygiene::{ExpnData, ExpnHash, ExpnId, LocalExpnId, SyntaxContext};
 use rustc_data_structures::stable_hasher::HashingControls;
 pub mod def_id;
-use def_id::{CrateNum, DefId, DefPathHash, LocalDefId, LOCAL_CRATE};
+use def_id::{CrateNum, DefId, DefPathHash, LocalDefId, StableCrateId, LOCAL_CRATE};
 pub mod edit_distance;
 mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
@@ -137,13 +137,6 @@ pub fn set_session_globals_then<R>(session_globals: &SessionGlobals, f: impl FnO
          Use another thread if you need another SessionGlobals"
     );
     SESSION_GLOBALS.set(session_globals, f)
-}
-
-pub fn create_default_session_if_not_set_then<R, F>(f: F) -> R
-where
-    F: FnOnce(&SessionGlobals) -> R,
-{
-    create_session_if_not_set_then(edition::DEFAULT_EDITION, f)
 }
 
 pub fn create_session_if_not_set_then<R, F>(edition: Edition, f: F) -> R
@@ -1340,8 +1333,10 @@ pub struct SourceFile {
     pub non_narrow_chars: Vec<NonNarrowChar>,
     /// Locations of characters removed during normalization.
     pub normalized_pos: Vec<NormalizedPos>,
-    /// A hash of the filename, used for speeding up hashing in incremental compilation.
-    pub name_hash: Hash128,
+    /// A hash of the filename & crate-id, used for uniquely identifying source
+    /// files within the crate graph and for speeding up hashing in incremental
+    /// compilation.
+    pub stable_id: StableSourceFileId,
     /// Indicates which crate this `SourceFile` was imported from.
     pub cnum: CrateNum,
 }
@@ -1359,7 +1354,7 @@ impl Clone for SourceFile {
             multibyte_chars: self.multibyte_chars.clone(),
             non_narrow_chars: self.non_narrow_chars.clone(),
             normalized_pos: self.normalized_pos.clone(),
-            name_hash: self.name_hash,
+            stable_id: self.stable_id,
             cnum: self.cnum,
         }
     }
@@ -1433,7 +1428,7 @@ impl<S: Encoder> Encodable<S> for SourceFile {
 
         self.multibyte_chars.encode(s);
         self.non_narrow_chars.encode(s);
-        self.name_hash.encode(s);
+        self.stable_id.encode(s);
         self.normalized_pos.encode(s);
         self.cnum.encode(s);
     }
@@ -1460,7 +1455,7 @@ impl<D: Decoder> Decodable<D> for SourceFile {
         };
         let multibyte_chars: Vec<MultiByteChar> = Decodable::decode(d);
         let non_narrow_chars: Vec<NonNarrowChar> = Decodable::decode(d);
-        let name_hash = Decodable::decode(d);
+        let stable_id = Decodable::decode(d);
         let normalized_pos: Vec<NormalizedPos> = Decodable::decode(d);
         let cnum: CrateNum = Decodable::decode(d);
         SourceFile {
@@ -1476,7 +1471,7 @@ impl<D: Decoder> Decodable<D> for SourceFile {
             multibyte_chars,
             non_narrow_chars,
             normalized_pos,
-            name_hash,
+            stable_id,
             cnum,
         }
     }
@@ -1485,6 +1480,66 @@ impl<D: Decoder> Decodable<D> for SourceFile {
 impl fmt::Debug for SourceFile {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(fmt, "SourceFile({:?})", self.name)
+    }
+}
+
+/// This is a [SourceFile] identifier that is used to correlate source files between
+/// subsequent compilation sessions (which is something we need to do during
+/// incremental compilation).
+///
+/// It is a hash value (so we can efficiently consume it when stable-hashing
+/// spans) that consists of the `FileName` and the `StableCrateId` of the crate
+/// the source file is from. The crate id is needed because sometimes the
+/// `FileName` is not unique within the crate graph (think `src/lib.rs`, for
+/// example).
+///
+/// The way the crate-id part is handled is a bit special: source files of the
+/// local crate are hashed as `(filename, None)`, while source files from
+/// upstream crates have a hash of `(filename, Some(stable_crate_id))`. This
+/// is because SourceFiles for the local crate are allocated very early in the
+/// compilation process when the `StableCrateId` is not yet known. If, due to
+/// some refactoring of the compiler, the `StableCrateId` of the local crate
+/// were to become available, it would be better to uniformely make this a
+/// hash of `(filename, stable_crate_id)`.
+///
+/// When `SourceFile`s are exported in crate metadata, the `StableSourceFileId`
+/// is updated to incorporate the `StableCrateId` of the exporting crate.
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Hash,
+    PartialEq,
+    Eq,
+    HashStable_Generic,
+    Encodable,
+    Decodable,
+    Default,
+    PartialOrd,
+    Ord
+)]
+pub struct StableSourceFileId(Hash128);
+
+impl StableSourceFileId {
+    fn from_filename_in_current_crate(filename: &FileName) -> Self {
+        Self::from_filename_and_stable_crate_id(filename, None)
+    }
+
+    pub fn from_filename_for_export(
+        filename: &FileName,
+        local_crate_stable_crate_id: StableCrateId,
+    ) -> Self {
+        Self::from_filename_and_stable_crate_id(filename, Some(local_crate_stable_crate_id))
+    }
+
+    fn from_filename_and_stable_crate_id(
+        filename: &FileName,
+        stable_crate_id: Option<StableCrateId>,
+    ) -> Self {
+        let mut hasher = StableHasher::new();
+        filename.hash(&mut hasher);
+        stable_crate_id.hash(&mut hasher);
+        StableSourceFileId(hasher.finish())
     }
 }
 
@@ -1498,11 +1553,7 @@ impl SourceFile {
         let src_hash = SourceFileHash::new(hash_kind, &src);
         let normalized_pos = normalize_src(&mut src);
 
-        let name_hash = {
-            let mut hasher: StableHasher = StableHasher::new();
-            name.hash(&mut hasher);
-            hasher.finish()
-        };
+        let stable_id = StableSourceFileId::from_filename_in_current_crate(&name);
         let source_len = src.len();
         let source_len = u32::try_from(source_len).map_err(|_| OffsetOverflowError)?;
 
@@ -1520,7 +1571,7 @@ impl SourceFile {
             multibyte_chars,
             non_narrow_chars,
             normalized_pos,
-            name_hash,
+            stable_id,
             cnum: LOCAL_CRATE,
         })
     }
@@ -2220,7 +2271,7 @@ where
         };
 
         Hash::hash(&TAG_VALID_SPAN, hasher);
-        Hash::hash(&file.name_hash, hasher);
+        Hash::hash(&file.stable_id, hasher);
 
         // Hash both the length and the end location (line/column) of a span. If we
         // hash only the length, for example, then two otherwise equal spans with
@@ -2254,7 +2305,7 @@ pub struct ErrorGuaranteed(());
 impl ErrorGuaranteed {
     /// To be used only if you really know what you are doing... ideally, we would find a way to
     /// eliminate all calls to this method.
-    #[deprecated = "`Session::delay_span_bug` should be preferred over this function"]
+    #[deprecated = "`Session::span_delayed_bug` should be preferred over this function"]
     pub fn unchecked_claim_error_was_emitted() -> Self {
         ErrorGuaranteed(())
     }

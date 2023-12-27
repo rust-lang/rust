@@ -548,10 +548,6 @@ impl Builder {
         let main = Box::new(main);
         // SAFETY: dynamic size and alignment of the Box remain the same. See below for why the
         // lifetime change is justified.
-        #[cfg(bootstrap)]
-        let main =
-            unsafe { mem::transmute::<Box<dyn FnOnce() + 'a>, Box<dyn FnOnce() + 'static>>(main) };
-        #[cfg(not(bootstrap))]
         let main = unsafe { Box::from_raw(Box::into_raw(main) as *mut (dyn FnOnce() + 'static)) };
 
         Ok(JoinInner {
@@ -1585,6 +1581,7 @@ impl<'scope, T> JoinInner<'scope, T> {
 /// [`thread::Builder::spawn`]: Builder::spawn
 /// [`thread::spawn`]: spawn
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(target_os = "teeos", must_use)]
 pub struct JoinHandle<T>(JoinInner<'static, T>);
 
 #[stable(feature = "joinhandle_impl_send_sync", since = "1.29.0")]

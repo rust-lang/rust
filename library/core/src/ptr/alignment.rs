@@ -1,5 +1,4 @@
 use crate::convert::{TryFrom, TryInto};
-use crate::intrinsics::assert_unsafe_precondition;
 use crate::num::NonZeroUsize;
 use crate::{cmp, fmt, hash, mem, num};
 
@@ -42,6 +41,7 @@ impl Alignment {
     /// This provides the same numerical value as [`mem::align_of`],
     /// but in an `Alignment` instead of a `usize`.
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[rustc_const_unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
     pub const fn of<T>() -> Self {
         // SAFETY: rustc ensures that type alignment is always a power of two.
@@ -53,6 +53,7 @@ impl Alignment {
     ///
     /// Note that `0` is not a power of two, nor a valid alignment.
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[rustc_const_unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
     pub const fn new(align: usize) -> Option<Self> {
         if align.is_power_of_two() {
@@ -75,13 +76,10 @@ impl Alignment {
     #[rustc_const_unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
     pub const unsafe fn new_unchecked(align: usize) -> Self {
-        // SAFETY: Precondition passed to the caller.
-        unsafe {
-            assert_unsafe_precondition!(
-               "Alignment::new_unchecked requires a power of two",
-                (align: usize) => align.is_power_of_two()
-            )
-        };
+        crate::panic::debug_assert_nounwind!(
+            align.is_power_of_two(),
+            "Alignment::new_unchecked requires a power of two"
+        );
 
         // SAFETY: By precondition, this must be a power of two, and
         // our variants encompass all possible powers of two.
@@ -98,6 +96,7 @@ impl Alignment {
 
     /// Returns the alignment as a [`NonZeroUsize`]
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[rustc_const_unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
     pub const fn as_nonzero(self) -> NonZeroUsize {
         // SAFETY: All the discriminants are non-zero.
@@ -118,9 +117,41 @@ impl Alignment {
     /// assert_eq!(Alignment::new(1024).unwrap().log2(), 10);
     /// ```
     #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[rustc_const_unstable(feature = "ptr_alignment_type", issue = "102070")]
     #[inline]
-    pub fn log2(self) -> u32 {
+    pub const fn log2(self) -> u32 {
         self.as_nonzero().trailing_zeros()
+    }
+
+    /// Returns a bit mask that can be used to match this alignment.
+    ///
+    /// This is equivalent to `!(self.as_usize() - 1)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ptr_alignment_type)]
+    /// #![feature(ptr_mask)]
+    /// use std::ptr::{Alignment, NonNull};
+    ///
+    /// #[repr(align(1))] struct Align1(u8);
+    /// #[repr(align(2))] struct Align2(u16);
+    /// #[repr(align(4))] struct Align4(u32);
+    /// let one = <NonNull<Align1>>::dangling().as_ptr();
+    /// let two = <NonNull<Align2>>::dangling().as_ptr();
+    /// let four = <NonNull<Align4>>::dangling().as_ptr();
+    ///
+    /// assert_eq!(four.mask(Alignment::of::<Align1>().mask()), four);
+    /// assert_eq!(four.mask(Alignment::of::<Align2>().mask()), four);
+    /// assert_eq!(four.mask(Alignment::of::<Align4>().mask()), four);
+    /// assert_ne!(one.mask(Alignment::of::<Align4>().mask()), one);
+    /// ```
+    #[unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[rustc_const_unstable(feature = "ptr_alignment_type", issue = "102070")]
+    #[inline]
+    pub const fn mask(self) -> usize {
+        // SAFETY: The alignment is always nonzero, and therefore decrementing won't overflow.
+        !(unsafe { self.as_usize().unchecked_sub(1) })
     }
 }
 
@@ -190,6 +221,14 @@ impl hash::Hash for Alignment {
     #[inline]
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.as_nonzero().hash(state)
+    }
+}
+
+/// Returns [`Alignment::MIN`], which is valid for any type.
+#[unstable(feature = "ptr_alignment_type", issue = "102070")]
+impl Default for Alignment {
+    fn default() -> Alignment {
+        Alignment::MIN
     }
 }
 

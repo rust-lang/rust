@@ -13,7 +13,7 @@ doctest = false
 
 [dependencies]
 drop_bomb = "0.1.5"
-rustc_lexer.workspace = true
+rustc-dependencies.workspace = true
 
 limit.workspace = true
 
@@ -22,3 +22,6 @@ expect-test = "1.4.0"
 
 stdx.workspace = true
 sourcegen.workspace = true
+
+[features]
+in-rust-tree = ["rustc-dependencies/in-rust-tree"]

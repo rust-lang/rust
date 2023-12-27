@@ -10,6 +10,6 @@ LL |     return "test";
    = note: expected reference `&u32`
               found reference `&'static str`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

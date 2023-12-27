@@ -11,5 +11,5 @@ LL |     let _b: fn() = unsafe { std::mem::transmute(0usize) };
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -3,7 +3,7 @@
 //!
 //! This probably isn't the best way to do this -- ideally, diagnostics should
 //! be expressed in terms of hir types themselves.
-pub use hir_ty::diagnostics::{CaseType, IncoherentImpl, IncorrectCase};
+pub use hir_ty::diagnostics::{CaseType, IncorrectCase};
 
 use base_db::CrateId;
 use cfg::{CfgExpr, CfgOptions};
@@ -12,7 +12,7 @@ use hir_def::path::ModPath;
 use hir_expand::{name::Name, HirFileId, InFile};
 use syntax::{ast, AstPtr, SyntaxError, SyntaxNodePtr, TextRange};
 
-use crate::{AssocItem, Field, Local, MacroKind, Type};
+use crate::{AssocItem, Field, Local, MacroKind, Trait, Type};
 
 macro_rules! diagnostics {
     ($($diag:ident,)*) => {
@@ -53,6 +53,10 @@ diagnostics![
     PrivateAssocItem,
     PrivateField,
     ReplaceFilterMapNextWithFindMap,
+    TraitImplIncorrectSafety,
+    TraitImplMissingAssocItems,
+    TraitImplRedundantAssocItems,
+    TraitImplOrphan,
     TypedHole,
     TypeMismatch,
     UndeclaredLabel,
@@ -66,6 +70,7 @@ diagnostics![
     UnresolvedModule,
     UnresolvedProcMacro,
     UnusedMut,
+    UnusedVariable,
 ];
 
 #[derive(Debug)]
@@ -173,20 +178,19 @@ pub struct MalformedDerive {
 
 #[derive(Debug)]
 pub struct NoSuchField {
-    pub field: InFile<Either<AstPtr<ast::RecordExprField>, AstPtr<ast::RecordPatField>>>,
+    pub field: InFile<AstPtr<Either<ast::RecordExprField, ast::RecordPatField>>>,
     pub private: bool,
 }
 
 #[derive(Debug)]
 pub struct PrivateAssocItem {
-    pub expr_or_pat:
-        InFile<Either<AstPtr<ast::Expr>, Either<AstPtr<ast::Pat>, AstPtr<ast::SelfParam>>>>,
+    pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, Either<ast::Pat, ast::SelfParam>>>>,
     pub item: AssocItem,
 }
 
 #[derive(Debug)]
 pub struct MismatchedTupleStructPatArgCount {
-    pub expr_or_pat: InFile<Either<AstPtr<ast::Expr>, AstPtr<ast::Pat>>>,
+    pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
     pub expected: usize,
     pub found: usize,
 }
@@ -227,7 +231,7 @@ pub struct MissingUnsafe {
 #[derive(Debug)]
 pub struct MissingFields {
     pub file: HirFileId,
-    pub field_list_parent: Either<AstPtr<ast::RecordExpr>, AstPtr<ast::RecordPat>>,
+    pub field_list_parent: AstPtr<Either<ast::RecordExpr, ast::RecordPat>>,
     pub field_list_parent_path: Option<AstPtr<ast::Path>>,
     pub missed_fields: Vec<Name>,
 }
@@ -254,7 +258,7 @@ pub struct MissingMatchArms {
 
 #[derive(Debug)]
 pub struct TypeMismatch {
-    pub expr_or_pat: Either<InFile<AstPtr<ast::Expr>>, InFile<AstPtr<ast::Pat>>>,
+    pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, ast::Pat>>>,
     pub expected: Type,
     pub actual: Type,
 }
@@ -271,7 +275,47 @@ pub struct UnusedMut {
 }
 
 #[derive(Debug)]
+pub struct UnusedVariable {
+    pub local: Local,
+}
+
+#[derive(Debug)]
 pub struct MovedOutOfRef {
     pub ty: Type,
     pub span: InFile<SyntaxNodePtr>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct IncoherentImpl {
+    pub file_id: HirFileId,
+    pub impl_: AstPtr<ast::Impl>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TraitImplOrphan {
+    pub file_id: HirFileId,
+    pub impl_: AstPtr<ast::Impl>,
+}
+
+// FIXME: Split this off into the corresponding 4 rustc errors
+#[derive(Debug, PartialEq, Eq)]
+pub struct TraitImplIncorrectSafety {
+    pub file_id: HirFileId,
+    pub impl_: AstPtr<ast::Impl>,
+    pub should_be_safe: bool,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TraitImplMissingAssocItems {
+    pub file_id: HirFileId,
+    pub impl_: AstPtr<ast::Impl>,
+    pub missing: Vec<(Name, AssocItem)>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TraitImplRedundantAssocItems {
+    pub file_id: HirFileId,
+    pub trait_: Trait,
+    pub impl_: AstPtr<ast::Impl>,
+    pub assoc_item: (Name, AssocItem),
 }

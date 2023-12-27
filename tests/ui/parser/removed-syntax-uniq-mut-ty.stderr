@@ -4,5 +4,5 @@ error: expected one of `>`, a const expression, lifetime, or type, found keyword
 LL | type mut_box = Box<mut isize>;
    |                    ^^^ expected one of `>`, a const expression, lifetime, or type
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

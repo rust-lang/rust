@@ -8,7 +8,7 @@ use rustc_ast::ast::{LitKind, StrStyle};
 use rustc_hir::def_id::DefIdMap;
 use rustc_hir::{BorrowKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Span};
 
 declare_clippy_lint! {
@@ -191,13 +191,11 @@ fn is_trivial_regex(s: &regex_syntax::hir::Hir) -> Option<&'static str> {
 }
 
 fn check_set<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, utf8: bool) {
-    if_chain! {
-        if let ExprKind::AddrOf(BorrowKind::Ref, _, expr) = expr.kind;
-        if let ExprKind::Array(exprs) = expr.kind;
-        then {
-            for expr in exprs {
-                check_regex(cx, expr, utf8);
-            }
+    if let ExprKind::AddrOf(BorrowKind::Ref, _, expr) = expr.kind
+        && let ExprKind::Array(exprs) = expr.kind
+    {
+        for expr in exprs {
+            check_regex(cx, expr, utf8);
         }
     }
 }

@@ -241,5 +241,35 @@ error: deref which would be done by auto-deref
 LL |         Some(x) => &mut *x,
    |                    ^^^^^^^ help: try: `x`
 
-error: aborting due to 40 previous errors
+error: deref which would be done by auto-deref
+  --> $DIR/explicit_auto_deref.rs:332:22
+   |
+LL |         let _ = &mut (*{ x.u }).x;
+   |                      ^^^^^^^^^^ help: try: `{ x.u }`
+
+error: deref which would be done by auto-deref
+  --> $DIR/explicit_auto_deref.rs:338:22
+   |
+LL |         let _ = &mut (**x.u).x;
+   |                      ^^^^^^^ help: try: `(*x.u)`
+
+error: deref which would be done by auto-deref
+  --> $DIR/explicit_auto_deref.rs:339:22
+   |
+LL |         let _ = &mut (**{ x.u }).x;
+   |                      ^^^^^^^^^^^ help: try: `{ x.u }`
+
+error: deref which would be done by auto-deref
+  --> $DIR/explicit_auto_deref.rs:343:22
+   |
+LL |         let _ = &mut (*x.u).x;
+   |                      ^^^^^^ help: try: `x.u`
+
+error: deref which would be done by auto-deref
+  --> $DIR/explicit_auto_deref.rs:344:22
+   |
+LL |         let _ = &mut (*{ x.u }).x;
+   |                      ^^^^^^^^^^ help: try: `{ x.u }`
+
+error: aborting due to 45 previous errors
 

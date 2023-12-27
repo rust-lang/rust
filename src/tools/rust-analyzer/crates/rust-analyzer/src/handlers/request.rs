@@ -4,6 +4,7 @@
 use std::{
     fs,
     io::Write as _,
+    path::PathBuf,
     process::{self, Stdio},
 };
 
@@ -11,8 +12,8 @@ use anyhow::Context;
 
 use ide::{
     AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, FilePosition, FileRange,
-    HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query, RangeInfo, ReferenceCategory,
-    Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
+    HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query, RangeInfo, RangeLimit,
+    ReferenceCategory, Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
 };
 use ide_db::SymbolKind;
 use lsp_server::ErrorCode;
@@ -50,8 +51,7 @@ use crate::{
 };
 
 pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
-    // FIXME: use `Arc::from_iter` when it becomes available
-    state.proc_macro_clients = Arc::from(Vec::new());
+    state.proc_macro_clients = Arc::from_iter([]);
     state.proc_macro_changed = false;
 
     state.fetch_workspaces_queue.request_op("reload workspace request".to_string(), false);
@@ -59,8 +59,7 @@ pub(crate) fn handle_workspace_reload(state: &mut GlobalState, _: ()) -> anyhow:
 }
 
 pub(crate) fn handle_proc_macros_rebuild(state: &mut GlobalState, _: ()) -> anyhow::Result<()> {
-    // FIXME: use `Arc::from_iter` when it becomes available
-    state.proc_macro_clients = Arc::from(Vec::new());
+    state.proc_macro_clients = Arc::from_iter([]);
     state.proc_macro_changed = false;
 
     state.fetch_build_data_queue.request_op("rebuild proc macros request".to_string(), ());
@@ -1410,7 +1409,7 @@ pub(crate) fn handle_inlay_hints(
     let inlay_hints_config = snap.config.inlay_hints();
     Ok(Some(
         snap.analysis
-            .inlay_hints(&inlay_hints_config, file_id, Some(range))?
+            .inlay_hints(&inlay_hints_config, file_id, Some(RangeLimit::Fixed(range)))?
             .into_iter()
             .map(|it| {
                 to_proto::inlay_hint(
@@ -1437,26 +1436,17 @@ pub(crate) fn handle_inlay_hints_resolve(
     };
 
     let resolve_data: lsp_ext::InlayHintResolveData = serde_json::from_value(data)?;
-    let file_id = FileId(resolve_data.file_id);
+    let file_id = FileId::from_raw(resolve_data.file_id);
     anyhow::ensure!(snap.file_exists(file_id), "Invalid LSP resolve data");
 
     let line_index = snap.file_line_index(file_id)?;
-    let range = from_proto::text_range(
-        &line_index,
-        lsp_types::Range { start: original_hint.position, end: original_hint.position },
-    )?;
-    let range_start = range.start();
-    let range_end = range.end();
-    let large_range = TextRange::new(
-        range_start.checked_sub(1.into()).unwrap_or(range_start),
-        range_end.checked_add(1.into()).unwrap_or(range_end),
-    );
+    let hint_position = from_proto::offset(&line_index, original_hint.position)?;
     let mut forced_resolve_inlay_hints_config = snap.config.inlay_hints();
     forced_resolve_inlay_hints_config.fields_to_resolve = InlayFieldsToResolve::empty();
     let resolve_hints = snap.analysis.inlay_hints(
         &forced_resolve_inlay_hints_config,
         file_id,
-        Some(large_range),
+        Some(RangeLimit::NearestParent(hint_position)),
     )?;
 
     let mut resolved_hints = resolve_hints
@@ -1995,13 +1985,33 @@ fn run_rustfmt(
             cmd
         }
         RustfmtConfig::CustomCommand { command, args } => {
-            let mut cmd = process::Command::new(command);
+            let cmd = PathBuf::from(&command);
+            let workspace = CargoTargetSpec::for_file(&snap, file_id)?;
+            let mut cmd = match workspace {
+                Some(spec) => {
+                    // approach: if the command name contains a path separator, join it with the workspace root.
+                    // however, if the path is absolute, joining will result in the absolute path being preserved.
+                    // as a fallback, rely on $PATH-based discovery.
+                    let cmd_path =
+                        if cfg!(windows) && command.contains(&[std::path::MAIN_SEPARATOR, '/']) {
+                            spec.workspace_root.join(cmd).into()
+                        } else if command.contains(std::path::MAIN_SEPARATOR) {
+                            spec.workspace_root.join(cmd).into()
+                        } else {
+                            cmd
+                        };
+                    process::Command::new(cmd_path)
+                }
+                None => process::Command::new(cmd),
+            };
 
             cmd.envs(snap.config.extra_env());
             cmd.args(args);
             cmd
         }
     };
+
+    tracing::debug!(?command, "created format command");
 
     // try to chdir to the file so we can respect `rustfmt.toml`
     // FIXME: use `rustfmt --config-path` once

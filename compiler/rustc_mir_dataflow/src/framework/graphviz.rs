@@ -12,10 +12,10 @@ use rustc_middle::mir::graphviz_safe_def_name;
 use rustc_middle::mir::{self, BasicBlock, Body, Location};
 
 use super::fmt::{DebugDiffWithAdapter, DebugWithAdapter, DebugWithContext};
-use super::{Analysis, CallReturnPlaces, Direction, Results, ResultsRefCursor, ResultsVisitor};
+use super::{Analysis, CallReturnPlaces, Direction, Results, ResultsCursor, ResultsVisitor};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum OutputStyle {
+pub(crate) enum OutputStyle {
     AfterOnly,
     BeforeAndAfter,
 }
@@ -29,33 +29,37 @@ impl OutputStyle {
     }
 }
 
-pub struct Formatter<'res, 'mir, 'tcx, A>
+pub(crate) struct Formatter<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
     body: &'mir Body<'tcx>,
-    results: RefCell<&'res mut Results<'tcx, A>>,
+    results: RefCell<Option<Results<'tcx, A>>>,
     style: OutputStyle,
     reachable: BitSet<BasicBlock>,
 }
 
-impl<'res, 'mir, 'tcx, A> Formatter<'res, 'mir, 'tcx, A>
+impl<'mir, 'tcx, A> Formatter<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    pub fn new(
+    pub(crate) fn new(
         body: &'mir Body<'tcx>,
-        results: &'res mut Results<'tcx, A>,
+        results: Results<'tcx, A>,
         style: OutputStyle,
     ) -> Self {
         let reachable = mir::traversal::reachable_as_bitset(body);
-        Formatter { body, results: results.into(), style, reachable }
+        Formatter { body, results: Some(results).into(), style, reachable }
+    }
+
+    pub(crate) fn into_results(self) -> Results<'tcx, A> {
+        self.results.into_inner().unwrap()
     }
 }
 
 /// A pair of a basic block and an index into that basic blocks `successors`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct CfgEdge {
+pub(crate) struct CfgEdge {
     source: BasicBlock,
     index: usize,
 }
@@ -69,7 +73,7 @@ fn dataflow_successors(body: &Body<'_>, bb: BasicBlock) -> Vec<CfgEdge> {
         .collect()
 }
 
-impl<'tcx, A> dot::Labeller<'_> for Formatter<'_, '_, 'tcx, A>
+impl<'tcx, A> dot::Labeller<'_> for Formatter<'_, 'tcx, A>
 where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
@@ -88,14 +92,19 @@ where
 
     fn node_label(&self, block: &Self::Node) -> dot::LabelText<'_> {
         let mut label = Vec::new();
-        let mut results = self.results.borrow_mut();
-        let mut fmt = BlockFormatter {
-            results: results.as_results_cursor(self.body),
-            style: self.style,
-            bg: Background::Light,
-        };
+        self.results.replace_with(|results| {
+            // `Formatter::result` is a `RefCell<Option<_>>` so we can replace
+            // the value with `None`, move it into the results cursor, move it
+            // back out, and return it to the refcell wrapped in `Some`.
+            let mut fmt = BlockFormatter {
+                results: results.take().unwrap().into_results_cursor(self.body),
+                style: self.style,
+                bg: Background::Light,
+            };
 
-        fmt.write_node_label(&mut label, *block).unwrap();
+            fmt.write_node_label(&mut label, *block).unwrap();
+            Some(fmt.results.into_results())
+        });
         dot::LabelText::html(String::from_utf8(label).unwrap())
     }
 
@@ -109,7 +118,7 @@ where
     }
 }
 
-impl<'mir, 'tcx, A> dot::GraphWalk<'mir> for Formatter<'_, 'mir, 'tcx, A>
+impl<'mir, 'tcx, A> dot::GraphWalk<'mir> for Formatter<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
@@ -143,16 +152,16 @@ where
     }
 }
 
-struct BlockFormatter<'res, 'mir, 'tcx, A>
+struct BlockFormatter<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
-    results: ResultsRefCursor<'res, 'mir, 'tcx, A>,
+    results: ResultsCursor<'mir, 'tcx, A>,
     bg: Background,
     style: OutputStyle,
 }
 
-impl<'res, 'mir, 'tcx, A> BlockFormatter<'res, 'mir, 'tcx, A>
+impl<'mir, 'tcx, A> BlockFormatter<'mir, 'tcx, A>
 where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
@@ -536,25 +545,13 @@ where
 {
     type FlowState = A::Domain;
 
-    fn visit_block_start(
-        &mut self,
-        _results: &mut Results<'tcx, A>,
-        state: &Self::FlowState,
-        _block_data: &mir::BasicBlockData<'tcx>,
-        _block: BasicBlock,
-    ) {
+    fn visit_block_start(&mut self, state: &Self::FlowState) {
         if A::Direction::IS_FORWARD {
             self.prev_state.clone_from(state);
         }
     }
 
-    fn visit_block_end(
-        &mut self,
-        _results: &mut Results<'tcx, A>,
-        state: &Self::FlowState,
-        _block_data: &mir::BasicBlockData<'tcx>,
-        _block: BasicBlock,
-    ) {
+    fn visit_block_end(&mut self, state: &Self::FlowState) {
         if A::Direction::IS_BACKWARD {
             self.prev_state.clone_from(state);
         }

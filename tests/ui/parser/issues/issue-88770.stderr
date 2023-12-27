@@ -10,5 +10,5 @@ LL | fn m(){print!("",(c for&g
 LL | e
    |   ^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

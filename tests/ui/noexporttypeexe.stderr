@@ -13,6 +13,6 @@ help: consider using `Option::expect` to unwrap the `Option<isize>` value, panic
 LL |   let x: isize = noexporttypelib::foo().expect("REASON");
    |                                        +++++++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

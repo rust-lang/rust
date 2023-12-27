@@ -2,10 +2,10 @@ error[E0277]: the trait bound `cross_crate::NonConst: ~const cross_crate::MyTrai
   --> $DIR/cross-crate.rs:17:14
    |
 LL |     NonConst.func();
-   |              ^^^^ the trait `cross_crate::MyTrait` is not implemented for `cross_crate::NonConst`
+   |              ^^^^ the trait `~const cross_crate::MyTrait` is not implemented for `cross_crate::NonConst`
    |
    = help: the trait `cross_crate::MyTrait` is implemented for `cross_crate::NonConst`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

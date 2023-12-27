@@ -59,6 +59,7 @@ use crate::marker::Tuple;
 use crate::mem;
 
 pub mod mir;
+pub mod simd;
 
 // These imports are used for simplifying intra-doc links
 #[allow(unused_imports)]
@@ -341,6 +342,9 @@ extern "rust-intrinsic" {
     /// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicBool::load`].
     #[rustc_nounwind]
     pub fn atomic_load_relaxed<T: Copy>(src: *const T) -> T;
+    /// Do NOT use this intrinsic; "unordered" operations do not exist in our memory model!
+    /// In terms of the Rust Abstract Machine, this operation is equivalent to `src.read()`,
+    /// i.e., it performs a non-atomic read.
     #[rustc_nounwind]
     pub fn atomic_load_unordered<T: Copy>(src: *const T) -> T;
 
@@ -365,6 +369,9 @@ extern "rust-intrinsic" {
     /// [`Ordering::Relaxed`] as the `order`. For example, [`AtomicBool::store`].
     #[rustc_nounwind]
     pub fn atomic_store_relaxed<T: Copy>(dst: *mut T, val: T);
+    /// Do NOT use this intrinsic; "unordered" operations do not exist in our memory model!
+    /// In terms of the Rust Abstract Machine, this operation is equivalent to `dst.write(val)`,
+    /// i.e., it performs a non-atomic write.
     #[rustc_nounwind]
     pub fn atomic_store_unordered<T: Copy>(dst: *mut T, val: T);
 
@@ -1072,7 +1079,7 @@ extern "rust-intrinsic" {
     /// zero-initialization: This will statically either panic, or do nothing.
     ///
     /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_stable(feature = "const_assert_type2", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_assert_type2", since = "1.75.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
     pub fn assert_zero_valid<T>();
@@ -1080,7 +1087,7 @@ extern "rust-intrinsic" {
     /// A guard for `std::mem::uninitialized`. This will statically either panic, or do nothing.
     ///
     /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_stable(feature = "const_assert_type2", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_assert_type2", since = "1.75.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
     pub fn assert_mem_uninitialized_valid<T>();
@@ -1900,6 +1907,7 @@ extern "rust-intrinsic" {
     ///
     /// ```
     /// #![feature(core_intrinsics)]
+    /// # #![allow(internal_features)]
     ///
     /// use std::intrinsics::ctlz;
     ///
@@ -1912,6 +1920,7 @@ extern "rust-intrinsic" {
     ///
     /// ```
     /// #![feature(core_intrinsics)]
+    /// # #![allow(internal_features)]
     ///
     /// use std::intrinsics::ctlz;
     ///
@@ -1933,6 +1942,7 @@ extern "rust-intrinsic" {
     ///
     /// ```
     /// #![feature(core_intrinsics)]
+    /// # #![allow(internal_features)]
     ///
     /// use std::intrinsics::ctlz_nonzero;
     ///
@@ -1959,6 +1969,7 @@ extern "rust-intrinsic" {
     ///
     /// ```
     /// #![feature(core_intrinsics)]
+    /// # #![allow(internal_features)]
     ///
     /// use std::intrinsics::cttz;
     ///
@@ -1971,6 +1982,7 @@ extern "rust-intrinsic" {
     ///
     /// ```
     /// #![feature(core_intrinsics)]
+    /// # #![allow(internal_features)]
     ///
     /// use std::intrinsics::cttz;
     ///
@@ -1992,6 +2004,7 @@ extern "rust-intrinsic" {
     ///
     /// ```
     /// #![feature(core_intrinsics)]
+    /// # #![allow(internal_features)]
     ///
     /// use std::intrinsics::cttz_nonzero;
     ///
@@ -2279,7 +2292,7 @@ extern "rust-intrinsic" {
     /// any safety invariants.
     ///
     /// The stabilized version of this intrinsic is [`core::mem::discriminant`].
-    #[rustc_const_stable(feature = "const_discriminant", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_discriminant", since = "1.75.0")]
     #[rustc_safe_intrinsic]
     #[rustc_nounwind]
     pub fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discriminant;
@@ -2312,6 +2325,10 @@ extern "rust-intrinsic" {
 
     /// Emits a `!nontemporal` store according to LLVM (see their docs).
     /// Probably will never become stable.
+    ///
+    /// Do NOT use this intrinsic; "nontemporal" operations do not exist in our memory model!
+    /// It exists to support current stdarch, but the plan is to change stdarch and remove this intrinsic.
+    /// See <https://github.com/rust-lang/rust/issues/114582> for some more discussion.
     #[rustc_nounwind]
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
 
@@ -2453,6 +2470,7 @@ extern "rust-intrinsic" {
     /// ```no_run
     /// #![feature(const_eval_select)]
     /// #![feature(core_intrinsics)]
+    /// # #![allow(internal_features)]
     /// use std::hint::unreachable_unchecked;
     /// use std::intrinsics::const_eval_select;
     ///
@@ -2487,12 +2505,6 @@ extern "rust-intrinsic" {
     where
         G: FnOnce<ARG, Output = RET>,
         F: FnOnce<ARG, Output = RET>;
-
-    /// This method creates a pointer to any `Some` value. If the argument is
-    /// `None`, an invalid within-bounds pointer (that is still acceptable for
-    /// constructing an empty slice) is returned.
-    #[rustc_nounwind]
-    pub fn option_payload_ptr<T>(arg: *const Option<T>) -> *const T;
 }
 
 // Some functions are defined here because they accidentally got made
@@ -2522,7 +2534,7 @@ extern "rust-intrinsic" {
 /// the occasional mistake, and this check should help them figure things out.
 #[allow_internal_unstable(const_eval_select)] // permit this to be called in stably-const fn
 macro_rules! assert_unsafe_precondition {
-    ($name:expr, $([$($tt:tt)*])?($($i:ident:$ty:ty),*$(,)?) => $e:expr) => {
+    ($name:expr, $([$($tt:tt)*])?($($i:ident:$ty:ty),*$(,)?) => $e:expr $(,)?) => {
         if cfg!(debug_assertions) {
             // allow non_snake_case to allow capturing const generics
             #[allow(non_snake_case)]
@@ -2853,5 +2865,30 @@ pub const unsafe fn write_bytes<T>(dst: *mut T, val: u8, count: usize) {
             [T](dst: *mut T) => is_aligned_and_not_null(dst)
         );
         write_bytes(dst, val, count)
+    }
+}
+
+/// Inform Miri that a given pointer definitely has a certain alignment.
+#[cfg(miri)]
+pub(crate) const fn miri_promise_symbolic_alignment(ptr: *const (), align: usize) {
+    extern "Rust" {
+        /// Miri-provided extern function to promise that a given pointer is properly aligned for
+        /// "symbolic" alignment checks. Will fail if the pointer is not actually aligned or `align` is
+        /// not a power of two. Has no effect when alignment checks are concrete (which is the default).
+        fn miri_promise_symbolic_alignment(ptr: *const (), align: usize);
+    }
+
+    fn runtime(ptr: *const (), align: usize) {
+        // SAFETY: this call is always safe.
+        unsafe {
+            miri_promise_symbolic_alignment(ptr, align);
+        }
+    }
+
+    const fn compiletime(_ptr: *const (), _align: usize) {}
+
+    // SAFETY: the extra behavior at runtime is for UB checks only.
+    unsafe {
+        const_eval_select((ptr, align), compiletime, runtime);
     }
 }

@@ -66,6 +66,10 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: CPU features
+      if: matrix.os == 'ubuntu-latest'
+      run: cat /proc/cpuinfo
+
     - name: Cache cargo target dir
       uses: actions/cache@v3
       with:
@@ -136,6 +140,9 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: CPU features
+      run: cat /proc/cpuinfo
+
     - name: Prepare dependencies
       run: ./y.sh prepare
 
@@ -158,6 +165,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+
+    - name: CPU features
+      run: cat /proc/cpuinfo
 
     - name: Cache cargo target dir
       uses: actions/cache@v3

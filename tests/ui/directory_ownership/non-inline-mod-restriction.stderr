@@ -4,5 +4,5 @@ error: cannot declare a non-inline module inside a block unless it has a path at
 LL |     mod foo;
    |     ^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -145,7 +145,7 @@ impl<'a> MirPrettyCtx<'a> {
         let indent = mem::take(&mut self.indent);
         let mut ctx = MirPrettyCtx {
             body: &body,
-            local_to_binding: body.binding_locals.iter().map(|(it, y)| (*y, it)).collect(),
+            local_to_binding: body.local_to_binding_map(),
             result,
             indent,
             ..*self
@@ -167,7 +167,7 @@ impl<'a> MirPrettyCtx<'a> {
     }
 
     fn new(body: &'a MirBody, hir_body: &'a Body, db: &'a dyn HirDatabase) -> Self {
-        let local_to_binding = body.binding_locals.iter().map(|(it, y)| (*y, it)).collect();
+        let local_to_binding = body.local_to_binding_map();
         MirPrettyCtx {
             body,
             db,
@@ -230,6 +230,11 @@ impl<'a> MirPrettyCtx<'a> {
                         }
                         StatementKind::Deinit(p) => {
                             w!(this, "Deinit(");
+                            this.place(p);
+                            wln!(this, ");");
+                        }
+                        StatementKind::FakeRead(p) => {
+                            w!(this, "FakeRead(");
                             this.place(p);
                             wln!(this, ");");
                         }

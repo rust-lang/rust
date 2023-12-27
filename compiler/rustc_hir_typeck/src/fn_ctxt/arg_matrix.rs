@@ -4,11 +4,13 @@ use rustc_middle::ty::error::TypeError;
 use std::cmp;
 
 rustc_index::newtype_index! {
+    #[orderable]
     #[debug_format = "ExpectedIdx({})"]
     pub(crate) struct ExpectedIdx {}
 }
 
 rustc_index::newtype_index! {
+    #[orderable]
     #[debug_format = "ProvidedIdx({})"]
     pub(crate) struct ProvidedIdx {}
 }

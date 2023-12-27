@@ -1,11 +1,11 @@
 error[E0759]: `fn` parameter has lifetime `'x` but it needs to satisfy a `'static` lifetime requirement
-  --> $DIR/normalization-nested.rs:35:20
+  --> $DIR/normalization-nested.rs:35:28
    |
-LL | pub fn test<'x>(_: Map<Vec<&'x ()>>, s: &'x str) -> &'static str {
-   |                    ^^^^^^^^^^^^^^^^
-   |                    |
-   |                    this data with lifetime `'x`...
-   |                    ...is used and required to live as long as `'static` here
+LL | pub fn test_wfcheck<'x>(_: Map<Vec<&'x ()>>) {}
+   |                            ^^^^^^^^^^^^^^^^
+   |                            |
+   |                            this data with lifetime `'x`...
+   |                            ...is used and required to live as long as `'static` here
    |
 note: `'static` lifetime requirement introduced by this bound
   --> $DIR/normalization-nested.rs:33:14
@@ -13,6 +13,21 @@ note: `'static` lifetime requirement introduced by this bound
 LL |     I::Item: 'static;
    |              ^^^^^^^
 
-error: aborting due to previous error
+error[E0759]: `fn` parameter has lifetime `'x` but it needs to satisfy a `'static` lifetime requirement
+  --> $DIR/normalization-nested.rs:37:29
+   |
+LL | pub fn test_borrowck<'x>(_: Map<Vec<&'x ()>>, s: &'x str) -> &'static str {
+   |                             ^^^^^^^^^^^^^^^^
+   |                             |
+   |                             this data with lifetime `'x`...
+   |                             ...is used and required to live as long as `'static` here
+   |
+note: `'static` lifetime requirement introduced by this bound
+  --> $DIR/normalization-nested.rs:33:14
+   |
+LL |     I::Item: 'static;
+   |              ^^^^^^^
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0759`.

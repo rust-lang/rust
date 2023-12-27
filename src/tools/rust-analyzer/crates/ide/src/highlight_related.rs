@@ -1,4 +1,6 @@
-use hir::Semantics;
+use std::iter;
+
+use hir::{DescendPreference, Semantics};
 use ide_db::{
     base_db::{FileId, FilePosition, FileRange},
     defs::{Definition, IdentClass},
@@ -15,7 +17,6 @@ use syntax::{
     SyntaxKind::{self, IDENT, INT_NUMBER},
     SyntaxNode, SyntaxToken, TextRange, T,
 };
-use text_edit::TextSize;
 
 use crate::{navigation_target::ToNav, references, NavigationTarget, TryToNav};
 
@@ -43,7 +44,7 @@ pub struct HighlightRelatedConfig {
 //
 // . if on an identifier, highlights all references to that identifier in the current file
 // .. additionally, if the identifier is a trait in a where clause, type parameter trait bound or use item, highlights all references to that trait's assoc items in the corresponding scope
-// . if on an `async` or `await token, highlights all yield points for that async context
+// . if on an `async` or `await` token, highlights all yield points for that async context
 // . if on a `return` or `fn` keyword, `?` character or `->` return type arrow, highlights all exit points for that context
 // . if on a `break`, `loop`, `while` or `for` token, highlights all break points for that loop or block context
 // . if on a `move` or `|` token that belongs to a closure, highlights all captures of the closure.
@@ -116,7 +117,7 @@ fn highlight_closure_captures(
                 local
                     .sources(sema.db)
                     .into_iter()
-                    .map(|x| x.to_nav(sema.db))
+                    .flat_map(|x| x.to_nav(sema.db))
                     .filter(|decl| decl.file_id == file_id)
                     .filter_map(|decl| decl.focus_range)
                     .map(move |range| HighlightedRange { range, category })
@@ -132,7 +133,16 @@ fn highlight_references(
     token: SyntaxToken,
     FilePosition { file_id, offset }: FilePosition,
 ) -> Option<Vec<HighlightedRange>> {
-    let defs = find_defs(sema, token.clone(), offset);
+    let defs = if let Some((range, resolution)) =
+        sema.check_for_format_args_template(token.clone(), offset)
+    {
+        match resolution.map(Definition::from) {
+            Some(def) => iter::once(def).collect(),
+            None => return Some(vec![HighlightedRange { range, category: None }]),
+        }
+    } else {
+        find_defs(sema, token.clone())
+    };
     let usages = defs
         .iter()
         .filter_map(|&d| {
@@ -206,7 +216,7 @@ fn highlight_references(
                 local
                     .sources(sema.db)
                     .into_iter()
-                    .map(|x| x.to_nav(sema.db))
+                    .flat_map(|x| x.to_nav(sema.db))
                     .filter(|decl| decl.file_id == file_id)
                     .filter_map(|decl| decl.focus_range)
                     .map(|range| HighlightedRange { range, category })
@@ -215,21 +225,27 @@ fn highlight_references(
                     });
             }
             def => {
-                let hl_range = match def {
+                let navs = match def {
                     Definition::Module(module) => {
-                        Some(NavigationTarget::from_module_to_decl(sema.db, module))
+                        NavigationTarget::from_module_to_decl(sema.db, module)
                     }
-                    def => def.try_to_nav(sema.db),
-                }
-                .filter(|decl| decl.file_id == file_id)
-                .and_then(|decl| decl.focus_range)
-                .map(|range| {
-                    let category = references::decl_mutability(&def, node, range)
-                        .then_some(ReferenceCategory::Write);
-                    HighlightedRange { range, category }
-                });
-                if let Some(hl_range) = hl_range {
-                    res.insert(hl_range);
+                    def => match def.try_to_nav(sema.db) {
+                        Some(it) => it,
+                        None => continue,
+                    },
+                };
+                for nav in navs {
+                    if nav.file_id != file_id {
+                        continue;
+                    }
+                    let hl_range = nav.focus_range.map(|range| {
+                        let category = references::decl_mutability(&def, node, range)
+                            .then_some(ReferenceCategory::Write);
+                        HighlightedRange { range, category }
+                    });
+                    if let Some(hl_range) = hl_range {
+                        res.insert(hl_range);
+                    }
                 }
             }
         }
@@ -456,12 +472,8 @@ fn cover_range(r0: Option<TextRange>, r1: Option<TextRange>) -> Option<TextRange
     }
 }
 
-fn find_defs(
-    sema: &Semantics<'_, RootDatabase>,
-    token: SyntaxToken,
-    offset: TextSize,
-) -> FxHashSet<Definition> {
-    sema.descend_into_macros(token, offset)
+fn find_defs(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> FxHashSet<Definition> {
+    sema.descend_into_macros(DescendPreference::None, token)
         .into_iter()
         .filter_map(|token| IdentClass::classify_token(sema, &token))
         .map(IdentClass::definitions_no_ops)
@@ -1619,6 +1631,23 @@ fn f2<T: Foo>(t: T) {
     t.m();
     T::C;
     T::f();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn implicit_format_args() {
+        check(
+            r#"
+//- minicore: fmt
+fn test() {
+    let a = "foo";
+     // ^
+    format_args!("hello {a} {a$0} {}", a);
+                      // ^read
+                          // ^read
+                                  // ^read
 }
 "#,
         );

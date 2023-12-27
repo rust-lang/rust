@@ -20,8 +20,8 @@ use crate::{
     method_resolution::{InherentImpls, TraitImpls, TyFingerprint},
     mir::{BorrowckResult, MirBody, MirLowerError},
     Binders, CallableDefId, ClosureId, Const, FnDefId, GenericArg, ImplTraitId, InferenceResult,
-    Interner, PolyFnSig, QuantifiedWhereClause, ReturnTypeImplTraits, Substitution, TraitRef, Ty,
-    TyDefId, ValueTyDefId,
+    Interner, PolyFnSig, QuantifiedWhereClause, ReturnTypeImplTraits, Substitution,
+    TraitEnvironment, TraitRef, Ty, TyDefId, ValueTyDefId,
 };
 use hir_expand::name::Name;
 
@@ -47,7 +47,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
         &self,
         def: DefWithBodyId,
         subst: Substitution,
-        env: Arc<crate::TraitEnvironment>,
+        env: Arc<TraitEnvironment>,
     ) -> Result<Arc<MirBody>, MirLowerError>;
 
     #[salsa::invoke(crate::mir::monomorphized_mir_body_for_closure_query)]
@@ -55,7 +55,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
         &self,
         def: ClosureId,
         subst: Substitution,
-        env: Arc<crate::TraitEnvironment>,
+        env: Arc<TraitEnvironment>,
     ) -> Result<Arc<MirBody>, MirLowerError>;
 
     #[salsa::invoke(crate::mir::borrowck_query)]
@@ -81,7 +81,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
         &self,
         def: GeneralConstId,
         subst: Substitution,
-        trait_env: Option<Arc<crate::TraitEnvironment>>,
+        trait_env: Option<Arc<TraitEnvironment>>,
     ) -> Result<Const, ConstEvalError>;
 
     #[salsa::invoke(crate::consteval::const_eval_static_query)]
@@ -104,16 +104,12 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
         &self,
         def: AdtId,
         subst: Substitution,
-        env: Arc<crate::TraitEnvironment>,
+        env: Arc<TraitEnvironment>,
     ) -> Result<Arc<Layout>, LayoutError>;
 
     #[salsa::invoke(crate::layout::layout_of_ty_query)]
     #[salsa::cycle(crate::layout::layout_of_ty_recover)]
-    fn layout_of_ty(
-        &self,
-        ty: Ty,
-        env: Arc<crate::TraitEnvironment>,
-    ) -> Result<Arc<Layout>, LayoutError>;
+    fn layout_of_ty(&self, ty: Ty, env: Arc<TraitEnvironment>) -> Result<Arc<Layout>, LayoutError>;
 
     #[salsa::invoke(crate::layout::target_data_layout_query)]
     fn target_data_layout(&self, krate: CrateId) -> Option<Arc<TargetDataLayout>>;
@@ -121,7 +117,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::invoke(crate::method_resolution::lookup_impl_method_query)]
     fn lookup_impl_method(
         &self,
-        env: Arc<crate::TraitEnvironment>,
+        env: Arc<TraitEnvironment>,
         func: FunctionId,
         fn_subst: Substitution,
     ) -> (FunctionId, Substitution);
@@ -149,10 +145,10 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
 
     #[salsa::invoke(crate::lower::trait_environment_for_body_query)]
     #[salsa::transparent]
-    fn trait_environment_for_body(&self, def: DefWithBodyId) -> Arc<crate::TraitEnvironment>;
+    fn trait_environment_for_body(&self, def: DefWithBodyId) -> Arc<TraitEnvironment>;
 
     #[salsa::invoke(crate::lower::trait_environment_query)]
-    fn trait_environment(&self, def: GenericDefId) -> Arc<crate::TraitEnvironment>;
+    fn trait_environment(&self, def: GenericDefId) -> Arc<TraitEnvironment>;
 
     #[salsa::invoke(crate::lower::generic_defaults_query)]
     #[salsa::cycle(crate::lower::generic_defaults_recover)]
@@ -249,7 +245,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     fn normalize_projection(
         &self,
         projection: crate::ProjectionTy,
-        env: Arc<crate::TraitEnvironment>,
+        env: Arc<TraitEnvironment>,
     ) -> Ty;
 
     #[salsa::invoke(trait_solve_wait)]

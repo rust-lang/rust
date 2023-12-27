@@ -6,11 +6,11 @@ use hashbrown::hash_set as base;
 use crate::borrow::Borrow;
 use crate::collections::TryReserveError;
 use crate::fmt;
-use crate::hash::{BuildHasher, Hash};
+use crate::hash::{BuildHasher, Hash, RandomState};
 use crate::iter::{Chain, FusedIterator};
 use crate::ops::{BitAnd, BitOr, BitXor, Sub};
 
-use super::map::{map_try_reserve_error, RandomState};
+use super::map::map_try_reserve_error;
 
 /// A [hash set] implemented as a `HashMap` where the value is `()`.
 ///
@@ -361,7 +361,7 @@ impl<T, S> HashSet<T, S> {
     ///
     /// ```
     /// use std::collections::HashSet;
-    /// use std::collections::hash_map::RandomState;
+    /// use std::hash::RandomState;
     ///
     /// let s = RandomState::new();
     /// let mut set = HashSet::with_hasher(s);
@@ -393,7 +393,7 @@ impl<T, S> HashSet<T, S> {
     ///
     /// ```
     /// use std::collections::HashSet;
-    /// use std::collections::hash_map::RandomState;
+    /// use std::hash::RandomState;
     ///
     /// let s = RandomState::new();
     /// let mut set = HashSet::with_capacity_and_hasher(10, s);
@@ -411,7 +411,7 @@ impl<T, S> HashSet<T, S> {
     ///
     /// ```
     /// use std::collections::HashSet;
-    /// use std::collections::hash_map::RandomState;
+    /// use std::hash::RandomState;
     ///
     /// let hasher = RandomState::new();
     /// let set: HashSet<i32> = HashSet::with_hasher(hasher);

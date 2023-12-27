@@ -14,7 +14,7 @@
                 Static,
             ),
             source_info: SourceInfo {
-                span: $DIR/async_await.rs:16:9: 16:14 (#8),
+                span: $DIR/async_await.rs:16:5: 16:14 (#9),
                 scope: scope[0],
             },
             ignore_for_traits: false,
@@ -32,7 +32,7 @@
                 Static,
             ),
             source_info: SourceInfo {
-                span: $DIR/async_await.rs:17:9: 17:14 (#10),
+                span: $DIR/async_await.rs:17:5: 17:14 (#11),
                 scope: scope[0],
             },
             ignore_for_traits: false,
@@ -178,6 +178,10 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body@$DIR/async_await.rs:15:18: 18:2}>,
         StorageLive(_20);
         _20 = ();
         _0 = Poll::<()>::Pending;
+        StorageDead(_3);
+        StorageDead(_4);
+        StorageDead(_19);
+        StorageDead(_20);
         discriminant((*(_1.0: &mut {async fn body@$DIR/async_await.rs:15:18: 18:2}))) = 3;
         return;
     }
@@ -276,6 +280,9 @@ fn b::{closure#0}(_1: Pin<&mut {async fn body@$DIR/async_await.rs:15:18: 18:2}>,
         StorageLive(_36);
         _36 = ();
         _0 = Poll::<()>::Pending;
+        StorageDead(_21);
+        StorageDead(_35);
+        StorageDead(_36);
         discriminant((*(_1.0: &mut {async fn body@$DIR/async_await.rs:15:18: 18:2}))) = 4;
         return;
     }

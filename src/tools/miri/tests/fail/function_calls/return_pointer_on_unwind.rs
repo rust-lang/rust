@@ -14,7 +14,7 @@ struct S(i32, [u8; 128]);
 fn docall(out: &mut S) {
     mir! {
         {
-            Call(*out = callee(), after_call)
+            Call(*out = callee(), after_call, UnwindContinue())
         }
 
         after_call = {
@@ -37,7 +37,7 @@ fn callee() -> S {
             // become visible to the outside. In codegen we can see them
             // but Miri should detect this as UB!
             RET.0 = 42;
-            Call(_unit = startpanic(), after_call)
+            Call(_unit = startpanic(), after_call, UnwindContinue())
         }
 
         after_call = {

@@ -6,9 +6,8 @@ use crate::errors;
 use rustc_ast::util::parser::PREC_POSTFIX;
 use rustc_errors::{Applicability, Diagnostic, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
-use rustc_hir::def::{self, CtorKind, DefKind, Namespace, Res};
+use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::HirId;
 use rustc_hir_analysis::autoderef::Autoderef;
 use rustc_infer::{
     infer,
@@ -52,7 +51,7 @@ pub fn check_legal_trait_for_method_call(
         } else {
             errors::ExplicitDestructorCallSugg::Empty(span)
         };
-        tcx.sess.emit_err(errors::ExplicitDestructorCall { span, sugg });
+        tcx.dcx().emit_err(errors::ExplicitDestructorCall { span, sugg });
     }
 }
 
@@ -245,7 +244,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ) {
                 // Check for `self` receiver on the method, otherwise we can't use this as a `Fn*` trait.
                 if !self.tcx.associated_item(ok.value.def_id).fn_has_self_parameter {
-                    self.tcx.sess.delay_span_bug(
+                    self.dcx().span_delayed_bug(
                         call_expr.span,
                         "input to overloaded call fn is not a self receiver",
                     );
@@ -260,9 +259,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind() else {
                         // The `fn`/`fn_mut` lang item is ill-formed, which should have
                         // caused an error elsewhere.
-                        self.tcx
-                            .sess
-                            .delay_span_bug(call_expr.span, "input to call/call_mut is not a ref");
+                        self.dcx().span_delayed_bug(
+                            call_expr.span,
+                            "input to call/call_mut is not a ref",
+                        );
                         return None;
                     };
 
@@ -295,25 +295,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let hir = self.tcx.hir();
         let parent_hir_id = hir.parent_id(hir_id);
-        let parent_node = hir.get(parent_hir_id);
+        let parent_node = self.tcx.hir_node(parent_hir_id);
         if let (
             hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, body, .. }),
+                kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, kind, .. }),
                 ..
             }),
             hir::ExprKind::Block(..),
         ) = (parent_node, callee_node)
         {
-            let fn_decl_span = if hir.body(body).coroutine_kind
-                == Some(hir::CoroutineKind::Async(hir::CoroutineSource::Closure))
-            {
+            let fn_decl_span = if matches!(
+                kind,
+                hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                    hir::CoroutineDesugaring::Async,
+                    hir::CoroutineSource::Closure
+                ),)
+            ) {
                 // Actually need to unwrap one more layer of HIR to get to
                 // the _real_ closure...
                 let async_closure = hir.parent_id(parent_hir_id);
                 if let hir::Node::Expr(hir::Expr {
                     kind: hir::ExprKind::Closure(&hir::Closure { fn_decl_span, .. }),
                     ..
-                }) = hir.get(async_closure)
+                }) = self.tcx.hir_node(async_closure)
                 {
                     fn_decl_span
                 } else {
@@ -343,7 +347,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         callee_expr: &'tcx hir::Expr<'tcx>,
     ) -> bool {
         let hir_id = self.tcx.hir().parent_id(call_expr.hir_id);
-        let parent_node = self.tcx.hir().get(hir_id);
+        let parent_node = self.tcx.hir_node(hir_id);
         if let (
             hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Array(_), .. }),
             hir::ExprKind::Tup(exp),
@@ -373,7 +377,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let (fn_sig, def_id) = match *callee_ty.kind() {
             ty::FnDef(def_id, args) => {
-                self.enforce_context_effects(call_expr.hir_id, call_expr.span, def_id, args);
+                self.enforce_context_effects(call_expr.span, def_id, args);
                 let fn_sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args);
 
                 // Unit testing: function items annotated with
@@ -393,8 +397,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             predicate,
                         );
                         let result = self.evaluate_obligation(&obligation);
-                        self.tcx
-                            .sess
+                        self.dcx()
                             .struct_span_err(
                                 callee_expr.span,
                                 format!("evaluate({predicate:?}) = {result:?}"),
@@ -414,11 +417,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = &callee_expr.kind
                     && let [segment] = path.segments
-                    && let Some(mut diag) = self
-                        .tcx
-                        .sess
-                        .diagnostic()
-                        .steal_diagnostic(segment.ident.span, StashKey::CallIntoMethod)
+                    && let Some(mut diag) =
+                        self.dcx().steal_diagnostic(segment.ident.span, StashKey::CallIntoMethod)
                 {
                     // Try suggesting `foo(a)` -> `a.foo()` if possible.
                     self.suggest_call_as_method(&mut diag, segment, arg_exprs, call_expr, expected);
@@ -467,7 +467,66 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
                 self.require_type_is_sized(ty, sp, traits::RustCall);
             } else {
-                self.tcx.sess.emit_err(errors::RustCallIncorrectArgs { span: sp });
+                self.dcx().emit_err(errors::RustCallIncorrectArgs { span: sp });
+            }
+        }
+
+        if let Some(def_id) = def_id
+            && self.tcx.def_kind(def_id) == hir::def::DefKind::Fn
+            && self.tcx.is_intrinsic(def_id)
+            && self.tcx.item_name(def_id) == sym::const_eval_select
+        {
+            let fn_sig = self.resolve_vars_if_possible(fn_sig);
+            for idx in 0..=1 {
+                let arg_ty = fn_sig.inputs()[idx + 1];
+                let span = arg_exprs.get(idx + 1).map_or(call_expr.span, |arg| arg.span);
+                // Check that second and third argument of `const_eval_select` must be `FnDef`, and additionally that
+                // the second argument must be `const fn`. The first argument must be a tuple, but this is already expressed
+                // in the function signature (`F: FnOnce<ARG>`), so I did not bother to add another check here.
+                //
+                // This check is here because there is currently no way to express a trait bound for `FnDef` types only.
+                if let ty::FnDef(def_id, _args) = *arg_ty.kind() {
+                    let fn_once_def_id =
+                        self.tcx.require_lang_item(hir::LangItem::FnOnce, Some(span));
+                    let fn_once_output_def_id =
+                        self.tcx.require_lang_item(hir::LangItem::FnOnceOutput, Some(span));
+                    if self.tcx.generics_of(fn_once_def_id).host_effect_index.is_none() {
+                        if idx == 0 && !self.tcx.is_const_fn_raw(def_id) {
+                            self.dcx().emit_err(errors::ConstSelectMustBeConst { span });
+                        }
+                    } else {
+                        let const_param: ty::GenericArg<'tcx> =
+                            ([self.tcx.consts.false_, self.tcx.consts.true_])[idx].into();
+                        self.register_predicate(traits::Obligation::new(
+                            self.tcx,
+                            self.misc(span),
+                            self.param_env,
+                            ty::TraitRef::new(
+                                self.tcx,
+                                fn_once_def_id,
+                                [arg_ty.into(), fn_sig.inputs()[0].into(), const_param],
+                            ),
+                        ));
+
+                        self.register_predicate(traits::Obligation::new(
+                            self.tcx,
+                            self.misc(span),
+                            self.param_env,
+                            ty::ProjectionPredicate {
+                                projection_ty: ty::AliasTy::new(
+                                    self.tcx,
+                                    fn_once_output_def_id,
+                                    [arg_ty.into(), fn_sig.inputs()[0].into(), const_param],
+                                ),
+                                term: fn_sig.output().into(),
+                            },
+                        ));
+
+                        self.select_obligations_where_possible(|_| {});
+                    }
+                } else {
+                    self.dcx().emit_err(errors::ConstSelectMustBeFn { span, ty: arg_ty });
+                }
             }
         }
 
@@ -596,7 +655,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let callee_ty = self.resolve_vars_if_possible(callee_ty);
-        let mut err = self.tcx.sess.create_err(errors::InvalidCallee {
+        let mut err = self.dcx().create_err(errors::InvalidCallee {
             span: callee_expr.span,
             ty: match &unit_variant {
                 Some((_, kind, path)) => format!("{kind} `{path}`"),
@@ -625,12 +684,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
 
+        if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = callee_expr.kind
+            && let Res::Local(_) = path.res
+            && let [segment] = &path.segments[..]
+        {
+            for id in self.tcx.hir().items() {
+                if let Some(node) = self.tcx.hir().get_if_local(id.owner_id.into())
+                    && let hir::Node::Item(item) = node
+                    && let hir::ItemKind::Fn(..) = item.kind
+                    && item.ident.name == segment.ident.name
+                {
+                    err.span_label(
+                        self.tcx.def_span(id.owner_id),
+                        "this function of the same name is available here, but it's shadowed by \
+                         the local binding",
+                    );
+                }
+            }
+        }
+
         let mut inner_callee_path = None;
         let def = match callee_expr.kind {
             hir::ExprKind::Path(ref qpath) => {
                 self.typeck_results.borrow().qpath_res(qpath, callee_expr.hir_id)
             }
-            hir::ExprKind::Call(ref inner_callee, _) => {
+            hir::ExprKind::Call(inner_callee, _) => {
                 if let hir::ExprKind::Path(ref inner_qpath) = inner_callee.kind {
                     inner_callee_path = Some(inner_qpath);
                     self.typeck_results.borrow().qpath_res(inner_qpath, inner_callee.hir_id)
@@ -751,7 +829,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     #[tracing::instrument(level = "debug", skip(self, span))]
     pub(super) fn enforce_context_effects(
         &self,
-        call_expr_hir: HirId,
         span: Span,
         callee_did: DefId,
         callee_args: GenericArgsRef<'tcx>,
@@ -762,38 +839,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let generics = tcx.generics_of(callee_did);
         let Some(host_effect_index) = generics.host_effect_index else { return };
 
-        // if the callee does have the param, we need to equate the param to some const
-        // value no matter whether the effects feature is enabled in the local crate,
-        // because inference will fail if we don't.
-        let mut host_always_on =
-            !tcx.features().effects || tcx.sess.opts.unstable_opts.unleash_the_miri_inside_of_you;
-
-        // Compute the constness required by the context.
-        let context = tcx.hir().enclosing_body_owner(call_expr_hir);
-        let const_context = tcx.hir().body_const_context(context);
-
-        let kind = tcx.def_kind(context.to_def_id());
-        debug_assert_ne!(kind, DefKind::ConstParam);
-
-        if tcx.has_attr(context.to_def_id(), sym::rustc_do_not_const_check) {
-            trace!("do not const check this context");
-            host_always_on = true;
-        }
-
-        let effect = match const_context {
-            _ if host_always_on => tcx.consts.true_,
-            Some(hir::ConstContext::Static(_) | hir::ConstContext::Const { .. }) => {
-                tcx.consts.false_
-            }
-            Some(hir::ConstContext::ConstFn) => {
-                let host_idx = tcx
-                    .generics_of(context)
-                    .host_effect_index
-                    .expect("ConstContext::Maybe must have host effect param");
-                ty::GenericArgs::identity_for_item(tcx, context).const_at(host_idx)
-            }
-            None => tcx.consts.true_,
-        };
+        let effect = tcx.expected_host_effect_param_for_body(self.body_id);
 
         trace!(?effect, ?generics, ?callee_args);
 
@@ -826,7 +872,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             expected,
         );
 
-        self.write_method_call(call_expr.hir_id, method_callee);
+        self.write_method_call_and_enforce_effects(call_expr.hir_id, call_expr.span, method_callee);
         output_type
     }
 }
@@ -876,12 +922,16 @@ impl<'a, 'tcx> DeferredCallResolution<'tcx> {
                 adjustments.extend(autoref);
                 fcx.apply_adjustments(self.callee_expr, adjustments);
 
-                fcx.write_method_call(self.call_expr.hir_id, method_callee);
+                fcx.write_method_call_and_enforce_effects(
+                    self.call_expr.hir_id,
+                    self.call_expr.span,
+                    method_callee,
+                );
             }
             None => {
                 // This can happen if `#![no_core]` is used and the `fn/fn_mut/fn_once`
                 // lang items are not defined (issue #86238).
-                fcx.inh.tcx.sess.emit_err(errors::MissingFnLangItems { span: self.call_expr.span });
+                fcx.dcx().emit_err(errors::MissingFnLangItems { span: self.call_expr.span });
             }
         }
     }

@@ -1,4 +1,3 @@
-// skip-filecheck
 // unit-test: ConstProp
 // compile-flags: -O
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
@@ -9,6 +8,11 @@
 
 // EMIT_MIR boxes.main.ConstProp.diff
 fn main() {
+    // CHECK-LABEL: fn main(
+    // CHECK: debug x => [[x:_.*]];
+    // CHECK: (*{{_.*}}) = const 42_i32;
+    // CHECK: [[tmp:_.*]] = (*{{_.*}});
+    // CHECK: [[x]] = Add(move [[tmp]], const 0_i32);
     let x = *(#[rustc_box]
     Box::new(42))
         + 0;

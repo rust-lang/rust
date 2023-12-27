@@ -1,10 +1,11 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::get_parent_expr;
 use clippy_utils::ty::implements_trait;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
+use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_span::{sym, Span};
 
 use super::UNNECESSARY_FALLIBLE_CONVERSIONS;
@@ -42,6 +43,7 @@ fn check<'tcx>(
         // (else there would be conflicting impls, even with #![feature(spec)]), so we don't even need to check
         // what `<T as TryFrom<U>>::Error` is: it's always `Infallible`
         && implements_trait(cx, self_ty, from_into_trait, &[other_ty])
+        && let Some(other_ty) = other_ty.as_type()
     {
         let parent_unwrap_call = get_parent_expr(cx, expr).and_then(|parent| {
             if let ExprKind::MethodCall(path, .., span) = parent.kind
@@ -52,8 +54,7 @@ fn check<'tcx>(
                 None
             }
         });
-
-        let (sugg, span, applicability) = match kind {
+        let (source_ty, target_ty, sugg, span, applicability) = match kind {
             FunctionKind::TryIntoMethod if let Some(unwrap_span) = parent_unwrap_call => {
                 // Extend the span to include the unwrap/expect call:
                 // `foo.try_into().expect("..")`
@@ -63,24 +64,41 @@ fn check<'tcx>(
                 // so that can be machine-applicable
 
                 (
+                    self_ty,
+                    other_ty,
                     "into()",
                     primary_span.with_hi(unwrap_span.hi()),
                     Applicability::MachineApplicable,
                 )
             },
-            FunctionKind::TryFromFunction => ("From::from", primary_span, Applicability::Unspecified),
-            FunctionKind::TryIntoFunction => ("Into::into", primary_span, Applicability::Unspecified),
-            FunctionKind::TryIntoMethod => ("into", primary_span, Applicability::Unspecified),
+            FunctionKind::TryFromFunction => (
+                other_ty,
+                self_ty,
+                "From::from",
+                primary_span,
+                Applicability::Unspecified,
+            ),
+            FunctionKind::TryIntoFunction => (
+                self_ty,
+                other_ty,
+                "Into::into",
+                primary_span,
+                Applicability::Unspecified,
+            ),
+            FunctionKind::TryIntoMethod => (self_ty, other_ty, "into", primary_span, Applicability::Unspecified),
         };
 
-        span_lint_and_sugg(
+        span_lint_and_then(
             cx,
             UNNECESSARY_FALLIBLE_CONVERSIONS,
             span,
             "use of a fallible conversion when an infallible one could be used",
-            "use",
-            sugg.into(),
-            applicability,
+            |diag| {
+                with_forced_trimmed_paths!({
+                    diag.note(format!("converting `{source_ty}` to `{target_ty}` cannot fail"));
+                });
+                diag.span_suggestion(span, "use", sugg, applicability);
+            },
         );
     }
 }

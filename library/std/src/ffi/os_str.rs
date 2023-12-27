@@ -6,9 +6,10 @@ use crate::cmp;
 use crate::collections::TryReserveError;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
-use crate::ops;
+use crate::ops::{self, Range};
 use crate::rc::Rc;
-use crate::str::FromStr;
+use crate::slice;
+use crate::str::{from_utf8 as str_from_utf8, FromStr};
 use crate::sync::Arc;
 
 use crate::sys::os_str::{Buf, Slice};
@@ -961,6 +962,83 @@ impl OsStr {
     #[stable(feature = "os_str_bytes", since = "1.74.0")]
     pub fn as_encoded_bytes(&self) -> &[u8] {
         self.inner.as_encoded_bytes()
+    }
+
+    /// Takes a substring based on a range that corresponds to the return value of
+    /// [`OsStr::as_encoded_bytes`].
+    ///
+    /// The range's start and end must lie on valid `OsStr` boundaries.
+    /// A valid `OsStr` boundary is one of:
+    /// - The start of the string
+    /// - The end of the string
+    /// - Immediately before a valid non-empty UTF-8 substring
+    /// - Immediately after a valid non-empty UTF-8 substring
+    ///
+    /// # Panics
+    ///
+    /// Panics if `range` does not lie on valid `OsStr` boundaries or if it
+    /// exceeds the end of the string.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(os_str_slice)]
+    ///
+    /// use std::ffi::OsStr;
+    ///
+    /// let os_str = OsStr::new("foo=bar");
+    /// let bytes = os_str.as_encoded_bytes();
+    /// if let Some(index) = bytes.iter().position(|b| *b == b'=') {
+    ///     let key = os_str.slice_encoded_bytes(..index);
+    ///     let value = os_str.slice_encoded_bytes(index + 1..);
+    ///     assert_eq!(key, "foo");
+    ///     assert_eq!(value, "bar");
+    /// }
+    /// ```
+    #[unstable(feature = "os_str_slice", issue = "118485")]
+    pub fn slice_encoded_bytes<R: ops::RangeBounds<usize>>(&self, range: R) -> &Self {
+        #[track_caller]
+        fn check_valid_boundary(bytes: &[u8], index: usize) {
+            if index == 0 || index == bytes.len() {
+                return;
+            }
+
+            // Fast path
+            if bytes[index - 1].is_ascii() || bytes[index].is_ascii() {
+                return;
+            }
+
+            let (before, after) = bytes.split_at(index);
+
+            // UTF-8 takes at most 4 bytes per codepoint, so we don't
+            // need to check more than that.
+            let after = after.get(..4).unwrap_or(after);
+            match str_from_utf8(after) {
+                Ok(_) => return,
+                Err(err) if err.valid_up_to() != 0 => return,
+                Err(_) => (),
+            }
+
+            for len in 2..=4.min(index) {
+                let before = &before[index - len..];
+                if str_from_utf8(before).is_ok() {
+                    return;
+                }
+            }
+
+            panic!("byte index {index} is not an OsStr boundary");
+        }
+
+        let encoded_bytes = self.as_encoded_bytes();
+        let Range { start, end } = slice::range(range, ..encoded_bytes.len());
+        check_valid_boundary(encoded_bytes, start);
+        check_valid_boundary(encoded_bytes, end);
+
+        // SAFETY: `slice::range` ensures that `start` and `end` are valid
+        let slice = unsafe { encoded_bytes.get_unchecked(start..end) };
+
+        // SAFETY: `slice` comes from `self` and we validated the boundaries
+        unsafe { Self::from_encoded_bytes_unchecked(slice) }
     }
 
     /// Converts this string to its ASCII lower case equivalent in-place.

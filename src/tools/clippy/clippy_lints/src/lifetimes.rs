@@ -18,10 +18,10 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::map::Map;
 use rustc_middle::hir::nested_filter as middle_nested_filter;
 use rustc_middle::lint::in_external_macro;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::Span;
 use rustc_span::symbol::{kw, Ident, Symbol};
+use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -195,7 +195,7 @@ fn check_fn_inner<'tcx>(
             .iter()
             // In principle, the result of the call to `Node::ident` could be `unwrap`ped, as `DefId` should refer to a
             // `Node::GenericParam`.
-            .filter_map(|&def_id| cx.tcx.hir().get_by_def_id(def_id).ident())
+            .filter_map(|&def_id| cx.tcx.hir_node_by_def_id(def_id).ident())
             .map(|ident| ident.to_string())
             .collect::<Vec<_>>()
             .join(", ");
@@ -310,20 +310,17 @@ fn elision_suggestions(
 
 // elision doesn't work for explicit self types, see rust-lang/rust#69064
 fn explicit_self_type<'tcx>(cx: &LateContext<'tcx>, func: &FnDecl<'tcx>, ident: Option<Ident>) -> bool {
-    if_chain! {
-        if let Some(ident) = ident;
-        if ident.name == kw::SelfLower;
-        if !func.implicit_self.has_implicit_self();
+    if let Some(ident) = ident
+        && ident.name == kw::SelfLower
+        && !func.implicit_self.has_implicit_self()
+        && let Some(self_ty) = func.inputs.first()
+    {
+        let mut visitor = RefVisitor::new(cx);
+        visitor.visit_ty(self_ty);
 
-        if let Some(self_ty) = func.inputs.first();
-        then {
-            let mut visitor = RefVisitor::new(cx);
-            visitor.visit_ty(self_ty);
-
-            !visitor.all_lts().is_empty()
-        } else {
-            false
-        }
+        !visitor.all_lts().is_empty()
+    } else {
+        false
     }
 }
 

@@ -4,7 +4,7 @@ use rustc_ast::{self as ast, AttrVec, BlockCheckMode, Expr, LocalKind, PatKind, 
 use rustc_ast::{attr, token, util::literal};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use thin_vec::{thin_vec, ThinVec};
 
 impl<'a> ExtCtxt<'a> {
@@ -134,10 +134,13 @@ impl<'a> ExtCtxt<'a> {
     pub fn trait_bound(&self, path: ast::Path, is_const: bool) -> ast::GenericBound {
         ast::GenericBound::Trait(
             self.poly_trait_ref(path.span, path),
-            if is_const {
-                ast::TraitBoundModifier::MaybeConst
-            } else {
-                ast::TraitBoundModifier::None
+            ast::TraitBoundModifiers {
+                polarity: ast::BoundPolarity::Positive,
+                constness: if is_const {
+                    ast::BoundConstness::Maybe(DUMMY_SP)
+                } else {
+                    ast::BoundConstness::Never
+                },
             },
         )
     }
@@ -488,7 +491,7 @@ impl<'a> ExtCtxt<'a> {
         path: ast::Path,
         field_pats: ThinVec<ast::PatField>,
     ) -> P<ast::Pat> {
-        self.pat(span, PatKind::Struct(None, path, field_pats, false))
+        self.pat(span, PatKind::Struct(None, path, field_pats, ast::PatFieldsRest::None))
     }
     pub fn pat_tuple(&self, span: Span, pats: ThinVec<P<ast::Pat>>) -> P<ast::Pat> {
         self.pat(span, PatKind::Tuple(pats))
@@ -505,7 +508,7 @@ impl<'a> ExtCtxt<'a> {
             attrs: AttrVec::new(),
             pat,
             guard: None,
-            body: expr,
+            body: Some(expr),
             span,
             id: ast::DUMMY_NODE_ID,
             is_placeholder: false,
@@ -547,7 +550,7 @@ impl<'a> ExtCtxt<'a> {
                 binder: ast::ClosureBinder::NotPresent,
                 capture_clause: ast::CaptureBy::Ref,
                 constness: ast::Const::No,
-                asyncness: ast::Async::No,
+                coroutine_kind: None,
                 movability: ast::Movability::Movable,
                 fn_decl,
                 body,

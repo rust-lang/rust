@@ -270,7 +270,7 @@ fn encode_region<'tcx>(
     // u6region[I[<region-disambiguator>][<region-index>]E] as vendor extended type
     let mut s = String::new();
     match region.kind() {
-        RegionKind::ReLateBound(debruijn, r) => {
+        RegionKind::ReBound(debruijn, r) => {
             s.push_str("u6regionI");
             // Debruijn index, which identifies the binder, as region disambiguator
             let num = debruijn.index() as u64;
@@ -282,11 +282,12 @@ fn encode_region<'tcx>(
             s.push('E');
             compress(dict, DictKey::Region(region), &mut s);
         }
-        RegionKind::ReEarlyBound(..) | RegionKind::ReErased => {
+        // FIXME(@lcnr): Why is `ReEarlyParam` reachable here.
+        RegionKind::ReEarlyParam(..) | RegionKind::ReErased => {
             s.push_str("u6region");
             compress(dict, DictKey::Region(region), &mut s);
         }
-        RegionKind::ReFree(..)
+        RegionKind::ReLateParam(..)
         | RegionKind::ReStatic
         | RegionKind::ReError(_)
         | RegionKind::ReVar(..)
@@ -363,7 +364,7 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
     //     _ZTSFvu27NvNtC1234_5crate6Trait13fooIu22NtC1234_5crate7Struct1Iu3i32ES_EE
     //
     // The reason for not using v0's extended form of paths is to use a consistent and simpler
-    // encoding, as the reasoning for using it isn't relevand for type metadata identifiers (i.e.,
+    // encoding, as the reasoning for using it isn't relevant for type metadata identifiers (i.e.,
     // keep symbol names close to how methods are represented in error messages). See
     // https://rust-lang.github.io/rfcs/2603-rust-symbol-name-mangling-v0.html#methods.
     let mut s = String::new();
@@ -378,14 +379,13 @@ fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
             hir::definitions::DefPathData::ForeignMod => "F", // Not specified in v0's <namespace>
             hir::definitions::DefPathData::TypeNs(..) => "t",
             hir::definitions::DefPathData::ValueNs(..) => "v",
-            hir::definitions::DefPathData::ClosureExpr => "C",
+            hir::definitions::DefPathData::Closure => "C",
             hir::definitions::DefPathData::Ctor => "c",
             hir::definitions::DefPathData::AnonConst => "k",
-            hir::definitions::DefPathData::ImplTrait => "i",
+            hir::definitions::DefPathData::OpaqueTy => "i",
             hir::definitions::DefPathData::CrateRoot
             | hir::definitions::DefPathData::Use
             | hir::definitions::DefPathData::GlobalAsm
-            | hir::definitions::DefPathData::ImplTraitAssocTy
             | hir::definitions::DefPathData::MacroNs(..)
             | hir::definitions::DefPathData::LifetimeNs(..) => {
                 bug!("encode_ty_name: unexpected `{:?}`", disambiguated_data.data);
@@ -551,13 +551,13 @@ fn encode_ty<'tcx>(
                 // Use user-defined CFI encoding for type
                 if let Some(value_str) = cfi_encoding.value_str() {
                     if !value_str.to_string().trim().is_empty() {
-                        s.push_str(&value_str.to_string().trim());
+                        s.push_str(value_str.to_string().trim());
                     } else {
                         #[allow(
                             rustc::diagnostic_outside_of_impl,
                             rustc::untranslatable_diagnostic
                         )]
-                        tcx.sess
+                        tcx.dcx()
                             .struct_span_err(
                                 cfi_encoding.span,
                                 format!("invalid `cfi_encoding` for `{:?}`", ty.kind()),
@@ -603,13 +603,13 @@ fn encode_ty<'tcx>(
                 // Use user-defined CFI encoding for type
                 if let Some(value_str) = cfi_encoding.value_str() {
                     if !value_str.to_string().trim().is_empty() {
-                        s.push_str(&value_str.to_string().trim());
+                        s.push_str(value_str.to_string().trim());
                     } else {
                         #[allow(
                             rustc::diagnostic_outside_of_impl,
                             rustc::untranslatable_diagnostic
                         )]
-                        tcx.sess
+                        tcx.dcx()
                             .struct_span_err(
                                 cfi_encoding.span,
                                 format!("invalid `cfi_encoding` for `{:?}`", ty.kind()),
@@ -773,12 +773,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
     let mut ty = ty;
 
     match ty.kind() {
-        ty::Float(..)
-        | ty::Char
-        | ty::Str
-        | ty::Never
-        | ty::Foreign(..)
-        | ty::CoroutineWitness(..) => {}
+        ty::Float(..) | ty::Str | ty::Never | ty::Foreign(..) | ty::CoroutineWitness(..) => {}
 
         ty::Bool => {
             if options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {
@@ -789,6 +784,14 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                 //
                 // Clang represents bool as an 8-bit unsigned integer.
                 ty = tcx.types.u8;
+            }
+        }
+
+        ty::Char => {
+            if options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {
+                // Since #118032, char is guaranteed to have the same size, alignment, and function
+                // call ABI as u32 on all platforms.
+                ty = tcx.types.u32;
             }
         }
 
@@ -1144,5 +1147,5 @@ pub fn typeid_for_instance<'tcx>(
         }
     }
 
-    typeid_for_fnabi(tcx, &fn_abi, options)
+    typeid_for_fnabi(tcx, fn_abi, options)
 }

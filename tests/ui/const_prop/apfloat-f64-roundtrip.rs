@@ -1,6 +1,5 @@
 // run-pass
 // compile-flags: -O -Zmir-opt-level=3 -Cno-prepopulate-passes
-// min-llvm-version: 16.0 (requires APFloat fixes in LLVM)
 
 // Regression test for a broken MIR optimization (issue #113407).
 pub fn main() {

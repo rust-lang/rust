@@ -6,6 +6,6 @@ LL |     let pointer = 1u32 as *const _;
    |
    = note: the type information given here is insufficient to check whether the pointer cast is valid
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0641`.

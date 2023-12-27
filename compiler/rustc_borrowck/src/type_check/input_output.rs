@@ -7,7 +7,7 @@
 //! `RETURN_PLACE` the MIR arguments) are always fully normalized (and
 //! contain revealed `impl Trait` values).
 
-use rustc_infer::infer::LateBoundRegionConversionTime;
+use rustc_infer::infer::BoundRegionConversionTime;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
@@ -35,7 +35,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             .instantiate_canonical_with_fresh_inference_vars(body.span, &user_provided_poly_sig);
         let user_provided_sig = self.infcx.instantiate_binder_with_fresh_vars(
             body.span,
-            LateBoundRegionConversionTime::FnCall,
+            BoundRegionConversionTime::FnCall,
             user_provided_sig,
         );
 
@@ -76,8 +76,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         for (argument_index, &normalized_input_ty) in normalized_input_tys.iter().enumerate() {
             if argument_index + 1 >= body.local_decls.len() {
                 self.tcx()
-                    .sess
-                    .delay_span_bug(body.span, "found more normalized_input_ty than local_decls");
+                    .dcx()
+                    .span_delayed_bug(body.span, "found more normalized_input_ty than local_decls");
                 break;
             }
 
@@ -101,10 +101,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         );
 
         // We will not have a universal_regions.yield_ty if we yield (by accident)
-        // outside of a coroutine and return an `impl Trait`, so emit a delay_span_bug
+        // outside of a coroutine and return an `impl Trait`, so emit a span_delayed_bug
         // because we don't want to panic in an assert here if we've already got errors.
         if body.yield_ty().is_some() != universal_regions.yield_ty.is_some() {
-            self.tcx().sess.delay_span_bug(
+            self.tcx().dcx().span_delayed_bug(
                 body.span,
                 format!(
                     "Expected body to have yield_ty ({:?}) iff we have a UR yield_ty ({:?})",

@@ -26,7 +26,7 @@ fn multiple_edges(t: bool) -> u8 {
             match t { true => bbt, _ => ret }
         }
         bbt = {
-            Call(x = dummy(13), ret)
+            Call(x = dummy(13), ret, UnwindContinue())
         }
         ret = {
             // `x` is not assigned on the `bb0 -> ret` edge,

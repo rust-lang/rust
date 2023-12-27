@@ -227,7 +227,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                         // Sometimes the index is beyond the number of upvars (seen
                         // for a coroutine).
                         let var_hir_id = captured_place.get_root_variable();
-                        let node = self.ecx.tcx.hir().get(var_hir_id);
+                        let node = self.ecx.tcx.hir_node(var_hir_id);
                         if let hir::Node::Pat(pat) = node {
                             if let hir::PatKind::Binding(_, _, ident, _) = pat.kind {
                                 name = Some(ident.name);
@@ -896,7 +896,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let mut visitor = ValidityVisitor { path, ref_tracking, ctfe_mode, ecx: self };
 
         // Run it.
-        match visitor.visit_value(&op) {
+        match visitor.visit_value(op) {
             Ok(()) => Ok(()),
             // Pass through validation failures and "invalid program" issues.
             Err(err)

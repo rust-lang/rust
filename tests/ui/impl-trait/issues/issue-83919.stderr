@@ -7,6 +7,6 @@ LL |     fn get_fut(&self) -> Self::Fut {
    = help: the trait `Future` is not implemented for `{integer}`
    = note: {integer} must be a future or must implement `IntoFuture` to be awaited
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

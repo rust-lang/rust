@@ -49,6 +49,7 @@ mod iter_skip_next;
 mod iter_skip_zero;
 mod iter_with_drain;
 mod iterator_step_by_zero;
+mod join_absolute_paths;
 mod manual_next_back;
 mod manual_ok_or;
 mod manual_saturating_arithmetic;
@@ -69,6 +70,7 @@ mod obfuscated_if_else;
 mod ok_expect;
 mod open_options;
 mod option_as_ref_deref;
+mod option_map_or_err_ok;
 mod option_map_or_none;
 mod option_map_unwrap_or;
 mod or_fun_call;
@@ -80,6 +82,7 @@ mod read_line_without_trim;
 mod readonly_write_lock;
 mod redundant_as_str;
 mod repeat_once;
+mod result_map_or_else_none;
 mod search_is_some;
 mod seek_from_current;
 mod seek_to_start_instead_of_rewind;
@@ -123,7 +126,6 @@ use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help};
 use clippy_utils::ty::{contains_ty_adt_constructor_opaque, implements_trait, is_copy, is_type_diagnostic_item};
 use clippy_utils::{contains_return, is_bool, is_trait_method, iter_input_pats, peel_blocks, return_ty};
-use if_chain::if_chain;
 pub use path_ends_with_ext::DEFAULT_ALLOWED_DOTFILES;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
@@ -131,7 +133,7 @@ use rustc_hir::{Expr, ExprKind, Node, Stmt, StmtKind, TraitItem, TraitItemKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, TraitRef, Ty};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::{sym, Span};
 
 declare_clippy_lint! {
@@ -3610,7 +3612,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `as_str()` on a `String`` chained with a method available on the `String` itself.
+    /// Checks for usage of `as_str()` on a `String` chained with a method available on the `String` itself.
     ///
     /// ### Why is this bad?
     /// The `as_str()` conversion is pointless and can be removed for simplicity and cleanliness.
@@ -3619,14 +3621,16 @@ declare_clippy_lint! {
     /// ```no_run
     /// # #![allow(unused)]
     /// let owned_string = "This is a string".to_owned();
-    /// owned_string.as_str().as_bytes();
+    /// owned_string.as_str().as_bytes()
+    /// # ;
     /// ```
     ///
     /// Use instead:
     /// ```no_run
     /// # #![allow(unused)]
     /// let owned_string = "This is a string".to_owned();
-    /// owned_string.as_bytes();
+    /// owned_string.as_bytes()
+    /// # ;
     /// ```
     #[clippy::version = "1.74.0"]
     pub REDUNDANT_AS_STR,
@@ -3683,6 +3687,71 @@ declare_clippy_lint! {
     "calling the `try_from` and `try_into` trait methods when `From`/`Into` is implemented"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for calls to `Path::join` that start with a path separator (`\\` or `/`).
+    ///
+    /// ### Why is this bad?
+    /// If the argument to `Path::join` starts with a separator, it will overwrite
+    /// the original path. If this is intentional, prefer using `Path::new` instead.
+    ///
+    /// Note the behavior is platform dependent. A leading `\\` will be accepted
+    /// on unix systems as part of the file name
+    ///
+    /// See [`Path::join`](https://doc.rust-lang.org/std/path/struct.Path.html#method.join)
+    ///
+    /// ### Example
+    /// ```rust
+    /// # use std::path::{Path, PathBuf};
+    /// let path = Path::new("/bin");
+    /// let joined_path = path.join("/sh");
+    /// assert_eq!(joined_path, PathBuf::from("/sh"));
+    /// ```
+    ///
+    /// Use instead;
+    /// ```rust
+    /// # use std::path::{Path, PathBuf};
+    /// let path = Path::new("/bin");
+    ///
+    /// // If this was unintentional, remove the leading separator
+    /// let joined_path = path.join("sh");
+    /// assert_eq!(joined_path, PathBuf::from("/bin/sh"));
+    ///
+    /// // If this was intentional, create a new path instead
+    /// let new = Path::new("/sh");
+    /// assert_eq!(new, PathBuf::from("/sh"));
+    /// ```
+    #[clippy::version = "1.76.0"]
+    pub JOIN_ABSOLUTE_PATHS,
+    suspicious,
+    "calls to `Path::join` which will overwrite the original path"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `_.map_or(Err(_), Ok)`.
+    ///
+    /// ### Why is this bad?
+    /// Readability, this can be written more concisely as
+    /// `_.ok_or(_)`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let opt = Some(1);
+    /// opt.map_or(Err("error"), Ok);
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// # let opt = Some(1);
+    /// opt.ok_or("error");
+    /// ```
+    #[clippy::version = "1.76.0"]
+    pub OPTION_MAP_OR_ERR_OK,
+    style,
+    "using `Option.map_or(Err(_), Ok)`, which is more succinctly expressed as `Option.ok_or(_)`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -3698,8 +3767,10 @@ impl Methods {
         msrv: Msrv,
         allow_expect_in_tests: bool,
         allow_unwrap_in_tests: bool,
-        allowed_dotfiles: FxHashSet<String>,
+        mut allowed_dotfiles: FxHashSet<String>,
     ) -> Self {
+        allowed_dotfiles.extend(DEFAULT_ALLOWED_DOTFILES.iter().map(ToString::to_string));
+
         Self {
             avoid_breaking_exported_api,
             msrv,
@@ -3830,10 +3901,12 @@ impl_lint_pass!(Methods => [
     REDUNDANT_AS_STR,
     WAKER_CLONE_WAKE,
     UNNECESSARY_FALLIBLE_CONVERSIONS,
+    JOIN_ABSOLUTE_PATHS,
+    OPTION_MAP_OR_ERR_OK,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
-fn method_call<'tcx>(
+pub fn method_call<'tcx>(
     recv: &'tcx hir::Expr<'tcx>,
 ) -> Option<(&'tcx str, &'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>], Span, Span)> {
     if let ExprKind::MethodCall(path, receiver, args, call_span) = recv.kind {
@@ -3896,7 +3969,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
         let implements_trait = matches!(item.kind, hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }));
         if let hir::ImplItemKind::Fn(ref sig, id) = impl_item.kind {
             let method_sig = cx.tcx.fn_sig(impl_item.owner_id).instantiate_identity();
-            let method_sig = cx.tcx.erase_late_bound_regions(method_sig);
+            let method_sig = cx.tcx.instantiate_bound_regions_with_erased(method_sig);
             let first_arg_ty_opt = method_sig.inputs().iter().next().copied();
             // if this impl block implements a trait, lint in trait definition instead
             if !implements_trait && cx.effective_visibilities.is_exported(impl_item.owner_id.def_id) {
@@ -3977,44 +4050,41 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
             return;
         }
 
-        if_chain! {
-            if let TraitItemKind::Fn(ref sig, _) = item.kind;
-            if sig.decl.implicit_self.has_implicit_self();
-            if let Some(first_arg_hir_ty) = sig.decl.inputs.first();
-            if let Some(&first_arg_ty) = cx.tcx.fn_sig(item.owner_id)
+        if let TraitItemKind::Fn(ref sig, _) = item.kind
+            && sig.decl.implicit_self.has_implicit_self()
+            && let Some(first_arg_hir_ty) = sig.decl.inputs.first()
+            && let Some(&first_arg_ty) = cx
+                .tcx
+                .fn_sig(item.owner_id)
                 .instantiate_identity()
                 .inputs()
                 .skip_binder()
-                .first();
-            then {
-                let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty();
-                wrong_self_convention::check(
-                    cx,
-                    item.ident.name.as_str(),
-                    self_ty,
-                    first_arg_ty,
-                    first_arg_hir_ty.span,
-                    false,
-                    true,
-                );
-            }
+                .first()
+        {
+            let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty();
+            wrong_self_convention::check(
+                cx,
+                item.ident.name.as_str(),
+                self_ty,
+                first_arg_ty,
+                first_arg_hir_ty.span,
+                false,
+                true,
+            );
         }
 
-        if_chain! {
-            if item.ident.name == sym::new;
-            if let TraitItemKind::Fn(_, _) = item.kind;
-            let ret_ty = return_ty(cx, item.owner_id);
-            let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty();
-            if !ret_ty.contains(self_ty);
-
-            then {
-                span_lint(
-                    cx,
-                    NEW_RET_NO_SELF,
-                    item.span,
-                    "methods called `new` usually return `Self`",
-                );
-            }
+        if item.ident.name == sym::new
+            && let TraitItemKind::Fn(_, _) = item.kind
+            && let ret_ty = return_ty(cx, item.owner_id)
+            && let self_ty = TraitRef::identity(cx.tcx, item.owner_id.to_def_id()).self_ty()
+            && !ret_ty.contains(self_ty)
+        {
+            span_lint(
+                cx,
+                NEW_RET_NO_SELF,
+                item.span,
+                "methods called `new` usually return `Self`",
+            );
         }
     }
 
@@ -4235,6 +4305,8 @@ impl Methods {
                 ("join", [join_arg]) => {
                     if let Some(("collect", _, _, span, _)) = method_call(recv) {
                         unnecessary_join::check(cx, expr, recv, join_arg, span);
+                    } else {
+                        join_absolute_paths::check(cx, recv, join_arg, expr.span);
                     }
                 },
                 ("last", []) => {
@@ -4257,7 +4329,7 @@ impl Methods {
                         map_clone::check(cx, expr, recv, m_arg, &self.msrv);
                         match method_call(recv) {
                             Some((map_name @ ("iter" | "into_iter"), recv2, _, _, _)) => {
-                                iter_kv_map::check(cx, map_name, expr, recv2, m_arg);
+                                iter_kv_map::check(cx, map_name, expr, recv2, m_arg, &self.msrv);
                             },
                             Some(("cloned", recv2, [], _, _)) => iter_overeager_cloned::check(
                                 cx,
@@ -4290,6 +4362,10 @@ impl Methods {
                 ("map_or", [def, map]) => {
                     option_map_or_none::check(cx, expr, recv, def, map);
                     manual_ok_or::check(cx, expr, recv, def, map);
+                    option_map_or_err_ok::check(cx, expr, recv, def, map);
+                },
+                ("map_or_else", [def, map]) => {
+                    result_map_or_else_none::check(cx, expr, recv, def, map);
                 },
                 ("next", []) => {
                     if let Some((name2, recv2, args2, _, _)) = method_call(recv) {

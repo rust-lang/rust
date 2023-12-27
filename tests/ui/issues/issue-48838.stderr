@@ -7,6 +7,6 @@ LL |     Square = |x| x,
    = note: expected type `isize`
            found closure `{closure@$DIR/issue-48838.rs:2:14: 2:17}`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

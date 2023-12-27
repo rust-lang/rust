@@ -34,20 +34,19 @@ pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm<'
                             }
                         }
                     }
-                    if_chain! {
-                        if matching_wild;
-                        if let Some(macro_call) = root_macro_call(peel_blocks_with_stmt(arm.body).span);
-                        if is_panic(cx, macro_call.def_id);
-                        then {
-                            // `Err(_)` or `Err(_e)` arm with `panic!` found
-                            span_lint_and_note(cx,
-                                MATCH_WILD_ERR_ARM,
-                                arm.pat.span,
-                                &format!("`Err({ident_bind_name})` matches all errors"),
-                                None,
-                                "match each error separately or use the error output, or use `.expect(msg)` if the error case is unreachable",
-                            );
-                        }
+                    if matching_wild
+                        && let Some(macro_call) = root_macro_call(peel_blocks_with_stmt(arm.body).span)
+                        && is_panic(cx, macro_call.def_id)
+                    {
+                        // `Err(_)` or `Err(_e)` arm with `panic!` found
+                        span_lint_and_note(
+                            cx,
+                            MATCH_WILD_ERR_ARM,
+                            arm.pat.span,
+                            &format!("`Err({ident_bind_name})` matches all errors"),
+                            None,
+                            "match each error separately or use the error output, or use `.expect(msg)` if the error case is unreachable",
+                        );
                     }
                 }
             }

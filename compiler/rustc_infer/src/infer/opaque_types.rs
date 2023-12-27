@@ -157,7 +157,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     if let Some(OpaqueTyOrigin::TyAlias { .. }) =
                         b_def_id.as_local().and_then(|b_def_id| self.opaque_type_origin(b_def_id))
                     {
-                        self.tcx.sess.emit_err(OpaqueHiddenTypeDiag {
+                        self.tcx.dcx().emit_err(OpaqueHiddenTypeDiag {
                             span: cause.span,
                             hidden_type: self.tcx.def_span(b_def_id),
                             opaque_type: self.tcx.def_span(def_id),
@@ -374,7 +374,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// in its defining scope.
     #[instrument(skip(self), level = "trace", ret)]
     pub fn opaque_type_origin(&self, def_id: LocalDefId) -> Option<OpaqueTyOrigin> {
-        let opaque_hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
+        let opaque_hir_id = self.tcx.local_def_id_to_hir_id(def_id);
         let parent_def_id = match self.defining_use_anchor {
             DefiningAnchor::Bubble | DefiningAnchor::Error => return None,
             DefiningAnchor::Bind(bind) => bind,
@@ -432,7 +432,7 @@ where
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         match *r {
             // ignore bound regions, keep visiting
-            ty::ReLateBound(_, _) => ControlFlow::Continue(()),
+            ty::ReBound(_, _) => ControlFlow::Continue(()),
             _ => {
                 (self.op)(r);
                 ControlFlow::Continue(())
@@ -447,7 +447,7 @@ where
         }
 
         match ty.kind() {
-            ty::Closure(_, ref args) => {
+            ty::Closure(_, args) => {
                 // Skip lifetime parameters of the enclosing item(s)
 
                 for upvar in args.as_closure().upvar_tys() {
@@ -456,7 +456,7 @@ where
                 args.as_closure().sig_as_fn_ptr_ty().visit_with(self);
             }
 
-            ty::Coroutine(_, ref args, _) => {
+            ty::Coroutine(_, args, _) => {
                 // Skip lifetime parameters of the enclosing item(s)
                 // Also skip the witness type, because that has no free regions.
 
@@ -468,7 +468,7 @@ where
                 args.as_coroutine().resume_ty().visit_with(self);
             }
 
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, ref args, .. }) => {
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
                 // Skip lifetime parameters that are not captures.
                 let variances = self.tcx.variances_of(*def_id);
 
@@ -575,7 +575,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 .register(opaque_type_key, OpaqueHiddenType { ty: hidden_ty, span });
             if let Some(prev) = prev {
                 obligations.extend(
-                    self.at(&cause, param_env)
+                    self.at(cause, param_env)
                         .eq_exp(DefineOpaqueTypes::Yes, a_is_expected, prev, hidden_ty)?
                         .obligations,
                 );
@@ -671,7 +671,7 @@ impl<'tcx> InferCtxt<'tcx> {
 /// and `opaque_hir_id` is the `HirId` of the definition of the opaque type `Baz`.
 /// For the above example, this function returns `true` for `f1` and `false` for `f2`.
 fn may_define_opaque_type(tcx: TyCtxt<'_>, def_id: LocalDefId, opaque_hir_id: hir::HirId) -> bool {
-    let mut hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let mut hir_id = tcx.local_def_id_to_hir_id(def_id);
 
     // Named opaque types can be defined by any siblings or children of siblings.
     let scope = tcx.hir().get_defining_scope(opaque_hir_id);
@@ -683,8 +683,8 @@ fn may_define_opaque_type(tcx: TyCtxt<'_>, def_id: LocalDefId, opaque_hir_id: hi
     let res = hir_id == scope;
     trace!(
         "may_define_opaque_type(def={:?}, opaque_node={:?}) = {}",
-        tcx.hir().find(hir_id),
-        tcx.hir().get(opaque_hir_id),
+        tcx.opt_hir_node(hir_id),
+        tcx.hir_node(opaque_hir_id),
         res
     );
     res

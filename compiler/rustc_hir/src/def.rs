@@ -1,9 +1,10 @@
+use crate::definitions::DefPathData;
 use crate::hir;
 
 use rustc_ast as ast;
 use rustc_ast::NodeId;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::ToStableHashKey;
+use rustc_data_structures::unord::UnordMap;
 use rustc_macros::HashStable_Generic;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::MacroKind;
@@ -13,8 +14,7 @@ use std::array::IntoIter;
 use std::fmt::Debug;
 
 /// Encodes if a `DefKind::Ctor` is the constructor of an enum variant or a struct.
-#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
-#[derive(HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, HashStable_Generic)]
 pub enum CtorOf {
     /// This `DefKind::Ctor` is a synthesized constructor of a tuple or unit struct.
     Struct,
@@ -23,8 +23,7 @@ pub enum CtorOf {
 }
 
 /// What kind of constructor something is.
-#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
-#[derive(HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, HashStable_Generic)]
 pub enum CtorKind {
     /// Constructor function automatically created by a tuple struct/variant.
     Fn,
@@ -33,8 +32,7 @@ pub enum CtorKind {
 }
 
 /// An attribute that is not a macro; e.g., `#[inline]` or `#[rustfmt::skip]`.
-#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
-#[derive(HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, HashStable_Generic)]
 pub enum NonMacroAttrKind {
     /// Single-segment attribute defined by the language (`#[inline]`)
     Builtin(Symbol),
@@ -48,8 +46,8 @@ pub enum NonMacroAttrKind {
 }
 
 /// What kind of definition something is; e.g., `mod` vs `struct`.
-#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
-#[derive(HashStable_Generic)]
+/// `enum DefPathData` may need to be updated if a new variant is added here.
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, HashStable_Generic)]
 pub enum DefKind {
     // Type namespace
     Mod,
@@ -118,7 +116,6 @@ pub enum DefKind {
         of_trait: bool,
     },
     Closure,
-    Coroutine,
 }
 
 impl DefKind {
@@ -161,7 +158,6 @@ impl DefKind {
             DefKind::Field => "field",
             DefKind::Impl { .. } => "implementation",
             DefKind::Closure => "closure",
-            DefKind::Coroutine => "coroutine",
             DefKind::ExternCrate => "extern crate",
             DefKind::GlobalAsm => "global assembly block",
         }
@@ -220,7 +216,6 @@ impl DefKind {
             | DefKind::LifetimeParam
             | DefKind::ExternCrate
             | DefKind::Closure
-            | DefKind::Coroutine
             | DefKind::Use
             | DefKind::ForeignMod
             | DefKind::GlobalAsm
@@ -228,9 +223,44 @@ impl DefKind {
         }
     }
 
+    pub fn def_path_data(self, name: Symbol) -> DefPathData {
+        match self {
+            DefKind::Mod
+            | DefKind::Struct
+            | DefKind::Union
+            | DefKind::Enum
+            | DefKind::Variant
+            | DefKind::Trait
+            | DefKind::TyAlias
+            | DefKind::ForeignTy
+            | DefKind::TraitAlias
+            | DefKind::AssocTy
+            | DefKind::TyParam
+            | DefKind::ExternCrate => DefPathData::TypeNs(name),
+            DefKind::Fn
+            | DefKind::Const
+            | DefKind::ConstParam
+            | DefKind::Static(..)
+            | DefKind::AssocFn
+            | DefKind::AssocConst
+            | DefKind::Field => DefPathData::ValueNs(name),
+            DefKind::Macro(..) => DefPathData::MacroNs(name),
+            DefKind::LifetimeParam => DefPathData::LifetimeNs(name),
+            DefKind::Ctor(..) => DefPathData::Ctor,
+            DefKind::Use => DefPathData::Use,
+            DefKind::ForeignMod => DefPathData::ForeignMod,
+            DefKind::AnonConst => DefPathData::AnonConst,
+            DefKind::InlineConst => DefPathData::AnonConst,
+            DefKind::OpaqueTy => DefPathData::OpaqueTy,
+            DefKind::GlobalAsm => DefPathData::GlobalAsm,
+            DefKind::Impl { .. } => DefPathData::Impl,
+            DefKind::Closure => DefPathData::Closure,
+        }
+    }
+
     #[inline]
     pub fn is_fn_like(self) -> bool {
-        matches!(self, DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Coroutine)
+        matches!(self, DefKind::Fn | DefKind::AssocFn | DefKind::Closure)
     }
 
     /// Whether `query get_codegen_attrs` should be used with this definition.
@@ -240,7 +270,6 @@ impl DefKind {
             | DefKind::AssocFn
             | DefKind::Ctor(..)
             | DefKind::Closure
-            | DefKind::Coroutine
             | DefKind::Static(_) => true,
             DefKind::Mod
             | DefKind::Struct
@@ -299,8 +328,7 @@ impl DefKind {
 /// - the call to `str_to_string` will resolve to [`Res::Def`], with the [`DefId`]
 ///   pointing to the definition of `str_to_string` in the current crate.
 //
-#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug)]
-#[derive(HashStable_Generic)]
+#[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, HashStable_Generic)]
 pub enum Res<Id = hir::HirId> {
     /// Definition having a unique ID (`DefId`), corresponds to something defined in user code.
     ///
@@ -575,7 +603,7 @@ impl CtorKind {
         match *vdata {
             ast::VariantData::Tuple(_, node_id) => Some((CtorKind::Fn, node_id)),
             ast::VariantData::Unit(node_id) => Some((CtorKind::Const, node_id)),
-            ast::VariantData::Struct(..) => None,
+            ast::VariantData::Struct { .. } => None,
         }
     }
 }
@@ -591,6 +619,8 @@ impl NonMacroAttrKind {
         }
     }
 
+    // Currently trivial, but exists in case a new kind is added in the future whose name starts
+    // with a vowel.
     pub fn article(self) -> &'static str {
         "a"
     }
@@ -776,4 +806,4 @@ pub enum LifetimeRes {
     ElidedAnchor { start: NodeId, end: NodeId },
 }
 
-pub type DocLinkResMap = FxHashMap<(Symbol, Namespace), Option<Res<NodeId>>>;
+pub type DocLinkResMap = UnordMap<(Symbol, Namespace), Option<Res<NodeId>>>;

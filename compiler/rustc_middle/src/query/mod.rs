@@ -61,7 +61,6 @@ use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::sync::WorkerLocal;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -70,7 +69,7 @@ use rustc_hir::def_id::{
     CrateNum, DefId, DefIdMap, DefIdSet, LocalDefId, LocalDefIdMap, LocalDefIdSet, LocalModDefId,
 };
 use rustc_hir::lang_items::{LangItem, LanguageItems};
-use rustc_hir::{Crate, ItemLocalId, TraitCandidate};
+use rustc_hir::{Crate, ItemLocalId, ItemLocalMap, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{try_get_cached, CacheSelector, QueryCache, QueryMode, QueryState};
@@ -109,10 +108,12 @@ pub use plumbing::{IntoQueryParam, TyCtxtAt, TyCtxtEnsure, TyCtxtEnsureWithValue
 // Queries marked with `fatal_cycle` do not need the latter implementation,
 // as they will raise an fatal error on query cycles instead.
 rustc_queries! {
-    query trigger_delay_span_bug(key: DefId) -> () {
-        desc { "triggering a delay span bug" }
+    /// This exists purely for testing the interactions between span_delayed_bug and incremental.
+    query trigger_span_delayed_bug(key: DefId) -> () {
+        desc { "triggering a span delayed bug for testing incremental" }
     }
 
+    /// Collects the list of all tools registered using `#![register_tool]`.
     query registered_tools(_: ()) -> &'tcx ty::RegisteredTools {
         arena_cache
         desc { "compute registered tools for crate" }
@@ -286,6 +287,7 @@ rustc_queries! {
         }
     }
 
+    /// The root query triggering all analysis passes like typeck or borrowck.
     query analysis(key: ()) -> Result<(), ErrorGuaranteed> {
         eval_always
         desc { "running analysis passes on this crate" }
@@ -564,7 +566,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query check_coroutine_obligations(key: LocalDefId) {
+    query check_coroutine_obligations(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "verify auto trait bounds for coroutine interior type `{}`", tcx.def_path_str(key) }
     }
 
@@ -1149,7 +1151,7 @@ rustc_queries! {
         cache_on_disk_if { true }
     }
 
-    query opt_def_kind(def_id: DefId) -> Option<DefKind> {
+    query def_kind(def_id: DefId) -> DefKind {
         desc { |tcx| "looking up definition kind of `{}`", tcx.def_path_str(def_id) }
         cache_on_disk_if { def_id.is_local() }
         separate_provide_extern
@@ -1488,7 +1490,7 @@ rustc_queries! {
         desc { "computing whether impls specialize one another" }
     }
     query in_scope_traits_map(_: hir::OwnerId)
-        -> Option<&'tcx FxHashMap<ItemLocalId, Box<[TraitCandidate]>>> {
+        -> Option<&'tcx ItemLocalMap<Box<[TraitCandidate]>>> {
         desc { "getting traits in scope at a block" }
     }
 
@@ -1732,13 +1734,10 @@ rustc_queries! {
         desc { |tcx| "computing crate imported by `{}`", tcx.def_path_str(def_id) }
     }
 
-    query lib_features(_: ()) -> &'tcx LibFeatures {
-        arena_cache
-        desc { "calculating the lib features map" }
-    }
-    query defined_lib_features(_: CrateNum) -> &'tcx [(Symbol, Option<Symbol>)] {
+    query lib_features(_: CrateNum) -> &'tcx LibFeatures {
         desc { "calculating the lib features defined in a crate" }
         separate_provide_extern
+        arena_cache
     }
     query stability_implications(_: CrateNum) -> &'tcx FxHashMap<Symbol, Symbol> {
         arena_cache
@@ -1781,10 +1780,17 @@ rustc_queries! {
         desc { "calculating the missing lang items in a crate" }
         separate_provide_extern
     }
+
+    /// The visible parent map is a map from every item to a visible parent.
+    /// It prefers the shortest visible path to an item.
+    /// Used for diagnostics, for example path trimming.
+    /// The parents are modules, enums or traits.
     query visible_parent_map(_: ()) -> &'tcx DefIdMap<DefId> {
         arena_cache
         desc { "calculating the visible parent map" }
     }
+    /// Collects the "trimmed", shortest accessible paths to all items for diagnostics.
+    /// See the [provider docs](`rustc_middle::ty::print::trimmed_def_paths`) for more info.
     query trimmed_def_paths(_: ()) -> &'tcx FxHashMap<DefId, Symbol> {
         arena_cache
         desc { "calculating trimmed def paths" }
@@ -2171,7 +2177,9 @@ rustc_queries! {
     /// Used in `super_combine_consts` to ICE if the type of the two consts are definitely not going to end up being
     /// equal to eachother. This might return `Ok` even if the types are not equal, but will never return `Err` if
     /// the types might be equal.
-    query check_tys_might_be_eq(arg: Canonical<'tcx, (ty::ParamEnv<'tcx>, Ty<'tcx>, Ty<'tcx>)>) -> Result<(), NoSolution> {
+    query check_tys_might_be_eq(
+        arg: Canonical<'tcx, ty::ParamEnvAnd<'tcx, (Ty<'tcx>, Ty<'tcx>)>>
+    ) -> Result<(), NoSolution> {
         desc { "check whether two const param are definitely not equal to eachother"}
     }
 

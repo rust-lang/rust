@@ -96,7 +96,7 @@ macro_rules! impl_tag {
             const BITS: u32 = $crate::tagged_ptr::bits_for_tags(&[
                 $(
                     ${index()},
-                    $( ${ignore(path)} )*
+                    $( ${ignore($path)} )*
                 )*
             ]);
 

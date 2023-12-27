@@ -47,6 +47,14 @@ impl<K: Hash + Eq, V> AllocMap<K, V> for MonoHashMap<K, V> {
     }
 
     #[inline(always)]
+    fn contains_key_ref<Q: ?Sized + Hash + Eq>(&self, k: &Q) -> bool
+    where
+        K: Borrow<Q>,
+    {
+        self.0.borrow().contains_key(k)
+    }
+
+    #[inline(always)]
     fn insert(&mut self, k: K, v: V) -> Option<V> {
         self.0.get_mut().insert(k, Box::new(v)).map(|x| *x)
     }

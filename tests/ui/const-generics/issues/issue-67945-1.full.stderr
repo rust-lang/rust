@@ -12,6 +12,6 @@ LL |         let x: S = MaybeUninit::uninit();
    = note: expected type parameter `S`
                        found union `MaybeUninit<_>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

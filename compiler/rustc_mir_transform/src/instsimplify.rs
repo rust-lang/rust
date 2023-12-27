@@ -1,8 +1,6 @@
 //! Performs various peephole optimizations.
 
 use crate::simplify::simplify_duplicate_switch_targets;
-use crate::MirPass;
-use rustc_hir::Mutability;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt};
@@ -35,12 +33,9 @@ impl<'tcx> MirPass<'tcx> for InstSimplify {
                 }
             }
 
-            ctx.simplify_primitive_clone(
-                &mut block.terminator.as_mut().unwrap(),
-                &mut block.statements,
-            );
+            ctx.simplify_primitive_clone(block.terminator.as_mut().unwrap(), &mut block.statements);
             ctx.simplify_intrinsic_assert(
-                &mut block.terminator.as_mut().unwrap(),
+                block.terminator.as_mut().unwrap(),
                 &mut block.statements,
             );
             simplify_duplicate_switch_targets(block.terminator.as_mut().unwrap());

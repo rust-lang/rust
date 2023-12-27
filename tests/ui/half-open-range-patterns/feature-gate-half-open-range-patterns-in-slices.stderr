@@ -7,6 +7,6 @@ LL |     let [a @ 3.., b @ ..3, c @ 4..6, ..] = xs;
    = note: see issue #67264 <https://github.com/rust-lang/rust/issues/67264> for more information
    = help: add `#![feature(half_open_range_patterns_in_slices)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

@@ -6,7 +6,6 @@ use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::borrowed_locals;
 
 use crate::ssa::SsaLocals;
-use crate::MirPass;
 
 /// Unify locals that copy each other.
 ///
@@ -50,7 +49,7 @@ fn propagate_ssa<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     Replacer {
         tcx,
-        copy_classes: &ssa.copy_classes(),
+        copy_classes: ssa.copy_classes(),
         fully_moved,
         borrowed_locals,
         storage_to_remove,
@@ -124,14 +123,14 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
     }
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, ctxt: PlaceContext, loc: Location) {
-        if let Some(new_projection) = self.process_projection(&place.projection, loc) {
+        if let Some(new_projection) = self.process_projection(place.projection, loc) {
             place.projection = self.tcx().mk_place_elems(&new_projection);
         }
 
         let observes_address = match ctxt {
             PlaceContext::NonMutatingUse(
                 NonMutatingUseContext::SharedBorrow
-                | NonMutatingUseContext::ShallowBorrow
+                | NonMutatingUseContext::FakeBorrow
                 | NonMutatingUseContext::AddressOf,
             ) => true,
             // For debuginfo, merging locals is ok.

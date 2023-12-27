@@ -9,7 +9,7 @@ error[E0080]: evaluation of constant value failed
    |
    = note: `ptr_offset_from` called on pointers into different allocations
    |
-note: inside `ptr::const_ptr::<impl *const u8>::offset_from`
+note: inside `std::ptr::const_ptr::<impl *const u8>::offset_from`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `NOT_PTR`
   --> $DIR/offset_from_ub.rs:24:14
@@ -88,7 +88,7 @@ error[E0080]: evaluation of constant value failed
    |
    = note: out-of-bounds `offset_from`: null pointer is a dangling pointer (it has no provenance)
    |
-note: inside `ptr::const_ptr::<impl *const u8>::offset_from`
+note: inside `std::ptr::const_ptr::<impl *const u8>::offset_from`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `OFFSET_VERY_FAR1`
   --> $DIR/offset_from_ub.rs:115:14
@@ -101,7 +101,7 @@ error[E0080]: evaluation of constant value failed
    |
    = note: out-of-bounds `offset_from`: null pointer is a dangling pointer (it has no provenance)
    |
-note: inside `ptr::const_ptr::<impl *const u8>::offset_from`
+note: inside `std::ptr::const_ptr::<impl *const u8>::offset_from`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `OFFSET_VERY_FAR2`
   --> $DIR/offset_from_ub.rs:121:14

@@ -29,7 +29,7 @@ fn equate_intrinsic_type<'tcx>(
             (own_counts, generics.span)
         }
         _ => {
-            struct_span_err!(tcx.sess, it.span, E0622, "intrinsic must be a function")
+            struct_span_err!(tcx.dcx(), it.span, E0622, "intrinsic must be a function")
                 .span_label(it.span, "expected a function")
                 .emit();
             return;
@@ -38,7 +38,7 @@ fn equate_intrinsic_type<'tcx>(
 
     let gen_count_ok = |found: usize, expected: usize, descr: &str| -> bool {
         if found != expected {
-            tcx.sess.emit_err(WrongNumberOfGenericArgumentsToIntrinsic {
+            tcx.dcx().emit_err(WrongNumberOfGenericArgumentsToIntrinsic {
                 span,
                 found,
                 expected,
@@ -55,7 +55,7 @@ fn equate_intrinsic_type<'tcx>(
         && gen_count_ok(own_counts.consts, n_cts, "const")
     {
         let it_def_id = it.owner_id.def_id;
-        check_function_signature(
+        let _ = check_function_signature(
             tcx,
             ObligationCause::new(it.span, it_def_id, ObligationCauseCode::IntrinsicType),
             it_def_id.into(),
@@ -117,7 +117,7 @@ pub fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: DefId) -> hir
     };
 
     if has_safe_attr != is_in_list {
-        tcx.sess.struct_span_err(
+        tcx.dcx().struct_span_err(
             tcx.def_span(intrinsic_id),
             DiagnosticMessage::from(format!(
                 "intrinsic safety mismatch between list of intrinsics within the compiler and core library intrinsics for intrinsic `{}`",
@@ -143,12 +143,12 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
     ]);
     let mk_va_list_ty = |mutbl| {
         tcx.lang_items().va_list().map(|did| {
-            let region = ty::Region::new_late_bound(
+            let region = ty::Region::new_bound(
                 tcx,
                 ty::INNERMOST,
                 ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon },
             );
-            let env_region = ty::Region::new_late_bound(
+            let env_region = ty::Region::new_bound(
                 tcx,
                 ty::INNERMOST,
                 ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BrEnv },
@@ -176,7 +176,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             | "umin" => (1, vec![Ty::new_mut_ptr(tcx, param(0)), param(0)], param(0)),
             "fence" | "singlethreadfence" => (0, Vec::new(), Ty::new_unit(tcx)),
             op => {
-                tcx.sess.emit_err(UnrecognizedAtomicOperation { span: it.span, op });
+                tcx.dcx().emit_err(UnrecognizedAtomicOperation { span: it.span, op });
                 return;
             }
         };
@@ -225,25 +225,6 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 ],
                 Ty::new_ptr(tcx, ty::TypeAndMut { ty: param(0), mutbl: hir::Mutability::Not }),
             ),
-            sym::option_payload_ptr => {
-                let option_def_id = tcx.require_lang_item(hir::LangItem::Option, None);
-                let p0 = param(0);
-                (
-                    1,
-                    vec![Ty::new_ptr(
-                        tcx,
-                        ty::TypeAndMut {
-                            ty: Ty::new_adt(
-                                tcx,
-                                tcx.adt_def(option_def_id),
-                                tcx.mk_args_from_iter([ty::GenericArg::from(p0)].into_iter()),
-                            ),
-                            mutbl: hir::Mutability::Not,
-                        },
-                    )],
-                    Ty::new_ptr(tcx, ty::TypeAndMut { ty: p0, mutbl: hir::Mutability::Not }),
-                )
-            }
             sym::ptr_mask => (
                 1,
                 vec![
@@ -411,7 +392,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                     1,
                     vec![Ty::new_imm_ref(
                         tcx,
-                        ty::Region::new_late_bound(tcx, ty::INNERMOST, br),
+                        ty::Region::new_bound(tcx, ty::INNERMOST, br),
                         param(0),
                     )],
                     Ty::new_projection(tcx, discriminant_def_id, tcx.mk_args(&[param(0).into()])),
@@ -465,11 +446,8 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
 
             sym::raw_eq => {
                 let br = ty::BoundRegion { var: ty::BoundVar::from_u32(0), kind: ty::BrAnon };
-                let param_ty = Ty::new_imm_ref(
-                    tcx,
-                    ty::Region::new_late_bound(tcx, ty::INNERMOST, br),
-                    param(0),
-                );
+                let param_ty =
+                    Ty::new_imm_ref(tcx, ty::Region::new_bound(tcx, ty::INNERMOST, br), param(0));
                 (1, vec![param_ty; 2], tcx.types.bool)
             }
 
@@ -482,7 +460,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
             }
 
             other => {
-                tcx.sess.emit_err(UnrecognizedIntrinsicFunction { span: it.span, name: other });
+                tcx.dcx().emit_err(UnrecognizedIntrinsicFunction { span: it.span, name: other });
                 return;
             }
         };
@@ -543,6 +521,8 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         sym::simd_fpowi => (1, 0, vec![param(0), tcx.types.i32], param(0)),
         sym::simd_fma => (1, 0, vec![param(0), param(0), param(0)], param(0)),
         sym::simd_gather => (3, 0, vec![param(0), param(1), param(2)], param(0)),
+        sym::simd_masked_load => (3, 0, vec![param(0), param(1), param(2)], param(2)),
+        sym::simd_masked_store => (3, 0, vec![param(0), param(1), param(2)], Ty::new_unit(tcx)),
         sym::simd_scatter => (3, 0, vec![param(0), param(1), param(2)], Ty::new_unit(tcx)),
         sym::simd_insert => (2, 0, vec![param(0), tcx.types.u32, param(1)], param(0)),
         sym::simd_extract => (2, 0, vec![param(0), tcx.types.u32], param(1)),
@@ -572,7 +552,7 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         sym::simd_shuffle_generic => (2, 1, vec![param(0), param(0)], param(1)),
         _ => {
             let msg = format!("unrecognized platform-specific intrinsic function: `{name}`");
-            tcx.sess.struct_span_err(it.span, msg).emit();
+            tcx.dcx().struct_span_err(it.span, msg).emit();
             return;
         }
     };

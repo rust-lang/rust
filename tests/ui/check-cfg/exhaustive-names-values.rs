@@ -1,10 +1,8 @@
-// Check warning for unexpected cfg in the code and in the CLI
-// arguments (here the revision cfg).
+// Check warning for unexpected cfg in the code.
 //
 // check-pass
-// revisions: empty_names_values empty_cfg feature full
+// revisions: empty_cfg feature full
 // compile-flags: -Z unstable-options
-// [empty_names_values]compile-flags: --check-cfg=names() --check-cfg=values()
 // [empty_cfg]compile-flags: --check-cfg=cfg()
 // [feature]compile-flags: --check-cfg=cfg(feature,values("std"))
 // [full]compile-flags: --check-cfg=cfg(feature,values("std")) --check-cfg=cfg()
@@ -18,11 +16,15 @@ pub fn f() {}
 pub fn f() {}
 
 #[cfg(feature = "unk")]
-//[feature]~^ WARNING unexpected `cfg` condition value
-//[full]~^^ WARNING unexpected `cfg` condition value
+//[empty_names_values]~^ WARNING unexpected `cfg` condition name
+//[empty_cfg]~^^ WARNING unexpected `cfg` condition name
+//[feature]~^^^ WARNING unexpected `cfg` condition value
+//[full]~^^^^ WARNING unexpected `cfg` condition value
 pub fn feat() {}
 
 #[cfg(feature = "std")]
+//[empty_names_values]~^ WARNING unexpected `cfg` condition name
+//[empty_cfg]~^^ WARNING unexpected `cfg` condition name
 pub fn feat() {}
 
 #[cfg(windows)]

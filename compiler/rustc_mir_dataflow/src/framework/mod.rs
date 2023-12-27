@@ -45,9 +45,9 @@ pub mod graphviz;
 pub mod lattice;
 mod visitor;
 
-pub use self::cursor::{AnalysisResults, ResultsClonedCursor, ResultsCursor, ResultsRefCursor};
+pub use self::cursor::ResultsCursor;
 pub use self::direction::{Backward, Direction, Forward};
-pub use self::engine::{Engine, EntrySets, Results, ResultsCloned};
+pub use self::engine::{Engine, Results};
 pub use self::lattice::{JoinSemiLattice, MaybeReachable};
 pub use self::visitor::{visit_results, ResultsVisitable, ResultsVisitor};
 
@@ -246,35 +246,21 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
     }
 }
 
-/// Defines an `Analysis` which can be cloned for use in multiple `ResultsCursor`s or
-/// `ResultsVisitor`s. Note this need not be a full clone, only enough of one to be used with a new
-/// `ResultsCursor` or `ResultsVisitor`
-pub trait CloneAnalysis {
-    fn clone_analysis(&self) -> Self;
-}
-impl<'tcx, A> CloneAnalysis for A
-where
-    A: Analysis<'tcx> + Copy,
-{
-    fn clone_analysis(&self) -> Self {
-        *self
-    }
-}
-
 /// A gen/kill dataflow problem.
 ///
-/// Each method in this trait has a corresponding one in `Analysis`. However, these methods only
-/// allow modification of the dataflow state via "gen" and "kill" operations. By defining transfer
-/// functions for each statement in this way, the transfer function for an entire basic block can
-/// be computed efficiently.
+/// Each method in this trait has a corresponding one in `Analysis`. However, the first two methods
+/// here only allow modification of the dataflow state via "gen" and "kill" operations. By defining
+/// transfer functions for each statement in this way, the transfer function for an entire basic
+/// block can be computed efficiently. The remaining methods match up with `Analysis` exactly.
 ///
-/// `Analysis` is automatically implemented for all implementers of `GenKillAnalysis`.
+/// `Analysis` is automatically implemented for all implementers of `GenKillAnalysis` via a blanket
+/// impl below.
 pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
     type Idx: Idx;
 
     fn domain_size(&self, body: &mir::Body<'tcx>) -> usize;
 
-    /// See `Analysis::apply_statement_effect`.
+    /// See `Analysis::apply_statement_effect`. Note how the second arg differs.
     fn statement_effect(
         &mut self,
         trans: &mut impl GenKill<Self::Idx>,
@@ -282,7 +268,8 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
         location: Location,
     );
 
-    /// See `Analysis::apply_before_statement_effect`.
+    /// See `Analysis::apply_before_statement_effect`. Note how the second arg
+    /// differs.
     fn before_statement_effect(
         &mut self,
         _trans: &mut impl GenKill<Self::Idx>,
@@ -302,7 +289,7 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
     /// See `Analysis::apply_before_terminator_effect`.
     fn before_terminator_effect(
         &mut self,
-        _trans: &mut impl GenKill<Self::Idx>,
+        _trans: &mut Self::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,
     ) {
@@ -313,7 +300,7 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
     /// See `Analysis::apply_call_return_effect`.
     fn call_return_effect(
         &mut self,
-        trans: &mut impl GenKill<Self::Idx>,
+        trans: &mut Self::Domain,
         block: BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
     );
@@ -328,6 +315,7 @@ pub trait GenKillAnalysis<'tcx>: Analysis<'tcx> {
     }
 }
 
+// Blanket impl: any impl of `GenKillAnalysis` automatically impls `Analysis`.
 impl<'tcx, A> Analysis<'tcx> for A
 where
     A: GenKillAnalysis<'tcx>,

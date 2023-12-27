@@ -4,9 +4,7 @@ use crate::query::plumbing::CycleError;
 use crate::query::DepKind;
 use crate::query::{QueryContext, QueryStackFrame};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{
-    Diagnostic, DiagnosticBuilder, ErrorGuaranteed, Handler, IntoDiagnostic, Level,
-};
+use rustc_errors::{DiagCtxt, Diagnostic, DiagnosticBuilder, Level};
 use rustc_hir::def::DefKind;
 use rustc_session::Session;
 use rustc_span::Span;
@@ -18,7 +16,6 @@ use std::num::NonZeroU64;
 #[cfg(parallel_compiler)]
 use {
     parking_lot::{Condvar, Mutex},
-    rayon_core,
     rustc_data_structures::fx::FxHashSet,
     rustc_data_structures::{defer, jobserver},
     rustc_span::DUMMY_SP,
@@ -38,7 +35,7 @@ pub struct QueryInfo {
 pub type QueryMap = FxHashMap<QueryJobId, QueryJobInfo>;
 
 /// A value uniquely identifying an active query job.
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct QueryJobId(pub NonZeroU64);
 
 impl QueryJobId {
@@ -62,14 +59,14 @@ impl QueryJobId {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct QueryJobInfo {
     pub query: QueryStackFrame,
     pub job: QueryJob,
 }
 
 /// Represents an active query job.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct QueryJob {
     pub id: QueryJobId,
 
@@ -182,6 +179,7 @@ impl QueryJobId {
 }
 
 #[cfg(parallel_compiler)]
+#[derive(Debug)]
 struct QueryWaiter {
     query: Option<QueryJobId>,
     condvar: Condvar,
@@ -198,13 +196,14 @@ impl QueryWaiter {
 }
 
 #[cfg(parallel_compiler)]
+#[derive(Debug)]
 struct QueryLatchInfo {
     complete: bool,
     waiters: Vec<Arc<QueryWaiter>>,
 }
 
 #[cfg(parallel_compiler)]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(super) struct QueryLatch {
     info: Arc<Mutex<QueryLatchInfo>>,
 }
@@ -540,7 +539,11 @@ pub fn deadlock(query_map: QueryMap, registry: &rayon_core::Registry) {
     // X to Y due to Rayon waiting and a true dependency from Y to X. The algorithm here
     // only considers the true dependency and won't detect a cycle.
     if !found_cycle {
-        panic!("deadlock detected");
+        if query_map.len() == 0 {
+            panic!("deadlock detected without any query!")
+        } else {
+            panic!("deadlock detected! current query map:\n{:#?}", query_map);
+        }
     }
 
     // FIXME: Ensure this won't cause a deadlock before we return
@@ -556,7 +559,7 @@ pub fn deadlock(query_map: QueryMap, registry: &rayon_core::Registry) {
 pub(crate) fn report_cycle<'a>(
     sess: &'a Session,
     CycleError { usage, cycle: stack }: &CycleError,
-) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
+) -> DiagnosticBuilder<'a> {
     assert!(!stack.is_empty());
 
     let span = stack[0].query.default_span(stack[1 % stack.len()].span);
@@ -599,28 +602,28 @@ pub(crate) fn report_cycle<'a>(
         note_span: (),
     };
 
-    cycle_diag.into_diagnostic(&sess.parse_sess.span_diagnostic)
+    sess.dcx().create_err(cycle_diag)
 }
 
 pub fn print_query_stack<Qcx: QueryContext>(
     qcx: Qcx,
     mut current_query: Option<QueryJobId>,
-    handler: &Handler,
+    dcx: &DiagCtxt,
     num_frames: Option<usize>,
     mut file: Option<std::fs::File>,
 ) -> usize {
     // Be careful relying on global state here: this code is called from
-    // a panic hook, which means that the global `Handler` may be in a weird
+    // a panic hook, which means that the global `DiagCtxt` may be in a weird
     // state if it was responsible for triggering the panic.
     let mut count_printed = 0;
     let mut count_total = 0;
-    let query_map = qcx.try_collect_active_jobs();
+    let query_map = qcx.collect_active_jobs();
 
     if let Some(ref mut file) = file {
         let _ = writeln!(file, "\n\nquery stack during panic:");
     }
     while let Some(query) = current_query {
-        let Some(query_info) = query_map.as_ref().and_then(|map| map.get(&query)) else {
+        let Some(query_info) = query_map.get(&query) else {
             break;
         };
         if Some(count_printed) < num_frames || num_frames.is_none() {
@@ -633,7 +636,7 @@ pub fn print_query_stack<Qcx: QueryContext>(
                 ),
             );
             diag.span = query_info.job.span.into();
-            handler.force_print_diagnostic(diag);
+            dcx.force_print_diagnostic(diag);
             count_printed += 1;
         }
 

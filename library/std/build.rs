@@ -25,7 +25,6 @@ fn main() {
         || target.contains("vxworks")
         || target.contains("wasm32")
         || target.contains("wasm64")
-        || target.contains("asmjs")
         || target.contains("espidf")
         || target.contains("solid")
         || target.contains("nintendo-3ds")
@@ -35,6 +34,7 @@ fn main() {
         || target.contains("xous")
         || target.contains("hurd")
         || target.contains("uefi")
+        || target.contains("teeos")
         // See src/bootstrap/synthetic_targets.rs
         || env::var("RUSTC_BOOTSTRAP_SYNTHETIC_TARGET").is_ok()
     {

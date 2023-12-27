@@ -127,8 +127,6 @@ resolve_generic_params_from_outer_item_self_ty_param = can't use `Self` here
 
 resolve_generic_params_from_outer_item_ty_param = type parameter from outer item
 
-resolve_glob_import_doesnt_reexport =
-    glob import doesn't reexport anything because no candidate is public enough
 
 resolve_ident_bound_more_than_once_in_parameter_list =
     identifier `{$identifier}` is bound more than once in this parameter list
@@ -183,6 +181,8 @@ resolve_method_not_member_of_trait =
     method `{$method}` is not a member of trait `{$trait_}`
     .label = not a member of trait `{$trait_}`
 
+resolve_missing_macro_rules_name = maybe you have forgotten to define a name for this `macro_rules!`
+
 resolve_module_only =
     visibility must resolve to a module
 
@@ -200,7 +200,7 @@ resolve_param_in_non_trivial_anon_const =
     .label = cannot perform const operation using `{$name}`
 
 resolve_param_in_non_trivial_anon_const_help =
-    use `#![feature(generic_const_exprs)]` to allow generic const expressions
+    add `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 resolve_param_in_ty_of_const_param =
     the type of const parameters must not depend on other generic parameters

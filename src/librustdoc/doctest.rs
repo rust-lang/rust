@@ -127,17 +127,17 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
                         options,
                         false,
                         opts,
-                        Some(compiler.session().parse_sess.clone_source_map()),
+                        Some(compiler.sess.parse_sess.clone_source_map()),
                         None,
                         enable_per_target_ignores,
                     );
 
                     let mut hir_collector = HirCollector {
-                        sess: compiler.session(),
+                        sess: &compiler.sess,
                         collector: &mut collector,
                         map: tcx.hir(),
                         codes: ErrorCodes::from(
-                            compiler.session().opts.unstable_features.is_nightly_build(),
+                            compiler.sess.opts.unstable_features.is_nightly_build(),
                         ),
                         tcx,
                     };
@@ -150,7 +150,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
 
                     collector
                 });
-                if compiler.session().diagnostic().has_errors_or_lint_errors().is_some() {
+                if compiler.sess.dcx().has_errors_or_lint_errors().is_some() {
                     FatalError.raise();
                 }
 
@@ -558,7 +558,7 @@ pub(crate) fn make_test(
     let result = rustc_driver::catch_fatal_errors(|| {
         rustc_span::create_session_if_not_set_then(edition, |_| {
             use rustc_errors::emitter::{Emitter, EmitterWriter};
-            use rustc_errors::Handler;
+            use rustc_errors::DiagCtxt;
             use rustc_parse::parser::ForceCollect;
             use rustc_span::source_map::FilePathMapping;
 
@@ -579,8 +579,8 @@ pub(crate) fn make_test(
             let emitter = EmitterWriter::new(Box::new(io::sink()), fallback_bundle);
 
             // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
-            let handler = Handler::with_emitter(Box::new(emitter)).disable_warnings();
-            let sess = ParseSess::with_span_handler(handler, sm);
+            let dcx = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
+            let sess = ParseSess::with_dcx(dcx, sm);
 
             let mut found_main = false;
             let mut found_extern_crate = crate_name.is_none();
@@ -597,15 +597,15 @@ pub(crate) fn make_test(
             loop {
                 match parser.parse_item(ForceCollect::No) {
                     Ok(Some(item)) => {
-                        if !found_main &&
-                            let ast::ItemKind::Fn(..) = item.kind &&
-                            item.ident.name == sym::main
+                        if !found_main
+                            && let ast::ItemKind::Fn(..) = item.kind
+                            && item.ident.name == sym::main
                         {
                             found_main = true;
                         }
 
-                        if !found_extern_crate &&
-                            let ast::ItemKind::ExternCrate(original) = item.kind
+                        if !found_extern_crate
+                            && let ast::ItemKind::ExternCrate(original) = item.kind
                         {
                             // This code will never be reached if `crate_name` is none because
                             // `found_extern_crate` is initialized to `true` if it is none.
@@ -638,10 +638,10 @@ pub(crate) fn make_test(
             }
 
             // Reset errors so that they won't be reported as compiler bugs when dropping the
-            // handler. Any errors in the tests will be reported when the test file is compiled,
+            // dcx. Any errors in the tests will be reported when the test file is compiled,
             // Note that we still need to cancel the errors above otherwise `DiagnosticBuilder`
             // will panic on drop.
-            sess.span_diagnostic.reset_err_count();
+            sess.dcx.reset_err_count();
 
             (found_main, found_extern_crate, found_macro)
         })
@@ -740,7 +740,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
     rustc_driver::catch_fatal_errors(|| {
         rustc_span::create_session_if_not_set_then(edition, |_| {
             use rustc_errors::emitter::EmitterWriter;
-            use rustc_errors::Handler;
+            use rustc_errors::DiagCtxt;
             use rustc_span::source_map::FilePathMapping;
 
             let filename = FileName::anon_source_code(source);
@@ -754,8 +754,8 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
 
             let emitter = EmitterWriter::new(Box::new(io::sink()), fallback_bundle);
 
-            let handler = Handler::with_emitter(Box::new(emitter)).disable_warnings();
-            let sess = ParseSess::with_span_handler(handler, sm);
+            let dcx = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
+            let sess = ParseSess::with_dcx(dcx, sm);
             let mut parser =
                 match maybe_new_parser_from_source_str(&sess, filename, source.to_owned()) {
                     Ok(p) => p,
@@ -957,10 +957,10 @@ impl Collector {
     fn get_filename(&self) -> FileName {
         if let Some(ref source_map) = self.source_map {
             let filename = source_map.span_to_filename(self.position);
-            if let FileName::Real(ref filename) = filename &&
-                let Ok(cur_dir) = env::current_dir() &&
-                let Some(local_path) = filename.local_path() &&
-                let Ok(path) = local_path.strip_prefix(&cur_dir)
+            if let FileName::Real(ref filename) = filename
+                && let Ok(cur_dir) = env::current_dir()
+                && let Some(local_path) = filename.local_path()
+                && let Ok(path) = local_path.strip_prefix(&cur_dir)
             {
                 return path.to_owned().into();
             }
@@ -1207,7 +1207,7 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
         sp: Span,
         nested: F,
     ) {
-        let ast_attrs = self.tcx.hir().attrs(self.tcx.hir().local_def_id_to_hir_id(def_id));
+        let ast_attrs = self.tcx.hir().attrs(self.tcx.local_def_id_to_hir_id(def_id));
         if let Some(ref cfg) = ast_attrs.cfg(self.tcx, &FxHashSet::default()) {
             if !cfg.matches(&self.sess.parse_sess, Some(self.tcx.features())) {
                 return;

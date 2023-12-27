@@ -1,7 +1,7 @@
 use std::time::SystemTime;
 
 use crate::concurrency::sync::CondvarLock;
-use crate::concurrency::thread::{MachineCallback, Time};
+use crate::concurrency::thread::MachineCallback;
 use crate::*;
 
 // pthread_mutexattr_t is either 4 or 8 bytes, depending on the platform.
@@ -277,6 +277,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos") {
+            throw_unsup_format!(
+                "`pthread_mutexattr_init` is not supported on {}",
+                this.tcx.sess.target.os
+            );
+        }
+
         let default_kind = this.eval_libc_i32("PTHREAD_MUTEX_DEFAULT");
         mutexattr_set_kind(this, attr_op, default_kind)?;
 
@@ -358,6 +365,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         attr_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
+
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos") {
+            throw_unsup_format!(
+                "`pthread_mutex_init` is not supported on {}",
+                this.tcx.sess.target.os
+            );
+        }
 
         let attr = this.read_pointer(attr_op)?;
         let kind = if this.ptr_is_null(attr)? {
@@ -513,6 +527,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos") {
+            throw_unsup_format!(
+                "`pthread_rwlock_rdlock` is not supported on {}",
+                this.tcx.sess.target.os
+            );
+        }
+
         let id = rwlock_get_id(this, rwlock_op)?;
         let active_thread = this.get_active_thread();
 
@@ -531,6 +552,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos") {
+            throw_unsup_format!(
+                "`pthread_rwlock_tryrdlock` is not supported on {}",
+                this.tcx.sess.target.os
+            );
+        }
+
         let id = rwlock_get_id(this, rwlock_op)?;
         let active_thread = this.get_active_thread();
 
@@ -547,6 +575,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         rwlock_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
+
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos") {
+            throw_unsup_format!(
+                "`pthread_rwlock_wrlock` is not supported on {}",
+                this.tcx.sess.target.os
+            );
+        }
 
         let id = rwlock_get_id(this, rwlock_op)?;
         let active_thread = this.get_active_thread();
@@ -578,6 +613,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos") {
+            throw_unsup_format!(
+                "`pthread_rwlock_trywrlock` is not supported on {}",
+                this.tcx.sess.target.os
+            );
+        }
+
         let id = rwlock_get_id(this, rwlock_op)?;
         let active_thread = this.get_active_thread();
 
@@ -594,6 +636,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         rwlock_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
+
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos") {
+            throw_unsup_format!(
+                "`pthread_rwlock_unlock` is not supported on {}",
+                this.tcx.sess.target.os
+            );
+        }
 
         let id = rwlock_get_id(this, rwlock_op)?;
         let active_thread = this.get_active_thread();
@@ -613,6 +662,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         rwlock_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
+
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos") {
+            throw_unsup_format!(
+                "`pthread_rwlock_destroy` is not supported on {}",
+                this.tcx.sess.target.os
+            );
+        }
 
         let id = rwlock_get_id(this, rwlock_op)?;
 
@@ -637,6 +693,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         attr_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
+
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos") {
+            throw_unsup_format!(
+                "`pthread_condattr_init` is not supported on {}",
+                this.tcx.sess.target.os
+            );
+        }
 
         // The default value of the clock attribute shall refer to the system
         // clock.
@@ -703,6 +766,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         attr_op: &OpTy<'tcx, Provenance>,
     ) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
+
+        if !matches!(&*this.tcx.sess.target.os, "linux" | "macos") {
+            throw_unsup_format!(
+                "`pthread_cond_init` is not supported on {}",
+                this.tcx.sess.target.os
+            );
+        }
 
         let attr = this.read_pointer(attr_op)?;
         let clock_id = if this.ptr_is_null(attr)? {
@@ -816,10 +886,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             dest: PlaceTy<'tcx, Provenance>,
         }
 
-        impl<'tcx> VisitTags for Callback<'tcx> {
-            fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        impl<'tcx> VisitProvenance for Callback<'tcx> {
+            fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
                 let Callback { active_thread: _, mutex_id: _, id: _, dest } = self;
-                dest.visit_tags(visit);
+                dest.visit_provenance(visit);
             }
         }
 

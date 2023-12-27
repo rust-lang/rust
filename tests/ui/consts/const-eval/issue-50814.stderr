@@ -16,6 +16,6 @@ note: the above error was encountered while instantiating `fn foo::<i32>`
 LL |     foo(0);
    |     ^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0080`.

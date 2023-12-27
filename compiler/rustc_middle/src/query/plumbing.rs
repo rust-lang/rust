@@ -11,7 +11,7 @@ use field_offset::FieldOffset;
 use measureme::StringId;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::AtomicU64;
-use rustc_hir::def::DefKind;
+use rustc_data_structures::sync::WorkerLocal;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
 use rustc_query_system::dep_graph::DepNodeIndex;
@@ -71,7 +71,7 @@ pub struct QuerySystemFns<'tcx> {
 
 pub struct QuerySystem<'tcx> {
     pub states: QueryStates<'tcx>,
-    pub arenas: QueryArenas<'tcx>,
+    pub arenas: WorkerLocal<QueryArenas<'tcx>>,
     pub caches: QueryCaches<'tcx>,
     pub dynamic_queries: DynamicQueries<'tcx>,
 
@@ -370,7 +370,7 @@ macro_rules! define_callbacks {
 
         pub struct QueryArenas<'tcx> {
             $($(#[$attr])* pub $name: query_if_arena!([$($modifiers)*]
-                (WorkerLocal<TypedArena<<$V as Deref>::Target>>)
+                (TypedArena<<$V as Deref>::Target>)
                 ()
             ),)*
         }
@@ -379,7 +379,7 @@ macro_rules! define_callbacks {
             fn default() -> Self {
                 Self {
                     $($name: query_if_arena!([$($modifiers)*]
-                        (WorkerLocal::new(|_| Default::default()))
+                        (Default::default())
                         ()
                     ),)*
                 }
@@ -551,7 +551,7 @@ macro_rules! define_feedable {
                                 // We have an inconsistency. This can happen if one of the two
                                 // results is tainted by errors. In this case, delay a bug to
                                 // ensure compilation is doomed, and keep the `old` value.
-                                tcx.sess.delay_span_bug(DUMMY_SP, format!(
+                                tcx.dcx().span_delayed_bug(DUMMY_SP, format!(
                                     "Trying to feed an already recorded value for query {} key={key:?}:\n\
                                     old value: {old:?}\nnew value: {value:?}",
                                     stringify!($name),
@@ -666,22 +666,6 @@ mod sealed {
 }
 
 pub use sealed::IntoQueryParam;
-
-impl<'tcx> TyCtxt<'tcx> {
-    pub fn def_kind(self, def_id: impl IntoQueryParam<DefId>) -> DefKind {
-        let def_id = def_id.into_query_param();
-        self.opt_def_kind(def_id)
-            .unwrap_or_else(|| bug!("def_kind: unsupported node: {:?}", def_id))
-    }
-}
-
-impl<'tcx> TyCtxtAt<'tcx> {
-    pub fn def_kind(self, def_id: impl IntoQueryParam<DefId>) -> DefKind {
-        let def_id = def_id.into_query_param();
-        self.opt_def_kind(def_id)
-            .unwrap_or_else(|| bug!("def_kind: unsupported node: {:?}", def_id))
-    }
-}
 
 #[derive(Copy, Clone, Debug, HashStable)]
 pub struct CyclePlaceholder(pub ErrorGuaranteed);

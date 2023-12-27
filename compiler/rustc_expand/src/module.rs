@@ -43,7 +43,7 @@ pub enum ModError<'a> {
     ModInBlock(Option<Ident>),
     FileNotFound(Ident, PathBuf, PathBuf),
     MultipleCandidates(Ident, PathBuf, PathBuf),
-    ParserError(DiagnosticBuilder<'a, ErrorGuaranteed>),
+    ParserError(DiagnosticBuilder<'a>),
 }
 
 pub(crate) fn parse_external_mod(
@@ -57,7 +57,7 @@ pub(crate) fn parse_external_mod(
     // We bail on the first error, but that error does not cause a fatal error... (1)
     let result: Result<_, ModError<'_>> = try {
         // Extract the file path and the new ownership.
-        let mp = mod_file_path(sess, ident, &attrs, &module.dir_path, dir_ownership)?;
+        let mp = mod_file_path(sess, ident, attrs, &module.dir_path, dir_ownership)?;
         dir_ownership = mp.dir_ownership;
 
         // Ensure file paths are acyclic.
@@ -119,7 +119,7 @@ pub(crate) fn mod_dir_path(
         Inline::No => {
             // FIXME: This is a subset of `parse_external_mod` without actual parsing,
             // check whether the logic for unloaded, loaded and inline modules can be unified.
-            let file_path = mod_file_path(sess, ident, &attrs, &module.dir_path, dir_ownership)
+            let file_path = mod_file_path(sess, ident, attrs, &module.dir_path, dir_ownership)
                 .map(|mp| {
                     dir_ownership = mp.dir_ownership;
                     mp.file_path
@@ -260,14 +260,14 @@ impl ModError<'_> {
 
                 let modules = paths.join(" -> ");
 
-                sess.emit_err(ModuleCircular { span, modules })
+                sess.dcx().emit_err(ModuleCircular { span, modules })
             }
-            ModError::ModInBlock(ident) => sess.emit_err(ModuleInBlock {
+            ModError::ModInBlock(ident) => sess.dcx().emit_err(ModuleInBlock {
                 span,
                 name: ident.map(|name| ModuleInBlockName { span, name }),
             }),
             ModError::FileNotFound(name, default_path, secondary_path) => {
-                sess.emit_err(ModuleFileNotFound {
+                sess.dcx().emit_err(ModuleFileNotFound {
                     span,
                     name,
                     default_path: default_path.display().to_string(),
@@ -275,7 +275,7 @@ impl ModError<'_> {
                 })
             }
             ModError::MultipleCandidates(name, default_path, secondary_path) => {
-                sess.emit_err(ModuleMultipleCandidates {
+                sess.dcx().emit_err(ModuleMultipleCandidates {
                     span,
                     name,
                     default_path: default_path.display().to_string(),

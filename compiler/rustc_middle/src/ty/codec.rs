@@ -8,6 +8,7 @@
 
 use crate::arena::ArenaAllocatable;
 use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
+use crate::mir::interpret::CtfeProvenance;
 use crate::mir::{
     self,
     interpret::{AllocId, ConstAllocation},
@@ -164,6 +165,13 @@ impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for AllocId {
     }
 }
 
+impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for CtfeProvenance {
+    fn encode(&self, e: &mut E) {
+        self.alloc_id().encode(e);
+        self.immutable().encode(e);
+    }
+}
+
 impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::ParamEnv<'tcx> {
     fn encode(&self, e: &mut E) {
         self.caller_bounds().encode(e);
@@ -295,9 +303,18 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for AllocId {
     }
 }
 
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for CtfeProvenance {
+    fn decode(decoder: &mut D) -> Self {
+        let alloc_id: AllocId = Decodable::decode(decoder);
+        let prov = CtfeProvenance::from(alloc_id);
+        let immutable: bool = Decodable::decode(decoder);
+        if immutable { prov.as_immutable() } else { prov }
+    }
+}
+
 impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::SymbolName<'tcx> {
     fn decode(decoder: &mut D) -> Self {
-        ty::SymbolName::new(decoder.interner(), &decoder.read_str())
+        ty::SymbolName::new(decoder.interner(), decoder.read_str())
     }
 }
 

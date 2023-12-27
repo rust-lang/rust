@@ -9,8 +9,13 @@ use crate::core::builder::Builder;
 
 /// Suggests a list of possible `x.py` commands to run based on modified files in branch.
 pub fn suggest(builder: &Builder<'_>, run: bool) {
-    let suggestions =
-        builder.tool_cmd(Tool::SuggestTests).output().expect("failed to run `suggest-tests` tool");
+    let git_config = builder.config.git_config();
+    let suggestions = builder
+        .tool_cmd(Tool::SuggestTests)
+        .env("SUGGEST_TESTS_GIT_REPOSITORY", git_config.git_repository)
+        .env("SUGGEST_TESTS_NIGHTLY_BRANCH", git_config.nightly_branch)
+        .output()
+        .expect("failed to run `suggest-tests` tool");
 
     if !suggestions.status.success() {
         println!("failed to run `suggest-tests` tool ({})", suggestions.status);
@@ -68,6 +73,6 @@ pub fn suggest(builder: &Builder<'_>, run: bool) {
             build.build();
         }
     } else {
-        println!("help: consider using the `--run` flag to automatically run suggested tests");
+        println!("HELP: consider using the `--run` flag to automatically run suggested tests");
     }
 }

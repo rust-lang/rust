@@ -5,7 +5,7 @@ use rustc_hir::{Body, FnDecl};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, AliasTy, ClauseKind, PredicateKind};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{sym, Span};
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
@@ -62,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
         if let FnKind::Closure = kind {
             return;
         }
-        let ret_ty = return_ty(cx, cx.tcx.hir().local_def_id_to_hir_id(fn_def_id).expect_owner());
+        let ret_ty = return_ty(cx, cx.tcx.local_def_id_to_hir_id(fn_def_id).expect_owner());
         if let ty::Alias(ty::Opaque, AliasTy { def_id, args, .. }) = *ret_ty.kind() {
             let preds = cx.tcx.explicit_item_bounds(def_id);
             let mut is_future = false;

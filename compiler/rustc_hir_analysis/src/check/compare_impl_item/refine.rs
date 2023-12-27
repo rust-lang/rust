@@ -91,7 +91,7 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
 
         // This opaque also needs to be from the impl method -- otherwise,
         // it's a refinement to a TAIT.
-        if !tcx.hir().get_if_local(impl_opaque.def_id).map_or(false, |node| {
+        if !tcx.hir().get_if_local(impl_opaque.def_id).is_some_and(|node| {
             matches!(
                 node.expect_item().expect_opaque_ty().origin,
                 hir::OpaqueTyOrigin::AsyncFn(def_id)  | hir::OpaqueTyOrigin::FnReturn(def_id)
@@ -153,7 +153,7 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         trait_m_sig.inputs_and_output,
     ));
     if !ocx.select_all_or_error().is_empty() {
-        tcx.sess.delay_span_bug(
+        tcx.dcx().span_delayed_bug(
             DUMMY_SP,
             "encountered errors when checking RPITIT refinement (selection)",
         );
@@ -165,7 +165,7 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
     );
     let errors = infcx.resolve_regions(&outlives_env);
     if !errors.is_empty() {
-        tcx.sess.delay_span_bug(
+        tcx.dcx().span_delayed_bug(
             DUMMY_SP,
             "encountered errors when checking RPITIT refinement (regions)",
         );
@@ -173,7 +173,7 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
     }
     // Resolve any lifetime variables that may have been introduced during normalization.
     let Ok((trait_bounds, impl_bounds)) = infcx.fully_resolve((trait_bounds, impl_bounds)) else {
-        tcx.sess.delay_span_bug(
+        tcx.dcx().span_delayed_bug(
             DUMMY_SP,
             "encountered errors when checking RPITIT refinement (resolution)",
         );
@@ -262,7 +262,10 @@ fn report_mismatched_rpitit_signature<'tcx>(
 
     if tcx.asyncness(impl_m_def_id).is_async() && tcx.asyncness(trait_m_def_id).is_async() {
         let ty::Alias(ty::Projection, future_ty) = return_ty.kind() else {
-            bug!();
+            span_bug!(
+                tcx.def_span(trait_m_def_id),
+                "expected return type of async fn in trait to be a AFIT projection"
+            );
         };
         let Some(future_output_ty) = tcx
             .explicit_item_bounds(future_ty.def_id)
@@ -272,13 +275,13 @@ fn report_mismatched_rpitit_signature<'tcx>(
                 _ => None,
             })
         else {
-            bug!()
+            span_bug!(tcx.def_span(trait_m_def_id), "expected `Future` projection bound in AFIT");
         };
         return_ty = future_output_ty;
     }
 
     let (span, impl_return_span, pre, post) =
-        match tcx.hir().get_by_def_id(impl_m_def_id.expect_local()).fn_decl().unwrap().output {
+        match tcx.hir_node_by_def_id(impl_m_def_id.expect_local()).fn_decl().unwrap().output {
             hir::FnRetTy::DefaultReturn(span) => (tcx.def_span(impl_m_def_id), span, "-> ", " "),
             hir::FnRetTy::Return(ty) => (ty.span, ty.span, "", ""),
         };

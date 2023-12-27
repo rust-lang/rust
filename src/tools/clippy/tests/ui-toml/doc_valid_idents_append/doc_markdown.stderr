@@ -11,5 +11,5 @@ help: try
 LL | /// `TestItemThingyOfCoolness` might sound cool but is not on the list and should be linted.
    |     ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

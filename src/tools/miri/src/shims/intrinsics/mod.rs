@@ -365,36 +365,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [val] = check_arg_count(args)?;
                 let val = this.read_immediate(val)?;
 
-                let res = match val.layout.ty.kind() {
-                    ty::Float(FloatTy::F32) => {
-                        let f = val.to_scalar().to_f32()?;
-                        this
-                            .float_to_int_checked(f, dest.layout, Round::TowardZero)
-                            .ok_or_else(|| {
-                                err_ub_format!(
-                                    "`float_to_int_unchecked` intrinsic called on {f} which cannot be represented in target type `{:?}`",
-                                    dest.layout.ty
-                                )
-                            })?
-                    }
-                    ty::Float(FloatTy::F64) => {
-                        let f = val.to_scalar().to_f64()?;
-                        this
-                            .float_to_int_checked(f, dest.layout, Round::TowardZero)
-                            .ok_or_else(|| {
-                                err_ub_format!(
-                                    "`float_to_int_unchecked` intrinsic called on {f} which cannot be represented in target type `{:?}`",
-                                    dest.layout.ty
-                                )
-                            })?
-                    }
-                    _ =>
-                        span_bug!(
-                            this.cur_span(),
-                            "`float_to_int_unchecked` called with non-float input type {:?}",
-                            val.layout.ty
-                        ),
-                };
+                let res = this
+                    .float_to_int_checked(&val, dest.layout, Round::TowardZero)?
+                    .ok_or_else(|| {
+                        err_ub_format!(
+                            "`float_to_int_unchecked` intrinsic called on {val} which cannot be represented in target type `{:?}`",
+                            dest.layout.ty
+                        )
+                    })?;
 
                 this.write_immediate(*res, dest)?;
             }

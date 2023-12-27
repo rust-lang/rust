@@ -36,19 +36,18 @@ use crate::infer::region_constraints::VerifyIfEq;
 /// like are used. This is a particular challenge since this function is invoked
 /// very late in inference and hence cannot make use of the normal inference
 /// machinery.
-#[instrument(level = "debug", skip(tcx, param_env))]
+#[instrument(level = "debug", skip(tcx))]
 pub fn extract_verify_if_eq<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     verify_if_eq_b: &ty::Binder<'tcx, VerifyIfEq<'tcx>>,
     test_ty: Ty<'tcx>,
 ) -> Option<ty::Region<'tcx>> {
     assert!(!verify_if_eq_b.has_escaping_bound_vars());
-    let mut m = MatchAgainstHigherRankedOutlives::new(tcx, param_env);
+    let mut m = MatchAgainstHigherRankedOutlives::new(tcx);
     let verify_if_eq = verify_if_eq_b.skip_binder();
     m.relate(verify_if_eq.ty, test_ty).ok()?;
 
-    if let ty::RegionKind::ReLateBound(depth, br) = verify_if_eq.bound.kind() {
+    if let ty::RegionKind::ReBound(depth, br) = verify_if_eq.bound.kind() {
         assert!(depth == ty::INNERMOST);
         match m.map.get(&br) {
             Some(&r) => Some(r),
@@ -73,10 +72,9 @@ pub fn extract_verify_if_eq<'tcx>(
 }
 
 /// True if a (potentially higher-ranked) outlives
-#[instrument(level = "debug", skip(tcx, param_env))]
+#[instrument(level = "debug", skip(tcx))]
 pub(super) fn can_match_erased_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     outlives_predicate: ty::Binder<'tcx, ty::TypeOutlivesPredicate<'tcx>>,
     erased_ty: Ty<'tcx>,
 ) -> bool {
@@ -87,25 +85,20 @@ pub(super) fn can_match_erased_ty<'tcx>(
         // pointless micro-optimization
         true
     } else {
-        MatchAgainstHigherRankedOutlives::new(tcx, param_env).relate(outlives_ty, erased_ty).is_ok()
+        MatchAgainstHigherRankedOutlives::new(tcx).relate(outlives_ty, erased_ty).is_ok()
     }
 }
 
 struct MatchAgainstHigherRankedOutlives<'tcx> {
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     pattern_depth: ty::DebruijnIndex,
     map: FxHashMap<ty::BoundRegion, ty::Region<'tcx>>,
 }
 
 impl<'tcx> MatchAgainstHigherRankedOutlives<'tcx> {
-    fn new(
-        tcx: TyCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-    ) -> MatchAgainstHigherRankedOutlives<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>) -> MatchAgainstHigherRankedOutlives<'tcx> {
         MatchAgainstHigherRankedOutlives {
             tcx,
-            param_env,
             pattern_depth: ty::INNERMOST,
             map: FxHashMap::default(),
         }
@@ -144,15 +137,13 @@ impl<'tcx> MatchAgainstHigherRankedOutlives<'tcx> {
 
 impl<'tcx> TypeRelation<'tcx> for MatchAgainstHigherRankedOutlives<'tcx> {
     fn tag(&self) -> &'static str {
-        "Match"
+        "MatchAgainstHigherRankedOutlives"
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.param_env
-    }
+
     fn a_is_expected(&self) -> bool {
         true
     } // irrelevant
@@ -177,7 +168,7 @@ impl<'tcx> TypeRelation<'tcx> for MatchAgainstHigherRankedOutlives<'tcx> {
         value: ty::Region<'tcx>,
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
         debug!("self.pattern_depth = {:?}", self.pattern_depth);
-        if let ty::RegionKind::ReLateBound(depth, br) = pattern.kind()
+        if let ty::RegionKind::ReBound(depth, br) = pattern.kind()
             && depth == self.pattern_depth
         {
             self.bind(br, value)

@@ -124,5 +124,5 @@
 mod async_iter;
 mod from_iter;
 
-pub use async_iter::AsyncIterator;
+pub use async_iter::{AsyncIterator, IntoAsyncIterator};
 pub use from_iter::{from_iter, FromIter};

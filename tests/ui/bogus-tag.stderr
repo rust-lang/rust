@@ -7,6 +7,6 @@ LL | enum Color { Rgb(isize, isize, isize), Rgba(isize, isize, isize, isize), }
 LL |         Color::Hsl(h, s, l) => { println!("hsl"); }
    |                ^^^ variant or associated item not found in `Color`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0599`.

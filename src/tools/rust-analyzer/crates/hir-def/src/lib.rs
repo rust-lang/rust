@@ -7,7 +7,8 @@
 //! Note that `hir_def` is a work in progress, so not all of the above is
 //! actually true.
 
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![warn(rust_2018_idioms, unused_lifetimes)]
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
 #[allow(unused)]
 macro_rules! eprintln {
@@ -48,7 +49,7 @@ pub mod visibility;
 pub mod find_path;
 pub mod import_map;
 
-pub use rustc_abi as layout;
+pub use rustc_dependencies::abi as layout;
 use triomphe::Arc;
 
 #[cfg(test)]
@@ -62,7 +63,7 @@ use std::{
     panic::{RefUnwindSafe, UnwindSafe},
 };
 
-use base_db::{impl_intern_key, salsa, CrateId, ProcMacroKind};
+use base_db::{impl_intern_key, salsa, span::SyntaxContextId, CrateId, ProcMacroKind};
 use hir_expand::{
     ast_id_map::{AstIdNode, FileAstId},
     attrs::{Attr, AttrId, AttrInput},
@@ -71,18 +72,18 @@ use hir_expand::{
     builtin_fn_macro::{BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
     eager::expand_eager_macro_input,
-    hygiene::Hygiene,
+    name::Name,
     proc_macro::ProcMacroExpander,
     AstId, ExpandError, ExpandResult, ExpandTo, HirFileId, InFile, MacroCallId, MacroCallKind,
-    MacroDefId, MacroDefKind, UnresolvedMacro,
+    MacroDefId, MacroDefKind,
 };
 use item_tree::ExternBlock;
 use la_arena::Idx;
 use nameres::DefMap;
 use stdx::impl_from;
-use syntax::ast;
+use syntax::{ast, AstNode};
 
-use ::tt::token_id as tt;
+pub use hir_expand::tt;
 
 use crate::{
     builtin_type::BuiltinType,
@@ -150,7 +151,7 @@ impl TryFrom<ModuleId> for CrateRootModuleId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ModuleId {
     krate: CrateId,
     /// If this `ModuleId` was derived from a `DefMap` for a block expression, this stores the
@@ -171,6 +172,18 @@ impl ModuleId {
 
     pub fn krate(self) -> CrateId {
         self.krate
+    }
+
+    pub fn name(self, db: &dyn db::DefDatabase) -> Option<Name> {
+        let def_map = self.def_map(db);
+        let parent = def_map[self.local_id].parent?;
+        def_map[parent].children.iter().find_map(|(name, module_id)| {
+            if *module_id == self.local_id {
+                Some(name.clone())
+            } else {
+                None
+            }
+        })
     }
 
     pub fn containing_module(self, db: &dyn db::DefDatabase) -> Option<ModuleId> {
@@ -498,10 +511,7 @@ impl_from!(Macro2Id, MacroRulesId, ProcMacroId for MacroId);
 
 impl MacroId {
     pub fn is_attribute(self, db: &dyn db::DefDatabase) -> bool {
-        match self {
-            MacroId::ProcMacroId(it) => it.lookup(db).kind == ProcMacroKind::Attr,
-            _ => false,
-        }
+        matches!(self, MacroId::ProcMacroId(it) if it.lookup(db).kind == ProcMacroKind::Attr)
     }
 }
 
@@ -559,6 +569,8 @@ pub struct ConstBlockLoc {
     pub root: hir::ExprId,
 }
 
+/// Something that holds types, required for the current const arg lowering implementation as they
+/// need to be able to query where they are defined.
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum TypeOwnerId {
     FunctionId(FunctionId),
@@ -571,9 +583,6 @@ pub enum TypeOwnerId {
     TypeAliasId(TypeAliasId),
     ImplId(ImplId),
     EnumVariantId(EnumVariantId),
-    // FIXME(const-generic-body): ModuleId should not be a type owner. This needs to be fixed to make `TypeOwnerId` actually
-    // useful for assigning ids to in type consts.
-    ModuleId(ModuleId),
 }
 
 impl TypeOwnerId {
@@ -587,9 +596,7 @@ impl TypeOwnerId {
             TypeOwnerId::TypeAliasId(it) => GenericDefId::TypeAliasId(it),
             TypeOwnerId::ImplId(it) => GenericDefId::ImplId(it),
             TypeOwnerId::EnumVariantId(it) => GenericDefId::EnumVariantId(it),
-            TypeOwnerId::InTypeConstId(_) | TypeOwnerId::ModuleId(_) | TypeOwnerId::StaticId(_) => {
-                return None
-            }
+            TypeOwnerId::InTypeConstId(_) | TypeOwnerId::StaticId(_) => return None,
         })
     }
 }
@@ -604,8 +611,7 @@ impl_from!(
     TraitAliasId,
     TypeAliasId,
     ImplId,
-    EnumVariantId,
-    ModuleId
+    EnumVariantId
     for TypeOwnerId
 );
 
@@ -703,12 +709,15 @@ pub struct InTypeConstLoc {
     pub id: AstId<ast::ConstArg>,
     /// The thing this const arg appears in
     pub owner: TypeOwnerId,
-    pub thing: Box<dyn OpaqueInternableThing>,
+    // FIXME(const-generic-body): The expected type should not be
+    pub expected_ty: Box<dyn OpaqueInternableThing>,
 }
 
 impl PartialEq for InTypeConstLoc {
     fn eq(&self, other: &Self) -> bool {
-        self.id == other.id && self.owner == other.owner && &*self.thing == &*other.thing
+        self.id == other.id
+            && self.owner == other.owner
+            && &*self.expected_ty == &*other.expected_ty
     }
 }
 
@@ -1031,7 +1040,6 @@ impl HasModule for TypeOwnerId {
             TypeOwnerId::TypeAliasId(it) => it.lookup(db).module(db),
             TypeOwnerId::ImplId(it) => it.lookup(db).container,
             TypeOwnerId::EnumVariantId(it) => it.parent.lookup(db).container,
-            TypeOwnerId::ModuleId(it) => *it,
         }
     }
 }
@@ -1155,16 +1163,20 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
     ) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro> {
         let expands_to = hir_expand::ExpandTo::from_call_site(self.value);
         let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(self.value));
-        let h = Hygiene::new(db, self.file_id);
-        let path = self.value.path().and_then(|path| path::ModPath::from_src(db, path, &h));
+        let span_map = db.span_map(self.file_id);
+        let path =
+            self.value.path().and_then(|path| path::ModPath::from_src(db, path, span_map.as_ref()));
 
         let Some(path) = path else {
             return Ok(ExpandResult::only_err(ExpandError::other("malformed macro invocation")));
         };
 
+        let call_site = span_map.span_for_range(self.value.syntax().text_range()).ctx;
+
         macro_call_as_call_id_with_eager(
             db,
             &AstIdWithPath::new(ast_id.file_id, ast_id.value, path),
+            call_site,
             expands_to,
             krate,
             resolver,
@@ -1189,17 +1201,19 @@ impl<T: AstIdNode> AstIdWithPath<T> {
 fn macro_call_as_call_id(
     db: &dyn ExpandDatabase,
     call: &AstIdWithPath<ast::MacroCall>,
+    call_site: SyntaxContextId,
     expand_to: ExpandTo,
     krate: CrateId,
     resolver: impl Fn(path::ModPath) -> Option<MacroDefId> + Copy,
 ) -> Result<Option<MacroCallId>, UnresolvedMacro> {
-    macro_call_as_call_id_with_eager(db, call, expand_to, krate, resolver, resolver)
+    macro_call_as_call_id_with_eager(db, call, call_site, expand_to, krate, resolver, resolver)
         .map(|res| res.value)
 }
 
 fn macro_call_as_call_id_with_eager(
     db: &dyn ExpandDatabase,
     call: &AstIdWithPath<ast::MacroCall>,
+    call_site: SyntaxContextId,
     expand_to: ExpandTo,
     krate: CrateId,
     resolver: impl FnOnce(path::ModPath) -> Option<MacroDefId>,
@@ -1211,7 +1225,7 @@ fn macro_call_as_call_id_with_eager(
     let res = match def.kind {
         MacroDefKind::BuiltInEager(..) => {
             let macro_call = InFile::new(call.ast_id.file_id, call.ast_id.to_node(db));
-            expand_eager_macro_input(db, krate, macro_call, def, &|path| {
+            expand_eager_macro_input(db, krate, macro_call, def, call_site, &|path| {
                 eager_resolver(path).filter(MacroDefId::is_fn_like)
             })
         }
@@ -1220,6 +1234,7 @@ fn macro_call_as_call_id_with_eager(
                 db,
                 krate,
                 MacroCallKind::FnLike { ast_id: call.ast_id, expand_to },
+                call_site,
             )),
             err: None,
         },
@@ -1304,6 +1319,7 @@ fn derive_macro_as_call_id(
     item_attr: &AstIdWithPath<ast::Adt>,
     derive_attr_index: AttrId,
     derive_pos: u32,
+    call_site: SyntaxContextId,
     krate: CrateId,
     resolver: impl Fn(path::ModPath) -> Option<(MacroId, MacroDefId)>,
 ) -> Result<(MacroId, MacroDefId, MacroCallId), UnresolvedMacro> {
@@ -1318,6 +1334,7 @@ fn derive_macro_as_call_id(
             derive_index: derive_pos,
             derive_attr_index,
         },
+        call_site,
     );
     Ok((macro_id, def_id, call_id))
 }
@@ -1330,15 +1347,13 @@ fn attr_macro_as_call_id(
     def: MacroDefId,
 ) -> MacroCallId {
     let arg = match macro_attr.input.as_deref() {
-        Some(AttrInput::TokenTree(tt)) => (
-            {
-                let mut tt = tt.0.clone();
-                tt.delimiter = tt::Delimiter::UNSPECIFIED;
-                tt
-            },
-            tt.1.clone(),
-        ),
-        _ => (tt::Subtree::empty(), Default::default()),
+        Some(AttrInput::TokenTree(tt)) => {
+            let mut tt = tt.as_ref().clone();
+            tt.delimiter = tt::Delimiter::DUMMY_INVISIBLE;
+            Some(tt)
+        }
+
+        _ => None,
     };
 
     def.as_lazy_macro(
@@ -1346,11 +1361,18 @@ fn attr_macro_as_call_id(
         krate,
         MacroCallKind::Attr {
             ast_id: item_attr.ast_id,
-            attr_args: Arc::new(arg),
+            attr_args: arg.map(Arc::new),
             invoc_attr_index: macro_attr.id,
         },
+        macro_attr.ctxt,
     )
 }
+
+#[derive(Debug)]
+pub struct UnresolvedMacro {
+    pub path: hir_expand::mod_path::ModPath,
+}
+
 intern::impl_internable!(
     crate::type_ref::TypeRef,
     crate::type_ref::TraitRef,

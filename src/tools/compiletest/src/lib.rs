@@ -81,6 +81,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         )
         .optopt("", "run", "whether to execute run-* tests", "auto | always | never")
         .optflag("", "ignored", "run tests marked as ignored")
+        .optflag("", "with-debug-assertions", "whether to run tests with `ignore-debug` header")
         .optmulti("", "skip", "skip tests matching SUBSTRING. Can be passed multiple times", "SUBSTRING")
         .optflag("", "exact", "filters match exactly")
         .optopt(
@@ -144,7 +145,9 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optflag("h", "help", "show this message")
         .reqopt("", "channel", "current Rust channel", "CHANNEL")
         .optflag("", "git-hash", "run tests which rely on commit version being compiled into the binaries")
-        .optopt("", "edition", "default Rust edition", "EDITION");
+        .optopt("", "edition", "default Rust edition", "EDITION")
+        .reqopt("", "git-repository", "name of the git repository", "ORG/REPO")
+        .reqopt("", "nightly-branch", "name of the git branch for nightly", "BRANCH");
 
     let (argv0, args_) = args.split_first().unwrap();
     if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
@@ -201,6 +204,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
 
     let src_base = opt_path(matches, "src-base");
     let run_ignored = matches.opt_present("ignored");
+    let with_debug_assertions = matches.opt_present("with-debug-assertions");
     let mode = matches.opt_str("mode").unwrap().parse().expect("invalid mode");
     let has_tidy = if mode == Mode::Rustdoc {
         Command::new("tidy")
@@ -236,6 +240,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         suite: matches.opt_str("suite").unwrap(),
         debugger: None,
         run_ignored,
+        with_debug_assertions,
         filters: matches.free.clone(),
         skip: matches.opt_strs("skip"),
         filter_exact: matches.opt_present("exact"),
@@ -307,6 +312,9 @@ pub fn parse_config(args: Vec<String>) -> Config {
         target_cfgs: AtomicLazyCell::new(),
 
         nocapture: matches.opt_present("nocapture"),
+
+        git_repository: matches.opt_str("git-repository").unwrap(),
+        nightly_branch: matches.opt_str("nightly-branch").unwrap(),
     }
 }
 
@@ -609,9 +617,10 @@ fn modified_tests(config: &Config, dir: &Path) -> Result<Vec<PathBuf>, String> {
         return Ok(vec![]);
     }
     let files =
-        get_git_modified_files(Some(dir), &vec!["rs", "stderr", "fixed"])?.unwrap_or(vec![]);
+        get_git_modified_files(&config.git_config(), Some(dir), &vec!["rs", "stderr", "fixed"])?
+            .unwrap_or(vec![]);
     // Add new test cases to the list, it will be convenient in daily development.
-    let untracked_files = get_git_untracked_files(None)?.unwrap_or(vec![]);
+    let untracked_files = get_git_untracked_files(&config.git_config(), None)?.unwrap_or(vec![]);
 
     let all_paths = [&files[..], &untracked_files[..]].concat();
     let full_paths = {

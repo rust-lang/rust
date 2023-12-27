@@ -24,7 +24,12 @@ error[E0560]: struct `RGB` has no field named `c`
   --> $DIR/type-mismatch-struct-field-shorthand-2.rs:5:25
    |
 LL |     let _ = RGB { r, g, c };
-   |                         ^ help: a field with a similar name exists: `b`
+   |                         ^ unknown field
+   |
+help: a field with a similar name exists
+   |
+LL |     let _ = RGB { r, g, b };
+   |                         ~
 
 error: aborting due to 3 previous errors
 

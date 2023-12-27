@@ -7,6 +7,6 @@ LL |
 LL |         z.0.0.0 = format!("X1");
    |         ------- mutable borrow occurs due to use of `*z.0.0` in closure
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0596`.

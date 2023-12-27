@@ -1,6 +1,9 @@
+use either::Either;
 use ide_db::defs::{Definition, NameRefClass};
-use itertools::Itertools;
-use syntax::{ast, AstNode, SyntaxKind, T};
+use syntax::{
+    ast::{self, make, HasArgList},
+    ted, AstNode,
+};
 
 use crate::{
     assist_context::{AssistContext, Assists},
@@ -25,21 +28,45 @@ use crate::{
 // }
 // ```
 pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let ident = ctx.find_token_syntax_at_offset(SyntaxKind::IDENT).or_else(|| {
-        let arg_list = ctx.find_node_at_offset::<ast::ArgList>()?;
-        if arg_list.args().next().is_some() {
-            return None;
-        }
-        cov_mark::hit!(add_turbo_fish_after_call);
-        cov_mark::hit!(add_type_ascription_after_call);
-        arg_list.l_paren_token()?.prev_token().filter(|it| it.kind() == SyntaxKind::IDENT)
-    })?;
-    let next_token = ident.next_token()?;
-    if next_token.kind() == T![::] {
+    let turbofish_target =
+        ctx.find_node_at_offset::<ast::PathSegment>().map(Either::Left).or_else(|| {
+            let callable_expr = ctx.find_node_at_offset::<ast::CallableExpr>()?;
+
+            if callable_expr.arg_list()?.args().next().is_some() {
+                return None;
+            }
+
+            cov_mark::hit!(add_turbo_fish_after_call);
+            cov_mark::hit!(add_type_ascription_after_call);
+
+            match callable_expr {
+                ast::CallableExpr::Call(it) => {
+                    let ast::Expr::PathExpr(path) = it.expr()? else {
+                        return None;
+                    };
+
+                    Some(Either::Left(path.path()?.segment()?))
+                }
+                ast::CallableExpr::MethodCall(it) => Some(Either::Right(it)),
+            }
+        })?;
+
+    let already_has_turbofish = match &turbofish_target {
+        Either::Left(path_segment) => path_segment.generic_arg_list().is_some(),
+        Either::Right(method_call) => method_call.generic_arg_list().is_some(),
+    };
+
+    if already_has_turbofish {
         cov_mark::hit!(add_turbo_fish_one_fish_is_enough);
         return None;
     }
-    let name_ref = ast::NameRef::cast(ident.parent()?)?;
+
+    let name_ref = match &turbofish_target {
+        Either::Left(path_segment) => path_segment.name_ref()?,
+        Either::Right(method_call) => method_call.name_ref()?,
+    };
+    let ident = name_ref.ident_token()?;
+
     let def = match NameRefClass::classify(&ctx.sema, &name_ref)? {
         NameRefClass::Definition(def) => def,
         NameRefClass::FieldShorthand { .. } | NameRefClass::ExternCrateShorthand { .. } => {
@@ -58,20 +85,27 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
 
     if let Some(let_stmt) = ctx.find_node_at_offset::<ast::LetStmt>() {
         if let_stmt.colon_token().is_none() {
-            let type_pos = let_stmt.pat()?.syntax().last_token()?.text_range().end();
-            let semi_pos = let_stmt.syntax().last_token()?.text_range().end();
+            if let_stmt.pat().is_none() {
+                return None;
+            }
 
             acc.add(
                 AssistId("add_type_ascription", AssistKind::RefactorRewrite),
                 "Add `: _` before assignment operator",
                 ident.text_range(),
-                |builder| {
+                |edit| {
+                    let let_stmt = edit.make_mut(let_stmt);
+
                     if let_stmt.semicolon_token().is_none() {
-                        builder.insert(semi_pos, ";");
+                        ted::append_child(let_stmt.syntax(), make::tokens::semicolon());
                     }
-                    match ctx.config.snippet_cap {
-                        Some(cap) => builder.insert_snippet(cap, type_pos, ": ${0:_}"),
-                        None => builder.insert(type_pos, ": _"),
+
+                    let placeholder_ty = make::ty_placeholder().clone_for_update();
+
+                    let_stmt.set_ty(Some(placeholder_ty.clone()));
+
+                    if let Some(cap) = ctx.config.snippet_cap {
+                        edit.add_placeholder_snippet(cap, placeholder_ty);
                     }
                 },
             )?
@@ -91,38 +125,46 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
         AssistId("add_turbo_fish", AssistKind::RefactorRewrite),
         "Add `::<>`",
         ident.text_range(),
-        |builder| {
-            builder.trigger_signature_help();
-            match ctx.config.snippet_cap {
-                Some(cap) => {
-                    let fish_head = get_snippet_fish_head(number_of_arguments);
-                    let snip = format!("::<{fish_head}>");
-                    builder.insert_snippet(cap, ident.text_range().end(), snip)
+        |edit| {
+            edit.trigger_signature_help();
+
+            let new_arg_list = match turbofish_target {
+                Either::Left(path_segment) => {
+                    edit.make_mut(path_segment).get_or_create_generic_arg_list()
                 }
-                None => {
-                    let fish_head = std::iter::repeat("_").take(number_of_arguments).format(", ");
-                    let snip = format!("::<{fish_head}>");
-                    builder.insert(ident.text_range().end(), snip);
+                Either::Right(method_call) => {
+                    edit.make_mut(method_call).get_or_create_generic_arg_list()
+                }
+            };
+
+            let fish_head = get_fish_head(number_of_arguments).clone_for_update();
+
+            // Note: we need to replace the `new_arg_list` instead of being able to use something like
+            // `GenericArgList::add_generic_arg` as `PathSegment::get_or_create_generic_arg_list`
+            // always creates a non-turbofish form generic arg list.
+            ted::replace(new_arg_list.syntax(), fish_head.syntax());
+
+            if let Some(cap) = ctx.config.snippet_cap {
+                for arg in fish_head.generic_args() {
+                    edit.add_placeholder_snippet(cap, arg)
                 }
             }
         },
     )
 }
 
-/// This will create a snippet string with tabstops marked
-fn get_snippet_fish_head(number_of_arguments: usize) -> String {
-    let mut fish_head = (1..number_of_arguments)
-        .format_with("", |i, f| f(&format_args!("${{{i}:_}}, ")))
-        .to_string();
-
-    // tabstop 0 is a special case and always the last one
-    fish_head.push_str("${0:_}");
-    fish_head
+/// This will create a turbofish generic arg list corresponding to the number of arguments
+fn get_fish_head(number_of_arguments: usize) -> ast::GenericArgList {
+    let args = (0..number_of_arguments).map(|_| make::type_arg(make::ty_placeholder()).into());
+    make::turbofish_generic_arg_list(args)
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_assist, check_assist_by_label, check_assist_not_applicable};
+    use crate::tests::{
+        check_assist, check_assist_by_label, check_assist_not_applicable,
+        check_assist_not_applicable_by_label,
+    };
 
     use super::*;
 
@@ -357,6 +399,20 @@ fn main() {
 fn make<T>() -> T {}
 fn main() {
     let x: ${0:_} = make();
+}
+"#,
+            "Add `: _` before assignment operator",
+        );
+    }
+
+    #[test]
+    fn add_type_ascription_missing_pattern() {
+        check_assist_not_applicable_by_label(
+            add_turbo_fish,
+            r#"
+fn make<T>() -> T {}
+fn main() {
+    let = make$0()
 }
 "#,
             "Add `: _` before assignment operator",

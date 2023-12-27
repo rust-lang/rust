@@ -102,8 +102,9 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
             // Ignore bound regions and `'static` regions that appear in the
             // type, we only need to remap regions that reference lifetimes
             // from the function declaration.
-            // This would ignore `'r` in a type like `for<'r> fn(&'r u32)`.
-            ty::ReLateBound(..) | ty::ReStatic => return r,
+            //
+            // E.g. We ignore `'r` in a type like `for<'r> fn(&'r u32)`.
+            ty::ReBound(..) | ty::ReStatic => return r,
 
             // If regions have been erased (by writeback), don't try to unerase
             // them.
@@ -112,7 +113,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
             ty::ReError(_) => return r,
 
             // The regions that we expect from borrow checking.
-            ty::ReEarlyBound(_) | ty::ReFree(_) => {}
+            ty::ReEarlyParam(_) | ty::ReLateParam(_) => {}
 
             ty::RePlaceholder(_) | ty::ReVar(_) => {
                 // All of the regions in the type should either have been
@@ -129,7 +130,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
             None => {
                 let e = self
                     .tcx
-                    .sess
+                    .dcx()
                     .struct_span_err(self.span, "non-defining opaque type use in defining scope")
                     .span_label(
                         self.span,
@@ -173,7 +174,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                         debug!(?param, ?self.map);
                         if !self.ignore_errors {
                             self.tcx
-                                .sess
+                                .dcx()
                                 .struct_span_err(
                                     self.span,
                                     format!(
@@ -207,7 +208,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                     None => {
                         let guar = self
                             .tcx
-                            .sess
+                            .dcx()
                             .create_err(ConstNotUsedTraitAlias {
                                 ct: ct.to_string(),
                                 span: self.span,

@@ -9,6 +9,6 @@ help: consider restricting type parameter `T`
 LL | fn callee<'x, 'y, T: for<'z> Trait2<'y, 'z>>(t: &'x dyn for<'z> Trait1< <T as Trait2<'y, 'z>>::Foo >)
    |                    ++++++++++++++++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

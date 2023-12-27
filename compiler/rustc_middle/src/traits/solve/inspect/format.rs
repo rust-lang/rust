@@ -109,6 +109,9 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
             ProbeKind::UpcastProjectionCompatibility => {
                 writeln!(self.f, "PROBING FOR PROJECTION COMPATIBILITY FOR UPCASTING:")
             }
+            ProbeKind::CommitIfOk => {
+                writeln!(self.f, "COMMIT_IF_OK:")
+            }
             ProbeKind::MiscCandidate { name, result } => {
                 writeln!(self.f, "CANDIDATE {name}: {result:?}")
             }
@@ -120,9 +123,17 @@ impl<'a, 'b> ProofTreeFormatter<'a, 'b> {
         self.nested(|this| {
             for step in &probe.steps {
                 match step {
-                    ProbeStep::AddGoal(goal) => writeln!(this.f, "ADDED GOAL: {goal:?}")?,
+                    ProbeStep::AddGoal(source, goal) => {
+                        let source = match source {
+                            GoalSource::Misc => "misc",
+                            GoalSource::ImplWhereBound => "impl where-bound",
+                        };
+                        writeln!(this.f, "ADDED GOAL ({source}): {goal:?}")?
+                    }
                     ProbeStep::EvaluateGoals(eval) => this.format_added_goals_evaluation(eval)?,
                     ProbeStep::NestedProbe(probe) => this.format_probe(probe)?,
+                    ProbeStep::CommitIfOkStart => writeln!(this.f, "COMMIT_IF_OK START")?,
+                    ProbeStep::CommitIfOkSuccess => writeln!(this.f, "COMMIT_IF_OK SUCCESS")?,
                 }
             }
             Ok(())

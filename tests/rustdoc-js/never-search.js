@@ -43,4 +43,14 @@ const EXPECTED = [
             { 'path': 'never_search', 'name': 'box_uninteresting' },
         ],
     },
+    {
+        'query': 'box<item=!>',
+        'in_args': [],
+        'returned': [],
+    },
+    {
+        'query': 'box<item=never>',
+        'in_args': [],
+        'returned': [],
+    },
 ];

@@ -4,7 +4,7 @@ use rustc_errors::Applicability::MachineApplicable;
 use rustc_hir::{Expr, ExprKind, PathSegment, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::{sym, symbol, Span};
 
 declare_clippy_lint! {
@@ -108,18 +108,16 @@ fn parse_call(cx: &LateContext<'_>, span: Span, func: &Expr<'_>, args: &[Expr<'_
 
     let arg_kind = &args[0].kind;
     if let ExprKind::Path(qpath) = &func.kind {
-        if let QPath::TypeRelative(_, _) = qpath {
-            // String::from(...) or String::try_from(...)
-            if let QPath::TypeRelative(ty, path_seg) = qpath
-                && [sym::from, sym::try_from].contains(&path_seg.ident.name)
-                && let TyKind::Path(qpath) = &ty.kind
-                && let QPath::Resolved(_, path) = qpath
-                && let [path_seg] = path.segments
-                && path_seg.ident.name == sym::String
-                && is_expr_kind_empty_str(arg_kind)
-            {
-                warn_then_suggest(cx, span);
-            }
+        // String::from(...) or String::try_from(...)
+        if let QPath::TypeRelative(ty, path_seg) = qpath
+            && [sym::from, sym::try_from].contains(&path_seg.ident.name)
+            && let TyKind::Path(qpath) = &ty.kind
+            && let QPath::Resolved(_, path) = qpath
+            && let [path_seg] = path.segments
+            && path_seg.ident.name == sym::String
+            && is_expr_kind_empty_str(arg_kind)
+        {
+            warn_then_suggest(cx, span);
         } else if let QPath::Resolved(_, path) = qpath {
             // From::from(...) or TryFrom::try_from(...)
             if let [path_seg1, path_seg2] = path.segments

@@ -77,7 +77,7 @@ use std::ops::Deref;
 /// picture, but rather the ending point.
 //
 // FIXME(pnkfelix): this currently derives `PartialOrd` and `Ord` to
-// placate the same deriving in `ty::FreeRegion`, but we may want to
+// placate the same deriving in `ty::LateParamRegion`, but we may want to
 // actually attach a more meaningful ordering to scopes than the one
 // generated via deriving here.
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, Copy, TyEncodable, TyDecodable)]
@@ -148,6 +148,8 @@ rustc_index::newtype_index! {
     /// * The subscope with `first_statement_index == 1` is scope of `c`,
     ///   and thus does not include EXPR_2, but covers the `...`.
     #[derive(HashStable)]
+    #[encodable]
+    #[orderable]
     pub struct FirstStatementIndex {}
 }
 
@@ -178,7 +180,7 @@ impl Scope {
         };
         let span = tcx.hir().span(hir_id);
         if let ScopeData::Remainder(first_statement_index) = self.data {
-            if let Node::Block(ref blk) = tcx.hir().get(hir_id) {
+            if let Node::Block(blk) = tcx.hir_node(hir_id) {
                 // Want span for scope starting after the
                 // indexed statement and ending at end of
                 // `blk`; reuse span of `blk` and shift `lo`
@@ -305,11 +307,6 @@ pub struct ScopeTree {
     /// the values are still owned by their containing expressions. So
     /// we'll see that `&x`.
     pub yield_in_scope: FxHashMap<Scope, Vec<YieldData>>,
-
-    /// The number of visit_expr and visit_pat calls done in the body.
-    /// Used to sanity check visit_expr/visit_pat call count when
-    /// calculating coroutine interiors.
-    pub body_expr_count: FxHashMap<hir::BodyId, usize>,
 }
 
 /// Identifies the reason that a given expression is an rvalue candidate
@@ -345,10 +342,6 @@ impl ScopeTree {
         if let ScopeData::Destruction = child.data {
             self.destruction_scopes.insert(child.item_local_id(), child);
         }
-    }
-
-    pub fn opt_destruction_scope(&self, n: hir::ItemLocalId) -> Option<Scope> {
-        self.destruction_scopes.get(&n).cloned()
     }
 
     pub fn record_var_scope(&mut self, var: hir::ItemLocalId, lifetime: Scope) {
@@ -410,20 +403,12 @@ impl ScopeTree {
     pub fn yield_in_scope(&self, scope: Scope) -> Option<&[YieldData]> {
         self.yield_in_scope.get(&scope).map(Deref::deref)
     }
-
-    /// Gives the number of expressions visited in a body.
-    /// Used to sanity check visit_expr call count when
-    /// calculating coroutine interiors.
-    pub fn body_expr_count(&self, body_id: hir::BodyId) -> Option<usize> {
-        self.body_expr_count.get(&body_id).copied()
-    }
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for ScopeTree {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let ScopeTree {
             root_body,
-            ref body_expr_count,
             ref parent_map,
             ref var_map,
             ref destruction_scopes,
@@ -432,7 +417,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for ScopeTree {
         } = *self;
 
         root_body.hash_stable(hcx, hasher);
-        body_expr_count.hash_stable(hcx, hasher);
         parent_map.hash_stable(hcx, hasher);
         var_map.hash_stable(hcx, hasher);
         destruction_scopes.hash_stable(hcx, hasher);

@@ -4,5 +4,5 @@ error: specializing impl repeats parameter `T`
 LL | impl<T> X for (T, T) {
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

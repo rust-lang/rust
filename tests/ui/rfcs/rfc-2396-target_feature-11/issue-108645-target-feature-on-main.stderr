@@ -4,5 +4,5 @@ error: `main` function is not allowed to have `#[target_feature]`
 LL | fn main() {}
    | ^^^^^^^^^ `main` function is not allowed to have `#[target_feature]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

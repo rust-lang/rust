@@ -10,7 +10,7 @@ use crate::cmp;
 use crate::fmt;
 use crate::hash;
 use crate::intrinsics;
-use crate::marker::{Copy, DiscriminantKind, Sized};
+use crate::marker::DiscriminantKind;
 use crate::ptr;
 
 mod manually_drop;
@@ -647,7 +647,7 @@ pub const fn needs_drop<T: ?Sized>() -> bool {
 #[allow(deprecated)]
 #[rustc_diagnostic_item = "mem_zeroed"]
 #[track_caller]
-#[rustc_const_stable(feature = "const_mem_zeroed", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_mem_zeroed", since = "1.75.0")]
 pub const unsafe fn zeroed<T>() -> T {
     // SAFETY: the caller must guarantee that an all-zero value is valid for `T`.
     unsafe {
@@ -1132,10 +1132,12 @@ impl<T> fmt::Debug for Discriminant<T> {
 ///
 /// [Reference]: ../../reference/items/enumerations.html#custom-discriminant-values-for-fieldless-enumerations
 ///
-/// The value of a [`Discriminant<T>`] is independent of any *lifetimes* in `T`. As such, reading
-/// or writing a `Discriminant<Foo<'a>>` as a `Discriminant<Foo<'b>>` (whether via [`transmute`] or
-/// otherwise) is always sound. Note that this is **not** true for other kinds of generic
-/// parameters; `Discriminant<Foo<A>>` and `Discriminant<Foo<B>>` might be incompatible.
+/// The value of a [`Discriminant<T>`] is independent of any *free lifetimes* in `T`. As such,
+/// reading or writing a `Discriminant<Foo<'a>>` as a `Discriminant<Foo<'b>>` (whether via
+/// [`transmute`] or otherwise) is always sound. Note that this is **not** true for other kinds
+/// of generic parameters and for higher-ranked lifetimes; `Discriminant<Foo<A>>` and
+/// `Discriminant<Foo<B>>` as well as `Discriminant<Bar<dyn for<'a> Trait<'a>>>` and
+/// `Discriminant<Bar<dyn Trait<'static>>>` may be incompatible.
 ///
 /// # Examples
 ///
@@ -1208,7 +1210,7 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// // assert_eq!(0, unsafe { std::mem::transmute::<_, u8>(std::mem::discriminant(&unit_like)) });
 /// ```
 #[stable(feature = "discriminant_value", since = "1.21.0")]
-#[rustc_const_stable(feature = "const_discriminant", since = "CURRENT_RUSTC_VERSION")]
+#[rustc_const_stable(feature = "const_discriminant", since = "1.75.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "mem_discriminant")]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
@@ -1358,7 +1360,7 @@ impl<T> SizedTypeProperties for T {}
 ///
 /// ```
 /// #![feature(offset_of)]
-/// # #![cfg_attr(not(bootstrap), feature(offset_of_enum))]
+/// # #![feature(offset_of_enum)]
 ///
 /// use std::mem;
 /// #[repr(C)]
@@ -1388,12 +1390,9 @@ impl<T> SizedTypeProperties for T {}
 ///     B { one: u8, two: u16 },
 /// }
 ///
-/// # #[cfg(not(bootstrap))]
 /// assert_eq!(mem::offset_of!(Enum, A.0), 1);
-/// # #[cfg(not(bootstrap))]
 /// assert_eq!(mem::offset_of!(Enum, B.two), 2);
 ///
-/// # #[cfg(not(bootstrap))]
 /// assert_eq!(mem::offset_of!(Option<&u8>, Some.0), 0);
 /// ```
 #[unstable(feature = "offset_of", issue = "106655")]

@@ -13,16 +13,16 @@ doctest = false
 
 [dependencies]
 cov-mark = "2.0.0-pre.1"
-tracing = "0.1.35"
-rayon = "1.6.1"
+tracing.workspace = true
+rayon.workspace = true
 fst = { version = "0.4.7", default-features = false }
 rustc-hash = "1.1.0"
 once_cell = "1.17.0"
-either = "1.7.0"
-itertools = "0.10.5"
+either.workspace = true
+itertools.workspace = true
 arrayvec = "0.7.2"
-indexmap = "2.0.0"
-memchr = "2.5.0"
+indexmap.workspace = true
+memchr = "2.6.4"
 triomphe.workspace = true
 nohash-hasher.workspace = true
 
@@ -43,7 +43,7 @@ line-index.workspace = true
 [dev-dependencies]
 expect-test = "1.4.0"
 oorandom = "11.1.3"
-xshell = "0.2.2"
+xshell.workspace = true
 
 # local deps
 test-utils.workspace = true

@@ -4,5 +4,5 @@ error: return types are denoted using `->`
 LL | fn foo(x: i32): i32 {
    |               ^ help: use `->` instead
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

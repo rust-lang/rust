@@ -92,8 +92,10 @@ jobs:
     - name: Build
       run: |
         ./y.sh prepare --only-libcore
-        ./y.sh build --release --release-sysroot
-        cargo test
+        # TODO: remove `--features master` when it is back to the default.
+        ./y.sh build --release --release-sysroot --features master
+        # TODO: remove --features master when it is back to the default.
+        cargo test --features master
 
     - name: Clean
       if: ${{ !matrix.cargo_runner }}
@@ -111,12 +113,14 @@ jobs:
       uses: actions-rs/cargo@v1.0.3
       with:
         command: build
-        args: --release
+        # TODO: remove `--features master` when it is back to the default.
+        args: --release --features master
 
     - name: Run tests
       if: ${{ !matrix.cargo_runner }}
       run: |
-        ./test.sh --release --clean --release-sysroot --build-sysroot --mini-tests --std-tests --test-libcore
+        # TODO: remove `--features master` when it is back to the default.
+        ./test.sh --release --clean --release-sysroot --build-sysroot --mini-tests --std-tests --test-libcore --features master
 
     - name: Run stdarch tests
       if: ${{ !matrix.cargo_runner }}

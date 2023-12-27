@@ -3,7 +3,7 @@ use clippy_utils::{is_in_cfg_test, is_in_test_function};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::Span;
 
@@ -55,20 +55,18 @@ impl LateLintPass<'_> for TestsOutsideTestModule {
         sp: Span,
         _: LocalDefId,
     ) {
-        if_chain! {
-            if !matches!(kind, FnKind::Closure);
-            if is_in_test_function(cx.tcx, body.id().hir_id);
-            if !is_in_cfg_test(cx.tcx, body.id().hir_id);
-            then {
-                span_lint_and_note(
-                    cx,
-                    TESTS_OUTSIDE_TEST_MODULE,
-                    sp,
-                    "this function marked with #[test] is outside a #[cfg(test)] module",
-                    None,
-                    "move it to a testing module marked with #[cfg(test)]",
-                );
-            }
+        if !matches!(kind, FnKind::Closure)
+            && is_in_test_function(cx.tcx, body.id().hir_id)
+            && !is_in_cfg_test(cx.tcx, body.id().hir_id)
+        {
+            span_lint_and_note(
+                cx,
+                TESTS_OUTSIDE_TEST_MODULE,
+                sp,
+                "this function marked with #[test] is outside a #[cfg(test)] module",
+                None,
+                "move it to a testing module marked with #[cfg(test)]",
+            );
         }
     }
 }

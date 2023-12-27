@@ -1,3 +1,5 @@
+// ignore-stage1
+
 // Check that an arena (TypedArena) cannot carry elements whose drop
 // methods might access borrowed data of lifetime that does not
 // strictly outlive the arena itself.

@@ -5,6 +5,7 @@
 //! it finds operations that are invalid in a certain context.
 
 use rustc_attr as attr;
+use rustc_errors::DiagCtxt;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir;
@@ -42,6 +43,10 @@ impl<'mir, 'tcx> ConstCx<'mir, 'tcx> {
     ) -> Self {
         let const_kind = tcx.hir().body_const_context(body.source.def_id().expect_local());
         ConstCx { body, tcx, param_env, const_kind }
+    }
+
+    pub(crate) fn dcx(&self) -> &'tcx DiagCtxt {
+        self.tcx.dcx()
     }
 
     pub fn def_id(&self) -> LocalDefId {
@@ -82,8 +87,8 @@ pub fn rustc_allow_const_fn_unstable(
     def_id: LocalDefId,
     feature_gate: Symbol,
 ) -> bool {
-    let attrs = tcx.hir().attrs(tcx.hir().local_def_id_to_hir_id(def_id));
-    attr::rustc_allow_const_fn_unstable(&tcx.sess, attrs).any(|name| name == feature_gate)
+    let attrs = tcx.hir().attrs(tcx.local_def_id_to_hir_id(def_id));
+    attr::rustc_allow_const_fn_unstable(tcx.sess, attrs).any(|name| name == feature_gate)
 }
 
 /// Returns `true` if the given `const fn` is "const-stable".
@@ -112,7 +117,7 @@ pub fn is_const_stable_const_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         None if is_parent_const_stable_trait(tcx, def_id) => {
             // Remove this when `#![feature(const_trait_impl)]` is stabilized,
             // returning `true` unconditionally.
-            tcx.sess.delay_span_bug(
+            tcx.dcx().span_delayed_bug(
                 tcx.def_span(def_id),
                 "trait implementations cannot be const stable yet",
             );

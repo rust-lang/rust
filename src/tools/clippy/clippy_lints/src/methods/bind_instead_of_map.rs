@@ -3,7 +3,6 @@ use clippy_utils::diagnostics::{multispan_sugg_with_applicability, span_lint_and
 use clippy_utils::peel_blocks;
 use clippy_utils::source::{snippet, snippet_with_context};
 use clippy_utils::visitors::find_all_ret_expressions;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
@@ -70,57 +69,50 @@ pub(crate) trait BindInsteadOfMap {
         closure_expr: &hir::Expr<'_>,
         closure_args_span: Span,
     ) -> bool {
-        if_chain! {
-            if let hir::ExprKind::Call(some_expr, [inner_expr]) = closure_expr.kind;
-            if let hir::ExprKind::Path(QPath::Resolved(_, path)) = some_expr.kind;
-            if Self::is_variant(cx, path.res);
-            if !contains_return(inner_expr);
-            if let Some(msg) = Self::lint_msg(cx);
-            then {
-                let mut app = Applicability::MachineApplicable;
-                let some_inner_snip = snippet_with_context(cx, inner_expr.span, closure_expr.span.ctxt(), "_", &mut app).0;
+        if let hir::ExprKind::Call(some_expr, [inner_expr]) = closure_expr.kind
+            && let hir::ExprKind::Path(QPath::Resolved(_, path)) = some_expr.kind
+            && Self::is_variant(cx, path.res)
+            && !contains_return(inner_expr)
+            && let Some(msg) = Self::lint_msg(cx)
+        {
+            let mut app = Applicability::MachineApplicable;
+            let some_inner_snip = snippet_with_context(cx, inner_expr.span, closure_expr.span.ctxt(), "_", &mut app).0;
 
-                let closure_args_snip = snippet(cx, closure_args_span, "..");
-                let option_snip = snippet(cx, recv.span, "..");
-                let note = format!("{option_snip}.{}({closure_args_snip} {some_inner_snip})", Self::GOOD_METHOD_NAME);
-                span_lint_and_sugg(
-                    cx,
-                    BIND_INSTEAD_OF_MAP,
-                    expr.span,
-                    &msg,
-                    "try",
-                    note,
-                    app,
-                );
-                true
-            } else {
-                false
-            }
+            let closure_args_snip = snippet(cx, closure_args_span, "..");
+            let option_snip = snippet(cx, recv.span, "..");
+            let note = format!(
+                "{option_snip}.{}({closure_args_snip} {some_inner_snip})",
+                Self::GOOD_METHOD_NAME
+            );
+            span_lint_and_sugg(cx, BIND_INSTEAD_OF_MAP, expr.span, &msg, "try", note, app);
+            true
+        } else {
+            false
         }
     }
 
     fn lint_closure(cx: &LateContext<'_>, expr: &hir::Expr<'_>, closure_expr: &hir::Expr<'_>) -> bool {
         let mut suggs = Vec::new();
         let can_sugg: bool = find_all_ret_expressions(cx, closure_expr, |ret_expr| {
-            if_chain! {
-                if !ret_expr.span.from_expansion();
-                if let hir::ExprKind::Call(func_path, [arg]) = ret_expr.kind;
-                if let hir::ExprKind::Path(QPath::Resolved(_, path)) = func_path.kind;
-                if Self::is_variant(cx, path.res);
-                if !contains_return(arg);
-                then {
-                    suggs.push((ret_expr.span, arg.span.source_callsite()));
-                    true
-                } else {
-                    false
-                }
+            if !ret_expr.span.from_expansion()
+                && let hir::ExprKind::Call(func_path, [arg]) = ret_expr.kind
+                && let hir::ExprKind::Path(QPath::Resolved(_, path)) = func_path.kind
+                && Self::is_variant(cx, path.res)
+                && !contains_return(arg)
+            {
+                suggs.push((ret_expr.span, arg.span.source_callsite()));
+                true
+            } else {
+                false
             }
         });
-        let (span, msg) = if_chain! {
-            if can_sugg;
-            if let hir::ExprKind::MethodCall(segment, ..) = expr.kind;
-            if let Some(msg) = Self::lint_msg(cx);
-            then { (segment.ident.span, msg) } else { return false; }
+        let (span, msg) = if can_sugg
+            && let hir::ExprKind::MethodCall(segment, ..) = expr.kind
+            && let Some(msg) = Self::lint_msg(cx)
+        {
+            (segment.ident.span, msg)
+        } else {
+            return false;
         };
         span_lint_and_then(cx, BIND_INSTEAD_OF_MAP, expr.span, &msg, |diag| {
             multispan_sugg_with_applicability(
@@ -139,11 +131,12 @@ pub(crate) trait BindInsteadOfMap {
 
     /// Lint use of `_.and_then(|x| Some(y))` for `Option`s
     fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>) -> bool {
-        if_chain! {
-            if let Some(adt) = cx.typeck_results().expr_ty(recv).ty_adt_def();
-            if let Some(vid) = cx.tcx.lang_items().get(Self::VARIANT_LANG_ITEM);
-            if adt.did() == cx.tcx.parent(vid);
-            then {} else { return false; }
+        if let Some(adt) = cx.typeck_results().expr_ty(recv).ty_adt_def()
+            && let Some(vid) = cx.tcx.lang_items().get(Self::VARIANT_LANG_ITEM)
+            && adt.did() == cx.tcx.parent(vid)
+        {
+        } else {
+            return false;
         }
 
         match arg.kind {

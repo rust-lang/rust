@@ -17,8 +17,9 @@
 //!
 //! [`Parser`]: crate::parser::Parser
 
-#![warn(rust_2018_idioms, unused_lifetimes, semicolon_in_expressions_from_macros)]
+#![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(rustdoc::private_intra_doc_links)]
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
 mod lexed_str;
 mod token_set;

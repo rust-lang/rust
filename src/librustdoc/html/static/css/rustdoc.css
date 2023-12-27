@@ -9,6 +9,11 @@
 :root {
 	--nav-sub-mobile-padding: 8px;
 	--search-typename-width: 6.75rem;
+	/* DEFAULT_SIDEBAR_WIDTH
+	   see main.js for information on these values
+	   and on the RUSTDOC_MOBILE_BREAKPOINT */
+	--desktop-sidebar-width: 200px;
+	--src-sidebar-width: 300px;
 }
 
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
@@ -205,7 +210,7 @@ ul.all-items {
 
 #toggle-all-docs,
 a.anchor,
-.small-section-header a,
+.section-header a,
 #src-sidebar a,
 .rust a,
 .sidebar h2 a,
@@ -383,13 +388,15 @@ img {
 
 .sidebar {
 	font-size: 0.875rem;
-	flex: 0 0 200px;
+	flex: 0 0 var(--desktop-sidebar-width);
+	width: var(--desktop-sidebar-width);
 	overflow-y: scroll;
 	overscroll-behavior: contain;
 	position: sticky;
 	height: 100vh;
 	top: 0;
 	left: 0;
+	z-index: 100;
 }
 
 .rustdoc.src .sidebar {
@@ -398,7 +405,95 @@ img {
 	overflow-x: hidden;
 	/* The sidebar is by default hidden  */
 	overflow-y: hidden;
-	z-index: 1;
+}
+
+.hide-sidebar .sidebar,
+.hide-sidebar .sidebar-resizer {
+	display: none;
+}
+
+.sidebar-resizer {
+	touch-action: none;
+	width: 9px;
+	cursor: col-resize;
+	z-index: 200;
+	position: fixed;
+	height: 100%;
+	/* make sure there's a 1px gap between the scrollbar and resize handle */
+	left: calc(var(--desktop-sidebar-width) + 1px);
+}
+
+.rustdoc.src .sidebar-resizer {
+	/* when closed, place resizer glow on top of the normal src sidebar border (no need to worry
+	   about sidebar) */
+	left: 49px;
+}
+
+.src-sidebar-expanded .rustdoc.src .sidebar-resizer {
+	/* for src sidebar, gap is already provided by 1px border on sidebar itself, so place resizer
+	   to right of it */
+	left: var(--src-sidebar-width);
+}
+
+.sidebar-resizing {
+	-moz-user-select: none;
+	-webkit-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+}
+
+.sidebar-resizing * {
+	cursor: col-resize !important;
+}
+
+.sidebar-resizing .sidebar {
+	position: fixed;
+	z-index: 100;
+}
+.sidebar-resizing > body {
+	padding-left: var(--resizing-sidebar-width);
+}
+
+.sidebar-resizer:hover,
+.sidebar-resizer:active,
+.sidebar-resizer:focus,
+.sidebar-resizer.active {
+	width: 10px;
+	margin: 0;
+	/* when active or hovered, place resizer glow on top of the sidebar (right next to, or even
+	   on top of, the scrollbar) */
+	left: var(--desktop-sidebar-width);
+	border-left: solid 1px var(--sidebar-resizer-hover);
+}
+
+.src-sidebar-expanded .rustdoc.src .sidebar-resizer:hover,
+.src-sidebar-expanded .rustdoc.src .sidebar-resizer:active,
+.src-sidebar-expanded .rustdoc.src .sidebar-resizer:focus,
+.src-sidebar-expanded .rustdoc.src .sidebar-resizer.active {
+	/* when active or hovered, place resizer glow on top of the normal src sidebar border */
+	left: calc(var(--src-sidebar-width) - 1px);
+}
+
+@media (pointer: coarse) {
+	.sidebar-resizer {
+		/* too easy to hit the resizer while trying to hit the [-] toggle */
+		display: none !important;
+	}
+}
+
+.sidebar-resizer.active {
+	/* make the resize tool bigger when actually resizing, to avoid :hover styles on other stuff
+		while resizing */
+	padding: 0 140px;
+	width: 2px;
+	margin-left: -140px;
+	border-left: none;
+}
+.sidebar-resizer.active:before {
+	border-left: solid 2px var(--sidebar-resizer-active);
+	display: block;
+	height: 100%;
+	content: "";
 }
 
 .sidebar, .mobile-topbar, .sidebar-menu-toggle,
@@ -416,7 +511,8 @@ img {
 
 .src-sidebar-expanded .src .sidebar {
 	overflow-y: auto;
-	flex-basis: 300px;
+	flex-basis: var(--src-sidebar-width);
+	width: var(--src-sidebar-width);
 }
 
 .src-sidebar-expanded .src .sidebar > *:not(#src-sidebar-toggle) {
@@ -477,6 +573,7 @@ ul.block, .block li {
 	display: block;
 	padding: 0.25rem; /* 4px */
 	margin-left: -0.25rem;
+	margin-right: 0.25rem;
 }
 
 .sidebar h2 {
@@ -703,11 +800,8 @@ pre, .rustdoc.src .example-wrap {
 	background: var(--table-alt-row-background-color);
 }
 
-/* Shift "where ..." part of method or fn definition down a line */
-.method .where,
-.fn .where,
-.where.fmt-newline {
-	display: block;
+/* "where ..." clauses with block display are also smaller */
+div.where {
 	white-space: pre-wrap;
 	font-size: 0.875rem;
 }
@@ -742,13 +836,13 @@ nav.sub {
 	margin: 0 0 15px 0;
 }
 
-.small-section-header {
+.section-header {
 	/* fields use <span> tags, but should get their own lines */
 	display: block;
 	position: relative;
 }
 
-.small-section-header:hover > .anchor, .impl:hover > .anchor,
+.section-header:hover > .anchor, .impl:hover > .anchor,
 .trait-impl:hover > .anchor, .variant:hover > .anchor {
 	display: initial;
 }
@@ -761,11 +855,11 @@ nav.sub {
 .anchor.field {
 	left: -5px;
 }
-.small-section-header > .anchor {
+.section-header > .anchor {
 	left: -15px;
 	padding-right: 8px;
 }
-h2.small-section-header > .anchor {
+h2.section-header > .anchor {
 	padding-right: 6px;
 }
 
@@ -778,7 +872,7 @@ h2.small-section-header > .anchor {
 	text-decoration: underline;
 }
 
-.crate.block a.current { font-weight: 500; }
+.crate.block li.current a { font-weight: 500; }
 
 /*  In most contexts we use `overflow-wrap: anywhere` to ensure that we can wrap
 	as much as needed on mobile (see
@@ -1084,15 +1178,9 @@ so that we can apply CSS-filters to change the arrow color in themes */
 }
 
 .item-info .stab {
-	/* This min-height is needed to unify the height of the stab elements because some of them
-	   have emojis.
-	*/
-	min-height: 36px;
-	display: flex;
+	display: block;
 	padding: 3px;
 	margin-bottom: 5px;
-	align-items: center;
-	vertical-align: text-bottom;
 }
 .item-name .stab {
 	margin-left: 0.3125em;
@@ -1115,9 +1203,18 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	color: var(--stab-code-color);
 }
 
-.stab .emoji {
+.stab .emoji, .item-info .stab::before {
 	font-size: 1.25rem;
+}
+.stab .emoji {
 	margin-right: 0.3rem;
+}
+.item-info .stab::before {
+	/* ensure badges with emoji and without it have same height */
+	content: "\0";
+	width: 0;
+	display: inline-block;
+	color: transparent;
 }
 
 /* Black one-pixel outline around emoji shapes */
@@ -1125,7 +1222,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	text-shadow:
 		1px 0 0 black,
 		-1px 0 0 black,
-		0  1px 0 black,
+		0 1px 0 black,
 		0 -1px 0 black;
 }
 
@@ -1269,6 +1366,9 @@ documentation. */
 	top: 5px;
 	font-weight: bold;
 	font-size: 1.25rem;
+}
+.top-doc > .docblock >.warning:first-child::before {
+	top: 20px;
 }
 
 a.test-arrow {
@@ -1478,7 +1578,20 @@ a.tooltip:hover::after {
 	margin-left: 4px;
 	display: flex;
 }
-#settings-menu > a, #help-button > a {
+#sidebar-button {
+	display: none;
+}
+.hide-sidebar #sidebar-button {
+	display: flex;
+	margin-right: 4px;
+	position: fixed;
+	left: 6px;
+	height: 34px;
+	width: 34px;
+	background-color: var(--main-background-color);
+	z-index: 1;
+}
+#settings-menu > a, #help-button > a, #sidebar-button > a {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -1493,8 +1606,19 @@ a.tooltip:hover::after {
 }
 
 #settings-menu > a:hover, #settings-menu > a:focus,
-#help-button > a:hover, #help-button > a:focus {
+#help-button > a:hover, #help-button > a:focus,
+#sidebar-button > a:hover, #sidebar-button > a:focus {
 	border-color: var(--settings-button-border-focus);
+}
+
+#sidebar-button > a:before {
+	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22" \
+		fill="none" stroke="black">\
+		<rect x="1" y="1" width="20" height="20" ry="1.5" stroke-width="1.5"/>\
+		<circle cx="4.375" cy="4.375" r="1" stroke-width=".75"/>\
+		<path d="m7.6121 3v16 M5.375 7.625h-2 m2 3h-2 m2 3h-2" stroke-width="1.25"/></svg>');
+	width: 22px;
+	height: 22px;
 }
 
 #copy-path {
@@ -1711,7 +1835,7 @@ However, it's not needed with smaller screen width because the doc/code block is
 /*
 WARNING: RUSTDOC_MOBILE_BREAKPOINT MEDIA QUERY
 If you update this line, then you also need to update the line with the same warning
-in src-script.js
+in src-script.js and main.js
 */
 @media (max-width: 700px) {
 	/* When linking to an item with an `id` (for instance, by clicking a link in the sidebar,
@@ -1720,6 +1844,10 @@ in src-script.js
 	*/
 	*[id] {
 		scroll-margin-top: 45px;
+	}
+
+	.hide-sidebar #sidebar-button {
+		position: static;
 	}
 
 	.rustdoc {
@@ -1750,7 +1878,8 @@ in src-script.js
 	/* Hide the logo and item name from the sidebar. Those are displayed
 	   in the mobile-topbar instead. */
 	.sidebar .logo-container,
-	.sidebar .location {
+	.sidebar .location,
+	.sidebar-resizer {
 		display: none;
 	}
 
@@ -1818,6 +1947,10 @@ in src-script.js
 		top: 0;
 	}
 
+	.hide-sidebar .mobile-topbar {
+		display: none;
+	}
+
 	.sidebar-menu-toggle {
 		width: 45px;
 		/* Rare exception to specifying font sizes in rem. Since this is acting
@@ -1825,6 +1958,10 @@ in src-script.js
 		font-size: 32px;
 		border: none;
 		color: var(--main-color);
+	}
+
+	.hide-sidebar .sidebar-menu-toggle {
+		display: none;
 	}
 
 	.sidebar-elems {
@@ -1868,6 +2005,17 @@ in src-script.js
 	/* We don't display these buttons on mobile devices. */
 	#copy-path, #help-button {
 		display: none;
+	}
+
+	/* sidebar button becomes topbar button */
+	#sidebar-button > a:before {
+		content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" \
+			viewBox="0 0 22 22" fill="none" stroke="black">\
+			<rect x="1" y="1" width="20" height="20" ry="1.5" stroke-width="1.5"/>\
+			<circle cx="4.375" cy="4.375" r="1" stroke-width=".75"/>\
+			<path d="m3 7.375h16m0-3h-4" stroke-width="1.25"/></svg>');
+		width: 22px;
+		height: 22px;
 	}
 
 	/* Display an alternating layout on tablets and phones */
@@ -2274,6 +2422,8 @@ in src-script.js
 	--scrape-example-help-hover-color: #000;
 	--scrape-example-code-wrapper-background-start: rgba(255, 255, 255, 1);
 	--scrape-example-code-wrapper-background-end: rgba(255, 255, 255, 0);
+	--sidebar-resizer-hover: hsl(207, 90%, 66%);
+	--sidebar-resizer-active: hsl(207, 90%, 54%);
 }
 /* End theme: light */
 
@@ -2379,6 +2529,8 @@ in src-script.js
 	--scrape-example-help-hover-color: #fff;
 	--scrape-example-code-wrapper-background-start: rgba(53, 53, 53, 1);
 	--scrape-example-code-wrapper-background-end: rgba(53, 53, 53, 0);
+	--sidebar-resizer-hover: hsl(207, 30%, 54%);
+	--sidebar-resizer-active: hsl(207, 90%, 54%);
 }
 /* End theme: dark */
 
@@ -2488,6 +2640,8 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--scrape-example-help-hover-color: #fff;
 	--scrape-example-code-wrapper-background-start: rgba(15, 20, 25, 1);
 	--scrape-example-code-wrapper-background-end: rgba(15, 20, 25, 0);
+	--sidebar-resizer-hover: hsl(34, 50%, 33%);
+	--sidebar-resizer-active: hsl(34, 100%, 66%);
 }
 
 :root[data-theme="ayu"] h1,
@@ -2519,6 +2673,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 }
 
 :root[data-theme="ayu"] .sidebar .current,
+:root[data-theme="ayu"] .sidebar .current a,
 :root[data-theme="ayu"] .sidebar a:hover,
 :root[data-theme="ayu"] #src-sidebar div.files > a:hover,
 :root[data-theme="ayu"] details.dir-entry summary:hover,
@@ -2569,7 +2724,8 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	border-bottom: 1px solid rgba(242, 151, 24, 0.3);
 }
 
-:root[data-theme="ayu"] #settings-menu > a img {
+:root[data-theme="ayu"] #settings-menu > a img,
+:root[data-theme="ayu"] #sidebar-button > a:before {
 	filter: invert(100);
 }
 /* End theme: ayu */

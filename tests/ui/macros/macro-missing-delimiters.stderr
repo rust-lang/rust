@@ -4,5 +4,5 @@ error: invalid macro matcher; matchers must be contained in balanced delimiters
 LL |     baz => ()
    |     ^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

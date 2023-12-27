@@ -269,7 +269,7 @@ install!((self, builder, _config),
         }
     };
     RustDemangler, alias = "rust-demangler", Self::should_build(_config), only_hosts: true, {
-        // Note: Even though `should_build` may return true for `extended` default tools,
+        // NOTE: Even though `should_build` may return true for `extended` default tools,
         // dist::RustDemangler may still return None, unless the target-dependent `profiler` config
         // is also true, or the `tools` array explicitly includes "rust-demangler".
         if let Some(tarball) = builder.ensure(dist::RustDemangler {

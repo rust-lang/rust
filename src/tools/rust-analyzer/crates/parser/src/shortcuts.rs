@@ -32,29 +32,27 @@ impl LexedStr<'_> {
             let kind = self.kind(i);
             if kind.is_trivia() {
                 was_joint = false
+            } else if kind == SyntaxKind::IDENT {
+                let token_text = self.text(i);
+                let contextual_kw =
+                    SyntaxKind::from_contextual_keyword(token_text).unwrap_or(SyntaxKind::IDENT);
+                res.push_ident(contextual_kw);
             } else {
-                if kind == SyntaxKind::IDENT {
-                    let token_text = self.text(i);
-                    let contextual_kw = SyntaxKind::from_contextual_keyword(token_text)
-                        .unwrap_or(SyntaxKind::IDENT);
-                    res.push_ident(contextual_kw);
-                } else {
-                    if was_joint {
+                if was_joint {
+                    res.was_joint();
+                }
+                res.push(kind);
+                // Tag the token as joint if it is float with a fractional part
+                // we use this jointness to inform the parser about what token split
+                // event to emit when we encounter a float literal in a field access
+                if kind == SyntaxKind::FLOAT_NUMBER {
+                    if !self.text(i).ends_with('.') {
                         res.was_joint();
-                    }
-                    res.push(kind);
-                    // Tag the token as joint if it is float with a fractional part
-                    // we use this jointness to inform the parser about what token split
-                    // event to emit when we encounter a float literal in a field access
-                    if kind == SyntaxKind::FLOAT_NUMBER {
-                        if !self.text(i).ends_with('.') {
-                            res.was_joint();
-                        } else {
-                            was_joint = false;
-                        }
                     } else {
-                        was_joint = true;
+                        was_joint = false;
                     }
+                } else {
+                    was_joint = true;
                 }
             }
         }

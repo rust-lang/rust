@@ -59,7 +59,10 @@ pub(crate) fn replace_named_generic_with_impl(
     let mut path_types_to_replace = Vec::new();
     for (_a, refs) in usage_refs.iter() {
         for usage_ref in refs {
-            let param_node = find_path_type(&ctx.sema, &type_param_name, &usage_ref.name)?;
+            let Some(name_like) = usage_ref.name.clone().into_name_like() else {
+                continue;
+            };
+            let param_node = find_path_type(&ctx.sema, &type_param_name, &name_like)?;
             path_types_to_replace.push(param_node);
         }
     }

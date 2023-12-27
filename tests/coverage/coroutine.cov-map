@@ -14,12 +14,12 @@ Number of file 0 mappings: 4
     = (c1 + (c0 - c1))
 
 Function name: coroutine::main
-Raw bytes (65): 0x[01, 01, 08, 05, 07, 09, 0d, 11, 15, 1e, 19, 11, 15, 15, 19, 1e, 19, 11, 15, 09, 01, 0f, 01, 02, 16, 01, 07, 0b, 00, 2e, 11, 01, 2b, 00, 2d, 03, 01, 0e, 00, 35, 11, 02, 0b, 00, 2e, 1e, 01, 22, 00, 27, 1a, 00, 2c, 00, 2e, 17, 01, 0e, 00, 35, 1a, 02, 01, 00, 02]
+Raw bytes (65): 0x[01, 01, 08, 07, 0d, 05, 09, 11, 15, 1e, 19, 11, 15, 15, 19, 1e, 19, 11, 15, 09, 01, 0f, 01, 02, 16, 01, 07, 0b, 00, 2e, 11, 01, 2b, 00, 2d, 03, 01, 0e, 00, 35, 11, 02, 0b, 00, 2e, 1e, 01, 22, 00, 27, 1a, 00, 2c, 00, 2e, 17, 01, 0e, 00, 35, 1a, 02, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 8
-- expression 0 operands: lhs = Counter(1), rhs = Expression(1, Add)
-- expression 1 operands: lhs = Counter(2), rhs = Counter(3)
+- expression 0 operands: lhs = Expression(1, Add), rhs = Counter(3)
+- expression 1 operands: lhs = Counter(1), rhs = Counter(2)
 - expression 2 operands: lhs = Counter(4), rhs = Counter(5)
 - expression 3 operands: lhs = Expression(7, Sub), rhs = Counter(6)
 - expression 4 operands: lhs = Counter(4), rhs = Counter(5)
@@ -31,7 +31,7 @@ Number of file 0 mappings: 9
 - Code(Counter(0)) at (prev + 7, 11) to (start + 0, 46)
 - Code(Counter(4)) at (prev + 1, 43) to (start + 0, 45)
 - Code(Expression(0, Add)) at (prev + 1, 14) to (start + 0, 53)
-    = (c1 + (c2 + c3))
+    = ((c1 + c2) + c3)
 - Code(Counter(4)) at (prev + 2, 11) to (start + 0, 46)
 - Code(Expression(7, Sub)) at (prev + 1, 34) to (start + 0, 39)
     = (c4 - c5)

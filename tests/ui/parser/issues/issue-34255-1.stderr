@@ -14,5 +14,5 @@ LL -     Test::Drill(field: 42);
 LL +     Test::Drill(42);
    |
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

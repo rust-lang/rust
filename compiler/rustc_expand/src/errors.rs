@@ -1,7 +1,6 @@
 use rustc_ast::ast;
 use rustc_macros::Diagnostic;
 use rustc_session::Limit;
-use rustc_span::edition::Edition;
 use rustc_span::symbol::{Ident, MacroRulesNormalizedIdent};
 use rustc_span::{Span, Symbol};
 use std::borrow::Cow;
@@ -169,15 +168,6 @@ pub(crate) struct TakesNoArguments<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(expand_feature_included_in_edition, code = "E0705")]
-pub(crate) struct FeatureIncludedInEdition {
-    #[primary_span]
-    pub span: Span,
-    pub feature: Symbol,
-    pub edition: Edition,
-}
-
-#[derive(Diagnostic)]
 #[diag(expand_feature_removed, code = "E0557")]
 pub(crate) struct FeatureRemoved<'a> {
     #[primary_span]
@@ -304,6 +294,8 @@ pub(crate) struct IncompleteParse<'a> {
     pub label_span: Span,
     pub macro_path: &'a ast::Path,
     pub kind_name: &'a str,
+    #[note(expand_macro_expands_to_match_arm)]
+    pub expands_to_match_arm: Option<()>,
 
     #[suggestion(
         expand_suggestion_add_semi,

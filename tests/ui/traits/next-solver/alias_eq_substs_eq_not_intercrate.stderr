@@ -1,0 +1,13 @@
+error[E0119]: conflicting implementations of trait `Overlaps<Box<_>>` for type `<_ as TraitB>::Assoc`
+  --> $DIR/alias_eq_substs_eq_not_intercrate.rs:14:1
+   |
+LL | impl<T: TraitB> Overlaps<Box<T>> for <T as TraitB>::Assoc {}
+   | --------------------------------------------------------- first implementation here
+LL | impl<U: TraitB> Overlaps<U> for <U as TraitB>::Assoc {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `<_ as TraitB>::Assoc`
+   |
+   = note: downstream crates may implement trait `TraitB` for type `std::boxed::Box<_>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.

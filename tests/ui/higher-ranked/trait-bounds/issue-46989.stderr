@@ -7,5 +7,5 @@ LL |     assert_foo::<fn(&i32)>();
    = note: `Foo` would have to be implemented for the type `for<'a> fn(&'a i32)`
    = note: ...but `Foo` is actually implemented for the type `fn(&'0 i32)`, for some specific lifetime `'0`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

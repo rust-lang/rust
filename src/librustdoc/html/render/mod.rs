@@ -45,7 +45,6 @@ use std::iter::Peekable;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::str;
-use std::string::ToString;
 
 use askama::Template;
 use rustc_attr::{ConstStability, DeprecatedSince, Deprecation, StabilityLevel, StableSince};
@@ -66,7 +65,7 @@ use crate::clean::{self, ItemId, RenderedLink, SelfTy};
 use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
-use crate::formats::{AssocItemRender, Impl, RenderMode};
+use crate::formats::Impl;
 use crate::html::escape::Escape;
 use crate::html::format::{
     display_fn, href, join_with_double_colon, print_abi_with_space, print_constness_with_space,
@@ -87,6 +86,21 @@ pub(crate) fn ensure_trailing_slash(v: &str) -> impl fmt::Display + '_ {
     crate::html::format::display_fn(move |f| {
         if !v.ends_with('/') && !v.is_empty() { write!(f, "{v}/") } else { f.write_str(v) }
     })
+}
+
+/// Specifies whether rendering directly implemented trait items or ones from a certain Deref
+/// impl.
+pub(crate) enum AssocItemRender<'a> {
+    All,
+    DerefFor { trait_: &'a clean::Path, type_: &'a clean::Type, deref_mut_: bool },
+}
+
+/// For different handling of associated items from the Deref target of a type rather than the type
+/// itself.
+#[derive(Copy, Clone, PartialEq)]
+pub(crate) enum RenderMode {
+    Normal,
+    ForDeref { mut_: bool },
 }
 
 // Helper structs for rendering items/sidebars and carrying along contextual
@@ -113,6 +127,7 @@ pub(crate) struct IndexItem {
 pub(crate) struct RenderType {
     id: Option<RenderTypeId>,
     generics: Option<Vec<RenderType>>,
+    bindings: Option<Vec<(RenderTypeId, Vec<RenderType>)>>,
 }
 
 impl Serialize for RenderType {
@@ -129,10 +144,15 @@ impl Serialize for RenderType {
             Some(RenderTypeId::Index(idx)) => *idx,
             _ => panic!("must convert render types to indexes before serializing"),
         };
-        if let Some(generics) = &self.generics {
+        if self.generics.is_some() || self.bindings.is_some() {
             let mut seq = serializer.serialize_seq(None)?;
             seq.serialize_element(&id)?;
-            seq.serialize_element(generics)?;
+            seq.serialize_element(self.generics.as_ref().map(Vec::as_slice).unwrap_or_default())?;
+            if self.bindings.is_some() {
+                seq.serialize_element(
+                    self.bindings.as_ref().map(Vec::as_slice).unwrap_or_default(),
+                )?;
+            }
             seq.end()
         } else {
             id.serialize(serializer)
@@ -140,11 +160,29 @@ impl Serialize for RenderType {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub(crate) enum RenderTypeId {
     DefId(DefId),
     Primitive(clean::PrimitiveType),
+    AssociatedType(Symbol),
     Index(isize),
+}
+
+impl Serialize for RenderTypeId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let id = match &self {
+            // 0 is a sentinel, everything else is one-indexed
+            // concrete type
+            RenderTypeId::Index(idx) if *idx >= 0 => idx + 1,
+            // generic type parameter
+            RenderTypeId::Index(idx) => *idx,
+            _ => panic!("must convert render types to indexes before serializing"),
+        };
+        id.serialize(serializer)
+    }
 }
 
 /// Full type of functions/methods in the search index.
@@ -171,16 +209,23 @@ impl Serialize for IndexItemFunctionType {
         } else {
             let mut seq = serializer.serialize_seq(None)?;
             match &self.inputs[..] {
-                [one] if one.generics.is_none() => seq.serialize_element(one)?,
+                [one] if one.generics.is_none() && one.bindings.is_none() => {
+                    seq.serialize_element(one)?
+                }
                 _ => seq.serialize_element(&self.inputs)?,
             }
             match &self.output[..] {
                 [] if self.where_clause.is_empty() => {}
-                [one] if one.generics.is_none() => seq.serialize_element(one)?,
+                [one] if one.generics.is_none() && one.bindings.is_none() => {
+                    seq.serialize_element(one)?
+                }
                 _ => seq.serialize_element(&self.output)?,
             }
             for constraint in &self.where_clause {
-                if let [one] = &constraint[..] && one.generics.is_none() {
+                if let [one] = &constraint[..]
+                    && one.generics.is_none()
+                    && one.bindings.is_none()
+                {
                     seq.serialize_element(one)?;
                 } else {
                     seq.serialize_element(constraint)?;
@@ -627,7 +672,7 @@ fn short_item_info(
                     format!("Deprecating in {version}")
                 }
             }
-            DeprecatedSince::Future => String::from("Deprecating in a future Rust version"),
+            DeprecatedSince::Future => String::from("Deprecating in a future version"),
             DeprecatedSince::NonStandard(since) => {
                 format!("Deprecated since {}", Escape(since.as_str()))
             }
@@ -915,7 +960,9 @@ fn render_stability_since_raw_with_extra(
     containing_const_ver: Option<StableSince>,
     extra_class: &str,
 ) -> bool {
-    let stable_version = if ver != containing_ver && let Some(ver) = &ver {
+    let stable_version = if ver != containing_ver
+        && let Some(ver) = &ver
+    {
         since_to_string(ver)
     } else {
         None
@@ -1097,7 +1144,7 @@ impl<'a> AssocItemLink<'a> {
 fn write_impl_section_heading(mut w: impl fmt::Write, title: &str, id: &str) {
     write!(
         w,
-        "<h2 id=\"{id}\" class=\"small-section-header\">\
+        "<h2 id=\"{id}\" class=\"section-header\">\
             {title}\
             <a href=\"#{id}\" class=\"anchor\">§</a>\
          </h2>"
@@ -1348,8 +1395,7 @@ pub(crate) fn notable_traits_button(ty: &clean::Type, cx: &mut Context<'_>) -> O
             if let Some(trait_) = &impl_.trait_ {
                 let trait_did = trait_.def_id();
 
-                if cx.cache().traits.get(&trait_did).map_or(false, |t| t.is_notable_trait(cx.tcx()))
-                {
+                if cx.cache().traits.get(&trait_did).is_some_and(|t| t.is_notable_trait(cx.tcx())) {
                     has_notable_trait = true;
                 }
             }
@@ -1384,7 +1430,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
         if let Some(trait_) = &impl_.trait_ {
             let trait_did = trait_.def_id();
 
-            if cx.cache().traits.get(&trait_did).map_or(false, |t| t.is_notable_trait(cx.tcx())) {
+            if cx.cache().traits.get(&trait_did).is_some_and(|t| t.is_notable_trait(cx.tcx())) {
                 if out.is_empty() {
                     write!(
                         &mut out,
@@ -1394,15 +1440,10 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
                     );
                 }
 
-                //use the "where" class here to make it small
-                write!(
-                    &mut out,
-                    "<span class=\"where fmt-newline\">{}</span>",
-                    impl_.print(false, cx)
-                );
+                write!(&mut out, "<div class=\"where\">{}</div>", impl_.print(false, cx));
                 for it in &impl_.items {
                     if let clean::AssocTypeItem(ref tydef, ref _bounds) = *it.kind {
-                        out.push_str("<span class=\"where fmt-newline\">    ");
+                        out.push_str("<div class=\"where\">    ");
                         let empty_set = FxHashSet::default();
                         let src_link = AssocItemLink::GotoSource(trait_did.into(), &empty_set);
                         assoc_type(
@@ -1415,7 +1456,7 @@ fn notable_traits_decl(ty: &clean::Type, cx: &Context<'_>) -> (String, String) {
                             0,
                             cx,
                         );
-                        out.push_str(";</span>");
+                        out.push_str(";</div>");
                     }
                 }
             }
@@ -1901,7 +1942,7 @@ pub(crate) fn render_impl_summary(
         if show_def_docs {
             for it in &inner_impl.items {
                 if let clean::AssocTypeItem(ref tydef, ref _bounds) = *it.kind {
-                    w.write_str("<span class=\"where fmt-newline\">  ");
+                    w.write_str("<div class=\"where\">  ");
                     assoc_type(
                         w,
                         it,
@@ -1912,7 +1953,7 @@ pub(crate) fn render_impl_summary(
                         0,
                         cx,
                     );
-                    w.write_str(";</span>");
+                    w.write_str(";</div>");
                 }
             }
         }
@@ -2321,7 +2362,7 @@ fn render_call_locations<W: fmt::Write>(mut w: W, cx: &mut Context<'_>, item: &c
             Ok(contents) => contents,
             Err(err) => {
                 let span = item.span(tcx).map_or(rustc_span::DUMMY_SP, |span| span.inner());
-                tcx.sess.span_err(span, format!("failed to read file {}: {err}", path.display()));
+                tcx.dcx().span_err(span, format!("failed to read file {}: {err}", path.display()));
                 return false;
             }
         };

@@ -88,7 +88,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
                 sym::any => (CguReuse::PreLto, ComparisonKind::AtLeast),
                 other => {
                     self.tcx
-                        .sess
+                        .dcx()
                         .emit_fatal(errors::UnknownReuseKind { span: attr.span, kind: other });
                 }
             }
@@ -97,7 +97,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
         };
 
         if !self.tcx.sess.opts.unstable_opts.query_dep_graph {
-            self.tcx.sess.emit_fatal(errors::MissingQueryDepGraph { span: attr.span });
+            self.tcx.dcx().emit_fatal(errors::MissingQueryDepGraph { span: attr.span });
         }
 
         if !self.check_config(attr) {
@@ -109,7 +109,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
         let crate_name = self.tcx.crate_name(LOCAL_CRATE).to_string();
 
         if !user_path.starts_with(&crate_name) {
-            self.tcx.sess.emit_fatal(errors::MalformedCguName {
+            self.tcx.dcx().emit_fatal(errors::MalformedCguName {
                 span: attr.span,
                 user_path,
                 crate_name,
@@ -139,7 +139,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
         if !self.available_cgus.contains(&cgu_name) {
             let cgu_names: Vec<&str> =
                 self.available_cgus.items().map(|cgu| cgu.as_str()).into_sorted_stable_ord();
-            self.tcx.sess.emit_err(errors::NoModuleNamed {
+            self.tcx.dcx().emit_err(errors::NoModuleNamed {
                 span: attr.span,
                 user_path,
                 cgu_name,
@@ -149,7 +149,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
 
         self.cgu_reuse_tracker.set_expectation(
             cgu_name,
-            &user_path,
+            user_path,
             attr.span,
             expected_reuse,
             comp_kind,
@@ -162,7 +162,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
                 if let Some(value) = item.value_str() {
                     return value;
                 } else {
-                    self.tcx.sess.emit_fatal(errors::FieldAssociatedValueExpected {
+                    self.tcx.dcx().emit_fatal(errors::FieldAssociatedValueExpected {
                         span: item.span(),
                         name,
                     });
@@ -170,7 +170,7 @@ impl<'tcx> AssertModuleSource<'tcx> {
             }
         }
 
-        self.tcx.sess.emit_fatal(errors::NoField { span: attr.span, name });
+        self.tcx.dcx().emit_fatal(errors::NoField { span: attr.span, name });
     }
 
     /// Scan for a `cfg="foo"` attribute and check whether we have a
@@ -199,8 +199,8 @@ impl fmt::Display for CguReuse {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
             CguReuse::No => write!(f, "No"),
-            CguReuse::PreLto => write!(f, "PreLto "),
-            CguReuse::PostLto => write!(f, "PostLto "),
+            CguReuse::PreLto => write!(f, "PreLto"),
+            CguReuse::PostLto => write!(f, "PostLto"),
         }
     }
 }
@@ -278,16 +278,16 @@ impl CguReuseTracker {
 
                     if error {
                         let at_least = if at_least { 1 } else { 0 };
-                        errors::IncorrectCguReuseType {
+                        sess.dcx().emit_err(errors::IncorrectCguReuseType {
                             span: *error_span,
                             cgu_user_name,
                             actual_reuse,
                             expected_reuse,
                             at_least,
-                        };
+                        });
                     }
                 } else {
-                    sess.emit_fatal(errors::CguNotRecorded { cgu_user_name, cgu_name });
+                    sess.dcx().emit_fatal(errors::CguNotRecorded { cgu_user_name, cgu_name });
                 }
             }
         }

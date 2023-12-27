@@ -54,7 +54,7 @@ pub(super) fn print_body_hir(db: &dyn DefDatabase, body: &Body, owner: DefWithBo
     let mut p = Printer { db, body, buf: header, indent_level: 0, needs_indent: false };
     if let DefWithBodyId::FunctionId(it) = owner {
         p.buf.push('(');
-        body.params.iter().zip(&db.function_data(it).params).for_each(|(&param, ty)| {
+        body.params.iter().zip(db.function_data(it).params.iter()).for_each(|(&param, ty)| {
             p.print_pat(param);
             p.buf.push(':');
             p.print_type_ref(ty);

@@ -21,7 +21,7 @@ pub fn expand_trace_macros(
     };
     err |= cursor.next().is_some();
     if err {
-        cx.emit_err(errors::TraceMacros { span: sp });
+        cx.dcx().emit_err(errors::TraceMacros { span: sp });
     } else {
         cx.set_trace_macros(value);
     }

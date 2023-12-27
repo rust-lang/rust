@@ -89,50 +89,52 @@ fn report_single_pattern(
     });
 
     let (pat, pat_ref_count) = peel_hir_pat_refs(arms[0].pat);
-    let (msg, sugg) = if_chain! {
-        if let PatKind::Path(_) | PatKind::Lit(_) = pat.kind;
-        let (ty, ty_ref_count) = peel_mid_ty_refs(cx.typeck_results().expr_ty(ex));
-        if let Some(spe_trait_id) = cx.tcx.lang_items().structural_peq_trait();
-        if let Some(pe_trait_id) = cx.tcx.lang_items().eq_trait();
-        if ty.is_integral() || ty.is_char() || ty.is_str()
-            || (implements_trait(cx, ty, spe_trait_id, &[])
-                && implements_trait(cx, ty, pe_trait_id, &[ty.into()]));
-        then {
-            // scrutinee derives PartialEq and the pattern is a constant.
-            let pat_ref_count = match pat.kind {
-                // string literals are already a reference.
-                PatKind::Lit(Expr { kind: ExprKind::Lit(lit), .. }) if lit.node.is_str() => pat_ref_count + 1,
-                _ => pat_ref_count,
-            };
-            // References are only implicitly added to the pattern, so no overflow here.
-            // e.g. will work: match &Some(_) { Some(_) => () }
-            // will not: match Some(_) { &Some(_) => () }
-            let ref_count_diff = ty_ref_count - pat_ref_count;
+    let (msg, sugg) = if let PatKind::Path(_) | PatKind::Lit(_) = pat.kind
+        && let (ty, ty_ref_count) = peel_mid_ty_refs(cx.typeck_results().expr_ty(ex))
+        && let Some(spe_trait_id) = cx.tcx.lang_items().structural_peq_trait()
+        && let Some(pe_trait_id) = cx.tcx.lang_items().eq_trait()
+        && (ty.is_integral()
+            || ty.is_char()
+            || ty.is_str()
+            || (implements_trait(cx, ty, spe_trait_id, &[]) && implements_trait(cx, ty, pe_trait_id, &[ty.into()])))
+    {
+        // scrutinee derives PartialEq and the pattern is a constant.
+        let pat_ref_count = match pat.kind {
+            // string literals are already a reference.
+            PatKind::Lit(Expr {
+                kind: ExprKind::Lit(lit),
+                ..
+            }) if lit.node.is_str() => pat_ref_count + 1,
+            _ => pat_ref_count,
+        };
+        // References are only implicitly added to the pattern, so no overflow here.
+        // e.g. will work: match &Some(_) { Some(_) => () }
+        // will not: match Some(_) { &Some(_) => () }
+        let ref_count_diff = ty_ref_count - pat_ref_count;
 
-            // Try to remove address of expressions first.
-            let (ex, removed) = peel_n_hir_expr_refs(ex, ref_count_diff);
-            let ref_count_diff = ref_count_diff - removed;
+        // Try to remove address of expressions first.
+        let (ex, removed) = peel_n_hir_expr_refs(ex, ref_count_diff);
+        let ref_count_diff = ref_count_diff - removed;
 
-            let msg = "you seem to be trying to use `match` for an equality check. Consider using `if`";
-            let sugg = format!(
-                "if {} == {}{} {}{els_str}",
-                snippet(cx, ex.span, ".."),
-                // PartialEq for different reference counts may not exist.
-                "&".repeat(ref_count_diff),
-                snippet(cx, arms[0].pat.span, ".."),
-                expr_block(cx, arms[0].body, ctxt, "..", Some(expr.span), &mut app),
-            );
-            (msg, sugg)
-        } else {
-            let msg = "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`";
-            let sugg = format!(
-                "if let {} = {} {}{els_str}",
-                snippet(cx, arms[0].pat.span, ".."),
-                snippet(cx, ex.span, ".."),
-                expr_block(cx, arms[0].body, ctxt, "..", Some(expr.span), &mut app),
-            );
-            (msg, sugg)
-        }
+        let msg = "you seem to be trying to use `match` for an equality check. Consider using `if`";
+        let sugg = format!(
+            "if {} == {}{} {}{els_str}",
+            snippet(cx, ex.span, ".."),
+            // PartialEq for different reference counts may not exist.
+            "&".repeat(ref_count_diff),
+            snippet(cx, arms[0].pat.span, ".."),
+            expr_block(cx, arms[0].body, ctxt, "..", Some(expr.span), &mut app),
+        );
+        (msg, sugg)
+    } else {
+        let msg = "you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`";
+        let sugg = format!(
+            "if let {} = {} {}{els_str}",
+            snippet(cx, arms[0].pat.span, ".."),
+            snippet(cx, ex.span, ".."),
+            expr_block(cx, arms[0].body, ctxt, "..", Some(expr.span), &mut app),
+        );
+        (msg, sugg)
     };
 
     span_lint_and_sugg(cx, lint, expr.span, msg, "try", sugg, app);

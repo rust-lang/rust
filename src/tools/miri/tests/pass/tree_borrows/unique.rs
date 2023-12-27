@@ -1,5 +1,6 @@
 //@revisions: default uniq
-//@compile-flags: -Zmiri-tree-borrows -Zmiri-tag-gc=0
+// We disable the GC for this test because it would change what is printed.
+//@compile-flags: -Zmiri-tree-borrows -Zmiri-provenance-gc=0
 //@[uniq]compile-flags: -Zmiri-unique-is-unique
 
 #![feature(ptr_internals)]

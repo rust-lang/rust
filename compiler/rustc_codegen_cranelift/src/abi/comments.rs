@@ -3,7 +3,6 @@
 
 use std::borrow::Cow;
 
-use rustc_middle::mir;
 use rustc_target::abi::call::PassMode;
 
 use crate::prelude::*;

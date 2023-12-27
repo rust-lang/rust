@@ -10,6 +10,6 @@ LL |     fn next(&mut self) -> Result<i32, i32> { Ok(7) }
    = note: expected signature `fn(&mut S) -> Option<i32>`
               found signature `fn(&mut S) -> Result<i32, i32>`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0053`.

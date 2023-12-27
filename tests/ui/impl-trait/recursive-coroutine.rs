@@ -1,3 +1,5 @@
+// revisions: current next
+//[next] compile-flags: -Znext-solver
 #![feature(coroutines, coroutine_trait)]
 
 use std::ops::{Coroutine, CoroutineState};

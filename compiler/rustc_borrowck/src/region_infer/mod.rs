@@ -7,7 +7,6 @@ use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_errors::Diagnostic;
 use rustc_hir::def_id::CRATE_DEF_ID;
-use rustc_index::bit_set::SparseBitMatrix;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::outlives::test_type_match;
 use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound, VerifyIfEq};
@@ -31,8 +30,8 @@ use crate::{
     nll::PoloniusOutput,
     region_infer::reverse_sccs::ReverseSccGraph,
     region_infer::values::{
-        LivenessValues, PlaceholderIndices, PointIndex, RegionElement, RegionValueElements,
-        RegionValues, ToElementIndex,
+        LivenessValues, PlaceholderIndices, RegionElement, RegionValueElements, RegionValues,
+        ToElementIndex,
     },
     type_check::{free_region_relations::UniversalRegionRelations, Locations},
     universal_regions::UniversalRegions,
@@ -59,7 +58,7 @@ pub struct RegionInferenceContext<'tcx> {
     /// regions, these start out empty and steadily grow, though for
     /// each universally quantified region R they start out containing
     /// the entire CFG and `end(R)`.
-    liveness_constraints: LivenessValues<RegionVid>,
+    liveness_constraints: LivenessValues,
 
     /// The outlives constraints computed by the type-check.
     constraints: Frozen<OutlivesConstraintSet<'tcx>>,
@@ -120,9 +119,6 @@ pub struct RegionInferenceContext<'tcx> {
     /// Information about how the universally quantified regions in
     /// scope on this function relate to one another.
     universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
-
-    /// The set of loans that are live at a given point in the CFG, when using `-Zpolonius=next`.
-    live_loans: SparseBitMatrix<PointIndex, BorrowIndex>,
 }
 
 /// Each time that `apply_member_constraint` is successful, it appends
@@ -151,6 +147,7 @@ pub(crate) struct AppliedMemberConstraint {
     pub(crate) member_constraint_index: NllMemberConstraintIndex,
 }
 
+#[derive(Debug)]
 pub(crate) struct RegionDefinition<'tcx> {
     /// What kind of variable is this -- a free region? existential
     /// variable? etc. (See the `NllRegionVariableOrigin` for more
@@ -332,9 +329,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         member_constraints_in: MemberConstraintSet<'tcx, RegionVid>,
         universe_causes: FxIndexMap<ty::UniverseIndex, UniverseInfo<'tcx>>,
         type_tests: Vec<TypeTest<'tcx>>,
-        liveness_constraints: LivenessValues<RegionVid>,
+        liveness_constraints: LivenessValues,
         elements: &Rc<RegionValueElements>,
-        live_loans: SparseBitMatrix<PointIndex, BorrowIndex>,
     ) -> Self {
         debug!("universal_regions: {:#?}", universal_regions);
         debug!("outlives constraints: {:#?}", outlives_constraints);
@@ -359,7 +355,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut scc_values =
             RegionValues::new(elements, universal_regions.len(), &placeholder_indices);
 
-        for region in liveness_constraints.rows() {
+        for region in liveness_constraints.regions() {
             let scc = constraint_sccs.scc(region);
             scc_values.merge_liveness(scc, region, &liveness_constraints);
         }
@@ -388,7 +384,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             type_tests,
             universal_regions,
             universal_region_relations,
-            live_loans,
         };
 
         result.init_free_and_bound_regions();
@@ -679,13 +674,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // eagerly.
         let mut outlives_requirements = infcx.tcx.is_typeck_child(mir_def_id).then(Vec::new);
 
-        self.check_type_tests(
-            infcx,
-            param_env,
-            body,
-            outlives_requirements.as_mut(),
-            &mut errors_buffer,
-        );
+        self.check_type_tests(infcx, body, outlives_requirements.as_mut(), &mut errors_buffer);
+
+        debug!(?errors_buffer);
+        debug!(?outlives_requirements);
 
         // In Polonius mode, the errors about missing universal region relations are in the output
         // and need to be emitted or propagated. Otherwise, we need to check whether the
@@ -700,9 +692,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             self.check_universal_regions(outlives_requirements.as_mut(), &mut errors_buffer);
         }
 
+        debug!(?errors_buffer);
+
         if errors_buffer.is_empty() {
             self.check_member_constraints(infcx, &mut errors_buffer);
         }
+
+        debug!(?errors_buffer);
 
         let outlives_requirements = outlives_requirements.unwrap_or_default();
 
@@ -936,7 +932,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn check_type_tests(
         &self,
         infcx: &InferCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
         body: &Body<'tcx>,
         mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
         errors_buffer: &mut RegionErrors<'tcx>,
@@ -954,7 +949,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             let generic_ty = type_test.generic_kind.to_ty(tcx);
             if self.eval_verify_bound(
                 infcx,
-                param_env,
                 generic_ty,
                 type_test.lower_bound,
                 &type_test.verify_bound,
@@ -965,7 +959,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             if let Some(propagated_outlives_requirements) = &mut propagated_outlives_requirements {
                 if self.try_promote_type_test(
                     infcx,
-                    param_env,
                     body,
                     type_test,
                     propagated_outlives_requirements,
@@ -1023,7 +1016,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn try_promote_type_test(
         &self,
         infcx: &InferCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
         body: &Body<'tcx>,
         type_test: &TypeTest<'tcx>,
         propagated_outlives_requirements: &mut Vec<ClosureOutlivesRequirement<'tcx>>,
@@ -1085,7 +1077,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // where `ur` is a local bound -- we are sometimes in a
             // position to prove things that our caller cannot. See
             // #53570 for an example.
-            if self.eval_verify_bound(infcx, param_env, generic_ty, ur, &type_test.verify_bound) {
+            if self.eval_verify_bound(infcx, generic_ty, ur, &type_test.verify_bound) {
                 continue;
             }
 
@@ -1268,7 +1260,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn eval_verify_bound(
         &self,
         infcx: &InferCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
         generic_ty: Ty<'tcx>,
         lower_bound: RegionVid,
         verify_bound: &VerifyBound<'tcx>,
@@ -1277,7 +1268,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         match verify_bound {
             VerifyBound::IfEq(verify_if_eq_b) => {
-                self.eval_if_eq(infcx, param_env, generic_ty, lower_bound, *verify_if_eq_b)
+                self.eval_if_eq(infcx, generic_ty, lower_bound, *verify_if_eq_b)
             }
 
             VerifyBound::IsEmpty => {
@@ -1291,11 +1282,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             VerifyBound::AnyBound(verify_bounds) => verify_bounds.iter().any(|verify_bound| {
-                self.eval_verify_bound(infcx, param_env, generic_ty, lower_bound, verify_bound)
+                self.eval_verify_bound(infcx, generic_ty, lower_bound, verify_bound)
             }),
 
             VerifyBound::AllBounds(verify_bounds) => verify_bounds.iter().all(|verify_bound| {
-                self.eval_verify_bound(infcx, param_env, generic_ty, lower_bound, verify_bound)
+                self.eval_verify_bound(infcx, generic_ty, lower_bound, verify_bound)
             }),
         }
     }
@@ -1303,19 +1294,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn eval_if_eq(
         &self,
         infcx: &InferCtxt<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
         generic_ty: Ty<'tcx>,
         lower_bound: RegionVid,
         verify_if_eq_b: ty::Binder<'tcx, VerifyIfEq<'tcx>>,
     ) -> bool {
         let generic_ty = self.normalize_to_scc_representatives(infcx.tcx, generic_ty);
         let verify_if_eq_b = self.normalize_to_scc_representatives(infcx.tcx, verify_if_eq_b);
-        match test_type_match::extract_verify_if_eq(
-            infcx.tcx,
-            param_env,
-            &verify_if_eq_b,
-            generic_ty,
-        ) {
+        match test_type_match::extract_verify_if_eq(infcx.tcx, &verify_if_eq_b, generic_ty) {
             Some(r) => {
                 let r_vid = self.to_region_vid(r);
                 self.eval_outlives(r_vid, lower_bound)
@@ -1457,6 +1442,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         errors_buffer: &mut RegionErrors<'tcx>,
     ) {
         for (fr, fr_definition) in self.definitions.iter_enumerated() {
+            debug!(?fr, ?fr_definition);
             match fr_definition.origin {
                 NllRegionVariableOrigin::FreeRegion => {
                     // Go through each of the universal regions `fr` and check that
@@ -1963,15 +1949,15 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         None
     }
 
-    /// Finds some region R such that `fr1: R` and `R` is live at `elem`.
+    /// Finds some region R such that `fr1: R` and `R` is live at `location`.
     #[instrument(skip(self), level = "trace", ret)]
-    pub(crate) fn find_sub_region_live_at(&self, fr1: RegionVid, elem: Location) -> RegionVid {
+    pub(crate) fn find_sub_region_live_at(&self, fr1: RegionVid, location: Location) -> RegionVid {
         trace!(scc = ?self.constraint_sccs.scc(fr1));
         trace!(universe = ?self.scc_universes[self.constraint_sccs.scc(fr1)]);
         self.find_constraint_paths_between_regions(fr1, |r| {
-            // First look for some `r` such that `fr1: r` and `r` is live at `elem`
-            trace!(?r, liveness_constraints=?self.liveness_constraints.region_value_str(r));
-            self.liveness_constraints.contains(r, elem)
+            // First look for some `r` such that `fr1: r` and `r` is live at `location`
+            trace!(?r, liveness_constraints=?self.liveness_constraints.pretty_print_live_points(r));
+            self.liveness_constraints.is_live_at(r, location)
         })
         .or_else(|| {
             // If we fail to find that, we may find some `r` such that
@@ -2316,7 +2302,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Note: for now, the sets of live loans is only available when using `-Zpolonius=next`.
     pub(crate) fn is_loan_live_at(&self, loan_idx: BorrowIndex, location: Location) -> bool {
         let point = self.liveness_constraints.point_from_location(location);
-        self.live_loans.contains(point, loan_idx)
+        self.liveness_constraints.is_loan_live_at(loan_idx, point)
     }
 }
 

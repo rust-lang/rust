@@ -10,6 +10,6 @@ LL |     *x += 1;
 LL |     (&32, y)
    |     -------- returning this value requires that `*x` is borrowed for `'1`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0506`.

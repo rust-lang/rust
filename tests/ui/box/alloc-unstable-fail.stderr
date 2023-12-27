@@ -7,6 +7,6 @@ LL |     let _boxed: Box<u32, _> = Box::new(10);
    = note: see issue #32838 <https://github.com/rust-lang/rust/issues/32838> for more information
    = help: add `#![feature(allocator_api)]` to the crate attributes to enable
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

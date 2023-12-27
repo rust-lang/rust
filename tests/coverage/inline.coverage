@@ -50,5 +50,5 @@
    LL|       |#[inline(always)]
    LL|      0|fn error() {
    LL|      0|    panic!("error");
-   LL|      0|}
+   LL|       |}
 

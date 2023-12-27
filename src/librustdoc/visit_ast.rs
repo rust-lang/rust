@@ -135,14 +135,16 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // macro in the same module.
         let mut inserted = FxHashSet::default();
         for child in self.cx.tcx.module_children_local(CRATE_DEF_ID) {
-            if !child.reexport_chain.is_empty() &&
-                let Res::Def(DefKind::Macro(_), def_id) = child.res &&
-                let Some(local_def_id) = def_id.as_local() &&
-                self.cx.tcx.has_attr(def_id, sym::macro_export) &&
-                inserted.insert(def_id)
+            if !child.reexport_chain.is_empty()
+                && let Res::Def(DefKind::Macro(_), def_id) = child.res
+                && let Some(local_def_id) = def_id.as_local()
+                && self.cx.tcx.has_attr(def_id, sym::macro_export)
+                && inserted.insert(def_id)
             {
                 let item = self.cx.tcx.hir().expect_item(local_def_id);
-                top_level_module.items.insert((local_def_id, Some(item.ident.name)), (item, None, None));
+                top_level_module
+                    .items
+                    .insert((local_def_id, Some(item.ident.name)), (item, None, None));
             }
         }
 
@@ -161,15 +163,16 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     .iter()
                     .filter_map(|attr| {
                         Cfg::parse(attr.meta_item()?)
-                            .map_err(|e| self.cx.sess().diagnostic().span_err(e.span, e.msg))
+                            .map_err(|e| self.cx.sess().dcx().span_err(e.span, e.msg))
                             .ok()
                     })
                     .collect::<Vec<_>>()
             })
-            .chain(
-                [Cfg::Cfg(sym::test, None), Cfg::Cfg(sym::doc, None), Cfg::Cfg(sym::doctest, None)]
-                    .into_iter(),
-            )
+            .chain([
+                Cfg::Cfg(sym::test, None),
+                Cfg::Cfg(sym::doc, None),
+                Cfg::Cfg(sym::doctest, None),
+            ])
             .collect();
 
         self.cx.cache.exact_paths = self.exact_paths;
@@ -240,7 +243,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         };
 
         let document_hidden = self.cx.render_options.document_hidden;
-        let use_attrs = tcx.hir().attrs(tcx.hir().local_def_id_to_hir_id(def_id));
+        let use_attrs = tcx.hir().attrs(tcx.local_def_id_to_hir_id(def_id));
         // Don't inline `doc(hidden)` imports so they can be stripped at a later stage.
         let is_no_inline = use_attrs.lists(sym::doc).has_word(sym::no_inline)
             || (document_hidden && use_attrs.lists(sym::doc).has_word(sym::hidden));
@@ -273,7 +276,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         };
 
         let is_private = !self.cx.cache.effective_visibilities.is_directly_public(tcx, ori_res_did);
-        let item = tcx.hir().get_by_def_id(res_did);
+        let item = tcx.hir_node_by_def_id(res_did);
 
         if !please_inline {
             let inherits_hidden = !document_hidden && inherits_doc_hidden(tcx, res_did, None);
@@ -444,8 +447,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                         continue;
                     }
 
-                    let attrs =
-                        tcx.hir().attrs(tcx.hir().local_def_id_to_hir_id(item.owner_id.def_id));
+                    let attrs = tcx.hir().attrs(tcx.local_def_id_to_hir_id(item.owner_id.def_id));
 
                     // If there was a private module in the current path then don't bother inlining
                     // anything as it will probably be stripped anyway.

@@ -4,6 +4,6 @@ error[E0321]: cross-crate traits with a default impl, like `Send`, can only be i
 LL |     unsafe impl Send for &'static Foo { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can't implement cross-crate trait with a default impl for non-struct/enum type
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0321`.

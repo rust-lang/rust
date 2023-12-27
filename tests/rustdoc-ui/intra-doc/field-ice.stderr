@@ -14,5 +14,5 @@ help: to link to the field, remove the disambiguator
 LL | /// [`Foo::bar`]
    |       ~~~~~~~~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

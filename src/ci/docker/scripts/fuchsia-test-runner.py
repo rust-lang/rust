@@ -12,6 +12,7 @@ from dataclasses import dataclass
 import fcntl
 import glob
 import hashlib
+import io
 import json
 import os
 import platform
@@ -276,27 +277,60 @@ class TestEnvironment:
             stderr=self.subprocess_output(),
         )
 
-        # Start emulator
-        self.log_info("Starting emulator...")
-        product_bundle = "terminal.qemu-" + self.triple_to_arch(self.target)
+        # Look up the product bundle transfer manifest.
+        self.log_info("Looking up the product bundle transfer manifest...")
+        product_name = "minimal." + self.triple_to_arch(self.target)
+        fuchsia_version = "14.20230811.2.1"
+
+        # FIXME: We should be able to replace this with the machine parsable
+        # `ffx --machine json product lookup ...` once F15 is released.
+        out = subprocess.check_output(
+            [
+                ffx_path,
+                "product",
+                "lookup",
+                product_name,
+                fuchsia_version,
+                "--base-url",
+                "gs://fuchsia/development/" + fuchsia_version,
+            ],
+            env=ffx_env,
+            stderr=self.subprocess_output(),
+        )
+
+        self.log_debug(out)
+
+        for line in io.BytesIO(out):
+            if line.startswith(b"gs://"):
+                transfer_manifest_url = line.rstrip()
+                break
+        else:
+            raise Exception("Unable to parse transfer manifest")
+
+        # Download the product bundle.
+        product_bundle_dir = os.path.join(self.tmp_dir(), 'product-bundle')
         subprocess.check_call(
             [
                 ffx_path,
-                "product-bundle",
-                "get",
-                product_bundle,
+                "product",
+                "download",
+                transfer_manifest_url,
+                product_bundle_dir,
+                "--force",
             ],
             env=ffx_env,
             stdout=self.subprocess_output(),
             stderr=self.subprocess_output(),
         )
+
+        # Start emulator
         # FIXME: condition --accel hyper on target arch matching host arch
         subprocess.check_call(
             [
                 ffx_path,
                 "emu",
                 "start",
-                product_bundle,
+                product_bundle_dir,
                 "--headless",
                 "--log",
                 self.emulator_log_path(),

@@ -9,7 +9,7 @@ use syntax::{
     algo,
     ast::{
         self, edit_in_place::Removable, make, AstNode, HasAttrs, HasModuleItem, HasVisibility,
-        PathSegmentKind,
+        PathSegmentKind, UseTree,
     },
     ted, Direction, NodeOrToken, SyntaxKind, SyntaxNode,
 };
@@ -157,6 +157,29 @@ impl ImportScope {
 
 /// Insert an import path into the given file/node. A `merge` value of none indicates that no import merging is allowed to occur.
 pub fn insert_use(scope: &ImportScope, path: ast::Path, cfg: &InsertUseConfig) {
+    insert_use_with_alias_option(scope, path, cfg, None);
+}
+
+pub fn insert_use_as_alias(scope: &ImportScope, path: ast::Path, cfg: &InsertUseConfig) {
+    let text: &str = "use foo as _";
+    let parse = syntax::SourceFile::parse(text);
+    let node = parse
+        .tree()
+        .syntax()
+        .descendants()
+        .find_map(UseTree::cast)
+        .expect("Failed to make ast node `Rename`");
+    let alias = node.rename();
+
+    insert_use_with_alias_option(scope, path, cfg, alias);
+}
+
+fn insert_use_with_alias_option(
+    scope: &ImportScope,
+    path: ast::Path,
+    cfg: &InsertUseConfig,
+    alias: Option<ast::Rename>,
+) {
     let _p = profile::span("insert_use");
     let mut mb = match cfg.granularity {
         ImportGranularity::Crate => Some(MergeBehavior::Crate),
@@ -176,7 +199,8 @@ pub fn insert_use(scope: &ImportScope, path: ast::Path, cfg: &InsertUseConfig) {
     }
 
     let use_item =
-        make::use_(None, make::use_tree(path.clone(), None, None, false)).clone_for_update();
+        make::use_(None, make::use_tree(path.clone(), None, alias, false)).clone_for_update();
+
     // merge into existing imports if possible
     if let Some(mb) = mb {
         let filter = |it: &_| !(cfg.skip_glob_imports && ast::Use::is_simple_glob(it));

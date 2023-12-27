@@ -2,7 +2,7 @@ use std::{fmt, marker::PhantomData};
 
 use hir::{
     db::{AstIdMapQuery, AttrsQuery, BlockDefMapQuery, ParseMacroExpansionQuery},
-    Attr, Attrs, ExpandResult, MacroFile, Module,
+    Attr, Attrs, ExpandResult, MacroFileId, Module,
 };
 use ide_db::{
     base_db::{
@@ -199,8 +199,12 @@ impl StatCollect<FileId, Parse<ast::SourceFile>> for SyntaxTreeStats<false> {
     }
 }
 
-impl<M> StatCollect<MacroFile, ExpandResult<(Parse<SyntaxNode>, M)>> for SyntaxTreeStats<true> {
-    fn collect_entry(&mut self, _: MacroFile, value: Option<ExpandResult<(Parse<SyntaxNode>, M)>>) {
+impl<M> StatCollect<MacroFileId, ExpandResult<(Parse<SyntaxNode>, M)>> for SyntaxTreeStats<true> {
+    fn collect_entry(
+        &mut self,
+        _: MacroFileId,
+        value: Option<ExpandResult<(Parse<SyntaxNode>, M)>>,
+    ) {
         self.total += 1;
         self.retained += value.is_some() as usize;
     }

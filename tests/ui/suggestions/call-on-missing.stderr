@@ -13,7 +13,7 @@ error[E0609]: no field `i` on type `fn() -> Foo {foo}`
   --> $DIR/call-on-missing.rs:16:9
    |
 LL |     foo.i;
-   |         ^
+   |         ^ unknown field
    |
 help: use parentheses to call this function
    |
@@ -62,7 +62,7 @@ LL | fn type_param<T: Fn() -> Foo>(t: T) {
    |               - type parameter 'T' declared here
 ...
 LL |     t.i;
-   |       ^
+   |       ^ unknown field
    |
 help: use parentheses to call this type parameter
    |

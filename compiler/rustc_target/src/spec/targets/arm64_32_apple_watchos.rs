@@ -11,19 +11,8 @@ pub fn target() -> Target {
         options: TargetOptions {
             features: "+v8a,+neon,+fp-armv8,+apple-a7".into(),
             max_atomic_width: Some(128),
-            forces_embed_bitcode: true,
             dynamic_linking: false,
             position_independent_executables: true,
-            // These arguments are not actually invoked - they just have
-            // to look right to pass App Store validation.
-            bitcode_llvm_cmdline: "-triple\0\
-                arm64_32-apple-watchos5.0.0\0\
-                -emit-obj\0\
-                -disable-llvm-passes\0\
-                -target-abi\0\
-                darwinpcs\0\
-                -Os\0"
-                .into(),
             ..base
         },
     }

@@ -146,7 +146,7 @@ use crate::sys::locks as sys;
 /// let result = data.iter().fold(0, |acc, x| acc + x * 2);
 /// data.push(result);
 /// // We drop the `data` explicitly because it's not necessary anymore and the
-/// // thread still has work to do. This allow other threads to start working on
+/// // thread still has work to do. This allows other threads to start working on
 /// // the data immediately, without waiting for the rest of the unrelated work
 /// // to be done here.
 /// //

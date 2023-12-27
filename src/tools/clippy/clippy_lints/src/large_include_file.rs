@@ -4,7 +4,7 @@ use clippy_utils::macros::root_macro_call_first_node;
 use rustc_ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::sym;
 
 declare_clippy_lint! {
@@ -50,37 +50,35 @@ impl_lint_pass!(LargeIncludeFile => [LARGE_INCLUDE_FILE]);
 
 impl LateLintPass<'_> for LargeIncludeFile {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
-        if_chain! {
-            if let Some(macro_call) = root_macro_call_first_node(cx, expr);
-            if !is_lint_allowed(cx, LARGE_INCLUDE_FILE, expr.hir_id);
-            if cx.tcx.is_diagnostic_item(sym::include_bytes_macro, macro_call.def_id)
-            || cx.tcx.is_diagnostic_item(sym::include_str_macro, macro_call.def_id);
-            if let ExprKind::Lit(lit) = &expr.kind;
-            then {
-                let len = match &lit.node {
-                    // include_bytes
-                    LitKind::ByteStr(bstr, _) => bstr.len(),
-                    // include_str
-                    LitKind::Str(sym, _) => sym.as_str().len(),
-                    _ => return,
-                };
+        if let Some(macro_call) = root_macro_call_first_node(cx, expr)
+            && !is_lint_allowed(cx, LARGE_INCLUDE_FILE, expr.hir_id)
+            && (cx.tcx.is_diagnostic_item(sym::include_bytes_macro, macro_call.def_id)
+                || cx.tcx.is_diagnostic_item(sym::include_str_macro, macro_call.def_id))
+            && let ExprKind::Lit(lit) = &expr.kind
+        {
+            let len = match &lit.node {
+                // include_bytes
+                LitKind::ByteStr(bstr, _) => bstr.len(),
+                // include_str
+                LitKind::Str(sym, _) => sym.as_str().len(),
+                _ => return,
+            };
 
-                if len as u64 <= self.max_file_size {
-                    return;
-                }
-
-                span_lint_and_note(
-                    cx,
-                    LARGE_INCLUDE_FILE,
-                    expr.span,
-                    "attempted to include a large file",
-                    None,
-                    &format!(
-                        "the configuration allows a maximum size of {} bytes",
-                        self.max_file_size
-                    ),
-                );
+            if len as u64 <= self.max_file_size {
+                return;
             }
+
+            span_lint_and_note(
+                cx,
+                LARGE_INCLUDE_FILE,
+                expr.span,
+                "attempted to include a large file",
+                None,
+                &format!(
+                    "the configuration allows a maximum size of {} bytes",
+                    self.max_file_size
+                ),
+            );
         }
     }
 }

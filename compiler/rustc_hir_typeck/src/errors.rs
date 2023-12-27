@@ -573,13 +573,13 @@ impl rustc_errors::AddToDiagnostic for CastUnknownPointerSub {
     {
         match self {
             CastUnknownPointerSub::To(span) => {
-                let msg = f(diag, crate::fluent_generated::hir_typeck_label_to.into());
+                let msg = f(diag, crate::fluent_generated::hir_typeck_label_to);
                 diag.span_label(span, msg);
-                let msg = f(diag, crate::fluent_generated::hir_typeck_note.into());
+                let msg = f(diag, crate::fluent_generated::hir_typeck_note);
                 diag.note(msg);
             }
             CastUnknownPointerSub::From(span) => {
-                let msg = f(diag, crate::fluent_generated::hir_typeck_label_from.into());
+                let msg = f(diag, crate::fluent_generated::hir_typeck_label_from);
                 diag.span_label(span, msg);
             }
         }
@@ -626,7 +626,7 @@ pub struct SuggestConvertViaMethod<'tcx> {
     pub span: Span,
     #[suggestion_part(code = "")]
     pub borrow_removal_span: Option<Span>,
-    pub sugg: &'static str,
+    pub sugg: String,
     pub expected: Ty<'tcx>,
     pub found: Ty<'tcx>,
 }

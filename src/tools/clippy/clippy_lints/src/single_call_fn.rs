@@ -7,7 +7,7 @@ use rustc_hir::{Body, Expr, ExprKind, FnDecl};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::lint::in_external_macro;
-use rustc_session::{declare_tool_lint, impl_lint_pass};
+use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
 declare_clippy_lint! {
@@ -72,8 +72,8 @@ impl<'tcx> LateLintPass<'tcx> for SingleCallFn {
     ) {
         if self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(def_id)
             || in_external_macro(cx.sess(), span)
-            || is_from_proc_macro(cx, &(&kind, body, cx.tcx.local_def_id_to_hir_id(def_id), span))
             || is_in_test_function(cx.tcx, body.value.hir_id)
+            || is_from_proc_macro(cx, &(&kind, body, cx.tcx.local_def_id_to_hir_id(def_id), span))
         {
             return;
         }

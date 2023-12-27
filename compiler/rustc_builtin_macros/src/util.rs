@@ -10,7 +10,7 @@ pub fn check_builtin_macro_attribute(ecx: &ExtCtxt<'_>, meta_item: &MetaItem, na
     let template = AttributeTemplate { word: true, ..Default::default() };
     validate_attr::check_builtin_meta_item(
         &ecx.sess.parse_sess,
-        &meta_item,
+        meta_item,
         AttrStyle::Outer,
         name,
         template,

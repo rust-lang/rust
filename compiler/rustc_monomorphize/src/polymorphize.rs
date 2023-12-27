@@ -131,7 +131,7 @@ fn mark_used_by_default_parameters<'tcx>(
     unused_parameters: &mut UnusedGenericParams,
 ) {
     match tcx.def_kind(def_id) {
-        DefKind::Closure | DefKind::Coroutine => {
+        DefKind::Closure => {
             for param in &generics.params {
                 debug!(?param, "(closure/gen)");
                 unused_parameters.mark_used(param.index);
@@ -215,7 +215,7 @@ fn emit_unused_generic_params_error<'tcx>(
         next_generics = generics.parent.map(|did| tcx.generics_of(did));
     }
 
-    tcx.sess.emit_err(UnusedGenericParamsHint { span: fn_span, param_spans, param_names });
+    tcx.dcx().emit_err(UnusedGenericParamsHint { span: fn_span, param_spans, param_names });
 }
 
 /// Visitor used to aggregate generic parameter uses.
@@ -248,7 +248,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkUsedGenericParams<'a, 'tcx> {
     fn visit_local_decl(&mut self, local: Local, local_decl: &LocalDecl<'tcx>) {
         if local == Local::from_usize(1) {
             let def_kind = self.tcx.def_kind(self.def_id);
-            if matches!(def_kind, DefKind::Closure | DefKind::Coroutine) {
+            if matches!(def_kind, DefKind::Closure) {
                 // Skip visiting the closure/coroutine that is currently being processed. This only
                 // happens because the first argument to the closure is a reference to itself and
                 // that will call `visit_args`, resulting in each generic parameter captured being

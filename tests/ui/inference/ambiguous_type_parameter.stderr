@@ -9,6 +9,6 @@ help: try using a fully qualified path to specify the expected types
 LL |     <InMemoryStore as Store<String, HashMap<K, String>>>::get_raw(&InMemoryStore, &String::default());
    |     +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++             ~
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0282`.

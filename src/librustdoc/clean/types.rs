@@ -31,7 +31,7 @@ use rustc_resolve::rustdoc::{
 use rustc_session::Session;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{self, FileName, Loc, DUMMY_SP};
+use rustc_span::{FileName, Loc, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 
@@ -345,7 +345,7 @@ pub(crate) fn rustc_span(def_id: DefId, tcx: TyCtxt<'_>) -> Span {
         || tcx.def_span(def_id),
         |local| {
             let hir = tcx.hir();
-            hir.span_with_body(hir.local_def_id_to_hir_id(local))
+            hir.span_with_body(tcx.local_def_id_to_hir_id(local))
         },
     ))
 }
@@ -498,7 +498,7 @@ impl Item {
     }
 
     pub(crate) fn is_crate(&self) -> bool {
-        self.is_mod() && self.def_id().map_or(false, |did| did.is_crate_root())
+        self.is_mod() && self.def_id().is_some_and(|did| did.is_crate_root())
     }
     pub(crate) fn is_mod(&self) -> bool {
         self.type_() == ItemType::Module
@@ -1012,7 +1012,7 @@ pub(crate) trait AttributesExt {
                             match Cfg::parse(cfg_mi) {
                                 Ok(new_cfg) => cfg &= new_cfg,
                                 Err(e) => {
-                                    sess.span_err(e.span, e.msg);
+                                    sess.dcx().span_err(e.span, e.msg);
                                 }
                             }
                         }
@@ -1269,8 +1269,8 @@ impl GenericBound {
 
     pub(crate) fn is_sized_bound(&self, cx: &DocContext<'_>) -> bool {
         use rustc_hir::TraitBoundModifier as TBM;
-        if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self &&
-            Some(trait_.def_id()) == cx.tcx.lang_items().sized_trait()
+        if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self
+            && Some(trait_.def_id()) == cx.tcx.lang_items().sized_trait()
         {
             return true;
         }
@@ -1623,7 +1623,7 @@ impl Type {
     /// functions.
     pub(crate) fn sugared_async_return_type(self) -> Type {
         if let Type::ImplTrait(mut v) = self
-            && let Some(GenericBound::TraitBound(PolyTrait { mut trait_, .. }, _ )) = v.pop()
+            && let Some(GenericBound::TraitBound(PolyTrait { mut trait_, .. }, _)) = v.pop()
             && let Some(segment) = trait_.segments.pop()
             && let GenericArgs::AngleBracketed { mut bindings, .. } = segment.args
             && let Some(binding) = bindings.pop()
@@ -1648,6 +1648,13 @@ impl Type {
         match *self {
             Generic(name) => name == kw::SelfUpper,
             _ => false,
+        }
+    }
+
+    pub(crate) fn generic_args(&self) -> Option<&GenericArgs> {
+        match self {
+            Type::Path { path, .. } => path.generic_args(),
+            _ => None,
         }
     }
 
@@ -2191,6 +2198,10 @@ impl Path {
         }
     }
 
+    pub(crate) fn generic_args(&self) -> Option<&GenericArgs> {
+        self.segments.last().map(|seg| &seg.args)
+    }
+
     pub(crate) fn generics(&self) -> Option<Vec<&Type>> {
         self.segments.last().and_then(|seg| {
             if let GenericArgs::AngleBracketed { ref args, .. } = seg.args {
@@ -2230,6 +2241,39 @@ impl GenericArgs {
                 args.is_empty() && bindings.is_empty()
             }
             GenericArgs::Parenthesized { inputs, output } => inputs.is_empty() && output.is_none(),
+        }
+    }
+    pub(crate) fn bindings<'a>(&'a self) -> Box<dyn Iterator<Item = TypeBinding> + 'a> {
+        match self {
+            GenericArgs::AngleBracketed { bindings, .. } => Box::new(bindings.iter().cloned()),
+            GenericArgs::Parenthesized { output, .. } => Box::new(
+                output
+                    .as_ref()
+                    .map(|ty| TypeBinding {
+                        assoc: PathSegment {
+                            name: sym::Output,
+                            args: GenericArgs::AngleBracketed {
+                                args: Vec::new().into_boxed_slice(),
+                                bindings: ThinVec::new(),
+                            },
+                        },
+                        kind: TypeBindingKind::Equality { term: Term::Type((**ty).clone()) },
+                    })
+                    .into_iter(),
+            ),
+        }
+    }
+}
+
+impl<'a> IntoIterator for &'a GenericArgs {
+    type IntoIter = Box<dyn Iterator<Item = GenericArg> + 'a>;
+    type Item = GenericArg;
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            GenericArgs::AngleBracketed { args, .. } => Box::new(args.iter().cloned()),
+            GenericArgs::Parenthesized { inputs, .. } => {
+                Box::new(inputs.iter().cloned().map(GenericArg::Type))
+            }
         }
     }
 }
@@ -2443,7 +2487,7 @@ impl Import {
     }
 
     pub(crate) fn imported_item_is_doc_hidden(&self, tcx: TyCtxt<'_>) -> bool {
-        self.source.did.map_or(false, |did| tcx.is_doc_hidden(did))
+        self.source.did.is_some_and(|did| tcx.is_doc_hidden(did))
     }
 }
 
@@ -2502,7 +2546,7 @@ pub(crate) enum TypeBindingKind {
 pub(crate) enum SubstParam {
     Type(Type),
     Lifetime(Lifetime),
-    Constant(Constant),
+    Constant,
 }
 
 impl SubstParam {

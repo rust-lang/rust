@@ -1,6 +1,6 @@
 use crate::FnCtxt;
 use rustc_errors::MultiSpan;
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::Visitor;
@@ -31,9 +31,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         self.annotate_alternative_method_deref(err, expr, error);
+        self.explain_self_literal(err, expr, expected, expr_ty);
 
         // Use `||` to give these suggestions a precedence
         let suggested = self.suggest_missing_parentheses(err, expr)
+            || self.suggest_missing_unwrap_expect(err, expr, expected, expr_ty)
             || self.suggest_remove_last_method_call(err, expr, expected)
             || self.suggest_associated_const(err, expr, expected)
             || self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr)
@@ -49,8 +51,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_into(err, expr, expr_ty, expected)
             || self.suggest_floating_point_literal(err, expr, expected)
             || self.suggest_null_ptr_for_literal_zero_given_to_ptr_arg(err, expr, expected)
-            || self.suggest_coercing_result_via_try_operator(err, expr, expected, expr_ty)
-            || self.suggest_missing_unwrap_expect(err, expr, expected, expr_ty);
+            || self.suggest_coercing_result_via_try_operator(err, expr, expected, expr_ty);
 
         if !suggested {
             self.note_source_of_type_mismatch_constraint(
@@ -167,7 +168,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         sp: Span,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
+    ) -> Option<DiagnosticBuilder<'tcx>> {
         self.demand_suptype_with_origin(&self.misc(sp), expected, actual)
     }
 
@@ -177,13 +178,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         cause: &ObligationCause<'tcx>,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
+    ) -> Option<DiagnosticBuilder<'tcx>> {
         match self.at(cause, self.param_env).sup(DefineOpaqueTypes::Yes, expected, actual) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
                 None
             }
-            Err(e) => Some(self.err_ctxt().report_mismatched_types(&cause, expected, actual, e)),
+            Err(e) => Some(self.err_ctxt().report_mismatched_types(cause, expected, actual, e)),
         }
     }
 
@@ -198,7 +199,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         sp: Span,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
+    ) -> Option<DiagnosticBuilder<'tcx>> {
         self.demand_eqtype_with_origin(&self.misc(sp), expected, actual)
     }
 
@@ -207,7 +208,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         cause: &ObligationCause<'tcx>,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
+    ) -> Option<DiagnosticBuilder<'tcx>> {
         match self.at(cause, self.param_env).eq(DefineOpaqueTypes::Yes, expected, actual) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);
@@ -245,7 +246,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         mut expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
         allow_two_phase: AllowTwoPhase,
-    ) -> (Ty<'tcx>, Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>>) {
+    ) -> (Ty<'tcx>, Option<DiagnosticBuilder<'tcx>>) {
         let expected = self.resolve_vars_with_obligations(expected);
 
         let e = match self.coerce(expr, checked_ty, expected, allow_two_phase, None) {
@@ -255,7 +256,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.adjust_expr_for_assert_eq_macro(&mut expr, &mut expected_ty_expr);
 
-        self.set_tainted_by_errors(self.tcx.sess.delay_span_bug(
+        self.set_tainted_by_errors(self.dcx().span_delayed_bug(
             expr.span,
             "`TypeError` when attempting coercion but no error emitted",
         ));
@@ -288,7 +289,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir::def::Res::Local(local_hir_id) = p.res else {
             return false;
         };
-        let hir::Node::Pat(pat) = hir.get(local_hir_id) else {
+        let hir::Node::Pat(pat) = self.tcx.hir_node(local_hir_id) else {
             return false;
         };
         let (init_ty_hir_id, init) = match hir.get_parent(pat.hir_id) {
@@ -330,13 +331,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty_op: |ty| {
                 if let ty::Infer(infer) = ty.kind() {
                     match infer {
-                        ty::InferTy::TyVar(_) => self.next_ty_var(TypeVariableOrigin {
+                        ty::TyVar(_) => self.next_ty_var(TypeVariableOrigin {
                             kind: TypeVariableOriginKind::MiscVariable,
                             span: DUMMY_SP,
                         }),
-                        ty::InferTy::IntVar(_) => self.next_int_var(),
-                        ty::InferTy::FloatVar(_) => self.next_float_var(),
-                        _ => bug!(),
+                        ty::IntVar(_) => self.next_int_var(),
+                        ty::FloatVar(_) => self.next_float_var(),
+                        ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {
+                            bug!("unexpected fresh ty outside of the trait solver")
+                        }
                     }
                 } else {
                     ty
@@ -556,7 +559,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Semi(&ref p), .. })
                 | hir::Node::Block(hir::Block { expr: Some(&ref p), .. })
                 | hir::Node::Expr(&ref p),
-            ) = self.tcx.hir().find(parent_id)
+            ) = self.tcx.opt_hir_node(parent_id)
             else {
                 break;
             };
@@ -569,7 +572,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut direct = false;
             loop {
                 // Climb the HIR tree to find the (desugared) `loop` this `break` corresponds to.
-                let parent = match self.tcx.hir().find(parent_id) {
+                let parent = match self.tcx.opt_hir_node(parent_id) {
                     Some(hir::Node::Expr(&ref parent)) => {
                         parent_id = self.tcx.hir().parent_id(parent.hir_id);
                         parent
@@ -671,7 +674,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error: Option<TypeError<'tcx>>,
     ) {
         let parent = self.tcx.hir().parent_id(expr.hir_id);
-        match (self.tcx.hir().find(parent), error) {
+        match (self.tcx.opt_hir_node(parent), error) {
             (Some(hir::Node::Local(hir::Local { ty: Some(ty), init: Some(init), .. })), _)
                 if init.hir_id == expr.hir_id =>
             {
@@ -716,7 +719,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         None,
                         hir::Path { res: hir::def::Res::Local(hir_id), .. },
                     )) => {
-                        if let Some(hir::Node::Pat(pat)) = self.tcx.hir().find(*hir_id) {
+                        if let Some(hir::Node::Pat(pat)) = self.tcx.opt_hir_node(*hir_id) {
                             primary_span = pat.span;
                             secondary_span = pat.span;
                             match self.tcx.hir().find_parent(pat.hir_id) {
@@ -789,7 +792,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         };
         let Some(hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Assign(lhs, rhs, _), .. })) =
-            self.tcx.hir().find(parent)
+            self.tcx.opt_hir_node(parent)
         else {
             return;
         };
@@ -861,7 +864,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             mutability,
                         ),
                     ),
-                    match &args[..] {
+                    match &args {
                         [] => (base.span.shrink_to_hi().with_hi(deref.span.hi()), ")".to_string()),
                         [first, ..] => (base.span.between(first.span), ", ".to_string()),
                     },
@@ -882,7 +885,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let container_id = pick.item.container_id(self.tcx);
         let container = with_no_trimmed_paths!(self.tcx.def_path_str(container_id));
         for def_id in pick.import_ids {
-            let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
+            let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
             path_span.push_span_label(
                 self.tcx.hir().span(hir_id),
                 format!("`{container}` imported here"),
@@ -1013,8 +1016,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             hir::Path { res: hir::def::Res::Local(bind_hir_id), .. },
         )) = expr.kind
         {
-            let bind = self.tcx.hir().find(*bind_hir_id);
-            let parent = self.tcx.hir().find(self.tcx.hir().parent_id(*bind_hir_id));
+            let bind = self.tcx.opt_hir_node(*bind_hir_id);
+            let parent = self.tcx.opt_hir_node(self.tcx.hir().parent_id(*bind_hir_id));
             if let Some(hir::Node::Pat(hir::Pat {
                 kind: hir::PatKind::Binding(_, _hir_id, _, _),
                 ..
@@ -1025,6 +1028,59 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         return false;
+    }
+
+    fn explain_self_literal(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'tcx>,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+    ) {
+        match expr.peel_drop_temps().kind {
+            hir::ExprKind::Struct(
+                hir::QPath::Resolved(
+                    None,
+                    hir::Path { res: hir::def::Res::SelfTyAlias { alias_to, .. }, span, .. },
+                ),
+                ..,
+            )
+            | hir::ExprKind::Call(
+                hir::Expr {
+                    kind:
+                        hir::ExprKind::Path(hir::QPath::Resolved(
+                            None,
+                            hir::Path {
+                                res: hir::def::Res::SelfTyAlias { alias_to, .. },
+                                span,
+                                ..
+                            },
+                        )),
+                    ..
+                },
+                ..,
+            ) => {
+                if let Some(hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::Impl(hir::Impl { self_ty, .. }),
+                    ..
+                })) = self.tcx.hir().get_if_local(*alias_to)
+                {
+                    err.span_label(self_ty.span, "this is the type of the `Self` literal");
+                }
+                if let ty::Adt(e_def, e_args) = expected.kind()
+                    && let ty::Adt(f_def, _f_args) = found.kind()
+                    && e_def == f_def
+                {
+                    err.span_suggestion_verbose(
+                        *span,
+                        "use the type name directly",
+                        self.tcx.value_path_str_with_args(*alias_to, e_args),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+            _ => {}
+        }
     }
 
     fn note_wrong_return_ty_due_to_generic_arg(

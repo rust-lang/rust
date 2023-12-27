@@ -34,7 +34,7 @@ declare_lint_pass!(DefaultHashTypes => [DEFAULT_HASH_TYPES]);
 impl LateLintPass<'_> for DefaultHashTypes {
     fn check_path(&mut self, cx: &LateContext<'_>, path: &Path<'_>, hir_id: HirId) {
         let Res::Def(rustc_hir::def::DefKind::Struct, def_id) = path.res else { return };
-        if matches!(cx.tcx.hir().get(hir_id), Node::Item(Item { kind: ItemKind::Use(..), .. })) {
+        if matches!(cx.tcx.hir_node(hir_id), Node::Item(Item { kind: ItemKind::Use(..), .. })) {
             // don't lint imports, only actual usages
             return;
         }
@@ -196,7 +196,7 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                     }
                 } else if !ty.span.from_expansion()
                     && path.segments.len() > 1
-                    && let Some(ty) = is_ty_or_ty_ctxt(cx, &path)
+                    && let Some(ty) = is_ty_or_ty_ctxt(cx, path)
                 {
                     cx.emit_spanned_lint(
                         USAGE_OF_QUALIFIED_TY,

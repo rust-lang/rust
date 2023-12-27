@@ -708,7 +708,7 @@ struct MacroArgParser {
 fn last_tok(tt: &TokenTree) -> Token {
     match *tt {
         TokenTree::Token(ref t, _) => t.clone(),
-        TokenTree::Delimited(delim_span, delim, _) => Token {
+        TokenTree::Delimited(delim_span, _, delim, _) => Token {
             kind: TokenKind::CloseDelim(delim),
             span: delim_span.close,
         },
@@ -925,7 +925,7 @@ impl MacroArgParser {
                     self.add_meta_variable(&mut iter)?;
                 }
                 TokenTree::Token(ref t, _) => self.update_buffer(t),
-                &TokenTree::Delimited(_delimited_span, delimited, ref tts) => {
+                &TokenTree::Delimited(_dspan, _spacing, delimited, ref tts) => {
                     if !self.buf.is_empty() {
                         if next_space(&self.last_tok.kind) == SpaceState::Always {
                             self.add_separator();
@@ -1167,7 +1167,7 @@ impl<'a> MacroParser<'a> {
         let tok = self.toks.next()?;
         let (lo, args_paren_kind) = match tok {
             TokenTree::Token(..) => return None,
-            &TokenTree::Delimited(delimited_span, d, _) => (delimited_span.open.lo(), d),
+            &TokenTree::Delimited(delimited_span, _, d, _) => (delimited_span.open.lo(), d),
         };
         let args = TokenStream::new(vec![tok.clone()]);
         match self.toks.next()? {

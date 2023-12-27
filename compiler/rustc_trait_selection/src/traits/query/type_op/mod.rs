@@ -89,7 +89,7 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
     /// make sure to feed it predefined opaque types and the defining anchor
     /// and that would require duplicating all of the tcx queries. Instead,
     /// just perform these ops locally.
-    fn perform_locally_in_new_solver(
+    fn perform_locally_with_next_solver(
         ocx: &ObligationCtxt<'_, 'tcx>,
         key: ParamEnvAnd<'tcx, Self>,
     ) -> Result<Self::QueryResponse, NoSolution>;
@@ -149,7 +149,7 @@ where
         if infcx.next_trait_solver() {
             return Ok(scrape_region_constraints(
                 infcx,
-                |ocx| QueryTypeOp::perform_locally_in_new_solver(ocx, self),
+                |ocx| QueryTypeOp::perform_locally_with_next_solver(ocx, self),
                 "query type op",
                 span,
             )?
@@ -157,18 +157,10 @@ where
         }
 
         let mut region_constraints = QueryRegionConstraints::default();
-        let (output, error_info, mut obligations) =
-            Q::fully_perform_into(self, infcx, &mut region_constraints)
-                .map_err(|_| {
-                    infcx.tcx.sess.delay_span_bug(span, format!("error performing {self:?}"))
-                })
-                .and_then(|(output, error_info, obligations, certainty)| match certainty {
-                    Certainty::Proven => Ok((output, error_info, obligations)),
-                    Certainty::Ambiguous => Err(infcx
-                        .tcx
-                        .sess
-                        .delay_span_bug(span, format!("ambiguity performing {self:?}"))),
-                })?;
+        let (output, error_info, mut obligations, _) =
+            Q::fully_perform_into(self, infcx, &mut region_constraints).map_err(|_| {
+                infcx.dcx().span_delayed_bug(span, format!("error performing {self:?}"))
+            })?;
 
         // Typically, instantiating NLL query results does not
         // create obligations. However, in some cases there
@@ -196,7 +188,7 @@ where
                 }
             }
             if !progress {
-                return Err(infcx.tcx.sess.delay_span_bug(
+                return Err(infcx.dcx().span_delayed_bug(
                     span,
                     format!("ambiguity processing {obligations:?} from {self:?}"),
                 ));

@@ -9,6 +9,7 @@ use std::slice;
 use arrayvec::ArrayVec;
 use smallvec::{smallvec, SmallVec};
 
+#[cfg(feature = "nightly")]
 use rustc_macros::{Decodable, Encodable};
 
 use crate::{Idx, IndexVec};
@@ -111,7 +112,8 @@ macro_rules! bit_relations_inherent_impls {
 /// to or greater than the domain size. All operations that involve two bitsets
 /// will panic if the bitsets have differing domain sizes.
 ///
-#[derive(Eq, PartialEq, Hash, Decodable, Encodable)]
+#[cfg_attr(feature = "nightly", derive(Decodable, Encodable))]
+#[derive(Eq, PartialEq, Hash)]
 pub struct BitSet<T> {
     domain_size: usize,
     words: SmallVec<[Word; 2]>,
@@ -237,21 +239,10 @@ impl<T: Idx> BitSet<T> {
         new_word != word
     }
 
-    /// Gets a slice of the underlying words.
-    pub fn words(&self) -> &[Word] {
-        &self.words
-    }
-
     /// Iterates over the indices of set bits in a sorted order.
     #[inline]
     pub fn iter(&self) -> BitIter<'_, T> {
         BitIter::new(&self.words)
-    }
-
-    /// Duplicates the set as a hybrid set.
-    pub fn to_hybrid(&self) -> HybridBitSet<T> {
-        // Note: we currently don't bother trying to make a Sparse set.
-        HybridBitSet::Dense(self.to_owned())
     }
 
     /// Set `self = self | other`. In contrast to `union` returns `true` if the set contains at
@@ -502,10 +493,22 @@ impl<T: Idx> ChunkedBitSet<T> {
         match *chunk {
             Zeros(chunk_domain_size) => {
                 if chunk_domain_size > 1 {
-                    // We take some effort to avoid copying the words.
-                    let words = Rc::<[Word; CHUNK_WORDS]>::new_zeroed();
-                    // SAFETY: `words` can safely be all zeroes.
-                    let mut words = unsafe { words.assume_init() };
+                    #[cfg(feature = "nightly")]
+                    let mut words = {
+                        // We take some effort to avoid copying the words.
+                        let words = Rc::<[Word; CHUNK_WORDS]>::new_zeroed();
+                        // SAFETY: `words` can safely be all zeroes.
+                        unsafe { words.assume_init() }
+                    };
+                    #[cfg(not(feature = "nightly"))]
+                    let mut words = {
+                        // FIXME: unconditionally use `Rc::new_zeroed` once it is stable (#63291).
+                        let words = mem::MaybeUninit::<[Word; CHUNK_WORDS]>::zeroed();
+                        // SAFETY: `words` can safely be all zeroes.
+                        let words = unsafe { words.assume_init() };
+                        // Unfortunate possibly-large copy
+                        Rc::new(words)
+                    };
                     let words_ref = Rc::get_mut(&mut words).unwrap();
 
                     let (word_index, mask) = chunk_word_index_and_mask(elem);
@@ -556,10 +559,22 @@ impl<T: Idx> ChunkedBitSet<T> {
             Zeros(_) => false,
             Ones(chunk_domain_size) => {
                 if chunk_domain_size > 1 {
-                    // We take some effort to avoid copying the words.
-                    let words = Rc::<[Word; CHUNK_WORDS]>::new_zeroed();
-                    // SAFETY: `words` can safely be all zeroes.
-                    let mut words = unsafe { words.assume_init() };
+                    #[cfg(feature = "nightly")]
+                    let mut words = {
+                        // We take some effort to avoid copying the words.
+                        let words = Rc::<[Word; CHUNK_WORDS]>::new_zeroed();
+                        // SAFETY: `words` can safely be all zeroes.
+                        unsafe { words.assume_init() }
+                    };
+                    #[cfg(not(feature = "nightly"))]
+                    let mut words = {
+                        // FIXME: unconditionally use `Rc::new_zeroed` once it is stable (#63291).
+                        let words = mem::MaybeUninit::<[Word; CHUNK_WORDS]>::zeroed();
+                        // SAFETY: `words` can safely be all zeroes.
+                        let words = unsafe { words.assume_init() };
+                        // Unfortunate possibly-large copy
+                        Rc::new(words)
+                    };
                     let words_ref = Rc::get_mut(&mut words).unwrap();
 
                     // Set only the bits in use.
@@ -1575,7 +1590,8 @@ impl<T: Idx> From<BitSet<T>> for GrowableBitSet<T> {
 ///
 /// All operations that involve a row and/or column index will panic if the
 /// index exceeds the relevant bound.
-#[derive(Clone, Eq, PartialEq, Hash, Decodable, Encodable)]
+#[cfg_attr(feature = "nightly", derive(Decodable, Encodable))]
+#[derive(Clone, Eq, PartialEq, Hash)]
 pub struct BitMatrix<R: Idx, C: Idx> {
     num_rows: usize,
     num_columns: usize,
@@ -1601,11 +1617,11 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
     pub fn from_row_n(row: &BitSet<C>, num_rows: usize) -> BitMatrix<R, C> {
         let num_columns = row.domain_size();
         let words_per_row = num_words(num_columns);
-        assert_eq!(words_per_row, row.words().len());
+        assert_eq!(words_per_row, row.words.len());
         BitMatrix {
             num_rows,
             num_columns,
-            words: iter::repeat(row.words()).take(num_rows).flatten().cloned().collect(),
+            words: iter::repeat(&row.words).take(num_rows).flatten().cloned().collect(),
             marker: PhantomData,
         }
     }
@@ -1700,9 +1716,9 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
         assert_eq!(with.domain_size(), self.num_columns);
         let (write_start, write_end) = self.range(write);
         let mut changed = false;
-        for (read_index, write_index) in iter::zip(0..with.words().len(), write_start..write_end) {
+        for (read_index, write_index) in iter::zip(0..with.words.len(), write_start..write_end) {
             let word = self.words[write_index];
-            let new_word = word | with.words()[read_index];
+            let new_word = word | with.words[read_index];
             self.words[write_index] = new_word;
             changed |= word != new_word;
         }
@@ -2002,57 +2018,10 @@ impl std::fmt::Debug for FiniteBitSet<u32> {
     }
 }
 
-impl FiniteBitSetTy for u64 {
-    const DOMAIN_SIZE: u32 = 64;
-
-    const FILLED: Self = Self::MAX;
-    const EMPTY: Self = Self::MIN;
-
-    const ONE: Self = 1u64;
-    const ZERO: Self = 0u64;
-
-    fn checked_shl(self, rhs: u32) -> Option<Self> {
-        self.checked_shl(rhs)
-    }
-
-    fn checked_shr(self, rhs: u32) -> Option<Self> {
-        self.checked_shr(rhs)
-    }
-}
-
-impl std::fmt::Debug for FiniteBitSet<u64> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:064b}", self.0)
-    }
-}
-
-impl FiniteBitSetTy for u128 {
-    const DOMAIN_SIZE: u32 = 128;
-
-    const FILLED: Self = Self::MAX;
-    const EMPTY: Self = Self::MIN;
-
-    const ONE: Self = 1u128;
-    const ZERO: Self = 0u128;
-
-    fn checked_shl(self, rhs: u32) -> Option<Self> {
-        self.checked_shl(rhs)
-    }
-
-    fn checked_shr(self, rhs: u32) -> Option<Self> {
-        self.checked_shr(rhs)
-    }
-}
-
-impl std::fmt::Debug for FiniteBitSet<u128> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:0128b}", self.0)
-    }
-}
-
 /// A fixed-sized bitset type represented by an integer type. Indices outwith than the range
 /// representable by `T` are considered set.
-#[derive(Copy, Clone, Eq, PartialEq, Decodable, Encodable)]
+#[cfg_attr(feature = "nightly", derive(Decodable, Encodable))]
+#[derive(Copy, Clone, Eq, PartialEq)]
 pub struct FiniteBitSet<T: FiniteBitSetTy>(pub T);
 
 impl<T: FiniteBitSetTy> FiniteBitSet<T> {

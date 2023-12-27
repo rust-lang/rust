@@ -2,7 +2,7 @@
 
 use crate::source::{get_source_text, walk_span_to_context};
 use crate::{clip, is_direct_expn_of, sext, unsext};
-use if_chain::if_chain;
+
 use rustc_ast::ast::{self, LitFloatType, LitKind};
 use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{DefKind, Res};
@@ -10,7 +10,7 @@ use rustc_hir::{BinOp, BinOpKind, Block, ConstBlock, Expr, ExprKind, HirId, Item
 use rustc_lexer::tokenize;
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{alloc_range, Scalar};
-use rustc_middle::ty::{self, EarlyBinder, FloatTy, GenericArgsRef, List, ScalarInt, Ty, TyCtxt};
+use rustc_middle::ty::{self, EarlyBinder, FloatTy, GenericArgsRef, IntTy, List, ScalarInt, Ty, TyCtxt, UintTy};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_span::symbol::{Ident, Symbol};
 use rustc_span::SyntaxContext;
@@ -49,6 +49,63 @@ pub enum Constant<'tcx> {
     Ref(Box<Constant<'tcx>>),
     /// A literal with syntax error.
     Err,
+}
+
+trait IntTypeBounds: Sized {
+    type Output: PartialOrd;
+
+    fn min_max(self) -> Option<(Self::Output, Self::Output)>;
+    fn bits(self) -> Self::Output;
+    fn ensure_fits(self, val: Self::Output) -> Option<Self::Output> {
+        let (min, max) = self.min_max()?;
+        (min <= val && val <= max).then_some(val)
+    }
+}
+impl IntTypeBounds for UintTy {
+    type Output = u128;
+    fn min_max(self) -> Option<(Self::Output, Self::Output)> {
+        Some(match self {
+            UintTy::U8 => (u8::MIN.into(), u8::MAX.into()),
+            UintTy::U16 => (u16::MIN.into(), u16::MAX.into()),
+            UintTy::U32 => (u32::MIN.into(), u32::MAX.into()),
+            UintTy::U64 => (u64::MIN.into(), u64::MAX.into()),
+            UintTy::U128 => (u128::MIN, u128::MAX),
+            UintTy::Usize => (usize::MIN.try_into().ok()?, usize::MAX.try_into().ok()?),
+        })
+    }
+    fn bits(self) -> Self::Output {
+        match self {
+            UintTy::U8 => 8,
+            UintTy::U16 => 16,
+            UintTy::U32 => 32,
+            UintTy::U64 => 64,
+            UintTy::U128 => 128,
+            UintTy::Usize => usize::BITS.into(),
+        }
+    }
+}
+impl IntTypeBounds for IntTy {
+    type Output = i128;
+    fn min_max(self) -> Option<(Self::Output, Self::Output)> {
+        Some(match self {
+            IntTy::I8 => (i8::MIN.into(), i8::MAX.into()),
+            IntTy::I16 => (i16::MIN.into(), i16::MAX.into()),
+            IntTy::I32 => (i32::MIN.into(), i32::MAX.into()),
+            IntTy::I64 => (i64::MIN.into(), i64::MAX.into()),
+            IntTy::I128 => (i128::MIN, i128::MAX),
+            IntTy::Isize => (isize::MIN.try_into().ok()?, isize::MAX.try_into().ok()?),
+        })
+    }
+    fn bits(self) -> Self::Output {
+        match self {
+            IntTy::I8 => 8,
+            IntTy::I16 => 16,
+            IntTy::I32 => 32,
+            IntTy::I64 => 64,
+            IntTy::I128 => 128,
+            IntTy::Isize => isize::BITS.into(),
+        }
+    }
 }
 
 impl<'tcx> PartialEq for Constant<'tcx> {
@@ -372,27 +429,25 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
             ExprKind::Binary(op, left, right) => self.binop(op, left, right),
             ExprKind::Call(callee, args) => {
                 // We only handle a few const functions for now.
-                if_chain! {
-                    if args.is_empty();
-                    if let ExprKind::Path(qpath) = &callee.kind;
-                    let res = self.typeck_results.qpath_res(qpath, callee.hir_id);
-                    if let Some(def_id) = res.opt_def_id();
-                    let def_path = self.lcx.get_def_path(def_id);
-                    let def_path: Vec<&str> = def_path.iter().take(4).map(Symbol::as_str).collect();
-                    if let ["core", "num", int_impl, "max_value"] = *def_path;
-                    then {
-                        let value = match int_impl {
-                            "<impl i8>" => i8::MAX as u128,
-                            "<impl i16>" => i16::MAX as u128,
-                            "<impl i32>" => i32::MAX as u128,
-                            "<impl i64>" => i64::MAX as u128,
-                            "<impl i128>" => i128::MAX as u128,
-                            _ => return None,
-                        };
-                        Some(Constant::Int(value))
-                    } else {
-                        None
-                    }
+                if args.is_empty()
+                    && let ExprKind::Path(qpath) = &callee.kind
+                    && let res = self.typeck_results.qpath_res(qpath, callee.hir_id)
+                    && let Some(def_id) = res.opt_def_id()
+                    && let def_path = self.lcx.get_def_path(def_id)
+                    && let def_path = def_path.iter().take(4).map(Symbol::as_str).collect::<Vec<_>>()
+                    && let ["core", "num", int_impl, "max_value"] = *def_path
+                {
+                    let value = match int_impl {
+                        "<impl i8>" => i8::MAX as u128,
+                        "<impl i16>" => i16::MAX as u128,
+                        "<impl i32>" => i32::MAX as u128,
+                        "<impl i64>" => i64::MAX as u128,
+                        "<impl i128>" => i128::MAX as u128,
+                        _ => return None,
+                    };
+                    Some(Constant::Int(value))
+                } else {
+                    None
                 }
             },
             ExprKind::Index(arr, index, _) => self.index(arr, index),
@@ -435,8 +490,15 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
         match *o {
             Int(value) => {
                 let ty::Int(ity) = *ty.kind() else { return None };
+                let (min, _) = ity.min_max()?;
                 // sign extend
                 let value = sext(self.lcx.tcx, value, ity);
+
+                // Applying unary - to the most negative value of any signed integer type panics.
+                if value == min {
+                    return None;
+                }
+
                 let value = value.checked_neg()?;
                 // clear unused bits
                 Some(Int(unsext(self.lcx.tcx, value, ity)))
@@ -469,7 +531,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                         kind: ExprKind::Lit(_),
                         span,
                         ..
-                    }) = self.lcx.tcx.hir().get(body_id.hir_id)
+                    }) = self.lcx.tcx.hir_node(body_id.hir_id)
                     && is_direct_expn_of(*span, "cfg").is_some()
                 {
                     return None;
@@ -572,17 +634,33 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
         match (l, r) {
             (Constant::Int(l), Some(Constant::Int(r))) => match *self.typeck_results.expr_ty_opt(left)?.kind() {
                 ty::Int(ity) => {
+                    let (ty_min_value, _) = ity.min_max()?;
+                    let bits = ity.bits();
                     let l = sext(self.lcx.tcx, l, ity);
                     let r = sext(self.lcx.tcx, r, ity);
+
+                    // Using / or %, where the left-hand argument is the smallest integer of a signed integer type and
+                    // the right-hand argument is -1 always panics, even with overflow-checks disabled
+                    if let BinOpKind::Div | BinOpKind::Rem = op.node
+                        && l == ty_min_value
+                        && r == -1
+                    {
+                        return None;
+                    }
+
                     let zext = |n: i128| Constant::Int(unsext(self.lcx.tcx, n, ity));
                     match op.node {
-                        BinOpKind::Add => l.checked_add(r).map(zext),
-                        BinOpKind::Sub => l.checked_sub(r).map(zext),
-                        BinOpKind::Mul => l.checked_mul(r).map(zext),
+                        // When +, * or binary - create a value greater than the maximum value, or less than
+                        // the minimum value that can be stored, it panics.
+                        BinOpKind::Add => l.checked_add(r).and_then(|n| ity.ensure_fits(n)).map(zext),
+                        BinOpKind::Sub => l.checked_sub(r).and_then(|n| ity.ensure_fits(n)).map(zext),
+                        BinOpKind::Mul => l.checked_mul(r).and_then(|n| ity.ensure_fits(n)).map(zext),
                         BinOpKind::Div if r != 0 => l.checked_div(r).map(zext),
                         BinOpKind::Rem if r != 0 => l.checked_rem(r).map(zext),
-                        BinOpKind::Shr => l.checked_shr(r.try_into().ok()?).map(zext),
-                        BinOpKind::Shl => l.checked_shl(r.try_into().ok()?).map(zext),
+                        // Using << or >> where the right-hand argument is greater than or equal to the number of bits
+                        // in the type of the left-hand argument, or is negative panics.
+                        BinOpKind::Shr if r < bits && !r.is_negative() => l.checked_shr(r.try_into().ok()?).map(zext),
+                        BinOpKind::Shl if r < bits && !r.is_negative() => l.checked_shl(r.try_into().ok()?).map(zext),
                         BinOpKind::BitXor => Some(zext(l ^ r)),
                         BinOpKind::BitOr => Some(zext(l | r)),
                         BinOpKind::BitAnd => Some(zext(l & r)),
@@ -595,24 +673,28 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
                         _ => None,
                     }
                 },
-                ty::Uint(_) => match op.node {
-                    BinOpKind::Add => l.checked_add(r).map(Constant::Int),
-                    BinOpKind::Sub => l.checked_sub(r).map(Constant::Int),
-                    BinOpKind::Mul => l.checked_mul(r).map(Constant::Int),
-                    BinOpKind::Div => l.checked_div(r).map(Constant::Int),
-                    BinOpKind::Rem => l.checked_rem(r).map(Constant::Int),
-                    BinOpKind::Shr => l.checked_shr(r.try_into().ok()?).map(Constant::Int),
-                    BinOpKind::Shl => l.checked_shl(r.try_into().ok()?).map(Constant::Int),
-                    BinOpKind::BitXor => Some(Constant::Int(l ^ r)),
-                    BinOpKind::BitOr => Some(Constant::Int(l | r)),
-                    BinOpKind::BitAnd => Some(Constant::Int(l & r)),
-                    BinOpKind::Eq => Some(Constant::Bool(l == r)),
-                    BinOpKind::Ne => Some(Constant::Bool(l != r)),
-                    BinOpKind::Lt => Some(Constant::Bool(l < r)),
-                    BinOpKind::Le => Some(Constant::Bool(l <= r)),
-                    BinOpKind::Ge => Some(Constant::Bool(l >= r)),
-                    BinOpKind::Gt => Some(Constant::Bool(l > r)),
-                    _ => None,
+                ty::Uint(ity) => {
+                    let bits = ity.bits();
+
+                    match op.node {
+                        BinOpKind::Add => l.checked_add(r).and_then(|n| ity.ensure_fits(n)).map(Constant::Int),
+                        BinOpKind::Sub => l.checked_sub(r).and_then(|n| ity.ensure_fits(n)).map(Constant::Int),
+                        BinOpKind::Mul => l.checked_mul(r).and_then(|n| ity.ensure_fits(n)).map(Constant::Int),
+                        BinOpKind::Div => l.checked_div(r).map(Constant::Int),
+                        BinOpKind::Rem => l.checked_rem(r).map(Constant::Int),
+                        BinOpKind::Shr if r < bits => l.checked_shr(r.try_into().ok()?).map(Constant::Int),
+                        BinOpKind::Shl if r < bits => l.checked_shl(r.try_into().ok()?).map(Constant::Int),
+                        BinOpKind::BitXor => Some(Constant::Int(l ^ r)),
+                        BinOpKind::BitOr => Some(Constant::Int(l | r)),
+                        BinOpKind::BitAnd => Some(Constant::Int(l & r)),
+                        BinOpKind::Eq => Some(Constant::Bool(l == r)),
+                        BinOpKind::Ne => Some(Constant::Bool(l != r)),
+                        BinOpKind::Lt => Some(Constant::Bool(l < r)),
+                        BinOpKind::Le => Some(Constant::Bool(l <= r)),
+                        BinOpKind::Ge => Some(Constant::Bool(l >= r)),
+                        BinOpKind::Gt => Some(Constant::Bool(l > r)),
+                        _ => None,
+                    }
                 },
                 _ => None,
             },

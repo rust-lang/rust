@@ -1,6 +1,6 @@
 use crate::spec::base::apple::{macos_llvm_target, opts, Arch};
 use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, SanitizerSet};
-use crate::spec::{StackProbeType, Target, TargetOptions};
+use crate::spec::{Target, TargetOptions};
 
 pub fn target() -> Target {
     let arch = Arch::X86_64h;
@@ -8,7 +8,6 @@ pub fn target() -> Target {
     base.max_atomic_width = Some(128);
     base.frame_pointer = FramePointer::Always;
     base.add_pre_link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-m64"]);
-    base.stack_probes = StackProbeType::X86;
     base.supported_sanitizers =
         SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::LEAK | SanitizerSet::THREAD;
 

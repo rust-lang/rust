@@ -6,5 +6,5 @@ LL |         &None => 1
 LL |         &Some(2) => { 3 }
    |                  ^^ expected one of `,`, `.`, `?`, `}`, or an operator
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

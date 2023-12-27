@@ -84,7 +84,7 @@ fn check_is_object_safe(tcx: TyCtxt<'_>, trait_def_id: DefId) -> bool {
                 span,
             ) = violation
             {
-                lint_object_unsafe_trait(tcx, *span, trait_def_id, &violation);
+                lint_object_unsafe_trait(tcx, *span, trait_def_id, violation);
             }
         }
         return true;
@@ -192,9 +192,8 @@ fn lint_object_unsafe_trait(
             );
             if node.is_some() {
                 // Only provide the help if its a local trait, otherwise it's not
-                violation.solution(err);
+                violation.solution().add_to(err);
             }
-            err
         },
     );
 }
@@ -329,7 +328,7 @@ fn super_predicates_have_non_lifetime_binders(
     tcx.super_predicates_of(trait_def_id)
         .predicates
         .iter()
-        .filter_map(|(pred, span)| pred.has_non_region_late_bound().then_some(*span))
+        .filter_map(|(pred, span)| pred.has_non_region_bound_vars().then_some(*span))
         .collect()
 }
 
@@ -345,7 +344,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     // Search for a predicate like `Self : Sized` amongst the trait bounds.
     let predicates = tcx.predicates_of(def_id);
     let predicates = predicates.instantiate_identity(tcx).predicates;
-    elaborate(tcx, predicates.into_iter()).any(|pred| match pred.kind().skip_binder() {
+    elaborate(tcx, predicates).any(|pred| match pred.kind().skip_binder() {
         ty::ClauseKind::Trait(ref trait_pred) => {
             trait_pred.def_id() == sized_def_id && trait_pred.self_ty().is_param(0)
         }
@@ -509,7 +508,7 @@ fn virtual_call_violations_for_method<'tcx>(
                     Ok(layout) => Some(layout.abi),
                     Err(err) => {
                         // #78372
-                        tcx.sess.delay_span_bug(
+                        tcx.dcx().span_delayed_bug(
                             tcx.def_span(method.def_id),
                             format!("error: {err}\n while computing layout for type {ty:?}"),
                         );
@@ -525,7 +524,7 @@ fn virtual_call_violations_for_method<'tcx>(
             match abi_of_ty(unit_receiver_ty) {
                 Some(Abi::Scalar(..)) => (),
                 abi => {
-                    tcx.sess.delay_span_bug(
+                    tcx.dcx().span_delayed_bug(
                         tcx.def_span(method.def_id),
                         format!(
                             "receiver when `Self = ()` should have a Scalar ABI; found {abi:?}"
@@ -543,7 +542,7 @@ fn virtual_call_violations_for_method<'tcx>(
             match abi_of_ty(trait_object_receiver) {
                 Some(Abi::ScalarPair(..)) => (),
                 abi => {
-                    tcx.sess.delay_span_bug(
+                    tcx.dcx().span_delayed_bug(
                         tcx.def_span(method.def_id),
                         format!(
                             "receiver when `Self = {trait_object_ty}` should have a ScalarPair ABI; found {abi:?}"
@@ -595,9 +594,7 @@ fn virtual_call_violations_for_method<'tcx>(
             // would already have reported an error at the definition of the
             // auto trait.
             if pred_trait_ref.args.len() != 1 {
-                tcx.sess
-                    .diagnostic()
-                    .delay_span_bug(span, "auto traits cannot have generic parameters");
+                tcx.dcx().span_delayed_bug(span, "auto traits cannot have generic parameters");
             }
             return false;
         }

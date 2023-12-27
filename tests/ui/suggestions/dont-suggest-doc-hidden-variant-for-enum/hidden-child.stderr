@@ -13,6 +13,6 @@ help: try wrapping the expression in `hidden_child::__private::Some`
 LL |     let x: Option<i32> = hidden_child::__private::Some(1i32);
    |                          ++++++++++++++++++++++++++++++    +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

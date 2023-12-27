@@ -1,7 +1,7 @@
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::InferCtxt;
 use crate::traits::{Obligation, ObligationCause, ObligationCtxt};
-use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::Node;
 use rustc_middle::ty::{self, Ty};
@@ -29,7 +29,7 @@ pub trait InferCtxtExt<'tcx> {
         found_args: Vec<ArgKind>,
         is_closure: bool,
         closure_pipe_span: Option<Span>,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed>;
+    ) -> DiagnosticBuilder<'tcx>;
 
     /// Checks if the type implements one of `Fn`, `FnMut`, or `FnOnce`
     /// in that order, and returns the generic type corresponding to the
@@ -61,8 +61,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                     .params
                     .iter()
                     .map(|arg| {
-                        if let hir::Pat { kind: hir::PatKind::Tuple(ref args, _), span, .. } =
-                            *arg.pat
+                        if let hir::Pat { kind: hir::PatKind::Tuple(args, _), span, .. } = *arg.pat
                         {
                             Some(ArgKind::Tuple(
                                 Some(span),
@@ -92,7 +91,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                     .inputs
                     .iter()
                     .map(|arg| match arg.kind {
-                        hir::TyKind::Tup(ref tys) => ArgKind::Tuple(
+                        hir::TyKind::Tup(tys) => ArgKind::Tuple(
                             Some(arg.span),
                             vec![("_".to_owned(), "_".to_owned()); tys.len()],
                         ),
@@ -100,7 +99,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                     })
                     .collect::<Vec<ArgKind>>(),
             ),
-            Node::Ctor(ref variant_data) => {
+            Node::Ctor(variant_data) => {
                 let span = variant_data.ctor_hir_id().map_or(DUMMY_SP, |id| hir.span(id));
                 (span, None, vec![ArgKind::empty(); variant_data.fields().len()])
             }
@@ -119,7 +118,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         found_args: Vec<ArgKind>,
         is_closure: bool,
         closure_arg_span: Option<Span>,
-    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+    ) -> DiagnosticBuilder<'tcx> {
         let kind = if is_closure { "closure" } else { "function" };
 
         let args_str = |arguments: &[ArgKind], other: &[ArgKind]| {
@@ -142,7 +141,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
         let found_str = args_str(&found_args, &expected_args);
 
         let mut err = struct_span_err!(
-            self.tcx.sess,
+            self.dcx(),
             span,
             E0593,
             "{} is expected to take {}, but it takes {}",

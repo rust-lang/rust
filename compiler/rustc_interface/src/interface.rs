@@ -1,26 +1,24 @@
 use crate::util;
 
 use rustc_ast::token;
-use rustc_ast::{self as ast, LitKind, MetaItemKind};
+use rustc_ast::{LitKind, MetaItemKind};
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::defer;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::registry::Registry;
-use rustc_errors::{ErrorGuaranteed, Handler};
+use rustc_errors::{DiagCtxt, ErrorGuaranteed};
 use rustc_lint::LintStore;
+use rustc_middle::ty;
 use rustc_middle::util::Providers;
-use rustc_middle::{bug, ty};
 use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_query_impl::QueryCtxt;
 use rustc_query_system::query::print_query_stack;
-use rustc_session::config::{
-    self, Cfg, CheckCfg, ExpectedValues, Input, OutFileName, OutputFilenames,
-};
+use rustc_session::config::{self, Cfg, CheckCfg, ExpectedValues, Input, OutFileName};
 use rustc_session::filesearch::sysroot_candidates;
 use rustc_session::parse::ParseSess;
-use rustc_session::{lint, CompilerIO, EarlyErrorHandler, Session};
+use rustc_session::{lint, CompilerIO, EarlyDiagCtxt, Session};
 use rustc_span::source_map::FileLoader;
 use rustc_span::symbol::sym;
 use rustc_span::FileName;
@@ -38,33 +36,13 @@ pub type Result<T> = result::Result<T, ErrorGuaranteed>;
 /// Can be used to run `rustc_interface` queries.
 /// Created by passing [`Config`] to [`run_compiler`].
 pub struct Compiler {
-    pub(crate) sess: Lrc<Session>,
-    codegen_backend: Lrc<dyn CodegenBackend>,
-    pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>>,
+    pub sess: Session,
+    pub codegen_backend: Box<dyn CodegenBackend>,
     pub(crate) override_queries: Option<fn(&Session, &mut Providers)>,
 }
 
-impl Compiler {
-    pub fn session(&self) -> &Lrc<Session> {
-        &self.sess
-    }
-    pub fn codegen_backend(&self) -> &Lrc<dyn CodegenBackend> {
-        &self.codegen_backend
-    }
-    pub fn register_lints(&self) -> &Option<Box<dyn Fn(&Session, &mut LintStore) + Send + Sync>> {
-        &self.register_lints
-    }
-    pub fn build_output_filenames(
-        &self,
-        sess: &Session,
-        attrs: &[ast::Attribute],
-    ) -> OutputFilenames {
-        util::build_output_filenames(attrs, sess)
-    }
-}
-
 /// Converts strings provided as `--cfg [cfgspec]` into a `Cfg`.
-pub(crate) fn parse_cfg(handler: &EarlyErrorHandler, cfgs: Vec<String>) -> Cfg {
+pub(crate) fn parse_cfg(dcx: &DiagCtxt, cfgs: Vec<String>) -> Cfg {
     cfgs.into_iter()
         .map(|s| {
             let sess = ParseSess::with_silent_emitter(Some(format!(
@@ -74,10 +52,13 @@ pub(crate) fn parse_cfg(handler: &EarlyErrorHandler, cfgs: Vec<String>) -> Cfg {
 
             macro_rules! error {
                 ($reason: expr) => {
-                    handler.early_error(format!(
+                    #[allow(rustc::untranslatable_diagnostic)]
+                    #[allow(rustc::diagnostic_outside_of_impl)]
+                    dcx.struct_fatal(format!(
                         concat!("invalid `--cfg` argument: `{}` (", $reason, ")"),
                         s
-                    ));
+                    ))
+                    .emit();
                 };
             }
 
@@ -119,14 +100,13 @@ pub(crate) fn parse_cfg(handler: &EarlyErrorHandler, cfgs: Vec<String>) -> Cfg {
 }
 
 /// Converts strings provided as `--check-cfg [specs]` into a `CheckCfg`.
-pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -> CheckCfg {
+pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
     // If any --check-cfg is passed then exhaustive_values and exhaustive_names
     // are enabled by default.
     let exhaustive_names = !specs.is_empty();
     let exhaustive_values = !specs.is_empty();
     let mut check_cfg = CheckCfg { exhaustive_names, exhaustive_values, ..CheckCfg::default() };
 
-    let mut old_syntax = None;
     for s in specs {
         let sess = ParseSess::with_silent_emitter(Some(format!(
             "this error occurred on the command line: `--check-cfg={s}`"
@@ -135,10 +115,13 @@ pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -
 
         macro_rules! error {
             ($reason:expr) => {
-                handler.early_error(format!(
+                #[allow(rustc::untranslatable_diagnostic)]
+                #[allow(rustc::diagnostic_outside_of_impl)]
+                dcx.struct_fatal(format!(
                     concat!("invalid `--check-cfg` argument: `{}` (", $reason, ")"),
                     s
                 ))
+                .emit()
             };
         }
 
@@ -164,162 +147,101 @@ pub(crate) fn parse_check_cfg(handler: &EarlyErrorHandler, specs: Vec<String>) -
             expected_error();
         };
 
-        let mut set_old_syntax = || {
-            // defaults are flipped for the old syntax
-            if old_syntax == None {
+        if !meta_item.has_name(sym::cfg) {
+            expected_error();
+        }
+
+        let mut names = Vec::new();
+        let mut values: FxHashSet<_> = Default::default();
+
+        let mut any_specified = false;
+        let mut values_specified = false;
+        let mut values_any_specified = false;
+
+        for arg in args {
+            if arg.is_word()
+                && let Some(ident) = arg.ident()
+            {
+                if values_specified {
+                    error!("`cfg()` names cannot be after values");
+                }
+                names.push(ident);
+            } else if arg.has_name(sym::any)
+                && let Some(args) = arg.meta_item_list()
+            {
+                if any_specified {
+                    error!("`any()` cannot be specified multiple times");
+                }
+                any_specified = true;
+                if !args.is_empty() {
+                    error!("`any()` must be empty");
+                }
+            } else if arg.has_name(sym::values)
+                && let Some(args) = arg.meta_item_list()
+            {
+                if names.is_empty() {
+                    error!("`values()` cannot be specified before the names");
+                } else if values_specified {
+                    error!("`values()` cannot be specified multiple times");
+                }
+                values_specified = true;
+
+                for arg in args {
+                    if let Some(LitKind::Str(s, _)) = arg.lit().map(|lit| &lit.kind) {
+                        values.insert(Some(*s));
+                    } else if arg.has_name(sym::any)
+                        && let Some(args) = arg.meta_item_list()
+                    {
+                        if values_any_specified {
+                            error!("`any()` in `values()` cannot be specified multiple times");
+                        }
+                        values_any_specified = true;
+                        if !args.is_empty() {
+                            error!("`any()` must be empty");
+                        }
+                    } else {
+                        error!("`values()` arguments must be string literals or `any()`");
+                    }
+                }
+            } else {
+                error!("`cfg()` arguments must be simple identifiers, `any()` or `values(...)`");
+            }
+        }
+
+        if values.is_empty() && !values_any_specified && !any_specified {
+            values.insert(None);
+        } else if !values.is_empty() && values_any_specified {
+            error!(
+                "`values()` arguments cannot specify string literals and `any()` at the same time"
+            );
+        }
+
+        if any_specified {
+            if names.is_empty() && values.is_empty() && !values_specified && !values_any_specified {
                 check_cfg.exhaustive_names = false;
-                check_cfg.exhaustive_values = false;
-            }
-            old_syntax = Some(true);
-        };
-
-        if meta_item.has_name(sym::names) {
-            set_old_syntax();
-
-            check_cfg.exhaustive_names = true;
-            for arg in args {
-                if arg.is_word() && let Some(ident) = arg.ident() {
-                    check_cfg.expecteds.entry(ident.name).or_insert(ExpectedValues::Any);
-                } else {
-                    error!("`names()` arguments must be simple identifiers");
-                }
-            }
-        } else if meta_item.has_name(sym::values) {
-            set_old_syntax();
-
-            if let Some((name, values)) = args.split_first() {
-                if name.is_word() && let Some(ident) = name.ident() {
-                    let expected_values = check_cfg
-                        .expecteds
-                        .entry(ident.name)
-                        .and_modify(|expected_values| match expected_values {
-                            ExpectedValues::Some(_) => {}
-                            ExpectedValues::Any => {
-                                // handle the case where names(...) was done
-                                // before values by changing to a list
-                                *expected_values = ExpectedValues::Some(FxHashSet::default());
-                            }
-                        })
-                        .or_insert_with(|| ExpectedValues::Some(FxHashSet::default()));
-
-                    let ExpectedValues::Some(expected_values) = expected_values else {
-                        bug!("`expected_values` should be a list a values")
-                    };
-
-                    for val in values {
-                        if let Some(LitKind::Str(s, _)) = val.lit().map(|lit| &lit.kind) {
-                            expected_values.insert(Some(*s));
-                        } else {
-                            error!("`values()` arguments must be string literals");
-                        }
-                    }
-
-                    if values.is_empty() {
-                        expected_values.insert(None);
-                    }
-                } else {
-                    error!("`values()` first argument must be a simple identifier");
-                }
-            } else if args.is_empty() {
-                check_cfg.exhaustive_values = true;
             } else {
-                expected_error();
-            }
-        } else if meta_item.has_name(sym::cfg) {
-            old_syntax = Some(false);
-
-            let mut names = Vec::new();
-            let mut values: FxHashSet<_> = Default::default();
-
-            let mut any_specified = false;
-            let mut values_specified = false;
-            let mut values_any_specified = false;
-
-            for arg in args {
-                if arg.is_word() && let Some(ident) = arg.ident() {
-                    if values_specified {
-                        error!("`cfg()` names cannot be after values");
-                    }
-                    names.push(ident);
-                } else if arg.has_name(sym::any) && let Some(args) = arg.meta_item_list() {
-                    if any_specified {
-                        error!("`any()` cannot be specified multiple times");
-                    }
-                    any_specified = true;
-                    if !args.is_empty() {
-                        error!("`any()` must be empty");
-                    }
-                } else if arg.has_name(sym::values) && let Some(args) = arg.meta_item_list() {
-                    if names.is_empty() {
-                        error!("`values()` cannot be specified before the names");
-                    } else if values_specified {
-                        error!("`values()` cannot be specified multiple times");
-                    }
-                    values_specified = true;
-
-                    for arg in args {
-                        if let Some(LitKind::Str(s, _)) = arg.lit().map(|lit| &lit.kind) {
-                            values.insert(Some(*s));
-                        } else if arg.has_name(sym::any) && let Some(args) = arg.meta_item_list() {
-                            if values_any_specified {
-                                error!("`any()` in `values()` cannot be specified multiple times");
-                            }
-                            values_any_specified = true;
-                            if !args.is_empty() {
-                                error!("`any()` must be empty");
-                            }
-                        } else {
-                            error!("`values()` arguments must be string literals or `any()`");
-                        }
-                    }
-                } else {
-                    error!(
-                        "`cfg()` arguments must be simple identifiers, `any()` or `values(...)`"
-                    );
-                }
-            }
-
-            if values.is_empty() && !values_any_specified && !any_specified {
-                values.insert(None);
-            } else if !values.is_empty() && values_any_specified {
-                error!(
-                    "`values()` arguments cannot specify string literals and `any()` at the same time"
-                );
-            }
-
-            if any_specified {
-                if names.is_empty()
-                    && values.is_empty()
-                    && !values_specified
-                    && !values_any_specified
-                {
-                    check_cfg.exhaustive_names = false;
-                } else {
-                    error!("`cfg(any())` can only be provided in isolation");
-                }
-            } else {
-                for name in names {
-                    check_cfg
-                        .expecteds
-                        .entry(name.name)
-                        .and_modify(|v| match v {
-                            ExpectedValues::Some(v) if !values_any_specified => {
-                                v.extend(values.clone())
-                            }
-                            ExpectedValues::Some(_) => *v = ExpectedValues::Any,
-                            ExpectedValues::Any => {}
-                        })
-                        .or_insert_with(|| {
-                            if values_any_specified {
-                                ExpectedValues::Any
-                            } else {
-                                ExpectedValues::Some(values.clone())
-                            }
-                        });
-                }
+                error!("`cfg(any())` can only be provided in isolation");
             }
         } else {
-            expected_error();
+            for name in names {
+                check_cfg
+                    .expecteds
+                    .entry(name.name)
+                    .and_modify(|v| match v {
+                        ExpectedValues::Some(v) if !values_any_specified => {
+                            v.extend(values.clone())
+                        }
+                        ExpectedValues::Some(_) => *v = ExpectedValues::Any,
+                        ExpectedValues::Any => {}
+                    })
+                    .or_insert_with(|| {
+                        if values_any_specified {
+                            ExpectedValues::Any
+                        } else {
+                            ExpectedValues::Some(values.clone())
+                        }
+                    });
+            }
         }
     }
 
@@ -392,19 +314,23 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
     // Set parallel mode before thread pool creation, which will create `Lock`s.
     rustc_data_structures::sync::set_dyn_thread_safe_mode(config.opts.unstable_opts.threads > 1);
 
+    // Check jobserver before run_in_thread_pool_with_globals, which call jobserver::acquire_thread
+    let early_dcx = EarlyDiagCtxt::new(config.opts.error_format);
+    early_dcx.initialize_checked_jobserver();
+
     util::run_in_thread_pool_with_globals(
         config.opts.edition,
         config.opts.unstable_opts.threads,
         || {
             crate::callbacks::setup_callbacks();
 
-            let handler = EarlyErrorHandler::new(config.opts.error_format);
+            let early_dcx = EarlyDiagCtxt::new(config.opts.error_format);
 
             let codegen_backend = if let Some(make_codegen_backend) = config.make_codegen_backend {
                 make_codegen_backend(&config.opts)
             } else {
                 util::get_codegen_backend(
-                    &handler,
+                    &early_dcx,
                     &config.opts.maybe_sysroot,
                     config.opts.unstable_opts.codegen_backend.as_deref(),
                 )
@@ -421,7 +347,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             ) {
                 Ok(bundle) => bundle,
                 Err(e) => {
-                    handler.early_error(format!("failed to load fluent bundle: {e}"));
+                    early_dcx.early_fatal(format!("failed to load fluent bundle: {e}"));
                 }
             };
 
@@ -432,7 +358,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             let target_override = codegen_backend.target_override(&config.opts);
 
             let mut sess = rustc_session::build_session(
-                &handler,
+                early_dcx,
                 config.opts,
                 CompilerIO {
                     input: config.input,
@@ -454,12 +380,12 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
             codegen_backend.init(&sess);
 
-            let cfg = parse_cfg(&handler, config.crate_cfg);
+            let cfg = parse_cfg(&sess.dcx(), config.crate_cfg);
             let mut cfg = config::build_configuration(&sess, cfg);
             util::add_configuration(&mut cfg, &mut sess, &*codegen_backend);
             sess.parse_sess.config = cfg;
 
-            let mut check_cfg = parse_check_cfg(&handler, config.crate_check_cfg);
+            let mut check_cfg = parse_check_cfg(&sess.dcx(), config.crate_check_cfg);
             check_cfg.fill_well_known(&sess.target);
             sess.parse_sess.check_config = check_cfg;
 
@@ -473,12 +399,18 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
                 sess.opts.untracked_state_hash = hasher.finish()
             }
 
-            let compiler = Compiler {
-                sess: Lrc::new(sess),
-                codegen_backend: Lrc::from(codegen_backend),
-                register_lints: config.register_lints,
-                override_queries: config.override_queries,
-            };
+            // Even though the session holds the lint store, we can't build the
+            // lint store until after the session exists. And we wait until now
+            // so that `register_lints` sees the fully initialized session.
+            let mut lint_store = rustc_lint::new_lint_store(sess.enable_internal_lints());
+            if let Some(register_lints) = config.register_lints.as_deref() {
+                register_lints(&sess, &mut lint_store);
+                sess.registered_lints = true;
+            }
+            sess.lint_store = Some(Lrc::new(lint_store));
+
+            let compiler =
+                Compiler { sess, codegen_backend, override_queries: config.override_queries };
 
             rustc_span::set_source_map(compiler.sess.parse_sess.clone_source_map(), move || {
                 let r = {
@@ -499,21 +431,21 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 }
 
 pub fn try_print_query_stack(
-    handler: &Handler,
+    dcx: &DiagCtxt,
     num_frames: Option<usize>,
     file: Option<std::fs::File>,
 ) {
     eprintln!("query stack during panic:");
 
     // Be careful relying on global state here: this code is called from
-    // a panic hook, which means that the global `Handler` may be in a weird
+    // a panic hook, which means that the global `DiagCtxt` may be in a weird
     // state if it was responsible for triggering the panic.
     let i = ty::tls::with_context_opt(|icx| {
         if let Some(icx) = icx {
             ty::print::with_no_queries!(print_query_stack(
                 QueryCtxt::new(icx.tcx),
                 icx.query,
-                handler,
+                dcx,
                 num_frames,
                 file,
             ))

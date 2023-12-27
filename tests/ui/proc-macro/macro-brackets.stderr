@@ -9,6 +9,6 @@ help: you can cast a `char` to a `u32`, since a `char` always occupies 4 bytes
 LL | id![static X: u32 = 'a' as u32;];
    |                         ++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

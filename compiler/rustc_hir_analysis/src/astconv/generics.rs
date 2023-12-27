@@ -28,7 +28,7 @@ fn generic_arg_mismatch_err(
 ) -> ErrorGuaranteed {
     let sess = tcx.sess;
     let mut err = struct_span_err!(
-        sess,
+        tcx.dcx(),
         arg.span(),
         E0747,
         "{} provided when a {} was expected",
@@ -243,6 +243,31 @@ pub fn create_args_for_parent_generic_args<'tcx, 'a>(
             match (args_iter.peek(), params.peek()) {
                 (Some(&arg), Some(&param)) => {
                     match (arg, &param.kind, arg_count.explicit_late_bound) {
+                        (
+                            GenericArg::Const(hir::ConstArg {
+                                is_desugared_from_effects: true,
+                                ..
+                            }),
+                            GenericParamDefKind::Const { is_host_effect: false, .. }
+                            | GenericParamDefKind::Type { .. }
+                            | GenericParamDefKind::Lifetime,
+                            _,
+                        ) => {
+                            // SPECIAL CASE FOR DESUGARED EFFECT PARAMS
+                            // This comes from the following example:
+                            //
+                            // ```
+                            // #[const_trait]
+                            // pub trait PartialEq<Rhs: ?Sized = Self> {}
+                            // impl const PartialEq for () {}
+                            // ```
+                            //
+                            // Since this is a const impl, we need to insert a host arg at the end of
+                            // `PartialEq`'s generics, but this errors since `Rhs` isn't specified.
+                            // To work around this, we infer all arguments until we reach the host param.
+                            args.push(ctx.inferred_kind(Some(&args), param, infer_args));
+                            params.next();
+                        }
                         (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime, _)
                         | (
                             GenericArg::Type(_) | GenericArg::Infer(_),
@@ -625,7 +650,7 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
         if position == GenericArgPosition::Value
             && args.num_lifetime_params() != param_counts.lifetimes
         {
-            let mut err = struct_span_err!(tcx.sess, span, E0794, "{}", msg);
+            let mut err = struct_span_err!(tcx.dcx(), span, E0794, "{}", msg);
             err.span_note(span_late, note);
             err.emit();
         } else {
@@ -636,7 +661,7 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
                 args.args[0].hir_id(),
                 multispan,
                 msg,
-                |lint| lint,
+                |_| {},
             );
         }
 

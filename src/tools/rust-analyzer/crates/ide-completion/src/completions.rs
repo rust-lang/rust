@@ -626,6 +626,7 @@ fn enum_variants_with_paths(
             ctx.db,
             hir::ModuleDef::from(variant),
             ctx.config.prefer_no_std,
+            ctx.config.prefer_prelude,
         ) {
             // Variants with trivial paths are already added by the existing completion logic,
             // so we should avoid adding these twice

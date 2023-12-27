@@ -22,6 +22,10 @@ trait_selection_dump_vtable_entries = vtable entries for `{$trait_ref}`: {$entri
 trait_selection_empty_on_clause_in_rustc_on_unimplemented = empty `on`-clause in `#[rustc_on_unimplemented]`
     .label = empty on-clause here
 
+trait_selection_ignored_diagnostic_option = `{$option_name}` is ignored due to previous definition of `{$option_name}`
+    .other_label = `{$option_name}` is first declared here
+    .label = `{$option_name}` is already declared here
+
 trait_selection_inherent_projection_normalization_overflow = overflow evaluating associated type `{$ty}`
 
 trait_selection_invalid_on_clause_in_rustc_on_unimplemented = invalid `on`-clause in `#[rustc_on_unimplemented]`
@@ -51,3 +55,6 @@ trait_selection_trait_has_no_impls = this trait has no implementations, consider
 
 trait_selection_ty_alias_overflow = in case this is a recursive type alias, consider using a struct, enum, or union instead
 trait_selection_unable_to_construct_constant_value = unable to construct a constant value for the unevaluated constant {$unevaluated}
+
+trait_selection_unknown_format_parameter_for_on_unimplemented_attr = there is no parameter `{$argument_name}` on trait `{$trait_name}`
+    .help = expect either a generic argument name or {"`{Self}`"} as format argument

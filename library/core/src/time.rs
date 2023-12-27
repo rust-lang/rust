@@ -461,6 +461,27 @@ impl Duration {
         self.secs as u128 * NANOS_PER_SEC as u128 + self.nanos.0 as u128
     }
 
+    /// Computes the absolute difference between `self` and `other`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(duration_abs_diff)]
+    /// use std::time::Duration;
+    ///
+    /// assert_eq!(Duration::new(100, 0).abs_diff(Duration::new(80, 0)), Duration::new(20, 0));
+    /// assert_eq!(Duration::new(100, 400_000_000).abs_diff(Duration::new(110, 0)), Duration::new(9, 600_000_000));
+    /// ```
+    #[unstable(feature = "duration_abs_diff", issue = "117618")]
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[inline]
+    pub const fn abs_diff(self, other: Duration) -> Duration {
+        if let Some(res) = self.checked_sub(other) { res } else { other.checked_sub(self).unwrap() }
+    }
+
     /// Checked `Duration` addition. Computes `self + other`, returning [`None`]
     /// if overflow occurred.
     ///

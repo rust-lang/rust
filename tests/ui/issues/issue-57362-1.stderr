@@ -11,6 +11,6 @@ note: `Trait` defines an item `f`, perhaps you need to implement it
 LL | trait Trait {
    | ^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0599`.

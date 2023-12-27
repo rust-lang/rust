@@ -9,6 +9,6 @@ LL | fn f(a: &dyn A) {}
    |
    = note: because of the default `Self` reference, type parameters must be specified on object types
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0393`.

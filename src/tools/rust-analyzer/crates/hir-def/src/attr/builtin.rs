@@ -2,7 +2,7 @@
 //!
 //! The actual definitions were copied from rustc's `compiler/rustc_feature/src/builtin_attrs.rs`.
 //!
-//! It was last synchronized with upstream commit e29821ff85a2a3000d226f99f62f89464028d5d6.
+//! It was last synchronized with upstream commit c3def263a44e07e09ae6d57abfc8650227fb4972.
 //!
 //! The macros were adjusted to only expand to the attribute name, since that is all we need to do
 //! name resolution, and `BUILTIN_ATTRIBUTES` is almost entirely unchanged from the original, to
@@ -240,7 +240,7 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(List: "address, kcfi, memory, thread"), DuplicatesOk,
         experimental!(no_sanitize)
     ),
-    gated!(coverage, Normal, template!(Word, List: "on|off"), WarnFollowing, experimental!(coverage)),
+    gated!(coverage, Normal, template!(Word, List: "on|off"), WarnFollowing, coverage_attribute, experimental!(coverage)),
 
     ungated!(
         doc, Normal, template!(List: "hidden|inline|...", NameValueStr: "string"), DuplicatesOk
@@ -364,7 +364,6 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         allow_internal_unsafe, Normal, template!(Word), WarnFollowing,
         "allow_internal_unsafe side-steps the unsafe_code lint",
     ),
-    ungated!(rustc_safe_intrinsic, Normal, template!(Word), DuplicatesOk),
     rustc_attr!(rustc_allowed_through_unstable_modules, Normal, template!(Word), WarnFollowing,
     "rustc_allowed_through_unstable_modules special cases accidental stabilizations of stable items \
     through unstable paths"),
@@ -453,6 +452,12 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         ErrorFollowing,
         INTERNAL_UNSTABLE
     ),
+    rustc_attr!(
+        rustc_confusables, Normal,
+        template!(List: r#""name1", "name2", ..."#),
+        ErrorFollowing,
+        INTERNAL_UNSTABLE,
+    ),
     // Enumerates "identity-like" conversion methods to suggest on type mismatch.
     rustc_attr!(
         rustc_conversion_suggestion, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE
@@ -488,6 +493,10 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(
         rustc_do_not_const_check, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE
     ),
+    // Ensure the argument to this function is &&str during const-check.
+    rustc_attr!(
+        rustc_const_panic_str, Normal, template!(Word), WarnFollowing, INTERNAL_UNSTABLE
+    ),
 
     // ==========================================================================
     // Internal attributes, Layout related:
@@ -521,6 +530,10 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         "#[rustc_pass_by_value] is used to mark types that must be passed by value instead of reference."
     ),
     rustc_attr!(
+        rustc_never_returns_null_ptr, Normal, template!(Word), ErrorFollowing,
+        "#[rustc_never_returns_null_ptr] is used to mark functions returning non-null pointers."
+    ),
+    rustc_attr!(
         rustc_coherence_is_core, AttributeType::CrateLevel, template!(Word), ErrorFollowing, @only_local: true,
         "#![rustc_coherence_is_core] allows inherent methods on builtin types, only intended to be used in `core`."
     ),
@@ -533,7 +546,11 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         "#[rustc_allow_incoherent_impl] has to be added to all impl items of an incoherent inherent impl."
     ),
     rustc_attr!(
-        rustc_deny_explicit_impl, AttributeType::Normal, template!(Word), ErrorFollowing, @only_local: false,
+        rustc_deny_explicit_impl,
+        AttributeType::Normal,
+        template!(List: "implement_via_object = (true|false)"),
+        ErrorFollowing,
+        @only_local: true,
         "#[rustc_deny_explicit_impl] enforces that a trait can have no user-provided impls"
     ),
     rustc_attr!(
@@ -614,6 +631,10 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_doc_primitive, Normal, template!(NameValueStr: "primitive name"), ErrorFollowing,
         r#"`rustc_doc_primitive` is a rustc internal attribute"#,
     ),
+    rustc_attr!(
+        rustc_safe_intrinsic, Normal, template!(Word), WarnFollowing,
+        "the `#[rustc_safe_intrinsic]` attribute is used internally to mark intrinsics as safe"
+    ),
 
     // ==========================================================================
     // Internal attributes, Testing:
@@ -625,13 +646,16 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     rustc_attr!(TEST, rustc_insignificant_dtor, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_strict_coherence, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_variance, Normal, template!(Word), WarnFollowing),
+    rustc_attr!(TEST, rustc_variance_of_opaques, Normal, template!(Word), WarnFollowing),
+    rustc_attr!(TEST, rustc_hidden_type_of_opaques, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_layout, Normal, template!(List: "field1, field2, ..."), WarnFollowing),
+    rustc_attr!(TEST, rustc_abi, Normal, template!(List: "field1, field2, ..."), WarnFollowing),
     rustc_attr!(TEST, rustc_regions, Normal, template!(Word), WarnFollowing),
     rustc_attr!(
         TEST, rustc_error, Normal,
-        template!(Word, List: "delay_span_bug_from_inside_query"), WarnFollowingWordOnly
+        template!(Word, List: "span_delayed_bug_from_inside_query"), WarnFollowingWordOnly
     ),
-    rustc_attr!(TEST, rustc_dump_user_substs, Normal, template!(Word), WarnFollowing),
+    rustc_attr!(TEST, rustc_dump_user_args, Normal, template!(Word), WarnFollowing),
     rustc_attr!(TEST, rustc_evaluate_where_clauses, Normal, template!(Word), WarnFollowing),
     rustc_attr!(
         TEST, rustc_if_this_changed, Normal, template!(Word, List: "DepNode"), DuplicatesOk

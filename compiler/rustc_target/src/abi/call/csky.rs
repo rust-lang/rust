@@ -7,6 +7,10 @@
 use crate::abi::call::{ArgAbi, FnAbi, Reg, Uniform};
 
 fn classify_ret<Ty>(arg: &mut ArgAbi<'_, Ty>) {
+    if !arg.layout.is_sized() {
+        // Not touching this...
+        return;
+    }
     // For return type, aggregate which <= 2*XLen will be returned in registers.
     // Otherwise, aggregate will be returned indirectly.
     if arg.layout.is_aggregate() {
@@ -24,6 +28,10 @@ fn classify_ret<Ty>(arg: &mut ArgAbi<'_, Ty>) {
 }
 
 fn classify_arg<Ty>(arg: &mut ArgAbi<'_, Ty>) {
+    if !arg.layout.is_sized() {
+        // Not touching this...
+        return;
+    }
     // For argument type, the first 4*XLen parts of aggregate will be passed
     // in registers, and the rest will be passed in stack.
     // So we can coerce to integers directly and let backend handle it correctly.

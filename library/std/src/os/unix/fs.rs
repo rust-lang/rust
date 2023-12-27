@@ -68,7 +68,7 @@ pub trait FileExt {
         io::default_read_vectored(|b| self.read_at(b, offset), bufs)
     }
 
-    /// Reads the exact number of byte required to fill `buf` from the given offset.
+    /// Reads the exact number of bytes required to fill `buf` from the given offset.
     ///
     /// The offset is relative to the start of the file and thus independent
     /// from the current cursor.

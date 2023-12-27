@@ -7,13 +7,22 @@ use rustc_span::Span;
 
 use crate::coverage::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
 use crate::coverage::spans::CoverageSpan;
+use crate::coverage::ExtractedHirInfo;
 
 pub(super) fn mir_to_initial_sorted_coverage_spans(
     mir_body: &mir::Body<'_>,
-    fn_sig_span: Span,
-    body_span: Span,
+    hir_info: &ExtractedHirInfo,
     basic_coverage_blocks: &CoverageGraph,
 ) -> Vec<CoverageSpan> {
+    let &ExtractedHirInfo { is_async_fn, fn_sig_span, body_span, .. } = hir_info;
+    if is_async_fn {
+        // An async function desugars into a function that returns a future,
+        // with the user code wrapped in a closure. Any spans in the desugared
+        // outer function will be unhelpful, so just produce a single span
+        // associating the function signature with its entry BCB.
+        return vec![CoverageSpan::for_fn_sig(fn_sig_span)];
+    }
+
     let mut initial_spans = Vec::with_capacity(mir_body.basic_blocks.len() * 2);
     for (bcb, bcb_data) in basic_coverage_blocks.iter_enumerated() {
         initial_spans.extend(bcb_to_initial_coverage_spans(mir_body, body_span, bcb, bcb_data));
@@ -63,14 +72,14 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
 
         let statement_spans = data.statements.iter().filter_map(move |statement| {
             let expn_span = filtered_statement_span(statement)?;
-            let span = function_source_span(expn_span, body_span);
+            let span = unexpand_into_body_span(expn_span, body_span)?;
 
             Some(CoverageSpan::new(span, expn_span, bcb, is_closure(statement)))
         });
 
         let terminator_span = Some(data.terminator()).into_iter().filter_map(move |terminator| {
             let expn_span = filtered_terminator_span(terminator)?;
-            let span = function_source_span(expn_span, body_span);
+            let span = unexpand_into_body_span(expn_span, body_span)?;
 
             Some(CoverageSpan::new(span, expn_span, bcb, false))
         });
@@ -92,13 +101,13 @@ fn is_closure(statement: &Statement<'_>) -> bool {
 /// If the MIR `Statement` has a span contributive to computing coverage spans,
 /// return it; otherwise return `None`.
 fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
+    use mir::coverage::CoverageKind;
+
     match statement.kind {
         // These statements have spans that are often outside the scope of the executed source code
         // for their parent `BasicBlock`.
         StatementKind::StorageLive(_)
         | StatementKind::StorageDead(_)
-        // Coverage should not be encountered, but don't inject coverage coverage
-        | StatementKind::Coverage(_)
         // Ignore `ConstEvalCounter`s
         | StatementKind::ConstEvalCounter
         // Ignore `Nop`s
@@ -122,9 +131,13 @@ fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
         // If and when the Issue is resolved, remove this special case match pattern:
         StatementKind::FakeRead(box (FakeReadCause::ForGuardBinding, _)) => None,
 
-        // Retain spans from all other statements
+        // Retain spans from most other statements.
         StatementKind::FakeRead(box (_, _)) // Not including `ForGuardBinding`
         | StatementKind::Intrinsic(..)
+        | StatementKind::Coverage(box mir::Coverage {
+            // The purpose of `SpanMarker` is to be matched and accepted here.
+            kind: CoverageKind::SpanMarker
+        })
         | StatementKind::Assign(_)
         | StatementKind::SetDiscriminant { .. }
         | StatementKind::Deinit(..)
@@ -133,6 +146,11 @@ fn filtered_statement_span(statement: &Statement<'_>) -> Option<Span> {
         | StatementKind::AscribeUserType(_, _) => {
             Some(statement.source_info.span)
         }
+
+        StatementKind::Coverage(box mir::Coverage {
+            // These coverage statements should not exist prior to coverage instrumentation.
+            kind: CoverageKind::CounterIncrement { .. } | CoverageKind::ExpressionUsed { .. }
+        }) => bug!("Unexpected coverage statement found during coverage instrumentation: {statement:?}"),
     }
 }
 
@@ -180,14 +198,16 @@ fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Span> {
 /// Returns an extrapolated span (pre-expansion[^1]) corresponding to a range
 /// within the function's body source. This span is guaranteed to be contained
 /// within, or equal to, the `body_span`. If the extrapolated span is not
-/// contained within the `body_span`, the `body_span` is returned.
+/// contained within the `body_span`, `None` is returned.
 ///
 /// [^1]Expansions result from Rust syntax including macros, syntactic sugar,
 /// etc.).
 #[inline]
-fn function_source_span(span: Span, body_span: Span) -> Span {
+fn unexpand_into_body_span(span: Span, body_span: Span) -> Option<Span> {
     use rustc_span::source_map::original_sp;
 
+    // FIXME(#118525): Consider switching from `original_sp` to `Span::find_ancestor_inside`,
+    // which is similar but gives slightly different results in some edge cases.
     let original_span = original_sp(span, body_span).with_ctxt(body_span.ctxt());
-    if body_span.contains(original_span) { original_span } else { body_span }
+    body_span.contains(original_span).then_some(original_span)
 }

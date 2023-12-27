@@ -411,10 +411,10 @@ to Miri failing to detect cases of undefined behavior in a program.
   without an explicit value), `none` means it never recurses, `scalar` means it only recurses for
   types where we would also emit `noalias` annotations in the generated LLVM IR (types passed as
   individual scalars or pairs of scalars). Setting this to `none` is **unsound**.
-* `-Zmiri-tag-gc=<blocks>` configures how often the pointer tag garbage collector runs. The default
-  is to search for and remove unreachable tags once every `10000` basic blocks. Setting this to
-  `0` disables the garbage collector, which causes some programs to have explosive memory usage
-  and/or super-linear runtime.
+* `-Zmiri-provenance-gc=<blocks>` configures how often the pointer provenance garbage collector runs.
+  The default is to search for and remove unreachable provenance once every `10000` basic blocks. Setting
+  this to `0` disables the garbage collector, which causes some programs to have explosive memory
+  usage and/or super-linear runtime.
 * `-Zmiri-track-alloc-id=<id1>,<id2>,...` shows a backtrace when the given allocations are
   being allocated or freed.  This helps in debugging memory leaks and
   use after free bugs. Specifying this argument multiple times does not overwrite the previous
@@ -589,6 +589,7 @@ Definite bugs found:
 * [`regex` incorrectly handling unaligned `Vec<u8>` buffers](https://www.reddit.com/r/rust/comments/vq3mmu/comment/ienc7t0?context=3)
 * [Incorrect use of `compare_exchange_weak` in `once_cell`](https://github.com/matklad/once_cell/issues/186)
 * [Dropping with unaligned pointers in `vec::IntoIter`](https://github.com/rust-lang/rust/pull/106084)
+* [Deallocating with the wrong layout in new specializations for in-place `Iterator::collect`](https://github.com/rust-lang/rust/pull/118460)
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 

@@ -4,7 +4,7 @@ error[E0609]: no field `foo` on type `Foo`
 LL |     let _ = x.foo;
    |               ^^^ unknown field
    |
-   = note: available fields are: `x`
+   = note: available field is: `x`
 
 error[E0609]: no field `1` on type `Bar`
   --> $DIR/E0609.rs:11:7

@@ -9,7 +9,7 @@ use rustc_middle::ty::{self, Ty, TypeVisitableExt};
 use rustc_target::abi::HasDataLayout;
 use rustc_target::abi::{Abi, Align, FieldsShape};
 use rustc_target::abi::{Int, Pointer, F32, F64};
-use rustc_target::abi::{PointeeInfo, Scalar, Size, TyAbiInterface, Variants};
+use rustc_target::abi::{Scalar, Size, Variants};
 use smallvec::{smallvec, SmallVec};
 
 use std::fmt::Write;
@@ -184,7 +184,6 @@ pub trait LayoutLlvmExt<'tcx> {
         immediate: bool,
     ) -> &'a Type;
     fn llvm_field_index<'a>(&self, cx: &CodegenCx<'a, 'tcx>, index: usize) -> u64;
-    fn pointee_info_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>, offset: Size) -> Option<PointeeInfo>;
     fn scalar_copy_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Option<&'a Type>;
 }
 
@@ -354,20 +353,6 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
                 }
             }
         }
-    }
-
-    // FIXME(eddyb) this having the same name as `TyAndLayout::pointee_info_at`
-    // (the inherent method, which is lacking this caching logic) can result in
-    // the uncached version being called - not wrong, but potentially inefficient.
-    fn pointee_info_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>, offset: Size) -> Option<PointeeInfo> {
-        if let Some(&pointee) = cx.pointee_infos.borrow().get(&(self.ty, offset)) {
-            return pointee;
-        }
-
-        let result = Ty::ty_and_layout_pointee_info_at(*self, cx, offset);
-
-        cx.pointee_infos.borrow_mut().insert((self.ty, offset), result);
-        result
     }
 
     fn scalar_copy_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> Option<&'a Type> {

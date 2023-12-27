@@ -21,7 +21,7 @@ pub trait ValueVisitor<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
     /// `read_discriminant` can be hooked for better error messages.
     #[inline(always)]
     fn read_discriminant(&mut self, v: &Self::V) -> InterpResult<'tcx, VariantIdx> {
-        Ok(self.ecx().read_discriminant(&v.to_op(self.ecx())?)?)
+        self.ecx().read_discriminant(&v.to_op(self.ecx())?)
     }
 
     /// This function provides the chance to reorder the order in which fields are visited for
@@ -97,14 +97,14 @@ pub trait ValueVisitor<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
                 let inner_mplace = self.ecx().unpack_dyn_trait(&dest)?.0;
                 trace!("walk_value: dyn object layout: {:#?}", inner_mplace.layout);
                 // recurse with the inner type
-                return self.visit_field(&v, 0, &inner_mplace.into());
+                return self.visit_field(v, 0, &inner_mplace.into());
             }
             ty::Dynamic(_, _, ty::DynStar) => {
                 // DynStar types. Very different from a dyn type (but strangely part of the
                 // same variant in `TyKind`): These are pairs where the 2nd component is the
                 // vtable, and the first component is the data (which must be ptr-sized).
                 let data = self.ecx().unpack_dyn_star(v)?.0;
-                return self.visit_field(&v, 0, &data);
+                return self.visit_field(v, 0, &data);
             }
             // Slices do not need special handling here: they have `Array` field
             // placement with length 0, so we enter the `Array` case below which

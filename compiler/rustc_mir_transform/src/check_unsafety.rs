@@ -242,7 +242,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
                     let assigned_ty = place.ty(&self.body.local_decls, self.tcx).ty;
                     if assigned_ty.needs_drop(self.tcx, self.param_env) {
                         // This would be unsafe, but should be outright impossible since we reject such unions.
-                        self.tcx.sess.delay_span_bug(
+                        self.tcx.dcx().span_delayed_bug(
                             self.source_info.span,
                             format!("union fields that need dropping should be impossible: {assigned_ty}")
                         );
@@ -287,19 +287,20 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
             .safety;
         match safety {
             // `unsafe` blocks are required in safe code
-            Safety::Safe => violations.into_iter().for_each(|&violation| {
+            Safety::Safe => violations.into_iter().for_each(|violation| {
                 match violation.kind {
                     UnsafetyViolationKind::General => {}
                     UnsafetyViolationKind::UnsafeFn => {
                         bug!("`UnsafetyViolationKind::UnsafeFn` in an `Safe` context")
                     }
                 }
-                if !self.violations.contains(&violation) {
-                    self.violations.push(violation)
+                if !self.violations.contains(violation) {
+                    self.violations.push(violation.clone())
                 }
             }),
             // With the RFC 2585, no longer allow `unsafe` operations in `unsafe fn`s
-            Safety::FnUnsafe => violations.into_iter().for_each(|&(mut violation)| {
+            Safety::FnUnsafe => violations.into_iter().for_each(|violation| {
+                let mut violation = violation.clone();
                 violation.kind = UnsafetyViolationKind::UnsafeFn;
                 if !self.violations.contains(&violation) {
                     self.violations.push(violation)
@@ -367,9 +368,22 @@ impl<'tcx> UnsafetyChecker<'_, 'tcx> {
 
         // Is `callee_features` a subset of `calling_features`?
         if !callee_features.iter().all(|feature| self_features.contains(feature)) {
+            let missing: Vec<_> = callee_features
+                .iter()
+                .copied()
+                .filter(|feature| !self_features.contains(feature))
+                .collect();
+            let build_enabled = self
+                .tcx
+                .sess
+                .target_features
+                .iter()
+                .copied()
+                .filter(|feature| missing.contains(feature))
+                .collect();
             self.require_unsafe(
                 UnsafetyViolationKind::General,
-                UnsafetyViolationDetails::CallToFunctionWith,
+                UnsafetyViolationDetails::CallToFunctionWith { missing, build_enabled },
             )
         }
     }
@@ -385,7 +399,7 @@ pub(crate) fn provide(providers: &mut Providers) {
 enum Context {
     Safe,
     /// in an `unsafe fn`
-    UnsafeFn(HirId),
+    UnsafeFn,
     /// in a *used* `unsafe` block
     /// (i.e. a block without unused-unsafe warning)
     UnsafeBlock(HirId),
@@ -407,7 +421,7 @@ impl<'tcx> intravisit::Visitor<'tcx> for UnusedUnsafeVisitor<'_, 'tcx> {
             };
             let unused_unsafe = match (self.context, used) {
                 (_, false) => UnusedUnsafe::Unused,
-                (Context::Safe, true) | (Context::UnsafeFn(_), true) => {
+                (Context::Safe, true) | (Context::UnsafeFn, true) => {
                     let previous_context = self.context;
                     self.context = Context::UnsafeBlock(block.hir_id);
                     intravisit::walk_block(self, block);
@@ -452,9 +466,9 @@ fn check_unused_unsafe(
     };
 
     let body = tcx.hir().body(body_id);
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+    let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let context = match tcx.hir().fn_sig_by_hir_id(hir_id) {
-        Some(sig) if sig.header.unsafety == hir::Unsafety::Unsafe => Context::UnsafeFn(hir_id),
+        Some(sig) if sig.header.unsafety == hir::Unsafety::Unsafe => Context::UnsafeFn,
         _ => Context::Safe,
     };
 
@@ -494,7 +508,7 @@ fn unsafety_check_result(tcx: TyCtxt<'_>, def: LocalDefId) -> &UnsafetyCheckResu
     let param_env = tcx.param_env(def);
 
     let mut checker = UnsafetyChecker::new(body, def, tcx, param_env);
-    checker.visit_body(&body);
+    checker.visit_body(body);
 
     let unused_unsafes = (!tcx.is_typeck_child(def.to_def_id()))
         .then(|| check_unused_unsafe(tcx, def, &checker.used_unsafe_blocks));
@@ -528,8 +542,9 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     // Only suggest wrapping the entire function body in an unsafe block once
     let mut suggest_unsafe_block = true;
 
-    for &UnsafetyViolation { source_info, lint_root, kind, details } in violations.iter() {
-        let details = errors::RequiresUnsafeDetail { violation: details, span: source_info.span };
+    for &UnsafetyViolation { source_info, lint_root, kind, ref details } in violations.iter() {
+        let details =
+            errors::RequiresUnsafeDetail { violation: details.clone(), span: source_info.span };
 
         match kind {
             UnsafetyViolationKind::General => {
@@ -553,7 +568,7 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 } else {
                     None
                 };
-                tcx.sess.emit_err(errors::RequiresUnsafe {
+                tcx.dcx().emit_err(errors::RequiresUnsafe {
                     span: source_info.span,
                     enclosing,
                     details,
@@ -568,7 +583,7 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     errors::UnsafeOpInUnsafeFn {
                         details,
                         suggest_unsafe_block: suggest_unsafe_block.then(|| {
-                            let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
+                            let hir_id = tcx.local_def_id_to_hir_id(def_id);
                             let fn_sig = tcx
                                 .hir()
                                 .fn_sig_by_hir_id(hir_id)

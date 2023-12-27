@@ -1,10 +1,12 @@
 //! Handling of `static`s, `const`s and promoted allocations
 
+use std::cmp::Ordering;
+
 use cranelift_module::*;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{read_target_uint, AllocId, GlobalAlloc, Scalar};
-use rustc_middle::mir::ConstValue;
+use rustc_middle::ty::ScalarInt;
 
 use crate::prelude::*;
 
@@ -123,7 +125,8 @@ pub(crate) fn codegen_const_value<'tcx>(
                 }
             }
             Scalar::Ptr(ptr, _size) => {
-                let (alloc_id, offset) = ptr.into_parts(); // we know the `offset` is relative
+                let (prov, offset) = ptr.into_parts(); // we know the `offset` is relative
+                let alloc_id = prov.alloc_id();
                 let base_addr = match fx.tcx.global_alloc(alloc_id) {
                     GlobalAlloc::Memory(alloc) => {
                         let data_id = data_id_for_alloc_id(
@@ -260,7 +263,7 @@ fn data_id_for_static(
             attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL),
         ) {
             Ok(data_id) => data_id,
-            Err(ModuleError::IncompatibleDeclaration(_)) => tcx.sess.fatal(format!(
+            Err(ModuleError::IncompatibleDeclaration(_)) => tcx.dcx().fatal(format!(
                 "attempt to declare `{symbol_name}` as static, but it was already declared as function"
             )),
             Err(err) => Err::<_, _>(err).unwrap(),
@@ -308,7 +311,7 @@ fn data_id_for_static(
         attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL),
     ) {
         Ok(data_id) => data_id,
-        Err(ModuleError::IncompatibleDeclaration(_)) => tcx.sess.fatal(format!(
+        Err(ModuleError::IncompatibleDeclaration(_)) => tcx.dcx().fatal(format!(
             "attempt to declare `{symbol_name}` as static, but it was already declared as function"
         )),
         Err(err) => Err::<_, _>(err).unwrap(),
@@ -357,7 +360,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                 if let Some(names) = section_name.split_once(',') {
                     names
                 } else {
-                    tcx.sess.fatal(format!(
+                    tcx.dcx().fatal(format!(
                         "#[link_section = \"{}\"] is not valid for macos target: must be segment and section separated by comma",
                         section_name
                     ));
@@ -371,7 +374,8 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
         let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len()).to_vec();
         data.define(bytes.into_boxed_slice());
 
-        for &(offset, alloc_id) in alloc.provenance().ptrs().iter() {
+        for &(offset, prov) in alloc.provenance().ptrs().iter() {
+            let alloc_id = prov.alloc_id();
             let addend = {
                 let endianness = tcx.data_layout.endian;
                 let offset = offset.bytes() as usize;
@@ -402,7 +406,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                 GlobalAlloc::Static(def_id) => {
                     if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)
                     {
-                        tcx.sess.fatal(format!(
+                        tcx.dcx().fatal(format!(
                             "Allocation {:?} contains reference to TLS value {:?}",
                             alloc_id, def_id
                         ));
@@ -430,9 +434,9 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
 pub(crate) fn mir_operand_get_const_val<'tcx>(
     fx: &FunctionCx<'_, '_, 'tcx>,
     operand: &Operand<'tcx>,
-) -> Option<ConstValue<'tcx>> {
+) -> Option<ScalarInt> {
     match operand {
-        Operand::Constant(const_) => Some(eval_mir_constant(fx, const_).0),
+        Operand::Constant(const_) => eval_mir_constant(fx, const_).0.try_to_scalar_int(),
         // FIXME(rust-lang/rust#85105): Casts like `IMM8 as u32` result in the const being stored
         // inside a temporary before being passed to the intrinsic requiring the const argument.
         // This code tries to find a single constant defining definition of the referenced local.
@@ -440,7 +444,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
             if !place.projection.is_empty() {
                 return None;
             }
-            let mut computed_const_val = None;
+            let mut computed_scalar_int = None;
             for bb_data in fx.mir.basic_blocks.iter() {
                 for stmt in &bb_data.statements {
                     match &stmt.kind {
@@ -456,22 +460,38 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                                     operand,
                                     ty,
                                 ) => {
-                                    if computed_const_val.is_some() {
+                                    if computed_scalar_int.is_some() {
                                         return None; // local assigned twice
                                     }
                                     if !matches!(ty.kind(), ty::Uint(_) | ty::Int(_)) {
                                         return None;
                                     }
-                                    let const_val = mir_operand_get_const_val(fx, operand)?;
-                                    if fx.layout_of(*ty).size
-                                        != const_val.try_to_scalar_int()?.size()
+                                    let scalar_int = mir_operand_get_const_val(fx, operand)?;
+                                    let scalar_int = match fx
+                                        .layout_of(*ty)
+                                        .size
+                                        .cmp(&scalar_int.size())
                                     {
-                                        return None;
-                                    }
-                                    computed_const_val = Some(const_val);
+                                        Ordering::Equal => scalar_int,
+                                        Ordering::Less => match ty.kind() {
+                                            ty::Uint(_) => ScalarInt::try_from_uint(
+                                                scalar_int.try_to_uint(scalar_int.size()).unwrap(),
+                                                fx.layout_of(*ty).size,
+                                            )
+                                            .unwrap(),
+                                            ty::Int(_) => ScalarInt::try_from_int(
+                                                scalar_int.try_to_int(scalar_int.size()).unwrap(),
+                                                fx.layout_of(*ty).size,
+                                            )
+                                            .unwrap(),
+                                            _ => unreachable!(),
+                                        },
+                                        Ordering::Greater => return None,
+                                    };
+                                    computed_scalar_int = Some(scalar_int);
                                 }
                                 Rvalue::Use(operand) => {
-                                    computed_const_val = mir_operand_get_const_val(fx, operand)
+                                    computed_scalar_int = mir_operand_get_const_val(fx, operand)
                                 }
                                 _ => return None,
                             }
@@ -522,7 +542,7 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                     TerminatorKind::Call { .. } => {}
                 }
             }
-            computed_const_val
+            computed_scalar_int
         }
     }
 }

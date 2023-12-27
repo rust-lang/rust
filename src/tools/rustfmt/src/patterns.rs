@@ -40,7 +40,9 @@ pub(crate) fn is_short_pattern(pat: &ast::Pat, pat_str: &str) -> bool {
 
 fn is_short_pattern_inner(pat: &ast::Pat) -> bool {
     match pat.kind {
-        ast::PatKind::Rest | ast::PatKind::Wild | ast::PatKind::Lit(_) => true,
+        ast::PatKind::Rest | ast::PatKind::Never | ast::PatKind::Wild | ast::PatKind::Lit(_) => {
+            true
+        }
         ast::PatKind::Ident(_, _, ref pat) => pat.is_none(),
         ast::PatKind::Struct(..)
         | ast::PatKind::MacCall(..)
@@ -193,6 +195,7 @@ impl Rewrite for Pat {
                     None
                 }
             }
+            PatKind::Never => None,
             PatKind::Range(ref lhs, ref rhs, ref end_kind) => {
                 let infix = match end_kind.node {
                     RangeEnd::Included(RangeSyntax::DotDotDot) => "...",
@@ -256,9 +259,15 @@ impl Rewrite for Pat {
                 None,
                 None,
             ),
-            PatKind::Struct(ref qself, ref path, ref fields, ellipsis) => {
-                rewrite_struct_pat(qself, path, fields, ellipsis, self.span, context, shape)
-            }
+            PatKind::Struct(ref qself, ref path, ref fields, rest) => rewrite_struct_pat(
+                qself,
+                path,
+                fields,
+                rest == ast::PatFieldsRest::Rest,
+                self.span,
+                context,
+                shape,
+            ),
             PatKind::MacCall(ref mac) => {
                 rewrite_macro(mac, None, context, shape, MacroPosition::Pat)
             }

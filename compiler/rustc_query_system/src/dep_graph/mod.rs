@@ -6,11 +6,8 @@ mod query;
 mod serialized;
 
 pub use dep_node::{DepKind, DepKindStruct, DepNode, DepNodeParams, WorkProductId};
-pub use edges::EdgesVec;
-pub use graph::{
-    hash_result, DepGraph, DepGraphData, DepNodeColor, DepNodeIndex, TaskDeps, TaskDepsRef,
-    WorkProduct, WorkProductMap,
-};
+pub(crate) use graph::DepGraphData;
+pub use graph::{hash_result, DepGraph, DepNodeIndex, TaskDepsRef, WorkProduct, WorkProductMap};
 pub use query::DepGraphQuery;
 pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 

@@ -3,7 +3,7 @@
 
 // revisions: cfail1 cfail2 cfail3
 // compile-flags: -Z query-dep-graph -O
-// build-pass (FIXME(62277): could be check-pass?)
+// build-pass
 
 #![feature(rustc_attrs)]
 #![crate_type="rlib"]
@@ -13,21 +13,21 @@
                             kind="no")]
 #![rustc_expected_cgu_reuse(module="independent_cgus_dont_affect_each_other-foo",
                             cfg="cfail3",
-                            kind="post-lto")]
+                            kind="pre-lto")] // Should be "post-lto", see issue #119076
 
 #![rustc_expected_cgu_reuse(module="independent_cgus_dont_affect_each_other-bar",
                             cfg="cfail2",
                             kind="pre-lto")]
 #![rustc_expected_cgu_reuse(module="independent_cgus_dont_affect_each_other-bar",
                             cfg="cfail3",
-                            kind="post-lto")]
+                            kind="pre-lto")] // Should be "post-lto", see issue #119076
 
 #![rustc_expected_cgu_reuse(module="independent_cgus_dont_affect_each_other-baz",
                             cfg="cfail2",
-                            kind="post-lto")]
+                            kind="pre-lto")] // Should be "post-lto", see issue #119076
 #![rustc_expected_cgu_reuse(module="independent_cgus_dont_affect_each_other-baz",
                             cfg="cfail3",
-                            kind="post-lto")]
+                            kind="pre-lto")] // Should be "post-lto", see issue #119076
 mod foo {
 
     #[cfg(cfail1)]

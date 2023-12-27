@@ -8,5 +8,5 @@ LL |     #[cfg(stage37)]
 LL | }
    | - the item list ends here
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

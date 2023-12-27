@@ -4,5 +4,5 @@ error: negative bounds are not supported
 LL | fn test<T: !Copy>() {}
    |            ^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

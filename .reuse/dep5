@@ -1,8 +1,6 @@
 # WARNING: this metadata is currently incomplete, do not rely on it yet.
 
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Files-Excluded:
- src/llvm-project
 
 # Note that we're explicitly listing the individual files at the root of the
 # repository rather than just having `Files: *`. This is explicitly done to
@@ -39,13 +37,8 @@ Files: compiler/*
 Copyright: The Rust Project Developers (see https://thanks.rust-lang.org)
 License: MIT or Apache-2.0
 
-Files: compiler/rustc_codegen_cranelift/src/cranelift_native.rs
-Copyright: The Cranelift Project Developers
-           The Rust Project Developers (see https://thanks.rust-lang.org)
-License: Apache-2.0 WITH LLVM-exception AND (Apache-2.0 OR MIT)
-
 Files: compiler/rustc_llvm/llvm-wrapper/SymbolWrapper.cpp
-Copyright: LLVM authors
+Copyright: 2003-2019 University of Illinois at Urbana-Champaign.
            The Rust Project Developers (see https://thanks.rust-lang.org)
 License: Apache-2.0 WITH LLVM-exception AND (Apache-2.0 OR MIT)
 
@@ -85,11 +78,44 @@ Files: src/librustdoc/html/static/css/normalize.css
 Copyright: Nicolas Gallagher and Jonathan Neal
 License: MIT
 
-Files: src/librustdoc/html/static/css/themes/ayu.css
-Copyright: Ike Ku, Jessica Stokes, Leon Guan
+Files: src/librustdoc/html/static/css/rustdoc.css
+Copyright: 2016 Ike Ku, Jessica Stokes and Leon Guan
            The Rust Project Developers (see https://thanks.rust-lang.org)
 License: MIT OR Apache-2.0
 
 Files: src/doc/rustc-dev-guide/mermaid.min.js
-Copyright: Knut Sveidqvist
+Copyright: 2014-2021 Knut Sveidqvist
 License: MIT
+
+Files: library/backtrace/*
+Copyright: 2014 Alex Crichton
+           The Rust Project Developers (see https://thanks.rust-lang.org)
+License: MIT OR Apache-2.0
+
+Files: src/doc/embedded-book/*
+Copyright: Rust on Embedded Devices Working Group
+           The Rust Project Developers (see https://thanks.rust-lang.org)
+License: MIT OR Apache-2.0 OR CC-BY-SA-4.0
+
+Files: src/doc/rust-by-example/*
+Copyright: 2014 Jorge Aparicio
+           The Rust Project Developers (see https://thanks.rust-lang.org)
+License: MIT OR Apache-2.0
+
+# Reuse cannot process the LLVM source tree, and so the copyrights for the LLVM
+# submodule are written out here manually. The collect-licence-metadata tool
+# has a specific exception coded within it to ignore ./src/llvm-project so
+# any time LLVM is updated, please revisit this section. The copyrights are
+# taken from the relevant LLVM sub-folders: llvm, lld, lldb, compiler-rt and libunwind.
+#
+# The git hash for the CREDITS.TXT file is taken from the current git submodule
+# commit for ./src/llvm-project.
+#
+# The copyright years were compiled by looking at all the relevant
+# ./src/llvm-project/*/LICENSE.txt files
+
+Files: src/llvm-project/*
+Copyright: 2003-2019 by the contributors listed in [CREDITS.TXT](https://github.com/rust-lang/llvm-project/blob/7738295178045041669876bf32b0543ec8319a5c/llvm/CREDITS.TXT)
+           2010 Apple Inc
+           2003-2019 University of Illinois at Urbana-Champaign.
+License: NCSA AND Apache-2.0 WITH LLVM-exception

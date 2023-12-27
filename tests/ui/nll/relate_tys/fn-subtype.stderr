@@ -7,6 +7,6 @@ LL |     let y: for<'a> fn(&'a ()) = x;
    = note: expected fn pointer `for<'a> fn(&'a ())`
               found fn pointer `fn(&())`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

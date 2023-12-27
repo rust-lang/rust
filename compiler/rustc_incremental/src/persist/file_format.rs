@@ -56,7 +56,7 @@ where
         }
         Err(err) if err.kind() == io::ErrorKind::NotFound => (),
         Err(err) => {
-            sess.emit_err(errors::DeleteOld { name, path: path_buf, err });
+            sess.dcx().emit_err(errors::DeleteOld { name, path: path_buf, err });
             return;
         }
     }
@@ -64,7 +64,7 @@ where
     let mut encoder = match FileEncoder::new(&path_buf) {
         Ok(encoder) => encoder,
         Err(err) => {
-            sess.emit_err(errors::CreateNew { name, path: path_buf, err });
+            sess.dcx().emit_err(errors::CreateNew { name, path: path_buf, err });
             return;
         }
     };
@@ -80,8 +80,8 @@ where
             );
             debug!("save: data written to disk successfully");
         }
-        Err(err) => {
-            sess.emit_err(errors::WriteNew { name, path: path_buf, err });
+        Err((path, err)) => {
+            sess.dcx().emit_err(errors::WriteNew { name, path, err });
         }
     }
 }

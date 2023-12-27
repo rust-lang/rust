@@ -38,7 +38,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span_bug!(expr.span, "input to deref is not a ref?");
         }
         let ty = self.make_overloaded_place_return_type(method).ty;
-        self.write_method_call(expr.hir_id, method);
+        self.write_method_call_and_enforce_effects(expr.hir_id, expr.span, method);
         Some(ty)
     }
 
@@ -71,7 +71,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base_expr: &hir::Expr<'_>,
     ) -> Option<(Ty<'tcx>, Ty<'tcx>)> {
         let ty = self.resolve_vars_if_possible(ty);
-        let mut err = self.tcx.sess.struct_span_err(
+        let mut err = self.dcx().struct_span_err(
             span,
             format!("negative integers cannot be used to index on a `{ty}`"),
         );
@@ -179,7 +179,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 self.apply_adjustments(base_expr, adjustments);
 
-                self.write_method_call(expr.hir_id, method);
+                self.write_method_call_and_enforce_effects(expr.hir_id, expr.span, method);
 
                 return Some((input_ty, self.make_overloaded_place_return_type(method).ty));
             }
@@ -283,9 +283,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Gather up expressions we want to munge.
         let mut exprs = vec![expr];
 
-        while let hir::ExprKind::Field(ref expr, _)
-        | hir::ExprKind::Index(ref expr, _, _)
-        | hir::ExprKind::Unary(hir::UnOp::Deref, ref expr) = exprs.last().unwrap().kind
+        while let hir::ExprKind::Field(expr, _)
+        | hir::ExprKind::Index(expr, _, _)
+        | hir::ExprKind::Unary(hir::UnOp::Deref, expr) = exprs.last().unwrap().kind
         {
             exprs.push(expr);
         }
@@ -332,7 +332,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if inside_union
                             && source.ty_adt_def().is_some_and(|adt| adt.is_manually_drop())
                         {
-                            let mut err = self.tcx.sess.struct_span_err(
+                            let mut err = self.dcx().struct_span_err(
                                 expr.span,
                                 "not automatically applying `DerefMut` on `ManuallyDrop` union field",
                             );
@@ -404,7 +404,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             None => return,
         };
         debug!("convert_place_op_to_mutable: method={:?}", method);
-        self.write_method_call(expr.hir_id, method);
+        self.write_method_call_and_enforce_effects(expr.hir_id, expr.span, method);
 
         let ty::Ref(region, _, hir::Mutability::Mut) = method.sig.inputs()[0].kind() else {
             span_bug!(expr.span, "input to mutable place op is not a mut ref?");

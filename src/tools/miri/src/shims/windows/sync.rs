@@ -204,10 +204,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     pending_place: PlaceTy<'tcx, Provenance>,
                 }
 
-                impl<'tcx> VisitTags for Callback<'tcx> {
-                    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+                impl<'tcx> VisitProvenance for Callback<'tcx> {
+                    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
                         let Callback { init_once_id: _, pending_place } = self;
-                        pending_place.visit_tags(visit);
+                        pending_place.visit_provenance(visit);
                     }
                 }
 
@@ -337,10 +337,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     dest: PlaceTy<'tcx, Provenance>,
                 }
 
-                impl<'tcx> VisitTags for Callback<'tcx> {
-                    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+                impl<'tcx> VisitProvenance for Callback<'tcx> {
+                    fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
                         let Callback { thread: _, addr: _, dest } = self;
-                        dest.visit_tags(visit);
+                        dest.visit_provenance(visit);
                     }
                 }
 
@@ -441,10 +441,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 dest: PlaceTy<'tcx, Provenance>,
             }
 
-            impl<'tcx> VisitTags for Callback<'tcx> {
-                fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+            impl<'tcx> VisitProvenance for Callback<'tcx> {
+                fn visit_provenance(&self, visit: &mut VisitWith<'_>) {
                     let Callback { thread: _, condvar_id: _, lock_id: _, mode: _, dest } = self;
-                    dest.visit_tags(visit);
+                    dest.visit_provenance(visit);
                 }
             }
 

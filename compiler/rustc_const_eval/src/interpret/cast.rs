@@ -256,7 +256,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let addr = addr.to_target_usize(self)?;
 
         // Then turn address into pointer.
-        let ptr = M::ptr_from_addr_cast(&self, addr)?;
+        let ptr = M::ptr_from_addr_cast(self, addr)?;
         Ok(ImmTy::from_scalar(Scalar::from_maybe_pointer(ptr, self), cast_to))
     }
 

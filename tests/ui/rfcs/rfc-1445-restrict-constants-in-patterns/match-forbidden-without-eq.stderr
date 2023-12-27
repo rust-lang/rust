@@ -17,5 +17,5 @@ LL |         f32::INFINITY => { }
    = note: for more information, see issue #41620 <https://github.com/rust-lang/rust/issues/41620>
    = note: `#[warn(illegal_floating_point_literal_pattern)]` on by default
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 

@@ -66,7 +66,7 @@ impl Printer {
         }
     }
 
-    pub fn hardbreak_tok_offset(off: isize) -> Token {
+    pub(crate) fn hardbreak_tok_offset(off: isize) -> Token {
         Token::Break(BreakToken {
             offset: off,
             blank_space: SIZE_INFINITY,

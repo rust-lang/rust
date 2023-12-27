@@ -14,18 +14,13 @@
 #include "llvm/Remarks/RemarkSerializer.h"
 #include "llvm/Remarks/RemarkFormat.h"
 #include "llvm/Support/ToolOutputFile.h"
-#if LLVM_VERSION_GE(16, 0)
 #include "llvm/Support/ModRef.h"
-#endif
 #include "llvm/Object/Archive.h"
 #include "llvm/Object/COFFImportFile.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Pass.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Support/Signals.h"
-#if LLVM_VERSION_LT(16, 0)
-#include "llvm/ADT/Optional.h"
-#endif
 
 #include <iostream>
 
@@ -283,6 +278,8 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
     return Attribute::AllocAlign;
   case SanitizeSafeStack:
     return Attribute::SafeStack;
+  case FnRetThunkExtern:
+    return Attribute::FnRetThunkExtern;
   }
   report_fatal_error("bad AttributeKind");
 }
@@ -347,13 +344,7 @@ extern "C" LLVMAttributeRef LLVMRustCreateUWTableAttr(LLVMContextRef C, bool Asy
 }
 
 extern "C" LLVMAttributeRef LLVMRustCreateAllocSizeAttr(LLVMContextRef C, uint32_t ElementSizeArg) {
-  return wrap(Attribute::getWithAllocSizeArgs(*unwrap(C), ElementSizeArg,
-#if LLVM_VERSION_LT(16, 0)
-                                              None
-#else
-                                              std::nullopt
-#endif
-                                              ));
+  return wrap(Attribute::getWithAllocSizeArgs(*unwrap(C), ElementSizeArg, std::nullopt));
 }
 
 // These values **must** match ffi::AllocKindFlags.
@@ -416,7 +407,6 @@ enum class LLVMRustMemoryEffects {
 
 extern "C" LLVMAttributeRef LLVMRustCreateMemoryEffectsAttr(LLVMContextRef C,
                                                             LLVMRustMemoryEffects Effects) {
-#if LLVM_VERSION_GE(16, 0)
   switch (Effects) {
     case LLVMRustMemoryEffects::None:
       return wrap(Attribute::getWithMemoryEffects(*unwrap(C), MemoryEffects::none()));
@@ -428,18 +418,6 @@ extern "C" LLVMAttributeRef LLVMRustCreateMemoryEffectsAttr(LLVMContextRef C,
     default:
       report_fatal_error("bad MemoryEffects.");
   }
-#else
-  switch (Effects) {
-    case LLVMRustMemoryEffects::None:
-      return wrap(Attribute::get(*unwrap(C), Attribute::ReadNone));
-    case LLVMRustMemoryEffects::ReadOnly:
-      return wrap(Attribute::get(*unwrap(C), Attribute::ReadOnly));
-    case LLVMRustMemoryEffects::InaccessibleMemOnly:
-      return wrap(Attribute::get(*unwrap(C), Attribute::InaccessibleMemOnly));
-    default:
-      report_fatal_error("bad MemoryEffects.");
-  }
-#endif
 }
 
 // Enable a fast-math flag
@@ -719,6 +697,25 @@ static DICompileUnit::DebugEmissionKind fromRust(LLVMRustDebugEmissionKind Kind)
   }
 }
 
+enum class LLVMRustDebugNameTableKind {
+    Default,
+    GNU,
+    None,
+};
+
+static DICompileUnit::DebugNameTableKind fromRust(LLVMRustDebugNameTableKind Kind) {
+  switch (Kind) {
+  case LLVMRustDebugNameTableKind::Default:
+    return DICompileUnit::DebugNameTableKind::Default;
+  case LLVMRustDebugNameTableKind::GNU:
+    return DICompileUnit::DebugNameTableKind::GNU;
+  case LLVMRustDebugNameTableKind::None:
+    return DICompileUnit::DebugNameTableKind::None;
+  default:
+    report_fatal_error("bad DebugNameTableKind.");
+  }
+}
+
 enum class LLVMRustChecksumKind {
   None,
   MD5,
@@ -726,18 +723,10 @@ enum class LLVMRustChecksumKind {
   SHA256,
 };
 
-#if LLVM_VERSION_LT(16, 0)
-static Optional<DIFile::ChecksumKind> fromRust(LLVMRustChecksumKind Kind) {
-#else
 static std::optional<DIFile::ChecksumKind> fromRust(LLVMRustChecksumKind Kind) {
-#endif
   switch (Kind) {
   case LLVMRustChecksumKind::None:
-#if LLVM_VERSION_LT(16, 0)
-    return None;
-#else
     return std::nullopt;
-#endif
   case LLVMRustChecksumKind::MD5:
     return DIFile::ChecksumKind::CSK_MD5;
   case LLVMRustChecksumKind::SHA1:
@@ -795,13 +784,15 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateCompileUnit(
     const char *Flags, unsigned RuntimeVer,
     const char *SplitName, size_t SplitNameLen,
     LLVMRustDebugEmissionKind Kind,
-    uint64_t DWOId, bool SplitDebugInlining) {
+    uint64_t DWOId, bool SplitDebugInlining,
+    LLVMRustDebugNameTableKind TableKind) {
   auto *File = unwrapDI<DIFile>(FileRef);
 
   return wrap(Builder->createCompileUnit(Lang, File, StringRef(Producer, ProducerLen),
                                          isOptimized, Flags, RuntimeVer,
                                          StringRef(SplitName, SplitNameLen),
-                                         fromRust(Kind), DWOId, SplitDebugInlining));
+                                         fromRust(Kind), DWOId, SplitDebugInlining,
+                                         false, fromRust(TableKind)));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFile(
@@ -810,17 +801,8 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateFile(
     const char *Directory, size_t DirectoryLen, LLVMRustChecksumKind CSKind,
     const char *Checksum, size_t ChecksumLen) {
 
-#if LLVM_VERSION_LT(16, 0)
-  Optional<DIFile::ChecksumKind> llvmCSKind = fromRust(CSKind);
-#else
   std::optional<DIFile::ChecksumKind> llvmCSKind = fromRust(CSKind);
-#endif
-
-#if LLVM_VERSION_LT(16, 0)
-  Optional<DIFile::ChecksumInfo<StringRef>> CSInfo{};
-#else
   std::optional<DIFile::ChecksumInfo<StringRef>> CSInfo{};
-#endif
   if (llvmCSKind)
     CSInfo.emplace(*llvmCSKind, StringRef{Checksum, ChecksumLen});
   return wrap(Builder->createFile(StringRef(Filename, FilenameLen),
@@ -983,6 +965,9 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticMemberType(
     unwrapDI<DIType>(Ty),
     fromRust(Flags),
     unwrap<llvm::ConstantInt>(val),
+#if LLVM_VERSION_GE(18, 0)
+    llvm::dwarf::DW_TAG_member,
+#endif
     AlignInBits
   ));
 }
@@ -1105,7 +1090,11 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateEnumerationType(
       unwrapDI<DIDescriptor>(Scope), StringRef(Name, NameLen),
       unwrapDI<DIFile>(File), LineNumber,
       SizeInBits, AlignInBits, DINodeArray(unwrapDI<MDTuple>(Elements)),
-      unwrapDI<DIType>(ClassTy), "", IsScoped));
+      unwrapDI<DIType>(ClassTy),
+#if LLVM_VERSION_GE(18, 0)
+      /* RunTimeLang */ 0,
+#endif
+      "", IsScoped));
 }
 
 extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateUnionType(
@@ -2046,17 +2035,9 @@ extern "C" bool LLVMRustIsNonGVFunctionPointerTy(LLVMValueRef V) {
 }
 
 extern "C" bool LLVMRustLLVMHasZlibCompressionForDebugSymbols() {
-#if LLVM_VERSION_GE(16, 0)
   return llvm::compression::zlib::isAvailable();
-#else
-  return false;
-#endif
 }
 
 extern "C" bool LLVMRustLLVMHasZstdCompressionForDebugSymbols() {
-#if LLVM_VERSION_GE(16, 0)
   return llvm::compression::zstd::isAvailable();
-#else
-  return false;
-#endif
 }

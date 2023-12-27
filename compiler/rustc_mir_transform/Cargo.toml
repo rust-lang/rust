@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 # tidy-alphabetical-start
 either = "1"
-itertools = "0.10.1"
+itertools = "0.11"
 rustc_arena = { path = "../rustc_arena" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_attr = { path = "../rustc_attr" }
@@ -20,16 +20,10 @@ rustc_macros = { path = "../rustc_macros" }
 rustc_middle = { path = "../rustc_middle" }
 rustc_mir_build = { path = "../rustc_mir_build" }
 rustc_mir_dataflow = { path = "../rustc_mir_dataflow" }
-rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 tracing = "0.1"
-# tidy-alphabetical-end
-
-[dev-dependencies]
-# tidy-alphabetical-start
-coverage_test_macros = { path = "src/coverage/test_macros" }
 # tidy-alphabetical-end

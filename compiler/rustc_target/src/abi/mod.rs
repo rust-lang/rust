@@ -42,6 +42,8 @@ rustc_index::newtype_index! {
     /// `d` is `FieldIdx(1)` in `VariantIdx(1)`, and
     /// `f` is `FieldIdx(1)` in `VariantIdx(0)`.
     #[derive(HashStable_Generic)]
+    #[encodable]
+    #[orderable]
     pub struct FieldIdx {}
 }
 
@@ -57,6 +59,8 @@ rustc_index::newtype_index! {
     /// `struct`s, `tuples`, and `unions`s are considered to have a single variant
     /// with variant index zero, aka [`FIRST_VARIANT`].
     #[derive(HashStable_Generic)]
+    #[encodable]
+    #[orderable]
     pub struct VariantIdx {
         /// Equivalent to `VariantIdx(0)`.
         const FIRST_VARIANT = 0;

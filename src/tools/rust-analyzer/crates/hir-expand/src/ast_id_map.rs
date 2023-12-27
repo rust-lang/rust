@@ -12,10 +12,39 @@ use std::{
     marker::PhantomData,
 };
 
-use la_arena::{Arena, Idx};
+use la_arena::{Arena, Idx, RawIdx};
 use profile::Count;
 use rustc_hash::FxHasher;
 use syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
+
+use crate::db;
+
+pub use base_db::span::ErasedFileAstId;
+
+/// `AstId` points to an AST node in any file.
+///
+/// It is stable across reparses, and can be used as salsa key/value.
+pub type AstId<N> = crate::InFile<FileAstId<N>>;
+
+impl<N: AstIdNode> AstId<N> {
+    pub fn to_node(&self, db: &dyn db::ExpandDatabase) -> N {
+        self.to_ptr(db).to_node(&db.parse_or_expand(self.file_id))
+    }
+    pub fn to_in_file_node(&self, db: &dyn db::ExpandDatabase) -> crate::InFile<N> {
+        crate::InFile::new(self.file_id, self.to_ptr(db).to_node(&db.parse_or_expand(self.file_id)))
+    }
+    pub fn to_ptr(&self, db: &dyn db::ExpandDatabase) -> AstPtr<N> {
+        db.ast_id_map(self.file_id).get(self.value)
+    }
+}
+
+pub type ErasedAstId = crate::InFile<ErasedFileAstId>;
+
+impl ErasedAstId {
+    pub fn to_ptr(&self, db: &dyn db::ExpandDatabase) -> SyntaxNodePtr {
+        db.ast_id_map(self.file_id).get_erased(self.value)
+    }
+}
 
 /// `AstId` points to an AST node in a specific file.
 pub struct FileAstId<N: AstIdNode> {
@@ -62,8 +91,6 @@ impl<N: AstIdNode> FileAstId<N> {
     }
 }
 
-pub type ErasedFileAstId = Idx<SyntaxNodePtr>;
-
 pub trait AstIdNode: AstNode {}
 macro_rules! register_ast_id_node {
     (impl AstIdNode for $($ident:ident),+ ) => {
@@ -99,7 +126,7 @@ register_ast_id_node! {
         TraitAlias,
         TypeAlias,
         Use,
-    AssocItem, BlockExpr, Variant, RecordField, TupleField, ConstArg
+    AssocItem, BlockExpr, Variant, RecordField, TupleField, ConstArg, Param, SelfParam
 }
 
 /// Maps items' `SyntaxNode`s to `ErasedFileAstId`s and back.
@@ -129,6 +156,11 @@ impl AstIdMap {
     pub(crate) fn from_source(node: &SyntaxNode) -> AstIdMap {
         assert!(node.parent().is_none());
         let mut res = AstIdMap::default();
+
+        // make sure to allocate the root node
+        if !should_alloc_id(node.kind()) {
+            res.alloc(node);
+        }
         // By walking the tree in breadth-first order we make sure that parents
         // get lower ids then children. That is, adding a new child does not
         // change parent's id. This means that, say, adding a new function to a
@@ -136,9 +168,9 @@ impl AstIdMap {
         bdfs(node, |it| {
             if should_alloc_id(it.kind()) {
                 res.alloc(&it);
-                true
+                TreeOrder::BreadthFirst
             } else {
-                false
+                TreeOrder::DepthFirst
             }
         });
         res.map = hashbrown::HashMap::with_capacity_and_hasher(res.arena.len(), ());
@@ -155,6 +187,11 @@ impl AstIdMap {
         res
     }
 
+    /// The [`AstId`] of the root node
+    pub fn root(&self) -> SyntaxNodePtr {
+        self.arena[Idx::from_raw(RawIdx::from_u32(0))].clone()
+    }
+
     pub fn ast_id<N: AstIdNode>(&self, item: &N) -> FileAstId<N> {
         let raw = self.erased_ast_id(item.syntax());
         FileAstId { raw, covariant: PhantomData }
@@ -164,7 +201,7 @@ impl AstIdMap {
         AstPtr::try_from_raw(self.arena[id.raw].clone()).unwrap()
     }
 
-    pub(crate) fn get_raw(&self, id: ErasedFileAstId) -> SyntaxNodePtr {
+    pub fn get_erased(&self, id: ErasedFileAstId) -> SyntaxNodePtr {
         self.arena[id].clone()
     }
 
@@ -192,14 +229,20 @@ fn hash_ptr(ptr: &SyntaxNodePtr) -> u64 {
     hasher.finish()
 }
 
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum TreeOrder {
+    BreadthFirst,
+    DepthFirst,
+}
+
 /// Walks the subtree in bdfs order, calling `f` for each node. What is bdfs
 /// order? It is a mix of breadth-first and depth first orders. Nodes for which
-/// `f` returns true are visited breadth-first, all the other nodes are explored
-/// depth-first.
+/// `f` returns [`TreeOrder::BreadthFirst`] are visited breadth-first, all the other nodes are explored
+/// [`TreeOrder::DepthFirst`].
 ///
 /// In other words, the size of the bfs queue is bound by the number of "true"
 /// nodes.
-fn bdfs(node: &SyntaxNode, mut f: impl FnMut(SyntaxNode) -> bool) {
+fn bdfs(node: &SyntaxNode, mut f: impl FnMut(SyntaxNode) -> TreeOrder) {
     let mut curr_layer = vec![node.clone()];
     let mut next_layer = vec![];
     while !curr_layer.is_empty() {
@@ -208,7 +251,7 @@ fn bdfs(node: &SyntaxNode, mut f: impl FnMut(SyntaxNode) -> bool) {
             while let Some(event) = preorder.next() {
                 match event {
                     syntax::WalkEvent::Enter(node) => {
-                        if f(node.clone()) {
+                        if f(node.clone()) == TreeOrder::BreadthFirst {
                             next_layer.extend(node.children());
                             preorder.skip_subtree();
                         }

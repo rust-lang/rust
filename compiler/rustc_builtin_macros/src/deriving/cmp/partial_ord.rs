@@ -95,7 +95,7 @@ fn cs_partial_cmp(
         |cx, fold| match fold {
             CsFold::Single(field) => {
                 let [other_expr] = &field.other_selflike_exprs[..] else {
-                    cx.span_bug(field.span, "not exactly 2 arguments in `derive(Ord)`");
+                    cx.dcx().span_bug(field.span, "not exactly 2 arguments in `derive(Ord)`");
                 };
                 let args = thin_vec![field.self_expr.clone(), other_expr.clone()];
                 cx.expr_call_global(field.span, partial_cmp_path.clone(), args)
@@ -136,7 +136,7 @@ fn cs_partial_cmp(
                     && let Some(last) = arms.last_mut()
                     && let PatKind::Wild = last.pat.kind
                 {
-                    last.body = expr2;
+                    last.body = Some(expr2);
                     expr1
                 } else {
                     let eq_arm = cx.arm(

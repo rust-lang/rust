@@ -17,7 +17,7 @@ use crate::errors::{GenericConstantTooComplex, GenericConstantTooComplexSub};
 
 /// Destructures array, ADT or tuple constants into the constants
 /// of their fields.
-pub(crate) fn destructure_const<'tcx>(
+fn destructure_const<'tcx>(
     tcx: TyCtxt<'tcx>,
     const_: ty::Const<'tcx>,
 ) -> ty::DestructuredConst<'tcx> {
@@ -276,7 +276,7 @@ fn error(
     sub: GenericConstantTooComplexSub,
     root_span: Span,
 ) -> Result<!, ErrorGuaranteed> {
-    let reported = tcx.sess.emit_err(GenericConstantTooComplex {
+    let reported = tcx.dcx().emit_err(GenericConstantTooComplex {
         span: root_span,
         maybe_supported: None,
         sub,
@@ -290,7 +290,7 @@ fn maybe_supported_error(
     sub: GenericConstantTooComplexSub,
     root_span: Span,
 ) -> Result<!, ErrorGuaranteed> {
-    let reported = tcx.sess.emit_err(GenericConstantTooComplex {
+    let reported = tcx.dcx().emit_err(GenericConstantTooComplex {
         span: root_span,
         maybe_supported: Some(()),
         sub,
@@ -375,11 +375,11 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
 
 impl<'a, 'tcx> visit::Visitor<'a, 'tcx> for IsThirPolymorphic<'a, 'tcx> {
     fn thir(&self) -> &'a thir::Thir<'tcx> {
-        &self.thir
+        self.thir
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn visit_expr(&mut self, expr: &thir::Expr<'tcx>) {
+    fn visit_expr(&mut self, expr: &'a thir::Expr<'tcx>) {
         self.is_poly |= self.expr_is_poly(expr);
         if !self.is_poly {
             visit::walk_expr(self, expr)
@@ -387,7 +387,7 @@ impl<'a, 'tcx> visit::Visitor<'a, 'tcx> for IsThirPolymorphic<'a, 'tcx> {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn visit_pat(&mut self, pat: &thir::Pat<'tcx>) {
+    fn visit_pat(&mut self, pat: &'a thir::Pat<'tcx>) {
         self.is_poly |= self.pat_is_poly(pat);
         if !self.is_poly {
             visit::walk_pat(self, pat);
@@ -396,7 +396,7 @@ impl<'a, 'tcx> visit::Visitor<'a, 'tcx> for IsThirPolymorphic<'a, 'tcx> {
 }
 
 /// Builds an abstract const, do not use this directly, but use `AbstractConst::new` instead.
-pub fn thir_abstract_const(
+fn thir_abstract_const(
     tcx: TyCtxt<'_>,
     def: LocalDefId,
 ) -> Result<Option<ty::EarlyBinder<ty::Const<'_>>>, ErrorGuaranteed> {
@@ -428,6 +428,6 @@ pub fn thir_abstract_const(
     Ok(Some(ty::EarlyBinder::bind(recurse_build(tcx, body, body_id, root_span)?)))
 }
 
-pub fn provide(providers: &mut Providers) {
+pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { destructure_const, thir_abstract_const, ..*providers };
 }

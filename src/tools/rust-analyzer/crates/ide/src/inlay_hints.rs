@@ -31,6 +31,7 @@ mod discriminant;
 mod fn_lifetime_fn;
 mod implicit_static;
 mod param_name;
+mod implicit_drop;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlayHintsConfig {
@@ -45,6 +46,7 @@ pub struct InlayHintsConfig {
     pub closure_return_type_hints: ClosureReturnTypeHints,
     pub closure_capture_hints: bool,
     pub binding_mode_hints: bool,
+    pub implicit_drop_hints: bool,
     pub lifetime_elision_hints: LifetimeElisionHints,
     pub param_names_for_lifetime_elision_hints: bool,
     pub hide_named_constructor_hints: bool,
@@ -124,6 +126,7 @@ pub enum InlayKind {
     Lifetime,
     Parameter,
     Type,
+    Drop,
 }
 
 #[derive(Debug)]
@@ -312,6 +315,7 @@ impl HirWrite for InlayHintLabelBuilder<'_> {
         }
         self.make_new_part();
         let Some(location) = ModuleDef::from(def).try_to_nav(self.db) else { return };
+        let location = location.call_site();
         let location =
             FileRange { file_id: location.file_id, range: location.focus_or_full_range() };
         self.location = Some(location);
@@ -418,6 +422,11 @@ fn ty_to_text_edit(
     Some(builder.finish())
 }
 
+pub enum RangeLimit {
+    Fixed(TextRange),
+    NearestParent(TextSize),
+}
+
 // Feature: Inlay Hints
 //
 // rust-analyzer shows additional information inline with the source code.
@@ -439,7 +448,7 @@ fn ty_to_text_edit(
 pub(crate) fn inlay_hints(
     db: &RootDatabase,
     file_id: FileId,
-    range_limit: Option<TextRange>,
+    range_limit: Option<RangeLimit>,
     config: &InlayHintsConfig,
 ) -> Vec<InlayHint> {
     let _p = profile::span("inlay_hints");
@@ -454,13 +463,31 @@ pub(crate) fn inlay_hints(
 
         let hints = |node| hints(&mut acc, &famous_defs, config, file_id, node);
         match range_limit {
-            Some(range) => match file.covering_element(range) {
+            Some(RangeLimit::Fixed(range)) => match file.covering_element(range) {
                 NodeOrToken::Token(_) => return acc,
                 NodeOrToken::Node(n) => n
                     .descendants()
                     .filter(|descendant| range.intersect(descendant.text_range()).is_some())
                     .for_each(hints),
             },
+            Some(RangeLimit::NearestParent(position)) => {
+                match file.token_at_offset(position).left_biased() {
+                    Some(token) => {
+                        if let Some(parent_block) =
+                            token.parent_ancestors().find_map(ast::BlockExpr::cast)
+                        {
+                            parent_block.syntax().descendants().for_each(hints)
+                        } else if let Some(parent_item) =
+                            token.parent_ancestors().find_map(ast::Item::cast)
+                        {
+                            parent_item.syntax().descendants().for_each(hints)
+                        } else {
+                            return acc;
+                        }
+                    }
+                    None => return acc,
+                }
+            }
             None => file.descendants().for_each(hints),
         };
     }
@@ -503,7 +530,10 @@ fn hints(
             ast::Item(it) => match it {
                 // FIXME: record impl lifetimes so they aren't being reused in assoc item lifetime inlay hints
                 ast::Item::Impl(_) => None,
-                ast::Item::Fn(it) => fn_lifetime_fn::hints(hints, config, it),
+                ast::Item::Fn(it) => {
+                    implicit_drop::hints(hints, sema, config, &it);
+                    fn_lifetime_fn::hints(hints, config, it)
+                },
                 // static type elisions
                 ast::Item::Static(it) => implicit_static::hints(hints, config, Either::Left(it)),
                 ast::Item::Const(it) => implicit_static::hints(hints, config, Either::Right(it)),
@@ -563,6 +593,7 @@ mod tests {
     use hir::ClosureStyle;
     use itertools::Itertools;
     use test_utils::extract_annotations;
+    use text_edit::{TextRange, TextSize};
 
     use crate::inlay_hints::{AdjustmentHints, AdjustmentHintsMode};
     use crate::DiscriminantHints;
@@ -590,6 +621,7 @@ mod tests {
         max_length: None,
         closing_brace_hints_min_lines: None,
         fields_to_resolve: InlayFieldsToResolve::empty(),
+        implicit_drop_hints: false,
     };
     pub(super) const TEST_CONFIG: InlayHintsConfig = InlayHintsConfig {
         type_hints: true,
@@ -626,6 +658,22 @@ mod tests {
     pub(super) fn check_expect(config: InlayHintsConfig, ra_fixture: &str, expect: Expect) {
         let (analysis, file_id) = fixture::file(ra_fixture);
         let inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
+        expect.assert_debug_eq(&inlay_hints)
+    }
+
+    #[track_caller]
+    pub(super) fn check_expect_clear_loc(
+        config: InlayHintsConfig,
+        ra_fixture: &str,
+        expect: Expect,
+    ) {
+        let (analysis, file_id) = fixture::file(ra_fixture);
+        let mut inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
+        inlay_hints.iter_mut().flat_map(|hint| &mut hint.label.parts).for_each(|hint| {
+            if let Some(loc) = &mut hint.linked_location {
+                loc.range = TextRange::empty(TextSize::from(0));
+            }
+        });
         expect.assert_debug_eq(&inlay_hints)
     }
 

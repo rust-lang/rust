@@ -1,4 +1,4 @@
-use std::borrow::{Cow, ToOwned};
+use std::borrow::Cow;
 use std::ffi::{CStr, OsStr};
 use std::path::Path;
 use std::rc::Rc;

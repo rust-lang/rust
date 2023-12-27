@@ -1,5 +1,5 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/invalid-union.rs:41:1
+  --> $DIR/invalid-union.rs:35:1
    |
 LL | fn main() {
    | ^^^^^^^^^ constructing invalid value at .<deref>.y.<enum-variant(B)>.0: encountered `UnsafeCell` in a `const`
@@ -10,19 +10,19 @@ LL | fn main() {
            }
 
 note: erroneous constant encountered
-  --> $DIR/invalid-union.rs:43:25
+  --> $DIR/invalid-union.rs:37:25
    |
 LL |     let _: &'static _ = &C;
    |                         ^^
 
 note: erroneous constant encountered
-  --> $DIR/invalid-union.rs:43:25
+  --> $DIR/invalid-union.rs:37:25
    |
 LL |     let _: &'static _ = &C;
    |                         ^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0080`.

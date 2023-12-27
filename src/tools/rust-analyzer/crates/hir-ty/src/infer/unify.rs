@@ -43,7 +43,7 @@ where
 }
 
 impl<T: HasInterner<Interner = Interner>> Canonicalized<T> {
-    pub(super) fn apply_solution(
+    pub(crate) fn apply_solution(
         &self,
         ctx: &mut InferenceTable<'_>,
         solution: Canonical<Substitution>,

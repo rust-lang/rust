@@ -14,6 +14,6 @@ help: consider further restricting `Self`
 LL |     fn bar(&self) where Self: Sized, Bar<Self>: Copy, Self: Eq;
    |                                                     ++++++++++
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0277`.

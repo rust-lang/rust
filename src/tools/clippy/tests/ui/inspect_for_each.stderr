@@ -14,5 +14,5 @@ LL | |     });
    = note: `-D clippy::inspect-for-each` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::inspect_for_each)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

@@ -929,6 +929,7 @@ pub enum TlsModel {
     LocalDynamic,
     InitialExec,
     LocalExec,
+    Emulated,
 }
 
 impl FromStr for TlsModel {
@@ -942,6 +943,7 @@ impl FromStr for TlsModel {
             "local-dynamic" => TlsModel::LocalDynamic,
             "initial-exec" => TlsModel::InitialExec,
             "local-exec" => TlsModel::LocalExec,
+            "emulated" => TlsModel::Emulated,
             _ => return Err(()),
         })
     }
@@ -954,6 +956,7 @@ impl ToJson for TlsModel {
             TlsModel::LocalDynamic => "local-dynamic",
             TlsModel::InitialExec => "initial-exec",
             TlsModel::LocalExec => "local-exec",
+            TlsModel::Emulated => "emulated",
         }
         .to_json()
     }
@@ -1155,10 +1158,6 @@ pub enum StackProbeType {
 }
 
 impl StackProbeType {
-    // LLVM X86 targets (ix86 and x86_64) can use inline-asm stack probes starting with LLVM 16.
-    // Notable past issues were rust#83139 (fixed in 14) and rust#84667 (fixed in 16).
-    const X86: Self = Self::InlineOrCall { min_llvm_version_for_inline: (16, 0, 0) };
-
     fn from_json(json: &Json) -> Result<Self, String> {
         let object = json.as_object().ok_or_else(|| "expected a JSON object")?;
         let kind = object
@@ -1494,6 +1493,7 @@ supported_targets! {
     ("mips64-unknown-linux-muslabi64", mips64_unknown_linux_muslabi64),
     ("mips64el-unknown-linux-muslabi64", mips64el_unknown_linux_muslabi64),
     ("hexagon-unknown-linux-musl", hexagon_unknown_linux_musl),
+    ("hexagon-unknown-none-elf", hexagon_unknown_none_elf),
 
     ("mips-unknown-linux-uclibc", mips_unknown_linux_uclibc),
     ("mipsel-unknown-linux-uclibc", mipsel_unknown_linux_uclibc),
@@ -1544,6 +1544,7 @@ supported_targets! {
     ("i686-unknown-hurd-gnu", i686_unknown_hurd_gnu),
 
     ("aarch64-apple-darwin", aarch64_apple_darwin),
+    ("arm64e-apple-darwin", arm64e_apple_darwin),
     ("x86_64-apple-darwin", x86_64_apple_darwin),
     ("x86_64h-apple-darwin", x86_64h_apple_darwin),
     ("i686-apple-darwin", i686_apple_darwin),
@@ -1566,6 +1567,7 @@ supported_targets! {
     ("i386-apple-ios", i386_apple_ios),
     ("x86_64-apple-ios", x86_64_apple_ios),
     ("aarch64-apple-ios", aarch64_apple_ios),
+    ("arm64e-apple-ios", arm64e_apple_ios),
     ("armv7s-apple-ios", armv7s_apple_ios),
     ("x86_64-apple-ios-macabi", x86_64_apple_ios_macabi),
     ("aarch64-apple-ios-macabi", aarch64_apple_ios_macabi),
@@ -1577,6 +1579,7 @@ supported_targets! {
     ("armv7k-apple-watchos", armv7k_apple_watchos),
     ("arm64_32-apple-watchos", arm64_32_apple_watchos),
     ("x86_64-apple-watchos-sim", x86_64_apple_watchos_sim),
+    ("aarch64-apple-watchos", aarch64_apple_watchos),
     ("aarch64-apple-watchos-sim", aarch64_apple_watchos_sim),
 
     ("armebv7r-none-eabi", armebv7r_none_eabi),
@@ -1585,10 +1588,10 @@ supported_targets! {
     ("armv7r-none-eabihf", armv7r_none_eabihf),
 
     ("x86_64-pc-solaris", x86_64_pc_solaris),
-    ("x86_64-sun-solaris", x86_64_sun_solaris),
     ("sparcv9-sun-solaris", sparcv9_sun_solaris),
 
     ("x86_64-unknown-illumos", x86_64_unknown_illumos),
+    ("aarch64-unknown-illumos", aarch64_unknown_illumos),
 
     ("x86_64-pc-windows-gnu", x86_64_pc_windows_gnu),
     ("i686-pc-windows-gnu", i686_pc_windows_gnu),
@@ -1603,13 +1606,14 @@ supported_targets! {
     ("aarch64-uwp-windows-msvc", aarch64_uwp_windows_msvc),
     ("x86_64-pc-windows-msvc", x86_64_pc_windows_msvc),
     ("x86_64-uwp-windows-msvc", x86_64_uwp_windows_msvc),
+    ("x86_64-win7-windows-msvc", x86_64_win7_windows_msvc),
     ("i686-pc-windows-msvc", i686_pc_windows_msvc),
     ("i686-uwp-windows-msvc", i686_uwp_windows_msvc),
+    ("i686-win7-windows-msvc", i686_win7_windows_msvc),
     ("i586-pc-windows-msvc", i586_pc_windows_msvc),
     ("thumbv7a-pc-windows-msvc", thumbv7a_pc_windows_msvc),
     ("thumbv7a-uwp-windows-msvc", thumbv7a_uwp_windows_msvc),
 
-    ("asmjs-unknown-emscripten", asmjs_unknown_emscripten),
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
     ("wasm32-unknown-unknown", wasm32_unknown_unknown),
     ("wasm32-wasi", wasm32_wasi),
@@ -1641,6 +1645,7 @@ supported_targets! {
     ("riscv32imc-esp-espidf", riscv32imc_esp_espidf),
     ("riscv32imac-esp-espidf", riscv32imac_esp_espidf),
     ("riscv32imac-unknown-none-elf", riscv32imac_unknown_none_elf),
+    ("riscv32imafc-unknown-none-elf", riscv32imafc_unknown_none_elf),
     ("riscv32imac-unknown-xous-elf", riscv32imac_unknown_xous_elf),
     ("riscv32gc-unknown-linux-gnu", riscv32gc_unknown_linux_gnu),
     ("riscv32gc-unknown-linux-musl", riscv32gc_unknown_linux_musl),
@@ -2092,7 +2097,11 @@ pub struct TargetOptions {
     pub no_builtins: bool,
 
     /// The default visibility for symbols in this target should be "hidden"
-    /// rather than "default"
+    /// rather than "default".
+    ///
+    /// This value typically shouldn't be accessed directly, but through
+    /// the `rustc_session::Session::default_hidden_visibility` method, which
+    /// allows `rustc` users to override this setting using cmdline flags.
     pub default_hidden_visibility: bool,
 
     /// Whether a .debug_gdb_scripts section will be added to the output object file
@@ -2194,9 +2203,6 @@ pub struct TargetOptions {
 
     /// Whether the target supports XRay instrumentation.
     pub supports_xray: bool,
-
-    /// Forces the use of emulated TLS (__emutls_get_address)
-    pub force_emulated_tls: bool,
 }
 
 /// Add arguments for the given flavor and also for its "twin" flavors
@@ -2242,10 +2248,6 @@ impl TargetOptions {
 
     fn add_pre_link_args(&mut self, flavor: LinkerFlavor, args: &[&'static str]) {
         add_link_args(&mut self.pre_link_args, flavor, args);
-    }
-
-    fn add_post_link_args(&mut self, flavor: LinkerFlavor, args: &[&'static str]) {
-        add_link_args(&mut self.post_link_args, flavor, args);
     }
 
     fn update_from_cli(&mut self) {
@@ -2416,7 +2418,6 @@ impl Default for TargetOptions {
             entry_name: "main".into(),
             entry_abi: Conv::C,
             supports_xray: false,
-            force_emulated_tls: false,
         }
     }
 }
@@ -3120,7 +3121,6 @@ impl Target {
         key!(entry_name);
         key!(entry_abi, Conv)?;
         key!(supports_xray, bool);
-        key!(force_emulated_tls, bool);
 
         if base.is_builtin {
             // This can cause unfortunate ICEs later down the line.
@@ -3376,7 +3376,6 @@ impl ToJson for Target {
         target_option_val!(entry_name);
         target_option_val!(entry_abi);
         target_option_val!(supports_xray);
-        target_option_val!(force_emulated_tls);
 
         if let Some(abi) = self.default_adjusted_cabi {
             d.insert("default-adjusted-cabi".into(), Abi::name(abi).to_json());
@@ -3503,7 +3502,7 @@ impl TargetTriple {
     /// If this target is a path, a hash of the path is appended to the triple returned
     /// by `triple()`.
     pub fn debug_triple(&self) -> String {
-        use std::collections::hash_map::DefaultHasher;
+        use std::hash::DefaultHasher;
 
         match self {
             TargetTriple::TargetTriple(triple) => triple.to_owned(),

@@ -8,14 +8,15 @@ use test_utils::{
     ESCAPED_CURSOR_MARKER,
 };
 use triomphe::Arc;
-use tt::token_id::{Leaf, Subtree, TokenTree};
+use tt::{Leaf, Subtree, TokenTree};
 use vfs::{file_set::FileSet, VfsPath};
 
 use crate::{
     input::{CrateName, CrateOrigin, LangCrateOrigin},
-    Change, CrateDisplayName, CrateGraph, CrateId, Dependency, Edition, Env, FileId, FilePosition,
-    FileRange, ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacros, ReleaseChannel,
-    SourceDatabaseExt, SourceRoot, SourceRootId,
+    span::SpanData,
+    Change, CrateDisplayName, CrateGraph, CrateId, Dependency, DependencyKind, Edition, Env,
+    FileId, FilePosition, FileRange, ProcMacro, ProcMacroExpander, ProcMacroExpansionError,
+    ProcMacros, ReleaseChannel, SourceDatabaseExt, SourceRoot, SourceRootId,
 };
 
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
@@ -134,7 +135,7 @@ impl ChangeFixture {
 
         let mut file_set = FileSet::default();
         let mut current_source_root_kind = SourceRootKind::Local;
-        let mut file_id = FileId(0);
+        let mut file_id = FileId::from_raw(0);
         let mut roots = Vec::new();
 
         let mut file_position = None;
@@ -209,7 +210,7 @@ impl ChangeFixture {
             let path = VfsPath::new_virtual_path(meta.path);
             file_set.insert(file_id, path);
             files.push(file_id);
-            file_id.0 += 1;
+            file_id = FileId::from_raw(file_id.index() + 1);
         }
 
         if crates.is_empty() {
@@ -237,7 +238,12 @@ impl ChangeFixture {
                 crate_graph
                     .add_dep(
                         from_id,
-                        Dependency::with_prelude(CrateName::new(&to).unwrap(), to_id, prelude),
+                        Dependency::with_prelude(
+                            CrateName::new(&to).unwrap(),
+                            to_id,
+                            prelude,
+                            DependencyKind::Normal,
+                        ),
                     )
                     .unwrap();
             }
@@ -249,7 +255,7 @@ impl ChangeFixture {
 
         if let Some(mini_core) = mini_core {
             let core_file = file_id;
-            file_id.0 += 1;
+            file_id = FileId::from_raw(file_id.index() + 1);
 
             let mut fs = FileSet::default();
             fs.insert(core_file, VfsPath::new_virtual_path("/sysroot/core/lib.rs".to_string()));
@@ -275,7 +281,14 @@ impl ChangeFixture {
 
             for krate in all_crates {
                 crate_graph
-                    .add_dep(krate, Dependency::new(CrateName::new("core").unwrap(), core_crate))
+                    .add_dep(
+                        krate,
+                        Dependency::new(
+                            CrateName::new("core").unwrap(),
+                            core_crate,
+                            DependencyKind::Normal,
+                        ),
+                    )
                     .unwrap();
             }
         }
@@ -283,7 +296,6 @@ impl ChangeFixture {
         let mut proc_macros = ProcMacros::default();
         if !proc_macro_names.is_empty() {
             let proc_lib_file = file_id;
-            file_id.0 += 1;
 
             proc_macro_defs.extend(default_test_proc_macros());
             let (proc_macro, source) = filter_test_proc_macros(&proc_macro_names, proc_macro_defs);
@@ -317,7 +329,11 @@ impl ChangeFixture {
                 crate_graph
                     .add_dep(
                         krate,
-                        Dependency::new(CrateName::new("proc_macros").unwrap(), proc_macros_crate),
+                        Dependency::new(
+                            CrateName::new("proc_macros").unwrap(),
+                            proc_macros_crate,
+                            DependencyKind::Normal,
+                        ),
                     )
                     .unwrap();
             }
@@ -523,10 +539,13 @@ struct IdentityProcMacroExpander;
 impl ProcMacroExpander for IdentityProcMacroExpander {
     fn expand(
         &self,
-        subtree: &Subtree,
-        _: Option<&Subtree>,
+        subtree: &Subtree<SpanData>,
+        _: Option<&Subtree<SpanData>>,
         _: &Env,
-    ) -> Result<Subtree, ProcMacroExpansionError> {
+        _: SpanData,
+        _: SpanData,
+        _: SpanData,
+    ) -> Result<Subtree<SpanData>, ProcMacroExpansionError> {
         Ok(subtree.clone())
     }
 }
@@ -537,10 +556,13 @@ struct AttributeInputReplaceProcMacroExpander;
 impl ProcMacroExpander for AttributeInputReplaceProcMacroExpander {
     fn expand(
         &self,
-        _: &Subtree,
-        attrs: Option<&Subtree>,
+        _: &Subtree<SpanData>,
+        attrs: Option<&Subtree<SpanData>>,
         _: &Env,
-    ) -> Result<Subtree, ProcMacroExpansionError> {
+        _: SpanData,
+        _: SpanData,
+        _: SpanData,
+    ) -> Result<Subtree<SpanData>, ProcMacroExpansionError> {
         attrs
             .cloned()
             .ok_or_else(|| ProcMacroExpansionError::Panic("Expected attribute input".into()))
@@ -552,11 +574,14 @@ struct MirrorProcMacroExpander;
 impl ProcMacroExpander for MirrorProcMacroExpander {
     fn expand(
         &self,
-        input: &Subtree,
-        _: Option<&Subtree>,
+        input: &Subtree<SpanData>,
+        _: Option<&Subtree<SpanData>>,
         _: &Env,
-    ) -> Result<Subtree, ProcMacroExpansionError> {
-        fn traverse(input: &Subtree) -> Subtree {
+        _: SpanData,
+        _: SpanData,
+        _: SpanData,
+    ) -> Result<Subtree<SpanData>, ProcMacroExpansionError> {
+        fn traverse(input: &Subtree<SpanData>) -> Subtree<SpanData> {
             let mut token_trees = vec![];
             for tt in input.token_trees.iter().rev() {
                 let tt = match tt {
@@ -579,13 +604,16 @@ struct ShortenProcMacroExpander;
 impl ProcMacroExpander for ShortenProcMacroExpander {
     fn expand(
         &self,
-        input: &Subtree,
-        _: Option<&Subtree>,
+        input: &Subtree<SpanData>,
+        _: Option<&Subtree<SpanData>>,
         _: &Env,
-    ) -> Result<Subtree, ProcMacroExpansionError> {
+        _: SpanData,
+        _: SpanData,
+        _: SpanData,
+    ) -> Result<Subtree<SpanData>, ProcMacroExpansionError> {
         return Ok(traverse(input));
 
-        fn traverse(input: &Subtree) -> Subtree {
+        fn traverse(input: &Subtree<SpanData>) -> Subtree<SpanData> {
             let token_trees = input
                 .token_trees
                 .iter()
@@ -597,7 +625,7 @@ impl ProcMacroExpander for ShortenProcMacroExpander {
             Subtree { delimiter: input.delimiter, token_trees }
         }
 
-        fn modify_leaf(leaf: &Leaf) -> Leaf {
+        fn modify_leaf(leaf: &Leaf<SpanData>) -> Leaf<SpanData> {
             let mut leaf = leaf.clone();
             match &mut leaf {
                 Leaf::Literal(it) => {

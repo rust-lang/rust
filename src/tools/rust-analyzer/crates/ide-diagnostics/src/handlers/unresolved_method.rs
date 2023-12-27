@@ -8,7 +8,7 @@ use ide_db::{
 use syntax::{ast, AstNode, TextRange};
 use text_edit::TextEdit;
 
-use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{adjusted_display_range_new, Diagnostic, DiagnosticCode, DiagnosticsContext};
 
 // Diagnostic: unresolved-method
 //
@@ -22,15 +22,24 @@ pub(crate) fn unresolved_method(
     } else {
         ""
     };
-    Diagnostic::new_with_syntax_node_ptr(
-        ctx,
+    Diagnostic::new(
         DiagnosticCode::RustcHardError("E0599"),
         format!(
             "no method `{}` on type `{}`{field_suffix}",
             d.name.display(ctx.sema.db),
             d.receiver.display(ctx.sema.db)
         ),
-        d.expr.clone().map(|it| it.into()),
+        adjusted_display_range_new(ctx, d.expr, &|expr| {
+            Some(
+                match expr {
+                    ast::Expr::MethodCallExpr(it) => it.name_ref(),
+                    ast::Expr::FieldExpr(it) => it.name_ref(),
+                    _ => None,
+                }?
+                .syntax()
+                .text_range(),
+            )
+        }),
     )
     .with_fixes(fixes(ctx, d))
     .experimental()
@@ -92,7 +101,41 @@ mod tests {
             r#"
 fn main() {
     ().foo();
- // ^^^^^^^^ error: no method `foo` on type `()`
+    // ^^^ error: no method `foo` on type `()`
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn smoke_test_in_macro_def_site() {
+        check_diagnostics(
+            r#"
+macro_rules! m {
+    ($rcv:expr) => {
+        $rcv.foo()
+    }
+}
+fn main() {
+    m!(());
+ // ^^^^^^ error: no method `foo` on type `()`
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn smoke_test_in_macro_call_site() {
+        check_diagnostics(
+            r#"
+macro_rules! m {
+    ($ident:ident) => {
+        ().$ident()
+    }
+}
+fn main() {
+    m!(foo);
+    // ^^^ error: no method `foo` on type `()`
 }
 "#,
         );
@@ -105,7 +148,7 @@ fn main() {
 struct Foo { bar: i32 }
 fn foo() {
     Foo { bar: i32 }.bar();
- // ^^^^^^^^^^^^^^^^^^^^^^ error: no method `bar` on type `Foo`, but a field with a similar name exists
+                  // ^^^ error: no method `bar` on type `Foo`, but a field with a similar name exists
 }
 "#,
         );

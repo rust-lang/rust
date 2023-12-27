@@ -12,14 +12,18 @@ error[E0609]: no field `await` on type `await_on_struct_similar::S`
   --> $DIR/suggest-switching-edition-on-await-cargo.rs:24:7
    |
 LL |     x.await;
-   |       ^^^^^ help: a field with a similar name exists: `awai`
+   |       ^^^^^ unknown field
    |
    = note: to `.await` a `Future`, switch to Rust 2018 or later
    = help: set `edition = "2021"` in `Cargo.toml`
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
+help: a field with a similar name exists
+   |
+LL |     x.awai;
+   |       ~~~~
 
 error[E0609]: no field `await` on type `Pin<&mut dyn Future<Output = ()>>`
-  --> $DIR/suggest-switching-edition-on-await-cargo.rs:33:7
+  --> $DIR/suggest-switching-edition-on-await-cargo.rs:34:7
    |
 LL |     x.await;
    |       ^^^^^ unknown field
@@ -29,10 +33,10 @@ LL |     x.await;
    = note: for more on editions, read https://doc.rust-lang.org/edition-guide
 
 error[E0609]: no field `await` on type `impl Future<Output = ()>`
-  --> $DIR/suggest-switching-edition-on-await-cargo.rs:42:7
+  --> $DIR/suggest-switching-edition-on-await-cargo.rs:43:7
    |
 LL |     x.await;
-   |       ^^^^^
+   |       ^^^^^ unknown field
    |
    = note: to `.await` a `Future`, switch to Rust 2018 or later
    = help: set `edition = "2021"` in `Cargo.toml`

@@ -1,9 +1,8 @@
-#![allow(dead_code)]
-
 // Allows the macro invocation below to work
 use crate as rustc_index;
 
-rustc_macros::newtype_index! {
+crate::newtype_index! {
+    #[orderable]
     #[max = 0xFFFF_FFFA]
     struct MyIdx {}
 }

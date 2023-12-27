@@ -27,7 +27,7 @@ pub enum UnsafetyViolationKind {
     UnsafeFn,
 }
 
-#[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
+#[derive(Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
 pub enum UnsafetyViolationDetails {
     CallToUnsafeFunction,
     UseOfInlineAssembly,
@@ -39,68 +39,17 @@ pub enum UnsafetyViolationDetails {
     AccessToUnionField,
     MutationOfLayoutConstrainedField,
     BorrowOfLayoutConstrainedField,
-    CallToFunctionWith,
+    CallToFunctionWith {
+        /// Target features enabled in callee's `#[target_feature]` but missing in
+        /// caller's `#[target_feature]`.
+        missing: Vec<Symbol>,
+        /// Target features in `missing` that are enabled at compile time
+        /// (e.g., with `-C target-feature`).
+        build_enabled: Vec<Symbol>,
+    },
 }
 
-impl UnsafetyViolationDetails {
-    pub fn description_and_note(&self) -> (&'static str, &'static str) {
-        use UnsafetyViolationDetails::*;
-        match self {
-            CallToUnsafeFunction => (
-                "call to unsafe function",
-                "consult the function's documentation for information on how to avoid undefined \
-                 behavior",
-            ),
-            UseOfInlineAssembly => (
-                "use of inline assembly",
-                "inline assembly is entirely unchecked and can cause undefined behavior",
-            ),
-            InitializingTypeWith => (
-                "initializing type with `rustc_layout_scalar_valid_range` attr",
-                "initializing a layout restricted type's field with a value outside the valid \
-                 range is undefined behavior",
-            ),
-            CastOfPointerToInt => {
-                ("cast of pointer to int", "casting pointers to integers in constants")
-            }
-            UseOfMutableStatic => (
-                "use of mutable static",
-                "mutable statics can be mutated by multiple threads: aliasing violations or data \
-                 races will cause undefined behavior",
-            ),
-            UseOfExternStatic => (
-                "use of extern static",
-                "extern statics are not controlled by the Rust type system: invalid data, \
-                 aliasing violations or data races will cause undefined behavior",
-            ),
-            DerefOfRawPointer => (
-                "dereference of raw pointer",
-                "raw pointers may be null, dangling or unaligned; they can violate aliasing rules \
-                 and cause data races: all of these are undefined behavior",
-            ),
-            AccessToUnionField => (
-                "access to union field",
-                "the field may not be properly initialized: using uninitialized data will cause \
-                 undefined behavior",
-            ),
-            MutationOfLayoutConstrainedField => (
-                "mutation of layout constrained field",
-                "mutating layout constrained fields cannot statically be checked for valid values",
-            ),
-            BorrowOfLayoutConstrainedField => (
-                "borrow of layout constrained field with interior mutability",
-                "references to fields of layout constrained fields lose the constraints. Coupled \
-                 with interior mutability, the field can be changed to invalid values",
-            ),
-            CallToFunctionWith => (
-                "call to function with `#[target_feature]`",
-                "can only be called if the required target features are available",
-            ),
-        }
-    }
-}
-
-#[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
+#[derive(Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
 pub struct UnsafetyViolation {
     pub source_info: SourceInfo,
     pub lint_root: hir::HirId,
@@ -132,6 +81,7 @@ pub struct UnsafetyCheckResult {
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]
+    #[encodable]
     #[debug_format = "_{}"]
     pub struct CoroutineSavedLocal {}
 }
@@ -341,7 +291,11 @@ pub enum ConstraintCategory<'tcx> {
     UseAsConst,
     UseAsStatic,
     TypeAnnotation,
-    Cast,
+    Cast {
+        /// Whether this is an unsizing cast and if yes, this contains the target type.
+        /// Region variables are erased to ReErased.
+        unsize_to: Option<Ty<'tcx>>,
+    },
 
     /// A constraint that came from checking the body of a closure.
     ///
@@ -416,7 +370,7 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
         let inner = tcx.fold_regions(ty, |r, depth| match r.kind() {
             ty::ReVar(vid) => {
                 let br = ty::BoundRegion { var: ty::BoundVar::new(vid.index()), kind: ty::BrAnon };
-                ty::Region::new_late_bound(tcx, depth, br)
+                ty::Region::new_bound(tcx, depth, br)
             }
             _ => bug!("unexpected region in ClosureOutlivesSubjectTy: {r:?}"),
         });
@@ -430,7 +384,7 @@ impl<'tcx> ClosureOutlivesSubjectTy<'tcx> {
         mut map: impl FnMut(ty::RegionVid) -> ty::Region<'tcx>,
     ) -> Ty<'tcx> {
         tcx.fold_regions(self.inner, |r, depth| match r.kind() {
-            ty::ReLateBound(debruijn, br) => {
+            ty::ReBound(debruijn, br) => {
                 debug_assert_eq!(debruijn, depth);
                 map(ty::RegionVid::new(br.var.index()))
             }

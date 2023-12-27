@@ -6,7 +6,7 @@ mod tests;
 use std::iter;
 
 use either::Either;
-use hir::{db::DefDatabase, HasSource, LangItem, Semantics};
+use hir::{db::DefDatabase, DescendPreference, HasSource, LangItem, Semantics};
 use ide_db::{
     base_db::FileRange,
     defs::{Definition, IdentClass, NameRefClass, OperatorClass},
@@ -21,6 +21,7 @@ use crate::{
     doc_links::token_as_doc_comment,
     markdown_remove::remove_markdown,
     markup::Markup,
+    navigation_target::UpmappingResult,
     runnables::{runnable_fn, runnable_mod},
     FileId, FilePosition, NavigationTarget, RangeInfo, Runnable, TryToNav,
 };
@@ -73,7 +74,7 @@ impl HoverAction {
                         it.module(db)?,
                         it.name(db).map(|name| name.display(db).to_string()),
                     ),
-                    nav: it.try_to_nav(db)?,
+                    nav: it.try_to_nav(db)?.call_site(),
                 })
             })
             .collect();
@@ -150,6 +151,19 @@ fn hover_simple(
         });
     }
 
+    if let Some((range, resolution)) =
+        sema.check_for_format_args_template(original_token.clone(), offset)
+    {
+        let res = hover_for_definition(
+            sema,
+            file_id,
+            Definition::from(resolution?),
+            &original_token.parent()?,
+            config,
+        )?;
+        return Some(RangeInfo::new(range, res));
+    }
+
     let in_attr = original_token
         .parent_ancestors()
         .filter_map(ast::Item::cast)
@@ -161,11 +175,10 @@ fn hover_simple(
 
     // prefer descending the same token kind in attribute expansions, in normal macros text
     // equivalency is more important
-    let descended = if in_attr {
-        [sema.descend_into_macros_with_kind_preference(original_token.clone(), offset)].into()
-    } else {
-        sema.descend_into_macros_with_same_text(original_token.clone(), offset)
-    };
+    let descended = sema.descend_into_macros(
+        if in_attr { DescendPreference::SameKind } else { DescendPreference::SameText },
+        original_token.clone(),
+    );
     let descended = || descended.iter();
 
     let result = descended()
@@ -180,26 +193,24 @@ fn hover_simple(
             descended()
                 .filter_map(|token| {
                     let node = token.parent()?;
-                    let class = IdentClass::classify_token(sema, token)?;
-                    if let IdentClass::Operator(OperatorClass::Await(_)) = class {
+                    match IdentClass::classify_node(sema, &node)? {
                         // It's better for us to fall back to the keyword hover here,
                         // rendering poll is very confusing
-                        return None;
+                        IdentClass::Operator(OperatorClass::Await(_)) => None,
+
+                        IdentClass::NameRefClass(NameRefClass::ExternCrateShorthand {
+                            decl,
+                            ..
+                        }) => Some(vec![(Definition::ExternCrateDecl(decl), node)]),
+
+                        class => Some(
+                            class
+                                .definitions()
+                                .into_iter()
+                                .zip(iter::repeat(node))
+                                .collect::<Vec<_>>(),
+                        ),
                     }
-                    if let IdentClass::NameRefClass(NameRefClass::ExternCrateShorthand {
-                        decl,
-                        ..
-                    }) = class
-                    {
-                        return Some(vec![(Definition::ExternCrateDecl(decl), node)]);
-                    }
-                    Some(
-                        class
-                            .definitions()
-                            .into_iter()
-                            .zip(iter::once(node).cycle())
-                            .collect::<Vec<_>>(),
-                    )
                 })
                 .flatten()
                 .unique_by(|&(def, _)| def)
@@ -300,11 +311,11 @@ pub(crate) fn hover_for_definition(
     sema: &Semantics<'_, RootDatabase>,
     file_id: FileId,
     definition: Definition,
-    node: &SyntaxNode,
+    scope_node: &SyntaxNode,
     config: &HoverConfig,
 ) -> Option<HoverResult> {
     let famous_defs = match &definition {
-        Definition::BuiltinType(_) => Some(FamousDefs(sema, sema.scope(node)?.krate())),
+        Definition::BuiltinType(_) => Some(FamousDefs(sema, sema.scope(scope_node)?.krate())),
         _ => None,
     };
     render::definition(sema.db, definition, famous_defs.as_ref(), config).map(|markup| {
@@ -332,22 +343,26 @@ fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<Hov
     }
 
     let adt = match def {
-        Definition::Trait(it) => return it.try_to_nav(db).map(to_action),
+        Definition::Trait(it) => {
+            return it.try_to_nav(db).map(UpmappingResult::call_site).map(to_action)
+        }
         Definition::Adt(it) => Some(it),
         Definition::SelfType(it) => it.self_ty(db).as_adt(),
         _ => None,
     }?;
-    adt.try_to_nav(db).map(to_action)
+    adt.try_to_nav(db).map(UpmappingResult::call_site).map(to_action)
 }
 
 fn show_fn_references_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
     match def {
-        Definition::Function(it) => it.try_to_nav(db).map(|nav_target| {
-            HoverAction::Reference(FilePosition {
-                file_id: nav_target.file_id,
-                offset: nav_target.focus_or_full_range().start(),
+        Definition::Function(it) => {
+            it.try_to_nav(db).map(UpmappingResult::call_site).map(|nav_target| {
+                HoverAction::Reference(FilePosition {
+                    file_id: nav_target.file_id,
+                    offset: nav_target.focus_or_full_range().start(),
+                })
             })
-        }),
+        }
         _ => None,
     }
 }

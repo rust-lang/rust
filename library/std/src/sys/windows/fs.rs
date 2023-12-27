@@ -1,7 +1,7 @@
 use crate::os::windows::prelude::*;
 
 use crate::borrow::Cow;
-use crate::ffi::OsString;
+use crate::ffi::{c_void, OsString};
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem::{self, MaybeUninit};
@@ -15,8 +15,6 @@ use crate::sys::time::SystemTime;
 use crate::sys::{c, cvt, Align8};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::thread;
-
-use core::ffi::c_void;
 
 use super::path::maybe_verbatim;
 use super::{api, to_u16s, IoResult};
@@ -156,7 +154,7 @@ impl DirEntry {
     }
 
     pub fn path(&self) -> PathBuf {
-        self.root.join(&self.file_name())
+        self.root.join(self.file_name())
     }
 
     pub fn file_name(&self) -> OsString {
@@ -273,7 +271,9 @@ impl OpenOptions {
             (false, false, false) => c::OPEN_EXISTING,
             (true, false, false) => c::OPEN_ALWAYS,
             (false, true, false) => c::TRUNCATE_EXISTING,
-            (true, true, false) => c::CREATE_ALWAYS,
+            // `CREATE_ALWAYS` has weird semantics so we emulate it using
+            // `OPEN_ALWAYS` and a manual truncation step. See #115745.
+            (true, true, false) => c::OPEN_ALWAYS,
             (_, _, true) => c::CREATE_NEW,
         })
     }
@@ -289,19 +289,42 @@ impl OpenOptions {
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
         let path = maybe_verbatim(path)?;
+        let creation = opts.get_creation_mode()?;
         let handle = unsafe {
             c::CreateFileW(
                 path.as_ptr(),
                 opts.get_access_mode()?,
                 opts.share_mode,
                 opts.security_attributes,
-                opts.get_creation_mode()?,
+                creation,
                 opts.get_flags_and_attributes(),
                 ptr::null_mut(),
             )
         };
         let handle = unsafe { HandleOrInvalid::from_raw_handle(handle) };
-        if let Ok(handle) = handle.try_into() {
+        if let Ok(handle) = OwnedHandle::try_from(handle) {
+            // Manual truncation. See #115745.
+            if opts.truncate
+                && creation == c::OPEN_ALWAYS
+                && unsafe { c::GetLastError() } == c::ERROR_ALREADY_EXISTS
+            {
+                unsafe {
+                    // This originally used `FileAllocationInfo` instead of
+                    // `FileEndOfFileInfo` but that wasn't supported by WINE.
+                    // It's arguable which fits the semantics of `OpenOptions`
+                    // better so let's just use the more widely supported method.
+                    let eof = c::FILE_END_OF_FILE_INFO { EndOfFile: 0 };
+                    let result = c::SetFileInformationByHandle(
+                        handle.as_raw_handle(),
+                        c::FileEndOfFileInfo,
+                        ptr::addr_of!(eof).cast::<c_void>(),
+                        mem::size_of::<c::FILE_END_OF_FILE_INFO>() as u32,
+                    );
+                    if result == 0 {
+                        return Err(io::Error::last_os_error());
+                    }
+                }
+            }
             Ok(File { handle: Handle::from_inner(handle) })
         } else {
             Err(Error::last_os_error())
@@ -548,7 +571,7 @@ impl File {
                 let user = super::args::from_wide_to_user_path(
                     subst.iter().copied().chain([0]).collect(),
                 )?;
-                Ok(PathBuf::from(OsString::from_wide(&user.strip_suffix(&[0]).unwrap_or(&user))))
+                Ok(PathBuf::from(OsString::from_wide(user.strip_suffix(&[0]).unwrap_or(&user))))
             } else {
                 Ok(PathBuf::from(OsString::from_wide(subst)))
             }
@@ -786,7 +809,7 @@ fn open_link_no_reparse(parent: &File, name: &[u16], access: u32) -> io::Result<
         // tricked into following a symlink. However, it may not be available in
         // earlier versions of Windows.
         static ATTRIBUTES: AtomicU32 = AtomicU32::new(c::OBJ_DONT_REPARSE);
-        let mut object = c::OBJECT_ATTRIBUTES {
+        let object = c::OBJECT_ATTRIBUTES {
             ObjectName: &mut name_str,
             RootDirectory: parent.as_raw_handle(),
             Attributes: ATTRIBUTES.load(Ordering::Relaxed),
@@ -795,7 +818,7 @@ fn open_link_no_reparse(parent: &File, name: &[u16], access: u32) -> io::Result<
         let status = c::NtCreateFile(
             &mut handle,
             access,
-            &mut object,
+            &object,
             &mut io_status,
             crate::ptr::null_mut(),
             0,
@@ -874,7 +897,7 @@ impl fmt::Debug for File {
         // FIXME(#24570): add more info here (e.g., mode)
         let mut b = f.debug_struct("File");
         b.field("handle", &self.handle.as_raw_handle());
-        if let Ok(path) = get_path(&self) {
+        if let Ok(path) = get_path(self) {
             b.field("path", &path);
         }
         b.finish()
@@ -1193,7 +1216,7 @@ pub fn readlink(path: &Path) -> io::Result<PathBuf> {
     let mut opts = OpenOptions::new();
     opts.access_mode(0);
     opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT | c::FILE_FLAG_BACKUP_SEMANTICS);
-    let file = File::open(&path, &opts)?;
+    let file = File::open(path, &opts)?;
     file.readlink()
 }
 
@@ -1407,7 +1430,7 @@ pub fn symlink_junction<P: AsRef<Path>, Q: AsRef<Path>>(
 #[allow(dead_code)]
 fn symlink_junction_inner(original: &Path, junction: &Path) -> io::Result<()> {
     let d = DirBuilder::new();
-    d.mkdir(&junction)?;
+    d.mkdir(junction)?;
 
     let mut opts = OpenOptions::new();
     opts.write(true);

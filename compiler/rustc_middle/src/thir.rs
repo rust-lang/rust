@@ -134,7 +134,6 @@ pub struct Block {
     /// This does *not* include labels on loops, e.g. `'label: loop {}`.
     pub targeted_by_break: bool,
     pub region_scope: region::Scope,
-    pub opt_destruction_scope: Option<region::Scope>,
     /// The span of the block, including the opening braces,
     /// the label, and the `unsafe` keyword, if present.
     pub span: Span,
@@ -193,7 +192,6 @@ pub enum BlockSafety {
 #[derive(Clone, Debug, HashStable)]
 pub struct Stmt<'tcx> {
     pub kind: StmtKind<'tcx>,
-    pub opt_destruction_scope: Option<region::Scope>,
 }
 
 #[derive(Clone, Debug, HashStable)]
@@ -635,7 +633,12 @@ impl<'tcx> Pat<'tcx> {
 
         use PatKind::*;
         match &self.kind {
-            Wild | Range(..) | Binding { subpattern: None, .. } | Constant { .. } | Error(_) => {}
+            Wild
+            | Never
+            | Range(..)
+            | Binding { subpattern: None, .. }
+            | Constant { .. }
+            | Error(_) => {}
             AscribeUserType { subpattern, .. }
             | Binding { subpattern: Some(subpattern), .. }
             | Deref { subpattern }
@@ -655,7 +658,9 @@ impl<'tcx> Pat<'tcx> {
     pub fn pat_error_reported(&self) -> Result<(), ErrorGuaranteed> {
         let mut error = None;
         self.walk(|pat| {
-            if let PatKind::Error(e) = pat.kind && error.is_none() {
+            if let PatKind::Error(e) = pat.kind
+                && error.is_none()
+            {
                 error = Some(e);
             }
             error.is_none()
@@ -806,6 +811,9 @@ pub enum PatKind<'tcx> {
     Or {
         pats: Box<[Box<Pat<'tcx>>]>,
     },
+
+    /// A never pattern `!`.
+    Never,
 
     /// An error has been encountered during lowering. We probably shouldn't report more lints
     /// related to this pattern.
@@ -1067,6 +1075,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
 
         match self.kind {
             PatKind::Wild => write!(f, "_"),
+            PatKind::Never => write!(f, "!"),
             PatKind::AscribeUserType { ref subpattern, .. } => write!(f, "{subpattern}: _"),
             PatKind::Binding { mutability, name, mode, ref subpattern, .. } => {
                 let is_mut = match mode {
@@ -1213,12 +1222,12 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
 mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(Block, 56);
+    static_assert_size!(Block, 48);
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 40);
     static_assert_size!(Pat<'_>, 64);
     static_assert_size!(PatKind<'_>, 48);
-    static_assert_size!(Stmt<'_>, 56);
+    static_assert_size!(Stmt<'_>, 48);
     static_assert_size!(StmtKind<'_>, 48);
     // tidy-alphabetical-end
 }

@@ -529,31 +529,31 @@ fn duplicate_slice() -> (bool, bool) {
             // CHECK: [[a:_.*]] = (const "a",);
             // CHECK: [[au:_.*]] = ([[a]].0: &str) as u128 (Transmute);
             let a = ("a",);
-            Call(au = transmute::<_, u128>(a.0), bb1)
+            Call(au = transmute::<_, u128>(a.0), bb1, UnwindContinue())
         }
         bb1 = {
             // CHECK: [[c:_.*]] = identity::<&str>(([[a]].0: &str))
-            Call(c = identity(a.0), bb2)
+            Call(c = identity(a.0), bb2, UnwindContinue())
         }
         bb2 = {
             // CHECK: [[cu:_.*]] = [[c]] as u128 (Transmute);
-            Call(cu = transmute::<_, u128>(c), bb3)
+            Call(cu = transmute::<_, u128>(c), bb3, UnwindContinue())
         }
         bb3 = {
             // This slice is different from `a.0`. Hence `bu` is not `au`.
             // CHECK: [[b:_.*]] = const "a";
             // CHECK: [[bu:_.*]] = [[b]] as u128 (Transmute);
             let b = "a";
-            Call(bu = transmute::<_, u128>(b), bb4)
+            Call(bu = transmute::<_, u128>(b), bb4, UnwindContinue())
         }
         bb4 = {
             // This returns a copy of `b`, which is not `a`.
             // CHECK: [[d:_.*]] = identity::<&str>([[b]])
-            Call(d = identity(b), bb5)
+            Call(d = identity(b), bb5, UnwindContinue())
         }
         bb5 = {
             // CHECK: [[du:_.*]] = [[d]] as u128 (Transmute);
-            Call(du = transmute::<_, u128>(d), bb6)
+            Call(du = transmute::<_, u128>(d), bb6, UnwindContinue())
         }
         bb6 = {
             // `direct` must not fold to `true`, as `indirect` will not.
@@ -609,6 +609,22 @@ fn indirect_static() {
     })
 }
 
+/// Verify that having constant index `u64::MAX` does not yield to an overflow in rustc.
+fn constant_index_overflow<T: Copy>(x: &[T]) {
+    // CHECK-LABEL: fn constant_index_overflow(
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: debug b => [[b:_.*]];
+    // CHECK: [[a]] = const usize::MAX;
+    // CHECK-NOT: = (*_1)[{{.*}} of 0];
+    // CHECK: [[b]] = (*_1)[[[a]]];
+    // CHECK-NOT: = (*_1)[{{.*}} of 0];
+    // CHECK: [[b]] = (*_1)[0 of 1];
+    // CHECK-NOT: = (*_1)[{{.*}} of 0];
+    let a = u64::MAX as usize;
+    let b = if a < x.len() { x[a] } else { x[0] };
+    opaque(b)
+}
+
 fn main() {
     subexpression_elimination(2, 4, 5);
     wrap_unwrap(5);
@@ -627,6 +643,7 @@ fn main() {
     repeat();
     fn_pointers();
     indirect_static();
+    constant_index_overflow(&[5, 3]);
 }
 
 #[inline(never)]
@@ -653,3 +670,4 @@ fn identity<T>(x: T) -> T {
 // EMIT_MIR gvn.repeat.GVN.diff
 // EMIT_MIR gvn.fn_pointers.GVN.diff
 // EMIT_MIR gvn.indirect_static.GVN.diff
+// EMIT_MIR gvn.constant_index_overflow.GVN.diff

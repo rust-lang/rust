@@ -8,6 +8,28 @@ use crate::os::xous::ffi::Error as XousError;
 use crate::path::{self, PathBuf};
 
 #[cfg(not(test))]
+#[cfg(feature = "panic_unwind")]
+mod eh_unwinding {
+    pub(crate) struct EhFrameFinder(usize /* eh_frame */);
+    pub(crate) static mut EH_FRAME_SETTINGS: EhFrameFinder = EhFrameFinder(0);
+    impl EhFrameFinder {
+        pub(crate) unsafe fn init(&mut self, eh_frame: usize) {
+            unsafe {
+                EH_FRAME_SETTINGS.0 = eh_frame;
+            }
+        }
+    }
+    unsafe impl unwind::EhFrameFinder for EhFrameFinder {
+        fn find(&self, _pc: usize) -> Option<unwind::FrameInfo> {
+            Some(unwind::FrameInfo {
+                text_base: None,
+                kind: unwind::FrameInfoKind::EhFrame(self.0),
+            })
+        }
+    }
+}
+
+#[cfg(not(test))]
 mod c_compat {
     use crate::os::xous::ffi::exit;
     extern "C" {
@@ -20,7 +42,12 @@ mod c_compat {
     }
 
     #[no_mangle]
-    pub extern "C" fn _start() {
+    pub extern "C" fn _start(eh_frame: usize) {
+        #[cfg(feature = "panic_unwind")]
+        unsafe {
+            super::eh_unwinding::EH_FRAME_SETTINGS.init(eh_frame);
+            unwind::set_custom_eh_frame_finder(&super::eh_unwinding::EH_FRAME_SETTINGS).ok();
+        }
         exit(unsafe { main() });
     }
 

@@ -13,6 +13,6 @@ help: box the return type, and wrap all of the returned values in `Box::new`
 LL | fn or<'a>(first: &'static dyn Foo<'a>) -> Box<dyn Foo<'a>> {
    |                                           ++++           +
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0746`.

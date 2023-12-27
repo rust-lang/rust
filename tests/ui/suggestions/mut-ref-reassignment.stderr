@@ -32,8 +32,8 @@ LL | fn suggestion2(opt: &mut Option<String>) {
 LL |     opt = Some(String::new())
    |           ^^^^^^^^^^^^^^^^^^^ expected `&mut Option<String>`, found `Option<String>`
    |
-   = note: expected mutable reference `&mut Option<String>`
-                           found enum `Option<String>`
+   = note: expected mutable reference `&mut Option<_>`
+                           found enum `Option<_>`
 help: consider dereferencing here to assign to the mutably borrowed value
    |
 LL |     *opt = Some(String::new())

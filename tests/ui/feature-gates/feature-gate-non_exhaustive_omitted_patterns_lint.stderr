@@ -192,6 +192,6 @@ LL |     #[warn(non_exhaustive_omitted_patterns)]
    = help: add `#![feature(non_exhaustive_omitted_patterns_lint)]` to the crate attributes to enable
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to previous error; 16 warnings emitted
+error: aborting due to 1 previous error; 16 warnings emitted
 
 For more information about this error, try `rustc --explain E0004`.

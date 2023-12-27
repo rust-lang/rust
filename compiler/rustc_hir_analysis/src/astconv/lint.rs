@@ -24,7 +24,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     ..
                 }),
             ..
-        }) = tcx.hir().get_by_def_id(parent_id)
+        }) = tcx.hir_node_by_def_id(parent_id)
             && self_ty.hir_id == impl_self_ty.hir_id
         {
             if !of_trait_ref.trait_def_id().is_some_and(|def_id| def_id.is_local()) {
@@ -97,7 +97,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let msg = "trait objects must include the `dyn` keyword";
                 let label = "add `dyn` keyword before this trait";
                 let mut diag =
-                    rustc_errors::struct_span_err!(tcx.sess, self_ty.span, E0782, "{}", msg);
+                    rustc_errors::struct_span_err!(tcx.dcx(), self_ty.span, E0782, "{}", msg);
                 if self_ty.span.can_be_used_for_suggestions() {
                     diag.multipart_suggestion_verbose(
                         label,
@@ -106,7 +106,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     );
                 }
                 // check if the impl trait that we are considering is a impl of a local trait
-                self.maybe_lint_blanket_trait_impl(&self_ty, &mut diag);
+                self.maybe_lint_blanket_trait_impl(self_ty, &mut diag);
                 diag.stash(self_ty.span, StashKey::TraitMissingMethod);
             } else {
                 let msg = "trait objects without an explicit `dyn` are deprecated";
@@ -121,8 +121,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             sugg,
                             Applicability::MachineApplicable,
                         );
-                        self.maybe_lint_blanket_trait_impl(&self_ty, lint);
-                        lint
+                        self.maybe_lint_blanket_trait_impl(self_ty, lint);
                     },
                 );
             }

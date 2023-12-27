@@ -8,5 +8,5 @@ LL | fn my_test() {}
    = note: `-D clippy::tests-outside-test-module` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::tests_outside_test_module)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

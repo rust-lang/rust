@@ -6,6 +6,6 @@ LL | pub fn f(_f: &dyn SelfInput) {}
    |
    = note: it cannot use `Self` as a type parameter in a supertrait or `where`-clause
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0038`.

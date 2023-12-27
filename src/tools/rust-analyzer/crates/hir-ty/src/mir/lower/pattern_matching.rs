@@ -284,6 +284,7 @@ impl MirLowerCtx<'_> {
                             );
                             (current, current_else) = self.pattern_match_binding(
                                 id,
+                                *slice,
                                 next_place,
                                 (*slice).into(),
                                 current,
@@ -395,6 +396,7 @@ impl MirLowerCtx<'_> {
                 if mode == MatchingMode::Bind {
                     self.pattern_match_binding(
                         *id,
+                        pattern,
                         cond_place,
                         pattern.into(),
                         current,
@@ -431,13 +433,14 @@ impl MirLowerCtx<'_> {
     fn pattern_match_binding(
         &mut self,
         id: BindingId,
+        pat: PatId,
         cond_place: Place,
         span: MirSpan,
         current: BasicBlockId,
         current_else: Option<BasicBlockId>,
     ) -> Result<(BasicBlockId, Option<BasicBlockId>)> {
         let target_place = self.binding_local(id)?;
-        let mode = self.infer.binding_modes[id];
+        let mode = self.infer.binding_modes[pat];
         self.push_storage_live(id, current)?;
         self.push_assignment(
             current,

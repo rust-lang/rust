@@ -341,8 +341,8 @@ fn structurally_same_type_impl<'tcx>(
 
                     // We don't compare regions, but leaving bound regions around ICEs, so
                     // we erase them.
-                    let a_sig = tcx.erase_late_bound_regions(a_poly_sig);
-                    let b_sig = tcx.erase_late_bound_regions(b_poly_sig);
+                    let a_sig = tcx.instantiate_bound_regions_with_erased(a_poly_sig);
+                    let b_sig = tcx.instantiate_bound_regions_with_erased(b_poly_sig);
 
                     (a_sig.abi, a_sig.unsafety, a_sig.c_variadic)
                         == (b_sig.abi, b_sig.unsafety, b_sig.c_variadic)

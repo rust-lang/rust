@@ -29,8 +29,9 @@ use crate::utils;
 use crate::utils::cache::{Interned, INTERNER};
 use crate::utils::exec::BootstrapCommand;
 use crate::utils::helpers::{
-    self, add_link_lib_path, dylib_path, dylib_path_var, output, t,
-    target_supports_cranelift_backend, up_to_date,
+    self, add_link_lib_path, add_rustdoc_cargo_linker_args, dylib_path, dylib_path_var,
+    linker_args, linker_flags, output, t, target_supports_cranelift_backend, up_to_date,
+    LldThreads,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
 use crate::{envify, CLang, DocTests, GitRepo, Mode};
@@ -49,9 +50,9 @@ const MIR_OPT_BLESS_TARGET_MAPPING: &[(&str, &str)] = &[
     ("i686-unknown-linux-musl", "x86_64-unknown-linux-musl"),
     ("i686-pc-windows-msvc", "x86_64-pc-windows-msvc"),
     ("i686-pc-windows-gnu", "x86_64-pc-windows-gnu"),
-    ("i686-apple-darwin", "x86_64-apple-darwin"),
     // ARM Macs don't have a corresponding 32-bit target that they can (easily)
     // build for, so there is no entry for "aarch64-apple-darwin" here.
+    // Likewise, i686 for macOS is no longer possible to build.
 ];
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -271,13 +272,14 @@ impl Step for Cargotest {
 
         let _time = helpers::timeit(&builder);
         let mut cmd = builder.tool_cmd(Tool::CargoTest);
-        builder.run_delaying_failure(
-            cmd.arg(&cargo)
-                .arg(&out_dir)
-                .args(builder.config.test_args())
-                .env("RUSTC", builder.rustc(compiler))
-                .env("RUSTDOC", builder.rustdoc(compiler)),
-        );
+        let mut cmd = cmd
+            .arg(&cargo)
+            .arg(&out_dir)
+            .args(builder.config.test_args())
+            .env("RUSTC", builder.rustc(compiler))
+            .env("RUSTDOC", builder.rustdoc(compiler));
+        add_rustdoc_cargo_linker_args(&mut cmd, builder, compiler.host, LldThreads::No);
+        builder.run_delaying_failure(cmd);
     }
 }
 
@@ -369,7 +371,7 @@ impl Step for RustAnalyzer {
 
         // We don't need to build the whole Rust Analyzer for the proc-macro-srv test suite,
         // but we do need the standard library to be present.
-        builder.ensure(compile::Std::new(compiler, host));
+        builder.ensure(compile::Rustc::new(compiler, host));
 
         let workspace_path = "src/tools/rust-analyzer";
         // until the whole RA test suite runs on `i686`, we only run
@@ -378,7 +380,7 @@ impl Step for RustAnalyzer {
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
-            Mode::ToolStd,
+            Mode::ToolRustc,
             host,
             "test",
             crate_path,
@@ -862,15 +864,8 @@ impl Step for RustdocTheme {
             .env("CFG_RELEASE_CHANNEL", &builder.config.channel)
             .env("RUSTDOC_REAL", builder.rustdoc(self.compiler))
             .env("RUSTC_BOOTSTRAP", "1");
-        if let Some(linker) = builder.linker(self.compiler.host) {
-            cmd.env("RUSTDOC_LINKER", linker);
-        }
-        if builder.is_fuse_ld_lld(self.compiler.host) {
-            cmd.env(
-                "RUSTDOC_LLD_NO_THREADS",
-                helpers::lld_flag_no_threads(self.compiler.host.contains("windows")),
-            );
-        }
+        cmd.args(linker_args(builder, self.compiler.host, LldThreads::No));
+
         builder.run_delaying_failure(&mut cmd);
     }
 }
@@ -1005,6 +1000,7 @@ impl Step for RustdocGUI {
         let run = run.suite_path("tests/rustdoc-gui");
         run.lazy_default_condition(Box::new(move || {
             builder.config.nodejs.is_some()
+                && builder.doc_tests != DocTests::Only
                 && builder
                     .config
                     .npm
@@ -1043,6 +1039,8 @@ impl Step for RustdocGUI {
 
         cmd.env("RUSTDOC", builder.rustdoc(self.compiler))
             .env("RUSTC", builder.rustc(self.compiler));
+
+        add_rustdoc_cargo_linker_args(&mut cmd, builder, self.compiler.host, LldThreads::No);
 
         for path in &builder.paths {
             if let Some(p) = helpers::is_valid_test_suite_arg(path, "tests/rustdoc-gui", builder) {
@@ -1127,10 +1125,10 @@ impl Step for Tidy {
                 let inferred_rustfmt_dir = builder.initial_rustc.parent().unwrap();
                 eprintln!(
                     "\
-error: no `rustfmt` binary found in {PATH}
-info: `rust.channel` is currently set to \"{CHAN}\"
-help: if you are testing a beta branch, set `rust.channel` to \"beta\" in the `config.toml` file
-help: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to `x.py test`",
+ERROR: no `rustfmt` binary found in {PATH}
+INFO: `rust.channel` is currently set to \"{CHAN}\"
+HELP: if you are testing a beta branch, set `rust.channel` to \"beta\" in the `config.toml` file
+HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to `x.py test`",
                     PATH = inferred_rustfmt_dir.display(),
                     CHAN = builder.config.channel,
                 );
@@ -1162,7 +1160,8 @@ help: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to 
     }
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/tools/tidy")
+        let default = run.builder.doc_tests != DocTests::Only;
+        run.path("src/tools/tidy").default_condition(default)
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -1183,7 +1182,7 @@ impl Step for ExpandYamlAnchors {
     /// appropriate configuration for all our CI providers. This step ensures the tool was called
     /// by the user before committing CI changes.
     fn run(self, builder: &Builder<'_>) {
-        // Note: `.github/` is not included in dist-src tarballs
+        // NOTE: `.github/` is not included in dist-src tarballs
         if !builder.src.join(".github/workflows/ci.yml").exists() {
             builder.info("Skipping YAML anchors check: GitHub Actions config not found");
             return;
@@ -1564,12 +1563,16 @@ impl Step for Compiletest {
     /// compiletest `mode` and `suite` arguments. For example `mode` can be
     /// "run-pass" or `suite` can be something like `debuginfo`.
     fn run(self, builder: &Builder<'_>) {
+        if builder.doc_tests == DocTests::Only {
+            return;
+        }
+
         if builder.top_stage == 0 && env::var("COMPILETEST_FORCE_STAGE0").is_err() {
             eprintln!("\
-error: `--stage 0` runs compiletest on the beta compiler, not your local changes, and will almost always cause tests to fail
-help: to test the compiler, use `--stage 1` instead
-help: to test the standard library, use `--stage 0 library/std` instead
-note: if you're sure you want to do this, please open an issue as to why. In the meantime, you can override this with `COMPILETEST_FORCE_STAGE0=1`."
+ERROR: `--stage 0` runs compiletest on the beta compiler, not your local changes, and will almost always cause tests to fail
+HELP: to test the compiler, use `--stage 1` instead
+HELP: to test the standard library, use `--stage 0 library/std` instead
+NOTE: if you're sure you want to do this, please open an issue as to why. In the meantime, you can override this with `COMPILETEST_FORCE_STAGE0=1`."
             );
             crate::exit!(1);
         }
@@ -1744,14 +1747,14 @@ note: if you're sure you want to do this, please open an issue as to why. In the
 
         let mut hostflags = flags.clone();
         hostflags.push(format!("-Lnative={}", builder.test_helpers_out(compiler.host).display()));
-        hostflags.extend(builder.lld_flags(compiler.host));
+        hostflags.extend(linker_flags(builder, compiler.host, LldThreads::No));
         for flag in hostflags {
             cmd.arg("--host-rustcflags").arg(flag);
         }
 
         let mut targetflags = flags;
         targetflags.push(format!("-Lnative={}", builder.test_helpers_out(target).display()));
-        targetflags.extend(builder.lld_flags(target));
+        targetflags.extend(linker_flags(builder, compiler.host, LldThreads::No));
         for flag in targetflags {
             cmd.arg("--target-rustcflags").arg(flag);
         }
@@ -1824,6 +1827,10 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         }
 
         cmd.arg("--json");
+
+        if builder.config.rust_debug_assertions_std {
+            cmd.arg("--with-debug-assertions");
+        };
 
         let mut llvm_components_passed = false;
         let mut copts_passed = false;
@@ -1925,13 +1932,18 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         //
         // Note that if we encounter `PATH` we make sure to append to our own `PATH`
         // rather than stomp over it.
-        if !builder.config.dry_run() && target.contains("msvc") {
+        if !builder.config.dry_run() && target.is_msvc() {
             for &(ref k, ref v) in builder.cc.borrow()[&target].env() {
                 if k != "PATH" {
                     cmd.env(k, v);
                 }
             }
         }
+
+        // Some UI tests trigger behavior in rustc where it reads $CARGO and changes behavior if it exists.
+        // To make the tests work that rely on it not being set, make sure it is not set.
+        cmd.env_remove("CARGO");
+
         cmd.env("RUSTC_BOOTSTRAP", "1");
         // Override the rustc version used in symbol hashes to reduce the amount of normalization
         // needed when diffing test output.
@@ -1970,6 +1982,10 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         if !builder.config.omit_git_hash {
             cmd.arg("--git-hash");
         }
+
+        let git_config = builder.config.git_config();
+        cmd.arg("--git-repository").arg(git_config.git_repository);
+        cmd.arg("--nightly-branch").arg(git_config.nightly_branch);
 
         builder.ci_env.force_coloring_in_ci(&mut cmd);
 
@@ -2318,6 +2334,8 @@ impl Step for CrateLibrustc {
     }
 
     fn run(self, builder: &Builder<'_>) {
+        builder.ensure(compile::Std::new(self.compiler, self.target));
+
         builder.ensure(Crate {
             compiler: self.compiler,
             target: self.target,
@@ -3053,7 +3071,7 @@ impl Step for TestHelpers {
         // We may have found various cross-compilers a little differently due to our
         // extra configuration, so inform cc of these compilers. Note, though, that
         // on MSVC we still need cc's detection of env vars (ugh).
-        if !target.contains("msvc") {
+        if !target.is_msvc() {
             if let Some(ar) = builder.ar(target) {
                 cfg.archiver(ar);
             }

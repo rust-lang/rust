@@ -128,28 +128,43 @@ fn test_format_int_exp_precision() {
     let big_int: u32 = 314_159_265;
     assert_eq!(format!("{big_int:.1e}"), format!("{:.1e}", f64::from(big_int)));
 
-    //test adding precision
+    // test adding precision
     assert_eq!(format!("{:.10e}", i8::MIN), "-1.2800000000e2");
     assert_eq!(format!("{:.10e}", i16::MIN), "-3.2768000000e4");
     assert_eq!(format!("{:.10e}", i32::MIN), "-2.1474836480e9");
     assert_eq!(format!("{:.20e}", i64::MIN), "-9.22337203685477580800e18");
     assert_eq!(format!("{:.40e}", i128::MIN), "-1.7014118346046923173168730371588410572800e38");
 
-    //test rounding
+    // test rounding
     assert_eq!(format!("{:.1e}", i8::MIN), "-1.3e2");
     assert_eq!(format!("{:.1e}", i16::MIN), "-3.3e4");
     assert_eq!(format!("{:.1e}", i32::MIN), "-2.1e9");
     assert_eq!(format!("{:.1e}", i64::MIN), "-9.2e18");
     assert_eq!(format!("{:.1e}", i128::MIN), "-1.7e38");
 
-    //test huge precision
+    // test huge precision
     assert_eq!(format!("{:.1000e}", 1), format!("1.{}e0", "0".repeat(1000)));
     //test zero precision
     assert_eq!(format!("{:.0e}", 1), format!("1e0",));
     assert_eq!(format!("{:.0e}", 35), format!("4e1",));
 
-    //test padding with precision (and sign)
+    // test padding with precision (and sign)
     assert_eq!(format!("{:+10.3e}", 1), "  +1.000e0");
+
+    // test precision remains correct when rounding to next power
+    #[cfg(miri)] // can't cover all of `i16` in Miri
+    let range = [i16::MIN, -1, 1, i16::MAX];
+    #[cfg(not(miri))]
+    let range = i16::MIN..=i16::MAX;
+    for i in range {
+        for p in 0..=5 {
+            assert_eq!(
+                format!("{i:.p$e}"),
+                format!("{:.p$e}", f32::from(i)),
+                "integer {i} at precision {p}"
+            );
+        }
+    }
 }
 
 #[test]

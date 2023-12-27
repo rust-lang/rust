@@ -38,3 +38,5 @@ tests/ui/target-feature/missing-plusminus.rs
 tests/ui/sse2.rs
 tests/ui/codegen/issue-79865-llvm-miscompile.rs
 tests/ui/intrinsics/intrinsics-integer.rs
+tests/ui/std-backtrace.rs
+tests/ui/mir/alignment/packed.rs

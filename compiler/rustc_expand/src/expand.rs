@@ -93,7 +93,7 @@ macro_rules! ast_fragments {
                 }
                 match self {
                     $($(AstFragment::$Kind(ast) => ast.extend(placeholders.iter().flat_map(|id| {
-                        ${ignore(flat_map_ast_elt)}
+                        ${ignore($flat_map_ast_elt)}
                         placeholder(AstFragmentKind::$Kind, *id, None).$make_ast()
                     })),)?)*
                     _ => panic!("unexpected AST fragment kind")
@@ -435,7 +435,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 invocations = mem::take(&mut undetermined_invocations);
                 force = !mem::replace(&mut progress, false);
                 if force && self.monotonic {
-                    self.cx.sess.delay_span_bug(
+                    self.cx.dcx().span_delayed_bug(
                         invocations.last().unwrap().0.span(),
                         "expansion entered force mode without producing any errors",
                     );
@@ -513,7 +513,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 ExpandResult::Retry(invoc) => {
                     if force {
-                        self.cx.span_bug(
+                        self.cx.dcx().span_bug(
                             invoc.span(),
                             "expansion entered force mode but is still stuck",
                         );
@@ -611,7 +611,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             limit => limit * 2,
         };
 
-        self.cx.emit_err(RecursionLimitReached {
+        self.cx.dcx().emit_err(RecursionLimitReached {
             span: expn_data.call_site,
             descr: expn_data.kind.descr(),
             suggested_limit,
@@ -624,7 +624,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     /// A macro's expansion does not fit in this fragment kind.
     /// For example, a non-type macro in a type position.
     fn error_wrong_fragment_kind(&mut self, kind: AstFragmentKind, mac: &ast::MacCall, span: Span) {
-        self.cx.emit_err(WrongFragmentKind { span, kind: kind.name(), name: &mac.path });
+        self.cx.dcx().emit_err(WrongFragmentKind { span, kind: kind.name(), name: &mac.path });
 
         self.cx.trace_macros_diag();
     }
@@ -702,7 +702,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     };
                     let attr_item = attr.unwrap_normal_item();
                     if let AttrArgs::Eq(..) = attr_item.args {
-                        self.cx.emit_err(UnsupportedKeyValue { span });
+                        self.cx.dcx().emit_err(UnsupportedKeyValue { span });
                     }
                     let inner_tokens = attr_item.args.inner_tokens();
                     let Ok(tok_result) = expander.expand(self.cx, span, inner_tokens, tokens)
@@ -729,7 +729,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 AstFragmentKind::Expr | AstFragmentKind::MethodReceiverExpr
                             ) && items.is_empty()
                             {
-                                self.cx.emit_err(RemoveExprNotSupported { span });
+                                self.cx.dcx().emit_err(RemoveExprNotSupported { span });
                                 fragment_kind.dummy(span)
                             } else {
                                 fragment_kind.expect_from_annotatables(items)
@@ -955,12 +955,15 @@ pub fn ensure_complete_parse<'a>(
             _ => None,
         };
 
-        parser.sess.emit_err(IncompleteParse {
+        let expands_to_match_arm = kind_name == "pattern" && parser.token == token::FatArrow;
+
+        parser.dcx().emit_err(IncompleteParse {
             span: def_site_span,
             token,
             label_span: span,
             macro_path,
             kind_name,
+            expands_to_match_arm: expands_to_match_arm.then_some(()),
             add_semicolon,
         });
     }
@@ -1047,7 +1050,7 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
         _pos: usize,
         span: Span,
     ) {
-        collector.cx.emit_err(RemoveNodeNotSupported { span, descr: Self::descr() });
+        collector.cx.dcx().emit_err(RemoveNodeNotSupported { span, descr: Self::descr() });
     }
 
     /// All of the names (items) declared by this node.
@@ -1096,7 +1099,7 @@ impl InvocationCollectorNode for P<ast::Item> {
             ModKind::Loaded(_, inline, _) => {
                 // Inline `mod foo { ... }`, but we still need to push directories.
                 let (dir_path, dir_ownership) = mod_dir_path(
-                    &ecx.sess,
+                    ecx.sess,
                     ident,
                     &attrs,
                     &ecx.current_expansion.module,
@@ -1111,7 +1114,7 @@ impl InvocationCollectorNode for P<ast::Item> {
                 let old_attrs_len = attrs.len();
                 let ParsedExternalMod { items, spans, file_path, dir_path, dir_ownership } =
                     parse_external_mod(
-                        &ecx.sess,
+                        ecx.sess,
                         ident,
                         span,
                         &ecx.current_expansion.module,
@@ -1168,14 +1171,14 @@ impl InvocationCollectorNode for P<ast::Item> {
                     ast::UseTreeKind::Simple(_) => idents.push(ut.ident()),
                     ast::UseTreeKind::Nested(nested) => {
                         for (ut, _) in nested {
-                            collect_use_tree_leaves(&ut, idents);
+                            collect_use_tree_leaves(ut, idents);
                         }
                     }
                 }
             }
 
             let mut idents = Vec::new();
-            collect_use_tree_leaves(&ut, &mut idents);
+            collect_use_tree_leaves(ut, &mut idents);
             return idents;
         }
 
@@ -1531,7 +1534,7 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, OptExprTag> {
         }
     }
     fn pre_flat_map_node_collect_attr(cfg: &StripUnconfigured<'_>, attr: &ast::Attribute) {
-        cfg.maybe_emit_expr_attr_err(&attr);
+        cfg.maybe_emit_expr_attr_err(attr);
     }
 }
 
@@ -1580,7 +1583,7 @@ struct InvocationCollector<'a, 'b> {
 impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn cfg(&self) -> StripUnconfigured<'_> {
         StripUnconfigured {
-            sess: &self.cx.sess,
+            sess: self.cx.sess,
             features: Some(self.cx.ecfg.features),
             config_tokens: false,
             lint_node_id: self.cx.current_expansion.lint_node_id,
@@ -1693,7 +1696,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
             if attr.is_doc_comment() {
                 self.cx.sess.parse_sess.buffer_lint_with_diagnostic(
-                    &UNUSED_DOC_COMMENTS,
+                    UNUSED_DOC_COMMENTS,
                     current_span,
                     self.cx.current_expansion.lint_node_id,
                     "unused doc comment",
@@ -1705,7 +1708,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 // eagerly evaluated.
                 if attr_name != sym::cfg && attr_name != sym::cfg_attr {
                     self.cx.sess.parse_sess.buffer_lint_with_diagnostic(
-                        &UNUSED_ATTRIBUTES,
+                        UNUSED_ATTRIBUTES,
                         attr.span,
                         self.cx.current_expansion.lint_node_id,
                         format!("unused attribute `{attr_name}`"),

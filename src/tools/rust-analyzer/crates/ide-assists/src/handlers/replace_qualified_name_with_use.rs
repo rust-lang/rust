@@ -68,6 +68,7 @@ pub(crate) fn replace_qualified_name_with_use(
                 module,
                 ctx.config.insert_use.prefix_kind,
                 ctx.config.prefer_no_std,
+                ctx.config.prefer_prelude,
             )
         })
         .flatten();

@@ -204,7 +204,7 @@ impl EarlyLintPass for NonAsciiIdents {
 
                 // Get the skeleton as a `Symbol`.
                 skeleton_buf.clear();
-                skeleton_buf.extend(skeleton(&symbol_str));
+                skeleton_buf.extend(skeleton(symbol_str));
                 let skeleton_sym = if *symbol_str == *skeleton_buf {
                     symbol
                 } else {

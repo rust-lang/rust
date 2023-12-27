@@ -12,7 +12,7 @@ rust-version.workspace = true
 doctest = false
 
 [build-dependencies]
-cargo_metadata = "0.15.0"
+cargo_metadata.workspace = true
 
 proc-macro-test-impl = { path = "imp", version = "0.0.0" }
 

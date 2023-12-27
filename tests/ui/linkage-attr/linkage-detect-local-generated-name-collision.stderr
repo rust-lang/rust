@@ -4,5 +4,5 @@ error: symbol `collision` is already defined
 LL |         pub static collision: *const i32;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

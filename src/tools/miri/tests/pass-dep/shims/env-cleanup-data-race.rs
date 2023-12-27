@@ -2,15 +2,13 @@
 //@ignore-target-windows: No libc on Windows
 
 use std::ffi::CStr;
-use std::ffi::CString;
 use std::thread;
 
 fn main() {
     unsafe {
         thread::spawn(|| {
             // Access the environment in another thread without taking the env lock
-            let k = CString::new("MIRI_ENV_VAR_TEST".as_bytes()).unwrap();
-            let s = libc::getenv(k.as_ptr()) as *const libc::c_char;
+            let s = libc::getenv("MIRI_ENV_VAR_TEST\0".as_ptr().cast());
             if s.is_null() {
                 panic!("null");
             }
@@ -19,5 +17,6 @@ fn main() {
         thread::yield_now();
         // After the main thread exits, env vars will be cleaned up -- but because we have not *joined*
         // the other thread, those accesses technically race with those in the other thread.
+        // We don't want to emit an error here, though.
     }
 }

@@ -12,12 +12,10 @@ rust-version.workspace = true
 doctest = false
 
 [dependencies]
-salsa = "0.17.0-pre.2"
-rustc-hash = "1.1.0"
-
-triomphe.workspace = true
-
 la-arena.workspace = true
+rust-analyzer-salsa.workspace = true
+rustc-hash.workspace = true
+triomphe.workspace = true
 
 # local deps
 cfg.workspace = true

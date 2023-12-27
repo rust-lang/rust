@@ -4,6 +4,6 @@ error[E0647]: `#[start]` function is not allowed to have a `where` clause
 LL | fn start(_: isize, _: *const *const u8) -> isize where (): Copy {
    |                                                  ^^^^^^^^^^^^^^ `#[start]` function cannot have a `where` clause
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0647`.

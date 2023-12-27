@@ -8,8 +8,8 @@ edition = "2021"
 ar_archive_writer = "0.1.5"
 bitflags = "1.2.1"
 cc = "1.0.69"
-itertools = "0.10.1"
-jobserver = "0.1.22"
+itertools = "0.11"
+jobserver = "0.1.27"
 pathdiff = "0.2.0"
 regex = "1.4"
 rustc_arena = { path = "../rustc_arena" }
@@ -46,7 +46,7 @@ libc = "0.2.50"
 # tidy-alphabetical-end
 
 [dependencies.object]
-version = "0.32.0"
+version = "0.32.1"
 default-features = false
 features = ["read_core", "elf", "macho", "pe", "xcoff", "unaligned", "archive", "write"]
 

@@ -4,5 +4,5 @@ error: expected `used`, `used(compiler)` or `used(linker)`
 LL | #[used(compiler, linker)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

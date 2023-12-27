@@ -9,6 +9,17 @@ LL |     let _ = xcrate_unit_struct::StructWithFields;
 LL | pub struct StructWithFields {
    | --------------------------- `xcrate_unit_struct::StructWithFields` defined here
 
-error: aborting due to previous error
+error[E0423]: expected value, found struct `xcrate_unit_struct::StructWithPrivFields`
+  --> $DIR/xcrate-unit-struct.rs:11:13
+   |
+LL |     let _ = xcrate_unit_struct::StructWithPrivFields;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/xcrate_unit_struct.rs:25:1
+   |
+LL | pub struct StructWithPrivFields {
+   | ------------------------------- `xcrate_unit_struct::StructWithPrivFields` defined here
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0423`.

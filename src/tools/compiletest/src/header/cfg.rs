@@ -146,19 +146,13 @@ pub(super) fn parse_cfg_name_directive<'a>(
     }
 
     // `wasm32-bare` is an alias to refer to just wasm32-unknown-unknown
-    // (in contrast to `wasm32` which also matches non-bare targets like
-    // asmjs-unknown-emscripten).
+    // (in contrast to `wasm32` which also matches non-bare targets)
     condition! {
         name: "wasm32-bare",
         condition: config.target == "wasm32-unknown-unknown",
         message: "when the target is WASM"
     }
 
-    condition! {
-        name: "asmjs",
-        condition: config.target.starts_with("asmjs"),
-        message: "when the architecture is asm.js",
-    }
     condition! {
         name: "thumb",
         condition: config.target.starts_with("thumb"),
@@ -196,8 +190,8 @@ pub(super) fn parse_cfg_name_directive<'a>(
     }
     condition! {
         name: "debug",
-        condition: cfg!(debug_assertions),
-        message: "when building with debug assertions",
+        condition: config.with_debug_assertions,
+        message: "when running tests with `ignore-debug` header",
     }
     condition! {
         name: config.debugger.as_ref().map(|d| d.to_str()),

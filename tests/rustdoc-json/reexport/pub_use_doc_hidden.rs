@@ -2,11 +2,12 @@
 
 mod repeat_n {
     #[doc(hidden)]
+    /// not here
     pub struct RepeatN {}
 }
 
+/// not here
 pub use repeat_n::RepeatN;
 
 // @count "$.index[*][?(@.name=='pub_use_doc_hidden')].inner.items[*]" 0
-// @!has "$.index[*][?(@.kind=='struct')]"
-// @!has "$.index[*][?(@.kind=='import')]"
+// @!has "$.index[*][?(@.docs == 'not here')]"

@@ -504,7 +504,7 @@ impl AsHandle for fs::File {
 impl From<fs::File> for OwnedHandle {
     #[inline]
     fn from(file: fs::File) -> OwnedHandle {
-        file.into_inner().into_inner().into_inner().into()
+        file.into_inner().into_inner().into_inner()
     }
 }
 

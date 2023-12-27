@@ -7,15 +7,17 @@ mod transcriber;
 
 use rustc_hash::FxHashMap;
 use syntax::SmolStr;
+use tt::Span;
 
-use crate::{parser::MetaVarKind, tt, ExpandError, ExpandResult};
+use crate::{parser::MetaVarKind, ExpandError, ExpandResult};
 
-pub(crate) fn expand_rules(
-    rules: &[crate::Rule],
-    input: &tt::Subtree,
+pub(crate) fn expand_rules<S: Span>(
+    rules: &[crate::Rule<S>],
+    input: &tt::Subtree<S>,
+    marker: impl Fn(&mut S) + Copy,
     is_2021: bool,
-) -> ExpandResult<tt::Subtree> {
-    let mut match_: Option<(matcher::Match, &crate::Rule)> = None;
+) -> ExpandResult<tt::Subtree<S>> {
+    let mut match_: Option<(matcher::Match<S>, &crate::Rule<S>)> = None;
     for rule in rules {
         let new_match = matcher::match_(&rule.lhs, input, is_2021);
 
@@ -24,7 +26,7 @@ pub(crate) fn expand_rules(
             // Unconditionally returning the transcription here makes the
             // `test_repeat_bad_var` test fail.
             let ExpandResult { value, err: transcribe_err } =
-                transcriber::transcribe(&rule.rhs, &new_match.bindings);
+                transcriber::transcribe(&rule.rhs, &new_match.bindings, marker);
             if transcribe_err.is_none() {
                 return ExpandResult::ok(value);
             }
@@ -43,11 +45,11 @@ pub(crate) fn expand_rules(
     if let Some((match_, rule)) = match_ {
         // if we got here, there was no match without errors
         let ExpandResult { value, err: transcribe_err } =
-            transcriber::transcribe(&rule.rhs, &match_.bindings);
+            transcriber::transcribe(&rule.rhs, &match_.bindings, marker);
         ExpandResult { value, err: match_.err.or(transcribe_err) }
     } else {
         ExpandResult::new(
-            tt::Subtree { delimiter: tt::Delimiter::unspecified(), token_trees: vec![] },
+            tt::Subtree { delimiter: tt::Delimiter::DUMMY_INVISIBLE, token_trees: vec![] },
             ExpandError::NoMatchingRule,
         )
     }
@@ -98,31 +100,37 @@ pub(crate) fn expand_rules(
 /// In other words, `Bindings` is a *multi* mapping from `SmolStr` to
 /// `tt::TokenTree`, where the index to select a particular `TokenTree` among
 /// many is not a plain `usize`, but a `&[usize]`.
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
-struct Bindings {
-    inner: FxHashMap<SmolStr, Binding>,
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Bindings<S> {
+    inner: FxHashMap<SmolStr, Binding<S>>,
+}
+
+impl<S> Default for Bindings<S> {
+    fn default() -> Self {
+        Self { inner: Default::default() }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum Binding {
-    Fragment(Fragment),
-    Nested(Vec<Binding>),
+enum Binding<S> {
+    Fragment(Fragment<S>),
+    Nested(Vec<Binding<S>>),
     Empty,
     Missing(MetaVarKind),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum Fragment {
+enum Fragment<S> {
     /// token fragments are just copy-pasted into the output
-    Tokens(tt::TokenTree),
+    Tokens(tt::TokenTree<S>),
     /// Expr ast fragments are surrounded with `()` on insertion to preserve
     /// precedence. Note that this impl is different from the one currently in
     /// `rustc` -- `rustc` doesn't translate fragments into token trees at all.
     ///
-    /// At one point in time, we tried to to use "fake" delimiters here a-la
+    /// At one point in time, we tried to use "fake" delimiters here à la
     /// proc-macro delimiter=none. As we later discovered, "none" delimiters are
     /// tricky to handle in the parser, and rustc doesn't handle those either.
-    Expr(tt::TokenTree),
+    Expr(tt::Subtree<S>),
     /// There are roughly two types of paths: paths in expression context, where a
     /// separator `::` between an identifier and its following generic argument list
     /// is mandatory, and paths in type context, where `::` can be omitted.
@@ -132,5 +140,5 @@ enum Fragment {
     /// and is trasncribed as an expression-context path, verbatim transcription
     /// would cause a syntax error. We need to fix it up just before transcribing;
     /// see `transcriber::fix_up_and_push_path_tt()`.
-    Path(tt::TokenTree),
+    Path(tt::Subtree<S>),
 }

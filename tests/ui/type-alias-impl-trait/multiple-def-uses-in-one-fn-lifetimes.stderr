@@ -7,5 +7,5 @@ LL |     (i, i)
    |     expected `&'a i32`, got `&'b i32`
    |     this expression supplies two conflicting concrete types for the same opaque type
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

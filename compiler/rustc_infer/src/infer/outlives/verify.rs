@@ -1,7 +1,7 @@
 use crate::infer::outlives::components::{compute_alias_components_recursive, Component};
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::region_constraints::VerifyIfEq;
-use crate::infer::VerifyBound;
+use crate::infer::{GenericKind, VerifyBound};
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_middle::ty::GenericArg;
 use rustc_middle::ty::{self, OutlivesPredicate, Ty, TyCtxt};
@@ -37,11 +37,11 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub fn param_bound(&self, param_ty: ty::ParamTy) -> VerifyBound<'tcx> {
+    pub fn param_or_placeholder_bound(&self, ty: Ty<'tcx>) -> VerifyBound<'tcx> {
         // Start with anything like `T: 'a` we can scrape from the
         // environment. If the environment contains something like
         // `for<'a> T: 'a`, then we know that `T` outlives everything.
-        let declared_bounds_from_env = self.declared_generic_bounds_from_env(param_ty);
+        let declared_bounds_from_env = self.declared_generic_bounds_from_env(ty);
         debug!(?declared_bounds_from_env);
         let mut param_bounds = vec![];
         for declared_bound in declared_bounds_from_env {
@@ -51,7 +51,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                 param_bounds.push(VerifyBound::OutlivedBy(region));
             } else {
                 // This is `for<'a> T: 'a`. This means that `T` outlives everything! All done here.
-                debug!("found that {param_ty:?} outlives any lifetime, returning empty vector");
+                debug!("found that {ty:?} outlives any lifetime, returning empty vector");
                 return VerifyBound::AllBounds(vec![]);
             }
         }
@@ -130,12 +130,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // see the extensive comment in projection_must_outlive
         let recursive_bound = {
             let mut components = smallvec![];
-            compute_alias_components_recursive(
-                self.tcx,
-                alias_ty_as_ty.into(),
-                &mut components,
-                visited,
-            );
+            compute_alias_components_recursive(self.tcx, alias_ty_as_ty, &mut components, visited);
             self.bound_from_components(&components, visited)
         };
 
@@ -168,7 +163,10 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     ) -> VerifyBound<'tcx> {
         match *component {
             Component::Region(lt) => VerifyBound::OutlivedBy(lt),
-            Component::Param(param_ty) => self.param_bound(param_ty),
+            Component::Param(param_ty) => self.param_or_placeholder_bound(param_ty.to_ty(self.tcx)),
+            Component::Placeholder(placeholder_ty) => {
+                self.param_or_placeholder_bound(Ty::new_placeholder(self.tcx, placeholder_ty))
+            }
             Component::Alias(alias_ty) => self.alias_bound(alias_ty, visited),
             Component::EscapingAlias(ref components) => {
                 self.bound_from_components(components, visited)
@@ -177,7 +175,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                 // ignore this, we presume it will yield an error
                 // later, since if a type variable is not resolved by
                 // this point it never will be
-                self.tcx.sess.delay_span_bug(
+                self.tcx.dcx().span_delayed_bug(
                     rustc_span::DUMMY_SP,
                     format!("unresolved inference variable in outlives: {v:?}"),
                 );
@@ -195,9 +193,9 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     /// bounds, but all the bounds it returns can be relied upon.
     fn declared_generic_bounds_from_env(
         &self,
-        param_ty: ty::ParamTy,
+        generic_ty: Ty<'tcx>,
     ) -> Vec<ty::Binder<'tcx, ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>> {
-        let generic_ty = param_ty.to_ty(self.tcx);
+        assert!(matches!(generic_ty.kind(), ty::Param(_) | ty::Placeholder(_)));
         self.declared_generic_bounds_from_env_for_erased_ty(generic_ty)
     }
 
@@ -242,10 +240,20 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                     "declared_generic_bounds_from_env_for_erased_ty: region_bound_pair = {:?}",
                     (r, p)
                 );
+                // Fast path for the common case.
+                match (&p, erased_ty.kind()) {
+                    // In outlive routines, all types are expected to be fully normalized.
+                    // And therefore we can safely use structural equality for alias types.
+                    (GenericKind::Param(p1), ty::Param(p2)) if p1 == p2 => {}
+                    (GenericKind::Placeholder(p1), ty::Placeholder(p2)) if p1 == p2 => {}
+                    (GenericKind::Alias(a1), ty::Alias(_, a2)) if a1.def_id == a2.def_id => {}
+                    _ => return None,
+                }
+
                 let p_ty = p.to_ty(tcx);
                 let erased_p_ty = self.tcx.erase_regions(p_ty);
                 (erased_p_ty == erased_ty)
-                    .then_some(ty::Binder::dummy(ty::OutlivesPredicate(p.to_ty(tcx), r)))
+                    .then_some(ty::Binder::dummy(ty::OutlivesPredicate(p_ty, r)))
             });
 
         param_bounds
@@ -314,14 +322,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     ) -> impl Iterator<Item = ty::Binder<'tcx, ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>>>
     {
         let tcx = self.tcx;
-        let param_env = self.param_env;
         clauses.filter_map(|p| p.as_type_outlives_clause()).filter(move |outlives_predicate| {
-            super::test_type_match::can_match_erased_ty(
-                tcx,
-                param_env,
-                *outlives_predicate,
-                erased_ty,
-            )
+            super::test_type_match::can_match_erased_ty(tcx, *outlives_predicate, erased_ty)
         })
     }
 }

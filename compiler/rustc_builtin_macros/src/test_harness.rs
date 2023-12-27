@@ -2,7 +2,7 @@
 
 use rustc_ast as ast;
 use rustc_ast::entry::EntryPointType;
-use rustc_ast::mut_visit::{ExpectOne, *};
+use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_ast::visit::{walk_item, Visitor};
 use rustc_ast::{attr, ModKind};
@@ -47,7 +47,7 @@ pub fn inject(
     features: &Features,
     resolver: &mut dyn ResolverExpand,
 ) {
-    let span_diagnostic = sess.diagnostic();
+    let dcx = sess.dcx();
     let panic_strategy = sess.panic_strategy();
     let platform_panic_strategy = sess.target.panic_strategy;
 
@@ -60,7 +60,7 @@ pub fn inject(
 
     // Do this here so that the test_runner crate attribute gets marked as used
     // even in non-test builds
-    let test_runner = get_test_runner(span_diagnostic, &krate);
+    let test_runner = get_test_runner(dcx, krate);
 
     if sess.is_test_crate() {
         let panic_strategy = match (panic_strategy, sess.opts.unstable_opts.panic_abort_tests) {
@@ -70,7 +70,7 @@ pub fn inject(
                     // Silently allow compiling with panic=abort on these platforms,
                     // but with old behavior (abort if a test fails).
                 } else {
-                    span_diagnostic.emit_err(errors::TestsNotSupport {});
+                    dcx.emit_err(errors::TestsNotSupport {});
                 }
                 PanicStrategy::Unwind
             }
@@ -372,7 +372,7 @@ fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> P<ast::Expr> {
     let ecx = &cx.ext_cx;
 
     let mut tests = cx.test_cases.clone();
-    tests.sort_by(|a, b| a.name.as_str().cmp(&b.name.as_str()));
+    tests.sort_by(|a, b| a.name.as_str().cmp(b.name.as_str()));
 
     ecx.expr_array_ref(
         sp,
@@ -389,7 +389,7 @@ fn get_test_name(i: &ast::Item) -> Option<Symbol> {
     attr::first_attr_value_str_by_name(&i.attrs, sym::rustc_test_marker)
 }
 
-fn get_test_runner(sd: &rustc_errors::Handler, krate: &ast::Crate) -> Option<ast::Path> {
+fn get_test_runner(dcx: &rustc_errors::DiagCtxt, krate: &ast::Crate) -> Option<ast::Path> {
     let test_attr = attr::find_by_name(&krate.attrs, sym::test_runner)?;
     let meta_list = test_attr.meta_item_list()?;
     let span = test_attr.span;
@@ -397,11 +397,11 @@ fn get_test_runner(sd: &rustc_errors::Handler, krate: &ast::Crate) -> Option<ast
         [single] => match single.meta_item() {
             Some(meta_item) if meta_item.is_word() => return Some(meta_item.path.clone()),
             _ => {
-                sd.emit_err(errors::TestRunnerInvalid { span });
+                dcx.emit_err(errors::TestRunnerInvalid { span });
             }
         },
         _ => {
-            sd.emit_err(errors::TestRunnerNargs { span });
+            dcx.emit_err(errors::TestRunnerNargs { span });
         }
     }
     None

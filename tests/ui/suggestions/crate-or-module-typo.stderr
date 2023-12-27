@@ -42,11 +42,11 @@ LL -     bar: st::cell::Cell<bool>
 LL +     bar: cell::Cell<bool>
    |
 
-error[E0433]: failed to resolve: use of undeclared crate or module `bar`
+error[E0433]: failed to resolve: function `bar` is not a crate or module
   --> $DIR/crate-or-module-typo.rs:6:20
    |
 LL |     pub fn bar() { bar::baz(); }
-   |                    ^^^ use of undeclared crate or module `bar`
+   |                    ^^^ function `bar` is not a crate or module
 
 error: aborting due to 4 previous errors
 

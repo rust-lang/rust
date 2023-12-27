@@ -11,5 +11,10 @@ allow-unauthenticated = [
 new_pr = true
 
 [no-merges]
-exclude_labels = ["sync"]
+exclude_titles = [ # exclude syncs from subtree in rust-lang/rust
+    "Sync from downstream",
+    "sync from downstream",
+    "Sync from rust",
+    "sync from rust",
+]
 labels = ["has-merge-commits", "S-waiting-on-author"]

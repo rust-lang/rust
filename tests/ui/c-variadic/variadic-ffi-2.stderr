@@ -4,6 +4,6 @@ error[E0045]: C-variadic function must have a compatible calling convention, lik
 LL | fn baz(f: extern "stdcall" fn(usize, ...)) {
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ C-variadic function must have a compatible calling convention
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0045`.

@@ -7,6 +7,6 @@ LL | fn start(argc: isize, argv: *const *const u8, crate_map: *const u8) -> isiz
    = note: expected signature `fn(isize, *const *const u8) -> _`
               found signature `fn(isize, *const *const u8, *const u8) -> _`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0308`.

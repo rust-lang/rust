@@ -30,6 +30,7 @@ pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {
         skip_glob_imports: true,
     },
     prefer_no_std: false,
+    prefer_prelude: true,
     assist_emit_must_use: false,
 };
 
@@ -44,6 +45,7 @@ pub(crate) const TEST_CONFIG_NO_SNIPPET_CAP: AssistConfig = AssistConfig {
         skip_glob_imports: true,
     },
     prefer_no_std: false,
+    prefer_prelude: true,
     assist_emit_must_use: false,
 };
 
@@ -96,6 +98,11 @@ pub(crate) fn check_assist_target(assist: Handler, ra_fixture: &str, target: &st
 #[track_caller]
 pub(crate) fn check_assist_not_applicable(assist: Handler, ra_fixture: &str) {
     check(assist, ra_fixture, ExpectedResult::NotApplicable, None);
+}
+
+#[track_caller]
+pub(crate) fn check_assist_not_applicable_by_label(assist: Handler, ra_fixture: &str, label: &str) {
+    check(assist, ra_fixture, ExpectedResult::NotApplicable, Some(label));
 }
 
 /// Check assist in unresolved state. Useful to check assists for lazy computation.

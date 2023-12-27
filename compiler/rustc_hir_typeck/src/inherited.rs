@@ -9,7 +9,7 @@ use rustc_middle::traits::DefiningAnchor;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefIdMap;
-use rustc_span::{self, Span};
+use rustc_span::Span;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{self, PredicateObligation, TraitEngine, TraitEngineExt as _};
 
@@ -75,7 +75,7 @@ impl<'tcx> Deref for Inherited<'tcx> {
 
 impl<'tcx> Inherited<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Self {
-        let hir_owner = tcx.hir().local_def_id_to_hir_id(def_id).owner;
+        let hir_owner = tcx.local_def_id_to_hir_id(def_id).owner;
 
         let infcx = tcx
             .infer_ctxt()

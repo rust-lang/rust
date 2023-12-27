@@ -11,5 +11,5 @@ LL | #![deny(rust_2018_idioms)]
    |         ^^^^^^^^^^^^^^^^
    = note: `#[deny(unused_extern_crates)]` implied by `#[deny(rust_2018_idioms)]`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

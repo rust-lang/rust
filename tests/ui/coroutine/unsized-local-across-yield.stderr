@@ -16,6 +16,6 @@ LL |         let b: [u8] = *(Box::new([]) as Box<[u8]>);
    = help: the trait `Sized` is not implemented for `[u8]`
    = note: all values live across `yield` must have a statically known size
 
-error: aborting due to previous error; 1 warning emitted
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0277`.

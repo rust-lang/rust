@@ -26,7 +26,7 @@ use rustc_middle::middle::resolve_bound_vars as rbv;
 use rustc_middle::ty::fold::TypeFolder;
 use rustc_middle::ty::GenericArgsRef;
 use rustc_middle::ty::TypeVisitableExt;
-use rustc_middle::ty::{self, AdtKind, EarlyBinder, Ty, TyCtxt};
+use rustc_middle::ty::{self, AdtKind, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::hygiene::{AstPass, MacroKind};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
@@ -54,7 +54,9 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     let mut inserted = FxHashSet::default();
     items.extend(doc.foreigns.iter().map(|(item, renamed)| {
         let item = clean_maybe_renamed_foreign_item(cx, item, *renamed);
-        if let Some(name) = item.name && (cx.render_options.document_hidden || !item.is_doc_hidden()) {
+        if let Some(name) = item.name
+            && (cx.render_options.document_hidden || !item.is_doc_hidden())
+        {
             inserted.insert((item.type_(), name));
         }
         item
@@ -85,7 +87,9 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
         }
         let v = clean_maybe_renamed_item(cx, item, *renamed, *import_id);
         for item in &v {
-            if let Some(name) = item.name && (cx.render_options.document_hidden || !item.is_doc_hidden()) {
+            if let Some(name) = item.name
+                && (cx.render_options.document_hidden || !item.is_doc_hidden())
+            {
                 inserted.insert((item.type_(), name));
             }
         }
@@ -180,22 +184,6 @@ fn clean_generic_bound<'tcx>(
 ) -> Option<GenericBound> {
     Some(match *bound {
         hir::GenericBound::Outlives(lt) => GenericBound::Outlives(clean_lifetime(lt, cx)),
-        hir::GenericBound::LangItemTrait(lang_item, span, _, generic_args) => {
-            let def_id = cx.tcx.require_lang_item(lang_item, Some(span));
-
-            let trait_ref = ty::Binder::dummy(ty::TraitRef::identity(cx.tcx, def_id));
-
-            let generic_args = clean_generic_args(generic_args, cx);
-            let GenericArgs::AngleBracketed { bindings, .. } = generic_args else {
-                bug!("clean: parenthesized `GenericBound::LangItemTrait`");
-            };
-
-            let trait_ = clean_trait_ref_with_bindings(cx, trait_ref, bindings);
-            GenericBound::TraitBound(
-                PolyTrait { trait_, generic_params: vec![] },
-                hir::TraitBoundModifier::None,
-            )
-        }
         hir::GenericBound::Trait(ref t, modifier) => {
             // `T: ~const Destruct` is hidden because `T: Destruct` is a no-op.
             if modifier == hir::TraitBoundModifier::MaybeConst
@@ -286,12 +274,10 @@ pub(crate) fn clean_middle_region<'tcx>(region: ty::Region<'tcx>) -> Option<Life
     match *region {
         ty::ReStatic => Some(Lifetime::statik()),
         _ if !region.has_name() => None,
-        ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) => {
-            Some(Lifetime(name))
-        }
-        ty::ReEarlyBound(ref data) => Some(Lifetime(data.name)),
-        ty::ReLateBound(..)
-        | ty::ReFree(..)
+        ty::ReBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) => Some(Lifetime(name)),
+        ty::ReEarlyParam(ref data) => Some(Lifetime(data.name)),
+        ty::ReBound(..)
+        | ty::ReLateParam(..)
         | ty::ReVar(..)
         | ty::ReError(_)
         | ty::RePlaceholder(..)
@@ -593,13 +579,13 @@ fn clean_generic_param<'tcx>(
                 },
             )
         }
-        hir::GenericParamKind::Const { ty, default } => (
+        hir::GenericParamKind::Const { ty, default, is_host_effect } => (
             param.name.ident().name,
             GenericParamDefKind::Const {
                 ty: Box::new(clean_ty(ty, cx)),
                 default: default
                     .map(|ct| Box::new(ty::Const::from_anon_const(cx.tcx, ct.def_id).to_string())),
-                is_host_effect: cx.tcx.has_attr(param.def_id, sym::rustc_host),
+                is_host_effect,
             },
         ),
     };
@@ -741,7 +727,7 @@ pub(crate) fn clean_generics<'tcx>(
                     .into_iter()
                     .map(|(lifetime, bounds)| WherePredicate::RegionPredicate { lifetime, bounds }),
             )
-            .chain(eq_predicates.into_iter())
+            .chain(eq_predicates)
             .collect(),
     }
 }
@@ -819,12 +805,7 @@ fn clean_ty_generics<'tcx>(
             {
                 let pred = clean_predicate(*pred, cx)?;
 
-                bounds.extend(
-                    pred.get_bounds()
-                        .into_iter()
-                        .flatten()
-                        .cloned()
-                );
+                bounds.extend(pred.get_bounds().into_iter().flatten().cloned());
 
                 if let Some(proj) = projection
                     && let lhs = clean_projection(proj.map_bound(|p| p.projection_ty), cx, None)
@@ -991,10 +972,8 @@ fn clean_proc_macro<'tcx>(
     cx: &mut DocContext<'tcx>,
 ) -> ItemKind {
     let attrs = cx.tcx.hir().attrs(item.hir_id());
-    if kind == MacroKind::Derive &&
-        let Some(derive_name) = attrs
-            .lists(sym::proc_macro_derive)
-            .find_map(|mi| mi.ident())
+    if kind == MacroKind::Derive
+        && let Some(derive_name) = attrs.lists(sym::proc_macro_derive).find_map(|mi| mi.ident())
     {
         *name = derive_name.name;
     }
@@ -1156,7 +1135,9 @@ fn clean_fn_decl_with_args<'tcx>(
         hir::FnRetTy::Return(typ) => clean_ty(typ, cx),
         hir::FnRetTy::DefaultReturn(..) => Type::Tuple(Vec::new()),
     };
-    if let Some(header) = header && header.is_async() {
+    if let Some(header) = header
+        && header.is_async()
+    {
         output = output.sugared_async_return_type();
     }
     FnDecl { inputs: args, output, c_variadic: decl.c_variadic }
@@ -1599,7 +1580,6 @@ fn first_non_private<'tcx>(
         // Absolute paths are not. We start from the parent of the item.
         [.., parent, leaf] => (parent.res.opt_def_id()?.as_local()?, leaf.ident),
     };
-    let hir = cx.tcx.hir();
     // First we try to get the `DefId` of the item.
     for child in
         cx.tcx.module_children_local(parent_def_id).iter().filter(move |c| c.ident == ident)
@@ -1608,14 +1588,17 @@ fn first_non_private<'tcx>(
             continue;
         }
 
-        if let Some(def_id) = child.res.opt_def_id() && target_def_id == def_id {
+        if let Some(def_id) = child.res.opt_def_id()
+            && target_def_id == def_id
+        {
             let mut last_path_res = None;
             'reexps: for reexp in child.reexport_chain.iter() {
-                if let Some(use_def_id) = reexp.id() &&
-                    let Some(local_use_def_id) = use_def_id.as_local() &&
-                    let Some(hir::Node::Item(item)) = hir.find_by_def_id(local_use_def_id) &&
-                    !item.ident.name.is_empty() &&
-                    let hir::ItemKind::Use(path, _) = item.kind
+                if let Some(use_def_id) = reexp.id()
+                    && let Some(local_use_def_id) = use_def_id.as_local()
+                    && let Some(hir::Node::Item(item)) =
+                        cx.tcx.opt_hir_node_by_def_id(local_use_def_id)
+                    && !item.ident.name.is_empty()
+                    && let hir::ItemKind::Use(path, _) = item.kind
                 {
                     for res in &path.res {
                         if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = res {
@@ -1626,7 +1609,8 @@ fn first_non_private<'tcx>(
                             // We never check for "cx.render_options.document_private"
                             // because if a re-export is not fully public, it's never
                             // documented.
-                            cx.tcx.local_visibility(local_use_def_id).is_public() {
+                            cx.tcx.local_visibility(local_use_def_id).is_public()
+                        {
                             break 'reexps;
                         }
                         last_path_res = Some((path, res));
@@ -1641,7 +1625,12 @@ fn first_non_private<'tcx>(
                 // 1. We found a public reexport.
                 // 2. We didn't find a public reexport so it's the "end type" path.
                 if let Some((new_path, _)) = last_path_res {
-                    return Some(first_non_private_clean_path(cx, path, new_path.segments, new_path.span));
+                    return Some(first_non_private_clean_path(
+                        cx,
+                        path,
+                        new_path.segments,
+                        new_path.span,
+                    ));
                 }
                 // If `last_path_res` is `None`, it can mean two things:
                 //
@@ -1816,11 +1805,8 @@ fn maybe_expand_private_type_alias<'tcx>(
                     }
                     _ => None,
                 });
-                if let Some(ct) = const_ {
-                    args.insert(
-                        param.def_id.to_def_id(),
-                        SubstParam::Constant(clean_const(ct, cx)),
-                    );
+                if let Some(_) = const_ {
+                    args.insert(param.def_id.to_def_id(), SubstParam::Constant);
                 }
                 // FIXME(const_generics_defaults)
                 indices.consts += 1;
@@ -1930,15 +1916,13 @@ fn clean_trait_object_lifetime_bound<'tcx>(
     // latter contrary to `clean_middle_region`.
     match *region {
         ty::ReStatic => Some(Lifetime::statik()),
-        ty::ReEarlyBound(region) if region.name != kw::Empty => Some(Lifetime(region.name)),
-        ty::ReLateBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. })
-            if name != kw::Empty =>
-        {
+        ty::ReEarlyParam(region) if region.name != kw::Empty => Some(Lifetime(region.name)),
+        ty::ReBound(_, ty::BoundRegion { kind: ty::BrNamed(_, name), .. }) if name != kw::Empty => {
             Some(Lifetime(name))
         }
-        ty::ReEarlyBound(_)
-        | ty::ReLateBound(..)
-        | ty::ReFree(_)
+        ty::ReEarlyParam(_)
+        | ty::ReBound(..)
+        | ty::ReLateParam(_)
         | ty::ReVar(_)
         | ty::RePlaceholder(_)
         | ty::ReErased
@@ -2308,7 +2292,9 @@ fn clean_middle_opaque_bounds<'tcx>(
                 _ => return None,
             };
 
-            if let Some(sized) = cx.tcx.lang_items().sized_trait() && trait_ref.def_id() == sized {
+            if let Some(sized) = cx.tcx.lang_items().sized_trait()
+                && trait_ref.def_id() == sized
+            {
                 has_sized = true;
                 return None;
             }
@@ -2493,8 +2479,8 @@ fn clean_variant_data<'tcx>(
         .map(|disr| Discriminant { expr: Some(disr.body), value: disr.def_id.to_def_id() });
 
     let kind = match variant {
-        hir::VariantData::Struct(..) => VariantKind::Struct(VariantStruct {
-            fields: variant.fields().iter().map(|x| clean_field(x, cx)).collect(),
+        hir::VariantData::Struct { fields, .. } => VariantKind::Struct(VariantStruct {
+            fields: fields.iter().map(|x| clean_field(x, cx)).collect(),
         }),
         hir::VariantData::Tuple(..) => {
             VariantKind::Tuple(variant.fields().iter().map(|x| clean_field(x, cx)).collect())
@@ -2534,11 +2520,12 @@ fn clean_generic_args<'tcx>(
                     }
                     hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
                     hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty, cx)),
-                    // Checking for `#[rustc_host]` on the `AnonConst`  not only accounts for the case
+                    // Checking for `is_desugared_from_effects` on the `AnonConst` not only accounts for the case
                     // where the argument is `host` but for all possible cases (e.g., `true`, `false`).
-                    hir::GenericArg::Const(ct)
-                        if cx.tcx.has_attr(ct.value.def_id, sym::rustc_host) =>
-                    {
+                    hir::GenericArg::Const(hir::ConstArg {
+                        is_desugared_from_effects: true,
+                        ..
+                    }) => {
                         return None;
                     }
                     hir::GenericArg::Const(ct) => GenericArg::Const(Box::new(clean_const(ct, cx))),
@@ -2643,6 +2630,40 @@ fn filter_tokens_from_list(
     tokens
 }
 
+fn filter_doc_attr_ident(ident: Symbol, is_inline: bool) -> bool {
+    if is_inline {
+        ident == sym::hidden || ident == sym::inline || ident == sym::no_inline
+    } else {
+        ident == sym::cfg
+    }
+}
+
+/// Remove attributes from `normal` that should not be inherited by `use` re-export.
+/// Before calling this function, make sure `normal` is a `#[doc]` attribute.
+fn filter_doc_attr(normal: &mut ast::NormalAttr, is_inline: bool) {
+    match normal.item.args {
+        ast::AttrArgs::Delimited(ref mut args) => {
+            let tokens = filter_tokens_from_list(&args.tokens, |token| {
+                !matches!(
+                    token,
+                    TokenTree::Token(
+                        Token {
+                            kind: TokenKind::Ident(
+                                ident,
+                                _,
+                            ),
+                            ..
+                        },
+                        _,
+                    ) if filter_doc_attr_ident(*ident, is_inline),
+                )
+            });
+            args.tokens = TokenStream::new(tokens);
+        }
+        ast::AttrArgs::Empty | ast::AttrArgs::Eq(..) => {}
+    }
+}
+
 /// When inlining items, we merge their attributes (and all the reexports attributes too) with the
 /// final reexport. For example:
 ///
@@ -2669,13 +2690,6 @@ fn add_without_unwanted_attributes<'hir>(
     is_inline: bool,
     import_parent: Option<DefId>,
 ) {
-    // If it's not `#[doc(inline)]`, we don't want all attributes, otherwise we keep everything.
-    if !is_inline {
-        for attr in new_attrs {
-            attrs.push((Cow::Borrowed(attr), import_parent));
-        }
-        return;
-    }
     for attr in new_attrs {
         if matches!(attr.kind, ast::AttrKind::DocComment(..)) {
             attrs.push((Cow::Borrowed(attr), import_parent));
@@ -2684,34 +2698,14 @@ fn add_without_unwanted_attributes<'hir>(
         let mut attr = attr.clone();
         match attr.kind {
             ast::AttrKind::Normal(ref mut normal) => {
-                if let [ident] = &*normal.item.path.segments &&
-                    let ident = ident.ident.name &&
-                    ident == sym::doc
-                {
-                    match normal.item.args {
-                        ast::AttrArgs::Delimited(ref mut args) => {
-                            let tokens =
-                                filter_tokens_from_list(&args.tokens, |token| {
-                                    !matches!(
-                                        token,
-                                        TokenTree::Token(
-                                            Token {
-                                                kind: TokenKind::Ident(
-                                                    sym::hidden | sym::inline | sym::no_inline,
-                                                    _,
-                                                ),
-                                                ..
-                                            },
-                                            _,
-                                        ),
-                                    )
-                                });
-                            args.tokens = TokenStream::new(tokens);
-                            attrs.push((Cow::Owned(attr), import_parent));
-                        }
-                        ast::AttrArgs::Empty | ast::AttrArgs::Eq(..) => {
-                            attrs.push((Cow::Owned(attr), import_parent));
-                        }
+                if let [ident] = &*normal.item.path.segments {
+                    let ident = ident.ident.name;
+                    if ident == sym::doc {
+                        filter_doc_attr(normal, is_inline);
+                        attrs.push((Cow::Owned(attr), import_parent));
+                    } else if ident != sym::cfg {
+                        // If it's not a `cfg()` attribute, we keep it.
+                        attrs.push((Cow::Owned(attr), import_parent));
                     }
                 }
             }
@@ -3002,7 +2996,7 @@ fn clean_use_statement_inner<'tcx>(
 
     if pub_underscore && let Some(ref inline) = inline_attr {
         rustc_errors::struct_span_err!(
-            cx.tcx.sess,
+            cx.tcx.dcx(),
             inline.span(),
             E0780,
             "anonymous imports cannot be inlined"

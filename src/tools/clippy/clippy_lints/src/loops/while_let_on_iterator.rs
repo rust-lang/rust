@@ -3,7 +3,6 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::visitors::is_res_used;
 use clippy_utils::{get_enclosing_loop_or_multi_call_closure, higher, is_refutable, is_res_lang_ctor, is_trait_method};
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_expr, Visitor};
@@ -15,59 +14,53 @@ use rustc_span::symbol::sym;
 use rustc_span::Symbol;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-    let (scrutinee_expr, iter_expr_struct, iter_expr, some_pat, loop_expr) = if_chain! {
-        if let Some(higher::WhileLet { if_then, let_pat, let_expr }) = higher::WhileLet::hir(expr);
+    if let Some(higher::WhileLet { if_then, let_pat, let_expr }) = higher::WhileLet::hir(expr)
         // check for `Some(..)` pattern
-        if let PatKind::TupleStruct(ref pat_path, some_pat, _) = let_pat.kind;
-        if is_res_lang_ctor(cx, cx.qpath_res(pat_path, let_pat.hir_id), LangItem::OptionSome);
+        && let PatKind::TupleStruct(ref pat_path, some_pat, _) = let_pat.kind
+        && is_res_lang_ctor(cx, cx.qpath_res(pat_path, let_pat.hir_id), LangItem::OptionSome)
         // check for call to `Iterator::next`
-        if let ExprKind::MethodCall(method_name, iter_expr, [], _) = let_expr.kind;
-        if method_name.ident.name == sym::next;
-        if is_trait_method(cx, let_expr, sym::Iterator);
-        if let Some(iter_expr_struct) = try_parse_iter_expr(cx, iter_expr);
+        && let ExprKind::MethodCall(method_name, iter_expr, [], _) = let_expr.kind
+        && method_name.ident.name == sym::next
+        && is_trait_method(cx, let_expr, sym::Iterator)
+        && let Some(iter_expr_struct) = try_parse_iter_expr(cx, iter_expr)
         // get the loop containing the match expression
-        if !uses_iter(cx, &iter_expr_struct, if_then);
-        then {
-            (let_expr, iter_expr_struct, iter_expr, some_pat, expr)
-        } else {
-            return;
-        }
-    };
-
-    let mut applicability = Applicability::MachineApplicable;
-    let loop_var = if let Some(some_pat) = some_pat.first() {
-        if is_refutable(cx, some_pat) {
-            // Refutable patterns don't work with for loops.
-            return;
-        }
-        snippet_with_applicability(cx, some_pat.span, "..", &mut applicability)
-    } else {
-        "_".into()
-    };
-
-    // If the iterator is a field or the iterator is accessed after the loop is complete it needs to be
-    // borrowed mutably. TODO: If the struct can be partially moved from and the struct isn't used
-    // afterwards a mutable borrow of a field isn't necessary.
-    let by_ref = if cx.typeck_results().expr_ty(iter_expr).ref_mutability() == Some(Mutability::Mut)
-        || !iter_expr_struct.can_move
-        || !iter_expr_struct.fields.is_empty()
-        || needs_mutable_borrow(cx, &iter_expr_struct, loop_expr)
+        && !uses_iter(cx, &iter_expr_struct, if_then)
     {
-        ".by_ref()"
-    } else {
-        ""
-    };
+        let mut applicability = Applicability::MachineApplicable;
+        let loop_var = if let Some(some_pat) = some_pat.first() {
+            if is_refutable(cx, some_pat) {
+                // Refutable patterns don't work with for loops.
+                return;
+            }
+            snippet_with_applicability(cx, some_pat.span, "..", &mut applicability)
+        } else {
+            "_".into()
+        };
 
-    let iterator = snippet_with_applicability(cx, iter_expr.span, "_", &mut applicability);
-    span_lint_and_sugg(
-        cx,
-        WHILE_LET_ON_ITERATOR,
-        expr.span.with_hi(scrutinee_expr.span.hi()),
-        "this loop could be written as a `for` loop",
-        "try",
-        format!("for {loop_var} in {iterator}{by_ref}"),
-        applicability,
-    );
+        // If the iterator is a field or the iterator is accessed after the loop is complete it needs to be
+        // borrowed mutably. TODO: If the struct can be partially moved from and the struct isn't used
+        // afterwards a mutable borrow of a field isn't necessary.
+        let by_ref = if cx.typeck_results().expr_ty(iter_expr).ref_mutability() == Some(Mutability::Mut)
+            || !iter_expr_struct.can_move
+            || !iter_expr_struct.fields.is_empty()
+            || needs_mutable_borrow(cx, &iter_expr_struct, expr)
+        {
+            ".by_ref()"
+        } else {
+            ""
+        };
+
+        let iterator = snippet_with_applicability(cx, iter_expr.span, "_", &mut applicability);
+        span_lint_and_sugg(
+            cx,
+            WHILE_LET_ON_ITERATOR,
+            expr.span.with_hi(let_expr.span.hi()),
+            "this loop could be written as a `for` loop",
+            "try",
+            format!("for {loop_var} in {iterator}{by_ref}"),
+            applicability,
+        );
+    }
 }
 
 #[derive(Debug)]

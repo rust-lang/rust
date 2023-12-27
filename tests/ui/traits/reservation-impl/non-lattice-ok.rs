@@ -34,7 +34,7 @@
 // check that reservation impls can't be used as normal impls in positive reasoning.
 
 // revisions: old next
-//[next] compile-flags: -Ztrait-solver=next
+//[next] compile-flags: -Znext-solver
 
 #![feature(rustc_attrs, never_type)]
 

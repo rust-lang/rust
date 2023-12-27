@@ -1,30 +1,30 @@
-use rustc_hir::def::DefKind;
-use rustc_hir::LangItem;
-use rustc_middle::mir;
-use rustc_middle::mir::interpret::PointerArithmetic;
-use rustc_middle::ty::layout::{FnAbiOf, TyAndLayout};
-use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::Span;
 use std::borrow::Borrow;
+use std::fmt;
 use std::hash::Hash;
 use std::ops::ControlFlow;
 
+use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::fx::IndexEntry;
-use std::fmt;
-
-use rustc_ast::Mutability;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
+use rustc_hir::LangItem;
+use rustc_middle::mir;
 use rustc_middle::mir::AssertMessage;
+use rustc_middle::query::TyCtxtAt;
+use rustc_middle::ty;
+use rustc_middle::ty::layout::{FnAbiOf, TyAndLayout};
+use rustc_session::lint::builtin::WRITES_THROUGH_IMMUTABLE_POINTER;
 use rustc_span::symbol::{sym, Symbol};
+use rustc_span::Span;
 use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi as CallAbi;
 
 use crate::errors::{LongRunning, LongRunningWarn};
 use crate::fluent_generated as fluent;
 use crate::interpret::{
-    self, compile_time_machine, AllocId, ConstAllocation, FnArg, FnVal, Frame, ImmTy, InterpCx,
-    InterpResult, OpTy, PlaceTy, Pointer, Scalar,
+    self, compile_time_machine, AllocId, AllocRange, ConstAllocation, CtfeProvenance, FnArg, FnVal,
+    Frame, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, PointerArithmetic, Scalar,
 };
 
 use super::error::*;
@@ -49,7 +49,7 @@ pub struct CompileTimeInterpreter<'mir, 'tcx> {
     pub(super) num_evaluated_steps: usize,
 
     /// The virtual call stack.
-    pub(super) stack: Vec<Frame<'mir, 'tcx, AllocId, ()>>,
+    pub(super) stack: Vec<Frame<'mir, 'tcx>>,
 
     /// We need to make sure consts never point to anything mutable, even recursively. That is
     /// relied on for pattern matching on consts with references.
@@ -101,6 +101,14 @@ impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
 impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxIndexMap<K, V> {
     #[inline(always)]
     fn contains_key<Q: ?Sized + Hash + Eq>(&mut self, k: &Q) -> bool
+    where
+        K: Borrow<Q>,
+    {
+        FxIndexMap::contains_key(self, k)
+    }
+
+    #[inline(always)]
+    fn contains_key_ref<Q: ?Sized + Hash + Eq>(&self, k: &Q) -> bool
     where
         K: Borrow<Q>,
     {
@@ -192,7 +200,7 @@ impl<'mir, 'tcx: 'mir> CompileTimeEvalContext<'mir, 'tcx> {
                 &caller
                     .file
                     .name
-                    .for_scope(&self.tcx.sess, RemapPathScopeComponents::DIAGNOSTICS)
+                    .for_scope(self.tcx.sess, RemapPathScopeComponents::DIAGNOSTICS)
                     .to_string_lossy(),
             ),
             u32::try_from(caller.line).unwrap(),
@@ -383,7 +391,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 if ecx.tcx.is_ctfe_mir_available(def) {
                     Ok(ecx.tcx.mir_for_ctfe(def))
                 } else if ecx.tcx.def_kind(def) == DefKind::AssocConst {
-                    let guar = ecx.tcx.sess.delay_span_bug(
+                    let guar = ecx.tcx.dcx().span_delayed_bug(
                         rustc_span::DUMMY_SP,
                         "This is likely a const item that is missing from its impl",
                     );
@@ -485,7 +493,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 };
 
                 let ptr = ecx.allocate_ptr(
-                    Size::from_bytes(size as u64),
+                    Size::from_bytes(size),
                     align,
                     interpret::MemoryKind::Machine(MemoryKind::Heap),
                 )?;
@@ -613,8 +621,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 if is_error {
                     let guard = ecx
                         .tcx
-                        .sess
-                        .delay_span_bug(span, "The deny lint should have already errored");
+                        .dcx()
+                        .span_delayed_bug(span, "The deny lint should have already errored");
                     throw_inval!(AlreadyReported(guard.into()));
                 }
             } else if new_steps > start && new_steps.is_power_of_two() {
@@ -622,7 +630,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 // current number of evaluated terminators is a power of 2. The latter gives us a cheap
                 // way to implement exponential backoff.
                 let span = ecx.cur_span();
-                ecx.tcx.sess.emit_warning(LongRunningWarn { span, item_span: ecx.tcx.span });
+                ecx.tcx.dcx().emit_warning(LongRunningWarn { span, item_span: ecx.tcx.span });
             }
         }
 
@@ -630,10 +638,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     #[inline(always)]
-    fn expose_ptr(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _ptr: Pointer<AllocId>,
-    ) -> InterpResult<'tcx> {
+    fn expose_ptr(_ecx: &mut InterpCx<'mir, 'tcx, Self>, _ptr: Pointer) -> InterpResult<'tcx> {
         // This is only reachable with -Zunleash-the-miri-inside-of-you.
         throw_unsup_format!("exposing pointers is not possible at compile-time")
     }
@@ -666,7 +671,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     fn before_access_global(
-        _tcx: TyCtxt<'tcx>,
+        _tcx: TyCtxtAt<'tcx>,
         machine: &Self,
         alloc_id: AllocId,
         alloc: ConstAllocation<'tcx>,
@@ -702,6 +707,48 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 Ok(())
             }
         }
+    }
+
+    fn retag_ptr_value(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _kind: mir::RetagKind,
+        val: &ImmTy<'tcx, CtfeProvenance>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, CtfeProvenance>> {
+        // If it's a frozen shared reference that's not already immutable, make it immutable.
+        // (Do nothing on `None` provenance, that cannot store immutability anyway.)
+        if let ty::Ref(_, ty, mutbl) = val.layout.ty.kind()
+            && *mutbl == Mutability::Not
+            && val.to_scalar_and_meta().0.to_pointer(ecx)?.provenance.is_some_and(|p| !p.immutable())
+            // That next check is expensive, that's why we have all the guards above.
+            && ty.is_freeze(*ecx.tcx, ecx.param_env)
+        {
+            let place = ecx.ref_to_mplace(val)?;
+            let new_place = place.map_provenance(|p| p.map(CtfeProvenance::as_immutable));
+            Ok(ImmTy::from_immediate(new_place.to_ref(ecx), val.layout))
+        } else {
+            Ok(val.clone())
+        }
+    }
+
+    fn before_memory_write(
+        tcx: TyCtxtAt<'tcx>,
+        machine: &mut Self,
+        _alloc_extra: &mut Self::AllocExtra,
+        (_alloc_id, immutable): (AllocId, bool),
+        range: AllocRange,
+    ) -> InterpResult<'tcx> {
+        if range.size == Size::ZERO {
+            // Nothing to check.
+            return Ok(());
+        }
+        // Reject writes through immutable pointers.
+        if immutable {
+            super::lint(tcx, machine, WRITES_THROUGH_IMMUTABLE_POINTER, |frames| {
+                crate::errors::WriteThroughImmutablePointer { frames }
+            });
+        }
+        // Everything else is fine.
+        Ok(())
     }
 }
 

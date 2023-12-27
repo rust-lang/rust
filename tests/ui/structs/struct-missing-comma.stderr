@@ -4,5 +4,5 @@ error: expected `,`, or `}`, found keyword `pub`
 LL |     pub foo: u32
    |                 ^ help: try adding a comma: `,`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

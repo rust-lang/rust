@@ -20,7 +20,7 @@ fn cycle(mut x: i32, mut y: i32, mut z: i32) {
     mir!(
         let condition: bool;
         {
-            Call(condition = cond(), bb1)
+            Call(condition = cond(), bb1, UnwindContinue())
         }
         bb1 = {
             match condition { true => bb2, _ => ret }
@@ -30,7 +30,7 @@ fn cycle(mut x: i32, mut y: i32, mut z: i32) {
             z = y;
             y = x;
             x = temp;
-            Call(condition = cond(), bb1)
+            Call(condition = cond(), bb1, UnwindContinue())
         }
         ret = {
             Return()

@@ -3,8 +3,8 @@ use std::iter;
 use ast::make;
 use either::Either;
 use hir::{
-    HasSource, HirDisplay, InFile, Local, LocalSource, ModuleDef, PathResolution, Semantics,
-    TypeInfo, TypeParam,
+    DescendPreference, HasSource, HirDisplay, InFile, Local, LocalSource, ModuleDef,
+    PathResolution, Semantics, TypeInfo, TypeParam,
 };
 use ide_db::{
     defs::{Definition, NameRefClass},
@@ -147,7 +147,12 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                 _ => format_function(ctx, module, &fun, old_indent, new_indent),
             };
 
-            if fn_def.contains("ControlFlow") {
+            // There are external control flows
+            if fun
+                .control_flow
+                .kind
+                .is_some_and(|kind| matches!(kind, FlowKind::Break(_, _) | FlowKind::Continue(_)))
+            {
                 let scope = match scope {
                     ImportScope::File(it) => ImportScope::File(builder.make_mut(it)),
                     ImportScope::Module(it) => ImportScope::Module(builder.make_mut(it)),
@@ -163,6 +168,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                         ModuleDef::from(control_flow_enum),
                         ctx.config.insert_use.prefix_kind,
                         ctx.config.prefer_no_std,
+                        ctx.config.prefer_prelude,
                     );
 
                     if let Some(mod_path) = mod_path {
@@ -750,7 +756,7 @@ impl FunctionBody {
                         .descendants_with_tokens()
                         .filter_map(SyntaxElement::into_token)
                         .filter(|it| matches!(it.kind(), SyntaxKind::IDENT | T![self]))
-                        .flat_map(|t| sema.descend_into_macros(t, 0.into()))
+                        .flat_map(|t| sema.descend_into_macros(DescendPreference::None, t))
                         .for_each(|t| add_name_if_local(t.parent().and_then(ast::NameRef::cast)));
                 }
             }
@@ -4966,6 +4972,27 @@ pub fn testfn(arg: &mut Foo) {
 
 fn $0fun_name(arg: &mut Foo) {
     arg.field = 8;
+}
+"#,
+        );
+    }
+    #[test]
+    fn does_not_import_control_flow() {
+        check_assist(
+            extract_function,
+            r#"
+//- minicore: try
+fn func() {
+    $0let cf = "I'm ControlFlow";$0
+}
+"#,
+            r#"
+fn func() {
+    fun_name();
+}
+
+fn $0fun_name() {
+    let cf = "I'm ControlFlow";
 }
 "#,
         );

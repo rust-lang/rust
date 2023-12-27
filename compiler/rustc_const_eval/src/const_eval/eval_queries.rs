@@ -155,8 +155,8 @@ pub(super) fn op_to_const<'tcx>(
     match immediate {
         Left(ref mplace) => {
             // We know `offset` is relative to the allocation, so we can use `into_parts`.
-            let (alloc_id, offset) = mplace.ptr().into_parts();
-            let alloc_id = alloc_id.expect("cannot have `fake` place fot non-ZST type");
+            let (prov, offset) = mplace.ptr().into_parts();
+            let alloc_id = prov.expect("cannot have `fake` place for non-ZST type").alloc_id();
             ConstValue::Indirect { alloc_id, offset }
         }
         // see comment on `let force_as_immediate` above
@@ -178,8 +178,8 @@ pub(super) fn op_to_const<'tcx>(
                 );
                 let msg = "`op_to_const` on an immediate scalar pair must only be used on slice references to the beginning of an actual allocation";
                 // We know `offset` is relative to the allocation, so we can use `into_parts`.
-                let (alloc_id, offset) = a.to_pointer(ecx).expect(msg).into_parts();
-                let alloc_id = alloc_id.expect(msg);
+                let (prov, offset) = a.to_pointer(ecx).expect(msg).into_parts();
+                let alloc_id = prov.expect(msg).alloc_id();
                 let data = ecx.tcx.global_alloc(alloc_id).unwrap_memory();
                 assert!(offset == abi::Size::ZERO, "{}", msg);
                 let meta = b.to_target_usize(ecx).expect(msg);
@@ -314,7 +314,7 @@ pub fn eval_in_interpreter<'mir, 'tcx>(
     is_static: bool,
 ) -> ::rustc_middle::mir::interpret::EvalToAllocationRawResult<'tcx> {
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
-    match res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, &body)) {
+    match res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, body)) {
         Err(error) => {
             let (error, backtrace) = error.into_parts();
             backtrace.print_backtrace();
@@ -338,7 +338,7 @@ pub fn eval_in_interpreter<'mir, 'tcx>(
                 *ecx.tcx,
                 error,
                 None,
-                || super::get_span_and_frames(&ecx),
+                || super::get_span_and_frames(ecx.tcx, &ecx.machine),
                 |span, frames| ConstEvalError {
                     span,
                     error_kind: kind,
@@ -353,7 +353,7 @@ pub fn eval_in_interpreter<'mir, 'tcx>(
             let validation =
                 const_validate_mplace(&ecx, &mplace, is_static, cid.promoted.is_some());
 
-            let alloc_id = mplace.ptr().provenance.unwrap();
+            let alloc_id = mplace.ptr().provenance.unwrap().alloc_id();
 
             // Validation failed, report an error.
             if let Err(error) = validation {
@@ -419,7 +419,7 @@ pub fn const_report_error<'mir, 'tcx>(
         *ecx.tcx,
         error,
         None,
-        || crate::const_eval::get_span_and_frames(ecx),
+        || crate::const_eval::get_span_and_frames(ecx.tcx, &ecx.machine),
         move |span, frames| errors::UndefinedBehavior { span, ub_note, frames, raw_bytes },
     )
 }

@@ -1,11 +1,10 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![cfg_attr(not(bootstrap), doc(rust_logo))]
-#![cfg_attr(not(bootstrap), feature(rustdoc_internals))]
-#![cfg_attr(not(bootstrap), allow(internal_features))]
+#![doc(rust_logo)]
+#![feature(rustdoc_internals)]
+#![allow(internal_features)]
 #![feature(decl_macro)]
 #![feature(extract_if)]
-#![cfg_attr(bootstrap, feature(generators))]
-#![cfg_attr(not(bootstrap), feature(coroutines))]
+#![feature(coroutines)]
 #![feature(iter_from_coroutine)]
 #![feature(let_chains)]
 #![feature(if_let_guard)]
@@ -32,8 +31,6 @@ extern crate rustc_middle;
 extern crate tracing;
 
 pub use rmeta::provide;
-use rustc_errors::{DiagnosticMessage, SubdiagnosticMessage};
-use rustc_fluent_macro::fluent_messages;
 
 mod dependency_format;
 mod foreign_modules;
@@ -49,4 +46,4 @@ pub use fs::{emit_wrapper_file, METADATA_FILENAME};
 pub use native_libs::find_native_static_library;
 pub use rmeta::{encode_metadata, rendered_const, EncodedMetadata, METADATA_HEADER};
 
-fluent_messages! { "../messages.ftl" }
+rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

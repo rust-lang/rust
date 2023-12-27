@@ -60,8 +60,8 @@ impl<'ctx> rustc_ast::HashStableContext for StableHashingContext<'ctx> {
 impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let SourceFile {
-            name: _, // We hash the smaller name_hash instead of this
-            name_hash,
+            name: _, // We hash the smaller stable_id instead of this
+            stable_id,
             cnum,
             // Do not hash the source as it is not encoded
             src: _,
@@ -75,7 +75,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
             ref normalized_pos,
         } = *self;
 
-        name_hash.hash_stable(hcx, hasher);
+        stable_id.hash_stable(hcx, hasher);
 
         src_hash.hash_stable(hcx, hasher);
 
@@ -117,11 +117,9 @@ impl<'tcx> HashStable<StableHashingContext<'tcx>> for rustc_feature::Features {
         self.declared_lang_features.hash_stable(hcx, hasher);
         self.declared_lib_features.hash_stable(hcx, hasher);
 
-        self.walk_feature_fields(|feature_name, value| {
-            feature_name.hash_stable(hcx, hasher);
-            value.hash_stable(hcx, hasher);
-        });
+        self.all_features()[..].hash_stable(hcx, hasher);
+        for feature in rustc_feature::UNSTABLE_FEATURES.iter() {
+            feature.feature.name.hash_stable(hcx, hasher);
+        }
     }
 }
-
-impl<'ctx> rustc_type_ir::HashStableContext for StableHashingContext<'ctx> {}

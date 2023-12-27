@@ -14,7 +14,7 @@ doctest = false
 [dependencies]
 rustc-hash = "1.1.0"
 fst = "0.4.7"
-indexmap = "2.0.0"
+indexmap.workspace = true
 nohash-hasher.workspace = true
 
 paths.workspace = true

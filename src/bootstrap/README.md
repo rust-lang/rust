@@ -183,7 +183,7 @@ Some general areas that you may be interested in modifying are:
 
 If you make a major change on bootstrap configuration, please remember to:
 
-+ Update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/lib.rs`.
++ Update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs`.
 * Update `change-id = {pull-request-id}` in `config.example.toml`.
 
 A 'major change' includes

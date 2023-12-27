@@ -123,7 +123,7 @@ pub enum AnalysisPhase {
     /// * [`TerminatorKind::FalseEdge`]
     /// * [`StatementKind::FakeRead`]
     /// * [`StatementKind::AscribeUserType`]
-    /// * [`Rvalue::Ref`] with `BorrowKind::Shallow`
+    /// * [`Rvalue::Ref`] with `BorrowKind::Fake`
     ///
     /// Furthermore, `Deref` projections must be the first projection within any place (if they
     /// appear at all)
@@ -182,7 +182,7 @@ pub enum BorrowKind {
     /// should not prevent `if let None = x { ... }`, for example, because the
     /// mutating `(*x as Some).0` can't affect the discriminant of `x`.
     /// We can also report errors with this kind of borrow differently.
-    Shallow,
+    Fake,
 
     /// Data is mutable and not aliasable.
     Mut { kind: MutBorrowKind },
@@ -1404,18 +1404,18 @@ pub enum BinOp {
     BitOr,
     /// The `<<` operator (shift left)
     ///
-    /// The offset is truncated to the size of the first operand before shifting.
+    /// The offset is truncated to the size of the first operand and made unsigned before shifting.
     Shl,
-    /// Like `Shl`, but is UB if the RHS >= LHS::BITS
+    /// Like `Shl`, but is UB if the RHS >= LHS::BITS or RHS < 0
     ShlUnchecked,
     /// The `>>` operator (shift right)
     ///
-    /// The offset is truncated to the size of the first operand before shifting.
+    /// The offset is truncated to the size of the first operand and made unsigned before shifting.
     ///
     /// This is an arithmetic shift if the LHS is signed
     /// and a logical shift if the LHS is unsigned.
     Shr,
-    /// Like `Shl`, but is UB if the RHS >= LHS::BITS
+    /// Like `Shl`, but is UB if the RHS >= LHS::BITS or RHS < 0
     ShrUnchecked,
     /// The `==` operator (equality)
     Eq,

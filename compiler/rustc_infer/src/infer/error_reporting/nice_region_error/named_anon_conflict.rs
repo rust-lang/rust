@@ -5,16 +5,14 @@ use crate::{
     errors::ExplicitLifetimeRequired,
     infer::error_reporting::nice_region_error::find_anon_type::find_anon_type,
 };
-use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::DiagnosticBuilder;
 use rustc_middle::ty;
 use rustc_span::symbol::kw;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// When given a `ConcreteFailure` for a function with parameters containing a named region and
     /// an anonymous region, emit an descriptive diagnostic error.
-    pub(super) fn try_report_named_anon_conflict(
-        &self,
-    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
+    pub(super) fn try_report_named_anon_conflict(&self) -> Option<DiagnosticBuilder<'tcx>> {
         let (span, sub, sup) = self.regions()?;
 
         debug!(
@@ -90,6 +88,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             },
             None => ExplicitLifetimeRequired::WithParamType { span, named, new_ty_span, new_ty },
         };
-        Some(self.tcx().sess.parse_sess.create_err(err))
+        Some(self.tcx().sess.dcx().create_err(err))
     }
 }

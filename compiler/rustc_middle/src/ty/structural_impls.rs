@@ -79,9 +79,9 @@ impl fmt::Debug for ty::BoundRegionKind {
     }
 }
 
-impl fmt::Debug for ty::FreeRegion {
+impl fmt::Debug for ty::LateParamRegion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "ReFree({:?}, {:?})", self.scope, self.bound_region)
+        write!(f, "ReLateParam({:?}, {:?})", self.scope, self.bound_region)
     }
 }
 
@@ -173,6 +173,12 @@ impl<'tcx> fmt::Debug for ty::ProjectionPredicate<'tcx> {
     }
 }
 
+impl<'tcx> fmt::Debug for ty::NormalizesTo<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "NormalizesTo({:?}, {:?})", self.alias, self.term)
+    }
+}
+
 impl<'tcx> fmt::Debug for ty::Predicate<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.kind())
@@ -199,34 +205,6 @@ impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for AliasTy<'tcx> {
             .field("args", &this.map(|data| data.args))
             .field("def_id", &this.data.def_id)
             .finish()
-    }
-}
-
-impl fmt::Debug for ty::InferConst {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            InferConst::Var(var) => write!(f, "{var:?}"),
-            InferConst::EffectVar(var) => write!(f, "{var:?}"),
-            InferConst::Fresh(var) => write!(f, "Fresh({var:?})"),
-        }
-    }
-}
-impl<'tcx> DebugWithInfcx<TyCtxt<'tcx>> for ty::InferConst {
-    fn fmt<Infcx: InferCtxtLike<Interner = TyCtxt<'tcx>>>(
-        this: WithInfcx<'_, Infcx, &Self>,
-        f: &mut core::fmt::Formatter<'_>,
-    ) -> core::fmt::Result {
-        use ty::InferConst::*;
-        match this.infcx.universe_of_ct(*this.data) {
-            None => write!(f, "{:?}", this.data),
-            Some(universe) => match *this.data {
-                Var(vid) => write!(f, "?{}_{}c", vid.index(), universe.index()),
-                EffectVar(vid) => write!(f, "?{}_{}e", vid.index(), universe.index()),
-                Fresh(_) => {
-                    unreachable!()
-                }
-            },
-        }
     }
 }
 
@@ -444,7 +422,7 @@ TrivialTypeTraversalImpls! {
     crate::ty::Placeholder<crate::ty::BoundRegion>,
     crate::ty::Placeholder<crate::ty::BoundTy>,
     crate::ty::Placeholder<ty::BoundVar>,
-    crate::ty::FreeRegion,
+    crate::ty::LateParamRegion,
     crate::ty::InferTy,
     crate::ty::IntVarValue,
     crate::ty::adjustment::PointerCoercion,
@@ -462,14 +440,14 @@ TrivialTypeTraversalImpls! {
 // interners).
 TrivialTypeTraversalAndLiftImpls! {
     ::rustc_hir::def_id::DefId,
-    ::rustc_hir::Mutability,
     ::rustc_hir::Unsafety,
     ::rustc_target::spec::abi::Abi,
     crate::ty::ClosureKind,
     crate::ty::ParamConst,
     crate::ty::ParamTy,
-    interpret::Scalar,
     interpret::AllocId,
+    interpret::CtfeProvenance,
+    interpret::Scalar,
     rustc_target::abi::Size,
 }
 

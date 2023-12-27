@@ -3,6 +3,7 @@ use test::{black_box, Bencher};
 
 mod char_count;
 mod corpora;
+mod iter;
 
 #[bench]
 fn str_validate_emoji(b: &mut Bencher) {

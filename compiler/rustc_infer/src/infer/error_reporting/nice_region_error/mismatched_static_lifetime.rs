@@ -81,7 +81,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             for matching_def_id in v.0 {
                 let mut hir_v =
                     super::static_impl_trait::HirTraitObjectVisitor(&mut traits, matching_def_id);
-                hir_v.visit_ty(&impl_self_ty);
+                hir_v.visit_ty(impl_self_ty);
             }
 
             if traits.is_empty() {
@@ -116,7 +116,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 .unwrap_or(DoesNotOutliveStaticFromImpl::Unspanned),
             implicit_static_lifetimes,
         };
-        let reported = self.tcx().sess.emit_err(err);
+        let reported = self.tcx().dcx().emit_err(err);
         Some(reported)
     }
 }

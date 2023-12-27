@@ -9,5 +9,5 @@ LL | fn foo(u: u8) { if u8 macro_rules! u8 { (u6) => { fn uuuuuuuuuuu() { use s 
    |               |                       |         unclosed delimiter
    |               unclosed delimiter      unclosed delimiter
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

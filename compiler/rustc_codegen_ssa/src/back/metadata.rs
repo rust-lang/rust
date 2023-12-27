@@ -12,9 +12,9 @@ use object::{
 
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::owned_slice::{try_slice_owned, OwnedSlice};
+use rustc_metadata::creader::MetadataLoader;
 use rustc_metadata::fs::METADATA_FILENAME;
 use rustc_metadata::EncodedMetadata;
-use rustc_session::cstore::MetadataLoader;
 use rustc_session::Session;
 use rustc_span::sym;
 use rustc_target::abi::Endian;
@@ -158,11 +158,12 @@ pub(super) fn get_metadata_xcoff<'a>(path: &Path, data: &'a [u8]) -> Result<&'a 
         file.symbols().find(|sym| sym.name() == Ok(AIX_METADATA_SYMBOL_NAME))
     {
         let offset = metadata_symbol.address() as usize;
+        // The offset specifies the location of rustc metadata in the .info section of XCOFF.
+        // Each string stored in .info section of XCOFF is preceded by a 4-byte length field.
         if offset < 4 {
             return Err(format!("Invalid metadata symbol offset: {offset}"));
         }
-        // The offset specifies the location of rustc metadata in the comment section.
-        // The metadata is preceded by a 4-byte length field.
+        // XCOFF format uses big-endian byte order.
         let len = u32::from_be_bytes(info_data[(offset - 4)..offset].try_into().unwrap()) as usize;
         if offset + len > (info_data.len() as usize) {
             return Err(format!(
@@ -226,6 +227,10 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
 
     let mut file = write::Object::new(binary_format, architecture, endianness);
     if sess.target.is_like_osx {
+        if macho_is_arm64e(&sess.target) {
+            file.set_macho_cpu_subtype(object::macho::CPU_SUBTYPE_ARM64E);
+        }
+
         file.set_macho_build_version(macho_object_build_version_for_target(&sess.target))
     }
     if binary_format == BinaryFormat::Coff {
@@ -385,6 +390,11 @@ fn macho_object_build_version_for_target(target: &Target) -> object::write::Mach
     build_version
 }
 
+/// Is Apple's CPU subtype `arm64e`s
+fn macho_is_arm64e(target: &Target) -> bool {
+    return target.llvm_target.starts_with("arm64e");
+}
+
 pub enum MetadataPosition {
     First,
     Last,
@@ -469,8 +479,11 @@ pub fn create_wrapper_file(
             file.add_section(Vec::new(), b".text".to_vec(), SectionKind::Text);
             file.section_mut(section).flags =
                 SectionFlags::Xcoff { s_flags: xcoff::STYP_INFO as u32 };
-
-            let len = data.len() as u32;
+            // Encode string stored in .info section of XCOFF.
+            // FIXME: The length of data here is not guaranteed to fit in a u32.
+            // We may have to split the data into multiple pieces in order to
+            // store in .info section.
+            let len: u32 = data.len().try_into().unwrap();
             let offset = file.append_section_data(section, &len.to_be_bytes(), 1);
             // Add a symbol referring to the data in .info section.
             file.add_symbol(Symbol {
@@ -515,7 +528,7 @@ pub fn create_compressed_metadata_file(
     symbol_name: &str,
 ) -> Vec<u8> {
     let mut packed_metadata = rustc_metadata::METADATA_HEADER.to_vec();
-    packed_metadata.write_all(&(metadata.raw_data().len() as u32).to_be_bytes()).unwrap();
+    packed_metadata.write_all(&(metadata.raw_data().len() as u64).to_le_bytes()).unwrap();
     packed_metadata.extend(metadata.raw_data());
 
     let Some(mut file) = create_object_file(sess) else {
@@ -590,7 +603,7 @@ pub fn create_compressed_metadata_file_for_xcoff(
         section: SymbolSection::Section(data_section),
         flags: SymbolFlags::None,
     });
-    let len = data.len() as u32;
+    let len: u32 = data.len().try_into().unwrap();
     let offset = file.append_section_data(section, &len.to_be_bytes(), 1);
     // Add a symbol referring to the rustc metadata.
     file.add_symbol(Symbol {

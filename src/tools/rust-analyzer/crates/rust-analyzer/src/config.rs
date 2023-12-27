@@ -91,6 +91,12 @@ config_data! {
         /// and should therefore include `--message-format=json` or a similar
         /// option.
         ///
+        /// If there are multiple linked projects/workspaces, this command is invoked for
+        /// each of them, with the working directory being the workspace root
+        /// (i.e., the folder containing the `Cargo.toml`). This can be overwritten
+        /// by changing `#rust-analyzer.cargo.buildScripts.invocationStrategy#` and
+        /// `#rust-analyzer.cargo.buildScripts.invocationLocation#`.
+        ///
         /// By default, a cargo invocation will be constructed for the configured
         /// targets and features, with the following base command line:
         ///
@@ -182,9 +188,11 @@ config_data! {
         /// Cargo, you might also want to change
         /// `#rust-analyzer.cargo.buildScripts.overrideCommand#`.
         ///
-        /// If there are multiple linked projects, this command is invoked for
-        /// each of them, with the working directory being the project root
-        /// (i.e., the folder containing the `Cargo.toml`).
+        /// If there are multiple linked projects/workspaces, this command is invoked for
+        /// each of them, with the working directory being the workspace root
+        /// (i.e., the folder containing the `Cargo.toml`). This can be overwritten
+        /// by changing `#rust-analyzer.cargo.check.invocationStrategy#` and
+        /// `#rust-analyzer.cargo.check.invocationLocation#`.
         ///
         /// An example command would be:
         ///
@@ -209,6 +217,8 @@ config_data! {
         completion_autoself_enable: bool        = "true",
         /// Whether to add parenthesis and argument snippets when completing function.
         completion_callable_snippets: CallableCompletionDef  = "\"fill_arguments\"",
+        /// Whether to show full function/method signatures in completion docs.
+        completion_fullFunctionSignatures_enable: bool = "false",
         /// Maximum number of completions to return. If `None`, the limit is infinite.
         completion_limit: Option<usize> = "null",
         /// Whether to show postfix snippets like `dbg`, `if`, `not`, etc.
@@ -342,7 +352,9 @@ config_data! {
         /// Whether to allow import insertion to merge new imports into single path glob imports like `use std::fmt::*;`.
         imports_merge_glob: bool           = "true",
         /// Prefer to unconditionally use imports of the core and alloc crate, over the std crate.
-        imports_prefer_no_std: bool                     = "false",
+        imports_preferNoStd | imports_prefer_no_std: bool = "false",
+        /// Whether to prefer import paths containing a `prelude` module.
+        imports_preferPrelude: bool                       = "false",
         /// The path structure for newly inserted paths to use.
         imports_prefix: ImportPrefixDef               = "\"plain\"",
 
@@ -369,6 +381,8 @@ config_data! {
         inlayHints_expressionAdjustmentHints_hideOutsideUnsafe: bool = "false",
         /// Whether to show inlay hints as postfix ops (`.*` instead of `*`, etc).
         inlayHints_expressionAdjustmentHints_mode: AdjustmentHintsModeDef = "\"prefix\"",
+        /// Whether to show implicit drop hints.
+        inlayHints_implicitDrops_enable: bool                      = "false",
         /// Whether to show inlay type hints for elided lifetimes in function signatures.
         inlayHints_lifetimeElisionHints_enable: LifetimeElisionDef = "\"never\"",
         /// Whether to prefer using parameter names as the name for elided lifetime hints if possible.
@@ -470,6 +484,14 @@ config_data! {
         /// tests or binaries. For example, it may be `--release`.
         runnables_extraArgs: Vec<String>   = "[]",
 
+        /// Optional path to a rust-analyzer specific target directory.
+        /// This prevents rust-analyzer's `cargo check` from locking the `Cargo.lock`
+        /// at the expense of duplicating build artifacts.
+        ///
+        /// Set to `true` to use a subdirectory of the existing target directory or
+        /// set to a path relative to the workspace to use that path.
+        rust_analyzerTargetDir: Option<TargetDirectory> = "null",
+
         /// Path to the Cargo.toml of the rust compiler workspace, for usage in rustc_private
         /// projects, or "discover" to try to automatically find it if the `rustc-dev` component
         /// is installed.
@@ -565,6 +587,7 @@ pub struct Config {
     data: ConfigData,
     detached_files: Vec<AbsPathBuf>,
     snippets: Vec<Snippet>,
+    is_visual_studio_code: bool,
 }
 
 type ParallelCachePrimingNumThreads = u8;
@@ -755,11 +778,14 @@ impl fmt::Display for ConfigError {
     }
 }
 
+impl std::error::Error for ConfigError {}
+
 impl Config {
     pub fn new(
         root_path: AbsPathBuf,
         caps: ClientCapabilities,
         workspace_roots: Vec<AbsPathBuf>,
+        is_visual_studio_code: bool,
     ) -> Self {
         Config {
             caps,
@@ -769,6 +795,7 @@ impl Config {
             root_path,
             snippets: Default::default(),
             workspace_roots,
+            is_visual_studio_code,
         }
     }
 
@@ -1094,7 +1121,8 @@ impl Config {
                 ExprFillDefaultDef::Default => ExprFillDefaultMode::Default,
             },
             insert_use: self.insert_use_config(),
-            prefer_no_std: self.data.imports_prefer_no_std,
+            prefer_no_std: self.data.imports_preferNoStd,
+            prefer_prelude: self.data.imports_preferPrelude,
         }
     }
 
@@ -1248,6 +1276,7 @@ impl Config {
             run_build_script_command: self.data.cargo_buildScripts_overrideCommand.clone(),
             extra_args: self.data.cargo_extraArgs.clone(),
             extra_env: self.data.cargo_extraEnv.clone(),
+            target_dir: self.target_dir_from_config(),
         }
     }
 
@@ -1320,8 +1349,20 @@ impl Config {
                 extra_args: self.check_extra_args(),
                 extra_env: self.check_extra_env(),
                 ansi_color_output: self.color_diagnostic_output(),
+                target_dir: self.target_dir_from_config(),
             },
         }
+    }
+
+    // FIXME: This should be an AbsolutePathBuf
+    fn target_dir_from_config(&self) -> Option<PathBuf> {
+        self.data.rust_analyzerTargetDir.as_ref().and_then(|target_dir| match target_dir {
+            TargetDirectory::UseSubdirectory(yes) if *yes => {
+                Some(PathBuf::from("target/rust-analyzer"))
+            }
+            TargetDirectory::UseSubdirectory(_) => None,
+            TargetDirectory::Directory(dir) => Some(dir.clone()),
+        })
     }
 
     pub fn check_on_save(&self) -> bool {
@@ -1353,6 +1394,7 @@ impl Config {
             type_hints: self.data.inlayHints_typeHints_enable,
             parameter_hints: self.data.inlayHints_parameterHints_enable,
             chaining_hints: self.data.inlayHints_chainingHints_enable,
+            implicit_drop_hints: self.data.inlayHints_implicitDrops_enable,
             discriminant_hints: match self.data.inlayHints_discriminantHints_enable {
                 DiscriminantHintsDef::Always => ide::DiscriminantHints::Always,
                 DiscriminantHintsDef::Never => ide::DiscriminantHints::Never,
@@ -1444,13 +1486,15 @@ impl Config {
                 && completion_item_edit_resolve(&self.caps),
             enable_self_on_the_fly: self.data.completion_autoself_enable,
             enable_private_editable: self.data.completion_privateEditable_enable,
+            full_function_signatures: self.data.completion_fullFunctionSignatures_enable,
             callable: match self.data.completion_callable_snippets {
                 CallableCompletionDef::FillArguments => Some(CallableSnippets::FillArguments),
                 CallableCompletionDef::AddParentheses => Some(CallableSnippets::AddParentheses),
                 CallableCompletionDef::None => None,
             },
             insert_use: self.insert_use_config(),
-            prefer_no_std: self.data.imports_prefer_no_std,
+            prefer_no_std: self.data.imports_preferNoStd,
+            prefer_prelude: self.data.imports_preferPrelude,
             snippet_cap: SnippetCap::new(try_or_def!(
                 self.caps
                     .text_document
@@ -1479,7 +1523,8 @@ impl Config {
             snippet_cap: SnippetCap::new(self.experimental("snippetTextEdit")),
             allowed: None,
             insert_use: self.insert_use_config(),
-            prefer_no_std: self.data.imports_prefer_no_std,
+            prefer_no_std: self.data.imports_preferNoStd,
+            prefer_prelude: self.data.imports_preferPrelude,
             assist_emit_must_use: self.data.assist_emitMustUse,
         }
     }
@@ -1666,6 +1711,12 @@ impl Config {
 
     pub fn typing_autoclose_angle(&self) -> bool {
         self.data.typing_autoClosingAngleBrackets_enable
+    }
+
+    // FIXME: VSCode seems to work wrong sometimes, see https://github.com/microsoft/vscode/issues/193124
+    // hence, distinguish it for now.
+    pub fn is_visual_studio_code(&self) -> bool {
+        self.is_visual_studio_code
     }
 }
 // Deserialization definitions
@@ -2013,6 +2064,14 @@ pub enum MemoryLayoutHoverRenderKindDef {
     Hexadecimal,
     #[serde(deserialize_with = "de_unit_v::both")]
     Both,
+}
+
+#[derive(Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+#[serde(untagged)]
+pub enum TargetDirectory {
+    UseSubdirectory(bool),
+    Directory(PathBuf),
 }
 
 macro_rules! _config_data {
@@ -2443,6 +2502,19 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 },
             ],
         },
+        "Option<TargetDirectory>" => set! {
+            "anyOf": [
+                {
+                    "type": "null"
+                },
+                {
+                    "type": "boolean"
+                },
+                {
+                    "type": "string"
+                },
+            ],
+        },
         _ => panic!("missing entry for {ty}: {default}"),
     }
 
@@ -2555,8 +2627,12 @@ mod tests {
 
     #[test]
     fn proc_macro_srv_null() {
-        let mut config =
-            Config::new(AbsPathBuf::try_from(project_root()).unwrap(), Default::default(), vec![]);
+        let mut config = Config::new(
+            AbsPathBuf::try_from(project_root()).unwrap(),
+            Default::default(),
+            vec![],
+            false,
+        );
         config
             .update(serde_json::json!({
                 "procMacro_server": null,
@@ -2567,8 +2643,12 @@ mod tests {
 
     #[test]
     fn proc_macro_srv_abs() {
-        let mut config =
-            Config::new(AbsPathBuf::try_from(project_root()).unwrap(), Default::default(), vec![]);
+        let mut config = Config::new(
+            AbsPathBuf::try_from(project_root()).unwrap(),
+            Default::default(),
+            vec![],
+            false,
+        );
         config
             .update(serde_json::json!({
                 "procMacro": {"server": project_root().display().to_string()}
@@ -2579,8 +2659,12 @@ mod tests {
 
     #[test]
     fn proc_macro_srv_rel() {
-        let mut config =
-            Config::new(AbsPathBuf::try_from(project_root()).unwrap(), Default::default(), vec![]);
+        let mut config = Config::new(
+            AbsPathBuf::try_from(project_root()).unwrap(),
+            Default::default(),
+            vec![],
+            false,
+        );
         config
             .update(serde_json::json!({
                 "procMacro": {"server": "./server"}
@@ -2589,6 +2673,69 @@ mod tests {
         assert_eq!(
             config.proc_macro_srv(),
             Some(AbsPathBuf::try_from(project_root().join("./server")).unwrap())
+        );
+    }
+
+    #[test]
+    fn cargo_target_dir_unset() {
+        let mut config = Config::new(
+            AbsPathBuf::try_from(project_root()).unwrap(),
+            Default::default(),
+            vec![],
+            false,
+        );
+        config
+            .update(serde_json::json!({
+                "rust": { "analyzerTargetDir": null }
+            }))
+            .unwrap();
+        assert_eq!(config.data.rust_analyzerTargetDir, None);
+        assert!(
+            matches!(config.flycheck(), FlycheckConfig::CargoCommand { target_dir, .. } if target_dir == None)
+        );
+    }
+
+    #[test]
+    fn cargo_target_dir_subdir() {
+        let mut config = Config::new(
+            AbsPathBuf::try_from(project_root()).unwrap(),
+            Default::default(),
+            vec![],
+            false,
+        );
+        config
+            .update(serde_json::json!({
+                "rust": { "analyzerTargetDir": true }
+            }))
+            .unwrap();
+        assert_eq!(
+            config.data.rust_analyzerTargetDir,
+            Some(TargetDirectory::UseSubdirectory(true))
+        );
+        assert!(
+            matches!(config.flycheck(), FlycheckConfig::CargoCommand { target_dir, .. } if target_dir == Some(PathBuf::from("target/rust-analyzer")))
+        );
+    }
+
+    #[test]
+    fn cargo_target_dir_relative_dir() {
+        let mut config = Config::new(
+            AbsPathBuf::try_from(project_root()).unwrap(),
+            Default::default(),
+            vec![],
+            false,
+        );
+        config
+            .update(serde_json::json!({
+                "rust": { "analyzerTargetDir": "other_folder" }
+            }))
+            .unwrap();
+        assert_eq!(
+            config.data.rust_analyzerTargetDir,
+            Some(TargetDirectory::Directory(PathBuf::from("other_folder")))
+        );
+        assert!(
+            matches!(config.flycheck(), FlycheckConfig::CargoCommand { target_dir, .. } if target_dir == Some(PathBuf::from("other_folder")))
         );
     }
 }

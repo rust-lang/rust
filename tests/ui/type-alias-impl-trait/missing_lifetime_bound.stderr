@@ -9,6 +9,6 @@ LL | fn defining<'a, T>(x: &'a i32) -> Opaque<T> { x }
    |             |
    |             hidden type `&'a i32` captures the lifetime `'a` as defined here
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0700`.

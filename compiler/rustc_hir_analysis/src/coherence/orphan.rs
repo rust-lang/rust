@@ -58,7 +58,7 @@ fn do_orphan_check_impl<'tcx>(
                 tr.path.span,
                 trait_ref,
                 impl_.self_ty.span,
-                &impl_.generics,
+                impl_.generics,
                 err,
             )?
         }
@@ -260,7 +260,7 @@ fn do_orphan_check_impl<'tcx>(
             match local_impl {
                 LocalImpl::Allow => {}
                 LocalImpl::Disallow { problematic_kind } => {
-                    return Err(tcx.sess.emit_err(errors::TraitsWithDefaultImpl {
+                    return Err(tcx.dcx().emit_err(errors::TraitsWithDefaultImpl {
                         span: tcx.def_span(def_id),
                         traits: tcx.def_path_str(trait_def_id),
                         problematic_kind,
@@ -272,13 +272,13 @@ fn do_orphan_check_impl<'tcx>(
             match nonlocal_impl {
                 NonlocalImpl::Allow => {}
                 NonlocalImpl::DisallowBecauseNonlocal => {
-                    return Err(tcx.sess.emit_err(errors::CrossCrateTraitsDefined {
+                    return Err(tcx.dcx().emit_err(errors::CrossCrateTraitsDefined {
                         span: tcx.def_span(def_id),
                         traits: tcx.def_path_str(trait_def_id),
                     }));
                 }
                 NonlocalImpl::DisallowOther => {
-                    return Err(tcx.sess.emit_err(errors::CrossCrateTraits {
+                    return Err(tcx.dcx().emit_err(errors::CrossCrateTraits {
                         span: tcx.def_span(def_id),
                         traits: tcx.def_path_str(trait_def_id),
                         self_ty,
@@ -422,7 +422,7 @@ fn emit_orphan_check_error<'tcx>(
                     sugg,
                 },
             };
-            tcx.sess.emit_err(err_struct)
+            tcx.dcx().emit_err(err_struct)
         }
         traits::OrphanCheckErr::UncoveredTy(param_ty, local_type) => {
             let mut sp = sp;
@@ -433,13 +433,13 @@ fn emit_orphan_check_error<'tcx>(
             }
 
             match local_type {
-                Some(local_type) => tcx.sess.emit_err(errors::TyParamFirstLocal {
+                Some(local_type) => tcx.dcx().emit_err(errors::TyParamFirstLocal {
                     span: sp,
                     note: (),
                     param_ty,
                     local_type,
                 }),
-                None => tcx.sess.emit_err(errors::TyParamSome { span: sp, note: (), param_ty }),
+                None => tcx.dcx().emit_err(errors::TyParamSome { span: sp, note: (), param_ty }),
             }
         }
     })
@@ -452,7 +452,13 @@ fn lint_auto_trait_impl<'tcx>(
     trait_ref: ty::TraitRef<'tcx>,
     impl_def_id: LocalDefId,
 ) {
-    assert_eq!(trait_ref.args.len(), 1);
+    if trait_ref.args.len() != 1 {
+        tcx.dcx().span_delayed_bug(
+            tcx.def_span(impl_def_id),
+            "auto traits cannot have generic parameters",
+        );
+        return;
+    }
     let self_ty = trait_ref.self_ty();
     let (self_type_did, args) = match self_ty.kind() {
         ty::Adt(def, args) => (def.did(), args),
@@ -491,7 +497,7 @@ fn lint_auto_trait_impl<'tcx>(
 
     tcx.struct_span_lint_hir(
         lint::builtin::SUSPICIOUS_AUTO_TRAIT_IMPLS,
-        tcx.hir().local_def_id_to_hir_id(impl_def_id),
+        tcx.local_def_id_to_hir_id(impl_def_id),
         tcx.def_span(impl_def_id),
         DelayDm(|| {
             format!(
@@ -516,7 +522,7 @@ fn lint_auto_trait_impl<'tcx>(
                 format!(
                     "try using the same sequence of generic parameters as the {self_descr} definition",
                 ),
-            )
+            );
         },
     );
 }

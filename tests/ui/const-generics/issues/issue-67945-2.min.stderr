@@ -4,5 +4,5 @@ error: generic `Self` types are currently not permitted in anonymous constants
 LL |         let x: Option<Box<Self>> = None;
    |                           ^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

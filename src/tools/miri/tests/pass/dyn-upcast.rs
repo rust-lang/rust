@@ -1,6 +1,3 @@
-#![feature(trait_upcasting)]
-#![allow(incomplete_features)]
-
 fn main() {
     basic();
     diamond();

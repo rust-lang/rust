@@ -12,7 +12,7 @@
 
 mod dwarf;
 
-#[cfg(not(test))]
+#[cfg(not(any(test, doctest)))]
 cfg_if::cfg_if! {
     if #[cfg(target_os = "emscripten")] {
         mod emcc;
@@ -28,6 +28,7 @@ cfg_if::cfg_if! {
     } else if #[cfg(any(
         all(target_family = "windows", target_env = "gnu"),
         target_os = "psp",
+        target_os = "xous",
         target_os = "solid_asp3",
         all(target_family = "unix", not(target_os = "espidf"), not(target_os = "l4re")),
         all(target_vendor = "fortanix", target_env = "sgx"),

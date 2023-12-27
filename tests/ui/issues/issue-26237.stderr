@@ -10,6 +10,6 @@ LL |     let mut value_b = 0;
 LL |     macro_panic!(value_a, value_b);
    |                  ^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0618`.

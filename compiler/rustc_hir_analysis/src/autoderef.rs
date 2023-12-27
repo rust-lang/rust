@@ -182,7 +182,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             }
         };
 
-        let errors = fulfill_cx.select_where_possible(&self.infcx);
+        let errors = fulfill_cx.select_where_possible(self.infcx);
         if !errors.is_empty() {
             // This shouldn't happen, except for evaluate/fulfill mismatches,
             // but that's not a reason for an ICE (`predicate_may_hold` is conservative
@@ -249,7 +249,7 @@ pub fn report_autoderef_recursion_limit_error<'tcx>(tcx: TyCtxt<'tcx>, span: Spa
         Limit(0) => Limit(2),
         limit => limit * 2,
     };
-    tcx.sess.emit_err(AutoDerefReachedRecursionLimit {
+    tcx.dcx().emit_err(AutoDerefReachedRecursionLimit {
         span,
         ty,
         suggested_limit,

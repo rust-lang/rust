@@ -13,9 +13,8 @@ use crate::{
         TypeLocation,
     },
     render::{render_resolution_with_import, render_resolution_with_import_pat, RenderContext},
+    Completions,
 };
-
-use super::Completions;
 
 // Feature: Completion With Autoimport
 //
@@ -258,7 +257,12 @@ fn import_on_the_fly(
     let user_input_lowercased = potential_import_name.to_lowercase();
 
     import_assets
-        .search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind, ctx.config.prefer_no_std)
+        .search_for_imports(
+            &ctx.sema,
+            ctx.config.insert_use.prefix_kind,
+            ctx.config.prefer_no_std,
+            ctx.config.prefer_prelude,
+        )
         .into_iter()
         .filter(ns_filter)
         .filter(|import| {
@@ -300,7 +304,12 @@ fn import_on_the_fly_pat_(
     let user_input_lowercased = potential_import_name.to_lowercase();
 
     import_assets
-        .search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind, ctx.config.prefer_no_std)
+        .search_for_imports(
+            &ctx.sema,
+            ctx.config.insert_use.prefix_kind,
+            ctx.config.prefer_no_std,
+            ctx.config.prefer_prelude,
+        )
         .into_iter()
         .filter(ns_filter)
         .filter(|import| {
@@ -337,7 +346,12 @@ fn import_on_the_fly_method(
     let user_input_lowercased = potential_import_name.to_lowercase();
 
     import_assets
-        .search_for_imports(&ctx.sema, ctx.config.insert_use.prefix_kind, ctx.config.prefer_no_std)
+        .search_for_imports(
+            &ctx.sema,
+            ctx.config.insert_use.prefix_kind,
+            ctx.config.prefer_no_std,
+            ctx.config.prefer_prelude,
+        )
         .into_iter()
         .filter(|import| {
             !ctx.is_item_hidden(&import.item_to_import)
@@ -377,9 +391,12 @@ fn import_assets_for_path(
         &ctx.sema,
         ctx.token.parent()?,
     )?;
-    if fuzzy_name_length < 3 {
-        cov_mark::hit!(flyimport_exact_on_short_path);
-        assets_for_path.path_fuzzy_name_to_exact(false);
+    if fuzzy_name_length == 0 {
+        // nothing matches the empty string exactly, but we still compute assoc items in this case
+        assets_for_path.path_fuzzy_name_to_exact();
+    } else if fuzzy_name_length < 3 {
+        cov_mark::hit!(flyimport_prefix_on_short_path);
+        assets_for_path.path_fuzzy_name_to_prefix();
     }
     Some(assets_for_path)
 }

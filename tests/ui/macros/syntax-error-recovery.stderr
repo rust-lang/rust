@@ -1,4 +1,4 @@
-error: expected one of `(`, `,`, `=`, `{`, or `}`, found `(String)`
+error: expected one of `(`, `,`, `=`, `{`, or `}`, found type `(String)`
   --> $DIR/syntax-error-recovery.rs:7:26
    |
 LL |                 $token $($inner)? = $value,

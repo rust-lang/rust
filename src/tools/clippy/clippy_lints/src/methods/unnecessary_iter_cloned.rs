@@ -13,15 +13,13 @@ use rustc_span::{sym, Symbol};
 use super::UNNECESSARY_TO_OWNED;
 
 pub fn check(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symbol, receiver: &Expr<'_>) -> bool {
-    if_chain! {
-        if let Some(parent) = get_parent_expr(cx, expr);
-        if let Some(callee_def_id) = fn_def_id(cx, parent);
-        if is_into_iter(cx, callee_def_id);
-        then {
-            check_for_loop_iter(cx, parent, method_name, receiver, false)
-        } else {
-            false
-        }
+    if let Some(parent) = get_parent_expr(cx, expr)
+        && let Some(callee_def_id) = fn_def_id(cx, parent)
+        && is_into_iter(cx, callee_def_id)
+    {
+        check_for_loop_iter(cx, parent, method_name, receiver, false)
+    } else {
+        false
     }
 }
 
@@ -36,65 +34,58 @@ pub fn check_for_loop_iter(
     receiver: &Expr<'_>,
     cloned_before_iter: bool,
 ) -> bool {
-    if_chain! {
-        if let Some(grandparent) = get_parent_expr(cx, expr).and_then(|parent| get_parent_expr(cx, parent));
-        if let Some(ForLoop { pat, body, .. }) = ForLoop::hir(grandparent);
-        let (clone_or_copy_needed, addr_of_exprs) = clone_or_copy_needed(cx, pat, body);
-        if !clone_or_copy_needed;
-        if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
-        then {
-            let snippet = if_chain! {
-                if let ExprKind::MethodCall(maybe_iter_method_name, collection, [], _) = receiver.kind;
-                if maybe_iter_method_name.ident.name == sym::iter;
-
-                if let Some(iterator_trait_id) = cx.tcx.get_diagnostic_item(sym::Iterator);
-                let receiver_ty = cx.typeck_results().expr_ty(receiver);
-                if implements_trait(cx, receiver_ty, iterator_trait_id, &[]);
-                if let Some(iter_item_ty) = get_iterator_item_ty(cx, receiver_ty);
-
-                if let Some(into_iterator_trait_id) = cx.tcx.get_diagnostic_item(sym::IntoIterator);
-                let collection_ty = cx.typeck_results().expr_ty(collection);
-                if implements_trait(cx, collection_ty, into_iterator_trait_id, &[]);
-                if let Some(into_iter_item_ty) = cx.get_associated_type(collection_ty, into_iterator_trait_id, "Item");
-
-                if iter_item_ty == into_iter_item_ty;
-                if let Some(collection_snippet) = snippet_opt(cx, collection.span);
-                then {
-                    collection_snippet
+    if let Some(grandparent) = get_parent_expr(cx, expr).and_then(|parent| get_parent_expr(cx, parent))
+        && let Some(ForLoop { pat, body, .. }) = ForLoop::hir(grandparent)
+        && let (clone_or_copy_needed, addr_of_exprs) = clone_or_copy_needed(cx, pat, body)
+        && !clone_or_copy_needed
+        && let Some(receiver_snippet) = snippet_opt(cx, receiver.span)
+    {
+        let snippet = if let ExprKind::MethodCall(maybe_iter_method_name, collection, [], _) = receiver.kind
+            && maybe_iter_method_name.ident.name == sym::iter
+            && let Some(iterator_trait_id) = cx.tcx.get_diagnostic_item(sym::Iterator)
+            && let receiver_ty = cx.typeck_results().expr_ty(receiver)
+            && implements_trait(cx, receiver_ty, iterator_trait_id, &[])
+            && let Some(iter_item_ty) = get_iterator_item_ty(cx, receiver_ty)
+            && let Some(into_iterator_trait_id) = cx.tcx.get_diagnostic_item(sym::IntoIterator)
+            && let collection_ty = cx.typeck_results().expr_ty(collection)
+            && implements_trait(cx, collection_ty, into_iterator_trait_id, &[])
+            && let Some(into_iter_item_ty) = cx.get_associated_type(collection_ty, into_iterator_trait_id, "Item")
+            && iter_item_ty == into_iter_item_ty
+            && let Some(collection_snippet) = snippet_opt(cx, collection.span)
+        {
+            collection_snippet
+        } else {
+            receiver_snippet
+        };
+        span_lint_and_then(
+            cx,
+            UNNECESSARY_TO_OWNED,
+            expr.span,
+            &format!("unnecessary use of `{method_name}`"),
+            |diag| {
+                // If `check_into_iter_call_arg` called `check_for_loop_iter` because a call to
+                // a `to_owned`-like function was removed, then the next suggestion may be
+                // incorrect. This is because the iterator that results from the call's removal
+                // could hold a reference to a resource that is used mutably. See
+                // https://github.com/rust-lang/rust-clippy/issues/8148.
+                let applicability = if cloned_before_iter {
+                    Applicability::MaybeIncorrect
                 } else {
-                    receiver_snippet
-                }
-            };
-            span_lint_and_then(
-                cx,
-                UNNECESSARY_TO_OWNED,
-                expr.span,
-                &format!("unnecessary use of `{method_name}`"),
-                |diag| {
-                    // If `check_into_iter_call_arg` called `check_for_loop_iter` because a call to
-                    // a `to_owned`-like function was removed, then the next suggestion may be
-                    // incorrect. This is because the iterator that results from the call's removal
-                    // could hold a reference to a resource that is used mutably. See
-                    // https://github.com/rust-lang/rust-clippy/issues/8148.
-                    let applicability = if cloned_before_iter {
-                        Applicability::MaybeIncorrect
-                    } else {
-                        Applicability::MachineApplicable
-                    };
-                    diag.span_suggestion(expr.span, "use", snippet, applicability);
-                    for addr_of_expr in addr_of_exprs {
-                        match addr_of_expr.kind {
-                            ExprKind::AddrOf(_, _, referent) => {
-                                let span = addr_of_expr.span.with_hi(referent.span.lo());
-                                diag.span_suggestion(span, "remove this `&`", "", applicability);
-                            }
-                            _ => unreachable!(),
-                        }
+                    Applicability::MachineApplicable
+                };
+                diag.span_suggestion(expr.span, "use", snippet, applicability);
+                for addr_of_expr in addr_of_exprs {
+                    match addr_of_expr.kind {
+                        ExprKind::AddrOf(_, _, referent) => {
+                            let span = addr_of_expr.span.with_hi(referent.span.lo());
+                            diag.span_suggestion(span, "remove this `&`", "", applicability);
+                        },
+                        _ => unreachable!(),
                     }
                 }
-            );
-            return true;
-        }
+            },
+        );
+        return true;
     }
     false
 }

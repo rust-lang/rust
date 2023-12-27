@@ -7,6 +7,6 @@ LL |     fn do_stuff(&self) {
 LL |         self[0].method();
    |                 ^^^^^^ method not found in `Hello`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0599`.

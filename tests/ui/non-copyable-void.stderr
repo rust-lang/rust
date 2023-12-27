@@ -4,6 +4,6 @@ error[E0599]: no method named `clone` found for enum `c_void` in the current sco
 LL |         let _z = (*y).clone();
    |                       ^^^^^ method not found in `c_void`
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0599`.

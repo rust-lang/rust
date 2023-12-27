@@ -7,5 +7,5 @@ LL | fn main((ؼ
    |        |unclosed delimiter
    |        unclosed delimiter
 
-error: aborting due to previous error
+error: aborting due to 1 previous error
 

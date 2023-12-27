@@ -50,7 +50,7 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ImpliedOutlivesBounds<'tcx> {
         tcx.implied_outlives_bounds(canonicalized)
     }
 
-    fn perform_locally_in_new_solver(
+    fn perform_locally_with_next_solver(
         ocx: &ObligationCtxt<'_, 'tcx>,
         key: ParamEnvAnd<'tcx, Self>,
     ) -> Result<Self::QueryResponse, NoSolution> {
@@ -123,20 +123,19 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
                 Some(pred) => pred,
             };
             match pred {
-                ty::PredicateKind::Clause(ty::ClauseKind::Trait(..))
                 // FIXME(const_generics): Make sure that `<'a, 'b, const N: &'a &'b u32>` is sound
                 // if we ever support that
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(..))
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(..))
                 | ty::PredicateKind::Subtype(..)
                 | ty::PredicateKind::Coerce(..)
                 | ty::PredicateKind::Clause(ty::ClauseKind::Projection(..))
-                | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::ObjectSafe(..)
                 | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
                 | ty::PredicateKind::ConstEquate(..)
                 | ty::PredicateKind::Ambiguous
-                | ty::PredicateKind::AliasRelate(..)
-                 => {}
+                | ty::PredicateKind::NormalizesTo(..)
+                | ty::PredicateKind::AliasRelate(..) => {}
 
                 // We need to search through *all* WellFormed predicates
                 ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(arg)) => {
@@ -144,10 +143,9 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
                 }
 
                 // We need to register region relationships
-                ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(
-                    r_a,
-                    r_b,
-                ))) => outlives_bounds.push(ty::OutlivesPredicate(r_a.into(), r_b)),
+                ty::PredicateKind::Clause(ty::ClauseKind::RegionOutlives(
+                    ty::OutlivesPredicate(r_a, r_b),
+                )) => outlives_bounds.push(ty::OutlivesPredicate(r_a.into(), r_b)),
 
                 ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
                     ty_a,
@@ -186,7 +184,9 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
                 push_outlives_components(tcx, ty_a, &mut components);
                 implied_bounds.extend(implied_bounds_from_components(r_b, components))
             }
-            ty::GenericArgKind::Const(_) => unreachable!(),
+            ty::GenericArgKind::Const(_) => {
+                unreachable!("consts do not participate in outlives bounds")
+            }
         }
     }
 
@@ -208,6 +208,11 @@ fn implied_bounds_from_components<'tcx>(
                 Component::Region(r) => Some(OutlivesBound::RegionSubRegion(sub_region, r)),
                 Component::Param(p) => Some(OutlivesBound::RegionSubParam(sub_region, p)),
                 Component::Alias(p) => Some(OutlivesBound::RegionSubAlias(sub_region, p)),
+                Component::Placeholder(_p) => {
+                    // FIXME(non_lifetime_binders): Placeholders don't currently
+                    // imply anything for outlives, though they could easily.
+                    None
+                }
                 Component::EscapingAlias(_) =>
                 // If the projection has escaping regions, don't
                 // try to infer any implied bounds even for its
