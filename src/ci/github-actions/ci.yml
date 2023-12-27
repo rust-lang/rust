@@ -136,7 +136,7 @@ x--expand-yaml-anchors--remove:
             mingw-w64-x86_64-toolchain
             mingw-w64-i686-toolchain
             mingw-w64-x86_64-cmake
-            mingw-w64-x86_64-sccache
+          # mingw-w64-x86_64-sccache
       
       # - name: disable git crlf conversion
       #   run: src/ci/scripts/disable-git-crlf-conversion.sh
