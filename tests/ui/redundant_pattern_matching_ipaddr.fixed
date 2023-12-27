@@ -18,6 +18,12 @@ fn main() {
 
     if V6(Ipv6Addr::LOCALHOST).is_ipv6() {}
 
+    // Issue 6459
+    if V4(Ipv4Addr::LOCALHOST).is_ipv4() {}
+
+    // Issue 6459
+    if V6(Ipv6Addr::LOCALHOST).is_ipv6() {}
+
     while V4(Ipv4Addr::LOCALHOST).is_ipv4() {}
 
     while V6(Ipv6Addr::LOCALHOST).is_ipv6() {}
