@@ -2,11 +2,11 @@
 use std::mem;
 
 #[repr(packed)]
-#[allow(unused_tuple_struct_fields)]
+#[allow(dead_code)]
 struct S4(u8,[u8; 3]);
 
 #[repr(packed)]
-#[allow(unused_tuple_struct_fields)]
+#[allow(dead_code)]
 struct S5(u8,u32);
 
 pub fn main() {

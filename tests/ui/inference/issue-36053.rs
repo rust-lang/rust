@@ -7,7 +7,7 @@
 
 use std::iter::FusedIterator;
 
-struct Thing<'a>(#[allow(unused_tuple_struct_fields)] &'a str);
+struct Thing<'a>(#[allow(dead_code)] &'a str);
 impl<'a> Iterator for Thing<'a> {
     type Item = &'a str;
     fn next(&mut self) -> Option<&'a str> {

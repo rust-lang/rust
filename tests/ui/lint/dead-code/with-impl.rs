@@ -2,7 +2,7 @@
 
 #![deny(dead_code)]
 
-pub struct GenericFoo<T>(#[allow(unused_tuple_struct_fields)] T);
+pub struct GenericFoo<T>(#[allow(dead_code)] T);
 
 type Foo = GenericFoo<u32>;
 

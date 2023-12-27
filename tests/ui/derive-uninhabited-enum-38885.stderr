@@ -3,7 +3,7 @@ warning: variant `Void` is never constructed
    |
 LL | enum Foo {
    |      --- variant in this enum
-LL |     Bar(u8),
+LL |     Bar(#[allow(dead_code)] u8),
 LL |     Void(Void),
    |     ^^^^
    |
