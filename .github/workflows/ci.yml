@@ -92,7 +92,7 @@ jobs:
           msystem: MINGW64
           update: true
           path-type: strict
-          install: "make mingw-w64-x86_64-python mingw-w64-x86_64-jq mingw-w64-x86_64-7zip git dos2unix\n"
+          install: "make mingw-w64-x86_64-python mingw-w64-x86_64-jq mingw-w64-x86_64-7zip git dos2unix mingw-w64-x86_64-toolchain\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -492,7 +492,7 @@ jobs:
           msystem: MINGW64
           update: true
           path-type: strict
-          install: "make mingw-w64-x86_64-python mingw-w64-x86_64-jq mingw-w64-x86_64-7zip git dos2unix\n"
+          install: "make mingw-w64-x86_64-python mingw-w64-x86_64-jq mingw-w64-x86_64-7zip git dos2unix mingw-w64-x86_64-toolchain\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -626,7 +626,7 @@ jobs:
           msystem: MINGW64
           update: true
           path-type: strict
-          install: "make mingw-w64-x86_64-python mingw-w64-x86_64-jq mingw-w64-x86_64-7zip git dos2unix\n"
+          install: "make mingw-w64-x86_64-python mingw-w64-x86_64-jq mingw-w64-x86_64-7zip git dos2unix mingw-w64-x86_64-toolchain\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
