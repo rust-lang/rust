@@ -94,7 +94,7 @@ jobs:
           msystem: MINGW64
           update: true
           path-type: inherit
-          install: "make\n"
+          install: "make git\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -494,7 +494,7 @@ jobs:
           msystem: MINGW64
           update: true
           path-type: inherit
-          install: "make\n"
+          install: "make git\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -628,7 +628,7 @@ jobs:
           msystem: MINGW64
           update: true
           path-type: inherit
-          install: "make\n"
+          install: "make git\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:

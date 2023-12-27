@@ -126,10 +126,10 @@ x--expand-yaml-anchors--remove:
           path-type: inherit # Prevents inheriting any environment variables into msys2
           install: >
             make
+            git
           #   mingw-w64-x86_64-python
           #   mingw-w64-x86_64-jq
           #   mingw-w64-x86_64-7zip
-          #   git
           #   dos2unix
           #   mingw-w64-x86_64-toolchain
           #   mingw-w64-i686-toolchain
