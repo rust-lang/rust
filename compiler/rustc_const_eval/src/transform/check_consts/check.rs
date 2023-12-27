@@ -763,33 +763,16 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // the trait into the concrete method, and uses that for const stability
                     // checks.
                     // FIXME(effects) we might consider moving const stability checks to typeck as well.
-                    if tcx.features().effects {
-                        is_trait = true;
+                    is_trait = true;
 
-                        if let Ok(Some(instance)) =
-                            Instance::resolve(tcx, param_env, callee, fn_args)
-                            && let InstanceDef::Item(def) = instance.def
-                        {
-                            // Resolve a trait method call to its concrete implementation, which may be in a
-                            // `const` trait impl. This is only used for the const stability check below, since
-                            // we want to look at the concrete impl's stability.
-                            fn_args = instance.args;
-                            callee = def;
-                        }
-                    } else {
-                        self.check_op(ops::FnCallNonConst {
-                            caller,
-                            callee,
-                            args: fn_args,
-                            span: *fn_span,
-                            call_source: *call_source,
-                            feature: Some(if tcx.features().const_trait_impl {
-                                sym::effects
-                            } else {
-                                sym::const_trait_impl
-                            }),
-                        });
-                        return;
+                    if let Ok(Some(instance)) = Instance::resolve(tcx, param_env, callee, fn_args)
+                        && let InstanceDef::Item(def) = instance.def
+                    {
+                        // Resolve a trait method call to its concrete implementation, which may be in a
+                        // `const` trait impl. This is only used for the const stability check below, since
+                        // we want to look at the concrete impl's stability.
+                        fn_args = instance.args;
+                        callee = def;
                     }
                 }
 

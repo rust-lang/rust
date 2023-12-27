@@ -2584,10 +2584,6 @@ struct GenericArgsCtor<'hir> {
 
 impl<'hir> GenericArgsCtor<'hir> {
     fn push_constness(&mut self, lcx: &mut LoweringContext<'_, 'hir>, constness: ast::Const) {
-        if !lcx.tcx.features().effects {
-            return;
-        }
-
         // if bound is non-const, don't add host effect param
         let ast::Const::Yes(span) = constness else { return };
 
