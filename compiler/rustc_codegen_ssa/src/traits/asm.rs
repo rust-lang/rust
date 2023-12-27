@@ -33,6 +33,9 @@ pub enum InlineAsmOperandRef<'tcx, B: BackendTypes + ?Sized> {
     SymStatic {
         def_id: DefId,
     },
+    Label {
+        label: B::BasicBlock,
+    },
 }
 
 #[derive(Debug)]
@@ -51,7 +54,8 @@ pub trait AsmBuilderMethods<'tcx>: BackendTypes {
         options: InlineAsmOptions,
         line_spans: &[Span],
         instance: Instance<'_>,
-        dest_catch_funclet: Option<(Self::BasicBlock, Self::BasicBlock, Option<&Self::Funclet>)>,
+        dest: Option<Self::BasicBlock>,
+        catch_funclet: Option<(Self::BasicBlock, Option<&Self::Funclet>)>,
     );
 }
 

@@ -264,7 +264,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             mir::UnwindAction::Unreachable => None,
         };
 
-        if let Some(cleanup) = unwind_target {
+        if operands.iter().any(|x| matches!(x, InlineAsmOperandRef::Label { .. })) {
             let ret_llbb = if let Some(target) = destination {
                 fx.llbb(target)
             } else {
@@ -277,11 +277,29 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 options,
                 line_spans,
                 instance,
-                Some((ret_llbb, cleanup, self.funclet(fx))),
+                Some(ret_llbb),
+                None,
+            );
+            MergingSucc::False
+        } else if let Some(cleanup) = unwind_target {
+            let ret_llbb = if let Some(target) = destination {
+                fx.llbb(target)
+            } else {
+                fx.unreachable_block()
+            };
+
+            bx.codegen_inline_asm(
+                template,
+                operands,
+                options,
+                line_spans,
+                instance,
+                Some(ret_llbb),
+                Some((cleanup, self.funclet(fx))),
             );
             MergingSucc::False
         } else {
-            bx.codegen_inline_asm(template, operands, options, line_spans, instance, None);
+            bx.codegen_inline_asm(template, operands, options, line_spans, instance, None, None);
 
             if let Some(target) = destination {
                 self.funclet_br(fx, bx, target, mergeable_succ)
@@ -1067,7 +1085,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         operands: &[mir::InlineAsmOperand<'tcx>],
         options: ast::InlineAsmOptions,
         line_spans: &[Span],
-        destination: Option<mir::BasicBlock>,
+        targets: &[mir::BasicBlock],
         unwind: mir::UnwindAction,
         instance: Instance<'_>,
         mergeable_succ: bool,
@@ -1119,8 +1137,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 mir::InlineAsmOperand::SymStatic { def_id } => {
                     InlineAsmOperandRef::SymStatic { def_id }
                 }
-                mir::InlineAsmOperand::Label { target_index: _ } => {
-                    todo!();
+                mir::InlineAsmOperand::Label { target_index } => {
+                    InlineAsmOperandRef::Label { label: self.llbb(targets[target_index]) }
                 }
             })
             .collect();
@@ -1132,7 +1150,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             &operands,
             options,
             line_spans,
-            destination,
+            if options.contains(InlineAsmOptions::NORETURN) {
+                None
+            } else {
+                targets.get(0).copied()
+            },
             unwind,
             instance,
             mergeable_succ,
@@ -1298,7 +1320,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 operands,
                 options,
                 line_spans,
-                targets.get(0).copied(),
+                targets,
                 unwind,
                 self.instance,
                 mergeable_succ(),
