@@ -67,12 +67,13 @@ if isWindows; then
     fi
     echo "MAJAHA 4: $(cygpath -w $(which git))"
     echo "MAJAHA 4: $(cygpath -w $(which python))"
+    echo "MAJAHA 4: $(cygpath -w $(which gcc))"
     echo "LS: $(ls)"
     echo "GITHUB_PATH: $GITHUB_PATH"
     cat "$GITHUB_PATH"
-    echo "MAJAHA /etc/pacman.conf"
-    cat /etc/pacman.conf
-    echo "\n"
-    echo "MAJAHA /etc/pacman.d/mirrorlist.mingw64"
-    cat /etc/pacman.d/mirrorlist.mingw64
+    # echo "MAJAHA /etc/pacman.conf"
+    # cat /etc/pacman.conf
+    # echo "\n"
+    # echo "MAJAHA /etc/pacman.d/mirrorlist.mingw64"
+    # cat /etc/pacman.d/mirrorlist.mingw64
 fi

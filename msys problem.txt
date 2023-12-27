@@ -1,0 +1,40 @@
+[src\core\config\config.rs:1155] PathBuf::from(git_root.trim()) = "/d/programming/repos/rust"
+thread 'main' panicked at src\core\config\config.rs:1155:80:
+called `Result::unwrap()` on an `Err` value: Os { code: 3, kind: NotFound, message: "The system cann
+ot find the path specified." }
+stack backtrace:
+   0: rust_begin_unwind
+             at /rustc/b5c050febf10c9bcc0459d41fe2a1e190ad30b8d/library\std\src/panicking.rs:597:5
+   1: core::panicking::panic_fmt
+             at /rustc/b5c050febf10c9bcc0459d41fe2a1e190ad30b8d/library\core\src/panicking.rs:72:14
+   2: core::result::unwrap_failed
+             at /rustc/b5c050febf10c9bcc0459d41fe2a1e190ad30b8d/library\core\src/result.rs:1652:5
+   3: core::result::Result<T,E>::unwrap
+             at /rustc/b5c050febf10c9bcc0459d41fe2a1e190ad30b8d\library\core\src/result.rs:1077:23
+   4: bootstrap::core::config::config::Config::parse_inner
+             at .\src\bootstrap\src\core\config\config.rs:1155:28
+   5: bootstrap::core::config::config::Config::parse
+             at .\src\bootstrap\src\core\config\config.rs:1111:9
+   6: bootstrap::main
+             at .\src\bootstrap\src/bin\main.rs:20:18
+   7: core::ops::function::FnOnce::call_once
+             at /rustc/b5c050febf10c9bcc0459d41fe2a1e190ad30b8d\library\core\src\ops/function.rs:250:5
+
+Things to try: use native python. use native git. Use git bash (which is also msys)?
+Is it because mingw on msys is essentially a cross-compiler, from msys to windows native? i.e. from a posix-y emulated environment to
+a windows native one. So the src/bootstrap binary expects windows-y paths, unlike the rest of the build
+environment which wants posix-y paths. Maybe we should be treating this more like a cross compile, and
+building bootstrap with the msys profile rather than the mingw profile (profiles of msys, that is).
+Or alternatively, we could teach bootstrap to understand the msys paths and convert them to windows
+paths, maybe with an environment variable or flag, as a hack. We could also tell people to just use
+git-for-windows instead, as a different hack.
+
+Like, what happens if you target i686 on an x86_64 host? Bootstrap gets built for x86_64, surely?
+
+Maybe the problem is that I set build.build triple to windows-gnu in config.toml?
+
+Trying delete msys git and "PATH=$PATH:/c/Program\ Files/Git/cmd/ python x.py build"... Seems to be working!
+
+Should try delete msys python and "^^^"
+
+CI is probably passing because git-for-windows is still on the PATH, even after the shell changes to msys one.
