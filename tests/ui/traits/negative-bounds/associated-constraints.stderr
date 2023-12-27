@@ -22,4 +22,11 @@ error: associated type constraints not allowed on negative bounds
 LL | fn test4<T>() where T: !Trait<Assoc: Send> {}
    |                               ^^^^^^^^^^^
 
-error: aborting due to 4 previous errors
+error: parenthetical notation may not be used for negative bounds
+  --> $DIR/associated-constraints.rs:19:25
+   |
+LL | fn test5<T>() where T: !Fn() -> i32 {}
+   |                         ^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+

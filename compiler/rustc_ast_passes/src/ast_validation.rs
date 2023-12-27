@@ -1257,13 +1257,24 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         if let GenericBound::Trait(trait_ref, modifiers) = bound
             && let BoundPolarity::Negative(_) = modifiers.polarity
             && let Some(segment) = trait_ref.trait_ref.path.segments.last()
-            && let Some(ast::GenericArgs::AngleBracketed(args)) = segment.args.as_deref()
         {
-            for arg in &args.args {
-                if let ast::AngleBracketedArg::Constraint(constraint) = arg {
-                    self.dcx()
-                        .emit_err(errors::ConstraintOnNegativeBound { span: constraint.span });
+            match segment.args.as_deref() {
+                Some(ast::GenericArgs::AngleBracketed(args)) => {
+                    for arg in &args.args {
+                        if let ast::AngleBracketedArg::Constraint(constraint) = arg {
+                            self.dcx().emit_err(errors::ConstraintOnNegativeBound {
+                                span: constraint.span,
+                            });
+                        }
+                    }
                 }
+                // The lowered form of parenthesized generic args contains a type binding.
+                Some(ast::GenericArgs::Parenthesized(args)) => {
+                    self.dcx().emit_err(errors::NegativeBoundWithParentheticalNotation {
+                        span: args.span,
+                    });
+                }
+                None => {}
             }
         }
 
