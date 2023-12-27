@@ -524,7 +524,7 @@ fn test_extend_ref() {
 #[test]
 fn test_recovery() {
     #[derive(Debug)]
-    struct Foo(&'static str, i32);
+    struct Foo(&'static str, #[allow(dead_code)] i32);
 
     impl PartialEq for Foo {
         fn eq(&self, other: &Self) -> bool {

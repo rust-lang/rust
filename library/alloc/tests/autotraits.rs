@@ -1,7 +1,7 @@
 fn require_sync<T: Sync>(_: T) {}
 fn require_send_sync<T: Send + Sync>(_: T) {}
 
-struct NotSend(*const ());
+struct NotSend(#[allow(dead_code)] *const ());
 unsafe impl Sync for NotSend {}
 
 #[test]

@@ -188,7 +188,7 @@ fn ptr_bitops() {
 #[cfg(any(not(target_arch = "arm"), target_os = "linux"))] // Missing intrinsic in compiler-builtins
 fn ptr_bitops_tagging() {
     #[repr(align(16))]
-    struct Tagme(u128);
+    struct Tagme(#[allow(dead_code)] u128);
 
     let tagme = Tagme(1000);
     let ptr = &tagme as *const Tagme as *mut Tagme;
