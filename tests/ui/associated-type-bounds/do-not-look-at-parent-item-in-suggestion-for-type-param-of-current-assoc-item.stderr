@@ -1,9 +1,6 @@
 error[E0308]: mismatched types
   --> $DIR/do-not-look-at-parent-item-in-suggestion-for-type-param-of-current-assoc-item.rs:24:37
    |
-LL |     fn identify(&self) -> Self::Id;
-   |                           -------- help: consider changing identify's return type: `&I`
-...
 LL |         let _low = self.lows.remove(low.identify()).unwrap();
    |                              ------ ^^^^^^^^^^^^^^ expected `&I`, found associated type
    |                              |

@@ -8,7 +8,7 @@ LL |     let _: () = Borrow::borrow(&owned);
    |
    = note: expected unit type `()`
               found reference `&_`
-note: the function Borrow is defined here
+note: the method Borrow is defined here
   --> $SRC_DIR/core/src/borrow.rs:LL:COL
 help: consider dereferencing the borrow
    |

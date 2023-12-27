@@ -22,10 +22,6 @@ help: consider constraining the associated type `<impl Trait as Trait>::A` to `u
    |
 LL |     fn foo<'a, T: Trait + 'a>(&self, _: impl Trait, x: impl Trait<A = usize>, _: T) {
    |                                                                  +++++++++++
-help: consider changing func's return type
-   |
-LL |     fn func(&self) -> usize;
-   |                       ~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:17:13
@@ -51,10 +47,6 @@ help: consider constraining the associated type `<T as Trait>::A` to `usize`
    |
 LL |     fn ban<T>(x: T) where T: Trait<A = usize> {
    |                                   +++++++++++
-help: consider changing func's return type
-   |
-LL |     fn func(&self) -> usize;
-   |                       ~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:22:9
@@ -80,10 +72,6 @@ help: consider constraining the associated type `<impl Trait as Trait>::A` to `u
    |
 LL | fn foo<'a, T: Trait + 'a>(_: impl Trait, x: impl Trait<A = usize>, _: T) {
    |                                                       +++++++++++
-help: consider changing func's return type
-   |
-LL |     fn func(&self) -> usize;
-   |                       ~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:26:9
@@ -109,10 +97,6 @@ help: consider constraining the associated type `<T as Trait>::A` to `usize`
    |
 LL | fn bar<T: Trait<A = usize>>(x: T) {
    |                +++++++++++
-help: consider changing func's return type
-   |
-LL |     fn func(&self) -> usize;
-   |                       ~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:30:9
@@ -138,10 +122,6 @@ help: consider constraining the associated type `<impl Trait<i32> as Trait<i32>>
    |
 LL | fn foo2(x: impl Trait<i32, A = usize>) {
    |                          +++++++++++
-help: consider changing func's return type
-   |
-LL |     fn func(&self) -> usize;
-   |                       ~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:34:9
@@ -167,10 +147,6 @@ help: consider constraining the associated type `<T as Trait<i32>>::A` to `usize
    |
 LL | fn bar2<T: Trait<i32, A = usize>>(x: T) {
    |                     +++++++++++
-help: consider changing func's return type
-   |
-LL |     fn func(&self) -> usize;
-   |                       ~~~~~
 
 error[E0308]: mismatched types
   --> $DIR/trait-with-missing-associated-type-restriction-fixable.rs:38:9
@@ -196,10 +172,6 @@ help: consider constraining the associated type `<T as Trait>::A` to `usize`
    |
 LL | fn ban<T>(x: T) where T: Trait<A = usize> {
    |                               +++++++++++
-help: consider changing func's return type
-   |
-LL |     fn func(&self) -> usize;
-   |                       ~~~~~
 
 error: aborting due to 7 previous errors
 

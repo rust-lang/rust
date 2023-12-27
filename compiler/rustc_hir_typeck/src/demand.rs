@@ -1178,41 +1178,39 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         expected: Ty<'_>,
     ) {
-        let (def_id, ident, callee_str) = if let hir::ExprKind::Call(fun, _) = expr.kind
+        let (def_id, ident) = if let hir::ExprKind::Call(fun, _) = expr.kind
             && let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = fun.kind
-            && let hir::def::Res::Def(def_kind, def_id) = path.res
-            && !matches!(def_kind, hir::def::DefKind::Ctor(..))
+            && let hir::def::Res::Def(_, def_id) = path.res
         {
-            (def_id, path.segments[0].ident, "function")
+            (def_id, path.segments[0].ident)
         } else if let hir::ExprKind::MethodCall(method, ..) = expr.kind
             && let Some(def_id) = self.typeck_results.borrow().type_dependent_def_id(expr.hir_id)
-            && !matches!(self.tcx.def_kind(def_id), hir::def::DefKind::Ctor(..))
         {
-            (def_id, method.ident, "method")
+            (def_id, method.ident)
         } else {
             return;
         };
+        if !matches!(self.tcx.def_kind(def_id), hir::def::DefKind::AssocFn | hir::def::DefKind::Fn)
+        {
+            return;
+        }
         err.span_note(
             self.tcx.def_span(def_id),
-            format!("the {callee_str} {ident} is defined here"),
+            format!("the {} {ident} is defined here", self.tcx.def_descr(def_id)),
         );
 
         if let Some(local_did) = def_id.as_local()
             && let Some(node) = self.tcx.opt_hir_node(self.tcx.local_def_id_to_hir_id(local_did))
-            && let hir::Node::TraitItem(hir::TraitItem {
-                kind: hir::TraitItemKind::Fn(sig, ..),
-                ..
-            })
-            | hir::Node::ImplItem(hir::ImplItem {
-                kind: hir::ImplItemKind::Fn(sig, ..), ..
-            })
-            | hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, ..), .. }) = node
+            && !matches!(node, hir::Node::TraitItem(..))
+            && let Some(sig) = node.fn_sig()
             && let ret_span = sig.decl.output.span()
             && !ret_span.from_expansion()
             && expected.has_concrete_skeleton()
         {
-            let sugg =
-                if ret_span.is_empty() { format!("-> {expected}") } else { format!("{expected}") };
+            let sugg = match sig.decl.output {
+                hir::FnRetTy::DefaultReturn(..) => format!("-> {expected}"),
+                hir::FnRetTy::Return(..) => format!("{expected}"),
+            };
             err.span_suggestion(
                 ret_span,
                 format!("consider changing {ident}'s return type"),
