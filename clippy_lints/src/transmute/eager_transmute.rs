@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::is_normalizable;
-use clippy_utils::{path_to_local, path_to_local_id};
+use clippy_utils::{eq_expr_value, path_to_local};
 use rustc_abi::WrappingRange;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Node};
@@ -25,6 +25,36 @@ fn range_fully_contained(from: WrappingRange, to: WrappingRange) -> bool {
     to.contains(from.start) && to.contains(from.end)
 }
 
+/// Checks if a given expression is a binary operation involving a local variable or is made up of
+/// other (nested) binary expressions involving the local. There must be at least one local
+/// reference that is the same as `local_expr`.
+///
+/// This is used as a heuristic to detect if a variable
+/// is checked to be within the valid range of a transmuted type.
+/// All of these would return true:
+/// * `x < 4`
+/// * `x < 4 && x > 1`
+/// * `x.field < 4 && x.field > 1` (given `x.field`)
+/// * `x.field < 4 && unrelated()`
+fn binops_with_local(cx: &LateContext<'_>, local_expr: &Expr<'_>, expr: &Expr<'_>) -> bool {
+    match expr.kind {
+        ExprKind::Binary(_, lhs, rhs) => {
+            binops_with_local(cx, local_expr, lhs) || binops_with_local(cx, local_expr, rhs)
+        },
+        _ => eq_expr_value(cx, local_expr, expr),
+    }
+}
+
+/// Checks if an expression is a path to a local variable (with optional projections), e.g.
+/// `x.field[0].field2` would return true.
+fn is_local_with_projections(expr: &Expr<'_>) -> bool {
+    match expr.kind {
+        ExprKind::Path(_) => path_to_local(expr).is_some(),
+        ExprKind::Field(expr, _) | ExprKind::Index(expr, ..) => is_local_with_projections(expr),
+        _ => false,
+    }
+}
+
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
@@ -36,9 +66,8 @@ pub(super) fn check<'tcx>(
         && let ExprKind::MethodCall(path, receiver, [arg], _) = then_some_call.kind
         && cx.typeck_results().expr_ty(receiver).is_bool()
         && path.ident.name == sym!(then_some)
-        && let ExprKind::Binary(_, lhs, rhs) = receiver.kind
-        && let Some(local_id) = path_to_local(transmutable)
-        && (path_to_local_id(lhs, local_id) || path_to_local_id(rhs, local_id))
+        && is_local_with_projections(transmutable)
+        && binops_with_local(cx, transmutable, receiver)
         && is_normalizable(cx, cx.param_env, from_ty)
         && is_normalizable(cx, cx.param_env, to_ty)
         // we only want to lint if the target type has a niche that is larger than the one of the source type
