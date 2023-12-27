@@ -2526,6 +2526,17 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         let tcx = self.tcx();
         let mut nested = vec![];
 
+        // We may upcast to auto traits that are either explicitly listed in
+        // the object type's bounds, or implied by the principal trait ref's
+        // supertraits.
+        let a_auto_traits: FxIndexSet<DefId> = a_data
+            .auto_traits()
+            .chain(a_data.principal_def_id().into_iter().flat_map(|principal_def_id| {
+                util::supertrait_def_ids(tcx, principal_def_id)
+                    .filter(|def_id| tcx.trait_is_auto(*def_id))
+            }))
+            .collect();
+
         let upcast_principal = normalize_with_depth_to(
             self,
             obligation.param_env,
@@ -2588,7 +2599,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 }
                 // Check that b_ty's auto traits are present in a_ty's bounds.
                 ty::ExistentialPredicate::AutoTrait(def_id) => {
-                    if !a_data.auto_traits().any(|source_def_id| source_def_id == def_id) {
+                    if !a_auto_traits.contains(&def_id) {
                         return Err(SelectionError::Unimplemented);
                     }
                 }
