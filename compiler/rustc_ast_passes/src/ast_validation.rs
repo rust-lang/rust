@@ -1207,6 +1207,9 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 (BoundKind::TraitObject, BoundConstness::Never, BoundPolarity::Maybe(_)) => {
                     self.dcx().emit_err(errors::OptionalTraitObject { span: poly.span });
                 }
+                (BoundKind::TraitObject, BoundConstness::Always(_), BoundPolarity::Positive) => {
+                    self.dcx().emit_err(errors::ConstBoundTraitObject { span: poly.span });
+                }
                 (_, BoundConstness::Maybe(span), BoundPolarity::Positive)
                     if let Some(reason) = &self.disallow_tilde_const =>
                 {
@@ -1237,8 +1240,8 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 (
                     _,
-                    BoundConstness::Maybe(_),
-                    BoundPolarity::Maybe(_) | BoundPolarity::Negative(_),
+                    BoundConstness::Always(_) | BoundConstness::Maybe(_),
+                    BoundPolarity::Negative(_) | BoundPolarity::Maybe(_),
                 ) => {
                     self.dcx().emit_err(errors::IncompatibleTraitBoundModifiers {
                         span: bound.span(),

@@ -70,7 +70,7 @@ hir_analysis_coercion_between_struct_same_note = expected coercion between the s
 hir_analysis_coercion_between_struct_single_note = expected a single field to be coerced, none found
 
 hir_analysis_const_bound_for_non_const_trait =
-    ~const can only be applied to `#[const_trait]` traits
+    `{$modifier}` can only be applied to `#[const_trait]` traits
 
 hir_analysis_const_impl_for_non_const_trait =
     const `impl` for trait `{$trait_name}` which is not marked with `#[const_trait]`

@@ -1349,7 +1349,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         span: t.span,
                     },
                     itctx,
-                    ast::Const::No,
+                    ast::BoundConstness::Never,
                 );
                 let bounds = this.arena.alloc_from_iter([bound]);
                 let lifetime_bound = this.elided_dyn_bound(t.span);
@@ -1460,7 +1460,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     polarity: BoundPolarity::Positive | BoundPolarity::Negative(_),
                                     constness,
                                 },
-                            ) => Some(this.lower_poly_trait_ref(ty, itctx, (*constness).into())),
+                            ) => Some(this.lower_poly_trait_ref(ty, itctx, *constness)),
                             // We can safely ignore constness here, since AST validation
                             // will take care of invalid modifier combinations.
                             GenericBound::Trait(
@@ -2199,7 +2199,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_trait_ref(
         &mut self,
-        constness: ast::Const,
+        constness: ast::BoundConstness,
         p: &TraitRef,
         itctx: &ImplTraitContext,
     ) -> hir::TraitRef<'hir> {
@@ -2222,7 +2222,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         p: &PolyTraitRef,
         itctx: &ImplTraitContext,
-        constness: ast::Const,
+        constness: ast::BoundConstness,
     ) -> hir::PolyTraitRef<'hir> {
         let bound_generic_params =
             self.lower_lifetime_binder(p.trait_ref.ref_id, &p.bound_generic_params);
@@ -2347,9 +2347,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         modifiers: TraitBoundModifiers,
     ) -> hir::TraitBoundModifier {
+        // Invalid modifier combinations will cause an error during AST validation.
+        // Arbitrarily pick a placeholder for them to make compilation proceed.
         match (modifiers.constness, modifiers.polarity) {
             (BoundConstness::Never, BoundPolarity::Positive) => hir::TraitBoundModifier::None,
-            (BoundConstness::Never, BoundPolarity::Maybe(_)) => hir::TraitBoundModifier::Maybe,
+            (_, BoundPolarity::Maybe(_)) => hir::TraitBoundModifier::Maybe,
             (BoundConstness::Never, BoundPolarity::Negative(_)) => {
                 if self.tcx.features().negative_bounds {
                     hir::TraitBoundModifier::Negative
@@ -2357,15 +2359,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     hir::TraitBoundModifier::None
                 }
             }
-            (BoundConstness::Maybe(_), BoundPolarity::Positive) => {
-                hir::TraitBoundModifier::MaybeConst
-            }
-            // Invalid modifier combinations will cause an error during AST validation.
-            // Arbitrarily pick a placeholder for compilation to proceed.
-            (BoundConstness::Maybe(_), BoundPolarity::Maybe(_)) => hir::TraitBoundModifier::Maybe,
-            (BoundConstness::Maybe(_), BoundPolarity::Negative(_)) => {
-                hir::TraitBoundModifier::MaybeConst
-            }
+            (BoundConstness::Always(_), _) => hir::TraitBoundModifier::Const,
+            (BoundConstness::Maybe(_), _) => hir::TraitBoundModifier::MaybeConst,
         }
     }
 
@@ -2583,45 +2578,62 @@ struct GenericArgsCtor<'hir> {
 }
 
 impl<'hir> GenericArgsCtor<'hir> {
-    fn push_constness(&mut self, lcx: &mut LoweringContext<'_, 'hir>, constness: ast::Const) {
+    fn push_constness(
+        &mut self,
+        lcx: &mut LoweringContext<'_, 'hir>,
+        constness: ast::BoundConstness,
+    ) {
         if !lcx.tcx.features().effects {
             return;
         }
 
-        // if bound is non-const, don't add host effect param
-        let ast::Const::Yes(span) = constness else { return };
+        let (span, body) = match constness {
+            BoundConstness::Never => return,
+            BoundConstness::Always(span) => {
+                let span = lcx.lower_span(span);
 
-        let span = lcx.lower_span(span);
+                let body = hir::ExprKind::Lit(
+                    lcx.arena.alloc(hir::Lit { node: LitKind::Bool(false), span }),
+                );
 
-        let id = lcx.next_node_id();
-        let hir_id = lcx.next_id();
+                (span, body)
+            }
+            BoundConstness::Maybe(span) => {
+                let span = lcx.lower_span(span);
 
-        let Some(host_param_id) = lcx.host_param_id else {
-            lcx.dcx().span_delayed_bug(
-                span,
-                "no host param id for call in const yet no errors reported",
-            );
-            return;
-        };
+                let Some(host_param_id) = lcx.host_param_id else {
+                    lcx.dcx().span_delayed_bug(
+                        span,
+                        "no host param id for call in const yet no errors reported",
+                    );
+                    return;
+                };
 
-        let body = lcx.lower_body(|lcx| {
-            (&[], {
                 let hir_id = lcx.next_id();
                 let res = Res::Def(DefKind::ConstParam, host_param_id.to_def_id());
-                let expr_kind = hir::ExprKind::Path(hir::QPath::Resolved(
+                let body = hir::ExprKind::Path(hir::QPath::Resolved(
                     None,
                     lcx.arena.alloc(hir::Path {
                         span,
                         res,
-                        segments: arena_vec![lcx; hir::PathSegment::new(Ident {
-                            name: sym::host,
-                            span,
-                        }, hir_id, res)],
+                        segments: arena_vec![
+                            lcx;
+                            hir::PathSegment::new(
+                                Ident { name: sym::host, span },
+                                hir_id,
+                                res
+                            )
+                        ],
                     }),
                 ));
-                lcx.expr(span, expr_kind)
-            })
-        });
+
+                (span, body)
+            }
+        };
+        let body = lcx.lower_body(|lcx| (&[], lcx.expr(span, body)));
+
+        let id = lcx.next_node_id();
+        let hir_id = lcx.next_id();
 
         let def_id = lcx.create_def(
             lcx.current_hir_id_owner.def_id,

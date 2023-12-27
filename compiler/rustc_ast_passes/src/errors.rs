@@ -541,6 +541,13 @@ pub struct OptionalTraitObject {
 }
 
 #[derive(Diagnostic)]
+#[diag(ast_passes_const_bound_trait_object)]
+pub struct ConstBoundTraitObject {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(ast_passes_tilde_const_disallowed)]
 pub struct TildeConstDisallowed {
     #[primary_span]

@@ -2481,15 +2481,6 @@ pub enum Const {
     No,
 }
 
-impl From<BoundConstness> for Const {
-    fn from(constness: BoundConstness) -> Self {
-        match constness {
-            BoundConstness::Maybe(span) => Self::Yes(span),
-            BoundConstness::Never => Self::No,
-        }
-    }
-}
-
 /// Item defaultness.
 /// For details see the [RFC #2532](https://github.com/rust-lang/rfcs/pull/2532).
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
@@ -2543,6 +2534,8 @@ impl BoundPolarity {
 pub enum BoundConstness {
     /// `Type: Trait`
     Never,
+    /// `Type: const Trait`
+    Always(Span),
     /// `Type: ~const Trait`
     Maybe(Span),
 }
@@ -2551,6 +2544,7 @@ impl BoundConstness {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Never => "",
+            Self::Always(_) => "const",
             Self::Maybe(_) => "~const",
         }
     }

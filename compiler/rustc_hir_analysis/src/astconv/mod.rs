@@ -560,11 +560,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             inferred_params: vec![],
             infer_args,
         };
-        if let ty::BoundConstness::ConstIfConst = constness
+        if let ty::BoundConstness::Const | ty::BoundConstness::ConstIfConst = constness
             && generics.has_self
             && !tcx.has_attr(def_id, sym::const_trait)
         {
-            let e = tcx.dcx().emit_err(crate::errors::ConstBoundForNonConstTrait { span });
+            let e = tcx.dcx().emit_err(crate::errors::ConstBoundForNonConstTrait {
+                span,
+                modifier: constness.as_str(),
+            });
             arg_count.correct =
                 Err(GenericArgCountMismatch { reported: Some(e), invalid_args: vec![] });
         }

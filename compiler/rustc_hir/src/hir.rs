@@ -420,9 +420,15 @@ pub enum GenericArgsParentheses {
 /// A modifier on a trait bound.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum TraitBoundModifier {
+    /// `Type: Trait`
     None,
+    /// `Type: !Trait`
     Negative,
+    /// `Type: ?Trait`
     Maybe,
+    /// `Type: const Trait`
+    Const,
+    /// `Type: ~const Trait`
     MaybeConst,
 }
 

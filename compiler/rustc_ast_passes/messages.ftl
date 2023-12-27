@@ -46,6 +46,8 @@ ast_passes_const_and_c_variadic = functions cannot be both `const` and C-variadi
     .const = `const` because of this
     .variadic = C-variadic because of this
 
+ast_passes_const_bound_trait_object = const trait bounds are not allowed in trait object types
+
 ast_passes_const_without_body =
     free constant item without body
     .suggestion = provide a definition for the constant
