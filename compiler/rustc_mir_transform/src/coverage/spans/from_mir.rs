@@ -204,10 +204,5 @@ fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Span> {
 /// etc.).
 #[inline]
 fn unexpand_into_body_span(span: Span, body_span: Span) -> Option<Span> {
-    use rustc_span::source_map::original_sp;
-
-    // FIXME(#118525): Consider switching from `original_sp` to `Span::find_ancestor_inside`,
-    // which is similar but gives slightly different results in some edge cases.
-    let original_span = original_sp(span, body_span).with_ctxt(body_span.ctxt());
-    body_span.contains(original_span).then_some(original_span)
+    span.find_ancestor_inside_same_ctxt(body_span)
 }
