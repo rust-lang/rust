@@ -55,8 +55,6 @@ pub fn generalize<'tcx, D: GeneralizerDelegate<'tcx>, T: Into<Term<'tcx>> + Rela
 /// Abstracts the handling of region vars between HIR and MIR/NLL typechecking
 /// in the generalizer code.
 pub trait GeneralizerDelegate<'tcx> {
-    fn param_env(&self) -> ty::ParamEnv<'tcx>;
-
     fn forbid_inference_vars() -> bool;
 
     fn span(&self) -> Span;
@@ -66,15 +64,10 @@ pub trait GeneralizerDelegate<'tcx> {
 
 pub struct CombineDelegate<'cx, 'tcx> {
     pub infcx: &'cx InferCtxt<'tcx>,
-    pub param_env: ty::ParamEnv<'tcx>,
     pub span: Span,
 }
 
 impl<'tcx> GeneralizerDelegate<'tcx> for CombineDelegate<'_, 'tcx> {
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.param_env
-    }
-
     fn forbid_inference_vars() -> bool {
         false
     }
@@ -95,10 +88,6 @@ impl<'tcx, T> GeneralizerDelegate<'tcx> for T
 where
     T: TypeRelatingDelegate<'tcx>,
 {
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        <Self as TypeRelatingDelegate<'tcx>>::param_env(self)
-    }
-
     fn forbid_inference_vars() -> bool {
         <Self as TypeRelatingDelegate<'tcx>>::forbid_inference_vars()
     }
