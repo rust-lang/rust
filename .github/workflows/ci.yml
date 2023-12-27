@@ -91,7 +91,7 @@ jobs:
         with:
           msystem: MINGW64
           update: true
-          path-type: inherit
+          path-type: strict
           install: "make mingw-w64-x86_64-python\n"
       - name: checkout the source code
         uses: actions/checkout@v4
@@ -491,7 +491,7 @@ jobs:
         with:
           msystem: MINGW64
           update: true
-          path-type: inherit
+          path-type: strict
           install: "make mingw-w64-x86_64-python\n"
       - name: checkout the source code
         uses: actions/checkout@v4
@@ -625,7 +625,7 @@ jobs:
         with:
           msystem: MINGW64
           update: true
-          path-type: inherit
+          path-type: strict
           install: "make mingw-w64-x86_64-python\n"
       - name: checkout the source code
         uses: actions/checkout@v4

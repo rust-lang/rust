@@ -123,7 +123,7 @@ x--expand-yaml-anchors--remove:
         with:
           msystem: MINGW64
           update: true
-          path-type: inherit
+          path-type: strict # Prevents inheriting any environment variables into msys2
           install: >
             make
             mingw-w64-x86_64-python
