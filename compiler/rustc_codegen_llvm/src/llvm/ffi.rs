@@ -2356,11 +2356,16 @@ extern "C" {
         out_len: &mut usize,
     ) -> *const u8;
 
-    pub fn LLVMRustLinkerNew(M: &Module) -> &mut Linker<'_>;
+    pub fn LLVMRustLinkerNew(
+        M: &Module,
+        builtin_syms: *const *const c_char,
+        len: size_t,
+    ) -> &mut Linker<'_>;
     pub fn LLVMRustLinkerAdd(
         linker: &Linker<'_>,
         bytecode: *const c_char,
         bytecode_len: usize,
+        compiler_builtins: bool,
     ) -> bool;
     pub fn LLVMRustLinkerFree<'a>(linker: &'a mut Linker<'a>);
     #[allow(improper_ctypes)]

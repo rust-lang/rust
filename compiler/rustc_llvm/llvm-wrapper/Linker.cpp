@@ -14,6 +14,7 @@
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/Linker/IRMover.h"
+#include "llvm/Object/ModuleSymbolTable.h"
 #include "llvm/Support/Error.h"
 
 #include "LLVMWrapper.h"
@@ -44,7 +45,10 @@ enum class LinkFrom { Dst, Src, Both };
 /// entrypoint for this file.
 class ModuleLinker {
   IRMover &Mover;
+  const StringSet<> &CompilerBuiltinsSymbols;
+  StringSet<> UserBuiltinsSymbols;
   std::unique_ptr<Module> SrcM;
+  bool SrcIsCompilerBuiltins;
 
   SetVector<GlobalValue *> ValuesToLink;
 
@@ -122,11 +126,14 @@ class ModuleLinker {
   bool linkIfNeeded(GlobalValue &GV, SmallVectorImpl<GlobalValue *> &GVToClone);
 
 public:
-  ModuleLinker(IRMover &Mover, std::unique_ptr<Module> SrcM, unsigned Flags,
+  ModuleLinker(IRMover &Mover, const StringSet<> &CompilerBuiltinsSymbols,
+               std::unique_ptr<Module> SrcM, bool SrcIsCompilerBuiltins,
+               unsigned Flags,
                std::function<void(Module &, const StringSet<> &)>
                    InternalizeCallback = {})
-      : Mover(Mover), SrcM(std::move(SrcM)), Flags(Flags),
-        InternalizeCallback(std::move(InternalizeCallback)) {}
+      : Mover(Mover), CompilerBuiltinsSymbols(CompilerBuiltinsSymbols),
+        SrcM(std::move(SrcM)), SrcIsCompilerBuiltins(SrcIsCompilerBuiltins),
+        Flags(Flags), InternalizeCallback(std::move(InternalizeCallback)) {}
 
   bool run();
 };
@@ -342,6 +349,10 @@ bool ModuleLinker::shouldLinkFromSource(bool &LinkFromSrc,
 
 bool ModuleLinker::linkIfNeeded(GlobalValue &GV,
                                 SmallVectorImpl<GlobalValue *> &GVToClone) {
+  // If a builtin symbol is defined in a non-compiler-builtins, the symbol of
+  // compiler-builtins is a non-prevailing symbol.
+  if (SrcIsCompilerBuiltins && UserBuiltinsSymbols.contains(GV.getName()))
+    return false;
   GlobalValue *DGV = getLinkedToGlobal(&GV);
 
   if (shouldLinkOnlyNeeded()) {
@@ -501,6 +512,27 @@ bool ModuleLinker::run() {
     ReplacedDstComdats.insert(DstC);
   }
 
+  if (SrcIsCompilerBuiltins) {
+    ModuleSymbolTable SymbolTable;
+    SymbolTable.addModule(&DstM);
+    for (auto &Sym : SymbolTable.symbols()) {
+      uint32_t Flags = SymbolTable.getSymbolFlags(Sym);
+      if ((Flags & object::BasicSymbolRef::SF_Weak) ||
+          !(Flags & object::BasicSymbolRef::SF_Global))
+        continue;
+      if (GlobalValue *GV = dyn_cast_if_present<GlobalValue *>(Sym)) {
+        if (CompilerBuiltinsSymbols.contains(GV->getName()))
+          UserBuiltinsSymbols.insert(GV->getName());
+      } else if (auto *AS =
+                     dyn_cast_if_present<ModuleSymbolTable::AsmSymbol *>(Sym)) {
+        if (CompilerBuiltinsSymbols.contains(AS->first))
+          UserBuiltinsSymbols.insert(AS->first);
+      } else {
+        llvm::report_fatal_error("unknown symbol type");
+      }
+    }
+  }
+
   // Alias have to go first, since we are not able to find their comdats
   // otherwise.
   for (GlobalAlias &GV : llvm::make_early_inc_range(DstM.aliases()))
@@ -617,6 +649,7 @@ namespace {
 struct RustLinker {
   IRMover Mover;
   LLVMContext &Ctx;
+  StringSet<> CompilerBuiltinsSymbols;
 
   enum Flags {
     None = 0,
@@ -634,28 +667,35 @@ struct RustLinker {
   /// callback.
   ///
   /// Returns true on error.
-  bool linkInModule(std::unique_ptr<Module> Src, unsigned Flags = Flags::None,
+  bool linkInModule(std::unique_ptr<Module> Src, bool SrcIsCompilerBuiltins,
+                    unsigned Flags = Flags::None,
                     std::function<void(Module &, const StringSet<> &)>
                         InternalizeCallback = {});
 
-  RustLinker(Module &M) : Mover(M), Ctx(M.getContext()) {}
+  RustLinker(Module &M, StringSet<> CompilerBuiltinsSymbols)
+      : Mover(M), Ctx(M.getContext()),
+        CompilerBuiltinsSymbols(CompilerBuiltinsSymbols) {}
 };
 
 } // namespace
 
 bool RustLinker::linkInModule(
-    std::unique_ptr<Module> Src, unsigned Flags,
+    std::unique_ptr<Module> Src, bool SrcIsCompilerBuiltins, unsigned Flags,
     std::function<void(Module &, const StringSet<> &)> InternalizeCallback) {
-  ModuleLinker ModLinker(Mover, std::move(Src), Flags,
+  ModuleLinker ModLinker(Mover, CompilerBuiltinsSymbols, std::move(Src),
+                         SrcIsCompilerBuiltins, Flags,
                          std::move(InternalizeCallback));
   return ModLinker.run();
 }
 
-extern "C" RustLinker*
-LLVMRustLinkerNew(LLVMModuleRef DstRef) {
+extern "C" RustLinker *LLVMRustLinkerNew(LLVMModuleRef DstRef, char **Symbols,
+                                         size_t Len) {
   Module *Dst = unwrap(DstRef);
-
-  return new RustLinker(*Dst);
+  StringSet<> CompilerBuiltinsSymbols;
+  for (size_t I = 0; I < Len; I++) {
+    CompilerBuiltinsSymbols.insert(Symbols[I]);
+  }
+  return new RustLinker(*Dst, CompilerBuiltinsSymbols);
 }
 
 extern "C" void
@@ -663,8 +703,8 @@ LLVMRustLinkerFree(RustLinker *L) {
   delete L;
 }
 
-extern "C" bool
-LLVMRustLinkerAdd(RustLinker *L, char *BC, size_t Len) {
+extern "C" bool LLVMRustLinkerAdd(RustLinker *L, char *BC, size_t Len,
+                                  bool CompilerBuiltins) {
   std::unique_ptr<MemoryBuffer> Buf =
       MemoryBuffer::getMemBufferCopy(StringRef(BC, Len));
 
@@ -677,7 +717,7 @@ LLVMRustLinkerAdd(RustLinker *L, char *BC, size_t Len) {
 
   auto Src = std::move(*SrcOrError);
 
-  if (L->linkInModule(std::move(Src))) {
+  if (L->linkInModule(std::move(Src), CompilerBuiltins)) {
     LLVMRustSetLastError("");
     return false;
   }

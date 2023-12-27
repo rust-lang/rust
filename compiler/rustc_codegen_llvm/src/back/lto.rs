@@ -60,7 +60,7 @@ impl SerializedModuleInfo {
 fn prepare_lto(
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     dcx: &DiagCtxt,
-) -> Result<(Vec<CString>, Vec<SerializedModuleInfo>), FatalError> {
+) -> Result<(Vec<CString>, Vec<SerializedModuleInfo>, Vec<CString>), FatalError> {
     let export_threshold = match cgcx.lto {
         // We're just doing LTO for our one crate
         Lto::ThinLocal => SymbolExportLevel::Rust,
@@ -84,6 +84,17 @@ fn prepare_lto(
         exported_symbols[&LOCAL_CRATE].iter().filter_map(symbol_filter).collect::<Vec<CString>>()
     };
     info!("{} symbols to preserve in this crate", symbols_below_threshold.len());
+
+    let compiler_builtins_exported_symbols = match cgcx.compiler_builtins {
+        Some(crate_num) => {
+            if let Some(exported_symbols) = exported_symbols.get(&crate_num) {
+                exported_symbols.iter().filter_map(symbol_filter).collect::<Vec<CString>>()
+            } else {
+                Vec::new()
+            }
+        }
+        None => Vec::new(),
+    };
 
     // If we're performing LTO for the entire crate graph, then for each of our
     // upstream dependencies, find the corresponding rlib and load the bitcode
@@ -167,7 +178,7 @@ fn prepare_lto(
     // __llvm_profile_runtime, therefore we won't know until link time if this symbol
     // should have default visibility.
     symbols_below_threshold.push(CString::new("__llvm_profile_counter_bias").unwrap());
-    Ok((symbols_below_threshold, upstream_modules))
+    Ok((symbols_below_threshold, upstream_modules, compiler_builtins_exported_symbols))
 }
 
 fn get_bitcode_slice_from_object_data<'a>(
@@ -218,10 +229,21 @@ pub(crate) fn run_fat(
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
 ) -> Result<LtoModuleCodegen<LlvmCodegenBackend>, FatalError> {
     let dcx = cgcx.create_dcx();
-    let (symbols_below_threshold, upstream_modules) = prepare_lto(cgcx, &dcx)?;
+    let (symbols_below_threshold, upstream_modules, compiler_builtins_exported_symbols) =
+        prepare_lto(cgcx, &dcx)?;
     let symbols_below_threshold =
         symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
-    fat_lto(cgcx, &dcx, modules, cached_modules, upstream_modules, &symbols_below_threshold)
+    let compiler_builtins_exported_symbols =
+        compiler_builtins_exported_symbols.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
+    fat_lto(
+        cgcx,
+        &dcx,
+        modules,
+        cached_modules,
+        upstream_modules,
+        &symbols_below_threshold,
+        &compiler_builtins_exported_symbols,
+    )
 }
 
 /// Performs thin LTO by performing necessary global analysis and returning two
@@ -233,7 +255,7 @@ pub(crate) fn run_thin(
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
 ) -> Result<(Vec<LtoModuleCodegen<LlvmCodegenBackend>>, Vec<WorkProduct>), FatalError> {
     let dcx = cgcx.create_dcx();
-    let (symbols_below_threshold, upstream_modules) = prepare_lto(cgcx, &dcx)?;
+    let (symbols_below_threshold, upstream_modules, _) = prepare_lto(cgcx, &dcx)?;
     let symbols_below_threshold =
         symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
     if cgcx.opts.cg.linker_plugin_lto.enabled() {
@@ -258,6 +280,7 @@ fn fat_lto(
     cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
     mut serialized_modules: Vec<SerializedModuleInfo>,
     symbols_below_threshold: &[*const libc::c_char],
+    compiler_builtins_exported_symbols: &[*const libc::c_char],
 ) -> Result<LtoModuleCodegen<LlvmCodegenBackend>, FatalError> {
     let _timer = cgcx.prof.generic_activity("LLVM_fat_lto_build_monolithic_module");
     info!("going for a fat lto");
@@ -372,9 +395,9 @@ fn fat_lto(
         // above, this is all mostly handled in C++. Like above, though, we don't
         // know much about the memory management here so we err on the side of being
         // save and persist everything with the original module.
-        let mut linker = Linker::new(llmod);
+        let mut linker = Linker::new(llmod, compiler_builtins_exported_symbols);
         for serialized_module in serialized_modules {
-            let SerializedModuleInfo { module, name, .. } = serialized_module;
+            let SerializedModuleInfo { module, name, compiler_builtins } = serialized_module;
             let _timer = cgcx
                 .prof
                 .generic_activity_with_arg_recorder("LLVM_fat_lto_link_module", |recorder| {
@@ -382,7 +405,9 @@ fn fat_lto(
                 });
             info!("linking {:?}", name);
             let data = module.data();
-            linker.add(data).map_err(|()| write::llvm_err(dcx, LlvmError::LoadBitcode { name }))?;
+            linker
+                .add(data, compiler_builtins)
+                .map_err(|()| write::llvm_err(dcx, LlvmError::LoadBitcode { name }))?;
             serialized_bitcode.push(module);
         }
         drop(linker);
@@ -406,16 +431,24 @@ fn fat_lto(
 pub(crate) struct Linker<'a>(&'a mut llvm::Linker<'a>);
 
 impl<'a> Linker<'a> {
-    pub(crate) fn new(llmod: &'a llvm::Module) -> Self {
-        unsafe { Linker(llvm::LLVMRustLinkerNew(llmod)) }
+    pub(crate) fn new(llmod: &'a llvm::Module, builtin_syms: &[*const libc::c_char]) -> Self {
+        let ptr = builtin_syms.as_ptr();
+        unsafe {
+            Linker(llvm::LLVMRustLinkerNew(
+                llmod,
+                ptr as *const *const libc::c_char,
+                builtin_syms.len() as libc::size_t,
+            ))
+        }
     }
 
-    pub(crate) fn add(&mut self, bytecode: &[u8]) -> Result<(), ()> {
+    pub(crate) fn add(&mut self, bytecode: &[u8], compiler_builtins: bool) -> Result<(), ()> {
         unsafe {
             if llvm::LLVMRustLinkerAdd(
                 self.0,
                 bytecode.as_ptr() as *const libc::c_char,
                 bytecode.len(),
+                compiler_builtins,
             ) {
                 Ok(())
             } else {

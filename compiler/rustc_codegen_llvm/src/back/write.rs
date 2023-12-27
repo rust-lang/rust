@@ -634,12 +634,12 @@ pub(crate) fn link(
     let (first, elements) =
         modules.split_first().expect("Bug! modules must contain at least one module.");
 
-    let mut linker = Linker::new(first.module_llvm.llmod());
+    let mut linker = Linker::new(first.module_llvm.llmod(), &[]);
     for module in elements {
         let _timer = cgcx.prof.generic_activity_with_arg("LLVM_link_module", &*module.name);
         let buffer = ModuleBuffer::new(module.module_llvm.llmod());
         linker
-            .add(buffer.data())
+            .add(buffer.data(), false)
             .map_err(|()| llvm_err(dcx, LlvmError::SerializeModule { name: &module.name }))?;
     }
     drop(linker);
