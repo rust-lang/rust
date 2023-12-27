@@ -268,7 +268,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     ),
                     _ => {}
                 }
-                this.binop_ignore_overflow(op, &a, &b, dest)?;
+                let res = this.wrapping_binary_op(op, &a, &b)?;
+                if !float_finite(&res)? {
+                    throw_ub_format!("`{intrinsic_name}` intrinsic produced non-finite value as result");
+                }
+                this.write_immediate(*res, dest)?;
             }
 
             #[rustfmt::skip]
