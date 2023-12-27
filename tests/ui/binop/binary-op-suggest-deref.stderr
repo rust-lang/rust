@@ -270,11 +270,6 @@ note: an implementation of `PartialEq<&&{integer}>` might be missing for `Foo`
    |
 LL |     struct Foo;
    |     ^^^^^^^^^^ must implement `PartialEq<&&{integer}>`
-help: consider annotating `Foo` with `#[derive(PartialEq)]`
-   |
-LL +     #[derive(PartialEq)]
-LL |     struct Foo;
-   |
 
 error[E0277]: can't compare `&String` with `str`
   --> $DIR/binary-op-suggest-deref.rs:69:20

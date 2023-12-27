@@ -2252,6 +2252,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut Diagnostic,
         errors: Vec<FulfillmentError<'tcx>>,
+        suggest_derive: bool,
     ) {
         let all_local_types_needing_impls =
             errors.iter().all(|e| match e.obligation.predicate.kind().skip_binder() {
@@ -2322,10 +2323,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .iter()
             .map(|e| (e.obligation.predicate, None, Some(e.obligation.cause.clone())))
             .collect();
-        self.suggest_derive(err, &preds);
+        if suggest_derive {
+            self.suggest_derive(err, &preds);
+        } else {
+            // The predicate comes from a binop where the lhs and rhs have different types.
+            let _ = self.note_predicate_source_and_get_derives(err, &preds);
+        }
     }
 
-    pub fn suggest_derive(
+    fn note_predicate_source_and_get_derives(
         &self,
         err: &mut Diagnostic,
         unsatisfied_predicates: &[(
@@ -2333,7 +2339,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Option<ty::Predicate<'tcx>>,
             Option<ObligationCause<'tcx>>,
         )],
-    ) {
+    ) -> Vec<(String, Span, String)> {
         let mut derives = Vec::<(String, Span, Symbol)>::new();
         let mut traits = Vec::new();
         for (pred, _, _) in unsatisfied_predicates {
@@ -2419,6 +2425,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
 
+        derives_grouped
+    }
+
+    pub fn suggest_derive(
+        &self,
+        err: &mut Diagnostic,
+        unsatisfied_predicates: &[(
+            ty::Predicate<'tcx>,
+            Option<ty::Predicate<'tcx>>,
+            Option<ObligationCause<'tcx>>,
+        )],
+    ) {
+        let derives_grouped =
+            self.note_predicate_source_and_get_derives(err, unsatisfied_predicates);
         for (self_name, self_span, traits) in &derives_grouped {
             err.span_suggestion_verbose(
                 self_span.shrink_to_lo(),
