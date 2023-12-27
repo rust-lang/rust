@@ -598,6 +598,26 @@ impl<'a> Parser<'a> {
         // FIXME: translation requires list formatting (for `expect`)
         let mut err = self.dcx().struct_span_err(self.token.span, msg_exp);
 
+        // Look for usages of '=>' where '>=' was probably intended
+        if self.token == token::FatArrow
+            && expected
+                .iter()
+                .any(|tok| matches!(tok, TokenType::Operator | TokenType::Token(TokenKind::Le)))
+            && !expected.iter().any(|tok| {
+                matches!(
+                    tok,
+                    TokenType::Token(TokenKind::FatArrow) | TokenType::Token(TokenKind::Comma)
+                )
+            })
+        {
+            err.span_suggestion(
+                self.token.span,
+                "you might have meant to write a \"greater than or equal to\" comparison",
+                ">=",
+                Applicability::MaybeIncorrect,
+            );
+        }
+
         if let TokenKind::Ident(symbol, _) = &self.prev_token.kind {
             if ["def", "fun", "func", "function"].contains(&symbol.as_str()) {
                 err.span_suggestion_short(
