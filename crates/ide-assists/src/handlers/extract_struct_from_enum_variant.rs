@@ -250,24 +250,21 @@ fn create_struct_def(
             field_list
                 .fields()
                 .filter_map(|field| match field.ty()? {
-                    ast::Type::PathType(p) => {
-                        let generic_arg_list = p.path()?.segment()?.generic_arg_list()?;
-                        Some(
-                            generic_arg_list
-                                .generic_args()
-                                .filter_map(|generic_arg| {
-                                    if generic_arg.to_string() == "Self" {
-                                        let type_arg =
-                                            make::type_arg(make::ty(&enum_.name()?.to_string()))
-                                                .clone_for_update();
-                                        Some(ted::replace(generic_arg.syntax(), type_arg.syntax()))
-                                    } else {
-                                        None
-                                    }
-                                })
-                                .count(),
-                        )
-                    }
+                    ast::Type::PathType(p) => Some(
+                        p.syntax()
+                            .descendants_with_tokens()
+                            .filter_map(|it| {
+                                if it.kind() == T![Self] {
+                                    let type_arg =
+                                        make::type_arg(make::ty(&enum_.name()?.to_string()))
+                                            .clone_for_update();
+                                    Some(ted::replace(it, type_arg.syntax()))
+                                } else {
+                                    None
+                                }
+                            })
+                            .count(),
+                    ),
                     _ => None,
                 })
                 .count();
