@@ -100,6 +100,9 @@ fn lines() {
     assert_eq!(s.next().unwrap().unwrap(), "12".to_string());
     assert_eq!(s.next().unwrap().unwrap(), "".to_string());
     assert!(s.next().is_none());
+
+    let buf = s.into_inner();
+    assert_eq!(buf.position(), 5);
 }
 
 #[test]

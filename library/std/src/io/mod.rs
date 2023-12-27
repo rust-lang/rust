@@ -3092,6 +3092,37 @@ pub struct Lines<B> {
     buf: B,
 }
 
+impl<B> Lines<B> {
+    /// Consumes the `Lines`, returning the wrapped reader.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(lines_into_inner)]
+    ///
+    /// use std::io;
+    /// use std::io::{BufRead, BufReader};
+    /// use std::fs::File;
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let foo_file = File::open("foo.txt")?;
+    ///     let foo_reader = BufReader::new(foo_file);
+    ///     let mut foo_lines = foo_reader.lines();
+    ///
+    ///     for line in &mut foo_lines {
+    ///         println!("{}", line?);
+    ///     }
+    ///
+    ///     let foo_file = foo_lines.into_inner().into_inner();
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "lines_into_inner", issue = "none")]
+    pub fn into_inner(self) -> B {
+        self.buf
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<B: BufRead> Iterator for Lines<B> {
     type Item = Result<String>;
