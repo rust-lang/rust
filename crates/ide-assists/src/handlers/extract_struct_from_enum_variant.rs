@@ -467,6 +467,23 @@ enum Foo {
 }
 "#,
         );
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"
+enum Foo {
+    Bar $0{ node: Box<Self>, a: Arc<Box<Self>> },
+    Nil,
+}
+"#,
+            r#"
+struct Bar{ node: Box<Foo>, a: Arc<Box<Foo>> }
+
+enum Foo {
+    Bar(Bar),
+    Nil,
+}
+"#,
+        );
     }
 
     #[test]
