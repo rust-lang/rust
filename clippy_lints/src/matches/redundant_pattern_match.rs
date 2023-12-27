@@ -411,31 +411,25 @@ fn get_good_method<'tcx>(
     path_left: &QPath<'_>,
 ) -> Option<(&'static str, Option<&'tcx Guard<'tcx>>)> {
     if let Some(name) = get_ident(path_left) {
-        return match name.as_str() {
-            "Ok" => {
-                find_good_method_for_matches_macro(cx, arms, path_left, Item::Lang(ResultOk), "is_ok()", "is_err()")
-            },
-            "Err" => {
-                find_good_method_for_matches_macro(cx, arms, path_left, Item::Lang(ResultErr), "is_err()", "is_ok()")
-            },
-            "Some" => find_good_method_for_matches_macro(
-                cx,
-                arms,
-                path_left,
-                Item::Lang(OptionSome),
-                "is_some()",
-                "is_none()",
-            ),
-            "None" => find_good_method_for_matches_macro(
-                cx,
-                arms,
-                path_left,
-                Item::Lang(OptionNone),
-                "is_none()",
-                "is_some()",
-            ),
-            _ => None,
+        let (expected_item_left, should_be_left, should_be_right) = match name.as_str() {
+            "Ok" => (Item::Lang(ResultOk), "is_ok()", "is_err()"),
+            "Err" => (Item::Lang(ResultErr), "is_err()", "is_ok()"),
+            "Some" => (Item::Lang(OptionSome), "is_some()", "is_none()"),
+            "None" => (Item::Lang(OptionNone), "is_none()", "is_some()"),
+            "Ready" => (Item::Lang(PollReady), "is_ready()", "is_pending()"),
+            "Pending" => (Item::Lang(PollPending), "is_pending()", "is_ready()"),
+            "V4" => (Item::Diag(sym::IpAddr, sym!(V4)), "is_ipv4()", "is_ipv6()"),
+            "V6" => (Item::Diag(sym::IpAddr, sym!(V6)), "is_ipv6()", "is_ipv4()"),
+            _ => return None,
         };
+        return find_good_method_for_matches_macro(
+            cx,
+            arms,
+            path_left,
+            expected_item_left,
+            should_be_left,
+            should_be_right,
+        );
     }
     None
 }
