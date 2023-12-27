@@ -1,5 +1,4 @@
 #![feature(negative_bounds, associated_type_bounds)]
-//~^ WARN the feature `negative_bounds` is incomplete and may not be safe to use and/or cause compiler crashes
 
 trait Trait {
     type Assoc;
