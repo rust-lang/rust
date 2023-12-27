@@ -37,11 +37,13 @@ x--expand-yaml-anchors--remove:
 
   - &public-variables
     SCCACHE_BUCKET: rust-lang-ci-sccache2
+    SCCACHE_REGION: us-west-1
     TOOLSTATE_REPO: https://github.com/rust-lang-nursery/rust-toolstate
     CACHE_DOMAIN: ci-caches.rust-lang.org
 
   - &prod-variables
     SCCACHE_BUCKET: rust-lang-ci-sccache2
+    SCCACHE_REGION: us-west-1
     DEPLOY_BUCKET: rust-lang-ci2
     TOOLSTATE_REPO: https://github.com/rust-lang-nursery/rust-toolstate
     TOOLSTATE_ISSUES_API_URL: https://api.github.com/repos/rust-lang/rust/issues
@@ -359,6 +361,7 @@ jobs:
               # incompatible with LLVM downloads today).
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
+              MSYSTEM: MINGW32
             <<: *job-windows-8c
 
           - name: x86_64-mingw
@@ -385,6 +388,7 @@ jobs:
               SCRIPT: python x.py dist bootstrap --include-default-paths
               CUSTOM_MINGW: 1
               DIST_REQUIRE_ALL_TOOLS: 1
+              MSYSTEM: MINGW32
             <<: *job-windows-8c
 
           - name: dist-x86_64-mingw
