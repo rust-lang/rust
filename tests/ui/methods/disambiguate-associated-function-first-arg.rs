@@ -26,3 +26,24 @@ trait O {
 impl O for A {
     fn new(_a: A, _b: i32) {}
 }
+
+struct S;
+
+trait TraitA {
+    fn f(self);
+}
+trait TraitB {
+    fn f(self);
+}
+
+impl<T> TraitA for T {
+    fn f(self) {}
+}
+impl<T> TraitB for T {
+    fn f(self) {}
+}
+
+fn test() {
+    S.f();
+   //~^ multiple applicable items in scope
+}

@@ -36,6 +36,32 @@ help: disambiguate the associated function for candidate #3
 LL |     <A as O>::new(_a, 1);
    |     ~~~~~~~~~~~~~~~~~~~~
 
-error: aborting due to 1 previous error
+error[E0034]: multiple applicable items in scope
+  --> $DIR/disambiguate-associated-function-first-arg.rs:47:7
+   |
+LL |     S.f();
+   |       ^ multiple `f` found
+   |
+note: candidate #1 is defined in an impl of the trait `TraitA` for the type `T`
+  --> $DIR/disambiguate-associated-function-first-arg.rs:40:5
+   |
+LL |     fn f(self) {}
+   |     ^^^^^^^^^^
+note: candidate #2 is defined in an impl of the trait `TraitB` for the type `T`
+  --> $DIR/disambiguate-associated-function-first-arg.rs:43:5
+   |
+LL |     fn f(self) {}
+   |     ^^^^^^^^^^
+help: disambiguate the method for candidate #1
+   |
+LL |     TraitA::f(S);
+   |     ~~~~~~~~~~~~
+help: disambiguate the method for candidate #2
+   |
+LL |     TraitB::f(S);
+   |     ~~~~~~~~~~~~
 
-For more information about this error, try `rustc --explain E0599`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0034, E0599.
+For more information about an error, try `rustc --explain E0034`.
