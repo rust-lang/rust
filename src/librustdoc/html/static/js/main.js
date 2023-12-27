@@ -279,7 +279,8 @@ function preLoadCss(cssUrl) {
             const params = {};
             window.location.search.substring(1).split("&").
                 map(s => {
-                    const pair = s.split("=");
+                    // https://github.com/rust-lang/rust/issues/119219
+                    const pair = s.split("=").map(x => x.replace(/\+/g, " "));
                     params[decodeURIComponent(pair[0])] =
                         typeof pair[1] === "undefined" ? null : decodeURIComponent(pair[1]);
                 });
