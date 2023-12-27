@@ -93,6 +93,7 @@ jobs:
         with:
           msystem: MINGW64
           update: true
+          release: false
           path-type: inherit
           install: "make git\n"
       - name: checkout the source code
@@ -493,6 +494,7 @@ jobs:
         with:
           msystem: MINGW64
           update: true
+          release: false
           path-type: inherit
           install: "make git\n"
       - name: checkout the source code
@@ -627,6 +629,7 @@ jobs:
         with:
           msystem: MINGW64
           update: true
+          release: false
           path-type: inherit
           install: "make git\n"
       - name: checkout the source code

@@ -123,7 +123,8 @@ x--expand-yaml-anchors--remove:
         with:
           msystem: MINGW64
           update: true
-          path-type: inherit # Prevents inheriting any environment variables into msys2
+          release: false
+          path-type: inherit
           install: >
             make
             git
