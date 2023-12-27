@@ -1,4 +1,5 @@
 //! Term search assist
+use hir::term_search::TermSearchCtx;
 use ide_db::assists::{AssistId, AssistKind, GroupLabel};
 
 use itertools::Itertools;
@@ -23,7 +24,13 @@ pub(crate) fn term_search(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
 
     let scope = ctx.sema.scope(&parent)?;
 
-    let paths = hir::term_search::term_search(&ctx.sema, &scope, &target_ty);
+    let term_search_ctx = TermSearchCtx {
+        sema: &ctx.sema,
+        scope: &scope,
+        goal: target_ty,
+        config: Default::default(),
+    };
+    let paths = hir::term_search::term_search(term_search_ctx);
 
     if paths.is_empty() {
         return None;

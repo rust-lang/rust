@@ -1,11 +1,9 @@
 //! Tactics for term search
 //!
 //! All the tactics take following arguments
-//! * `db` - HIR database
-//! * `module` - Module where the term search target location
+//! * `ctx` - Context for the term search
 //! * `defs` - Set of items in scope at term search target location
 //! * `lookup` - Lookup table for types
-//! * `goal` - Term search target type
 //! And they return iterator that yields type trees that unify with the `goal` type.
 
 use std::iter;
@@ -17,13 +15,13 @@ use itertools::Itertools;
 use rustc_hash::FxHashSet;
 
 use crate::{
-    Adt, AssocItem, Enum, GenericDef, GenericParam, HasVisibility, Impl, Module, ModuleDef,
-    ScopeDef, Type, Variant,
+    Adt, AssocItem, Enum, GenericDef, GenericParam, HasVisibility, Impl, ModuleDef, ScopeDef, Type,
+    Variant,
 };
 
-use crate::term_search::TypeTree;
+use crate::term_search::{TermSearchConfig, TypeTree};
 
-use super::{LookupTable, NewTypesKey, MAX_VARIATIONS};
+use super::{LookupTable, NewTypesKey, TermSearchCtx, MAX_VARIATIONS};
 
 /// # Trivial tactic
 ///
@@ -31,41 +29,42 @@ use super::{LookupTable, NewTypesKey, MAX_VARIATIONS};
 /// Also works as a starting point to move all items in scope to lookup table.
 ///
 /// # Arguments
-/// * `db` - HIR database
+/// * `ctx` - Context for the term search
 /// * `defs` - Set of items in scope at term search target location
 /// * `lookup` - Lookup table for types
-/// * `goal` - Term search target type
 ///
 /// Returns iterator that yields elements that unify with `goal`.
 ///
 /// _Note that there is no use of calling this tactic in every iteration as the output does not
 /// depend on the current state of `lookup`_
-pub(super) fn trivial<'a>(
-    db: &'a dyn HirDatabase,
+pub(super) fn trivial<'a, DB: HirDatabase>(
+    ctx: &'a TermSearchCtx<'a, DB>,
     defs: &'a FxHashSet<ScopeDef>,
     lookup: &'a mut LookupTable,
-    goal: &'a Type,
 ) -> impl Iterator<Item = TypeTree> + 'a {
+    let db = ctx.sema.db;
     defs.iter().filter_map(|def| {
         let tt = match def {
             ScopeDef::ModuleDef(ModuleDef::Const(it)) => Some(TypeTree::Const(*it)),
             ScopeDef::ModuleDef(ModuleDef::Static(it)) => Some(TypeTree::Static(*it)),
             ScopeDef::GenericParam(GenericParam::ConstParam(it)) => Some(TypeTree::ConstParam(*it)),
             ScopeDef::Local(it) => {
-                let borrowck = db.borrowck(it.parent).ok()?;
+                if ctx.config.enable_borrowcheck {
+                    let borrowck = db.borrowck(it.parent).ok()?;
 
-                let invalid = borrowck.iter().any(|b| {
-                    b.partially_moved.iter().any(|moved| {
-                        Some(&moved.local) == b.mir_body.binding_locals.get(it.binding_id)
-                    }) || b.borrow_regions.iter().any(|region| {
-                        // Shared borrows are fine
-                        Some(&region.local) == b.mir_body.binding_locals.get(it.binding_id)
-                            && region.kind != BorrowKind::Shared
-                    })
-                });
+                    let invalid = borrowck.iter().any(|b| {
+                        b.partially_moved.iter().any(|moved| {
+                            Some(&moved.local) == b.mir_body.binding_locals.get(it.binding_id)
+                        }) || b.borrow_regions.iter().any(|region| {
+                            // Shared borrows are fine
+                            Some(&region.local) == b.mir_body.binding_locals.get(it.binding_id)
+                                && region.kind != BorrowKind::Shared
+                        })
+                    });
 
-                if invalid {
-                    return None;
+                    if invalid {
+                        return None;
+                    }
                 }
 
                 Some(TypeTree::Local(*it))
@@ -83,7 +82,7 @@ pub(super) fn trivial<'a>(
             return None;
         }
 
-        ty.could_unify_with_deeply(db, goal).then(|| tt)
+        ty.could_unify_with_deeply(db, &ctx.goal).then(|| tt)
     })
 }
 
@@ -95,24 +94,23 @@ pub(super) fn trivial<'a>(
 /// elements that unify with `goal`.
 ///
 /// # Arguments
-/// * `db` - HIR database
-/// * `module` - Module where the term search target location
+/// * `ctx` - Context for the term search
 /// * `defs` - Set of items in scope at term search target location
 /// * `lookup` - Lookup table for types
-/// * `goal` - Term search target type
-pub(super) fn type_constructor<'a>(
-    db: &'a dyn HirDatabase,
-    module: &'a Module,
+pub(super) fn type_constructor<'a, DB: HirDatabase>(
+    ctx: &'a TermSearchCtx<'a, DB>,
     defs: &'a FxHashSet<ScopeDef>,
     lookup: &'a mut LookupTable,
-    goal: &'a Type,
 ) -> impl Iterator<Item = TypeTree> + 'a {
+    let db = ctx.sema.db;
+    let module = ctx.scope.module();
     fn variant_helper(
         db: &dyn HirDatabase,
         lookup: &mut LookupTable,
         parent_enum: Enum,
         variant: Variant,
         goal: &Type,
+        config: &TermSearchConfig,
     ) -> Vec<(Type, Vec<TypeTree>)> {
         let generics = GenericDef::from(variant.parent_enum(db));
 
@@ -151,7 +149,7 @@ pub(super) fn type_constructor<'a>(
             .permutations(non_default_type_params_len);
 
         generic_params
-            .filter_map(|generics| {
+            .filter_map(move |generics| {
                 // Insert default type params
                 let mut g = generics.into_iter();
                 let generics: Vec<_> = type_params
@@ -171,7 +169,7 @@ pub(super) fn type_constructor<'a>(
                 }
 
                 // Ignore types that have something to do with lifetimes
-                if enum_ty.contains_reference(db) {
+                if config.enable_borrowcheck && enum_ty.contains_reference(db) {
                     return None;
                 }
 
@@ -211,9 +209,10 @@ pub(super) fn type_constructor<'a>(
             .collect()
     }
     defs.iter()
-        .filter_map(|def| match def {
+        .filter_map(move |def| match def {
             ScopeDef::ModuleDef(ModuleDef::Variant(it)) => {
-                let variant_trees = variant_helper(db, lookup, it.parent_enum(db), *it, goal);
+                let variant_trees =
+                    variant_helper(db, lookup, it.parent_enum(db), *it, &ctx.goal, &ctx.config);
                 if variant_trees.is_empty() {
                     return None;
                 }
@@ -224,7 +223,9 @@ pub(super) fn type_constructor<'a>(
                 let trees: Vec<(Type, Vec<TypeTree>)> = enum_
                     .variants(db)
                     .into_iter()
-                    .flat_map(|it| variant_helper(db, lookup, enum_.clone(), it, goal))
+                    .flat_map(|it| {
+                        variant_helper(db, lookup, enum_.clone(), it, &ctx.goal, &ctx.config)
+                    })
                     .collect();
 
                 if !trees.is_empty() {
@@ -234,8 +235,8 @@ pub(super) fn type_constructor<'a>(
                 Some(trees)
             }
             ScopeDef::ModuleDef(ModuleDef::Adt(Adt::Struct(it))) => {
-                // Ignore unstable
-                if it.is_unstable(db) {
+                // Ignore unstable and not visible
+                if it.is_unstable(db) || !it.is_visible_from(db, module) {
                     return None;
                 }
 
@@ -285,18 +286,18 @@ pub(super) fn type_constructor<'a>(
                         // Allow types with generics only if they take us straight to goal for
                         // performance reasons
                         if non_default_type_params_len != 0
-                            && struct_ty.could_unify_with_deeply(db, goal)
+                            && struct_ty.could_unify_with_deeply(db, &ctx.goal)
                         {
                             return None;
                         }
 
                         // Ignore types that have something to do with lifetimes
-                        if struct_ty.contains_reference(db) {
+                        if ctx.config.enable_borrowcheck && struct_ty.contains_reference(db) {
                             return None;
                         }
                         let fileds = it.fields(db);
                         // Check if all fields are visible, otherwise we cannot fill them
-                        if fileds.iter().any(|it| !it.is_visible_from(db, *module)) {
+                        if fileds.iter().any(|it| !it.is_visible_from(db, module)) {
                             return None;
                         }
 
@@ -335,7 +336,7 @@ pub(super) fn type_constructor<'a>(
             _ => None,
         })
         .flatten()
-        .filter_map(|(ty, trees)| ty.could_unify_with_deeply(db, goal).then(|| trees))
+        .filter_map(|(ty, trees)| ty.could_unify_with_deeply(db, &ctx.goal).then(|| trees))
         .flatten()
 }
 
@@ -348,20 +349,18 @@ pub(super) fn type_constructor<'a>(
 /// elements that unify with `goal`.
 ///
 /// # Arguments
-/// * `db` - HIR database
-/// * `module` - Module where the term search target location
+/// * `ctx` - Context for the term search
 /// * `defs` - Set of items in scope at term search target location
 /// * `lookup` - Lookup table for types
-/// * `goal` - Term search target type
-pub(super) fn free_function<'a>(
-    db: &'a dyn HirDatabase,
-    module: &'a Module,
+pub(super) fn free_function<'a, DB: HirDatabase>(
+    ctx: &'a TermSearchCtx<'a, DB>,
     defs: &'a FxHashSet<ScopeDef>,
     lookup: &'a mut LookupTable,
-    goal: &'a Type,
 ) -> impl Iterator<Item = TypeTree> + 'a {
+    let db = ctx.sema.db;
+    let module = ctx.scope.module();
     defs.iter()
-        .filter_map(|def| match def {
+        .filter_map(move |def| match def {
             ScopeDef::ModuleDef(ModuleDef::Function(it)) => {
                 let generics = GenericDef::from(*it);
 
@@ -411,10 +410,10 @@ pub(super) fn free_function<'a>(
 
                         let ret_ty = it.ret_type_with_generics(db, generics.iter().cloned());
                         // Filter out private and unsafe functions
-                        if !it.is_visible_from(db, *module)
+                        if !it.is_visible_from(db, module)
                             || it.is_unsafe_to_call(db)
                             || it.is_unstable(db)
-                            || ret_ty.contains_reference(db)
+                            || ctx.config.enable_borrowcheck && ret_ty.contains_reference(db)
                             || ret_ty.is_raw_ptr()
                         {
                             return None;
@@ -461,7 +460,7 @@ pub(super) fn free_function<'a>(
             _ => None,
         })
         .flatten()
-        .filter_map(|(ty, trees)| ty.could_unify_with_deeply(db, goal).then(|| trees))
+        .filter_map(|(ty, trees)| ty.could_unify_with_deeply(db, &ctx.goal).then(|| trees))
         .flatten()
 }
 
@@ -476,18 +475,16 @@ pub(super) fn free_function<'a>(
 /// elements that unify with `goal`.
 ///
 /// # Arguments
-/// * `db` - HIR database
-/// * `module` - Module where the term search target location
+/// * `ctx` - Context for the term search
 /// * `defs` - Set of items in scope at term search target location
 /// * `lookup` - Lookup table for types
-/// * `goal` - Term search target type
-pub(super) fn impl_method<'a>(
-    db: &'a dyn HirDatabase,
-    module: &'a Module,
+pub(super) fn impl_method<'a, DB: HirDatabase>(
+    ctx: &'a TermSearchCtx<'a, DB>,
     _defs: &'a FxHashSet<ScopeDef>,
     lookup: &'a mut LookupTable,
-    goal: &'a Type,
 ) -> impl Iterator<Item = TypeTree> + 'a {
+    let db = ctx.sema.db;
+    let module = ctx.scope.module();
     lookup
         .new_types(NewTypesKey::ImplMethod)
         .into_iter()
@@ -499,7 +496,7 @@ pub(super) fn impl_method<'a>(
             AssocItem::Function(f) => Some((imp, ty, f)),
             _ => None,
         })
-        .filter_map(|(imp, ty, it)| {
+        .filter_map(move |(imp, ty, it)| {
             let fn_generics = GenericDef::from(it);
             let imp_generics = GenericDef::from(imp);
 
@@ -520,7 +517,7 @@ pub(super) fn impl_method<'a>(
             }
 
             // Filter out private and unsafe functions
-            if !it.is_visible_from(db, *module) || it.is_unsafe_to_call(db) || it.is_unstable(db) {
+            if !it.is_visible_from(db, module) || it.is_unsafe_to_call(db) || it.is_unstable(db) {
                 return None;
             }
 
@@ -570,7 +567,9 @@ pub(super) fn impl_method<'a>(
                         ty.type_arguments().chain(generics.iter().cloned()),
                     );
                     // Filter out functions that return references
-                    if ret_ty.contains_reference(db) || ret_ty.is_raw_ptr() {
+                    if ctx.config.enable_borrowcheck && ret_ty.contains_reference(db)
+                        || ret_ty.is_raw_ptr()
+                    {
                         return None;
                     }
 
@@ -615,7 +614,7 @@ pub(super) fn impl_method<'a>(
             Some(trees)
         })
         .flatten()
-        .filter_map(|(ty, trees)| ty.could_unify_with_deeply(db, goal).then(|| trees))
+        .filter_map(|(ty, trees)| ty.could_unify_with_deeply(db, &ctx.goal).then(|| trees))
         .flatten()
 }
 
@@ -627,24 +626,21 @@ pub(super) fn impl_method<'a>(
 /// elements that unify with `goal`.
 ///
 /// # Arguments
-/// * `db` - HIR database
-/// * `module` - Module where the term search target location
+/// * `ctx` - Context for the term search
 /// * `defs` - Set of items in scope at term search target location
 /// * `lookup` - Lookup table for types
-/// * `goal` - Term search target type
-pub(super) fn struct_projection<'a>(
-    db: &'a dyn HirDatabase,
-    module: &'a Module,
+pub(super) fn struct_projection<'a, DB: HirDatabase>(
+    ctx: &'a TermSearchCtx<'a, DB>,
     _defs: &'a FxHashSet<ScopeDef>,
     lookup: &'a mut LookupTable,
-    goal: &'a Type,
 ) -> impl Iterator<Item = TypeTree> + 'a {
+    let db = ctx.sema.db;
+    let module = ctx.scope.module();
     lookup
         .new_types(NewTypesKey::StructProjection)
         .into_iter()
         .map(|ty| (ty.clone(), lookup.find(db, &ty).expect("TypeTree not in lookup")))
         .flat_map(move |(ty, targets)| {
-            let module = module.clone();
             ty.fields(db).into_iter().filter_map(move |(field, filed_ty)| {
                 if !field.is_visible_from(db, module) {
                     return None;
@@ -656,7 +652,7 @@ pub(super) fn struct_projection<'a>(
                 Some((filed_ty, trees))
             })
         })
-        .filter_map(|(ty, trees)| ty.could_unify_with_deeply(db, goal).then(|| trees))
+        .filter_map(|(ty, trees)| ty.could_unify_with_deeply(db, &ctx.goal).then(|| trees))
         .flatten()
 }
 
@@ -670,18 +666,16 @@ pub(super) fn struct_projection<'a>(
 /// _Note that there is no point of calling it iteratively as the output is always the same_
 ///
 /// # Arguments
-/// * `db` - HIR database
-/// * `module` - Module where the term search target location
+/// * `ctx` - Context for the term search
 /// * `defs` - Set of items in scope at term search target location
 /// * `lookup` - Lookup table for types
-/// * `goal` - Term search target type
-pub(super) fn famous_types<'a>(
-    db: &'a dyn HirDatabase,
-    module: &'a Module,
+pub(super) fn famous_types<'a, DB: HirDatabase>(
+    ctx: &'a TermSearchCtx<'a, DB>,
     _defs: &'a FxHashSet<ScopeDef>,
     lookup: &'a mut LookupTable,
-    goal: &'a Type,
 ) -> impl Iterator<Item = TypeTree> + 'a {
+    let db = ctx.sema.db;
+    let module = ctx.scope.module();
     [
         TypeTree::FamousType { ty: Type::new(db, module.id, TyBuilder::bool()), value: "true" },
         TypeTree::FamousType { ty: Type::new(db, module.id, TyBuilder::bool()), value: "false" },
@@ -692,7 +686,7 @@ pub(super) fn famous_types<'a>(
         lookup.insert(tt.ty(db), std::iter::once(tt.clone()));
         tt
     })
-    .filter(|tt| tt.ty(db).could_unify_with_deeply(db, goal))
+    .filter(|tt| tt.ty(db).could_unify_with_deeply(db, &ctx.goal))
 }
 
 /// # Impl static method (without self type) tactic
@@ -703,22 +697,20 @@ pub(super) fn famous_types<'a>(
 /// elements that unify with `goal`.
 ///
 /// # Arguments
-/// * `db` - HIR database
-/// * `module` - Module where the term search target location
+/// * `ctx` - Context for the term search
 /// * `defs` - Set of items in scope at term search target location
 /// * `lookup` - Lookup table for types
-/// * `goal` - Term search target type
-pub(super) fn impl_static_method<'a>(
-    db: &'a dyn HirDatabase,
-    module: &'a Module,
+pub(super) fn impl_static_method<'a, DB: HirDatabase>(
+    ctx: &'a TermSearchCtx<'a, DB>,
     _defs: &'a FxHashSet<ScopeDef>,
     lookup: &'a mut LookupTable,
-    goal: &'a Type,
 ) -> impl Iterator<Item = TypeTree> + 'a {
+    let db = ctx.sema.db;
+    let module = ctx.scope.module();
     lookup
         .take_types_wishlist()
         .into_iter()
-        .chain(iter::once(goal.clone()))
+        .chain(iter::once(ctx.goal.clone()))
         .flat_map(|ty| {
             Impl::all_for_type(db, ty.clone()).into_iter().map(move |imp| (ty.clone(), imp))
         })
@@ -728,7 +720,7 @@ pub(super) fn impl_static_method<'a>(
             AssocItem::Function(f) => Some((imp, ty, f)),
             _ => None,
         })
-        .filter_map(|(imp, ty, it)| {
+        .filter_map(move |(imp, ty, it)| {
             let fn_generics = GenericDef::from(it);
             let imp_generics = GenericDef::from(imp);
 
@@ -751,7 +743,7 @@ pub(super) fn impl_static_method<'a>(
             }
 
             // Filter out private and unsafe functions
-            if !it.is_visible_from(db, *module) || it.is_unsafe_to_call(db) || it.is_unstable(db) {
+            if !it.is_visible_from(db, module) || it.is_unsafe_to_call(db) || it.is_unstable(db) {
                 return None;
             }
 
@@ -801,7 +793,9 @@ pub(super) fn impl_static_method<'a>(
                         ty.type_arguments().chain(generics.iter().cloned()),
                     );
                     // Filter out functions that return references
-                    if ret_ty.contains_reference(db) || ret_ty.is_raw_ptr() {
+                    if ctx.config.enable_borrowcheck && ret_ty.contains_reference(db)
+                        || ret_ty.is_raw_ptr()
+                    {
                         return None;
                     }
 
@@ -845,6 +839,6 @@ pub(super) fn impl_static_method<'a>(
             Some(trees)
         })
         .flatten()
-        .filter_map(|(ty, trees)| ty.could_unify_with_deeply(db, goal).then(|| trees))
+        .filter_map(|(ty, trees)| ty.could_unify_with_deeply(db, &ctx.goal).then(|| trees))
         .flatten()
 }

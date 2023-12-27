@@ -1,4 +1,8 @@
-use hir::{db::ExpandDatabase, term_search::term_search, ClosureStyle, HirDisplay, Semantics};
+use hir::{
+    db::ExpandDatabase,
+    term_search::{term_search, TermSearchCtx},
+    ClosureStyle, HirDisplay, Semantics,
+};
 use ide_db::{
     assists::{Assist, AssistId, AssistKind, GroupLabel},
     label::Label,
@@ -40,7 +44,8 @@ fn fixes(sema: &Semantics<'_, RootDatabase>, d: &hir::TypedHole) -> Option<Vec<A
         d.expr.as_ref().map(|it| it.to_node(&root)).syntax().original_file_range_opt(db)?;
     let scope = sema.scope(d.expr.value.to_node(&root).syntax())?;
 
-    let paths = term_search(sema, &scope, &d.expected);
+    let ctx = TermSearchCtx { sema, scope: &scope, goal: d.expected.clone(), config: Default::default() };
+    let paths = term_search(ctx);
 
     let mut assists = vec![];
     for path in paths.into_iter().unique() {

@@ -328,3 +328,32 @@ pub(crate) fn complete_expr_path(
         }
     }
 }
+
+pub(crate) fn complete_expr(
+    acc: &mut Completions,
+    ctx: &CompletionContext<'_>,
+    path_ctx: &PathCompletionCtx,
+) {
+    let _p = profile::span("complete_expr");
+    if !ctx.qualifier_ctx.none() {
+        return;
+    }
+
+    if let Some(ty) = &ctx.expected_type {
+        // Ignore unit types as they are not very interesting
+        if ty.is_unit() {
+            return;
+        }
+
+        let term_search_ctx = hir::term_search::TermSearchCtx {
+            sema: &ctx.sema,
+            scope: &ctx.scope,
+            goal: ty.clone(),
+            config: hir::term_search::TermSearchConfig { enable_borrowcheck: false },
+        };
+        let exprs = hir::term_search::term_search(term_search_ctx);
+        for expr in exprs {
+            acc.add_expr(ctx, &expr, path_ctx);
+        }
+    }
+}

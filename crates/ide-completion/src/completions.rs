@@ -41,6 +41,7 @@ use crate::{
         macro_::render_macro,
         pattern::{render_struct_pat, render_variant_pat},
         render_field, render_path_resolution, render_pattern_resolution, render_tuple_field,
+        render_type_tree,
         type_alias::{render_type_alias, render_type_alias_with_eq},
         union_literal::render_union_literal,
         RenderContext,
@@ -154,6 +155,16 @@ impl Completions {
             Some(cap) => item.insert_snippet(cap, snippet),
             None => item.insert_text(if snippet.contains('$') { kw } else { snippet }),
         };
+        item.add_to(self, ctx.db);
+    }
+
+    pub(crate) fn add_expr(
+        &mut self,
+        ctx: &CompletionContext<'_>,
+        expr: &hir::term_search::TypeTree,
+        path_ctx: &PathCompletionCtx,
+    ) {
+        let item = render_type_tree(ctx, expr, path_ctx);
         item.add_to(self, ctx.db);
     }
 
@@ -690,6 +701,7 @@ pub(super) fn complete_name_ref(
     match kind {
         NameRefKind::Path(path_ctx) => {
             flyimport::import_on_the_fly_path(acc, ctx, path_ctx);
+            expr::complete_expr(acc, ctx, path_ctx);
 
             match &path_ctx.kind {
                 PathKind::Expr { expr_ctx } => {

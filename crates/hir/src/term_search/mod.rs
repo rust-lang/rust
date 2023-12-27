@@ -152,8 +152,34 @@ impl LookupTable {
         &self.exhausted_scopedefs
     }
 
+    /// Types queried but not found
     fn take_types_wishlist(&mut self) -> FxHashSet<Type> {
         std::mem::take(&mut self.types_wishlist)
+    }
+}
+
+/// Context for the `term_search` function
+pub struct TermSearchCtx<'a, DB: HirDatabase> {
+    /// Semantics for the program
+    pub sema: &'a Semantics<'a, DB>,
+    /// Semantic scope, captures context for the term search
+    pub scope: &'a SemanticsScope<'a>,
+    /// Target / expected output type
+    pub goal: Type,
+    /// Configuration for term search
+    pub config: TermSearchConfig,
+}
+
+/// Configuration options for the term search
+#[derive(Debug, Clone, Copy)]
+pub struct TermSearchConfig {
+    /// Enable borrow checking, this guarantees the outputs of the `term_search` to borrow-check
+    pub enable_borrowcheck: bool,
+}
+
+impl Default for TermSearchConfig {
+    fn default() -> Self {
+        Self { enable_borrowcheck: true }
     }
 }
 
@@ -181,37 +207,32 @@ impl LookupTable {
 /// Note that there are usually more ways we can get to the `goal` type but some are discarded to
 /// reduce the memory consumption. It is also unlikely anyone is willing ti browse through
 /// thousands of possible responses so we currently take first 10 from every tactic.
-pub fn term_search<DB: HirDatabase>(
-    sema: &Semantics<'_, DB>,
-    scope: &SemanticsScope<'_>,
-    goal: &Type,
-) -> Vec<TypeTree> {
+pub fn term_search<DB: HirDatabase>(ctx: TermSearchCtx<'_, DB>) -> Vec<TypeTree> {
+    let module = ctx.scope.module();
     let mut defs = FxHashSet::default();
-    defs.insert(ScopeDef::ModuleDef(ModuleDef::Module(scope.module())));
+    defs.insert(ScopeDef::ModuleDef(ModuleDef::Module(module)));
 
-    scope.process_all_names(&mut |_, def| {
+    ctx.scope.process_all_names(&mut |_, def| {
         defs.insert(def);
     });
-    let module = scope.module();
 
     let mut lookup = LookupTable::new();
 
     // Try trivial tactic first, also populates lookup table
-    let mut solutions: Vec<TypeTree> =
-        tactics::trivial(sema.db, &defs, &mut lookup, goal).collect();
+    let mut solutions: Vec<TypeTree> = tactics::trivial(&ctx, &defs, &mut lookup).collect();
     // Use well known types tactic before iterations as it does not depend on other tactics
-    solutions.extend(tactics::famous_types(sema.db, &module, &defs, &mut lookup, goal));
+    solutions.extend(tactics::famous_types(&ctx, &defs, &mut lookup));
 
     let mut solution_found = !solutions.is_empty();
 
     for _ in 0..5 {
         lookup.new_round();
 
-        solutions.extend(tactics::type_constructor(sema.db, &module, &defs, &mut lookup, goal));
-        solutions.extend(tactics::free_function(sema.db, &module, &defs, &mut lookup, goal));
-        solutions.extend(tactics::impl_method(sema.db, &module, &defs, &mut lookup, goal));
-        solutions.extend(tactics::struct_projection(sema.db, &module, &defs, &mut lookup, goal));
-        solutions.extend(tactics::impl_static_method(sema.db, &module, &defs, &mut lookup, goal));
+        solutions.extend(tactics::type_constructor(&ctx, &defs, &mut lookup));
+        solutions.extend(tactics::free_function(&ctx, &defs, &mut lookup));
+        solutions.extend(tactics::impl_method(&ctx, &defs, &mut lookup));
+        solutions.extend(tactics::struct_projection(&ctx, &defs, &mut lookup));
+        solutions.extend(tactics::impl_static_method(&ctx, &defs, &mut lookup));
 
         // Break after 1 round after successful solution
         if solution_found {

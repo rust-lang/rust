@@ -272,6 +272,26 @@ pub(crate) fn render_resolution_with_import_pat(
     Some(render_resolution_pat(ctx, pattern_ctx, local_name, Some(import_edit), resolution))
 }
 
+pub(crate) fn render_type_tree(
+    ctx: &CompletionContext<'_>,
+    expr: &hir::term_search::TypeTree,
+    path_ctx: &PathCompletionCtx,
+) -> Builder {
+    let mut item = CompletionItem::new(
+        CompletionItemKind::Snippet,
+        ctx.source_range(),
+        expr.gen_source_code(&ctx.scope),
+    );
+    item.set_relevance(crate::CompletionRelevance {
+        type_match: Some(crate::item::CompletionRelevanceTypeMatch::CouldUnify),
+        ..Default::default()
+    });
+
+    path_ref_match(ctx, path_ctx, &expr.ty(ctx.sema.db), &mut item);
+
+    item
+}
+
 fn scope_def_to_name(
     resolution: ScopeDef,
     ctx: &RenderContext<'_>,

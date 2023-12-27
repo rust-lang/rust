@@ -406,7 +406,15 @@ impl flags::AnalysisStats {
                     None => continue,
                 };
 
-                let found_terms = hir::term_search::term_search(&sema, &scope, &target_ty);
+                let ctx = hir::term_search::TermSearchCtx {
+                    sema: &sema,
+                    scope: &scope,
+                    goal: target_ty,
+                    config: hir::term_search::TermSearchConfig {
+                        enable_borrowcheck: true,
+                    },
+                };
+                let found_terms = hir::term_search::term_search(ctx);
 
                 if found_terms.is_empty() {
                     acc.tail_expr_no_term += 1;
