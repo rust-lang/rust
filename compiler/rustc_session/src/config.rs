@@ -1165,6 +1165,7 @@ impl UnstableOptions {
             macro_backtrace: self.macro_backtrace,
             deduplicate_diagnostics: self.deduplicate_diagnostics,
             track_diagnostics: self.track_diagnostics,
+            metrics: self.error_metrics.clone(),
         }
     }
 }

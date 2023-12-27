@@ -41,6 +41,7 @@ use std::any::Any;
 use std::cell::{self, RefCell};
 use std::env;
 use std::fmt;
+use std::fs::File;
 use std::ops::{Div, Mul};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -1009,6 +1010,12 @@ fn default_emitter(
                 );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             } else {
+                let metrics = sopts.unstable_opts.error_metrics.as_ref().and_then(|path| {
+                    let mut path = path.clone();
+                    std::fs::create_dir_all(&path).ok()?;
+                    path.push(format!("error_metrics_{}", std::process::id()));
+                    File::options().create(true).append(true).open(&path).ok()
+                });
                 let emitter = EmitterWriter::stderr(color_config, fallback_bundle)
                     .fluent_bundle(bundle)
                     .sm(Some(source_map))
@@ -1018,6 +1025,7 @@ fn default_emitter(
                     .macro_backtrace(macro_backtrace)
                     .track_diagnostics(track_diagnostics)
                     .terminal_url(terminal_url)
+                    .metrics(metrics)
                     .ignored_directories_in_source_blocks(
                         sopts.unstable_opts.ignore_directory_in_diagnostics_source_blocks.clone(),
                     );

@@ -30,6 +30,7 @@ use rustc_span::hygiene::{ExpnKind, MacroKind};
 use std::borrow::Cow;
 use std::cmp::{max, min, Reverse};
 use std::error::Report;
+use std::fs::File;
 use std::io::prelude::*;
 use std::io::{self, IsTerminal};
 use std::iter;
@@ -538,7 +539,7 @@ impl Emitter for EmitterWriter {
             &primary_span,
             &children,
             suggestions,
-            self.track_diagnostics.then_some(&diag.emitted_at),
+            &diag.emitted_at,
         );
     }
 
@@ -637,6 +638,7 @@ pub struct EmitterWriter {
 
     macro_backtrace: bool,
     track_diagnostics: bool,
+    metrics: Option<File>,
     terminal_url: TerminalUrl,
 }
 
@@ -666,6 +668,7 @@ impl EmitterWriter {
             diagnostic_width: None,
             macro_backtrace: false,
             track_diagnostics: false,
+            metrics: None,
             terminal_url: TerminalUrl::No,
         }
     }
@@ -2079,14 +2082,26 @@ impl EmitterWriter {
         span: &MultiSpan,
         children: &[SubDiagnostic],
         suggestions: &[CodeSuggestion],
-        emitted_at: Option<&DiagnosticLocation>,
+        emitted_at_location: &DiagnosticLocation,
     ) {
+        let emitted_at = self.track_diagnostics.then_some(emitted_at_location);
         let max_line_num_len = if self.ui_testing {
             ANONYMIZED_LINE_NUM.len()
         } else {
             let n = self.get_max_line_num(span, children);
             num_decimal_digits(n)
         };
+
+        if let Some(ref mut file) = &mut self.metrics {
+            let _ = writeln!(
+                file,
+                "{:?},{:?},{},{}",
+                code,
+                emitted_at_location,
+                children.len(),
+                suggestions.len()
+            );
+        }
 
         match self.emit_messages_default_inner(
             span,

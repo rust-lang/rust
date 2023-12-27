@@ -1621,6 +1621,8 @@ options! {
         "emit a section containing stack size metadata (default: no)"),
     emit_thin_lto: bool = (true, parse_bool, [TRACKED],
         "emit the bc module with thin LTO info (default: yes)"),
+    error_metrics: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
+        "stores metrics about the errors being emitted by rustc to disk"),
     export_executable_symbols: bool = (false, parse_bool, [TRACKED],
         "export symbols from executables, as if they were dynamic libraries"),
     extra_const_ub_checks: bool = (false, parse_bool, [TRACKED],
