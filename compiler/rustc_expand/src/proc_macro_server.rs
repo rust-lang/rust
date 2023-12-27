@@ -203,6 +203,11 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                 SingleQuote => op("'"),
 
                 Ident(sym, is_raw) => trees.push(TokenTree::Ident(Ident { sym, is_raw, span })),
+                Keyword(sym) => trees.extend([
+                    TokenTree::Ident(Ident { sym: sym::k, is_raw: false, span }),
+                    TokenTree::Punct(Punct { ch: b'#', joint: true, span }),
+                    TokenTree::Ident(Ident { sym, is_raw: false, span }),
+                ]),
                 Lifetime(name) => {
                     let ident = symbol::Ident::new(name, span).without_first_quote();
                     trees.extend([

@@ -185,6 +185,18 @@ impl<'a> StringReader<'a> {
                     self.sess.raw_identifier_spans.push(span);
                     token::Ident(sym, true)
                 }
+                // Treat `k#ident` as a normal identifier token before 2021.
+                rustc_lexer::TokenKind::KeywordIdent if !self.mk_sp(start, self.pos).edition().at_least_rust_2021() => {
+                    // FIXME: what should we do when this is a _known_ prefix?
+                    self.report_unknown_prefix(start);
+                    self.ident(start)
+                }
+                rustc_lexer::TokenKind::KeywordIdent => {
+                    let sym = nfc_normalize(self.str_from(start));
+                    let span = self.mk_sp(start, self.pos);
+                    self.sess.symbol_gallery.insert(sym, span);
+                    token::Keyword(sym)
+                }
                 rustc_lexer::TokenKind::UnknownPrefix => {
                     self.report_unknown_prefix(start);
                     self.ident(start)

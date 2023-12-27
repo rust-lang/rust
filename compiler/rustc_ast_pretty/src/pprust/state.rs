@@ -781,6 +781,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::Ident(s, is_raw) => {
                 IdentPrinter::new(s, is_raw, convert_dollar_crate).to_string().into()
             }
+            token::Keyword(s) => format!("k#{s}").into(),
             token::Lifetime(s) => s.to_string().into(),
 
             /* Other */

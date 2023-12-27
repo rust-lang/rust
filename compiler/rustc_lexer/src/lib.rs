@@ -78,6 +78,9 @@ pub enum TokenKind {
     /// "r#ident"
     RawIdent,
 
+    /// "k#ident"
+    KeywordIdent,
+
     /// An unknown prefix, like `foo#`, `foo'`, `foo"`.
     ///
     /// Note that only the
@@ -375,6 +378,11 @@ impl Cursor<'_> {
                 None,
             ),
 
+            'k' => match (self.first(), self.second()) {
+                ('#', c1) if is_id_start(c1) => self.keyword_ident(),
+                _ => self.ident_or_unknown_prefix(),
+            },
+
             // Identifier (this should be checked after other variant that can
             // start as identifier).
             c if is_id_start(c) => self.ident_or_unknown_prefix(),
@@ -503,6 +511,15 @@ impl Cursor<'_> {
         // Eat the identifier part of RawIdent.
         self.eat_identifier();
         RawIdent
+    }
+
+    fn keyword_ident(&mut self) -> TokenKind {
+        debug_assert!(self.prev() == 'k' && self.first() == '#' && is_id_start(self.second()));
+        // Eat "#" symbol.
+        self.bump();
+        // Eat the identifier part of KeywordIdent.
+        self.eat_identifier();
+        KeywordIdent
     }
 
     fn ident_or_unknown_prefix(&mut self) -> TokenKind {

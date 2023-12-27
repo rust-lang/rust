@@ -299,6 +299,10 @@ pub enum TokenKind {
     /// It's recommended to use `Token::(ident,uninterpolate,uninterpolated_span)` to
     /// treat regular and interpolated identifiers in the same way.
     Ident(Symbol, /* is_raw */ bool),
+
+    /// A `k#ident` keyword
+    Keyword(Symbol),
+
     /// Lifetime identifier token.
     /// Do not forget about `NtLifetime` when you want to match on lifetime identifiers.
     /// It's recommended to use `Token::(lifetime,uninterpolate,uninterpolated_span)` to
@@ -438,7 +442,7 @@ impl Token {
             | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar | Question | SingleQuote => true,
 
             OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) | Ident(..)
-            | Lifetime(..) | Interpolated(..) | Eof => false,
+            | Keyword(..) | Lifetime(..) | Interpolated(..) | Eof => false,
         }
     }
 
@@ -812,7 +816,7 @@ impl Token {
 
             Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot
             | DotDotEq | Comma | Semi | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar
-            | Question | OpenDelim(..) | CloseDelim(..) | Literal(..) | Ident(..)
+            | Question | OpenDelim(..) | CloseDelim(..) | Literal(..) | Ident(..) | Keyword(..)
             | Lifetime(..) | Interpolated(..) | DocComment(..) | Eof => return None,
         };
 

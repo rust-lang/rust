@@ -918,6 +918,7 @@ symbols! {
         iter_repeat,
         iterator,
         iterator_collect_fn,
+        k,
         kcfi,
         keyword,
         kind,
