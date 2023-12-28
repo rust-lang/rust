@@ -24,7 +24,6 @@ LL |     Self::A: Baz,
 help: associated type for the current `impl` cannot be restricted in `where` clauses, remove this bound
    |
 LL -     Self::A: Baz,
-LL +     ,
    |
 
 error: aborting due to 1 previous error

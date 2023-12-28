@@ -5100,11 +5100,14 @@ fn point_at_assoc_type_restriction(
         return;
     };
     let name = tcx.item_name(proj.projection_ty.def_id);
-    for pred in generics.predicates {
+    let mut predicates = generics.predicates.iter().peekable();
+    let mut prev: Option<&hir::WhereBoundPredicate<'_>> = None;
+    while let Some(pred) = predicates.next() {
         let hir::WherePredicate::BoundPredicate(pred) = pred else {
             continue;
         };
-        for bound in pred.bounds {
+        let mut bounds = pred.bounds.iter().peekable();
+        while let Some(bound) = bounds.next() {
             let Some(trait_ref) = bound.trait_ref() else {
                 continue;
             };
@@ -5118,8 +5121,27 @@ fn point_at_assoc_type_restriction(
                 && let hir::QPath::Resolved(None, inner_path) = inner_path
                 && let Res::SelfTyAlias { .. } = inner_path.res
             {
+                // The following block is to determine the right span to delete for this bound
+                // that will leave valid code after the suggestion is applied.
+                let span = if let Some(hir::WherePredicate::BoundPredicate(next)) =
+                    predicates.peek()
+                    && pred.origin == next.origin
+                {
+                    // There's another bound, include the comma for the current one.
+                    pred.span.until(next.span)
+                } else if let Some(prev) = prev
+                    && pred.origin == prev.origin
+                {
+                    // Last bound, try to remove the previous comma.
+                    prev.span.shrink_to_hi().to(pred.span)
+                } else if pred.origin == hir::PredicateOrigin::WhereClause {
+                    pred.span.with_hi(generics.where_clause_span.hi())
+                } else {
+                    pred.span
+                };
+
                 err.span_suggestion_verbose(
-                    pred.span, // FIXME: include the trailing comma.
+                    span,
                     "associated type for the current `impl` cannot be restricted in `where` \
                      clauses, remove this bound",
                     "",
@@ -5168,6 +5190,7 @@ fn point_at_assoc_type_restriction(
                 );
             }
         }
+        prev = Some(pred);
     }
 }
 
