@@ -40,7 +40,7 @@ pub use diagnostic_impls::{
 };
 pub use emitter::ColorConfig;
 pub use rustc_error_messages::{
-    fallback_fluent_bundle, fluent_bundle, DelayDm, DiagnosticMessage, FluentBundle,
+    fallback_fluent_bundle, fluent_bundle, fluent_raw, DelayDm, DiagnosticMessage, FluentBundle,
     LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagnosticMessage,
 };
 pub use rustc_lint_defs::{pluralize, Applicability};
@@ -60,11 +60,6 @@ use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_data_structures::AtomicRef;
 use rustc_lint_defs::LintExpectationId;
-pub use rustc_error_messages::{
-    fallback_fluent_bundle, fluent_bundle, fluent_raw, DelayDm, DiagnosticMessage, FluentBundle,
-    LanguageIdentifier, LazyFallbackBundle, MultiSpan, SpanLabel, SubdiagnosticMessage,
-};
-pub use rustc_lint_defs::{pluralize, Applicability};
 use rustc_span::source_map::SourceMap;
 use rustc_span::{Loc, Span, DUMMY_SP};
 use std::backtrace::{Backtrace, BacktraceStatus};

@@ -223,7 +223,7 @@ impl DiagnosticDeriveVariantBuilder {
                                         if ident.to_string() == "code" {
                                             self.attrs.insert("code".to_string(), value.clone());
                                             tokens.extend(quote! {
-                                            #diag.code(rustc_errors::DiagnosticId::Error(#lit.to_string()));
+                                            diag.code(rustc_errors::DiagnosticId::Error(#lit.to_string()));
                                         });
                                         } else if keys.contains(&ident.to_string().as_str()) {
                                             self.attrs.insert(ident.to_string(), value.clone());
@@ -270,7 +270,7 @@ impl DiagnosticDeriveVariantBuilder {
                         self.code.set_once((), path.span().unwrap());
                         let code = nested.parse::<syn::LitStr>()?;
                         tokens.extend(quote! {
-                            #diag.code(rustc_errors::DiagnosticId::Error(#code.to_string()));
+                            diag.code(rustc_errors::DiagnosticId::Error(#code.to_string()));
                         });
                     } else {
                         keys.iter().find(|key| path.is_ident(key)).map_or_else(
@@ -528,7 +528,7 @@ impl DiagnosticDeriveVariantBuilder {
         let fn_name = format_ident!("span_{}", kind);
         if let Some(raw_label) = raw_label {
             return quote! {
-                #diag.#fn_name(
+                diag.#fn_name(
                     #field_binding,
                     DiagnosticMessage::FluentRaw(std::borrow::Cow::Borrowed(#raw_label))
                 );
@@ -536,14 +536,14 @@ impl DiagnosticDeriveVariantBuilder {
         }
         if let Some(raw_label) = self.get_attr(kind.to_string().as_str()) {
             quote! {
-                #diag.#fn_name(
+                diag.#fn_name(
                     #field_binding,
                     DiagnosticMessage::FluentRaw(std::borrow::Cow::Borrowed(#raw_label))
                 );
             }
         } else {
             quote! {
-                #diag.#fn_name(
+                diag.#fn_name(
                     #field_binding,
                     crate::fluent_generated::#fluent_attr_identifier
                 );
@@ -559,19 +559,18 @@ impl DiagnosticDeriveVariantBuilder {
         fluent_attr_identifier: Path,
         raw_label: Option<String>,
     ) -> TokenStream {
-        let diag = &self.parent.diag;
         if let Some(raw_label) = raw_label {
             return quote! {
-                #diag.#kind(DiagnosticMessage::FluentRaw(std::borrow::Cow::Borrowed(#raw_label)));
+                diag.#kind(DiagnosticMessage::FluentRaw(std::borrow::Cow::Borrowed(#raw_label)));
             };
         }
         if let Some(raw_label) = self.get_attr(kind.to_string().as_str()) {
             quote! {
-                #diag.#kind(DiagnosticMessage::FluentRaw(std::borrow::Cow::Borrowed(#raw_label)));
+                diag.#kind(DiagnosticMessage::FluentRaw(std::borrow::Cow::Borrowed(#raw_label)));
             }
         } else {
             quote! {
-                #diag.#kind(crate::fluent_generated::#fluent_attr_identifier);
+                diag.#kind(crate::fluent_generated::#fluent_attr_identifier);
             }
         }
     }

@@ -60,7 +60,11 @@ impl<'a> DiagnosticDerive<'a> {
                 }
                 (None, Some(raw_label)) => {
                     quote! {
-                        let mut #diag = #handler.struct_diagnostic(DiagnosticMessage::FluentRaw(#raw_label.into()));
+                        let mut diag = rustc_errors::DiagnosticBuilder::new(
+                            dcx,
+                            level,
+                            DiagnosticMessage::FluentRaw(#raw_label.into())
+                        );
                     }
                 }
                 (Some(_slug), Some(_raw_label)) => {
@@ -78,20 +82,10 @@ impl<'a> DiagnosticDerive<'a> {
             }
         });
 
-<<<<<<< HEAD
         // A lifetime of `'a` causes conflicts, but `_sess` is fine.
         let mut imp = structure.gen_impl(quote! {
             gen impl<'_sess, G>
                     rustc_errors::IntoDiagnostic<'_sess, G>
-=======
-        let DiagnosticDeriveKind::Diagnostic { handler } = &builder.kind else {
-            unreachable!();
-        };
-
-        let mut imp = structure.gen_impl(quote! {
-            gen impl<'__diagnostic_handler_sess, G>
-                    rustc_errors::IntoDiagnostic<'__diagnostic_handler_sess, G>
->>>>>>> bd3289ea826 (more cleanup on diags)
                     for @Self
                 where G: rustc_errors::EmissionGuarantee
             {

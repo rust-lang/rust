@@ -2,7 +2,6 @@ use super::diagnostics::{dummy_arg, ConsumeClosingDelim};
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{AttrWrapper, FollowedByType, ForceCollect, Parser, PathStyle, TrailingToken};
 use crate::errors::{self, MacroExpandsToAdtField};
-use crate::fluent_generated as fluent;
 use ast::StaticItem;
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;

@@ -5,7 +5,7 @@ use rustc_ast::attr;
 use rustc_ast::token::{self, Delimiter, Nonterminal};
 use rustc_errors::fluent_raw;
 use rustc_errors::DiagnosticMessage;
-use rustc_errors::{error_code, Diagnostic, IntoDiagnostic, PResult};
+use rustc_errors::{error_code, Diagnostic, PResult};
 use rustc_span::{sym, BytePos, Span};
 use std::borrow::Cow;
 use std::convert::TryInto;
@@ -225,7 +225,7 @@ impl<'a> Parser<'a> {
                         .span_label(prev_outer_attr_sp, "previous outer attribute");
                     diag
                 }
-                Some(InnerAttrForbiddenReason::InCodeBlock) | None => self.struct_span_err(
+                Some(InnerAttrForbiddenReason::InCodeBlock) | None => self.dcx().struct_span_err(
                     attr_sp,
                     "an inner attribute is not permitted in this context",
                 ),
