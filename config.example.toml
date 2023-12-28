@@ -661,7 +661,7 @@
 
 # Indicates whether some LLVM tools, like llvm-objdump, will be made available in the
 # sysroot.
-#llvm-tools = false
+#llvm-tools = true
 
 # Whether to deny warnings in crates
 #deny-warnings = true
