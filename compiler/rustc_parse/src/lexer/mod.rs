@@ -4,7 +4,7 @@ use crate::errors;
 use crate::lexer::unicode_chars::UNICODE_ARRAY;
 use crate::make_unclosed_delims_error;
 use rustc_ast::ast::{self, AttrStyle};
-use rustc_ast::token::{self, CommentKind, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, CommentKind, Delimiter, IdentKind, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
 use rustc_errors::{
@@ -183,10 +183,10 @@ impl<'a> StringReader<'a> {
                         self.dcx().emit_err(errors::CannotBeRawIdent { span, ident: sym });
                     }
                     self.sess.raw_identifier_spans.push(span);
-                    token::Ident(sym, true)
+                    token::Ident(sym, IdentKind::Raw)
                 }
-                // Treat `k#ident` as a normal identifier token before 2021.
-                rustc_lexer::TokenKind::KeywordIdent if !self.mk_sp(start, self.pos).edition().at_least_rust_2021() => {
+                // Treat `k#ident` as a normal identifier token before edition 2021.
+                rustc_lexer::TokenKind::KeywordIdent if self.mk_sp(start, self.pos).edition() < Edition::Edition2021 => {
                     // FIXME: what should we do when this is a _known_ prefix?
                     self.report_unknown_prefix(start);
                     self.ident(start)
@@ -195,7 +195,7 @@ impl<'a> StringReader<'a> {
                     let sym = nfc_normalize(self.str_from(start));
                     let span = self.mk_sp(start, self.pos);
                     self.sess.symbol_gallery.insert(sym, span);
-                    token::Keyword(sym)
+                    token::Ident(sym, IdentKind::Keyword)
                 }
                 rustc_lexer::TokenKind::UnknownPrefix => {
                     self.report_unknown_prefix(start);
@@ -215,7 +215,7 @@ impl<'a> StringReader<'a> {
                     let span = self.mk_sp(start, self.pos);
                     self.sess.bad_unicode_identifiers.borrow_mut().entry(sym).or_default()
                         .push(span);
-                    token::Ident(sym, false)
+                    token::Ident(sym, IdentKind::Default)
                 }
                 // split up (raw) c string literals to an ident and a string literal when edition < 2021.
                 rustc_lexer::TokenKind::Literal {
@@ -353,7 +353,7 @@ impl<'a> StringReader<'a> {
         let sym = nfc_normalize(self.str_from(start));
         let span = self.mk_sp(start, self.pos);
         self.sess.symbol_gallery.insert(sym, span);
-        token::Ident(sym, false)
+        token::Ident(sym, IdentKind::Default)
     }
 
     fn struct_fatal_span_char(

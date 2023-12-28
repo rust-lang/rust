@@ -1913,7 +1913,7 @@ impl fmt::Debug for Ident {
 /// except that AST identifiers don't keep the rawness flag, so we have to guess it.
 impl fmt::Display for Ident {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&IdentPrinter::new(self.name, self.is_raw_guess(), None), f)
+        fmt::Display::fmt(&IdentPrinter::new(self.name, self.is_raw_guess().then(|| "r#"), None), f)
     }
 }
 
@@ -1932,7 +1932,8 @@ impl fmt::Display for Ident {
 /// done for a token stream or a single token.
 pub struct IdentPrinter {
     symbol: Symbol,
-    is_raw: bool,
+    /// `Some("r#")` for a raw ident, `Some("k#")` for a forced keyword, `None` for a default ident.
+    prefix: Option<&'static str>,
     /// Span used for retrieving the crate name to which `$crate` refers to,
     /// if this field is `None` then the `$crate` conversion doesn't happen.
     convert_dollar_crate: Option<Span>,
@@ -1940,22 +1941,26 @@ pub struct IdentPrinter {
 
 impl IdentPrinter {
     /// The most general `IdentPrinter` constructor. Do not use this.
-    pub fn new(symbol: Symbol, is_raw: bool, convert_dollar_crate: Option<Span>) -> IdentPrinter {
-        IdentPrinter { symbol, is_raw, convert_dollar_crate }
+    pub fn new(
+        symbol: Symbol,
+        prefix: Option<&'static str>,
+        convert_dollar_crate: Option<Span>,
+    ) -> IdentPrinter {
+        IdentPrinter { symbol, prefix, convert_dollar_crate }
     }
 
     /// This implementation is supposed to be used when printing identifiers
     /// as a part of pretty-printing for larger AST pieces.
     /// Do not use this either.
-    pub fn for_ast_ident(ident: Ident, is_raw: bool) -> IdentPrinter {
-        IdentPrinter::new(ident.name, is_raw, Some(ident.span))
+    pub fn for_ast_ident(ident: Ident, prefix: Option<&'static str>) -> IdentPrinter {
+        IdentPrinter::new(ident.name, prefix, Some(ident.span))
     }
 }
 
 impl fmt::Display for IdentPrinter {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.is_raw {
-            f.write_str("r#")?;
+        if let Some(prefix) = self.prefix {
+            f.write_str(prefix)?;
         } else if self.symbol == kw::DollarCrate {
             if let Some(span) = self.convert_dollar_crate {
                 let converted = span.ctxt().dollar_crate_name();

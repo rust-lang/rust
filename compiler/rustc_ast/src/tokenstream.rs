@@ -15,7 +15,7 @@
 
 use crate::ast::{AttrStyle, StmtKind};
 use crate::ast_traits::{HasAttrs, HasSpan, HasTokens};
-use crate::token::{self, Delimiter, Nonterminal, Token, TokenKind};
+use crate::token::{self, Delimiter, IdentKind, Nonterminal, Token, TokenKind};
 use crate::AttrVec;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -677,7 +677,7 @@ impl TokenStream {
                 DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
                 Delimiter::Bracket,
                 [
-                    TokenTree::token_alone(token::Ident(sym::doc, false), span),
+                    TokenTree::token_alone(token::Ident(sym::doc, IdentKind::Default), span),
                     TokenTree::token_alone(token::Eq, span),
                     TokenTree::token_alone(
                         TokenKind::lit(token::StrRaw(num_of_hashes), data, None),

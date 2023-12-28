@@ -3,7 +3,7 @@ use super::{Parser, Restrictions, TokenType};
 use crate::errors::PathSingleColon;
 use crate::{errors, maybe_whole};
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, IdentKind, Token, TokenKind};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocConstraint,
     AssocConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
@@ -390,7 +390,9 @@ impl<'a> Parser<'a> {
 
     pub(super) fn parse_path_segment_ident(&mut self) -> PResult<'a, Ident> {
         match self.token.ident() {
-            Some((ident, false)) if ident.is_path_segment_keyword() => {
+            Some((ident, IdentKind::Default | IdentKind::Keyword))
+                if ident.is_path_segment_keyword() =>
+            {
                 self.bump();
                 Ok(ident)
             }

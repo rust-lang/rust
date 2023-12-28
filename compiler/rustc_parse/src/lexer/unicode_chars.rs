@@ -6,6 +6,7 @@ use crate::{
     errors::TokenSubstitution,
     token::{self, Delimiter},
 };
+use rustc_ast::token::IdentKind;
 use rustc_span::{symbol::kw, BytePos, Pos, Span};
 
 #[rustfmt::skip] // for line breaks
@@ -307,7 +308,7 @@ pub(crate) const UNICODE_ARRAY: &[(char, &str, &str)] = &[
 // fancier error recovery to it, as there will be less overall work to do this way.
 const ASCII_ARRAY: &[(&str, &str, Option<token::TokenKind>)] = &[
     (" ", "Space", None),
-    ("_", "Underscore", Some(token::Ident(kw::Underscore, false))),
+    ("_", "Underscore", Some(token::Ident(kw::Underscore, IdentKind::Default))),
     ("-", "Minus/Hyphen", Some(token::BinOp(token::Minus))),
     (",", "Comma", Some(token::Comma)),
     (";", "Semicolon", Some(token::Semi)),

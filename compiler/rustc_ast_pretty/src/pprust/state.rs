@@ -268,7 +268,9 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     fn print_generic_args(&mut self, args: &ast::GenericArgs, colons_before_params: bool);
 
     fn print_ident(&mut self, ident: Ident) {
-        self.word(IdentPrinter::for_ast_ident(ident, ident.is_raw_guess()).to_string());
+        self.word(
+            IdentPrinter::for_ast_ident(ident, ident.is_raw_guess().then(|| "r#")).to_string(),
+        );
         self.ann_post(ident)
     }
 
@@ -715,7 +717,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::NtBlock(e) => self.block_to_string(e),
             token::NtStmt(e) => self.stmt_to_string(e),
             token::NtPat(e) => self.pat_to_string(e),
-            token::NtIdent(e, is_raw) => IdentPrinter::for_ast_ident(*e, *is_raw).to_string(),
+            &token::NtIdent(e, kind) => IdentPrinter::for_ast_ident(e, kind.prefix()).to_string(),
             token::NtLifetime(e) => e.to_string(),
             token::NtLiteral(e) => self.expr_to_string(e),
             token::NtVis(e) => self.vis_to_string(e),
@@ -778,10 +780,9 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::Literal(lit) => literal_to_string(lit).into(),
 
             /* Name components */
-            token::Ident(s, is_raw) => {
-                IdentPrinter::new(s, is_raw, convert_dollar_crate).to_string().into()
+            token::Ident(s, kind) => {
+                IdentPrinter::new(s, kind.prefix(), convert_dollar_crate).to_string().into()
             }
-            token::Keyword(s) => format!("k#{s}").into(),
             token::Lifetime(s) => s.to_string().into(),
 
             /* Other */

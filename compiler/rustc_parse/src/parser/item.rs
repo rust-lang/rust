@@ -5,7 +5,7 @@ use crate::errors::{self, MacroExpandsToAdtField};
 use crate::fluent_generated as fluent;
 use rustc_ast::ast::*;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, TokenKind};
+use rustc_ast::token::{self, Delimiter, IdentKind, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
 use rustc_ast::{self as ast};
@@ -781,7 +781,7 @@ impl<'a> Parser<'a> {
         // However, we must avoid keywords that occur as binary operators.
         // Currently, the only applicable keyword is `as` (`default as Ty`).
         if self.check_keyword(kw::Default)
-            && self.look_ahead(1, |t| t.is_non_raw_ident_where(|i| i.name != kw::As))
+            && self.look_ahead(1, |t| t.is_keywordable_ident_where(|i| i.name != kw::As))
         {
             self.bump(); // `default`
             Defaultness::Default(self.prev_token.uninterpolated_span())
@@ -1024,7 +1024,7 @@ impl<'a> Parser<'a> {
 
     fn parse_ident_or_underscore(&mut self) -> PResult<'a, Ident> {
         match self.token.ident() {
-            Some((ident @ Ident { name: kw::Underscore, .. }, false)) => {
+            Some((ident @ Ident { name: kw::Underscore, .. }, IdentKind::Default)) => {
                 self.bump();
                 Ok(ident)
             }
@@ -1917,10 +1917,11 @@ impl<'a> Parser<'a> {
     /// Parses a field identifier. Specialized version of `parse_ident_common`
     /// for better diagnostics and suggestions.
     fn parse_field_ident(&mut self, adt_ty: &str, lo: Span) -> PResult<'a, Ident> {
-        let (ident, is_raw) = self.ident_or_err(true)?;
+        let (ident, kind) = self.ident_or_err(true)?;
         if ident.name == kw::Underscore {
             self.sess.gated_spans.gate(sym::unnamed_fields, lo);
-        } else if !is_raw && ident.is_reserved() {
+        } else if (kind == IdentKind::Default && ident.is_reserved()) || kind == IdentKind::Keyword
+        {
             let snapshot = self.create_snapshot_for_diagnostic();
             let err = if self.check_fn_front_matter(false, Case::Sensitive) {
                 let inherited_vis = Visibility {
@@ -2344,13 +2345,13 @@ impl<'a> Parser<'a> {
                     // Two qualifiers `$qual $qual` is enough, e.g. `async unsafe`.
                     || (
                         (
-                            t.is_non_raw_ident_where(|i|
+                            t.is_keywordable_ident_where(|i|
                                 quals.contains(&i.name)
                                     // Rule out 2015 `const async: T = val`.
                                     && i.is_reserved()
                             )
                             || case == Case::Insensitive
-                                && t.is_non_raw_ident_where(|i| quals.iter().any(|qual| qual.as_str() == i.name.as_str().to_lowercase()))
+                                && t.is_keywordable_ident_where(|i| quals.iter().any(|qual| qual.as_str() == i.name.as_str().to_lowercase()))
                         )
                         // Rule out `unsafe extern {`.
                         && !self.is_unsafe_foreign_mod()
@@ -2695,7 +2696,7 @@ impl<'a> Parser<'a> {
     fn parse_self_param(&mut self) -> PResult<'a, Option<Param>> {
         // Extract an identifier *after* having confirmed that the token is one.
         let expect_self_ident = |this: &mut Self| match this.token.ident() {
-            Some((ident, false)) => {
+            Some((ident, IdentKind::Default | IdentKind::Keyword)) => {
                 this.bump();
                 ident
             }

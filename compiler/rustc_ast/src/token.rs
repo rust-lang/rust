@@ -107,7 +107,9 @@ impl Lit {
     /// Keep this in sync with `Token::can_begin_literal_or_bool` excluding unary negation.
     pub fn from_token(token: &Token) -> Option<Lit> {
         match token.uninterpolate().kind {
-            Ident(name, false) if name.is_bool_lit() => Some(Lit::new(Bool, name, None)),
+            Ident(name, IdentKind::Default) if name.is_bool_lit() => {
+                Some(Lit::new(Bool, name, None))
+            }
             Literal(token_lit) => Some(token_lit),
             Interpolated(ref nt)
                 if let NtExpr(expr) | NtLiteral(expr) = &nt.0
@@ -183,8 +185,8 @@ impl LitKind {
     }
 }
 
-pub fn ident_can_begin_expr(name: Symbol, span: Span, is_raw: bool) -> bool {
-    let ident_token = Token::new(Ident(name, is_raw), span);
+pub fn ident_can_begin_expr(name: Symbol, span: Span, kind: IdentKind) -> bool {
+    let ident_token = Token::new(Ident(name, kind), span);
 
     !ident_token.is_reserved_ident()
         || ident_token.is_path_segment_keyword()
@@ -212,15 +214,37 @@ pub fn ident_can_begin_expr(name: Symbol, span: Span, is_raw: bool) -> bool {
             kw::Static,
         ]
         .contains(&name)
+        || kind == IdentKind::Keyword
 }
 
-fn ident_can_begin_type(name: Symbol, span: Span, is_raw: bool) -> bool {
-    let ident_token = Token::new(Ident(name, is_raw), span);
+fn ident_can_begin_type(name: Symbol, span: Span, kind: IdentKind) -> bool {
+    let ident_token = Token::new(Ident(name, kind), span);
 
     !ident_token.is_reserved_ident()
         || ident_token.is_path_segment_keyword()
         || [kw::Underscore, kw::For, kw::Impl, kw::Fn, kw::Unsafe, kw::Extern, kw::Typeof, kw::Dyn]
             .contains(&name)
+        || kind == IdentKind::Keyword
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, HashStable_Generic, Encodable, Decodable)]
+pub enum IdentKind {
+    /// The usual identifiers (or, depending on the context, keywords): `v`, `union`, `await`, `loop`.
+    Default,
+    /// Raw identifiers: `r#just_an_ident`, `r#loop`.
+    Raw,
+    /// Forced keywords: `k#break`, `k#await`, `k#some_new_experimental_keyword`.
+    Keyword,
+}
+
+impl IdentKind {
+    pub fn prefix(self) -> Option<&'static str> {
+        match self {
+            IdentKind::Default => None,
+            IdentKind::Raw => Some("r#"),
+            IdentKind::Keyword => Some("k#"),
+        }
+    }
 }
 
 // SAFETY: due to the `Clone` impl below, all fields of all variants other than
@@ -298,10 +322,7 @@ pub enum TokenKind {
     /// Do not forget about `NtIdent` when you want to match on identifiers.
     /// It's recommended to use `Token::(ident,uninterpolate,uninterpolated_span)` to
     /// treat regular and interpolated identifiers in the same way.
-    Ident(Symbol, /* is_raw */ bool),
-
-    /// A `k#ident` keyword
-    Keyword(Symbol),
+    Ident(Symbol, IdentKind),
 
     /// Lifetime identifier token.
     /// Do not forget about `NtLifetime` when you want to match on lifetime identifiers.
@@ -415,7 +436,13 @@ impl Token {
 
     /// Recovers a `Token` from an `Ident`. This creates a raw identifier if necessary.
     pub fn from_ast_ident(ident: Ident) -> Self {
-        Token::new(Ident(ident.name, ident.is_raw_guess()), ident.span)
+        Token::new(
+            Ident(
+                ident.name,
+                if ident.is_raw_guess() { IdentKind::Raw } else { IdentKind::Default },
+            ),
+            ident.span,
+        )
     }
 
     /// For interpolated tokens, returns a span of the fragment to which the interpolated
@@ -442,7 +469,7 @@ impl Token {
             | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar | Question | SingleQuote => true,
 
             OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) | Ident(..)
-            | Keyword(..) | Lifetime(..) | Interpolated(..) | Eof => false,
+            | Lifetime(..) | Interpolated(..) | Eof => false,
         }
     }
 
@@ -571,7 +598,7 @@ impl Token {
     pub fn can_begin_literal_maybe_minus(&self) -> bool {
         match self.uninterpolate().kind {
             Literal(..) | BinOp(Minus) => true,
-            Ident(name, false) if name.is_bool_lit() => true,
+            Ident(name, IdentKind::Default) if name.is_bool_lit() => true,
             Interpolated(ref nt) => match &nt.0 {
                 NtLiteral(_) => true,
                 NtExpr(e) => match &e.kind {
@@ -606,10 +633,10 @@ impl Token {
 
     /// Returns an identifier if this token is an identifier.
     #[inline]
-    pub fn ident(&self) -> Option<(Ident, /* is_raw */ bool)> {
+    pub fn ident(&self) -> Option<(Ident, IdentKind)> {
         // We avoid using `Token::uninterpolate` here because it's slow.
         match &self.kind {
-            &Ident(name, is_raw) => Some((Ident::new(name, self.span), is_raw)),
+            &Ident(name, kind) => Some((Ident::new(name, self.span), kind)),
             Interpolated(nt) => match &nt.0 {
                 NtIdent(ident, is_raw) => Some((*ident, *is_raw)),
                 _ => None,
@@ -702,46 +729,46 @@ impl Token {
 
     /// Returns `true` if the token is a given keyword, `kw`.
     pub fn is_keyword(&self, kw: Symbol) -> bool {
-        self.is_non_raw_ident_where(|id| id.name == kw)
+        self.is_keywordable_ident_where(|id| id.name == kw)
     }
 
     /// Returns `true` if the token is a given keyword, `kw` or if `case` is `Insensitive` and this token is an identifier equal to `kw` ignoring the case.
     pub fn is_keyword_case(&self, kw: Symbol, case: Case) -> bool {
         self.is_keyword(kw)
             || (case == Case::Insensitive
-                && self.is_non_raw_ident_where(|id| {
+                && self.is_keywordable_ident_where(|id| {
                     id.name.as_str().to_lowercase() == kw.as_str().to_lowercase()
                 }))
     }
 
     pub fn is_path_segment_keyword(&self) -> bool {
-        self.is_non_raw_ident_where(Ident::is_path_segment_keyword)
+        self.is_keywordable_ident_where(Ident::is_path_segment_keyword)
     }
 
     /// Returns true for reserved identifiers used internally for elided lifetimes,
     /// unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special_ident(&self) -> bool {
-        self.is_non_raw_ident_where(Ident::is_special)
+        self.is_keywordable_ident_where(Ident::is_special)
     }
 
     /// Returns `true` if the token is a keyword used in the language.
     pub fn is_used_keyword(&self) -> bool {
-        self.is_non_raw_ident_where(Ident::is_used_keyword)
+        self.is_keywordable_ident_where(Ident::is_used_keyword)
     }
 
     /// Returns `true` if the token is a keyword reserved for possible future use.
     pub fn is_unused_keyword(&self) -> bool {
-        self.is_non_raw_ident_where(Ident::is_unused_keyword)
+        self.is_keywordable_ident_where(Ident::is_unused_keyword)
     }
 
     /// Returns `true` if the token is either a special identifier or a keyword.
     pub fn is_reserved_ident(&self) -> bool {
-        self.is_non_raw_ident_where(Ident::is_reserved)
+        self.is_keywordable_ident_where(Ident::is_reserved)
     }
 
     /// Returns `true` if the token is the identifier `true` or `false`.
     pub fn is_bool_lit(&self) -> bool {
-        self.is_non_raw_ident_where(|id| id.name.is_bool_lit())
+        self.is_keywordable_ident_where(|id| id.name.is_bool_lit())
     }
 
     pub fn is_numeric_lit(&self) -> bool {
@@ -757,9 +784,9 @@ impl Token {
     }
 
     /// Returns `true` if the token is a non-raw identifier for which `pred` holds.
-    pub fn is_non_raw_ident_where(&self, pred: impl FnOnce(Ident) -> bool) -> bool {
+    pub fn is_keywordable_ident_where(&self, pred: impl FnOnce(Ident) -> bool) -> bool {
         match self.ident() {
-            Some((id, false)) => pred(id),
+            Some((id, IdentKind::Default | IdentKind::Keyword)) => pred(id),
             _ => false,
         }
     }
@@ -810,13 +837,13 @@ impl Token {
                 _ => return None,
             },
             SingleQuote => match joint.kind {
-                Ident(name, false) => Lifetime(Symbol::intern(&format!("'{name}"))),
+                Ident(name, IdentKind::Default) => Lifetime(Symbol::intern(&format!("'{name}"))),
                 _ => return None,
             },
 
             Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot
             | DotDotEq | Comma | Semi | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar
-            | Question | OpenDelim(..) | CloseDelim(..) | Literal(..) | Ident(..) | Keyword(..)
+            | Question | OpenDelim(..) | CloseDelim(..) | Literal(..) | Ident(..)
             | Lifetime(..) | Interpolated(..) | DocComment(..) | Eof => return None,
         };
 
@@ -840,7 +867,7 @@ pub enum Nonterminal {
     NtPat(P<ast::Pat>),
     NtExpr(P<ast::Expr>),
     NtTy(P<ast::Ty>),
-    NtIdent(Ident, /* is_raw */ bool),
+    NtIdent(Ident, IdentKind),
     NtLifetime(Ident),
     NtLiteral(P<ast::Expr>),
     /// Stuff inside brackets for attributes

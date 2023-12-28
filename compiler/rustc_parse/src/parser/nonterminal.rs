@@ -1,5 +1,5 @@
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Nonterminal::*, NonterminalKind, Token};
+use rustc_ast::token::{self, Delimiter, IdentKind, Nonterminal::*, NonterminalKind, Token};
 use rustc_ast::HasTokens;
 use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
@@ -201,6 +201,6 @@ impl<'a> Parser<'a> {
 
 /// The token is an identifier, but not `_`.
 /// We prohibit passing `_` to macros expecting `ident` for now.
-fn get_macro_ident(token: &Token) -> Option<(Ident, bool)> {
+fn get_macro_ident(token: &Token) -> Option<(Ident, IdentKind)> {
     token.ident().filter(|(ident, _)| ident.name != kw::Underscore)
 }

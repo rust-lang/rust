@@ -40,6 +40,7 @@ use crate::{
     },
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext,
 };
+use ast::token::IdentKind;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::visit::{FnCtxt, FnKind};
 use rustc_ast::{self as ast, *};
@@ -1831,7 +1832,7 @@ impl KeywordIdents {
             match tt {
                 // Only report non-raw idents.
                 TokenTree::Token(token, _) => {
-                    if let Some((ident, false)) = token.ident() {
+                    if let Some((ident, IdentKind::Default)) = token.ident() {
                         self.check_ident_token(cx, UnderMacro(true), ident);
                     }
                 }

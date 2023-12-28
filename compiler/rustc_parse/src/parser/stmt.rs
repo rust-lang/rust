@@ -14,7 +14,7 @@ use crate::errors::MalformedLoopLabel;
 use ast::Label;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, TokenKind};
+use rustc_ast::token::{self, Delimiter, IdentKind, TokenKind};
 use rustc_ast::util::classify;
 use rustc_ast::{AttrStyle, AttrVec, LocalKind, MacCall, MacCallStmt, MacStmtStyle};
 use rustc_ast::{Block, BlockCheckMode, Expr, ExprKind, HasAttrs, Local, Stmt};
@@ -684,7 +684,7 @@ impl<'a> Parser<'a> {
                                                     token.kind,
                                                     token::Ident(
                                                         kw::For | kw::Loop | kw::While,
-                                                        false
+                                                        IdentKind::Default | IdentKind::Keyword
                                                     ) | token::OpenDelim(Delimiter::Brace)
                                                 )
                                         })

@@ -4,7 +4,7 @@ use pm::bridge::{
 };
 use pm::{Delimiter, Level};
 use rustc_ast as ast;
-use rustc_ast::token;
+use rustc_ast::token::{self, IdentKind};
 use rustc_ast::tokenstream::{self, DelimSpacing, Spacing, TokenStream};
 use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast_pretty::pprust;
@@ -202,8 +202,9 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                 Question => op("?"),
                 SingleQuote => op("'"),
 
-                Ident(sym, is_raw) => trees.push(TokenTree::Ident(Ident { sym, is_raw, span })),
-                Keyword(sym) => trees.extend([
+                Ident(sym, kind @ (IdentKind::Default | IdentKind::Raw)) => trees
+                    .push(TokenTree::Ident(Ident { sym, is_raw: kind == IdentKind::Raw, span })),
+                Ident(sym, IdentKind::Keyword) => trees.extend([
                     TokenTree::Ident(Ident { sym: sym::k, is_raw: false, span }),
                     TokenTree::Punct(Punct { ch: b'#', joint: true, span }),
                     TokenTree::Ident(Ident { sym, is_raw: false, span }),
@@ -229,7 +230,7 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                         escaped.extend(ch.escape_debug());
                     }
                     let stream = [
-                        Ident(sym::doc, false),
+                        Ident(sym::doc, IdentKind::Default),
                         Eq,
                         TokenKind::lit(token::Str, Symbol::intern(&escaped), None),
                     ]
@@ -247,10 +248,16 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                     }));
                 }
 
-                Interpolated(ref nt) if let NtIdent(ident, is_raw) = &nt.0 => {
+                Interpolated(ref nt) if let NtIdent(ident, IdentKind::Keyword) = nt.0 => trees
+                    .extend([
+                        TokenTree::Ident(Ident { sym: sym::k, is_raw: false, span }),
+                        TokenTree::Punct(Punct { ch: b'#', joint: true, span }),
+                        TokenTree::Ident(Ident { sym: ident.name, is_raw: false, span }),
+                    ]),
+                Interpolated(ref nt) if let NtIdent(ident, kind) = nt.0 => {
                     trees.push(TokenTree::Ident(Ident {
                         sym: ident.name,
-                        is_raw: *is_raw,
+                        is_raw: kind == IdentKind::Raw,
                         span: ident.span,
                     }))
                 }
@@ -343,7 +350,10 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
             }
             TokenTree::Ident(self::Ident { sym, is_raw, span }) => {
                 rustc.sess().symbol_gallery.insert(sym, span);
-                smallvec![tokenstream::TokenTree::token_alone(Ident(sym, is_raw), span)]
+                smallvec![tokenstream::TokenTree::token_alone(
+                    Ident(sym, if is_raw { IdentKind::Raw } else { IdentKind::Default }),
+                    span
+                )]
             }
             TokenTree::Literal(self::Literal {
                 kind: self::LitKind::Integer,
@@ -560,7 +570,7 @@ impl server::TokenStream for Rustc<'_, '_> {
         match &expr.kind {
             ast::ExprKind::Lit(token_lit) if token_lit.kind == token::Bool => {
                 Ok(tokenstream::TokenStream::token_alone(
-                    token::Ident(token_lit.symbol, false),
+                    token::Ident(token_lit.symbol, IdentKind::Default),
                     expr.span,
                 ))
             }

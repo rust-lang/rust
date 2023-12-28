@@ -9,20 +9,21 @@ use super::{
 
 use crate::errors;
 use crate::maybe_recover_from_interpolated_ty_qpath;
-use ast::mut_visit::{noop_visit_expr, MutVisitor};
-use ast::{CoroutineKind, ForLoopKind, GenBlockKind, Pat, Path, PathSegment};
 use core::mem;
+use rustc_ast::mut_visit::{noop_visit_expr, MutVisitor};
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, IdentKind, Token, TokenKind};
 use rustc_ast::tokenstream::Spacing;
 use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
 use rustc_ast::util::parser::{prec_let_scrutinee_needs_par, AssocOp, Fixity};
 use rustc_ast::visit::Visitor;
-use rustc_ast::{self as ast, AttrStyle, AttrVec, CaptureBy, ExprField, UnOp, DUMMY_NODE_ID};
-use rustc_ast::{AnonConst, BinOp, BinOpKind, FnDecl, FnRetTy, MacCall, Param, Ty, TyKind};
-use rustc_ast::{Arm, BlockCheckMode, Expr, ExprKind, Label, Movability, RangeLimits};
-use rustc_ast::{ClosureBinder, MetaItemLit, StmtKind};
+use rustc_ast::{
+    self as ast, AnonConst, Arm, AttrStyle, AttrVec, BinOp, BinOpKind, BlockCheckMode, CaptureBy,
+    ClosureBinder, CoroutineKind, Expr, ExprField, ExprKind, FnDecl, FnRetTy, ForLoopKind,
+    GenBlockKind, Label, MacCall, MetaItemLit, Movability, Param, Pat, Path, PathSegment,
+    RangeLimits, StmtKind, Ty, TyKind, UnOp, DUMMY_NODE_ID,
+};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
@@ -128,7 +129,7 @@ impl<'a> Parser<'a> {
         match self.parse_expr_res(restrictions, None) {
             Ok(expr) => Ok(expr),
             Err(mut err) => match self.token.ident() {
-                Some((Ident { name: kw::Underscore, .. }, false))
+                Some((Ident { name: kw::Underscore, .. }, IdentKind::Default))
                     if self.may_recover() && self.look_ahead(1, |t| t == &token::Comma) =>
                 {
                     // Special-case handling of `foo(_, _, _)`
@@ -446,7 +447,9 @@ impl<'a> Parser<'a> {
                 return None;
             }
             (Some(op), _) => (op, self.token.span),
-            (None, Some((Ident { name: sym::and, span }, false))) if self.may_recover() => {
+            (None, Some((Ident { name: sym::and, span }, IdentKind::Default)))
+                if self.may_recover() =>
+            {
                 self.dcx().emit_err(errors::InvalidLogicalOperator {
                     span: self.token.span,
                     incorrect: "and".into(),
@@ -454,7 +457,9 @@ impl<'a> Parser<'a> {
                 });
                 (AssocOp::LAnd, span)
             }
-            (None, Some((Ident { name: sym::or, span }, false))) if self.may_recover() => {
+            (None, Some((Ident { name: sym::or, span }, IdentKind::Default)))
+                if self.may_recover() =>
+            {
                 self.dcx().emit_err(errors::InvalidLogicalOperator {
                     span: self.token.span,
                     incorrect: "or".into(),
@@ -738,7 +743,10 @@ impl<'a> Parser<'a> {
                     (
                         // `foo: `
                         ExprKind::Path(None, ast::Path { segments, .. }),
-                        token::Ident(kw::For | kw::Loop | kw::While, false),
+                        token::Ident(
+                            kw::For | kw::Loop | kw::While,
+                            IdentKind::Default | IdentKind::Keyword,
+                        ),
                     ) if segments.len() == 1 => {
                         let snapshot = self.create_snapshot_for_diagnostic();
                         let label = Label {
@@ -951,7 +959,10 @@ impl<'a> Parser<'a> {
 
     fn parse_expr_dot_or_call_with_(&mut self, mut e: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
         loop {
-            let has_question = if self.prev_token.kind == TokenKind::Ident(kw::Return, false) {
+            let has_question = if matches!(
+                self.prev_token.kind,
+                TokenKind::Ident(kw::Return, IdentKind::Default | IdentKind::Keyword)
+            ) {
                 // we are using noexpect here because we don't expect a `?` directly after a `return`
                 // which could be suggested otherwise
                 self.eat_noexpect(&token::Question)
@@ -963,7 +974,10 @@ impl<'a> Parser<'a> {
                 e = self.mk_expr(lo.to(self.prev_token.span), ExprKind::Try(e));
                 continue;
             }
-            let has_dot = if self.prev_token.kind == TokenKind::Ident(kw::Return, false) {
+            let has_dot = if matches!(
+                self.prev_token.kind,
+                TokenKind::Ident(kw::Return, IdentKind::Default | IdentKind::Keyword)
+            ) {
                 // we are using noexpect here because we don't expect a `.` directly after a `return`
                 // which could be suggested otherwise
                 self.eat_noexpect(&token::Dot)
@@ -1123,19 +1137,20 @@ impl<'a> Parser<'a> {
             // 1.
             DestructuredFloat::TrailingDot(sym, ident_span, dot_span) => {
                 assert!(suffix.is_none());
-                self.token = Token::new(token::Ident(sym, false), ident_span);
+                self.token = Token::new(token::Ident(sym, IdentKind::Default), ident_span);
                 let next_token = (Token::new(token::Dot, dot_span), self.token_spacing);
                 self.parse_expr_tuple_field_access(lo, base, sym, None, Some(next_token))
             }
             // 1.2 | 1.2e3
             DestructuredFloat::MiddleDot(symbol1, ident1_span, dot_span, symbol2, ident2_span) => {
-                self.token = Token::new(token::Ident(symbol1, false), ident1_span);
+                self.token = Token::new(token::Ident(symbol1, IdentKind::Default), ident1_span);
                 // This needs to be `Spacing::Alone` to prevent regressions.
                 // See issue #76399 and PR #76285 for more details
                 let next_token1 = (Token::new(token::Dot, dot_span), Spacing::Alone);
                 let base1 =
                     self.parse_expr_tuple_field_access(lo, base, symbol1, None, Some(next_token1));
-                let next_token2 = Token::new(token::Ident(symbol2, false), ident2_span);
+                let next_token2 =
+                    Token::new(token::Ident(symbol2, IdentKind::Default), ident2_span);
                 self.bump_with((next_token2, self.token_spacing)); // `.`
                 self.parse_expr_tuple_field_access(lo, base1, symbol2, suffix, None)
             }
@@ -1163,7 +1178,7 @@ impl<'a> Parser<'a> {
                 // in cases like `offset_of!(Ty, 1.)`. It depends on what comes
                 // after the float-like token, and therefore we have to make
                 // the other parts of the parser think that there is a dot literal.
-                self.token = Token::new(token::Ident(sym, false), sym_span);
+                self.token = Token::new(token::Ident(sym, IdentKind::Default), sym_span);
                 self.bump_with((Token::new(token::Dot, dot_span), self.token_spacing));
                 thin_vec![Ident::new(sym, sym_span)]
             }
@@ -1881,7 +1896,7 @@ impl<'a> Parser<'a> {
         self.bump(); // `builtin`
         self.bump(); // `#`
 
-        let Some((ident, false)) = self.token.ident() else {
+        let Some((ident, IdentKind::Default)) = self.token.ident() else {
             let err = self.dcx().create_err(errors::ExpectedBuiltinIdent { span: self.token.span });
             return Err(err);
         };
@@ -3481,8 +3496,9 @@ impl<'a> Parser<'a> {
     /// Use in case of error after field-looking code: `S { foo: () with a }`.
     fn find_struct_error_after_field_looking_code(&self) -> Option<ExprField> {
         match self.token.ident() {
-            Some((ident, is_raw))
-                if (is_raw || !ident.is_reserved())
+            Some((ident, kind))
+                if (kind == IdentKind::Raw || !ident.is_reserved())
+                    && kind != IdentKind::Keyword
                     && self.look_ahead(1, |t| *t == token::Colon) =>
             {
                 Some(ast::ExprField {

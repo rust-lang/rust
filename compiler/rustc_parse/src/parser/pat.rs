@@ -12,7 +12,7 @@ use crate::errors::{
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 use rustc_ast::mut_visit::{noop_visit_pat, MutVisitor};
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter};
+use rustc_ast::token::{self, Delimiter, IdentKind};
 use rustc_ast::{
     self as ast, AttrVec, BindingAnnotation, ByRef, Expr, ExprKind, MacCall, Mutability, Pat,
     PatField, PatFieldsRest, PatKind, Path, QSelf, RangeEnd, RangeSyntax,
@@ -308,7 +308,7 @@ impl<'a> Parser<'a> {
             matches!(
                 &token.uninterpolate().kind,
                 token::FatArrow // e.g. `a | => 0,`.
-                | token::Ident(kw::If, false) // e.g. `a | if expr`.
+                | token::Ident(kw::If, IdentKind::Default | IdentKind::Keyword) // e.g. `a | if expr`.
                 | token::Eq // e.g. `let a | = 0`.
                 | token::Semi // e.g. `let a |;`.
                 | token::Colon // e.g. `let a | :`.

@@ -1,7 +1,7 @@
 use crate::mbe::macro_parser::count_metavar_decls;
 use crate::mbe::{Delimited, KleeneOp, KleeneToken, MetaVarExpr, SequenceRepetition, TokenTree};
 
-use rustc_ast::token::{self, Delimiter, Token};
+use rustc_ast::token::{self, Delimiter, IdentKind, Token};
 use rustc_ast::{tokenstream, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_feature::Features;
@@ -218,10 +218,10 @@ fn parse_tree<'a>(
                 // `tree` is followed by an `ident`. This could be `$meta_var` or the `$crate`
                 // special metavariable that names the crate of the invocation.
                 Some(tokenstream::TokenTree::Token(token, _)) if token.is_ident() => {
-                    let (ident, is_raw) = token.ident().unwrap();
+                    let (ident, kind) = token.ident().unwrap();
                     let span = ident.span.with_lo(span.lo());
-                    if ident.name == kw::Crate && !is_raw {
-                        TokenTree::token(token::Ident(kw::DollarCrate, is_raw), span)
+                    if ident.name == kw::Crate && kind == IdentKind::Default {
+                        TokenTree::token(token::Ident(kw::DollarCrate, kind), span)
                     } else {
                         TokenTree::MetaVar(span, ident)
                     }

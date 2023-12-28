@@ -19,7 +19,7 @@ pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
 
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Nonterminal, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, IdentKind, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{AttributesData, DelimSpacing, DelimSpan, Spacing};
 use rustc_ast::tokenstream::{TokenStream, TokenTree, TokenTreeCursor};
 use rustc_ast::util::case::Case;
@@ -495,9 +495,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ident_common(&mut self, recover: bool) -> PResult<'a, Ident> {
-        let (ident, is_raw) = self.ident_or_err(recover)?;
+        let (ident, kind) = self.ident_or_err(recover)?;
 
-        if !is_raw && ident.is_reserved() {
+        if (kind == IdentKind::Default && ident.is_reserved()) || kind == IdentKind::Keyword {
             let mut err = self.expected_ident_found_err();
             if recover {
                 err.emit();
@@ -509,7 +509,7 @@ impl<'a> Parser<'a> {
         Ok(ident)
     }
 
-    fn ident_or_err(&mut self, recover: bool) -> PResult<'a, (Ident, /* is_raw */ bool)> {
+    fn ident_or_err(&mut self, recover: bool) -> PResult<'a, (Ident, IdentKind)> {
         match self.token.ident() {
             Some(ident) => Ok(ident),
             None => self.expected_ident_found(recover),
@@ -566,7 +566,7 @@ impl<'a> Parser<'a> {
         }
 
         if case == Case::Insensitive
-            && let Some((ident, /* is_raw */ false)) = self.token.ident()
+            && let Some((ident, IdentKind::Default | IdentKind::Keyword)) = self.token.ident()
             && ident.as_str().to_lowercase() == kw.as_str().to_lowercase()
         {
             true
@@ -596,7 +596,7 @@ impl<'a> Parser<'a> {
         }
 
         if case == Case::Insensitive
-            && let Some((ident, /* is_raw */ false)) = self.token.ident()
+            && let Some((ident, IdentKind::Default | IdentKind::Keyword)) = self.token.ident()
             && ident.as_str().to_lowercase() == kw.as_str().to_lowercase()
         {
             self.dcx().emit_err(errors::KwBadCase { span: ident.span, kw: kw.as_str() });
