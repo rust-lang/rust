@@ -677,6 +677,33 @@ trait UnusedDelimLint {
         }
 
         // Check if LHS needs parens to prevent false-positives in cases like `fn x() -> u8 { ({ 0 } + 1) }`.
+        //
+        // FIXME: https://github.com/rust-lang/rust/issues/119426
+        // The syntax tree in this code is from after macro expansion, so the
+        // current implementation has both false negatives and false positives
+        // related to expressions containing macros.
+        //
+        //     macro_rules! m1 {
+        //         () => {
+        //             1
+        //         };
+        //     }
+        //
+        //     fn f1() -> u8 {
+        //         // Lint says parens are not needed, but they are.
+        //         (m1! {} + 1)
+        //     }
+        //
+        //     macro_rules! m2 {
+        //         () => {
+        //             loop { break 1; }
+        //         };
+        //     }
+        //
+        //     fn f2() -> u8 {
+        //         // Lint says parens are needed, but they are not.
+        //         (m2!() + 1)
+        //     }
         {
             let mut innermost = inner;
             loop {
@@ -688,10 +715,7 @@ trait UnusedDelimLint {
                     ExprKind::Index(base, _subscript, _) => base,
                     _ => break,
                 };
-                if match innermost.kind {
-                    ExprKind::MacCall(_) => false,
-                    _ => !classify::expr_requires_semi_to_be_stmt(innermost),
-                } {
+                if !classify::expr_requires_semi_to_be_stmt(innermost) {
                     return true;
                 }
             }
