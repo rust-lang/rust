@@ -1,7 +1,15 @@
+#![feature(float_gamma)]
 use std::collections::HashSet;
 use std::fmt;
 use std::hash::Hash;
 use std::hint::black_box;
+
+fn ldexp(a: f64, b: i32) -> f64 {
+    extern "C" {
+        fn ldexp(x: f64, n: i32) -> f64;
+    }
+    unsafe { ldexp(a, b) }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Sign {
@@ -298,6 +306,20 @@ fn test_f32() {
         HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
         || F32::from(nan.powi(1)),
     );
+
+    // libm functions
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(nan.sinh()),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(nan.atan2(nan)),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(nan.ln_gamma().0),
+    );
 }
 
 fn test_f64() {
@@ -406,6 +428,24 @@ fn test_f64() {
     check_all_outcomes(
         HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
         || F64::from(nan.powi(1)),
+    );
+
+    // libm functions
+    check_all_outcomes(
+        HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
+        || F64::from(nan.sinh()),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
+        || F64::from(nan.atan2(nan)),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
+        || F64::from(ldexp(nan, 1)),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
+        || F64::from(nan.ln_gamma().0),
     );
 }
 
