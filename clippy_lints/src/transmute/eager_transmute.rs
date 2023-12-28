@@ -36,10 +36,26 @@ fn range_fully_contained(from: WrappingRange, to: WrappingRange) -> bool {
 /// * `x < 4 && x > 1`
 /// * `x.field < 4 && x.field > 1` (given `x.field`)
 /// * `x.field < 4 && unrelated()`
+/// * `(1..=3).contains(&x)`
 fn binops_with_local(cx: &LateContext<'_>, local_expr: &Expr<'_>, expr: &Expr<'_>) -> bool {
     match expr.kind {
         ExprKind::Binary(_, lhs, rhs) => {
             binops_with_local(cx, local_expr, lhs) || binops_with_local(cx, local_expr, rhs)
+        },
+        ExprKind::MethodCall(path, receiver, [arg], _)
+            if path.ident.name == sym!(contains)
+                // ... `contains` called on some kind of range
+                && let Some(receiver_adt) = cx.typeck_results().expr_ty(receiver).peel_refs().ty_adt_def()
+                && let lang_items = cx.tcx.lang_items()
+                && [
+                    lang_items.range_from_struct(),
+                    lang_items.range_inclusive_struct(),
+                    lang_items.range_struct(),
+                    lang_items.range_to_inclusive_struct(),
+                    lang_items.range_to_struct()
+                ].into_iter().any(|did| did == Some(receiver_adt.did())) =>
+        {
+            eq_expr_value(cx, local_expr, arg.peel_borrows())
         },
         _ => eq_expr_value(cx, local_expr, expr),
     }

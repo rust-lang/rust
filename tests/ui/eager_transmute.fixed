@@ -42,6 +42,19 @@ fn f(op: u8, op2: Data, unrelated: u8) {
 
     // don't lint: wrong variable
     let _: Option<Opcode> = (op2.foo[0] > 0 && op2.bar[1] < 10).then_some(unsafe { std::mem::transmute(op) });
+
+    // range contains checks
+    let _: Option<Opcode> = (1..=3).contains(&op).then(|| unsafe { std::mem::transmute(op) });
+    let _: Option<Opcode> = ((1..=3).contains(&op) || op == 4).then(|| unsafe { std::mem::transmute(op) });
+    let _: Option<Opcode> = (1..3).contains(&op).then(|| unsafe { std::mem::transmute(op) });
+    let _: Option<Opcode> = (1..).contains(&op).then(|| unsafe { std::mem::transmute(op) });
+    let _: Option<Opcode> = (..3).contains(&op).then(|| unsafe { std::mem::transmute(op) });
+    let _: Option<Opcode> = (..=3).contains(&op).then(|| unsafe { std::mem::transmute(op) });
+
+    // unrelated binding in contains
+    let _: Option<Opcode> = (1..=3)
+        .contains(&unrelated)
+        .then_some(unsafe { std::mem::transmute(op) });
 }
 
 unsafe fn f2(op: u8) {
