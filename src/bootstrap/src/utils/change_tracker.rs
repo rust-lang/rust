@@ -101,4 +101,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "rust-analyzer-proc-macro-srv is no longer enabled by default. To build it, you must either enable it in the configuration or explicitly invoke it with x.py.",
     },
+    ChangeInfo {
+        change_id: 119373,
+        severity: ChangeSeverity::Info,
+        summary: "The dist.missing-tools config option was deprecated, as it was unused. If you are using it, remove it from your config, it will be removed soon.",
+    },
 ];
