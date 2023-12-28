@@ -623,13 +623,7 @@ pub fn stdout() -> Stdout {
 // by replacing the line writer by one with zero
 // buffering capacity.
 pub fn cleanup() {
-    let mut initialized = false;
-    let stdout = STDOUT.get_or_init(|| {
-        initialized = true;
-        ReentrantMutex::new(RefCell::new(LineWriter::with_capacity(0, stdout_raw())))
-    });
-
-    if !initialized {
+    if let Some(stdout) = STDOUT.get() {
         // The buffer was previously initialized, overwrite it here.
         // We use try_lock() instead of lock(), because someone
         // might have leaked a StdoutLock, which would

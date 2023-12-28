@@ -111,11 +111,11 @@ unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
 // NOTE: this is not guaranteed to run, for example when the program aborts.
 pub(crate) fn cleanup() {
     static CLEANUP: Once = Once::new();
-    CLEANUP.call_once(|| unsafe {
+    CLEANUP.call_once(|| {
         // Flush stdout and disable buffering.
         crate::io::cleanup();
         // SAFETY: Only called once during runtime cleanup.
-        sys::cleanup();
+        unsafe { sys::cleanup() };
     });
 }
 
