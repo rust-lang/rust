@@ -316,6 +316,22 @@ hir_analysis_opaque_captures_higher_ranked_lifetime = `impl Trait` cannot captur
     .label = `impl Trait` implicitly captures all lifetimes in scope
     .note = lifetime declared here
 
+hir_analysis_param_in_ty_of_assoc_const_binding =
+    the type of the associated constant `{$assoc_const}` must not depend on {$param_category ->
+        [self] `Self`
+        [synthetic] `impl Trait`
+        *[normal] generic parameters
+    }
+    .label = its type must not depend on {$param_category ->
+        [self] `Self`
+        [synthetic] `impl Trait`
+        *[normal] the {$param_def_kind} `{$param_name}`
+    }
+    .param_defined_here_label = {$param_category ->
+        [synthetic] the `impl Trait` is specified here
+        *[normal] the {$param_def_kind} `{$param_name}` is defined here
+    }
+
 hir_analysis_paren_sugar_attribute = the `#[rustc_paren_sugar]` attribute is a temporary means of controlling which traits can use parenthetical notation
     .help = add `#![feature(unboxed_closures)]` to the crate attributes to use it
 
@@ -430,6 +446,8 @@ hir_analysis_transparent_non_zero_sized = transparent {$desc} needs at most one 
 hir_analysis_transparent_non_zero_sized_enum = the variant of a transparent {$desc} needs at most one field with non-trivial size or alignment, but has {$field_count}
     .label = needs at most one field with non-trivial size or alignment, but has {$field_count}
     .labels = this field has non-zero size or requires alignment
+
+hir_analysis_ty_of_assoc_const_binding_note = `{$assoc_const}` has type `{$ty}`
 
 hir_analysis_ty_param_first_local = type parameter `{$param_ty}` must be covered by another type when it appears before the first local type (`{$local_type}`)
     .label = type parameter `{$param_ty}` must be covered by another type when it appears before the first local type (`{$local_type}`)
