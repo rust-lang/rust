@@ -1209,33 +1209,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 this.expr_block(body)
             };
-            // FIXME(gen_blocks): Consider unifying the `make_*_expr` functions.
-            let coroutine_expr = match coroutine_kind {
-                CoroutineKind::Async { .. } => this.make_async_expr(
-                    CaptureBy::Value { move_kw: rustc_span::DUMMY_SP },
-                    closure_id,
-                    None,
-                    body.span,
-                    hir::CoroutineSource::Fn,
-                    mkbody,
-                ),
-                CoroutineKind::Gen { .. } => this.make_gen_expr(
-                    CaptureBy::Value { move_kw: rustc_span::DUMMY_SP },
-                    closure_id,
-                    None,
-                    body.span,
-                    hir::CoroutineSource::Fn,
-                    mkbody,
-                ),
-                CoroutineKind::AsyncGen { .. } => this.make_async_gen_expr(
-                    CaptureBy::Value { move_kw: rustc_span::DUMMY_SP },
-                    closure_id,
-                    None,
-                    body.span,
-                    hir::CoroutineSource::Fn,
-                    mkbody,
-                ),
+            let desugaring_kind = match coroutine_kind {
+                CoroutineKind::Async { .. } => hir::CoroutineDesugaring::Async,
+                CoroutineKind::Gen { .. } => hir::CoroutineDesugaring::Gen,
+                CoroutineKind::AsyncGen { .. } => hir::CoroutineDesugaring::AsyncGen,
             };
+            let coroutine_expr = this.make_desugared_coroutine_expr(
+                CaptureBy::Value { move_kw: rustc_span::DUMMY_SP },
+                closure_id,
+                None,
+                body.span,
+                desugaring_kind,
+                hir::CoroutineSource::Fn,
+                mkbody,
+            );
 
             let hir_id = this.lower_node_id(closure_id);
             this.maybe_forward_track_caller(body.span, fn_id, hir_id);
