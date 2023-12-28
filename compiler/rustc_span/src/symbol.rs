@@ -4,7 +4,7 @@
 
 use rustc_arena::DroplessArena;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lock;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -2092,14 +2092,6 @@ impl<CTX> HashStable<CTX> for Symbol {
     #[inline]
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         self.as_str().hash_stable(hcx, hasher);
-    }
-}
-
-impl<CTX> ToStableHashKey<CTX> for Symbol {
-    type KeyType = String;
-    #[inline]
-    fn to_stable_hash_key(&self, _: &CTX) -> String {
-        self.as_str().to_string()
     }
 }
 

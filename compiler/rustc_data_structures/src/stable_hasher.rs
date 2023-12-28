@@ -506,14 +506,6 @@ unsafe impl StableOrd for String {
     const CAN_USE_UNSTABLE_SORT: bool = true;
 }
 
-impl<HCX> ToStableHashKey<HCX> for String {
-    type KeyType = String;
-    #[inline]
-    fn to_stable_hash_key(&self, _: &HCX) -> Self::KeyType {
-        self.clone()
-    }
-}
-
 impl<HCX, T1: ToStableHashKey<HCX>, T2: ToStableHashKey<HCX>> ToStableHashKey<HCX> for (T1, T2) {
     type KeyType = (T1::KeyType, T2::KeyType);
     #[inline]
@@ -647,14 +639,13 @@ impl_stable_traits_for_trivial_type!(::std::path::PathBuf);
 
 impl<K, V, R, HCX> HashStable<HCX> for ::std::collections::HashMap<K, V, R>
 where
-    K: ToStableHashKey<HCX> + Eq,
+    K: HashStable<HCX> + Eq,
     V: HashStable<HCX>,
     R: BuildHasher,
 {
     #[inline]
     fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
         stable_hash_reduce(hcx, hasher, self.iter(), self.len(), |hasher, hcx, (key, value)| {
-            let key = key.to_stable_hash_key(hcx);
             key.hash_stable(hcx, hasher);
             value.hash_stable(hcx, hasher);
         });
