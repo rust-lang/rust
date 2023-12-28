@@ -2080,7 +2080,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// ```
     ///
     /// If we're in an irrefutable pattern we prefer the array impl candidate given that
-    /// the slice impl candidate would be be rejected anyway (if no ambiguity existed).
+    /// the slice impl candidate would be rejected anyway (if no ambiguity existed).
     fn pat_is_irrefutable(&self, decl_origin: Option<DeclOrigin<'_>>) -> bool {
         match decl_origin {
             Some(DeclOrigin::LocalDecl { els: None }) => true,

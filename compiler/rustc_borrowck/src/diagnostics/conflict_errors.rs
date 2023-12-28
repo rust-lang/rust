@@ -482,7 +482,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         span: Span,
         use_spans: UseSpans<'tcx>,
     ) -> DiagnosticBuilder<'cx> {
-        // We need all statements in the body where the binding was assigned to to later find all
+        // We need all statements in the body where the binding was assigned to later find all
         // the branching code paths where the binding *wasn't* assigned to.
         let inits = &self.move_data.init_path_map[mpi];
         let move_path = &self.move_data.move_paths[mpi];
