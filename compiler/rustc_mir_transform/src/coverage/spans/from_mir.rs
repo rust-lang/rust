@@ -3,7 +3,7 @@ use rustc_middle::mir::{
     self, AggregateKind, FakeReadCause, Rvalue, Statement, StatementKind, Terminator,
     TerminatorKind,
 };
-use rustc_span::Span;
+use rustc_span::{ExpnKind, MacroKind, Span, Symbol};
 
 use crate::coverage::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
 use crate::coverage::spans::CoverageSpan;
@@ -71,16 +71,18 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
 
         let statement_spans = data.statements.iter().filter_map(move |statement| {
             let expn_span = filtered_statement_span(statement)?;
-            let span = unexpand_into_body_span(expn_span, body_span)?;
+            let (span, visible_macro) =
+                unexpand_into_body_span_with_visible_macro(expn_span, body_span)?;
 
-            Some(CoverageSpan::new(span, expn_span, bcb, is_closure_or_coroutine(statement)))
+            Some(CoverageSpan::new(span, visible_macro, bcb, is_closure_or_coroutine(statement)))
         });
 
         let terminator_span = Some(data.terminator()).into_iter().filter_map(move |terminator| {
             let expn_span = filtered_terminator_span(terminator)?;
-            let span = unexpand_into_body_span(expn_span, body_span)?;
+            let (span, visible_macro) =
+                unexpand_into_body_span_with_visible_macro(expn_span, body_span)?;
 
-            Some(CoverageSpan::new(span, expn_span, bcb, false))
+            Some(CoverageSpan::new(span, visible_macro, bcb, false))
         });
 
         statement_spans.chain(terminator_span)
@@ -201,7 +203,48 @@ fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Span> {
 ///
 /// [^1]Expansions result from Rust syntax including macros, syntactic sugar,
 /// etc.).
-#[inline]
-fn unexpand_into_body_span(span: Span, body_span: Span) -> Option<Span> {
-    span.find_ancestor_inside_same_ctxt(body_span)
+fn unexpand_into_body_span_with_visible_macro(
+    original_span: Span,
+    body_span: Span,
+) -> Option<(Span, Option<Symbol>)> {
+    let (span, prev) = unexpand_into_body_span_with_prev(original_span, body_span)?;
+
+    let visible_macro = prev
+        .map(|prev| match prev.ctxt().outer_expn_data().kind {
+            ExpnKind::Macro(MacroKind::Bang, name) => Some(name),
+            _ => None,
+        })
+        .flatten();
+
+    Some((span, visible_macro))
+}
+
+/// Walks through the expansion ancestors of `original_span` to find a span that
+/// is contained in `body_span` and has the same [`SyntaxContext`] as `body_span`.
+/// The ancestor that was traversed just before the matching span (if any) is
+/// also returned.
+///
+/// For example, a return value of `Some((ancestor, Some(prev))` means that:
+/// - `ancestor == original_span.find_ancestor_inside_same_ctxt(body_span)`
+/// - `ancestor == prev.parent_callsite()`
+///
+/// [`SyntaxContext`]: rustc_span::SyntaxContext
+fn unexpand_into_body_span_with_prev(
+    original_span: Span,
+    body_span: Span,
+) -> Option<(Span, Option<Span>)> {
+    let mut prev = None;
+    let mut curr = original_span;
+
+    while !body_span.contains(curr) || !curr.eq_ctxt(body_span) {
+        prev = Some(curr);
+        curr = curr.parent_callsite()?;
+    }
+
+    debug_assert_eq!(Some(curr), original_span.find_ancestor_in_same_ctxt(body_span));
+    if let Some(prev) = prev {
+        debug_assert_eq!(Some(curr), prev.parent_callsite());
+    }
+
+    Some((curr, prev))
 }
