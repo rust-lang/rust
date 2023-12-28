@@ -245,7 +245,7 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
 }
 
 /// Derive macro generating an impl of the trait [`PartialEq`].
-/// The behavior of this macro is described in detail [here](PartialEq#derivable).
+/// The behavior of this macro is described in detail [here](https://doc.rust-lang.org/std/cmp/trait.PartialEq.html#derivable).
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow_internal_unstable(core_intrinsics, structural_match)]
