@@ -135,7 +135,7 @@ fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExp
             unstable_to_stable_ids: FxHashMap::default(),
             empty: FxHashMap::default(),
         },
-        warn_about_weird_lints: false,
+        lint_added_lints: false,
         store,
         registered_tools: tcx.registered_tools(()),
     };
@@ -164,7 +164,7 @@ fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLe
             empty: FxHashMap::default(),
             attrs,
         },
-        warn_about_weird_lints: false,
+        lint_added_lints: false,
         store,
         registered_tools: tcx.registered_tools(()),
     };
@@ -451,7 +451,7 @@ pub struct LintLevelsBuilder<'s, P> {
     sess: &'s Session,
     features: &'s Features,
     provider: P,
-    warn_about_weird_lints: bool,
+    lint_added_lints: bool,
     store: &'s LintStore,
     registered_tools: &'s RegisteredTools,
 }
@@ -464,7 +464,7 @@ impl<'s> LintLevelsBuilder<'s, TopDown> {
     pub(crate) fn new(
         sess: &'s Session,
         features: &'s Features,
-        warn_about_weird_lints: bool,
+        lint_added_lints: bool,
         store: &'s LintStore,
         registered_tools: &'s RegisteredTools,
     ) -> Self {
@@ -472,7 +472,7 @@ impl<'s> LintLevelsBuilder<'s, TopDown> {
             sess,
             features,
             provider: TopDown { sets: LintLevelSets::new(), cur: COMMAND_LINE },
-            warn_about_weird_lints,
+            lint_added_lints,
             store,
             registered_tools,
         };
@@ -968,7 +968,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                         continue;
                     }
 
-                    _ if !self.warn_about_weird_lints => {}
+                    _ if !self.lint_added_lints => {}
 
                     CheckLintNameResult::Renamed(ref replace) => {
                         let suggestion =
