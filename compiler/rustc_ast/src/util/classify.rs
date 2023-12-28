@@ -1,16 +1,47 @@
-//! Routines the parser uses to classify AST nodes
-
-// Predicates on exprs and stmts that the pretty-printer and parser use
+//! Routines the parser and pretty-printer use to classify AST nodes.
 
 use crate::{ast, token::Delimiter};
 
-/// Does this expression require a semicolon to be treated
-/// as a statement? The negation of this: 'can this expression
-/// be used as a statement without a semicolon' -- is used
-/// as an early-bail-out in the parser so that, for instance,
-///     if true {...} else {...}
-///      |x| 5
-/// isn't parsed as (if true {...} else {...} | x) | 5
+/// Does this expression require a semicolon to be treated as a statement?
+///
+/// The negation of this: "can this expression be used as a statement without a
+/// semicolon" -- is used as an early bail-out in the parser so that, for
+/// instance,
+///
+/// ```ignore (illustrative)
+/// if true {...} else {...}
+/// |x| 5
+/// ```
+///
+/// isn't parsed as `(if true {...} else {...} | x) | 5`.
+///
+/// Nearly the same early bail-out also occurs in the right-hand side of match
+/// arms:
+///
+/// ```ignore (illustrative)
+/// match i {
+///     0 => if true {...} else {...}
+///     | x => {}
+/// }
+/// ```
+///
+/// Here the `|` is a leading vert in a second match arm. It is not a binary
+/// operator with the If as its left operand. If the first arm were some other
+/// expression for which `expr_requires_semi_to_be_stmt` returns true, then the
+/// `|` on the next line would be a binary operator (leading to a parse error).
+///
+/// The statement case and the match-arm case are "nearly" the same early
+/// bail-out because of 1 edge case. Macro calls with brace delimiter terminate
+/// a statement without a semicolon, but do not terminate a match-arm without
+/// comma.
+///
+/// ```ignore (illustrative)
+/// m! {} - 1;  // two statements: a macro call followed by -1 literal
+///
+/// match () {
+///     _ => m! {} - 1,  // binary subtraction operator
+/// }
+/// ```
 pub fn expr_requires_semi_to_be_stmt(e: &ast::Expr) -> bool {
     !matches!(
         e.kind,
