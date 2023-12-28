@@ -4,10 +4,7 @@ use rustc_middle::{mir, ty, ty::FloatTy};
 use rustc_span::{sym, Symbol};
 use rustc_target::abi::{Endian, HasDataLayout};
 
-use crate::helpers::{
-    bool_to_simd_element, check_arg_count, round_to_next_multiple_of, simd_element_to_bool, ToHost,
-    ToSoft,
-};
+use crate::helpers::{bool_to_simd_element, check_arg_count, simd_element_to_bool, ToHost, ToSoft};
 use crate::*;
 
 #[derive(Copy, Clone)]
@@ -407,7 +404,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let (yes, yes_len) = this.operand_to_simd(yes)?;
                 let (no, no_len) = this.operand_to_simd(no)?;
                 let (dest, dest_len) = this.place_to_simd(dest)?;
-                let bitmask_len = round_to_next_multiple_of(dest_len, 8);
+                let bitmask_len = dest_len.next_multiple_of(8);
 
                 // The mask must be an integer or an array.
                 assert!(
@@ -453,7 +450,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "bitmask" => {
                 let [op] = check_arg_count(args)?;
                 let (op, op_len) = this.operand_to_simd(op)?;
-                let bitmask_len = round_to_next_multiple_of(op_len, 8);
+                let bitmask_len = op_len.next_multiple_of(8);
 
                 // Returns either an unsigned integer or array of `u8`.
                 assert!(
