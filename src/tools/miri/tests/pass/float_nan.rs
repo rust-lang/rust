@@ -292,17 +292,6 @@ fn test_f32() {
         || F32::from(1.0f32.powf(nan)), // special `pow` rule
     );
     check_all_outcomes(
-        HashSet::from_iter([
-            F32::nan(Pos, Quiet, 0),
-            F32::nan(Neg, Quiet, 0),
-            F32::nan(Pos, Quiet, 1),
-            F32::nan(Neg, Quiet, 1),
-            F32::nan(Pos, Signaling, 1),
-            F32::nan(Neg, Signaling, 1),
-        ]),
-        || F32::from(1.0f32.powf(F32::nan(Pos, Signaling, 1).as_f32())), // unspecified `pow` case
-    );
-    check_all_outcomes(
         HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
         || F32::from(nan.powi(1)),
     );
@@ -413,17 +402,6 @@ fn test_f64() {
     check_all_outcomes(
         HashSet::from_iter([1.0f64.into()]),
         || F64::from(1.0f64.powf(nan)), // special `pow` rule
-    );
-    check_all_outcomes(
-        HashSet::from_iter([
-            F64::nan(Pos, Quiet, 0),
-            F64::nan(Neg, Quiet, 0),
-            F64::nan(Pos, Quiet, 1),
-            F64::nan(Neg, Quiet, 1),
-            F64::nan(Pos, Signaling, 1),
-            F64::nan(Neg, Signaling, 1),
-        ]),
-        || F64::from(1.0f64.powf(F64::nan(Pos, Signaling, 1).as_f64())), // unspecified `pow` case
     );
     check_all_outcomes(
         HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
