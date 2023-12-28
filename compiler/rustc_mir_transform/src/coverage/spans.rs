@@ -8,9 +8,15 @@ use crate::coverage::ExtractedHirInfo;
 
 mod from_mir;
 
+#[derive(Clone, Copy, Debug)]
+pub(super) enum BcbMappingKind {
+    /// Associates an ordinary executable code span with its corresponding BCB.
+    Code(BasicCoverageBlock),
+}
+
 #[derive(Debug)]
 pub(super) struct BcbMapping {
-    pub(super) bcb: BasicCoverageBlock,
+    pub(super) kind: BcbMappingKind,
     pub(super) span: Span,
 }
 
@@ -38,7 +44,7 @@ impl CoverageSpans {
         );
         mappings.extend(coverage_spans.into_iter().map(|CoverageSpan { bcb, span, .. }| {
             // Each span produced by the generator represents an ordinary code region.
-            BcbMapping { bcb, span }
+            BcbMapping { kind: BcbMappingKind::Code(bcb), span }
         }));
 
         if mappings.is_empty() {
@@ -47,8 +53,13 @@ impl CoverageSpans {
 
         // Identify which BCBs have one or more mappings.
         let mut bcb_has_mappings = BitSet::new_empty(basic_coverage_blocks.num_nodes());
-        for &BcbMapping { bcb, span: _ } in &mappings {
+        let mut insert = |bcb| {
             bcb_has_mappings.insert(bcb);
+        };
+        for &BcbMapping { kind, span: _ } in &mappings {
+            match kind {
+                BcbMappingKind::Code(bcb) => insert(bcb),
+            }
         }
 
         Some(Self { bcb_has_mappings, mappings })
