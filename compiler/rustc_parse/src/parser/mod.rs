@@ -504,18 +504,10 @@ impl<'a> Parser<'a> {
     }
 
     fn ident_or_err(&mut self, recover: bool) -> PResult<'a, (Ident, /* is_raw */ bool)> {
-        let result = self.token.ident().ok_or_else(|| self.expected_ident_found(recover));
-
-        let (ident, is_raw) = match result {
-            Ok(ident) => ident,
-            Err(err) => match err {
-                // we recovered!
-                Ok(ident) => ident,
-                Err(err) => return Err(err),
-            },
-        };
-
-        Ok((ident, is_raw))
+        match self.token.ident() {
+            Some(ident) => Ok(ident),
+            None => self.expected_ident_found(recover),
+        }
     }
 
     /// Checks if the next token is `tok`, and returns `true` if so.
