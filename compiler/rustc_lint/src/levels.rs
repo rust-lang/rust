@@ -642,7 +642,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         //
         // This means that this only errors if we're truly lowering the lint
         // level from forbid.
-        if level != Level::Forbid {
+        if self.lint_added_lints && level != Level::Forbid {
             if let Level::Forbid = old_level {
                 // Backwards compatibility check:
                 //
