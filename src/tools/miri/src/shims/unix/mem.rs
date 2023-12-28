@@ -14,7 +14,7 @@
 //! munmap shim which would partily unmap a region of address space previously mapped by mmap will
 //! report UB.
 
-use crate::{helpers::round_to_next_multiple_of, *};
+use crate::*;
 use rustc_target::abi::Size;
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
@@ -96,7 +96,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         let align = this.machine.page_align();
-        let map_length = round_to_next_multiple_of(length, this.machine.page_size);
+        let Some(map_length) = length.checked_next_multiple_of(this.machine.page_size) else {
+            this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
+            return Ok(this.eval_libc("MAP_FAILED"));
+        };
+        if map_length > this.target_usize_max() {
+            this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
+            return Ok(this.eval_libc("MAP_FAILED"));
+        }
 
         let ptr =
             this.allocate_ptr(Size::from_bytes(map_length), align, MiriMemoryKind::Mmap.into())?;
@@ -129,7 +136,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             return Ok(Scalar::from_i32(-1));
         }
 
-        let length = Size::from_bytes(round_to_next_multiple_of(length, this.machine.page_size));
+        let Some(length) = length.checked_next_multiple_of(this.machine.page_size) else {
+            this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
+            return Ok(Scalar::from_i32(-1));
+        };
+        if length > this.target_usize_max() {
+            this.set_last_error(Scalar::from_i32(this.eval_libc_i32("EINVAL")))?;
+            return Ok(this.eval_libc("MAP_FAILED"));
+        }
+
+        let length = Size::from_bytes(length);
         this.deallocate_ptr(
             addr,
             Some((length, this.machine.page_align())),
