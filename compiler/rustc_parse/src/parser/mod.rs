@@ -320,9 +320,15 @@ impl TokenType {
     }
 }
 
+/// Used by [`Parser::expect_any_with_type`].
 #[derive(Copy, Clone, Debug)]
 enum TokenExpectType {
+    /// Unencountered tokens are inserted into [`Parser::expected_tokens`].
+    /// See [`Parser::check`].
     Expect,
+
+    /// Unencountered tokens are not inserted into [`Parser::expected_tokens`].
+    /// See [`Parser::check_noexpect`].
     NoExpect,
 }
 
@@ -766,13 +772,17 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// Checks if the next token is contained within `kets`, and returns `true` if so.
     fn expect_any_with_type(&mut self, kets: &[&TokenKind], expect: TokenExpectType) -> bool {
         kets.iter().any(|k| match expect {
             TokenExpectType::Expect => self.check(k),
-            TokenExpectType::NoExpect => self.token == **k,
+            TokenExpectType::NoExpect => self.check_noexpect(k),
         })
     }
 
+    /// Parses a sequence until the specified delimiters. The function
+    /// `f` must consume tokens until reaching the next separator or
+    /// closing bracket.
     fn parse_seq_to_before_tokens<T>(
         &mut self,
         kets: &[&TokenKind],
@@ -791,13 +801,15 @@ impl<'a> Parser<'a> {
             }
             if let Some(t) = &sep.sep {
                 if first {
+                    // no separator for the first element
                     first = false;
                 } else {
+                    // check for separator
                     match self.expect(t) {
-                        Ok(false) => {
+                        Ok(false) /* not recovered */ => {
                             self.current_closure.take();
                         }
-                        Ok(true) => {
+                        Ok(true) /* recovered */ => {
                             self.current_closure.take();
                             recovered = true;
                             break;
@@ -965,7 +977,7 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Parses a sequence, not including the closing delimiter. The function
+    /// Parses a sequence, not including the delimiters. The function
     /// `f` must consume tokens until reaching the next separator or
     /// closing bracket.
     fn parse_seq_to_before_end<T>(
@@ -973,11 +985,11 @@ impl<'a> Parser<'a> {
         ket: &TokenKind,
         sep: SeqSep,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (ThinVec<T>, bool, bool)> {
+    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */, bool /* recovered */)> {
         self.parse_seq_to_before_tokens(&[ket], sep, TokenExpectType::Expect, f)
     }
 
-    /// Parses a sequence, including the closing delimiter. The function
+    /// Parses a sequence, including only the closing delimiter. The function
     /// `f` must consume tokens until reaching the next separator or
     /// closing bracket.
     fn parse_seq_to_end<T>(
@@ -993,7 +1005,7 @@ impl<'a> Parser<'a> {
         Ok((val, trailing))
     }
 
-    /// Parses a sequence, including the closing delimiter. The function
+    /// Parses a sequence, including both delimiters. The function
     /// `f` must consume tokens until reaching the next separator or
     /// closing bracket.
     fn parse_unspanned_seq<T>(
@@ -1002,16 +1014,19 @@ impl<'a> Parser<'a> {
         ket: &TokenKind,
         sep: SeqSep,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (ThinVec<T>, bool)> {
+    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */)> {
         self.expect(bra)?;
         self.parse_seq_to_end(ket, sep, f)
     }
 
+    /// Parses a comma-separated sequence, including both delimiters.
+    /// The function `f` must consume tokens until reaching the next separator or
+    /// closing bracket.
     fn parse_delim_comma_seq<T>(
         &mut self,
         delim: Delimiter,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (ThinVec<T>, bool)> {
+    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */)> {
         self.parse_unspanned_seq(
             &token::OpenDelim(delim),
             &token::CloseDelim(delim),
@@ -1020,10 +1035,13 @@ impl<'a> Parser<'a> {
         )
     }
 
+    /// Parses a comma-separated sequence delimited by parentheses (e.g. `(x, y)`).
+    /// The function `f` must consume tokens until reaching the next separator or
+    /// closing bracket.
     fn parse_paren_comma_seq<T>(
         &mut self,
         f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-    ) -> PResult<'a, (ThinVec<T>, bool)> {
+    ) -> PResult<'a, (ThinVec<T>, bool /* trailing */)> {
         self.parse_delim_comma_seq(Delimiter::Parenthesis, f)
     }
 
