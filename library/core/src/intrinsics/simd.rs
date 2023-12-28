@@ -245,6 +245,9 @@ extern "platform-intrinsic" {
     /// corresponding value in `val` to the pointer.
     /// Otherwise if the corresponding value in `mask` is `0`, do nothing.
     ///
+    /// The stores happen in left-to-right order.
+    /// (This is relevant in case two of the stores overlap.)
+    ///
     /// # Safety
     /// Unmasked values in `T` must be writeable as if by `<ptr>::write` (e.g. aligned to the element
     /// type).
