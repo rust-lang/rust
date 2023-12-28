@@ -508,21 +508,19 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnId {
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Span {
         let start = decoder.position();
-        let mode = SpanEncodingMode::decode(decoder);
-        let data = match mode {
-            SpanEncodingMode::Direct => SpanData::decode(decoder),
-            SpanEncodingMode::RelativeOffset(offset) => {
-                decoder.with_position(start - offset, |decoder| {
-                    let mode = SpanEncodingMode::decode(decoder);
-                    debug_assert!(matches!(mode, SpanEncodingMode::Direct));
-                    SpanData::decode(decoder)
-                })
-            }
-            SpanEncodingMode::AbsoluteOffset(addr) => decoder.with_position(addr, |decoder| {
-                let mode = SpanEncodingMode::decode(decoder);
-                debug_assert!(matches!(mode, SpanEncodingMode::Direct));
-                SpanData::decode(decoder)
-            }),
+        let tag = SpanTag(decoder.peek_byte());
+        let data = if tag.kind() == SpanKind::Indirect {
+            // Skip past the tag we just peek'd.
+            decoder.read_u8();
+            let offset_or_position = decoder.read_usize();
+            let position = if tag.is_relative_offset() {
+                start - offset_or_position
+            } else {
+                offset_or_position
+            };
+            decoder.with_position(position, SpanData::decode)
+        } else {
+            SpanData::decode(decoder)
         };
         Span::new(data.lo, data.hi, data.ctxt, data.parent)
     }
@@ -530,17 +528,17 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
 
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SpanData {
     fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> SpanData {
-        let ctxt = SyntaxContext::decode(decoder);
-        let tag = u8::decode(decoder);
+        let tag = SpanTag::decode(decoder);
+        let ctxt = tag.context().unwrap_or_else(|| SyntaxContext::decode(decoder));
 
-        if tag == TAG_PARTIAL_SPAN {
+        if tag.kind() == SpanKind::Partial {
             return DUMMY_SP.with_ctxt(ctxt).data();
         }
 
-        debug_assert!(tag == TAG_VALID_SPAN_LOCAL || tag == TAG_VALID_SPAN_FOREIGN);
+        debug_assert!(tag.kind() == SpanKind::Local || tag.kind() == SpanKind::Foreign);
 
         let lo = BytePos::decode(decoder);
-        let len = BytePos::decode(decoder);
+        let len = tag.length().unwrap_or_else(|| BytePos::decode(decoder));
         let hi = lo + len;
 
         let Some(sess) = decoder.sess else {
@@ -581,7 +579,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SpanData {
         // treat the 'local' and 'foreign' cases almost identically during deserialization:
         // we can call `imported_source_file` for the proper crate, and binary search
         // through the returned slice using our span.
-        let source_file = if tag == TAG_VALID_SPAN_LOCAL {
+        let source_file = if tag.kind() == SpanKind::Local {
             decoder.cdata().imported_source_file(metadata_index, sess)
         } else {
             // When we encode a proc-macro crate, all `Span`s should be encoded

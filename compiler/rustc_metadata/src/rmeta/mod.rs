@@ -66,13 +66,6 @@ const METADATA_VERSION: u8 = 9;
 /// unsigned integer, and further followed by the rustc version string.
 pub const METADATA_HEADER: &[u8] = &[b'r', b'u', b's', b't', 0, 0, 0, METADATA_VERSION];
 
-#[derive(Encodable, Decodable)]
-enum SpanEncodingMode {
-    RelativeOffset(usize),
-    AbsoluteOffset(usize),
-    Direct,
-}
-
 /// A value of type T referred to by its absolute position
 /// in the metadata, and which can be decoded lazily.
 ///
@@ -488,10 +481,88 @@ bitflags::bitflags! {
     }
 }
 
-// Tags used for encoding Spans:
-const TAG_VALID_SPAN_LOCAL: u8 = 0;
-const TAG_VALID_SPAN_FOREIGN: u8 = 1;
-const TAG_PARTIAL_SPAN: u8 = 2;
+/// A span tag byte encodes a bunch of data, so that we can cut out a few extra bytes from span
+/// encodings (which are very common, for example, libcore has ~650,000 unique spans and over 1.1
+/// million references to prior-written spans).
+///
+/// The byte format is split into several parts:
+///
+/// [ a a a a a c d d ]
+///
+/// `a` bits represent the span length. We have 5 bits, so we can store lengths up to 30 inline, with
+/// an all-1s pattern representing that the length is stored separately.
+///
+/// `c` represents whether the span context is zero (and then it is not stored as a separate varint)
+/// for direct span encodings, and whether the offset is absolute or relative otherwise (zero for
+/// absolute).
+///
+/// d bits represent the kind of span we are storing (local, foreign, partial, indirect).
+#[derive(Encodable, Decodable, Copy, Clone)]
+struct SpanTag(u8);
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+enum SpanKind {
+    Local = 0b00,
+    Foreign = 0b01,
+    Partial = 0b10,
+    // Indicates the actual span contents are elsewhere.
+    // If this is the kind, then the span context bit represents whether it is a relative or
+    // absolute offset.
+    Indirect = 0b11,
+}
+
+impl SpanTag {
+    fn new(kind: SpanKind, context: rustc_span::SyntaxContext, length: usize) -> SpanTag {
+        let mut data = 0u8;
+        data |= kind as u8;
+        if context.is_root() {
+            data |= 0b100;
+        }
+        let all_1s_len = (0xffu8 << 3) >> 3;
+        // strictly less than - all 1s pattern is a sentinel for storage being out of band.
+        if length < all_1s_len as usize {
+            data |= (length as u8) << 3;
+        } else {
+            data |= all_1s_len << 3;
+        }
+
+        SpanTag(data)
+    }
+
+    fn indirect(relative: bool) -> SpanTag {
+        let mut tag = SpanTag(SpanKind::Indirect as u8);
+        if relative {
+            tag.0 |= 0b100;
+        }
+        tag
+    }
+
+    fn kind(self) -> SpanKind {
+        let masked = self.0 & 0b11;
+        match masked {
+            0b00 => SpanKind::Local,
+            0b01 => SpanKind::Foreign,
+            0b10 => SpanKind::Partial,
+            0b11 => SpanKind::Indirect,
+            _ => unreachable!(),
+        }
+    }
+
+    fn is_relative_offset(self) -> bool {
+        debug_assert_eq!(self.kind(), SpanKind::Indirect);
+        self.0 & 0b100 != 0
+    }
+
+    fn context(self) -> Option<rustc_span::SyntaxContext> {
+        if self.0 & 0b100 != 0 { Some(rustc_span::SyntaxContext::root()) } else { None }
+    }
+
+    fn length(self) -> Option<rustc_span::BytePos> {
+        let all_1s_len = (0xffu8 << 3) >> 3;
+        let len = self.0 >> 3;
+        if len != all_1s_len { Some(rustc_span::BytePos(u32::from(len))) } else { None }
+    }
+}
 
 // Tags for encoding Symbol's
 const SYMBOL_STR: u8 = 0;
