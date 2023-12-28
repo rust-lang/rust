@@ -255,7 +255,7 @@ LL |     _ = &&0 == Foo;
              i128
              usize
              u8
-           and 6 others
+           and 8 others
 
 error[E0369]: binary operation `==` cannot be applied to type `Foo`
   --> $DIR/binary-op-suggest-deref.rs:60:13
