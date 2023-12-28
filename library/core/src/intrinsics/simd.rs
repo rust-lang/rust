@@ -481,4 +481,36 @@ extern "platform-intrinsic" {
     ///
     /// `T` must be a vector of integers.
     pub fn simd_cttz<T>(x: T) -> T;
+
+    /// Round up each element to the next highest integer.
+    ///
+    /// `T` must be a vector of floats.
+    pub fn simd_ceil<T>(x: T) -> T;
+
+    /// Round down each element to the next lowest integer.
+    ///
+    /// `T` must be a vector of floats.
+    pub fn simd_floor<T>(x: T) -> T;
+
+    /// Round each element to the closest integer.
+    /// Ties are resolving by rounding away from 0.
+    ///
+    /// `T` must be a vector of floats.
+    pub fn simd_round<T>(x: T) -> T;
+
+    /// Return the integer part of each element.
+    /// This means that non-integer numbers are always truncated towards zero.
+    ///
+    /// `T` must be a vector of floats.
+    pub fn simd_trunc<T>(x: T) -> T;
+
+    /// Takes the square root of each element.
+    ///
+    /// `T` must be a vector of floats.
+    pub fn simd_fsqrt<T>(x: T) -> T;
+
+    /// Computes `(x*y) + z` for each element, but without any intermediate rounding.
+    ///
+    /// `T` must be a vector of floats.
+    pub fn simd_fma<T>(x: T, y: T, z: T) -> T;
 }
