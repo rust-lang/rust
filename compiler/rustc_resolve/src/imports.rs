@@ -80,7 +80,11 @@ pub(crate) enum ImportKind<'a> {
         target: Ident,
         id: NodeId,
     },
-    MacroUse,
+    MacroUse {
+        /// A field has been added indicating whether it should be reported as a lint,
+        /// addressing issue#119301.
+        warn_private: bool,
+    },
     MacroExport,
 }
 
@@ -127,7 +131,7 @@ impl<'a> std::fmt::Debug for ImportKind<'a> {
                 .field("target", target)
                 .field("id", id)
                 .finish(),
-            MacroUse => f.debug_struct("MacroUse").finish(),
+            MacroUse { .. } => f.debug_struct("MacroUse").finish(),
             MacroExport => f.debug_struct("MacroExport").finish(),
         }
     }
@@ -197,7 +201,7 @@ impl<'a> ImportData<'a> {
             ImportKind::Single { id, .. }
             | ImportKind::Glob { id, .. }
             | ImportKind::ExternCrate { id, .. } => Some(id),
-            ImportKind::MacroUse | ImportKind::MacroExport => None,
+            ImportKind::MacroUse { .. } | ImportKind::MacroExport => None,
         }
     }
 
@@ -207,7 +211,7 @@ impl<'a> ImportData<'a> {
             ImportKind::Single { id, .. } => Reexport::Single(to_def_id(id)),
             ImportKind::Glob { id, .. } => Reexport::Glob(to_def_id(id)),
             ImportKind::ExternCrate { id, .. } => Reexport::ExternCrate(to_def_id(id)),
-            ImportKind::MacroUse => Reexport::MacroUse,
+            ImportKind::MacroUse { .. } => Reexport::MacroUse,
             ImportKind::MacroExport => Reexport::MacroExport,
         }
     }
@@ -1482,7 +1486,7 @@ fn import_kind_to_string(import_kind: &ImportKind<'_>) -> String {
         ImportKind::Single { source, .. } => source.to_string(),
         ImportKind::Glob { .. } => "*".to_string(),
         ImportKind::ExternCrate { .. } => "<extern crate>".to_string(),
-        ImportKind::MacroUse => "#[macro_use]".to_string(),
+        ImportKind::MacroUse { .. } => "#[macro_use]".to_string(),
         ImportKind::MacroExport => "#[macro_export]".to_string(),
     }
 }
