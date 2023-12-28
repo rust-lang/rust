@@ -241,38 +241,36 @@ pub struct ClosureArgs<'tcx> {
 }
 
 /// Struct returned by `split()`.
-pub struct ClosureArgsParts<'tcx, T> {
+pub struct ClosureArgsParts<'tcx> {
     pub parent_args: &'tcx [GenericArg<'tcx>],
-    pub closure_kind_ty: T,
-    pub closure_sig_as_fn_ptr_ty: T,
-    pub tupled_upvars_ty: T,
+    pub closure_kind_ty: Ty<'tcx>,
+    pub closure_sig_as_fn_ptr_ty: Ty<'tcx>,
+    pub tupled_upvars_ty: Ty<'tcx>,
 }
 
 impl<'tcx> ClosureArgs<'tcx> {
     /// Construct `ClosureArgs` from `ClosureArgsParts`, containing `Args`
     /// for the closure parent, alongside additional closure-specific components.
-    pub fn new(tcx: TyCtxt<'tcx>, parts: ClosureArgsParts<'tcx, Ty<'tcx>>) -> ClosureArgs<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, parts: ClosureArgsParts<'tcx>) -> ClosureArgs<'tcx> {
         ClosureArgs {
-            args: tcx.mk_args_from_iter(
-                parts.parent_args.iter().copied().chain(
-                    [parts.closure_kind_ty, parts.closure_sig_as_fn_ptr_ty, parts.tupled_upvars_ty]
-                        .iter()
-                        .map(|&ty| ty.into()),
-                ),
-            ),
+            args: tcx.mk_args_from_iter(parts.parent_args.iter().copied().chain([
+                parts.closure_kind_ty.into(),
+                parts.closure_sig_as_fn_ptr_ty.into(),
+                parts.tupled_upvars_ty.into(),
+            ])),
         }
     }
 
     /// Divides the closure args into their respective components.
     /// The ordering assumed here must match that used by `ClosureArgs::new` above.
-    fn split(self) -> ClosureArgsParts<'tcx, GenericArg<'tcx>> {
+    fn split(self) -> ClosureArgsParts<'tcx> {
         match self.args[..] {
             [ref parent_args @ .., closure_kind_ty, closure_sig_as_fn_ptr_ty, tupled_upvars_ty] => {
                 ClosureArgsParts {
                     parent_args,
-                    closure_kind_ty,
-                    closure_sig_as_fn_ptr_ty,
-                    tupled_upvars_ty,
+                    closure_kind_ty: closure_kind_ty.expect_ty(),
+                    closure_sig_as_fn_ptr_ty: closure_sig_as_fn_ptr_ty.expect_ty(),
+                    tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
                 }
             }
             _ => bug!("closure args missing synthetics"),
@@ -285,7 +283,7 @@ impl<'tcx> ClosureArgs<'tcx> {
     /// Used primarily by `ty::print::pretty` to be able to handle closure
     /// types that haven't had their synthetic types substituted in.
     pub fn is_valid(self) -> bool {
-        self.args.len() >= 3 && matches!(self.split().tupled_upvars_ty.expect_ty().kind(), Tuple(_))
+        self.args.len() >= 3 && matches!(self.split().tupled_upvars_ty.kind(), Tuple(_))
     }
 
     /// Returns the substitutions of the closure's parent.
@@ -309,14 +307,14 @@ impl<'tcx> ClosureArgs<'tcx> {
     /// Returns the tuple type representing the upvars for this closure.
     #[inline]
     pub fn tupled_upvars_ty(self) -> Ty<'tcx> {
-        self.split().tupled_upvars_ty.expect_ty()
+        self.split().tupled_upvars_ty
     }
 
     /// Returns the closure kind for this closure; may return a type
     /// variable during inference. To get the closure kind during
     /// inference, use `infcx.closure_kind(args)`.
     pub fn kind_ty(self) -> Ty<'tcx> {
-        self.split().closure_kind_ty.expect_ty()
+        self.split().closure_kind_ty
     }
 
     /// Returns the `fn` pointer type representing the closure signature for this
@@ -325,7 +323,7 @@ impl<'tcx> ClosureArgs<'tcx> {
     // type is known at the time of the creation of `ClosureArgs`,
     // see `rustc_hir_analysis::check::closure`.
     pub fn sig_as_fn_ptr_ty(self) -> Ty<'tcx> {
-        self.split().closure_sig_as_fn_ptr_ty.expect_ty()
+        self.split().closure_sig_as_fn_ptr_ty
     }
 
     /// Returns the closure kind for this closure; only usable outside
@@ -357,51 +355,42 @@ pub struct CoroutineArgs<'tcx> {
     pub args: GenericArgsRef<'tcx>,
 }
 
-pub struct CoroutineArgsParts<'tcx, T> {
+pub struct CoroutineArgsParts<'tcx> {
     pub parent_args: &'tcx [GenericArg<'tcx>],
-    pub resume_ty: T,
-    pub yield_ty: T,
-    pub return_ty: T,
-    pub witness: T,
-    pub tupled_upvars_ty: T,
+    pub resume_ty: Ty<'tcx>,
+    pub yield_ty: Ty<'tcx>,
+    pub return_ty: Ty<'tcx>,
+    pub witness: Ty<'tcx>,
+    pub tupled_upvars_ty: Ty<'tcx>,
 }
 
 impl<'tcx> CoroutineArgs<'tcx> {
     /// Construct `CoroutineArgs` from `CoroutineArgsParts`, containing `Args`
     /// for the coroutine parent, alongside additional coroutine-specific components.
-    pub fn new(
-        tcx: TyCtxt<'tcx>,
-        parts: CoroutineArgsParts<'tcx, Ty<'tcx>>,
-    ) -> CoroutineArgs<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>, parts: CoroutineArgsParts<'tcx>) -> CoroutineArgs<'tcx> {
         CoroutineArgs {
-            args: tcx.mk_args_from_iter(
-                parts.parent_args.iter().copied().chain(
-                    [
-                        parts.resume_ty,
-                        parts.yield_ty,
-                        parts.return_ty,
-                        parts.witness,
-                        parts.tupled_upvars_ty,
-                    ]
-                    .iter()
-                    .map(|&ty| ty.into()),
-                ),
-            ),
+            args: tcx.mk_args_from_iter(parts.parent_args.iter().copied().chain([
+                parts.resume_ty.into(),
+                parts.yield_ty.into(),
+                parts.return_ty.into(),
+                parts.witness.into(),
+                parts.tupled_upvars_ty.into(),
+            ])),
         }
     }
 
     /// Divides the coroutine args into their respective components.
     /// The ordering assumed here must match that used by `CoroutineArgs::new` above.
-    fn split(self) -> CoroutineArgsParts<'tcx, GenericArg<'tcx>> {
+    fn split(self) -> CoroutineArgsParts<'tcx> {
         match self.args[..] {
             [ref parent_args @ .., resume_ty, yield_ty, return_ty, witness, tupled_upvars_ty] => {
                 CoroutineArgsParts {
                     parent_args,
-                    resume_ty,
-                    yield_ty,
-                    return_ty,
-                    witness,
-                    tupled_upvars_ty,
+                    resume_ty: resume_ty.expect_ty(),
+                    yield_ty: yield_ty.expect_ty(),
+                    return_ty: return_ty.expect_ty(),
+                    witness: witness.expect_ty(),
+                    tupled_upvars_ty: tupled_upvars_ty.expect_ty(),
                 }
             }
             _ => bug!("coroutine args missing synthetics"),
@@ -414,7 +403,7 @@ impl<'tcx> CoroutineArgs<'tcx> {
     /// Used primarily by `ty::print::pretty` to be able to handle coroutine
     /// types that haven't had their synthetic types substituted in.
     pub fn is_valid(self) -> bool {
-        self.args.len() >= 5 && matches!(self.split().tupled_upvars_ty.expect_ty().kind(), Tuple(_))
+        self.args.len() >= 5 && matches!(self.split().tupled_upvars_ty.kind(), Tuple(_))
     }
 
     /// Returns the substitutions of the coroutine's parent.
@@ -428,7 +417,7 @@ impl<'tcx> CoroutineArgs<'tcx> {
     /// The state transformation MIR pass may only produce layouts which mention types
     /// in this tuple. Upvars are not counted here.
     pub fn witness(self) -> Ty<'tcx> {
-        self.split().witness.expect_ty()
+        self.split().witness
     }
 
     /// Returns an iterator over the list of types of captured paths by the coroutine.
@@ -447,31 +436,32 @@ impl<'tcx> CoroutineArgs<'tcx> {
     /// Returns the tuple type representing the upvars for this coroutine.
     #[inline]
     pub fn tupled_upvars_ty(self) -> Ty<'tcx> {
-        self.split().tupled_upvars_ty.expect_ty()
+        self.split().tupled_upvars_ty
     }
 
     /// Returns the type representing the resume type of the coroutine.
     pub fn resume_ty(self) -> Ty<'tcx> {
-        self.split().resume_ty.expect_ty()
+        self.split().resume_ty
     }
 
     /// Returns the type representing the yield type of the coroutine.
     pub fn yield_ty(self) -> Ty<'tcx> {
-        self.split().yield_ty.expect_ty()
+        self.split().yield_ty
     }
 
     /// Returns the type representing the return type of the coroutine.
     pub fn return_ty(self) -> Ty<'tcx> {
-        self.split().return_ty.expect_ty()
+        self.split().return_ty
     }
 
     /// Returns the "coroutine signature", which consists of its resume, yield
     /// and return types.
     pub fn sig(self) -> GenSig<'tcx> {
+        let parts = self.split();
         ty::GenSig {
-            resume_ty: self.resume_ty(),
-            yield_ty: self.yield_ty(),
-            return_ty: self.return_ty(),
+            resume_ty: parts.resume_ty,
+            yield_ty: parts.yield_ty,
+            return_ty: parts.return_ty,
         }
     }
 }
