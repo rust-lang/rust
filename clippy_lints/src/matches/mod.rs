@@ -469,15 +469,15 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Lint for redundant pattern matching over `Result`, `Option`,
-    /// `std::task::Poll` or `std::net::IpAddr`
+    /// `std::task::Poll`, `std::net::IpAddr` or `bool`s
     ///
     /// ### Why is this bad?
     /// It's more concise and clear to just use the proper
-    /// utility function
+    /// utility function or using the condition directly
     ///
     /// ### Known problems
-    /// This will change the drop order for the matched type. Both `if let` and
-    /// `while let` will drop the value at the end of the block, both `if` and `while` will drop the
+    /// For suggestions involving bindings in patterns, this will change the drop order for the matched type.
+    /// Both `if let` and `while let` will drop the value at the end of the block, both `if` and `while` will drop the
     /// value before entering the block. For most types this change will not matter, but for a few
     /// types this will not be an acceptable change (e.g. locks). See the
     /// [reference](https://doc.rust-lang.org/reference/destructors.html#drop-scopes) for more about
@@ -499,6 +499,10 @@ declare_clippy_lint! {
     ///     Ok(_) => true,
     ///     Err(_) => false,
     /// };
+    ///
+    /// let cond = true;
+    /// if let true = cond {}
+    /// matches!(cond, true);
     /// ```
     ///
     /// The more idiomatic use would be:
@@ -515,6 +519,10 @@ declare_clippy_lint! {
     /// if IpAddr::V4(Ipv4Addr::LOCALHOST).is_ipv4() {}
     /// if IpAddr::V6(Ipv6Addr::LOCALHOST).is_ipv6() {}
     /// Ok::<i32, i32>(42).is_ok();
+    ///
+    /// let cond = true;
+    /// if cond {}
+    /// cond;
     /// ```
     #[clippy::version = "1.31.0"]
     pub REDUNDANT_PATTERN_MATCHING,
@@ -1019,8 +1027,11 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
         let from_expansion = expr.span.from_expansion();
 
         if let ExprKind::Match(ex, arms, source) = expr.kind {
-            if is_direct_expn_of(expr.span, "matches").is_some() {
+            if is_direct_expn_of(expr.span, "matches").is_some()
+                && let [arm, _] = arms
+            {
                 redundant_pattern_match::check_match(cx, expr, ex, arms);
+                redundant_pattern_match::check_matches_true(cx, expr, arm, ex);
             }
 
             if source == MatchSource::Normal && !is_span_match(cx, expr.span) {
@@ -1104,6 +1115,7 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                     if_let.let_pat,
                     if_let.let_expr,
                     if_let.if_else.is_some(),
+                    if_let.let_span,
                 );
                 needless_match::check_if_let(cx, expr, &if_let);
             }

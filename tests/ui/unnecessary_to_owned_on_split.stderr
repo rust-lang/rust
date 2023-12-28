@@ -1,0 +1,53 @@
+error: unnecessary use of `to_string`
+  --> $DIR/unnecessary_to_owned_on_split.rs:4:13
+   |
+LL |     let _ = "a".to_string().split('a').next().unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `"a".split('a')`
+   |
+   = note: `-D clippy::unnecessary-to-owned` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::unnecessary_to_owned)]`
+
+error: unnecessary use of `to_string`
+  --> $DIR/unnecessary_to_owned_on_split.rs:6:13
+   |
+LL |     let _ = "a".to_string().split("a").next().unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `"a".split("a")`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned_on_split.rs:8:13
+   |
+LL |     let _ = "a".to_owned().split('a').next().unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `"a".split('a')`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned_on_split.rs:10:13
+   |
+LL |     let _ = "a".to_owned().split("a").next().unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `"a".split("a")`
+
+error: unnecessary use of `to_vec`
+  --> $DIR/unnecessary_to_owned_on_split.rs:13:13
+   |
+LL |     let _ = [1].to_vec().split(|x| *x == 2).next().unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `[1].split(|x| *x == 2)`
+
+error: unnecessary use of `to_vec`
+  --> $DIR/unnecessary_to_owned_on_split.rs:15:13
+   |
+LL |     let _ = [1].to_vec().split(|x| *x == 2).next().unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `[1].split(|x| *x == 2)`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned_on_split.rs:17:13
+   |
+LL |     let _ = [1].to_owned().split(|x| *x == 2).next().unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `[1].split(|x| *x == 2)`
+
+error: unnecessary use of `to_owned`
+  --> $DIR/unnecessary_to_owned_on_split.rs:19:13
+   |
+LL |     let _ = [1].to_owned().split(|x| *x == 2).next().unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use: `[1].split(|x| *x == 2)`
+
+error: aborting due to 8 previous errors
+

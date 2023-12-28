@@ -42,7 +42,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.71.0"]
     pub DEFAULT_CONSTRUCTED_UNIT_STRUCTS,
     complexity,
-    "unit structs can be contructed without calling `default`"
+    "unit structs can be constructed without calling `default`"
 }
 declare_lint_pass!(DefaultConstructedUnitStructs => [DEFAULT_CONSTRUCTED_UNIT_STRUCTS]);
 
