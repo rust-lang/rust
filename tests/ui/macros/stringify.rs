@@ -225,7 +225,7 @@ fn test_expr() {
     );
     c2_match_arm!(
         [ m! {} - 1 ],
-        "match () { _ => m! {} - 1, }",
+        "match () { _ => (m! {}) - 1, }", // parenthesis is redundant
         "match () { _ => m! {} - 1 }",
     );
 
@@ -747,7 +747,7 @@ fn test_stmt() {
     );
     c2_minus_one!(
         [ m! {} ],
-        "m! {} - 1;", // FIXME(dtolnay): needs parens, otherwise this is 2 separate statements
+        "(m! {}) - 1;",
         "m! {} - 1"
     );
 

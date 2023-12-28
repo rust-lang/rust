@@ -128,11 +128,7 @@ impl FixupContext {
     /// The documentation on `FixupContext::leftmost_subexpression_in_stmt` has
     /// examples.
     pub fn would_cause_statement_boundary(self, expr: &Expr) -> bool {
-        self.leftmost_subexpression_in_stmt
-            && match expr.kind {
-                ExprKind::MacCall(_) => false,
-                _ => !classify::expr_requires_semi_to_be_stmt(expr),
-            }
+        self.leftmost_subexpression_in_stmt && !classify::expr_requires_semi_to_be_stmt(expr)
     }
 
     /// Determine whether parentheses are needed around the given `let`
