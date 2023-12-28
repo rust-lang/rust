@@ -1,4 +1,4 @@
-#![feature(float_gamma)]
+#![feature(float_gamma, portable_simd, core_intrinsics, platform_intrinsics)]
 use std::collections::HashSet;
 use std::fmt;
 use std::hash::Hash;
@@ -535,6 +535,61 @@ fn test_casts() {
     );
 }
 
+fn test_simd() {
+    use std::intrinsics::simd::*;
+    use std::simd::*;
+
+    extern "platform-intrinsic" {
+        fn simd_fsqrt<T>(x: T) -> T;
+        fn simd_ceil<T>(x: T) -> T;
+        fn simd_fma<T>(x: T, y: T, z: T) -> T;
+    }
+
+    let nan = F32::nan(Neg, Quiet, 0).as_f32();
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(unsafe { simd_div(f32x4::splat(0.0), f32x4::splat(0.0)) }[0]),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(unsafe { simd_fmin(f32x4::splat(nan), f32x4::splat(nan)) }[0]),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(unsafe { simd_fmax(f32x4::splat(nan), f32x4::splat(nan)) }[0]),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || {
+            F32::from(
+                unsafe { simd_fma(f32x4::splat(nan), f32x4::splat(nan), f32x4::splat(nan)) }[0],
+            )
+        },
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(unsafe { simd_reduce_add_ordered::<_, f32>(f32x4::splat(nan), nan) }),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(unsafe { simd_reduce_max::<_, f32>(f32x4::splat(nan)) }),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(unsafe { simd_fsqrt(f32x4::splat(nan)) }[0]),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(unsafe { simd_ceil(f32x4::splat(nan)) }[0]),
+    );
+
+    // Casts
+    check_all_outcomes(
+        HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
+        || F64::from(unsafe { simd_cast::<f32x4, f64x4>(f32x4::splat(nan)) }[0]),
+    );
+}
+
 fn main() {
     // Check our constants against std, just to be sure.
     // We add 1 since our numbers are the number of bits stored
@@ -546,4 +601,5 @@ fn main() {
     test_f32();
     test_f64();
     test_casts();
+    test_simd();
 }
