@@ -716,7 +716,7 @@ use rustc_index::bit_set::BitSet;
 use smallvec::{smallvec, SmallVec};
 use std::fmt;
 
-use crate::constructor::{Constructor, ConstructorSet};
+use crate::constructor::{Constructor, ConstructorSet, IntRange};
 use crate::pat::{DeconstructedPat, PatOrWild, WitnessPat};
 use crate::{Captures, MatchArm, MatchCtxt, TypeCx};
 
@@ -1469,6 +1469,15 @@ pub enum Usefulness<'p, Cx: TypeCx> {
     /// The arm is redundant and can be removed without changing the behavior of the match
     /// expression.
     Redundant,
+}
+
+/// Indicates that the range `pat` overlapped with all the ranges in `overlaps_with`, where the
+/// range they overlapped over is `overlaps_on`. We only detect singleton overlaps.
+#[derive(Clone, Debug)]
+pub struct OverlappingRanges<'p, Cx: TypeCx> {
+    pub pat: &'p DeconstructedPat<'p, Cx>,
+    pub overlaps_on: IntRange,
+    pub overlaps_with: Vec<&'p DeconstructedPat<'p, Cx>>,
 }
 
 /// The output of checking a match for exhaustiveness and arm usefulness.

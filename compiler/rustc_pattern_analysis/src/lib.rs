@@ -124,7 +124,7 @@ pub fn analyze_match<'p, 'tcx>(
 
     let pat_column = PatternColumn::new(arms);
 
-    // Lint on ranges that overlap on their endpoints, which is likely a mistake.
+    // Lint ranges that overlap on their endpoints, which is likely a mistake.
     lint_overlapping_range_endpoints(cx, &pat_column)?;
 
     // Run the non_exhaustive_omitted_patterns lint. Only run on refutable patterns to avoid hitting
