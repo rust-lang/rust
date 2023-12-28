@@ -405,7 +405,6 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
                 if let Res::Local(_var_hir_id) = path.res {
                     self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
                 }
-                intravisit::walk_expr(self, expr);
             }
             hir::ExprKind::Closure(closure) => {
                 // Interesting control flow (for loops can contain labeled
@@ -425,12 +424,10 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
                     }));
                 }
                 self.set_captures(expr.hir_id, call_caps);
-                intravisit::walk_expr(self, expr);
             }
 
             hir::ExprKind::Let(let_expr) => {
                 self.add_from_pat(let_expr.pat);
-                intravisit::walk_expr(self, expr);
             }
 
             // live nodes required for interesting control flow:
@@ -439,11 +436,9 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             | hir::ExprKind::Loop(..)
             | hir::ExprKind::Yield(..) => {
                 self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
-                intravisit::walk_expr(self, expr);
             }
             hir::ExprKind::Binary(op, ..) if op.node.is_lazy() => {
                 self.add_live_node_for_node(expr.hir_id, ExprNode(expr.span, expr.hir_id));
-                intravisit::walk_expr(self, expr);
             }
 
             // otherwise, live nodes are not required:
@@ -474,10 +469,9 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
             | hir::ExprKind::Type(..)
             | hir::ExprKind::Err(_)
             | hir::ExprKind::Path(hir::QPath::TypeRelative(..))
-            | hir::ExprKind::Path(hir::QPath::LangItem(..)) => {
-                intravisit::walk_expr(self, expr);
-            }
+            | hir::ExprKind::Path(hir::QPath::LangItem(..)) => {}
         }
+        intravisit::walk_expr(self, expr);
     }
 }
 
