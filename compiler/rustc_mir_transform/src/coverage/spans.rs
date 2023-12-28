@@ -68,12 +68,12 @@ impl CoverageSpans {
 /// `dominates()` the `BasicBlock`s in this `CoverageSpan`.
 #[derive(Debug, Clone)]
 struct CoverageSpan {
-    pub span: Span,
-    pub bcb: BasicCoverageBlock,
+    span: Span,
+    bcb: BasicCoverageBlock,
     /// List of all the original spans from MIR that have been merged into this
     /// span. Mainly used to precisely skip over gaps when truncating a span.
-    pub merged_spans: Vec<Span>,
-    pub is_closure: bool,
+    merged_spans: Vec<Span>,
+    is_closure: bool,
 }
 
 impl CoverageSpan {
