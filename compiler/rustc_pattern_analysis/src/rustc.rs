@@ -579,7 +579,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                                 use rustc_apfloat::ieee::Half;
                                 let lo = lo.map(Half::from_bits).unwrap_or(-Half::INFINITY);
                                 let hi = hi.map(Half::from_bits).unwrap_or(Half::INFINITY);
-                                F16Range(lo, hi, *end)
+                                F16Range(lo, hi, end)
                             }
                             ty::FloatTy::F32 => {
                                 use rustc_apfloat::ieee::Single;
@@ -597,7 +597,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                                 use rustc_apfloat::ieee::Quad;
                                 let lo = lo.map(Quad::from_bits).unwrap_or(-Quad::INFINITY);
                                 let hi = hi.map(Quad::from_bits).unwrap_or(Quad::INFINITY);
-                                F128Range(lo, hi, *end)
+                                F128Range(lo, hi, end)
                             }
                         }
                     }
