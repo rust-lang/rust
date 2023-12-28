@@ -49,7 +49,6 @@ pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<Mult
     #[expect(clippy::disallowed_methods)]
     cx.struct_span_lint(lint, sp, msg.to_string(), |diag| {
         docs_link(diag, lint);
-        diag
     });
 }
 
@@ -90,7 +89,6 @@ pub fn span_lint_and_help<T: LintContext>(
             diag.help(help);
         }
         docs_link(diag, lint);
-        diag
     });
 }
 
@@ -134,7 +132,6 @@ pub fn span_lint_and_note<T: LintContext>(
             diag.note(note);
         }
         docs_link(diag, lint);
-        diag
     });
 }
 
@@ -152,7 +149,6 @@ where
     cx.struct_span_lint(lint, sp, msg.to_string(), |diag| {
         f(diag);
         docs_link(diag, lint);
-        diag
     });
 }
 
@@ -160,7 +156,6 @@ pub fn span_lint_hir(cx: &LateContext<'_>, lint: &'static Lint, hir_id: HirId, s
     #[expect(clippy::disallowed_methods)]
     cx.tcx.struct_span_lint_hir(lint, hir_id, sp, msg.to_string(), |diag| {
         docs_link(diag, lint);
-        diag
     });
 }
 
@@ -176,7 +171,6 @@ pub fn span_lint_hir_and_then(
     cx.tcx.struct_span_lint_hir(lint, hir_id, sp, msg.to_string(), |diag| {
         f(diag);
         docs_link(diag, lint);
-        diag
     });
 }
 

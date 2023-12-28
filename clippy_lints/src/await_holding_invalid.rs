@@ -2,8 +2,8 @@ use clippy_config::types::DisallowedPath;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{match_def_path, paths};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Body, CoroutineKind, CoroutineSource};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::mir::CoroutineLayout;
 use rustc_session::impl_lint_pass;
@@ -183,8 +183,8 @@ impl AwaitHolding {
     }
 }
 
-impl LateLintPass<'_> for AwaitHolding {
-    fn check_crate(&mut self, cx: &LateContext<'_>) {
+impl<'tcx> LateLintPass<'tcx> for AwaitHolding {
+    fn check_crate(&mut self, cx: &LateContext<'tcx>) {
         for conf in &self.conf_invalid_types {
             let segs: Vec<_> = conf.path().split("::").collect();
             for id in clippy_utils::def_path_def_ids(cx, &segs) {
@@ -193,11 +193,14 @@ impl LateLintPass<'_> for AwaitHolding {
         }
     }
 
-    fn check_body(&mut self, cx: &LateContext<'_>, body: &'_ Body<'_>) {
-        use CoroutineSource::{Block, Closure, Fn};
-        if let Some(CoroutineKind::Async(Block | Closure | Fn)) = body.coroutine_kind {
-            let def_id = cx.tcx.hir().body_owner_def_id(body.id());
-            if let Some(coroutine_layout) = cx.tcx.mir_coroutine_witnesses(def_id) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
+        if let hir::ExprKind::Closure(hir::Closure {
+            kind: hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)),
+            def_id,
+            ..
+        }) = expr.kind
+        {
+            if let Some(coroutine_layout) = cx.tcx.mir_coroutine_witnesses(*def_id) {
                 self.check_interior_types(cx, coroutine_layout);
             }
         }

@@ -134,6 +134,7 @@ pub fn eq_struct_rest(l: &StructRest, r: &StructRest) -> bool {
     }
 }
 
+#[allow(clippy::too_many_lines)] // Just a big match statement
 pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
     use ExprKind::*;
     if !over(&l.attrs, &r.attrs, eq_attr) {
@@ -169,9 +170,22 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (Let(lp, le, _, _), Let(rp, re, _, _)) => eq_pat(lp, rp) && eq_expr(le, re),
         (If(lc, lt, le), If(rc, rt, re)) => eq_expr(lc, rc) && eq_block(lt, rt) && eq_expr_opt(le, re),
         (While(lc, lt, ll), While(rc, rt, rl)) => eq_label(ll, rl) && eq_expr(lc, rc) && eq_block(lt, rt),
-        (ForLoop(lp, li, lt, ll), ForLoop(rp, ri, rt, rl)) => {
-            eq_label(ll, rl) && eq_pat(lp, rp) && eq_expr(li, ri) && eq_block(lt, rt)
-        },
+        (
+            ForLoop {
+                pat: lp,
+                iter: li,
+                body: lt,
+                label: ll,
+                kind: lk,
+            },
+            ForLoop {
+                pat: rp,
+                iter: ri,
+                body: rt,
+                label: rl,
+                kind: rk,
+            },
+        ) => eq_label(ll, rl) && eq_pat(lp, rp) && eq_expr(li, ri) && eq_block(lt, rt) && lk == rk,
         (Loop(lt, ll, _), Loop(rt, rl, _)) => eq_label(ll, rl) && eq_block(lt, rt),
         (Block(lb, ll), Block(rb, rl)) => eq_label(ll, rl) && eq_block(lb, rb),
         (TryBlock(l), TryBlock(r)) => eq_block(l, r),
@@ -546,7 +560,9 @@ pub fn eq_variant_data(l: &VariantData, r: &VariantData) -> bool {
     use VariantData::*;
     match (l, r) {
         (Unit(_), Unit(_)) => true,
-        (Struct(l, _), Struct(r, _)) | (Tuple(l, _), Tuple(r, _)) => over(l, r, eq_struct_field),
+        (Struct { fields: l, .. }, Struct { fields: r, .. }) | (Tuple(l, _), Tuple(r, _)) => {
+            over(l, r, eq_struct_field)
+        },
         _ => false,
     }
 }

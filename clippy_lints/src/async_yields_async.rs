@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::implements_trait;
 use rustc_errors::Applicability;
-use rustc_hir::{Body, BodyId, CoroutineKind, CoroutineSource, ExprKind, QPath};
+use rustc_hir::{Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 
@@ -44,16 +44,22 @@ declare_clippy_lint! {
 declare_lint_pass!(AsyncYieldsAsync => [ASYNC_YIELDS_ASYNC]);
 
 impl<'tcx> LateLintPass<'tcx> for AsyncYieldsAsync {
-    fn check_body(&mut self, cx: &LateContext<'tcx>, body: &'tcx Body<'_>) {
-        use CoroutineSource::{Block, Closure};
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         // For functions, with explicitly defined types, don't warn.
         // XXXkhuey maybe we should?
-        if let Some(CoroutineKind::Async(Block | Closure)) = body.coroutine_kind {
+        if let ExprKind::Closure(Closure {
+            kind:
+                ClosureKind::Coroutine(CoroutineKind::Desugared(
+                    CoroutineDesugaring::Async,
+                    CoroutineSource::Block | CoroutineSource::Closure,
+                )),
+            body: body_id,
+            ..
+        }) = expr.kind
+        {
             if let Some(future_trait_def_id) = cx.tcx.lang_items().future_trait() {
-                let body_id = BodyId {
-                    hir_id: body.value.hir_id,
-                };
-                let typeck_results = cx.tcx.typeck_body(body_id);
+                let typeck_results = cx.tcx.typeck_body(*body_id);
+                let body = cx.tcx.hir().body(*body_id);
                 let expr_ty = typeck_results.expr_ty(body.value);
 
                 if implements_trait(cx, expr_ty, future_trait_def_id, &[]) {

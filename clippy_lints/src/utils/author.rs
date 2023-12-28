@@ -7,7 +7,8 @@ use rustc_ast::LitIntType;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::{
-    ArrayLen, BindingAnnotation, CaptureBy, Closure, ExprKind, FnRetTy, HirId, Lit, PatKind, QPath, StmtKind, TyKind,
+    ArrayLen, BindingAnnotation, CaptureBy, Closure, ClosureKind, CoroutineKind, ExprKind, FnRetTy, HirId, Lit,
+    PatKind, QPath, StmtKind, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::declare_lint_pass;
@@ -477,7 +478,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 capture_clause,
                 fn_decl,
                 body: body_id,
-                movability,
+                kind,
                 ..
             }) => {
                 let capture_clause = match capture_clause {
@@ -485,7 +486,17 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                     CaptureBy::Ref => "Ref",
                 };
 
-                let movability = OptionPat::new(movability.map(|m| format!("Movability::{m:?}")));
+                let closure_kind = match kind {
+                    ClosureKind::Closure => "ClosureKind::Closure".to_string(),
+                    ClosureKind::Coroutine(coroutine_kind) => match coroutine_kind {
+                        CoroutineKind::Desugared(desugaring, source) => format!(
+                            "ClosureKind::Coroutine(CoroutineKind::Desugared(CoroutineDesugaring::{desugaring:?}, CoroutineSource::{source:?}))"
+                        ),
+                        CoroutineKind::Coroutine(movability) => {
+                            format!("ClosureKind::Coroutine(CoroutineKind::Coroutine(Movability::{movability:?})")
+                        },
+                    },
+                };
 
                 let ret_ty = match fn_decl.output {
                     FnRetTy::DefaultReturn(_) => "FnRetTy::DefaultReturn(_)",
@@ -493,7 +504,9 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 };
 
                 bind!(self, fn_decl, body_id);
-                kind!("Closure(CaptureBy::{capture_clause}, {fn_decl}, {body_id}, _, {movability})");
+                kind!(
+                    "Closure {{ capture_clause: CaptureBy::{capture_clause}, fn_decl: {fn_decl}, body: {body_id}, closure_kind: {closure_kind}, .. }}"
+                );
                 chain!(self, "let {ret_ty} = {fn_decl}.output");
                 self.body(body_id);
             },

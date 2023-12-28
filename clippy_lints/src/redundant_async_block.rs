@@ -6,7 +6,9 @@ use clippy_utils::source::{snippet, walk_span_to_context};
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::for_each_expr;
 use rustc_errors::Applicability;
-use rustc_hir::{Closure, CoroutineKind, CoroutineSource, Expr, ExprKind, MatchSource};
+use rustc_hir::{
+    Closure, ClosureKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Expr, ExprKind, MatchSource,
+};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::UpvarCapture;
@@ -73,9 +75,15 @@ impl<'tcx> LateLintPass<'tcx> for RedundantAsyncBlock {
 /// If `expr` is a desugared `async` block, return the original expression if it does not capture
 /// any variable by ref.
 fn desugar_async_block<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
-    if let ExprKind::Closure(Closure { body, def_id, .. }) = expr.kind
+    if let ExprKind::Closure(Closure { body, def_id, kind, .. }) = expr.kind
         && let body = cx.tcx.hir().body(*body)
-        && matches!(body.coroutine_kind, Some(CoroutineKind::Async(CoroutineSource::Block)))
+        && matches!(
+            kind,
+            ClosureKind::Coroutine(CoroutineKind::Desugared(
+                CoroutineDesugaring::Async,
+                CoroutineSource::Block
+            ))
+        )
     {
         cx.typeck_results()
             .closure_min_captures
