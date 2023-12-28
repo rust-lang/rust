@@ -1,0 +1,92 @@
+error: this transmute is always evaluated eagerly, even if the condition is false
+  --> $DIR/eager_transmute.rs:16:33
+   |
+LL |     (op < 4).then_some(unsafe { std::mem::transmute(op) })
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-D clippy::eager-transmute` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::eager_transmute)]`
+help: consider using `bool::then` to only transmute if the condition holds
+   |
+LL |     (op < 4).then(|| unsafe { std::mem::transmute(op) })
+   |              ~~~~ ++
+
+error: this transmute is always evaluated eagerly, even if the condition is false
+  --> $DIR/eager_transmute.rs:22:33
+   |
+LL |     (op < 4).then_some(unsafe { std::mem::transmute::<_, Opcode>(op) });
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `bool::then` to only transmute if the condition holds
+   |
+LL |     (op < 4).then(|| unsafe { std::mem::transmute::<_, Opcode>(op) });
+   |              ~~~~ ++
+
+error: this transmute is always evaluated eagerly, even if the condition is false
+  --> $DIR/eager_transmute.rs:23:33
+   |
+LL |     (op > 4).then_some(unsafe { std::mem::transmute::<_, Opcode>(op) });
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `bool::then` to only transmute if the condition holds
+   |
+LL |     (op > 4).then(|| unsafe { std::mem::transmute::<_, Opcode>(op) });
+   |              ~~~~ ++
+
+error: this transmute is always evaluated eagerly, even if the condition is false
+  --> $DIR/eager_transmute.rs:24:34
+   |
+LL |     (op == 0).then_some(unsafe { std::mem::transmute::<_, Opcode>(op) });
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `bool::then` to only transmute if the condition holds
+   |
+LL |     (op == 0).then(|| unsafe { std::mem::transmute::<_, Opcode>(op) });
+   |               ~~~~ ++
+
+error: this transmute is always evaluated eagerly, even if the condition is false
+  --> $DIR/eager_transmute.rs:28:24
+   |
+LL |     (op < 4).then_some(std::mem::transmute::<_, Opcode>(op));
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `bool::then` to only transmute if the condition holds
+   |
+LL |     (op < 4).then(|| std::mem::transmute::<_, Opcode>(op));
+   |              ~~~~ ++
+
+error: this transmute is always evaluated eagerly, even if the condition is false
+  --> $DIR/eager_transmute.rs:57:60
+   |
+LL |     let _: Option<NonZeroU8> = (v1 > 0).then_some(unsafe { std::mem::transmute(v1) });
+   |                                                            ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `bool::then` to only transmute if the condition holds
+   |
+LL |     let _: Option<NonZeroU8> = (v1 > 0).then(|| unsafe { std::mem::transmute(v1) });
+   |                                         ~~~~ ++
+
+error: this transmute is always evaluated eagerly, even if the condition is false
+  --> $DIR/eager_transmute.rs:63:86
+   |
+LL |     let _: Option<NonMaxU8> = (v2 < NonZeroU8::new(255).unwrap()).then_some(unsafe { std::mem::transmute(v2) });
+   |                                                                                      ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `bool::then` to only transmute if the condition holds
+   |
+LL |     let _: Option<NonMaxU8> = (v2 < NonZeroU8::new(255).unwrap()).then(|| unsafe { std::mem::transmute(v2) });
+   |                                                                   ~~~~ ++
+
+error: this transmute is always evaluated eagerly, even if the condition is false
+  --> $DIR/eager_transmute.rs:69:93
+   |
+LL |     let _: Option<NonZeroNonMaxU8> = (v2 < NonZeroU8::new(255).unwrap()).then_some(unsafe { std::mem::transmute(v2) });
+   |                                                                                             ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `bool::then` to only transmute if the condition holds
+   |
+LL |     let _: Option<NonZeroNonMaxU8> = (v2 < NonZeroU8::new(255).unwrap()).then(|| unsafe { std::mem::transmute(v2) });
+   |                                                                          ~~~~ ++
+
+error: aborting due to 8 previous errors
+
