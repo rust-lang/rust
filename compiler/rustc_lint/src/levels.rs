@@ -1029,7 +1029,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
             }
         }
 
-        if !is_crate_node {
+        if self.lint_added_lints && !is_crate_node {
             for (id, &(level, ref src)) in self.current_specs().iter() {
                 if !id.lint.crate_level_only {
                     continue;
