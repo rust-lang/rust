@@ -97,7 +97,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 bound_vars,
             )
         }
-        ty::Coroutine(did, args, _) => {
+        ty::Coroutine(did, args) => {
             let coroutine_kind = tcx.coroutine_kind(did).unwrap();
             let sig = args.as_coroutine().sig();
 

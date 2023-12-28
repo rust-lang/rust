@@ -160,12 +160,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         ));
 
         let (resume_ty, yield_ty) = fcx.resume_yield_tys.unwrap();
-        Some(CoroutineTypes {
-            resume_ty,
-            yield_ty,
-            interior,
-            movability: coroutine_kind.movability(),
-        })
+        Some(CoroutineTypes { resume_ty, yield_ty, interior })
     } else {
         None
     };

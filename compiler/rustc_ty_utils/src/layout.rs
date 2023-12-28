@@ -316,7 +316,7 @@ fn layout_of_uncached<'tcx>(
             tcx.mk_layout(unit)
         }
 
-        ty::Coroutine(def_id, args, _) => coroutine_layout(cx, ty, def_id, args)?,
+        ty::Coroutine(def_id, args) => coroutine_layout(cx, ty, def_id, args)?,
 
         ty::Closure(_, args) => {
             let tys = args.as_closure().upvar_tys();
@@ -961,7 +961,7 @@ fn record_layout_for_printing<'tcx>(cx: &LayoutCx<'tcx, TyCtxt<'tcx>>, layout: T
             record(adt_kind.into(), adt_packed, opt_discr_size, variant_infos);
         }
 
-        ty::Coroutine(def_id, args, _) => {
+        ty::Coroutine(def_id, args) => {
             debug!("print-type-size t: `{:?}` record coroutine", layout.ty);
             // Coroutines always have a begin/poisoned/end state with additional suspend points
             let (variant_infos, opt_discr_size) =

@@ -201,9 +201,7 @@ impl<'tcx> Rvalue<'tcx> {
                 }
                 AggregateKind::Adt(did, _, args, _, _) => tcx.type_of(did).instantiate(tcx, args),
                 AggregateKind::Closure(did, args) => Ty::new_closure(tcx, did, args),
-                AggregateKind::Coroutine(did, args, movability) => {
-                    Ty::new_coroutine(tcx, did, args, movability)
-                }
+                AggregateKind::Coroutine(did, args) => Ty::new_coroutine(tcx, did, args),
             },
             Rvalue::ShallowInitBox(_, ty) => Ty::new_box(tcx, ty),
             Rvalue::CopyForDeref(ref place) => place.ty(local_decls, tcx).ty,

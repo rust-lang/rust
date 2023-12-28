@@ -646,7 +646,7 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
         }
         DefKind::Closure if coroutine_kind.is_some() => {
             let coroutine_ty = tcx.type_of(def_id).instantiate_identity();
-            let ty::Coroutine(_, args, _) = coroutine_ty.kind() else {
+            let ty::Coroutine(_, args) = coroutine_ty.kind() else {
                 bug!("expected type of coroutine-like closure to be a coroutine")
             };
             let args = args.as_coroutine();
@@ -813,7 +813,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let upvar_args = match closure_ty.kind() {
             ty::Closure(_, args) => ty::UpvarArgs::Closure(args),
-            ty::Coroutine(_, args, _) => ty::UpvarArgs::Coroutine(args),
+            ty::Coroutine(_, args) => ty::UpvarArgs::Coroutine(args),
             _ => return,
         };
 

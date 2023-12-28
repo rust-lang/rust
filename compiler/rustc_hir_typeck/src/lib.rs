@@ -304,9 +304,6 @@ struct CoroutineTypes<'tcx> {
 
     /// Types that are captured (see `CoroutineInterior` for more).
     interior: Ty<'tcx>,
-
-    /// Indicates if the coroutine is movable or static (immovable).
-    movability: hir::Movability,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

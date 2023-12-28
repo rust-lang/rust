@@ -337,7 +337,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             return Err(NoSolution);
         }
 
-        let ty::Coroutine(def_id, _, _) = *goal.predicate.self_ty().kind() else {
+        let ty::Coroutine(def_id, _) = *goal.predicate.self_ty().kind() else {
             return Err(NoSolution);
         };
 
@@ -361,7 +361,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             return Err(NoSolution);
         }
 
-        let ty::Coroutine(def_id, _, _) = *goal.predicate.self_ty().kind() else {
+        let ty::Coroutine(def_id, _) = *goal.predicate.self_ty().kind() else {
             return Err(NoSolution);
         };
 
@@ -385,7 +385,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             return Err(NoSolution);
         }
 
-        let ty::Coroutine(def_id, _, _) = *goal.predicate.self_ty().kind() else {
+        let ty::Coroutine(def_id, _) = *goal.predicate.self_ty().kind() else {
             return Err(NoSolution);
         };
 
@@ -410,7 +410,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         }
 
         let self_ty = goal.predicate.self_ty();
-        let ty::Coroutine(def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(def_id, args) = *self_ty.kind() else {
             return Err(NoSolution);
         };
 
@@ -927,10 +927,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             // Coroutines have one special built-in candidate, `Unpin`, which
             // takes precedence over the structural auto trait candidate being
             // assembled.
-            ty::Coroutine(_, _, movability)
+            ty::Coroutine(def_id, _)
                 if Some(goal.predicate.def_id()) == self.tcx().lang_items().unpin_trait() =>
             {
-                match movability {
+                match self.tcx().coroutine_movability(def_id) {
                     Movability::Static => Some(Err(NoSolution)),
                     Movability::Movable => {
                         Some(self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
@@ -959,7 +959,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::FnDef(_, _)
             | ty::FnPtr(_)
             | ty::Closure(_, _)
-            | ty::Coroutine(_, _, _)
+            | ty::Coroutine(_, _)
             | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)

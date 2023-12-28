@@ -2168,14 +2168,13 @@ impl<'tcx> Ty<'tcx> {
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
         coroutine_args: GenericArgsRef<'tcx>,
-        movability: hir::Movability,
     ) -> Ty<'tcx> {
         debug_assert_eq!(
             coroutine_args.len(),
             tcx.generics_of(tcx.typeck_root_def_id(def_id)).count() + 5,
             "coroutine constructed with incorrect number of substitutions"
         );
-        Ty::new(tcx, Coroutine(def_id, coroutine_args, movability))
+        Ty::new(tcx, Coroutine(def_id, coroutine_args))
     }
 
     #[inline]
@@ -2656,7 +2655,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn variant_range(self, tcx: TyCtxt<'tcx>) -> Option<Range<VariantIdx>> {
         match self.kind() {
             TyKind::Adt(adt, _) => Some(adt.variant_range()),
-            TyKind::Coroutine(def_id, args, _) => {
+            TyKind::Coroutine(def_id, args) => {
                 Some(args.as_coroutine().variant_range(*def_id, tcx))
             }
             _ => None,
@@ -2677,7 +2676,7 @@ impl<'tcx> Ty<'tcx> {
             TyKind::Adt(adt, _) if adt.is_enum() => {
                 Some(adt.discriminant_for_variant(tcx, variant_index))
             }
-            TyKind::Coroutine(def_id, args, _) => {
+            TyKind::Coroutine(def_id, args) => {
                 Some(args.as_coroutine().discriminant_for_variant(*def_id, tcx, variant_index))
             }
             _ => None,
@@ -2688,7 +2687,7 @@ impl<'tcx> Ty<'tcx> {
     pub fn discriminant_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.kind() {
             ty::Adt(adt, _) if adt.is_enum() => adt.repr().discr_type().to_ty(tcx),
-            ty::Coroutine(_, args, _) => args.as_coroutine().discr_ty(tcx),
+            ty::Coroutine(_, args) => args.as_coroutine().discr_ty(tcx),
 
             ty::Param(_) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {
                 let assoc_items = tcx.associated_item_def_ids(
@@ -2983,7 +2982,7 @@ impl<'tcx> Ty<'tcx> {
             | FnPtr(_)
             | Dynamic(_, _, _)
             | Closure(_, _)
-            | Coroutine(_, _, _)
+            | Coroutine(_, _)
             | CoroutineWitness(..)
             | Never
             | Tuple(_) => true,

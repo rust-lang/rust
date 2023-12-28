@@ -689,13 +689,13 @@ fn polymorphize<'tcx>(
                         Ty::new_closure(self.tcx, def_id, polymorphized_args)
                     }
                 }
-                ty::Coroutine(def_id, args, movability) => {
+                ty::Coroutine(def_id, args) => {
                     let polymorphized_args =
                         polymorphize(self.tcx, ty::InstanceDef::Item(def_id), args);
                     if args == polymorphized_args {
                         ty
                     } else {
-                        Ty::new_coroutine(self.tcx, def_id, polymorphized_args, movability)
+                        Ty::new_coroutine(self.tcx, def_id, polymorphized_args)
                     }
                 }
                 _ => ty.super_fold_with(self),

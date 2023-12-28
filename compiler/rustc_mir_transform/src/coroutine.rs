@@ -1565,7 +1565,7 @@ pub(crate) fn mir_coroutine_witnesses<'tcx>(
     let coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
 
     let movable = match *coroutine_ty.kind() {
-        ty::Coroutine(_, _, movability) => movability == hir::Movability::Movable,
+        ty::Coroutine(def_id, _) => tcx.coroutine_movability(def_id) == hir::Movability::Movable,
         ty::Error(_) => return None,
         _ => span_bug!(body.span, "unexpected coroutine type {}", coroutine_ty),
     };
@@ -1597,12 +1597,13 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 
         // The first argument is the coroutine type passed by value
         let coroutine_ty = body.local_decls.raw[1].ty;
+        let coroutine_kind = body.coroutine_kind().unwrap();
 
         // Get the discriminant type and args which typeck computed
         let (discr_ty, movable) = match *coroutine_ty.kind() {
-            ty::Coroutine(_, args, movability) => {
+            ty::Coroutine(_, args) => {
                 let args = args.as_coroutine();
-                (args.discr_ty(tcx), movability == hir::Movability::Movable)
+                (args.discr_ty(tcx), coroutine_kind.movability() == hir::Movability::Movable)
             }
             _ => {
                 tcx.dcx().span_delayed_bug(
@@ -1613,19 +1614,13 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             }
         };
 
-        let is_async_kind = matches!(
-            body.coroutine_kind(),
-            Some(CoroutineKind::Desugared(CoroutineDesugaring::Async, _))
-        );
-        let is_async_gen_kind = matches!(
-            body.coroutine_kind(),
-            Some(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _))
-        );
-        let is_gen_kind = matches!(
-            body.coroutine_kind(),
-            Some(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _))
-        );
-        let new_ret_ty = match body.coroutine_kind().unwrap() {
+        let is_async_kind =
+            matches!(coroutine_kind, CoroutineKind::Desugared(CoroutineDesugaring::Async, _));
+        let is_async_gen_kind =
+            matches!(coroutine_kind, CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _));
+        let is_gen_kind =
+            matches!(coroutine_kind, CoroutineKind::Desugared(CoroutineDesugaring::Gen, _));
+        let new_ret_ty = match coroutine_kind {
             CoroutineKind::Desugared(CoroutineDesugaring::Async, _) => {
                 // Compute Poll<return_ty>
                 let poll_did = tcx.require_lang_item(LangItem::Poll, None);

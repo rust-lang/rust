@@ -370,7 +370,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 ty::Array(ty, _) | ty::Slice(ty) => {
                     self.describe_field_from_ty(ty, field, variant_index, including_tuple_field)
                 }
-                ty::Closure(def_id, _) | ty::Coroutine(def_id, _, _) => {
+                ty::Closure(def_id, _) | ty::Coroutine(def_id, _) => {
                     // We won't be borrowck'ing here if the closure came from another crate,
                     // so it's safe to call `expect_local`.
                     //
@@ -792,8 +792,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         debug!("move_spans: moved_place={:?} location={:?} stmt={:?}", moved_place, location, stmt);
         if let StatementKind::Assign(box (_, Rvalue::Aggregate(kind, places))) = &stmt.kind
-            && let AggregateKind::Closure(def_id, _) | AggregateKind::Coroutine(def_id, _, _) =
-                **kind
+            && let AggregateKind::Closure(def_id, _) | AggregateKind::Coroutine(def_id, _) = **kind
         {
             debug!("move_spans: def_id={:?} places={:?}", def_id, places);
             let def_id = def_id.expect_local();
@@ -928,7 +927,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             if let StatementKind::Assign(box (_, Rvalue::Aggregate(kind, places))) = &stmt.kind {
                 let (&def_id, is_coroutine) = match kind {
                     box AggregateKind::Closure(def_id, _) => (def_id, false),
-                    box AggregateKind::Coroutine(def_id, _, _) => (def_id, true),
+                    box AggregateKind::Coroutine(def_id, _) => (def_id, true),
                     _ => continue,
                 };
                 let def_id = def_id.expect_local();

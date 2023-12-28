@@ -104,11 +104,9 @@ impl<'tcx> RustcInternal<'tcx> for RigidTy {
             RigidTy::Closure(def, args) => {
                 rustc_ty::TyKind::Closure(def.0.internal(tables), args.internal(tables))
             }
-            RigidTy::Coroutine(def, args, mov) => rustc_ty::TyKind::Coroutine(
-                def.0.internal(tables),
-                args.internal(tables),
-                mov.internal(tables),
-            ),
+            RigidTy::Coroutine(def, args, _mov) => {
+                rustc_ty::TyKind::Coroutine(def.0.internal(tables), args.internal(tables))
+            }
             RigidTy::CoroutineWitness(def, args) => {
                 rustc_ty::TyKind::CoroutineWitness(def.0.internal(tables), args.internal(tables))
             }

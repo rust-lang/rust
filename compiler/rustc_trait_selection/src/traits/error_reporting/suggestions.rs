@@ -3406,7 +3406,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 }
                                 err.note(msg.trim_end_matches(", ").to_string())
                             }
-                            ty::Coroutine(def_id, _, _) => {
+                            ty::Coroutine(def_id, _) => {
                                 let sp = self.tcx.def_span(def_id);
 
                                 // Special-case this to say "async block" instead of `[static coroutine]`.
