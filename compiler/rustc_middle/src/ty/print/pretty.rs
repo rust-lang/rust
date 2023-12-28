@@ -1476,7 +1476,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::Bool if int == ScalarInt::TRUE => p!("true"),
             // Float
             ty::Float(ty::FloatTy::F16) => {
-                p!(write("{}f16", Half::try_from(int).unwrap()))
+                let val = Half::try_from(int).unwrap();
+                p!(write("{}{}f16", val, if val.is_finite() { "" } else { "_" }))
             }
             ty::Float(ty::FloatTy::F32) => {
                 let val = Single::try_from(int).unwrap();
@@ -1487,7 +1488,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 p!(write("{}{}f64", val, if val.is_finite() { "" } else { "_" }))
             }
             ty::Float(ty::FloatTy::F128) => {
-                p!(write("{}f128", Quad::try_from(int).unwrap()))
+                let val = Quad::try_from(int).unwrap();
+                p!(write("{}{}f128", val, if val.is_finite() { "" } else { "_" }))
             }
             // Int
             ty::Uint(_) | ty::Int(_) => {
