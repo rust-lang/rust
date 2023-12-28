@@ -1054,33 +1054,33 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     /// Checks if the lint is gated on a feature that is not enabled.
     ///
     /// Returns `true` if the lint's feature is enabled.
-    // FIXME only emit this once for each attribute, instead of repeating it 4 times for
-    // pre-expansion lints, post-expansion lints, `shallow_lint_levels_on` and `lint_expectations`.
     #[track_caller]
     fn check_gated_lint(&self, lint_id: LintId, span: Span, lint_from_cli: bool) -> bool {
         if let Some(feature) = lint_id.lint.feature_gate {
             if !self.features.active(feature) {
-                let lint = builtin::UNKNOWN_LINTS;
-                let (level, src) = self.lint_level(builtin::UNKNOWN_LINTS);
-                struct_lint_level(
-                    self.sess,
-                    lint,
-                    level,
-                    src,
-                    Some(span.into()),
-                    fluent::lint_unknown_gated_lint,
-                    |lint| {
-                        lint.set_arg("name", lint_id.lint.name_lower());
-                        lint.note(fluent::lint_note);
-                        rustc_session::parse::add_feature_diagnostics_for_issue(
-                            lint,
-                            &self.sess.parse_sess,
-                            feature,
-                            GateIssue::Language,
-                            lint_from_cli,
-                        );
-                    },
-                );
+                if self.lint_added_lints {
+                    let lint = builtin::UNKNOWN_LINTS;
+                    let (level, src) = self.lint_level(builtin::UNKNOWN_LINTS);
+                    struct_lint_level(
+                        self.sess,
+                        lint,
+                        level,
+                        src,
+                        Some(span.into()),
+                        fluent::lint_unknown_gated_lint,
+                        |lint| {
+                            lint.set_arg("name", lint_id.lint.name_lower());
+                            lint.note(fluent::lint_note);
+                            rustc_session::parse::add_feature_diagnostics_for_issue(
+                                lint,
+                                &self.sess.parse_sess,
+                                feature,
+                                GateIssue::Language,
+                                lint_from_cli,
+                            );
+                        },
+                    );
+                }
                 return false;
             }
         }
