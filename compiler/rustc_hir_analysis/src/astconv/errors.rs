@@ -1,4 +1,4 @@
-use crate::astconv::{AstConv, ConvertedBindingKind};
+use crate::astconv::AstConv;
 use crate::errors::{
     self, AssocTypeBindingNotAllowed, ManualImplementation, MissingTypeParams,
     ParenthesizedFnTraitExpansion,
@@ -111,7 +111,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         assoc_kind: ty::AssocKind,
         assoc_name: Ident,
         span: Span,
-        binding: Option<&super::ConvertedBinding<'_, 'tcx>>,
+        binding: Option<&hir::TypeBinding<'tcx>>,
     ) -> ErrorGuaranteed
     where
         I: Iterator<Item = ty::PolyTraitRef<'tcx>>,
@@ -290,13 +290,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         assoc_kind: ty::AssocKind,
         ident: Ident,
         span: Span,
-        binding: Option<&super::ConvertedBinding<'_, 'tcx>>,
+        binding: Option<&hir::TypeBinding<'tcx>>,
     ) -> ErrorGuaranteed {
         let tcx = self.tcx();
 
         let bound_on_assoc_const_label = if let ty::AssocKind::Const = assoc_item.kind
             && let Some(binding) = binding
-            && let ConvertedBindingKind::Constraint(_) = binding.kind
+            && let hir::TypeBindingKind::Constraint { .. } = binding.kind
         {
             let lo = if binding.gen_args.span_ext.is_dummy() {
                 ident.span
@@ -310,14 +310,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         // FIXME(associated_const_equality): This has quite a few false positives and negatives.
         let wrap_in_braces_sugg = if let Some(binding) = binding
-            && let ConvertedBindingKind::Equality(term) = binding.kind
-            && let ty::TermKind::Ty(ty) = term.node.unpack()
+            && let hir::TypeBindingKind::Equality { term: hir::Term::Ty(hir_ty) } = binding.kind
+            && let ty = self.ast_ty_to_ty(hir_ty)
             && (ty.is_enum() || ty.references_error())
             && tcx.features().associated_const_equality
         {
             Some(errors::AssocKindMismatchWrapInBracesSugg {
-                lo: term.span.shrink_to_lo(),
-                hi: term.span.shrink_to_hi(),
+                lo: hir_ty.span.shrink_to_lo(),
+                hi: hir_ty.span.shrink_to_hi(),
             })
         } else {
             None
@@ -326,9 +326,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // For equality bounds, we want to blame the term (RHS) instead of the item (LHS) since
         // one can argue that that's more “intuitive” to the user.
         let (span, expected_because_label, expected, got) = if let Some(binding) = binding
-            && let ConvertedBindingKind::Equality(term) = binding.kind
+            && let hir::TypeBindingKind::Equality { term } = binding.kind
         {
-            (term.span, Some(ident.span), assoc_item.kind, assoc_kind)
+            let span = match term {
+                hir::Term::Ty(ty) => ty.span,
+                hir::Term::Const(ct) => tcx.def_span(ct.def_id),
+            };
+            (span, Some(ident.span), assoc_item.kind, assoc_kind)
         } else {
             (ident.span, None, assoc_kind, assoc_item.kind)
         };
