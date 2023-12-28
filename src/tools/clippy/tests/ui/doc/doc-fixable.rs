@@ -65,7 +65,7 @@ fn test_units() {
 /// OAuth GraphQL
 /// OCaml
 /// OpenGL OpenMP OpenSSH OpenSSL OpenStreetMap OpenDNS
-/// WebGL
+/// WebGL WebGL2 WebGPU
 /// TensorFlow
 /// TrueType
 /// iOS macOS FreeBSD

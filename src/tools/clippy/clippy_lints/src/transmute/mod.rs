@@ -1,4 +1,5 @@
 mod crosspointer_transmute;
+mod eager_transmute;
 mod transmute_float_to_int;
 mod transmute_int_to_bool;
 mod transmute_int_to_char;
@@ -463,6 +464,62 @@ declare_clippy_lint! {
     "transmute results in a null function pointer, which is undefined behavior"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for integer validity checks, followed by a transmute that is (incorrectly) evaluated
+    /// eagerly (e.g. using `bool::then_some`).
+    ///
+    /// ### Why is this bad?
+    /// Eager evaluation means that the `transmute` call is executed regardless of whether the condition is true or false.
+    /// This can introduce unsoundness and other subtle bugs.
+    ///
+    /// ### Example
+    /// Consider the following function which is meant to convert an unsigned integer to its enum equivalent via transmute.
+    ///
+    /// ```no_run
+    /// #[repr(u8)]
+    /// enum Opcode {
+    ///     Add = 0,
+    ///     Sub = 1,
+    ///     Mul = 2,
+    ///     Div = 3
+    /// }
+    ///
+    /// fn int_to_opcode(op: u8) -> Option<Opcode> {
+    ///     (op < 4).then_some(unsafe { std::mem::transmute(op) })
+    /// }
+    /// ```
+    /// This may appear fine at first given that it checks that the `u8` is within the validity range of the enum,
+    /// *however* the transmute is evaluated eagerly, meaning that it executes even if `op >= 4`!
+    ///
+    /// This makes the function unsound, because it is possible for the caller to cause undefined behavior
+    /// (creating an enum with an invalid bitpattern) entirely in safe code only by passing an incorrect value,
+    /// which is normally only a bug that is possible in unsafe code.
+    ///
+    /// One possible way in which this can go wrong practically is that the compiler sees it as:
+    /// ```rust,ignore (illustrative)
+    /// let temp: Foo = unsafe { std::mem::transmute(op) };
+    /// (0 < 4).then_some(temp)
+    /// ```
+    /// and optimizes away the `(0 < 4)` check based on the assumption that since a `Foo` was created from `op` with the validity range `0..3`,
+    /// it is **impossible** for this condition to be false.
+    ///
+    /// In short, it is possible for this function to be optimized in a way that makes it [never return `None`](https://godbolt.org/z/ocrcenevq),
+    /// even if passed the value `4`.
+    ///
+    /// This can be avoided by instead using lazy evaluation. For the example above, this should be written:
+    /// ```rust,ignore (illustrative)
+    /// fn int_to_opcode(op: u8) -> Option<Opcode> {
+    ///     (op < 4).then(|| unsafe { std::mem::transmute(op) })
+    ///              ^^^^ ^^ `bool::then` only executes the closure if the condition is true!
+    /// }
+    /// ```
+    #[clippy::version = "1.76.0"]
+    pub EAGER_TRANSMUTE,
+    correctness,
+    "eager evaluation of `transmute`"
+}
+
 pub struct Transmute {
     msrv: Msrv,
 }
@@ -484,6 +541,7 @@ impl_lint_pass!(Transmute => [
     TRANSMUTE_UNDEFINED_REPR,
     TRANSMUTING_NULL,
     TRANSMUTE_NULL_TO_FN,
+    EAGER_TRANSMUTE,
 ]);
 impl Transmute {
     #[must_use]
@@ -530,7 +588,8 @@ impl<'tcx> LateLintPass<'tcx> for Transmute {
                 | transmute_float_to_int::check(cx, e, from_ty, to_ty, arg, const_context)
                 | transmute_num_to_bytes::check(cx, e, from_ty, to_ty, arg, const_context)
                 | (unsound_collection_transmute::check(cx, e, from_ty, to_ty)
-                    || transmute_undefined_repr::check(cx, e, from_ty, to_ty));
+                    || transmute_undefined_repr::check(cx, e, from_ty, to_ty))
+                | (eager_transmute::check(cx, e, arg, from_ty, to_ty));
 
             if !linted {
                 transmutes_expressible_as_ptr_casts::check(cx, e, from_ty, from_ty_adjusted, to_ty, arg);
