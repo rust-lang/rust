@@ -1098,7 +1098,7 @@ See also [`format_macro_bodies`](#format_macro_bodies).
 
 ## `format_macro_bodies`
 
-Format the bodies of macros.
+Format the bodies of declarative macro definitions.
 
 - **Default value**: `true`
 - **Possible values**: `true`, `false`
@@ -1248,11 +1248,19 @@ Control the case of the letters in hexadecimal literal values
 
 ## `hide_parse_errors`
 
-Do not show parse errors if the parser failed to parse files.
+This option is deprecated and has been renamed to `show_parse_errors` to avoid confusion around the double negative default of `hide_parse_errors=false`.
 
 - **Default value**: `false`
 - **Possible values**: `true`, `false`
 - **Stable**: No (tracking issue: [#3390](https://github.com/rust-lang/rustfmt/issues/3390))
+
+## `show_parse_errors`
+
+Show parse errors if the parser failed to parse files.
+
+- **Default value**: `true`
+- **Possible values**: `true`, `false`
+- **Stable**: No (tracking issue: [#5977](https://github.com/rust-lang/rustfmt/issues/5977))
 
 ## `ignore`
 

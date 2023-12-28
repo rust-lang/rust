@@ -2,9 +2,6 @@
 
 set -e
 
-# https://github.com/rust-lang/rustfmt/issues/5675
-export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib:$LD_LIBRARY_PATH
-
 function print_usage() {
     echo "usage check_diff REMOTE_REPO FEATURE_BRANCH [COMMIT_HASH] [OPTIONAL_RUSTFMT_CONFIGS]"
 }
@@ -114,15 +111,42 @@ function compile_rustfmt() {
     git remote add feature $REMOTE_REPO
     git fetch feature $FEATURE_BRANCH
 
-    cargo build --release --bin rustfmt && cp target/release/rustfmt $1/rustfmt
+    CARGO_VERSON=$(cargo --version)
+    echo -e "\ncompiling with $CARGO_VERSON\n"
+
+    # Because we're building standalone binaries we need to set `LD_LIBRARY_PATH` so each
+    # binary can find it's runtime dependencies. See https://github.com/rust-lang/rustfmt/issues/5675
+    # This will prepend the `LD_LIBRARY_PATH` for the master rustfmt binary
+    export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib:$LD_LIBRARY_PATH
+
+    echo "Building rustfmt from src"
+    cargo build -q --release --bin rustfmt && cp target/release/rustfmt $1/rustfmt
+
     if [ -z "$OPTIONAL_COMMIT_HASH" ] || [ "$FEATURE_BRANCH" = "$OPTIONAL_COMMIT_HASH" ]; then
         git switch $FEATURE_BRANCH
     else
         git switch $OPTIONAL_COMMIT_HASH --detach
     fi
-    cargo build --release --bin rustfmt && cp target/release/rustfmt $1/feature_rustfmt
+
+    # This will prepend the `LD_LIBRARY_PATH` for the feature branch rustfmt binary.
+    # In most cases the `LD_LIBRARY_PATH` should be the same for both rustfmt binaries that we build
+    # in `compile_rustfmt`, however, there are scenarios where each binary has different runtime
+    # dependencies. For example, during subtree syncs we bump the nightly toolchain required to build
+    # rustfmt, and therefore the feature branch relies on a newer set of runtime dependencies.
+    export LD_LIBRARY_PATH=$(rustc --print sysroot)/lib:$LD_LIBRARY_PATH
+
+    echo "Building feature rustfmt from src"
+    cargo build -q --release --bin rustfmt && cp target/release/rustfmt $1/feature_rustfmt
+
+    echo -e "\nRuntime dependencies for rustfmt -- LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
+
     RUSFMT_BIN=$1/rustfmt
+    RUSTFMT_VERSION=$($RUSFMT_BIN --version)
+    echo -e "\nRUSFMT_BIN $RUSTFMT_VERSION\n"
+
     FEATURE_BIN=$1/feature_rustfmt
+    FEATURE_VERSION=$($FEATURE_BIN --version)
+    echo -e "FEATURE_BIN $FEATURE_VERSION\n"
 }
 
 # Check the diff for running rustfmt and the feature branch on all the .rs files in the repo.
@@ -155,7 +179,7 @@ function check_repo() {
     STATUSES+=($?)
     set -e
 
-    echo "removing tmp_dir $tmp_dir"
+    echo -e "removing tmp_dir $tmp_dir\n\n"
     rm -rf $tmp_dir
     cd $WORKDIR
 }
