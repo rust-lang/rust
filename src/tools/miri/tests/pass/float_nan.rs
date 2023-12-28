@@ -249,6 +249,55 @@ fn test_f32() {
     check_all_outcomes(HashSet::from_iter([F32::nan(Neg, Signaling, all1_payload)]), || {
         F32::from(-all1_snan)
     });
+
+    // Intrinsics
+    let nan = F32::nan(Neg, Quiet, 0).as_f32();
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(f32::min(nan, nan)),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(nan.sin()),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([
+            F32::nan(Pos, Quiet, 0),
+            F32::nan(Neg, Quiet, 0),
+            F32::nan(Pos, Quiet, 1),
+            F32::nan(Neg, Quiet, 1),
+            F32::nan(Pos, Quiet, 2),
+            F32::nan(Neg, Quiet, 2),
+            F32::nan(Pos, Quiet, all1_payload),
+            F32::nan(Neg, Quiet, all1_payload),
+            F32::nan(Pos, Signaling, all1_payload),
+            F32::nan(Neg, Signaling, all1_payload),
+        ]),
+        || F32::from(just1.mul_add(F32::nan(Neg, Quiet, 2).as_f32(), all1_snan)),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(nan.powf(nan)),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([1.0f32.into()]),
+        || F32::from(1.0f32.powf(nan)), // special `pow` rule
+    );
+    check_all_outcomes(
+        HashSet::from_iter([
+            F32::nan(Pos, Quiet, 0),
+            F32::nan(Neg, Quiet, 0),
+            F32::nan(Pos, Quiet, 1),
+            F32::nan(Neg, Quiet, 1),
+            F32::nan(Pos, Signaling, 1),
+            F32::nan(Neg, Signaling, 1),
+        ]),
+        || F32::from(1.0f32.powf(F32::nan(Pos, Signaling, 1).as_f32())), // unspecified `pow` case
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(nan.powi(1)),
+    );
 }
 
 fn test_f64() {
@@ -308,6 +357,55 @@ fn test_f64() {
             F64::nan(Neg, Signaling, all1_payload),
         ]),
         || F64::from(just1 % all1_snan),
+    );
+
+    // Intrinsics
+    let nan = F64::nan(Neg, Quiet, 0).as_f64();
+    check_all_outcomes(
+        HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
+        || F64::from(f64::min(nan, nan)),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
+        || F64::from(nan.sin()),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([
+            F64::nan(Pos, Quiet, 0),
+            F64::nan(Neg, Quiet, 0),
+            F64::nan(Pos, Quiet, 1),
+            F64::nan(Neg, Quiet, 1),
+            F64::nan(Pos, Quiet, 2),
+            F64::nan(Neg, Quiet, 2),
+            F64::nan(Pos, Quiet, all1_payload),
+            F64::nan(Neg, Quiet, all1_payload),
+            F64::nan(Pos, Signaling, all1_payload),
+            F64::nan(Neg, Signaling, all1_payload),
+        ]),
+        || F64::from(just1.mul_add(F64::nan(Neg, Quiet, 2).as_f64(), all1_snan)),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
+        || F64::from(nan.powf(nan)),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([1.0f64.into()]),
+        || F64::from(1.0f64.powf(nan)), // special `pow` rule
+    );
+    check_all_outcomes(
+        HashSet::from_iter([
+            F64::nan(Pos, Quiet, 0),
+            F64::nan(Neg, Quiet, 0),
+            F64::nan(Pos, Quiet, 1),
+            F64::nan(Neg, Quiet, 1),
+            F64::nan(Pos, Signaling, 1),
+            F64::nan(Neg, Signaling, 1),
+        ]),
+        || F64::from(1.0f64.powf(F64::nan(Pos, Signaling, 1).as_f64())), // unspecified `pow` case
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
+        || F64::from(nan.powi(1)),
     );
 }
 
