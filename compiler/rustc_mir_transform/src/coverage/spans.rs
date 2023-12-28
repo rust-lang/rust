@@ -48,8 +48,13 @@ impl CoverageSpans {
         !self.bcb_to_spans[bcb].is_empty()
     }
 
-    pub(super) fn spans_for_bcb(&self, bcb: BasicCoverageBlock) -> &[Span] {
-        &self.bcb_to_spans[bcb]
+    pub(super) fn bcbs_with_coverage_spans(
+        &self,
+    ) -> impl Iterator<Item = (BasicCoverageBlock, &[Span])> {
+        self.bcb_to_spans.iter_enumerated().filter_map(|(bcb, spans)| {
+            // Only yield BCBs that have at least one coverage span.
+            (!spans.is_empty()).then_some((bcb, spans.as_slice()))
+        })
     }
 }
 
