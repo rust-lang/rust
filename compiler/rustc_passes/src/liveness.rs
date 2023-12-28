@@ -101,7 +101,6 @@ use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::DUMMY_SP;
 use rustc_span::{BytePos, Span};
 
-use std::collections::VecDeque;
 use std::io;
 use std::io::prelude::*;
 use std::rc::Rc;
@@ -317,35 +316,13 @@ impl<'tcx> IrMaps<'tcx> {
         // For struct patterns, take note of which fields used shorthand
         // (`x` rather than `x: x`).
         let mut shorthand_field_ids = HirIdSet::default();
-        let mut pats = VecDeque::new();
-        pats.push_back(pat);
 
-        while let Some(pat) = pats.pop_front() {
-            use rustc_hir::PatKind::*;
-            match &pat.kind {
-                Binding(.., inner_pat) => {
-                    pats.extend(inner_pat.iter());
-                }
-                Struct(_, fields, _) => {
-                    let (short, not_short): (Vec<hir::PatField<'_>>, _) =
-                        fields.iter().partition(|f| f.is_shorthand);
-                    shorthand_field_ids.extend(short.iter().map(|f| f.pat.hir_id));
-                    pats.extend(not_short.iter().map(|f| f.pat));
-                }
-                Ref(inner_pat, _) | Box(inner_pat) => {
-                    pats.push_back(inner_pat);
-                }
-                TupleStruct(_, inner_pats, _) | Tuple(inner_pats, _) | Or(inner_pats) => {
-                    pats.extend(inner_pats.iter());
-                }
-                Slice(pre_pats, inner_pat, post_pats) => {
-                    pats.extend(pre_pats.iter());
-                    pats.extend(inner_pat.iter());
-                    pats.extend(post_pats.iter());
-                }
-                _ => {}
+        pat.walk_always(|pat| {
+            if let hir::PatKind::Struct(_, fields, _) = pat.kind {
+                let short = fields.iter().filter(|f| f.is_shorthand);
+                shorthand_field_ids.extend(short.map(|f| f.pat.hir_id));
             }
-        }
+        });
 
         shorthand_field_ids
     }
