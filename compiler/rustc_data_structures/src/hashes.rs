@@ -25,7 +25,7 @@ impl Hash64 {
     pub const ZERO: Hash64 = Hash64 { inner: 0 };
 
     #[inline]
-    pub(crate) fn new(n: u64) -> Self {
+    pub fn new(n: u64) -> Self {
         Self { inner: n }
     }
 
