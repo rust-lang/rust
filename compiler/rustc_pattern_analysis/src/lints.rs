@@ -1,12 +1,7 @@
-use smallvec::SmallVec;
-
-use rustc_data_structures::captures::Captures;
-use rustc_middle::ty;
 use rustc_session::lint;
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::ErrorGuaranteed;
 
-use crate::constructor::MaybeInfiniteInt;
 use crate::errors::{
     self, NonExhaustiveOmittedPattern, NonExhaustiveOmittedPatternLintOnArm, Uncovered,
 };
@@ -15,7 +10,6 @@ use crate::rustc::{
     self, Constructor, DeconstructedPat, MatchArm, MatchCtxt, PlaceCtxt, RevealedTy,
     RustcMatchCheckCtxt, SplitConstructorSet, WitnessPat,
 };
-use crate::usefulness::OverlappingRanges;
 
 /// A column of patterns in the matrix, where a column is the intuitive notion of "subpatterns that
 /// inspect the same subvalue/place".
@@ -66,10 +60,6 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
         let column_ctors = self.patterns.iter().map(|p| p.ctor());
         let ctors_for_ty = &pcx.ctors_for_ty()?;
         Ok(ctors_for_ty.split(pcx, column_ctors))
-    }
-
-    fn iter(&self) -> impl Iterator<Item = &'p DeconstructedPat<'p, 'tcx>> + Captures<'_> {
-        self.patterns.iter().copied()
     }
 
     /// Does specialization: given a constructor, this takes the patterns from the column that match
@@ -207,82 +197,10 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
     Ok(())
 }
 
-/// Traverse the patterns to warn the user about ranges that overlap on their endpoints.
-#[instrument(level = "debug", skip(cx))]
-pub(crate) fn collect_overlapping_range_endpoints<'a, 'p, 'tcx>(
-    cx: MatchCtxt<'a, 'p, 'tcx>,
-    column: &PatternColumn<'p, 'tcx>,
-    overlapping_range_endpoints: &mut Vec<rustc::OverlappingRanges<'p, 'tcx>>,
-) -> Result<(), ErrorGuaranteed> {
-    let Some(ty) = column.head_ty() else {
-        return Ok(());
-    };
-    let pcx = &PlaceCtxt::new_dummy(cx, ty);
-
-    let set = column.analyze_ctors(pcx)?;
-
-    if matches!(ty.kind(), ty::Char | ty::Int(_) | ty::Uint(_)) {
-        // If two ranges overlapped, the split set will contain their intersection as a singleton.
-        let split_int_ranges = set.present.iter().filter_map(|c| c.as_int_range());
-        for overlap_range in split_int_ranges.clone() {
-            if overlap_range.is_singleton() {
-                let overlap: MaybeInfiniteInt = overlap_range.lo;
-                // Ranges that look like `lo..=overlap`.
-                let mut prefixes: SmallVec<[_; 1]> = Default::default();
-                // Ranges that look like `overlap..=hi`.
-                let mut suffixes: SmallVec<[_; 1]> = Default::default();
-                // Iterate on patterns that contained `overlap`.
-                for pat in column.iter() {
-                    let Constructor::IntRange(this_range) = pat.ctor() else { continue };
-                    if this_range.is_singleton() {
-                        // Don't lint when one of the ranges is a singleton.
-                        continue;
-                    }
-                    if this_range.lo == overlap {
-                        // `this_range` looks like `overlap..=this_range.hi`; it overlaps with any
-                        // ranges that look like `lo..=overlap`.
-                        if !prefixes.is_empty() {
-                            overlapping_range_endpoints.push(OverlappingRanges {
-                                pat,
-                                overlaps_on: *overlap_range,
-                                overlaps_with: prefixes.as_slice().to_vec(),
-                            });
-                        }
-                        suffixes.push(pat)
-                    } else if this_range.hi == overlap.plus_one() {
-                        // `this_range` looks like `this_range.lo..=overlap`; it overlaps with any
-                        // ranges that look like `overlap..=hi`.
-                        if !suffixes.is_empty() {
-                            overlapping_range_endpoints.push(OverlappingRanges {
-                                pat,
-                                overlaps_on: *overlap_range,
-                                overlaps_with: suffixes.as_slice().to_vec(),
-                            });
-                        }
-                        prefixes.push(pat)
-                    }
-                }
-            }
-        }
-    } else {
-        // Recurse into the fields.
-        for ctor in set.present {
-            for col in column.specialize(pcx, &ctor) {
-                collect_overlapping_range_endpoints(cx, &col, overlapping_range_endpoints)?;
-            }
-        }
-    }
-    Ok(())
-}
-
-#[instrument(level = "debug", skip(cx))]
 pub(crate) fn lint_overlapping_range_endpoints<'a, 'p, 'tcx>(
     cx: MatchCtxt<'a, 'p, 'tcx>,
-    column: &PatternColumn<'p, 'tcx>,
-) -> Result<(), ErrorGuaranteed> {
-    let mut overlapping_range_endpoints = Vec::new();
-    collect_overlapping_range_endpoints(cx, column, &mut overlapping_range_endpoints)?;
-
+    overlapping_range_endpoints: &[rustc::OverlappingRanges<'p, 'tcx>],
+) {
     let rcx = cx.tycx;
     for overlap in overlapping_range_endpoints {
         let overlap_as_pat = rcx.hoist_pat_range(&overlap.overlaps_on, overlap.pat.ty());
@@ -300,5 +218,4 @@ pub(crate) fn lint_overlapping_range_endpoints<'a, 'p, 'tcx>(
             errors::OverlappingRangeEndpoints { overlap: overlaps, range: pat_span },
         );
     }
-    Ok(())
 }

@@ -1328,6 +1328,83 @@ impl<Cx: TypeCx> WitnessMatrix<Cx> {
     }
 }
 
+/// Collect ranges that overlap like `lo..=overlap`/`overlap..=hi`. Must be called during
+/// exhaustiveness checking, if we find a singleton range after constructor splitting. This reuses
+/// row intersection information to only detect ranges that truly overlap.
+///
+/// If two ranges overlapped, the split set will contain their intersection as a singleton.
+/// Specialization will then select rows that match the overlap, and exhaustiveness will compute
+/// which rows have an intersection that includes the overlap. That gives us all the info we need to
+/// compute overlapping ranges without false positives.
+///
+/// We can however get false negatives because exhaustiveness does not explore all cases. See the
+/// section on relevancy at the top of the file.
+fn collect_overlapping_range_endpoints<'p, Cx: TypeCx>(
+    overlap_range: IntRange,
+    matrix: &Matrix<'p, Cx>,
+    specialized_matrix: &Matrix<'p, Cx>,
+    overlapping_range_endpoints: &mut Vec<OverlappingRanges<'p, Cx>>,
+) {
+    let overlap = overlap_range.lo;
+    // Ranges that look like `lo..=overlap`.
+    let mut prefixes: SmallVec<[_; 1]> = Default::default();
+    // Ranges that look like `overlap..=hi`.
+    let mut suffixes: SmallVec<[_; 1]> = Default::default();
+    // Iterate on patterns that contained `overlap`. We iterate on `specialized_matrix` which
+    // contains only rows that matched the current `ctor` as well as accurate intersection
+    // information. It doesn't contain the column that contains the range; that can be found in
+    // `matrix`.
+    for (child_row_id, child_row) in specialized_matrix.rows().enumerate() {
+        let PatOrWild::Pat(pat) = matrix.rows[child_row.parent_row].head() else { continue };
+        let Constructor::IntRange(this_range) = pat.ctor() else { continue };
+        // Don't lint when one of the ranges is a singleton.
+        if this_range.is_singleton() {
+            continue;
+        }
+        if this_range.lo == overlap {
+            // `this_range` looks like `overlap..=this_range.hi`; it overlaps with any
+            // ranges that look like `lo..=overlap`.
+            if !prefixes.is_empty() {
+                let overlaps_with: Vec<_> = prefixes
+                    .iter()
+                    .filter(|&&(other_child_row_id, _)| {
+                        child_row.intersects.contains(other_child_row_id)
+                    })
+                    .map(|&(_, pat)| pat)
+                    .collect();
+                if !overlaps_with.is_empty() {
+                    overlapping_range_endpoints.push(OverlappingRanges {
+                        pat,
+                        overlaps_on: overlap_range,
+                        overlaps_with,
+                    });
+                }
+            }
+            suffixes.push((child_row_id, pat))
+        } else if this_range.hi == overlap.plus_one() {
+            // `this_range` looks like `this_range.lo..=overlap`; it overlaps with any
+            // ranges that look like `overlap..=hi`.
+            if !suffixes.is_empty() {
+                let overlaps_with: Vec<_> = suffixes
+                    .iter()
+                    .filter(|&&(other_child_row_id, _)| {
+                        child_row.intersects.contains(other_child_row_id)
+                    })
+                    .map(|&(_, pat)| pat)
+                    .collect();
+                if !overlaps_with.is_empty() {
+                    overlapping_range_endpoints.push(OverlappingRanges {
+                        pat,
+                        overlaps_on: overlap_range,
+                        overlaps_with,
+                    });
+                }
+            }
+            prefixes.push((child_row_id, pat))
+        }
+    }
+}
+
 /// The core of the algorithm.
 ///
 /// This recursively computes witnesses of the non-exhaustiveness of `matrix` (if any). Also tracks
@@ -1346,6 +1423,7 @@ impl<Cx: TypeCx> WitnessMatrix<Cx> {
 fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
     mcx: MatchCtxt<'a, 'p, Cx>,
     matrix: &mut Matrix<'p, Cx>,
+    overlapping_range_endpoints: &mut Vec<OverlappingRanges<'p, Cx>>,
     is_top_level: bool,
 ) -> Result<WitnessMatrix<Cx>, Cx::Error> {
     debug_assert!(matrix.rows().all(|r| r.len() == matrix.column_count()));
@@ -1425,7 +1503,12 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
         let ctor_is_relevant = matches!(ctor, Constructor::Missing) || missing_ctors.is_empty();
         let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor, ctor_is_relevant);
         let mut witnesses = ensure_sufficient_stack(|| {
-            compute_exhaustiveness_and_usefulness(mcx, &mut spec_matrix, false)
+            compute_exhaustiveness_and_usefulness(
+                mcx,
+                &mut spec_matrix,
+                overlapping_range_endpoints,
+                false,
+            )
         })?;
 
         // Transform witnesses for `spec_matrix` into witnesses for `matrix`.
@@ -1445,6 +1528,21 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
                 if parent_intersection != parent_row_id {
                     parent_row.intersects.insert(parent_intersection);
                 }
+            }
+        }
+
+        // Detect ranges that overlap on their endpoints.
+        if let Constructor::IntRange(overlap_range) = ctor {
+            if overlap_range.is_singleton()
+                && spec_matrix.rows.len() >= 2
+                && spec_matrix.rows.iter().any(|row| !row.intersects.is_empty())
+            {
+                collect_overlapping_range_endpoints(
+                    overlap_range,
+                    matrix,
+                    &spec_matrix,
+                    overlapping_range_endpoints,
+                );
             }
         }
     }
@@ -1487,6 +1585,7 @@ pub struct UsefulnessReport<'p, Cx: TypeCx> {
     /// If the match is exhaustive, this is empty. If not, this contains witnesses for the lack of
     /// exhaustiveness.
     pub non_exhaustiveness_witnesses: Vec<WitnessPat<Cx>>,
+    pub overlapping_range_endpoints: Vec<OverlappingRanges<'p, Cx>>,
 }
 
 /// Computes whether a match is exhaustive and which of its arms are useful.
@@ -1497,9 +1596,14 @@ pub fn compute_match_usefulness<'p, Cx: TypeCx>(
     scrut_ty: Cx::Ty,
     scrut_validity: ValidityConstraint,
 ) -> Result<UsefulnessReport<'p, Cx>, Cx::Error> {
+    let mut overlapping_range_endpoints = Vec::new();
     let mut matrix = Matrix::new(arms, scrut_ty, scrut_validity);
-    let non_exhaustiveness_witnesses =
-        compute_exhaustiveness_and_usefulness(cx, &mut matrix, true)?;
+    let non_exhaustiveness_witnesses = compute_exhaustiveness_and_usefulness(
+        cx,
+        &mut matrix,
+        &mut overlapping_range_endpoints,
+        true,
+    )?;
 
     let non_exhaustiveness_witnesses: Vec<_> = non_exhaustiveness_witnesses.single_column();
     let arm_usefulness: Vec<_> = arms
@@ -1516,5 +1620,10 @@ pub fn compute_match_usefulness<'p, Cx: TypeCx>(
             (arm, usefulness)
         })
         .collect();
-    Ok(UsefulnessReport { arm_usefulness, non_exhaustiveness_witnesses })
+
+    Ok(UsefulnessReport {
+        arm_usefulness,
+        non_exhaustiveness_witnesses,
+        overlapping_range_endpoints,
+    })
 }
