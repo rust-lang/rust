@@ -1069,7 +1069,7 @@ impl<'a> EarlyContext<'a> {
     pub(crate) fn new(
         sess: &'a Session,
         features: &'a Features,
-        warn_about_weird_lints: bool,
+        lint_added_lints: bool,
         lint_store: &'a LintStore,
         registered_tools: &'a RegisteredTools,
         buffered: LintBuffer,
@@ -1078,7 +1078,7 @@ impl<'a> EarlyContext<'a> {
             builder: LintLevelsBuilder::new(
                 sess,
                 features,
-                warn_about_weird_lints,
+                lint_added_lints,
                 lint_store,
                 registered_tools,
             ),
