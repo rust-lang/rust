@@ -448,7 +448,7 @@ fn is_block_closure_forced(context: &RewriteContext<'_>, expr: &ast::Expr) -> bo
 
 fn is_block_closure_forced_inner(expr: &ast::Expr, version: Version) -> bool {
     match expr.kind {
-        ast::ExprKind::If(..) | ast::ExprKind::While(..) | ast::ExprKind::ForLoop(..) => true,
+        ast::ExprKind::If(..) | ast::ExprKind::While(..) | ast::ExprKind::ForLoop { .. } => true,
         ast::ExprKind::Loop(..) if version == Version::Two => true,
         ast::ExprKind::AddrOf(_, _, ref expr)
         | ast::ExprKind::Try(ref expr)
@@ -473,7 +473,7 @@ fn expr_requires_semi_to_be_stmt(e: &ast::Expr) -> bool {
         | ast::ExprKind::Block(..)
         | ast::ExprKind::While(..)
         | ast::ExprKind::Loop(..)
-        | ast::ExprKind::ForLoop(..)
+        | ast::ExprKind::ForLoop { .. }
         | ast::ExprKind::TryBlock(..) => false,
         _ => true,
     }

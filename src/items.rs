@@ -666,7 +666,7 @@ impl<'a> FmtVisitor<'a> {
         let span = mk_sp(lo, field.span.lo());
 
         let variant_body = match field.data {
-            ast::VariantData::Tuple(..) | ast::VariantData::Struct(..) => format_struct(
+            ast::VariantData::Tuple(..) | ast::VariantData::Struct { .. } => format_struct(
                 &context,
                 &StructParts::from_variant(field, &context),
                 self.block_indent,
@@ -1094,7 +1094,7 @@ fn enum_variant_span(variant: &ast::Variant, context: &RewriteContext<'_>) -> Sp
     if let Some(ref anon_const) = variant.disr_expr {
         let span_before_consts = variant.span.until(anon_const.value.span);
         let hi = match &variant.data {
-            Struct(..) => context
+            Struct { .. } => context
                 .snippet_provider
                 .span_after_last(span_before_consts, "}"),
             Tuple(..) => context
@@ -1114,12 +1114,12 @@ fn format_struct(
     offset: Indent,
     one_line_width: Option<usize>,
 ) -> Option<String> {
-    match *struct_parts.def {
+    match struct_parts.def {
         ast::VariantData::Unit(..) => format_unit_struct(context, struct_parts, offset),
-        ast::VariantData::Tuple(ref fields, _) => {
+        ast::VariantData::Tuple(fields, _) => {
             format_tuple_struct(context, struct_parts, fields, offset)
         }
-        ast::VariantData::Struct(ref fields, _) => {
+        ast::VariantData::Struct { fields, .. } => {
             format_struct_struct(context, struct_parts, fields, offset, one_line_width)
         }
     }

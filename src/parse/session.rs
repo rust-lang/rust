@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
 use rustc_errors::emitter::{DynEmitter, Emitter, EmitterWriter};
 use rustc_errors::translation::Translate;
-use rustc_errors::{ColorConfig, Diagnostic, Handler, Level as DiagnosticLevel};
+use rustc_errors::{ColorConfig, DiagCtxt, Diagnostic, Level as DiagnosticLevel};
 use rustc_session::parse::ParseSess as RawParseSess;
 use rustc_span::{
     source_map::{FilePathMapping, SourceMap},
@@ -118,13 +118,13 @@ impl From<Color> for ColorConfig {
     }
 }
 
-fn default_handler(
+fn default_dcx(
     source_map: Lrc<SourceMap>,
     ignore_path_set: Lrc<IgnorePathSet>,
     can_reset: Lrc<AtomicBool>,
     show_parse_errors: bool,
     color: Color,
-) -> Handler {
+) -> DiagCtxt {
     let supports_color = term::stderr().map_or(false, |term| term.supports_color());
     let emit_color = if supports_color {
         ColorConfig::from(color)
@@ -141,7 +141,7 @@ fn default_handler(
         );
         Box::new(EmitterWriter::stderr(emit_color, fallback_bundle).sm(Some(source_map.clone())))
     };
-    Handler::with_emitter(Box::new(SilentOnIgnoredFilesEmitter {
+    DiagCtxt::with_emitter(Box::new(SilentOnIgnoredFilesEmitter {
         has_non_ignorable_parser_errors: false,
         source_map,
         emitter,
@@ -159,14 +159,14 @@ impl ParseSess {
         let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let can_reset_errors = Lrc::new(AtomicBool::new(false));
 
-        let handler = default_handler(
+        let dcx = default_dcx(
             Lrc::clone(&source_map),
             Lrc::clone(&ignore_path_set),
             Lrc::clone(&can_reset_errors),
             config.show_parse_errors(),
             config.color(),
         );
-        let parse_sess = RawParseSess::with_span_handler(handler, source_map);
+        let parse_sess = RawParseSess::with_dcx(dcx, source_map);
 
         Ok(ParseSess {
             parse_sess,
@@ -218,7 +218,7 @@ impl ParseSess {
     }
 
     pub(crate) fn set_silent_emitter(&mut self) {
-        self.parse_sess.span_diagnostic = Handler::with_emitter(silent_emitter());
+        self.parse_sess.dcx = DiagCtxt::with_emitter(silent_emitter());
     }
 
     pub(crate) fn span_to_filename(&self, span: Span) -> FileName {
@@ -284,10 +284,8 @@ impl ParseSess {
 // Methods that should be restricted within the parse module.
 impl ParseSess {
     pub(super) fn emit_diagnostics(&self, diagnostics: Vec<Diagnostic>) {
-        for mut diagnostic in diagnostics {
-            self.parse_sess
-                .span_diagnostic
-                .emit_diagnostic(&mut diagnostic);
+        for diagnostic in diagnostics {
+            self.parse_sess.dcx.emit_diagnostic(diagnostic);
         }
     }
 
@@ -296,11 +294,11 @@ impl ParseSess {
     }
 
     pub(super) fn has_errors(&self) -> bool {
-        self.parse_sess.span_diagnostic.has_errors().is_some()
+        self.parse_sess.dcx.has_errors().is_some()
     }
 
     pub(super) fn reset_errors(&self) {
-        self.parse_sess.span_diagnostic.reset_err_count();
+        self.parse_sess.dcx.reset_err_count();
     }
 }
 
@@ -372,7 +370,7 @@ mod tests {
 
         fn build_diagnostic(level: DiagnosticLevel, span: Option<MultiSpan>) -> Diagnostic {
             let mut diag = Diagnostic::new(level, "");
-            diag.message.clear();
+            diag.messages.clear();
             if let Some(span) = span {
                 diag.span = span;
             }
