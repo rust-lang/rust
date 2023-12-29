@@ -1,7 +1,7 @@
 use super::sealed::Sealed;
 use crate::simd::{
     cmp::{SimdPartialEq, SimdPartialOrd},
-    intrinsics, LaneCount, Mask, Simd, SimdCast, SimdElement, SupportedLaneCount,
+    LaneCount, Mask, Simd, SimdCast, SimdElement, SupportedLaneCount,
 };
 
 /// Operations on SIMD vectors of floats.
@@ -259,7 +259,7 @@ macro_rules! impl_trait {
             fn cast<T: SimdCast>(self) -> Self::Cast<T>
             {
                 // Safety: supported types are guaranteed by SimdCast
-                unsafe { intrinsics::simd_as(self) }
+                unsafe { core::intrinsics::simd::simd_as(self) }
             }
 
             #[inline]
@@ -269,7 +269,7 @@ macro_rules! impl_trait {
                 Self::Scalar: core::convert::FloatToInt<I>,
             {
                 // Safety: supported types are guaranteed by SimdCast, the caller is responsible for the extra invariants
-                unsafe { intrinsics::simd_cast(self) }
+                unsafe { core::intrinsics::simd::simd_cast(self) }
             }
 
             #[inline]
@@ -289,7 +289,7 @@ macro_rules! impl_trait {
             #[inline]
             fn abs(self) -> Self {
                 // Safety: `self` is a float vector
-                unsafe { intrinsics::simd_fabs(self) }
+                unsafe { core::intrinsics::simd::simd_fabs(self) }
             }
 
             #[inline]
@@ -363,13 +363,13 @@ macro_rules! impl_trait {
             #[inline]
             fn simd_min(self, other: Self) -> Self {
                 // Safety: `self` and `other` are float vectors
-                unsafe { intrinsics::simd_fmin(self, other) }
+                unsafe { core::intrinsics::simd::simd_fmin(self, other) }
             }
 
             #[inline]
             fn simd_max(self, other: Self) -> Self {
                 // Safety: `self` and `other` are floating point vectors
-                unsafe { intrinsics::simd_fmax(self, other) }
+                unsafe { core::intrinsics::simd::simd_fmax(self, other) }
             }
 
             #[inline]
@@ -391,7 +391,7 @@ macro_rules! impl_trait {
                     self.as_array().iter().sum()
                 } else {
                     // Safety: `self` is a float vector
-                    unsafe { intrinsics::simd_reduce_add_ordered(self, 0.) }
+                    unsafe { core::intrinsics::simd::simd_reduce_add_ordered(self, 0.) }
                 }
             }
 
@@ -402,20 +402,20 @@ macro_rules! impl_trait {
                     self.as_array().iter().product()
                 } else {
                     // Safety: `self` is a float vector
-                    unsafe { intrinsics::simd_reduce_mul_ordered(self, 1.) }
+                    unsafe { core::intrinsics::simd::simd_reduce_mul_ordered(self, 1.) }
                 }
             }
 
             #[inline]
             fn reduce_max(self) -> Self::Scalar {
                 // Safety: `self` is a float vector
-                unsafe { intrinsics::simd_reduce_max(self) }
+                unsafe { core::intrinsics::simd::simd_reduce_max(self) }
             }
 
             #[inline]
             fn reduce_min(self) -> Self::Scalar {
                 // Safety: `self` is a float vector
-                unsafe { intrinsics::simd_reduce_min(self) }
+                unsafe { core::intrinsics::simd::simd_reduce_min(self) }
             }
         }
         )*
