@@ -52,6 +52,9 @@ RUN sh /scripts/sccache.sh
 ENV RUST_INSTALL_DIR /checkout/obj/install
 RUN mkdir -p $RUST_INSTALL_DIR/etc
 
+# Fuchsia only supports LLVM.
+ENV CODEGEN_BACKENDS llvm
+
 ENV RUST_CONFIGURE_ARGS \
   --prefix=$RUST_INSTALL_DIR \
   --sysconfdir=etc \

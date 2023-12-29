@@ -130,10 +130,10 @@ else
   # tests as it will fail them.
   if [[ "${ENABLE_GCC_CODEGEN}" == "1" ]]; then
     # Test the Cranelift and GCC backends in CI. Bootstrap knows which targets to run tests on.
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=llvm,cranelift,gcc"
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=${CODEGEN_BACKENDS:-llvm,cranelift,gcc}"
   else
     # Test the Cranelift backend in CI. Bootstrap knows which targets to run tests on.
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=llvm,cranelift"
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-backends=${CODEGEN_BACKENDS:-llvm,cranelift}"
   fi
 
   # We enable this for non-dist builders, since those aren't trying to produce
