@@ -2157,12 +2157,14 @@ impl Step for LlvmTools {
         tarball.set_overlay(OverlayKind::LLVM);
         tarball.is_preview(true);
 
-        // Prepare the image directory
-        let src_bindir = builder.llvm_out(target).join("bin");
-        let dst_bindir = format!("lib/rustlib/{}/bin", target.triple);
-        for tool in LLVM_TOOLS {
-            let exe = src_bindir.join(exe(tool, target));
-            tarball.add_file(&exe, &dst_bindir, 0o755);
+        if builder.config.llvm_tools_enabled {
+            // Prepare the image directory
+            let src_bindir = builder.llvm_out(target).join("bin");
+            let dst_bindir = format!("lib/rustlib/{}/bin", target.triple);
+            for tool in LLVM_TOOLS {
+                let exe = src_bindir.join(exe(tool, target));
+                tarball.add_file(&exe, &dst_bindir, 0o755);
+            }
         }
 
         // Copy libLLVM.so to the target lib dir as well, so the RPATH like

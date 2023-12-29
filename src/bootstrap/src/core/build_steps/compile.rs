@@ -1738,7 +1738,7 @@ impl Step for Assemble {
         if builder.config.rust_codegen_backends.contains(&INTERNER.intern_str("llvm")) {
             let llvm::LlvmResult { llvm_config, .. } =
                 builder.ensure(llvm::Llvm { target: target_compiler.host });
-            if !builder.config.dry_run() {
+            if !builder.config.dry_run() && builder.config.llvm_tools_enabled {
                 let llvm_bin_dir = output(Command::new(llvm_config).arg("--bindir"));
                 let llvm_bin_dir = Path::new(llvm_bin_dir.trim());
 

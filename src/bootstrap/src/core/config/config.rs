@@ -1630,7 +1630,7 @@ impl Config {
                 );
             }
 
-            set(&mut config.llvm_tools_enabled, llvm_tools);
+            config.llvm_tools_enabled = llvm_tools.unwrap_or(true);
             config.rustc_parallel =
                 parallel_compiler.unwrap_or(config.channel == "dev" || config.channel == "nightly");
             config.rustc_default_linker = default_linker;
