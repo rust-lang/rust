@@ -1,5 +1,5 @@
-use crate::os::xous::ffi::{blocking_scalar, do_yield, scalar};
-use crate::os::xous::services::ticktimer_server;
+use crate::os::xous::ffi::{blocking_scalar, do_yield};
+use crate::os::xous::services::{ticktimer_server, TicktimerScalar};
 use crate::sync::atomic::{AtomicBool, AtomicUsize, Ordering::Relaxed, Ordering::SeqCst};
 
 pub struct Mutex {
@@ -29,7 +29,7 @@ impl Mutex {
     }
 
     fn index(&self) -> usize {
-        self as *const Mutex as usize
+        core::ptr::from_ref(self).addr()
     }
 
     #[inline]
@@ -83,11 +83,8 @@ impl Mutex {
         }
 
         // Unblock one thread that is waiting on this message.
-        scalar(
-            ticktimer_server(),
-            crate::os::xous::services::TicktimerScalar::UnlockMutex(self.index()).into(),
-        )
-        .expect("failure to send UnlockMutex command");
+        blocking_scalar(ticktimer_server(), TicktimerScalar::UnlockMutex(self.index()).into())
+            .expect("failure to send UnlockMutex command");
     }
 
     #[inline]
@@ -106,11 +103,8 @@ impl Drop for Mutex {
         // If there was Mutex contention, then we involved the ticktimer. Free
         // the resources associated with this Mutex as it is deallocated.
         if self.contended.load(Relaxed) {
-            scalar(
-                ticktimer_server(),
-                crate::os::xous::services::TicktimerScalar::FreeMutex(self.index()).into(),
-            )
-            .ok();
+            blocking_scalar(ticktimer_server(), TicktimerScalar::FreeMutex(self.index()).into())
+                .ok();
         }
     }
 }
