@@ -199,8 +199,15 @@ pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
                         if !args.is_empty() {
                             error!("`any()` must be empty");
                         }
+                    } else if arg.has_name(sym::none)
+                        && let Some(args) = arg.meta_item_list()
+                    {
+                        values.insert(None);
+                        if !args.is_empty() {
+                            error!("`none()` must be empty");
+                        }
                     } else {
-                        error!("`values()` arguments must be string literals or `any()`");
+                        error!("`values()` arguments must be string literals, `none()` or `any()`");
                     }
                 }
             } else {
