@@ -153,10 +153,6 @@ else
   fi
 fi
 
-if [ "$RUST_RELEASE_CHANNEL" = "nightly" ] || [ "$DIST_REQUIRE_ALL_TOOLS" = "" ]; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-missing-tools"
-fi
-
 # Unless we're using an older version of LLVM, check that all LLVM components
 # used by tests are available.
 if [ "$IS_NOT_LATEST_LLVM" = "" ]; then

@@ -427,9 +427,7 @@ impl Step for Rustfmt {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder
-            .ensure(tool::Rustfmt { compiler, target: self.host, extra_features: Vec::new() })
-            .expect("in-tree tool");
+        builder.ensure(tool::Rustfmt { compiler, target: self.host, extra_features: Vec::new() });
 
         let mut cargo = tool::prepare_tool_cargo(
             builder,
@@ -476,9 +474,11 @@ impl Step for RustDemangler {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        let rust_demangler = builder
-            .ensure(tool::RustDemangler { compiler, target: self.host, extra_features: Vec::new() })
-            .expect("in-tree tool");
+        let rust_demangler = builder.ensure(tool::RustDemangler {
+            compiler,
+            target: self.host,
+            extra_features: Vec::new(),
+        });
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -609,12 +609,13 @@ impl Step for Miri {
         // Except if we are at stage 2, the bootstrap loop is complete and we can stick with our current stage.
         let compiler_std = builder.compiler(if stage < 2 { stage + 1 } else { stage }, host);
 
-        let miri = builder
-            .ensure(tool::Miri { compiler, target: self.host, extra_features: Vec::new() })
-            .expect("in-tree tool");
-        let _cargo_miri = builder
-            .ensure(tool::CargoMiri { compiler, target: self.host, extra_features: Vec::new() })
-            .expect("in-tree tool");
+        let miri =
+            builder.ensure(tool::Miri { compiler, target: self.host, extra_features: Vec::new() });
+        let _cargo_miri = builder.ensure(tool::CargoMiri {
+            compiler,
+            target: self.host,
+            extra_features: Vec::new(),
+        });
         // The stdlib we need might be at a different stage. And just asking for the
         // sysroot does not seem to populate it, so we do that first.
         builder.ensure(compile::Std::new(compiler_std, host));
@@ -788,9 +789,7 @@ impl Step for Clippy {
         let host = self.host;
         let compiler = builder.compiler(stage, host);
 
-        builder
-            .ensure(tool::Clippy { compiler, target: self.host, extra_features: Vec::new() })
-            .expect("in-tree tool");
+        builder.ensure(tool::Clippy { compiler, target: self.host, extra_features: Vec::new() });
         let mut cargo = tool::prepare_tool_cargo(
             builder,
             compiler,
@@ -1668,13 +1667,11 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         if mode == "coverage-run" {
             // The demangler doesn't need the current compiler, so we can avoid
             // unnecessary rebuilds by using the bootstrap compiler instead.
-            let rust_demangler = builder
-                .ensure(tool::RustDemangler {
-                    compiler: compiler.with_stage(0),
-                    target: compiler.host,
-                    extra_features: Vec::new(),
-                })
-                .expect("in-tree tool");
+            let rust_demangler = builder.ensure(tool::RustDemangler {
+                compiler: compiler.with_stage(0),
+                target: compiler.host,
+                extra_features: Vec::new(),
+            });
             cmd.arg("--rust-demangler-path").arg(rust_demangler);
         }
 
