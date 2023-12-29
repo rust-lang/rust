@@ -445,11 +445,12 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                 {
                     let bound_fn_sig = cx.tcx.fn_sig(callee_def_id);
                     let fn_sig = bound_fn_sig.skip_binder();
-                    if let Some(arg_index) = recv.into_iter().chain(call_args).position(|arg| arg.hir_id == expr.hir_id)
+                    if let Some(arg_index) = recv
+                        .into_iter()
+                        .chain(call_args)
+                        .position(|arg| arg.hir_id == expr.hir_id)
                         && let param_ty = fn_sig.input(arg_index).skip_binder()
-                        && let ty::Param(ParamTy { index: param_index , ..}) = *param_ty.kind()
-                        // https://github.com/rust-lang/rust-clippy/issues/9504 and https://github.com/rust-lang/rust-clippy/issues/10021
-                        && (param_index as usize) < call_generic_args.len()
+                        && let ty::Param(ParamTy { index: param_index, .. }) = *param_ty.kind()
                     {
                         if fn_sig
                             .skip_binder()
