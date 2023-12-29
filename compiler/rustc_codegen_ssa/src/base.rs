@@ -906,17 +906,22 @@ impl CrateInfo {
                 })
                 .collect();
             let prefix = if target.is_like_windows && target.arch == "x86" { "_" } else { "" };
+
+            // This loop only adds new items to values of the hash map, so the order in which we
+            // iterate over the values is not important.
+            #[allow(rustc::potential_query_instability)]
             info.linked_symbols
                 .iter_mut()
                 .filter(|(crate_type, _)| {
                     !matches!(crate_type, CrateType::Rlib | CrateType::Staticlib)
                 })
                 .for_each(|(_, linked_symbols)| {
-                    linked_symbols.extend(
-                        missing_weak_lang_items
-                            .iter()
-                            .map(|item| (format!("{prefix}{item}"), SymbolExportKind::Text)),
-                    );
+                    let mut symbols = missing_weak_lang_items
+                        .iter()
+                        .map(|item| (format!("{prefix}{item}"), SymbolExportKind::Text))
+                        .collect::<Vec<_>>();
+                    symbols.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+                    linked_symbols.extend(symbols);
                     if tcx.allocator_kind(()).is_some() {
                         // At least one crate needs a global allocator. This crate may be placed
                         // after the crate that defines it in the linker order, in which case some

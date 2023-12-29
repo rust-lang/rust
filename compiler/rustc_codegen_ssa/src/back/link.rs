@@ -559,6 +559,11 @@ fn link_staticlib<'a>(
             archive_builder_builder
                 .extract_bundled_libs(path, tempdir.as_ref(), &relevant_libs)
                 .unwrap_or_else(|e| sess.dcx().emit_fatal(e));
+
+            // We sort the libraries below
+            #[allow(rustc::potential_query_instability)]
+            let mut relevant_libs: Vec<Symbol> = relevant_libs.into_iter().collect();
+            relevant_libs.sort_unstable();
             for filename in relevant_libs {
                 let joined = tempdir.as_ref().join(filename.as_str());
                 let path = joined.as_path();
@@ -2172,14 +2177,19 @@ fn linker_with_args<'a>(
         .iter()
         .find(|(ty, _)| *ty == crate_type)
         .expect("failed to find crate type in dependency format list");
-    let native_libraries_from_nonstatics = codegen_results
+
+    // We sort the libraries below
+    #[allow(rustc::potential_query_instability)]
+    let mut native_libraries_from_nonstatics = codegen_results
         .crate_info
         .native_libraries
         .iter()
         .filter_map(|(cnum, libraries)| {
             (dependency_linkage[cnum.as_usize() - 1] != Linkage::Static).then_some(libraries)
         })
-        .flatten();
+        .flatten()
+        .collect::<Vec<_>>();
+    native_libraries_from_nonstatics.sort_unstable_by(|a, b| a.name.as_str().cmp(b.name.as_str()));
     for (raw_dylib_name, raw_dylib_imports) in
         collate_raw_dylibs(sess, native_libraries_from_nonstatics)?
     {
