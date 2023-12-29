@@ -6,7 +6,6 @@
 //! directory in each respective module.
 
 use std::io::Write;
-#[cfg(all(any(unix, windows), not(target_os = "solaris")))]
 use std::process;
 use std::{
     env,
@@ -22,43 +21,35 @@ fn main() {
     let args = env::args().skip(1).collect::<Vec<_>>();
     let config = Config::parse(&args);
 
-    #[cfg(all(any(unix, windows), not(target_os = "solaris")))]
     let mut build_lock;
-    #[cfg(all(any(unix, windows), not(target_os = "solaris")))]
     let _build_lock_guard;
 
     if !config.bypass_bootstrap_lock {
         // Display PID of process holding the lock
         // PID will be stored in a lock file
-        #[cfg(all(any(unix, windows), not(target_os = "solaris")))]
-        {
-            let path = config.out.join("lock");
-            let pid = match fs::read_to_string(&path) {
-                Ok(contents) => contents,
-                Err(_) => String::new(),
-            };
+        let lock_path = config.out.join("lock");
+        let pid = match fs::read_to_string(&lock_path) {
+            Ok(contents) => contents,
+            Err(_) => String::new(),
+        };
 
-            build_lock = fd_lock::RwLock::new(t!(fs::OpenOptions::new()
-                .write(true)
-                .create(true)
-                .open(&path)));
-            _build_lock_guard = match build_lock.try_write() {
-                Ok(mut lock) => {
-                    t!(lock.write(&process::id().to_string().as_ref()));
-                    lock
-                }
-                err => {
-                    drop(err);
-                    println!("WARNING: build directory locked by process {pid}, waiting for lock");
-                    let mut lock = t!(build_lock.write());
-                    t!(lock.write(&process::id().to_string().as_ref()));
-                    lock
-                }
-            };
-        }
-
-        #[cfg(any(not(any(unix, windows)), target_os = "solaris"))]
-        println!("WARNING: file locking not supported for target, not locking build directory");
+        build_lock = fd_lock::RwLock::new(t!(fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(&lock_path)));
+        _build_lock_guard = match build_lock.try_write() {
+            Ok(mut lock) => {
+                t!(lock.write(&process::id().to_string().as_ref()));
+                lock
+            }
+            err => {
+                drop(err);
+                println!("WARNING: build directory locked by process {pid}, waiting for lock");
+                let mut lock = t!(build_lock.write());
+                t!(lock.write(&process::id().to_string().as_ref()));
+                lock
+            }
+        };
     }
 
     // check_version warnings are not printed during setup
