@@ -28,10 +28,10 @@ use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 pub(super) fn check_fn<'a, 'tcx>(
     fcx: &mut FnCtxt<'a, 'tcx>,
     fn_sig: ty::FnSig<'tcx>,
+    coroutine_types: Option<CoroutineTypes<'tcx>>,
     decl: &'tcx hir::FnDecl<'tcx>,
     fn_def_id: LocalDefId,
     body: &'tcx hir::Body<'tcx>,
-    closure_kind: Option<hir::ClosureKind>,
     params_can_be_unsized: bool,
 ) -> Option<CoroutineTypes<'tcx>> {
     let fn_id = fcx.tcx.local_def_id_to_hir_id(fn_def_id);
@@ -49,53 +49,12 @@ pub(super) fn check_fn<'a, 'tcx>(
             fcx.param_env,
         ));
 
+    fcx.coroutine_types = coroutine_types;
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(ret_ty)));
 
     let span = body.value.span;
 
     forbid_intrinsic_abi(tcx, span, fn_sig.abi);
-
-    if let Some(hir::ClosureKind::Coroutine(kind)) = closure_kind {
-        let yield_ty = match kind {
-            hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _)
-            | hir::CoroutineKind::Coroutine(_) => {
-                let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::TypeInference,
-                    span,
-                });
-                fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
-                yield_ty
-            }
-            // HACK(-Ztrait-solver=next): In the *old* trait solver, we must eagerly
-            // guide inference on the yield type so that we can handle `AsyncIterator`
-            // in this block in projection correctly. In the new trait solver, it is
-            // not a problem.
-            hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _) => {
-                let yield_ty = fcx.next_ty_var(TypeVariableOrigin {
-                    kind: TypeVariableOriginKind::TypeInference,
-                    span,
-                });
-                fcx.require_type_is_sized(yield_ty, span, traits::SizedYieldType);
-
-                Ty::new_adt(
-                    tcx,
-                    tcx.adt_def(tcx.require_lang_item(hir::LangItem::Poll, Some(span))),
-                    tcx.mk_args(&[Ty::new_adt(
-                        tcx,
-                        tcx.adt_def(tcx.require_lang_item(hir::LangItem::Option, Some(span))),
-                        tcx.mk_args(&[yield_ty.into()]),
-                    )
-                    .into()]),
-                )
-            }
-            hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _) => Ty::new_unit(tcx),
-        };
-
-        // Resume type defaults to `()` if the coroutine has no argument.
-        let resume_ty = fn_sig.inputs().get(0).copied().unwrap_or_else(|| Ty::new_unit(tcx));
-
-        fcx.coroutine_types = Some(CoroutineTypes { resume_ty, yield_ty });
-    }
 
     GatherLocalsVisitor::new(fcx).visit_body(body);
 
