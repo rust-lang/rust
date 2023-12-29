@@ -6,7 +6,9 @@
 set -euf -o pipefail
 
 INTEGRATION_SHA=66793c4894bf6204579bbee3b79956335f31c768
-PICK_REFS=()
+PICK_REFS=(
+    refs/changes/86/965586/2
+)
 
 checkout=fuchsia
 jiri=.jiri_root/bin/jiri

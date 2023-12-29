@@ -44,6 +44,7 @@ ENV CARGO_TARGET_X86_64_FUCHSIA_RUSTFLAGS \
 
 ENV TARGETS=x86_64-fuchsia
 ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnu
+ENV TARGETS=$TARGETS,wasm32-unknown-unknown
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
