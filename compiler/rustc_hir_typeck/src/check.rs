@@ -149,15 +149,10 @@ pub(super) fn check_fn<'a, 'tcx>(
     // We insert the deferred_coroutine_interiors entry after visiting the body.
     // This ensures that all nested coroutines appear before the entry of this coroutine.
     // resolve_coroutine_interiors relies on this property.
-    let coroutine_ty = if let Some(hir::ClosureKind::Coroutine(coroutine_kind)) = closure_kind {
+    let coroutine_ty = if let Some(hir::ClosureKind::Coroutine(_)) = closure_kind {
         let interior = fcx
             .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::MiscVariable, span });
-        fcx.deferred_coroutine_interiors.borrow_mut().push((
-            fn_def_id,
-            body.id(),
-            interior,
-            coroutine_kind,
-        ));
+        fcx.deferred_coroutine_interiors.borrow_mut().push((fn_def_id, body.id(), interior));
 
         let (resume_ty, yield_ty) = fcx.resume_yield_tys.unwrap();
         Some(CoroutineTypes { resume_ty, yield_ty, interior })
