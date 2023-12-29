@@ -65,11 +65,11 @@ Next, let's talk about what the inputs to the `Analysis` are, precisely.
 
 rust-analyzer never does any I/O itself, all inputs get passed explicitly via
 the `AnalysisHost::apply_change` method, which accepts a single argument, a
-`Change`. [`Change`] is a builder for a single change
+`AnalysisChange`. [`AnalysisChange`] is a builder for a single change
 "transaction", so it suffices to study its methods to understand all of the
 input data.
 
-[`Change`]: https://github.com/rust-lang/rust-analyzer/blob/master/crates/base_db/src/change.rs#L14-L89
+[`AnalysisChange`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/lib.rs#L119-L167
 
 The `(add|change|remove)_file` methods control the set of the input files, where
 each file has an integer id (`FileId`, picked by the client), text (`String`)
@@ -118,7 +118,7 @@ can have `#[path="/dev/random"] mod foo;`.
 
 To solve (or explicitly refuse to solve) these problems rust-analyzer uses the
 concept of a "source root". Roughly speaking, source roots are the contents of a
-directory on a file systems, like `/home/matklad/projects/rustraytracer/**.rs`.
+directory on a file system, like `/home/matklad/projects/rustraytracer/**.rs`.
 
 More precisely, all files (`FileId`s) are partitioned into disjoint
 `SourceRoot`s. Each file has a relative UTF-8 path within the `SourceRoot`.
@@ -156,7 +156,7 @@ it should be possible to dynamically reconfigure it later without restart.
 [main_loop.rs#L62-L70](https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L62-L70)
 
 The [`ProjectModel`] we get after this step is very Cargo and sysroot specific,
-it needs to be lowered to get the input in the form of `Change`. This
+it needs to be lowered to get the input in the form of `AnalysisChange`. This
 happens in [`ServerWorldState::new`] method. Specifically
 
 * Create a `SourceRoot` for each Cargo package and sysroot.
@@ -173,7 +173,7 @@ of the main loop, just like any other change. Here's where we handle:
 * [File system changes](https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L194)
 * [Changes from the editor](https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L377)
 
-After a single loop's turn, we group the changes into one `Change` and
+After a single loop's turn, we group the changes into one `AnalysisChange` and
 [apply] it. This always happens on the main thread and blocks the loop.
 
 [apply]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/server_world.rs#L216
@@ -186,7 +186,7 @@ executing "goto definition" on the threadpool and a new change comes in, the
 task will be canceled as soon as the main loop calls `apply_change` on the
 `AnalysisHost`.
 
-["goto definition"]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/server_world.rs#L216
+["goto definition"]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L296
 [`schedule`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L426-L455
 [The task]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop/handlers.rs#L205-L223
 
@@ -250,13 +250,13 @@ All analyzer information is stored in a salsa database. `Analysis` and
 `AnalysisHost` types are newtype wrappers for [`RootDatabase`] -- a salsa
 database.
 
-[`RootDatabase`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/db.rs#L88-L134
+[`RootDatabase`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/db.rs#L88-L134
 
 Salsa input queries are defined in [`FilesDatabase`] (which is a part of
-`RootDatabase`). They closely mirror the familiar `Change` structure:
+`RootDatabase`). They closely mirror the familiar `AnalysisChange` structure:
 indeed, what `apply_change` does is it sets the values of input queries.
 
-[`FilesDatabase`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/base_db/src/input.rs#L150-L174
+[`FilesDatabase`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_db/src/input.rs#L150-L174
 
 ## From text to semantic model
 
@@ -281,7 +281,7 @@ methods invoke various queries on the database to build the model on demand.
 Here's [the list of queries].
 
 [`code_model_api`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/code_model_api.rs
-[the list of queries]: https://github.com/rust-lang/rust-analyzer/blob/7e84440e25e19529e4ff8a66e521d1b06349c6ec/crates/ra_hir/src/db.rs#L20-L106
+[the list of queries]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/db.rs#L20-L106
 
 The first step of building the model is parsing the source code.
 
@@ -493,7 +493,7 @@ position-independent part of the lowering. The result of this query is stable.
 Naturally, name resolution [uses] this stable projection query.
 
 [imports]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/nameres/lower.rs#L52-L59
-[`SourceMap`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/nameres/lower.rs#L52-L59
+[`SourceMap`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/nameres/lower.rs#L74-L94
 [projection query]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/nameres/lower.rs#L97-L103
 [uses]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_hir/src/query_definitions.rs#L49
 
@@ -560,8 +560,7 @@ the type to completion.
 [receiving a message]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L203
 [schedule it on the threadpool]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L428
 [catch]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L436-L442
-[the handler]: https://salsa.zulipchat.com/#narrow/stream/181542-rfcs.2Fsalsa-query-group/topic/design.20next.20steps
-[ask analysis for completion]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ide_api/src/lib.rs#L439-L444
+[the handler]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop/handlers.rs#L304-L343
 [ask analysis for completion]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/lib.rs#L439-L444
 [completion implementation]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion.rs#L46-L62
 [`CompletionContext`]: https://github.com/rust-lang/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion/completion_context.rs#L14-L37
