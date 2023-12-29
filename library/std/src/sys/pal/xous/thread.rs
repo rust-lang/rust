@@ -68,14 +68,18 @@ impl Thread {
         )
         .map_err(|code| io::Error::from_raw_os_error(code as i32))?;
 
-        extern "C" fn thread_start(main: *mut usize, guard_page_pre: usize, stack_size: usize) {
+        extern "C" fn thread_start(
+            main: *mut usize,
+            guard_page_pre: usize,
+            stack_size: usize,
+        ) -> ! {
             unsafe {
-                // Finally, let's run some code.
+                // Run the contents of the new thread.
                 Box::from_raw(main as *mut Box<dyn FnOnce()>)();
             }
 
             // Destroy TLS, which will free the TLS page and call the destructor for
-            // any thread local storage.
+            // any thread local storage (if any).
             unsafe {
                 crate::sys::thread_local_key::destroy_tls();
             }
