@@ -117,12 +117,11 @@ x--expand-yaml-anchors--remove:
     runs-on: "${{ matrix.os }}"
     env:
       <<: *shared-ci-variables
-      #MSYS2_PATH_TYPE: inherit
     steps:
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
-          update: true
+          update: false
           release: false
           path-type: inherit
           install: >
