@@ -272,6 +272,7 @@ mod permissions_set_readonly_false;
 mod precedence;
 mod ptr;
 mod ptr_offset_with_cast;
+mod pub_underscore_fields;
 mod pub_use;
 mod question_mark;
 mod question_mark_used;
@@ -571,6 +572,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         verbose_bit_mask_threshold,
         warn_on_all_wildcard_imports,
         check_private_items,
+        pub_underscore_fields_behavior,
 
         blacklisted_names: _,
         cyclomatic_complexity_threshold: _,
@@ -1081,6 +1083,11 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(uninhabited_references::UninhabitedReferences));
     store.register_late_pass(|_| Box::new(ineffective_open_options::IneffectiveOpenOptions));
     store.register_late_pass(|_| Box::new(unconditional_recursion::UnconditionalRecursion));
+    store.register_late_pass(move |_| {
+        Box::new(pub_underscore_fields::PubUnderscoreFields {
+            behavior: pub_underscore_fields_behavior,
+        })
+    });
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
