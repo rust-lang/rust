@@ -125,3 +125,23 @@ pub fn fake_main(_attr: TokenStream, item: TokenStream) -> TokenStream {
     }
     .into()
 }
+
+#[proc_macro_attribute]
+pub fn fake_desugar_await(_args: TokenStream, input: TokenStream) -> TokenStream {
+    let mut async_fn = syn::parse_macro_input!(input as syn::ItemFn);
+
+    for stmt in &mut async_fn.block.stmts {
+        if let syn::Stmt::Expr(syn::Expr::Match(syn::ExprMatch { expr: scrutinee, .. }), _) = stmt {
+            if let syn::Expr::Await(syn::ExprAwait { base, await_token, .. }) = scrutinee.as_mut() {
+                let blc = quote_spanned!( await_token.span => {
+                    #[allow(clippy::let_and_return)]
+                    let __pinned = #base;
+                    __pinned
+                });
+                *scrutinee = parse_quote!(#blc);
+            }
+        }
+    }
+
+    quote!(#async_fn).into()
+}

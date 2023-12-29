@@ -1,3 +1,5 @@
+//@aux-build:proc_macro_attr.rs
+
 #![warn(clippy::blocks_in_conditions)]
 #![allow(unused, clippy::let_and_return, clippy::needless_if)]
 #![warn(clippy::nonminimal_bool)]
@@ -96,6 +98,17 @@ macro_rules! timed {
 fn issue_12162() {
     if timed!("check this!", false) {
         println!();
+    }
+}
+
+mod issue_12016 {
+    #[proc_macro_attr::fake_desugar_await]
+    pub async fn await_becomes_block() -> i32 {
+        match Some(1).await {
+            Some(1) => 2,
+            Some(2) => 3,
+            _ => 0,
+        }
     }
 }
 
