@@ -475,19 +475,19 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
     }
 
     fn fold_const(&mut self, mut ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        match ct.kind() {
-            ty::ConstKind::Infer(InferConst::Var(mut vid)) => {
+        match (ct.kind(), self.infcx) {
+            (ty::ConstKind::Infer(InferConst::Var(mut vid)), Some(infcx)) => {
                 // We need to canonicalize the *root* of our const var.
                 // This is so that our canonical response correctly reflects
                 // any equated inference vars correctly!
-                let root_vid = self.infcx.unwrap().root_const_var(vid);
+                let root_vid = infcx.root_const_var(vid);
                 if root_vid != vid {
                     ct = ty::Const::new_var(self.tcx, root_vid, ct.ty());
                     vid = root_vid;
                 }
 
                 debug!("canonical: const var found with vid {:?}", vid);
-                match self.infcx.unwrap().probe_const_var(vid) {
+                match infcx.probe_const_var(vid) {
                     Ok(c) => {
                         debug!("(resolved to {:?})", c);
                         return self.fold_const(c);
@@ -507,8 +507,8 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                     }
                 }
             }
-            ty::ConstKind::Infer(InferConst::EffectVar(vid)) => {
-                match self.infcx.unwrap().probe_effect_var(vid) {
+            (ty::ConstKind::Infer(InferConst::EffectVar(vid)), Some(infcx)) => {
+                match infcx.probe_effect_var(vid) {
                     Some(value) => return self.fold_const(value.as_const(self.tcx)),
                     None => {
                         return self.canonicalize_const_var(
@@ -518,17 +518,17 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Canonicalizer<'cx, 'tcx> {
                     }
                 }
             }
-            ty::ConstKind::Infer(InferConst::Fresh(_)) => {
+            (ty::ConstKind::Infer(InferConst::Fresh(_)), _) => {
                 bug!("encountered a fresh const during canonicalization")
             }
-            ty::ConstKind::Bound(debruijn, _) => {
+            (ty::ConstKind::Bound(debruijn, _), _) => {
                 if debruijn >= self.binder_index {
                     bug!("escaping bound const during canonicalization")
                 } else {
                     return ct;
                 }
             }
-            ty::ConstKind::Placeholder(placeholder) => {
+            (ty::ConstKind::Placeholder(placeholder), _) => {
                 return self.canonicalize_const_var(
                     CanonicalVarInfo {
                         kind: CanonicalVarKind::PlaceholderConst(placeholder, ct.ty()),
