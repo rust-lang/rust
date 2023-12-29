@@ -41,7 +41,7 @@ fn check_arm<'tcx>(
     let inner_expr = peel_blocks_with_stmt(outer_then_body);
     if let Some(inner) = IfLetOrMatch::parse(cx, inner_expr)
         && let Some((inner_scrutinee, inner_then_pat, inner_else_body)) = match inner {
-            IfLetOrMatch::IfLet(scrutinee, pat, _, els) => Some((scrutinee, pat, els)),
+            IfLetOrMatch::IfLet(scrutinee, pat, _, els, _) => Some((scrutinee, pat, els)),
             IfLetOrMatch::Match(scrutinee, arms, ..) => if arms.len() == 2 && arms.iter().all(|a| a.guard.is_none())
                 // if there are more than two arms, collapsing would be non-trivial
                 // one of the arms must be "wild-like"
@@ -75,7 +75,7 @@ fn check_arm<'tcx>(
         )
         // ...or anywhere in the inner expression
         && match inner {
-            IfLetOrMatch::IfLet(_, _, body, els) => {
+            IfLetOrMatch::IfLet(_, _, body, els, _) => {
                 !is_local_used(cx, body, binding_id) && els.map_or(true, |e| !is_local_used(cx, e, binding_id))
             },
             IfLetOrMatch::Match(_, arms, ..) => !arms.iter().any(|arm| is_local_used(cx, arm, binding_id)),

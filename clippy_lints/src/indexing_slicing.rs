@@ -170,7 +170,23 @@ impl<'tcx> LateLintPass<'tcx> for IndexingSlicing {
                         return;
                     }
                     // Index is a constant uint.
-                    if constant(cx, cx.typeck_results(), index).is_some() {
+                    if let Some(constant) = constant(cx, cx.typeck_results(), index) {
+                        // only `usize` index is legal in rust array index
+                        // leave other type to rustc
+                        if let Constant::Int(off) = constant
+                            && let ty::Uint(utype) = cx.typeck_results().expr_ty(index).kind()
+                            && *utype == ty::UintTy::Usize
+                            && let ty::Array(_, s) = ty.kind()
+                            && let Some(size) = s.try_eval_target_usize(cx.tcx, cx.param_env)
+                        {
+                            // get constant offset and check whether it is in bounds
+                            let off = usize::try_from(off).unwrap();
+                            let size = usize::try_from(size).unwrap();
+
+                            if off >= size {
+                                span_lint(cx, OUT_OF_BOUNDS_INDEXING, expr.span, "index is out of bounds");
+                            }
+                        }
                         // Let rustc's `const_err` lint handle constant `usize` indexing on arrays.
                         return;
                     }

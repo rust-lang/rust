@@ -6,11 +6,68 @@ document.
 
 ## Unreleased / Beta / In Rust Nightly
 
-[7671c283...master](https://github.com/rust-lang/rust-clippy/compare/7671c283...master)
+[09ac14c9...master](https://github.com/rust-lang/rust-clippy/compare/09ac14c9...master)
+
+## Rust 1.75
+
+Current stable, released 2023-12-28
+
+[View all 69 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2023-09-25T11%3A47%3A47Z..2023-11-02T16%3A41%3A59Z+base%3Amaster)
+
+### New Lints
+
+* [`unused_enumerate_index`]
+  [#10404](https://github.com/rust-lang/rust-clippy/pull/10404)
+* [`unnecessary_fallible_conversions`]
+  [#11669](https://github.com/rust-lang/rust-clippy/pull/11669)
+* [`waker_clone_wake`]
+  [#11698](https://github.com/rust-lang/rust-clippy/pull/11698)
+* [`struct_field_names`]
+  [#11496](https://github.com/rust-lang/rust-clippy/pull/11496)
+* [`into_iter_without_iter`]
+  [#11587](https://github.com/rust-lang/rust-clippy/pull/11587)
+* [`iter_without_into_iter`]
+  [#11527](https://github.com/rust-lang/rust-clippy/pull/11527)
+* [`manual_hash_one`]
+  [#11556](https://github.com/rust-lang/rust-clippy/pull/11556)
+
+
+### Moves and Deprecations
+
+* Moved [`read_zero_byte_vec`] to `nursery` (Now allow-by-default)
+  [#11727](https://github.com/rust-lang/rust-clippy/pull/11727)
+* Moved [`missing_enforced_import_renames`] to `style` (Now warn-by-default)
+  [#11539](https://github.com/rust-lang/rust-clippy/pull/11539)
+* Moved [`needless_raw_string_hashes`] to `pedantic` (Now allow-by-default)
+  [#11415](https://github.com/rust-lang/rust-clippy/pull/11415)
+* Moved [`needless_pass_by_ref_mut`] to `nursery` (Now allow-by-default)
+  [#11596](https://github.com/rust-lang/rust-clippy/pull/11596)
+
+### Enhancements
+
+* [`declare_interior_mutable_const`] and [`borrow_interior_mutable_const`]: Now check the
+  [`ignore-interior-mutability`] config value
+  [#11678](https://github.com/rust-lang/rust-clippy/pull/11678)
+
+### Suggestion Fixes/Improvements
+
+* [`items_after_test_module`]: The suggestion is now machine-applicable
+  [#11611](https://github.com/rust-lang/rust-clippy/pull/11611)
+
+### ICE Fixes
+
+* [`redundant_locals`]: No longer crashes if variables are rebound above macros
+  [#11623](https://github.com/rust-lang/rust-clippy/pull/11623)
+* [`implicit_hasher`]: No longer lints inside macros, which could cause ICEs
+  [#11593](https://github.com/rust-lang/rust-clippy/pull/11593)
+
+### Documentation Improvements
+
+* `cargo clippy --help` now uses colors for readability :tada:
 
 ## Rust 1.74
 
-Current stable, released 2023-11-16
+Released 2023-11-16
 
 [View all 94 merged pull requests](https://github.com/rust-lang/rust-clippy/pulls?q=merged%3A2023-08-11T15%3A29%3A18Z..2023-09-25T08%3A48%3A22Z+base%3Amaster)
 
@@ -51,7 +108,7 @@ Current stable, released 2023-11-16
 ### Enhancements
 
 * [`undocumented_unsafe_blocks`]: The config values [`accept-comment-above-statement`] and 
-  [`accept-comment-above-attributes`] to `true` by default
+  [`accept-comment-above-attributes`] are now `true` by default
   [#11170](https://github.com/rust-lang/rust-clippy/pull/11170)
 * [`explicit_iter_loop`]: Added [`enforce-iter-loop-reborrow`] to disable reborrow linting by default
   [#11418](https://github.com/rust-lang/rust-clippy/pull/11418)
@@ -5044,6 +5101,7 @@ Released 2018-09-13
 [`duplicate_mod`]: https://rust-lang.github.io/rust-clippy/master/index.html#duplicate_mod
 [`duplicate_underscore_argument`]: https://rust-lang.github.io/rust-clippy/master/index.html#duplicate_underscore_argument
 [`duration_subsec`]: https://rust-lang.github.io/rust-clippy/master/index.html#duration_subsec
+[`eager_transmute`]: https://rust-lang.github.io/rust-clippy/master/index.html#eager_transmute
 [`else_if_without_else`]: https://rust-lang.github.io/rust-clippy/master/index.html#else_if_without_else
 [`empty_drop`]: https://rust-lang.github.io/rust-clippy/master/index.html#empty_drop
 [`empty_enum`]: https://rust-lang.github.io/rust-clippy/master/index.html#empty_enum
@@ -5177,6 +5235,8 @@ Released 2018-09-13
 [`items_after_test_module`]: https://rust-lang.github.io/rust-clippy/master/index.html#items_after_test_module
 [`iter_cloned_collect`]: https://rust-lang.github.io/rust-clippy/master/index.html#iter_cloned_collect
 [`iter_count`]: https://rust-lang.github.io/rust-clippy/master/index.html#iter_count
+[`iter_filter_is_ok`]: https://rust-lang.github.io/rust-clippy/master/index.html#iter_filter_is_ok
+[`iter_filter_is_some`]: https://rust-lang.github.io/rust-clippy/master/index.html#iter_filter_is_some
 [`iter_kv_map`]: https://rust-lang.github.io/rust-clippy/master/index.html#iter_kv_map
 [`iter_next_loop`]: https://rust-lang.github.io/rust-clippy/master/index.html#iter_next_loop
 [`iter_next_slice`]: https://rust-lang.github.io/rust-clippy/master/index.html#iter_next_slice
@@ -5470,6 +5530,7 @@ Released 2018-09-13
 [`reserve_after_initialization`]: https://rust-lang.github.io/rust-clippy/master/index.html#reserve_after_initialization
 [`rest_pat_in_fully_bound_structs`]: https://rust-lang.github.io/rust-clippy/master/index.html#rest_pat_in_fully_bound_structs
 [`result_expect_used`]: https://rust-lang.github.io/rust-clippy/master/index.html#result_expect_used
+[`result_filter_map`]: https://rust-lang.github.io/rust-clippy/master/index.html#result_filter_map
 [`result_large_err`]: https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err
 [`result_map_or_into_option`]: https://rust-lang.github.io/rust-clippy/master/index.html#result_map_or_into_option
 [`result_map_unit_fn`]: https://rust-lang.github.io/rust-clippy/master/index.html#result_map_unit_fn
@@ -5582,6 +5643,7 @@ Released 2018-09-13
 [`type_id_on_box`]: https://rust-lang.github.io/rust-clippy/master/index.html#type_id_on_box
 [`type_repetition_in_bounds`]: https://rust-lang.github.io/rust-clippy/master/index.html#type_repetition_in_bounds
 [`unchecked_duration_subtraction`]: https://rust-lang.github.io/rust-clippy/master/index.html#unchecked_duration_subtraction
+[`unconditional_recursion`]: https://rust-lang.github.io/rust-clippy/master/index.html#unconditional_recursion
 [`undocumented_unsafe_blocks`]: https://rust-lang.github.io/rust-clippy/master/index.html#undocumented_unsafe_blocks
 [`undropped_manually_drops`]: https://rust-lang.github.io/rust-clippy/master/index.html#undropped_manually_drops
 [`unicode_not_nfc`]: https://rust-lang.github.io/rust-clippy/master/index.html#unicode_not_nfc
