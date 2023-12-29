@@ -6,13 +6,13 @@
 use std::os::windows::io::AsRawHandle;
 use std::thread;
 
-use windows_sys::Win32::Foundation::CloseHandle;
+use windows_sys::Win32::Foundation::{CloseHandle, HANDLE};
 
 fn main() {
     let thread = thread::spawn(|| ());
 
     unsafe {
-        assert_ne!(CloseHandle(thread.as_raw_handle() as _), 0);
+        assert_ne!(CloseHandle(thread.as_raw_handle() as HANDLE), 0);
     }
 
     thread.join().unwrap();

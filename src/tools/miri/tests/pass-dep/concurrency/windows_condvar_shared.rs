@@ -2,14 +2,18 @@
 // We are making scheduler assumptions here.
 //@compile-flags: -Zmiri-preemption-rate=0
 
-use std::mem::MaybeUninit;
+use std::ptr::null_mut;
 use std::thread;
 
 use windows_sys::Win32::System::Threading::{
     AcquireSRWLockExclusive, AcquireSRWLockShared, ReleaseSRWLockExclusive, ReleaseSRWLockShared,
-    SleepConditionVariableSRW, WakeAllConditionVariable, CONDITION_VARIABLE_LOCKMODE_SHARED,
-    INFINITE,
+    SleepConditionVariableSRW, WakeAllConditionVariable, CONDITION_VARIABLE,
+    CONDITION_VARIABLE_LOCKMODE_SHARED, INFINITE, SRWLOCK,
 };
+
+// not in windows-sys
+const SRWLOCK_INIT: SRWLOCK = SRWLOCK { Ptr: null_mut() };
+const CONDITION_VARIABLE_INIT: CONDITION_VARIABLE = CONDITION_VARIABLE { Ptr: null_mut() };
 
 #[derive(Copy, Clone)]
 struct SendPtr<T>(*mut T);
@@ -20,11 +24,11 @@ unsafe impl<T> Send for SendPtr<T> {}
 fn all_shared() {
     println!("all_shared");
 
-    let mut lock = MaybeUninit::zeroed();
-    let mut condvar = MaybeUninit::zeroed();
+    let mut lock = SRWLOCK_INIT;
+    let mut condvar = CONDITION_VARIABLE_INIT;
 
-    let lock_ptr = SendPtr(lock.as_mut_ptr());
-    let condvar_ptr = SendPtr(condvar.as_mut_ptr());
+    let lock_ptr = SendPtr(&mut lock);
+    let condvar_ptr = SendPtr(&mut condvar);
 
     let mut handles = Vec::with_capacity(10);
 
@@ -92,11 +96,11 @@ fn all_shared() {
 fn shared_sleep_and_exclusive_lock() {
     println!("shared_sleep_and_exclusive_lock");
 
-    let mut lock = MaybeUninit::zeroed();
-    let mut condvar = MaybeUninit::zeroed();
+    let mut lock = SRWLOCK_INIT;
+    let mut condvar = CONDITION_VARIABLE_INIT;
 
-    let lock_ptr = SendPtr(lock.as_mut_ptr());
-    let condvar_ptr = SendPtr(condvar.as_mut_ptr());
+    let lock_ptr = SendPtr(&mut lock);
+    let condvar_ptr = SendPtr(&mut condvar);
 
     let mut waiters = Vec::with_capacity(5);
     for i in 0..5 {
@@ -153,11 +157,11 @@ fn shared_sleep_and_exclusive_lock() {
 fn exclusive_sleep_and_shared_lock() {
     println!("exclusive_sleep_and_shared_lock");
 
-    let mut lock = MaybeUninit::zeroed();
-    let mut condvar = MaybeUninit::zeroed();
+    let mut lock = SRWLOCK_INIT;
+    let mut condvar = CONDITION_VARIABLE_INIT;
 
-    let lock_ptr = SendPtr(lock.as_mut_ptr());
-    let condvar_ptr = SendPtr(condvar.as_mut_ptr());
+    let lock_ptr = SendPtr(&mut lock);
+    let condvar_ptr = SendPtr(&mut condvar);
 
     let mut handles = Vec::with_capacity(10);
     for i in 0..5 {

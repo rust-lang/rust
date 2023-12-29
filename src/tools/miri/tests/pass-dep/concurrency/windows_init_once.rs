@@ -2,14 +2,16 @@
 // We are making scheduler assumptions here.
 //@compile-flags: -Zmiri-preemption-rate=0
 
-use std::mem::MaybeUninit;
 use std::ptr::null_mut;
 use std::thread;
 
 use windows_sys::Win32::Foundation::{FALSE, TRUE};
 use windows_sys::Win32::System::Threading::{
-    InitOnceBeginInitialize, InitOnceComplete, INIT_ONCE_INIT_FAILED,
+    InitOnceBeginInitialize, InitOnceComplete, INIT_ONCE, INIT_ONCE_INIT_FAILED,
 };
+
+// not in windows-sys
+const INIT_ONCE_STATIC_INIT: INIT_ONCE = INIT_ONCE { Ptr: null_mut() };
 
 #[derive(Copy, Clone)]
 struct SendPtr<T>(*mut T);
@@ -17,60 +19,42 @@ struct SendPtr<T>(*mut T);
 unsafe impl<T> Send for SendPtr<T> {}
 
 fn single_thread() {
-    let mut init_once = MaybeUninit::zeroed();
+    let mut init_once = INIT_ONCE_STATIC_INIT;
     let mut pending = 0;
 
     unsafe {
-        assert_eq!(
-            InitOnceBeginInitialize(init_once.as_mut_ptr(), 0, &mut pending, null_mut()),
-            TRUE
-        );
+        assert_eq!(InitOnceBeginInitialize(&mut init_once, 0, &mut pending, null_mut()), TRUE);
         assert_eq!(pending, TRUE);
 
-        assert_eq!(InitOnceComplete(init_once.as_mut_ptr(), 0, null_mut()), TRUE);
+        assert_eq!(InitOnceComplete(&mut init_once, 0, null_mut()), TRUE);
 
-        assert_eq!(
-            InitOnceBeginInitialize(init_once.as_mut_ptr(), 0, &mut pending, null_mut()),
-            TRUE
-        );
+        assert_eq!(InitOnceBeginInitialize(&mut init_once, 0, &mut pending, null_mut()), TRUE);
         assert_eq!(pending, FALSE);
     }
 
-    let mut init_once = MaybeUninit::zeroed();
+    let mut init_once = INIT_ONCE_STATIC_INIT;
 
     unsafe {
-        assert_eq!(
-            InitOnceBeginInitialize(init_once.as_mut_ptr(), 0, &mut pending, null_mut()),
-            TRUE
-        );
+        assert_eq!(InitOnceBeginInitialize(&mut init_once, 0, &mut pending, null_mut()), TRUE);
         assert_eq!(pending, TRUE);
 
-        assert_eq!(
-            InitOnceComplete(init_once.as_mut_ptr(), INIT_ONCE_INIT_FAILED, null_mut()),
-            TRUE
-        );
+        assert_eq!(InitOnceComplete(&mut init_once, INIT_ONCE_INIT_FAILED, null_mut()), TRUE);
 
-        assert_eq!(
-            InitOnceBeginInitialize(init_once.as_mut_ptr(), 0, &mut pending, null_mut()),
-            TRUE
-        );
+        assert_eq!(InitOnceBeginInitialize(&mut init_once, 0, &mut pending, null_mut()), TRUE);
         assert_eq!(pending, TRUE);
     }
 }
 
 fn block_until_complete() {
-    let mut init_once = MaybeUninit::zeroed();
+    let mut init_once = INIT_ONCE_STATIC_INIT;
     let mut pending = 0;
 
     unsafe {
-        assert_eq!(
-            InitOnceBeginInitialize(init_once.as_mut_ptr(), 0, &mut pending, null_mut()),
-            TRUE
-        );
+        assert_eq!(InitOnceBeginInitialize(&mut init_once, 0, &mut pending, null_mut()), TRUE);
         assert_eq!(pending, TRUE);
     }
 
-    let init_once_ptr = SendPtr(init_once.as_mut_ptr());
+    let init_once_ptr = SendPtr(&mut init_once);
 
     let waiter = move || unsafe {
         let init_once_ptr = init_once_ptr; // avoid field capture
@@ -99,18 +83,15 @@ fn block_until_complete() {
 }
 
 fn retry_on_fail() {
-    let mut init_once = MaybeUninit::zeroed();
+    let mut init_once = INIT_ONCE_STATIC_INIT;
     let mut pending = 0;
 
     unsafe {
-        assert_eq!(
-            InitOnceBeginInitialize(init_once.as_mut_ptr(), 0, &mut pending, null_mut()),
-            TRUE
-        );
+        assert_eq!(InitOnceBeginInitialize(&mut init_once, 0, &mut pending, null_mut()), TRUE);
         assert_eq!(pending, TRUE);
     }
 
-    let init_once_ptr = SendPtr(init_once.as_mut_ptr());
+    let init_once_ptr = SendPtr(&mut init_once);
 
     let waiter = move || unsafe {
         let init_once_ptr = init_once_ptr; // avoid field capture
@@ -144,18 +125,15 @@ fn retry_on_fail() {
 }
 
 fn no_data_race_after_complete() {
-    let mut init_once = MaybeUninit::zeroed();
+    let mut init_once = INIT_ONCE_STATIC_INIT;
     let mut pending = 0;
 
     unsafe {
-        assert_eq!(
-            InitOnceBeginInitialize(init_once.as_mut_ptr(), 0, &mut pending, null_mut()),
-            TRUE
-        );
+        assert_eq!(InitOnceBeginInitialize(&mut init_once, 0, &mut pending, null_mut()), TRUE);
         assert_eq!(pending, TRUE);
     }
 
-    let init_once_ptr = SendPtr(init_once.as_mut_ptr());
+    let init_once_ptr = SendPtr(&mut init_once);
 
     let mut place = 0;
     let place_ptr = SendPtr(&mut place);

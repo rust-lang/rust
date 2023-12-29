@@ -6,7 +6,7 @@ use std::os::windows::io::IntoRawHandle;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 
-use windows_sys::Win32::Foundation::WAIT_OBJECT_0;
+use windows_sys::Win32::Foundation::{HANDLE, WAIT_OBJECT_0};
 use windows_sys::Win32::System::Threading::{WaitForSingleObject, INFINITE};
 
 fn main() {
@@ -17,7 +17,7 @@ fn main() {
             thread::yield_now();
         }
     })
-    .into_raw_handle() as _;
+    .into_raw_handle() as HANDLE;
 
     let waiter = move || unsafe {
         assert_eq!(WaitForSingleObject(blocker, INFINITE), WAIT_OBJECT_0);
