@@ -670,7 +670,7 @@ impl<'db> SemanticsImpl<'db> {
                             _ => 0,
                         };
                         // FIXME: here, the attribute's text range is used to strip away all
-                        // entries from the start of the attribute "list" up the the invoking
+                        // entries from the start of the attribute "list" up the invoking
                         // attribute. But in
                         // ```
                         // mod foo {
