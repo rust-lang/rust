@@ -905,34 +905,6 @@ impl Step for Rustc {
             ));
         }
 
-        // We currently don't support cross-crate LTO in stage0. This also isn't hugely necessary
-        // and may just be a time sink.
-        if compiler.stage != 0 {
-            match builder.config.rust_lto {
-                RustcLto::Thin | RustcLto::Fat => {
-                    // Since using LTO for optimizing dylibs is currently experimental,
-                    // we need to pass -Zdylib-lto.
-                    cargo.rustflag("-Zdylib-lto");
-                    // Cargo by default passes `-Cembed-bitcode=no` and doesn't pass `-Clto` when
-                    // compiling dylibs (and their dependencies), even when LTO is enabled for the
-                    // crate. Therefore, we need to override `-Clto` and `-Cembed-bitcode` here.
-                    let lto_type = match builder.config.rust_lto {
-                        RustcLto::Thin => "thin",
-                        RustcLto::Fat => "fat",
-                        _ => unreachable!(),
-                    };
-                    cargo.rustflag(&format!("-Clto={lto_type}"));
-                    cargo.rustflag("-Cembed-bitcode=yes");
-                }
-                RustcLto::ThinLocal => { /* Do nothing, this is the default */ }
-                RustcLto::Off => {
-                    cargo.rustflag("-Clto=off");
-                }
-            }
-        } else if builder.config.rust_lto == RustcLto::Off {
-            cargo.rustflag("-Clto=off");
-        }
-
         for krate in &*self.crates {
             cargo.arg("-p").arg(krate);
         }
@@ -988,6 +960,34 @@ pub fn rustc_cargo(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelec
         .arg(builder.src.join("compiler/rustc/Cargo.toml"));
 
     cargo.rustdocflag("-Zcrate-attr=warn(rust_2018_idioms)");
+
+    // We currently don't support cross-crate LTO in stage0. This also isn't hugely necessary
+    // and may just be a time sink.
+    if stage != 0 {
+        match builder.config.rust_lto {
+            RustcLto::Thin | RustcLto::Fat => {
+                // Since using LTO for optimizing dylibs is currently experimental,
+                // we need to pass -Zdylib-lto.
+                cargo.rustflag("-Zdylib-lto");
+                // Cargo by default passes `-Cembed-bitcode=no` and doesn't pass `-Clto` when
+                // compiling dylibs (and their dependencies), even when LTO is enabled for the
+                // crate. Therefore, we need to override `-Clto` and `-Cembed-bitcode` here.
+                let lto_type = match builder.config.rust_lto {
+                    RustcLto::Thin => "thin",
+                    RustcLto::Fat => "fat",
+                    _ => unreachable!(),
+                };
+                cargo.rustflag(&format!("-Clto={lto_type}"));
+                cargo.rustflag("-Cembed-bitcode=yes");
+            }
+            RustcLto::ThinLocal => { /* Do nothing, this is the default */ }
+            RustcLto::Off => {
+                cargo.rustflag("-Clto=off");
+            }
+        }
+    } else if builder.config.rust_lto == RustcLto::Off {
+        cargo.rustflag("-Clto=off");
+    }
 
     rustc_cargo_env(builder, cargo, target, stage);
 }
