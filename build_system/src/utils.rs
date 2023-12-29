@@ -30,6 +30,7 @@ fn check_exit_status(
     cwd: Option<&Path>,
     exit_status: ExitStatus,
     output: Option<&Output>,
+    show_err: bool,
 ) -> Result<(), String> {
     if exit_status.success() {
         return Ok(());
@@ -46,7 +47,9 @@ fn check_exit_status(
         exit_status.code()
     );
     let input = input.iter().map(|i| i.as_ref()).collect::<Vec<&OsStr>>();
-    eprintln!("Command `{:?}` failed", input);
+    if show_err {
+        eprintln!("Command `{:?}` failed", input);
+    }
     if let Some(output) = output {
         let stdout = String::from_utf8_lossy(&output.stdout);
         if !stdout.is_empty() {
@@ -88,7 +91,7 @@ pub fn run_command_with_env(
     let output = get_command_inner(input, cwd, env)
         .output()
         .map_err(|e| command_error(input, &cwd, e))?;
-    check_exit_status(input, cwd, output.status, Some(&output))?;
+    check_exit_status(input, cwd, output.status, Some(&output), true)?;
     Ok(output)
 }
 
@@ -101,7 +104,7 @@ pub fn run_command_with_output(
         .map_err(|e| command_error(input, &cwd, e))?
         .wait()
         .map_err(|e| command_error(input, &cwd, e))?;
-    check_exit_status(input, cwd, exit_status, None)?;
+    check_exit_status(input, cwd, exit_status, None, true)?;
     Ok(())
 }
 
@@ -115,7 +118,21 @@ pub fn run_command_with_output_and_env(
         .map_err(|e| command_error(input, &cwd, e))?
         .wait()
         .map_err(|e| command_error(input, &cwd, e))?;
-    check_exit_status(input, cwd, exit_status, None)?;
+    check_exit_status(input, cwd, exit_status, None, true)?;
+    Ok(())
+}
+
+pub fn run_command_with_output_and_env_no_err(
+    input: &[&dyn AsRef<OsStr>],
+    cwd: Option<&Path>,
+    env: Option<&HashMap<String, String>>,
+) -> Result<(), String> {
+    let exit_status = get_command_inner(input, cwd, env)
+        .spawn()
+        .map_err(|e| command_error(input, &cwd, e))?
+        .wait()
+        .map_err(|e| command_error(input, &cwd, e))?;
+    check_exit_status(input, cwd, exit_status, None, false)?;
     Ok(())
 }
 

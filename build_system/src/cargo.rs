@@ -1,6 +1,6 @@
 use crate::config::ConfigInfo;
 use crate::utils::{
-    get_toolchain, run_command_with_output_and_env, rustc_toolchain_version_info,
+    get_toolchain, run_command_with_output_and_env_no_err, rustc_toolchain_version_info,
     rustc_version_info,
 };
 
@@ -106,7 +106,9 @@ pub fn run() -> Result<(), String> {
     for arg in &args {
         command.push(arg);
     }
-    run_command_with_output_and_env(&command, None, Some(&env))?;
+    if run_command_with_output_and_env_no_err(&command, None, Some(&env)).is_err() {
+        std::process::exit(1);
+    }
 
     Ok(())
 }
