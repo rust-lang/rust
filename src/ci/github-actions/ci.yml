@@ -476,7 +476,7 @@ jobs:
               # nightly features to compile, and this job would fail if
               # executed on beta and stable.
               CI_ONLY_WHEN_CHANNEL: nightly
-            <<: *job-linux-16c
+            <<: *job-linux-8c
 
           - name: x86_64-gnu-debug
             <<: *job-linux-8c
