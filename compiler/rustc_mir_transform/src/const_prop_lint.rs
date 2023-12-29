@@ -17,9 +17,7 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::GenericArgs;
-use rustc_middle::ty::{
-    self, ConstInt, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitableExt,
-};
+use rustc_middle::ty::{self, Instance, ParamEnv, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 use rustc_target::abi::{HasDataLayout, Size, TargetDataLayout};
 
@@ -312,43 +310,16 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         right: &Operand<'tcx>,
         location: Location,
     ) -> Option<()> {
+        if matches!(op, BinOp::Shr | BinOp::Shl) {
+            // Shifts are linted in check_assertion() not here
+            return None;
+        }
+
         let r = self.use_ecx(location, |this| {
             this.ecx.read_immediate(&this.ecx.eval_operand(right, None)?)
         });
         let l = self
             .use_ecx(location, |this| this.ecx.read_immediate(&this.ecx.eval_operand(left, None)?));
-        // Check for exceeding shifts *even if* we cannot evaluate the LHS.
-        if matches!(op, BinOp::Shr | BinOp::Shl) {
-            let r = r.clone()?;
-            // We need the type of the LHS. We cannot use `place_layout` as that is the type
-            // of the result, which for checked binops is not the same!
-            let left_ty = left.ty(self.local_decls(), self.tcx);
-            let left_size = self.ecx.layout_of(left_ty).ok()?.size;
-            let right_size = r.layout.size;
-            let r_bits = r.to_scalar().to_bits(right_size).ok();
-            if r_bits.is_some_and(|b| b >= left_size.bits() as u128) {
-                debug!("check_binary_op: reporting assert for {:?}", location);
-                let source_info = self.body().source_info(location);
-                let panic = AssertKind::Overflow(
-                    op,
-                    match l {
-                        Some(l) => l.to_const_int(),
-                        // Invent a dummy value, the diagnostic ignores it anyway
-                        None => ConstInt::new(
-                            ScalarInt::try_from_uint(1_u8, left_size).unwrap(),
-                            left_ty.is_signed(),
-                            left_ty.is_ptr_sized_integral(),
-                        ),
-                    },
-                    r.to_const_int(),
-                );
-                self.report_assert_as_lint(
-                    source_info,
-                    AssertLint::ArithmeticOverflow(source_info.span, panic),
-                );
-                return None;
-            }
-        }
 
         if let (Some(l), Some(r)) = (l, r) {
             // The remaining operators are handled through `overflowing_binary_op`.
