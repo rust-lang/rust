@@ -1351,6 +1351,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
         self.check_unused_vars_in_pat(arm.pat, None, None, |_, _, _, _| {});
+        if let Some(hir::Guard::IfLet(let_expr)) = arm.guard {
+            self.check_unused_vars_in_pat(let_expr.pat, None, None, |_, _, _, _| {});
+        }
         intravisit::walk_arm(self, arm);
     }
 }
