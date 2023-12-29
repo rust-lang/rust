@@ -70,10 +70,10 @@ Specifically, the upcasting algorithm involves: For each supertrait of the
 source dyn trait's principal (including itself)...
 1. Unify the super trait ref with the principal of the target (making sure
    we only ever upcast to a true supertrait, and never [via an impl]).
-2. For every auto trait in the source, check that it's present in the principal
+2. For every auto trait in the target, check that it's present in the source
    (allowing us to drop auto traits, but never gain new ones).
-3. For every projection in the source, check that it unifies with a single
-   projection in the target (since there may be more than one given
+3. For every projection in the target, check that it unifies with a single
+   projection in the source (since there may be more than one given
    `trait Sub: Sup<.., A = i32> + Sup<.., A = u32>`).
 
 [via an impl]: https://github.com/rust-lang/rust/blob/f3457dbf84cd86d284454d12705861398ece76c3/tests/ui/traits/trait-upcasting/illegal-upcast-from-impl.rs#L19
@@ -82,3 +82,4 @@ Specifically, (3.) prevents a choice of projection bound to guide inference
 unnecessarily, though it may guide inference when it is unambiguous.
 
 [^1]: The principal is the one non-auto trait of a `dyn Trait`.
+
