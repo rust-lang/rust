@@ -732,11 +732,13 @@ jobs:
     strategy:
       matrix:
         include:
-          - &dist-x86_64-linux
-            name: dist-x86_64-linux
-            env:
-              CODEGEN_BACKENDS: llvm,cranelift
-            <<: *job-linux-16c
+          - name: x86_64-gnu-integration
+            <<: *job-linux-8c
+          #- &dist-x86_64-linux
+          #  name: dist-x86_64-linux
+          #  env:
+          #    CODEGEN_BACKENDS: llvm,cranelift
+          #  <<: *job-linux-16c
 
 
   master:
