@@ -20,6 +20,14 @@ You can view the HIR representation of your code by passing the
 cargo rustc -- -Z unpretty=hir-tree
 ```
 
+
+You can also use the `-Z unpretty=hir` option to generate a HIR
+that is closer to the original source code expression:
+
+```bash
+cargo rustc -- -Z unpretty=hir
+```
+
 ## Out-of-band storage and the `Crate` type
 
 The top-level data-structure in the HIR is the [`Crate`], which stores
