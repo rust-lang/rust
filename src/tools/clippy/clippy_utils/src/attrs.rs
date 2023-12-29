@@ -76,12 +76,14 @@ pub fn get_attr<'a>(
                 })
                 .map_or_else(
                     || {
-                        sess.dcx().span_err(attr_segments[1].ident.span, "usage of unknown attribute");
+                        sess.dcx()
+                            .span_err(attr_segments[1].ident.span, "usage of unknown attribute");
                         false
                     },
                     |deprecation_status| {
-                        let mut diag =
-                            sess.dcx().struct_span_err(attr_segments[1].ident.span, "usage of deprecated attribute");
+                        let mut diag = sess
+                            .dcx()
+                            .struct_span_err(attr_segments[1].ident.span, "usage of deprecated attribute");
                         match *deprecation_status {
                             DeprecationStatus::Deprecated => {
                                 diag.emit();
@@ -132,7 +134,8 @@ pub fn get_unique_attr<'a>(
     let mut unique_attr: Option<&ast::Attribute> = None;
     for attr in get_attr(sess, attrs, name) {
         if let Some(duplicate) = unique_attr {
-            sess.dcx().struct_span_err(attr.span, format!("`{name}` is defined multiple times"))
+            sess.dcx()
+                .struct_span_err(attr.span, format!("`{name}` is defined multiple times"))
                 .span_note(duplicate.span, "first definition found here")
                 .emit();
         } else {

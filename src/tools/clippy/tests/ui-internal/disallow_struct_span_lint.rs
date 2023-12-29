@@ -11,7 +11,7 @@ use rustc_lint::{Lint, LintContext};
 use rustc_middle::ty::TyCtxt;
 
 pub fn a(cx: impl LintContext, lint: &'static Lint, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) {
-    cx.struct_span_lint(lint, span, msg, |b| b);
+    cx.struct_span_lint(lint, span, msg, |_| {});
 }
 
 pub fn b(
@@ -21,7 +21,7 @@ pub fn b(
     span: impl Into<MultiSpan>,
     msg: impl Into<DiagnosticMessage>,
 ) {
-    tcx.struct_span_lint_hir(lint, hir_id, span, msg, |b| b);
+    tcx.struct_span_lint_hir(lint, hir_id, span, msg, |_| {});
 }
 
 fn main() {}

@@ -38,6 +38,7 @@ mod into_iter_on_ref;
 mod is_digit_ascii_radix;
 mod iter_cloned_collect;
 mod iter_count;
+mod iter_filter;
 mod iter_kv_map;
 mod iter_next_slice;
 mod iter_nth;
@@ -1175,7 +1176,8 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for indirect collection of populated `Option`
+    /// Checks for iterators of `Option`s using `.filter(Option::is_some).map(Option::unwrap)` that may
+    /// be replaced with a `.flatten()` call.
     ///
     /// ### Why is this bad?
     /// `Option` is like a collection of 0-1 things, so `flatten`
@@ -3752,6 +3754,81 @@ declare_clippy_lint! {
     "using `Option.map_or(Err(_), Ok)`, which is more succinctly expressed as `Option.ok_or(_)`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for iterators of `Result`s using `.filter(Result::is_ok).map(Result::unwrap)` that may
+    /// be replaced with a `.flatten()` call.
+    ///
+    /// ### Why is this bad?
+    /// `Result` implements `IntoIterator<Item = T>`. This means that `Result` can be flattened
+    /// automatically without suspicious-looking `unwrap` calls.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let _ = std::iter::empty::<Result<i32, ()>>().filter(Result::is_ok).map(Result::unwrap);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let _ = std::iter::empty::<Result<i32, ()>>().flatten();
+    /// ```
+    #[clippy::version = "1.76.0"]
+    pub RESULT_FILTER_MAP,
+    complexity,
+    "filtering `Result` for `Ok` then force-unwrapping, which can be one type-safe operation"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `.filter(Option::is_some)` that may be replaced with a `.flatten()` call.
+    /// This lint will require additional changes to the follow-up calls as it appects the type.
+    ///
+    /// ### Why is this bad?
+    /// This pattern is often followed by manual unwrapping of the `Option`. The simplification
+    /// results in more readable and succint code without the need for manual unwrapping.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// // example code where clippy issues a warning
+    /// vec![Some(1)].into_iter().filter(Option::is_some);
+    ///
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// // example code which does not raise clippy warning
+    /// vec![Some(1)].into_iter().flatten();
+    /// ```
+    #[clippy::version = "1.76.0"]
+    pub ITER_FILTER_IS_SOME,
+    pedantic,
+    "filtering an iterator over `Option`s for `Some` can be achieved with `flatten`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `.filter(Result::is_ok)` that may be replaced with a `.flatten()` call.
+    /// This lint will require additional changes to the follow-up calls as it appects the type.
+    ///
+    /// ### Why is this bad?
+    /// This pattern is often followed by manual unwrapping of `Result`. The simplification
+    /// results in more readable and succint code without the need for manual unwrapping.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// // example code where clippy issues a warning
+    /// vec![Ok::<i32, String>(1)].into_iter().filter(Result::is_ok);
+    ///
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// // example code which does not raise clippy warning
+    /// vec![Ok::<i32, String>(1)].into_iter().flatten();
+    /// ```
+    #[clippy::version = "1.76.0"]
+    pub ITER_FILTER_IS_OK,
+    pedantic,
+    "filtering an iterator over `Result`s for `Ok` can be achieved with `flatten`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -3903,6 +3980,9 @@ impl_lint_pass!(Methods => [
     UNNECESSARY_FALLIBLE_CONVERSIONS,
     JOIN_ABSOLUTE_PATHS,
     OPTION_MAP_OR_ERR_OK,
+    RESULT_FILTER_MAP,
+    ITER_FILTER_IS_SOME,
+    ITER_FILTER_IS_OK,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4232,7 +4312,24 @@ impl Methods {
                     string_extend_chars::check(cx, expr, recv, arg);
                     extend_with_drain::check(cx, expr, recv, arg);
                 },
-                (name @ ("filter" | "find"), [arg]) => {
+                ("filter", [arg]) => {
+                    if let Some(("cloned", recv2, [], _span2, _)) = method_call(recv) {
+                        // if `arg` has side-effect, the semantic will change
+                        iter_overeager_cloned::check(
+                            cx,
+                            expr,
+                            recv,
+                            recv2,
+                            iter_overeager_cloned::Op::FixClosure(name, arg),
+                            false,
+                        );
+                    }
+                    if self.msrv.meets(msrvs::ITER_FLATTEN) {
+                        // use the sourcemap to get the span of the closure
+                        iter_filter::check(cx, expr, arg, span);
+                    }
+                },
+                ("find", [arg]) => {
                     if let Some(("cloned", recv2, [], _span2, _)) = method_call(recv) {
                         // if `arg` has side-effect, the semantic will change
                         iter_overeager_cloned::check(
