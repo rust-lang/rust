@@ -452,7 +452,7 @@ pub(crate) unsafe fn update_memory_flags<T>(
 ) -> Result<(), Error> {
     let mut a0 = Syscall::UpdateMemoryFlags as usize;
     let mut a1 = range.as_mut_ptr() as usize;
-    let a2 = range.len();
+    let a2 = range.len() * core::mem::size_of::<T>();
     let a3 = new_flags.bits();
     let a4 = 0; // Process ID is currently None
     let a5 = 0;
