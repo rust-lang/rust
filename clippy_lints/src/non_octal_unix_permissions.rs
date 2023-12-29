@@ -1,6 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::numeric_literal::{NumericLiteral, Radix};
 use clippy_utils::source::{snippet_opt, snippet_with_applicability};
 use clippy_utils::{match_def_path, paths};
+use rustc_ast::LitKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -39,6 +41,24 @@ declare_clippy_lint! {
 
 declare_lint_pass!(NonOctalUnixPermissions => [NON_OCTAL_UNIX_PERMISSIONS]);
 
+fn check_binary_unix_permissions(lit_kind: &LitKind, snip: &str) -> bool {
+    // support binary unix permissions
+    if let Some(num_lit) = NumericLiteral::from_lit_kind(snip, lit_kind) {
+        if num_lit.radix != Radix::Binary {
+            return false;
+        }
+
+        let group_sizes: Vec<usize> = num_lit.integer.split('_').map(str::len).collect();
+        // check whether is binary format unix permissions
+        if group_sizes.len() != 3 {
+            return false;
+        }
+        group_sizes.iter().all(|len| *len == 3)
+    } else {
+        false
+    }
+}
+
 impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         match &expr.kind {
@@ -51,26 +71,22 @@ impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
                         ))
                         || (path.ident.name == sym!(set_mode)
                             && cx.tcx.is_diagnostic_item(sym::FsPermissions, adt.did())))
-                    && let ExprKind::Lit(_) = param.kind
+                    && let ExprKind::Lit(lit_kind) = param.kind
                     && param.span.eq_ctxt(expr.span)
+                    && let Some(snip) = snippet_opt(cx, param.span)
+                    && !(snip.starts_with("0o") || check_binary_unix_permissions(&lit_kind.node, &snip))
                 {
-                    let Some(snip) = snippet_opt(cx, param.span) else {
-                        return;
-                    };
-
-                    if !snip.starts_with("0o") {
-                        show_error(cx, param);
-                    }
+                    show_error(cx, param);
                 }
             },
             ExprKind::Call(func, [param]) => {
                 if let ExprKind::Path(ref path) = func.kind
                     && let Some(def_id) = cx.qpath_res(path, func.hir_id).opt_def_id()
                     && match_def_path(cx, def_id, &paths::PERMISSIONS_FROM_MODE)
-                    && let ExprKind::Lit(_) = param.kind
+                    && let ExprKind::Lit(lit_kind) = param.kind
                     && param.span.eq_ctxt(expr.span)
                     && let Some(snip) = snippet_opt(cx, param.span)
-                    && !snip.starts_with("0o")
+                    && !(snip.starts_with("0o") || check_binary_unix_permissions(&lit_kind.node, &snip))
                 {
                     show_error(cx, param);
                 }
