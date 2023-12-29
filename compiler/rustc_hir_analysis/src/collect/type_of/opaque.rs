@@ -69,6 +69,7 @@ pub(super) fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: Local
             Node::Item(it) => locator.visit_item(it),
             Node::ImplItem(it) => locator.visit_impl_item(it),
             Node::TraitItem(it) => locator.visit_trait_item(it),
+            Node::ForeignItem(it) => locator.visit_foreign_item(it),
             other => bug!("{:?} is not a valid scope for an opaque type item", other),
         }
     }
@@ -239,6 +240,12 @@ impl<'tcx> intravisit::Visitor<'tcx> for TaitConstraintLocator<'tcx> {
         trace!(?it.owner_id);
         self.check(it.owner_id.def_id);
         intravisit::walk_trait_item(self, it);
+    }
+    fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem<'tcx>) {
+        trace!(?it.owner_id);
+        assert_ne!(it.owner_id.def_id, self.def_id);
+        self.check(it.owner_id.def_id);
+        intravisit::walk_foreign_item(self, it);
     }
 }
 
