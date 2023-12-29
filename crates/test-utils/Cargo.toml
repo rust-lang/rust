@@ -19,3 +19,6 @@ rustc-hash.workspace = true
 
 stdx.workspace = true
 profile.workspace = true
+
+[lints]
+workspace = true

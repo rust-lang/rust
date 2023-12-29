@@ -16,3 +16,6 @@ rust-analyzer-salsa.workspace = true
 vfs.workspace = true
 syntax.workspace = true
 stdx.workspace = true
+
+[lints]
+workspace = true

@@ -19,3 +19,6 @@ nohash-hasher.workspace = true
 
 paths.workspace = true
 stdx.workspace = true
+
+[lints]
+workspace = true

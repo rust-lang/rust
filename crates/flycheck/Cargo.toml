@@ -24,3 +24,6 @@ command-group.workspace = true
 paths.workspace = true
 stdx.workspace = true
 toolchain.workspace = true
+
+[lints]
+workspace = true

@@ -58,3 +58,6 @@ test-fixture.workspace = true
 
 [features]
 in-rust-tree = ["rustc-dependencies/in-rust-tree"]
+
+[lints]
+workspace = true

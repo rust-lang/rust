@@ -133,3 +133,9 @@ xshell = "0.2.5"
 
 # We need to freeze the version of the crate, as the raw-api feature is considered unstable
 dashmap = { version = "=5.5.3", features = ["raw-api"] }
+
+[workspace.lints.clippy]
+collapsible_if = "allow"
+needless_pass_by_value = "allow"
+nonminimal_bool = "allow"
+redundant_pattern_matching = "allow"

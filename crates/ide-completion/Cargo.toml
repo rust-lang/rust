@@ -36,3 +36,6 @@ expect-test = "1.4.0"
 # local deps
 test-utils.workspace = true
 test-fixture.workspace = true
+
+[lints]
+workspace = true

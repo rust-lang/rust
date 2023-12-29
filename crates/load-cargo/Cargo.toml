@@ -26,3 +26,6 @@ vfs-notify.workspace = true
 span.workspace = true
 
 hir-expand.workspace = true
+
+[lints]
+workspace = true
