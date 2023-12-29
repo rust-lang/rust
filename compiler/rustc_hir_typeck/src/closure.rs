@@ -105,59 +105,76 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span: self.tcx.def_span(expr_def_id),
         });
 
-        if let Some(CoroutineTypes { resume_ty, yield_ty, interior }) = coroutine_types {
-            let coroutine_args = ty::CoroutineArgs::new(
-                self.tcx,
-                ty::CoroutineArgsParts {
-                    parent_args,
-                    resume_ty,
-                    yield_ty,
-                    return_ty: liberated_sig.output(),
-                    witness: interior,
-                    tupled_upvars_ty,
-                },
-            );
+        match closure.kind {
+            hir::ClosureKind::Closure => {
+                assert_eq!(coroutine_types, None);
+                // Tuple up the arguments and insert the resulting function type into
+                // the `closures` table.
+                let sig = bound_sig.map_bound(|sig| {
+                    self.tcx.mk_fn_sig(
+                        [Ty::new_tup(self.tcx, sig.inputs())],
+                        sig.output(),
+                        sig.c_variadic,
+                        sig.unsafety,
+                        sig.abi,
+                    )
+                });
 
-            return Ty::new_coroutine(self.tcx, expr_def_id.to_def_id(), coroutine_args.args);
+                debug!(?sig, ?opt_kind);
+
+                let closure_kind_ty = match opt_kind {
+                    Some(kind) => Ty::from_closure_kind(self.tcx, kind),
+
+                    // Create a type variable (for now) to represent the closure kind.
+                    // It will be unified during the upvar inference phase (`upvar.rs`)
+                    None => self.next_root_ty_var(TypeVariableOrigin {
+                        // FIXME(eddyb) distinguish closure kind inference variables from the rest.
+                        kind: TypeVariableOriginKind::ClosureSynthetic,
+                        span: expr_span,
+                    }),
+                };
+
+                let closure_args = ty::ClosureArgs::new(
+                    self.tcx,
+                    ty::ClosureArgsParts {
+                        parent_args,
+                        closure_kind_ty,
+                        closure_sig_as_fn_ptr_ty: Ty::new_fn_ptr(self.tcx, sig),
+                        tupled_upvars_ty,
+                    },
+                );
+
+                Ty::new_closure(self.tcx, expr_def_id.to_def_id(), closure_args.args)
+            }
+            hir::ClosureKind::Coroutine(_) => {
+                let Some(CoroutineTypes { resume_ty, yield_ty }) = coroutine_types else {
+                    bug!("expected coroutine to have yield/resume types");
+                };
+                let interior = fcx.next_ty_var(TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::MiscVariable,
+                    span: body.value.span,
+                });
+                fcx.deferred_coroutine_interiors.borrow_mut().push((
+                    expr_def_id,
+                    body.id(),
+                    interior,
+                ));
+
+                let coroutine_args = ty::CoroutineArgs::new(
+                    self.tcx,
+                    ty::CoroutineArgsParts {
+                        parent_args,
+                        resume_ty,
+                        yield_ty,
+                        return_ty: liberated_sig.output(),
+                        witness: interior,
+                        tupled_upvars_ty,
+                    },
+                );
+
+                Ty::new_coroutine(self.tcx, expr_def_id.to_def_id(), coroutine_args.args)
+            }
         }
-
-        // Tuple up the arguments and insert the resulting function type into
-        // the `closures` table.
-        let sig = bound_sig.map_bound(|sig| {
-            self.tcx.mk_fn_sig(
-                [Ty::new_tup(self.tcx, sig.inputs())],
-                sig.output(),
-                sig.c_variadic,
-                sig.unsafety,
-                sig.abi,
-            )
-        });
-
-        debug!(?sig, ?opt_kind);
-
-        let closure_kind_ty = match opt_kind {
-            Some(kind) => Ty::from_closure_kind(self.tcx, kind),
-
-            // Create a type variable (for now) to represent the closure kind.
-            // It will be unified during the upvar inference phase (`upvar.rs`)
-            None => self.next_root_ty_var(TypeVariableOrigin {
-                // FIXME(eddyb) distinguish closure kind inference variables from the rest.
-                kind: TypeVariableOriginKind::ClosureSynthetic,
-                span: expr_span,
-            }),
-        };
-
-        let closure_args = ty::ClosureArgs::new(
-            self.tcx,
-            ty::ClosureArgsParts {
-                parent_args,
-                closure_kind_ty,
-                closure_sig_as_fn_ptr_ty: Ty::new_fn_ptr(self.tcx, sig),
-                tupled_upvars_ty,
-            },
-        );
-
-        Ty::new_closure(self.tcx, expr_def_id.to_def_id(), closure_args.args)
     }
 
     /// Given the expected type, figures out what it can about this closure we

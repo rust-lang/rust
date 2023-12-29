@@ -15,6 +15,7 @@ use crate::errors::{
 use crate::fatally_break_rust;
 use crate::method::SelfSource;
 use crate::type_error_struct;
+use crate::CoroutineTypes;
 use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
 use crate::{
     report_unexpected_variant_res, BreakableCtxt, Diverges, FnCtxt, Needs,
@@ -3164,8 +3165,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
         src: &'tcx hir::YieldSource,
     ) -> Ty<'tcx> {
-        match self.resume_yield_tys {
-            Some((resume_ty, yield_ty)) => {
+        match self.coroutine_types {
+            Some(CoroutineTypes { resume_ty, yield_ty }) => {
                 self.check_expr_coercible_to_type(value, yield_ty, None);
 
                 resume_ty

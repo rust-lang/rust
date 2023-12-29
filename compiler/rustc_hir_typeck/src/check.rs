@@ -94,7 +94,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         // Resume type defaults to `()` if the coroutine has no argument.
         let resume_ty = fn_sig.inputs().get(0).copied().unwrap_or_else(|| Ty::new_unit(tcx));
 
-        fcx.resume_yield_tys = Some((resume_ty, yield_ty));
+        fcx.coroutine_types = Some(CoroutineTypes { resume_ty, yield_ty });
     }
 
     GatherLocalsVisitor::new(fcx).visit_body(body);
@@ -146,20 +146,6 @@ pub(super) fn check_fn<'a, 'tcx>(
     fcx.require_type_is_sized(declared_ret_ty, return_or_body_span, traits::SizedReturnType);
     fcx.check_return_expr(body.value, false);
 
-    // We insert the deferred_coroutine_interiors entry after visiting the body.
-    // This ensures that all nested coroutines appear before the entry of this coroutine.
-    // resolve_coroutine_interiors relies on this property.
-    let coroutine_ty = if let Some(hir::ClosureKind::Coroutine(_)) = closure_kind {
-        let interior = fcx
-            .next_ty_var(TypeVariableOrigin { kind: TypeVariableOriginKind::MiscVariable, span });
-        fcx.deferred_coroutine_interiors.borrow_mut().push((fn_def_id, body.id(), interior));
-
-        let (resume_ty, yield_ty) = fcx.resume_yield_tys.unwrap();
-        Some(CoroutineTypes { resume_ty, yield_ty, interior })
-    } else {
-        None
-    };
-
     // Finalize the return check by taking the LUB of the return types
     // we saw and assigning it to the expected return type. This isn't
     // really expected to fail, since the coercions would have failed
@@ -195,7 +181,7 @@ pub(super) fn check_fn<'a, 'tcx>(
         check_lang_start_fn(tcx, fn_sig, fn_def_id);
     }
 
-    coroutine_ty
+    fcx.coroutine_types
 }
 
 fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>) {
