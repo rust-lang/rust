@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
@@ -47,7 +47,10 @@ pub(super) struct CoverageCounters {
     bcb_counters: IndexVec<BasicCoverageBlock, Option<BcbCounter>>,
     /// Coverage counters/expressions that are associated with the control-flow
     /// edge between two BCBs.
-    bcb_edge_counters: FxHashMap<(BasicCoverageBlock, BasicCoverageBlock), BcbCounter>,
+    ///
+    /// The iteration order of this map can affect the precise contents of MIR,
+    /// so we use `FxIndexMap` to avoid query stability hazards.
+    bcb_edge_counters: FxIndexMap<(BasicCoverageBlock, BasicCoverageBlock), BcbCounter>,
     /// Tracks which BCBs have a counter associated with some incoming edge.
     /// Only used by assertions, to verify that BCBs with incoming edge
     /// counters do not have their own physical counters (expressions are allowed).
@@ -64,7 +67,7 @@ impl CoverageCounters {
         Self {
             next_counter_id: CounterId::START,
             bcb_counters: IndexVec::from_elem_n(None, num_bcbs),
-            bcb_edge_counters: FxHashMap::default(),
+            bcb_edge_counters: FxIndexMap::default(),
             bcb_has_incoming_edge_counters: BitSet::new_empty(num_bcbs),
             expressions: IndexVec::new(),
         }
