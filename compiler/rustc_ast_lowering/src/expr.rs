@@ -546,7 +546,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm<'hir> {
         let pat = self.lower_pat(&arm.pat);
-        let mut guard = arm.guard.as_ref().map(|cond| {
+        let guard = arm.guard.as_ref().map(|cond| {
             if let ExprKind::Let(pat, scrutinee, span, is_recovered) = &cond.kind {
                 hir::Guard::IfLet(self.arena.alloc(hir::Let {
                     hir_id: self.next_id(),
@@ -578,10 +578,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
             } else if let Some(body) = &arm.body {
                 self.dcx().emit_err(NeverPatternWithBody { span: body.span });
-                guard = None;
             } else if let Some(g) = &arm.guard {
                 self.dcx().emit_err(NeverPatternWithGuard { span: g.span });
-                guard = None;
             }
 
             // We add a fake `loop {}` arm body so that it typecks to `!`.
