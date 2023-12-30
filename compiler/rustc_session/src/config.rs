@@ -1021,6 +1021,7 @@ impl OutputFilenames {
 
 bitflags::bitflags! {
     /// Scopes used to determined if it need to apply to --remap-path-prefix
+    #[derive(Clone, Copy, PartialEq, Eq, Hash)]
     pub struct RemapPathScopeComponents: u8 {
         /// Apply remappings to the expansion of std::file!() macro
         const MACRO = 1 << 0;
@@ -1041,7 +1042,7 @@ bitflags::bitflags! {
         /// An alias for macro,unsplit-debuginfo,split-debuginfo-path. This
         /// ensures all paths in compiled executables or libraries are remapped
         /// but not elsewhere.
-        const OBJECT = Self::MACRO.bits | Self::UNSPLIT_DEBUGINFO.bits | Self::SPLIT_DEBUGINFO_PATH.bits;
+        const OBJECT = Self::MACRO.bits() | Self::UNSPLIT_DEBUGINFO.bits() | Self::SPLIT_DEBUGINFO_PATH.bits();
     }
 }
 

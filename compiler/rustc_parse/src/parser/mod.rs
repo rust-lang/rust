@@ -46,6 +46,7 @@ use crate::errors::{
 };
 
 bitflags::bitflags! {
+    #[derive(Clone, Copy)]
     struct Restrictions: u8 {
         const STMT_EXPR         = 1 << 0;
         const NO_STRUCT_LITERAL = 1 << 1;

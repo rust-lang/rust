@@ -39,7 +39,6 @@ use crate::abi::{Endian, Integer, Size, TargetDataLayout, TargetDataLayoutErrors
 use crate::json::{Json, ToJson};
 use crate::spec::abi::{lookup as lookup_abi, Abi};
 use crate::spec::crt_objects::CrtObjects;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_fs_util::try_canonicalize;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -592,7 +591,7 @@ impl LinkSelfContainedDefault {
 }
 
 bitflags::bitflags! {
-    #[derive(Default)]
+    #[derive(Clone, Copy, PartialEq, Eq, Default)]
     /// The `-C link-self-contained` components that can individually be enabled or disabled.
     pub struct LinkSelfContainedComponents: u8 {
         /// CRT objects (e.g. on `windows-gnu`, `musl`, `wasi` targets)
@@ -609,6 +608,7 @@ bitflags::bitflags! {
         const MINGW       = 1 << 5;
     }
 }
+rustc_data_structures::external_bitflags_debug! { LinkSelfContainedComponents }
 
 impl LinkSelfContainedComponents {
     /// Parses a single `-Clink-self-contained` well-known component, not a set of flags.
@@ -664,19 +664,6 @@ impl LinkSelfContainedComponents {
     /// Returns whether `LinkSelfContainedComponents::CRT_OBJECTS` is enabled.
     pub fn is_crt_objects_enabled(self) -> bool {
         self.contains(LinkSelfContainedComponents::CRT_OBJECTS)
-    }
-}
-
-impl IntoIterator for LinkSelfContainedComponents {
-    type Item = LinkSelfContainedComponents;
-    type IntoIter = std::vec::IntoIter<LinkSelfContainedComponents>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        LinkSelfContainedComponents::all_components()
-            .into_iter()
-            .filter(|&s| self.contains(s))
-            .collect::<Vec<_>>()
-            .into_iter()
     }
 }
 
@@ -1219,9 +1206,10 @@ impl ToJson for StackProbeType {
     }
 }
 
+#[derive(Default, Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
+pub struct SanitizerSet(u16);
 bitflags::bitflags! {
-    #[derive(Default, Encodable, Decodable)]
-    pub struct SanitizerSet: u16 {
+    impl SanitizerSet: u16 {
         const ADDRESS = 1 << 0;
         const LEAK    = 1 << 1;
         const MEMORY  = 1 << 2;
@@ -1235,6 +1223,7 @@ bitflags::bitflags! {
         const SAFESTACK = 1 << 10;
     }
 }
+rustc_data_structures::external_bitflags_debug! { SanitizerSet }
 
 impl SanitizerSet {
     /// Return sanitizer's name
@@ -1271,38 +1260,6 @@ impl fmt::Display for SanitizerSet {
             first = false;
         }
         Ok(())
-    }
-}
-
-impl IntoIterator for SanitizerSet {
-    type Item = SanitizerSet;
-    type IntoIter = std::vec::IntoIter<SanitizerSet>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        [
-            SanitizerSet::ADDRESS,
-            SanitizerSet::CFI,
-            SanitizerSet::KCFI,
-            SanitizerSet::LEAK,
-            SanitizerSet::MEMORY,
-            SanitizerSet::MEMTAG,
-            SanitizerSet::SHADOWCALLSTACK,
-            SanitizerSet::THREAD,
-            SanitizerSet::HWADDRESS,
-            SanitizerSet::KERNELADDRESS,
-            SanitizerSet::SAFESTACK,
-        ]
-        .iter()
-        .copied()
-        .filter(|&s| self.contains(s))
-        .collect::<Vec<_>>()
-        .into_iter()
-    }
-}
-
-impl<CTX> HashStable<CTX> for SanitizerSet {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        self.bits().hash_stable(ctx, hasher);
     }
 }
 

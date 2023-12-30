@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 # tidy-alphabetical-start
 arrayvec = { version = "0.7", default-features = false }
-bitflags = "1.2.1"
+bitflags = "2.4.1"
 elsa = "=1.7.1"
 ena = "0.14.2"
 indexmap = { version = "2.0.0" }

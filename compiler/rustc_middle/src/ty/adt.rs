@@ -24,9 +24,10 @@ use std::str;
 
 use super::{Destructor, FieldDef, GenericPredicates, Ty, TyCtxt, VariantDef, VariantDiscr};
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
+pub struct AdtFlags(u16);
 bitflags! {
-    #[derive(HashStable, TyEncodable, TyDecodable)]
-    pub struct AdtFlags: u16 {
+    impl AdtFlags: u16 {
         const NO_ADT_FLAGS        = 0;
         /// Indicates whether the ADT is an enum.
         const IS_ENUM             = 1 << 0;
@@ -51,6 +52,7 @@ bitflags! {
         const IS_UNSAFE_CELL              = 1 << 9;
     }
 }
+rustc_data_structures::external_bitflags_debug! { AdtFlags }
 
 /// The definition of a user-defined type, e.g., a `struct`, `enum`, or `union`.
 ///

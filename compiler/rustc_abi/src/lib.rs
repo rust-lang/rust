@@ -29,10 +29,12 @@ pub use layout::LayoutCalculator;
 /// instead of implementing everything in `rustc_middle`.
 pub trait HashStableContext {}
 
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
+pub struct ReprFlags(u8);
+
 bitflags! {
-    #[derive(Default)]
-    #[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]
-    pub struct ReprFlags: u8 {
+    impl ReprFlags: u8 {
         const IS_C               = 1 << 0;
         const IS_SIMD            = 1 << 1;
         const IS_TRANSPARENT     = 1 << 2;
@@ -42,11 +44,12 @@ bitflags! {
         // the seed stored in `ReprOptions.layout_seed`
         const RANDOMIZE_LAYOUT   = 1 << 4;
         // Any of these flags being set prevent field reordering optimisation.
-        const IS_UNOPTIMISABLE   = ReprFlags::IS_C.bits
-                                 | ReprFlags::IS_SIMD.bits
-                                 | ReprFlags::IS_LINEAR.bits;
+        const IS_UNOPTIMISABLE   = ReprFlags::IS_C.bits()
+                                 | ReprFlags::IS_SIMD.bits()
+                                 | ReprFlags::IS_LINEAR.bits();
     }
 }
+rustc_data_structures::external_bitflags_debug! { ReprFlags }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_Generic))]

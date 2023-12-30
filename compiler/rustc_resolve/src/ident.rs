@@ -377,6 +377,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         ignore_binding: Option<NameBinding<'a>>,
     ) -> Result<NameBinding<'a>, Determinacy> {
         bitflags::bitflags! {
+            #[derive(Clone, Copy)]
             struct Flags: u8 {
                 const MACRO_RULES          = 1 << 0;
                 const MODULE               = 1 << 1;
