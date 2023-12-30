@@ -190,7 +190,7 @@ impl<'a> Parser<'a> {
             }
         };
 
-        if !self.should_continue_as_assoc_expr_FIXME(&lhs) {
+        if !self.should_continue_as_assoc_expr(&lhs) {
             return Ok(lhs);
         }
 
@@ -383,9 +383,8 @@ impl<'a> Parser<'a> {
         Ok(lhs)
     }
 
-    #[allow(non_snake_case)]
-    fn should_continue_as_assoc_expr_FIXME(&mut self, lhs: &Expr) -> bool {
-        match (self.expr_is_complete_FIXME(lhs), AssocOp::from_token(&self.token)) {
+    fn should_continue_as_assoc_expr(&mut self, lhs: &Expr) -> bool {
+        match (self.expr_is_complete(lhs), AssocOp::from_token(&self.token)) {
             // Semi-statement forms are odd:
             // See https://github.com/rust-lang/rust/issues/29071
             (true, None) => false,
@@ -497,10 +496,48 @@ impl<'a> Parser<'a> {
     }
 
     /// Checks if this expression is a successfully parsed statement.
-    #[allow(non_snake_case)]
-    fn expr_is_complete_FIXME(&self, e: &Expr) -> bool {
+    ///
+    /// This determines whether to continue parsing more of an expression in a
+    /// match arm (false) vs continue to the next arm (true).
+    ///
+    /// ```ignore (illustrative)
+    /// match ... {
+    ///     // Is this calling $e as a function, or is it the start of a new arm
+    ///     // with a tuple pattern?
+    ///     _ => $e (
+    ///             ^                                                          )
+    ///
+    ///     // Is this an Index operation, or new arm with a slice pattern?
+    ///     _ => $e [
+    ///             ^                                                          ]
+    ///
+    ///     // Is this a binary operator, or leading vert in a new arm? Same for
+    ///     // other punctuation which can either be a binary operator in
+    ///     // expression or unary operator in pattern, such as `&` and `-`.
+    ///     _ => $e |
+    ///             ^
+    /// }
+    /// ```
+    ///
+    /// If $e is something like `path::to` or `(…)`, continue parsing the same
+    /// arm.
+    ///
+    /// If $e is something like `{}` or `if … {}`, then terminate the current
+    /// arm and parse a new arm.
+    fn expr_is_complete(&self, e: &Expr) -> bool {
         self.restrictions.contains(Restrictions::STMT_EXPR)
             && match e.kind {
+                // Surprising special case: even though braced macro calls like
+                // `m! {}` normally introduce a statement boundary when found at
+                // the head of a statement, in match arms they do not terminate
+                // the arm.
+                //
+                //     let _ = { m! {} () };  // macro call followed by unit
+                //
+                //     match ... {
+                //         _ => m! {} (),  // macro that expands to a function, which is then called
+                //     }
+                //
                 ExprKind::MacCall(_) => false,
                 _ => !classify::expr_requires_semi_to_be_stmt(e),
             }
@@ -1014,7 +1051,7 @@ impl<'a> Parser<'a> {
                 e = self.parse_dot_suffix_expr(lo, e)?;
                 continue;
             }
-            if self.expr_is_complete_FIXME(&e) {
+            if self.expr_is_complete(&e) {
                 return Ok(e);
             }
             e = match self.token.kind {
