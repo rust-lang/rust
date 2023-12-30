@@ -354,7 +354,12 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
                     Ok(unsafe { NonZeroUsize::new_unchecked(count) })
                 }
             }
-        } else if #[cfg(any(target_os = "freebsd", target_os = "dragonfly", target_os = "netbsd"))] {
+        } else if #[cfg(any(
+                   target_os = "freebsd",
+                   target_os = "dragonfly",
+                   target_os = "openbsd",
+                   target_os = "netbsd",
+               ))] {
             use crate::ptr;
 
             #[cfg(target_os = "freebsd")]
@@ -426,31 +431,6 @@ pub fn available_parallelism() -> io::Result<NonZeroUsize> {
                 } else if cpus == 0 {
                     return Err(io::const_io_error!(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform"));
                 }
-            }
-            Ok(unsafe { NonZeroUsize::new_unchecked(cpus as usize) })
-        } else if #[cfg(target_os = "openbsd")] {
-            use crate::ptr;
-
-            let mut cpus: libc::c_uint = 0;
-            let mut cpus_size = crate::mem::size_of_val(&cpus);
-            let mut mib = [libc::CTL_HW, libc::HW_NCPU, 0, 0];
-
-            let res = unsafe {
-                libc::sysctl(
-                    mib.as_mut_ptr(),
-                    2,
-                    &mut cpus as *mut _ as *mut _,
-                    &mut cpus_size as *mut _ as *mut _,
-                    ptr::null_mut(),
-                    0,
-                )
-            };
-
-            // Handle errors if any.
-            if res == -1 {
-                return Err(io::Error::last_os_error());
-            } else if cpus == 0 {
-                return Err(io::const_io_error!(io::ErrorKind::NotFound, "The number of hardware threads is not known for the target platform"));
             }
 
             Ok(unsafe { NonZeroUsize::new_unchecked(cpus as usize) })
