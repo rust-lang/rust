@@ -1812,15 +1812,19 @@ impl<'a> Builder<'a> {
         if self.config.rust_remap_debuginfo {
             // FIXME: handle vendored sources
             let registry_src = t!(home::cargo_home()).join("registry").join("src");
-            let mut env_var = OsString::new();
-            for entry in t!(std::fs::read_dir(registry_src)) {
-                if !env_var.is_empty() {
-                    env_var.push("\t");
+            if registry_src.is_dir() {
+                let mut env_var = OsString::new();
+                for entry in t!(std::fs::read_dir(registry_src)) {
+                    if !env_var.is_empty() {
+                        env_var.push("\t");
+                    }
+                    env_var.push(t!(entry).path());
+                    env_var.push("=/rust/deps");
                 }
-                env_var.push(t!(entry).path());
-                env_var.push("=/rust/deps");
+                if !env_var.is_empty() {
+                    cargo.env("RUSTC_CARGO_REGISTRY_SRC_TO_REMAP", env_var);
+                }
             }
-            cargo.env("RUSTC_CARGO_REGISTRY_SRC_TO_REMAP", env_var);
         }
 
         // Enable usage of unstable features
