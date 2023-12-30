@@ -190,7 +190,7 @@ impl<'a> Parser<'a> {
             }
         };
 
-        if !self.should_continue_as_assoc_expr(&lhs) {
+        if !self.should_continue_as_assoc_expr_FIXME(&lhs) {
             return Ok(lhs);
         }
 
@@ -383,8 +383,9 @@ impl<'a> Parser<'a> {
         Ok(lhs)
     }
 
-    fn should_continue_as_assoc_expr(&mut self, lhs: &Expr) -> bool {
-        match (self.expr_is_complete(lhs), AssocOp::from_token(&self.token)) {
+    #[allow(non_snake_case)]
+    fn should_continue_as_assoc_expr_FIXME(&mut self, lhs: &Expr) -> bool {
+        match (self.expr_is_complete_FIXME(lhs), AssocOp::from_token(&self.token)) {
             // Semi-statement forms are odd:
             // See https://github.com/rust-lang/rust/issues/29071
             (true, None) => false,
@@ -496,7 +497,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Checks if this expression is a successfully parsed statement.
-    fn expr_is_complete(&self, e: &Expr) -> bool {
+    #[allow(non_snake_case)]
+    fn expr_is_complete_FIXME(&self, e: &Expr) -> bool {
         self.restrictions.contains(Restrictions::STMT_EXPR)
             && match e.kind {
                 ExprKind::MacCall(_) => false,
@@ -1012,7 +1014,7 @@ impl<'a> Parser<'a> {
                 e = self.parse_dot_suffix_expr(lo, e)?;
                 continue;
             }
-            if self.expr_is_complete(&e) {
+            if self.expr_is_complete_FIXME(&e) {
                 return Ok(e);
             }
             e = match self.token.kind {
