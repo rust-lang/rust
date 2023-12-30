@@ -42,19 +42,23 @@ use crate::{ast, token::Delimiter};
 ///     _ => m! {} - 1,  // binary subtraction operator
 /// }
 /// ```
-#[allow(non_snake_case)]
-pub fn expr_requires_semi_to_be_stmt_FIXME(e: &ast::Expr) -> bool {
-    !matches!(
-        e.kind,
-        ast::ExprKind::If(..)
-            | ast::ExprKind::Match(..)
-            | ast::ExprKind::Block(..)
-            | ast::ExprKind::While(..)
-            | ast::ExprKind::Loop(..)
-            | ast::ExprKind::ForLoop { .. }
-            | ast::ExprKind::TryBlock(..)
-            | ast::ExprKind::ConstBlock(..)
-    )
+pub fn expr_requires_semi_to_be_stmt(e: &ast::Expr) -> bool {
+    use ast::ExprKind::*;
+
+    match &e.kind {
+        If(..)
+        | Match(..)
+        | Block(..)
+        | While(..)
+        | Loop(..)
+        | ForLoop { .. }
+        | TryBlock(..)
+        | ConstBlock(..) => false,
+
+        MacCall(mac_call) => mac_call.args.delim != Delimiter::Brace,
+
+        _ => true,
+    }
 }
 
 /// If an expression ends with `}`, returns the innermost expression ending in the `}`

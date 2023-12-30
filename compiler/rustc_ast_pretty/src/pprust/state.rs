@@ -1253,7 +1253,10 @@ impl<'a> State<'a> {
             ast::StmtKind::Expr(expr) => {
                 self.space_if_not_bol();
                 self.print_expr_outer_attr_style(expr, false, FixupContext::new_stmt());
-                if classify::expr_requires_semi_to_be_stmt_FIXME(expr) {
+                if match expr.kind {
+                    ast::ExprKind::MacCall(_) => true,
+                    _ => classify::expr_requires_semi_to_be_stmt(expr),
+                } {
                     self.word(";");
                 }
             }

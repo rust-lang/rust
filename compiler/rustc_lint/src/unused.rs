@@ -688,7 +688,10 @@ trait UnusedDelimLint {
                     ExprKind::Index(base, _subscript, _) => base,
                     _ => break,
                 };
-                if !classify::expr_requires_semi_to_be_stmt_FIXME(innermost) {
+                if match innermost.kind {
+                    ExprKind::MacCall(_) => false,
+                    _ => !classify::expr_requires_semi_to_be_stmt(innermost),
+                } {
                     return true;
                 }
             }

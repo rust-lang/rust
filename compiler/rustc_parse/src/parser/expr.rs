@@ -498,7 +498,10 @@ impl<'a> Parser<'a> {
     /// Checks if this expression is a successfully parsed statement.
     fn expr_is_complete(&self, e: &Expr) -> bool {
         self.restrictions.contains(Restrictions::STMT_EXPR)
-            && !classify::expr_requires_semi_to_be_stmt_FIXME(e)
+            && match e.kind {
+                ExprKind::MacCall(_) => false,
+                _ => !classify::expr_requires_semi_to_be_stmt(e),
+            }
     }
 
     /// Parses `x..y`, `x..=y`, and `x..`/`x..=`.
@@ -2694,7 +2697,10 @@ impl<'a> Parser<'a> {
                 // If it's not a free-standing expression, and is followed by a block,
                 // then it's very likely the condition to an `else if`.
                     if self.check(&TokenKind::OpenDelim(Delimiter::Brace))
-                        && classify::expr_requires_semi_to_be_stmt_FIXME(&cond) =>
+                        && match cond.kind {
+                            ExprKind::MacCall(_) => true,
+                            _ => classify::expr_requires_semi_to_be_stmt(&cond),
+                        } =>
                 {
                     self.dcx().emit_err(errors::ExpectedElseBlock {
                         first_tok_span,
@@ -3136,8 +3142,10 @@ impl<'a> Parser<'a> {
                         err
                     })?;
 
-                let require_comma = classify::expr_requires_semi_to_be_stmt_FIXME(&expr)
-                    && this.token != token::CloseDelim(Delimiter::Brace);
+                let require_comma = match expr.kind {
+                    ExprKind::MacCall(_) => true,
+                    _ => classify::expr_requires_semi_to_be_stmt(&expr),
+                } && this.token != token::CloseDelim(Delimiter::Brace);
 
                 if !require_comma {
                     arm_body = Some(expr);
