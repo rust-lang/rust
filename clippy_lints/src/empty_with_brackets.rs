@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_opt;
-use rustc_ast::ast::{Item, ItemKind, VariantData};
+use rustc_ast::ast::{Item, ItemKind, Variant, VariantData};
 use rustc_errors::Applicability;
 use rustc_lexer::TokenKind;
 use rustc_lint::{EarlyContext, EarlyLintPass};
@@ -27,9 +27,38 @@ declare_clippy_lint! {
     restriction,
     "finds struct declarations with empty brackets"
 }
-declare_lint_pass!(EmptyStructsWithBrackets => [EMPTY_STRUCTS_WITH_BRACKETS]);
 
-impl EarlyLintPass for EmptyStructsWithBrackets {
+declare_clippy_lint! {
+    /// ### What it does
+    /// Finds enum variants without fields that are declared with empty brackets.
+    ///
+    /// ### Why is this bad?
+    /// Empty brackets while defining enum variants are redundant and can be omitted.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// enum MyEnum {
+    ///     HasData(u8),
+    ///     HasNoData(), // redundant parentheses
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// enum MyEnum {
+    ///     HasData(u8),
+    ///     HasNoData,
+    /// }
+    /// ```
+    #[clippy::version = "1.77.0"]
+    pub EMPTY_ENUM_VARIANTS_WITH_BRACKETS,
+    restriction,
+    "finds enum variants with empty brackets"
+}
+
+declare_lint_pass!(EmptyWithBrackets => [EMPTY_STRUCTS_WITH_BRACKETS, EMPTY_ENUM_VARIANTS_WITH_BRACKETS]);
+
+impl EarlyLintPass for EmptyWithBrackets {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
         let span_after_ident = item.span.with_lo(item.ident.span.hi());
 
@@ -48,6 +77,27 @@ impl EarlyLintPass for EmptyStructsWithBrackets {
                         "remove the brackets",
                         ";",
                         Applicability::Unspecified,
+                    );
+                },
+            );
+        }
+    }
+
+    fn check_variant(&mut self, cx: &EarlyContext<'_>, variant: &Variant) {
+        let span_after_ident = variant.span.with_lo(variant.ident.span.hi());
+
+        if has_brackets(&variant.data) && has_no_fields(cx, &variant.data, span_after_ident) {
+            span_lint_and_then(
+                cx,
+                EMPTY_ENUM_VARIANTS_WITH_BRACKETS,
+                span_after_ident,
+                "enum variant has empty brackets",
+                |diagnostic| {
+                    diagnostic.span_suggestion_hidden(
+                        span_after_ident,
+                        "remove the brackets",
+                        "",
+                        Applicability::MaybeIncorrect,
                     );
                 },
             );
