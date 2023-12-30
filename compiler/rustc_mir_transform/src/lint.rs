@@ -11,7 +11,6 @@ use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use std::borrow::Cow;
 
 pub fn lint_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, when: String) {
-    let reachable_blocks = traversal::reachable_as_bitset(body);
     let always_live_locals = &always_storage_live_locals(body);
 
     let maybe_storage_live = MaybeStorageLive::new(Cow::Borrowed(always_live_locals))
@@ -24,17 +23,18 @@ pub fn lint_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, when: String) {
         .iterate_to_fixpoint()
         .into_results_cursor(body);
 
-    Lint {
+    let mut lint = Lint {
         tcx,
         when,
         body,
         is_fn_like: tcx.def_kind(body.source.def_id()).is_fn_like(),
         always_live_locals,
-        reachable_blocks,
         maybe_storage_live,
         maybe_storage_dead,
+    };
+    for (bb, data) in traversal::reachable(body) {
+        lint.visit_basic_block_data(bb, data);
     }
-    .visit_body(body);
 }
 
 struct Lint<'a, 'tcx> {
@@ -43,7 +43,6 @@ struct Lint<'a, 'tcx> {
     body: &'a Body<'tcx>,
     is_fn_like: bool,
     always_live_locals: &'a BitSet<Local>,
-    reachable_blocks: BitSet<BasicBlock>,
     maybe_storage_live: ResultsCursor<'a, 'tcx, MaybeStorageLive<'a>>,
     maybe_storage_dead: ResultsCursor<'a, 'tcx, MaybeStorageDead<'a>>,
 }
@@ -67,7 +66,7 @@ impl<'a, 'tcx> Lint<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for Lint<'a, 'tcx> {
     fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
-        if self.reachable_blocks.contains(location.block) && context.is_use() {
+        if context.is_use() {
             self.maybe_storage_dead.seek_after_primary_effect(location);
             if self.maybe_storage_dead.get().contains(local) {
                 self.fail(location, format!("use of local {local:?}, which has no storage here"));
@@ -78,14 +77,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Lint<'a, 'tcx> {
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match statement.kind {
             StatementKind::StorageLive(local) => {
-                if self.reachable_blocks.contains(location.block) {
-                    self.maybe_storage_live.seek_before_primary_effect(location);
-                    if self.maybe_storage_live.get().contains(local) {
-                        self.fail(
-                            location,
-                            format!("StorageLive({local:?}) which already has storage here"),
-                        );
-                    }
+                self.maybe_storage_live.seek_before_primary_effect(location);
+                if self.maybe_storage_live.get().contains(local) {
+                    self.fail(
+                        location,
+                        format!("StorageLive({local:?}) which already has storage here"),
+                    );
                 }
             }
             _ => {}
@@ -97,7 +94,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Lint<'a, 'tcx> {
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
         match terminator.kind {
             TerminatorKind::Return => {
-                if self.is_fn_like && self.reachable_blocks.contains(location.block) {
+                if self.is_fn_like {
                     self.maybe_storage_live.seek_after_primary_effect(location);
                     for local in self.maybe_storage_live.get().iter() {
                         if !self.always_live_locals.contains(local) {
