@@ -235,11 +235,7 @@ impl<'tcx> Visitor<'tcx> for SsaVisitor<'tcx, '_> {
             // Anything can happen with raw pointers, so remove them.
             // We do not verify that all uses of the borrow dominate the assignment to `local`,
             // so we have to remove them too.
-            PlaceContext::NonMutatingUse(
-                NonMutatingUseContext::SharedBorrow
-                | NonMutatingUseContext::FakeBorrow
-                | NonMutatingUseContext::AddressOf,
-            )
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::AddressOf)
             | PlaceContext::MutatingUse(_) => {
                 self.assignments[local] = Set1::Many;
             }
