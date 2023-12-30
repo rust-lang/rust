@@ -615,7 +615,7 @@ impl Pat {
             | PatKind::Or(s) => s.iter().for_each(|p| p.walk(it)),
 
             // Trivial wrappers over inner patterns.
-            PatKind::Box(s) | PatKind::Ref(s, _) | PatKind::Paren(s) => s.walk(it),
+            PatKind::Box(s) | PatKind::Ref(s, _) | PatKind::Paren(s) | PatKind::Deref(s) => s.walk(it),
 
             // These patterns do not contain subpatterns, skip.
             PatKind::Wild
@@ -777,6 +777,9 @@ pub enum PatKind {
 
     /// A reference pattern (e.g., `&mut (a, b)`).
     Ref(P<Pat>, Mutability),
+
+    /// A deref pattern, `k#deref a`.
+    Deref(P<Pat>),
 
     /// A literal.
     Lit(P<Expr>),

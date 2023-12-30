@@ -1805,6 +1805,17 @@ impl<'a> State<'a> {
                     self.pclose();
                 }
             }
+            PatKind::Deref(inner) => {
+                let is_range_inner = matches!(inner.kind, PatKind::Range(..));
+                self.word("k#deref ");
+                if is_range_inner {
+                    self.popen();
+                }
+                self.print_pat(inner);
+                if is_range_inner {
+                    self.pclose();
+                }
+            }
             PatKind::Lit(e) => self.print_expr(e),
             PatKind::Range(begin, end, end_kind) => {
                 if let Some(expr) = begin {

@@ -421,6 +421,10 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                     _ => bug!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, pat.ty),
                 };
             }
+            PatKind::DerefPattern { .. } => {
+                fields = &[];
+                ctor = Struct;
+            }
             PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
                 match pat.ty.kind() {
                     ty::Tuple(fs) => {

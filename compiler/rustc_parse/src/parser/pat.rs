@@ -464,6 +464,8 @@ impl<'a> Parser<'a> {
                     err
                 });
             PatKind::Lit(self.mk_expr(lo, ExprKind::Lit(lit)))
+        } else if self.eat_forced_keyword(sym::deref) {
+            self.parse_pat_deref_patterns()?
         } else {
             // Try to parse everything else as literal with optional minus
             match self.parse_literal_maybe_minus() {
@@ -963,6 +965,16 @@ impl<'a> Parser<'a> {
             self.sess.gated_spans.gate(sym::box_patterns, box_span.to(self.prev_token.span));
             Ok(PatKind::Box(pat))
         }
+    }
+
+    /// Parses `k#deref pat`
+    fn parse_pat_deref_patterns(&mut self) -> PResult<'a, PatKind> {
+        // TODO handle standalone `k#deref`s
+        // let deref_span = self.prev_token.span;
+        let pat = self.parse_pat_with_range_pat(false, None, None)?;
+        // TODO
+        // self.sess.gated_spans.gate(sym::deref_patterns, deref_span.to(self.prev_token.span));
+        Ok(PatKind::Deref(pat))
     }
 
     /// Parses the fields of a struct-like pattern.

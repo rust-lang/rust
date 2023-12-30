@@ -206,6 +206,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             PatKind::Box(inner) => self.check_pat_box(pat.span, inner, expected, pat_info),
             PatKind::Ref(inner, mutbl) => self.check_pat_ref(pat, inner, mutbl, expected, pat_info),
+            PatKind::Deref(inner) => self.check_pat_deref(pat.span, inner, expected, pat_info),
             PatKind::Slice(before, slice, after) => {
                 self.check_pat_slice(pat.span, before, slice, after, expected, pat_info)
             }
@@ -289,7 +290,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | PatKind::Tuple(..)
             | PatKind::Box(_)
             | PatKind::Range(..)
-            | PatKind::Slice(..) => AdjustMode::Peel,
+            | PatKind::Slice(..)
+            | PatKind::Deref(..) => AdjustMode::Peel,
             // A never pattern behaves somewhat like a literal or unit variant.
             PatKind::Never => AdjustMode::Peel,
             // String and byte-string literals result in types `&str` and `&[u8]` respectively.
@@ -752,6 +754,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         | PatKind::Binding(..)
                         | PatKind::Path(..)
                         | PatKind::Box(..)
+                        | PatKind::Deref(..)
                         | PatKind::Ref(..)
                         | PatKind::Lit(..)
                         | PatKind::Range(..) => break 'block None,
@@ -1968,6 +1971,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         self.check_pat(inner, inner_ty, pat_info);
         box_ty
+    }
+
+    fn check_pat_deref(
+        &self,
+        span: Span,
+        inner: &'tcx Pat<'tcx>,
+        expected: Ty<'tcx>,
+        pat_info: PatInfo<'tcx, '_>,
+    ) -> Ty<'tcx> {
+        // FIXME(deref_patterns): use `DerefPure` for soundness
+        let autoderef = self.autoderef(span, expected);
+        // TODO
+        todo!()
     }
 
     // Precondition: Pat is Ref(inner)

@@ -733,6 +733,11 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 self.cat_pattern_(subplace, subpat, op)?;
             }
 
+            PatKind::Deref(_) => {
+                // TODO we can't have a subplace since it will be a temporary
+                // self.cat_pattern_(subplace, subpat, op)?;
+            }
+
             PatKind::Slice(before, ref slice, after) => {
                 let Some(element_ty) = place_with_id.place.ty().builtin_index() else {
                     debug!("explicit index of non-indexable type {:?}", place_with_id);

@@ -1521,6 +1521,10 @@ impl<'a> State<'a> {
                 self.pclose();
             }
             PatKind::MacCall(m) => self.print_mac(m),
+            PatKind::Deref(inner) => {
+                self.word("k#deref ");
+                self.print_pat(inner);
+            }
         }
         self.ann.post(self, AnnNode::Pat(pat))
     }

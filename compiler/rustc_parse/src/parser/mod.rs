@@ -575,11 +575,25 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn check_forced_keyword(&mut self, kw: Symbol) -> bool {
+        self.expected_tokens.push(TokenType::Token(token::Ident(kw, IdentKind::Keyword)));
+        self.token.is_forced_keyword(kw)
+    }
+
     /// If the next token is the given keyword, eats it and returns `true`.
     /// Otherwise, returns `false`. An expectation is also added for diagnostics purposes.
     // Public for rustfmt usage.
     pub fn eat_keyword(&mut self, kw: Symbol) -> bool {
         if self.check_keyword(kw) {
+            self.bump();
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn eat_forced_keyword(&mut self, kw: Symbol) -> bool {
+        if self.check_forced_keyword(kw) {
             self.bump();
             true
         } else {

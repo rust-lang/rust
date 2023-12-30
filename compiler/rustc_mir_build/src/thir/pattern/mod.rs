@@ -266,6 +266,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 PatKind::Deref { subpattern: self.lower_pattern(subpattern) }
             }
 
+            hir::PatKind::Deref(subpattern) => {
+                PatKind::DerefPattern { subpattern: self.lower_pattern(subpattern) }
+            }
+
             hir::PatKind::Slice(prefix, ref slice, suffix) => {
                 self.slice_or_array_pattern(pat.span, ty, prefix, slice, suffix)
             }

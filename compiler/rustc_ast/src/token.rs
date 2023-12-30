@@ -732,6 +732,13 @@ impl Token {
         self.is_keywordable_ident_where(|id| id.name == kw)
     }
 
+    pub fn is_forced_keyword(&self, kw: Symbol) -> bool {
+        match self.ident() {
+            Some((id, IdentKind::Keyword)) => id.name == kw,
+            _ => false,
+        }
+    }
+
     /// Returns `true` if the token is a given keyword, `kw` or if `case` is `Insensitive` and this token is an identifier equal to `kw` ignoring the case.
     pub fn is_keyword_case(&self, kw: Symbol, case: Case) -> bool {
         self.is_keyword(kw)

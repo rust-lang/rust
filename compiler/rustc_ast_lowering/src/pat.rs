@@ -94,6 +94,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     PatKind::Ref(inner, mutbl) => {
                         break hir::PatKind::Ref(self.lower_pat(inner), *mutbl);
                     }
+                    PatKind::Deref(inner) => {
+                        break hir::PatKind::Deref(self.lower_pat(inner));
+                    }
                     PatKind::Range(e1, e2, Spanned { node: end, .. }) => {
                         break hir::PatKind::Range(
                             e1.as_deref().map(|e| self.lower_expr_within_pat(e, true)),
