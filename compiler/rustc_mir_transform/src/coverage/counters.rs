@@ -61,27 +61,27 @@ pub(super) struct CoverageCounters {
 }
 
 impl CoverageCounters {
-    pub(super) fn new(basic_coverage_blocks: &CoverageGraph) -> Self {
+    /// Makes [`BcbCounter`] `Counter`s and `Expressions` for the `BasicCoverageBlock`s directly or
+    /// indirectly associated with coverage spans, and accumulates additional `Expression`s
+    /// representing intermediate values.
+    pub(super) fn make_bcb_counters(
+        basic_coverage_blocks: &CoverageGraph,
+        bcb_has_coverage_spans: impl Fn(BasicCoverageBlock) -> bool,
+    ) -> Self {
         let num_bcbs = basic_coverage_blocks.num_nodes();
 
-        Self {
+        let mut this = Self {
             next_counter_id: CounterId::START,
             bcb_counters: IndexVec::from_elem_n(None, num_bcbs),
             bcb_edge_counters: FxIndexMap::default(),
             bcb_has_incoming_edge_counters: BitSet::new_empty(num_bcbs),
             expressions: IndexVec::new(),
-        }
-    }
+        };
 
-    /// Makes [`BcbCounter`] `Counter`s and `Expressions` for the `BasicCoverageBlock`s directly or
-    /// indirectly associated with coverage spans, and accumulates additional `Expression`s
-    /// representing intermediate values.
-    pub fn make_bcb_counters(
-        &mut self,
-        basic_coverage_blocks: &CoverageGraph,
-        bcb_has_coverage_spans: impl Fn(BasicCoverageBlock) -> bool,
-    ) {
-        MakeBcbCounters::new(self, basic_coverage_blocks).make_bcb_counters(bcb_has_coverage_spans)
+        MakeBcbCounters::new(&mut this, basic_coverage_blocks)
+            .make_bcb_counters(bcb_has_coverage_spans);
+
+        this
     }
 
     fn make_counter(&mut self) -> BcbCounter {
@@ -189,8 +189,8 @@ impl CoverageCounters {
             .map(|(&(from_bcb, to_bcb), counter_kind)| (from_bcb, to_bcb, counter_kind))
     }
 
-    pub(super) fn take_expressions(&mut self) -> IndexVec<ExpressionId, Expression> {
-        std::mem::take(&mut self.expressions)
+    pub(super) fn into_expressions(self) -> IndexVec<ExpressionId, Expression> {
+        self.expressions
     }
 }
 

@@ -8,7 +8,7 @@ mod spans;
 mod tests;
 
 use self::counters::{BcbCounter, CoverageCounters};
-use self::graph::CoverageGraph;
+use self::graph::{BasicCoverageBlock, CoverageGraph};
 use self::spans::CoverageSpans;
 
 use crate::MirPass;
@@ -70,7 +70,6 @@ struct Instrumentor<'a, 'tcx> {
     mir_body: &'a mut mir::Body<'tcx>,
     hir_info: ExtractedHirInfo,
     basic_coverage_blocks: CoverageGraph,
-    coverage_counters: CoverageCounters,
 }
 
 impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
@@ -80,9 +79,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         debug!(?hir_info, "instrumenting {:?}", mir_body.source.def_id());
 
         let basic_coverage_blocks = CoverageGraph::from_mir(mir_body);
-        let coverage_counters = CoverageCounters::new(&basic_coverage_blocks);
 
-        Self { tcx, mir_body, hir_info, basic_coverage_blocks, coverage_counters }
+        Self { tcx, mir_body, hir_info, basic_coverage_blocks }
     }
 
     fn inject_counters(&'a mut self) {
@@ -103,25 +101,31 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         // and all `Expression` dependencies (operands) are also generated, for any other
         // `BasicCoverageBlock`s not already associated with a coverage span.
         let bcb_has_coverage_spans = |bcb| coverage_spans.bcb_has_coverage_spans(bcb);
-        self.coverage_counters
-            .make_bcb_counters(&self.basic_coverage_blocks, bcb_has_coverage_spans);
+        let coverage_counters = CoverageCounters::make_bcb_counters(
+            &self.basic_coverage_blocks,
+            bcb_has_coverage_spans,
+        );
 
-        let mappings = self.create_mappings_and_inject_coverage_statements(&coverage_spans);
+        let mappings = self.create_mappings(&coverage_spans, &coverage_counters);
+        self.inject_coverage_statements(bcb_has_coverage_spans, &coverage_counters);
 
         self.mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
             function_source_hash: self.hir_info.function_source_hash,
-            num_counters: self.coverage_counters.num_counters(),
-            expressions: self.coverage_counters.take_expressions(),
+            num_counters: coverage_counters.num_counters(),
+            expressions: coverage_counters.into_expressions(),
             mappings,
         }));
     }
 
-    /// For each [`BcbCounter`] associated with a BCB node or BCB edge, create
-    /// any corresponding mappings (for BCB nodes only), and inject any necessary
-    /// coverage statements into MIR.
-    fn create_mappings_and_inject_coverage_statements(
-        &mut self,
+    /// For each coverage span extracted from MIR, create a corresponding
+    /// mapping.
+    ///
+    /// Precondition: All BCBs corresponding to those spans have been given
+    /// coverage counters.
+    fn create_mappings(
+        &self,
         coverage_spans: &CoverageSpans,
+        coverage_counters: &CoverageCounters,
     ) -> Vec<Mapping> {
         let source_map = self.tcx.sess.source_map();
         let body_span = self.hir_info.body_span;
@@ -131,30 +135,42 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let file_name =
             Symbol::intern(&source_file.name.for_codegen(self.tcx.sess).to_string_lossy());
 
-        let mut mappings = Vec::new();
+        coverage_spans
+            .bcbs_with_coverage_spans()
+            // For each BCB with spans, get a coverage term for its counter.
+            .map(|(bcb, spans)| {
+                let term = coverage_counters
+                    .bcb_counter(bcb)
+                    .expect("all BCBs with spans were given counters")
+                    .as_term();
+                (term, spans)
+            })
+            // Flatten the spans into individual term/span pairs.
+            .flat_map(|(term, spans)| spans.iter().map(move |&span| (term, span)))
+            // Convert each span to a code region, and create the final mapping.
+            .map(|(term, span)| {
+                let code_region = make_code_region(source_map, file_name, span, body_span);
+                Mapping { term, code_region }
+            })
+            .collect::<Vec<_>>()
+    }
 
-        // Process the counters and spans associated with BCB nodes.
-        for (bcb, counter_kind) in self.coverage_counters.bcb_node_counters() {
-            let spans = coverage_spans.spans_for_bcb(bcb);
-            let has_mappings = !spans.is_empty();
-
-            // If this BCB has any coverage spans, add corresponding mappings to
-            // the mappings table.
-            if has_mappings {
-                let term = counter_kind.as_term();
-                mappings.extend(spans.iter().map(|&span| {
-                    let code_region = make_code_region(source_map, file_name, span, body_span);
-                    Mapping { code_region, term }
-                }));
-            }
-
+    /// For each BCB node or BCB edge that has an associated coverage counter,
+    /// inject any necessary coverage statements into MIR.
+    fn inject_coverage_statements(
+        &mut self,
+        bcb_has_coverage_spans: impl Fn(BasicCoverageBlock) -> bool,
+        coverage_counters: &CoverageCounters,
+    ) {
+        // Process the counters associated with BCB nodes.
+        for (bcb, counter_kind) in coverage_counters.bcb_node_counters() {
             let do_inject = match counter_kind {
                 // Counter-increment statements always need to be injected.
                 BcbCounter::Counter { .. } => true,
                 // The only purpose of expression-used statements is to detect
                 // when a mapping is unreachable, so we only inject them for
                 // expressions with one or more mappings.
-                BcbCounter::Expression { .. } => has_mappings,
+                BcbCounter::Expression { .. } => bcb_has_coverage_spans(bcb),
             };
             if do_inject {
                 inject_statement(
@@ -166,7 +182,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         }
 
         // Process the counters associated with BCB edges.
-        for (from_bcb, to_bcb, counter_kind) in self.coverage_counters.bcb_edge_counters() {
+        for (from_bcb, to_bcb, counter_kind) in coverage_counters.bcb_edge_counters() {
             let do_inject = match counter_kind {
                 // Counter-increment statements always need to be injected.
                 BcbCounter::Counter { .. } => true,
@@ -192,8 +208,6 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             // Inject a counter into the newly-created BB.
             inject_statement(self.mir_body, self.make_mir_coverage_kind(counter_kind), new_bb);
         }
-
-        mappings
     }
 
     fn make_mir_coverage_kind(&self, counter_kind: &BcbCounter) -> CoverageKind {
