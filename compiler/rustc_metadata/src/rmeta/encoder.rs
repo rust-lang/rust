@@ -177,15 +177,17 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
                 // previously saved offset must be smaller than the current position.
                 let offset = s.opaque.position() - last_location;
                 if offset < last_location {
-                    SpanEncodingMode::RelativeOffset(offset).encode(s)
+                    SpanTag::indirect(true).encode(s);
+                    offset.encode(s);
                 } else {
-                    SpanEncodingMode::AbsoluteOffset(last_location).encode(s)
+                    SpanTag::indirect(false).encode(s);
+                    last_location.encode(s);
                 }
             }
             Entry::Vacant(v) => {
                 let position = s.opaque.position();
                 v.insert(position);
-                SpanEncodingMode::Direct.encode(s);
+                // Data is encoded with a SpanTag prefix (see below).
                 self.data().encode(s);
             }
         }
@@ -225,14 +227,15 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
         // IMPORTANT: If this is ever changed, be sure to update
         // `rustc_span::hygiene::raw_encode_expn_id` to handle
         // encoding `ExpnData` for proc-macro crates.
-        if s.is_proc_macro {
-            SyntaxContext::root().encode(s);
-        } else {
-            self.ctxt.encode(s);
-        }
+        let ctxt = if s.is_proc_macro { SyntaxContext::root() } else { self.ctxt };
 
         if self.is_dummy() {
-            return TAG_PARTIAL_SPAN.encode(s);
+            let tag = SpanTag::new(SpanKind::Partial, ctxt, 0);
+            tag.encode(s);
+            if tag.context().is_none() {
+                ctxt.encode(s);
+            }
+            return;
         }
 
         // The Span infrastructure should make sure that this invariant holds:
@@ -250,7 +253,12 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
         if !source_file.contains(self.hi) {
             // Unfortunately, macro expansion still sometimes generates Spans
             // that malformed in this way.
-            return TAG_PARTIAL_SPAN.encode(s);
+            let tag = SpanTag::new(SpanKind::Partial, ctxt, 0);
+            tag.encode(s);
+            if tag.context().is_none() {
+                ctxt.encode(s);
+            }
+            return;
         }
 
         // There are two possible cases here:
@@ -269,7 +277,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
         // if we're a proc-macro crate.
         // This allows us to avoid loading the dependencies of proc-macro crates: all of
         // the information we need to decode `Span`s is stored in the proc-macro crate.
-        let (tag, metadata_index) = if source_file.is_imported() && !s.is_proc_macro {
+        let (kind, metadata_index) = if source_file.is_imported() && !s.is_proc_macro {
             // To simplify deserialization, we 'rebase' this span onto the crate it originally came
             // from (the crate that 'owns' the file it references. These rebased 'lo' and 'hi'
             // values are relative to the source map information for the 'foreign' crate whose
@@ -287,7 +295,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
                 }
             };
 
-            (TAG_VALID_SPAN_FOREIGN, metadata_index)
+            (SpanKind::Foreign, metadata_index)
         } else {
             // Record the fact that we need to encode the data for this `SourceFile`
             let source_files =
@@ -296,7 +304,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
             let metadata_index: u32 =
                 metadata_index.try_into().expect("cannot export more than U32_MAX files");
 
-            (TAG_VALID_SPAN_LOCAL, metadata_index)
+            (SpanKind::Local, metadata_index)
         };
 
         // Encode the start position relative to the file start, so we profit more from the
@@ -307,14 +315,20 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
         // from the variable-length integer encoding that we use.
         let len = self.hi - self.lo;
 
+        let tag = SpanTag::new(kind, ctxt, len.0 as usize);
         tag.encode(s);
+        if tag.context().is_none() {
+            ctxt.encode(s);
+        }
         lo.encode(s);
-        len.encode(s);
+        if tag.length().is_none() {
+            len.encode(s);
+        }
 
         // Encode the index of the `SourceFile` for the span, in order to make decoding faster.
         metadata_index.encode(s);
 
-        if tag == TAG_VALID_SPAN_FOREIGN {
+        if kind == SpanKind::Foreign {
             // This needs to be two lines to avoid holding the `s.source_file_cache`
             // while calling `cnum.encode(s)`
             let cnum = s.source_file_cache.0.cnum;
