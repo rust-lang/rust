@@ -567,6 +567,7 @@ use crate::{
 #[rustc_diagnostic_item = "Option"]
 #[lang = "Option"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(clippy::derived_hash_with_manual_eq)] // PartialEq is specialized
 pub enum Option<T> {
     /// No value.
     #[lang = "None"]
