@@ -204,6 +204,7 @@ dependencies = [
  "rand",
  "tempfile",
  "tokio",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]

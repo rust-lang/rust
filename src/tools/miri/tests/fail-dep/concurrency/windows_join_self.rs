@@ -6,18 +6,14 @@
 
 use std::thread;
 
-extern "system" {
-    fn GetCurrentThread() -> usize;
-    fn WaitForSingleObject(handle: usize, timeout: u32) -> u32;
-}
-
-const INFINITE: u32 = u32::MAX;
+use windows_sys::Win32::Foundation::WAIT_OBJECT_0;
+use windows_sys::Win32::System::Threading::{GetCurrentThread, WaitForSingleObject, INFINITE};
 
 fn main() {
     thread::spawn(|| {
         unsafe {
             let native = GetCurrentThread();
-            assert_eq!(WaitForSingleObject(native, INFINITE), 0); //~ ERROR: deadlock: the evaluated program deadlocked
+            assert_eq!(WaitForSingleObject(native, INFINITE), WAIT_OBJECT_0); //~ ERROR: deadlock: the evaluated program deadlocked
         }
     })
     .join()
