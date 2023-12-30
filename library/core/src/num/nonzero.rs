@@ -104,6 +104,18 @@ macro_rules! nonzero_integers {
                 #[inline]
                 #[rustc_const_stable(feature = "const_nonzero_get", since = "1.34.0")]
                 pub const fn get(self) -> $Int {
+                    // FIXME: Remove this after LLVM supports `!range` metadata for function
+                    // arguments https://github.com/llvm/llvm-project/issues/76628
+                    //
+                    // Rustc can set range metadata only if it loads `self` from
+                    // memory somewhere. If the value of `self` was from by-value argument
+                    // of some not-inlined function, LLVM don't have range metadata
+                    // to understand that the value cannot be zero.
+
+                    // SAFETY: It is an invariant of this type.
+                    unsafe {
+                        intrinsics::assume(self.0 != 0);
+                    }
                     self.0
                 }
 
@@ -114,7 +126,9 @@ macro_rules! nonzero_integers {
                 #[doc = concat!("Converts a `", stringify!($Ty), "` into an `", stringify!($Int), "`")]
                 #[inline]
                 fn from(nonzero: $Ty) -> Self {
-                    nonzero.0
+                    // Call nonzero to keep information range information
+                    // from get method.
+                    nonzero.get()
                 }
             }
 
@@ -233,7 +247,7 @@ macro_rules! nonzero_leading_trailing_zeros {
                 #[inline]
                 pub const fn leading_zeros(self) -> u32 {
                     // SAFETY: since `self` cannot be zero, it is safe to call `ctlz_nonzero`.
-                    unsafe { intrinsics::ctlz_nonzero(self.0 as $Uint) as u32 }
+                    unsafe { intrinsics::ctlz_nonzero(self.get() as $Uint) as u32 }
                 }
 
                 /// Returns the number of trailing zeros in the binary representation
@@ -257,7 +271,7 @@ macro_rules! nonzero_leading_trailing_zeros {
                 #[inline]
                 pub const fn trailing_zeros(self) -> u32 {
                     // SAFETY: since `self` cannot be zero, it is safe to call `cttz_nonzero`.
-                    unsafe { intrinsics::cttz_nonzero(self.0 as $Uint) as u32 }
+                    unsafe { intrinsics::cttz_nonzero(self.get() as $Uint) as u32 }
                 }
 
             }
@@ -515,7 +529,7 @@ macro_rules! nonzero_unsigned_operations {
                               without modifying the original"]
                 #[inline]
                 pub const fn ilog10(self) -> u32 {
-                    super::int_log10::$Int(self.0)
+                    super::int_log10::$Int(self.get())
                 }
 
                 /// Calculates the middle point of `self` and `rhs`.
