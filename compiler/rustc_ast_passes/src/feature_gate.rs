@@ -516,6 +516,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
             }
         };
     }
+    gate_all!(forced_keywords, "`k#ident` syntax is experimental",);
     gate_all!(
         if_let_guard,
         "`if let` guards are experimental",

@@ -473,6 +473,8 @@ declare_features! (
     (unstable, fn_align, "1.53.0", Some(82232)),
     /// Support delegating implementation of functions to other already implemented functions.
     (incomplete, fn_delegation, "1.76.0", Some(118212)),
+    /// Support forcing an ident to be recognized as a keyword through `k#ident`.
+    (unstable, forced_keywords, "CURRENT_RUSTC_VERSION", None),
     /// Allows defining gen blocks and `gen fn`.
     (unstable, gen_blocks, "1.75.0", Some(117078)),
     /// Infer generic args for both consts and types.

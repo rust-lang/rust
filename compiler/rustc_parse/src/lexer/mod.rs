@@ -194,6 +194,7 @@ impl<'a> StringReader<'a> {
                 rustc_lexer::TokenKind::KeywordIdent => {
                     let sym = nfc_normalize(self.str_from(start));
                     let span = self.mk_sp(start, self.pos);
+                    self.sess.gated_spans.gate(sym::forced_keywords, span);
                     self.sess.symbol_gallery.insert(sym, span);
                     token::Ident(sym, IdentKind::Keyword)
                 }

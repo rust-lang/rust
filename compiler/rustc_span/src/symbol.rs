@@ -787,6 +787,7 @@ symbols! {
         fn_ptr_addr,
         fn_ptr_trait,
         forbid,
+        forced_keywords,
         forget,
         format,
         format_alignment,
