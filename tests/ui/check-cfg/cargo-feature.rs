@@ -15,6 +15,11 @@
 //[some]~^^ WARNING unexpected `cfg` condition value
 fn ser() {}
 
+#[cfg(feature)]
+//[none]~^ WARNING unexpected `cfg` condition name
+//[some]~^^ WARNING unexpected `cfg` condition value
+fn feat() {}
+
 #[cfg(tokio_unstable)]
 //~^ WARNING unexpected `cfg` condition name
 fn tokio() {}
