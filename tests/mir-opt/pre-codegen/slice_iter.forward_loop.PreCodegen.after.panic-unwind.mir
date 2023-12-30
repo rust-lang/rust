@@ -7,16 +7,205 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     let mut _13: std::slice::Iter<'_, T>;
     let mut _14: std::slice::Iter<'_, T>;
     let mut _15: &mut std::slice::Iter<'_, T>;
-    let mut _16: std::option::Option<&T>;
-    let mut _17: isize;
-    let mut _19: &impl Fn(&T);
-    let mut _20: (&T,);
-    let _21: ();
+    let mut _65: std::option::Option<&T>;
+    let mut _66: isize;
+    let mut _68: &impl Fn(&T);
+    let mut _69: (&T,);
+    let _70: ();
     scope 1 {
         debug iter => _14;
-        let _18: &T;
+        let _67: &T;
         scope 2 {
-            debug x => _18;
+            debug x => _67;
+        }
+        scope 23 (inlined <std::slice::Iter<'_, T> as Iterator>::next) {
+            debug self => _15;
+            let mut _16: bool;
+            let mut _17: *const *const T;
+            let mut _18: *const std::ptr::NonNull<T>;
+            let mut _20: &std::ptr::NonNull<T>;
+            let mut _21: &std::ptr::NonNull<T>;
+            let mut _38: bool;
+            let mut _39: *const T;
+            let _42: std::ptr::NonNull<T>;
+            let mut _54: &std::ptr::NonNull<T>;
+            let mut _64: &T;
+            scope 24 {
+                scope 25 {
+                    let _19: std::ptr::NonNull<T>;
+                    let _41: usize;
+                    scope 26 {
+                        debug len => _41;
+                    }
+                    scope 27 {
+                        debug end => _19;
+                        scope 33 (inlined <NonNull<T> as PartialEq>::eq) {
+                            debug self => _20;
+                            debug other => _21;
+                            let mut _22: std::ptr::NonNull<T>;
+                            let mut _29: *mut T;
+                            let mut _30: std::ptr::NonNull<T>;
+                            let mut _37: *mut T;
+                            scope 34 (inlined NonNull::<T>::as_ptr) {
+                                debug self => _22;
+                                let mut _23: *const T;
+                                let mut _27: bool;
+                                let mut _28: bool;
+                                scope 35 {
+                                    scope 36 (inlined std::ptr::const_ptr::<impl *const T>::is_null) {
+                                        debug self => _23;
+                                        let mut _24: *const u8;
+                                        scope 37 {
+                                            scope 38 (inlined std::ptr::const_ptr::<impl *const T>::is_null::runtime_impl) {
+                                                debug ptr => _24;
+                                                let mut _26: usize;
+                                                scope 39 (inlined std::ptr::const_ptr::<impl *const u8>::addr) {
+                                                    debug self => _24;
+                                                    let mut _25: *const ();
+                                                    scope 40 {
+                                                        scope 41 (inlined std::ptr::const_ptr::<impl *const u8>::cast::<()>) {
+                                                            debug self => _24;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            scope 42 (inlined NonNull::<T>::as_ptr) {
+                                debug self => _30;
+                                let mut _31: *const T;
+                                let mut _35: bool;
+                                let mut _36: bool;
+                                scope 43 {
+                                    scope 44 (inlined std::ptr::const_ptr::<impl *const T>::is_null) {
+                                        debug self => _31;
+                                        let mut _32: *const u8;
+                                        scope 45 {
+                                            scope 46 (inlined std::ptr::const_ptr::<impl *const T>::is_null::runtime_impl) {
+                                                debug ptr => _32;
+                                                let mut _34: usize;
+                                                scope 47 (inlined std::ptr::const_ptr::<impl *const u8>::addr) {
+                                                    debug self => _32;
+                                                    let mut _33: *const ();
+                                                    scope 48 {
+                                                        scope 49 (inlined std::ptr::const_ptr::<impl *const u8>::cast::<()>) {
+                                                            debug self => _32;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    scope 28 {
+                        scope 32 (inlined std::ptr::const_ptr::<impl *const *const T>::cast::<NonNull<T>>) {
+                            debug self => _17;
+                        }
+                    }
+                    scope 29 (inlined std::ptr::const_ptr::<impl *const T>::addr) {
+                        debug self => _39;
+                        let mut _40: *const ();
+                        scope 30 {
+                            scope 31 (inlined std::ptr::const_ptr::<impl *const T>::cast::<()>) {
+                                debug self => _39;
+                            }
+                        }
+                    }
+                }
+                scope 50 (inlined std::slice::Iter::<'_, T>::post_inc_start) {
+                    debug self => _15;
+                    debug offset => const 1_usize;
+                    let mut _43: bool;
+                    let mut _44: *mut *const T;
+                    let mut _45: *mut std::ptr::NonNull<T>;
+                    let mut _46: std::ptr::NonNull<T>;
+                    let mut _49: std::ptr::NonNull<T>;
+                    let mut _50: *mut *const T;
+                    let mut _51: *mut usize;
+                    let mut _52: usize;
+                    let mut _53: usize;
+                    scope 51 {
+                        debug old => _42;
+                        scope 52 {
+                            scope 53 {
+                                scope 54 {
+                                    debug len => _51;
+                                    scope 59 (inlined core::num::<impl usize>::unchecked_sub) {
+                                        debug self => _52;
+                                        debug rhs => const 1_usize;
+                                        scope 60 {
+                                        }
+                                    }
+                                }
+                                scope 55 {
+                                    scope 58 (inlined std::ptr::mut_ptr::<impl *mut *const T>::cast::<usize>) {
+                                        debug self => _50;
+                                    }
+                                }
+                                scope 56 {
+                                    debug _end => _45;
+                                    scope 62 (inlined NonNull::<T>::add) {
+                                        debug self => _46;
+                                        debug count => const 1_usize;
+                                        let mut _47: *const T;
+                                        let mut _48: *const T;
+                                        scope 63 {
+                                        }
+                                    }
+                                }
+                                scope 57 {
+                                    scope 61 (inlined std::ptr::mut_ptr::<impl *mut *const T>::cast::<NonNull<T>>) {
+                                        debug self => _44;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                scope 64 (inlined NonNull::<T>::as_ref::<'_>) {
+                    debug self => _54;
+                    let mut _55: std::ptr::NonNull<T>;
+                    let mut _62: *mut T;
+                    let _63: *const T;
+                    scope 65 {
+                        scope 66 (inlined NonNull::<T>::as_ptr) {
+                            debug self => _55;
+                            let mut _56: *const T;
+                            let mut _60: bool;
+                            let mut _61: bool;
+                            scope 67 {
+                                scope 68 (inlined std::ptr::const_ptr::<impl *const T>::is_null) {
+                                    debug self => _56;
+                                    let mut _57: *const u8;
+                                    scope 69 {
+                                        scope 70 (inlined std::ptr::const_ptr::<impl *const T>::is_null::runtime_impl) {
+                                            debug ptr => _57;
+                                            let mut _59: usize;
+                                            scope 71 (inlined std::ptr::const_ptr::<impl *const u8>::addr) {
+                                                debug self => _57;
+                                                let mut _58: *const ();
+                                                scope 72 {
+                                                    scope 73 (inlined std::ptr::const_ptr::<impl *const u8>::cast::<()>) {
+                                                        debug self => _57;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        scope 74 (inlined std::ptr::mut_ptr::<impl *mut T>::cast_const) {
+                            debug self => _62;
+                        }
+                    }
+                }
+            }
         }
     }
     scope 3 (inlined core::slice::<impl [T]>::iter) {
@@ -44,15 +233,15 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                                     debug ptr => _9;
                                     scope 16 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null) {
                                         debug self => _9;
-                                        let mut _22: *mut u8;
+                                        let mut _71: *mut u8;
                                         scope 17 {
                                             scope 18 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) {
-                                                debug ptr => _22;
+                                                debug ptr => _71;
                                                 scope 19 (inlined std::ptr::mut_ptr::<impl *mut u8>::addr) {
-                                                    debug self => _22;
+                                                    debug self => _71;
                                                     scope 20 {
                                                         scope 21 (inlined std::ptr::mut_ptr::<impl *mut u8>::cast::<()>) {
-                                                            debug self => _22;
+                                                            debug self => _71;
                                                         }
                                                     }
                                                 }
@@ -120,10 +309,10 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageLive(_9);
         _9 = _4 as *mut T (PtrToPtr);
         StorageLive(_10);
-        StorageLive(_22);
+        StorageLive(_71);
         _10 = _9 as *const T (PointerCoercion(MutToConstPointer));
         _11 = NonNull::<T> { pointer: _10 };
-        StorageDead(_22);
+        StorageDead(_71);
         StorageDead(_10);
         StorageDead(_9);
         StorageLive(_12);
@@ -139,53 +328,232 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb4: {
-        StorageLive(_16);
-        StorageLive(_15);
+        StorageLive(_65);
         _15 = &mut _14;
-        _16 = <std::slice::Iter<'_, T> as Iterator>::next(move _15) -> [return: bb5, unwind: bb11];
+        StorageLive(_41);
+        StorageLive(_38);
+        StorageLive(_16);
+        _16 = const _;
+        switchInt(move _16) -> [0: bb5, otherwise: bb6];
     }
 
     bb5: {
-        StorageDead(_15);
-        _17 = discriminant(_16);
-        switchInt(move _17) -> [0: bb6, 1: bb8, otherwise: bb10];
+        StorageLive(_19);
+        StorageLive(_17);
+        _17 = &raw const (_14.1: *const T);
+        _18 = _17 as *const std::ptr::NonNull<T> (PtrToPtr);
+        StorageDead(_17);
+        _19 = (*_18);
+        StorageLive(_20);
+        _20 = &(_14.0: std::ptr::NonNull<T>);
+        StorageLive(_21);
+        _21 = &_19;
+        StorageLive(_29);
+        StorageLive(_22);
+        _22 = (_14.0: std::ptr::NonNull<T>);
+        StorageLive(_23);
+        StorageLive(_28);
+        StorageLive(_27);
+        _23 = (_22.0: *const T);
+        StorageLive(_24);
+        _24 = _23 as *const u8 (PtrToPtr);
+        StorageLive(_26);
+        StorageLive(_25);
+        _25 = _24 as *const () (PtrToPtr);
+        _26 = move _25 as usize (Transmute);
+        StorageDead(_25);
+        _27 = Eq(move _26, const 0_usize);
+        StorageDead(_26);
+        StorageDead(_24);
+        _28 = Not(move _27);
+        StorageDead(_27);
+        assume(move _28);
+        StorageDead(_28);
+        _29 = _23 as *mut T (PtrToPtr);
+        StorageDead(_23);
+        StorageDead(_22);
+        StorageLive(_37);
+        StorageLive(_30);
+        _30 = _19;
+        StorageLive(_31);
+        StorageLive(_36);
+        StorageLive(_35);
+        _31 = (_30.0: *const T);
+        StorageLive(_32);
+        _32 = _31 as *const u8 (PtrToPtr);
+        StorageLive(_34);
+        StorageLive(_33);
+        _33 = _32 as *const () (PtrToPtr);
+        _34 = move _33 as usize (Transmute);
+        StorageDead(_33);
+        _35 = Eq(move _34, const 0_usize);
+        StorageDead(_34);
+        StorageDead(_32);
+        _36 = Not(move _35);
+        StorageDead(_35);
+        assume(move _36);
+        StorageDead(_36);
+        _37 = _31 as *mut T (PtrToPtr);
+        StorageDead(_31);
+        StorageDead(_30);
+        _38 = Eq(move _29, move _37);
+        StorageDead(_37);
+        StorageDead(_29);
+        StorageDead(_21);
+        StorageDead(_20);
+        StorageDead(_19);
+        goto -> bb7;
     }
 
     bb6: {
-        StorageDead(_16);
-        StorageDead(_14);
-        drop(_2) -> [return: bb7, unwind continue];
+        StorageLive(_39);
+        _39 = (_14.1: *const T);
+        StorageLive(_40);
+        _40 = _39 as *const () (PtrToPtr);
+        _41 = move _40 as usize (Transmute);
+        StorageDead(_40);
+        StorageDead(_39);
+        _38 = Eq(_41, const 0_usize);
+        goto -> bb7;
     }
 
     bb7: {
-        return;
+        StorageDead(_16);
+        switchInt(move _38) -> [0: bb8, otherwise: bb12];
     }
 
     bb8: {
-        _18 = ((_16 as Some).0: &T);
-        StorageLive(_19);
-        _19 = &_2;
-        StorageLive(_20);
-        _20 = (_18,);
-        _21 = <impl Fn(&T) as Fn<(&T,)>>::call(move _19, move _20) -> [return: bb9, unwind: bb11];
+        StorageLive(_64);
+        StorageLive(_54);
+        StorageLive(_42);
+        StorageLive(_45);
+        _42 = (_14.0: std::ptr::NonNull<T>);
+        StorageLive(_43);
+        _43 = const _;
+        switchInt(move _43) -> [0: bb9, otherwise: bb10];
     }
 
     bb9: {
-        StorageDead(_20);
-        StorageDead(_19);
-        StorageDead(_16);
-        goto -> bb4;
+        StorageLive(_44);
+        _44 = &raw mut (_14.1: *const T);
+        _45 = _44 as *mut std::ptr::NonNull<T> (PtrToPtr);
+        StorageDead(_44);
+        StorageLive(_49);
+        StorageLive(_46);
+        _46 = (_14.0: std::ptr::NonNull<T>);
+        StorageLive(_48);
+        StorageLive(_47);
+        _47 = (_46.0: *const T);
+        _48 = Offset(move _47, const 1_usize);
+        StorageDead(_47);
+        _49 = NonNull::<T> { pointer: move _48 };
+        StorageDead(_48);
+        StorageDead(_46);
+        (_14.0: std::ptr::NonNull<T>) = move _49;
+        StorageDead(_49);
+        goto -> bb11;
     }
 
     bb10: {
-        unreachable;
+        StorageLive(_50);
+        _50 = &raw mut (_14.1: *const T);
+        _51 = _50 as *mut usize (PtrToPtr);
+        StorageDead(_50);
+        StorageLive(_53);
+        StorageLive(_52);
+        _52 = (*_51);
+        _53 = SubUnchecked(_52, const 1_usize);
+        StorageDead(_52);
+        (*_51) = move _53;
+        StorageDead(_53);
+        goto -> bb11;
     }
 
-    bb11 (cleanup): {
-        drop(_2) -> [return: bb12, unwind terminate(cleanup)];
+    bb11: {
+        StorageDead(_43);
+        StorageDead(_45);
+        _54 = &_42;
+        StorageLive(_62);
+        StorageLive(_55);
+        _55 = _42;
+        StorageLive(_56);
+        StorageLive(_61);
+        StorageLive(_60);
+        _56 = (_55.0: *const T);
+        StorageLive(_57);
+        _57 = _56 as *const u8 (PtrToPtr);
+        StorageLive(_59);
+        StorageLive(_58);
+        _58 = _57 as *const () (PtrToPtr);
+        _59 = move _58 as usize (Transmute);
+        StorageDead(_58);
+        _60 = Eq(move _59, const 0_usize);
+        StorageDead(_59);
+        StorageDead(_57);
+        _61 = Not(move _60);
+        StorageDead(_60);
+        assume(move _61);
+        StorageDead(_61);
+        _62 = _56 as *mut T (PtrToPtr);
+        StorageDead(_56);
+        StorageDead(_55);
+        _63 = _62 as *const T (PointerCoercion(MutToConstPointer));
+        StorageDead(_62);
+        _64 = &(*_63);
+        StorageDead(_54);
+        _65 = Option::<&T>::Some(move _64);
+        StorageDead(_64);
+        StorageDead(_42);
+        goto -> bb13;
     }
 
-    bb12 (cleanup): {
+    bb12: {
+        _65 = const {transmute(0x0000000000000000): Option<&T>};
+        goto -> bb13;
+    }
+
+    bb13: {
+        StorageDead(_38);
+        StorageDead(_41);
+        _66 = discriminant(_65);
+        switchInt(move _66) -> [0: bb14, 1: bb16, otherwise: bb20];
+    }
+
+    bb14: {
+        StorageDead(_65);
+        StorageDead(_14);
+        drop(_2) -> [return: bb15, unwind continue];
+    }
+
+    bb15: {
+        return;
+    }
+
+    bb16: {
+        _67 = ((_65 as Some).0: &T);
+        StorageLive(_68);
+        _68 = &_2;
+        StorageLive(_69);
+        _69 = (_67,);
+        _70 = <impl Fn(&T) as Fn<(&T,)>>::call(move _68, move _69) -> [return: bb17, unwind: bb18];
+    }
+
+    bb17: {
+        StorageDead(_69);
+        StorageDead(_68);
+        StorageDead(_65);
+        goto -> bb4;
+    }
+
+    bb18 (cleanup): {
+        drop(_2) -> [return: bb19, unwind terminate(cleanup)];
+    }
+
+    bb19 (cleanup): {
         resume;
+    }
+
+    bb20: {
+        unreachable;
     }
 }
