@@ -74,14 +74,12 @@ error: expected `{`, found `falsy`
   --> $DIR/else-no-if.rs:47:12
    |
 LL |     } else falsy! {} {
-   |       ---- ^^^^^
-   |       |
-   |       expected an `if` or a block after this `else`
+   |            ^^^^^ expected `{`
    |
-help: add an `if` if this is the condition of a chained `else if` statement
+help: try placing this code inside a block
    |
-LL |     } else if falsy! {} {
-   |            ++
+LL |     } else { falsy! {} } {
+   |            +           +
 
 error: expected `{`, found `falsy`
   --> $DIR/else-no-if.rs:54:12
