@@ -661,12 +661,10 @@ fn polymorphize<'tcx>(
     // the unpolymorphized upvar closure would result in a polymorphized closure producing
     // multiple mono items (and eventually symbol clashes).
     let def_id = instance.def_id();
-    let upvars_ty = if tcx.is_closure_or_coroutine(def_id) {
-        Some(args.as_closure().tupled_upvars_ty())
-    } else if tcx.type_of(def_id).skip_binder().is_coroutine() {
-        Some(args.as_coroutine().tupled_upvars_ty())
-    } else {
-        None
+    let upvars_ty = match tcx.type_of(def_id).skip_binder().kind() {
+        ty::Closure(..) => Some(args.as_closure().tupled_upvars_ty()),
+        ty::Coroutine(..) => Some(args.as_coroutine().tupled_upvars_ty()),
+        _ => None,
     };
     let has_upvars = upvars_ty.is_some_and(|ty| !ty.tuple_fields().is_empty());
     debug!("polymorphize: upvars_ty={:?} has_upvars={:?}", upvars_ty, has_upvars);
