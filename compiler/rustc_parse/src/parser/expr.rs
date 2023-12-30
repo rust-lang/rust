@@ -2733,13 +2733,35 @@ impl<'a> Parser<'a> {
             let first_tok_span = self.token.span;
             match self.parse_expr() {
                 Ok(cond)
-                // If it's not a free-standing expression, and is followed by a block,
-                // then it's very likely the condition to an `else if`.
+                // Try to guess the difference between a "condition-like" vs
+                // "statement-like" expression.
+                //
+                // We are seeing the following code, in which $cond is neither
+                // ExprKind::Block nor ExprKind::If (the 2 cases wherein this
+                // would be valid syntax).
+                //
+                //     if ... {
+                //     } else $cond
+                //
+                // If $cond is "condition-like" such as ExprKind::Binary, we
+                // want to suggest inserting `if`.
+                //
+                //     if ... {
+                //     } else if a == b {
+                //            ^^
+                //     }
+                //
+                // If $cond is "statement-like" such as ExprKind::While then we
+                // want to suggest wrapping in braces.
+                //
+                //     if ... {
+                //     } else {
+                //            ^
+                //         while true {}
+                //     }
+                //     ^
                     if self.check(&TokenKind::OpenDelim(Delimiter::Brace))
-                        && match cond.kind {
-                            ExprKind::MacCall(_) => true,
-                            _ => classify::expr_requires_semi_to_be_stmt(&cond),
-                        } =>
+                        && classify::expr_requires_semi_to_be_stmt(&cond) =>
                 {
                     self.dcx().emit_err(errors::ExpectedElseBlock {
                         first_tok_span,
