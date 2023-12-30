@@ -1046,6 +1046,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         let mut from = operand.ty(self.local_decls, self.tcx);
         let mut value = self.simplify_operand(operand, location)?;
+        if from == to {
+            return Some(value);
+        }
 
         if let CastKind::PointerCoercion(ReifyFnPointer | ClosureFnPointer(_)) = kind {
             // Each reification of a generic fn may get a different pointer.
