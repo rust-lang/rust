@@ -70,7 +70,6 @@ struct Instrumentor<'a, 'tcx> {
     mir_body: &'a mut mir::Body<'tcx>,
     hir_info: ExtractedHirInfo,
     basic_coverage_blocks: CoverageGraph,
-    coverage_counters: CoverageCounters,
 }
 
 impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
@@ -80,9 +79,8 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         debug!(?hir_info, "instrumenting {:?}", mir_body.source.def_id());
 
         let basic_coverage_blocks = CoverageGraph::from_mir(mir_body);
-        let coverage_counters = CoverageCounters::new(&basic_coverage_blocks);
 
-        Self { tcx, mir_body, hir_info, basic_coverage_blocks, coverage_counters }
+        Self { tcx, mir_body, hir_info, basic_coverage_blocks }
     }
 
     fn inject_counters(&'a mut self) {
@@ -103,16 +101,18 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         // and all `Expression` dependencies (operands) are also generated, for any other
         // `BasicCoverageBlock`s not already associated with a coverage span.
         let bcb_has_coverage_spans = |bcb| coverage_spans.bcb_has_coverage_spans(bcb);
-        self.coverage_counters
-            .make_bcb_counters(&self.basic_coverage_blocks, bcb_has_coverage_spans);
+        let coverage_counters = CoverageCounters::make_bcb_counters(
+            &self.basic_coverage_blocks,
+            bcb_has_coverage_spans,
+        );
 
-        let mappings = self.create_mappings(&coverage_spans);
-        self.inject_coverage_statements(bcb_has_coverage_spans);
+        let mappings = self.create_mappings(&coverage_spans, &coverage_counters);
+        self.inject_coverage_statements(bcb_has_coverage_spans, &coverage_counters);
 
         self.mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
             function_source_hash: self.hir_info.function_source_hash,
-            num_counters: self.coverage_counters.num_counters(),
-            expressions: self.coverage_counters.take_expressions(),
+            num_counters: coverage_counters.num_counters(),
+            expressions: coverage_counters.into_expressions(),
             mappings,
         }));
     }
@@ -122,7 +122,11 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     ///
     /// Precondition: All BCBs corresponding to those spans have been given
     /// coverage counters.
-    fn create_mappings(&self, coverage_spans: &CoverageSpans) -> Vec<Mapping> {
+    fn create_mappings(
+        &self,
+        coverage_spans: &CoverageSpans,
+        coverage_counters: &CoverageCounters,
+    ) -> Vec<Mapping> {
         let source_map = self.tcx.sess.source_map();
         let body_span = self.hir_info.body_span;
 
@@ -135,8 +139,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             .bcbs_with_coverage_spans()
             // For each BCB with spans, get a coverage term for its counter.
             .map(|(bcb, spans)| {
-                let term = self
-                    .coverage_counters
+                let term = coverage_counters
                     .bcb_counter(bcb)
                     .expect("all BCBs with spans were given counters")
                     .as_term();
@@ -157,9 +160,10 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
     fn inject_coverage_statements(
         &mut self,
         bcb_has_coverage_spans: impl Fn(BasicCoverageBlock) -> bool,
+        coverage_counters: &CoverageCounters,
     ) {
         // Process the counters associated with BCB nodes.
-        for (bcb, counter_kind) in self.coverage_counters.bcb_node_counters() {
+        for (bcb, counter_kind) in coverage_counters.bcb_node_counters() {
             let do_inject = match counter_kind {
                 // Counter-increment statements always need to be injected.
                 BcbCounter::Counter { .. } => true,
@@ -178,7 +182,7 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         }
 
         // Process the counters associated with BCB edges.
-        for (from_bcb, to_bcb, counter_kind) in self.coverage_counters.bcb_edge_counters() {
+        for (from_bcb, to_bcb, counter_kind) in coverage_counters.bcb_edge_counters() {
             let do_inject = match counter_kind {
                 // Counter-increment statements always need to be injected.
                 BcbCounter::Counter { .. } => true,
