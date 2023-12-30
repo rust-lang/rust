@@ -21,7 +21,7 @@ use crate::core::config::{DryRun, SplitDebuginfo, TargetSelection};
 use crate::prepare_behaviour_dump_dir;
 use crate::utils::cache::{Cache, Interned, INTERNER};
 use crate::utils::helpers::{self, add_dylib_path, add_link_lib_path, exe, linker_args};
-use crate::utils::helpers::{libdir, linker_flags, output, t, LldThreads};
+use crate::utils::helpers::{check_cfg_arg, libdir, linker_flags, output, t, LldThreads};
 use crate::EXTRA_CHECK_CFGS;
 use crate::{Build, CLang, Crate, DocTests, GitRepo, Mode};
 
@@ -1467,23 +1467,7 @@ impl<'a> Builder<'a> {
         rustflags.arg("-Zunstable-options");
         for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
             if *restricted_mode == None || *restricted_mode == Some(mode) {
-                // Creating a string of the values by concatenating each value:
-                // ',values("tvos","watchos")' or '' (nothing) when there are no values.
-                let next = match values {
-                    Some(values) => {
-                        let mut tmp = values
-                            .iter()
-                            .map(|val| [",", "\"", val, "\""])
-                            .flatten()
-                            .collect::<String>();
-
-                        tmp.insert_str(1, "values(");
-                        tmp.push_str(")");
-                        tmp
-                    }
-                    None => "".to_string(),
-                };
-                rustflags.arg(&format!("--check-cfg=cfg({name}{next})"));
+                rustflags.arg(&check_cfg_arg(name, *values));
             }
         }
 
