@@ -76,7 +76,7 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
         _11 = move ((_7 as Some).0: T);
         StorageLive(_13);
         StorageLive(_12);
-        _12 = (move _11,);
+        _12 = (_11,);
         _13 = <&mut impl Fn(T) -> U as FnOnce<(T,)>>::call_once(move _8, move _12) -> [return: bb6, unwind: bb13];
     }
 
