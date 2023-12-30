@@ -8,8 +8,17 @@ LL | #[cfg(feature = "serde")]
    = note: see <https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#check-cfg> for more information about checking conditional configuration
    = note: `#[warn(unexpected_cfgs)]` on by default
 
-warning: unexpected `cfg` condition name: `tokio_unstable`
+warning: unexpected `cfg` condition name: `feature`
   --> $DIR/cargo-feature.rs:18:7
+   |
+LL | #[cfg(feature)]
+   |       ^^^^^^^
+   |
+   = help: consider defining some features in `Cargo.toml`
+   = note: see <https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#check-cfg> for more information about checking conditional configuration
+
+warning: unexpected `cfg` condition name: `tokio_unstable`
+  --> $DIR/cargo-feature.rs:23:7
    |
 LL | #[cfg(tokio_unstable)]
    |       ^^^^^^^^^^^^^^
@@ -19,7 +28,7 @@ LL | #[cfg(tokio_unstable)]
    = note: see <https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#check-cfg> for more information about checking conditional configuration
 
 warning: unexpected `cfg` condition name: `CONFIG_NVME`
-  --> $DIR/cargo-feature.rs:22:7
+  --> $DIR/cargo-feature.rs:27:7
    |
 LL | #[cfg(CONFIG_NVME = "m")]
    |       ^^^^^^^^^^^^^^^^^
@@ -27,5 +36,5 @@ LL | #[cfg(CONFIG_NVME = "m")]
    = help: consider using a Cargo feature instead or adding `println!("cargo:rustc-check-cfg=cfg(CONFIG_NVME, values(\"m\"))");` to the top of a `build.rs`
    = note: see <https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#check-cfg> for more information about checking conditional configuration
 
-warning: 3 warnings emitted
+warning: 4 warnings emitted
 
