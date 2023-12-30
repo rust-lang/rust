@@ -1037,20 +1037,15 @@ impl Place {
     /// locals from the function body where this place originates from.
     pub fn ty(&self, locals: &[LocalDecl]) -> Result<Ty, Error> {
         let start_ty = locals[self.local].ty;
-        self.projection.iter().fold(Ok(start_ty), |place_ty, elem| {
-            let ty = place_ty?;
-            match elem {
-                ProjectionElem::Deref => Self::deref_ty(ty),
-                ProjectionElem::Field(_idx, fty) => Ok(*fty),
-                ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } => {
-                    Self::index_ty(ty)
-                }
-                ProjectionElem::Subslice { from, to, from_end } => {
-                    Self::subslice_ty(ty, from, to, from_end)
-                }
-                ProjectionElem::Downcast(_) => Ok(ty),
-                ProjectionElem::OpaqueCast(ty) | ProjectionElem::Subtype(ty) => Ok(*ty),
+        self.projection.iter().try_fold(start_ty, |ty, elem| match elem {
+            ProjectionElem::Deref => Self::deref_ty(ty),
+            ProjectionElem::Field(_idx, fty) => Ok(*fty),
+            ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } => Self::index_ty(ty),
+            ProjectionElem::Subslice { from, to, from_end } => {
+                Self::subslice_ty(ty, from, to, from_end)
             }
+            ProjectionElem::Downcast(_) => Ok(ty),
+            ProjectionElem::OpaqueCast(ty) | ProjectionElem::Subtype(ty) => Ok(*ty),
         })
     }
 

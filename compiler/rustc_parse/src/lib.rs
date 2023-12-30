@@ -5,6 +5,7 @@
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
+#![feature(lint_reasons)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![recursion_limit = "256"]
@@ -145,6 +146,7 @@ fn maybe_source_file_to_parser(
 /// Given a session and a path and an optional span (for error reporting),
 /// add the path to the session's source_map and return the new source_file or
 /// error when a file can't be read.
+#[expect(clippy::result_large_err)]
 fn try_file_to_source_file(
     sess: &ParseSess,
     path: &Path,

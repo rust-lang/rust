@@ -2791,11 +2791,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     )
                 })
                 .map(|mut field_path| {
+                    use std::fmt::Write;
+
                     field_path.pop();
-                    field_path
-                        .iter()
-                        .map(|id| format!("{}.", id.name.to_ident_string()))
-                        .collect::<String>()
+                    field_path.iter().fold(String::new(), |mut s, id| {
+                        write!(s, "{}.", id.name.to_ident_string()).unwrap();
+                        s
+                    })
                 })
                 .collect::<Vec<_>>();
             candidate_fields.sort();
