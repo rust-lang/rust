@@ -1,6 +1,7 @@
 use std::mem;
 
 use rustc_data_structures::sso::SsoHashMap;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::ty::error::TypeError;
@@ -215,7 +216,9 @@ where
         let old_ambient_variance = self.ambient_variance;
         self.ambient_variance = self.ambient_variance.xform(variance);
         debug!(?self.ambient_variance, "new ambient variance");
-        let r = self.relate(a, b)?;
+        // Recursive calls to `relate` can overflow the stack. For example a deeper version of
+        // `ui/associated-consts/issue-93775.rs`.
+        let r = ensure_sufficient_stack(|| self.relate(a, b))?;
         self.ambient_variance = old_ambient_variance;
         Ok(r)
     }

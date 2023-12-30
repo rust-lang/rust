@@ -4,7 +4,7 @@
 // Regression test for issue #105428.
 //
 // compile-flags: --crate-type=lib -Zmir-opt-level=0
-// compile-flags: -Zmir-enable-passes=+ConstProp,+SimplifyConstCondition-after-const-prop,+DestinationPropagation
+// compile-flags: -Zmir-enable-passes=+GVN,+SimplifyConstCondition-after-const-prop,+DestinationPropagation
 
 // EMIT_MIR unreachable.f.DestinationPropagation.diff
 pub fn f<T: Copy>(a: T) {
