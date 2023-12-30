@@ -51,6 +51,7 @@ mod iter_skip_zero;
 mod iter_with_drain;
 mod iterator_step_by_zero;
 mod join_absolute_paths;
+mod manual_is_variant_and;
 mod manual_next_back;
 mod manual_ok_or;
 mod manual_saturating_arithmetic;
@@ -3829,6 +3830,32 @@ declare_clippy_lint! {
     "filtering an iterator over `Result`s for `Ok` can be achieved with `flatten`"
 }
 
+declare_clippy_lint! {
+    /// Checks for usage of `option.map(f).unwrap_or_default()` and `result.map(f).unwrap_or_default()` where f is a function or closure that returns the `bool` type.
+    ///
+    /// ### Why is this bad?
+    /// Readability. These can be written more concisely as `option.is_some_and(f)` and `result.is_ok_and(f)`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # let option = Some(1);
+    /// # let result: Result<usize, ()> = Ok(1);
+    /// option.map(|a| a > 10).unwrap_or_default();
+    /// result.map(|a| a > 10).unwrap_or_default();
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # let option = Some(1);
+    /// # let result: Result<usize, ()> = Ok(1);
+    /// option.is_some_and(|a| a > 10);
+    /// result.is_ok_and(|a| a > 10);
+    /// ```
+    #[clippy::version = "1.76.0"]
+    pub MANUAL_IS_VARIANT_AND,
+    pedantic,
+    "using `.map(f).unwrap_or_default()`, which is more succinctly expressed as `is_some_and(f)` or `is_ok_and(f)`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -3983,6 +4010,7 @@ impl_lint_pass!(Methods => [
     RESULT_FILTER_MAP,
     ITER_FILTER_IS_SOME,
     ITER_FILTER_IS_OK,
+    MANUAL_IS_VARIANT_AND,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4664,7 +4692,13 @@ impl Methods {
                     }
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
-                ("unwrap_or_default" | "unwrap_unchecked" | "unwrap_err_unchecked", []) => {
+                ("unwrap_or_default", []) => {
+                    if let Some(("map", m_recv, [arg], span, _)) = method_call(recv) {
+                        manual_is_variant_and::check(cx, expr, m_recv, arg, span, &self.msrv);
+                    }
+                    unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
+                },
+                ("unwrap_unchecked" | "unwrap_err_unchecked", []) => {
                     unnecessary_literal_unwrap::check(cx, expr, recv, name, args);
                 },
                 ("unwrap_or_else", [u_arg]) => {
