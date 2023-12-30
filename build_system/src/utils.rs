@@ -30,6 +30,7 @@ fn check_exit_status(
     cwd: Option<&Path>,
     exit_status: ExitStatus,
     output: Option<&Output>,
+    show_err: bool,
 ) -> Result<(), String> {
     if exit_status.success() {
         return Ok(());
@@ -46,7 +47,9 @@ fn check_exit_status(
         exit_status.code()
     );
     let input = input.iter().map(|i| i.as_ref()).collect::<Vec<&OsStr>>();
-    eprintln!("Command `{:?}` failed", input);
+    if show_err {
+        eprintln!("Command `{:?}` failed", input);
+    }
     if let Some(output) = output {
         let stdout = String::from_utf8_lossy(&output.stdout);
         if !stdout.is_empty() {
@@ -88,7 +91,7 @@ pub fn run_command_with_env(
     let output = get_command_inner(input, cwd, env)
         .output()
         .map_err(|e| command_error(input, &cwd, e))?;
-    check_exit_status(input, cwd, output.status, Some(&output))?;
+    check_exit_status(input, cwd, output.status, Some(&output), true)?;
     Ok(output)
 }
 
@@ -101,7 +104,7 @@ pub fn run_command_with_output(
         .map_err(|e| command_error(input, &cwd, e))?
         .wait()
         .map_err(|e| command_error(input, &cwd, e))?;
-    check_exit_status(input, cwd, exit_status, None)?;
+    check_exit_status(input, cwd, exit_status, None, true)?;
     Ok(())
 }
 
@@ -115,7 +118,21 @@ pub fn run_command_with_output_and_env(
         .map_err(|e| command_error(input, &cwd, e))?
         .wait()
         .map_err(|e| command_error(input, &cwd, e))?;
-    check_exit_status(input, cwd, exit_status, None)?;
+    check_exit_status(input, cwd, exit_status, None, true)?;
+    Ok(())
+}
+
+pub fn run_command_with_output_and_env_no_err(
+    input: &[&dyn AsRef<OsStr>],
+    cwd: Option<&Path>,
+    env: Option<&HashMap<String, String>>,
+) -> Result<(), String> {
+    let exit_status = get_command_inner(input, cwd, env)
+        .spawn()
+        .map_err(|e| command_error(input, &cwd, e))?
+        .wait()
+        .map_err(|e| command_error(input, &cwd, e))?;
+    check_exit_status(input, cwd, exit_status, None, false)?;
     Ok(())
 }
 
@@ -158,21 +175,42 @@ pub fn get_os_name() -> Result<String, String> {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, PartialEq)]
 pub struct RustcVersionInfo {
+    pub short: String,
     pub version: String,
     pub host: Option<String>,
     pub commit_hash: Option<String>,
     pub commit_date: Option<String>,
 }
 
+pub fn rustc_toolchain_version_info(toolchain: &str) -> Result<RustcVersionInfo, String> {
+    rustc_version_info_inner(None, Some(toolchain))
+}
+
 pub fn rustc_version_info(rustc: Option<&str>) -> Result<RustcVersionInfo, String> {
-    let output = run_command(&[&rustc.unwrap_or("rustc"), &"-vV"], None)?;
+    rustc_version_info_inner(rustc, None)
+}
+
+fn rustc_version_info_inner(
+    rustc: Option<&str>,
+    toolchain: Option<&str>,
+) -> Result<RustcVersionInfo, String> {
+    let output = if let Some(toolchain) = toolchain {
+        run_command(&[&rustc.unwrap_or("rustc"), &toolchain, &"-vV"], None)
+    } else {
+        run_command(&[&rustc.unwrap_or("rustc"), &"-vV"], None)
+    }?;
     let content = std::str::from_utf8(&output.stdout).unwrap_or("");
 
     let mut info = RustcVersionInfo::default();
+    let mut lines = content.split('\n');
+    info.short = match lines.next() {
+        Some(s) => s.to_string(),
+        None => return Err("failed to retrieve rustc version".to_string()),
+    };
 
-    for line in content.split('\n').map(|line| line.trim()) {
+    for line in lines.map(|line| line.trim()) {
         match line.split_once(':') {
             Some(("host", data)) => info.host = Some(data.trim().to_string()),
             Some(("release", data)) => info.version = data.trim().to_string(),

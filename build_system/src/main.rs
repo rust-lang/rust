@@ -2,6 +2,7 @@ use std::env;
 use std::process;
 
 mod build;
+mod cargo;
 mod clean;
 mod config;
 mod prepare;
@@ -23,6 +24,7 @@ fn usage() {
         "\
 Available commands for build_system:
 
+    cargo    : Run cargo command
     clean    : Run clean command
     prepare  : Run prepare command
     build    : Run build command
@@ -32,6 +34,7 @@ Available commands for build_system:
 }
 
 pub enum Command {
+    Cargo,
     Clean,
     Prepare,
     Build,
@@ -44,6 +47,7 @@ fn main() {
     }
 
     let command = match env::args().nth(1).as_deref() {
+        Some("cargo") => Command::Cargo,
         Some("clean") => Command::Clean,
         Some("prepare") => Command::Prepare,
         Some("build") => Command::Build,
@@ -61,6 +65,7 @@ fn main() {
     };
 
     if let Err(e) = match command {
+        Command::Cargo => cargo::run(),
         Command::Clean => clean::run(),
         Command::Prepare => prepare::run(),
         Command::Build => build::run(),
