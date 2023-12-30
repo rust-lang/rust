@@ -1760,7 +1760,7 @@ impl<'a> Builder<'a> {
             if mode == Mode::Std {
                 self.config.rust_overflow_checks_std.to_string()
             } else {
-                self.config.rust_overflow_checks.to_string()
+                "true".into()
             },
         );
 
