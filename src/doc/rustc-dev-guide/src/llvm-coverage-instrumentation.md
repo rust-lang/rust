@@ -34,6 +34,32 @@ Detailed instructions and examples are documented in the
 [coverage map]: https://llvm.org/docs/CoverageMappingFormat.html
 [rustc-book-instrument-coverage]: https://doc.rust-lang.org/nightly/rustc/instrument-coverage.html
 
+## Recommended `config.toml` settings
+
+When working on the coverage instrumentation code, it is usually necessary to
+**enable the profiler runtime** by setting `profiler = true` in `[build]`.
+This allows the compiler to produce instrumented binaries, and makes it possible
+to run the full coverage test suite.
+
+Enabling debug assertions in the compiler and in LLVM is recommended, but not
+mandatory.
+
+```toml
+# Similar to the "compiler" profile, but also enables debug assertions in LLVM.
+# These assertions can detect malformed coverage mappings in some cases.
+profile = "codegen"
+
+[build]
+# IMPORTANT: This tells the build system to build the LLVM profiler runtime.
+# Without it, the compiler can't produce coverage-instrumented binaries,
+# and many of the coverage tests will be skipped.
+profiler = true
+
+[rust]
+# Enable debug assertions in the compiler.
+debug-assertions = true
+```
+
 ## Rust symbol mangling
 
 `-C instrument-coverage` automatically enables Rust symbol mangling `v0` (as
@@ -291,6 +317,10 @@ and by the [`tests/coverage-run-rustdoc`] test suite.
 These tests compile and run a test program with coverage
 instrumentation, then use LLVM tools to convert the coverage data into a
 human-readable coverage report.
+
+> Tests in `coverage-run` mode have an implicit `// needs-profiler-support`
+> directive, so they will be skipped if the profiler runtime has not been
+> [enabled in `config.toml`](#recommended-configtoml-settings).
 
 Finally, the [`coverage-llvmir`] test compiles a simple Rust program
 with `-C instrument-coverage` and compares the compiled program's LLVM IR to
