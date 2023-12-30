@@ -445,7 +445,7 @@ impl<T> Vec<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity exceeds `isize::MAX` bytes.
+    /// Panics if the new capacity exceeds `isize::MAX` _bytes_.
     ///
     /// # Examples
     ///
@@ -633,7 +633,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity exceeds `isize::MAX` bytes.
+    /// Panics if the new capacity exceeds `isize::MAX` _bytes_.
     ///
     /// # Examples
     ///
@@ -896,7 +896,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity exceeds `isize::MAX` bytes.
+    /// Panics if the new capacity exceeds `isize::MAX` _bytes_.
     ///
     /// # Examples
     ///
@@ -926,7 +926,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity exceeds `isize::MAX` bytes.
+    /// Panics if the new capacity exceeds `isize::MAX` _bytes_.
     ///
     /// # Examples
     ///
@@ -1900,7 +1900,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity exceeds `isize::MAX` bytes.
+    /// Panics if the new capacity exceeds `isize::MAX` _bytes_.
     ///
     /// # Examples
     ///
@@ -2003,7 +2003,7 @@ impl<T, A: Allocator> Vec<T, A> {
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity exceeds `isize::MAX` bytes.
+    /// Panics if the new capacity exceeds `isize::MAX` _bytes_.
     ///
     /// # Examples
     ///
