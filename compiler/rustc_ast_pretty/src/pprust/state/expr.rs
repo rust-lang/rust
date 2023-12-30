@@ -470,8 +470,8 @@ impl<'a> State<'a> {
         //
         // Same applies to a small set of other expression kinds which eagerly
         // terminate a statement which opens with them.
-        let needs_par =
-            fixup.leftmost_subexpression_in_stmt && !classify::expr_requires_semi_to_be_stmt(expr);
+        let needs_par = fixup.leftmost_subexpression_in_stmt
+            && !classify::expr_requires_semi_to_be_stmt_FIXME(expr);
         if needs_par {
             self.popen();
             fixup = FixupContext::default();

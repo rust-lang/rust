@@ -1101,7 +1101,7 @@ impl<'a> State<'a> {
                     false,
                     FixupContext { stmt: true, ..FixupContext::default() },
                 );
-                if classify::expr_requires_semi_to_be_stmt(expr) {
+                if classify::expr_requires_semi_to_be_stmt_FIXME(expr) {
                     self.word(";");
                 }
             }
