@@ -1468,17 +1468,22 @@ impl<'a> Builder<'a> {
         for (restricted_mode, name, values) in EXTRA_CHECK_CFGS {
             if *restricted_mode == None || *restricted_mode == Some(mode) {
                 // Creating a string of the values by concatenating each value:
-                // ',"tvos","watchos"' or '' (nothing) when there are no values
-                let values = match values {
-                    Some(values) => values
-                        .iter()
-                        .map(|val| [",", "\"", val, "\""])
-                        .flatten()
-                        .collect::<String>(),
-                    None => String::new(),
+                // ',values("tvos","watchos")' or '' (nothing) when there are no values.
+                let next = match values {
+                    Some(values) => {
+                        let mut tmp = values
+                            .iter()
+                            .map(|val| [",", "\"", val, "\""])
+                            .flatten()
+                            .collect::<String>();
+
+                        tmp.insert_str(1, "values(");
+                        tmp.push_str(")");
+                        tmp
+                    }
+                    None => "".to_string(),
                 };
-                let values = values.strip_prefix(",").unwrap_or(&values); // remove the first `,`
-                rustflags.arg(&format!("--check-cfg=cfg({name},values({values}))"));
+                rustflags.arg(&format!("--check-cfg=cfg({name}{next})"));
             }
         }
 
