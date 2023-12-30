@@ -1348,7 +1348,6 @@ mod prim_usize {}
 /// * [`Fn`] \(in addition, `&T` references get [`FnMut`] and [`FnOnce`] if `T: Fn`)
 /// * [`Hash`]
 /// * [`ToSocketAddrs`]
-/// * [`Send`] \(`&T` references also require <code>T: [Sync]</code>)
 /// * [`Sync`]
 ///
 /// [`std::fmt`]: fmt
@@ -1366,6 +1365,7 @@ mod prim_usize {}
 /// * [`ExactSizeIterator`]
 /// * [`FusedIterator`]
 /// * [`TrustedLen`]
+/// * [`Send`]
 /// * [`io::Write`]
 /// * [`Read`]
 /// * [`Seek`]
@@ -1377,6 +1377,8 @@ mod prim_usize {}
 /// [`BufRead`]: ../std/io/trait.BufRead.html
 /// [`Read`]: ../std/io/trait.Read.html
 /// [`io::Write`]: ../std/io/trait.Write.html
+///
+/// In addition, `&T` references implement [`Send`] if and only if `T` implements [`Sync`].
 ///
 /// Note that due to method call deref coercion, simply calling a trait method will act like they
 /// work on references as well as they do on owned values! The implementations described here are
