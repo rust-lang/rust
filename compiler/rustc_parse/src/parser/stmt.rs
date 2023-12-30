@@ -648,7 +648,7 @@ impl<'a> Parser<'a> {
         match &mut stmt.kind {
             // Expression without semicolon.
             StmtKind::Expr(expr)
-                if classify::expr_requires_semi_to_be_stmt(expr)
+                if classify::expr_requires_semi_to_be_stmt_FIXME(expr)
                     && !expr.attrs.is_empty()
                     && ![token::Eof, token::Semi, token::CloseDelim(Delimiter::Brace)]
                         .contains(&self.token.kind) =>
@@ -662,7 +662,8 @@ impl<'a> Parser<'a> {
 
             // Expression without semicolon.
             StmtKind::Expr(expr)
-                if self.token != token::Eof && classify::expr_requires_semi_to_be_stmt(expr) =>
+                if self.token != token::Eof
+                    && classify::expr_requires_semi_to_be_stmt_FIXME(expr) =>
             {
                 // Just check for errors and recover; do not eat semicolon yet.
 

@@ -42,7 +42,8 @@ use crate::{ast, token::Delimiter};
 ///     _ => m! {} - 1,  // binary subtraction operator
 /// }
 /// ```
-pub fn expr_requires_semi_to_be_stmt(e: &ast::Expr) -> bool {
+#[allow(non_snake_case)]
+pub fn expr_requires_semi_to_be_stmt_FIXME(e: &ast::Expr) -> bool {
     !matches!(
         e.kind,
         ast::ExprKind::If(..)
