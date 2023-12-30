@@ -2171,9 +2171,10 @@ pub enum InlineAsmRegOrRegClass {
     RegClass(Symbol),
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
+pub struct InlineAsmOptions(u16);
 bitflags::bitflags! {
-    #[derive(Encodable, Decodable, HashStable_Generic)]
-    pub struct InlineAsmOptions: u16 {
+    impl InlineAsmOptions: u16 {
         const PURE            = 1 << 0;
         const NOMEM           = 1 << 1;
         const READONLY        = 1 << 2;
@@ -2183,6 +2184,12 @@ bitflags::bitflags! {
         const ATT_SYNTAX      = 1 << 6;
         const RAW             = 1 << 7;
         const MAY_UNWIND      = 1 << 8;
+    }
+}
+
+impl std::fmt::Debug for InlineAsmOptions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        bitflags::parser::to_writer(self, f)
     }
 }
 
