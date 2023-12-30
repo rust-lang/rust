@@ -1,4 +1,3 @@
-#![allow(unused_macros)] // TODO
 use rand::Rng;
 use test::{black_box, Bencher};
 
@@ -7,7 +6,7 @@ const SMALL_EXPONENT_MAX: u32 = 6;
 
 macro_rules! pow_bench_template {
     ($name:ident, $t:ty, $inner_macro:ident, $base_macro:ident, $exp_macro:ident, $attribute:meta) => {
-        #[$attribute] // cfg(all()) makes a nice no-op.
+        #[$attribute]
         #[bench]
         fn $name(bench: &mut Bencher) {
             // Frequent black_box calls can add latency and prevent optimizations, so for
@@ -25,7 +24,7 @@ macro_rules! pow_bench_template {
                     let exp: u32 = $exp_macro!(2, $t, exp_ident, acc);
 
                     let r: ($t, bool) = $inner_macro!($t, base, exp);
-                    (acc.0 | r.0, acc.1 | r.1)
+                    (acc.0 ^ r.0, acc.1 ^ r.1)
                 })
             });
         }
@@ -33,7 +32,6 @@ macro_rules! pow_bench_template {
 }
 
 // This may panic if it overflows.
-// Consider running this bench along with an equivalent pow_unwrapped.
 macro_rules! inner_pow {
     ($t:ty, $base:ident, $exp:ident) => {
         ($base.pow($exp), false)
@@ -73,7 +71,7 @@ macro_rules! inner_checked_pow_option {
     };
 }
 
-macro_rules! inner_checked_value {
+macro_rules! inner_checked_pow_value {
     ($t:ty, $base:ident, $exp:ident) => {
         match $base.checked_pow($exp) {
             Some(x) => (x, false),
@@ -84,7 +82,7 @@ macro_rules! inner_checked_value {
 
 macro_rules! inner_checked_pow_overflow {
     ($t:ty, $base:ident, $exp:ident) => {
-        (0 as $t, $base.checked_pow($exp).ok())
+        (0 as $t, $base.checked_pow($exp).is_some())
     };
 }
 
@@ -96,7 +94,6 @@ macro_rules! inner_checked_pow_unwrapped {
 }
 
 // This has undefined behavior if it overflows.
-// Consider running this bench along with an equivalent pow_unwrapped.
 macro_rules! inner_checked_pow_unwrapped_unchecked {
     ($t:ty, $base:ident, $exp:ident) => {
         // SAFETY: Macro caller must ensure there is never an overflow.
@@ -110,8 +107,6 @@ macro_rules! inner_saturating_pow {
     };
 }
 
-// ***
-
 macro_rules! make_const_base {
     ($name:ident, $x:literal) => {
         macro_rules! $name {
@@ -123,37 +118,15 @@ macro_rules! make_const_base {
     };
 }
 
+make_const_base!(base_const_m3, -3);
+make_const_base!(base_const_m2, -2);
+make_const_base!(base_const_m1, -1);
+make_const_base!(base_const_0, 0);
+make_const_base!(base_const_1, 1);
 make_const_base!(base_const_2, 2);
 make_const_base!(base_const_3, 3);
-
-macro_rules! make_invariant_base {
-    ($name:ident, $x:literal) => {
-        macro_rules! $name {
-            (1, $t:ty, $ident:ident) => {
-                let $ident: $t = black_box($x);
-            };
-            (2, $t:ty, $ident:ident, $acc:ident) => {
-                $ident
-            };
-        }
-    };
-}
-
-macro_rules! make_repeated_base {
-    ($name:ident, $x:literal) => {
-        macro_rules! $name {
-            (1, $t:ty, $ident:ident) => {
-                let mut rng = crate::bench_rng();
-                let mut exp_array = [$x as $t; ITERATIONS];
-                let array_ref: &[$t; ITERATIONS] = black_box(&exp_array);
-                let mut $ident = std::iter::repeat(array_ref.into_iter()).flatten();
-            };
-            (2, $t:ty, $ident:ident, $acc:ident) => {
-                *$ident.next().unwrap()
-            };
-        }
-    };
-}
+make_const_base!(base_const_7, 7);
+make_const_base!(base_const_8, 8);
 
 macro_rules! base_small_sequential {
     (1, $t:ty, $ident:ident) => {
@@ -175,21 +148,6 @@ macro_rules! base_small_sequential {
     };
 }
 
-macro_rules! base_exponential {
-    (1, $t:ty, $ident:ident) => {
-        let mut rng = crate::bench_rng();
-        let mut base_array = [0 as $t; ITERATIONS];
-        for i in 0..base_array.len() {
-            base_array[i] = rng.gen::<$t>() >> rng.gen_range(0..<$t>::BITS);
-        }
-        let array_ref: &[$t; ITERATIONS] = black_box(&base_array);
-        let mut $ident = std::iter::repeat(array_ref.into_iter()).flatten();
-    };
-    (2, $t:ty, $ident:ident, $acc:ident) => {
-        *$ident.next().unwrap()
-    };
-}
-
 macro_rules! make_const_exp {
     ($name:ident, $x:literal) => {
         macro_rules! $name {
@@ -203,25 +161,20 @@ macro_rules! make_const_exp {
 
 make_const_exp!(exp_const_6, 6);
 
-macro_rules! make_invariant_exp {
-    ($name:ident, $x:literal) => {
-        macro_rules! $name {
-            (1, $t:ty, $ident:ident) => {
-                let $ident: u32 = black_box($x);
-            };
-            (2, $t:ty, $ident:ident, $acc:ident) => {
-                $ident
-            };
-        }
-    };
-}
-
-macro_rules! make_repeated_exp {
+macro_rules! make_exp_from_base {
     ($name:ident, $x:literal) => {
         macro_rules! $name {
             (1, $t:ty, $ident:ident) => {
                 let mut rng = crate::bench_rng();
-                let mut exp_array = [$x as u32; ITERATIONS];
+                #[allow(unused_comparisons)]
+                const ABS_X: $t = if $x < 0 { 0 - $x } else { $x };
+                const POS_MAX_EXP: u32 = <$t>::MAX.ilog(ABS_X);
+                const MAX_EXP: u32 =
+                    POS_MAX_EXP + (($x as $t).checked_pow(POS_MAX_EXP + 1).is_some() as u32);
+                let mut exp_array = [0 as u32; ITERATIONS];
+                for i in 0..exp_array.len() {
+                    exp_array[i] = rng.gen_range(0..=MAX_EXP);
+                }
                 let array_ref: &[u32; ITERATIONS] = black_box(&exp_array);
                 let mut $ident = std::iter::repeat(array_ref.into_iter()).flatten();
             };
@@ -231,6 +184,8 @@ macro_rules! make_repeated_exp {
         }
     };
 }
+
+make_exp_from_base!(exp_fit_8, 8);
 
 macro_rules! exp_small {
     (1, $t:ty, $ident:ident) => {
@@ -261,23 +216,6 @@ macro_rules! exp_exponential {
         *$ident.next().unwrap()
     };
 }
-
-macro_rules! exp_full {
-    (1, $t:ty, $ident:ident) => {
-        let mut rng = crate::bench_rng();
-        let mut exp_array = [0u32; ITERATIONS];
-        for i in 0..exp_array.len() {
-            exp_array[i] = rng.gen() & (1 << 31);
-        }
-        let array_ref: &[u32; ITERATIONS] = black_box(&exp_array);
-        let mut $ident = std::iter::repeat(array_ref.into_iter()).flatten();
-    };
-    (2, $t:ty, $ident:ident, $acc:ident) => {
-        *$ident.next().unwrap()
-    };
-}
-
-// ***
 
 macro_rules! default_benches {
     (
@@ -353,14 +291,7 @@ macro_rules! default_benches {
             $ignored
         );
 
-        pow_bench_template!(
-            $pow_const_2_name,
-            $t,
-            inner_pow,
-            base_const_2,
-            exp_exponential,
-            $ignored
-        );
+        pow_bench_template!($pow_const_2_name, $t, inner_pow, base_const_2, exp_small, $ignored);
         pow_bench_template!(
             $overflowing_const_2_name,
             $t,
@@ -389,13 +320,123 @@ macro_rules! default_benches {
     };
 }
 
+macro_rules! extra_benches {
+    (
+        $t:ty,
+        $ignored:meta,
+        $overflowing_value_small_name:ident,
+        $overflowing_overflow_small_name:ident,
+        $checked_option_small_name:ident,
+        $checked_value_small_name:ident,
+        $checked_overflow_small_name:ident,
+        $checked_unchecked_small_name:ident,
+        $const_0_fit_8_name:ident,
+        $const_1_fit_8_name:ident,
+        $const_2_fit_8_name:ident,
+        $const_3_fit_8_name:ident,
+        $const_7_fit_8_name:ident,
+        $const_8_fit_8_name:ident
+    ) => {
+        pow_bench_template!(
+            $overflowing_value_small_name,
+            $t,
+            inner_overflowing_pow_value,
+            base_small_sequential,
+            exp_small,
+            $ignored
+        );
+        pow_bench_template!(
+            $overflowing_overflow_small_name,
+            $t,
+            inner_overflowing_pow_overflow,
+            base_small_sequential,
+            exp_small,
+            $ignored
+        );
+        pow_bench_template!(
+            $checked_option_small_name,
+            $t,
+            inner_checked_pow_option,
+            base_small_sequential,
+            exp_small,
+            $ignored
+        );
+        pow_bench_template!(
+            $checked_value_small_name,
+            $t,
+            inner_checked_pow_value,
+            base_small_sequential,
+            exp_small,
+            $ignored
+        );
+        pow_bench_template!(
+            $checked_overflow_small_name,
+            $t,
+            inner_checked_pow_overflow,
+            base_small_sequential,
+            exp_small,
+            $ignored
+        );
+        pow_bench_template!(
+            $checked_unchecked_small_name,
+            $t,
+            inner_checked_pow_unwrapped_unchecked,
+            base_small_sequential,
+            exp_small,
+            $ignored
+        );
+
+        pow_bench_template!($const_0_fit_8_name, $t, inner_pow, base_const_0, exp_fit_8, $ignored);
+        pow_bench_template!($const_1_fit_8_name, $t, inner_pow, base_const_1, exp_fit_8, $ignored);
+        pow_bench_template!($const_2_fit_8_name, $t, inner_pow, base_const_2, exp_fit_8, $ignored);
+        pow_bench_template!($const_3_fit_8_name, $t, inner_pow, base_const_3, exp_fit_8, $ignored);
+        pow_bench_template!($const_7_fit_8_name, $t, inner_pow, base_const_7, exp_fit_8, $ignored);
+        pow_bench_template!($const_8_fit_8_name, $t, inner_pow, base_const_8, exp_fit_8, $ignored);
+    };
+}
+
+macro_rules! signed_benches {
+    (
+        $t:ty,
+        $ignored:meta,
+        $const_m3_fit_8_name:ident,
+        $const_m2_fit_8_name:ident,
+        $const_m1_fit_8_name:ident
+    ) => {
+        pow_bench_template!(
+            $const_m3_fit_8_name,
+            $t,
+            inner_pow,
+            base_const_m3,
+            exp_fit_8,
+            $ignored
+        );
+        pow_bench_template!(
+            $const_m2_fit_8_name,
+            $t,
+            inner_pow,
+            base_const_m2,
+            exp_fit_8,
+            $ignored
+        );
+        pow_bench_template!(
+            $const_m1_fit_8_name,
+            $t,
+            inner_pow,
+            base_const_m1,
+            exp_fit_8,
+            $ignored
+        );
+    };
+}
+
 default_benches!(
     u8,
     ignore,
     u8_pow_small,
     u8_wrapping_pow_small,
     u8_overflowing_pow_small,
-    u8_checked_unwrapped_pow_small,
+    u8_checked_pow_unwrapped_small,
     u8_staurating_pow_small,
     u8_wrapping_pow_base_small_exp_exponential,
     u8_overflowing_pow_base_small_exp_exponential,
@@ -404,6 +445,22 @@ default_benches!(
     u8_overfowing_pow_base_const_3_exp_exponential,
     u8_pow_base_small_exp_const_6
 );
+extra_benches!(
+    u8,
+    ignore,
+    u8_overflowing_pow_value_small,
+    u8_overflowing_pow_overflow_small,
+    u8_checked_pow_option_small,
+    u8_checked_pow_value_small,
+    u8_checked_pow_overflow_small,
+    u8_checked_pow_unwrap_unchecked_small,
+    u8_pow_base_const_0_exp_fit_8,
+    u8_pow_base_const_1_exp_fit_8,
+    u8_pow_base_const_2_exp_fit_8,
+    u8_pow_base_const_3_exp_fit_8,
+    u8_pow_base_const_7_exp_fit_8,
+    u8_pow_base_const_8_exp_fit_8
+);
 
 default_benches!(
     i8,
@@ -411,7 +468,7 @@ default_benches!(
     i8_pow_small,
     i8_wrapping_pow_small,
     i8_overflowing_pow_small,
-    i8_checked_unwrapped_pow_small,
+    i8_checked_pow_unwrapped_small,
     i8_staurating_pow_small,
     i8_wrapping_pow_base_small_exp_exponential,
     i8_overflowing_pow_base_small_exp_exponential,
@@ -420,6 +477,29 @@ default_benches!(
     i8_overfowing_pow_base_const_3_exp_exponential,
     i8_pow_base_small_exp_const_6
 );
+extra_benches!(
+    i8,
+    ignore,
+    i8_overflowing_pow_value_small,
+    i8_overflowing_pow_overflow_small,
+    i8_checked_pow_option_small,
+    i8_checked_pow_value_small,
+    i8_checked_pow_overflow_small,
+    i8_checked_pow_unwrap_unchecked_small,
+    i8_pow_base_const_0_exp_fit_8,
+    i8_pow_base_const_1_exp_fit_8,
+    i8_pow_base_const_2_exp_fit_8,
+    i8_pow_base_const_3_exp_fit_8,
+    i8_pow_base_const_7_exp_fit_8,
+    i8_pow_base_const_8_exp_fit_8
+);
+signed_benches!(
+    i8,
+    ignore,
+    i8_pow_base_const_m3_exp_fit_8,
+    i8_pow_base_const_m2_exp_fit_8,
+    i8_pow_base_const_m1_exp_fit_8
+);
 
 default_benches!(
     u16,
@@ -427,7 +507,7 @@ default_benches!(
     u16_pow_small,
     u16_wrapping_pow_small,
     u16_overflowing_pow_small,
-    u16_checked_unwrapped_pow_small,
+    u16_checked_pow_unwrapped_small,
     u16_staurating_pow_small,
     u16_wrapping_pow_base_small_exp_exponential,
     u16_overflowing_pow_base_small_exp_exponential,
@@ -436,6 +516,22 @@ default_benches!(
     u16_overfowing_pow_base_const_3_exp_exponential,
     u16_pow_base_small_exp_const_6
 );
+extra_benches!(
+    u16,
+    ignore,
+    u16_overflowing_pow_value_small,
+    u16_overflowing_pow_overflow_small,
+    u16_checked_pow_option_small,
+    u16_checked_pow_value_small,
+    u16_checked_pow_overflow_small,
+    u16_checked_pow_unwrap_unchecked_small,
+    u16_pow_base_const_0_exp_fit_8,
+    u16_pow_base_const_1_exp_fit_8,
+    u16_pow_base_const_2_exp_fit_8,
+    u16_pow_base_const_3_exp_fit_8,
+    u16_pow_base_const_7_exp_fit_8,
+    u16_pow_base_const_8_exp_fit_8
+);
 
 default_benches!(
     i16,
@@ -443,7 +539,7 @@ default_benches!(
     i16_pow_small,
     i16_wrapping_pow_small,
     i16_overflowing_pow_small,
-    i16_checked_unwrapped_pow_small,
+    i16_checked_pow_unwrapped_small,
     i16_staurating_pow_small,
     i16_wrapping_pow_base_small_exp_exponential,
     i16_overflowing_pow_base_small_exp_exponential,
@@ -452,6 +548,29 @@ default_benches!(
     i16_overfowing_pow_base_const_3_exp_exponential,
     i16_pow_base_small_exp_const_6
 );
+extra_benches!(
+    i16,
+    ignore,
+    i16_overflowing_pow_value_small,
+    i16_overflowing_pow_overflow_small,
+    i16_checked_pow_option_small,
+    i16_checked_pow_value_small,
+    i16_checked_pow_overflow_small,
+    i16_checked_pow_unwrap_unchecked_small,
+    i16_pow_base_const_0_exp_fit_8,
+    i16_pow_base_const_1_exp_fit_8,
+    i16_pow_base_const_2_exp_fit_8,
+    i16_pow_base_const_3_exp_fit_8,
+    i16_pow_base_const_7_exp_fit_8,
+    i16_pow_base_const_8_exp_fit_8
+);
+signed_benches!(
+    i16,
+    ignore,
+    i16_pow_base_const_m3_exp_fit_8,
+    i16_pow_base_const_m2_exp_fit_8,
+    i16_pow_base_const_m1_exp_fit_8
+);
 
 default_benches!(
     u32,
@@ -459,7 +578,7 @@ default_benches!(
     u32_pow_small,
     u32_wrapping_pow_small,
     u32_overflowing_pow_small,
-    u32_checked_unwrapped_pow_small,
+    u32_checked_pow_unwrapped_small,
     u32_staurating_pow_small,
     u32_wrapping_pow_base_small_exp_exponential,
     u32_overflowing_pow_base_small_exp_exponential,
@@ -468,6 +587,22 @@ default_benches!(
     u32_overfowing_pow_base_const_3_exp_exponential,
     u32_pow_base_small_exp_const_6
 );
+extra_benches!(
+    u32,
+    ignore,
+    u32_overflowing_pow_value_small,
+    u32_overflowing_pow_overflow_small,
+    u32_checked_pow_option_small,
+    u32_checked_pow_value_small,
+    u32_checked_pow_overflow_small,
+    u32_checked_pow_unwrap_unchecked_small,
+    u32_pow_base_const_0_exp_fit_8,
+    u32_pow_base_const_1_exp_fit_8,
+    u32_pow_base_const_2_exp_fit_8,
+    u32_pow_base_const_3_exp_fit_8,
+    u32_pow_base_const_7_exp_fit_8,
+    u32_pow_base_const_8_exp_fit_8
+);
 
 default_benches!(
     i32,
@@ -475,7 +610,7 @@ default_benches!(
     i32_pow_small,
     i32_wrapping_pow_small,
     i32_overflowing_pow_small,
-    i32_checked_unwrapped_pow_small,
+    i32_checked_pow_unwrapped_small,
     i32_staurating_pow_small,
     i32_wrapping_pow_base_small_exp_exponential,
     i32_overflowing_pow_base_small_exp_exponential,
@@ -484,6 +619,29 @@ default_benches!(
     i32_overfowing_pow_base_const_3_exp_exponential,
     i32_pow_base_small_exp_const_6
 );
+extra_benches!(
+    i32,
+    ignore,
+    i32_overflowing_pow_value_small,
+    i32_overflowing_pow_overflow_small,
+    i32_checked_pow_option_small,
+    i32_checked_pow_value_small,
+    i32_checked_pow_overflow_small,
+    i32_checked_pow_unwrap_unchecked_small,
+    i32_pow_base_const_0_exp_fit_8,
+    i32_pow_base_const_1_exp_fit_8,
+    i32_pow_base_const_2_exp_fit_8,
+    i32_pow_base_const_3_exp_fit_8,
+    i32_pow_base_const_7_exp_fit_8,
+    i32_pow_base_const_8_exp_fit_8
+);
+signed_benches!(
+    i32,
+    ignore,
+    i32_pow_base_const_m3_exp_fit_8,
+    i32_pow_base_const_m2_exp_fit_8,
+    i32_pow_base_const_m1_exp_fit_8
+);
 
 default_benches!(
     u64,
@@ -491,7 +649,7 @@ default_benches!(
     u64_pow_small,
     u64_wrapping_pow_small,
     u64_overflowing_pow_small,
-    u64_checked_unwrapped_pow_small,
+    u64_checked_pow_unwrapped_small,
     u64_staurating_pow_small,
     u64_wrapping_pow_base_small_exp_exponential,
     u64_overflowing_pow_base_small_exp_exponential,
@@ -500,6 +658,22 @@ default_benches!(
     u64_overfowing_pow_base_const_3_exp_exponential,
     u64_pow_base_small_exp_const_6
 );
+extra_benches!(
+    u64,
+    ignore,
+    u64_overflowing_pow_value_small,
+    u64_overflowing_pow_overflow_small,
+    u64_checked_pow_option_small,
+    u64_checked_pow_value_small,
+    u64_checked_pow_overflow_small,
+    u64_checked_pow_unwrap_unchecked_small,
+    u64_pow_base_const_0_exp_fit_8,
+    u64_pow_base_const_1_exp_fit_8,
+    u64_pow_base_const_2_exp_fit_8,
+    u64_pow_base_const_3_exp_fit_8,
+    u64_pow_base_const_7_exp_fit_8,
+    u64_pow_base_const_8_exp_fit_8
+);
 
 default_benches!(
     i64,
@@ -507,7 +681,7 @@ default_benches!(
     i64_pow_small,
     i64_wrapping_pow_small,
     i64_overflowing_pow_small,
-    i64_checked_unwrapped_pow_small,
+    i64_checked_pow_unwrapped_small,
     i64_staurating_pow_small,
     i64_wrapping_pow_base_small_exp_exponential,
     i64_overflowing_pow_base_small_exp_exponential,
@@ -516,6 +690,29 @@ default_benches!(
     i64_overfowing_pow_base_const_3_exp_exponential,
     i64_pow_base_small_exp_const_6
 );
+extra_benches!(
+    i64,
+    ignore,
+    i64_overflowing_pow_value_small,
+    i64_overflowing_pow_overflow_small,
+    i64_checked_pow_option_small,
+    i64_checked_pow_value_small,
+    i64_checked_pow_overflow_small,
+    i64_checked_pow_unwrap_unchecked_small,
+    i64_pow_base_const_0_exp_fit_8,
+    i64_pow_base_const_1_exp_fit_8,
+    i64_pow_base_const_2_exp_fit_8,
+    i64_pow_base_const_3_exp_fit_8,
+    i64_pow_base_const_7_exp_fit_8,
+    i64_pow_base_const_8_exp_fit_8
+);
+signed_benches!(
+    i64,
+    ignore,
+    i64_pow_base_const_m3_exp_fit_8,
+    i64_pow_base_const_m2_exp_fit_8,
+    i64_pow_base_const_m1_exp_fit_8
+);
 
 default_benches!(
     u128,
@@ -523,7 +720,7 @@ default_benches!(
     u128_pow_small,
     u128_wrapping_pow_small,
     u128_overflowing_pow_small,
-    u128_checked_unwrapped_pow_small,
+    u128_checked_pow_unwrapped_small,
     u128_staurating_pow_small,
     u128_wrapping_pow_base_small_exp_exponential,
     u128_overflowing_pow_base_small_exp_exponential,
@@ -532,6 +729,22 @@ default_benches!(
     u128_overfowing_pow_base_const_3_exp_exponential,
     u128_pow_base_small_exp_const_6
 );
+extra_benches!(
+    u128,
+    ignore,
+    u128_overflowing_pow_value_small,
+    u128_overflowing_pow_overflow_small,
+    u128_checked_pow_option_small,
+    u128_checked_pow_value_small,
+    u128_checked_pow_overflow_small,
+    u128_checked_pow_unwrap_unchecked_small,
+    u128_pow_base_const_0_exp_fit_8,
+    u128_pow_base_const_1_exp_fit_8,
+    u128_pow_base_const_2_exp_fit_8,
+    u128_pow_base_const_3_exp_fit_8,
+    u128_pow_base_const_7_exp_fit_8,
+    u128_pow_base_const_8_exp_fit_8
+);
 
 default_benches!(
     i128,
@@ -539,7 +752,7 @@ default_benches!(
     i128_pow_small,
     i128_wrapping_pow_small,
     i128_overflowing_pow_small,
-    i128_checked_unwrapped_pow_small,
+    i128_checked_pow_unwrapped_small,
     i128_staurating_pow_small,
     i128_wrapping_pow_base_small_exp_exponential,
     i128_overflowing_pow_base_small_exp_exponential,
@@ -547,4 +760,27 @@ default_benches!(
     i128_overfowing_pow_base_const_2_exp_exponential,
     i128_overfowing_pow_base_const_3_exp_exponential,
     i128_pow_base_small_exp_const_6
+);
+extra_benches!(
+    i128,
+    ignore,
+    i128_overflowing_pow_value_small,
+    i128_overflowing_pow_overflow_small,
+    i128_checked_pow_option_small,
+    i128_checked_pow_value_small,
+    i128_checked_pow_overflow_small,
+    i128_checked_pow_unwrap_unchecked_small,
+    i128_pow_base_const_0_exp_fit_8,
+    i128_pow_base_const_1_exp_fit_8,
+    i128_pow_base_const_2_exp_fit_8,
+    i128_pow_base_const_3_exp_fit_8,
+    i128_pow_base_const_7_exp_fit_8,
+    i128_pow_base_const_8_exp_fit_8
+);
+signed_benches!(
+    i128,
+    ignore,
+    i128_pow_base_const_m3_exp_fit_8,
+    i128_pow_base_const_m2_exp_fit_8,
+    i128_pow_base_const_m1_exp_fit_8
 );
