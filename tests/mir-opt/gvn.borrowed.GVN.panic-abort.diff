@@ -13,7 +13,8 @@
       }
   
       bb1: {
-          _0 = opaque::<u32>(_2) -> [return: bb2, unwind unreachable];
+-         _0 = opaque::<u32>(_2) -> [return: bb2, unwind unreachable];
++         _0 = opaque::<u32>(_1) -> [return: bb2, unwind unreachable];
       }
   
       bb2: {

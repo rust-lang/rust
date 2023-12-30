@@ -728,7 +728,7 @@ fn borrowed(x: u32) {
     // CHECK-NEXT: _3 = &_1;
     // CHECK-NEXT: _0 = opaque::<&u32>(_3)
     // CHECK: bb1: {
-    // CHECK-NEXT: _0 = opaque::<u32>(_2)
+    // CHECK-NEXT: _0 = opaque::<u32>(_1)
     // CHECK: bb2: {
     // CHECK-NEXT: _0 = opaque::<u32>((*_3))
     mir!(
