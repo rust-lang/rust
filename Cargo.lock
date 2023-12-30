@@ -120,6 +120,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "annotate-snippets"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0a433302f833baa830c0092100c481c7ea768c5981a3c36f549517a502f246dd"
+dependencies = [
+ "anstyle",
+ "unicode-width",
+]
+
+[[package]]
 name = "ansi_term"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3770,7 +3780,7 @@ dependencies = [
 name = "rustc_errors"
 version = "0.0.0"
 dependencies = [
- "annotate-snippets",
+ "annotate-snippets 0.10.1",
  "derive_setters",
  "rustc_ast",
  "rustc_ast_pretty",
@@ -3831,7 +3841,7 @@ dependencies = [
 name = "rustc_fluent_macro"
 version = "0.0.0"
 dependencies = [
- "annotate-snippets",
+ "annotate-snippets 0.10.1",
  "fluent-bundle",
  "fluent-syntax",
  "proc-macro2",
@@ -4736,7 +4746,7 @@ dependencies = [
 name = "rustfmt-nightly"
 version = "1.7.0"
 dependencies = [
- "annotate-snippets",
+ "annotate-snippets 0.9.1",
  "anyhow",
  "bytecount",
  "cargo_metadata 0.15.4",
@@ -5726,7 +5736,7 @@ version = "0.21.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aaf4bf7c184b8dfc7a4d3b90df789b1eb992ee42811cd115f32a7a1eb781058d"
 dependencies = [
- "annotate-snippets",
+ "annotate-snippets 0.9.1",
  "anyhow",
  "bstr",
  "cargo-platform",
@@ -5857,9 +5867,9 @@ checksum = "1dd624098567895118886609431a7c3b8f516e41d30e0643f03d94592a147e36"
 
 [[package]]
 name = "unicode-width"
-version = "0.1.10"
+version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0edd1e5b14653f783770bce4a4dabb4a5108a5370a5f5d8cfe8710c361f6c8b"
+checksum = "e51733f11c9c4f72aa0c160008246859e340b00807569a0da0e7a1079b27ba85"
 dependencies = [
  "compiler_builtins",
  "rustc-std-workspace-core",
