@@ -3182,6 +3182,17 @@ impl<'a> Parser<'a> {
                     })?;
 
                 let require_comma = match expr.kind {
+                    // Special case: braced macro calls require comma in a match
+                    // arm, even though they do not require semicolon in a
+                    // statement.
+                    //
+                    //     m! {}  // okay without semicolon
+                    //
+                    //     match ... {
+                    //         _ => m! {},  // requires comma
+                    //         _ => ...
+                    //     }
+                    //
                     ExprKind::MacCall(_) => true,
                     _ => classify::expr_requires_semi_to_be_stmt(&expr),
                 } && this.token != token::CloseDelim(Delimiter::Brace);
