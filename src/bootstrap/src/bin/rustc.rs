@@ -161,13 +161,17 @@ fn main() {
     }
 
     if let Ok(map) = env::var("RUSTC_DEBUGINFO_MAP") {
-        cmd.arg("--remap-path-prefix").arg(&map);
+        if !map.is_empty() {
+            cmd.arg("--remap-path-prefix").arg(&map);
+        }
     }
     // The remap flags for Cargo registry sources need to be passed after the remapping for the
     // Rust source code directory, to handle cases when $CARGO_HOME is inside the source directory.
     if let Ok(maps) = env::var("RUSTC_CARGO_REGISTRY_SRC_TO_REMAP") {
         for map in maps.split('\t') {
-            cmd.arg("--remap-path-prefix").arg(map);
+            if !map.is_empty() {
+                cmd.arg("--remap-path-prefix").arg(map);
+            }
         }
     }
 
