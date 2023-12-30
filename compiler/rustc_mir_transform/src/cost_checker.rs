@@ -2,7 +2,7 @@ use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 
-const INSTR_COST: usize = 3;
+const INSTR_COST: usize = 2;
 const CALL_PENALTY: usize = 25;
 const LANDINGPAD_PENALTY: usize = 50;
 const RESUME_PENALTY: usize = 45;

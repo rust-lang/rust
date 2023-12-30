@@ -4,16 +4,129 @@ fn slice_index_range(_1: &[u32], _2: std::ops::Range<usize>) -> &[u32] {
     debug slice => _1;
     debug index => _2;
     let mut _0: &[u32];
+    let mut _3: usize;
+    let mut _4: usize;
     scope 1 (inlined #[track_caller] core::slice::index::<impl Index<std::ops::Range<usize>> for [u32]>::index) {
         debug self => _1;
-        debug index => _2;
+        debug ((index: std::ops::Range<usize>).0: usize) => _3;
+        debug ((index: std::ops::Range<usize>).1: usize) => _4;
+        scope 2 (inlined #[track_caller] <std::ops::Range<usize> as SliceIndex<[u32]>>::index) {
+            debug ((self: std::ops::Range<usize>).0: usize) => _3;
+            debug ((self: std::ops::Range<usize>).1: usize) => _4;
+            debug slice => _1;
+            let mut _5: bool;
+            let mut _6: usize;
+            let mut _7: bool;
+            let mut _8: *const [u32];
+            let _15: *const [u32];
+            let _16: !;
+            let _17: !;
+            scope 3 {
+                scope 4 (inlined <std::ops::Range<usize> as SliceIndex<[u32]>>::get_unchecked) {
+                    debug ((self: std::ops::Range<usize>).0: usize) => _3;
+                    debug ((self: std::ops::Range<usize>).1: usize) => _4;
+                    debug slice => _1;
+                    let mut _10: *const u32;
+                    let mut _11: *const u32;
+                    let mut _18: &[&str];
+                    scope 5 {
+                        let _9: usize;
+                        scope 6 {
+                            debug new_len => _9;
+                            scope 11 (inlined std::ptr::const_ptr::<impl *const [u32]>::as_ptr) {
+                                debug self => _1;
+                            }
+                            scope 12 (inlined std::ptr::const_ptr::<impl *const u32>::add) {
+                                debug self => _10;
+                                debug count => _3;
+                                scope 13 {
+                                }
+                            }
+                            scope 14 (inlined slice_from_raw_parts::<u32>) {
+                                debug data => _11;
+                                debug len => _9;
+                                let mut _12: *const ();
+                                scope 15 (inlined std::ptr::const_ptr::<impl *const u32>::cast::<()>) {
+                                    debug self => _11;
+                                }
+                                scope 16 (inlined std::ptr::from_raw_parts::<[u32]>) {
+                                    debug data_address => _12;
+                                    debug metadata => _9;
+                                    let mut _13: std::ptr::metadata::PtrComponents<[u32]>;
+                                    let mut _14: std::ptr::metadata::PtrRepr<[u32]>;
+                                    scope 17 {
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    scope 7 (inlined std::ptr::const_ptr::<impl *const [u32]>::len) {
+                        debug self => _1;
+                        scope 8 (inlined std::ptr::metadata::<[u32]>) {
+                            debug ptr => _1;
+                            scope 9 {
+                            }
+                        }
+                    }
+                    scope 10 (inlined Arguments::<'_>::new_const) {
+                        debug pieces => _18;
+                    }
+                }
+            }
+        }
     }
 
     bb0: {
-        _0 = <std::ops::Range<usize> as SliceIndex<[u32]>>::index(move _2, move _1) -> [return: bb1, unwind continue];
+        _3 = move (_2.0: usize);
+        _4 = move (_2.1: usize);
+        StorageLive(_5);
+        _5 = Gt(_3, _4);
+        switchInt(move _5) -> [0: bb1, otherwise: bb4];
     }
 
     bb1: {
+        StorageLive(_7);
+        _6 = Len((*_1));
+        _7 = Gt(_4, _6);
+        switchInt(move _7) -> [0: bb2, otherwise: bb3];
+    }
+
+    bb2: {
+        StorageDead(_7);
+        StorageDead(_5);
+        StorageLive(_8);
+        _8 = &raw const (*_1);
+        StorageLive(_18);
+        StorageLive(_9);
+        _9 = SubUnchecked(_4, _3);
+        StorageLive(_11);
+        StorageLive(_10);
+        _10 = _8 as *const u32 (PtrToPtr);
+        _11 = Offset(_10, _3);
+        StorageDead(_10);
+        StorageLive(_12);
+        _12 = _11 as *const () (PtrToPtr);
+        StorageLive(_14);
+        StorageLive(_13);
+        _13 = std::ptr::metadata::PtrComponents::<[u32]> { data_address: _12, metadata: _9 };
+        _14 = std::ptr::metadata::PtrRepr::<[u32]> { const_ptr: move _13 };
+        StorageDead(_13);
+        _15 = (_14.0: *const [u32]);
+        StorageDead(_14);
+        StorageDead(_12);
+        StorageDead(_11);
+        StorageDead(_9);
+        StorageDead(_18);
+        StorageDead(_8);
+        _0 = &(*_15);
         return;
+    }
+
+    bb3: {
+        _16 = core::slice::index::slice_end_index_len_fail(move _4, move _6) -> unwind continue;
+    }
+
+    bb4: {
+        _17 = core::slice::index::slice_index_order_fail(move _3, move _4) -> unwind continue;
     }
 }

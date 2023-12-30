@@ -8,18 +8,56 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     let mut _14: std::iter::Enumerate<std::slice::Iter<'_, T>>;
     let mut _15: std::iter::Enumerate<std::slice::Iter<'_, T>>;
     let mut _16: &mut std::iter::Enumerate<std::slice::Iter<'_, T>>;
-    let mut _17: std::option::Option<(usize, &T)>;
-    let mut _18: isize;
-    let mut _21: &impl Fn(usize, &T);
-    let mut _22: (usize, &T);
-    let _23: ();
+    let mut _27: std::option::Option<(usize, &T)>;
+    let mut _28: isize;
+    let mut _31: &impl Fn(usize, &T);
+    let mut _32: (usize, &T);
+    let _33: ();
     scope 1 {
         debug iter => _15;
-        let _19: usize;
-        let _20: &T;
+        let _29: usize;
+        let _30: &T;
         scope 2 {
-            debug i => _19;
-            debug x => _20;
+            debug i => _29;
+            debug x => _30;
+        }
+        scope 25 (inlined <Enumerate<std::slice::Iter<'_, T>> as Iterator>::next) {
+            debug self => _16;
+            let mut _17: &mut std::slice::Iter<'_, T>;
+            let mut _18: std::option::Option<&T>;
+            let mut _20: std::ops::ControlFlow<std::option::Option<std::convert::Infallible>, &T>;
+            let mut _22: isize;
+            let _23: &T;
+            let mut _25: (usize, bool);
+            let mut _26: (usize, &T);
+            scope 26 {
+                debug a => _23;
+                let _24: usize;
+                scope 31 {
+                    debug i => _24;
+                }
+            }
+            scope 27 {
+                debug residual => const Option::<Infallible>::None;
+                scope 28 {
+                    scope 34 (inlined <Option<(usize, &T)> as FromResidual>::from_residual) {
+                        debug residual => const Option::<Infallible>::None;
+                    }
+                }
+            }
+            scope 29 {
+                debug val => _23;
+                scope 30 {
+                }
+            }
+            scope 32 (inlined <Option<&T> as Try>::branch) {
+                debug self => _18;
+                let mut _19: isize;
+                let _21: &T;
+                scope 33 {
+                    debug v => _21;
+                }
+            }
         }
     }
     scope 3 (inlined core::slice::<impl [T]>::iter) {
@@ -47,15 +85,15 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
                                     debug ptr => _9;
                                     scope 16 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null) {
                                         debug self => _9;
-                                        let mut _24: *mut u8;
+                                        let mut _34: *mut u8;
                                         scope 17 {
                                             scope 18 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) {
-                                                debug ptr => _24;
+                                                debug ptr => _34;
                                                 scope 19 (inlined std::ptr::mut_ptr::<impl *mut u8>::addr) {
-                                                    debug self => _24;
+                                                    debug self => _34;
                                                     scope 20 {
                                                         scope 21 (inlined std::ptr::mut_ptr::<impl *mut u8>::cast::<()>) {
-                                                            debug self => _24;
+                                                            debug self => _34;
                                                         }
                                                     }
                                                 }
@@ -130,10 +168,10 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         StorageLive(_9);
         _9 = _4 as *mut T (PtrToPtr);
         StorageLive(_10);
-        StorageLive(_24);
+        StorageLive(_34);
         _10 = _9 as *const T (PointerCoercion(MutToConstPointer));
         _11 = NonNull::<T> { pointer: _10 };
-        StorageDead(_24);
+        StorageDead(_34);
         StorageDead(_10);
         StorageDead(_9);
         StorageLive(_12);
@@ -151,46 +189,110 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb4: {
-        StorageLive(_17);
-        StorageLive(_16);
+        StorageLive(_27);
         _16 = &mut _15;
-        _17 = <Enumerate<std::slice::Iter<'_, T>> as Iterator>::next(move _16) -> [return: bb5, unwind unreachable];
+        StorageLive(_22);
+        StorageLive(_23);
+        StorageLive(_24);
+        StorageLive(_25);
+        StorageLive(_20);
+        StorageLive(_18);
+        StorageLive(_17);
+        _17 = &mut (_15.0: std::slice::Iter<'_, T>);
+        _18 = <std::slice::Iter<'_, T> as Iterator>::next(move _17) -> [return: bb5, unwind unreachable];
     }
 
     bb5: {
-        StorageDead(_16);
-        _18 = discriminant(_17);
-        switchInt(move _18) -> [0: bb6, 1: bb8, otherwise: bb10];
+        StorageDead(_17);
+        StorageLive(_19);
+        StorageLive(_21);
+        _19 = discriminant(_18);
+        switchInt(move _19) -> [0: bb6, 1: bb7, otherwise: bb17];
     }
 
     bb6: {
-        StorageDead(_17);
-        StorageDead(_15);
-        drop(_2) -> [return: bb7, unwind unreachable];
+        _20 = const {transmute(0x0000000000000000): ControlFlow<Option<Infallible>, &T>};
+        goto -> bb8;
     }
 
     bb7: {
-        return;
+        _21 = move ((_18 as Some).0: &T);
+        _20 = ControlFlow::<Option<Infallible>, &T>::Continue(move _21);
+        goto -> bb8;
     }
 
     bb8: {
-        _19 = (((_17 as Some).0: (usize, &T)).0: usize);
-        _20 = (((_17 as Some).0: (usize, &T)).1: &T);
-        StorageLive(_21);
-        _21 = &_2;
-        StorageLive(_22);
-        _22 = (_19, _20);
-        _23 = <impl Fn(usize, &T) as Fn<(usize, &T)>>::call(move _21, move _22) -> [return: bb9, unwind unreachable];
+        StorageDead(_21);
+        StorageDead(_19);
+        StorageDead(_18);
+        _22 = discriminant(_20);
+        switchInt(move _22) -> [0: bb9, 1: bb11, otherwise: bb17];
     }
 
     bb9: {
-        StorageDead(_22);
-        StorageDead(_21);
-        StorageDead(_17);
-        goto -> bb4;
+        _23 = move ((_20 as Continue).0: &T);
+        StorageDead(_20);
+        _24 = (_15.1: usize);
+        _25 = CheckedAdd((_15.1: usize), const 1_usize);
+        assert(!move (_25.1: bool), "attempt to compute `{} + {}`, which would overflow", (_15.1: usize), const 1_usize) -> [success: bb10, unwind unreachable];
     }
 
     bb10: {
+        (_15.1: usize) = move (_25.0: usize);
+        StorageLive(_26);
+        _26 = (_24, move _23);
+        _27 = Option::<(usize, &T)>::Some(move _26);
+        StorageDead(_26);
+        goto -> bb12;
+    }
+
+    bb11: {
+        _27 = const Indirect { alloc_id: ALLOC0, offset: Size(0 bytes) }: Option<(usize, &T)>;
+        StorageDead(_20);
+        goto -> bb12;
+    }
+
+    bb12: {
+        StorageDead(_25);
+        StorageDead(_24);
+        StorageDead(_23);
+        StorageDead(_22);
+        _28 = discriminant(_27);
+        switchInt(move _28) -> [0: bb13, 1: bb15, otherwise: bb17];
+    }
+
+    bb13: {
+        StorageDead(_27);
+        StorageDead(_15);
+        drop(_2) -> [return: bb14, unwind unreachable];
+    }
+
+    bb14: {
+        return;
+    }
+
+    bb15: {
+        _29 = (((_27 as Some).0: (usize, &T)).0: usize);
+        _30 = (((_27 as Some).0: (usize, &T)).1: &T);
+        StorageLive(_31);
+        _31 = &_2;
+        StorageLive(_32);
+        _32 = (_29, _30);
+        _33 = <impl Fn(usize, &T) as Fn<(usize, &T)>>::call(move _31, move _32) -> [return: bb16, unwind unreachable];
+    }
+
+    bb16: {
+        StorageDead(_32);
+        StorageDead(_31);
+        StorageDead(_27);
+        goto -> bb4;
+    }
+
+    bb17: {
         unreachable;
     }
+}
+
+ALLOC0 (size: 16, align: 8) {
+    __ __ __ __ __ __ __ __ 00 00 00 00 00 00 00 00 │ ░░░░░░░░........
 }
