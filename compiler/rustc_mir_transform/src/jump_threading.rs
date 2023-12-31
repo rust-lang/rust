@@ -356,6 +356,49 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
         None
     }
 
+    /// If we expect `lhs ?= A`, we have an opportunity if we assume `constant == A`.
+    #[instrument(level = "trace", skip(self))]
+    fn process_constant(
+        &mut self,
+        bb: BasicBlock,
+        lhs: PlaceIndex,
+        constant: OpTy<'tcx>,
+        state: &mut State<ConditionSet<'a>>,
+    ) {
+        self.map.for_each_projection_value(
+            lhs,
+            constant,
+            &mut |elem, op| match elem {
+                TrackElem::Field(idx) => self.ecx.project_field(op, idx.as_usize()).ok(),
+                TrackElem::Variant(idx) => self.ecx.project_downcast(op, idx).ok(),
+                TrackElem::Discriminant => {
+                    let variant = self.ecx.read_discriminant(op).ok()?;
+                    let discr_value =
+                        self.ecx.discriminant_for_variant(op.layout.ty, variant).ok()?;
+                    Some(discr_value.into())
+                }
+                TrackElem::DerefLen => {
+                    let op: OpTy<'_> = self.ecx.deref_pointer(op).ok()?.into();
+                    let len_usize = op.len(&self.ecx).ok()?;
+                    let layout = self.ecx.layout_of(self.tcx.types.usize).unwrap();
+                    Some(ImmTy::from_uint(len_usize, layout).into())
+                }
+            },
+            &mut |place, op| {
+                if let Some(conditions) = state.try_get_idx(place, self.map)
+                    && let Ok(imm) = self.ecx.read_immediate_raw(op)
+                    && let Some(imm) = imm.right()
+                    && let Immediate::Scalar(Scalar::Int(int)) = *imm
+                {
+                    conditions.iter_matches(int).for_each(|c: Condition| {
+                        self.opportunities
+                            .push(ThreadingOpportunity { chain: vec![bb], target: c.target })
+                    })
+                }
+            },
+        );
+    }
+
     #[instrument(level = "trace", skip(self))]
     fn process_operand(
         &mut self,
@@ -368,40 +411,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
             // If we expect `lhs ?= A`, we have an opportunity if we assume `constant == A`.
             Operand::Constant(constant) => {
                 let constant = self.ecx.eval_mir_constant(&constant.const_, None, None).ok()?;
-                self.map.for_each_projection_value(
-                    lhs,
-                    constant,
-                    &mut |elem, op| match elem {
-                        TrackElem::Field(idx) => self.ecx.project_field(op, idx.as_usize()).ok(),
-                        TrackElem::Variant(idx) => self.ecx.project_downcast(op, idx).ok(),
-                        TrackElem::Discriminant => {
-                            let variant = self.ecx.read_discriminant(op).ok()?;
-                            let discr_value =
-                                self.ecx.discriminant_for_variant(op.layout.ty, variant).ok()?;
-                            Some(discr_value.into())
-                        }
-                        TrackElem::DerefLen => {
-                            let op: OpTy<'_> = self.ecx.deref_pointer(op).ok()?.into();
-                            let len_usize = op.len(&self.ecx).ok()?;
-                            let layout = self.ecx.layout_of(self.tcx.types.usize).unwrap();
-                            Some(ImmTy::from_uint(len_usize, layout).into())
-                        }
-                    },
-                    &mut |place, op| {
-                        if let Some(conditions) = state.try_get_idx(place, self.map)
-                            && let Ok(imm) = self.ecx.read_immediate_raw(op)
-                            && let Some(imm) = imm.right()
-                            && let Immediate::Scalar(Scalar::Int(int)) = *imm
-                        {
-                            conditions.iter_matches(int).for_each(|c: Condition| {
-                                self.opportunities.push(ThreadingOpportunity {
-                                    chain: vec![bb],
-                                    target: c.target,
-                                })
-                            })
-                        }
-                    },
-                );
+                self.process_constant(bb, lhs, constant, state);
             }
             // Transfer the conditions on the copied rhs.
             Operand::Move(rhs) | Operand::Copy(rhs) => {
