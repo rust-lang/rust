@@ -63,6 +63,7 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         type_of: type_of::type_of,
         type_of_opaque: type_of::type_of_opaque,
+        type_of_assoc_const_binding: type_of::type_of_assoc_const_binding,
         type_alias_is_lazy: type_of::type_alias_is_lazy,
         item_bounds: item_bounds::item_bounds,
         explicit_item_bounds: item_bounds::explicit_item_bounds,

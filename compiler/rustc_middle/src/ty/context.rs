@@ -71,6 +71,7 @@ use rustc_type_ir::TyKind::*;
 use rustc_type_ir::WithCachedTypeInfo;
 use rustc_type_ir::{CollectAndApply, Interner, TypeFlags};
 
+use std::assert_matches::debug_assert_matches;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::fmt;
@@ -539,6 +540,22 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn feed_anon_const_type(self, key: LocalDefId, value: ty::EarlyBinder<Ty<'tcx>>) {
         debug_assert_eq!(self.def_kind(key), DefKind::AnonConst);
         TyCtxtFeed { tcx: self, key }.type_of(value)
+    }
+
+    pub fn feed_type_of_assoc_const_binding(
+        self,
+        key: hir::HirId,
+        value: ty::EarlyBinder<ty::Binder<'tcx, Ty<'tcx>>>,
+    ) {
+        debug_assert_matches!(
+            self.hir_node(key),
+            hir::Node::TypeBinding(hir::TypeBinding {
+                kind: hir::TypeBindingKind::Equality { term: hir::Term::Const(_) },
+                ..
+            })
+        );
+
+        TyCtxtFeed { tcx: self, key }.type_of_assoc_const_binding(value)
     }
 }
 
