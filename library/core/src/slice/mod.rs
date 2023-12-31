@@ -3047,7 +3047,7 @@ impl<T> [T] {
         sort::quicksort(self, |a, b| f(a).lt(&f(b)));
     }
 
-    /// Reorder the slice such that the element at `index` is at its final sorted position.
+    /// Reorder the slice such that the element at `index` after the reordering is at its final sorted position.
     ///
     /// This reordering has the additional property that any value at position `i < index` will be
     /// less than or equal to any value at a position `j > index`. Additionally, this reordering is
@@ -3075,7 +3075,7 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// let mut v = [-5i32, 4, 1, -3, 2];
+    /// let mut v = [-5i32, 4, 2, -3, 1];
     ///
     /// // Find the median
     /// v.select_nth_unstable(2);
@@ -3096,8 +3096,8 @@ impl<T> [T] {
         select::partition_at_index(self, index, T::lt)
     }
 
-    /// Reorder the slice with a comparator function such that the element at `index` is at its
-    /// final sorted position.
+    /// Reorder the slice with a comparator function such that the element at `index` after the reordering is at
+    /// its final sorted position.
     ///
     /// This reordering has the additional property that any value at position `i < index` will be
     /// less than or equal to any value at a position `j > index` using the comparator function.
@@ -3126,7 +3126,7 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// let mut v = [-5i32, 4, 1, -3, 2];
+    /// let mut v = [-5i32, 4, 2, -3, 1];
     ///
     /// // Find the median as if the slice were sorted in descending order.
     /// v.select_nth_unstable_by(2, |a, b| b.cmp(a));
@@ -3151,8 +3151,8 @@ impl<T> [T] {
         select::partition_at_index(self, index, |a: &T, b: &T| compare(a, b) == Less)
     }
 
-    /// Reorder the slice with a key extraction function such that the element at `index` is at its
-    /// final sorted position.
+    /// Reorder the slice with a key extraction function such that the element at `index` after the reordering is
+    /// at its final sorted position.
     ///
     /// This reordering has the additional property that any value at position `i < index` will be
     /// less than or equal to any value at a position `j > index` using the key extraction function.
