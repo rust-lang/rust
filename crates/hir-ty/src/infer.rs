@@ -218,6 +218,9 @@ pub enum InferenceDiagnostic {
         /// Contains the type the field resolves to
         field_with_same_name: Option<Ty>,
     },
+    UnresolvedAssocItem {
+        id: ExprOrPatId,
+    },
     // FIXME: This should be emitted in body lowering
     BreakOutsideOfLoop {
         expr: ExprId,
