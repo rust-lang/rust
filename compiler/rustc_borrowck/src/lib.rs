@@ -113,6 +113,11 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
     let (input_body, promoted) = tcx.mir_promoted(def);
     debug!("run query mir_borrowck: {}", tcx.def_path_str(def));
 
+    if tcx.sess.verbose_internals() {
+        pretty::write_mir_fn(tcx, &input_body.borrow(), &mut |_, _| Ok(()), &mut std::io::stderr())
+            .unwrap();
+    }
+
     if input_body.borrow().should_skip() {
         debug!("Skipping borrowck because of injected body");
         // Let's make up a borrowck result! Fun times!

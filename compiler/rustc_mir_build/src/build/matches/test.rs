@@ -625,6 +625,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         test_place: &PlaceBuilder<'tcx>,
         test: &Test<'tcx>,
         candidate: &mut Candidate<'pat, 'tcx>,
+        is_first: bool,
     ) -> Option<usize> {
         // Find the match_pair for this place (if any). At present,
         // afaik, there can be at most one. (In the future, if we
@@ -803,16 +804,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
-            (&TestKind::Deref { place, ty: _ }, PatKind::DerefPattern { subpattern }) => {
-                candidate.match_pairs[match_pair_index] = MatchPair::new(
-                    PlaceBuilder::from(place).deref(),
-                    &subpattern,
-                    self,
-                );
+            // N.B. We only make progress on the first `DerefPattern` beinig tested
+            // with `Deref`. The subsequent `DerefPattern`s need to be tested individually.
+            // Hence, we need to check `is_first`.
+            (&TestKind::Deref { place, ty: _ }, PatKind::DerefPattern { subpattern })
+                if is_first =>
+            {
+                candidate.match_pairs[match_pair_index] =
+                    MatchPair::new(PlaceBuilder::from(place).deref(), &subpattern, self);
                 Some(0)
             }
 
-            (&TestKind::Deref { .. }, _) => bug!("wrong test for the pattern"),
+            (&TestKind::Deref { .. }, _) => None,
         }
     }
 

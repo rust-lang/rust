@@ -1,4 +1,5 @@
 // edition: 2021
+// check-pass
 #![feature(forced_keywords)]
 
 fn foo(x: i32) { println!("{x}") }
@@ -10,7 +11,7 @@ fn main() {
         }
         k#deref [ ] => panic!(),
         k#deref [ ref x ] => panic!("{x:?}"),
-        k#deref [ k#deref [ x ] ] => panic!("{x}"), 
+        k#deref [ k#deref [ x ] ] => panic!("{x}"),
         _ => panic!(),
     }
 }

@@ -307,6 +307,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let mut otherwise = None;
 
+        // candidates are initially the single match pair for the pattern and the place.
+        // use this time to check for which candidates are deref patterns, which will
+        // be used later.
+        let candidates_are_deref_patterns = candidates
+            .iter()
+            .map(|c| matches!(c.match_pairs[0].pattern.kind, PatKind::DerefPattern { .. }))
+            .collect::<Vec<bool>>();
+
         // This will generate code to test scrutinee_place and
         // branch to the appropriate arm block
         self.match_candidates(
@@ -356,7 +364,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Link each leaf candidate to the `pre_binding_block` of the next one.
         let mut previous_candidate: Option<&mut Candidate<'_, '_>> = None;
 
-        for candidate in candidates {
+        for (candidate, is_deref_pattern) in
+            candidates.into_iter().zip(candidates_are_deref_patterns)
+        {
+            // FIXME(deref_patterns) false edges are generated to ensure that we borrowck all possible arms. But
+            // a false edge to a deref pattern is problematic since then the temporaries created by derefencing
+            // would be uninitialized. We skip generating false edges, but hopefully we find a better solution
+            // before stabilizing.
+            if is_deref_pattern {
+                continue;
+            }
             candidate.visit_leaves(|leaf_candidate| {
                 if let Some(ref mut prev) = previous_candidate {
                     prev.next_candidate_pre_binding_block = leaf_candidate.pre_binding_block;
@@ -1703,10 +1720,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // `target_candidates`. Note that at some point we may
         // encounter a candidate where the test is not relevant; at
         // that point, we stop sorting.
+        let mut is_first = true;
         while let Some(candidate) = candidates.first_mut() {
-            let Some(idx) = self.sort_candidate(&match_place, &test, candidate) else {
+            let Some(idx) = self.sort_candidate(&match_place, &test, candidate, is_first) else {
                 break;
             };
+            is_first = false;
             let (candidate, rest) = candidates.split_first_mut().unwrap();
             target_candidates[idx].push(candidate);
             candidates = rest;
