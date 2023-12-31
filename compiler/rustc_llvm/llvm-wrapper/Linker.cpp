@@ -49,6 +49,7 @@ class ModuleLinker {
   StringSet<> UserBuiltinsSymbols;
   std::unique_ptr<Module> SrcM;
   bool SrcIsCompilerBuiltins;
+  bool HasLinkedCompilerBuiltins = false;
 
   SetVector<GlobalValue *> ValuesToLink;
 
@@ -512,7 +513,12 @@ bool ModuleLinker::run() {
     ReplacedDstComdats.insert(DstC);
   }
 
-  if (SrcIsCompilerBuiltins) {
+  if (!SrcIsCompilerBuiltins && HasLinkedCompilerBuiltins)
+    llvm::report_fatal_error(
+        "Expect only compiler-builtins to be linked at the end.");
+  // We promise that compiler-builtins is linked at the end, so we only need to
+  // compute it once.
+  if (SrcIsCompilerBuiltins && !HasLinkedCompilerBuiltins) {
     ModuleSymbolTable SymbolTable;
     SymbolTable.addModule(&DstM);
     for (auto &Sym : SymbolTable.symbols()) {
@@ -635,6 +641,8 @@ bool ModuleLinker::run() {
       HasErrors = true;
     });
   }
+  if (SrcIsCompilerBuiltins)
+    HasLinkedCompilerBuiltins = true;
   if (HasErrors)
     return true;
 
