@@ -2590,11 +2590,11 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for usage of `x.get(0)` instead of
-    /// `x.first()`.
+    /// `x.first()` or `x.front()`.
     ///
     /// ### Why is this bad?
-    /// Using `x.first()` is easier to read and has the same
-    /// result.
+    /// Using `x.first()` for `Vec`s and slices or `x.front()`
+    /// for `VecDeque`s is easier to read and has the same result.
     ///
     /// ### Example
     /// ```no_run
@@ -2610,7 +2610,7 @@ declare_clippy_lint! {
     #[clippy::version = "1.63.0"]
     pub GET_FIRST,
     style,
-    "Using `x.get(0)` when `x.first()` is simpler"
+    "Using `x.get(0)` when `x.first()` or `x.front()` is simpler"
 }
 
 declare_clippy_lint! {
