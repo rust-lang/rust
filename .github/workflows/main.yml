@@ -175,14 +175,10 @@ jobs:
         path: build/cg_clif
         key: ${{ runner.os }}-x86_64-unknown-linux-gnu-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
 
-    - name: Cache cargo bin dir
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/bin
-        key: ${{ runner.os }}-${{ matrix.env.TARGET_TRIPLE }}-cargo-bin-dir-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
-
     - name: Install hyperfine
-      run: cargo install hyperfine || true
+      run: |
+        sudo apt update
+        sudo apt install -y hyperfine
 
     - name: Prepare dependencies
       run: ./y.sh prepare
