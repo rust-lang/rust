@@ -244,7 +244,7 @@ impl<'tcx> intravisit::Visitor<'tcx> for TaitConstraintLocator<'tcx> {
     fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem<'tcx>) {
         trace!(?it.owner_id);
         assert_ne!(it.owner_id.def_id, self.def_id);
-        self.check(it.owner_id.def_id);
+        // No need to call `check`, as we do not run borrowck on foreign items.
         intravisit::walk_foreign_item(self, it);
     }
 }
