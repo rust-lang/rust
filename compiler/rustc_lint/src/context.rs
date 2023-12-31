@@ -430,6 +430,8 @@ impl LintStore {
         // Note: find_best_match_for_name depends on the sort order of its input vector.
         // To ensure deterministic output, sort elements of the lint_groups hash map.
         // Also, never suggest deprecated lint groups.
+        // We will soon sort, so the initial order does not matter.
+        #[allow(rustc::potential_query_instability)]
         let mut groups: Vec<_> = self
             .lint_groups
             .iter()
