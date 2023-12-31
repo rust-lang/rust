@@ -424,6 +424,84 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
     }
 
     #[instrument(level = "trace", skip(self))]
+    fn process_assign(
+        &mut self,
+        bb: BasicBlock,
+        lhs_place: &Place<'tcx>,
+        rhs: &Rvalue<'tcx>,
+        state: &mut State<ConditionSet<'a>>,
+    ) -> Option<!> {
+        let lhs = self.map.find(lhs_place.as_ref())?;
+        match rhs {
+            Rvalue::Use(operand) => self.process_operand(bb, lhs, operand, state)?,
+            // Transfer the conditions on the copy rhs.
+            Rvalue::CopyForDeref(rhs) => {
+                self.process_operand(bb, lhs, &Operand::Copy(*rhs), state)?
+            }
+            Rvalue::Discriminant(rhs) => {
+                let rhs = self.map.find_discr(rhs.as_ref())?;
+                state.insert_place_idx(rhs, lhs, self.map);
+            }
+            // If we expect `lhs ?= A`, we have an opportunity if we assume `constant == A`.
+            Rvalue::Aggregate(box ref kind, ref operands) => {
+                let agg_ty = lhs_place.ty(self.body, self.tcx).ty;
+                let lhs = match kind {
+                    // Do not support unions.
+                    AggregateKind::Adt(.., Some(_)) => return None,
+                    AggregateKind::Adt(_, variant_index, ..) if agg_ty.is_enum() => {
+                        if let Some(discr_target) = self.map.apply(lhs, TrackElem::Discriminant)
+                            && let Ok(discr_value) =
+                                self.ecx.discriminant_for_variant(agg_ty, *variant_index)
+                        {
+                            self.process_immediate(bb, discr_target, discr_value, state);
+                        }
+                        self.map.apply(lhs, TrackElem::Variant(*variant_index))?
+                    }
+                    _ => lhs,
+                };
+                for (field_index, operand) in operands.iter_enumerated() {
+                    if let Some(field) = self.map.apply(lhs, TrackElem::Field(field_index)) {
+                        self.process_operand(bb, field, operand, state);
+                    }
+                }
+            }
+            // Transfer the conditions on the copy rhs, after inversing polarity.
+            Rvalue::UnaryOp(UnOp::Not, Operand::Move(place) | Operand::Copy(place)) => {
+                let conditions = state.try_get_idx(lhs, self.map)?;
+                let place = self.map.find(place.as_ref())?;
+                let conds = conditions.map(self.arena, Condition::inv);
+                state.insert_value_idx(place, conds, self.map);
+            }
+            // We expect `lhs ?= A`. We found `lhs = Eq(rhs, B)`.
+            // Create a condition on `rhs ?= B`.
+            Rvalue::BinaryOp(
+                op,
+                box (Operand::Move(place) | Operand::Copy(place), Operand::Constant(value))
+                | box (Operand::Constant(value), Operand::Move(place) | Operand::Copy(place)),
+            ) => {
+                let conditions = state.try_get_idx(lhs, self.map)?;
+                let place = self.map.find(place.as_ref())?;
+                let equals = match op {
+                    BinOp::Eq => ScalarInt::TRUE,
+                    BinOp::Ne => ScalarInt::FALSE,
+                    _ => return None,
+                };
+                let value = value.const_.normalize(self.tcx, self.param_env).try_to_scalar_int()?;
+                let conds = conditions.map(self.arena, |c| Condition {
+                    value,
+                    polarity: if c.matches(equals) { Polarity::Eq } else { Polarity::Ne },
+                    ..c
+                });
+                state.insert_value_idx(place, conds, self.map);
+            }
+
+            _ => {}
+        }
+
+        None
+    }
+
+    #[instrument(level = "trace", skip(self))]
     fn process_statement(
         &mut self,
         bb: BasicBlock,
@@ -472,95 +550,7 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
                 conditions.iter_matches(ScalarInt::TRUE).for_each(register_opportunity);
             }
             StatementKind::Assign(box (lhs_place, rhs)) => {
-                if let Some(lhs) = self.map.find(lhs_place.as_ref()) {
-                    match rhs {
-                        Rvalue::Use(operand) => self.process_operand(bb, lhs, operand, state)?,
-                        // Transfer the conditions on the copy rhs.
-                        Rvalue::CopyForDeref(rhs) => {
-                            self.process_operand(bb, lhs, &Operand::Copy(*rhs), state)?
-                        }
-                        Rvalue::Discriminant(rhs) => {
-                            let rhs = self.map.find_discr(rhs.as_ref())?;
-                            state.insert_place_idx(rhs, lhs, self.map);
-                        }
-                        // If we expect `lhs ?= A`, we have an opportunity if we assume `constant == A`.
-                        Rvalue::Aggregate(box ref kind, ref operands) => {
-                            let agg_ty = lhs_place.ty(self.body, self.tcx).ty;
-                            let lhs = match kind {
-                                // Do not support unions.
-                                AggregateKind::Adt(.., Some(_)) => return None,
-                                AggregateKind::Adt(_, variant_index, ..) if agg_ty.is_enum() => {
-                                    if let Some(discr_target) =
-                                        self.map.apply(lhs, TrackElem::Discriminant)
-                                        && let Ok(discr_value) = self
-                                            .ecx
-                                            .discriminant_for_variant(agg_ty, *variant_index)
-                                    {
-                                        self.process_immediate(
-                                            bb,
-                                            discr_target,
-                                            discr_value,
-                                            state,
-                                        );
-                                    }
-                                    self.map.apply(lhs, TrackElem::Variant(*variant_index))?
-                                }
-                                _ => lhs,
-                            };
-                            for (field_index, operand) in operands.iter_enumerated() {
-                                if let Some(field) =
-                                    self.map.apply(lhs, TrackElem::Field(field_index))
-                                {
-                                    self.process_operand(bb, field, operand, state);
-                                }
-                            }
-                        }
-                        // Transfer the conditions on the copy rhs, after inversing polarity.
-                        Rvalue::UnaryOp(UnOp::Not, Operand::Move(place) | Operand::Copy(place)) => {
-                            let conditions = state.try_get_idx(lhs, self.map)?;
-                            let place = self.map.find(place.as_ref())?;
-                            let conds = conditions.map(self.arena, Condition::inv);
-                            state.insert_value_idx(place, conds, self.map);
-                        }
-                        // We expect `lhs ?= A`. We found `lhs = Eq(rhs, B)`.
-                        // Create a condition on `rhs ?= B`.
-                        Rvalue::BinaryOp(
-                            op,
-                            box (
-                                Operand::Move(place) | Operand::Copy(place),
-                                Operand::Constant(value),
-                            )
-                            | box (
-                                Operand::Constant(value),
-                                Operand::Move(place) | Operand::Copy(place),
-                            ),
-                        ) => {
-                            let conditions = state.try_get_idx(lhs, self.map)?;
-                            let place = self.map.find(place.as_ref())?;
-                            let equals = match op {
-                                BinOp::Eq => ScalarInt::TRUE,
-                                BinOp::Ne => ScalarInt::FALSE,
-                                _ => return None,
-                            };
-                            let value = value
-                                .const_
-                                .normalize(self.tcx, self.param_env)
-                                .try_to_scalar_int()?;
-                            let conds = conditions.map(self.arena, |c| Condition {
-                                value,
-                                polarity: if c.matches(equals) {
-                                    Polarity::Eq
-                                } else {
-                                    Polarity::Ne
-                                },
-                                ..c
-                            });
-                            state.insert_value_idx(place, conds, self.map);
-                        }
-
-                        _ => {}
-                    }
-                }
+                self.process_assign(bb, lhs_place, rhs, state)?;
             }
             _ => {}
         }
