@@ -35,6 +35,8 @@
 #![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 
+extern crate self as rustc_span;
+
 #[macro_use]
 extern crate rustc_macros;
 
@@ -43,6 +45,7 @@ extern crate tracing;
 
 use rustc_data_structures::{outline, AtomicRef};
 use rustc_macros::HashStable_Generic;
+use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 mod caching_source_map_view;
@@ -1016,19 +1019,40 @@ impl Default for Span {
     }
 }
 
-impl<E: Encoder> Encodable<E> for Span {
-    default fn encode(&self, s: &mut E) {
-        let span = self.data();
-        span.lo.encode(s);
-        span.hi.encode(s);
+pub trait SpanEncoder: Encoder {
+    fn encode_span(&mut self, span: Span);
+}
+
+impl SpanEncoder for FileEncoder {
+    fn encode_span(&mut self, span: Span) {
+        let span = span.data();
+        span.lo.encode(self);
+        span.hi.encode(self);
     }
 }
-impl<D: Decoder> Decodable<D> for Span {
-    default fn decode(s: &mut D) -> Span {
-        let lo = Decodable::decode(s);
-        let hi = Decodable::decode(s);
+
+impl<E: SpanEncoder> Encodable<E> for Span {
+    fn encode(&self, s: &mut E) {
+        s.encode_span(*self);
+    }
+}
+
+pub trait SpanDecoder: Decoder {
+    fn decode_span(&mut self) -> Span;
+}
+
+impl SpanDecoder for MemDecoder<'_> {
+    fn decode_span(&mut self) -> Span {
+        let lo = Decodable::decode(self);
+        let hi = Decodable::decode(self);
 
         Span::new(lo, hi, SyntaxContext::root(), None)
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for Span {
+    fn decode(s: &mut D) -> Span {
+        s.decode_span()
     }
 }
 
@@ -1360,7 +1384,7 @@ impl Clone for SourceFile {
     }
 }
 
-impl<S: Encoder> Encodable<S> for SourceFile {
+impl<S: SpanEncoder> Encodable<S> for SourceFile {
     fn encode(&self, s: &mut S) {
         self.name.encode(s);
         self.src_hash.encode(s);
@@ -1434,7 +1458,7 @@ impl<S: Encoder> Encodable<S> for SourceFile {
     }
 }
 
-impl<D: Decoder> Decodable<D> for SourceFile {
+impl<D: SpanDecoder> Decodable<D> for SourceFile {
     fn decode(d: &mut D) -> SourceFile {
         let name: FileName = Decodable::decode(d);
         let src_hash: SourceFileHash = Decodable::decode(d);

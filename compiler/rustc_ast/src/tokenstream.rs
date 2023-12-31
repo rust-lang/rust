@@ -21,8 +21,8 @@ use crate::AttrVec;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{self, Lrc};
 use rustc_macros::HashStable_Generic;
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
-use rustc_span::{sym, Span, Symbol, DUMMY_SP};
+use rustc_serialize::{Decodable, Encodable};
+use rustc_span::{sym, Span, SpanDecoder, SpanEncoder, Symbol, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
 use std::borrow::Cow;
@@ -158,14 +158,14 @@ impl fmt::Debug for LazyAttrTokenStream {
     }
 }
 
-impl<S: Encoder> Encodable<S> for LazyAttrTokenStream {
+impl<S: SpanEncoder> Encodable<S> for LazyAttrTokenStream {
     fn encode(&self, s: &mut S) {
         // Used by AST json printing.
         Encodable::encode(&self.to_attr_token_stream(), s);
     }
 }
 
-impl<D: Decoder> Decodable<D> for LazyAttrTokenStream {
+impl<D: SpanDecoder> Decodable<D> for LazyAttrTokenStream {
     fn decode(_d: &mut D) -> Self {
         panic!("Attempted to decode LazyAttrTokenStream");
     }

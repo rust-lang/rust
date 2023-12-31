@@ -1,7 +1,7 @@
 use crate::{Interner, PredicateKind};
 
 use rustc_data_structures::fx::FxHashMap;
-use rustc_serialize::{Decoder, Encoder};
+use rustc_span::{SpanDecoder, SpanEncoder};
 
 /// The shorthand encoding uses an enum's variant index `usize`
 /// and is offset by this value so it never matches a real variant.
@@ -22,7 +22,7 @@ pub trait RefDecodable<'tcx, D: TyDecoder> {
     fn decode(d: &mut D) -> &'tcx Self;
 }
 
-pub trait TyEncoder: Encoder {
+pub trait TyEncoder: SpanEncoder {
     type I: Interner;
     const CLEAR_CROSS_CRATE: bool;
 
@@ -35,7 +35,7 @@ pub trait TyEncoder: Encoder {
     fn encode_alloc_id(&mut self, alloc_id: &<Self::I as Interner>::AllocId);
 }
 
-pub trait TyDecoder: Decoder {
+pub trait TyDecoder: SpanDecoder {
     type I: Interner;
     const CLEAR_CROSS_CRATE: bool;
 

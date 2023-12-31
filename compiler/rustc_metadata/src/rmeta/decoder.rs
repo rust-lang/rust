@@ -26,7 +26,7 @@ use rustc_serialize::{Decodable, Decoder};
 use rustc_session::cstore::{CrateSource, ExternCrate};
 use rustc_session::Session;
 use rustc_span::symbol::kw;
-use rustc_span::{BytePos, Pos, SpanData, SyntaxContext, DUMMY_SP};
+use rustc_span::{BytePos, Pos, SpanData, SpanDecoder, SyntaxContext, DUMMY_SP};
 
 use proc_macro::bridge::client::ProcMacro;
 use std::iter::TrustedLen;
@@ -505,22 +505,22 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnId {
     }
 }
 
-impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Span {
-    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> Span {
-        let start = decoder.position();
-        let tag = SpanTag(decoder.peek_byte());
+impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
+    fn decode_span(&mut self) -> Span {
+        let start = self.position();
+        let tag = SpanTag(self.peek_byte());
         let data = if tag.kind() == SpanKind::Indirect {
             // Skip past the tag we just peek'd.
-            decoder.read_u8();
-            let offset_or_position = decoder.read_usize();
+            self.read_u8();
+            let offset_or_position = self.read_usize();
             let position = if tag.is_relative_offset() {
                 start - offset_or_position
             } else {
                 offset_or_position
             };
-            decoder.with_position(position, SpanData::decode)
+            self.with_position(position, SpanData::decode)
         } else {
-            SpanData::decode(decoder)
+            SpanData::decode(self)
         };
         Span::new(data.lo, data.hi, data.ctxt, data.parent)
     }

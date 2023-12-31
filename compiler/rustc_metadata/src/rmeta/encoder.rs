@@ -27,7 +27,7 @@ use rustc_session::config::{CrateType, OptLevel};
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::symbol::sym;
 use rustc_span::{
-    ExternalSource, FileName, SourceFile, SpanData, StableSourceFileId, SyntaxContext,
+    ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId, SyntaxContext,
 };
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
@@ -166,29 +166,29 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for ExpnId {
     }
 }
 
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
-    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
-        match s.span_shorthands.entry(*self) {
+impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
+    fn encode_span(&mut self, span: Span) {
+        match self.span_shorthands.entry(span) {
             Entry::Occupied(o) => {
                 // If an offset is smaller than the absolute position, we encode with the offset.
                 // This saves space since smaller numbers encode in less bits.
                 let last_location = *o.get();
                 // This cannot underflow. Metadata is written with increasing position(), so any
                 // previously saved offset must be smaller than the current position.
-                let offset = s.opaque.position() - last_location;
+                let offset = self.opaque.position() - last_location;
                 if offset < last_location {
-                    SpanTag::indirect(true).encode(s);
-                    offset.encode(s);
+                    SpanTag::indirect(true).encode(self);
+                    offset.encode(self);
                 } else {
-                    SpanTag::indirect(false).encode(s);
-                    last_location.encode(s);
+                    SpanTag::indirect(false).encode(self);
+                    last_location.encode(self);
                 }
             }
             Entry::Vacant(v) => {
-                let position = s.opaque.position();
+                let position = self.opaque.position();
                 v.insert(position);
                 // Data is encoded with a SpanTag prefix (see below).
-                self.data().encode(s);
+                span.data().encode(self);
             }
         }
     }

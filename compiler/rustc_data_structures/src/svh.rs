@@ -10,7 +10,7 @@ use std::fmt;
 
 use crate::stable_hasher;
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Encodable, Decodable, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Encodable_Generic, Decodable_Generic, Hash)]
 pub struct Svh {
     hash: Fingerprint,
 }
