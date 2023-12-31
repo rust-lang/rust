@@ -158,18 +158,64 @@ struct S5;
 impl_partial_eq!(S5);
 //~^ ERROR: function cannot return without recursing
 
-struct S6;
+struct S6 {
+    field: String,
+}
 
-impl std::string::ToString for S6 {
+impl PartialEq for S6 {
+    fn eq(&self, other: &Self) -> bool {
+        let mine = &self.field;
+        let theirs = &other.field;
+        mine == theirs // Should not warn!
+    }
+}
+
+struct S7<'a> {
+    field: &'a S7<'a>,
+}
+
+impl<'a> PartialEq for S7<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        //~^ ERROR: function cannot return without recursing
+        let mine = &self.field;
+        let theirs = &other.field;
+        mine == theirs
+    }
+}
+
+struct S8 {
+    num: i32,
+    field: Option<Box<S8>>,
+}
+
+impl PartialEq for S8 {
+    fn eq(&self, other: &Self) -> bool {
+        if self.num != other.num {
+            return false;
+        }
+
+        let (this, other) = match (self.field.as_deref(), other.field.as_deref()) {
+            (Some(x1), Some(x2)) => (x1, x2),
+            (None, None) => return true,
+            _ => return false,
+        };
+
+        this == other
+    }
+}
+
+struct S9;
+
+impl std::string::ToString for S9 {
     fn to_string(&self) -> String {
         //~^ ERROR: function cannot return without recursing
         self.to_string()
     }
 }
 
-struct S7;
+struct S10;
 
-impl std::string::ToString for S7 {
+impl std::string::ToString for S10 {
     fn to_string(&self) -> String {
         //~^ ERROR: function cannot return without recursing
         let x = self;
@@ -177,9 +223,9 @@ impl std::string::ToString for S7 {
     }
 }
 
-struct S8;
+struct S11;
 
-impl std::string::ToString for S8 {
+impl std::string::ToString for S11 {
     fn to_string(&self) -> String {
         //~^ ERROR: function cannot return without recursing
         (self as &Self).to_string()
