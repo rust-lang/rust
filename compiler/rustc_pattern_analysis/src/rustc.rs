@@ -423,7 +423,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
             }
             PatKind::DerefPattern { .. } => {
                 fields = &[];
-                ctor = Struct;
+                ctor = Opaque(OpaqueId::new());
             }
             PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
                 match pat.ty.kind() {

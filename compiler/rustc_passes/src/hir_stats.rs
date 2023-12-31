@@ -177,7 +177,7 @@ impl<'k> StatCollector<'k> {
 macro_rules! record_variants {
     (
         ($self:ident, $val:expr, $kind:expr, $id:expr, $mod:ident, $ty:ty, $tykind:ident),
-        [$($variant:ident),*]
+        [$($variant:ident),*$(,)?]
     ) => {
         match $kind {
             $(
@@ -575,7 +575,8 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
                 Rest,
                 Never,
                 Paren,
-                MacCall
+                MacCall,
+                Deref,
             ]
         );
         ast_visit::walk_pat(self, p)

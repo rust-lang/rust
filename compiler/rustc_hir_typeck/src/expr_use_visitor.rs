@@ -458,7 +458,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                             needs_to_be_read = true;
                         }
                     }
-                    PatKind::Or(_) | PatKind::Box(_) | PatKind::Ref(..) | PatKind::Wild | PatKind::Deref(_) => {
+                    PatKind::Or(_)
+                    | PatKind::Box(_)
+                    | PatKind::Ref(..)
+                    | PatKind::Wild
+                    | PatKind::Deref(_) => {
                         // If the PatKind is Or, Box, or Ref, the decision is made later
                         // as these patterns contains subpatterns
                         // If the PatKind is Wild, the decision is made based on the other patterns being

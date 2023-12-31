@@ -615,7 +615,9 @@ impl Pat {
             | PatKind::Or(s) => s.iter().for_each(|p| p.walk(it)),
 
             // Trivial wrappers over inner patterns.
-            PatKind::Box(s) | PatKind::Ref(s, _) | PatKind::Paren(s) | PatKind::Deref(s) => s.walk(it),
+            PatKind::Box(s) | PatKind::Ref(s, _) | PatKind::Paren(s) | PatKind::Deref(s) => {
+                s.walk(it)
+            }
 
             // These patterns do not contain subpatterns, skip.
             PatKind::Wild

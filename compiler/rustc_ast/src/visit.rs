@@ -547,9 +547,10 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
             visitor.visit_path(path, pattern.id);
             walk_list!(visitor, visit_pat_field, fields);
         }
-        PatKind::Box(subpattern) | PatKind::Ref(subpattern, _) | PatKind::Paren(subpattern) | PatKind::Deref(subpattern) => {
-            visitor.visit_pat(subpattern)
-        }
+        PatKind::Box(subpattern)
+        | PatKind::Ref(subpattern, _)
+        | PatKind::Paren(subpattern)
+        | PatKind::Deref(subpattern) => visitor.visit_pat(subpattern),
         PatKind::Ident(_, ident, optional_subpattern) => {
             visitor.visit_ident(*ident);
             walk_list!(visitor, visit_pat, optional_subpattern);

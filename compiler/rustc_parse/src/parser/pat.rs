@@ -406,6 +406,8 @@ impl<'a> Parser<'a> {
             } else {
                 PatKind::Lit(const_expr)
             }
+        } else if self.eat_forced_keyword(sym::deref) {
+            self.parse_pat_deref_patterns()?
         // Don't eagerly error on semantically invalid tokens when matching
         // declarative macros, as the input to those doesn't have to be
         // semantically valid. For attribute/derive proc macros this is not the
@@ -464,8 +466,6 @@ impl<'a> Parser<'a> {
                     err
                 });
             PatKind::Lit(self.mk_expr(lo, ExprKind::Lit(lit)))
-        } else if self.eat_forced_keyword(sym::deref) {
-            self.parse_pat_deref_patterns()?
         } else {
             // Try to parse everything else as literal with optional minus
             match self.parse_literal_maybe_minus() {
@@ -839,6 +839,7 @@ impl<'a> Parser<'a> {
             | token::DotDotDot | token::DotDotEq | token::DotDot // A range pattern.
             | token::ModSep // A tuple / struct variant pattern.
             | token::Not)) // A macro expanding to a pattern.
+        && !matches!(self.token.kind,token ::Ident(_, IdentKind::Keyword))
     }
 
     /// Parses `ident` or `ident @ pat`.

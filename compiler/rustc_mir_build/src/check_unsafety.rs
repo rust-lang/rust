@@ -257,6 +257,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 PatKind::Or { .. } |
                 PatKind::InlineConstant { .. } |
                 PatKind::AscribeUserType { .. } |
+                PatKind::DerefPattern { .. } |
                 PatKind::Error(_) => {}
             }
         };
@@ -304,7 +305,8 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 }
                 visit::walk_pat(self, pat);
             }
-            PatKind::Deref { .. } => {
+            // TODO is this correct
+            PatKind::Deref { .. } | PatKind::DerefPattern { .. } => {
                 let old_inside_adt = std::mem::replace(&mut self.inside_adt, false);
                 visit::walk_pat(self, pat);
                 self.inside_adt = old_inside_adt;

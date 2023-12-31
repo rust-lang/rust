@@ -1279,7 +1279,10 @@ pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
         PatKind::Tuple(elems) | PatKind::Slice(elems) | PatKind::Or(elems) => {
             visit_thin_vec(elems, |elem| vis.visit_pat(elem))
         }
-        PatKind::Paren(inner) | PatKind::Box(inner) | PatKind::Ref(inner, _) | PatKind::Deref(inner) => vis.visit_pat(inner),
+        PatKind::Paren(inner)
+        | PatKind::Box(inner)
+        | PatKind::Ref(inner, _)
+        | PatKind::Deref(inner) => vis.visit_pat(inner),
         PatKind::MacCall(mac) => vis.visit_mac_call(mac),
     }
     vis.visit_span(span);
