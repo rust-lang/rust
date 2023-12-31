@@ -1,4 +1,4 @@
-use crate::utils::helpers::{extract_beta_rev, hex_encode, make};
+use crate::utils::helpers::{extract_beta_rev, hex_encode, make, check_cfg_arg};
 use std::path::PathBuf;
 
 #[test]
@@ -56,4 +56,17 @@ fn test_string_to_hex_encode() {
     let input_string = "Hello, World!";
     let hex_string = hex_encode(input_string);
     assert_eq!(hex_string, "48656c6c6f2c20576f726c6421");
+}
+
+#[test]
+fn test_check_cfg_arg() {
+    assert_eq!(check_cfg_arg("bootstrap", None), "--check-cfg=cfg(bootstrap)");
+    assert_eq!(
+        check_cfg_arg("target_arch", Some(&["s360"])),
+        "--check-cfg=cfg(target_arch,values(\"s360\"))"
+    );
+    assert_eq!(
+        check_cfg_arg("target_os", Some(&["nixos", "nix2"])),
+        "--check-cfg=cfg(target_os,values(\"nixos\",\"nix2\"))"
+    );
 }
