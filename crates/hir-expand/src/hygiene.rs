@@ -153,7 +153,7 @@ fn apply_mark_internal(
     let mut opaque_and_semitransparent = syntax_context_data.opaque_and_semitransparent;
 
     if transparency >= Transparency::Opaque {
-        let parent = opaque;
+        let parent = handle_self_ref(ctxt, opaque);
         let new_opaque = SyntaxContextId::SELF_REF;
         // But we can't just grab the to be allocated ID either as that would not deduplicate
         // things!
@@ -168,7 +168,7 @@ fn apply_mark_internal(
     }
 
     if transparency >= Transparency::SemiTransparent {
-        let parent = opaque_and_semitransparent;
+        let parent = handle_self_ref(ctxt, opaque_and_semitransparent);
         let new_opaque_and_semitransparent = SyntaxContextId::SELF_REF;
         opaque_and_semitransparent = db.intern_syntax_context(SyntaxContextData {
             outer_expn: call_id,
