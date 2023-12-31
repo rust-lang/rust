@@ -276,10 +276,6 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// *O*(1) behavior. Will limit this behavior if it would needlessly cause
     /// itself to panic.
     ///
-    /// If `len` exceeds `self.capacity()`, this may fail to actually allocate
-    /// the requested space. This is not really unsafe, but the unsafe
-    /// code *you* write that relies on the behavior of this function may break.
-    ///
     /// This is ideal for implementing a bulk-push operation like `extend`.
     ///
     /// # Panics
@@ -289,9 +285,13 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// # Aborts
     ///
     /// Aborts on OOM.
+    ///
+    /// # Safety
+    ///
+    /// `len` must be less than or equal to the capacity of this [`RawVec`].
     #[cfg(not(no_global_oom_handling))]
     #[inline]
-    pub fn reserve(&mut self, len: usize, additional: usize) {
+    pub unsafe fn reserve(&mut self, len: usize, additional: usize) {
         // Callers expect this function to be very cheap when there is already sufficient capacity.
         // Therefore, we move all the resizing and error-handling logic from grow_amortized and
         // handle_reserve behind a call, while making sure that this function is likely to be
@@ -305,7 +305,7 @@ impl<T, A: Allocator> RawVec<T, A> {
             handle_reserve(slf.grow_amortized(len, additional));
         }
 
-        if self.needs_to_grow(len, additional) {
+        if unsafe { self.needs_to_grow(len, additional) } {
             do_reserve_and_handle(self, len, additional);
         }
         unsafe {
@@ -323,8 +323,16 @@ impl<T, A: Allocator> RawVec<T, A> {
     }
 
     /// The same as `reserve`, but returns on errors instead of panicking or aborting.
-    pub fn try_reserve(&mut self, len: usize, additional: usize) -> Result<(), TryReserveError> {
-        if self.needs_to_grow(len, additional) {
+    ///
+    /// # Safety
+    ///
+    /// `len` must be less than or equal to the capacity of this [`RawVec`].
+    pub unsafe fn try_reserve(
+        &mut self,
+        len: usize,
+        additional: usize,
+    ) -> Result<(), TryReserveError> {
+        if unsafe { self.needs_to_grow(len, additional) } {
             self.grow_amortized(len, additional)?;
         }
         unsafe {
@@ -340,10 +348,6 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// exactly the amount of memory necessary, but in principle the allocator
     /// is free to give back more than we asked for.
     ///
-    /// If `len` exceeds `self.capacity()`, this may fail to actually allocate
-    /// the requested space. This is not really unsafe, but the unsafe code
-    /// *you* write that relies on the behavior of this function may break.
-    ///
     /// # Panics
     ///
     /// Panics if the new capacity exceeds `isize::MAX` _bytes_.
@@ -351,18 +355,28 @@ impl<T, A: Allocator> RawVec<T, A> {
     /// # Aborts
     ///
     /// Aborts on OOM.
+    ///
+    /// # Safety
+    ///
+    /// `len` must be less than or equal to the capacity of this [`RawVec`].
     #[cfg(not(no_global_oom_handling))]
-    pub fn reserve_exact(&mut self, len: usize, additional: usize) {
-        handle_reserve(self.try_reserve_exact(len, additional));
+    pub unsafe fn reserve_exact(&mut self, len: usize, additional: usize) {
+        unsafe {
+            handle_reserve(self.try_reserve_exact(len, additional));
+        }
     }
 
     /// The same as `reserve_exact`, but returns on errors instead of panicking or aborting.
-    pub fn try_reserve_exact(
+    ///
+    /// # Safety
+    ///
+    /// `len` must be less than or equal to the capacity of this [`RawVec`].
+    pub unsafe fn try_reserve_exact(
         &mut self,
         len: usize,
         additional: usize,
     ) -> Result<(), TryReserveError> {
-        if self.needs_to_grow(len, additional) {
+        if unsafe { self.needs_to_grow(len, additional) } {
             self.grow_exact(len, additional)?;
         }
         unsafe {
@@ -391,8 +405,8 @@ impl<T, A: Allocator> RawVec<T, A> {
 impl<T, A: Allocator> RawVec<T, A> {
     /// Returns if the buffer needs to grow to fulfill the needed extra capacity.
     /// Mainly used to make inlining reserve-calls possible without inlining `grow`.
-    pub(crate) fn needs_to_grow(&self, len: usize, additional: usize) -> bool {
-        additional > self.capacity().wrapping_sub(len)
+    pub(crate) unsafe fn needs_to_grow(&self, len: usize, additional: usize) -> bool {
+        unsafe { additional > self.capacity().unchecked_sub(len) }
     }
 
     /// # Safety:

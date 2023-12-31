@@ -1152,7 +1152,7 @@ impl String {
         self.vec.reserve(additional);
         unsafe {
             // Inform the optimizer that the reservation has succeeded or wasn't needed
-            intrinsics::assume(additional <= self.capacity().wrapping_sub(self.len()));
+            intrinsics::assume(additional <= self.capacity().unchecked_sub(self.len()));
         }
     }
 
@@ -1206,7 +1206,7 @@ impl String {
         self.vec.reserve_exact(additional);
         unsafe {
             // Inform the optimizer that the reservation has succeeded or wasn't needed
-            intrinsics::assume(additional <= self.capacity().wrapping_sub(self.len()));
+            intrinsics::assume(additional <= self.capacity().unchecked_sub(self.len()));
         }
     }
 
@@ -1246,7 +1246,7 @@ impl String {
         self.vec.try_reserve(additional)?;
         unsafe {
             // Inform the optimizer that the reservation has succeeded or wasn't needed
-            intrinsics::assume(additional <= self.capacity().wrapping_sub(self.len()));
+            intrinsics::assume(additional <= self.capacity().unchecked_sub(self.len()));
         }
         Ok(())
     }
@@ -1293,7 +1293,7 @@ impl String {
         self.vec.try_reserve_exact(additional)?;
         unsafe {
             // Inform the optimizer that the reservation has succeeded or wasn't needed
-            intrinsics::assume(additional <= self.capacity().wrapping_sub(self.len()));
+            intrinsics::assume(additional <= self.capacity().unchecked_sub(self.len()));
         }
         Ok(())
     }
