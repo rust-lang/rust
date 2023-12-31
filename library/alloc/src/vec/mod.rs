@@ -56,7 +56,6 @@
 #[cfg(not(no_global_oom_handling))]
 use core::cmp;
 use core::cmp::Ordering;
-use core::fmt;
 use core::hash::{Hash, Hasher};
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
@@ -65,6 +64,7 @@ use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr::{self, NonNull};
 use core::slice::{self, SliceIndex};
+use core::{fmt, intrinsics};
 
 use crate::alloc::{Allocator, Global};
 use crate::borrow::{Cow, ToOwned};
@@ -907,8 +907,13 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn reserve(&mut self, additional: usize) {
         self.buf.reserve(self.len, additional);
+        unsafe {
+            // Inform the optimizer that the reservation has succeeded or wasn't needed
+            intrinsics::assume(!self.buf.needs_to_grow(self.len, additional));
+        }
     }
 
     /// Reserves the minimum capacity for at least `additional` more elements to
@@ -937,8 +942,13 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.buf.reserve_exact(self.len, additional);
+        unsafe {
+            // Inform the optimizer that the reservation has succeeded or wasn't needed
+            intrinsics::assume(!self.buf.needs_to_grow(self.len, additional));
+        }
     }
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
@@ -974,8 +984,14 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
+    #[inline]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
-        self.buf.try_reserve(self.len, additional)
+        self.buf.try_reserve(self.len, additional)?;
+        unsafe {
+            // Inform the optimizer that the reservation has succeeded or wasn't needed
+            intrinsics::assume(!self.buf.needs_to_grow(self.len, additional));
+        }
+        Ok(())
     }
 
     /// Tries to reserve the minimum capacity for at least `additional`
@@ -1017,8 +1033,14 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
+    #[inline]
     pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
-        self.buf.try_reserve_exact(self.len, additional)
+        self.buf.try_reserve_exact(self.len, additional)?;
+        unsafe {
+            // Inform the optimizer that the reservation has succeeded or wasn't needed
+            intrinsics::assume(!self.buf.needs_to_grow(self.len, additional));
+        }
+        Ok(())
     }
 
     /// Shrinks the capacity of the vector as much as possible.
