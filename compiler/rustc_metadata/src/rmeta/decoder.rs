@@ -409,21 +409,6 @@ impl<'a, 'tcx> TyDecoder for DecodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for CrateNum {
-    #[inline]
-    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> CrateNum {
-        let cnum = CrateNum::from_u32(d.read_u32());
-        d.map_encoded_cnum_to_current(cnum)
-    }
-}
-
-impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for DefIndex {
-    #[inline]
-    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> DefIndex {
-        DefIndex::from_u32(d.read_u32())
-    }
-}
-
 impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnIndex {
     #[inline]
     fn decode(d: &mut DecodeContext<'a, 'tcx>) -> ExpnIndex {
@@ -439,11 +424,24 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ast::AttrId {
     }
 }
 
-impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SyntaxContext {
-    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> SyntaxContext {
-        let cdata = decoder.cdata();
+impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
+    fn decode_crate_num(&mut self) -> CrateNum {
+        let cnum = CrateNum::from_u32(self.read_u32());
+        self.map_encoded_cnum_to_current(cnum)
+    }
 
-        let Some(sess) = decoder.sess else {
+    fn decode_def_index(&mut self) -> DefIndex {
+        DefIndex::from_u32(self.read_u32())
+    }
+
+    fn decode_def_id(&mut self) -> DefId {
+        DefId { krate: Decodable::decode(self), index: Decodable::decode(self) }
+    }
+
+    fn decode_syntax_context(&mut self) -> SyntaxContext {
+        let cdata = self.cdata();
+
+        let Some(sess) = self.sess else {
             bug!(
                 "Cannot decode SyntaxContext without Session.\
                 You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`."
@@ -451,7 +449,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SyntaxContext {
         };
 
         let cname = cdata.root.name();
-        rustc_span::hygiene::decode_syntax_context(decoder, &cdata.hygiene_context, |_, id| {
+        rustc_span::hygiene::decode_syntax_context(self, &cdata.hygiene_context, |_, id| {
             debug!("SpecializedDecoder<SyntaxContext>: decoding {}", id);
             cdata
                 .root
@@ -461,21 +459,19 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SyntaxContext {
                 .decode((cdata, sess))
         })
     }
-}
 
-impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnId {
-    fn decode(decoder: &mut DecodeContext<'a, 'tcx>) -> ExpnId {
-        let local_cdata = decoder.cdata();
+    fn decode_expn_id(&mut self) -> ExpnId {
+        let local_cdata = self.cdata();
 
-        let Some(sess) = decoder.sess else {
+        let Some(sess) = self.sess else {
             bug!(
                 "Cannot decode ExpnId without Session. \
                 You need to explicitly pass `(crate_metadata_ref, tcx)` to `decode` instead of just `crate_metadata_ref`."
             );
         };
 
-        let cnum = CrateNum::decode(decoder);
-        let index = u32::decode(decoder);
+        let cnum = CrateNum::decode(self);
+        let index = u32::decode(self);
 
         let expn_id = rustc_span::hygiene::decode_expn_id(cnum, index, |expn_id| {
             let ExpnId { krate: cnum, local_id: index } = expn_id;
@@ -503,9 +499,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnId {
         });
         expn_id
     }
-}
 
-impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
     fn decode_span(&mut self) -> Span {
         let start = self.position();
         let tag = SpanTag(self.peek_byte());
@@ -523,6 +517,32 @@ impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
             SpanData::decode(self)
         };
         Span::new(data.lo, data.hi, data.ctxt, data.parent)
+    }
+
+    fn decode_symbol(&mut self) -> Symbol {
+        let tag = self.read_u8();
+
+        match tag {
+            SYMBOL_STR => {
+                let s = self.read_str();
+                Symbol::intern(s)
+            }
+            SYMBOL_OFFSET => {
+                // read str offset
+                let pos = self.read_usize();
+
+                // move to str offset and read
+                self.opaque.with_position(pos, |d| {
+                    let s = d.read_str();
+                    Symbol::intern(s)
+                })
+            }
+            SYMBOL_PREINTERNED => {
+                let symbol_index = self.read_u32();
+                Symbol::new_from_decoded(symbol_index)
+            }
+            _ => unreachable!(),
+        }
     }
 }
 
@@ -628,34 +648,6 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SpanData {
 
         // Do not try to decode parent for foreign spans.
         SpanData { lo, hi, ctxt, parent: None }
-    }
-}
-
-impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for Symbol {
-    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> Self {
-        let tag = d.read_u8();
-
-        match tag {
-            SYMBOL_STR => {
-                let s = d.read_str();
-                Symbol::intern(s)
-            }
-            SYMBOL_OFFSET => {
-                // read str offset
-                let pos = d.read_usize();
-
-                // move to str offset and read
-                d.opaque.with_position(pos, |d| {
-                    let s = d.read_str();
-                    Symbol::intern(s)
-                })
-            }
-            SYMBOL_PREINTERNED => {
-                let symbol_index = d.read_u32();
-                Symbol::new_from_decoded(symbol_index)
-            }
-            _ => unreachable!(),
-        }
     }
 }
 

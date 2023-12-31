@@ -583,10 +583,10 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Vec<u8> {
     }
 }
 
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for SyntaxContext {
-    fn decode(decoder: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        let syntax_contexts = decoder.syntax_contexts;
-        rustc_span::hygiene::decode_syntax_context(decoder, decoder.hygiene_context, |this, id| {
+impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
+    fn decode_syntax_context(&mut self) -> SyntaxContext {
+        let syntax_contexts = self.syntax_contexts;
+        rustc_span::hygiene::decode_syntax_context(self, self.hygiene_context, |this, id| {
             // This closure is invoked if we haven't already decoded the data for the `SyntaxContext` we are deserializing.
             // We look up the position of the associated `SyntaxData` and decode it.
             let pos = syntax_contexts.get(&id).unwrap();
@@ -596,11 +596,9 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for SyntaxContext {
             })
         })
     }
-}
 
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for ExpnId {
-    fn decode(decoder: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        let hash = ExpnHash::decode(decoder);
+    fn decode_expn_id(&mut self) -> ExpnId {
+        let hash = ExpnHash::decode(self);
         if hash.is_root() {
             return ExpnId::root();
         }
@@ -609,23 +607,23 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for ExpnId {
             return expn_id;
         }
 
-        let krate = decoder.tcx.stable_crate_id_to_crate_num(hash.stable_crate_id());
+        let krate = self.tcx.stable_crate_id_to_crate_num(hash.stable_crate_id());
 
         let expn_id = if krate == LOCAL_CRATE {
             // We look up the position of the associated `ExpnData` and decode it.
-            let pos = decoder
+            let pos = self
                 .expn_data
                 .get(&hash)
-                .unwrap_or_else(|| panic!("Bad hash {:?} (map {:?})", hash, decoder.expn_data));
+                .unwrap_or_else(|| panic!("Bad hash {:?} (map {:?})", hash, self.expn_data));
 
-            let data: ExpnData = decoder
-                .with_position(pos.to_usize(), |decoder| decode_tagged(decoder, TAG_EXPN_DATA));
+            let data: ExpnData =
+                self.with_position(pos.to_usize(), |decoder| decode_tagged(decoder, TAG_EXPN_DATA));
             let expn_id = rustc_span::hygiene::register_local_expn_id(data, hash);
 
             #[cfg(debug_assertions)]
             {
                 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-                let local_hash = decoder.tcx.with_stable_hashing_context(|mut hcx| {
+                let local_hash = self.tcx.with_stable_hashing_context(|mut hcx| {
                     let mut hasher = StableHasher::new();
                     expn_id.expn_data().hash_stable(&mut hcx, &mut hasher);
                     hasher.finish()
@@ -635,9 +633,9 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for ExpnId {
 
             expn_id
         } else {
-            let index_guess = decoder.foreign_expn_data[&hash];
-            decoder.tcx.cstore_untracked().expn_hash_to_expn_id(
-                decoder.tcx.sess,
+            let index_guess = self.foreign_expn_data[&hash];
+            self.tcx.cstore_untracked().expn_hash_to_expn_id(
+                self.tcx.sess,
                 krate,
                 index_guess,
                 hash,
@@ -647,9 +645,7 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for ExpnId {
         debug_assert_eq!(expn_id.krate, krate);
         expn_id
     }
-}
 
-impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
     fn decode_span(&mut self) -> Span {
         let ctxt = SyntaxContext::decode(self);
         let parent = Option::<LocalDefId>::decode(self);
@@ -686,72 +682,62 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
 
         Span::new(lo, hi, ctxt, parent)
     }
-}
 
-// copy&paste impl from rustc_metadata
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Symbol {
+    // copy&paste impl from rustc_metadata
     #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        let tag = d.read_u8();
+    fn decode_symbol(&mut self) -> Symbol {
+        let tag = self.read_u8();
 
         match tag {
             SYMBOL_STR => {
-                let s = d.read_str();
+                let s = self.read_str();
                 Symbol::intern(s)
             }
             SYMBOL_OFFSET => {
                 // read str offset
-                let pos = d.read_usize();
+                let pos = self.read_usize();
 
                 // move to str offset and read
-                d.opaque.with_position(pos, |d| {
+                self.opaque.with_position(pos, |d| {
                     let s = d.read_str();
                     Symbol::intern(s)
                 })
             }
             SYMBOL_PREINTERNED => {
-                let symbol_index = d.read_u32();
+                let symbol_index = self.read_u32();
                 Symbol::new_from_decoded(symbol_index)
             }
             _ => unreachable!(),
         }
     }
-}
 
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for CrateNum {
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
-        let stable_id = StableCrateId::decode(d);
-        let cnum = d.tcx.stable_crate_id_to_crate_num(stable_id);
+    fn decode_crate_num(&mut self) -> CrateNum {
+        let stable_id = StableCrateId::decode(self);
+        let cnum = self.tcx.stable_crate_id_to_crate_num(stable_id);
         cnum
     }
-}
 
-// This impl makes sure that we get a runtime error when we try decode a
-// `DefIndex` that is not contained in a `DefId`. Such a case would be problematic
-// because we would not know how to transform the `DefIndex` to the current
-// context.
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for DefIndex {
-    fn decode(_d: &mut CacheDecoder<'a, 'tcx>) -> DefIndex {
+    // This impl makes sure that we get a runtime error when we try decode a
+    // `DefIndex` that is not contained in a `DefId`. Such a case would be problematic
+    // because we would not know how to transform the `DefIndex` to the current
+    // context.
+    fn decode_def_index(&mut self) -> DefIndex {
         panic!("trying to decode `DefIndex` outside the context of a `DefId`")
     }
-}
 
-// Both the `CrateNum` and the `DefIndex` of a `DefId` can change in between two
-// compilation sessions. We use the `DefPathHash`, which is stable across
-// sessions, to map the old `DefId` to the new one.
-impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for DefId {
-    #[inline]
-    fn decode(d: &mut CacheDecoder<'a, 'tcx>) -> Self {
+    // Both the `CrateNum` and the `DefIndex` of a `DefId` can change in between two
+    // compilation sessions. We use the `DefPathHash`, which is stable across
+    // sessions, to map the old `DefId` to the new one.
+    fn decode_def_id(&mut self) -> DefId {
         // Load the `DefPathHash` which is was we encoded the `DefId` as.
-        let def_path_hash = DefPathHash::decode(d);
+        let def_path_hash = DefPathHash::decode(self);
 
         // Using the `DefPathHash`, we can lookup the new `DefId`.
         // Subtle: We only encode a `DefId` as part of a query result.
         // If we get to this point, then all of the query inputs were green,
         // which means that the definition with this hash is guaranteed to
         // still exist in the current compilation session.
-        d.tcx.def_path_hash_to_def_id(def_path_hash, &mut || {
+        self.tcx.def_path_hash_to_def_id(def_path_hash, &mut || {
             panic!("Failed to convert DefPathHash {def_path_hash:?}")
         })
     }
@@ -860,20 +846,16 @@ impl<'a, 'tcx> CacheEncoder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for SyntaxContext {
-    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx>) {
-        rustc_span::hygiene::raw_encode_syntax_context(*self, s.hygiene_context, s);
-    }
-}
-
-impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for ExpnId {
-    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx>) {
-        s.hygiene_context.schedule_expn_data_for_encoding(*self);
-        self.expn_hash().encode(s);
-    }
-}
-
 impl<'a, 'tcx> SpanEncoder for CacheEncoder<'a, 'tcx> {
+    fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {
+        rustc_span::hygiene::raw_encode_syntax_context(syntax_context, self.hygiene_context, self);
+    }
+
+    fn encode_expn_id(&mut self, expn_id: ExpnId) {
+        self.hygiene_context.schedule_expn_data_for_encoding(expn_id);
+        expn_id.expn_hash().encode(self);
+    }
+
     fn encode_span(&mut self, span: Span) {
         let span_data = span.data_untracked();
         span_data.ctxt.encode(self);
@@ -915,31 +897,41 @@ impl<'a, 'tcx> SpanEncoder for CacheEncoder<'a, 'tcx> {
         col_lo.encode(self);
         len.encode(self);
     }
-}
 
-// copy&paste impl from rustc_metadata
-impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for Symbol {
-    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx>) {
+    // copy&paste impl from rustc_metadata
+    fn encode_symbol(&mut self, symbol: Symbol) {
         // if symbol preinterned, emit tag and symbol index
-        if self.is_preinterned() {
-            s.encoder.emit_u8(SYMBOL_PREINTERNED);
-            s.encoder.emit_u32(self.as_u32());
+        if symbol.is_preinterned() {
+            self.encoder.emit_u8(SYMBOL_PREINTERNED);
+            self.encoder.emit_u32(symbol.as_u32());
         } else {
             // otherwise write it as string or as offset to it
-            match s.symbol_table.entry(*self) {
+            match self.symbol_table.entry(symbol) {
                 Entry::Vacant(o) => {
-                    s.encoder.emit_u8(SYMBOL_STR);
-                    let pos = s.encoder.position();
+                    self.encoder.emit_u8(SYMBOL_STR);
+                    let pos = self.encoder.position();
                     o.insert(pos);
-                    s.emit_str(self.as_str());
+                    self.emit_str(symbol.as_str());
                 }
                 Entry::Occupied(o) => {
                     let x = *o.get();
-                    s.emit_u8(SYMBOL_OFFSET);
-                    s.emit_usize(x);
+                    self.emit_u8(SYMBOL_OFFSET);
+                    self.emit_usize(x);
                 }
             }
         }
+    }
+
+    fn encode_crate_num(&mut self, crate_num: CrateNum) {
+        self.tcx.stable_crate_id(crate_num).encode(self);
+    }
+
+    fn encode_def_id(&mut self, def_id: DefId) {
+        self.tcx.def_path_hash(def_id).encode(self);
+    }
+
+    fn encode_def_index(&mut self, _def_index: DefIndex) {
+        bug!("encoding `DefIndex` without context");
     }
 }
 
@@ -964,26 +956,6 @@ impl<'a, 'tcx> TyEncoder for CacheEncoder<'a, 'tcx> {
         let (index, _) = self.interpret_allocs.insert_full(*alloc_id);
 
         index.encode(self);
-    }
-}
-
-impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for CrateNum {
-    #[inline]
-    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx>) {
-        s.tcx.stable_crate_id(*self).encode(s);
-    }
-}
-
-impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for DefId {
-    #[inline]
-    fn encode(&self, s: &mut CacheEncoder<'a, 'tcx>) {
-        s.tcx.def_path_hash(*self).encode(s);
-    }
-}
-
-impl<'a, 'tcx> Encodable<CacheEncoder<'a, 'tcx>> for DefIndex {
-    fn encode(&self, _: &mut CacheEncoder<'a, 'tcx>) {
-        bug!("encoding `DefIndex` without context");
     }
 }
 

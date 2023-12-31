@@ -7,7 +7,6 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_data_structures::sync::Lock;
 use rustc_macros::HashStable_Generic;
-use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -2072,19 +2071,6 @@ impl fmt::Display for Symbol {
 impl ToString for Symbol {
     fn to_string(&self) -> String {
         self.as_str().to_string()
-    }
-}
-
-impl<S: Encoder> Encodable<S> for Symbol {
-    default fn encode(&self, s: &mut S) {
-        s.emit_str(self.as_str());
-    }
-}
-
-impl<D: Decoder> Decodable<D> for Symbol {
-    #[inline]
-    default fn decode(d: &mut D) -> Symbol {
-        Symbol::intern(d.read_str())
     }
 }
 
