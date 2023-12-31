@@ -1019,6 +1019,12 @@ impl Default for Span {
     }
 }
 
+rustc_index::newtype_index! {
+    #[orderable]
+    #[debug_format = "AttrId({})"]
+    pub struct AttrId {}
+}
+
 pub trait SpanEncoder: Encoder {
     fn encode_span(&mut self, span: Span);
     fn encode_symbol(&mut self, symbol: Symbol);
@@ -1106,6 +1112,11 @@ impl<E: SpanEncoder> Encodable<E> for DefId {
     }
 }
 
+impl<E: SpanEncoder> Encodable<E> for AttrId {
+    fn encode(&self, _s: &mut E) {
+        // A fresh id will be generated when decoding
+    }
+}
 pub trait SpanDecoder: Decoder {
     fn decode_span(&mut self) -> Span;
     fn decode_symbol(&mut self) -> Symbol;
@@ -1114,6 +1125,7 @@ pub trait SpanDecoder: Decoder {
     fn decode_crate_num(&mut self) -> CrateNum;
     fn decode_def_index(&mut self) -> DefIndex;
     fn decode_def_id(&mut self) -> DefId;
+    fn decode_attr_id(&mut self) -> AttrId;
 }
 
 impl SpanDecoder for MemDecoder<'_> {
@@ -1146,6 +1158,10 @@ impl SpanDecoder for MemDecoder<'_> {
 
     fn decode_def_id(&mut self) -> DefId {
         DefId { krate: Decodable::decode(self), index: Decodable::decode(self) }
+    }
+
+    fn decode_attr_id(&mut self) -> AttrId {
+        panic!("cannot decode `AttrId` with `MemDecoder`");
     }
 }
 
@@ -1188,6 +1204,12 @@ impl<D: SpanDecoder> Decodable<D> for DefIndex {
 impl<D: SpanDecoder> Decodable<D> for DefId {
     fn decode(s: &mut D) -> DefId {
         s.decode_def_id()
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for AttrId {
+    fn decode(s: &mut D) -> AttrId {
+        s.decode_attr_id()
     }
 }
 

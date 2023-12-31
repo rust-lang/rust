@@ -416,15 +416,12 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ExpnIndex {
     }
 }
 
-impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for ast::AttrId {
-    #[inline]
-    fn decode(d: &mut DecodeContext<'a, 'tcx>) -> ast::AttrId {
-        let sess = d.sess.expect("can't decode AttrId without Session");
+impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
+    fn decode_attr_id(&mut self) -> rustc_span::AttrId {
+        let sess = self.sess.expect("can't decode AttrId without Session");
         sess.parse_sess.attr_id_generator.mk_attr_id()
     }
-}
 
-impl<'a, 'tcx> SpanDecoder for DecodeContext<'a, 'tcx> {
     fn decode_crate_num(&mut self) -> CrateNum {
         let cnum = CrateNum::from_u32(self.read_u32());
         self.map_encoded_cnum_to_current(cnum)

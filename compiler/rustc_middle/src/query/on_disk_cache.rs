@@ -741,6 +741,10 @@ impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
             panic!("Failed to convert DefPathHash {def_path_hash:?}")
         })
     }
+
+    fn decode_attr_id(&mut self) -> rustc_span::AttrId {
+        panic!("cannot decode `AttrId` with `CacheDecoder`");
+    }
 }
 
 impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for &'tcx UnordSet<LocalDefId> {
