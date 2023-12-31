@@ -158,6 +158,34 @@ struct S5;
 impl_partial_eq!(S5);
 //~^ ERROR: function cannot return without recursing
 
+struct S6;
+
+impl std::string::ToString for S6 {
+    fn to_string(&self) -> String {
+        //~^ ERROR: function cannot return without recursing
+        self.to_string()
+    }
+}
+
+struct S7;
+
+impl std::string::ToString for S7 {
+    fn to_string(&self) -> String {
+        //~^ ERROR: function cannot return without recursing
+        let x = self;
+        x.to_string()
+    }
+}
+
+struct S8;
+
+impl std::string::ToString for S8 {
+    fn to_string(&self) -> String {
+        //~^ ERROR: function cannot return without recursing
+        (self as &Self).to_string()
+    }
+}
+
 fn main() {
     // test code goes here
 }

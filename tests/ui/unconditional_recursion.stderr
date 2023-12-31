@@ -23,6 +23,39 @@ LL |         self.eq(other)
    = help: a `loop` may express intention better if this is on purpose
 
 error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:164:5
+   |
+LL |     fn to_string(&self) -> String {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |
+LL |         self.to_string()
+   |         ---------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:173:5
+   |
+LL |     fn to_string(&self) -> String {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+...
+LL |         x.to_string()
+   |         ------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:183:5
+   |
+LL |     fn to_string(&self) -> String {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
+LL |
+LL |         (self as &Self).to_string()
+   |         --------------------------- recursive call site
+   |
+   = help: a `loop` may express intention better if this is on purpose
+
+error: function cannot return without recursing
   --> $DIR/unconditional_recursion.rs:12:5
    |
 LL | /     fn ne(&self, other: &Self) -> bool {
@@ -247,5 +280,5 @@ LL | impl_partial_eq!(S5);
    | -------------------- in this macro invocation
    = note: this error originates in the macro `impl_partial_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 19 previous errors
+error: aborting due to 22 previous errors
 
