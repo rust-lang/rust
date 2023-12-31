@@ -104,6 +104,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if !changed {
                 existing_bindings.extend_from_slice(&new_bindings);
                 mem::swap(&mut candidate.bindings, &mut existing_bindings);
+
                 // Move or-patterns to the end, because they can result in us
                 // creating additional candidates, so we want to test them as
                 // late as possible.
@@ -279,6 +280,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 candidate.match_pairs.push(MatchPair::new(place_builder, subpattern, self));
                 Ok(())
             }
+
+            PatKind::DerefPattern { .. } => Err(match_pair),
 
             PatKind::Or { .. } => Err(match_pair),
         }

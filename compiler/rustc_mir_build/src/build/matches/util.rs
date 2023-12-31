@@ -73,6 +73,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Creates a false edge to `imaginary_target` and a real edge to
     /// real_target. If `imaginary_target` is none, or is the same as the real
     /// target, a Goto is generated instead to simplify the generated MIR.
+    #[tracing::instrument(level = "trace", skip(self, source_info))]
     pub(crate) fn false_edges(
         &mut self,
         from_block: BasicBlock,

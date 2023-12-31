@@ -897,6 +897,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     self.visit_primary_bindings(subpattern, pattern_user_ty.clone(), f);
                 }
             }
+            PatKind::DerefPattern { ref subpattern } => {
+                self.visit_primary_bindings(subpattern, UserTypeProjections::none(), f);
+            }
         }
     }
 }
@@ -1054,6 +1057,15 @@ enum TestKind<'tcx> {
 
     /// Test that the length of the slice is equal to `len`.
     Len { len: u64, op: BinOp },
+
+    /// This is not exactly a test, though we need to emit MIR before moving on.
+    /// We need to emit `Deref::deref` on the value.
+    Deref {
+        /// The place to deref into.
+        place: Place<'tcx>,
+        /// The type of the value that we are dereferencing.
+        ty: Ty<'tcx>,
+    },
 }
 
 /// A test to perform to determine which [`Candidate`] matches a value.

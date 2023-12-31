@@ -68,6 +68,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Test { span: match_pair.pattern.span, kind: TestKind::Len { len: len as u64, op } }
             }
 
+            PatKind::DerefPattern { ref subpattern } => Test {
+                span: match_pair.pattern.span,
+                kind: TestKind::Deref {
+                    // TODO should this use a temporary
+                    place: self.temp(
+                        Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, subpattern.ty),
+                        match_pair.pattern.span,
+                    ),
+                    ty: match_pair.pattern.ty,
+                },
+            },
+
             PatKind::Or { .. } => bug!("or-patterns should have already been handled"),
 
             PatKind::AscribeUserType { .. }
@@ -115,6 +127,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | PatKind::InlineConstant { .. }
             | PatKind::Leaf { .. }
             | PatKind::Deref { .. }
+            | PatKind::DerefPattern { .. }
             | PatKind::Error(_) => {
                 // don't know how to add these patterns to a switch
                 false
@@ -370,6 +383,42 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     Operand::Move(actual),
                     Operand::Move(expected),
                 );
+            }
+
+            TestKind::Deref { place: target_place, ty } => {
+                let tcx = self.tcx;
+                let re_erased = tcx.lifetimes.re_erased;
+                let [target] = *target_blocks else {
+                    bug!("`TestKind::Deref` should have one target block");
+                };
+                let deref = tcx.require_lang_item(LangItem::Deref, None);
+                let method = trait_method(tcx, deref, sym::deref, [ty]);
+                let ref_src = self.temp(Ty::new_imm_ref(tcx, re_erased, ty), test.span);
+                // `let temp1 = &src_place`
+                self.cfg.push_assign(
+                    block,
+                    source_info,
+                    ref_src,
+                    Rvalue::Ref(re_erased, BorrowKind::Shared, place),
+                );
+                // `let temp2 = <Ty as Deref>::deref(temp1);`
+                self.cfg.terminate(
+                    block,
+                    source_info,
+                    TerminatorKind::Call {
+                        func: Operand::Constant(Box::new(ConstOperand {
+                            span: test.span,
+                            user_ty: None,
+                            const_: method,
+                        })),
+                        args: vec![Operand::Move(ref_src)],
+                        destination: target_place,
+                        target: Some(target),
+                        unwind: UnwindAction::Continue,
+                        call_source: CallSource::Misc,
+                        fn_span: source_info.span,
+                    },
+                )
             }
         }
     }
@@ -753,6 +802,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     None
                 }
             }
+
+            (&TestKind::Deref { place, ty: _ }, PatKind::DerefPattern { subpattern }) => {
+                candidate.match_pairs[match_pair_index] = MatchPair::new(
+                    PlaceBuilder::from(place).deref(),
+                    &subpattern,
+                    self,
+                );
+                Some(0)
+            }
+
+            (&TestKind::Deref { .. }, _) => bug!("wrong test for the pattern"),
         }
     }
 
@@ -829,6 +889,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 impl Test<'_> {
     pub(super) fn targets(&self) -> usize {
         match self.kind {
+            TestKind::Deref { .. } => 1,
             TestKind::Eq { .. } | TestKind::Range(_) | TestKind::Len { .. } => 2,
             TestKind::Switch { adt_def, .. } => {
                 // While the switch that we generate doesn't test for all

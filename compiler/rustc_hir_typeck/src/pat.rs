@@ -10,8 +10,8 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::{HirId, Pat, PatKind};
-use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::{self, Adt, BindingMode, Ty, TypeVisitableExt};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
@@ -22,7 +22,10 @@ use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::Span;
 use rustc_span::{BytePos, DUMMY_SP};
 use rustc_target::abi::FieldIdx;
-use rustc_trait_selection::traits::{ObligationCause, Pattern};
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
+use rustc_trait_selection::traits::{
+    ObligationCause, Pattern, StructurallyNormalizeExt, TraitEngine, TraitEngineExt,
+};
 use ty::VariantDef;
 
 use std::cmp;
@@ -1980,10 +1983,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx, '_>,
     ) -> Ty<'tcx> {
+        let tcx = self.tcx;
         // FIXME(deref_patterns): use `DerefPure` for soundness
-        let autoderef = self.autoderef(span, expected);
-        // TODO
-        todo!()
+        // <expected as Deref>::Target
+        let ty = Ty::new_projection(
+            tcx,
+            tcx.require_lang_item(hir::LangItem::DerefTarget, Some(span)),
+            [expected],
+        );
+
+        let mut fulfill_cx = <dyn TraitEngine<'_>>::new(&self.infcx);
+        let cause = self.pattern_cause(pat_info.top_info, span);
+        let normalized_ty = match self
+            .infcx
+            .at(&cause, self.param_env)
+            .structurally_normalize(ty, &mut *fulfill_cx)
+        {
+            Ok(normalized_ty) => normalized_ty,
+            Err(errors) => {
+                let reported = self.infcx.err_ctxt().report_fulfillment_errors(errors);
+                return Ty::new_error(tcx, reported);
+            }
+        };
+
+        let ty = self.resolve_vars_if_possible(normalized_ty);
+        self.check_pat(inner, ty, pat_info);
+        expected
     }
 
     // Precondition: Pat is Ref(inner)
