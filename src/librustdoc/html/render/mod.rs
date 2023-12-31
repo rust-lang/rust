@@ -58,7 +58,7 @@ use rustc_span::{
     symbol::{sym, Symbol},
     BytePos, FileName, RealFileName,
 };
-use serde::ser::{SerializeMap, SerializeSeq};
+use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
 
 use crate::clean::{self, ItemId, RenderedLink, SelfTy};
@@ -123,44 +123,53 @@ pub(crate) struct IndexItem {
 }
 
 /// A type used for the search index.
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub(crate) struct RenderType {
     id: Option<RenderTypeId>,
     generics: Option<Vec<RenderType>>,
     bindings: Option<Vec<(RenderTypeId, Vec<RenderType>)>>,
 }
 
-impl Serialize for RenderType {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let id = match &self.id {
-            // 0 is a sentinel, everything else is one-indexed
-            None => 0,
-            // concrete type
-            Some(RenderTypeId::Index(idx)) if *idx >= 0 => idx + 1,
-            // generic type parameter
-            Some(RenderTypeId::Index(idx)) => *idx,
-            _ => panic!("must convert render types to indexes before serializing"),
-        };
+impl RenderType {
+    pub fn write_to_string(&self, string: &mut String) {
         if self.generics.is_some() || self.bindings.is_some() {
-            let mut seq = serializer.serialize_seq(None)?;
-            seq.serialize_element(&id)?;
-            seq.serialize_element(self.generics.as_ref().map(Vec::as_slice).unwrap_or_default())?;
-            if self.bindings.is_some() {
-                seq.serialize_element(
-                    self.bindings.as_ref().map(Vec::as_slice).unwrap_or_default(),
-                )?;
+            string.push('{');
+            // 0 is a sentinel, everything else is one-indexed
+            match self.id {
+                Some(id) => id.write_to_string(string),
+                None => string.push('`'),
             }
-            seq.end()
+            string.push('{');
+            for generic in &self.generics.as_ref().map(Vec::as_slice).unwrap_or_default()[..] {
+                generic.write_to_string(string);
+            }
+            string.push('}');
+            if self.bindings.is_some() {
+                string.push('{');
+                for binding in &self.bindings.as_ref().map(Vec::as_slice).unwrap_or_default()[..] {
+                    string.push('{');
+                    binding.0.write_to_string(string);
+                    string.push('{');
+                    for constraint in &binding.1[..] {
+                        constraint.write_to_string(string);
+                    }
+                    string.push('}');
+                    string.push('}');
+                }
+                string.push('}');
+            }
+            string.push('}');
         } else {
-            id.serialize(serializer)
+            // 0 is a sentinel, everything else is one-indexed
+            match self.id {
+                Some(id) => id.write_to_string(string),
+                None => string.push('`'),
+            }
         }
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum RenderTypeId {
     DefId(DefId),
     Primitive(clean::PrimitiveType),
@@ -168,36 +177,50 @@ pub(crate) enum RenderTypeId {
     Index(isize),
 }
 
-impl Serialize for RenderTypeId {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        let id = match &self {
+impl RenderTypeId {
+    pub fn write_to_string(&self, string: &mut String) {
+        // (sign, value)
+        let (sign, id): (bool, u32) = match &self {
             // 0 is a sentinel, everything else is one-indexed
             // concrete type
-            RenderTypeId::Index(idx) if *idx >= 0 => idx + 1,
+            RenderTypeId::Index(idx) if *idx >= 0 => (false, (idx + 1isize).try_into().unwrap()),
             // generic type parameter
-            RenderTypeId::Index(idx) => *idx,
+            RenderTypeId::Index(idx) => (true, (-*idx).try_into().unwrap()),
             _ => panic!("must convert render types to indexes before serializing"),
         };
-        id.serialize(serializer)
+        // zig-zag notation
+        let value: u32 = (id << 1) | (if sign { 1 } else { 0 });
+        // encode
+        let mut shift: u32 = 28;
+        let mut mask: u32 = 0xF0_00_00_00;
+        while shift < 32 {
+            let hexit = (value & mask) >> shift;
+            if hexit != 0 || shift == 0 {
+                let hex =
+                    char::try_from(if shift == 0 { '`' } else { '@' } as u32 + hexit).unwrap();
+                string.push(hex);
+            }
+            shift = shift.wrapping_sub(4);
+            mask = mask >> 4;
+        }
     }
 }
 
 /// Full type of functions/methods in the search index.
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub(crate) struct IndexItemFunctionType {
     inputs: Vec<RenderType>,
     output: Vec<RenderType>,
     where_clause: Vec<Vec<RenderType>>,
 }
 
-impl Serialize for IndexItemFunctionType {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
+impl IndexItemFunctionType {
+    pub fn write_to_string<'a>(
+        &'a self,
+        string: &mut String,
+        backref_queue: &mut VecDeque<&'a IndexItemFunctionType>,
+    ) {
+        assert!(backref_queue.len() < 16);
         // If we couldn't figure out a type, just write `0`.
         let has_missing = self
             .inputs
@@ -205,33 +228,58 @@ impl Serialize for IndexItemFunctionType {
             .chain(self.output.iter())
             .any(|i| i.id.is_none() && i.generics.is_none());
         if has_missing {
-            0.serialize(serializer)
+            string.push('`');
+        } else if let Some(idx) = backref_queue.iter().position(|other| *other == self) {
+            string.push(
+                char::try_from('0' as u32 + u32::try_from(idx).unwrap())
+                    .expect("last possible value is '?'"),
+            );
         } else {
-            let mut seq = serializer.serialize_seq(None)?;
+            backref_queue.push_front(self);
+            if backref_queue.len() >= 16 {
+                backref_queue.pop_back();
+            }
+            string.push('{');
             match &self.inputs[..] {
                 [one] if one.generics.is_none() && one.bindings.is_none() => {
-                    seq.serialize_element(one)?
+                    one.write_to_string(string);
                 }
-                _ => seq.serialize_element(&self.inputs)?,
+                _ => {
+                    string.push('{');
+                    for item in &self.inputs[..] {
+                        item.write_to_string(string);
+                    }
+                    string.push('}');
+                }
             }
             match &self.output[..] {
                 [] if self.where_clause.is_empty() => {}
                 [one] if one.generics.is_none() && one.bindings.is_none() => {
-                    seq.serialize_element(one)?
+                    one.write_to_string(string);
                 }
-                _ => seq.serialize_element(&self.output)?,
+                _ => {
+                    string.push('{');
+                    for item in &self.output[..] {
+                        item.write_to_string(string);
+                    }
+                    string.push('}');
+                }
             }
             for constraint in &self.where_clause {
                 if let [one] = &constraint[..]
                     && one.generics.is_none()
                     && one.bindings.is_none()
                 {
-                    seq.serialize_element(one)?;
+                    one.write_to_string(string);
                 } else {
-                    seq.serialize_element(constraint)?;
+                    string.push('{');
+                    for item in &constraint[..] {
+                        item.write_to_string(string);
+                    }
+                    string.push('}');
                 }
             }
-            seq.end()
+            string.push('}');
         }
     }
 }

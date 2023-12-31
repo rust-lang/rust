@@ -2767,19 +2767,65 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      * The raw function search type format is generated using serde in
      * librustdoc/html/render/mod.rs: impl Serialize for IndexItemFunctionType
      *
-     * @param {RawFunctionSearchType} functionSearchType
+     * @param {{
+     *  string: string,
+     *  offset: number,
+     *  backrefQueue: FunctionSearchType[]
+     * }} itemFunctionDecoder
      * @param {Array<{name: string, ty: number}>} lowercasePaths
      * @param {Map<string, integer>}
      *
      * @return {null|FunctionSearchType}
      */
-    function buildFunctionSearchType(functionSearchType, lowercasePaths) {
-        const INPUTS_DATA = 0;
-        const OUTPUT_DATA = 1;
-        // `0` is used as a sentinel because it's fewer bytes than `null`
-        if (functionSearchType === 0) {
+    function buildFunctionSearchType(itemFunctionDecoder, lowercasePaths) {
+        const c = itemFunctionDecoder.string.charCodeAt(itemFunctionDecoder.offset);
+        itemFunctionDecoder.offset += 1;
+        const [zero, ua, la, ob, cb] = ["0", "@", "`", "{", "}"].map(c => c.charCodeAt(0));
+        // `` ` `` is used as a sentinel because it's fewer bytes than `null`, and decodes to zero
+        // `0` is a backref
+        if (c === la) {
             return null;
         }
+        // sixteen characters after "0" are backref
+        if (c >= zero && c < ua) {
+            return itemFunctionDecoder.backrefQueue[c - zero];
+        }
+        if (c !== ob) {
+            throw ["Unexpected ", c, " in function: expected ", "{", "; this is a bug"];
+        }
+        // call after consuming `{`
+        function decodeList() {
+            let c = itemFunctionDecoder.string.charCodeAt(itemFunctionDecoder.offset);
+            const ret = [];
+            while (c !== cb) {
+                ret.push(decode());
+                c = itemFunctionDecoder.string.charCodeAt(itemFunctionDecoder.offset);
+            }
+            itemFunctionDecoder.offset += 1; // eat cb
+            return ret;
+        }
+        // consumes and returns a list or integer
+        function decode() {
+            let n = 0;
+            let c = itemFunctionDecoder.string.charCodeAt(itemFunctionDecoder.offset);
+            if (c === ob) {
+                itemFunctionDecoder.offset += 1;
+                return decodeList();
+            }
+            while (c < la) {
+                n = (n << 4) | (c & 0xF);
+                itemFunctionDecoder.offset += 1;
+                c = itemFunctionDecoder.string.charCodeAt(itemFunctionDecoder.offset);
+            }
+            // last character >= la
+            n = (n << 4) | (c & 0xF);
+            const [sign, value] = [n & 1, n >> 1];
+            itemFunctionDecoder.offset += 1;
+            return sign ? -value : value;
+        }
+        const functionSearchType = decodeList();
+        const INPUTS_DATA = 0;
+        const OUTPUT_DATA = 1;
         let inputs, output;
         if (typeof functionSearchType[INPUTS_DATA] === "number") {
             inputs = [buildItemSearchType(functionSearchType[INPUTS_DATA], lowercasePaths)];
@@ -2808,9 +2854,14 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 ? [buildItemSearchType(functionSearchType[i], lowercasePaths)]
                 : buildItemSearchTypeAll(functionSearchType[i], lowercasePaths));
         }
-        return {
+        const ret = {
             inputs, output, where_clause,
         };
+        itemFunctionDecoder.backrefQueue.unshift(ret);
+        if (itemFunctionDecoder.backrefQueue.length >= 16) {
+            itemFunctionDecoder.backrefQueue.pop();
+        }
+        return ret;
     }
 
     /**
@@ -2992,8 +3043,12 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             const itemDescs = crateCorpus.d;
             // an array of (Number) the parent path index + 1 to `paths`, or 0 if none
             const itemParentIdxs = crateCorpus.i;
-            // an array of (Array | 0) the type of the function, if any
-            const itemFunctionSearchTypes = crateCorpus.f;
+            // a string representing the list of function types
+            const itemFunctionDecoder = {
+                string: crateCorpus.f,
+                offset: 0,
+                backrefQueue: [],
+            };
             // an array of (Number) indices for the deprecated items
             const deprecatedItems = new Set(crateCorpus.c);
             // an array of (Number) indices for the deprecated items
@@ -3041,12 +3096,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                     word = itemNames[i].toLowerCase();
                 }
                 const path = itemPaths.has(i) ? itemPaths.get(i) : lastPath;
-                let type = null;
-                if (itemFunctionSearchTypes[i] !== 0) {
-                    type = buildFunctionSearchType(
-                        itemFunctionSearchTypes[i],
-                        lowercasePaths
-                    );
+                const type = buildFunctionSearchType(itemFunctionDecoder, lowercasePaths);
+                if (type !== null) {
                     if (type) {
                         const fp = functionTypeFingerprint.subarray(id * 4, (id + 1) * 4);
                         const fps = new Set();
