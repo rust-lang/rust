@@ -904,8 +904,25 @@ impl AtomicBool {
     #[cfg(target_has_atomic = "8")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_and(&self, val: bool, order: Ordering) -> bool {
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_and(self.v.get(), val as u8, order) != 0 }
+        if cfg!(any(target_arch = "x86_64", target_arch = "x86")) {
+            // LLVM generates CAS loop for u8 atomic AND operation on this
+            // platforms but since bool can have only 2 values, we can avoid it.
+
+            // List of architectures that were checked and don't need this:
+            // aarch64, loongarch64, nvptx64, riscv64gc
+            if val {
+                // SAFETY: data races are prevented by atomic intrinsics.
+                // We still need to do a RMW operation for ordering.
+                // We don't want to change existing value so just add 0 to it.
+                unsafe { atomic_add(self.v.get(), 0, order) != 0 }
+            } else {
+                // (x & false) == false
+                self.swap(false, order)
+            }
+        } else {
+            // SAFETY: data races are prevented by atomic intrinsics.
+            unsafe { atomic_and(self.v.get(), val as u8, order) != 0 }
+        }
     }
 
     /// Logical "nand" with a boolean value.
@@ -998,8 +1015,25 @@ impl AtomicBool {
     #[cfg(target_has_atomic = "8")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_or(&self, val: bool, order: Ordering) -> bool {
-        // SAFETY: data races are prevented by atomic intrinsics.
-        unsafe { atomic_or(self.v.get(), val as u8, order) != 0 }
+        if cfg!(any(target_arch = "x86_64", target_arch = "x86")) {
+            // LLVM generates CAS loop for u8 atomic OR operation on this
+            // platforms but since bool can have only 2 values, we can avoid it.
+
+            // List of architectures that were checked and don't need this:
+            // aarch64, loongarch64, nvptx64, riscv64gc
+            if val {
+                // (x | true) == true
+                self.swap(true, order)
+            } else {
+                // SAFETY: data races are prevented by atomic intrinsics.
+                // We still need to do a RMW operation for ordering.
+                // We don't want to change existing value so just add 0 to it.
+                unsafe { atomic_add(self.v.get(), 0, order) != 0 }
+            }
+        } else {
+            // SAFETY: data races are prevented by atomic intrinsics.
+            unsafe { atomic_or(self.v.get(), val as u8, order) != 0 }
+        }
     }
 
     /// Logical "xor" with a boolean value.
