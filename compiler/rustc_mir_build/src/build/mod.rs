@@ -87,11 +87,6 @@ fn mir_build<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
         }
     };
 
-    // TODO remove this
-    if tcx.sess.verbose_internals() {
-        pretty::write_mir_fn(tcx, &body, &mut |_, _| Ok(()), &mut std::io::stderr()).unwrap();
-    }
-
     lints::check(tcx, &body);
 
     // The borrow checker will replace all the regions here with its own
