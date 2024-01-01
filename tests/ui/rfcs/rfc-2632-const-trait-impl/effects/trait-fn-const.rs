@@ -7,7 +7,15 @@ trait Trait {
 }
 
 impl const Trait for () {
-    const fn fun() {}  //~ ERROR functions in trait impls cannot be declared const
+    const fn fun() {} //~ ERROR functions in trait impls cannot be declared const
+}
+
+impl Trait for u32 {
+    const fn fun() {} //~ ERROR functions in trait impls cannot be declared const
+}
+
+trait NonConst {
+    const fn fun(); //~ ERROR functions in traits cannot be declared const
 }
 
 fn main() {}
