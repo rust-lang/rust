@@ -2,7 +2,56 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fix an idempotency issue when rewriting where clauses in which rustfmt would continuously add a trailing comma `,` to the end of trailing line comments [#5941](https://github.com/rust-lang/rustfmt/issues/5941).
+- When using `version=Two`, the `trace!` macro from the [log crate] is now formatted similarly to `debug!`, `info!`, `warn!`, and `error!` [#5987](https://github.com/rust-lang/rustfmt/issues/5987).
+- Prevent enum variant attributes from wrapping one character early when using `version=Two` [#5801](https://github.com/rust-lang/rustfmt/issues/5801)
+- Properly wrap macro matchers at the `max_width` when using `version=Two` and `format_macro_matchers=true` [#3805](https://github.com/rust-lang/rustfmt/issues/3805)
+- Prevent panic when formatting trait declaration with non [Unicode Normalization Form] C (NFC) identifiers [#6069](https://github.com/rust-lang/rustfmt/issues/6069)
+  ```rust
+  // The ó below is two codepoints, ASCII o followed by U+0301 COMBINING ACUTE ACCENT.
+  // It NFC-normalizes to ó, U+00F3 LATIN SMALL LETTER O WITH ACUTE.
+  trait Foó: Bar {}
+  ```
+- Ensure a space is added to a range expression, when the right hand side of the range expression is a binary expression that ends with a trailing period.
+  ```rust
+  let range = 3. / 2. ..4.;
+  ```
+- When using `version=Two`, comments in match arms that contain `=>` no longer prevent formatting [#5998](https://github.com/rust-lang/rustfmt/issues/5998)
+  ```rust
+  match a {
+      _ =>
+      // comment with =>
+      {
+          println!("A")
+      }
+  }
+  ```
+- Prevent panics when formatting input that contains the expanded form of `offset_of!` [#5885](https://github.com/rust-lang/rustfmt/issues/5885) [#6105](https://github.com/rust-lang/rustfmt/issues/6105)
+  ```rust
+  const _: () = builtin # offset_of(x, x);
+  ```
+
+[log crate]: https://crates.io/crates/log
+[unicode normalization form]: https://unicode.org/reports/tr15/
+
+
+### Changed
+
+- `hide_parse_errors` has been soft deprecated and it's been renamed to `show_parse_errors` [#5961](https://github.com/rust-lang/rustfmt/pull/5961).
+- The diff output produced by `rustfmt --check` is more compatable with editors that support navigating directly to line numbers [#5971](https://github.com/rust-lang/rustfmt/pull/5971)
+
+
+### Added
+
+- `generated_marker_line_search_limit` is a new unstable configuration option that allows users to configure how many lines to search for an `@generated` marker when `format_generated_files=false` [#5658](https://github.com/rust-lang/rustfmt/issues/5658)
+
+
+### Misc
+
 - Updating `dirs 4.0.0 -> 5.0.1` and `cargo_metadata 0.15.4 -> 0.18.0` [#6033] (https://github.com/rust-lang/rustfmt/issues/6033)
+- Addressed clap deprecations output when running `cargo check --features clap/deprecated` [#6101](https://github.com/rust-lang/rustfmt/pull/6101)
 - Bumped bytecount `0.6.4` -> `0.6.8` to fix compilation issues with the `generic-simd` feature. See [bytecount#92] and [bytecount#93]
 
 [bytecount#92]: https://github.com/llogiq/bytecount/pull/92
