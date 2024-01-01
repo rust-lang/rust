@@ -1025,6 +1025,8 @@ rustc_index::newtype_index! {
     pub struct AttrId {}
 }
 
+/// This trait is used to allow encoder specific encodings of certain types.
+/// It is similar to rustc_type_ir's TyEncoder.
 pub trait SpanEncoder: Encoder {
     fn encode_span(&mut self, span: Span);
     fn encode_symbol(&mut self, symbol: Symbol);
@@ -1117,6 +1119,9 @@ impl<E: SpanEncoder> Encodable<E> for AttrId {
         // A fresh id will be generated when decoding
     }
 }
+
+/// This trait is used to allow decoder specific encodings of certain types.
+/// It is similar to rustc_type_ir's TyDecoder.
 pub trait SpanDecoder: Decoder {
     fn decode_span(&mut self) -> Span;
     fn decode_symbol(&mut self) -> Symbol;
