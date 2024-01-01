@@ -149,15 +149,16 @@ fn apply_mark_internal(
     transparency: Transparency,
 ) -> SyntaxContextId {
     let syntax_context_data = db.lookup_intern_syntax_context(ctxt);
-    let mut opaque = syntax_context_data.opaque;
-    let mut opaque_and_semitransparent = syntax_context_data.opaque_and_semitransparent;
+    let mut opaque = handle_self_ref(ctxt, syntax_context_data.opaque);
+    let mut opaque_and_semitransparent =
+        handle_self_ref(ctxt, syntax_context_data.opaque_and_semitransparent);
 
     if transparency >= Transparency::Opaque {
-        let parent = handle_self_ref(ctxt, opaque);
+        let parent = opaque;
+        // Unlike rustc, with salsa we can't prefetch the to be allocated ID to create cycles with
+        // salsa when interning, so we use a sentinel value that effectively means the current
+        // syntax context.
         let new_opaque = SyntaxContextId::SELF_REF;
-        // But we can't just grab the to be allocated ID either as that would not deduplicate
-        // things!
-        // So we need a new salsa store type here ...
         opaque = db.intern_syntax_context(SyntaxContextData {
             outer_expn: call_id,
             outer_transparency: transparency,
@@ -168,7 +169,10 @@ fn apply_mark_internal(
     }
 
     if transparency >= Transparency::SemiTransparent {
-        let parent = handle_self_ref(ctxt, opaque_and_semitransparent);
+        let parent = opaque_and_semitransparent;
+        // Unlike rustc, with salsa we can't prefetch the to be allocated ID to create cycles with
+        // salsa when interning, so we use a sentinel value that effectively means the current
+        // syntax context.
         let new_opaque_and_semitransparent = SyntaxContextId::SELF_REF;
         opaque_and_semitransparent = db.intern_syntax_context(SyntaxContextData {
             outer_expn: call_id,
