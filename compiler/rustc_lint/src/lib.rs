@@ -657,6 +657,7 @@ fn register_internals(store: &mut LintStore) {
         "rustc::internal",
         None,
         vec![
+            LintId::of(BROKEN_MIR),
             LintId::of(DEFAULT_HASH_TYPES),
             LintId::of(POTENTIAL_QUERY_INSTABILITY),
             LintId::of(UNTRACKED_QUERY_INFORMATION),
