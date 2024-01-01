@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::get_parent_expr;
 use clippy_utils::ty::implements_trait;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_middle::ty::print::with_forced_trimmed_paths;
@@ -29,6 +29,7 @@ fn check<'tcx>(
     node_args: ty::GenericArgsRef<'tcx>,
     kind: FunctionKind,
     primary_span: Span,
+    qpath: Option<&QPath<'_>>,
 ) {
     if let &[self_ty, other_ty] = node_args.as_slice()
         // useless_conversion already warns `T::try_from(T)`, so ignore it here
@@ -45,47 +46,79 @@ fn check<'tcx>(
         && implements_trait(cx, self_ty, from_into_trait, &[other_ty])
         && let Some(other_ty) = other_ty.as_type()
     {
+        // Extend the span to include the unwrap/expect call:
+        // `foo.try_into().expect("..")`
+        //      ^^^^^^^^^^^^^^^^^^^^^^^
+        //
+        // `try_into().unwrap()` specifically can be trivially replaced with just `into()`,
+        // so that can be machine-applicable
         let parent_unwrap_call = get_parent_expr(cx, expr).and_then(|parent| {
             if let ExprKind::MethodCall(path, .., span) = parent.kind
                 && let sym::unwrap | sym::expect = path.ident.name
             {
-                Some(span)
+                // include `.` before `unwrap`/`expect`
+                Some(span.with_lo(expr.span.hi()))
             } else {
                 None
             }
         });
-        let (source_ty, target_ty, sugg, span, applicability) = match kind {
-            FunctionKind::TryIntoMethod if let Some(unwrap_span) = parent_unwrap_call => {
-                // Extend the span to include the unwrap/expect call:
-                // `foo.try_into().expect("..")`
-                //      ^^^^^^^^^^^^^^^^^^^^^^^
-                //
-                // `try_into().unwrap()` specifically can be trivially replaced with just `into()`,
-                // so that can be machine-applicable
 
-                (
-                    self_ty,
-                    other_ty,
-                    "into()",
-                    primary_span.with_hi(unwrap_span.hi()),
-                    Applicability::MachineApplicable,
-                )
+        let span = if let Some(unwrap_call) = parent_unwrap_call {
+            primary_span.with_hi(unwrap_call.hi())
+        } else {
+            primary_span
+        };
+
+        let qpath_spans = qpath.and_then(|qpath| match qpath {
+            QPath::Resolved(_, path) => {
+                let segments = path.segments.iter().map(|seg| seg.ident).collect::<Vec<_>>();
+                (segments.len() == 2).then(|| vec![segments[0].span, segments[1].span])
             },
-            FunctionKind::TryFromFunction => (
-                other_ty,
-                self_ty,
-                "From::from",
-                primary_span,
-                Applicability::Unspecified,
-            ),
-            FunctionKind::TryIntoFunction => (
-                self_ty,
-                other_ty,
-                "Into::into",
-                primary_span,
-                Applicability::Unspecified,
-            ),
-            FunctionKind::TryIntoMethod => (self_ty, other_ty, "into", primary_span, Applicability::Unspecified),
+            QPath::TypeRelative(_, seg) => Some(vec![seg.ident.span]),
+            QPath::LangItem(_, _) => unreachable!("`TryFrom` and `TryInto` are not lang items"),
+        });
+
+        let (source_ty, target_ty, sugg, applicability) = match (kind, &qpath_spans, parent_unwrap_call) {
+            (FunctionKind::TryIntoMethod, _, Some(unwrap_span)) => {
+                let sugg = vec![(primary_span, String::from("into")), (unwrap_span, String::new())];
+                (self_ty, other_ty, sugg, Applicability::MachineApplicable)
+            },
+            (FunctionKind::TryFromFunction, Some(spans), Some(unwrap_span)) => {
+                let sugg = match spans.len() {
+                    1 => vec![(spans[0], String::from("from")), (unwrap_span, String::new())],
+                    2 => vec![
+                        (spans[0], String::from("From")),
+                        (spans[1], String::from("from")),
+                        (unwrap_span, String::new()),
+                    ],
+                    _ => unreachable!(),
+                };
+                (other_ty, self_ty, sugg, Applicability::MachineApplicable)
+            },
+            (FunctionKind::TryIntoFunction, Some(spans), Some(unwrap_span)) => {
+                let sugg = match spans.len() {
+                    1 => vec![(spans[0], String::from("into")), (unwrap_span, String::new())],
+                    2 => vec![
+                        (spans[0], String::from("Into")),
+                        (spans[1], String::from("into")),
+                        (unwrap_span, String::new()),
+                    ],
+                    _ => unreachable!(),
+                };
+                (self_ty, other_ty, sugg, Applicability::MachineApplicable)
+            },
+            (FunctionKind::TryFromFunction, _, _) => {
+                let sugg = vec![(primary_span, String::from("From::from"))];
+                (other_ty, self_ty, sugg, Applicability::Unspecified)
+            },
+            (FunctionKind::TryIntoFunction, _, _) => {
+                let sugg = vec![(primary_span, String::from("Into::into"))];
+                (self_ty, other_ty, sugg, Applicability::Unspecified)
+            },
+            (FunctionKind::TryIntoMethod, _, _) => {
+                let sugg = vec![(primary_span, String::from("into"))];
+                (self_ty, other_ty, sugg, Applicability::Unspecified)
+            },
         };
 
         span_lint_and_then(
@@ -97,7 +130,7 @@ fn check<'tcx>(
                 with_forced_trimmed_paths!({
                     diag.note(format!("converting `{source_ty}` to `{target_ty}` cannot fail"));
                 });
-                diag.span_suggestion(span, "use", sugg, applicability);
+                diag.multipart_suggestion("use", sugg, applicability);
             },
         );
     }
@@ -113,6 +146,7 @@ pub(super) fn check_method(cx: &LateContext<'_>, expr: &Expr<'_>) {
             cx.typeck_results().node_args(expr.hir_id),
             FunctionKind::TryIntoMethod,
             path.ident.span,
+            None,
         );
     }
 }
@@ -135,6 +169,7 @@ pub(super) fn check_function(cx: &LateContext<'_>, expr: &Expr<'_>, callee: &Exp
                 _ => return,
             },
             callee.span,
+            Some(qpath),
         );
     }
 }
