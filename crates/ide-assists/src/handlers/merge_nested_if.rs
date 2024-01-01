@@ -8,22 +8,22 @@ use crate::{
     assist_context::{AssistContext, Assists},
     AssistId, AssistKind,
 };
-/// Assist: merge_nested_if
-///
-/// This transforms if expressions of the form `if x { if y {A} }` into `if x && y {A}`
-/// This assist can only be applied with the cursor on `if`.
-///
-/// ```
-/// fn main() {
-///    i$0f x == 3 { if y == 4 { 1 } }
-/// }
-/// ```
-/// ->
-/// ```
-/// fn main() {
-///   if x == 3 && y == 4 { 1 }
-/// }
-/// ```
+// Assist: merge_nested_if
+//
+// This transforms if expressions of the form `if x { if y {A} }` into `if x && y {A}`
+// This assist can only be applied with the cursor on `if`.
+//
+// ```
+// fn main() {
+//    i$0f x == 3 { if y == 4 { 1 } }
+// }
+// ```
+// ->
+// ```
+// fn main() {
+//    if x == 3 && y == 4 { 1 }
+// }
+// ```
 pub(crate) fn merge_nested_if(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let if_keyword = ctx.find_token_syntax_at_offset(T![if])?;
     let expr = ast::IfExpr::cast(if_keyword.parent()?)?;

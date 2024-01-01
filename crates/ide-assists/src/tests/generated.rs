@@ -2056,13 +2056,15 @@ fn doctest_merge_nested_if() {
     check_doc_test(
         "merge_nested_if",
         r#####"
-        fn main() {
-             i$0f x == 3 { if y == 4 { 1 } }
-        }"#####,
+fn main() {
+   i$0f x == 3 { if y == 4 { 1 } }
+}
+"#####,
         r#####"
-        fn main() {
-             if x == 3 && y == 4 { 1 }
-        }"#####,
+fn main() {
+   if x == 3 && y == 4 { 1 }
+}
+"#####,
     )
 }
 
