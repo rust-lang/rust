@@ -1746,7 +1746,7 @@ impl SourceFile {
 
     #[inline]
     pub fn relative_position(&self, pos: BytePos) -> RelativeBytePos {
-        RelativeBytePos::from_u32(pos.to_u32() - self.start_pos.to_u32())
+        RelativeBytePos::from_u32(pos.to_u32().wrapping_sub(self.start_pos.to_u32()))
     }
 
     #[inline]
@@ -1769,10 +1769,11 @@ impl SourceFile {
 
         let lines = self.lines();
         assert!(line_index < lines.len());
-        if line_index == (lines.len() - 1) {
+        if line_index == (lines.len().wrapping_sub(1)) {
             self.absolute_position(lines[line_index])..self.end_position()
         } else {
-            self.absolute_position(lines[line_index])..self.absolute_position(lines[line_index + 1])
+            self.absolute_position(lines[line_index])
+                ..self.absolute_position(lines[line_index.wrapping_add(1)])
         }
     }
 
@@ -2039,7 +2040,7 @@ macro_rules! impl_pos {
 
                 #[inline(always)]
                 fn add(self, rhs: $ident) -> $ident {
-                    $ident(self.0 + rhs.0)
+                    $ident(self.0.wrapping_add(rhs.0))
                 }
             }
 
@@ -2048,7 +2049,7 @@ macro_rules! impl_pos {
 
                 #[inline(always)]
                 fn sub(self, rhs: $ident) -> $ident {
-                    $ident(self.0 - rhs.0)
+                    $ident(self.0.wrapping_sub(rhs.0))
                 }
             }
         )*

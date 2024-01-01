@@ -40,7 +40,7 @@ impl CacheEntry {
         let pos = self.file.relative_position(pos);
         let line_index = self.file.lookup_line(pos).unwrap();
         let line_bounds = self.file.line_bounds(line_index);
-        self.line_number = line_index + 1;
+        self.line_number = line_index.wrapping_add(1);
         self.line = line_bounds;
         self.touch(time_stamp);
     }
@@ -81,7 +81,7 @@ impl<'sm> CachingSourceMapView<'sm> {
         &mut self,
         pos: BytePos,
     ) -> Option<(Lrc<SourceFile>, usize, RelativeBytePos)> {
-        self.time_stamp += 1;
+        self.time_stamp = self.time_stamp.wrapping_add(1);
 
         // Check if the position is in one of the cached lines
         let cache_idx = self.cache_entry_index(pos);
@@ -89,7 +89,7 @@ impl<'sm> CachingSourceMapView<'sm> {
             let cache_entry = &mut self.line_cache[cache_idx as usize];
             cache_entry.touch(self.time_stamp);
 
-            let col = RelativeBytePos(pos.to_u32() - cache_entry.line.start.to_u32());
+            let col = RelativeBytePos(pos.to_u32().wrapping_sub(cache_entry.line.start.to_u32()));
             return Some((cache_entry.file.clone(), cache_entry.line_number, col));
         }
 

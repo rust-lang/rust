@@ -166,7 +166,7 @@ impl Span {
                 debug_assert!(len <= MAX_LEN);
                 SpanData {
                     lo: BytePos(self.lo_or_index),
-                    hi: BytePos(self.lo_or_index + len),
+                    hi: BytePos(self.lo_or_index.wrapping_add(len)),
                     ctxt: SyntaxContext::from_u32(self.ctxt_or_parent_or_marker as u32),
                     parent: None,
                 }
@@ -179,7 +179,7 @@ impl Span {
                 };
                 SpanData {
                     lo: BytePos(self.lo_or_index),
-                    hi: BytePos(self.lo_or_index + len),
+                    hi: BytePos(self.lo_or_index.wrapping_add(len)),
                     ctxt: SyntaxContext::root(),
                     parent: Some(parent),
                 }
