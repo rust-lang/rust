@@ -115,7 +115,98 @@ fn quickfix_for_redundant_assoc_item(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::check_diagnostics;
+    use crate::tests::{check_diagnostics, check_fix, check_no_fix};
+
+    #[test]
+    fn quickfix_for_assoc_func() {
+        check_fix(
+            r#"
+trait Marker {
+    fn boo();
+}
+struct Foo;
+impl Marker for Foo {
+    fn$0 bar(_a: i32, _b: String) -> String {}
+    fn boo() {}
+}
+            "#,
+            r#"
+trait Marker {
+    fn bar(_a: i32, _b: String) -> String;
+    fn boo();
+}
+struct Foo;
+impl Marker for Foo {
+    fn bar(_a: i32, _b: String) -> String {}
+    fn boo() {}
+}
+            "#,
+        )
+    }
+
+    #[test]
+    fn quickfix_for_assoc_const() {
+        check_fix(
+            r#"
+trait Marker {
+    fn foo () {}
+}
+struct Foo;
+impl Marker for Foo {
+    const FLAG: bool$0 = false;
+}
+            "#,
+            r#"
+trait Marker {
+    const FLAG: bool;
+    fn foo () {}
+}
+struct Foo;
+impl Marker for Foo {
+    const FLAG: bool = false;
+}
+            "#,
+        )
+    }
+
+    #[test]
+    fn quickfix_for_assoc_type() {
+        check_fix(
+            r#"
+trait Marker {
+}
+struct Foo;
+impl Marker for Foo {
+    type T = i32;$0
+}
+            "#,
+            r#"
+trait Marker {
+    type T;
+}
+struct Foo;
+impl Marker for Foo {
+    type T = i32;
+}
+            "#,
+        )
+    }
+
+    #[test]
+    fn quickfix_dont_work() {
+        check_no_fix(
+            r#"
+            //- /dep.rs crate:dep
+            trait Marker {
+            }
+            //- /main.rs crate:main deps:dep
+            struct Foo;
+            impl dep::Marker for Foo {
+                type T = i32;$0
+            }
+            "#,
+        )
+    }
 
     #[test]
     fn trait_with_default_value() {
@@ -129,12 +220,12 @@ trait Marker {
 struct Foo;
 impl Marker for Foo {
     type T = i32;
-  //^^^^^^^^^^^^^ error: `type T` is not a member of trait `Marker`
+  //^^^^^^^^^^^^^ 💡 error: `type T` is not a member of trait `Marker`
 
     const FLAG: bool = true;
 
     fn bar() {}
-  //^^^^^^^^^^^ error: `fn bar` is not a member of trait `Marker`
+  //^^^^^^^^^^^ 💡 error: `fn bar` is not a member of trait `Marker`
 
     fn boo() {}
 }
