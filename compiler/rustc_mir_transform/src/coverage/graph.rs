@@ -1,4 +1,5 @@
 use rustc_data_structures::captures::Captures;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{self, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors, WithNumNodes, WithStartNode};
 use rustc_index::bit_set::BitSet;
@@ -30,24 +31,16 @@ impl CoverageGraph {
         // `SwitchInt` to have multiple targets to the same destination `BasicBlock`, so
         // de-duplication is required. This is done without reordering the successors.
 
-        let mut seen = IndexVec::from_elem(false, &bcbs);
         let successors = IndexVec::from_fn_n(
             |bcb| {
-                for b in seen.iter_mut() {
-                    *b = false;
-                }
-                let bcb_data = &bcbs[bcb];
-                let mut bcb_successors = Vec::new();
-                for successor in bcb_filtered_successors(mir_body[bcb_data.last_bb()].terminator())
+                let mut seen_bcbs = FxHashSet::default();
+                let terminator = mir_body[bcbs[bcb].last_bb()].terminator();
+                bcb_filtered_successors(terminator)
                     .into_iter()
                     .filter_map(|successor_bb| bb_to_bcb[successor_bb])
-                {
-                    if !seen[successor] {
-                        seen[successor] = true;
-                        bcb_successors.push(successor);
-                    }
-                }
-                bcb_successors
+                    // Remove duplicate successor BCBs, keeping only the first.
+                    .filter(|&successor_bcb| seen_bcbs.insert(successor_bcb))
+                    .collect::<Vec<_>>()
             },
             bcbs.len(),
         );
