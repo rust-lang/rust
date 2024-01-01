@@ -5,6 +5,7 @@
 
 extern crate rustc_macros;
 extern crate rustc_serialize;
+extern crate rustc_span;
 
 // Necessary to pull in object code as the rest of the rustc crates are shipped only as rmeta
 // files.
