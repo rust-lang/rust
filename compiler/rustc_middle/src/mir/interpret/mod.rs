@@ -285,7 +285,7 @@ impl AllocDecodingState {
         let counter = DECODER_SESSION_ID.fetch_add(1, Ordering::SeqCst);
 
         // Make sure this is never zero.
-        let session_id = DecodingSessionId::new((counter & 0x7FFFFFFF) + 1).unwrap();
+        let session_id = DecodingSessionId::new((counter & 0x7FFFFFFF).wrapping_add(1)).unwrap();
 
         AllocDecodingSession { state: self, session_id }
     }

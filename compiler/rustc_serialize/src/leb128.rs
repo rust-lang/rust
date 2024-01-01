@@ -24,7 +24,7 @@ macro_rules! impl_write_unsigned_leb128 {
                         *out.get_unchecked_mut(i) = value as u8;
                     }
 
-                    i += 1;
+                    i = i.wrapping_add(1);
                     break;
                 } else {
                     unsafe {
@@ -32,7 +32,7 @@ macro_rules! impl_write_unsigned_leb128 {
                     }
 
                     value >>= 7;
-                    i += 1;
+                    i = i.wrapping_add(1);
                 }
             }
 
@@ -60,7 +60,7 @@ macro_rules! impl_read_unsigned_leb128 {
                 return byte as $int_ty;
             }
             let mut result = (byte & 0x7F) as $int_ty;
-            let mut shift = 7;
+            let mut shift = 7_usize;
             loop {
                 let byte = decoder.read_u8();
                 if (byte & 0x80) == 0 {
@@ -69,7 +69,7 @@ macro_rules! impl_read_unsigned_leb128 {
                 } else {
                     result |= ((byte & 0x7F) as $int_ty) << shift;
                 }
-                shift += 7;
+                shift = shift.wrapping_add(7);
             }
         }
     };

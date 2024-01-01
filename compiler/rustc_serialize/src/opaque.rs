@@ -65,7 +65,7 @@ impl FileEncoder {
         // Tracking position this way instead of having a `self.position` field
         // means that we only need to update `self.buffered` on a write call,
         // as opposed to updating `self.position` and `self.buffered`.
-        self.flushed + self.buffered
+        self.flushed.wrapping_add(self.buffered)
     }
 
     #[cold]
@@ -119,7 +119,7 @@ impl FileEncoder {
         }
         if let Some(dest) = self.buffer_empty().get_mut(..buf.len()) {
             dest.copy_from_slice(buf);
-            self.buffered += buf.len();
+            self.buffered = self.buffered.wrapping_add(buf.len());
         } else {
             self.write_all_cold_path(buf);
         }
@@ -158,7 +158,7 @@ impl FileEncoder {
         if written > N {
             Self::panic_invalid_write::<N>(written);
         }
-        self.buffered += written;
+        self.buffered = self.buffered.wrapping_add(written);
     }
 
     #[cold]

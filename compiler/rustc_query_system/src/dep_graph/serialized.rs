@@ -101,14 +101,14 @@ impl SerializedDepGraph {
         // edge list, or the end of the array if this is the last edge.
         let end = self
             .edge_list_indices
-            .get(source + 1)
+            .get(SerializedDepNodeIndex::from_usize(source.index().wrapping_add(1)))
             .map(|h| h.start())
-            .unwrap_or_else(|| self.edge_list_data.len() - DEP_NODE_PAD);
+            .unwrap_or_else(|| self.edge_list_data.len().wrapping_sub(DEP_NODE_PAD));
 
         // The number of edges for this node is implicitly stored in the combination of the byte
         // width and the length.
         let bytes_per_index = header.bytes_per_index();
-        let len = (end - header.start()) / bytes_per_index;
+        let len = (end.wrapping_sub(header.start())) / bytes_per_index;
 
         // LLVM doesn't hoist EdgeHeader::mask so we do it ourselves.
         let mask = header.mask();
