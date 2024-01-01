@@ -1,6 +1,7 @@
 //! Definitions of integer that is known not to equal zero.
 
 use crate::fmt;
+use crate::hint;
 use crate::ops::{BitOr, BitOrAssign, Div, Neg, Rem};
 use crate::str::FromStr;
 
@@ -104,6 +105,14 @@ macro_rules! nonzero_integers {
                 #[inline]
                 #[rustc_const_stable(feature = "const_nonzero_get", since = "1.34.0")]
                 pub const fn get(self) -> $Int {
+                    // SAFETY: nonzero types do not contain zero values.
+                    unsafe {
+                        // We can’t use `intrinsics::assume(self.0 != 0)` here because it is not const-stable.
+                        if self.0 == 0 {
+                            hint::unreachable_unchecked();
+                        }
+                    }
+
                     self.0
                 }
 
@@ -114,7 +123,8 @@ macro_rules! nonzero_integers {
                 #[doc = concat!("Converts a `", stringify!($Ty), "` into an `", stringify!($Int), "`")]
                 #[inline]
                 fn from(nonzero: $Ty) -> Self {
-                    nonzero.0
+                    // Utilize the non-zero assertion from the `get` function.
+                    nonzero.get()
                 }
             }
 
