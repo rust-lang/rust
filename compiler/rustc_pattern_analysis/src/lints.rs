@@ -52,9 +52,13 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
     }
 
     /// Do constructor splitting on the constructors of the column.
-    fn analyze_ctors(&self, pcx: &PlaceCtxt<'_, 'p, 'tcx>) -> SplitConstructorSet<'p, 'tcx> {
+    fn analyze_ctors(
+        &self,
+        pcx: &PlaceCtxt<'_, 'p, 'tcx>,
+    ) -> Result<SplitConstructorSet<'p, 'tcx>, ErrorGuaranteed> {
         let column_ctors = self.patterns.iter().map(|p| p.ctor());
-        pcx.ctors_for_ty().split(pcx, column_ctors)
+        let ctors_for_ty = &pcx.ctors_for_ty()?;
+        Ok(ctors_for_ty.split(pcx, column_ctors))
     }
 
     fn iter(&self) -> impl Iterator<Item = &'p DeconstructedPat<'p, 'tcx>> + Captures<'_> {
@@ -116,7 +120,7 @@ fn collect_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
     };
     let pcx = &PlaceCtxt::new_dummy(cx, ty);
 
-    let set = column.analyze_ctors(pcx);
+    let set = column.analyze_ctors(pcx)?;
     if set.present.is_empty() {
         // We can't consistently handle the case where no constructors are present (since this would
         // require digging deep through any type in case there's a non_exhaustive enum somewhere),
@@ -219,7 +223,7 @@ pub(crate) fn lint_overlapping_range_endpoints<'a, 'p, 'tcx>(
     let pcx = &PlaceCtxt::new_dummy(cx, ty);
     let rcx: &RustcMatchCheckCtxt<'_, '_> = cx.tycx;
 
-    let set = column.analyze_ctors(pcx);
+    let set = column.analyze_ctors(pcx)?;
 
     if matches!(ty.kind(), ty::Char | ty::Int(_) | ty::Uint(_)) {
         let emit_lint = |overlap: &IntRange, this_span: Span, overlapped_spans: &[Span]| {

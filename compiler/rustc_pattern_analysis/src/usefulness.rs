@@ -753,7 +753,7 @@ impl<'a, 'p, Cx: TypeCx> PlaceCtxt<'a, 'p, Cx> {
     pub(crate) fn ctor_sub_tys(&self, ctor: &Constructor<Cx>) -> &[Cx::Ty] {
         self.mcx.tycx.ctor_sub_tys(ctor, self.ty)
     }
-    pub(crate) fn ctors_for_ty(&self) -> ConstructorSet<Cx> {
+    pub(crate) fn ctors_for_ty(&self) -> Result<ConstructorSet<Cx>, Cx::Error> {
         self.mcx.tycx.ctors_for_ty(self.ty)
     }
 }
@@ -1383,7 +1383,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
 
     // Analyze the constructors present in this column.
     let ctors = matrix.heads().map(|p| p.ctor());
-    let ctors_for_ty = pcx.ctors_for_ty();
+    let ctors_for_ty = pcx.ctors_for_ty()?;
     let is_integers = matches!(ctors_for_ty, ConstructorSet::Integers { .. }); // For diagnostics.
     let split_set = ctors_for_ty.split(pcx, ctors);
     let all_missing = split_set.present.is_empty();

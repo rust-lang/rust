@@ -77,7 +77,7 @@ pub trait TypeCx: Sized + fmt::Debug {
     /// The set of all the constructors for `ty`.
     ///
     /// This must follow the invariants of `ConstructorSet`
-    fn ctors_for_ty(&self, ty: Self::Ty) -> ConstructorSet<Self>;
+    fn ctors_for_ty(&self, ty: Self::Ty) -> Result<ConstructorSet<Self>, Self::Error>;
 
     /// Best-effort `Debug` implementation.
     fn debug_pat(f: &mut fmt::Formatter<'_>, pat: &DeconstructedPat<'_, Self>) -> fmt::Result;

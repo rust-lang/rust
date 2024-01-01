@@ -12,6 +12,7 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::{self, Const};
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
+use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt, VariantDef};
 use rustc_span::ErrorGuaranteed;
 use rustc_span::{Span, DUMMY_SP};
@@ -303,7 +304,10 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
     ///
     /// See [`crate::constructor`] for considerations of emptiness.
     #[instrument(level = "debug", skip(self), ret)]
-    pub fn ctors_for_ty(&self, ty: RevealedTy<'tcx>) -> ConstructorSet<'p, 'tcx> {
+    pub fn ctors_for_ty(
+        &self,
+        ty: RevealedTy<'tcx>,
+    ) -> Result<ConstructorSet<'p, 'tcx>, ErrorGuaranteed> {
         let cx = self;
         let make_uint_range = |start, end| {
             IntRange::from_range(
@@ -312,9 +316,11 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                 RangeEnd::Included,
             )
         };
+        // Abort on type error.
+        ty.error_reported()?;
         // This determines the set of all possible constructors for the type `ty`. For numbers,
         // arrays and slices we use ranges and variable-length slices when appropriate.
-        match ty.kind() {
+        Ok(match ty.kind() {
             ty::Bool => ConstructorSet::Bool,
             ty::Char => {
                 // The valid Unicode Scalar Value ranges.
@@ -424,7 +430,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
             ty::CoroutineWitness(_, _) | ty::Bound(_, _) | ty::Placeholder(_) | ty::Infer(_) => {
                 bug!("Encountered unexpected type in `ConstructorSet::for_ty`: {ty:?}")
             }
-        }
+        })
     }
 
     pub(crate) fn lower_pat_range_bdy(
@@ -965,7 +971,10 @@ impl<'p, 'tcx> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
     ) -> &[Self::Ty] {
         self.ctor_sub_tys(ctor, ty)
     }
-    fn ctors_for_ty(&self, ty: Self::Ty) -> crate::constructor::ConstructorSet<Self> {
+    fn ctors_for_ty(
+        &self,
+        ty: Self::Ty,
+    ) -> Result<crate::constructor::ConstructorSet<Self>, Self::Error> {
         self.ctors_for_ty(ty)
     }
 
