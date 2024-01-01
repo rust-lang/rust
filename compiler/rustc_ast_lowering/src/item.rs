@@ -1254,11 +1254,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         coroutine_kind: Option<CoroutineKind>,
     ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header);
+        // Don't pass along the user-provided constness of trait associated functions; we don't want to
+        // synthesize a host effect param for them. We reject `const` on them during AST validation.
+        let constness = if kind == FnDeclKind::Inherent { sig.header.constness } else { Const::No };
         let itctx = ImplTraitContext::Universal;
-        let (generics, decl) =
-            self.lower_generics(generics, sig.header.constness, id, &itctx, |this| {
-                this.lower_fn_decl(&sig.decl, id, sig.span, kind, coroutine_kind)
-            });
+        let (generics, decl) = self.lower_generics(generics, constness, id, &itctx, |this| {
+            this.lower_fn_decl(&sig.decl, id, sig.span, kind, coroutine_kind)
+        });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
     }
 
