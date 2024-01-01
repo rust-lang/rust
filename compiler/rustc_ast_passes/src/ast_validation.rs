@@ -293,7 +293,7 @@ impl<'a> AstValidator<'a> {
 
     fn check_trait_fn_not_const(&self, constness: Const) {
         if let Const::Yes(span) = constness {
-            self.dcx().emit_err(errors::TraitFnConst { span });
+            self.dcx().emit_err(errors::TraitFnConst { span, in_impl: self.in_trait_impl });
         }
     }
 

@@ -233,8 +233,14 @@ ast_passes_tilde_const_disallowed = `~const` is not allowed here
     .item = this item cannot have `~const` trait bounds
 
 ast_passes_trait_fn_const =
-    functions in traits cannot be declared const
-    .label = functions in traits cannot be const
+    functions in {$in_impl ->
+        [true] trait impls
+        *[false] traits
+    } cannot be declared const
+    .label = functions in {$in_impl ->
+        [true] trait impls
+        *[false] traits
+    } cannot be const
 
 ast_passes_trait_object_single_bound = only a single explicit lifetime bound is permitted
 

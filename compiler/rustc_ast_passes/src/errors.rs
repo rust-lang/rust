@@ -49,6 +49,7 @@ pub struct TraitFnConst {
     #[primary_span]
     #[label]
     pub span: Span,
+    pub in_impl: bool,
 }
 
 #[derive(Diagnostic)]
