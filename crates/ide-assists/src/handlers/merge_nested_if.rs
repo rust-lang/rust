@@ -47,6 +47,10 @@ pub(crate) fn merge_nested_if(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
 
     //check if the then branch is a nested if
     let then_branch = expr.then_branch()?;
+    let stmt = then_branch.stmt_list()?;
+    if stmt.statements().count() != 0 {
+        return None;
+    }
 
     let nested_if_to_merge = then_branch.syntax().descendants().find_map(ast::IfExpr::cast)?;
     // should not apply to nested if with else branch.
@@ -221,7 +225,7 @@ mod tests {
         )
     }
     #[test]
-    fn merge_nested_if_do_not_apply_with_not_only_has_nested_if(){
+    fn merge_nested_if_do_not_apply_with_not_only_has_nested_if() {
         check_assist_not_applicable(
             merge_nested_if,
             "fn f() { i$0f x == 0 { if y == 3 { foo(); } foo(); } }",
