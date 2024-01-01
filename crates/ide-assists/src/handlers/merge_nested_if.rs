@@ -39,11 +39,12 @@ pub(crate) fn merge_nested_if(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
     }
 
     let cond = expr.condition()?;
-    let cond_range = cond.syntax().text_range();
     //should not apply for if-let
     if is_pattern_cond(cond.clone()) {
         return None;
     }
+
+    let cond_range = cond.syntax().text_range();
 
     //check if the then branch is a nested if
     let then_branch = expr.then_branch()?;
