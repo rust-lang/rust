@@ -1,5 +1,9 @@
 //! A standalone binary for `proc-macro-srv`.
 //! Driver for proc macro server
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_driver as _;
+
 use std::io;
 
 fn main() -> std::io::Result<()> {
