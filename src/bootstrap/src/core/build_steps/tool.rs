@@ -675,7 +675,7 @@ impl Step for RustAnalyzerProcMacroSrv {
             tool: "rust-analyzer-proc-macro-srv",
             mode: Mode::ToolRustc,
             path: "src/tools/rust-analyzer/crates/proc-macro-srv-cli",
-            extra_features: vec!["sysroot-abi".to_owned(), "in-rust-tree".to_owned()],
+            extra_features: vec!["in-rust-tree".to_owned()],
             source_type: SourceType::InTree,
             allow_features: RustAnalyzer::ALLOW_FEATURES,
         });
