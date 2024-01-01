@@ -3,7 +3,7 @@ use crate::{
     CodeSuggestion, DiagnosticBuilder, DiagnosticMessage, EmissionGuarantee, Level, MultiSpan,
     SubdiagnosticMessage, Substitution, SubstitutionPart, SuggestionStyle,
 };
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_error_messages::fluent_value_from_str_list_sep_by_and;
 use rustc_error_messages::FluentValue;
 use rustc_lint_defs::{Applicability, LintExpectationId};
@@ -259,7 +259,7 @@ impl Diagnostic {
 
     pub(crate) fn update_unstable_expectation_id(
         &mut self,
-        unstable_to_stable: &FxIndexMap<LintExpectationId, LintExpectationId>,
+        unstable_to_stable: &FxHashMap<LintExpectationId, LintExpectationId>,
     ) {
         if let Level::Expect(expectation_id) | Level::Warning(Some(expectation_id)) =
             &mut self.level

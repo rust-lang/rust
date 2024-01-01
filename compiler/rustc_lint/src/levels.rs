@@ -15,7 +15,7 @@ use crate::{
 };
 use rustc_ast as ast;
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{DecorateLint, DiagnosticBuilder, DiagnosticMessage, MultiSpan};
 use rustc_feature::{Features, GateIssue};
 use rustc_hir as hir;
@@ -73,7 +73,7 @@ rustc_index::newtype_index! {
 struct LintSet {
     // -A,-W,-D flags, a `Symbol` for the flag itself and `Level` for which
     // flag.
-    specs: FxIndexMap<LintId, LevelAndSource>,
+    specs: FxHashMap<LintId, LevelAndSource>,
     parent: LintStackIndex,
 }
 
@@ -86,7 +86,7 @@ impl LintLevelSets {
         &self,
         lint: &'static Lint,
         idx: LintStackIndex,
-        aux: Option<&FxIndexMap<LintId, LevelAndSource>>,
+        aux: Option<&FxHashMap<LintId, LevelAndSource>>,
         sess: &Session,
     ) -> LevelAndSource {
         let lint = LintId::of(lint);
@@ -101,7 +101,7 @@ impl LintLevelSets {
         &self,
         id: LintId,
         mut idx: LintStackIndex,
-        aux: Option<&FxIndexMap<LintId, LevelAndSource>>,
+        aux: Option<&FxHashMap<LintId, LevelAndSource>>,
     ) -> (Option<Level>, LintLevelSource) {
         if let Some(specs) = aux {
             if let Some(&(level, src)) = specs.get(&id) {
@@ -132,8 +132,8 @@ fn lint_expectations(tcx: TyCtxt<'_>, (): ()) -> Vec<(LintExpectationId, LintExp
             cur: hir::CRATE_HIR_ID,
             specs: ShallowLintLevelMap::default(),
             expectations: Vec::new(),
-            unstable_to_stable_ids: FxIndexMap::default(),
-            empty: FxIndexMap::default(),
+            unstable_to_stable_ids: FxHashMap::default(),
+            empty: FxHashMap::default(),
         },
         lint_added_lints: false,
         store,
@@ -161,7 +161,7 @@ fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLe
             tcx,
             cur: owner.into(),
             specs: ShallowLintLevelMap::default(),
-            empty: FxIndexMap::default(),
+            empty: FxHashMap::default(),
             attrs,
         },
         lint_added_lints: false,
@@ -209,14 +209,14 @@ pub struct TopDown {
 }
 
 pub trait LintLevelsProvider {
-    fn current_specs(&self) -> &FxIndexMap<LintId, LevelAndSource>;
+    fn current_specs(&self) -> &FxHashMap<LintId, LevelAndSource>;
     fn insert(&mut self, id: LintId, lvl: LevelAndSource);
     fn get_lint_level(&self, lint: &'static Lint, sess: &Session) -> LevelAndSource;
     fn push_expectation(&mut self, _id: LintExpectationId, _expectation: LintExpectation) {}
 }
 
 impl LintLevelsProvider for TopDown {
-    fn current_specs(&self) -> &FxIndexMap<LintId, LevelAndSource> {
+    fn current_specs(&self) -> &FxHashMap<LintId, LevelAndSource> {
         &self.sets.list[self.cur].specs
     }
 
@@ -234,12 +234,12 @@ struct LintLevelQueryMap<'tcx> {
     cur: HirId,
     specs: ShallowLintLevelMap,
     /// Empty hash map to simplify code.
-    empty: FxIndexMap<LintId, LevelAndSource>,
+    empty: FxHashMap<LintId, LevelAndSource>,
     attrs: &'tcx hir::AttributeMap<'tcx>,
 }
 
 impl LintLevelsProvider for LintLevelQueryMap<'_> {
-    fn current_specs(&self) -> &FxIndexMap<LintId, LevelAndSource> {
+    fn current_specs(&self) -> &FxHashMap<LintId, LevelAndSource> {
         self.specs.specs.get(&self.cur.local_id).unwrap_or(&self.empty)
     }
     fn insert(&mut self, id: LintId, lvl: LevelAndSource) {
@@ -257,13 +257,13 @@ struct QueryMapExpectationsWrapper<'tcx> {
     /// Level map for `cur`.
     specs: ShallowLintLevelMap,
     expectations: Vec<(LintExpectationId, LintExpectation)>,
-    unstable_to_stable_ids: FxIndexMap<LintExpectationId, LintExpectationId>,
+    unstable_to_stable_ids: FxHashMap<LintExpectationId, LintExpectationId>,
     /// Empty hash map to simplify code.
-    empty: FxIndexMap<LintId, LevelAndSource>,
+    empty: FxHashMap<LintId, LevelAndSource>,
 }
 
 impl LintLevelsProvider for QueryMapExpectationsWrapper<'_> {
-    fn current_specs(&self) -> &FxIndexMap<LintId, LevelAndSource> {
+    fn current_specs(&self) -> &FxHashMap<LintId, LevelAndSource> {
         self.specs.specs.get(&self.cur.local_id).unwrap_or(&self.empty)
     }
     fn insert(&mut self, id: LintId, lvl: LevelAndSource) {
@@ -486,7 +486,7 @@ impl<'s> LintLevelsBuilder<'s, TopDown> {
             .provider
             .sets
             .list
-            .push(LintSet { specs: FxIndexMap::default(), parent: COMMAND_LINE });
+            .push(LintSet { specs: FxHashMap::default(), parent: COMMAND_LINE });
         self.add_command_line();
     }
 
@@ -512,7 +512,7 @@ impl<'s> LintLevelsBuilder<'s, TopDown> {
     ) -> BuilderPush {
         let prev = self.provider.cur;
         self.provider.cur =
-            self.provider.sets.list.push(LintSet { specs: FxIndexMap::default(), parent: prev });
+            self.provider.sets.list.push(LintSet { specs: FxHashMap::default(), parent: prev });
 
         self.add(attrs, is_crate_node, source_hir_id);
 
@@ -547,7 +547,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         self.features
     }
 
-    fn current_specs(&self) -> &FxIndexMap<LintId, LevelAndSource> {
+    fn current_specs(&self) -> &FxHashMap<LintId, LevelAndSource> {
         self.provider.current_specs()
     }
 
@@ -1030,6 +1030,12 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         }
 
         if self.lint_added_lints && !is_crate_node {
+            // We break on the first lint, and it does not matter which one.
+            // Strictly speaking the lint we use shall be deterministic, but
+            // this code path is very edge-casey, and introducing determinism
+            // regresses performance. See
+            // https://github.com/rust-lang/rust/pull/119251#issuecomment-1873035640.
+            #[allow(rustc::potential_query_instability)]
             for (id, &(level, ref src)) in self.current_specs().iter() {
                 if !id.lint.crate_level_only {
                     continue;
