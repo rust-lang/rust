@@ -3,4 +3,16 @@
 fn main() {
     let _: i64 = 0i32.into();
     let _: i64 = 0i32.into();
+
+    let _ = i64::from(0i32);
+    let _ = i64::from(0i32);
+
+    let _: i64 = i32::into(0);
+    let _: i64 = i32::into(0i32);
+
+    let _ = <i64 as From<i32>>::from(0);
+    let _ = <i64 as From<i32>>::from(0);
+
+    let _: i64 = <i32 as Into<_>>::into(0);
+    let _: i64 = <i32 as Into<_>>::into(0);
 }
