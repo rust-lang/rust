@@ -81,35 +81,31 @@ LL +     let _: i64 = i32::into(0i32);
 error: use of a fallible conversion when an infallible one could be used
   --> $DIR/unnecessary_fallible_conversions.rs:13:13
    |
-LL |       let _ = <i64 as TryFrom<i32>>::try_from(0)
-   |  _____________^
-LL | |         .unwrap();
-   | |_________________^
+LL |     let _ = <i64 as TryFrom<i32>>::try_from(0).unwrap();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: converting `i32` to `i64` cannot fail
 help: use
    |
-LL -     let _ = <i64 as TryFrom<i32>>::try_from(0)
+LL -     let _ = <i64 as TryFrom<i32>>::try_from(0).unwrap();
 LL +     let _ = <i64 as From<i32>>::from(0);
    |
 
 error: use of a fallible conversion when an infallible one could be used
-  --> $DIR/unnecessary_fallible_conversions.rs:15:13
+  --> $DIR/unnecessary_fallible_conversions.rs:14:13
    |
-LL |       let _ = <i64 as TryFrom<i32>>::try_from(0).
-   |  _____________^
-LL | |         expect("can't happen");
-   | |______________________________^
+LL |     let _ = <i64 as TryFrom<i32>>::try_from(0).expect("can't happen");
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: converting `i32` to `i64` cannot fail
 help: use
    |
-LL -     let _ = <i64 as TryFrom<i32>>::try_from(0).
+LL -     let _ = <i64 as TryFrom<i32>>::try_from(0).expect("can't happen");
 LL +     let _ = <i64 as From<i32>>::from(0);
    |
 
 error: use of a fallible conversion when an infallible one could be used
-  --> $DIR/unnecessary_fallible_conversions.rs:18:18
+  --> $DIR/unnecessary_fallible_conversions.rs:16:18
    |
 LL |     let _: i64 = <i32 as TryInto<_>>::try_into(0).unwrap();
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -122,7 +118,7 @@ LL +     let _: i64 = <i32 as Into<_>>::into(0);
    |
 
 error: use of a fallible conversion when an infallible one could be used
-  --> $DIR/unnecessary_fallible_conversions.rs:19:18
+  --> $DIR/unnecessary_fallible_conversions.rs:17:18
    |
 LL |     let _: i64 = <i32 as TryInto<_>>::try_into(0).expect("can't happen");
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

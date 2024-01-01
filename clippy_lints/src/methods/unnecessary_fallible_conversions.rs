@@ -63,6 +63,7 @@ fn check<'tcx>(
             }
         });
 
+        // If there is an unwrap/expect call, extend the span to include the call
         let span = if let Some(unwrap_call) = parent_unwrap_call {
             primary_span.with_hi(unwrap_call.hi())
         } else {
