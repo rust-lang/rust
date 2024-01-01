@@ -53,7 +53,7 @@ pub(crate) fn complete_cfg(acc: &mut Completions, ctx: &CompletionContext<'_>) {
     }
 }
 
-const KNOWN_ARCH: [&str; 20] = [
+const KNOWN_ARCH: [&str; 21] = [
     "aarch64",
     "arm",
     "avr",
