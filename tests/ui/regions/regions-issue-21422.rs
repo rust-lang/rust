@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // Regression test for issue #21422, which was related to failing to
 // add inference constraints that the operands of a binary operator
 // should outlive the binary operation itself.

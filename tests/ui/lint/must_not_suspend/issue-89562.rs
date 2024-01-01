@@ -1,9 +1,9 @@
 // edition:2018
-// run-pass
+// build-pass
 
 use std::sync::Mutex;
 
-// Copied from the issue. Allow-by-default for now, so run-pass
+// Copied from the issue. Allow-by-default for now, so build-pass
 pub async fn foo() {
     let foo = Mutex::new(1);
     let lock = foo.lock().unwrap();

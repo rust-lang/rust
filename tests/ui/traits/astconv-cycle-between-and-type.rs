@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // Test that we are able to successfully compile a setup where a trait
 // (`Trait1`) references a struct (`SomeType<u32>`) which in turn
 // carries a predicate that references the trait (`u32 : Trait1`,
@@ -6,7 +6,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![allow(dead_code)]
+
 
 trait Trait1 : Trait2<SomeType<u32>> {
     fn dumb(&self) { }

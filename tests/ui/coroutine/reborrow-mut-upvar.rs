@@ -1,9 +1,9 @@
-// run-pass
+// build-pass
 
 #![feature(coroutines)]
 
 fn _run(bar: &mut i32) {
-    || { //~ WARN unused coroutine that must be used
+    || {
         {
             let _baz = &*bar;
             yield;

@@ -1,5 +1,5 @@
-// run-pass
-#![allow(unused_variables)]
+// build-pass
+
 // Test that we normalize associated types that appear in bounds; if
 // we didn't, the call to `self.split2()` fails to type check.
 

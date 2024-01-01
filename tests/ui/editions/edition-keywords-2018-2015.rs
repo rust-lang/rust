@@ -1,6 +1,6 @@
-// run-pass
+// build-pass
 
-#![allow(unused_assignments)]
+
 // edition:2018
 // aux-build:edition-kw-macro-2015.rs
 

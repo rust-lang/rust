@@ -1,5 +1,5 @@
-// run-pass
-#![allow(dead_code)]
+// build-pass
+
 // Test that we are able to introduce a negative constraint that
 // `MyType: !MyTrait` along with other "fundamental" wrappers.
 

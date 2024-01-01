@@ -1,8 +1,8 @@
-// run-pass
+// build-pass
 // regression test for issue #50825
 // Check that the feature gate normalizes associated types.
 
-#![allow(dead_code)]
+
 struct Foo<T>(T);
 struct Duck;
 struct Quack;

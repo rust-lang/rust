@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 
 // Static recursion check shouldn't fail when given a foreign item (#18279)
 

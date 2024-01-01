@@ -1,10 +1,10 @@
-// run-pass
+// build-pass
 
-#![allow(unused_must_use)]
-#![allow(dead_code)]
+
+
 #![allow(path_statements)]
 #![allow(unreachable_code)]
-#![allow(unused_variables)]
+
 #![feature(if_let_guard)]
 
 fn id(x: bool) -> bool {

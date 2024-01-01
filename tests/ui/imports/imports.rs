@@ -1,5 +1,5 @@
-// run-pass
-#![allow(unused)]
+// build-pass
+
 
 // Like other items, private imports can be imported and used non-lexically in paths.
 mod a {

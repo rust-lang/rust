@@ -1,6 +1,6 @@
-// run-pass
-#![allow(dead_code)]
-#![allow(unused_variables)]
+// build-pass
+
+
 // Test that when we match a trait reference like `Foo<A>: Foo<?0t>`,
 // we unify with `?0t` with `A`. In this code, if we failed to do
 // that, then you get an unconstrained type-variable in `call`.

@@ -1,5 +1,5 @@
-// run-pass
-#![allow(dead_code)]
+// build-pass
+
 // aux-build:coherence_lib.rs
 
 // pretty-expanded FIXME #23616

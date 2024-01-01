@@ -1,5 +1,5 @@
-// run-pass
-#![allow(dead_code)]
+// build-pass
+
 #[derive(Hash)]
 enum Foo {
     Bar(isize, char),

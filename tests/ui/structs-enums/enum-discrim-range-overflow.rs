@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 #![allow(overflowing_literals)]
 
 // pretty-expanded FIXME #23616

@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 #![feature(decl_macro)]
 
 pub fn moo() {

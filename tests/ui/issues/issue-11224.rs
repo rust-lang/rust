@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // aux-build:issue-11224.rs
 
 // pretty-expanded FIXME #23616

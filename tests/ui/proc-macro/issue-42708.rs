@@ -1,8 +1,8 @@
-// run-pass
+// build-pass
 // aux-build:issue-42708.rs
 
 #![feature(decl_macro)]
-#![allow(unused)]
+
 
 extern crate issue_42708;
 

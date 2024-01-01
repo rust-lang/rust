@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 
 #![allow(stable_features)]
 // compile-flags:-C target-feature=-crt-static -Z unstable-options

@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // aux-build:issue-38190.rs
 
 #[macro_use]

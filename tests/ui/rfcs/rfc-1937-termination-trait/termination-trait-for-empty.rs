@@ -1,2 +1,2 @@
-// run-pass
+// build-pass
 fn main() {}

@@ -1,7 +1,7 @@
-// run-pass
+// build-pass
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
-#![allow(dead_code)]
+
 
 trait Table<const D: usize>: Sync {
     const COLUMNS: usize;

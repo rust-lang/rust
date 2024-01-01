@@ -1,6 +1,6 @@
-// run-pass
-#![allow(dead_code)]
-#![allow(unused_variables)]
+// build-pass
+
+
 // Test that we handle binder levels in object types correctly.
 // Initially, the reference to `'tcx` in the object type
 // `&Typer<'tcx>` was getting an incorrect binder level, yielding

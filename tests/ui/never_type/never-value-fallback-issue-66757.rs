@@ -5,7 +5,7 @@
 // doesn't fallback to `()` but rather `!`.
 //
 // revisions: nofallback fallback
-//[fallback] run-pass
+//[fallback] build-pass
 //[nofallback] check-fail
 
 #![feature(never_type)]

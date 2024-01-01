@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // aux-build:re_rebalance_coherence_lib.rs
 
 extern crate re_rebalance_coherence_lib as lib;

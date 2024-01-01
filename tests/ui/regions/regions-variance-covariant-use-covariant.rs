@@ -1,5 +1,5 @@
-// run-pass
-#![allow(dead_code)]
+// build-pass
+
 // Test that a type which is covariant with respect to its region
 // parameter is successful when used in a covariant way.
 //

@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 
 #[inline(always)]
 fn main() {}

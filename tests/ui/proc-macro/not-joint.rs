@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // aux-build:not-joint.rs
 
 extern crate not_joint as bar;

@@ -1,6 +1,6 @@
-// run-pass
+// build-pass
 
-#![allow(dead_code)]
+
 // aux-build:derive-nothing.rs
 
 #[macro_use]

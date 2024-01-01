@@ -1,7 +1,7 @@
-// run-pass
+// build-pass
 
 #![allow(non_upper_case_globals)]
-#![allow(dead_code)]
+
 // Test that a glob-export functions as an import
 // when referenced within its own local scope.
 

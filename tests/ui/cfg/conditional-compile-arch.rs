@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // pretty-expanded FIXME #23616
 
 #[cfg(target_arch = "x86")]

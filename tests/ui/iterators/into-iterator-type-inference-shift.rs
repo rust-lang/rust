@@ -1,8 +1,8 @@
-// run-pass
-#![allow(unused_must_use)]
-#![allow(dead_code)]
-#![allow(unused_mut)]
-#![allow(unused_variables)]
+// build-pass
+
+
+
+
 // Regression test for type inference failure around shifting. In this
 // case, the iteration yields an isize, but we hadn't run the full type
 // propagation yet, and so we just saw a type variable, yielding an

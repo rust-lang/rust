@@ -1,9 +1,9 @@
-// run-pass
+// build-pass
 
 // Check that tautalogically false bounds are accepted, and are used
 // in type inference.
 #![feature(trivial_bounds)]
-#![allow(unused)]
+
 
 pub trait Foo {
     fn test(&self);

@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 
 #![deny(unknown_lints)]
 

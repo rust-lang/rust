@@ -1,6 +1,6 @@
-// run-pass
+// build-pass
 
-#![allow(unused)]
+
 
 struct S;
 

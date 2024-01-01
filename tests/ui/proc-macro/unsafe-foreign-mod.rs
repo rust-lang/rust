@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // aux-build:macro-only-syntax.rs
 
 extern crate macro_only_syntax;

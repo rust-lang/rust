@@ -1,6 +1,6 @@
-// run-pass
-#![allow(dead_code)]
-#![allow(unused_variables)]
+// build-pass
+
+
 // pretty-expanded FIXME #23616
 
 // Test that `F : Fn(isize) -> isize + Send` is interpreted as two

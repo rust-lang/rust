@@ -1,8 +1,8 @@
-// run-pass
+// build-pass
 
 #![feature(unsize, dispatch_from_dyn, never_type)]
 
-#![allow(dead_code)]
+
 
 use std::{
     ops::DispatchFromDyn,

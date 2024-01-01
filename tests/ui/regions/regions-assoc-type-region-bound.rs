@@ -1,5 +1,5 @@
-// run-pass
-#![allow(dead_code)]
+// build-pass
+
 // Test that the compiler considers the 'a bound declared in the
 // trait. Issue #20890.
 

@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // compile-flags: -D warnings -D unknown-lints
 
 #![allow(unknown_lints)]

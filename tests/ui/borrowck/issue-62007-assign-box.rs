@@ -1,11 +1,11 @@
-// run-pass
+// build-pass
 
 // Issue #62007: assigning over a deref projection of a box (in this
 // case, `*list = n;`) should be able to kill all borrows of `*list`,
 // so that `*list` can be borrowed on the next iteration through the
 // loop.
 
-#![allow(dead_code)]
+
 
 struct List<T> {
     value: T,

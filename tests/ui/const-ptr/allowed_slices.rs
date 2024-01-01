@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 #![feature(
     slice_from_ptr_range,
     const_slice_from_ptr_range,

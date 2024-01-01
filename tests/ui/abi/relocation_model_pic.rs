@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // compile-flags: -C relocation-model=pic
 // needs-relocation-model-pic
 

@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // aux-build:issue-12133-rlib.rs
 // aux-build:issue-12133-dylib.rs
 // no-prefer-dynamic

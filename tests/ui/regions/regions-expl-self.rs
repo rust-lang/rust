@@ -1,5 +1,5 @@
-// run-pass
-#![allow(dead_code)]
+// build-pass
+
 // Test that you can insert an explicit lifetime in explicit self.
 
 // pretty-expanded FIXME #23616

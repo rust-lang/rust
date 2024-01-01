@@ -1,5 +1,5 @@
-// run-pass
-#![allow(dead_code)]
+// build-pass
+
 #![allow(non_snake_case)]
 
 // pretty-expanded FIXME #23616

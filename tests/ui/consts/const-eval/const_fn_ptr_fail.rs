@@ -1,6 +1,6 @@
-// run-pass
+// build-pass
 // compile-flags: -Zunleash-the-miri-inside-of-you
-#![allow(unused)]
+
 
 fn double(x: usize) -> usize { x * 2 }
 const X: fn(usize) -> usize = double;

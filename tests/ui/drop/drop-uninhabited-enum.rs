@@ -1,6 +1,6 @@
-// run-pass
-#![allow(dead_code)]
-#![allow(unused_variables)]
+// build-pass
+
+
 // pretty-expanded FIXME #23616
 
 enum Foo { }

@@ -1,6 +1,6 @@
-// run-pass
-#![allow(dead_code)]
-#![allow(unused_variables)]
+// build-pass
+
+
 #![allow(unconditional_recursion)]
 
 // Check that we do not ICE when compiling this

@@ -1,6 +1,6 @@
-// run-pass
-#![allow(dead_code)]
-#![allow(unused_variables)]
+// build-pass
+
+
 // Test that a type which is contravariant with respect to its region
 // parameter compiles successfully when used in a contravariant way.
 //

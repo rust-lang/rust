@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 
 #![allow(dead_code, unused_macros)]
 // aux-build:issue-39889.rs

@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // aux-build:repeat.rs
 
 // This tests the allocating algo branch of the
@@ -8,7 +8,7 @@
 // In this test, we repeat many impl blocks
 // to trigger the allocating branch.
 
-#![allow(unused)]
+
 
 extern crate repeat;
 

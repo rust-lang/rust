@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 
 #![feature(specialization)] //~ WARN the feature `specialization` is incomplete
 

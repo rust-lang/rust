@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // gate-test-const_precise_live_drops
 
 #![feature(const_precise_live_drops)]

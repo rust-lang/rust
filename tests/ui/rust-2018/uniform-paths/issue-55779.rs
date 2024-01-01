@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // edition:2018
 // aux-crate:issue_55779_extern_trait=issue-55779-extern-trait.rs
 

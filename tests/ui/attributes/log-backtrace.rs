@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 //
 // This test makes sure that log-backtrace option at least parses correctly
 //

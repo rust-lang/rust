@@ -5,9 +5,9 @@
 //
 // See https://github.com/rust-lang/rust/issues/46541 for more details.
 
-// run-pass
+// build-pass
 
-#![allow(dead_code)]
+
 
 fn foo<'x, 'y>(x: &'x u32) -> impl Fn() -> &'y u32
 where 'x: 'y

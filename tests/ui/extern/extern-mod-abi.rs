@@ -1,5 +1,5 @@
-// run-pass
-#![allow(dead_code)]
+// build-pass
+
 // pretty-expanded FIXME #23616
 
 extern "C" {

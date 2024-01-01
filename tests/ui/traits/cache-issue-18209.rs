@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // Test that the cache results from the default method do not pollute
 // the cache for the later call in `load()`.
 //

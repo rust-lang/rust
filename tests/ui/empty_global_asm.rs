@@ -1,5 +1,5 @@
 // needs-asm-support
-// run-pass
+// build-pass
 
 use std::arch::global_asm;
 

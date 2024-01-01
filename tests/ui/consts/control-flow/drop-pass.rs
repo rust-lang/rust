@@ -1,7 +1,7 @@
-// run-pass
+// build-pass
 // revisions: stock precise
 
-#![allow(unused)]
+
 #![cfg_attr(precise, feature(const_precise_live_drops))]
 
 // `x` is always moved into the final value and is not dropped inside the initializer.

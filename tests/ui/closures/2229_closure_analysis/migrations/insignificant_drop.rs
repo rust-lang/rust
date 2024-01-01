@@ -1,8 +1,8 @@
-// run-pass
+// build-pass
 // run-rustfix
 
-#![deny(rust_2021_incompatible_closure_captures)]
 #![allow(unused)]
+#![deny(rust_2021_incompatible_closure_captures)]
 
 // Test cases for types that implement an insignificant drop (stlib defined)
 

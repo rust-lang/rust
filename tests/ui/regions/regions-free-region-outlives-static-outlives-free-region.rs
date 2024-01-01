@@ -1,5 +1,5 @@
-// run-pass
-#![allow(dead_code)]
+// build-pass
+
 // Test that we recognize that if you have
 //
 //     'a : 'static

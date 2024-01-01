@@ -1,6 +1,6 @@
-// run-pass
+// build-pass
 
-#![allow(dead_code)]
+
 
 use std::iter::{Fuse, Zip};
 

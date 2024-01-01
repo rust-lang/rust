@@ -1,6 +1,6 @@
-// run-pass
+// build-pass
 
-#![allow(dead_code)]
+
 // Regression test for #37154: the problem here was that the cache
 // results in a false error because it was caching placeholder results
 // even after those placeholder regions had been popped.

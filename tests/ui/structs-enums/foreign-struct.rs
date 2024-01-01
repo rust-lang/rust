@@ -1,5 +1,5 @@
-// run-pass
-#![allow(dead_code)]
+// build-pass
+
 #![allow(non_camel_case_types)]
 
 // Passing enums by value

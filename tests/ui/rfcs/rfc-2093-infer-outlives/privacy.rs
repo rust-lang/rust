@@ -3,9 +3,9 @@
 // Private>::Out: 'a`, but the private trait is -- well -- private,
 // and hence it was not something that a pub trait could refer to.
 //
-// run-pass
+// build-pass
 
-#![allow(dead_code)]
+
 
 pub struct Foo<'a> {
     field: Option<&'a <Foo<'a> as Private>::Out>

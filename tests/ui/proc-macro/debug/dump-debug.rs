@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // aux-build:macro-dump-debug.rs
 
 extern crate macro_dump_debug;

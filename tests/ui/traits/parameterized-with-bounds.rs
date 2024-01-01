@@ -1,7 +1,7 @@
-// run-pass
+// build-pass
 // pretty-expanded FIXME #23616
 
-#![allow(dead_code)]
+
 
 
 trait A<T> { fn get(self) -> T; }

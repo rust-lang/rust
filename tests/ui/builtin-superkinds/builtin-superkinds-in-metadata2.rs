@@ -1,6 +1,6 @@
-// run-pass
+// build-pass
 
-#![allow(unused_imports)]
+
 
 // aux-build:trait_superkinds_in_metadata.rs
 

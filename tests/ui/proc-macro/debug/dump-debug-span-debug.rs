@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // aux-build:macro-dump-debug.rs
 // compile-flags: -Z span-debug
 

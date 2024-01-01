@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // aux-build:issue-31702-1.rs
 // aux-build:issue-31702-2.rs
 

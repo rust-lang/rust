@@ -1,5 +1,5 @@
-// run-pass
-#![allow(dead_code)]
+// build-pass
+
 // test for issue #30244
 
 #[derive(Copy, Clone)]

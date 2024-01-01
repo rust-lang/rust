@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // compile-flags: --test
 
 #![deny(dead_code)]

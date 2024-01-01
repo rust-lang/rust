@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 
 // compile-flags:-C panic=abort
 // no-prefer-dynamic

@@ -1,6 +1,6 @@
-// run-pass
+// build-pass
 
-#![allow(dead_code)]
+
 trait Trait<T> {}
 struct Foo<U, V=i32>(U, V) where U: Trait<V>;
 

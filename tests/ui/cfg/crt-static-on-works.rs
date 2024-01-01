@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // compile-flags:-C target-feature=+crt-static
 // only-msvc
 

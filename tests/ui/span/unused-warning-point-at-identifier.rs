@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 
 #![warn(unused)]
 

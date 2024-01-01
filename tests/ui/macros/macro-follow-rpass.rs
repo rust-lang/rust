@@ -1,5 +1,5 @@
-// run-pass
-#![allow(unused_macros)]
+// build-pass
+
 // Check the macro follow sets (see corresponding cfail test).
 
 // FOLLOW(pat) = {FatArrow, Comma, Eq, Or, Ident(if), Ident(in)}

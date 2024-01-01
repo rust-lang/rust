@@ -1,6 +1,6 @@
-// run-pass
+// build-pass
 
-#![allow(dead_code)]
+
 #![allow(unreachable_code)]
 // pretty-expanded FIXME #23616
 

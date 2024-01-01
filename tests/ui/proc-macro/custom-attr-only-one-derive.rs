@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // aux-build:custom-attr-only-one-derive.rs
 
 #[macro_use]

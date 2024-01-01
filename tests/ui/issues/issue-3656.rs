@@ -1,5 +1,5 @@
-// run-pass
-#![allow(dead_code)]
+// build-pass
+
 #![allow(improper_ctypes)]
 // Issue #3656
 // Incorrect struct size computation in the FFI, because of not taking

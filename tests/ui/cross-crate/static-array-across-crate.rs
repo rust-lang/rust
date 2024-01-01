@@ -1,5 +1,5 @@
-// run-pass
-#![allow(dead_code)]
+// build-pass
+
 // aux-build:pub_static_array.rs
 
 extern crate pub_static_array as array;

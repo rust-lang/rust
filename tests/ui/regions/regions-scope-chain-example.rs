@@ -1,6 +1,6 @@
-// run-pass
-#![allow(dead_code)]
-#![allow(unused_variables)]
+// build-pass
+
+
 // This is an example where the older inference algorithm failed. The
 // specifics of why it failed are somewhat, but not entirely, tailed
 // to the algorithm. Ultimately the problem is that when computing the

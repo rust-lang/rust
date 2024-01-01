@@ -1,12 +1,12 @@
 // revisions: or1 or2 or3 or4 or5
-// [or1] run-pass
-// [or2] run-pass
-// [or5] run-pass
+// [or1] build-pass
+// [or2] build-pass
+// [or5] build-pass
 
 #![allow(unreachable_patterns)]
-#![allow(unused_variables)]
-#![allow(unused_parens)]
-#![allow(dead_code)]
+
+
+
 
 
 

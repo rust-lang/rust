@@ -1,5 +1,5 @@
-// run-pass
-#![allow(dead_code)]
+// build-pass
+
 
 const fn add(x: usize, y: usize) -> usize {
     x + y

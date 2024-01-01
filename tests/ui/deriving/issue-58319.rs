@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 fn main() {}
 #[derive(Clone)]
 pub struct Little;

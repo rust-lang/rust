@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // ignore-windows
 // aux-build:thread-local-extern-static.rs
 

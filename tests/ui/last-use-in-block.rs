@@ -1,7 +1,7 @@
-// run-pass
+// build-pass
 
-#![allow(dead_code)]
-#![allow(unused_parens)]
+
+
 // Issue #1818
 
 

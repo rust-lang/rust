@@ -16,7 +16,7 @@
 fn to_format_or_not_to_format() {
     let falsum = || false;
 
-    // assert!(true, "{}",); // see run-pass
+    // assert!(true, "{}",); // see build-pass
 
     assert_eq!(1, 1, "{}",);
     //[core]~^ ERROR no arguments
@@ -25,7 +25,7 @@ fn to_format_or_not_to_format() {
     //[core]~^ ERROR no arguments
     //[std]~^^ ERROR no arguments
 
-    // debug_assert!(true, "{}",); // see run-pass
+    // debug_assert!(true, "{}",); // see build-pass
 
     debug_assert_eq!(1, 1, "{}",);
     //[core]~^ ERROR no arguments
@@ -53,7 +53,7 @@ fn to_format_or_not_to_format() {
     //[core]~^ ERROR no arguments
     //[std]~^^ ERROR no arguments
 
-    // if falsum() { panic!("{}",); } // see run-pass
+    // if falsum() { panic!("{}",); } // see build-pass
 
     #[cfg(std)] {
         print!("{}",);
@@ -69,7 +69,7 @@ fn to_format_or_not_to_format() {
     //[core]~^ ERROR no arguments
     //[std]~^^ ERROR no arguments
 
-    // if falsum() { unreachable!("{}",); } // see run-pass
+    // if falsum() { unreachable!("{}",); } // see build-pass
 
     struct S;
     impl fmt::Display for S {

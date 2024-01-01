@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // aux-build:multiple-derives.rs
 
 extern crate multiple_derives;

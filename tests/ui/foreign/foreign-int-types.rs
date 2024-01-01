@@ -1,6 +1,6 @@
-// run-pass
+// build-pass
 #![forbid(improper_ctypes)]
-#![allow(dead_code)]
+
 
 mod xx {
     extern "C" {

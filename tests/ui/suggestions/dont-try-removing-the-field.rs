@@ -1,6 +1,6 @@
-// run-pass
+// build-pass
 
-#![allow(dead_code)]
+#![warn(unused_variables)]
 
 struct Foo {
     foo: i32,

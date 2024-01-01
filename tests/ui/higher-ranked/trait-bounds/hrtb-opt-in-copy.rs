@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // Test that we handle binder levels correctly when checking whether a
 // type can implement `Copy`. In particular, we had a bug where we failed to
 // liberate the late-bound regions from the impl, and thus wound up
@@ -7,7 +7,7 @@
 // did not consider that a match (something I would like to revise in
 // a later PR).
 
-#![allow(dead_code)]
+
 
 use std::marker::PhantomData;
 

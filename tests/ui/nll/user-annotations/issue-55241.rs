@@ -5,7 +5,7 @@
 // value of `_`; solving that requires having normalized, so we can
 // test against `C: NodeCodec<H>` in the environment.
 //
-// run-pass
+// build-pass
 
 pub trait Hasher {
     type Out: Eq;

@@ -1,5 +1,5 @@
-// run-pass
-#![allow(dead_code)]
+// build-pass
+
 #![allow(stable_features)]
 
 #![feature(issue_5723_bootstrap)]

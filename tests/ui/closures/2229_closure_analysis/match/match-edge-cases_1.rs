@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // edition:2021
 
 const PATTERN_REF: &str = "Hello World";

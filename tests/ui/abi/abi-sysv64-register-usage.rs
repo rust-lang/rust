@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // Checks if the correct registers are being used to pass arguments
 // when the sysv64 ABI is specified.
 

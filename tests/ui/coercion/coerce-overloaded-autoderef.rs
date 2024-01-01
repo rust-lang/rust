@@ -1,6 +1,6 @@
-// run-pass
-#![allow(unused_braces)]
-#![allow(dead_code)]
+// build-pass
+
+
 // pretty-expanded FIXME #23616
 
 use std::rc::Rc;

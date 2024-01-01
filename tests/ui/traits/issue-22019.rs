@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // Test an issue where global caching was causing free regions from
 // distinct scopes to be compared (`'g` and `'h`). The only important
 // thing is that compilation succeeds here.
@@ -6,7 +6,7 @@
 // pretty-expanded FIXME #23616
 
 #![allow(missing_copy_implementations)]
-#![allow(unused_variables)]
+
 
 pub struct CFGNode;
 

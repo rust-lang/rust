@@ -1,8 +1,8 @@
-// run-pass
+// build-pass
 // aux-build:double.rs
 // aux-build:external-crate-var.rs
 
-#![allow(unused)]
+
 
 #[macro_use]
 extern crate double;

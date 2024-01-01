@@ -1,6 +1,6 @@
-// run-pass
-#![allow(dead_code)]
-#![allow(unused_variables)]
+// build-pass
+
+
 fn with_closure<A, F>(_: F)
     where F: FnOnce(Vec<A>, A)
 {

@@ -1,6 +1,4 @@
-// run-pass
-#![allow(dead_code)]
-#![allow(dead_code)]
+// build-pass
 
 #![feature(coroutines)]
 
@@ -8,7 +6,7 @@ fn bar<'a>() {
     let a: &'static str = "hi";
     let b: &'a str = a;
 
-    || { //~ WARN unused coroutine that must be used
+    || {
         yield a;
         yield b;
     };

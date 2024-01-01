@@ -1,6 +1,6 @@
-// run-pass
-#![allow(dead_code)]
-#![allow(unused_imports)]
+// build-pass
+
+
 #![allow(non_snake_case)]
 
 mod A {

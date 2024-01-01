@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 
 pub trait Foo<T> {
     fn foo(self) -> T;

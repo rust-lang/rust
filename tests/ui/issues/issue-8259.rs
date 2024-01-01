@@ -1,5 +1,5 @@
-// run-pass
-#![allow(dead_code)]
+// build-pass
+
 #![allow(non_upper_case_globals)]
 
 // aux-build:issue-8259.rs

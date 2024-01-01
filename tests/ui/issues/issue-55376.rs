@@ -1,8 +1,8 @@
-// run-pass
+// build-pass
 // Tests that paths in `pub(...)` don't fail HIR verification.
 
-#![allow(unused_imports)]
-#![allow(dead_code)]
+
+
 
 pub(self) use self::my_mod::Foo;
 

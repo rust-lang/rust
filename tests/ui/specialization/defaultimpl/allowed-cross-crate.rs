@@ -1,7 +1,7 @@
-// run-pass
-#![allow(dead_code)]
-#![allow(unused_variables)]
-#![allow(unused_imports)]
+// build-pass
+
+
+
 
 // aux-build:go_trait.rs
 

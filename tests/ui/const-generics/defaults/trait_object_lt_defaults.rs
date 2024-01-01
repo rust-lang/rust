@@ -1,6 +1,6 @@
 // aux-build:trait_object_lt_defaults_lib.rs
-// run-pass
-#![allow(dead_code)]
+// build-pass
+
 extern crate trait_object_lt_defaults_lib;
 
 // Tests that `A<'a, 3, dyn Test>` is short for `A<'a, 3, dyn Test + 'a>`

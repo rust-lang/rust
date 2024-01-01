@@ -1,6 +1,6 @@
-// run-pass
-#![allow(dead_code)]
-#![allow(unused_variables)]
+// build-pass
+
+
 #![allow(stable_features)]
 
 // Test that we handle projection types which wind up important for

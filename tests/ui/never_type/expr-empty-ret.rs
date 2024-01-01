@@ -1,6 +1,6 @@
-// run-pass
+// build-pass
 
-#![allow(dead_code)]
+
 // Issue #521
 
 // pretty-expanded FIXME #23616

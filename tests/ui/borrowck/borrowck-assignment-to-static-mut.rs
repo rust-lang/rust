@@ -1,5 +1,5 @@
-// run-pass
-#![allow(dead_code)]
+// build-pass
+
 // Test taken from #45641 (https://github.com/rust-lang/rust/issues/45641)
 
 static mut Y: u32 = 0;

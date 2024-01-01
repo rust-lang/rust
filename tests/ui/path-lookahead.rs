@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // run-rustfix
 
 #![allow(dead_code)]

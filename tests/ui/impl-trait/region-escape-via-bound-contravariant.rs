@@ -5,9 +5,9 @@
 //
 // See https://github.com/rust-lang/rust/issues/46541 for more details.
 
-// run-pass
+// build-pass
 
-#![allow(dead_code)]
+
 
 trait Trait<'a> { }
 

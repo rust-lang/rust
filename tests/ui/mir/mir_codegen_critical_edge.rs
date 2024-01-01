@@ -1,5 +1,5 @@
-// run-pass
-#![allow(dead_code)]
+// build-pass
+
 // This code produces a CFG with critical edges that, if we don't
 // handle properly, will cause invalid codegen.
 

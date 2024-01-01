@@ -1,5 +1,5 @@
-// run-pass
-#![allow(unused_imports)]
+// build-pass
+
 // aux-build:issue-12612-1.rs
 // aux-build:issue-12612-2.rs
 

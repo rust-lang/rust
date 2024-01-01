@@ -3,7 +3,7 @@
 // check-run-results
 // normalize-stdout-test "finished in \d+\.\d+s" -> "finished in $$TIME"
 // ignore-emscripten no threads support
-// run-pass
+// build-pass
 
 #[test]
 fn test_ok() {

@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 
 pub trait FakeCoroutine {
     type Yield;

@@ -1,4 +1,4 @@
-// run-pass
+// build-pass
 // compile-flags: --cfg bar -D warnings
 #![cfg(bar)]
 
