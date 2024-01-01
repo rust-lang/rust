@@ -89,11 +89,11 @@ jobs:
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
-      - uses: msys2/setup-msys2@v2
+      - uses: msys2/setup-msys2@v2.21.0
         with:
           msystem: MINGW64
           update: false
-          release: false
+          release: true
           path-type: inherit
           install: "make git\n"
       - name: checkout the source code
@@ -490,11 +490,11 @@ jobs:
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
-      - uses: msys2/setup-msys2@v2
+      - uses: msys2/setup-msys2@v2.21.0
         with:
           msystem: MINGW64
           update: false
-          release: false
+          release: true
           path-type: inherit
           install: "make git\n"
       - name: checkout the source code
@@ -625,11 +625,11 @@ jobs:
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
-      - uses: msys2/setup-msys2@v2
+      - uses: msys2/setup-msys2@v2.21.0
         with:
           msystem: MINGW64
           update: false
-          release: false
+          release: true
           path-type: inherit
           install: "make git\n"
       - name: checkout the source code

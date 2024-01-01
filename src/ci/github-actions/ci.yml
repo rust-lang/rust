@@ -118,11 +118,16 @@ x--expand-yaml-anchors--remove:
     env:
       <<: *shared-ci-variables
     steps:
-      - uses: msys2/setup-msys2@v2
+      - uses: msys2/setup-msys2@v2.21.0
         with:
           msystem: MINGW64
+          # don't try to download package updates from the network
           update: false
-          release: false
+          # don't try to use the msys that comes built-in to the github runner,
+          # so we can control what is installed (i.e. not python)
+          release: true
+          # Inherit the full path from the windows environment, with msys's */bin/
+          # dirs placed in front. This lets us run Windows-native Python etc.
           path-type: inherit
           install: >
             make
