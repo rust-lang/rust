@@ -4,6 +4,7 @@
 #![feature(box_patterns)]
 #![feature(cow_is_borrowed)]
 #![feature(decl_macro)]
+#![feature(impl_trait_in_assoc_type)]
 #![feature(is_sorted)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]

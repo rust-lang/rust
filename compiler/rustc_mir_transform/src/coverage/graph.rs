@@ -39,6 +39,7 @@ impl CoverageGraph {
                 let bcb_data = &bcbs[bcb];
                 let mut bcb_successors = Vec::new();
                 for successor in bcb_filtered_successors(mir_body[bcb_data.last_bb()].terminator())
+                    .into_iter()
                     .filter_map(|successor_bb| bb_to_bcb[successor_bb])
                 {
                     if !seen[successor] {
@@ -122,11 +123,8 @@ impl CoverageGraph {
 
             let term = mir_body[bb].terminator();
 
-            match term.kind {
-                TerminatorKind::Return { .. }
-                | TerminatorKind::UnwindTerminate(_)
-                | TerminatorKind::Yield { .. }
-                | TerminatorKind::SwitchInt { .. } => {
+            match bcb_filtered_successors(term) {
+                CoverageSuccessors::NotChainable(_) => {
                     // The `bb` has more than one _outgoing_ edge, or exits the function. Save the
                     // current sequence of `basic_blocks` gathered to this point, as a new
                     // `BasicCoverageBlockData`.
@@ -153,16 +151,7 @@ impl CoverageGraph {
                 // for a coverage region containing the `Terminator` that began the panic. This
                 // is as intended. (See Issue #78544 for a possible future option to support
                 // coverage in test programs that panic.)
-                TerminatorKind::Goto { .. }
-                | TerminatorKind::UnwindResume
-                | TerminatorKind::Unreachable
-                | TerminatorKind::Drop { .. }
-                | TerminatorKind::Call { .. }
-                | TerminatorKind::CoroutineDrop
-                | TerminatorKind::Assert { .. }
-                | TerminatorKind::FalseEdge { .. }
-                | TerminatorKind::FalseUnwind { .. }
-                | TerminatorKind::InlineAsm { .. } => {}
+                CoverageSuccessors::Chainable(_) => {}
             }
         }
 
@@ -349,22 +338,67 @@ impl BasicCoverageBlockData {
     }
 }
 
+/// Holds the coverage-relevant successors of a basic block's terminator, and
+/// indicates whether that block can potentially be combined into the same BCB
+/// as its sole successor.
+#[derive(Clone, Copy, Debug)]
+enum CoverageSuccessors<'a> {
+    /// The terminator has exactly one straight-line successor, so its block can
+    /// potentially be combined into the same BCB as that successor.
+    Chainable(BasicBlock),
+    /// The block cannot be combined into the same BCB as its successor(s).
+    NotChainable(&'a [BasicBlock]),
+}
+
+impl IntoIterator for CoverageSuccessors<'_> {
+    type Item = BasicBlock;
+    type IntoIter = impl DoubleEndedIterator<Item = Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        match self {
+            Self::Chainable(bb) => Some(bb).into_iter().chain((&[]).iter().copied()),
+            Self::NotChainable(bbs) => None.into_iter().chain(bbs.iter().copied()),
+        }
+    }
+}
+
 // Returns the subset of a block's successors that are relevant to the coverage
 // graph, i.e. those that do not represent unwinds or false edges.
 // FIXME(#78544): MIR InstrumentCoverage: Improve coverage of `#[should_panic]` tests and
 // `catch_unwind()` handlers.
-fn bcb_filtered_successors<'a, 'tcx>(
-    terminator: &'a Terminator<'tcx>,
-) -> impl Iterator<Item = BasicBlock> + Captures<'a> + Captures<'tcx> {
-    let take_n_successors = match terminator.kind {
-        // SwitchInt successors are never unwinds, so all of them should be traversed.
-        TerminatorKind::SwitchInt { .. } => usize::MAX,
-        // For all other kinds, return only the first successor (if any), ignoring any
-        // unwind successors.
-        _ => 1,
-    };
+fn bcb_filtered_successors<'a, 'tcx>(terminator: &'a Terminator<'tcx>) -> CoverageSuccessors<'a> {
+    use TerminatorKind::*;
+    match terminator.kind {
+        // A switch terminator can have many coverage-relevant successors.
+        // (If there is exactly one successor, we still treat it as not chainable.)
+        SwitchInt { ref targets, .. } => CoverageSuccessors::NotChainable(targets.all_targets()),
 
-    terminator.successors().take(take_n_successors)
+        // A yield terminator has exactly 1 successor, but should not be chained,
+        // because its resume edge has a different execution count.
+        Yield { ref resume, .. } => CoverageSuccessors::NotChainable(std::slice::from_ref(resume)),
+
+        // These terminators have exactly one coverage-relevant successor,
+        // and can be chained into it.
+        Assert { target, .. }
+        | Drop { target, .. }
+        | FalseEdge { real_target: target, .. }
+        | FalseUnwind { real_target: target, .. }
+        | Goto { target } => CoverageSuccessors::Chainable(target),
+
+        // These terminators can normally be chained, except when they have no
+        // successor because they are known to diverge.
+        Call { target: maybe_target, .. } | InlineAsm { destination: maybe_target, .. } => {
+            match maybe_target {
+                Some(target) => CoverageSuccessors::Chainable(target),
+                None => CoverageSuccessors::NotChainable(&[]),
+            }
+        }
+
+        // These terminators have no coverage-relevant successors.
+        CoroutineDrop | Return | Unreachable | UnwindResume | UnwindTerminate(_) => {
+            CoverageSuccessors::NotChainable(&[])
+        }
+    }
 }
 
 /// Maintains separate worklists for each loop in the BasicCoverageBlock CFG, plus one for the
@@ -542,7 +576,7 @@ fn short_circuit_preorder<'a, 'tcx, F, Iter>(
 ) -> impl Iterator<Item = BasicBlock> + Captures<'a> + Captures<'tcx>
 where
     F: Fn(BasicBlock) -> Iter,
-    Iter: Iterator<Item = BasicBlock>,
+    Iter: IntoIterator<Item = BasicBlock>,
 {
     let mut visited = BitSet::new_empty(body.basic_blocks.len());
     let mut worklist = vec![mir::START_BLOCK];
