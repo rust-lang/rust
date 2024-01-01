@@ -88,7 +88,7 @@ test-utils = { path = "./crates/test-utils" }
 # In-tree crates that are published separately and follow semver. See lib/README.md
 line-index = { version = "0.1.1" }
 la-arena = { version = "0.3.1" }
-lsp-server = { version = "0.7.4" }
+lsp-server = { version = "0.7.6" }
 
 # non-local crates
 anyhow = "1.0.75"
