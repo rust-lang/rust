@@ -46,11 +46,10 @@ fn compare_address() -> bool {
 fn borrowed(x: u32) -> bool {
     // CHECK-LABEL: fn borrowed(
     // CHECK: bb0: {
-    // CHECK-NEXT: _2 = _1;
     // CHECK-NEXT: _3 = &_1;
     // CHECK-NEXT: _0 = opaque::<&u32>(_3)
     // CHECK: bb1: {
-    // CHECK-NEXT: _0 = opaque::<u32>(_2)
+    // CHECK-NEXT: _0 = opaque::<u32>(_1)
     mir!(
         {
             let a = x;

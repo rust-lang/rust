@@ -111,7 +111,10 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
 
     fn visit_local(&mut self, local: &mut Local, ctxt: PlaceContext, _: Location) {
         let new_local = self.copy_classes[*local];
-        if self.borrowed_locals.contains(*local) || self.borrowed_locals.contains(new_local) {
+        // We must not unify two locals that are borrowed. But this is fine if one is borrowed and
+        // the other is not. We chose to check the original local, and not the target. That way, if
+        // the original local is borrowed and the target is not, we do not pessimize the whole class.
+        if self.borrowed_locals.contains(*local) {
             return;
         }
         match ctxt {
