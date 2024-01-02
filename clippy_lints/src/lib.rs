@@ -323,6 +323,7 @@ mod swap_ptr_to_ref;
 mod tabs_in_doc_comments;
 mod temporary_assignment;
 mod tests_outside_test_module;
+mod thread_local_initializer_can_be_made_const;
 mod to_digit_is_some;
 mod trailing_empty_array;
 mod trait_bounds;
@@ -1087,6 +1088,9 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         Box::new(pub_underscore_fields::PubUnderscoreFields {
             behavior: pub_underscore_fields_behavior,
         })
+    });
+    store.register_late_pass(move |_| {
+        Box::new(thread_local_initializer_can_be_made_const::ThreadLocalInitializerCanBeMadeConst::new(msrv()))
     });
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
