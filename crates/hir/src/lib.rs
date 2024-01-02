@@ -1680,6 +1680,7 @@ impl DefWithBody {
                     receiver,
                     name,
                     field_with_same_name,
+                    assoc_func_with_same_name,
                 } => {
                     let expr = expr_syntax(*expr);
 
@@ -1691,6 +1692,7 @@ impl DefWithBody {
                             field_with_same_name: field_with_same_name
                                 .clone()
                                 .map(|ty| Type::new(db, DefWithBodyId::from(self), ty)),
+                            assoc_func_with_same_name: assoc_func_with_same_name.clone(),
                         }
                         .into(),
                     )
