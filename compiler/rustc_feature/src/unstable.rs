@@ -525,7 +525,7 @@ declare_features! (
     /// Allows the `#[must_not_suspend]` attribute.
     (unstable, must_not_suspend, "1.57.0", Some(83310)),
     /// Allows using `#[naked]` on functions.
-    (unstable, naked_functions, "1.9.0", Some(32408)),
+    (unstable, naked_functions, "1.9.0", Some(90957)),
     /// Allows specifying the as-needed link modifier
     (unstable, native_link_modifiers_as_needed, "1.53.0", Some(81490)),
     /// Allow negative trait implementations.
