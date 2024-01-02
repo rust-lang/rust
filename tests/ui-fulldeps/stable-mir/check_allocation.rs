@@ -12,6 +12,7 @@
 #![feature(assert_matches)]
 #![feature(control_flow_enum)]
 #![feature(ascii_char, ascii_char_variants)]
+#![feature(c_str_literals)]
 
 extern crate rustc_hir;
 extern crate rustc_middle;
@@ -239,6 +240,7 @@ fn generate_input(path: &str) -> std::io::Result<()> {
         file,
         r#"
     #![feature(core_intrinsics)]
+    #![feature(c_str_literals)]
     use std::intrinsics::type_id;
 
     static LEN: usize = 2;
