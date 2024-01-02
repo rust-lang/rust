@@ -72,7 +72,7 @@ pub(super) fn parse(
                                             // `SyntaxContext::root()` from a foreign crate will
                                             // have the edition of that crate (which we manually
                                             // retrieve via the `edition` parameter).
-                                            if span.ctxt().is_root() {
+                                            if !span.from_expansion() {
                                                 edition
                                             } else {
                                                 span.edition()

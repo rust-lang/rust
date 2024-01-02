@@ -1630,7 +1630,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
                     let from_macro = non_shorthands
                         .iter()
                         .find(|(_, pat_span, ident_span)| {
-                            pat_span.ctxt() != ident_span.ctxt() && pat_span.from_expansion()
+                            !pat_span.eq_ctxt(*ident_span) && pat_span.from_expansion()
                         })
                         .map(|(_, pat_span, _)| *pat_span);
                     let non_shorthands = non_shorthands
