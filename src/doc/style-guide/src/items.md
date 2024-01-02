@@ -421,8 +421,19 @@ Format associated types like type aliases. Where an associated type has a
 bound, put a space after the colon but not before:
 
 ```rust
-pub type Foo: Bar;
+type Foo: Bar;
 ```
+
+If an associated type has no `=`, and has a `where` clause with only one entry,
+format the entire type declaration including the `where` clause on the same
+line if it fits:
+
+```rust
+type Item<'a> where Self: 'a;
+```
+
+If the associated type has a `=`, or if the `where` clause contains multiple
+entries, format it across multiple lines as with a type alias.
 
 ## extern items
 
