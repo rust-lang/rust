@@ -414,6 +414,12 @@ impl Struct {
     fn impl_fn() {}
 }
 
+struct StructT<T>;
+
+impl <T> StructT<T> {
+    fn generic_impl_fn() {}
+}
+
 trait Trait {
     fn trait_fn(&self);
 }
