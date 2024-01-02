@@ -26,7 +26,6 @@ fn uncached_llvm_type<'a, 'tcx>(
             let element = layout.scalar_llvm_type_at(cx, element);
             return cx.type_vector(element, count);
         }
-        // Treat ScalarPair like a normal aggregate for the purposes of in-memory representation.
         Abi::Uninhabited | Abi::Aggregate { .. } | Abi::ScalarPair(..) => {}
     }
 
