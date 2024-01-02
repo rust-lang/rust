@@ -454,4 +454,6 @@ pub mod simd {
     pub use crate::core_simd::simd::*;
 }
 
+mod unaligned;
+
 include!("primitive_docs.rs");
