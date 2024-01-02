@@ -62,6 +62,7 @@ diagnostics![
     UndeclaredLabel,
     UnimplementedBuiltinMacro,
     UnreachableLabel,
+    UnresolvedAssocItem,
     UnresolvedExternCrate,
     UnresolvedField,
     UnresolvedImport,
@@ -216,6 +217,11 @@ pub struct UnresolvedMethodCall {
     pub name: Name,
     pub field_with_same_name: Option<Type>,
     pub assoc_func_with_same_name: Option<AssocItemId>,
+}
+
+#[derive(Debug)]
+pub struct UnresolvedAssocItem {
+    pub expr_or_pat: InFile<AstPtr<Either<ast::Expr, Either<ast::Pat, ast::SelfParam>>>>,
 }
 
 #[derive(Debug)]

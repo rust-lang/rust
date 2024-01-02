@@ -1697,6 +1697,13 @@ impl DefWithBody {
                         .into(),
                     )
                 }
+                &hir_ty::InferenceDiagnostic::UnresolvedAssocItem { id } => {
+                    let expr_or_pat = match id {
+                        ExprOrPatId::ExprId(expr) => expr_syntax(expr).map(AstPtr::wrap_left),
+                        ExprOrPatId::PatId(pat) => pat_syntax(pat).map(AstPtr::wrap_right),
+                    };
+                    acc.push(UnresolvedAssocItem { expr_or_pat }.into())
+                }
                 &hir_ty::InferenceDiagnostic::BreakOutsideOfLoop {
                     expr,
                     is_break,
