@@ -45,8 +45,6 @@ ast_lowering_closure_cannot_be_static = closures cannot be static
 ast_lowering_coroutine_too_many_parameters =
     too many parameters for a coroutine (expected 0 or 1 parameters)
 
-ast_lowering_default_parameter_in_binder = default parameter is not allowed in this binder
-
 ast_lowering_does_not_support_modifiers =
     the `{$class_name}` register class does not support template modifiers
 
@@ -57,6 +55,9 @@ ast_lowering_extra_double_dot =
 ast_lowering_functional_record_update_destructuring_assignment =
     functional record updates are not allowed in destructuring assignments
     .suggestion = consider removing the trailing pattern
+
+ast_lowering_generic_param_default_in_binder =
+    defaults for generic parameters are not allowed in `for<...>` binders
 
 ast_lowering_generic_type_with_parentheses =
     parenthesized type parameters may only be used with a `Fn` trait

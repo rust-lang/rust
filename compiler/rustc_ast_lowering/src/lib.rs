@@ -66,7 +66,6 @@ use rustc_session::parse::{add_feature_diagnostics, feature_err};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{DesugaringKind, Span, DUMMY_SP};
 use smallvec::SmallVec;
-use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use thin_vec::ThinVec;
 
@@ -884,27 +883,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         binder: NodeId,
         generic_params: &[GenericParam],
     ) -> &'hir [hir::GenericParam<'hir>] {
-        let mut generic_params: Vec<_> = generic_params
-            .iter()
-            .map(|param| {
-                let param = match param.kind {
-                    GenericParamKind::Type { ref default } if let Some(ty) = default => {
-                        // Default type is not permitted in non-lifetime binders.
-                        // So we emit an error and default to `None` to prevent
-                        // potential ice.
-                        self.dcx().emit_err(errors::UnexpectedDefaultParameterInBinder {
-                            span: ty.span(),
-                        });
-                        let param = GenericParam {
-                            kind: GenericParamKind::Type { default: None },
-                            ..param.clone()
-                        };
-                        Cow::Owned(param)
-                    }
-                    _ => Cow::Borrowed(param),
-                };
-                self.lower_generic_param(param.as_ref(), hir::GenericParamSource::Binder)
-            })
+        let mut generic_params: Vec<_> = self
+            .lower_generic_params_mut(generic_params, hir::GenericParamSource::Binder)
             .collect();
         let extra_lifetimes = self.resolver.take_extra_lifetime_params(binder);
         debug!(?extra_lifetimes);
@@ -2136,7 +2116,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         param: &GenericParam,
         source: hir::GenericParamSource,
     ) -> hir::GenericParam<'hir> {
-        let (name, kind) = self.lower_generic_param_kind(param);
+        let (name, kind) = self.lower_generic_param_kind(param, source);
 
         let hir_id = self.lower_node_id(param.id);
         self.lower_attrs(hir_id, &param.attrs);
@@ -2155,6 +2135,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_generic_param_kind(
         &mut self,
         param: &GenericParam,
+        source: hir::GenericParamSource,
     ) -> (hir::ParamName, hir::GenericParamKind<'hir>) {
         match &param.kind {
             GenericParamKind::Lifetime => {
@@ -2173,22 +2154,51 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 (param_name, kind)
             }
             GenericParamKind::Type { default, .. } => {
-                let kind = hir::GenericParamKind::Type {
-                    default: default.as_ref().map(|x| {
+                // Not only do we deny type param defaults in binders but we also map them to `None`
+                // since later compiler stages cannot handle them (and shouldn't need to be able to).
+                let default = default
+                    .as_ref()
+                    .filter(|_| match source {
+                        hir::GenericParamSource::Generics => true,
+                        hir::GenericParamSource::Binder => {
+                            self.dcx().emit_err(errors::GenericParamDefaultInBinder {
+                                span: param.span(),
+                            });
+
+                            false
+                        }
+                    })
+                    .map(|def| {
                         self.lower_ty(
-                            x,
+                            def,
                             &ImplTraitContext::Disallowed(ImplTraitPosition::GenericDefault),
                         )
-                    }),
-                    synthetic: false,
-                };
+                    });
+
+                let kind = hir::GenericParamKind::Type { default, synthetic: false };
 
                 (hir::ParamName::Plain(self.lower_ident(param.ident)), kind)
             }
             GenericParamKind::Const { ty, kw_span: _, default } => {
                 let ty = self
                     .lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::GenericDefault));
-                let default = default.as_ref().map(|def| self.lower_anon_const(def));
+
+                // Not only do we deny const param defaults in binders but we also map them to `None`
+                // since later compiler stages cannot handle them (and shouldn't need to be able to).
+                let default = default
+                    .as_ref()
+                    .filter(|_| match source {
+                        hir::GenericParamSource::Generics => true,
+                        hir::GenericParamSource::Binder => {
+                            self.dcx().emit_err(errors::GenericParamDefaultInBinder {
+                                span: param.span(),
+                            });
+
+                            false
+                        }
+                    })
+                    .map(|def| self.lower_anon_const(def));
+
                 (
                     hir::ParamName::Plain(self.lower_ident(param.ident)),
                     hir::GenericParamKind::Const { ty, default, is_host_effect: false },
