@@ -1167,7 +1167,7 @@ impl<'a> Parser<'a> {
                     // Parse this both to give helpful error messages and to
                     // verify it can be done with this parser setup.
                     ExprKind::Index(ref left, ref _right, span) => {
-                        self.sess.emit_err(errors::ArrayIndexInOffsetOf(span));
+                        self.dcx().emit_err(errors::ArrayIndexInOffsetOf(span));
                         current = left;
                     }
                     ExprKind::Lit(token::Lit {
@@ -1216,14 +1216,14 @@ impl<'a> Parser<'a> {
                                 fields.insert(start_idx, *ident)
                             }
                             _ => {
-                                self.sess.emit_err(errors::InvalidOffsetOf(current.span));
+                                self.dcx().emit_err(errors::InvalidOffsetOf(current.span));
                                 break;
                             }
                         }
                         break;
                     }
                     _ => {
-                        self.sess.emit_err(errors::InvalidOffsetOf(current.span));
+                        self.dcx().emit_err(errors::InvalidOffsetOf(current.span));
                         break;
                     }
                 }
@@ -1233,12 +1233,12 @@ impl<'a> Parser<'a> {
                 break;
             } else if trailing_dot.is_none() {
                 // This loop should only repeat if there is a trailing dot.
-                self.sess.emit_err(errors::InvalidOffsetOf(self.token.span));
+                self.dcx().emit_err(errors::InvalidOffsetOf(self.token.span));
                 break;
             }
         }
         if let Some(dot) = trailing_dot {
-            self.sess.emit_err(errors::InvalidOffsetOf(dot));
+            self.dcx().emit_err(errors::InvalidOffsetOf(dot));
         }
         Ok(fields.into_iter().collect())
     }
