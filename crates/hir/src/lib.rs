@@ -4657,6 +4657,9 @@ impl Callable {
     pub fn return_type(&self) -> Type {
         self.ty.derived(self.sig.ret().clone())
     }
+    pub fn sig(&self) -> &CallableSig {
+        &self.sig
+    }
 }
 
 fn closure_source(db: &dyn HirDatabase, closure: ClosureId) -> Option<ast::ClosureExpr> {
