@@ -1,4 +1,4 @@
-use hir::{db::ExpandDatabase, AssocItem, HirDisplay};
+use hir::{db::ExpandDatabase, AssocItem, HirDisplay, InFile};
 use ide_db::{
     assists::{Assist, AssistId, AssistKind},
     base_db::FileRange,
@@ -121,7 +121,9 @@ fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -
         let expr: ast::Expr = expr_ptr.value.to_node(&root);
 
         let call = ast::MethodCallExpr::cast(expr.syntax().clone())?;
-        let range = call.syntax().text_range();
+        let range = InFile::new(expr_ptr.file_id, call.syntax().text_range())
+            .original_node_file_range_rooted(db)
+            .range;
 
         let receiver = call.receiver()?;
         let receiver_type = &ctx.sema.type_of_expr(&receiver)?.original;
@@ -241,7 +243,7 @@ impl A {
 fn main() {
     let a = A{};
     a.hello();
- // ^^^^^^^^^ 💡 error: no method `hello` on type `A`, but an associated function with a similar name exists
+   // ^^^^^ 💡 error: no method `hello` on type `A`, but an associated function with a similar name exists
 }
 "#,
         );
