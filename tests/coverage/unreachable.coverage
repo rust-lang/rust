@@ -1,5 +1,4 @@
    LL|       |#![feature(core_intrinsics)]
-   LL|       |#![feature(coverage_attribute)]
    LL|       |//@ edition: 2021
    LL|       |
    LL|       |// <https://github.com/rust-lang/rust/issues/116171>
@@ -12,27 +11,26 @@
    LL|       |
    LL|       |use std::hint::{black_box, unreachable_unchecked};
    LL|       |
-   LL|      0|static UNREACHABLE_CLOSURE: fn() = || unsafe { unreachable_unchecked() };
+   LL|       |static UNREACHABLE_CLOSURE: fn() = || unsafe { unreachable_unchecked() };
    LL|       |
-   LL|      0|fn unreachable_function() {
-   LL|      0|    unsafe { unreachable_unchecked() }
+   LL|       |fn unreachable_function() {
+   LL|       |    unsafe { unreachable_unchecked() }
    LL|       |}
    LL|       |
    LL|       |// Use an intrinsic to more reliably trigger unreachable-propagation.
-   LL|      0|fn unreachable_intrinsic() {
-   LL|      0|    unsafe { std::intrinsics::unreachable() }
+   LL|       |fn unreachable_intrinsic() {
+   LL|       |    unsafe { std::intrinsics::unreachable() }
    LL|       |}
    LL|       |
-   LL|       |#[coverage(off)]
-   LL|       |fn main() {
-   LL|       |    if black_box(false) {
-   LL|       |        UNREACHABLE_CLOSURE();
-   LL|       |    }
-   LL|       |    if black_box(false) {
-   LL|       |        unreachable_function();
-   LL|       |    }
-   LL|       |    if black_box(false) {
-   LL|       |        unreachable_intrinsic();
-   LL|       |    }
-   LL|       |}
+   LL|      1|fn main() {
+   LL|      1|    if black_box(false) {
+   LL|      0|        UNREACHABLE_CLOSURE();
+   LL|      1|    }
+   LL|      1|    if black_box(false) {
+   LL|      0|        unreachable_function();
+   LL|      1|    }
+   LL|      1|    if black_box(false) {
+   LL|      0|        unreachable_intrinsic();
+   LL|      1|    }
+   LL|      1|}
 

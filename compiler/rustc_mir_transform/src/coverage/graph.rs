@@ -56,6 +56,18 @@ impl CoverageGraph {
 
         this.dominators = Some(dominators::dominators(&this));
 
+        // Initialize the `must_diverge` flag for each BCB. Post-order traversal
+        // ensures that each node's successors have been processed first.
+        for bcb in graph::iterate::post_order_from(&this, this.start_node()) {
+            let terminator = mir_body[this[bcb].last_bb()].terminator();
+
+            // A BCB is assumed to always diverge if its terminator is not a
+            // return, and all of its successors always diverge.
+            let must_diverge = !bcb_filtered_successors(terminator).has_return_arc()
+                && this.successors[bcb].iter().all(|&s| this[s].must_diverge);
+            this[bcb].must_diverge = must_diverge;
+        }
+
         // The coverage graph's entry-point node (bcb0) always starts with bb0,
         // which never has predecessors. Any other blocks merged into bcb0 can't
         // have multiple (coverage-relevant) predecessors, so bcb0 always has
@@ -273,13 +285,15 @@ rustc_index::newtype_index! {
 /// significance.
 #[derive(Debug, Clone)]
 pub(super) struct BasicCoverageBlockData {
+    pub(super) must_diverge: bool,
     pub basic_blocks: Vec<BasicBlock>,
 }
 
 impl BasicCoverageBlockData {
     pub fn from(basic_blocks: Vec<BasicBlock>) -> Self {
         assert!(basic_blocks.len() > 0);
-        Self { basic_blocks }
+        // `must_diverge` is set by a separate postprocessing step.
+        Self { must_diverge: false, basic_blocks }
     }
 
     #[inline(always)]
@@ -302,14 +316,23 @@ enum CoverageSuccessors<'a> {
     /// potentially be combined into the same BCB as that successor.
     Chainable(BasicBlock),
     /// The block cannot be combined into the same BCB as its successor(s).
-    NotChainable(&'a [BasicBlock]),
+    NotChainable { has_return_arc: bool, successors: &'a [BasicBlock] },
 }
 
 impl CoverageSuccessors<'_> {
     fn is_chainable(&self) -> bool {
         match self {
             Self::Chainable(_) => true,
-            Self::NotChainable(_) => false,
+            Self::NotChainable { .. } => false,
+        }
+    }
+
+    /// If true, the block's terminator can return, so it should not be
+    /// assumed to diverge even if all of its successors diverge.
+    fn has_return_arc(&self) -> bool {
+        match *self {
+            Self::Chainable(_) => false,
+            Self::NotChainable { has_return_arc, .. } => has_return_arc,
         }
     }
 }
@@ -321,7 +344,9 @@ impl IntoIterator for CoverageSuccessors<'_> {
     fn into_iter(self) -> Self::IntoIter {
         match self {
             Self::Chainable(bb) => Some(bb).into_iter().chain((&[]).iter().copied()),
-            Self::NotChainable(bbs) => None.into_iter().chain(bbs.iter().copied()),
+            Self::NotChainable { successors, .. } => {
+                None.into_iter().chain(successors.iter().copied())
+            }
         }
     }
 }
@@ -335,11 +360,17 @@ fn bcb_filtered_successors<'a, 'tcx>(terminator: &'a Terminator<'tcx>) -> Covera
     match terminator.kind {
         // A switch terminator can have many coverage-relevant successors.
         // (If there is exactly one successor, we still treat it as not chainable.)
-        SwitchInt { ref targets, .. } => CoverageSuccessors::NotChainable(targets.all_targets()),
+        SwitchInt { ref targets, .. } => CoverageSuccessors::NotChainable {
+            has_return_arc: false,
+            successors: targets.all_targets(),
+        },
 
         // A yield terminator has exactly 1 successor, but should not be chained,
         // because its resume edge has a different execution count.
-        Yield { ref resume, .. } => CoverageSuccessors::NotChainable(std::slice::from_ref(resume)),
+        Yield { ref resume, .. } => CoverageSuccessors::NotChainable {
+            has_return_arc: true,
+            successors: std::slice::from_ref(resume),
+        },
 
         // These terminators have exactly one coverage-relevant successor,
         // and can be chained into it.
@@ -354,13 +385,19 @@ fn bcb_filtered_successors<'a, 'tcx>(terminator: &'a Terminator<'tcx>) -> Covera
         Call { target: maybe_target, .. } | InlineAsm { destination: maybe_target, .. } => {
             match maybe_target {
                 Some(target) => CoverageSuccessors::Chainable(target),
-                None => CoverageSuccessors::NotChainable(&[]),
+                None => CoverageSuccessors::NotChainable { has_return_arc: false, successors: &[] },
             }
         }
 
+        // These terminators have no actual coverage-relevant successors,
+        // but they do return from their enclosing function.
+        CoroutineDrop | Return => {
+            CoverageSuccessors::NotChainable { has_return_arc: true, successors: &[] }
+        }
+
         // These terminators have no coverage-relevant successors.
-        CoroutineDrop | Return | Unreachable | UnwindResume | UnwindTerminate(_) => {
-            CoverageSuccessors::NotChainable(&[])
+        Unreachable | UnwindResume | UnwindTerminate(_) => {
+            CoverageSuccessors::NotChainable { has_return_arc: false, successors: &[] }
         }
     }
 }

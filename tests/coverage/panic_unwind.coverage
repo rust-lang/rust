@@ -3,8 +3,8 @@
    LL|       |
    LL|      4|fn might_panic(should_panic: bool) {
    LL|      4|    if should_panic {
-   LL|      1|        println!("panicking...");
-   LL|      1|        panic!("panics");
+   LL|       |        println!("panicking...");
+   LL|       |        panic!("panics");
    LL|      3|    } else {
    LL|      3|        println!("Don't Panic");
    LL|      3|    }

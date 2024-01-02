@@ -3,8 +3,8 @@
    LL|       |
    LL|     12|extern "C" fn might_abort(should_abort: bool) {
    LL|     12|    if should_abort {
-   LL|      0|        println!("aborting...");
-   LL|      0|        panic!("panics and aborts");
+   LL|       |        println!("aborting...");
+   LL|       |        panic!("panics and aborts");
    LL|     12|    } else {
    LL|     12|        println!("Don't Panic");
    LL|     12|    }
