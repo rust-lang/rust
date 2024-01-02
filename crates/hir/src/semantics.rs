@@ -39,8 +39,8 @@ use crate::{
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
     Access, Adjust, Adjustment, AutoBorrow, BindingMode, BuiltinAttr, Callable, ConstParam, Crate,
     DeriveHelper, Field, Function, HasSource, HirFileId, Impl, InFile, Label, LifetimeParam, Local,
-    Macro, Module, ModuleDef, Name, OverloadedDeref, Path, ScopeDef, ToolModule, Trait, Type,
-    TypeAlias, TypeParam, VariantDef,
+    Macro, Module, ModuleDef, Name, OverloadedDeref, Path, ScopeDef, Struct, ToolModule, Trait,
+    Type, TypeAlias, TypeParam, VariantDef,
 };
 
 pub enum DescendPreference {
@@ -227,6 +227,14 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 
     pub fn to_module_defs(&self, file: FileId) -> impl Iterator<Item = Module> {
         self.imp.to_module_def(file)
+    }
+
+    pub fn to_struct_def(&self, s: &ast::Struct) -> Option<Struct> {
+        self.imp.to_def(s).map(Struct::from)
+    }
+
+    pub fn to_impl_def(&self, i: &ast::Impl) -> Option<Impl> {
+        self.imp.to_def(i).map(Impl::from)
     }
 }
 
