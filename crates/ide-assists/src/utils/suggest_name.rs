@@ -1,5 +1,7 @@
 //! This module contains functions to suggest names for expressions, functions and other items
 
+use std::collections::HashSet;
+
 use hir::Semantics;
 use ide_db::RootDatabase;
 use itertools::Itertools;
@@ -76,12 +78,9 @@ pub(crate) fn for_unique_generic_name(
             ast::GenericParam::TypeParam(t) => t.name().unwrap().to_string(),
             p => p.to_string(),
         })
-        .collect_vec();
+        .collect::<HashSet<_>>();
     let mut name = name.to_string();
     let base_len = name.len();
-    // 4*len bytes for base, and 2 bytes for 2 digits
-    name.reserve(4 * base_len + 2);
-
     let mut count = 0;
     while param_names.contains(&name) {
         name.truncate(base_len);
