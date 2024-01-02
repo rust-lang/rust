@@ -19,8 +19,8 @@ fn invalid_type_err(
     let snippet = cx.sess.source_map().span_to_snippet(span).ok();
     match ast::LitKind::from_token_lit(token_lit) {
         Ok(ast::LitKind::CStr(_, _)) => {
-            // Avoid ambiguity in handling of terminal `NUL` by refusing to
-            // concatenate C string literals as bytes.
+            // FIXME(c_str_literals): should concatenation of C string literals
+            // include the null bytes in the end?
             cx.emit_err(errors::ConcatCStrLit { span: span });
         }
         Ok(ast::LitKind::Char(_)) => {
