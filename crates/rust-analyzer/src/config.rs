@@ -167,15 +167,15 @@ config_data! {
         /// Specifies the working directory for running checks.
         /// - "workspace": run checks for workspaces in the corresponding workspaces' root directories.
         // FIXME: Ideally we would support this in some way
-        ///   This falls back to "root" if `#rust-analyzer.cargo.check.invocationStrategy#` is set to `once`.
+        ///   This falls back to "root" if `#rust-analyzer.check.invocationStrategy#` is set to `once`.
         /// - "root": run checks in the project's root directory.
-        /// This config only has an effect when `#rust-analyzer.cargo.check.overrideCommand#`
+        /// This config only has an effect when `#rust-analyzer.check.overrideCommand#`
         /// is set.
         check_invocationLocation | checkOnSave_invocationLocation: InvocationLocation = "\"workspace\"",
         /// Specifies the invocation strategy to use when running the check command.
         /// If `per_workspace` is set, the command will be executed for each workspace.
         /// If `once` is set, the command will be executed once.
-        /// This config only has an effect when `#rust-analyzer.cargo.check.overrideCommand#`
+        /// This config only has an effect when `#rust-analyzer.check.overrideCommand#`
         /// is set.
         check_invocationStrategy | checkOnSave_invocationStrategy: InvocationStrategy = "\"per_workspace\"",
         /// Whether to pass `--no-default-features` to Cargo. Defaults to
@@ -194,8 +194,8 @@ config_data! {
         /// If there are multiple linked projects/workspaces, this command is invoked for
         /// each of them, with the working directory being the workspace root
         /// (i.e., the folder containing the `Cargo.toml`). This can be overwritten
-        /// by changing `#rust-analyzer.cargo.check.invocationStrategy#` and
-        /// `#rust-analyzer.cargo.check.invocationLocation#`.
+        /// by changing `#rust-analyzer.check.invocationStrategy#` and
+        /// `#rust-analyzer.check.invocationLocation#`.
         ///
         /// An example command would be:
         ///
