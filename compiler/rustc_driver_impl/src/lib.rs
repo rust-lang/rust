@@ -24,7 +24,6 @@ use rustc_codegen_ssa::{traits::CodegenBackend, CodegenErrors, CodegenResults};
 use rustc_data_structures::profiling::{
     get_resident_set_size, print_time_passes_entry, TimePassesFormat,
 };
-use rustc_data_structures::sync::SeqCst;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
 use rustc_errors::{markdown, ColorConfig};
 use rustc_errors::{DiagCtxt, ErrorGuaranteed, PResult};
@@ -475,7 +474,7 @@ fn run_compiler(
             eprintln!(
                 "Fuel used by {}: {}",
                 sess.opts.unstable_opts.print_fuel.as_ref().unwrap(),
-                sess.print_fuel.load(SeqCst)
+                sess.print_fuel.load(Ordering::SeqCst)
             );
         }
 
