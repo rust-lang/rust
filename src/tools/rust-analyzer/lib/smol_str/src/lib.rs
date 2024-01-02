@@ -26,6 +26,7 @@ use core::{
 ///     * Longer than 23 bytes, but substrings of `WS` (see below). Such strings consist
 ///     solely of consecutive newlines, followed by consecutive spaces
 /// * If a string does not satisfy the aforementioned conditions, it is heap-allocated
+/// * Additionally, a `SmolStr` can be explicitely created from a `&'static str` without allocation
 ///
 /// Unlike `String`, however, `SmolStr` is immutable. The primary use case for
 /// `SmolStr` is a good enough default storage for tokens of typical programming
@@ -76,6 +77,17 @@ impl SmolStr {
             len: unsafe { transmute(text.len() as u8) },
             buf,
         })
+    }
+
+    /// Constructs a `SmolStr` from a statically allocated string.
+    ///
+    /// This never allocates.
+    #[inline(always)]
+    pub const fn new_static(text: &'static str) -> SmolStr {
+        // NOTE: this never uses the inline storage; if a canonical
+        // representation is needed, we could check for `len() < INLINE_CAP`
+        // and call `new_inline`, but this would mean an extra branch.
+        SmolStr(Repr::Static(text))
     }
 
     pub fn new<T>(text: T) -> SmolStr
@@ -395,6 +407,11 @@ const N_NEWLINES: usize = 32;
 const N_SPACES: usize = 128;
 const WS: &str =
     "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n                                                                                                                                ";
+const _: () = {
+    assert!(WS.len() == N_NEWLINES + N_SPACES);
+    assert!(WS.as_bytes()[N_NEWLINES - 1] == b'\n');
+    assert!(WS.as_bytes()[N_NEWLINES] == b' ');
+};
 
 #[derive(Clone, Copy, Debug)]
 #[repr(u8)]
@@ -428,18 +445,15 @@ enum InlineSize {
 #[derive(Clone, Debug)]
 enum Repr {
     Heap(Arc<str>),
+    Static(&'static str),
     Inline {
         len: InlineSize,
         buf: [u8; INLINE_CAP],
     },
-    Substring {
-        newlines: usize,
-        spaces: usize,
-    },
 }
 
 impl Repr {
-    /// This function tries to create a new Repr::Inline or Repr::Substring
+    /// This function tries to create a new Repr::Inline or Repr::Static
     /// If it isn't possible, this function returns None
     fn new_on_stack<T>(text: T) -> Option<Self>
     where
@@ -467,7 +481,8 @@ impl Repr {
             let possible_space_count = len - newlines;
             if possible_space_count <= N_SPACES && bytes[newlines..].iter().all(|&b| b == b' ') {
                 let spaces = possible_space_count;
-                return Some(Repr::Substring { newlines, spaces });
+                let substring = &WS[N_NEWLINES - newlines..N_NEWLINES + spaces];
+                return Some(Repr::Static(substring));
             }
         }
         None
@@ -484,8 +499,8 @@ impl Repr {
     fn len(&self) -> usize {
         match self {
             Repr::Heap(data) => data.len(),
+            Repr::Static(data) => data.len(),
             Repr::Inline { len, .. } => *len as usize,
-            Repr::Substring { newlines, spaces } => *newlines + *spaces,
         }
     }
 
@@ -493,9 +508,8 @@ impl Repr {
     fn is_empty(&self) -> bool {
         match self {
             Repr::Heap(data) => data.is_empty(),
+            Repr::Static(data) => data.is_empty(),
             Repr::Inline { len, .. } => *len as u8 == 0,
-            // A substring isn't created for an empty string.
-            Repr::Substring { .. } => false,
         }
     }
 
@@ -503,16 +517,11 @@ impl Repr {
     fn as_str(&self) -> &str {
         match self {
             Repr::Heap(data) => &*data,
+            Repr::Static(data) => data,
             Repr::Inline { len, buf } => {
                 let len = *len as usize;
                 let buf = &buf[..len];
                 unsafe { ::core::str::from_utf8_unchecked(buf) }
-            }
-            Repr::Substring { newlines, spaces } => {
-                let newlines = *newlines;
-                let spaces = *spaces;
-                assert!(newlines <= N_NEWLINES && spaces <= N_SPACES);
-                &WS[N_NEWLINES - newlines..N_NEWLINES + spaces]
             }
         }
     }
