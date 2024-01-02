@@ -843,7 +843,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.diagnostic_items(did.krate).name_to_id.get(&name) == Some(&did)
     }
 
-    pub fn is_coroutine(self, def_id: DefId) -> bool {
+    pub fn is_coroutine(self, def_id: LocalDefId) -> bool {
         self.coroutine_kind(def_id).is_some()
     }
 

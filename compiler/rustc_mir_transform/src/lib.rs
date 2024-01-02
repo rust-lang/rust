@@ -324,6 +324,7 @@ fn mir_promoted(
     // Also this means promotion can rely on all const checks having been done.
 
     let const_qualifs = match tcx.def_kind(def) {
+        DefKind::Closure if tcx.is_coroutine(def) => ConstQualifs::default(),
         DefKind::Fn | DefKind::AssocFn | DefKind::Closure
             if tcx.constness(def) == hir::Constness::Const
                 || tcx.is_const_default_method(def.to_def_id()) =>
@@ -396,7 +397,7 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
 /// mir borrowck *before* doing so in order to ensure that borrowck can be run and doesn't
 /// end up missing the source MIR due to stealing happening.
 fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
-    if tcx.is_coroutine(def.to_def_id()) {
+    if tcx.is_coroutine(def) {
         tcx.ensure_with_value().mir_coroutine_witnesses(def);
     }
     let mir_borrowck = tcx.mir_borrowck(def);

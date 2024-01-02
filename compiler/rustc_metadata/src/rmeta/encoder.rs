@@ -875,7 +875,7 @@ fn should_encode_span(def_kind: DefKind) -> bool {
     }
 }
 
-fn should_encode_attrs(def_kind: DefKind) -> bool {
+fn should_encode_attrs(def_kind: DefKind, is_coroutine: bool) -> bool {
     match def_kind {
         DefKind::Mod
         | DefKind::Struct
@@ -899,7 +899,7 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         // closures from upstream crates, too. This is used by
         // https://github.com/model-checking/kani and is not a performance
         // or maintenance issue for us.
-        DefKind::Closure => true,
+        DefKind::Closure => !is_coroutine,
         DefKind::TyParam
         | DefKind::ConstParam
         | DefKind::Ctor(..)
@@ -1058,7 +1058,7 @@ fn should_encode_mir(
         | DefKind::Static(..)
         | DefKind::Const => (true, false),
         // Coroutines require optimized MIR to compute layout.
-        DefKind::Closure if tcx.is_coroutine(def_id.to_def_id()) => (false, true),
+        DefKind::Closure if tcx.is_coroutine(def_id) => (false, true),
         // Full-fledged functions + closures
         DefKind::AssocFn | DefKind::Fn | DefKind::Closure => {
             let generics = tcx.generics_of(def_id);
@@ -1241,11 +1241,11 @@ fn should_encode_fn_sig(def_kind: DefKind) -> bool {
     }
 }
 
-fn should_encode_constness(def_kind: DefKind) -> bool {
+fn should_encode_constness(def_kind: DefKind, is_coroutine: bool) -> bool {
     match def_kind {
+        DefKind::Closure => !is_coroutine,
         DefKind::Fn
         | DefKind::AssocFn
-        | DefKind::Closure
         | DefKind::Impl { of_trait: true }
         | DefKind::Variant
         | DefKind::Ctor(..) => true,
@@ -1358,12 +1358,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         for local_id in tcx.iter_local_def_id() {
             let def_id = local_id.to_def_id();
             let def_kind = tcx.def_kind(local_id);
+            let is_coroutine = def_kind == DefKind::Closure && tcx.is_coroutine(local_id);
             self.tables.def_kind.set_some(def_id.index, def_kind);
             if should_encode_span(def_kind) {
                 let def_span = tcx.def_span(local_id);
                 record!(self.tables.def_span[def_id] <- def_span);
             }
-            if should_encode_attrs(def_kind) {
+            if should_encode_attrs(def_kind, is_coroutine) {
                 self.encode_attrs(local_id);
             }
             if should_encode_expn_that_defined(def_kind) {
@@ -1418,7 +1419,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if should_encode_type(tcx, local_id, def_kind) && !anon_const_without_hir {
                 record!(self.tables.type_of[def_id] <- self.tcx.type_of(def_id));
             }
-            if should_encode_constness(def_kind) {
+            if should_encode_constness(def_kind, is_coroutine) {
                 self.tables.constness.set_some(def_id.index, self.tcx.constness(def_id));
             }
             if let DefKind::Fn | DefKind::AssocFn = def_kind {
@@ -1639,7 +1640,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.closure_saved_names_of_captured_variables[def_id.to_def_id()]
                     <- tcx.closure_saved_names_of_captured_variables(def_id));
 
-                if self.tcx.is_coroutine(def_id.to_def_id())
+                if self.tcx.is_coroutine(def_id)
                     && let Some(witnesses) = tcx.mir_coroutine_witnesses(def_id)
                 {
                     record!(self.tables.mir_coroutine_witnesses[def_id.to_def_id()] <- witnesses);
@@ -1666,7 +1667,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             record!(self.tables.promoted_mir[def_id.to_def_id()] <- tcx.promoted_mir(def_id));
 
-            if self.tcx.is_coroutine(def_id.to_def_id())
+            if self.tcx.is_coroutine(def_id)
                 && let Some(witnesses) = tcx.mir_coroutine_witnesses(def_id)
             {
                 record!(self.tables.mir_coroutine_witnesses[def_id.to_def_id()] <- witnesses);

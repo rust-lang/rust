@@ -42,6 +42,14 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         _ => {}
     }
 
+    // This just reproduces the logic from Instance::requires_inline.
+    match tcx.def_kind(def_id) {
+        DefKind::Closure if tcx.is_coroutine(def_id) => return false,
+        DefKind::Ctor(..) | DefKind::Closure => return true,
+        DefKind::Fn | DefKind::AssocFn => {}
+        _ => return false,
+    }
+
     // Don't do any inference when incremental compilation is enabled; the additional inlining that
     // inference permits also creates more work for small edits.
     if tcx.sess.opts.incremental.is_some() {

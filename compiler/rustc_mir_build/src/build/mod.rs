@@ -480,7 +480,9 @@ fn construct_fn<'tcx>(
     };
 
     let mut abi = fn_sig.abi;
-    if let DefKind::Closure = tcx.def_kind(fn_def) {
+    if let DefKind::Closure = tcx.def_kind(fn_def)
+        && !tcx.is_coroutine(fn_def)
+    {
         // HACK(eddyb) Avoid having RustCall on closures,
         // as it adds unnecessary (and wrong) auto-tupling.
         abi = Abi::Rust;

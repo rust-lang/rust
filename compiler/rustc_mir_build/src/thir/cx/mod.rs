@@ -37,7 +37,7 @@ pub(crate) fn thir_body(
 
         // The resume argument may be missing, in that case we need to provide it here.
         // It will always be `()` in this case.
-        if tcx.is_coroutine(owner_def.to_def_id()) && body.params.is_empty() {
+        if tcx.is_coroutine(owner_def) && body.params.is_empty() {
             cx.thir.params.push(Param {
                 ty: Ty::new_unit(tcx),
                 pat: None,
@@ -119,7 +119,7 @@ impl<'tcx> Cx<'tcx> {
 
     fn closure_env_param(&self, owner_def: LocalDefId, owner_id: HirId) -> Option<Param<'tcx>> {
         match self.tcx.def_kind(owner_def) {
-            DefKind::Closure if self.tcx.is_coroutine(owner_def.to_def_id()) => {
+            DefKind::Closure if self.tcx.is_coroutine(owner_def) => {
                 let coroutine_ty = self.typeck_results.node_type(owner_id);
                 let coroutine_param = Param {
                     ty: coroutine_ty,
