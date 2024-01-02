@@ -7,7 +7,11 @@
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
 
-use std::{fmt, iter, ops::Not, path::PathBuf};
+use std::{
+    fmt, iter,
+    ops::Not,
+    path::{Path, PathBuf},
+};
 
 use cfg::{CfgAtom, CfgDiff};
 use flycheck::FlycheckConfig;
@@ -920,7 +924,19 @@ impl Config {
     pub fn has_linked_projects(&self) -> bool {
         !self.data.linkedProjects.is_empty()
     }
-    pub fn linked_projects(&self) -> Vec<LinkedProject> {
+    pub fn linked_manifests(&self) -> impl Iterator<Item = &Path> + '_ {
+        self.data.linkedProjects.iter().filter_map(|it| match it {
+            ManifestOrProjectJson::Manifest(p) => Some(&**p),
+            ManifestOrProjectJson::ProjectJson(_) => None,
+        })
+    }
+    pub fn has_linked_project_jsons(&self) -> bool {
+        self.data
+            .linkedProjects
+            .iter()
+            .any(|it| matches!(it, ManifestOrProjectJson::ProjectJson(_)))
+    }
+    pub fn linked_or_discovered_projects(&self) -> Vec<LinkedProject> {
         match self.data.linkedProjects.as_slice() {
             [] => {
                 let exclude_dirs: Vec<_> =
@@ -953,15 +969,6 @@ impl Config {
                 })
                 .collect(),
         }
-    }
-
-    pub fn add_linked_projects(&mut self, linked_projects: Vec<ProjectJsonData>) {
-        let mut linked_projects = linked_projects
-            .into_iter()
-            .map(ManifestOrProjectJson::ProjectJson)
-            .collect::<Vec<ManifestOrProjectJson>>();
-
-        self.data.linkedProjects.append(&mut linked_projects);
     }
 
     pub fn did_save_text_document_dynamic_registration(&self) -> bool {
