@@ -909,10 +909,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn reserve(&mut self, additional: usize) {
-        // SAFETY: len <= capacity
-        unsafe {
-            self.buf.reserve(self.len, additional);
-        }
+        self.buf.reserve(self.len, additional);
         unsafe {
             // Inform the optimizer that the reservation has succeeded or wasn't needed
             intrinsics::assume(!self.buf.needs_to_grow(self.len, additional));
@@ -947,10 +944,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn reserve_exact(&mut self, additional: usize) {
-        // SAFETY: len <= capacity
-        unsafe {
-            self.buf.reserve_exact(self.len, additional);
-        }
+        self.buf.reserve_exact(self.len, additional);
         unsafe {
             // Inform the optimizer that the reservation has succeeded or wasn't needed
             intrinsics::assume(!self.buf.needs_to_grow(self.len, additional));
@@ -992,10 +986,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[stable(feature = "try_reserve", since = "1.57.0")]
     #[inline]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
-        // SAFETY: len <= capacity
-        unsafe {
-            self.buf.try_reserve(self.len, additional)?;
-        }
+        self.buf.try_reserve(self.len, additional)?;
         unsafe {
             // Inform the optimizer that the reservation has succeeded or wasn't needed
             intrinsics::assume(!self.buf.needs_to_grow(self.len, additional));
@@ -1044,10 +1035,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[stable(feature = "try_reserve", since = "1.57.0")]
     #[inline]
     pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
-        // SAFETY: len <= capacity
-        unsafe {
-            self.buf.try_reserve_exact(self.len, additional)?;
-        }
+        self.buf.try_reserve_exact(self.len, additional)?;
         unsafe {
             // Inform the optimizer that the reservation has succeeded or wasn't needed
             intrinsics::assume(!self.buf.needs_to_grow(self.len, additional));

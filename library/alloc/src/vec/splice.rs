@@ -126,9 +126,7 @@ impl<T, A: Allocator> Drain<'_, T, A> {
     unsafe fn move_tail(&mut self, additional: usize) {
         let vec = unsafe { self.vec.as_mut() };
         let len = self.tail_start + self.tail_len;
-        unsafe {
-            vec.buf.reserve(len, additional);
-        }
+        vec.buf.reserve(len, additional);
 
         let new_tail_start = self.tail_start + additional;
         unsafe {

@@ -756,8 +756,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
         let old_cap = self.capacity();
 
         if new_cap > old_cap {
+            self.buf.reserve_exact(self.len, additional);
             unsafe {
-                self.buf.reserve_exact(self.len, additional);
                 self.handle_capacity_increase(old_cap);
             }
         }
@@ -787,8 +787,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
         if new_cap > old_cap {
             // we don't need to reserve_exact(), as the size doesn't have
             // to be a power of 2.
+            self.buf.reserve(self.len, additional);
             unsafe {
-                self.buf.reserve(self.len, additional);
                 self.handle_capacity_increase(old_cap);
             }
         }
@@ -838,8 +838,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
         let old_cap = self.capacity();
 
         if new_cap > old_cap {
+            self.buf.try_reserve_exact(self.len, additional)?;
             unsafe {
-                self.buf.try_reserve_exact(self.len, additional)?;
                 self.handle_capacity_increase(old_cap);
             }
         }
@@ -886,8 +886,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
         let old_cap = self.capacity();
 
         if new_cap > old_cap {
+            self.buf.try_reserve(self.len, additional)?;
             unsafe {
-                self.buf.try_reserve(self.len, additional)?;
                 self.handle_capacity_increase(old_cap);
             }
         }
