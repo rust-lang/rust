@@ -130,8 +130,8 @@ x--expand-yaml-anchors--remove:
           # dirs placed in front. This lets us run Windows-native Python etc.
           path-type: inherit
           install: >
+            make
             git
-          #   make
           #   mingw-w64-x86_64-python
           #   mingw-w64-x86_64-jq
           #   mingw-w64-x86_64-7zip
