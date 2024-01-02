@@ -16,3 +16,6 @@ base-db.workspace = true
 rustc-hash.workspace = true
 span.workspace = true
 stdx.workspace = true
+
+[lints]
+workspace = true

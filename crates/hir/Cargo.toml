@@ -33,3 +33,6 @@ tt.workspace = true
 
 [features]
 in-rust-tree = []
+
+[lints]
+workspace = true

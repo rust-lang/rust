@@ -19,3 +19,6 @@ stdx.workspace = true
 
 # FIXME: Remove this dependency once the `Span` trait is gone (that is once Span::DUMMY has been removed)
 span.workspace = true
+
+[lints]
+workspace = true

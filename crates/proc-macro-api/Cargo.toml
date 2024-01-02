@@ -38,3 +38,6 @@ span.workspace = true
 # InternIds for the syntax context
 base-db.workspace = true
 la-arena.workspace = true
+
+[lints]
+workspace = true

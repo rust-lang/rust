@@ -94,3 +94,6 @@ in-rust-tree = [
     "hir-def/in-rust-tree",
     "hir-ty/in-rust-tree",
 ]
+
+[lints]
+workspace = true
