@@ -2,7 +2,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_data_structures::graph::dominators::{self, Dominators};
 use rustc_data_structures::graph::{self, GraphSuccessors, WithNumNodes, WithStartNode};
 use rustc_index::bit_set::BitSet;
-use rustc_index::{IndexSlice, IndexVec};
+use rustc_index::IndexVec;
 use rustc_middle::mir::{self, BasicBlock, Terminator, TerminatorKind};
 
 use std::cmp::Ordering;
@@ -81,8 +81,22 @@ impl CoverageGraph {
         IndexVec<BasicBlock, Option<BasicCoverageBlock>>,
     ) {
         let num_basic_blocks = mir_body.basic_blocks.len();
-        let mut bcbs = IndexVec::with_capacity(num_basic_blocks);
+        let mut bcbs = IndexVec::<BasicCoverageBlock, _>::with_capacity(num_basic_blocks);
         let mut bb_to_bcb = IndexVec::from_elem_n(None, num_basic_blocks);
+
+        let mut add_basic_coverage_block = |basic_blocks: &mut Vec<BasicBlock>| {
+            // Take the accumulated list of blocks, leaving the vector empty
+            // to be used by subsequent BCBs.
+            let basic_blocks = std::mem::take(basic_blocks);
+
+            let bcb = bcbs.next_index();
+            for &bb in basic_blocks.iter() {
+                bb_to_bcb[bb] = Some(bcb);
+            }
+            let bcb_data = BasicCoverageBlockData::from(basic_blocks);
+            debug!("adding bcb{}: {:?}", bcb.index(), bcb_data);
+            bcbs.push(bcb_data);
+        };
 
         // Walk the MIR CFG using a Preorder traversal, which starts from `START_BLOCK` and follows
         // each block terminator's `successors()`. Coverage spans must map to actual source code,
@@ -113,11 +127,7 @@ impl CoverageGraph {
                     predecessors = ?&mir_body.basic_blocks.predecessors()[bb],
                     "can't chain from {prev:?} to {bb:?}"
                 );
-                Self::add_basic_coverage_block(
-                    &mut bcbs,
-                    &mut bb_to_bcb,
-                    basic_blocks.split_off(0),
-                );
+                add_basic_coverage_block(&mut basic_blocks);
             }
 
             basic_blocks.push(bb);
@@ -125,24 +135,10 @@ impl CoverageGraph {
 
         if !basic_blocks.is_empty() {
             debug!("flushing accumulated blocks into one last BCB");
-            Self::add_basic_coverage_block(&mut bcbs, &mut bb_to_bcb, basic_blocks.split_off(0));
+            add_basic_coverage_block(&mut basic_blocks);
         }
 
         (bcbs, bb_to_bcb)
-    }
-
-    fn add_basic_coverage_block(
-        bcbs: &mut IndexVec<BasicCoverageBlock, BasicCoverageBlockData>,
-        bb_to_bcb: &mut IndexSlice<BasicBlock, Option<BasicCoverageBlock>>,
-        basic_blocks: Vec<BasicBlock>,
-    ) {
-        let bcb = bcbs.next_index();
-        for &bb in basic_blocks.iter() {
-            bb_to_bcb[bb] = Some(bcb);
-        }
-        let bcb_data = BasicCoverageBlockData::from(basic_blocks);
-        debug!("adding bcb{}: {:?}", bcb.index(), bcb_data);
-        bcbs.push(bcb_data);
     }
 
     #[inline(always)]
