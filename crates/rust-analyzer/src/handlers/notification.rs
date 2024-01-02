@@ -134,7 +134,7 @@ pub(crate) fn handle_did_save_text_document(
         // reset the flag
         state.proc_macro_changed = false;
         // rebuild the proc macros
-        state.fetch_build_data_queue.request_op(format!("ScriptRebuildOnSave"), ());
+        state.fetch_build_data_queue.request_op("ScriptRebuildOnSave".to_owned(), ());
     }
 
     if let Ok(vfs_path) = from_proto::vfs_path(&params.text_document.uri) {
