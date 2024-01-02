@@ -52,19 +52,18 @@ impl CoverageGraph {
             }
         }
 
-        let mut basic_coverage_blocks =
-            Self { bcbs, bb_to_bcb, successors, predecessors, dominators: None };
-        let dominators = dominators::dominators(&basic_coverage_blocks);
-        basic_coverage_blocks.dominators = Some(dominators);
+        let mut this = Self { bcbs, bb_to_bcb, successors, predecessors, dominators: None };
+
+        this.dominators = Some(dominators::dominators(&this));
 
         // The coverage graph's entry-point node (bcb0) always starts with bb0,
         // which never has predecessors. Any other blocks merged into bcb0 can't
         // have multiple (coverage-relevant) predecessors, so bcb0 always has
         // zero in-edges.
-        assert!(basic_coverage_blocks[START_BCB].leader_bb() == mir::START_BLOCK);
-        assert!(basic_coverage_blocks.predecessors[START_BCB].is_empty());
+        assert!(this[START_BCB].leader_bb() == mir::START_BLOCK);
+        assert!(this.predecessors[START_BCB].is_empty());
 
-        basic_coverage_blocks
+        this
     }
 
     fn compute_basic_coverage_blocks(
