@@ -1023,7 +1023,7 @@ impl<'a> Parser<'a> {
     // we should break everything including floats into more basic proc-macro style
     // tokens in the lexer (probably preferable).
     // See also `TokenKind::break_two_token_op` which does similar splitting of `>>` into `>`.
-    fn break_up_float(&mut self, float: Symbol) -> DestructuredFloat {
+    fn break_up_float(&self, float: Symbol, span: Span) -> DestructuredFloat {
         #[derive(Debug)]
         enum FloatComponent {
             IdentLike(String),
@@ -1053,7 +1053,6 @@ impl<'a> Parser<'a> {
         // With proc macros the span can refer to anything, the source may be too short,
         // or too long, or non-ASCII. It only makes sense to break our span into components
         // if its underlying text is identical to our float literal.
-        let span = self.token.span;
         let can_take_span_apart =
             || self.span_to_snippet(span).as_deref() == Ok(float_str).as_deref();
 
@@ -1115,7 +1114,7 @@ impl<'a> Parser<'a> {
         float: Symbol,
         suffix: Option<Symbol>,
     ) -> P<Expr> {
-        match self.break_up_float(float) {
+        match self.break_up_float(float, self.token.span) {
             // 1e2
             DestructuredFloat::Single(sym, _sp) => {
                 self.parse_expr_tuple_field_access(lo, base, sym, suffix, None)
@@ -1143,40 +1142,105 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_field_name_maybe_tuple(&mut self) -> PResult<'a, ThinVec<Ident>> {
-        let token::Literal(token::Lit { kind: token::Float, symbol, suffix }) = self.token.kind
-        else {
-            return Ok(thin_vec![self.parse_field_name()?]);
-        };
-        Ok(match self.break_up_float(symbol) {
-            // 1e2
-            DestructuredFloat::Single(sym, sp) => {
-                self.bump();
-                thin_vec![Ident::new(sym, sp)]
+    /// Parse the field access used in offset_of, matched by `$(e:expr)+`.
+    /// Currently returns a list of idents. However, it should be possible in
+    /// future to also do array indices, which might be arbitrary expressions.
+    fn parse_floating_field_access(&mut self) -> PResult<'a, P<[Ident]>> {
+        let mut fields = Vec::new();
+        let mut trailing_dot = None;
+
+        loop {
+            // This is expected to use a metavariable $(args:expr)+, but the builtin syntax
+            // could be called directly. Calling `parse_expr` allows this function to only
+            // consider `Expr`s.
+            let expr = self.parse_expr()?;
+            let mut current = &expr;
+            let start_idx = fields.len();
+            loop {
+                match current.kind {
+                    ExprKind::Field(ref left, right) => {
+                        // Field access is read right-to-left.
+                        fields.insert(start_idx, right);
+                        trailing_dot = None;
+                        current = left;
+                    }
+                    // Parse this both to give helpful error messages and to
+                    // verify it can be done with this parser setup.
+                    ExprKind::Index(ref left, ref _right, span) => {
+                        self.sess.emit_err(errors::ArrayIndexInOffsetOf(span));
+                        current = left;
+                    }
+                    ExprKind::Lit(token::Lit {
+                        kind: token::Float | token::Integer,
+                        symbol,
+                        suffix,
+                    }) => {
+                        if let Some(suffix) = suffix {
+                            self.expect_no_tuple_index_suffix(current.span, suffix);
+                        }
+                        match self.break_up_float(symbol, current.span) {
+                            // 1e2
+                            DestructuredFloat::Single(sym, sp) => {
+                                trailing_dot = None;
+                                fields.insert(start_idx, Ident::new(sym, sp));
+                            }
+                            // 1.
+                            DestructuredFloat::TrailingDot(sym, sym_span, dot_span) => {
+                                assert!(suffix.is_none());
+                                trailing_dot = Some(dot_span);
+                                fields.insert(start_idx, Ident::new(sym, sym_span));
+                            }
+                            // 1.2 | 1.2e3
+                            DestructuredFloat::MiddleDot(
+                                symbol1,
+                                span1,
+                                _dot_span,
+                                symbol2,
+                                span2,
+                            ) => {
+                                trailing_dot = None;
+                                fields.insert(start_idx, Ident::new(symbol2, span2));
+                                fields.insert(start_idx, Ident::new(symbol1, span1));
+                            }
+                            DestructuredFloat::Error => {
+                                trailing_dot = None;
+                                fields.insert(start_idx, Ident::new(symbol, self.prev_token.span));
+                            }
+                        }
+                        break;
+                    }
+                    ExprKind::Path(None, Path { ref segments, .. }) => {
+                        match &segments[..] {
+                            [PathSegment { ident, args: None, .. }] => {
+                                trailing_dot = None;
+                                fields.insert(start_idx, *ident)
+                            }
+                            _ => {
+                                self.sess.emit_err(errors::InvalidOffsetOf(current.span));
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                    _ => {
+                        self.sess.emit_err(errors::InvalidOffsetOf(current.span));
+                        break;
+                    }
+                }
             }
-            // 1.
-            DestructuredFloat::TrailingDot(sym, sym_span, dot_span) => {
-                assert!(suffix.is_none());
-                // Analogous to `Self::break_and_eat`
-                self.break_last_token = true;
-                // This might work, in cases like `1. 2`, and might not,
-                // in cases like `offset_of!(Ty, 1.)`. It depends on what comes
-                // after the float-like token, and therefore we have to make
-                // the other parts of the parser think that there is a dot literal.
-                self.token = Token::new(token::Ident(sym, false), sym_span);
-                self.bump_with((Token::new(token::Dot, dot_span), self.token_spacing));
-                thin_vec![Ident::new(sym, sym_span)]
+
+            if matches!(self.token.kind, token::CloseDelim(..) | token::Comma) {
+                break;
+            } else if trailing_dot.is_none() {
+                // This loop should only repeat if there is a trailing dot.
+                self.sess.emit_err(errors::InvalidOffsetOf(self.token.span));
+                break;
             }
-            // 1.2 | 1.2e3
-            DestructuredFloat::MiddleDot(symbol1, ident1_span, _dot_span, symbol2, ident2_span) => {
-                self.bump();
-                thin_vec![Ident::new(symbol1, ident1_span), Ident::new(symbol2, ident2_span)]
-            }
-            DestructuredFloat::Error => {
-                self.bump();
-                thin_vec![Ident::new(symbol, self.prev_token.span)]
-            }
-        })
+        }
+        if let Some(dot) = trailing_dot {
+            self.sess.emit_err(errors::InvalidOffsetOf(dot));
+        }
+        Ok(fields.into_iter().collect())
     }
 
     fn parse_expr_tuple_field_access(
@@ -1907,15 +1971,29 @@ impl<'a> Parser<'a> {
         let container = self.parse_ty()?;
         self.expect(&TokenKind::Comma)?;
 
-        let seq_sep = SeqSep { sep: Some(token::Dot), trailing_sep_allowed: false };
-        let (fields, _trailing, _recovered) = self.parse_seq_to_before_end(
-            &TokenKind::CloseDelim(Delimiter::Parenthesis),
-            seq_sep,
-            Parser::parse_field_name_maybe_tuple,
-        )?;
-        let fields = fields.into_iter().flatten().collect::<Vec<_>>();
+        let fields = self.parse_floating_field_access()?;
+        let trailing_comma = self.eat_noexpect(&TokenKind::Comma);
+
+        if let Err(mut e) =
+            self.expect_one_of(&[], &[TokenKind::CloseDelim(Delimiter::Parenthesis)])
+        {
+            if trailing_comma {
+                e.note("unexpected third argument to offset_of");
+            } else {
+                e.note("offset_of expects dot-separated field and variant names");
+            }
+            e.emit();
+        }
+
+        // Eat tokens until the macro call ends.
+        if self.may_recover() {
+            while !matches!(self.token.kind, token::CloseDelim(..) | token::Eof) {
+                self.bump();
+            }
+        }
+
         let span = lo.to(self.token.span);
-        Ok(self.mk_expr(span, ExprKind::OffsetOf(container, fields.into())))
+        Ok(self.mk_expr(span, ExprKind::OffsetOf(container, fields)))
     }
 
     /// Returns a string literal if the next token is a string literal.
