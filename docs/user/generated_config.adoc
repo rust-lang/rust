@@ -71,6 +71,12 @@ cargo check --quiet --workspace --message-format=json --all-targets
 ```
 .
 --
+[[rust-analyzer.cargo.buildScripts.rebuildOnSave]]rust-analyzer.cargo.buildScripts.rebuildOnSave (default: `false`)::
++
+--
+Rerun proc-macros building/build-scripts running when proc-macro
+or build-script sources change and are saved.
+--
 [[rust-analyzer.cargo.buildScripts.useRustcWrapper]]rust-analyzer.cargo.buildScripts.useRustcWrapper (default: `true`)::
 +
 --

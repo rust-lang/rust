@@ -130,6 +130,13 @@ pub(crate) fn handle_did_save_text_document(
     state: &mut GlobalState,
     params: DidSaveTextDocumentParams,
 ) -> anyhow::Result<()> {
+    if state.config.script_rebuild_on_save() && state.proc_macro_changed {
+        // reset the flag
+        state.proc_macro_changed = false;
+        // rebuild the proc macros
+        state.fetch_build_data_queue.request_op("ScriptRebuildOnSave".to_owned(), ());
+    }
+
     if let Ok(vfs_path) = from_proto::vfs_path(&params.text_document.uri) {
         // Re-fetch workspaces if a workspace related file has changed
         if let Some(abs_path) = vfs_path.as_path() {
