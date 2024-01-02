@@ -1697,6 +1697,25 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         })
     }
 
+    fn pretty_print_bound_constness(
+        &mut self,
+        trait_ref: ty::TraitRef<'tcx>,
+    ) -> Result<(), PrintError> {
+        define_scoped_cx!(self);
+
+        let Some(idx) = self.tcx().generics_of(trait_ref.def_id).host_effect_index else {
+            return Ok(());
+        };
+        let arg = trait_ref.args.const_at(idx);
+
+        if arg == self.tcx().consts.false_ {
+            p!("const ");
+        } else if arg != self.tcx().consts.true_ && !arg.has_infer() {
+            p!("~const ");
+        }
+        Ok(())
+    }
+
     fn should_print_verbose(&self) -> bool {
         self.tcx().sess.verbose_internals()
     }
@@ -2866,13 +2885,7 @@ define_print_and_forward_display! {
     }
 
     TraitPredPrintModifiersAndPath<'tcx> {
-        if let Some(idx) = cx.tcx().generics_of(self.0.trait_ref.def_id).host_effect_index
-        {
-            let arg = self.0.trait_ref.args.const_at(idx);
-            if arg != cx.tcx().consts.true_ && !arg.has_infer() {
-                p!("~const ");
-            }
-        }
+        p!(pretty_print_bound_constness(self.0.trait_ref));
         if let ty::ImplPolarity::Negative = self.0.polarity {
             p!("!")
         }
@@ -2905,11 +2918,7 @@ define_print_and_forward_display! {
 
     ty::TraitPredicate<'tcx> {
         p!(print(self.trait_ref.self_ty()), ": ");
-        if let Some(idx) = cx.tcx().generics_of(self.trait_ref.def_id).host_effect_index {
-            if self.trait_ref.args.const_at(idx) != cx.tcx().consts.true_ {
-                p!("~const ");
-            }
-        }
+        p!(pretty_print_bound_constness(self.trait_ref));
         if let ty::ImplPolarity::Negative = self.polarity {
             p!("!");
         }
