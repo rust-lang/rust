@@ -42,7 +42,7 @@ use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_session::config::OutputFilenames;
 use rustc_session::Session;
-use rustc_span::Symbol;
+use rustc_span::{sym, Symbol};
 
 pub use crate::config::*;
 use crate::prelude::*;
@@ -190,8 +190,17 @@ impl CodegenBackend for CraneliftCodegenBackend {
         }
     }
 
-    fn target_features(&self, _sess: &Session, _allow_unstable: bool) -> Vec<rustc_span::Symbol> {
-        vec![] // FIXME necessary for #[cfg(target_feature]
+    fn target_features(&self, sess: &Session, _allow_unstable: bool) -> Vec<rustc_span::Symbol> {
+        // FIXME return the actually used target features. this is necessary for #[cfg(target_feature)]
+        if sess.target.arch == "x86_64" && sess.target.os != "none" {
+            // x86_64 mandates SSE2 support
+            vec![Symbol::intern("fxsr"), sym::sse, Symbol::intern("sse2")]
+        } else if sess.target.arch == "aarch64" && sess.target.os != "none" {
+            // AArch64 mandates Neon support
+            vec![sym::neon]
+        } else {
+            vec![]
+        }
     }
 
     fn print_version(&self) {
