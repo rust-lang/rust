@@ -112,7 +112,7 @@ impl<'tcx> MutVisitor<'tcx> for Replacer<'_, 'tcx> {
 
     fn visit_local(&mut self, local: &mut Local, ctxt: PlaceContext, _: Location) {
         let new_local = self.copy_classes[*local];
-        if self.borrowed_locals.contains(*local) || self.borrowed_locals.contains(new_local) {
+        if self.borrowed_locals.contains(*local) {
             return;
         }
         match ctxt {
