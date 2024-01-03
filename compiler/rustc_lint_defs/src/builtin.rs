@@ -2817,8 +2817,8 @@ declare_lint! {
     /// [`ptr::from_exposed_addr`].
     ///
     /// [issue #95228]: https://github.com/rust-lang/rust/issues/95228
-    /// [`ptr::with_addr`]: https://doc.rust-lang.org/core/ptr/fn.with_addr
-    /// [`ptr::from_exposed_addr`]: https://doc.rust-lang.org/core/ptr/fn.from_exposed_addr
+    /// [`ptr::with_addr`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.with_addr
+    /// [`ptr::from_exposed_addr`]: https://doc.rust-lang.org/core/ptr/fn.from_exposed_addr.html
     pub FUZZY_PROVENANCE_CASTS,
     Allow,
     "a fuzzy integer to pointer cast is used",
@@ -2863,8 +2863,8 @@ declare_lint! {
     /// about the semantics.
     ///
     /// [issue #95228]: https://github.com/rust-lang/rust/issues/95228
-    /// [`ptr::addr`]: https://doc.rust-lang.org/core/ptr/fn.addr
-    /// [`ptr::expose_addr`]: https://doc.rust-lang.org/core/ptr/fn.expose_addr
+    /// [`ptr::addr`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.addr
+    /// [`ptr::expose_addr`]: https://doc.rust-lang.org/core/primitive.pointer.html#method.expose_addr
     pub LOSSY_PROVENANCE_CASTS,
     Allow,
     "a lossy pointer to integer cast is used",

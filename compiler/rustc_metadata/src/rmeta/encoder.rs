@@ -2255,12 +2255,12 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path) {
     // If we forget this, compilation can succeed with an incomplete rmeta file,
     // causing an ICE when the rmeta file is read by another compilation.
     if let Err((path, err)) = ecx.opaque.finish() {
-        tcx.dcx().emit_err(FailWriteFile { path: &path, err });
+        tcx.dcx().emit_fatal(FailWriteFile { path: &path, err });
     }
 
     let file = ecx.opaque.file();
     if let Err(err) = encode_root_position(file, root.position.get()) {
-        tcx.dcx().emit_err(FailWriteFile { path: ecx.opaque.path(), err });
+        tcx.dcx().emit_fatal(FailWriteFile { path: ecx.opaque.path(), err });
     }
 
     // Record metadata size for self-profiling

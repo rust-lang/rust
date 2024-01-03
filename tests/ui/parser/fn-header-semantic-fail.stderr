@@ -11,13 +11,19 @@ error[E0379]: functions in traits cannot be declared const
   --> $DIR/fn-header-semantic-fail.rs:18:9
    |
 LL |         const fn ft3();
-   |         ^^^^^ functions in traits cannot be const
+   |         ^^^^^-
+   |         |
+   |         functions in traits cannot be const
+   |         help: remove the `const`
 
 error[E0379]: functions in traits cannot be declared const
   --> $DIR/fn-header-semantic-fail.rs:20:9
    |
 LL |         const async unsafe extern "C" fn ft5();
-   |         ^^^^^ functions in traits cannot be const
+   |         ^^^^^-
+   |         |
+   |         functions in traits cannot be const
+   |         help: remove the `const`
 
 error: functions cannot be both `const` and `async`
   --> $DIR/fn-header-semantic-fail.rs:20:9
@@ -28,17 +34,23 @@ LL |         const async unsafe extern "C" fn ft5();
    |         |     `async` because of this
    |         `const` because of this
 
-error[E0379]: functions in traits cannot be declared const
+error[E0379]: functions in trait impls cannot be declared const
   --> $DIR/fn-header-semantic-fail.rs:29:9
    |
 LL |         const fn ft3() {}
-   |         ^^^^^ functions in traits cannot be const
+   |         ^^^^^-
+   |         |
+   |         functions in trait impls cannot be const
+   |         help: remove the `const`
 
-error[E0379]: functions in traits cannot be declared const
+error[E0379]: functions in trait impls cannot be declared const
   --> $DIR/fn-header-semantic-fail.rs:31:9
    |
 LL |         const async unsafe extern "C" fn ft5() {}
-   |         ^^^^^ functions in traits cannot be const
+   |         ^^^^^-
+   |         |
+   |         functions in trait impls cannot be const
+   |         help: remove the `const`
 
 error: functions cannot be both `const` and `async`
   --> $DIR/fn-header-semantic-fail.rs:31:9

@@ -332,7 +332,7 @@ impl Compiler {
         // the global context.
         _timer = Some(self.sess.timer("free_global_ctxt"));
         if let Err((path, error)) = queries.finish() {
-            self.sess.dcx().emit_err(errors::FailedWritingFile { path: &path, error });
+            self.sess.dcx().emit_fatal(errors::FailedWritingFile { path: &path, error });
         }
 
         ret
