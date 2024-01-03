@@ -759,10 +759,31 @@ where
     }
 
     /// Copies the data from an operand to a place.
+    /// The layouts of the `src` and `dest` may disagree.
+    #[inline(always)]
+    pub fn copy_op_allow_transmute(
+        &mut self,
+        src: &impl Readable<'tcx, M::Provenance>,
+        dest: &impl Writeable<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx> {
+        self.copy_op_inner(src, dest, /* allow_transmute */ true)
+    }
+
+    /// Copies the data from an operand to a place.
+    #[inline(always)]
+    pub fn copy_op(
+        &mut self,
+        src: &impl Readable<'tcx, M::Provenance>,
+        dest: &impl Writeable<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx> {
+        self.copy_op_inner(src, dest, /* allow_transmute */ false)
+    }
+
+    /// Copies the data from an operand to a place.
     /// `allow_transmute` indicates whether the layouts may disagree.
     #[inline(always)]
     #[instrument(skip(self), level = "debug")]
-    pub fn copy_op(
+    fn copy_op_inner(
         &mut self,
         src: &impl Readable<'tcx, M::Provenance>,
         dest: &impl Writeable<'tcx, M::Provenance>,

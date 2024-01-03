@@ -399,7 +399,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     };
                     for (field_index, op) in fields.into_iter().enumerate() {
                         let field_dest = self.ecx.project_field(&variant_dest, field_index).ok()?;
-                        self.ecx.copy_op(op, &field_dest, /*allow_transmute*/ false).ok()?;
+                        self.ecx.copy_op(op, &field_dest).ok()?;
                     }
                     self.ecx.write_discriminant(variant.unwrap_or(FIRST_VARIANT), &dest).ok()?;
                     self.ecx
@@ -1181,8 +1181,7 @@ fn op_to_prop_const<'tcx>(
     }
 
     // Everything failed: create a new allocation to hold the data.
-    let alloc_id =
-        ecx.intern_with_temp_alloc(op.layout, |ecx, dest| ecx.copy_op(op, dest, false)).ok()?;
+    let alloc_id = ecx.intern_with_temp_alloc(op.layout, |ecx, dest| ecx.copy_op(op, dest)).ok()?;
     let value = ConstValue::Indirect { alloc_id, offset: Size::ZERO };
 
     // Check that we do not leak a pointer.
