@@ -2778,7 +2778,7 @@ impl<T, A: Allocator> Weak<T, A> {
     }
 }
 
-pub(crate) fn is_dangling<T: ?Sized>(ptr: *mut T) -> bool {
+pub(crate) fn is_dangling<T: ?Sized>(ptr: *const T) -> bool {
     (ptr.cast::<()>()).addr() == usize::MAX
 }
 
@@ -3003,7 +3003,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     pub unsafe fn from_raw_in(ptr: *const T, alloc: A) -> Self {
         // See Weak::as_ptr for context on how the input pointer is derived.
 
-        let ptr = if is_dangling(ptr as *mut T) {
+        let ptr = if is_dangling(ptr) {
             // This is a dangling Weak.
             ptr as *mut RcBox<T>
         } else {
