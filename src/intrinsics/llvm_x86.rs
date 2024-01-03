@@ -1298,6 +1298,8 @@ impl PackWidth {
     }
 }
 
+/// Implement an x86 pack instruction with the intrinsic `_mm{,256}pack{us,s}_epi{16,32}`.
+/// Validated for correctness against LLVM, see commit `c8f5d35508e062bd2d95e6c03429bfec831db6d3`.
 fn pack_instruction<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     a: CValue<'tcx>,
