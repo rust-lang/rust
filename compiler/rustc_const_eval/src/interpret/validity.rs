@@ -454,20 +454,17 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                     // here since we cannot know if there really is an `UnsafeCell` inside
                     // `Option<UnsafeCell>` -- so we check that in the recursive descent behind this
                     // reference.
-                    if size == Size::ZERO || tam.mutbl == Mutability::Not {
-                        Mutability::Not
-                    } else {
-                        Mutability::Mut
-                    }
+                    if size == Size::ZERO { Mutability::Not } else { tam.mutbl }
                 }
             };
             // Proceed recursively even for ZST, no reason to skip them!
             // `!` is a ZST and we want to validate it.
             if let Ok((alloc_id, _offset, _prov)) = self.ecx.ptr_try_get_alloc_id(place.ptr()) {
                 // Let's see what kind of memory this points to.
-                let alloc_kind = self.ecx.tcx.try_get_global_alloc(alloc_id);
+                // `unwrap` since dangling pointers have already been handled.
+                let alloc_kind = self.ecx.tcx.try_get_global_alloc(alloc_id).unwrap();
                 match alloc_kind {
-                    Some(GlobalAlloc::Static(did)) => {
+                    GlobalAlloc::Static(did) => {
                         // Special handling for pointers to statics (irrespective of their type).
                         assert!(!self.ecx.tcx.is_thread_local_static(did));
                         assert!(self.ecx.tcx.is_static(did));
@@ -506,7 +503,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                         // referring to statics).
                         return Ok(());
                     }
-                    Some(GlobalAlloc::Memory(alloc)) => {
+                    GlobalAlloc::Memory(alloc) => {
                         if alloc.inner().mutability == Mutability::Mut
                             && matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { .. }))
                         {
@@ -525,14 +522,12 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                             throw_validation_failure!(self.path, MutableRefToImmutable);
                         }
                     }
-                    Some(GlobalAlloc::Function(..) | GlobalAlloc::VTable(..)) => {
+                    GlobalAlloc::Function(..) | GlobalAlloc::VTable(..) => {
                         // These are immutable, we better don't allow mutable pointers here.
                         if ptr_expected_mutbl == Mutability::Mut {
                             throw_validation_failure!(self.path, MutableRefToImmutable);
                         }
                     }
-                    // Dangling, already handled.
-                    None => bug!(),
                 }
             }
             let path = &self.path;
