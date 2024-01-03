@@ -207,11 +207,11 @@ macro_rules! forward {
     // Forward pattern for &mut self -> &mut Self
     (
         $(#[$attrs:meta])*
-        pub fn $n:ident(&mut self, $($name:ident: $ty:ty),* $(,)?) -> &mut Self
+        pub fn $n:ident(&mut self $(, $name:ident: $ty:ty)* $(,)?) -> &mut Self
     ) => {
         $(#[$attrs])*
         #[doc = concat!("See [`Diagnostic::", stringify!($n), "()`].")]
-        pub fn $n(&mut self, $($name: $ty),*) -> &mut Self {
+        pub fn $n(&mut self $(, $name: $ty)*) -> &mut Self {
             self.diagnostic.$n($($name),*);
             self
         }
@@ -407,8 +407,8 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         sp: impl Into<MultiSpan>,
         msg: impl Into<SubdiagnosticMessage>,
     ) -> &mut Self);
-    forward!(pub fn is_lint(&mut self,) -> &mut Self);
-    forward!(pub fn disable_suggestions(&mut self,) -> &mut Self);
+    forward!(pub fn is_lint(&mut self) -> &mut Self);
+    forward!(pub fn disable_suggestions(&mut self) -> &mut Self);
     forward!(pub fn multipart_suggestion(
         &mut self,
         msg: impl Into<SubdiagnosticMessage>,
