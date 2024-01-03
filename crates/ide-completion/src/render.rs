@@ -17,7 +17,7 @@ use ide_db::{
     imports::import_assets::LocatedImport,
     RootDatabase, SnippetCap, SymbolKind,
 };
-use syntax::{format_smolstr, AstNode, SmolStr, SyntaxKind, TextRange};
+use syntax::{ast, AstNode, SmolStr, SyntaxKind, TextRange};
 use text_edit::TextEdit;
 
 use crate::{
@@ -275,21 +275,50 @@ pub(crate) fn render_resolution_with_import_pat(
 pub(crate) fn render_type_tree(
     ctx: &CompletionContext<'_>,
     expr: &hir::term_search::TypeTree,
-    path_ctx: &PathCompletionCtx,
-) -> Builder {
-    let mut item = CompletionItem::new(
-        CompletionItemKind::Snippet,
-        ctx.source_range(),
-        expr.gen_source_code(&ctx.scope),
-    );
+) -> Option<Builder> {
+    let mut i = 1;
+    let mut snippet_formatter = |ty: &hir::Type| {
+        let arg_name = ty
+            .as_adt()
+            .and_then(|adt| adt.name(ctx.db).as_text())
+            .map(|s| stdx::to_lower_snake_case(s.as_str()))
+            .unwrap_or_else(|| String::from("_"));
+        let res = format!("${{{i}:{arg_name}}}");
+        i += 1;
+        res
+    };
+
+    let mut label_formatter = |ty: &hir::Type| {
+        ty.as_adt()
+            .and_then(|adt| adt.name(ctx.db).as_text())
+            .map(|s| stdx::to_lower_snake_case(s.as_str()))
+            .unwrap_or_else(|| String::from("_"))
+    };
+
+    let label = expr.gen_source_code(&ctx.scope, &mut label_formatter);
+
+    let source_range = match &ctx.expected_name {
+        Some(name_or_ref) => name_or_ref.syntax().text_range(),
+        None => match ctx.original_token.parent() {
+            Some(node) => match node.ancestors().find_map(|n| ast::Path::cast(n)) {
+                Some(path) => path.syntax().text_range(),
+                None => node.text_range(),
+            },
+            None => ctx.source_range(),
+        },
+    };
+
+    let mut item = CompletionItem::new(CompletionItemKind::Snippet, source_range, label);
+
+    let snippet = format!("{}$0", expr.gen_source_code(&ctx.scope, &mut snippet_formatter));
+    let edit = TextEdit::replace(source_range, snippet);
+    item.snippet_edit(ctx.config.snippet_cap?, edit);
     item.set_relevance(crate::CompletionRelevance {
         type_match: Some(crate::item::CompletionRelevanceTypeMatch::CouldUnify),
         ..Default::default()
     });
 
-    path_ref_match(ctx, path_ctx, &expr.ty(ctx.sema.db), &mut item);
-
-    item
+    Some(item)
 }
 
 fn scope_def_to_name(

@@ -162,10 +162,11 @@ impl Completions {
         &mut self,
         ctx: &CompletionContext<'_>,
         expr: &hir::term_search::TypeTree,
-        path_ctx: &PathCompletionCtx,
     ) {
-        let item = render_type_tree(ctx, expr, path_ctx);
-        item.add_to(self, ctx.db);
+        match render_type_tree(ctx, expr) {
+            Some(item) => item.add_to(self, ctx.db),
+            None => (),
+        }
     }
 
     pub(crate) fn add_crate_roots(
@@ -698,10 +699,10 @@ pub(super) fn complete_name_ref(
     ctx: &CompletionContext<'_>,
     NameRefContext { nameref, kind }: &NameRefContext,
 ) {
+    expr::complete_expr(acc, ctx);
     match kind {
         NameRefKind::Path(path_ctx) => {
             flyimport::import_on_the_fly_path(acc, ctx, path_ctx);
-            expr::complete_expr(acc, ctx, path_ctx);
 
             match &path_ctx.kind {
                 PathKind::Expr { expr_ctx } => {

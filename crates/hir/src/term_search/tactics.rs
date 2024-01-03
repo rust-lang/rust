@@ -21,7 +21,7 @@ use crate::{
 
 use crate::term_search::{TermSearchConfig, TypeTree};
 
-use super::{LookupTable, NewTypesKey, TermSearchCtx, MAX_VARIATIONS};
+use super::{LookupTable, NewTypesKey, TermSearchCtx};
 
 /// # Trivial tactic
 ///
@@ -194,7 +194,6 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
                     param_trees
                         .into_iter()
                         .multi_cartesian_product()
-                        .take(MAX_VARIATIONS)
                         .map(|params| TypeTree::Variant {
                             variant,
                             generics: generics.clone(),
@@ -315,7 +314,6 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
                             param_trees
                                 .into_iter()
                                 .multi_cartesian_product()
-                                .take(MAX_VARIATIONS)
                                 .map(|params| TypeTree::Struct {
                                     strukt: *it,
                                     generics: generics.clone(),
@@ -440,7 +438,6 @@ pub(super) fn free_function<'a, DB: HirDatabase>(
                             param_trees
                                 .into_iter()
                                 .multi_cartesian_product()
-                                .take(MAX_VARIATIONS)
                                 .map(|params| TypeTree::Function {
                                     func: *it,
                                     generics: generics.clone(),
@@ -603,7 +600,6 @@ pub(super) fn impl_method<'a, DB: HirDatabase>(
                     let fn_trees: Vec<TypeTree> = std::iter::once(target_type_trees)
                         .chain(param_trees.into_iter())
                         .multi_cartesian_product()
-                        .take(MAX_VARIATIONS)
                         .map(|params| TypeTree::Function { func: it, generics: Vec::new(), params })
                         .collect();
 
@@ -822,7 +818,6 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
                         param_trees
                             .into_iter()
                             .multi_cartesian_product()
-                            .take(MAX_VARIATIONS)
                             .map(|params| TypeTree::Function {
                                 func: it,
                                 generics: generics.clone(),

@@ -70,18 +70,27 @@ fn fn_return_type() {
 fn x<'lt, T, const C: usize>() -> $0
 "#,
         expect![[r#"
-            en Enum      Enum
-            ma makro!(…) macro_rules! makro
+            en Enum        Enum
+            ma makro!(…)   macro_rules! makro
             md module
-            st Record    Record
-            st Tuple     Tuple
-            st Unit      Unit
+            st Record      Record
+            st Tuple       Tuple
+            st Unit        Unit
             tt Trait
             tp T
-            un Union     Union
-            bt u32       u32
+            un Union       Union
+            bt u32         u32
             kw crate::
             kw self::
+            sn ()
+            sn C
+            sn CONST
+            sn Enum::UnitV
+            sn STATIC
+            sn Unit
+            sn false
+            sn function()
+            sn true
         "#]],
     );
 }
@@ -100,18 +109,27 @@ fn foo() -> B$0 {
 }
 "#,
         expect![[r#"
-            en Enum      Enum
-            ma makro!(…) macro_rules! makro
+            en Enum        Enum
+            ma makro!(…)   macro_rules! makro
             md module
-            st Record    Record
-            st Tuple     Tuple
-            st Unit      Unit
+            st Record      Record
+            st Tuple       Tuple
+            st Unit        Unit
             tt Trait
-            un Union     Union
-            bt u32       u32
+            un Union       Union
+            bt u32         u32
             it ()
             kw crate::
             kw self::
+            sn ()
+            sn CONST
+            sn Enum::UnitV
+            sn STATIC
+            sn Unit
+            sn false
+            sn foo()
+            sn function()
+            sn true
         "#]],
     )
 }
@@ -204,18 +222,26 @@ fn f2(x: u64) -> $0 {
 }
 "#,
         expect![[r#"
-            en Enum      Enum
-            ma makro!(…) macro_rules! makro
+            en Enum        Enum
+            ma makro!(…)   macro_rules! makro
             md module
-            st Record    Record
-            st Tuple     Tuple
-            st Unit      Unit
+            st Record      Record
+            st Tuple       Tuple
+            st Unit        Unit
             tt Trait
-            un Union     Union
-            bt u32       u32
+            un Union       Union
+            bt u32         u32
             it u64
             kw crate::
             kw self::
+            sn ()
+            sn CONST
+            sn Enum::UnitV
+            sn STATIC
+            sn Unit
+            sn false
+            sn function()
+            sn true
         "#]],
     );
 }
@@ -319,18 +345,27 @@ fn foo<'lt, T, const C: usize>() {
 }
 "#,
         expect![[r#"
-            en Enum      Enum
-            ma makro!(…) macro_rules! makro
+            en Enum        Enum
+            ma makro!(…)   macro_rules! makro
             md module
-            st Record    Record
-            st Tuple     Tuple
-            st Unit      Unit
+            st Record      Record
+            st Tuple       Tuple
+            st Unit        Unit
             tt Trait
             tp T
-            un Union     Union
-            bt u32       u32
+            un Union       Union
+            bt u32         u32
             kw crate::
             kw self::
+            sn ()
+            sn C
+            sn CONST
+            sn Enum::UnitV
+            sn STATIC
+            sn Unit
+            sn false
+            sn function()
+            sn true
         "#]],
     );
     check(
@@ -341,14 +376,23 @@ fn foo<'lt, T, const C: usize>() {
 }
 "#,
         expect![[r#"
-            en Enum      Enum
-            ma makro!(…) macro_rules! makro
+            en Enum        Enum
+            ma makro!(…)   macro_rules! makro
             md module
-            st Record    Record
-            st Tuple     Tuple
-            st Unit      Unit
+            st Record      Record
+            st Tuple       Tuple
+            st Unit        Unit
             tt Trait
-            un Union     Union
+            un Union       Union
+            sn ()
+            sn C
+            sn CONST
+            sn Enum::UnitV
+            sn STATIC
+            sn Unit
+            sn false
+            sn function()
+            sn true
         "#]],
     );
 }

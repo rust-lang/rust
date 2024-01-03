@@ -12,18 +12,57 @@ pub use type_tree::TypeTree;
 
 mod tactics;
 
-/// # Maximum amount of variations to take per type
-///
-/// This is to speed up term search as there may be huge amount of variations of arguments for
-/// function, even when the return type is always the same. The idea is to take first n and call it
-/// a day.
-const MAX_VARIATIONS: usize = 10;
-
 /// Key for lookup table to query new types reached.
 #[derive(Debug, Hash, PartialEq, Eq)]
 enum NewTypesKey {
     ImplMethod,
     StructProjection,
+}
+
+#[derive(Debug)]
+enum AlternativeTrees {
+    Few(FxHashSet<TypeTree>),
+    Many(Type),
+}
+
+impl AlternativeTrees {
+    pub fn new(
+        threshold: usize,
+        ty: Type,
+        trees: impl Iterator<Item = TypeTree>,
+    ) -> AlternativeTrees {
+        let mut it = AlternativeTrees::Few(Default::default());
+        it.extend_with_threshold(threshold, ty, trees);
+        it
+    }
+
+    pub fn trees(&self) -> Vec<TypeTree> {
+        match self {
+            AlternativeTrees::Few(trees) => trees.iter().cloned().collect(),
+            AlternativeTrees::Many(ty) => vec![TypeTree::Many(ty.clone())],
+        }
+    }
+
+    pub fn extend_with_threshold(
+        &mut self,
+        threshold: usize,
+        ty: Type,
+        mut trees: impl Iterator<Item = TypeTree>,
+    ) {
+        match self {
+            AlternativeTrees::Few(tts) => {
+                while let Some(it) = trees.next() {
+                    if tts.len() > threshold {
+                        *self = AlternativeTrees::Many(ty);
+                        break;
+                    }
+
+                    tts.insert(it);
+                }
+            }
+            AlternativeTrees::Many(_) => (),
+        }
+    }
 }
 
 /// # Lookup table for term search
@@ -38,7 +77,7 @@ enum NewTypesKey {
 #[derive(Default, Debug)]
 struct LookupTable {
     /// All the `TypeTree`s in "value" produce the type of "key"
-    data: FxHashMap<Type, FxHashSet<TypeTree>>,
+    data: FxHashMap<Type, AlternativeTrees>,
     /// New types reached since last query by the `NewTypesKey`
     new_types: FxHashMap<NewTypesKey, Vec<Type>>,
     /// ScopeDefs that are not interesting any more
@@ -49,6 +88,8 @@ struct LookupTable {
     rounds_since_sopedef_hit: FxHashMap<ScopeDef, u32>,
     /// Types queried but not present
     types_wishlist: FxHashSet<Type>,
+    /// Threshold to squash trees to `Many`
+    many_threshold: usize,
 }
 
 impl LookupTable {
@@ -65,7 +106,7 @@ impl LookupTable {
         self.data
             .iter()
             .find(|(t, _)| t.could_unify_with_deeply(db, ty))
-            .map(|(_, tts)| tts.iter().cloned().collect())
+            .map(|(_, tts)| tts.trees())
     }
 
     /// Same as find but automatically creates shared reference of types in the lookup
@@ -76,7 +117,7 @@ impl LookupTable {
         self.data
             .iter()
             .find(|(t, _)| t.could_unify_with_deeply(db, ty))
-            .map(|(_, tts)| tts.iter().cloned().collect())
+            .map(|(_, tts)| tts.trees())
             .or_else(|| {
                 self.data
                     .iter()
@@ -84,7 +125,10 @@ impl LookupTable {
                         Type::reference(t, Mutability::Shared).could_unify_with_deeply(db, &ty)
                     })
                     .map(|(_, tts)| {
-                        tts.iter().map(|tt| TypeTree::Reference(Box::new(tt.clone()))).collect()
+                        tts.trees()
+                            .into_iter()
+                            .map(|tt| TypeTree::Reference(Box::new(tt)))
+                            .collect()
                     })
             })
     }
@@ -96,9 +140,12 @@ impl LookupTable {
     /// but they clearly do not unify themselves.
     fn insert(&mut self, ty: Type, trees: impl Iterator<Item = TypeTree>) {
         match self.data.get_mut(&ty) {
-            Some(it) => it.extend(trees.take(MAX_VARIATIONS)),
+            Some(it) => it.extend_with_threshold(self.many_threshold, ty, trees),
             None => {
-                self.data.insert(ty.clone(), trees.take(MAX_VARIATIONS).collect());
+                self.data.insert(
+                    ty.clone(),
+                    AlternativeTrees::new(self.many_threshold, ty.clone(), trees),
+                );
                 for it in self.new_types.values_mut() {
                     it.push(ty.clone());
                 }
@@ -175,11 +222,15 @@ pub struct TermSearchCtx<'a, DB: HirDatabase> {
 pub struct TermSearchConfig {
     /// Enable borrow checking, this guarantees the outputs of the `term_search` to borrow-check
     pub enable_borrowcheck: bool,
+    /// Indicate when to squash multiple trees to `Many` as there are too many to keep track
+    pub many_alternatives_threshold: usize,
+    /// Depth of the search eg. number of cycles to run
+    pub depth: usize,
 }
 
 impl Default for TermSearchConfig {
     fn default() -> Self {
-        Self { enable_borrowcheck: true }
+        Self { enable_borrowcheck: true, many_alternatives_threshold: 1, depth: 5 }
     }
 }
 
@@ -225,7 +276,7 @@ pub fn term_search<DB: HirDatabase>(ctx: TermSearchCtx<'_, DB>) -> Vec<TypeTree>
 
     let mut solution_found = !solutions.is_empty();
 
-    for _ in 0..5 {
+    for _ in 0..ctx.config.depth {
         lookup.new_round();
 
         solutions.extend(tactics::type_constructor(&ctx, &defs, &mut lookup));

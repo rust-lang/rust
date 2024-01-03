@@ -44,12 +44,14 @@ fn fixes(sema: &Semantics<'_, RootDatabase>, d: &hir::TypedHole) -> Option<Vec<A
         d.expr.as_ref().map(|it| it.to_node(&root)).syntax().original_file_range_opt(db)?;
     let scope = sema.scope(d.expr.value.to_node(&root).syntax())?;
 
-    let ctx = TermSearchCtx { sema, scope: &scope, goal: d.expected.clone(), config: Default::default() };
+    let ctx =
+        TermSearchCtx { sema, scope: &scope, goal: d.expected.clone(), config: Default::default() };
     let paths = term_search(ctx);
 
     let mut assists = vec![];
+    let mut formatter = |_: &hir::Type| String::from("_");
     for path in paths.into_iter().unique() {
-        let code = path.gen_source_code(&scope);
+        let code = path.gen_source_code(&scope, &mut formatter);
 
         assists.push(Assist {
             id: AssistId("typed-hole", AssistKind::QuickFix),

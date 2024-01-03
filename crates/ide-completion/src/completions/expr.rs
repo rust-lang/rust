@@ -332,7 +332,6 @@ pub(crate) fn complete_expr_path(
 pub(crate) fn complete_expr(
     acc: &mut Completions,
     ctx: &CompletionContext<'_>,
-    path_ctx: &PathCompletionCtx,
 ) {
     let _p = profile::span("complete_expr");
     if !ctx.qualifier_ctx.none() {
@@ -349,11 +348,15 @@ pub(crate) fn complete_expr(
             sema: &ctx.sema,
             scope: &ctx.scope,
             goal: ty.clone(),
-            config: hir::term_search::TermSearchConfig { enable_borrowcheck: false },
+            config: hir::term_search::TermSearchConfig {
+                enable_borrowcheck: false,
+                many_alternatives_threshold: 1,
+                depth: 2,
+            },
         };
         let exprs = hir::term_search::term_search(term_search_ctx);
         for expr in exprs {
-            acc.add_expr(ctx, &expr, path_ctx);
+            acc.add_expr(ctx, &expr);
         }
     }
 }

@@ -109,6 +109,8 @@ pub enum TypeTree {
     Field { type_tree: Box<TypeTree>, field: Field },
     /// Passing type as reference (with `&`)
     Reference(Box<TypeTree>),
+    /// Indicates possibility of many different options that all evaluate to `ty`
+    Many(Type),
 }
 
 impl TypeTree {
@@ -117,7 +119,11 @@ impl TypeTree {
     /// Note that trait imports are not added to generated code.
     /// To make sure that the code is valid, callee has to also ensure that all the traits listed
     /// by `traits_used` method are also imported.
-    pub fn gen_source_code(&self, sema_scope: &SemanticsScope<'_>) -> String {
+    pub fn gen_source_code(
+        &self,
+        sema_scope: &SemanticsScope<'_>,
+        many_formatter: &mut dyn FnMut(&Type) -> String,
+    ) -> String {
         let db = sema_scope.db;
         match self {
             TypeTree::Const(it) => mod_item_path_str(sema_scope, &ModuleDef::Const(*it)),
@@ -128,9 +134,15 @@ impl TypeTree {
             TypeTree::Function { func, params, .. } => {
                 if let Some(self_param) = func.self_param(db) {
                     let func_name = func.name(db).display(db.upcast()).to_string();
-                    let target = params.first().expect("no self param").gen_source_code(sema_scope);
-                    let args =
-                        params.iter().skip(1).map(|f| f.gen_source_code(sema_scope)).join(", ");
+                    let target = params
+                        .first()
+                        .expect("no self param")
+                        .gen_source_code(sema_scope, many_formatter);
+                    let args = params
+                        .iter()
+                        .skip(1)
+                        .map(|f| f.gen_source_code(sema_scope, many_formatter))
+                        .join(", ");
 
                     match func.as_assoc_item(db).unwrap().containing_trait_or_trait_impl(db) {
                         Some(trait_) => {
@@ -149,7 +161,10 @@ impl TypeTree {
                         None => format!("{target}.{func_name}({args})"),
                     }
                 } else {
-                    let args = params.iter().map(|f| f.gen_source_code(sema_scope)).join(", ");
+                    let args = params
+                        .iter()
+                        .map(|f| f.gen_source_code(sema_scope, many_formatter))
+                        .join(", ");
 
                     match func.as_assoc_item(db).map(|it| it.container(db)) {
                         Some(container) => {
@@ -194,7 +209,10 @@ impl TypeTree {
                 };
                 let inner = match variant.kind(db) {
                     StructKind::Tuple => {
-                        let args = params.iter().map(|f| f.gen_source_code(sema_scope)).join(", ");
+                        let args = params
+                            .iter()
+                            .map(|f| f.gen_source_code(sema_scope, many_formatter))
+                            .join(", ");
                         format!("{generics_str}({args})")
                     }
                     StructKind::Record => {
@@ -206,7 +224,7 @@ impl TypeTree {
                                 format!(
                                     "{}: {}",
                                     f.name(db).display(db.upcast()).to_string(),
-                                    a.gen_source_code(sema_scope)
+                                    a.gen_source_code(sema_scope, many_formatter)
                                 )
                             })
                             .join(", ");
@@ -222,7 +240,10 @@ impl TypeTree {
                 let generics = non_default_generics(db, (*strukt).into(), generics);
                 let inner = match strukt.kind(db) {
                     StructKind::Tuple => {
-                        let args = params.iter().map(|a| a.gen_source_code(sema_scope)).join(", ");
+                        let args = params
+                            .iter()
+                            .map(|a| a.gen_source_code(sema_scope, many_formatter))
+                            .join(", ");
                         format!("({args})")
                     }
                     StructKind::Record => {
@@ -234,7 +255,7 @@ impl TypeTree {
                                 format!(
                                     "{}: {}",
                                     f.name(db).display(db.upcast()).to_string(),
-                                    a.gen_source_code(sema_scope)
+                                    a.gen_source_code(sema_scope, many_formatter)
                                 )
                             })
                             .join(", ");
@@ -254,14 +275,15 @@ impl TypeTree {
                 format!("{prefix}{inner}")
             }
             TypeTree::Field { type_tree, field } => {
-                let strukt = type_tree.gen_source_code(sema_scope);
+                let strukt = type_tree.gen_source_code(sema_scope, many_formatter);
                 let field = field.name(db).display(db.upcast()).to_string();
                 format!("{strukt}.{field}")
             }
             TypeTree::Reference(type_tree) => {
-                let inner = type_tree.gen_source_code(sema_scope);
+                let inner = type_tree.gen_source_code(sema_scope, many_formatter);
                 format!("&{inner}")
             }
+            TypeTree::Many(ty) => many_formatter(ty),
         }
     }
 
@@ -292,6 +314,7 @@ impl TypeTree {
                 field.ty_with_generics(db, type_tree.ty(db).type_arguments())
             }
             TypeTree::Reference(it) => it.ty(db),
+            TypeTree::Many(ty) => ty.clone(),
         }
     }
 

@@ -316,6 +316,15 @@ fn func() {
             bn RecordV {…} RecordV { field$1 }$0
             bn TupleV(…)   TupleV($1)$0
             bn UnitV       UnitV$0
+            sn ()
+            sn CONST
+            sn Enum::UnitV
+            sn STATIC
+            sn Unit
+            sn false
+            sn func()
+            sn function()
+            sn true
         "#]],
     );
 }
@@ -558,10 +567,12 @@ fn foo() {
 }
 "#,
         expect![[r#"
-            bn A          A$0
-            bn B {…}      B { r#type$1 }$0
-            bn struct {…} r#struct { r#type$1 }$0
-            bn type       r#type$0
+            bn A            A$0
+            bn B {…}        B { r#type$1 }$0
+            bn struct {…}   r#struct { r#type$1 }$0
+            bn type         r#type$0
+            sn Enum::A
+            sn Enum::r#type
         "#]],
     );
 }
@@ -586,6 +597,7 @@ fn f(t: Ty) {
 "#,
         expect![[r#"
             ct ABC const ABC: Self
+            sn t
         "#]],
     );
 
@@ -608,6 +620,7 @@ fn f(e: MyEnum) {
         expect![[r#"
             ct A pub const A: i32
             ct B pub const B: i32
+            sn e
         "#]],
     );
 
@@ -633,6 +646,7 @@ fn f(u: U) {
         expect![[r#"
             ct C pub const C: i32
             ct D pub const D: i32
+            sn u
         "#]],
     );
 
@@ -652,6 +666,7 @@ fn f(v: u32) {
         "#,
         expect![[r#"
             ct MIN pub const MIN: Self
+            sn v
         "#]],
     );
 }
@@ -763,6 +778,7 @@ fn f(x: EnumAlias<u8>) {
         expect![[r#"
             bn Tuple(…) Tuple($1)$0
             bn Unit     Unit$0
+            sn x
         "#]],
     );
 }

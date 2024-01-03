@@ -412,6 +412,7 @@ impl flags::AnalysisStats {
                     goal: target_ty,
                     config: hir::term_search::TermSearchConfig {
                         enable_borrowcheck: true,
+                        ..Default::default()
                     },
                 };
                 let found_terms = hir::term_search::term_search(ctx);
@@ -427,9 +428,10 @@ impl flags::AnalysisStats {
                     s.chars().into_iter().filter(|c| !c.is_whitespace()).collect()
                 }
 
+                let mut formatter = |_: &hir::Type| syntax::ast::make::ext::expr_todo().to_string();
                 let mut syntax_hit_found = false;
                 for term in found_terms {
-                    let generated = term.gen_source_code(&scope);
+                    let generated = term.gen_source_code(&scope, &mut formatter);
                     syntax_hit_found |= trim(&original_text) == trim(&generated);
 
                     // Validate if type-checks
