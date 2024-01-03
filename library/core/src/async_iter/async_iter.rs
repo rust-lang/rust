@@ -1,11 +1,15 @@
 /// A trait for dealing with asynchronous iterators.
 ///
+/// This trait is an alternative to the [`Stream`] trait. Both traits are
+/// currently being evaluated on nightly with the intent to stabilize only one.
+///
 /// This is the main async iterator trait. For more about the concept of async iterators
 /// generally, please see the [module-level documentation]. In particular, you
 /// may want to know how to [implement `AsyncIterator`][impl].
 ///
 /// [module-level documentation]: index.html
 /// [impl]: index.html#implementing-async-iterator
+/// [`Stream`]: crate::stream::Stream
 #[unstable(feature = "async_iterator", issue = "79024")]
 #[must_use = "async iterators do nothing unless polled"]
 #[doc(alias = "Stream")]

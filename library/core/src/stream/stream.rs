@@ -4,12 +4,16 @@ use crate::task::{Context, Poll};
 
 /// A trait for dealing with asynchronous streams.
 ///
+/// This trait is an alternative to the [`AsyncIterator`] trait. Both traits are
+/// currently being evaluated on nightly with the intent to stabilize only one.
+///
 /// This is the main stream trait. For more about the concept of streams
 /// generally, please see the [module-level documentation]. In particular, you
 /// may want to know how to [implement `Stream`][impl].
 ///
 /// [module-level documentation]: index.html
 /// [impl]: index.html#implementing-async-stream
+/// [`AsyncIterator`]: crate::async_iter::AsyncIterator
 #[unstable(feature = "async_stream", issue = "79024")]
 #[must_use = "streams do nothing unless polled"]
 #[cfg_attr(not(bootstrap), lang = "async_stream")]
