@@ -428,7 +428,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - shell: bash
           #############################
           #   Linux/Docker builders   #
           #############################

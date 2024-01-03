@@ -222,7 +222,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - shell: bash
           - name: aarch64-gnu
             os:
               - self-hosted
