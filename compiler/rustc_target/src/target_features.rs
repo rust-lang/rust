@@ -201,6 +201,7 @@ const X86_ALLOWED_FEATURES: &[(&str, Stability)] = &[
     ("avx512dq", Unstable(sym::avx512_target_feature)),
     ("avx512er", Unstable(sym::avx512_target_feature)),
     ("avx512f", Unstable(sym::avx512_target_feature)),
+    ("avx512fp16", Unstable(sym::avx512_target_feature)),
     ("avx512ifma", Unstable(sym::avx512_target_feature)),
     ("avx512pf", Unstable(sym::avx512_target_feature)),
     ("avx512vbmi", Unstable(sym::avx512_target_feature)),
