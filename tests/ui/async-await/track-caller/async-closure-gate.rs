@@ -25,6 +25,7 @@ async fn foo2() {
 
 fn foo3() {
     async {
+        //~^ ERROR mismatched types
         let _ = #[track_caller] || {
             //~^ ERROR `#[track_caller]` on closures is currently unstable [E0658]
         };
@@ -41,6 +42,7 @@ async fn foo4() {
 
 fn foo5() {
     async {
+        //~^ ERROR mismatched types
         let _ = || {
             #[track_caller] || {
                 //~^ ERROR `#[track_caller]` on closures is currently unstable [E0658]
