@@ -634,6 +634,7 @@ fn reg_to_gcc(reg: InlineAsmRegOrRegClass) -> ConstraintOrRegister {
             }
             InlineAsmRegClass::Wasm(WasmInlineAsmRegClass::local) => "r",
             InlineAsmRegClass::S390x(S390xInlineAsmRegClass::reg) => "r",
+            InlineAsmRegClass::S390x(S390xInlineAsmRegClass::reg_addr) => "a",
             InlineAsmRegClass::S390x(S390xInlineAsmRegClass::freg) => "f",
             InlineAsmRegClass::Err => unreachable!(),
         }
@@ -704,7 +705,9 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         InlineAsmRegClass::SpirV(SpirVInlineAsmRegClass::reg) => {
             bug!("LLVM backend does not support SPIR-V")
         },
-        InlineAsmRegClass::S390x(S390xInlineAsmRegClass::reg) => cx.type_i32(),
+        InlineAsmRegClass::S390x(
+            S390xInlineAsmRegClass::reg | S390xInlineAsmRegClass::reg_addr
+        ) => cx.type_i32(),
         InlineAsmRegClass::S390x(S390xInlineAsmRegClass::freg) => cx.type_f64(),
         InlineAsmRegClass::Err => unreachable!(),
     }
