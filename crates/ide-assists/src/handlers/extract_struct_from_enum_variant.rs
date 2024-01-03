@@ -468,6 +468,21 @@ enum Foo {
 }
 "#,
         );
+        check_assist(
+            extract_struct_from_enum_variant,
+            r#"
+enum Foo {
+    Nil(Box$0<Self>, Arc<Box<Self>>),
+}
+"#,
+            r#"
+struct Nil(Box<Foo>, Arc<Box<Foo>>);
+
+enum Foo {
+    Nil(Nil),
+}
+"#,
+        );
     }
 
     #[test]
