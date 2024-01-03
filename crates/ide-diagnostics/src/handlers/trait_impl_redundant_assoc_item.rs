@@ -1,11 +1,9 @@
 use hir::{db::ExpandDatabase, Const, Function, HasSource, HirDisplay, TypeAlias};
 use ide_db::{
     assists::{Assist, AssistId, AssistKind},
-    base_db::FileRange,
     label::Label,
     source_change::SourceChangeBuilder,
 };
-use syntax::{AstNode, SyntaxKind};
 use text_edit::TextRange;
 
 use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
@@ -64,7 +62,7 @@ pub(crate) fn trait_impl_redundant_assoc_item(
     Diagnostic::new(
         DiagnosticCode::RustcHardError("E0407"),
         format!("{redundant_item_name} is not a member of trait `{trait_name}`"),
-        FileRange { file_id: d.file_id.file_id().unwrap(), range: diagnostic_range },
+        hir::InFile::new(d.file_id, diagnostic_range).original_node_file_range_rooted(db),
     )
     .with_fixes(quickfix_for_redundant_assoc_item(
         ctx,
@@ -90,12 +88,11 @@ fn quickfix_for_redundant_assoc_item(
         if trait_def_crate != current_crate {
             return None;
         }
+
         let trait_def = d.trait_.source(db)?.value;
-        let where_to_insert = trait_def
-            .syntax()
-            .descendants_with_tokens()
-            .find(|it| it.kind() == SyntaxKind::L_CURLY)
-            .map(|it| it.text_range())?;
+        let l_curly = trait_def.assoc_item_list()?.l_curly_token()?.text_range();
+        let where_to_insert =
+            hir::InFile::new(d.file_id, l_curly).original_node_file_range_rooted(db).range;
 
         Some(builder.insert(where_to_insert.end(), redundant_item_def))
     };
