@@ -1,5 +1,5 @@
 use rustc_data_structures::graph::WithNumNodes;
-use rustc_index::IndexVec;
+use rustc_index::bit_set::BitSet;
 use rustc_middle::mir;
 use rustc_span::{BytePos, Span, DUMMY_SP};
 
@@ -8,9 +8,15 @@ use crate::coverage::ExtractedHirInfo;
 
 mod from_mir;
 
+#[derive(Debug)]
+pub(super) struct BcbMapping {
+    pub(super) bcb: BasicCoverageBlock,
+    pub(super) span: Span,
+}
+
 pub(super) struct CoverageSpans {
-    /// Map from BCBs to their list of coverage spans.
-    bcb_to_spans: IndexVec<BasicCoverageBlock, Vec<Span>>,
+    bcb_has_mappings: BitSet<BasicCoverageBlock>,
+    mappings: Vec<BcbMapping>,
 }
 
 impl CoverageSpans {
@@ -23,36 +29,37 @@ impl CoverageSpans {
         hir_info: &ExtractedHirInfo,
         basic_coverage_blocks: &CoverageGraph,
     ) -> Option<Self> {
+        let mut mappings = vec![];
+
         let coverage_spans = CoverageSpansGenerator::generate_coverage_spans(
             mir_body,
             hir_info,
             basic_coverage_blocks,
         );
+        mappings.extend(coverage_spans.into_iter().map(|CoverageSpan { bcb, span, .. }| {
+            // Each span produced by the generator represents an ordinary code region.
+            BcbMapping { bcb, span }
+        }));
 
-        if coverage_spans.is_empty() {
+        if mappings.is_empty() {
             return None;
         }
 
-        // Group the coverage spans by BCB, with the BCBs in sorted order.
-        let mut bcb_to_spans = IndexVec::from_elem_n(Vec::new(), basic_coverage_blocks.num_nodes());
-        for CoverageSpan { bcb, span, .. } in coverage_spans {
-            bcb_to_spans[bcb].push(span);
+        // Identify which BCBs have one or more mappings.
+        let mut bcb_has_mappings = BitSet::new_empty(basic_coverage_blocks.num_nodes());
+        for &BcbMapping { bcb, span: _ } in &mappings {
+            bcb_has_mappings.insert(bcb);
         }
 
-        Some(Self { bcb_to_spans })
+        Some(Self { bcb_has_mappings, mappings })
     }
 
     pub(super) fn bcb_has_coverage_spans(&self, bcb: BasicCoverageBlock) -> bool {
-        !self.bcb_to_spans[bcb].is_empty()
+        self.bcb_has_mappings.contains(bcb)
     }
 
-    pub(super) fn bcbs_with_coverage_spans(
-        &self,
-    ) -> impl Iterator<Item = (BasicCoverageBlock, &[Span])> {
-        self.bcb_to_spans.iter_enumerated().filter_map(|(bcb, spans)| {
-            // Only yield BCBs that have at least one coverage span.
-            (!spans.is_empty()).then_some((bcb, spans.as_slice()))
-        })
+    pub(super) fn all_bcb_mappings(&self) -> impl Iterator<Item = &BcbMapping> {
+        self.mappings.iter()
     }
 }
 

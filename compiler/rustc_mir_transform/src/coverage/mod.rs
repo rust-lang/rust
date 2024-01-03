@@ -9,7 +9,7 @@ mod tests;
 
 use self::counters::{BcbCounter, CoverageCounters};
 use self::graph::{BasicCoverageBlock, CoverageGraph};
-use self::spans::CoverageSpans;
+use self::spans::{BcbMapping, CoverageSpans};
 
 use crate::MirPass;
 
@@ -149,16 +149,9 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         };
 
         coverage_spans
-            .bcbs_with_coverage_spans()
-            // For each BCB with spans, get a coverage term for its counter.
-            .map(|(bcb, spans)| {
+            .all_bcb_mappings()
+            .filter_map(|&BcbMapping { bcb, span }| {
                 let term = term_for_bcb(bcb);
-                (term, spans)
-            })
-            // Flatten the spans into individual term/span pairs.
-            .flat_map(|(term, spans)| spans.iter().map(move |&span| (term, span)))
-            // Convert each span to a code region, and create the final mapping.
-            .filter_map(|(term, span)| {
                 let code_region = make_code_region(source_map, file_name, span, body_span)?;
                 Some(Mapping { term, code_region })
             })
