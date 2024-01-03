@@ -110,9 +110,9 @@ x--expand-yaml-anchors--remove:
     if: success() && !env.SKIP_JOB
 
   - &base-ci-job
-    defaults:
-      run:
-        shell: ${{ matrix.msys2 && 'msys2 {0}'' || 'bash' }}
+    # defaults:
+    #   run:
+    #     shell: ${{ matrix.msys2 && 'msys2 {0}'' || 'bash' }}
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     env:

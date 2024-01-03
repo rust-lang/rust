@@ -92,9 +92,6 @@ jobs:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler"
               SCRIPT: make ci-msvc
             os: windows-2019-8core-32gb
-    defaults:
-      run:
-        shell: "${{ matrix.msys2 && 'msys2 {0}'' || 'bash' }}"
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
@@ -493,9 +490,6 @@ jobs:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-extended --enable-profiler"
               SCRIPT: python x.py dist bootstrap --include-default-paths
             os: windows-2019-8core-32gb
-    defaults:
-      run:
-        shell: "${{ matrix.msys2 && 'msys2 {0}'' || 'bash' }}"
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
@@ -628,9 +622,6 @@ jobs:
             env:
               CODEGEN_BACKENDS: "llvm,cranelift"
             os: ubuntu-20.04-16core-64gb
-    defaults:
-      run:
-        shell: "${{ matrix.msys2 && 'msys2 {0}'' || 'bash' }}"
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
