@@ -102,3 +102,12 @@ mod issue11707 {
 fn avoid_double_parens() {
     std::convert::identity((|| 13_i32 + 36_i32)()).leading_zeros();
 }
+
+fn fp_11274() {
+    macro_rules! m {
+        ($closure:expr) => {
+            $closure(1)
+        };
+    }
+    m!(|x| println!("{x}"));
+}
