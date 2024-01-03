@@ -41,8 +41,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             else {
                 return;
             };
-            let Some(sugg) = self.generics_suggestion(generics, self_ty.span, &impl_trait_name)
-            else {
+            let sugg = self.add_generic_param_suggestion(generics, self_ty.span, &impl_trait_name);
+            if sugg.is_empty() {
                 return;
             };
             diag.multipart_suggestion(
@@ -56,12 +56,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
     }
 
-    fn generics_suggestion(
+    fn add_generic_param_suggestion(
         &self,
         generics: &hir::Generics<'_>,
         self_ty_span: Span,
         impl_trait_name: &str,
-    ) -> Option<Vec<(Span, String)>> {
+    ) -> Vec<(Span, String)> {
         // check if the trait has generics, to make a correct suggestion
         let param_name = generics.params.next_type_param_name(None);
 
@@ -70,7 +70,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         } else {
             (generics.span, format!("<{param_name}: {impl_trait_name}>"))
         };
-        Some(vec![(self_ty_span, param_name), add_generic_sugg])
+        vec![(self_ty_span, param_name), add_generic_sugg]
     }
 
     /// Make sure that we are in the condition to suggest `impl Trait`.
@@ -86,7 +86,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         else {
             return false;
         };
-        let Ok(trait_name) = self.tcx().sess.source_map().span_to_snippet(self_ty.span) else {
+        let Ok(trait_name) = tcx.sess.source_map().span_to_snippet(self_ty.span) else {
             return false;
         };
         let impl_sugg = vec![(self_ty.span.shrink_to_lo(), "impl ".to_string())];
@@ -98,19 +98,22 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 impl_sugg,
                 Applicability::MachineApplicable,
             );
-            diag.multipart_suggestion_verbose(
-                "alternatively, you can return an owned trait object",
-                vec![
-                    (ty.span.shrink_to_lo(), "Box<dyn ".to_string()),
-                    (ty.span.shrink_to_hi(), ">".to_string()),
-                ],
-                Applicability::MachineApplicable,
-            );
+            if tcx.check_is_object_safe(def_id) {
+                diag.multipart_suggestion_verbose(
+                    "alternatively, you can return an owned trait object",
+                    vec![
+                        (ty.span.shrink_to_lo(), "Box<dyn ".to_string()),
+                        (ty.span.shrink_to_hi(), ">".to_string()),
+                    ],
+                    Applicability::MachineApplicable,
+                );
+            }
             return true;
         }
         for ty in sig.decl.inputs {
             if ty.hir_id == self_ty.hir_id {
-                if let Some(sugg) = self.generics_suggestion(generics, self_ty.span, &trait_name) {
+                let sugg = self.add_generic_param_suggestion(generics, self_ty.span, &trait_name);
+                if !sugg.is_empty() {
                     diag.multipart_suggestion_verbose(
                         format!("use a new generic type parameter, constrained by `{trait_name}`"),
                         sugg,
@@ -123,6 +126,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         impl_sugg,
                         Applicability::MachineApplicable,
                     );
+                }
+                if !tcx.check_is_object_safe(def_id) {
+                    diag.note(format!("it is not object safe, so it can't be `dyn`"));
                 }
                 let sugg = if let hir::TyKind::TraitObject([_, _, ..], _, _) = self_ty.kind {
                     // There are more than one trait bound, we need surrounding parentheses.
