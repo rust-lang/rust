@@ -5,13 +5,13 @@ use base_db::{
         debug::{DebugQueryTable, TableEntry},
         Database, Durability, Query, QueryTable,
     },
-    Change, SourceRootId,
+    SourceRootId,
 };
 use profile::{memory_usage, Bytes};
 use rustc_hash::FxHashSet;
 use triomphe::Arc;
 
-use crate::{symbol_index::SymbolsDatabase, RootDatabase};
+use crate::{symbol_index::SymbolsDatabase, Change, RootDatabase};
 
 impl RootDatabase {
     pub fn request_cancellation(&mut self) {
@@ -23,7 +23,7 @@ impl RootDatabase {
         let _p = profile::span("RootDatabase::apply_change");
         self.request_cancellation();
         tracing::trace!("apply_change {:?}", change);
-        if let Some(roots) = &change.roots {
+        if let Some(roots) = &change.source_change.roots {
             let mut local_roots = FxHashSet::default();
             let mut library_roots = FxHashSet::default();
             for (idx, root) in roots.iter().enumerate() {
@@ -87,7 +87,6 @@ impl RootDatabase {
             // SourceDatabase
             base_db::ParseQuery
             base_db::CrateGraphQuery
-            base_db::ProcMacrosQuery
 
             // SourceDatabaseExt
             base_db::FileTextQuery
@@ -104,6 +103,7 @@ impl RootDatabase {
             hir::db::MacroArgQuery
             hir::db::ParseMacroExpansionQuery
             hir::db::RealSpanMapQuery
+            hir::db::ProcMacrosQuery
 
             // DefDatabase
             hir::db::FileItemTreeQuery

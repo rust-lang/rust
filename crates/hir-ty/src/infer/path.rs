@@ -340,6 +340,9 @@ impl InferenceContext<'_> {
             },
         );
         let res = res.or(not_visible);
+        if res.is_none() {
+            self.push_diagnostic(InferenceDiagnostic::UnresolvedAssocItem { id });
+        }
         let (item, visible) = res?;
 
         let (def, container) = match item {

@@ -305,12 +305,15 @@ fn params(
         return None;
     }
 
-    // Don't add parentheses if the expected type is some function reference.
-    if let Some(ty) = &ctx.expected_type {
-        // FIXME: check signature matches?
-        if ty.is_fn() {
-            cov_mark::hit!(no_call_parens_if_fn_ptr_needed);
-            return None;
+    // Don't add parentheses if the expected type is a function reference with the same signature.
+    if let Some(expected) = ctx.expected_type.as_ref().filter(|e| e.is_fn()) {
+        if let Some(expected) = expected.as_callable(ctx.db) {
+            if let Some(completed) = func.ty(ctx.db).as_callable(ctx.db) {
+                if expected.sig() == completed.sig() {
+                    cov_mark::hit!(no_call_parens_if_fn_ptr_needed);
+                    return None;
+                }
+            }
         }
     }
 

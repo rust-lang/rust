@@ -1,7 +1,8 @@
 mod block;
 
-use base_db::{fixture::WithFixture, SourceDatabase};
+use base_db::SourceDatabase;
 use expect_test::{expect, Expect};
+use test_fixture::WithFixture;
 
 use crate::{test_db::TestDB, ModuleDefId};
 

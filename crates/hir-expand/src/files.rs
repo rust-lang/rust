@@ -1,11 +1,8 @@
 //! Things to wrap other things in file ids.
 use std::iter;
 
-use base_db::{
-    span::{HirFileId, HirFileIdRepr, MacroFileId, SyntaxContextId},
-    FileId, FileRange,
-};
 use either::Either;
+use span::{FileId, FileRange, HirFileId, HirFileIdRepr, MacroFileId, SyntaxContextId};
 use syntax::{AstNode, SyntaxNode, SyntaxToken, TextRange, TextSize};
 
 use crate::{db, ExpansionInfo, MacroFileIdExt};
@@ -345,7 +342,7 @@ impl InFile<TextRange> {
 }
 
 impl<N: AstNode> InFile<N> {
-    pub fn original_ast_node(self, db: &dyn db::ExpandDatabase) -> Option<InRealFile<N>> {
+    pub fn original_ast_node_rooted(self, db: &dyn db::ExpandDatabase) -> Option<InRealFile<N>> {
         // This kind of upmapping can only be achieved in attribute expanded files,
         // as we don't have node inputs otherwise and therefore can't find an `N` node in the input
         let file_id = match self.file_id.repr() {

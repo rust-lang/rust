@@ -1,20 +1,24 @@
 //! TokenStream implementation used by sysroot ABI
 
-use proc_macro_api::msg::TokenId;
+use tt::TokenTree;
 
-use crate::tt::{self, TokenTree};
-
-#[derive(Debug, Default, Clone)]
-pub struct TokenStream {
-    pub(super) token_trees: Vec<TokenTree>,
+#[derive(Debug, Clone)]
+pub struct TokenStream<S> {
+    pub(super) token_trees: Vec<TokenTree<S>>,
 }
 
-impl TokenStream {
+impl<S> Default for TokenStream<S> {
+    fn default() -> Self {
+        Self { token_trees: vec![] }
+    }
+}
+
+impl<S> TokenStream<S> {
     pub(crate) fn new() -> Self {
-        TokenStream::default()
+        TokenStream { token_trees: vec![] }
     }
 
-    pub(crate) fn with_subtree(subtree: tt::Subtree) -> Self {
+    pub(crate) fn with_subtree(subtree: tt::Subtree<S>) -> Self {
         if subtree.delimiter.kind != tt::DelimiterKind::Invisible {
             TokenStream { token_trees: vec![TokenTree::Subtree(subtree)] }
         } else {
@@ -22,7 +26,10 @@ impl TokenStream {
         }
     }
 
-    pub(crate) fn into_subtree(self, call_site: TokenId) -> tt::Subtree {
+    pub(crate) fn into_subtree(self, call_site: S) -> tt::Subtree<S>
+    where
+        S: Copy,
+    {
         tt::Subtree {
             delimiter: tt::Delimiter {
                 open: call_site,
@@ -39,37 +46,37 @@ impl TokenStream {
 }
 
 /// Creates a token stream containing a single token tree.
-impl From<TokenTree> for TokenStream {
-    fn from(tree: TokenTree) -> TokenStream {
+impl<S> From<TokenTree<S>> for TokenStream<S> {
+    fn from(tree: TokenTree<S>) -> TokenStream<S> {
         TokenStream { token_trees: vec![tree] }
     }
 }
 
 /// Collects a number of token trees into a single stream.
-impl FromIterator<TokenTree> for TokenStream {
-    fn from_iter<I: IntoIterator<Item = TokenTree>>(trees: I) -> Self {
+impl<S> FromIterator<TokenTree<S>> for TokenStream<S> {
+    fn from_iter<I: IntoIterator<Item = TokenTree<S>>>(trees: I) -> Self {
         trees.into_iter().map(TokenStream::from).collect()
     }
 }
 
 /// A "flattening" operation on token streams, collects token trees
 /// from multiple token streams into a single stream.
-impl FromIterator<TokenStream> for TokenStream {
-    fn from_iter<I: IntoIterator<Item = TokenStream>>(streams: I) -> Self {
+impl<S> FromIterator<TokenStream<S>> for TokenStream<S> {
+    fn from_iter<I: IntoIterator<Item = TokenStream<S>>>(streams: I) -> Self {
         let mut builder = TokenStreamBuilder::new();
         streams.into_iter().for_each(|stream| builder.push(stream));
         builder.build()
     }
 }
 
-impl Extend<TokenTree> for TokenStream {
-    fn extend<I: IntoIterator<Item = TokenTree>>(&mut self, trees: I) {
+impl<S> Extend<TokenTree<S>> for TokenStream<S> {
+    fn extend<I: IntoIterator<Item = TokenTree<S>>>(&mut self, trees: I) {
         self.extend(trees.into_iter().map(TokenStream::from));
     }
 }
 
-impl Extend<TokenStream> for TokenStream {
-    fn extend<I: IntoIterator<Item = TokenStream>>(&mut self, streams: I) {
+impl<S> Extend<TokenStream<S>> for TokenStream<S> {
+    fn extend<I: IntoIterator<Item = TokenStream<S>>>(&mut self, streams: I) {
         for item in streams {
             for tkn in item {
                 match tkn {
@@ -87,22 +94,21 @@ impl Extend<TokenStream> for TokenStream {
     }
 }
 
-pub(super) struct TokenStreamBuilder {
-    acc: TokenStream,
+pub(super) struct TokenStreamBuilder<S> {
+    acc: TokenStream<S>,
 }
 
 /// pub(super)lic implementation details for the `TokenStream` type, such as iterators.
 pub(super) mod token_stream {
-    use proc_macro_api::msg::TokenId;
 
-    use super::{tt, TokenStream, TokenTree};
+    use super::{TokenStream, TokenTree};
 
     /// An iterator over `TokenStream`'s `TokenTree`s.
     /// The iteration is "shallow", e.g., the iterator doesn't recurse into delimited groups,
     /// and returns whole groups as token trees.
-    impl IntoIterator for TokenStream {
-        type Item = TokenTree;
-        type IntoIter = std::vec::IntoIter<TokenTree>;
+    impl<S> IntoIterator for TokenStream<S> {
+        type Item = TokenTree<S>;
+        type IntoIter = std::vec::IntoIter<TokenTree<S>>;
 
         fn into_iter(self) -> Self::IntoIter {
             self.token_trees.into_iter()
@@ -119,71 +125,34 @@ pub(super) mod token_stream {
     /// NOTE: some errors may cause panics instead of returning `LexError`. We reserve the right to
     /// change these errors into `LexError`s later.
     #[rustfmt::skip]
-    impl /*FromStr for*/ TokenStream {
+    impl<S: tt::Span> /*FromStr for*/ TokenStream<S> {
         // type Err = LexError;
 
-        pub(crate) fn from_str(src: &str, call_site: TokenId) -> Result<TokenStream, LexError> {
+        pub(crate) fn from_str(src: &str, call_site: S) -> Result<TokenStream<S>, LexError> {
             let subtree =
                 mbe::parse_to_token_tree_static_span(call_site, src).ok_or("Failed to parse from mbe")?;
 
-            let subtree = subtree_replace_token_ids_with_call_site(subtree,call_site);
             Ok(TokenStream::with_subtree(subtree))
         }
     }
 
-    impl ToString for TokenStream {
+    impl<S> ToString for TokenStream<S> {
         fn to_string(&self) -> String {
             ::tt::pretty(&self.token_trees)
         }
     }
-
-    fn subtree_replace_token_ids_with_call_site(
-        subtree: tt::Subtree,
-        call_site: TokenId,
-    ) -> tt::Subtree {
-        tt::Subtree {
-            delimiter: tt::Delimiter { open: call_site, close: call_site, ..subtree.delimiter },
-            token_trees: subtree
-                .token_trees
-                .into_iter()
-                .map(|it| token_tree_replace_token_ids_with_call_site(it, call_site))
-                .collect(),
-        }
-    }
-
-    fn token_tree_replace_token_ids_with_call_site(
-        tt: tt::TokenTree,
-        call_site: TokenId,
-    ) -> tt::TokenTree {
-        match tt {
-            tt::TokenTree::Leaf(leaf) => {
-                tt::TokenTree::Leaf(leaf_replace_token_ids_with_call_site(leaf, call_site))
-            }
-            tt::TokenTree::Subtree(subtree) => {
-                tt::TokenTree::Subtree(subtree_replace_token_ids_with_call_site(subtree, call_site))
-            }
-        }
-    }
-
-    fn leaf_replace_token_ids_with_call_site(leaf: tt::Leaf, call_site: TokenId) -> tt::Leaf {
-        match leaf {
-            tt::Leaf::Literal(lit) => tt::Leaf::Literal(tt::Literal { span: call_site, ..lit }),
-            tt::Leaf::Punct(punct) => tt::Leaf::Punct(tt::Punct { span: call_site, ..punct }),
-            tt::Leaf::Ident(ident) => tt::Leaf::Ident(tt::Ident { span: call_site, ..ident }),
-        }
-    }
 }
 
-impl TokenStreamBuilder {
-    pub(super) fn new() -> TokenStreamBuilder {
+impl<S> TokenStreamBuilder<S> {
+    pub(super) fn new() -> TokenStreamBuilder<S> {
         TokenStreamBuilder { acc: TokenStream::new() }
     }
 
-    pub(super) fn push(&mut self, stream: TokenStream) {
+    pub(super) fn push(&mut self, stream: TokenStream<S>) {
         self.acc.extend(stream.into_iter())
     }
 
-    pub(super) fn build(self) -> TokenStream {
+    pub(super) fn build(self) -> TokenStream<S> {
         self.acc
     }
 }

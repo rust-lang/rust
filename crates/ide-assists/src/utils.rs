@@ -813,3 +813,21 @@ fn test_required_hashes() {
     assert_eq!(3, required_hashes("#ab\"##c"));
     assert_eq!(5, required_hashes("#ab\"##\"####c"));
 }
+
+/// Replaces the record expression, handling field shorthands including inside macros.
+pub(crate) fn replace_record_field_expr(
+    ctx: &AssistContext<'_>,
+    edit: &mut SourceChangeBuilder,
+    record_field: ast::RecordExprField,
+    initializer: ast::Expr,
+) {
+    if let Some(ast::Expr::PathExpr(path_expr)) = record_field.expr() {
+        // replace field shorthand
+        let file_range = ctx.sema.original_range(path_expr.syntax());
+        edit.insert(file_range.range.end(), format!(": {}", initializer.syntax().text()))
+    } else if let Some(expr) = record_field.expr() {
+        // just replace expr
+        let file_range = ctx.sema.original_range(expr.syntax());
+        edit.replace(file_range.range, initializer.syntax().text());
+    }
+}

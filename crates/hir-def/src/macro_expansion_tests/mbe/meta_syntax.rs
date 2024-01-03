@@ -18,7 +18,7 @@ macro_rules! m {
     ($($false:ident)*) => ($false);
     (double_dollar) => ($$);
     ($) => (m!($););
-    ($($t:tt)*) => ($( ${ignore(t)} ${index()} )-*);
+    ($($t:tt)*) => ($( ${ignore($t)} ${index()} )-*);
 }
 m!($);
 "#,
@@ -33,7 +33,7 @@ macro_rules! m {
     ($($false:ident)*) => ($false);
     (double_dollar) => ($$);
     ($) => (m!($););
-    ($($t:tt)*) => ($( ${ignore(t)} ${index()} )-*);
+    ($($t:tt)*) => ($( ${ignore($t)} ${index()} )-*);
 }
 m!($);
 "#]],

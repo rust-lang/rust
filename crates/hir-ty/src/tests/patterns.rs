@@ -1155,6 +1155,40 @@ fn main() {
 }
 
 #[test]
+fn generic_alias_with_qualified_path() {
+    check_types(
+        r#"
+type Wrap<T> = T;
+
+struct S;
+
+trait Schematic {
+    type Props;
+}
+
+impl Schematic for S {
+    type Props = X;
+}
+
+enum X {
+    A { cool: u32, stuff: u32 },
+    B,
+}
+
+fn main() {
+    let wrapped = Wrap::<<S as Schematic>::Props>::A {
+        cool: 100,
+        stuff: 100,
+    };
+
+    if let Wrap::<<S as Schematic>::Props>::A { cool, ..} = &wrapped {}
+                                              //^^^^ &u32
+}
+"#,
+    );
+}
+
+#[test]
 fn type_mismatch_pat_const_reference() {
     check_no_mismatches(
         r#"
