@@ -157,6 +157,8 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
             "ssr": true,
             "workspaceSymbolScopeKindFiltering": true,
         })),
+        diagnostic_provider: None,
+        inline_completion_provider: None,
     }
 }
 

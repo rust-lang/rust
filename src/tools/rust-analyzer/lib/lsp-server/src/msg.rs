@@ -264,12 +264,12 @@ fn read_msg_text(inp: &mut dyn BufRead) -> io::Result<Option<String>> {
         let mut parts = buf.splitn(2, ": ");
         let header_name = parts.next().unwrap();
         let header_value =
-            parts.next().ok_or_else(|| invalid_data!("malformed header: {:?}", buf))?;
+            parts.next().ok_or_else(|| invalid_data(format!("malformed header: {:?}", buf)))?;
         if header_name.eq_ignore_ascii_case("Content-Length") {
             size = Some(header_value.parse::<usize>().map_err(invalid_data)?);
         }
     }
-    let size: usize = size.ok_or_else(|| invalid_data!("no Content-Length"))?;
+    let size: usize = size.ok_or_else(|| invalid_data("no Content-Length".to_string()))?;
     let mut buf = buf.into_bytes();
     buf.resize(size, 0);
     inp.read_exact(&mut buf)?;

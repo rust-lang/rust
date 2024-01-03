@@ -4,8 +4,8 @@ use std::{
     cell::RefCell, collections::HashMap, fs::read_to_string, panic::AssertUnwindSafe, path::PathBuf,
 };
 
-use hir::Crate;
-use ide::{AnalysisHost, Change, DiagnosticCode, DiagnosticsConfig};
+use hir::{Change, Crate};
+use ide::{AnalysisHost, DiagnosticCode, DiagnosticsConfig};
 use profile::StopWatch;
 use project_model::{CargoConfig, ProjectWorkspace, RustLibSource, Sysroot};
 

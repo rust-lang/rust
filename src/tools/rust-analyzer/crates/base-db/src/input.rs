@@ -6,22 +6,19 @@
 //! actual IO. See `vfs` and `project_model` in the `rust-analyzer` crate for how
 //! actual IO is done and lowered to input.
 
-use std::{fmt, mem, ops, panic::RefUnwindSafe, str::FromStr, sync};
+use std::{fmt, mem, ops, str::FromStr};
 
 use cfg::CfgOptions;
 use la_arena::{Arena, Idx};
 use rustc_hash::{FxHashMap, FxHashSet};
+use semver::Version;
 use syntax::SmolStr;
 use triomphe::Arc;
 use vfs::{file_set::FileSet, AbsPathBuf, AnchoredPath, FileId, VfsPath};
 
-use crate::span::SpanData;
-
 // Map from crate id to the name of the crate and path of the proc-macro. If the value is `None`,
 // then the crate for the proc-macro hasn't been build yet as the build data is missing.
 pub type ProcMacroPaths = FxHashMap<CrateId, Result<(Option<String>, AbsPathBuf), String>>;
-pub type ProcMacros = FxHashMap<CrateId, ProcMacroLoadResult>;
-
 /// Files are grouped into source roots. A source root is a directory on the
 /// file systems which is watched for changes. Typically it corresponds to a
 /// Rust crate. Source roots *might* be nested: in this case, a file belongs to
@@ -242,48 +239,7 @@ impl CrateDisplayName {
         CrateDisplayName { crate_name, canonical_name }
     }
 }
-
-// FIXME: These should not be defined in here? Why does base db know about proc-macros
-// ProcMacroKind is used in [`fixture`], but that module probably shouldn't be in this crate either.
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct ProcMacroId(pub u32);
-
-#[derive(Copy, Clone, Eq, PartialEq, Debug, Hash)]
-pub enum ProcMacroKind {
-    CustomDerive,
-    FuncLike,
-    Attr,
-}
-
-pub trait ProcMacroExpander: fmt::Debug + Send + Sync + RefUnwindSafe {
-    fn expand(
-        &self,
-        subtree: &tt::Subtree<SpanData>,
-        attrs: Option<&tt::Subtree<SpanData>>,
-        env: &Env,
-        def_site: SpanData,
-        call_site: SpanData,
-        mixed_site: SpanData,
-    ) -> Result<tt::Subtree<SpanData>, ProcMacroExpansionError>;
-}
-
-#[derive(Debug)]
-pub enum ProcMacroExpansionError {
-    Panic(String),
-    /// Things like "proc macro server was killed by OOM".
-    System(String),
-}
-
-pub type ProcMacroLoadResult = Result<Vec<ProcMacro>, String>;
 pub type TargetLayoutLoadResult = Result<Arc<str>, Arc<str>>;
-
-#[derive(Debug, Clone)]
-pub struct ProcMacro {
-    pub name: SmolStr,
-    pub kind: ProcMacroKind,
-    pub expander: sync::Arc<dyn ProcMacroExpander>,
-}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ReleaseChannel {
@@ -303,7 +259,7 @@ impl ReleaseChannel {
 
     pub fn from_str(str: &str) -> Option<Self> {
         Some(match str {
-            "" => ReleaseChannel::Stable,
+            "" | "stable" => ReleaseChannel::Stable,
             "nightly" => ReleaseChannel::Nightly,
             _ if str.starts_with("beta") => ReleaseChannel::Beta,
             _ => return None,
@@ -334,7 +290,7 @@ pub struct CrateData {
     // things. This info does need to be somewhat present though as to prevent deduplication from
     // happening across different workspaces with different layouts.
     pub target_layout: TargetLayoutLoadResult,
-    pub channel: Option<ReleaseChannel>,
+    pub toolchain: Option<Version>,
 }
 
 impl CrateData {
@@ -391,6 +347,10 @@ impl CrateData {
 
         slf_deps.eq(other_deps)
     }
+
+    pub fn channel(&self) -> Option<ReleaseChannel> {
+        self.toolchain.as_ref().and_then(|v| ReleaseChannel::from_str(&v.pre))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -398,10 +358,12 @@ pub enum Edition {
     Edition2015,
     Edition2018,
     Edition2021,
+    Edition2024,
 }
 
 impl Edition {
     pub const CURRENT: Edition = Edition::Edition2021;
+    pub const DEFAULT: Edition = Edition::Edition2015;
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -472,7 +434,7 @@ impl CrateGraph {
         is_proc_macro: bool,
         origin: CrateOrigin,
         target_layout: Result<Arc<str>, Arc<str>>,
-        channel: Option<ReleaseChannel>,
+        toolchain: Option<Version>,
     ) -> CrateId {
         let data = CrateData {
             root_file_id,
@@ -486,7 +448,7 @@ impl CrateGraph {
             origin,
             target_layout,
             is_proc_macro,
-            channel,
+            toolchain,
         };
         self.arena.alloc(data)
     }
@@ -784,6 +746,7 @@ impl FromStr for Edition {
             "2015" => Edition::Edition2015,
             "2018" => Edition::Edition2018,
             "2021" => Edition::Edition2021,
+            "2024" => Edition::Edition2024,
             _ => return Err(ParseEditionError { invalid_input: s.to_string() }),
         };
         Ok(res)
@@ -796,6 +759,7 @@ impl fmt::Display for Edition {
             Edition::Edition2015 => "2015",
             Edition::Edition2018 => "2018",
             Edition::Edition2021 => "2021",
+            Edition::Edition2024 => "2024",
         })
     }
 }

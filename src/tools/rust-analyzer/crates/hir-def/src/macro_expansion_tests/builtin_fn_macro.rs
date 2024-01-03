@@ -163,31 +163,43 @@ fn main() { ""; }
 fn test_assert_expand() {
     check(
         r#"
-#[rustc_builtin_macro]
-macro_rules! assert {
-    ($cond:expr) => ({ /* compiler built-in */ });
-    ($cond:expr, $($args:tt)*) => ({ /* compiler built-in */ })
-}
-
+//- minicore: assert
 fn main() {
     assert!(true, "{} {:?}", arg1(a, b, c), arg2);
 }
 "#,
-        expect![[r##"
-#[rustc_builtin_macro]
-macro_rules! assert {
-    ($cond:expr) => ({ /* compiler built-in */ });
-    ($cond:expr, $($args:tt)*) => ({ /* compiler built-in */ })
-}
-
+        expect![[r#"
 fn main() {
      {
         if !(true ) {
-            $crate::panic!("{} {:?}", arg1(a, b, c), arg2);
+            $crate::panic::panic_2021!("{} {:?}", arg1(a, b, c), arg2);
         }
     };
 }
-"##]],
+"#]],
+    );
+}
+
+// FIXME: This is the wrong expansion, see FIXME on `builtin_fn_macro::use_panic_2021`
+#[test]
+fn test_assert_expand_2015() {
+    check(
+        r#"
+//- minicore: assert
+//- /main.rs edition:2015
+fn main() {
+    assert!(true, "{} {:?}", arg1(a, b, c), arg2);
+}
+"#,
+        expect![[r#"
+fn main() {
+     {
+        if !(true ) {
+            $crate::panic::panic_2021!("{} {:?}", arg1(a, b, c), arg2);
+        }
+    };
+}
+"#]],
     );
 }
 

@@ -217,6 +217,10 @@ pub enum InferenceDiagnostic {
         name: Name,
         /// Contains the type the field resolves to
         field_with_same_name: Option<Ty>,
+        assoc_func_with_same_name: Option<AssocItemId>,
+    },
+    UnresolvedAssocItem {
+        id: ExprOrPatId,
     },
     // FIXME: This should be emitted in body lowering
     BreakOutsideOfLoop {
@@ -1200,6 +1204,12 @@ impl<'a> InferenceContext<'a> {
         path: &ModPath,
     ) -> (Ty, Option<VariantId>) {
         let remaining = unresolved.map(|it| path.segments()[it..].len()).filter(|it| it > &0);
+        let ty = match ty.kind(Interner) {
+            TyKind::Alias(AliasTy::Projection(proj_ty)) => {
+                self.db.normalize_projection(proj_ty.clone(), self.table.trait_env.clone())
+            }
+            _ => ty,
+        };
         match remaining {
             None => {
                 let variant = ty.as_adt().and_then(|(adt_id, _)| match adt_id {

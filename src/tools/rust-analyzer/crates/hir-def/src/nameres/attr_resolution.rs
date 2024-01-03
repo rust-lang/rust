@@ -8,7 +8,6 @@ use crate::{
     attr_macro_as_call_id,
     db::DefDatabase,
     item_scope::BuiltinShadowMode,
-    macro_id_to_def_id,
     nameres::path_resolution::ResolveMode,
     path::{ModPath, PathKind},
     AstIdWithPath, LocalModuleId, UnresolvedMacro,
@@ -63,7 +62,7 @@ impl DefMap {
             &ast_id,
             attr,
             self.krate,
-            macro_id_to_def_id(db, def),
+            db.macro_def(def),
         )))
     }
 

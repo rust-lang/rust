@@ -70,6 +70,9 @@ fn main() {
         // instance to use the same target directory.
         .arg("--target-dir")
         .arg(&target_dir);
+    if cfg!(feature = "sysroot-abi") {
+        cmd.args(["--features", "sysroot-abi"]);
+    }
 
     if let Ok(target) = std::env::var("TARGET") {
         cmd.args(["--target", &target]);

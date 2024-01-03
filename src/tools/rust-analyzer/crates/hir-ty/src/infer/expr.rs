@@ -1575,11 +1575,30 @@ impl InferenceContext<'_> {
                     }
                     None => None,
                 };
+
+                let assoc_func_with_same_name = method_resolution::iterate_method_candidates(
+                    &canonicalized_receiver.value,
+                    self.db,
+                    self.table.trait_env.clone(),
+                    self.get_traits_in_scope().as_ref().left_or_else(|&it| it),
+                    VisibleFromModule::Filter(self.resolver.module()),
+                    Some(method_name),
+                    method_resolution::LookupMode::Path,
+                    |_ty, item, visible| {
+                        if visible {
+                            Some(item)
+                        } else {
+                            None
+                        }
+                    },
+                );
+
                 self.result.diagnostics.push(InferenceDiagnostic::UnresolvedMethodCall {
                     expr: tgt_expr,
                     receiver: receiver_ty.clone(),
                     name: method_name.clone(),
                     field_with_same_name: field_with_same_name_exists,
+                    assoc_func_with_same_name,
                 });
                 (
                     receiver_ty,

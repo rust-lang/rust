@@ -20,3 +20,6 @@ notify = "6.1.1"
 stdx.workspace = true
 vfs.workspace = true
 paths.workspace = true
+
+[lints]
+workspace = true

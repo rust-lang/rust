@@ -1,5 +1,11 @@
-use super::*;
+use expect_test::expect;
+use test_fixture::WithFixture;
+
 use itertools::Itertools;
+
+use crate::nameres::tests::check;
+
+use super::*;
 
 #[test]
 fn macro_rules_are_globally_visible() {

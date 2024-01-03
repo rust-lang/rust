@@ -31,3 +31,6 @@ jemalloc = ["jemalloc-ctl"]
 
 # Uncomment to enable for the whole crate graph
 # default = [ "cpu_profiler" ]
+
+[lints]
+workspace = true

@@ -1,0 +1,21 @@
+[package]
+name = "test-fixture"
+version = "0.0.0"
+rust-version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+publish = false
+
+[dependencies]
+hir-expand.workspace = true
+test-utils.workspace = true
+tt.workspace = true
+cfg.workspace = true
+base-db.workspace = true
+rustc-hash.workspace = true
+span.workspace = true
+stdx.workspace = true
+
+[lints]
+workspace = true

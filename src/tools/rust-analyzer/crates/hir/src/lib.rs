@@ -37,7 +37,7 @@ mod display;
 use std::{iter, mem::discriminant, ops::ControlFlow};
 
 use arrayvec::ArrayVec;
-use base_db::{CrateDisplayName, CrateId, CrateOrigin, Edition, FileId, ProcMacroKind};
+use base_db::{CrateDisplayName, CrateId, CrateOrigin, Edition, FileId};
 use either::Either;
 use hir_def::{
     body::{BodyDiagnostic, SyntheticSyntax},
@@ -47,7 +47,6 @@ use hir_def::{
     item_tree::ItemTreeNode,
     lang_item::LangItemTarget,
     layout::{self, ReprOptions, TargetDataLayout},
-    macro_id_to_def_id,
     nameres::{self, diagnostics::DefDiagnostic},
     path::ImportAlias,
     per_ns::PerNs,
@@ -59,7 +58,7 @@ use hir_def::{
     Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId, TraitAliasId, TraitId,
     TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
 };
-use hir_expand::{attrs::collect_attrs, name::name, MacroCallKind};
+use hir_expand::{attrs::collect_attrs, name::name, proc_macro::ProcMacroKind, MacroCallKind};
 use hir_ty::{
     all_super_traits, autoderef, check_orphan_rules,
     consteval::{try_const_usize, unknown_const_as_generic, ConstEvalError, ConstExt},
@@ -125,8 +124,10 @@ pub use {
     },
     hir_expand::{
         attrs::{Attr, AttrId},
+        change::Change,
         hygiene::{marks_rev, SyntaxContextExt},
         name::{known, Name},
+        proc_macro::ProcMacros,
         tt, ExpandResult, HirFileId, HirFileIdExt, InFile, InMacroFile, InRealFile, MacroFileId,
         MacroFileIdExt,
     },
@@ -146,7 +147,7 @@ use {
     hir_def::path::Path,
     hir_expand::{
         name::AsName,
-        span::{ExpansionSpanMap, RealSpanMap, SpanMap, SpanMapRef},
+        span_map::{ExpansionSpanMap, RealSpanMap, SpanMap, SpanMapRef},
     },
 };
 
@@ -808,7 +809,7 @@ impl Module {
 }
 
 fn emit_macro_def_diagnostics(db: &dyn HirDatabase, acc: &mut Vec<AnyDiagnostic>, m: Macro) {
-    let id = macro_id_to_def_id(db.upcast(), m.id);
+    let id = db.macro_def(m.id);
     if let hir_expand::db::TokenExpander::DeclarativeMacro(expander) = db.macro_expander(id) {
         if let Some(e) = expander.mac.err() {
             let Some(ast) = id.ast_id().left() else {
@@ -1679,6 +1680,7 @@ impl DefWithBody {
                     receiver,
                     name,
                     field_with_same_name,
+                    assoc_func_with_same_name,
                 } => {
                     let expr = expr_syntax(*expr);
 
@@ -1690,9 +1692,17 @@ impl DefWithBody {
                             field_with_same_name: field_with_same_name
                                 .clone()
                                 .map(|ty| Type::new(db, DefWithBodyId::from(self), ty)),
+                            assoc_func_with_same_name: assoc_func_with_same_name.clone(),
                         }
                         .into(),
                     )
+                }
+                &hir_ty::InferenceDiagnostic::UnresolvedAssocItem { id } => {
+                    let expr_or_pat = match id {
+                        ExprOrPatId::ExprId(expr) => expr_syntax(expr).map(AstPtr::wrap_left),
+                        ExprOrPatId::PatId(pat) => pat_syntax(pat).map(AstPtr::wrap_right),
+                    };
+                    acc.push(UnresolvedAssocItem { expr_or_pat }.into())
                 }
                 &hir_ty::InferenceDiagnostic::BreakOutsideOfLoop {
                     expr,
@@ -2784,9 +2794,13 @@ impl AsAssocItem for DefWithBody {
     }
 }
 
-fn as_assoc_item<ID, DEF, CTOR, AST>(db: &dyn HirDatabase, ctor: CTOR, id: ID) -> Option<AssocItem>
+fn as_assoc_item<'db, ID, DEF, CTOR, AST>(
+    db: &(dyn HirDatabase + 'db),
+    ctor: CTOR,
+    id: ID,
+) -> Option<AssocItem>
 where
-    ID: Lookup<Data = AssocItemLoc<AST>>,
+    ID: Lookup<Database<'db> = dyn DefDatabase + 'db, Data = AssocItemLoc<AST>>,
     DEF: From<ID>,
     CTOR: FnOnce(DEF) -> AssocItem,
     AST: ItemTreeNode,
@@ -3520,7 +3534,7 @@ impl Impl {
         let src = self.source(db)?;
 
         let macro_file = src.file_id.macro_file()?;
-        let loc = db.lookup_intern_macro_call(macro_file.macro_call_id);
+        let loc = macro_file.macro_call_id.lookup(db.upcast());
         let (derive_attr, derive_index) = match loc.kind {
             MacroCallKind::Derive { ast_id, derive_attr_index, derive_index } => {
                 let module_id = self.id.lookup(db.upcast()).container;
@@ -4651,6 +4665,9 @@ impl Callable {
     }
     pub fn return_type(&self) -> Type {
         self.ty.derived(self.sig.ret().clone())
+    }
+    pub fn sig(&self) -> &CallableSig {
+        &self.sig
     }
 }
 
