@@ -1,6 +1,9 @@
+// https://github.com/rust-lang/rust/issues/54705
+#![crate_name="foo"]
+
 pub trait ScopeHandle<'scope> {}
 
-// @has issue_54705/struct.ScopeFutureContents.html
+// @has foo/struct.ScopeFutureContents.html
 // @has - '//*[@id="synthetic-implementations-list"]//*[@class="impl"]//h3[@class="code-header"]' \
 // "impl<'scope, S> Send for ScopeFutureContents<'scope, S>where S: Sync"
 //

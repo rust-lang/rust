@@ -1,3 +1,4 @@
+// https://github.com/rust-lang/rust/issues/53689
 // aux-build:issue-53689.rs
 
 #![crate_name = "foo"]

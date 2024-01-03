@@ -1,3 +1,6 @@
+// https://github.com/rust-lang/rust/issues/35488
+#![crate_name="foo"]
+
 mod foo {
     pub enum Foo {
         Bar,
@@ -5,9 +8,9 @@ mod foo {
     pub use self::Foo::*;
 }
 
-// @has 'issue_35488/index.html' '//code' 'pub use self::Foo::*;'
-// @has 'issue_35488/enum.Foo.html'
+// @has 'foo/index.html' '//code' 'pub use self::Foo::*;'
+// @has 'foo/enum.Foo.html'
 pub use self::foo::*;
 
-// @has 'issue_35488/index.html' '//code' 'pub use std::option::Option::None;'
+// @has 'foo/index.html' '//code' 'pub use std::option::Option::None;'
 pub use std::option::Option::None;
