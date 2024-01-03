@@ -118,7 +118,7 @@ x--expand-yaml-anchors--remove:
     env:
       <<: *shared-ci-variables
     steps:
-      - if: 
+      - #if: 
         uses: msys2/setup-msys2@76b1bed68bac51ebe46cb431077217d4b98e2b7b #git SHA for v2.21.0
         with:
           msystem: MINGW64
