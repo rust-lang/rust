@@ -359,7 +359,7 @@ fn get_body_span<'tcx>(
 ) -> Span {
     let mut body_span = hir_body.value.span;
 
-    if tcx.is_closure(def_id.to_def_id()) {
+    if tcx.is_closure_or_coroutine(def_id.to_def_id()) {
         // If the current function is a closure, and its "body" span was created
         // by macro expansion or compiler desugaring, try to walk backwards to
         // the pre-expansion call site or body.
