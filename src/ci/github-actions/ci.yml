@@ -111,15 +111,14 @@ x--expand-yaml-anchors--remove:
 
   - &base-ci-job
     defaults:
-        run:
-          shell: ${{ matrix.msys2 && msys2 {0} || bash }}
+      run:
+        shell: ${{ matrix.msys2 && 'msys2 {0}'' || 'bash' }}
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     env:
       <<: *shared-ci-variables
     steps:
-      - #if: 
-        uses: msys2/setup-msys2@76b1bed68bac51ebe46cb431077217d4b98e2b7b #git SHA for v2.21.0
+      - uses: msys2/setup-msys2@76b1bed68bac51ebe46cb431077217d4b98e2b7b #git SHA for v2.21.0
         with:
           msystem: MINGW64
           # don't try to download package updates from the network
