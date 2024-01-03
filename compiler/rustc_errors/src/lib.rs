@@ -878,16 +878,6 @@ impl DiagCtxt {
         DiagnosticBuilder::new(self, Fatal, msg)
     }
 
-    /// Construct a builder at the `Fatal` level with the `msg`, that doesn't abort.
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn struct_almost_fatal(
-        &self,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, FatalError> {
-        DiagnosticBuilder::new(self, Fatal, msg)
-    }
-
     /// Construct a builder at the `Help` level with the `msg`.
     #[rustc_lint_diagnostics]
     pub fn struct_help(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
