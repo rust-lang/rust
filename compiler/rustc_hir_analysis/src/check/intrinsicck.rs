@@ -325,7 +325,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         op.is_clobber(),
                     ) {
                         let msg = format!("cannot use register `{}`: {}", reg.name(), msg);
-                        self.tcx.dcx().struct_span_err(*op_sp, msg).emit();
+                        self.tcx.dcx().span_err(*op_sp, msg);
                         continue;
                     }
                 }
@@ -364,7 +364,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                                 reg_class.name(),
                                 feature
                             );
-                            self.tcx.dcx().struct_span_err(*op_sp, msg).emit();
+                            self.tcx.dcx().span_err(*op_sp, msg);
                             // register isn't enabled, don't do more checks
                             continue;
                         }
@@ -378,7 +378,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                                     .intersperse(", ")
                                     .collect::<String>(),
                             );
-                            self.tcx.dcx().struct_span_err(*op_sp, msg).emit();
+                            self.tcx.dcx().span_err(*op_sp, msg);
                             // register isn't enabled, don't do more checks
                             continue;
                         }

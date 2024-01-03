@@ -421,7 +421,7 @@ impl Options {
             let paths = match theme::load_css_paths(content) {
                 Ok(p) => p,
                 Err(e) => {
-                    dcx.struct_err(e).emit();
+                    dcx.err(e);
                     return Err(1);
                 }
             };
@@ -452,10 +452,10 @@ impl Options {
         let input = PathBuf::from(if describe_lints {
             "" // dummy, this won't be used
         } else if matches.free.is_empty() {
-            dcx.struct_err("missing file operand").emit();
+            dcx.err("missing file operand");
             return Err(1);
         } else if matches.free.len() > 1 {
-            dcx.struct_err("too many file operands").emit();
+            dcx.err("too many file operands");
             return Err(1);
         } else {
             &matches.free[0]
@@ -467,7 +467,7 @@ impl Options {
         let extern_html_root_urls = match parse_extern_html_roots(matches) {
             Ok(ex) => ex,
             Err(err) => {
-                dcx.struct_err(err).emit();
+                dcx.err(err);
                 return Err(1);
             }
         };
@@ -534,7 +534,7 @@ impl Options {
         let output = matches.opt_str("output").map(|s| PathBuf::from(&s));
         let output = match (out_dir, output) {
             (Some(_), Some(_)) => {
-                dcx.struct_err("cannot use both 'out-dir' and 'output' at once").emit();
+                dcx.err("cannot use both 'out-dir' and 'output' at once");
                 return Err(1);
             }
             (Some(out_dir), None) => out_dir,
@@ -549,7 +549,7 @@ impl Options {
 
         if let Some(ref p) = extension_css {
             if !p.is_file() {
-                dcx.struct_err("option --extend-css argument must be a file").emit();
+                dcx.err("option --extend-css argument must be a file");
                 return Err(1);
             }
         }
@@ -567,7 +567,7 @@ impl Options {
             let paths = match theme::load_css_paths(content) {
                 Ok(p) => p,
                 Err(e) => {
-                    dcx.struct_err(e).emit();
+                    dcx.err(e);
                     return Err(1);
                 }
             };
@@ -589,7 +589,7 @@ impl Options {
                 }
                 let (success, ret) = theme::test_theme_against(&theme_file, &paths, &dcx);
                 if !success {
-                    dcx.struct_err(format!("error loading theme file: \"{theme_s}\"")).emit();
+                    dcx.err(format!("error loading theme file: \"{theme_s}\""));
                     return Err(1);
                 } else if !ret.is_empty() {
                     dcx.struct_warn(format!(
@@ -626,7 +626,7 @@ impl Options {
         match matches.opt_str("r").as_deref() {
             Some("rust") | None => {}
             Some(s) => {
-                dcx.struct_err(format!("unknown input format: {s}")).emit();
+                dcx.err(format!("unknown input format: {s}"));
                 return Err(1);
             }
         }
@@ -634,7 +634,7 @@ impl Options {
         let index_page = matches.opt_str("index-page").map(|s| PathBuf::from(&s));
         if let Some(ref index_page) = index_page {
             if !index_page.is_file() {
-                dcx.struct_err("option `--index-page` argument must be a file").emit();
+                dcx.err("option `--index-page` argument must be a file");
                 return Err(1);
             }
         }
@@ -646,7 +646,7 @@ impl Options {
         let crate_types = match parse_crate_types_from_list(matches.opt_strs("crate-type")) {
             Ok(types) => types,
             Err(e) => {
-                dcx.struct_err(format!("unknown crate type: {e}")).emit();
+                dcx.err(format!("unknown crate type: {e}"));
                 return Err(1);
             }
         };
@@ -664,7 +664,7 @@ impl Options {
                     out_fmt
                 }
                 Err(e) => {
-                    dcx.struct_err(e).emit();
+                    dcx.err(e);
                     return Err(1);
                 }
             },

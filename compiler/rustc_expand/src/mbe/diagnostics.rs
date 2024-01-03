@@ -180,7 +180,7 @@ impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 
             }
             Error(err_sp, msg) => {
                 let span = err_sp.substitute_dummy(self.root_span);
-                self.cx.dcx().struct_span_err(span, msg.clone()).emit();
+                self.cx.dcx().span_err(span, msg.clone());
                 self.result = Some(DummyResult::any(span));
             }
             ErrorReported(_) => self.result = Some(DummyResult::any(self.root_span)),

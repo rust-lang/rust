@@ -1371,12 +1371,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let ImportKind::Glob { id, is_prelude, .. } = import.kind else { unreachable!() };
 
         let ModuleOrUniformRoot::Module(module) = import.imported_module.get().unwrap() else {
-            self.dcx().create_err(CannotGlobImportAllCrates { span: import.span }).emit();
+            self.dcx().emit_err(CannotGlobImportAllCrates { span: import.span });
             return;
         };
 
         if module.is_trait() {
-            self.dcx().create_err(ItemsInTraitsAreNotImportable { span: import.span }).emit();
+            self.dcx().emit_err(ItemsInTraitsAreNotImportable { span: import.span });
             return;
         } else if module == import.parent_scope.module {
             return;

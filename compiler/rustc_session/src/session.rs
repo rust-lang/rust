@@ -1447,7 +1447,7 @@ impl EarlyDiagCtxt {
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_note(&self, msg: impl Into<DiagnosticMessage>) {
-        self.dcx.struct_note(msg).emit()
+        self.dcx.note(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
@@ -1460,13 +1460,13 @@ impl EarlyDiagCtxt {
     #[allow(rustc::diagnostic_outside_of_impl)]
     #[must_use = "ErrorGuaranteed must be returned from `run_compiler` in order to exit with a non-zero status code"]
     pub fn early_err(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
-        self.dcx.struct_err(msg).emit()
+        self.dcx.err(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_fatal(&self, msg: impl Into<DiagnosticMessage>) -> ! {
-        self.dcx.struct_fatal(msg).emit()
+        self.dcx.fatal(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
@@ -1481,7 +1481,7 @@ impl EarlyDiagCtxt {
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_warn(&self, msg: impl Into<DiagnosticMessage>) {
-        self.dcx.struct_warn(msg).emit()
+        self.dcx.warn(msg)
     }
 
     pub fn initialize_checked_jobserver(&self) {

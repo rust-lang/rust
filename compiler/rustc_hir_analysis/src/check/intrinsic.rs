@@ -552,7 +552,7 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         sym::simd_shuffle_generic => (2, 1, vec![param(0), param(0)], param(1)),
         _ => {
             let msg = format!("unrecognized platform-specific intrinsic function: `{name}`");
-            tcx.dcx().struct_span_err(it.span, msg).emit();
+            tcx.dcx().span_err(it.span, msg);
             return;
         }
     };
