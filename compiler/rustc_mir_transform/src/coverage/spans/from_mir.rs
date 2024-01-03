@@ -74,7 +74,7 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
             let expn_span = filtered_statement_span(statement)?;
             let span = unexpand_into_body_span(expn_span, body_span)?;
 
-            Some(CoverageSpan::new(span, expn_span, bcb, is_closure(statement)))
+            Some(CoverageSpan::new(span, expn_span, bcb, is_closure_or_coroutine(statement)))
         });
 
         let terminator_span = Some(data.terminator()).into_iter().filter_map(move |terminator| {
@@ -88,7 +88,7 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
     })
 }
 
-fn is_closure(statement: &Statement<'_>) -> bool {
+fn is_closure_or_coroutine(statement: &Statement<'_>) -> bool {
     match statement.kind {
         StatementKind::Assign(box (_, Rvalue::Aggregate(box ref agg_kind, _))) => match agg_kind {
             AggregateKind::Closure(_, _) | AggregateKind::Coroutine(_, _) => true,

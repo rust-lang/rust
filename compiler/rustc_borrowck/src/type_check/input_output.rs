@@ -22,7 +22,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     #[instrument(skip(self, body), level = "debug")]
     pub(super) fn check_signature_annotation(&mut self, body: &Body<'tcx>) {
         let mir_def_id = body.source.def_id().expect_local();
-        if !self.tcx().is_closure(mir_def_id.to_def_id()) {
+        if !self.tcx().is_closure_or_coroutine(mir_def_id.to_def_id()) {
             return;
         }
         let user_provided_poly_sig = self.tcx().closure_user_provided_sig(mir_def_id);

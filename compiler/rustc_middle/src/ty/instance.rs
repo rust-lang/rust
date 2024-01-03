@@ -426,7 +426,10 @@ impl<'tcx> Instance<'tcx> {
     ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, args={:?})", def_id, args);
         // Use either `resolve_closure` or `resolve_for_vtable`
-        assert!(!tcx.is_closure(def_id), "Called `resolve_for_fn_ptr` on closure: {def_id:?}");
+        assert!(
+            !tcx.is_closure_or_coroutine(def_id),
+            "Called `resolve_for_fn_ptr` on closure: {def_id:?}"
+        );
         Instance::resolve(tcx, param_env, def_id, args).ok().flatten().map(|mut resolved| {
             match resolved.def {
                 InstanceDef::Item(def) if resolved.def.requires_caller_location(tcx) => {
@@ -488,7 +491,7 @@ impl<'tcx> Instance<'tcx> {
                                 })
                             )
                         {
-                            if tcx.is_closure(def) {
+                            if tcx.is_closure_or_coroutine(def) {
                                 debug!(" => vtable fn pointer created for closure with #[track_caller]: {:?} for method {:?} {:?}",
                                        def, def_id, args);
 
@@ -658,12 +661,10 @@ fn polymorphize<'tcx>(
     // the unpolymorphized upvar closure would result in a polymorphized closure producing
     // multiple mono items (and eventually symbol clashes).
     let def_id = instance.def_id();
-    let upvars_ty = if tcx.is_closure(def_id) {
-        Some(args.as_closure().tupled_upvars_ty())
-    } else if tcx.type_of(def_id).skip_binder().is_coroutine() {
-        Some(args.as_coroutine().tupled_upvars_ty())
-    } else {
-        None
+    let upvars_ty = match tcx.type_of(def_id).skip_binder().kind() {
+        ty::Closure(..) => Some(args.as_closure().tupled_upvars_ty()),
+        ty::Coroutine(..) => Some(args.as_coroutine().tupled_upvars_ty()),
+        _ => None,
     };
     let has_upvars = upvars_ty.is_some_and(|ty| !ty.tuple_fields().is_empty());
     debug!("polymorphize: upvars_ty={:?} has_upvars={:?}", upvars_ty, has_upvars);
