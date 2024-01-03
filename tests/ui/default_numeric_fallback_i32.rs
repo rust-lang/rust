@@ -184,7 +184,7 @@ fn check_expect_suppression() {
     let x = 21;
 }
 
-mod type_already_infered {
+mod type_already_inferred {
     // Should NOT lint if bound to return type
     fn ret_i32() -> i32 {
         1
