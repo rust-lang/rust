@@ -356,30 +356,16 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         self.emit()
     }
 
-    forward!(
-    /// Appends a labeled span to the diagnostic.
-    ///
-    /// Labels are used to convey additional context for the diagnostic's primary span. They will
-    /// be shown together with the original diagnostic's span, *not* with spans added by
-    /// `span_note`, `span_help`, etc. Therefore, if the primary span is not displayable (because
-    /// the span is `DUMMY_SP` or the source code isn't found), labels will not be displayed
-    /// either.
-    ///
-    /// Implementation-wise, the label span is pushed onto the [`MultiSpan`] that was created when
-    /// the diagnostic was constructed. However, the label span is *not* considered a
-    /// ["primary span"][`MultiSpan`]; only the `Span` supplied when creating the diagnostic is
-    /// primary.
-    pub fn span_label(&mut self, span: Span, label: impl Into<SubdiagnosticMessage>) -> &mut Self);
-
-    forward!(
-    /// Labels all the given spans with the provided label.
-    /// See [`Diagnostic::span_label()`] for more information.
-    pub fn span_labels(
+    forward!(pub fn span_label(
+        &mut self,
+        span: Span,
+        label: impl Into<SubdiagnosticMessage>
+    ) -> &mut Self);
+    forward!(pub fn span_labels(
         &mut self,
         spans: impl IntoIterator<Item = Span>,
         label: &str,
     ) -> &mut Self);
-
     forward!(pub fn note_expected_found(
         &mut self,
         expected_label: &dyn fmt::Display,
@@ -387,7 +373,6 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         found_label: &dyn fmt::Display,
         found: DiagnosticStyledString,
     ) -> &mut Self);
-
     forward!(pub fn note_expected_found_extra(
         &mut self,
         expected_label: &dyn fmt::Display,
@@ -397,7 +382,6 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         expected_extra: &dyn fmt::Display,
         found_extra: &dyn fmt::Display,
     ) -> &mut Self);
-
     forward!(pub fn note(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self);
     forward!(pub fn note_once(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self);
     forward!(pub fn span_note(
@@ -424,9 +408,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         msg: impl Into<SubdiagnosticMessage>,
     ) -> &mut Self);
     forward!(pub fn is_lint(&mut self,) -> &mut Self);
-
     forward!(pub fn disable_suggestions(&mut self,) -> &mut Self);
-
     forward!(pub fn multipart_suggestion(
         &mut self,
         msg: impl Into<SubdiagnosticMessage>,
@@ -493,7 +475,6 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         suggestion: impl ToString,
         applicability: Applicability,
     ) -> &mut Self);
-
     forward!(pub fn primary_message(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self);
     forward!(pub fn span(&mut self, sp: impl Into<MultiSpan>) -> &mut Self);
     forward!(pub fn code(&mut self, s: DiagnosticId) -> &mut Self);
@@ -502,7 +483,6 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         name: impl Into<Cow<'static, str>>,
         arg: impl IntoDiagnosticArg,
     ) -> &mut Self);
-
     forward!(pub fn subdiagnostic(
         &mut self,
         subdiagnostic: impl crate::AddToDiagnostic
