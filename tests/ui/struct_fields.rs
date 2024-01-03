@@ -65,7 +65,7 @@ struct NotSnakeCase2 {
     someData_a_b: bool,
 }
 
-// no error, threshold is 3 fiels by default
+// no error, threshold is 3 fields by default
 struct Fooo {
     foo: u8,
     bar: u8,

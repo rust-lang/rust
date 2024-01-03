@@ -3786,7 +3786,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// This pattern is often followed by manual unwrapping of the `Option`. The simplification
-    /// results in more readable and succint code without the need for manual unwrapping.
+    /// results in more readable and succinct code without the need for manual unwrapping.
     ///
     /// ### Example
     /// ```no_run
@@ -3812,7 +3812,7 @@ declare_clippy_lint! {
     ///
     /// ### Why is this bad?
     /// This pattern is often followed by manual unwrapping of `Result`. The simplification
-    /// results in more readable and succint code without the need for manual unwrapping.
+    /// results in more readable and succinct code without the need for manual unwrapping.
     ///
     /// ### Example
     /// ```no_run
