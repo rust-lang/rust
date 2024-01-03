@@ -110,15 +110,16 @@ x--expand-yaml-anchors--remove:
     if: success() && !env.SKIP_JOB
 
   - &base-ci-job
-    defaults:
-      run:
-        shell: msys2 {0}
+    # defaults:
+    #   run:
+    #     shell: msys2 {0} # move this to each mingw job / it's own &anchor
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     env:
       <<: *shared-ci-variables
     steps:
-      - uses: msys2/setup-msys2@v2.21.0
+      - if: 
+        uses: msys2/setup-msys2@76b1bed68bac51ebe46cb431077217d4b98e2b7b #git SHA for v2.21.0
         with:
           msystem: MINGW64
           # don't try to download package updates from the network
