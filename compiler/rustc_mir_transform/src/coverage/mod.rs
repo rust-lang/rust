@@ -141,14 +141,18 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         let file_name =
             Symbol::intern(&source_file.name.for_codegen(self.tcx.sess).to_string_lossy());
 
+        let term_for_bcb = |bcb| {
+            coverage_counters
+                .bcb_counter(bcb)
+                .expect("all BCBs with spans were given counters")
+                .as_term()
+        };
+
         coverage_spans
             .bcbs_with_coverage_spans()
             // For each BCB with spans, get a coverage term for its counter.
             .map(|(bcb, spans)| {
-                let term = coverage_counters
-                    .bcb_counter(bcb)
-                    .expect("all BCBs with spans were given counters")
-                    .as_term();
+                let term = term_for_bcb(bcb);
                 (term, spans)
             })
             // Flatten the spans into individual term/span pairs.
