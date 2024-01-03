@@ -186,7 +186,10 @@ $ pacman -S rust-analyzer
 
 ==== Gentoo Linux
 
-`rust-analyzer` is installed when the `rust-analyzer` use flag is set for dev-lang/rust or dev-lang/rust-bin. You also need to set the `rust-src` use flag.
+`rust-analyzer` is installed when the `rust-analyzer` USE flag is set for `dev-lang/rust` or `dev-lang/rust-bin`.
+You also need to set the `rust-src` USE flag.
+
+This is similar to using the `rustup` component, so it will install a version that lags behind the official releases on GitHub .
 
 ==== macOS
 
