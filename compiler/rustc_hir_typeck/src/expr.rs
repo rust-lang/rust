@@ -940,12 +940,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        // FIXME: Make this use Diagnostic once error codes can be dynamically set.
-        let mut err = self.dcx().struct_span_err_with_code(
-            op_span,
-            "invalid left-hand side of assignment",
-            DiagnosticId::Error(err_code.into()),
-        );
+        let mut err = self.dcx().struct_span_err(op_span, "invalid left-hand side of assignment");
+        err.code(DiagnosticId::Error(err_code.into()));
         err.span_label(lhs.span, "cannot assign to this expression");
 
         self.comes_from_while_condition(lhs.hir_id, |expr| {

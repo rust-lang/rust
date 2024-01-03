@@ -944,13 +944,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 trait_item_span,
                 trait_path,
             } => {
-                self.dcx().struct_span_err_with_code(
+                self.dcx().struct_span_err(
                     span,
                     format!(
                         "item `{name}` is an associated {kind}, which doesn't match its trait `{trait_path}`",
                     ),
-                    code,
                 )
+                .code_mv(code)
                 .span_label_mv(span, "does not match trait")
                 .span_label_mv(trait_item_span, "item in trait")
             }

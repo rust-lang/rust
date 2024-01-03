@@ -366,11 +366,10 @@ fn report_unexpected_variant_res(
         _ => res.descr(),
     };
     let path_str = rustc_hir_pretty::qpath_to_string(qpath);
-    let err = tcx.dcx().struct_span_err_with_code(
-        span,
-        format!("expected {expected}, found {res_descr} `{path_str}`"),
-        DiagnosticId::Error(err_code.into()),
-    );
+    let err = tcx
+        .dcx()
+        .struct_span_err(span, format!("expected {expected}, found {res_descr} `{path_str}`"))
+        .code_mv(DiagnosticId::Error(err_code.into()));
     match res {
         Res::Def(DefKind::Fn | DefKind::AssocFn, _) if err_code == "E0164" => {
             let patterns_url = "https://doc.rust-lang.org/book/ch18-00-patterns.html";

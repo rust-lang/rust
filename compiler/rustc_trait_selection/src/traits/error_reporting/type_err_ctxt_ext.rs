@@ -2525,14 +2525,14 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                         // Replace the more general E0283 with a more specific error
                         err.cancel();
-                        err = self.dcx().struct_span_err_with_code(
+                        err = self.dcx().struct_span_err(
                             span,
                             format!(
                                 "cannot {verb} associated {noun} on trait without specifying the \
                                  corresponding `impl` type",
                             ),
-                            rustc_errors::error_code!(E0790),
                         );
+                        err.code(rustc_errors::error_code!(E0790));
 
                         if let Some(local_def_id) = data.trait_ref.def_id.as_local()
                             && let Some(hir::Node::Item(hir::Item {

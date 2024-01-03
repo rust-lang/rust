@@ -732,19 +732,6 @@ impl DiagCtxt {
         self.struct_warn(msg).span_mv(span)
     }
 
-    /// Construct a builder at the `Warning` level at the given `span` and with the `msg`.
-    /// Also include a code.
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn struct_span_warn_with_code(
-        &self,
-        span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
-        code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_, ()> {
-        self.struct_span_warn(span, msg).code_mv(code)
-    }
-
     /// Construct a builder at the `Warning` level with the `msg`.
     ///
     /// Attempting to `.emit()` the builder will only emit if either:
@@ -785,46 +772,12 @@ impl DiagCtxt {
         self.struct_err(msg).span_mv(span)
     }
 
-    /// Construct a builder at the `Error` level at the given `span`, with the `msg`, and `code`.
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn struct_span_err_with_code(
-        &self,
-        span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
-        code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_> {
-        self.struct_span_err(span, msg).code_mv(code)
-    }
-
     /// Construct a builder at the `Error` level with the `msg`.
     // FIXME: This method should be removed (every error should have an associated error code).
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_err(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_> {
         DiagnosticBuilder::new(self, Error, msg)
-    }
-
-    /// Construct a builder at the `Error` level with the `msg` and the `code`.
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn struct_err_with_code(
-        &self,
-        msg: impl Into<DiagnosticMessage>,
-        code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_> {
-        self.struct_err(msg).code_mv(code)
-    }
-
-    /// Construct a builder at the `Warn` level with the `msg` and the `code`.
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn struct_warn_with_code(
-        &self,
-        msg: impl Into<DiagnosticMessage>,
-        code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_, ()> {
-        self.struct_warn(msg).code_mv(code)
     }
 
     /// Construct a builder at the `Fatal` level at the given `span` and with the `msg`.
@@ -836,18 +789,6 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, FatalAbort> {
         self.struct_fatal(msg).span_mv(span)
-    }
-
-    /// Construct a builder at the `Fatal` level at the given `span`, with the `msg`, and `code`.
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn struct_span_fatal_with_code(
-        &self,
-        span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
-        code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_, FatalAbort> {
-        self.struct_span_fatal(span, msg).code_mv(code)
     }
 
     /// Construct a builder at the `Fatal` level with the `msg`.
@@ -899,17 +840,6 @@ impl DiagCtxt {
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn span_fatal_with_code(
-        &self,
-        span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
-        code: DiagnosticId,
-    ) -> ! {
-        self.struct_span_fatal_with_code(span, msg, code).emit()
-    }
-
-    #[rustc_lint_diagnostics]
-    #[track_caller]
     pub fn span_err(
         &self,
         span: impl Into<MultiSpan>,
@@ -920,30 +850,8 @@ impl DiagCtxt {
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn span_err_with_code(
-        &self,
-        span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
-        code: DiagnosticId,
-    ) -> ErrorGuaranteed {
-        self.struct_span_err_with_code(span, msg, code).emit()
-    }
-
-    #[rustc_lint_diagnostics]
-    #[track_caller]
     pub fn span_warn(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) {
         self.struct_span_warn(span, msg).emit()
-    }
-
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn span_warn_with_code(
-        &self,
-        span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
-        code: DiagnosticId,
-    ) {
-        self.struct_span_warn_with_code(span, msg, code).emit()
     }
 
     pub fn span_bug(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {

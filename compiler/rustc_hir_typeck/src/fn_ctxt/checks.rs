@@ -664,7 +664,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             format!("arguments to this {call_name} are incorrect"),
                         );
                     } else {
-                        err = tcx.dcx().struct_span_err_with_code(
+                        err = tcx.dcx().struct_span_err(
                             full_call_span,
                             format!(
                                 "{call_name} takes {}{} but {} {} supplied",
@@ -676,8 +676,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 potentially_plural_count(provided_args.len(), "argument"),
                                 pluralize!("was", provided_args.len())
                             ),
-                            DiagnosticId::Error(err_code.to_owned()),
                         );
+                        err.code(DiagnosticId::Error(err_code.to_owned()));
                         err.multipart_suggestion_verbose(
                             "wrap these arguments in parentheses to construct a tuple",
                             vec![
@@ -815,18 +815,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 call_name,
             )
         } else {
-            tcx.dcx().struct_span_err_with_code(
-                full_call_span,
-                format!(
-                    "this {} takes {}{} but {} {} supplied",
-                    call_name,
-                    if c_variadic { "at least " } else { "" },
-                    potentially_plural_count(formal_and_expected_inputs.len(), "argument"),
-                    potentially_plural_count(provided_args.len(), "argument"),
-                    pluralize!("was", provided_args.len())
-                ),
-                DiagnosticId::Error(err_code.to_owned()),
-            )
+            tcx.dcx()
+                .struct_span_err(
+                    full_call_span,
+                    format!(
+                        "this {} takes {}{} but {} {} supplied",
+                        call_name,
+                        if c_variadic { "at least " } else { "" },
+                        potentially_plural_count(formal_and_expected_inputs.len(), "argument"),
+                        potentially_plural_count(provided_args.len(), "argument"),
+                        pluralize!("was", provided_args.len())
+                    ),
+                )
+                .code_mv(DiagnosticId::Error(err_code.to_owned()))
         };
 
         // As we encounter issues, keep track of what we want to provide for the suggestion

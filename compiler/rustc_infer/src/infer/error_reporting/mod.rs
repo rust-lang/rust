@@ -2356,15 +2356,15 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             },
         };
 
-        let mut err = self.tcx.dcx().struct_span_err_with_code(
-            span,
-            format!("{labeled_user_string} may not live long enough"),
-            match sub.kind() {
-                ty::ReEarlyParam(_) | ty::ReLateParam(_) if sub.has_name() => error_code!(E0309),
-                ty::ReStatic => error_code!(E0310),
-                _ => error_code!(E0311),
-            },
-        );
+        let mut err = self
+            .tcx
+            .dcx()
+            .struct_span_err(span, format!("{labeled_user_string} may not live long enough"));
+        err.code(match sub.kind() {
+            ty::ReEarlyParam(_) | ty::ReLateParam(_) if sub.has_name() => error_code!(E0309),
+            ty::ReStatic => error_code!(E0310),
+            _ => error_code!(E0311),
+        });
 
         '_explain: {
             let (description, span) = match sub.kind() {

@@ -55,11 +55,10 @@ impl<'a> Parser<'a> {
             } else if let token::DocComment(comment_kind, attr_style, data) = self.token.kind {
                 if attr_style != ast::AttrStyle::Outer {
                     let span = self.token.span;
-                    let mut err = self.dcx().struct_span_err_with_code(
-                        span,
-                        fluent::parse_inner_doc_comment_not_permitted,
-                        error_code!(E0753),
-                    );
+                    let mut err = self
+                        .dcx()
+                        .struct_span_err(span, fluent::parse_inner_doc_comment_not_permitted);
+                    err.code(error_code!(E0753));
                     if let Some(replacement_span) = self.annotate_following_item_if_applicable(
                         &mut err,
                         span,
