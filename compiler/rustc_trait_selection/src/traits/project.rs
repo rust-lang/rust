@@ -1829,7 +1829,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     lang_items.coroutine_trait(),
                     lang_items.future_trait(),
                     lang_items.iterator_trait(),
-                    lang_items.async_iterator_trait(),
+                    lang_items.async_stream_trait(),
                     lang_items.fn_trait(),
                     lang_items.fn_mut_trait(),
                     lang_items.fn_once_trait(),
@@ -2051,8 +2051,8 @@ fn confirm_select_candidate<'cx, 'tcx>(
                 confirm_future_candidate(selcx, obligation, data)
             } else if lang_items.iterator_trait() == Some(trait_def_id) {
                 confirm_iterator_candidate(selcx, obligation, data)
-            } else if lang_items.async_iterator_trait() == Some(trait_def_id) {
-                confirm_async_iterator_candidate(selcx, obligation, data)
+            } else if lang_items.async_stream_trait() == Some(trait_def_id) {
+                confirm_async_stream_candidate(selcx, obligation, data)
             } else if selcx.tcx().fn_trait_kind_from_def_id(trait_def_id).is_some() {
                 if obligation.predicate.self_ty().is_closure() {
                     confirm_closure_candidate(selcx, obligation, data)
@@ -2218,7 +2218,7 @@ fn confirm_iterator_candidate<'cx, 'tcx>(
         .with_addl_obligations(obligations)
 }
 
-fn confirm_async_iterator_candidate<'cx, 'tcx>(
+fn confirm_async_stream_candidate<'cx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
     nested: Vec<PredicateObligation<'tcx>>,
@@ -2236,12 +2236,12 @@ fn confirm_async_iterator_candidate<'cx, 'tcx>(
         gen_sig,
     );
 
-    debug!(?obligation, ?gen_sig, ?obligations, "confirm_async_iterator_candidate");
+    debug!(?obligation, ?gen_sig, ?obligations, "confirm_async_stream_candidate");
 
     let tcx = selcx.tcx();
-    let iter_def_id = tcx.require_lang_item(LangItem::AsyncIterator, None);
+    let iter_def_id = tcx.require_lang_item(LangItem::AsyncStream, None);
 
-    let (trait_ref, yield_ty) = super::util::async_iterator_trait_ref_and_outputs(
+    let (trait_ref, yield_ty) = super::util::async_stream_trait_ref_and_outputs(
         tcx,
         iter_def_id,
         obligation.predicate.self_ty(),

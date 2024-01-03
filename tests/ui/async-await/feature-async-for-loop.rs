@@ -1,11 +1,11 @@
 // edition:2021
 // gate-test-async_for_loop
 
-#![feature(async_iter_from_iter, async_iterator)]
+#![feature(async_stream_from_iter, async_stream)]
 
 fn f() {
     let _ = async {
-        for await _i in core::async_iter::from_iter(0..3) {
+        for await _i in core::stream::from_iter(0..3) {
             //~^ ERROR `for await` loops are experimental
         }
     };
@@ -14,7 +14,7 @@ fn f() {
 #[cfg(FALSE)]
 fn g() {
     let _ = async {
-        for await _i in core::async_iter::from_iter(0..3) {
+        for await _i in core::stream::from_iter(0..3) {
             //~^ ERROR `for await` loops are experimental
         }
     };

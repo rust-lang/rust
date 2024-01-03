@@ -776,7 +776,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let features = match await_kind {
             FutureKind::Future => None,
-            FutureKind::AsyncIterator => Some(self.allow_for_await.clone()),
+            FutureKind::Stream => Some(self.allow_for_await.clone()),
         };
         let span = self.mark_span_with_reason(DesugaringKind::Await, await_kw_span, features);
         let gen_future_span = self.mark_span_with_reason(
@@ -830,9 +830,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::LangItem::FuturePoll,
                     arena_vec![self; new_unchecked, get_context],
                 ),
-                FutureKind::AsyncIterator => self.expr_call_lang_item_fn(
+                FutureKind::Stream => self.expr_call_lang_item_fn(
                     span,
-                    hir::LangItem::AsyncIteratorPollNext,
+                    hir::LangItem::AsyncStreamPollNext,
                     arena_vec![self; new_unchecked, get_context],
                 ),
             };
@@ -924,8 +924,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 arena_vec![self; *expr],
             ),
             // Not needed for `for await` because we expect to have already called
-            // `IntoAsyncIterator::into_async_iter` on it.
-            FutureKind::AsyncIterator => expr,
+            // `IntoStream::into_stream` on it.
+            FutureKind::Stream => expr,
         };
 
         // match <into_future_expr> {
@@ -1643,7 +1643,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
                 ForLoopKind::ForAwait => {
                     // we'll generate `unsafe { Pin::new_unchecked(&mut iter) })` and then pass this
-                    // to make_lowered_await with `FutureKind::AsyncIterator` which will generator
+                    // to make_lowered_await with `FutureKind::Stream` which will generator
                     // calls to `poll_next`. In user code, this would probably be a call to
                     // `Pin::as_mut` but here it's easy enough to do `new_unchecked`.
 
@@ -1657,7 +1657,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     ));
                     // `unsafe { ... }`
                     let iter = self.arena.alloc(self.expr_unsafe(iter));
-                    let kind = self.make_lowered_await(head_span, iter, FutureKind::AsyncIterator);
+                    let kind = self.make_lowered_await(head_span, iter, FutureKind::Stream);
                     self.arena.alloc(hir::Expr { hir_id: self.next_id(), kind, span: head_span })
                 }
             };
@@ -1692,12 +1692,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     arena_vec![self; head],
                 )
             }
-            // ` unsafe { Pin::new_unchecked(&mut into_async_iter(<head>)) }`
+            // ` unsafe { Pin::new_unchecked(&mut into_stream(<head>)) }`
             ForLoopKind::ForAwait => {
-                // `::core::async_iter::IntoAsyncIterator::into_async_iter(<head>)`
+                // `::core::stream::IntoStream::into_stream(<head>)`
                 let iter = self.expr_call_lang_item_fn(
                     head_span,
-                    hir::LangItem::IntoAsyncIterIntoIter,
+                    hir::LangItem::IntoAsyncStreamIntoStream,
                     arena_vec![self; head],
                 );
                 let iter = self.expr_mut_addr_of(head_span, iter);
@@ -2118,7 +2118,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 enum FutureKind {
     /// We are awaiting a normal future
     Future,
-    /// We are awaiting something that's known to be an AsyncIterator (i.e. we are in the header of
+    /// We are awaiting something that's known to be an Stream (i.e. we are in the header of
     /// a `for await` loop)
-    AsyncIterator,
+    Stream,
 }

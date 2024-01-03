@@ -68,8 +68,8 @@
 //! Let's make an async iterator named `Counter` which counts from `1` to `5`:
 //!
 //! ```no_run
-//! #![feature(async_iterator)]
-//! # use core::async_iter::AsyncIterator;
+//! #![feature(async_stream)]
+//! # use core::stream::Stream;
 //! # use core::task::{Context, Poll};
 //! # use core::pin::Pin;
 //!
@@ -91,7 +91,7 @@
 //!
 //! // Then, we implement `AsyncIterator` for our `Counter`:
 //!
-//! impl AsyncIterator for Counter {
+//! impl Stream for Counter {
 //!     // we will be counting with usize
 //!     type Item = usize;
 //!
@@ -121,8 +121,8 @@
 //! warning: unused result that must be used: async iterators do nothing unless polled
 //! ```
 
-mod async_iter;
 mod from_iter;
+mod stream;
 
-pub use async_iter::{AsyncIterator, IntoAsyncIterator};
 pub use from_iter::{from_iter, FromIter};
+pub use stream::{IntoStream, Stream};

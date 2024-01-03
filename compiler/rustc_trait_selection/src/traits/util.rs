@@ -320,14 +320,14 @@ pub fn iterator_trait_ref_and_outputs<'tcx>(
     (trait_ref, sig.yield_ty)
 }
 
-pub fn async_iterator_trait_ref_and_outputs<'tcx>(
+pub fn async_stream_trait_ref_and_outputs<'tcx>(
     tcx: TyCtxt<'tcx>,
-    async_iterator_def_id: DefId,
+    async_stream_def_id: DefId,
     self_ty: Ty<'tcx>,
     sig: ty::GenSig<'tcx>,
 ) -> (ty::TraitRef<'tcx>, Ty<'tcx>) {
     assert!(!self_ty.has_escaping_bound_vars());
-    let trait_ref = ty::TraitRef::new(tcx, async_iterator_def_id, [self_ty]);
+    let trait_ref = ty::TraitRef::new(tcx, async_stream_def_id, [self_ty]);
     (trait_ref, sig.yield_ty)
 }
 

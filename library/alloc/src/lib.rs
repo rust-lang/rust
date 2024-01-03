@@ -107,7 +107,7 @@
 #![feature(array_windows)]
 #![feature(ascii_char)]
 #![feature(assert_matches)]
-#![feature(async_iterator)]
+#![feature(async_stream)]
 #![feature(coerce_unsized)]
 #![feature(const_align_of_val)]
 #![feature(const_box)]

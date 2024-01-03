@@ -377,7 +377,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
         ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     }
 
-    fn consider_builtin_async_iterator_candidate(
+    fn consider_builtin_async_stream_candidate(
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {

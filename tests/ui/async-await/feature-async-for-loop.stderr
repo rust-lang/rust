@@ -1,7 +1,7 @@
 error[E0658]: `for await` loops are experimental
   --> $DIR/feature-async-for-loop.rs:8:13
    |
-LL |         for await _i in core::async_iter::from_iter(0..3) {
+LL |         for await _i in core::stream::from_iter(0..3) {
    |             ^^^^^
    |
    = note: see issue #118898 <https://github.com/rust-lang/rust/issues/118898> for more information
@@ -10,7 +10,7 @@ LL |         for await _i in core::async_iter::from_iter(0..3) {
 error[E0658]: `for await` loops are experimental
   --> $DIR/feature-async-for-loop.rs:17:13
    |
-LL |         for await _i in core::async_iter::from_iter(0..3) {
+LL |         for await _i in core::stream::from_iter(0..3) {
    |             ^^^^^
    |
    = note: see issue #118898 <https://github.com/rust-lang/rust/issues/118898> for more information

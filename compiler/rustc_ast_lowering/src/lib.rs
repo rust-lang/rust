@@ -131,7 +131,7 @@ struct LoweringContext<'a, 'hir> {
 
     allow_try_trait: Lrc<[Symbol]>,
     allow_gen_future: Lrc<[Symbol]>,
-    allow_async_iterator: Lrc<[Symbol]>,
+    allow_async_stream: Lrc<[Symbol]>,
     allow_for_await: Lrc<[Symbol]>,
 
     /// Mapping from generics `def_id`s to TAIT generics `def_id`s.
@@ -177,10 +177,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             } else {
                 [sym::gen_future].into()
             },
-            allow_for_await: [sym::async_iterator].into(),
+            allow_for_await: [sym::async_stream].into(),
             // FIXME(gen_blocks): how does `closure_track_caller`/`async_fn_track_caller`
             // interact with `gen`/`async gen` blocks
-            allow_async_iterator: [sym::gen_future, sym::async_iterator].into(),
+            allow_async_stream: [sym::gen_future, sym::async_stream].into(),
             generics_def_id_map: Default::default(),
             host_param_id: None,
         }
@@ -1959,7 +1959,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             CoroutineKind::Async { return_impl_trait_id, .. } => (return_impl_trait_id, None),
             CoroutineKind::Gen { return_impl_trait_id, .. } => (return_impl_trait_id, None),
             CoroutineKind::AsyncGen { return_impl_trait_id, .. } => {
-                (return_impl_trait_id, Some(self.allow_async_iterator.clone()))
+                (return_impl_trait_id, Some(self.allow_async_stream.clone()))
             }
         };
 
@@ -2021,7 +2021,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let (assoc_ty_name, trait_lang_item) = match coro {
             CoroutineKind::Async { .. } => (sym::Output, hir::LangItem::Future),
             CoroutineKind::Gen { .. } => (sym::Item, hir::LangItem::Iterator),
-            CoroutineKind::AsyncGen { .. } => (sym::Item, hir::LangItem::AsyncIterator),
+            CoroutineKind::AsyncGen { .. } => (sym::Item, hir::LangItem::AsyncStream),
         };
 
         let bound_args = self.arena.alloc(hir::GenericArgs {

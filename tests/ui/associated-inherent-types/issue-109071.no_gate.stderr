@@ -37,10 +37,10 @@ LL |     fn T() -> Option<Self::Item> {}
    |
 help: use fully-qualified syntax
    |
-LL |     fn T() -> Option<<Windows<T> as IntoAsyncIterator>::Item> {}
-   |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 LL |     fn T() -> Option<<Windows<T> as IntoIterator>::Item> {}
    |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     fn T() -> Option<<Windows<T> as IntoStream>::Item> {}
+   |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 error: aborting due to 4 previous errors
 

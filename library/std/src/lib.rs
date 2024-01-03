@@ -368,7 +368,7 @@
 // Only for re-exporting:
 // tidy-alphabetical-start
 #![feature(assert_matches)]
-#![feature(async_iterator)]
+#![feature(async_stream)]
 #![feature(c_variadic)]
 #![feature(cfg_accessible)]
 #![feature(cfg_eval)]
@@ -480,8 +480,6 @@ pub use alloc_crate::vec;
 pub use core::any;
 #[stable(feature = "core_array", since = "1.36.0")]
 pub use core::array;
-#[unstable(feature = "async_iterator", issue = "79024")]
-pub use core::async_iter;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::cell;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -534,6 +532,8 @@ pub use core::pin;
 pub use core::ptr;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::result;
+#[unstable(feature = "async_stream", issue = "79024")]
+pub use core::stream;
 #[stable(feature = "i128", since = "1.26.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::u128;
