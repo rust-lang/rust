@@ -311,15 +311,13 @@ impl Diagnostic {
     /// In the meantime, though, callsites are required to deal with the "bug"
     /// locally in whichever way makes the most sense.
     #[track_caller]
-    pub fn downgrade_to_delayed_bug(&mut self) -> &mut Self {
+    pub fn downgrade_to_delayed_bug(&mut self) {
         assert!(
             self.is_error(),
             "downgrade_to_delayed_bug: cannot downgrade {:?} to DelayedBug: not an error",
             self.level
         );
         self.level = Level::DelayedBug;
-
-        self
     }
 
     /// Adds a span/label to be included in the resulting snippet.

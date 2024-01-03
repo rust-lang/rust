@@ -357,11 +357,6 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     }
 
     forward!(
-        #[track_caller]
-        pub fn downgrade_to_delayed_bug(&mut self,) -> &mut Self
-    );
-
-    forward!(
     /// Appends a labeled span to the diagnostic.
     ///
     /// Labels are used to convey additional context for the diagnostic's primary span. They will
