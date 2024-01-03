@@ -1434,19 +1434,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let (bounds, lifetime_bound) = self.with_dyn_type_scope(true, |this| {
                     let bounds =
                         this.arena.alloc_from_iter(bounds.iter().filter_map(|bound| match bound {
-                            GenericBound::Trait(
-                                ty,
-                                TraitBoundModifiers {
-                                    polarity: BoundPolarity::Positive | BoundPolarity::Negative(_),
-                                    constness,
-                                },
-                            ) => Some(this.lower_poly_trait_ref(ty, itctx, *constness)),
-                            // We can safely ignore constness here, since AST validation
-                            // will take care of invalid modifier combinations.
-                            GenericBound::Trait(
-                                _,
-                                TraitBoundModifiers { polarity: BoundPolarity::Maybe(_), .. },
-                            ) => None,
+                            // We can safely ignore constness here since AST validation
+                            // takes care of rejecting invalid modifier combinations and
+                            // const trait bounds in trait object types.
+                            GenericBound::Trait(ty, modifiers) => match modifiers.polarity {
+                                BoundPolarity::Positive | BoundPolarity::Negative(_) => {
+                                    Some(this.lower_poly_trait_ref(
+                                        ty,
+                                        itctx,
+                                        // Still, don't pass along the constness here; we don't want to
+                                        // synthesize any host effect args, it'd only cause problems.
+                                        ast::BoundConstness::Never,
+                                    ))
+                                }
+                                BoundPolarity::Maybe(_) => None,
+                            },
                             GenericBound::Outlives(lifetime) => {
                                 if lifetime_bound.is_none() {
                                     lifetime_bound = Some(this.lower_lifetime(lifetime));
