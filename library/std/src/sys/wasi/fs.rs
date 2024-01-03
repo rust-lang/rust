@@ -265,38 +265,45 @@ impl DirEntry {
 }
 
 impl OpenOptions {
-    pub fn new() -> OpenOptions {
-        let mut base = OpenOptions::default();
-        base.dirflags = wasi::LOOKUPFLAGS_SYMLINK_FOLLOW;
-        return base;
+    pub const fn new() -> OpenOptions {
+        OpenOptions {
+            read: false,
+            write: false,
+            append: false,
+            dirflags: wasi::LOOKUPFLAGS_SYMLINK_FOLLOW,
+            fdflags: 0,
+            oflags: 0,
+            rights_base: None,
+            rights_inheriting: None,
+        }
     }
 
-    pub fn read(&mut self, read: bool) {
+    pub const fn read(&mut self, read: bool) {
         self.read = read;
     }
 
-    pub fn write(&mut self, write: bool) {
+    pub const fn write(&mut self, write: bool) {
         self.write = write;
     }
 
-    pub fn truncate(&mut self, truncate: bool) {
+    pub const fn truncate(&mut self, truncate: bool) {
         self.oflag(wasi::OFLAGS_TRUNC, truncate);
     }
 
-    pub fn create(&mut self, create: bool) {
+    pub const fn create(&mut self, create: bool) {
         self.oflag(wasi::OFLAGS_CREAT, create);
     }
 
-    pub fn create_new(&mut self, create_new: bool) {
+    pub const fn create_new(&mut self, create_new: bool) {
         self.oflag(wasi::OFLAGS_EXCL, create_new);
         self.oflag(wasi::OFLAGS_CREAT, create_new);
     }
 
-    pub fn directory(&mut self, directory: bool) {
+    pub const fn directory(&mut self, directory: bool) {
         self.oflag(wasi::OFLAGS_DIRECTORY, directory);
     }
 
-    fn oflag(&mut self, bit: wasi::Oflags, set: bool) {
+    const fn oflag(&mut self, bit: wasi::Oflags, set: bool) {
         if set {
             self.oflags |= bit;
         } else {
@@ -304,28 +311,28 @@ impl OpenOptions {
         }
     }
 
-    pub fn append(&mut self, append: bool) {
+    pub const fn append(&mut self, append: bool) {
         self.append = append;
         self.fdflag(wasi::FDFLAGS_APPEND, append);
     }
 
-    pub fn dsync(&mut self, set: bool) {
+    pub const fn dsync(&mut self, set: bool) {
         self.fdflag(wasi::FDFLAGS_DSYNC, set);
     }
 
-    pub fn nonblock(&mut self, set: bool) {
+    pub const fn nonblock(&mut self, set: bool) {
         self.fdflag(wasi::FDFLAGS_NONBLOCK, set);
     }
 
-    pub fn rsync(&mut self, set: bool) {
+    pub const fn rsync(&mut self, set: bool) {
         self.fdflag(wasi::FDFLAGS_RSYNC, set);
     }
 
-    pub fn sync(&mut self, set: bool) {
+    pub const fn sync(&mut self, set: bool) {
         self.fdflag(wasi::FDFLAGS_SYNC, set);
     }
 
-    fn fdflag(&mut self, bit: wasi::Fdflags, set: bool) {
+    const fn fdflag(&mut self, bit: wasi::Fdflags, set: bool) {
         if set {
             self.fdflags |= bit;
         } else {
@@ -394,6 +401,12 @@ impl OpenOptions {
 
     pub fn lookup_flags(&mut self, flags: wasi::Lookupflags) {
         self.dirflags = flags;
+    }
+}
+
+impl Default for OpenOptions {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

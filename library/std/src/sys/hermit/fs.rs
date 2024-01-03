@@ -192,7 +192,7 @@ impl DirEntry {
 }
 
 impl OpenOptions {
-    pub fn new() -> OpenOptions {
+    pub const fn new() -> OpenOptions {
         OpenOptions {
             // generic
             read: false,
@@ -206,22 +206,22 @@ impl OpenOptions {
         }
     }
 
-    pub fn read(&mut self, read: bool) {
+    pub const fn read(&mut self, read: bool) {
         self.read = read;
     }
-    pub fn write(&mut self, write: bool) {
+    pub const fn write(&mut self, write: bool) {
         self.write = write;
     }
-    pub fn append(&mut self, append: bool) {
+    pub const fn append(&mut self, append: bool) {
         self.append = append;
     }
-    pub fn truncate(&mut self, truncate: bool) {
+    pub const fn truncate(&mut self, truncate: bool) {
         self.truncate = truncate;
     }
-    pub fn create(&mut self, create: bool) {
+    pub const fn create(&mut self, create: bool) {
         self.create = create;
     }
-    pub fn create_new(&mut self, create_new: bool) {
+    pub const fn create_new(&mut self, create_new: bool) {
         self.create_new = create_new;
     }
 

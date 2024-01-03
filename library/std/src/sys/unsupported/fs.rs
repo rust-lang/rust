@@ -169,16 +169,16 @@ impl DirEntry {
 }
 
 impl OpenOptions {
-    pub fn new() -> OpenOptions {
+    pub const fn new() -> OpenOptions {
         OpenOptions {}
     }
 
-    pub fn read(&mut self, _read: bool) {}
-    pub fn write(&mut self, _write: bool) {}
-    pub fn append(&mut self, _append: bool) {}
-    pub fn truncate(&mut self, _truncate: bool) {}
-    pub fn create(&mut self, _create: bool) {}
-    pub fn create_new(&mut self, _create_new: bool) {}
+    pub const fn read(&mut self, _read: bool) {}
+    pub const fn write(&mut self, _write: bool) {}
+    pub const fn append(&mut self, _append: bool) {}
+    pub const fn truncate(&mut self, _truncate: bool) {}
+    pub const fn create(&mut self, _create: bool) {}
+    pub const fn create_new(&mut self, _create_new: bool) {}
 }
 
 impl File {

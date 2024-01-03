@@ -397,6 +397,7 @@
 #![feature(const_ipv4)]
 #![feature(const_ipv6)]
 #![feature(const_maybe_uninit_uninit_array)]
+#![feature(const_open_options)]
 #![feature(const_waker)]
 #![feature(thread_local_internals)]
 // tidy-alphabetical-end

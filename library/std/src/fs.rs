@@ -453,7 +453,8 @@ impl File {
     /// ```
     #[must_use]
     #[stable(feature = "with_options", since = "1.58.0")]
-    pub fn options() -> OpenOptions {
+    #[rustc_const_unstable(feature = "const_open_options", issue = "none")]
+    pub const fn options() -> OpenOptions {
         OpenOptions::new()
     }
 
@@ -911,9 +912,10 @@ impl OpenOptions {
     /// let mut options = OpenOptions::new();
     /// let file = options.read(true).open("foo.txt");
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    pub fn new() -> Self {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_open_options", issue = "none")]
+    pub const fn new() -> Self {
         OpenOptions(fs_imp::OpenOptions::new())
     }
 
@@ -930,7 +932,8 @@ impl OpenOptions {
     /// let file = OpenOptions::new().read(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn read(&mut self, read: bool) -> &mut Self {
+    #[rustc_const_unstable(feature = "const_open_options", issue = "none")]
+    pub const fn read(&mut self, read: bool) -> &mut Self {
         self.0.read(read);
         self
     }
@@ -951,7 +954,8 @@ impl OpenOptions {
     /// let file = OpenOptions::new().write(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn write(&mut self, write: bool) -> &mut Self {
+    #[rustc_const_unstable(feature = "const_open_options", issue = "none")]
+    pub const fn write(&mut self, write: bool) -> &mut Self {
         self.0.write(write);
         self
     }
@@ -996,7 +1000,8 @@ impl OpenOptions {
     /// let file = OpenOptions::new().append(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn append(&mut self, append: bool) -> &mut Self {
+    #[rustc_const_unstable(feature = "const_open_options", issue = "none")]
+    pub const fn append(&mut self, append: bool) -> &mut Self {
         self.0.append(append);
         self
     }
@@ -1016,7 +1021,8 @@ impl OpenOptions {
     /// let file = OpenOptions::new().write(true).truncate(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn truncate(&mut self, truncate: bool) -> &mut Self {
+    #[rustc_const_unstable(feature = "const_open_options", issue = "none")]
+    pub const fn truncate(&mut self, truncate: bool) -> &mut Self {
         self.0.truncate(truncate);
         self
     }
@@ -1037,7 +1043,8 @@ impl OpenOptions {
     /// let file = OpenOptions::new().write(true).create(true).open("foo.txt");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn create(&mut self, create: bool) -> &mut Self {
+    #[rustc_const_unstable(feature = "const_open_options", issue = "none")]
+    pub const fn create(&mut self, create: bool) -> &mut Self {
         self.0.create(create);
         self
     }
@@ -1070,7 +1077,8 @@ impl OpenOptions {
     ///                              .open("foo.txt");
     /// ```
     #[stable(feature = "expand_open_options2", since = "1.9.0")]
-    pub fn create_new(&mut self, create_new: bool) -> &mut Self {
+    #[rustc_const_unstable(feature = "const_open_options", issue = "none")]
+    pub const fn create_new(&mut self, create_new: bool) -> &mut Self {
         self.0.create_new(create_new);
         self
     }

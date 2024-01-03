@@ -175,7 +175,7 @@ impl DirEntry {
 }
 
 impl OpenOptions {
-    pub fn new() -> OpenOptions {
+    pub const fn new() -> OpenOptions {
         OpenOptions {
             // generic
             read: false,
@@ -194,43 +194,43 @@ impl OpenOptions {
         }
     }
 
-    pub fn read(&mut self, read: bool) {
+    pub const fn read(&mut self, read: bool) {
         self.read = read;
     }
-    pub fn write(&mut self, write: bool) {
+    pub const fn write(&mut self, write: bool) {
         self.write = write;
     }
-    pub fn append(&mut self, append: bool) {
+    pub const fn append(&mut self, append: bool) {
         self.append = append;
     }
-    pub fn truncate(&mut self, truncate: bool) {
+    pub const fn truncate(&mut self, truncate: bool) {
         self.truncate = truncate;
     }
-    pub fn create(&mut self, create: bool) {
+    pub const fn create(&mut self, create: bool) {
         self.create = create;
     }
-    pub fn create_new(&mut self, create_new: bool) {
+    pub const fn create_new(&mut self, create_new: bool) {
         self.create_new = create_new;
     }
 
-    pub fn custom_flags(&mut self, flags: u32) {
+    pub const fn custom_flags(&mut self, flags: u32) {
         self.custom_flags = flags;
     }
-    pub fn access_mode(&mut self, access_mode: u32) {
+    pub const fn access_mode(&mut self, access_mode: u32) {
         self.access_mode = Some(access_mode);
     }
-    pub fn share_mode(&mut self, share_mode: u32) {
+    pub const fn share_mode(&mut self, share_mode: u32) {
         self.share_mode = share_mode;
     }
-    pub fn attributes(&mut self, attrs: u32) {
+    pub const fn attributes(&mut self, attrs: u32) {
         self.attributes = attrs;
     }
-    pub fn security_qos_flags(&mut self, flags: u32) {
+    pub const fn security_qos_flags(&mut self, flags: u32) {
         // We have to set `SECURITY_SQOS_PRESENT` here, because one of the valid flags we can
         // receive is `SECURITY_ANONYMOUS = 0x0`, which we can't check for later on.
         self.security_qos_flags = flags | c::SECURITY_SQOS_PRESENT;
     }
-    pub fn security_attributes(&mut self, attrs: c::LPSECURITY_ATTRIBUTES) {
+    pub const fn security_attributes(&mut self, attrs: c::LPSECURITY_ATTRIBUTES) {
         self.security_attributes = attrs;
     }
 
