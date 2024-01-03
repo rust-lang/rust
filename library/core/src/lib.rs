@@ -367,6 +367,8 @@ pub mod any;
 pub mod array;
 pub mod ascii;
 pub mod asserting;
+#[unstable(feature = "async_iterator", issue = "79024")]
+pub mod async_iter;
 pub mod cell;
 pub mod char;
 pub mod ffi;

@@ -147,6 +147,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::any::Any;
+use core::async_iter::AsyncIterator;
 use core::borrow;
 use core::cmp::Ordering;
 use core::error::Error;
@@ -2158,6 +2159,19 @@ impl<S: ?Sized + Stream + Unpin> Stream for Box<S> {
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         Pin::new(&mut **self).poll_next(cx)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (**self).size_hint()
+    }
+}
+
+#[unstable(feature = "async_iterator", issue = "79024")]
+impl<I: ?Sized + AsyncIterator> AsyncIterator for Box<I> {
+    type Item = I::Item;
+
+    async fn next(&mut self) -> Option<Self::Item> {
+        (&mut **self).next().await
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {

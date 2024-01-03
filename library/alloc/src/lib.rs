@@ -108,6 +108,7 @@
 #![feature(ascii_char)]
 #![feature(assert_matches)]
 #![feature(async_stream)]
+#![feature(async_iterator)]
 #![feature(coerce_unsized)]
 #![feature(const_align_of_val)]
 #![feature(const_box)]

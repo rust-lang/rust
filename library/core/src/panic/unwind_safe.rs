@@ -1,3 +1,4 @@
+use crate::async_iter::AsyncIterator;
 use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::future::Future;
@@ -305,6 +306,19 @@ impl<S: Stream> Stream for AssertUnwindSafe<S> {
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<S::Item>> {
         // SAFETY: pin projection. AssertUnwindSafe follows structural pinning.
         unsafe { self.map_unchecked_mut(|x| &mut x.0) }.poll_next(cx)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+#[unstable(feature = "async_iterator", issue = "79024")]
+impl<I: AsyncIterator> AsyncIterator for AssertUnwindSafe<I> {
+    type Item = I::Item;
+
+    async fn next(&mut self) -> Option<I::Item> {
+        self.0.next().await
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
