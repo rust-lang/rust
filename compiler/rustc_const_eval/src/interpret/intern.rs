@@ -178,13 +178,16 @@ pub fn intern_const_alloc_recursive<
                 // promoteds as immutable.
                 found_bad_mutable_pointer = true;
             }
-            // It is tempting to intern as immutable if `prov.immutable()`. However, there
-            // might be multiple pointers to the same allocation, and if *at least one* of
-            // them is mutable, the allocation must be interned mutably. We will intern the
-            // allocation when we encounter the first pointer. Therefore we always intern
-            // with `inner_mutability`, and furthermore we ensured above that if that is
-            // "immutable", then there are *no* mutable pointers anywhere in the newly
-            // interned memory.
+            // We always intern with `inner_mutability`, and furthermore we ensured above that if
+            // that is "immutable", then there are *no* mutable pointers anywhere in the newly
+            // interned memory -- justifying that we can indeed intern immutably. However this also
+            // means we can *not* easily intern immutably here if `prov.immutable()` is true and
+            // `inner_mutability` is `Mut`: there might be other pointers to that allocation, and
+            // we'd have to somehow check that they are *all* immutable before deciding that this
+            // allocation can be made immutable. In the future we could consider analyzing all
+            // pointers before deciding which allocations can be made immutable; but for now we are
+            // okay with losing some potential for immutability here. This can anyway only affect
+            // `static mut`.
             todo.push((alloc_id, inner_mutability));
         })
         .map_err(|()| {
