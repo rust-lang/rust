@@ -1,5 +1,6 @@
 #![warn(clippy::manual_memcpy)]
-#![allow(clippy::useless_vec, clippy::needless_range_loop)]
+#![allow(clippy::assigning_clones, clippy::useless_vec, clippy::needless_range_loop)]
+
 //@no-rustfix
 const LOOP_OFFSET: usize = 5000;
 

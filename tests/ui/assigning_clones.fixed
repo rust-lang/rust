@@ -139,7 +139,7 @@ fn owned_method_val(mut mut_string: String, ref_str: &str) {
 }
 
 struct HasDeref {
-    a: String
+    a: String,
 }
 
 impl Deref for HasDeref {
