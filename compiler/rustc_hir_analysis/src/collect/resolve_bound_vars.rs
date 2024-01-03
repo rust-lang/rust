@@ -750,12 +750,12 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                         kind: hir::ItemKind::OpaqueTy { .. }, ..
                     }) = self.tcx.hir_node(parent_id)
                     {
-                        let mut err = self.tcx.dcx().struct_span_err(
+                        self.tcx.dcx().struct_span_err(
                             lifetime.ident.span,
                             "higher kinded lifetime bounds on nested opaque types are not supported yet",
-                        );
-                        err.span_note(self.tcx.def_span(def_id), "lifetime declared here");
-                        err.emit();
+                        )
+                        .span_note_mv(self.tcx.def_span(def_id), "lifetime declared here")
+                        .emit();
                         self.uninsert_lifetime_on_error(lifetime, def.unwrap());
                     }
                 }

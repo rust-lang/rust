@@ -3544,17 +3544,16 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         span: Span,
     ) -> Option<DiagnosticBuilder<'tcx>> {
         if !self.tcx.features().generic_const_exprs {
-            let mut err = self
-                .dcx()
-                .struct_span_err(span, "constant expression depends on a generic parameter");
-            // FIXME(const_generics): we should suggest to the user how they can resolve this
-            // issue. However, this is currently not actually possible
-            // (see https://github.com/rust-lang/rust/issues/66962#issuecomment-575907083).
-            //
-            // Note that with `feature(generic_const_exprs)` this case should not
-            // be reachable.
-            err.note("this may fail depending on what value the parameter takes");
-            err.emit();
+            self.dcx()
+                .struct_span_err(span, "constant expression depends on a generic parameter")
+                // FIXME(const_generics): we should suggest to the user how they can resolve this
+                // issue. However, this is currently not actually possible
+                // (see https://github.com/rust-lang/rust/issues/66962#issuecomment-575907083).
+                //
+                // Note that with `feature(generic_const_exprs)` this case should not
+                // be reachable.
+                .note_mv("this may fail depending on what value the parameter takes")
+                .emit();
             return None;
         }
 

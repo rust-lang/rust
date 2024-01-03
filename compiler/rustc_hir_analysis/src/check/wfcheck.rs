@@ -197,11 +197,12 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
             let mut res = Ok(());
             if let (hir::Defaultness::Default { .. }, true) = (impl_.defaultness, is_auto) {
                 let sp = impl_.of_trait.as_ref().map_or(item.span, |t| t.path.span);
-                let mut err =
-                    tcx.dcx().struct_span_err(sp, "impls of auto traits cannot be default");
-                err.span_labels(impl_.defaultness_span, "default because of this");
-                err.span_label(sp, "auto trait");
-                res = Err(err.emit());
+                res = Err(tcx
+                    .dcx()
+                    .struct_span_err(sp, "impls of auto traits cannot be default")
+                    .span_labels_mv(impl_.defaultness_span, "default because of this")
+                    .span_label_mv(sp, "auto trait")
+                    .emit());
             }
             // We match on both `ty::ImplPolarity` and `ast::ImplPolarity` just to get the `!` span.
             match tcx.impl_polarity(def_id) {
@@ -489,35 +490,33 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
 
         if !unsatisfied_bounds.is_empty() {
             let plural = pluralize!(unsatisfied_bounds.len());
-            let mut err = tcx.dcx().struct_span_err(
-                gat_item_hir.span,
-                format!("missing required bound{} on `{}`", plural, gat_item_hir.ident),
-            );
-
             let suggestion = format!(
                 "{} {}",
                 gat_item_hir.generics.add_where_or_trailing_comma(),
                 unsatisfied_bounds.join(", "),
             );
-            err.span_suggestion(
-                gat_item_hir.generics.tail_span_for_predicate_suggestion(),
-                format!("add the required where clause{plural}"),
-                suggestion,
-                Applicability::MachineApplicable,
-            );
-
             let bound =
                 if unsatisfied_bounds.len() > 1 { "these bounds are" } else { "this bound is" };
-            err.note(format!(
-                "{bound} currently required to ensure that impls have maximum flexibility"
-            ));
-            err.note(
-                "we are soliciting feedback, see issue #87479 \
+            tcx.dcx()
+                .struct_span_err(
+                    gat_item_hir.span,
+                    format!("missing required bound{} on `{}`", plural, gat_item_hir.ident),
+                )
+                .span_suggestion_mv(
+                    gat_item_hir.generics.tail_span_for_predicate_suggestion(),
+                    format!("add the required where clause{plural}"),
+                    suggestion,
+                    Applicability::MachineApplicable,
+                )
+                .note_mv(format!(
+                    "{bound} currently required to ensure that impls have maximum flexibility"
+                ))
+                .note_mv(
+                    "we are soliciting feedback, see issue #87479 \
                  <https://github.com/rust-lang/rust/issues/87479> \
                  for more information",
-            );
-
-            err.emit();
+                )
+                .emit();
         }
     }
 }
@@ -938,8 +937,8 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
                 };
                 if may_suggest_feature && tcx.sess.is_nightly_build() {
                     diag.help(
-                            "add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types",
-                        );
+                        "add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types",
+                    );
                 }
 
                 Err(diag.emit())

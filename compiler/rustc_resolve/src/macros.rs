@@ -576,10 +576,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 err.add_as_non_derive = Some(AddAsNonDerive { macro_path: &path_str });
             }
 
-            let mut err = self.dcx().create_err(err);
-            err.span_label(path.span, format!("not {article} {expected}"));
-
-            err.emit();
+            self.dcx()
+                .create_err(err)
+                .span_label_mv(path.span, format!("not {article} {expected}"))
+                .emit();
 
             return Ok((self.dummy_ext(kind), Res::Err));
         }
@@ -830,7 +830,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         expected,
                         ident,
                     });
-
                     self.unresolved_macro_suggestions(&mut err, kind, &parent_scope, ident, krate);
                     err.emit();
                 }

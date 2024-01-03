@@ -1109,8 +1109,7 @@ impl<'a> Parser<'a> {
             && self.token.is_keyword(kw::Unsafe)
             && self.look_ahead(1, |t| t.kind == token::OpenDelim(Delimiter::Brace))
         {
-            let err = self.expect(&token::OpenDelim(Delimiter::Brace)).unwrap_err();
-            err.emit();
+            self.expect(&token::OpenDelim(Delimiter::Brace)).unwrap_err().emit();
             unsafety = Unsafe::Yes(self.token.span);
             self.eat_keyword(kw::Unsafe);
         }

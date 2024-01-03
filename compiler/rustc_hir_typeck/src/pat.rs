@@ -1541,19 +1541,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let sp_comma = sm.end_point(pat.span.with_hi(sp_brace.hi()));
         let sugg = if no_fields || sp_brace != sp_comma { ".. }" } else { ", .. }" };
 
-        let mut err = struct_span_err!(
+        struct_span_err!(
             self.dcx(),
             pat.span,
             E0638,
             "`..` required with {descr} marked as non-exhaustive",
-        );
-        err.span_suggestion_verbose(
+        )
+        .span_suggestion_verbose_mv(
             sp_comma,
             "add `..` at the end of the field list to ignore all other fields",
             sugg,
             Applicability::MachineApplicable,
-        );
-        err.emit();
+        )
+        .emit();
     }
 
     fn error_field_already_bound(

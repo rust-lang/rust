@@ -1140,13 +1140,13 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         let disr_non_unit = def.variants().iter().any(|var| !is_unit(var) && has_disr(var));
 
         if disr_non_unit || (disr_units && has_non_units) {
-            let err = struct_span_err!(
+            struct_span_err!(
                 tcx.dcx(),
                 tcx.def_span(def_id),
                 E0732,
                 "`#[repr(inttype)]` must be specified"
-            );
-            err.emit();
+            )
+            .emit();
         }
     }
 

@@ -3282,16 +3282,16 @@ fn mk_where_bound_predicate(
 
 /// Report lifetime/lifetime shadowing as an error.
 pub(super) fn signal_lifetime_shadowing(sess: &Session, orig: Ident, shadower: Ident) {
-    let mut err = struct_span_err!(
+    struct_span_err!(
         sess.dcx(),
         shadower.span,
         E0496,
         "lifetime name `{}` shadows a lifetime name that is already in scope",
         orig.name,
-    );
-    err.span_label(orig.span, "first declared here");
-    err.span_label(shadower.span, format!("lifetime `{}` already in scope", orig.name));
-    err.emit();
+    )
+    .span_label_mv(orig.span, "first declared here")
+    .span_label_mv(shadower.span, format!("lifetime `{}` already in scope", orig.name))
+    .emit();
 }
 
 struct LifetimeFinder<'ast> {
@@ -3317,11 +3317,12 @@ impl<'ast> Visitor<'ast> for LifetimeFinder<'ast> {
 pub(super) fn signal_label_shadowing(sess: &Session, orig: Span, shadower: Ident) {
     let name = shadower.name;
     let shadower = shadower.span;
-    let mut err = sess.dcx().struct_span_warn(
-        shadower,
-        format!("label name `{name}` shadows a label name that is already in scope"),
-    );
-    err.span_label(orig, "first declared here");
-    err.span_label(shadower, format!("label `{name}` already in scope"));
-    err.emit();
+    sess.dcx()
+        .struct_span_warn(
+            shadower,
+            format!("label name `{name}` shadows a label name that is already in scope"),
+        )
+        .span_label_mv(orig, "first declared here")
+        .span_label_mv(shadower, format!("label `{name}` already in scope"))
+        .emit();
 }

@@ -2848,15 +2848,16 @@ impl<'a> Parser<'a> {
         let label = self.eat_label().expect("just checked if a label exists");
         self.bump(); // eat `:`
         let span = label.ident.span.to(self.prev_token.span);
-        let mut err = self.dcx().struct_span_err(span, "block label not supported here");
-        err.span_label(span, "not supported here");
-        err.tool_only_span_suggestion(
-            label.ident.span.until(self.token.span),
-            "remove this block label",
-            "",
-            Applicability::MachineApplicable,
-        );
-        err.emit();
+        self.dcx()
+            .struct_span_err(span, "block label not supported here")
+            .span_label_mv(span, "not supported here")
+            .tool_only_span_suggestion_mv(
+                label.ident.span.until(self.token.span),
+                "remove this block label",
+                "",
+                Applicability::MachineApplicable,
+            )
+            .emit();
         true
     }
 

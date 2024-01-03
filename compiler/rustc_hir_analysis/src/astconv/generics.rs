@@ -650,9 +650,9 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
         if position == GenericArgPosition::Value
             && args.num_lifetime_params() != param_counts.lifetimes
         {
-            let mut err = struct_span_err!(tcx.dcx(), span, E0794, "{}", msg);
-            err.span_note(span_late, note);
-            err.emit();
+            struct_span_err!(tcx.dcx(), span, E0794, "{}", msg)
+                .span_note_mv(span_late, note)
+                .emit();
         } else {
             let mut multispan = MultiSpan::from_span(span);
             multispan.push_span_label(span_late, note);
