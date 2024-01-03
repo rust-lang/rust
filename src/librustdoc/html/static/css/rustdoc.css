@@ -14,6 +14,7 @@
 	   and on the RUSTDOC_MOBILE_BREAKPOINT */
 	--desktop-sidebar-width: 200px;
 	--src-sidebar-width: 300px;
+	--desktop-sidebar-z-index: 100;
 }
 
 /* See FiraSans-LICENSE.txt for the Fira Sans license. */
@@ -386,7 +387,7 @@ img {
 	height: 100vh;
 	top: 0;
 	left: 0;
-	z-index: 100;
+	z-index: var(--desktop-sidebar-z-index);
 }
 
 .rustdoc.src .sidebar {
@@ -407,7 +408,7 @@ img {
 	touch-action: none;
 	width: 9px;
 	cursor: col-resize;
-	z-index: 200;
+	z-index: calc(var(--desktop-sidebar-z-index) + 1);
 	position: fixed;
 	height: 100%;
 	/* make sure there's a 1px gap between the scrollbar and resize handle */
@@ -439,7 +440,6 @@ img {
 
 .sidebar-resizing .sidebar {
 	position: fixed;
-	z-index: 100;
 }
 .sidebar-resizing > body {
 	padding-left: var(--resizing-sidebar-width);
@@ -1046,7 +1046,7 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	position: absolute;
 	top: 100%;
 	right: 0;
-	z-index: 2;
+	z-index: calc(var(--desktop-sidebar-z-index) + 1);
 	margin-top: 7px;
 	border-radius: 3px;
 	border: 1px solid var(--border-color);
@@ -1561,7 +1561,7 @@ a.tooltip:hover::after {
 }
 .src #sidebar-button {
 	left: 8px;
-	z-index: 101;
+	z-index: calc(var(--desktop-sidebar-z-index) + 1);
 }
 .hide-sidebar .src #sidebar-button {
 	position: static;
