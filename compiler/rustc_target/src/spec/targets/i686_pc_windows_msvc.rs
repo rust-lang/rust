@@ -1,9 +1,10 @@
-use crate::spec::{base, LinkerFlavor, Lld, Target};
+use crate::spec::{base, LinkerFlavor, Lld, SanitizerSet, Target};
 
 pub fn target() -> Target {
     let mut base = base::windows_msvc::opts();
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
+    base.supported_sanitizers = SanitizerSet::ADDRESS;
 
     base.add_pre_link_args(
         LinkerFlavor::Msvc(Lld::No),
