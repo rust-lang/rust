@@ -33,6 +33,12 @@ use std::borrow::Borrow;
 use std::mem;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
+    /// Lowers a condition in a way that ensures that variables bound in any let
+    /// expressions are definitely initialized in the if body.
+    ///
+    /// If `declare_bindings` is false then variables created in `let`
+    /// expressions will not be declared. This is for if let guards on arms with
+    /// an or pattern, where the guard is lowered multiple times.
     pub(crate) fn then_else_break(
         &mut self,
         mut block: BasicBlock,
