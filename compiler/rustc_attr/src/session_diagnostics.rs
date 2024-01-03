@@ -54,13 +54,12 @@ pub(crate) struct UnknownMetaItem<'a> {
 impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for UnknownMetaItem<'_> {
     fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
         let expected = self.expected.iter().map(|name| format!("`{name}`")).collect::<Vec<_>>();
-        let mut diag = DiagnosticBuilder::new(dcx, level, fluent::attr_unknown_meta_item);
-        diag.span(self.span);
-        diag.code(error_code!(E0541));
-        diag.arg("item", self.item);
-        diag.arg("expected", expected.join(", "));
-        diag.span_label(self.span, fluent::attr_label);
-        diag
+        DiagnosticBuilder::new(dcx, level, fluent::attr_unknown_meta_item)
+            .span_mv(self.span)
+            .code_mv(error_code!(E0541))
+            .arg_mv("item", self.item)
+            .arg_mv("expected", expected.join(", "))
+            .span_label_mv(self.span, fluent::attr_label)
     }
 }
 

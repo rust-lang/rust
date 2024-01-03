@@ -460,9 +460,10 @@ impl<'a> Parser<'a> {
                         super::token_descr(&self_.token)
                     );
 
-                    let mut err = self_.dcx().struct_span_err(self_.token.span, msg);
-                    err.span_label(self_.token.span, format!("expected {expected}"));
-                    err
+                    self_
+                        .dcx()
+                        .struct_span_err(self_.token.span, msg)
+                        .span_label_mv(self_.token.span, format!("expected {expected}"))
                 });
             PatKind::Lit(self.mk_expr(lo, ExprKind::Lit(lit)))
         } else {

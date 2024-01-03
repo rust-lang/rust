@@ -729,9 +729,7 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
-        let mut result = self.struct_warn(msg);
-        result.span(span);
-        result
+        self.struct_warn(msg).span_mv(span)
     }
 
     /// Construct a builder at the `Warning` level at the given `span` and with the `msg`.
@@ -744,9 +742,7 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> DiagnosticBuilder<'_, ()> {
-        let mut result = self.struct_span_warn(span, msg);
-        result.code(code);
-        result
+        self.struct_span_warn(span, msg).code_mv(code)
     }
 
     /// Construct a builder at the `Warning` level with the `msg`.
@@ -786,9 +782,7 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_> {
-        let mut result = self.struct_err(msg);
-        result.span(span);
-        result
+        self.struct_err(msg).span_mv(span)
     }
 
     /// Construct a builder at the `Error` level at the given `span`, with the `msg`, and `code`.
@@ -800,9 +794,7 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> DiagnosticBuilder<'_> {
-        let mut result = self.struct_span_err(span, msg);
-        result.code(code);
-        result
+        self.struct_span_err(span, msg).code_mv(code)
     }
 
     /// Construct a builder at the `Error` level with the `msg`.
@@ -821,9 +813,7 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> DiagnosticBuilder<'_> {
-        let mut result = self.struct_err(msg);
-        result.code(code);
-        result
+        self.struct_err(msg).code_mv(code)
     }
 
     /// Construct a builder at the `Warn` level with the `msg` and the `code`.
@@ -834,9 +824,7 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> DiagnosticBuilder<'_, ()> {
-        let mut result = self.struct_warn(msg);
-        result.code(code);
-        result
+        self.struct_warn(msg).code_mv(code)
     }
 
     /// Construct a builder at the `Fatal` level at the given `span` and with the `msg`.
@@ -847,9 +835,7 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, FatalAbort> {
-        let mut result = self.struct_fatal(msg);
-        result.span(span);
-        result
+        self.struct_fatal(msg).span_mv(span)
     }
 
     /// Construct a builder at the `Fatal` level at the given `span`, with the `msg`, and `code`.
@@ -861,9 +847,7 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
         code: DiagnosticId,
     ) -> DiagnosticBuilder<'_, FatalAbort> {
-        let mut result = self.struct_span_fatal(span, msg);
-        result.code(code);
-        result
+        self.struct_span_fatal(span, msg).code_mv(code)
     }
 
     /// Construct a builder at the `Fatal` level with the `msg`.
@@ -904,9 +888,7 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, BugAbort> {
-        let mut result = self.struct_bug(msg);
-        result.span(span);
-        result
+        self.struct_bug(msg).span_mv(span)
     }
 
     #[rustc_lint_diagnostics]
@@ -1021,9 +1003,7 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
-        let mut db = DiagnosticBuilder::new(self, Note, msg);
-        db.span(span);
-        db
+        DiagnosticBuilder::new(self, Note, msg).span_mv(span)
     }
 
     #[rustc_lint_diagnostics]

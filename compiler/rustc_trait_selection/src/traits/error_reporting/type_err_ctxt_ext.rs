@@ -2654,26 +2654,24 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     .chain(Some(data.term.into_arg()))
                     .find(|g| g.has_non_region_infer());
                 if let Some(subst) = subst {
-                    let mut err = self.emit_inference_failure_err(
+                    self.emit_inference_failure_err(
                         obligation.cause.body_id,
                         span,
                         subst,
                         ErrorCode::E0284,
                         true,
-                    );
-                    err.note(format!("cannot satisfy `{predicate}`"));
-                    err
+                    )
+                    .note_mv(format!("cannot satisfy `{predicate}`"))
                 } else {
                     // If we can't find a substitution, just print a generic error
-                    let mut err = struct_span_err!(
+                    struct_span_err!(
                         self.dcx(),
                         span,
                         E0284,
                         "type annotations needed: cannot satisfy `{}`",
                         predicate,
-                    );
-                    err.span_label(span, format!("cannot satisfy `{predicate}`"));
-                    err
+                    )
+                    .span_label_mv(span, format!("cannot satisfy `{predicate}`"))
                 }
             }
 
@@ -2693,30 +2691,28 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     err
                 } else {
                     // If we can't find a substitution, just print a generic error
-                    let mut err = struct_span_err!(
+                    struct_span_err!(
                         self.dcx(),
                         span,
                         E0284,
                         "type annotations needed: cannot satisfy `{}`",
                         predicate,
-                    );
-                    err.span_label(span, format!("cannot satisfy `{predicate}`"));
-                    err
+                    )
+                    .span_label_mv(span, format!("cannot satisfy `{predicate}`"))
                 }
             }
             _ => {
                 if self.dcx().has_errors().is_some() || self.tainted_by_errors().is_some() {
                     return;
                 }
-                let mut err = struct_span_err!(
+                struct_span_err!(
                     self.dcx(),
                     span,
                     E0284,
                     "type annotations needed: cannot satisfy `{}`",
                     predicate,
-                );
-                err.span_label(span, format!("cannot satisfy `{predicate}`"));
-                err
+                )
+                .span_label_mv(span, format!("cannot satisfy `{predicate}`"))
             }
         };
         self.note_obligation_cause(&mut err, obligation);

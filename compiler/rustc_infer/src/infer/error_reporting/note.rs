@@ -367,9 +367,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     &trace.cause.code().peel_derives()
                 {
                     let span = *span;
-                    let mut err = self.report_concrete_failure(placeholder_origin, sub, sup);
-                    err.span_note(span, "the lifetime requirement is introduced here");
-                    err
+                    self.report_concrete_failure(placeholder_origin, sub, sup)
+                        .span_note_mv(span, "the lifetime requirement is introduced here")
                 } else {
                     unreachable!(
                         "control flow ensures we have a `BindingObligation` or `ExprBindingObligation` here..."

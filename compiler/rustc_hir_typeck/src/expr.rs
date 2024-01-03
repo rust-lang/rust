@@ -2836,15 +2836,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn private_field_err(&self, field: Ident, base_did: DefId) -> DiagnosticBuilder<'_> {
         let struct_path = self.tcx().def_path_str(base_did);
         let kind_name = self.tcx().def_descr(base_did);
-        let mut err = struct_span_err!(
+        struct_span_err!(
             self.dcx(),
             field.span,
             E0616,
             "field `{field}` of {kind_name} `{struct_path}` is private",
-        );
-        err.span_label(field.span, "private field");
-
-        err
+        )
+        .span_label_mv(field.span, "private field")
     }
 
     pub(crate) fn get_field_candidates_considering_privacy(

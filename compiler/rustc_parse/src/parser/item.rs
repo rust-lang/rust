@@ -1941,15 +1941,14 @@ impl<'a> Parser<'a> {
                     Case::Insensitive,
                 ) {
                     Ok(_) => {
-                        let mut err = self.dcx().struct_span_err(
+                        self.dcx().struct_span_err(
                             lo.to(self.prev_token.span),
                             format!("functions are not allowed in {adt_ty} definitions"),
-                        );
-                        err.help(
+                        )
+                        .help_mv(
                             "unlike in C++, Java, and C#, functions are declared in `impl` blocks",
-                        );
-                        err.help("see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information");
-                        err
+                        )
+                        .help_mv("see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information")
                     }
                     Err(err) => {
                         err.cancel();
@@ -1959,14 +1958,13 @@ impl<'a> Parser<'a> {
                 }
             } else if self.eat_keyword(kw::Struct) {
                 match self.parse_item_struct() {
-                    Ok((ident, _)) => {
-                        let mut err = self.dcx().struct_span_err(
+                    Ok((ident, _)) => self
+                        .dcx()
+                        .struct_span_err(
                             lo.with_hi(ident.span.hi()),
                             format!("structs are not allowed in {adt_ty} definitions"),
-                        );
-                        err.help("consider creating a new `struct` definition instead of nesting");
-                        err
-                    }
+                        )
+                        .help_mv("consider creating a new `struct` definition instead of nesting"),
                     Err(err) => {
                         err.cancel();
                         self.restore_snapshot(snapshot);

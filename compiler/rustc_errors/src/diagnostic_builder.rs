@@ -30,9 +30,7 @@ where
     G: EmissionGuarantee,
 {
     fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
-        let mut diag = self.node.into_diagnostic(dcx, level);
-        diag.span(self.span);
-        diag
+        self.node.into_diagnostic(dcx, level).span_mv(self.span)
     }
 }
 

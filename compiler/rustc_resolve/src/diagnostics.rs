@@ -944,16 +944,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 trait_item_span,
                 trait_path,
             } => {
-                let mut err = self.dcx().struct_span_err_with_code(
+                self.dcx().struct_span_err_with_code(
                     span,
                     format!(
                         "item `{name}` is an associated {kind}, which doesn't match its trait `{trait_path}`",
                     ),
                     code,
-                );
-                err.span_label(span, "does not match trait");
-                err.span_label(trait_item_span, "item in trait");
-                err
+                )
+                .span_label_mv(span, "does not match trait")
+                .span_label_mv(trait_item_span, "item in trait")
             }
             ResolutionError::TraitImplDuplicate { name, trait_item_span, old_span } => self
                 .dcx()

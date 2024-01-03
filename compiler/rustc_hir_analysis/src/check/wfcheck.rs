@@ -1921,10 +1921,8 @@ fn check_mod_type_wf(tcx: TyCtxt<'_>, module: LocalModDefId) -> Result<(), Error
 }
 
 fn error_392(tcx: TyCtxt<'_>, span: Span, param_name: Symbol) -> DiagnosticBuilder<'_> {
-    let mut err =
-        struct_span_err!(tcx.dcx(), span, E0392, "parameter `{param_name}` is never used");
-    err.span_label(span, "unused parameter");
-    err
+    struct_span_err!(tcx.dcx(), span, E0392, "parameter `{param_name}` is never used")
+        .span_label_mv(span, "unused parameter")
 }
 
 pub fn provide(providers: &mut Providers) {

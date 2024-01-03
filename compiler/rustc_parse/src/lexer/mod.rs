@@ -249,9 +249,9 @@ impl<'a> StringReader<'a> {
                     let lifetime_name = self.str_from(start);
                     if starts_with_number {
                         let span = self.mk_sp(start, self.pos);
-                        let mut diag = self.dcx().struct_err("lifetimes cannot start with a number");
-                        diag.span(span);
-                        diag.stash(span, StashKey::LifetimeIsChar);
+                        self.dcx().struct_err("lifetimes cannot start with a number")
+                            .span_mv(span)
+                            .stash(span, StashKey::LifetimeIsChar);
                     }
                     let ident = Symbol::intern(lifetime_name);
                     token::Lifetime(ident)

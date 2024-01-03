@@ -2218,15 +2218,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             drop_span, borrow_span
         );
 
-        let mut err = self.thread_local_value_does_not_live_long_enough(borrow_span);
-
-        err.span_label(
-            borrow_span,
-            "thread-local variables cannot be borrowed beyond the end of the function",
-        );
-        err.span_label(drop_span, "end of enclosing function is here");
-
-        err
+        self.thread_local_value_does_not_live_long_enough(borrow_span)
+            .span_label_mv(
+                borrow_span,
+                "thread-local variables cannot be borrowed beyond the end of the function",
+            )
+            .span_label_mv(drop_span, "end of enclosing function is here")
     }
 
     #[instrument(level = "debug", skip(self))]

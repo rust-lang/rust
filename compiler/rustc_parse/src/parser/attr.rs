@@ -200,23 +200,22 @@ impl<'a> Parser<'a> {
         if let InnerAttrPolicy::Forbidden(reason) = policy {
             let mut diag = match reason.as_ref().copied() {
                 Some(InnerAttrForbiddenReason::AfterOuterDocComment { prev_doc_comment_span }) => {
-                    let mut diag = self.dcx().struct_span_err(
-                        attr_sp,
-                        fluent::parse_inner_attr_not_permitted_after_outer_doc_comment,
-                    );
-                    diag.span_label(attr_sp, fluent::parse_label_attr)
-                        .span_label(prev_doc_comment_span, fluent::parse_label_prev_doc_comment);
-                    diag
+                    self.dcx()
+                        .struct_span_err(
+                            attr_sp,
+                            fluent::parse_inner_attr_not_permitted_after_outer_doc_comment,
+                        )
+                        .span_label_mv(attr_sp, fluent::parse_label_attr)
+                        .span_label_mv(prev_doc_comment_span, fluent::parse_label_prev_doc_comment)
                 }
-                Some(InnerAttrForbiddenReason::AfterOuterAttribute { prev_outer_attr_sp }) => {
-                    let mut diag = self.dcx().struct_span_err(
+                Some(InnerAttrForbiddenReason::AfterOuterAttribute { prev_outer_attr_sp }) => self
+                    .dcx()
+                    .struct_span_err(
                         attr_sp,
                         fluent::parse_inner_attr_not_permitted_after_outer_attr,
-                    );
-                    diag.span_label(attr_sp, fluent::parse_label_attr)
-                        .span_label(prev_outer_attr_sp, fluent::parse_label_prev_attr);
-                    diag
-                }
+                    )
+                    .span_label_mv(attr_sp, fluent::parse_label_attr)
+                    .span_label_mv(prev_outer_attr_sp, fluent::parse_label_prev_attr),
                 Some(InnerAttrForbiddenReason::InCodeBlock) | None => {
                     self.dcx().struct_span_err(attr_sp, fluent::parse_inner_attr_not_permitted)
                 }
