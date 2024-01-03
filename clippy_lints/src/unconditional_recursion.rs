@@ -1,15 +1,15 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::{expr_or_init, get_trait_def_id, path_res};
+use clippy_utils::{expr_or_init, get_trait_def_id};
 use rustc_ast::BinOpKind;
-use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::intravisit::FnKind;
+use rustc_hir::intravisit::{walk_body, FnKind};
 use rustc_hir::{Body, Expr, ExprKind, FnDecl, Item, ItemKind, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{self, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, Span};
+use rustc_trait_selection::traits::error_reporting::suggestions::ReturnsVisitor;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -52,12 +52,19 @@ fn get_ty_def_id(ty: Ty<'_>) -> Option<DefId> {
     }
 }
 
-fn is_local(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    matches!(path_res(cx, expr), Res::Local(_))
+fn has_conditional_return(body: &Body<'_>, expr: &Expr<'_>) -> bool {
+    let mut visitor = ReturnsVisitor::default();
+
+    walk_body(&mut visitor, body);
+    match visitor.returns.as_slice() {
+        [] => false,
+        [return_expr] => return_expr.hir_id != expr.hir_id,
+        _ => true,
+    }
 }
 
 #[allow(clippy::unnecessary_def_path)]
-fn check_partial_eq(cx: &LateContext<'_>, body: &Body<'_>, method_span: Span, method_def_id: LocalDefId, name: Ident) {
+fn check_partial_eq(cx: &LateContext<'_>, method_span: Span, method_def_id: LocalDefId, name: Ident, expr: &Expr<'_>) {
     let args = cx
         .tcx
         .instantiate_bound_regions_with_erased(cx.tcx.fn_sig(method_def_id).skip_binder())
@@ -90,13 +97,23 @@ fn check_partial_eq(cx: &LateContext<'_>, body: &Body<'_>, method_span: Span, me
         } else {
             BinOpKind::Ne
         };
-        let expr = body.value.peel_blocks();
         let is_bad = match expr.kind {
-            ExprKind::Binary(op, left, right) if op.node == to_check_op => is_local(cx, left) && is_local(cx, right),
-            ExprKind::MethodCall(segment, receiver, &[arg], _) if segment.ident.name == name.name => {
-                if is_local(cx, receiver)
-                    && is_local(cx, &arg)
-                    && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+            ExprKind::Binary(op, left, right) if op.node == to_check_op => {
+                // Then we check if the left-hand element is of the same type as `self`.
+                if let Some(left_ty) = cx.typeck_results().expr_ty_opt(left)
+                    && let Some(left_id) = get_ty_def_id(left_ty)
+                    && self_arg == left_id
+                    && let Some(right_ty) = cx.typeck_results().expr_ty_opt(right)
+                    && let Some(right_id) = get_ty_def_id(right_ty)
+                    && other_arg == right_id
+                {
+                    true
+                } else {
+                    false
+                }
+            },
+            ExprKind::MethodCall(segment, _receiver, &[_arg], _) if segment.ident.name == name.name => {
+                if let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
                     && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
                     && trait_id == trait_def_id
                 {
@@ -122,7 +139,7 @@ fn check_partial_eq(cx: &LateContext<'_>, body: &Body<'_>, method_span: Span, me
 }
 
 #[allow(clippy::unnecessary_def_path)]
-fn check_to_string(cx: &LateContext<'_>, body: &Body<'_>, method_span: Span, method_def_id: LocalDefId, name: Ident) {
+fn check_to_string(cx: &LateContext<'_>, method_span: Span, method_def_id: LocalDefId, name: Ident, expr: &Expr<'_>) {
     let args = cx
         .tcx
         .instantiate_bound_regions_with_erased(cx.tcx.fn_sig(method_def_id).skip_binder())
@@ -146,12 +163,9 @@ fn check_to_string(cx: &LateContext<'_>, body: &Body<'_>, method_span: Span, met
         // The trait is `ToString`.
         && Some(trait_def_id) == get_trait_def_id(cx, &["alloc", "string", "ToString"])
     {
-        let expr = expr_or_init(cx, body.value.peel_blocks());
         let is_bad = match expr.kind {
-            ExprKind::MethodCall(segment, receiver, &[arg], _) if segment.ident.name == name.name => {
-                if is_local(cx, receiver)
-                    && is_local(cx, &arg)
-                    && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+            ExprKind::MethodCall(segment, _receiver, &[_arg], _) if segment.ident.name == name.name => {
+                if let Some(fn_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
                     && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
                     && trait_id == trait_def_id
                 {
@@ -187,11 +201,15 @@ impl<'tcx> LateLintPass<'tcx> for UnconditionalRecursion {
         method_def_id: LocalDefId,
     ) {
         // If the function is a method...
-        if let FnKind::Method(name, _) = kind {
+        if let FnKind::Method(name, _) = kind
+            && let expr = expr_or_init(cx, body.value).peel_blocks()
+            // Doesn't have a conditional return.
+            && !has_conditional_return(body, expr)
+        {
             if name.name == sym::eq || name.name == sym::ne {
-                check_partial_eq(cx, body, method_span, method_def_id, name);
+                check_partial_eq(cx, method_span, method_def_id, name, expr);
             } else if name.name == sym::to_string {
-                check_to_string(cx, body, method_span, method_def_id, name);
+                check_to_string(cx, method_span, method_def_id, name, expr);
             }
         }
     }
