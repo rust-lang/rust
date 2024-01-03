@@ -869,14 +869,13 @@ impl<'p, Cx: TypeCx> PatStack<'p, Cx> {
     /// Only call if `ctor.is_covered_by(self.head().ctor())` is true.
     fn pop_head_constructor(
         &self,
-        pcx: &PlaceCtxt<'_, 'p, Cx>,
         ctor: &Constructor<Cx>,
-        ctor_sub_tys: &[Cx::Ty],
+        ctor_arity: usize,
         ctor_is_relevant: bool,
     ) -> PatStack<'p, Cx> {
         // We pop the head pattern and push the new fields extracted from the arguments of
         // `self.head()`.
-        let mut new_pats = self.head().specialize(pcx, ctor, ctor_sub_tys);
+        let mut new_pats = self.head().specialize(ctor, ctor_arity);
         new_pats.extend_from_slice(&self.pats[1..]);
         // `ctor` is relevant for this row if it is the actual constructor of this row, or if the
         // row has a wildcard and `ctor` is relevant for wildcards.
@@ -946,14 +945,13 @@ impl<'p, Cx: TypeCx> MatrixRow<'p, Cx> {
     /// Only call if `ctor.is_covered_by(self.head().ctor())` is true.
     fn pop_head_constructor(
         &self,
-        pcx: &PlaceCtxt<'_, 'p, Cx>,
         ctor: &Constructor<Cx>,
-        ctor_sub_tys: &[Cx::Ty],
+        ctor_arity: usize,
         ctor_is_relevant: bool,
         parent_row: usize,
     ) -> MatrixRow<'p, Cx> {
         MatrixRow {
-            pats: self.pats.pop_head_constructor(pcx, ctor, ctor_sub_tys, ctor_is_relevant),
+            pats: self.pats.pop_head_constructor(ctor, ctor_arity, ctor_is_relevant),
             parent_row,
             is_under_guard: self.is_under_guard,
             useful: false,
@@ -1063,11 +1061,12 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
         ctor_is_relevant: bool,
     ) -> Matrix<'p, Cx> {
         let ctor_sub_tys = pcx.ctor_sub_tys(ctor);
+        let arity = ctor_sub_tys.len();
         let specialized_place_ty =
             ctor_sub_tys.iter().chain(self.place_ty[1..].iter()).copied().collect();
         let ctor_sub_validity = self.place_validity[0].specialize(ctor);
         let specialized_place_validity = std::iter::repeat(ctor_sub_validity)
-            .take(ctor.arity(pcx))
+            .take(arity)
             .chain(self.place_validity[1..].iter().copied())
             .collect();
         let mut matrix = Matrix {
@@ -1078,8 +1077,7 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
         };
         for (i, row) in self.rows().enumerate() {
             if ctor.is_covered_by(pcx, row.head().ctor()) {
-                let new_row =
-                    row.pop_head_constructor(pcx, ctor, ctor_sub_tys, ctor_is_relevant, i);
+                let new_row = row.pop_head_constructor(ctor, arity, ctor_is_relevant, i);
                 matrix.expand_and_push(new_row);
             }
         }

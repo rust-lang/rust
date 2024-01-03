@@ -72,11 +72,10 @@ impl<'p, Cx: TypeCx> DeconstructedPat<'p, Cx> {
     /// `other_ctor` can be different from `self.ctor`, but must be covered by it.
     pub(crate) fn specialize(
         &self,
-        _pcx: &PlaceCtxt<'_, 'p, Cx>,
         other_ctor: &Constructor<Cx>,
-        ctor_sub_tys: &[Cx::Ty],
+        ctor_arity: usize,
     ) -> SmallVec<[PatOrWild<'p, Cx>; 2]> {
-        let wildcard_sub_tys = || ctor_sub_tys.iter().map(|_| Wild).collect();
+        let wildcard_sub_tys = || (0..ctor_arity).map(|_| Wild).collect();
         match (&self.ctor, other_ctor) {
             // Return a wildcard for each field of `other_ctor`.
             (Wildcard, _) => wildcard_sub_tys(),
@@ -195,13 +194,12 @@ impl<'p, Cx: TypeCx> PatOrWild<'p, Cx> {
     /// `other_ctor` can be different from `self.ctor`, but must be covered by it.
     pub(crate) fn specialize(
         &self,
-        pcx: &PlaceCtxt<'_, 'p, Cx>,
         other_ctor: &Constructor<Cx>,
-        ctor_sub_tys: &[Cx::Ty],
+        ctor_arity: usize,
     ) -> SmallVec<[PatOrWild<'p, Cx>; 2]> {
         match self {
-            Wild => ctor_sub_tys.iter().map(|_| Wild).collect(),
-            Pat(pat) => pat.specialize(pcx, other_ctor, ctor_sub_tys),
+            Wild => (0..ctor_arity).map(|_| Wild).collect(),
+            Pat(pat) => pat.specialize(other_ctor, ctor_arity),
         }
     }
 
