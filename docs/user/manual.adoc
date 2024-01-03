@@ -186,18 +186,7 @@ $ pacman -S rust-analyzer
 
 ==== Gentoo Linux
 
-`rust-analyzer` is available in the GURU repository:
-
-- https://gitweb.gentoo.org/repo/proj/guru.git/tree/dev-util/rust-analyzer?id=9895cea62602cfe599bd48e0fb02127411ca6e81[`dev-util/rust-analyzer`] builds from source
-- https://gitweb.gentoo.org/repo/proj/guru.git/tree/dev-util/rust-analyzer-bin?id=9895cea62602cfe599bd48e0fb02127411ca6e81[`dev-util/rust-analyzer-bin`] installs an official binary release
-
-If not already, GURU must be enabled (e.g. using `app-eselect/eselect-repository`) and sync'd before running `emerge`:
-
-[source,bash]
-----
-$ eselect repository enable guru && emaint sync -r guru
-$ emerge rust-analyzer-bin
-----
+`rust-analyzer` is installed when the `rust-analyzer` use flag is set for dev-lang/rust or dev-lang/rust-bin. You also need to set the `rust-src` use flag.
 
 ==== macOS
 
