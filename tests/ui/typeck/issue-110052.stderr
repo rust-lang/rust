@@ -6,6 +6,8 @@ LL |     for<'iter> dyn Validator<<&'iter I>::Item>:,
    |
 help: use fully-qualified syntax
    |
+LL |     for<'iter> dyn Validator<<&'iter I as IntoAsyncIterator>::Item>:,
+   |                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 LL |     for<'iter> dyn Validator<<&'iter I as IntoIterator>::Item>:,
    |                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 LL |     for<'iter> dyn Validator<<&'iter I as IntoStream>::Item>:,
