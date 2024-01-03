@@ -121,6 +121,8 @@ You need to do this steps to successfully compile and use the cranelift backend 
   * (Optional) run tests: `rustup run stage2 ./y.sh test`
 8. Now you can use your cg_clif build to compile other Rust programs, e.g. you can open any Rust crate and run commands like `$RustCheckoutDir/compiler/rustc_codegen_cranelift/dist/cargo-clif build --release`.
 
+You can also set `rust-analyzer.rustc.source` to your rust workspace to get rust-analyzer to understand your changes.
+
 ## Configuration
 
 See the documentation on the `BackendConfig` struct in [config.rs](src/config.rs) for all
