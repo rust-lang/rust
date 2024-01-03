@@ -529,15 +529,16 @@ impl<'tcx> Visitor<'tcx> for MarkSymbolVisitor<'tcx> {
         let tcx = self.tcx;
         let unconditionally_treat_fields_as_live = self.repr_unconditionally_treats_fields_as_live;
         let has_repr_simd = self.repr_has_repr_simd;
+        let effective_visibilities = &tcx.effective_visibilities(());
         let live_fields = def.fields().iter().filter_map(|f| {
             let def_id = f.def_id;
             if unconditionally_treat_fields_as_live || (f.is_positional() && has_repr_simd) {
                 return Some(def_id);
             }
-            if !tcx.visibility(f.hir_id.owner.def_id).is_public() {
+            if !effective_visibilities.is_reachable(f.hir_id.owner.def_id) {
                 return None;
             }
-            if tcx.visibility(def_id).is_public() { Some(def_id) } else { None }
+            if effective_visibilities.is_reachable(def_id) { Some(def_id) } else { None }
         });
         self.live_symbols.extend(live_fields);
 
