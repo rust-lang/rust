@@ -506,10 +506,34 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
                             if self.options.contains(InlineAsmOptions::ATT_SYNTAX) {
                                 generated_asm.push('%');
                             }
-                            self.registers[*operand_idx]
-                                .unwrap()
-                                .emit(&mut generated_asm, self.arch, *modifier)
-                                .unwrap();
+
+                            let reg = self.registers[*operand_idx].unwrap();
+                            match self.arch {
+                                InlineAsmArch::X86_64 => match reg {
+                                    InlineAsmReg::X86(reg)
+                                        if reg as u32 >= X86InlineAsmReg::xmm0 as u32
+                                            && reg as u32 <= X86InlineAsmReg::xmm15 as u32 =>
+                                    {
+                                        // rustc emits x0 rather than xmm0
+                                        let class = match *modifier {
+                                            None | Some('x') => "xmm",
+                                            Some('y') => "ymm",
+                                            Some('z') => "zmm",
+                                            _ => unreachable!(),
+                                        };
+                                        write!(
+                                            generated_asm,
+                                            "{class}{}",
+                                            reg as u32 - X86InlineAsmReg::xmm0 as u32
+                                        )
+                                        .unwrap();
+                                    }
+                                    _ => reg
+                                        .emit(&mut generated_asm, InlineAsmArch::X86_64, *modifier)
+                                        .unwrap(),
+                                },
+                                _ => reg.emit(&mut generated_asm, self.arch, *modifier).unwrap(),
+                            }
                         }
                         CInlineAsmOperand::Const { ref value } => {
                             generated_asm.push_str(value);
