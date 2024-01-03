@@ -1779,8 +1779,8 @@ The tracking issue for this feature is: [#110011]
 "##,
     },
     Lint {
-        label: "async_stream_from_iter",
-        description: r##"# `async_stream_from_iter`
+        label: "async_iter_from_iter",
+        description: r##"# `async_iter_from_iter`
 
 The tracking issue for this feature is: [#81798]
 
@@ -1790,8 +1790,8 @@ The tracking issue for this feature is: [#81798]
 "##,
     },
     Lint {
-        label: "async_stream",
-        description: r##"# `async_stream`
+        label: "async_iterator",
+        description: r##"# `async_iterator`
 
 The tracking issue for this feature is: [#79024]
 
