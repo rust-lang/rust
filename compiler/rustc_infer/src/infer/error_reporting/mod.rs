@@ -361,7 +361,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
             );
         }
         ty::ReError(_) => {
-            err.delay_as_bug();
+            err.delay_as_bug_without_consuming();
         }
         _ => {
             // Ugh. This is a painful case: the hidden region is not one

@@ -550,8 +550,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                                 E0044,
                                 "foreign items may not have {kinds} parameters",
                             )
-                            .span_label(item.span, format!("can't have {kinds} parameters"))
-                            .help(
+                            .span_label_mv(item.span, format!("can't have {kinds} parameters"))
+                            .help_mv(
                                 // FIXME: once we start storing spans for type arguments, turn this
                                 // into a suggestion.
                                 format!(
@@ -788,7 +788,7 @@ fn check_impl_items_against_trait<'tcx>(
                 };
                 tcx.dcx()
                     .struct_span_err(tcx.def_span(def_id), msg)
-                    .note(format!(
+                    .note_mv(format!(
                         "specialization behaves in inconsistent and \
                         surprising ways with {feature}, \
                         and for now is disallowed"
@@ -830,7 +830,7 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
         let e = fields[FieldIdx::from_u32(0)].ty(tcx, args);
         if !fields.iter().all(|f| f.ty(tcx, args) == e) {
             struct_span_err!(tcx.dcx(), sp, E0076, "SIMD vector should be homogeneous")
-                .span_label(sp, "SIMD elements must have the same type")
+                .span_label_mv(sp, "SIMD elements must have the same type")
                 .emit();
             return;
         }
@@ -1107,7 +1107,7 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 E0084,
                 "unsupported representation for zero-variant enum"
             )
-            .span_label(tcx.def_span(def_id), "zero-variant enum")
+            .span_label_mv(tcx.def_span(def_id), "zero-variant enum")
             .emit();
         }
     }
@@ -1140,7 +1140,7 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         let disr_non_unit = def.variants().iter().any(|var| !is_unit(var) && has_disr(var));
 
         if disr_non_unit || (disr_units && has_non_units) {
-            let mut err = struct_span_err!(
+            let err = struct_span_err!(
                 tcx.dcx(),
                 tcx.def_span(def_id),
                 E0732,
@@ -1249,7 +1249,7 @@ fn detect_discriminant_duplicate<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>)
             }
         }
 
-        if let Some(mut e) = error {
+        if let Some(e) = error {
             e.emit();
         }
 
@@ -1294,7 +1294,7 @@ pub(super) fn check_type_params_are_used<'tcx>(
         {
             let span = tcx.def_span(param.def_id);
             struct_span_err!(tcx.dcx(), span, E0091, "type parameter `{}` is unused", param.name,)
-                .span_label(span, "unused type parameter")
+                .span_label_mv(span, "unused type parameter")
                 .emit();
         }
     }
@@ -1302,9 +1302,9 @@ pub(super) fn check_type_params_are_used<'tcx>(
 
 fn async_opaque_type_cycle_error(tcx: TyCtxt<'_>, span: Span) -> ErrorGuaranteed {
     struct_span_err!(tcx.dcx(), span, E0733, "recursion in an `async fn` requires boxing")
-        .span_label(span, "recursive `async fn`")
-        .note("a recursive `async fn` must be rewritten to return a boxed `dyn Future`")
-        .note(
+        .span_label_mv(span, "recursive `async fn`")
+        .note_mv("a recursive `async fn` must be rewritten to return a boxed `dyn Future`")
+        .note_mv(
             "consider using the `async_recursion` crate: https://crates.io/crates/async_recursion",
         )
         .emit()

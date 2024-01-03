@@ -477,7 +477,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     InlineAttr::Never
                 } else {
                     struct_span_err!(tcx.dcx(), items[0].span(), E0535, "invalid argument")
-                        .help("valid inline arguments are `always` and `never`")
+                        .help_mv("valid inline arguments are `always` and `never`")
                         .emit();
 
                     InlineAttr::None
@@ -662,7 +662,7 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
             let msg = format!("ordinal value in `link_ordinal` is too large: `{}`", &ordinal);
             tcx.dcx()
                 .struct_span_err(attr.span, msg)
-                .note("the value may not exceed `u16::MAX`")
+                .note_mv("the value may not exceed `u16::MAX`")
                 .emit();
             None
         }

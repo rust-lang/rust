@@ -3001,7 +3001,7 @@ fn clean_use_statement_inner<'tcx>(
             E0780,
             "anonymous imports cannot be inlined"
         )
-        .span_label(import.span, "anonymous import")
+        .span_label_mv(import.span, "anonymous import")
         .emit();
     }
 

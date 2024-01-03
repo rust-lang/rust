@@ -2114,7 +2114,7 @@ pub fn deny_non_region_late_bound(
             hir::GenericParamKind::Lifetime { .. } => continue,
         };
 
-        let mut diag = tcx.dcx().struct_span_err(
+        let diag = tcx.dcx().struct_span_err(
             param.span,
             format!("late-bound {what} parameter not allowed on {where_}"),
         );

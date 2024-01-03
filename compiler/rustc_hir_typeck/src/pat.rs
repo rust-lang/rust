@@ -117,7 +117,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         actual: Ty<'tcx>,
         ti: TopInfo<'tcx>,
     ) {
-        if let Some(mut err) = self.demand_eqtype_pat_diag(cause_span, expected, actual, ti) {
+        if let Some(err) = self.demand_eqtype_pat_diag(cause_span, expected, actual, ti) {
             err.emit();
         }
     }
@@ -441,7 +441,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // then that's equivalent to there existing a LUB.
         let cause = self.pattern_cause(ti, span);
-        if let Some(mut err) = self.demand_suptype_with_origin(&cause, expected, pat_ty) {
+        if let Some(err) = self.demand_suptype_with_origin(&cause, expected, pat_ty) {
             err.emit_unless(
                 ti.span
                     .filter(|&s| {
@@ -1103,7 +1103,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Type-check the tuple struct pattern against the expected type.
         let diag = self.demand_eqtype_pat_diag(pat.span, expected, pat_ty, ti);
-        let had_err = if let Some(mut err) = diag {
+        let had_err = if let Some(err) = diag {
             err.emit();
             true
         } else {
@@ -1329,9 +1329,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         });
         let element_tys = tcx.mk_type_list_from_iter(element_tys_iter);
         let pat_ty = Ty::new_tup(tcx, element_tys);
-        if let Some(mut err) =
-            self.demand_eqtype_pat_diag(span, expected, pat_ty, pat_info.top_info)
-        {
+        if let Some(err) = self.demand_eqtype_pat_diag(span, expected, pat_ty, pat_info.top_info) {
             let reported = err.emit();
             // Walk subpatterns with an expected type of `err` in this case to silence
             // further errors being emitted when using the bindings. #50333
@@ -1469,8 +1467,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
         match (inexistent_fields_err, unmentioned_err) {
-            (Some(mut i), Some(mut u)) => {
-                if let Some(mut e) = self.error_tuple_variant_as_struct_pat(pat, fields, variant) {
+            (Some(i), Some(u)) => {
+                if let Some(e) = self.error_tuple_variant_as_struct_pat(pat, fields, variant) {
                     // We don't want to show the nonexistent fields error when this was
                     // `Foo { a, b }` when it should have been `Foo(a, b)`.
                     i.delay_as_bug();
@@ -1481,19 +1479,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     u.emit();
                 }
             }
-            (None, Some(mut u)) => {
-                if let Some(mut e) = self.error_tuple_variant_as_struct_pat(pat, fields, variant) {
+            (None, Some(u)) => {
+                if let Some(e) = self.error_tuple_variant_as_struct_pat(pat, fields, variant) {
                     u.delay_as_bug();
                     e.emit();
                 } else {
                     u.emit();
                 }
             }
-            (Some(mut err), None) => {
+            (Some(err), None) => {
                 err.emit();
             }
             (None, None)
-                if let Some(mut err) =
+                if let Some(err) =
                     self.error_tuple_variant_index_shorthand(variant, pat, fields) =>
             {
                 err.emit();
@@ -1571,8 +1569,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "field `{}` bound multiple times in the pattern",
             ident
         )
-        .span_label(span, format!("multiple uses of `{ident}` in pattern"))
-        .span_label(other_field, format!("first use of `{ident}`"))
+        .span_label_mv(span, format!("multiple uses of `{ident}` in pattern"))
+        .span_label_mv(other_field, format!("first use of `{ident}`"))
         .emit()
     }
 
@@ -2237,7 +2235,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             pluralize!(min_len),
             size,
         )
-        .span_label(span, format!("expected {} element{}", size, pluralize!(size)))
+        .span_label_mv(span, format!("expected {} element{}", size, pluralize!(size)))
         .emit()
     }
 
@@ -2256,7 +2254,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             pluralize!(min_len),
             size,
         )
-        .span_label(
+        .span_label_mv(
             span,
             format!("pattern cannot match array of {} element{}", size, pluralize!(size),),
         )

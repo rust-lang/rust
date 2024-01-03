@@ -127,7 +127,7 @@ impl<'a> Parser<'a> {
     fn parse_expr_catch_underscore(&mut self, restrictions: Restrictions) -> PResult<'a, P<Expr>> {
         match self.parse_expr_res(restrictions, None) {
             Ok(expr) => Ok(expr),
-            Err(mut err) => match self.token.ident() {
+            Err(err) => match self.token.ident() {
                 Some((Ident { name: kw::Underscore, .. }, false))
                     if self.may_recover() && self.look_ahead(1, |t| t == &token::Comma) =>
                 {
@@ -1333,12 +1333,12 @@ impl<'a> Parser<'a> {
                                             .collect(),
                                     },
                                 });
-                            replacement_err.emit();
+                            replacement_err.emit_without_consuming();
 
                             let old_err = mem::replace(err, replacement_err);
                             old_err.cancel();
                         } else {
-                            err.emit();
+                            err.emit_without_consuming();
                         }
                         return Some(self.mk_expr_err(span));
                     }
@@ -1756,9 +1756,8 @@ impl<'a> Parser<'a> {
         mk_lit_char: impl FnOnce(Symbol, Span) -> L,
         err: impl FnOnce(&Self) -> DiagnosticBuilder<'a>,
     ) -> L {
-        if let Some(mut diag) = self.dcx().steal_diagnostic(lifetime.span, StashKey::LifetimeIsChar)
-        {
-            diag.span_suggestion_verbose(
+        if let Some(diag) = self.dcx().steal_diagnostic(lifetime.span, StashKey::LifetimeIsChar) {
+            diag.span_suggestion_verbose_mv(
                 lifetime.span.shrink_to_hi(),
                 "add `'` to close the char literal",
                 "'",
@@ -1767,7 +1766,7 @@ impl<'a> Parser<'a> {
             .emit();
         } else {
             err(self)
-                .span_suggestion_verbose(
+                .span_suggestion_verbose_mv(
                     lifetime.span.shrink_to_hi(),
                     "add `'` to close the char literal",
                     "'",
@@ -2903,7 +2902,7 @@ impl<'a> Parser<'a> {
         while self.token != token::CloseDelim(Delimiter::Brace) {
             match self.parse_arm() {
                 Ok(arm) => arms.push(arm),
-                Err(mut e) => {
+                Err(e) => {
                     // Recover by skipping to the end of the block.
                     e.emit();
                     self.recover_stmt();
@@ -3437,7 +3436,7 @@ impl<'a> Parser<'a> {
                 }
                 match self.parse_expr() {
                     Ok(e) => base = ast::StructRest::Base(e),
-                    Err(mut e) if recover => {
+                    Err(e) if recover => {
                         e.emit();
                         self.recover_stmt();
                     }

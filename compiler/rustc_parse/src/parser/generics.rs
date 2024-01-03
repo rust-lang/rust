@@ -77,7 +77,7 @@ impl<'a> Parser<'a> {
                                     Applicability::MachineApplicable,
                                 );
                             }
-                            err.emit();
+                            err.emit_without_consuming();
                             return Err(err);
                         }
                     }

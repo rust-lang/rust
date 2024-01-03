@@ -845,7 +845,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .and_then(|r| {
                 // lint bare trait if the method is found in the trait
                 if span.edition().at_least_rust_2021()
-                    && let Some(mut diag) =
+                    && let Some(diag) =
                         self.dcx().steal_diagnostic(qself.span, StashKey::TraitMissingMethod)
                 {
                     diag.emit();
@@ -877,7 +877,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // emit or cancel the diagnostic for bare traits
                 if span.edition().at_least_rust_2021()
-                    && let Some(mut diag) =
+                    && let Some(diag) =
                         self.dcx().steal_diagnostic(qself.span, StashKey::TraitMissingMethod)
                 {
                     if trait_missing_method {
@@ -889,7 +889,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 if item_name.name != kw::Empty {
-                    if let Some(mut e) = self.report_method_error(
+                    if let Some(e) = self.report_method_error(
                         span,
                         ty.normalized,
                         item_name,

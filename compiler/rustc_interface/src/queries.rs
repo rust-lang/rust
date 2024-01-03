@@ -108,7 +108,7 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn parse(&self) -> Result<QueryResult<'_, ast::Crate>> {
         self.parse.compute(|| {
-            passes::parse(&self.compiler.sess).map_err(|mut parse_error| parse_error.emit())
+            passes::parse(&self.compiler.sess).map_err(|parse_error| parse_error.emit())
         })
     }
 

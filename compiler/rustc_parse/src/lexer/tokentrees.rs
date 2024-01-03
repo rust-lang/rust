@@ -278,7 +278,7 @@ impl<'a> TokenTreesReader<'a> {
         }
         if !diff_errs.is_empty() {
             errs.iter_mut().for_each(|err| {
-                err.delay_as_bug();
+                err.delay_as_bug_without_consuming();
             });
             return diff_errs;
         }

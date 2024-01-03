@@ -109,7 +109,7 @@ pub fn expand_include<'cx>(
     // The file will be added to the code map by the parser
     let file = match resolve_path(&cx.sess.parse_sess, file.as_str(), sp) {
         Ok(f) => f,
-        Err(mut err) => {
+        Err(err) => {
             err.emit();
             return DummyResult::any(sp);
         }
@@ -146,7 +146,7 @@ pub fn expand_include<'cx>(
             let mut ret = SmallVec::new();
             loop {
                 match self.p.parse_item(ForceCollect::No) {
-                    Err(mut err) => {
+                    Err(err) => {
                         err.emit();
                         break;
                     }
@@ -181,7 +181,7 @@ pub fn expand_include_str(
     };
     let file = match resolve_path(&cx.sess.parse_sess, file.as_str(), sp) {
         Ok(f) => f,
-        Err(mut err) => {
+        Err(err) => {
             err.emit();
             return DummyResult::any(sp);
         }
@@ -215,7 +215,7 @@ pub fn expand_include_bytes(
     };
     let file = match resolve_path(&cx.sess.parse_sess, file.as_str(), sp) {
         Ok(f) => f,
-        Err(mut err) => {
+        Err(err) => {
             err.emit();
             return DummyResult::any(sp);
         }

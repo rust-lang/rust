@@ -29,7 +29,7 @@ pub fn check_attr(sess: &ParseSess, attr: &Attribute) {
         _ if let AttrArgs::Eq(..) = attr.get_normal_item().args => {
             // All key-value attributes are restricted to meta-item syntax.
             parse_meta(sess, attr)
-                .map_err(|mut err| {
+                .map_err(|err| {
                     err.emit();
                 })
                 .ok();
@@ -139,7 +139,7 @@ pub fn check_builtin_attribute(
 ) {
     match parse_meta(sess, attr) {
         Ok(meta) => check_builtin_meta_item(sess, &meta, attr.style, name, template),
-        Err(mut err) => {
+        Err(err) => {
             err.emit();
         }
     }
@@ -208,7 +208,7 @@ fn emit_malformed_attribute(
     } else {
         sess.dcx
             .struct_span_err(span, error_msg)
-            .span_suggestions(
+            .span_suggestions_mv(
                 span,
                 if suggestions.len() == 1 {
                     "must be of the form"

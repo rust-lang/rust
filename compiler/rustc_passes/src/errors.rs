@@ -1040,7 +1040,7 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'_, G> for BreakNonLoop<'a> {
                     // This error is redundant, we will have already emitted a
                     // suggestion to use the label when `segment` wasn't found
                     // (hence the `Res::Err` check).
-                    diag.delay_as_bug();
+                    diag.delay_as_bug_without_consuming();
                 }
                 _ => {
                     diag.span_suggestion(

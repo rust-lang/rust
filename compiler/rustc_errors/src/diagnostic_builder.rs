@@ -198,23 +198,34 @@ impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
     }
 }
 
-/// In general, the `DiagnosticBuilder` uses deref to allow access to
-/// the fields and methods of the embedded `diagnostic` in a
-/// transparent way. *However,* many of the methods are intended to
-/// be used in a chained way, and hence ought to return `self`. In
-/// that case, we can't just naively forward to the method on the
-/// `diagnostic`, because the return type would be a `&Diagnostic`
-/// instead of a `&DiagnosticBuilder<'a>`. This `forward!` macro makes
-/// it easy to declare such methods on the builder.
+/// `DiagnosticBuilder` impls `DerefMut`, which allows access to the fields and
+/// methods of the embedded `Diagnostic`. However, that doesn't allow method
+/// chaining at the `DiagnosticBuilder` level. Each use of this macro defines
+/// two builder methods at that level, both of which wrap the equivalent method
+/// in `Diagnostic`.
+/// - A `&mut self -> &mut Self` method, with the same name as the underlying
+///   `Diagnostic` method. It is mostly to modify existing diagnostics, either
+///   in a standalone fashion, e.g. `err.code(code)`, or in a chained fashion
+///   to make multiple modifications, e.g. `err.code(code).span(span)`.
+/// - A `self -> Self` method, with `_mv` suffix added (short for "move").
+///   It is mostly used in a chained fashion when producing a new diagnostic,
+///   e.g. `let err = struct_err(msg).code_mv(code)`, or when emitting a new
+///   diagnostic , e.g. `struct_err(msg).code_mv(code).emit()`.
+///
+/// Although the latter method can be used to modify an existing diagnostic,
+/// e.g. `err = err.code_mv(code)`, this should be avoided because the former
+/// method give shorter code, e.g. `err.code(code)`.
 macro_rules! forward {
-    // Forward pattern for &mut self -> &mut Self
     (
-        $(#[$attrs:meta])*
-        pub fn $n:ident(&mut self $(, $name:ident: $ty:ty)* $(,)?) -> &mut Self
+        ($n:ident, $n_mv:ident)($($name:ident: $ty:ty),* $(,)?)
     ) => {
-        $(#[$attrs])*
         #[doc = concat!("See [`Diagnostic::", stringify!($n), "()`].")]
-        pub fn $n(&mut self $(, $name: $ty)*) -> &mut Self {
+        pub fn $n(&mut self, $($name: $ty),*) -> &mut Self {
+            self.diagnostic.$n($($name),*);
+            self
+        }
+        #[doc = concat!("See [`Diagnostic::", stringify!($n), "()`].")]
+        pub fn $n_mv(mut self, $($name: $ty),*) -> Self {
             self.diagnostic.$n($($name),*);
             self
         }
@@ -254,11 +265,15 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         }
     }
 
-    /// Emit the diagnostic. Does not consume `self`, which may be surprising,
-    /// but there are various places that rely on continuing to use `self`
-    /// after calling `emit`.
+    /// Emit and consume the diagnostic.
     #[track_caller]
-    pub fn emit(&mut self) -> G::EmitResult {
+    pub fn emit(mut self) -> G::EmitResult {
+        G::emit_producing_guarantee(&mut self)
+    }
+
+    /// Emit the diagnostic without consuming it. `emit` should be preferred.
+    #[track_caller]
+    pub fn emit_without_consuming(&mut self) -> G::EmitResult {
         G::emit_producing_guarantee(self)
     }
 
@@ -267,7 +282,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     ///
     /// See `emit` and `delay_as_bug` for details.
     #[track_caller]
-    pub fn emit_unless(&mut self, delay: bool) -> G::EmitResult {
+    pub fn emit_unless(mut self, delay: bool) -> G::EmitResult {
         if delay {
             self.downgrade_to_delayed_bug();
         }
@@ -354,142 +369,142 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     /// In the meantime, though, callsites are required to deal with the "bug"
     /// locally in whichever way makes the most sense.
     #[track_caller]
-    pub fn delay_as_bug(&mut self) -> G::EmitResult {
+    pub fn delay_as_bug(mut self) -> G::EmitResult {
         self.downgrade_to_delayed_bug();
         self.emit()
     }
 
-    forward!(pub fn span_label(
-        &mut self,
+    /// Non-consuming variant of `delay_as_bug`.
+    #[track_caller]
+    pub fn delay_as_bug_without_consuming(&mut self) -> G::EmitResult {
+        self.downgrade_to_delayed_bug();
+        self.emit_without_consuming()
+    }
+
+    forward!((span_label, span_label_mv)(
         span: Span,
-        label: impl Into<SubdiagnosticMessage>
-    ) -> &mut Self);
-    forward!(pub fn span_labels(
-        &mut self,
+        label: impl Into<SubdiagnosticMessage>,
+    ));
+    forward!((span_labels, span_labels_mv)(
         spans: impl IntoIterator<Item = Span>,
         label: &str,
-    ) -> &mut Self);
-    forward!(pub fn note_expected_found(
-        &mut self,
+    ));
+    forward!((note_expected_found, note_expected_found_mv)(
         expected_label: &dyn fmt::Display,
         expected: DiagnosticStyledString,
         found_label: &dyn fmt::Display,
         found: DiagnosticStyledString,
-    ) -> &mut Self);
-    forward!(pub fn note_expected_found_extra(
-        &mut self,
+    ));
+    forward!((note_expected_found_extra, note_expected_found_extra_mv)(
         expected_label: &dyn fmt::Display,
         expected: DiagnosticStyledString,
         found_label: &dyn fmt::Display,
         found: DiagnosticStyledString,
         expected_extra: &dyn fmt::Display,
         found_extra: &dyn fmt::Display,
-    ) -> &mut Self);
-    forward!(pub fn note(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self);
-    forward!(pub fn note_once(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self);
-    forward!(pub fn span_note(
-        &mut self,
+    ));
+    forward!((note, note_mv)(
+        msg: impl Into<SubdiagnosticMessage>,
+    ));
+    forward!((note_once, note_once_mv)(
+        msg: impl Into<SubdiagnosticMessage>,
+    ));
+    forward!((span_note, span_note_mv)(
         sp: impl Into<MultiSpan>,
         msg: impl Into<SubdiagnosticMessage>,
-    ) -> &mut Self);
-    forward!(pub fn span_note_once(
-        &mut self,
+    ));
+    forward!((span_note_once, span_note_once_mv)(
         sp: impl Into<MultiSpan>,
         msg: impl Into<SubdiagnosticMessage>,
-    ) -> &mut Self);
-    forward!(pub fn warn(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self);
-    forward!(pub fn span_warn(
-        &mut self,
+    ));
+    forward!((warn, warn_mv)(
+        msg: impl Into<SubdiagnosticMessage>,
+    ));
+    forward!((span_warn, span_warn_mv)(
         sp: impl Into<MultiSpan>,
         msg: impl Into<SubdiagnosticMessage>,
-    ) -> &mut Self);
-    forward!(pub fn help(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self);
-    forward!(pub fn help_once(&mut self, msg: impl Into<SubdiagnosticMessage>) -> &mut Self);
-    forward!(pub fn span_help(
-        &mut self,
+    ));
+    forward!((help, help_mv)(
+        msg: impl Into<SubdiagnosticMessage>,
+    ));
+    forward!((help_once, help_once_mv)(
+        msg: impl Into<SubdiagnosticMessage>,
+    ));
+    forward!((span_help, span_help_once_mv)(
         sp: impl Into<MultiSpan>,
         msg: impl Into<SubdiagnosticMessage>,
-    ) -> &mut Self);
-    forward!(pub fn is_lint(&mut self) -> &mut Self);
-    forward!(pub fn disable_suggestions(&mut self) -> &mut Self);
-    forward!(pub fn multipart_suggestion(
-        &mut self,
+    ));
+    forward!((multipart_suggestion, multipart_suggestion_mv)(
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
-    ) -> &mut Self);
-    forward!(pub fn multipart_suggestion_verbose(
-        &mut self,
+    ));
+    forward!((multipart_suggestion_verbose, multipart_suggestion_verbose_mv)(
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
-    ) -> &mut Self);
-    forward!(pub fn tool_only_multipart_suggestion(
-        &mut self,
+    ));
+    forward!((tool_only_multipart_suggestion, tool_only_multipart_suggestion_mv)(
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
-    ) -> &mut Self);
-    forward!(pub fn span_suggestion(
-        &mut self,
+    ));
+    forward!((span_suggestion, span_suggestion_mv)(
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
-    ) -> &mut Self);
-    forward!(pub fn span_suggestions(
-        &mut self,
+    ));
+    forward!((span_suggestions, span_suggestions_mv)(
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
         suggestions: impl IntoIterator<Item = String>,
         applicability: Applicability,
-    ) -> &mut Self);
-    forward!(pub fn multipart_suggestions(
-        &mut self,
+    ));
+    forward!((multipart_suggestions, multipart_suggestions_mv)(
         msg: impl Into<SubdiagnosticMessage>,
         suggestions: impl IntoIterator<Item = Vec<(Span, String)>>,
         applicability: Applicability,
-    ) -> &mut Self);
-    forward!(pub fn span_suggestion_short(
-        &mut self,
+    ));
+    forward!((span_suggestion_short, span_suggestion_short_mv)(
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
-    ) -> &mut Self);
-    forward!(pub fn span_suggestion_verbose(
-        &mut self,
+    ));
+    forward!((span_suggestion_verbose, span_suggestion_verbose_mv)(
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
-    ) -> &mut Self);
-    forward!(pub fn span_suggestion_hidden(
-        &mut self,
+    ));
+    forward!((span_suggestion_hidden, span_suggestion_hidden_mv)(
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
-    ) -> &mut Self);
-    forward!(pub fn tool_only_span_suggestion(
-        &mut self,
+    ));
+    forward!((tool_only_span_suggestion, tool_only_span_suggestion_mv)(
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
-    ) -> &mut Self);
-    forward!(pub fn primary_message(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self);
-    forward!(pub fn span(&mut self, sp: impl Into<MultiSpan>) -> &mut Self);
-    forward!(pub fn code(&mut self, s: DiagnosticId) -> &mut Self);
-    forward!(pub fn arg(
-        &mut self,
-        name: impl Into<Cow<'static, str>>,
-        arg: impl IntoDiagnosticArg,
-    ) -> &mut Self);
-    forward!(pub fn subdiagnostic(
-        &mut self,
-        subdiagnostic: impl crate::AddToDiagnostic
-    ) -> &mut Self);
+    ));
+    forward!((primary_message, primary_message_mv)(
+        msg: impl Into<DiagnosticMessage>,
+    ));
+    forward!((span, span_mv)(
+        sp: impl Into<MultiSpan>,
+    ));
+    forward!((code, code_mv)(
+        s: DiagnosticId,
+    ));
+    forward!((arg, arg_mv)(
+        name: impl Into<Cow<'static, str>>, arg: impl IntoDiagnosticArg,
+    ));
+    forward!((subdiagnostic, subdiagnostic_mv)(
+        subdiagnostic: impl crate::AddToDiagnostic,
+    ));
 }
 
 impl<G: EmissionGuarantee> Debug for DiagnosticBuilder<'_, G> {

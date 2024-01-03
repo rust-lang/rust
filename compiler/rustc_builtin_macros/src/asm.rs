@@ -458,7 +458,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
             match expr_to_spanned_string(ecx, template_expr, msg) {
                 Ok(template_part) => template_part,
                 Err(err) => {
-                    if let Some((mut err, _)) = err {
+                    if let Some((err, _)) = err {
                         err.emit();
                     }
                     return None;
@@ -747,7 +747,7 @@ pub(super) fn expand_asm<'cx>(
             };
             MacEager::expr(expr)
         }
-        Err(mut err) => {
+        Err(err) => {
             err.emit();
             DummyResult::any(sp)
         }
@@ -779,7 +779,7 @@ pub(super) fn expand_global_asm<'cx>(
                 DummyResult::any(sp)
             }
         }
-        Err(mut err) => {
+        Err(err) => {
             err.emit();
             DummyResult::any(sp)
         }

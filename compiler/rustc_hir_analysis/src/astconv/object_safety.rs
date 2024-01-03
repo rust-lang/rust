@@ -375,7 +375,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     self.ast_region_to_region(lifetime, None)
                 } else {
                     self.re_infer(None, span).unwrap_or_else(|| {
-                        let mut err = struct_span_err!(
+                        let err = struct_span_err!(
                             tcx.dcx(),
                             span,
                             E0228,

@@ -1338,7 +1338,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Err(error) => {
                 if segment.ident.name != kw::Empty {
-                    if let Some(mut err) = self.report_method_error(
+                    if let Some(err) = self.report_method_error(
                         span,
                         rcvr_t,
                         segment.ident,
@@ -2011,7 +2011,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 != range_def_id
         {
             // Suppress any range expr type mismatches
-            if let Some(mut diag) =
+            if let Some(diag) =
                 self.dcx().steal_diagnostic(last_expr_field.span, StashKey::MaybeFruTypo)
             {
                 diag.delay_as_bug();

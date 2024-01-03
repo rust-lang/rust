@@ -1232,7 +1232,7 @@ pub fn expr_to_string(
 ) -> Option<(Symbol, ast::StrStyle)> {
     expr_to_spanned_string(cx, expr, err_msg)
         .map_err(|err| {
-            err.map(|(mut err, _)| {
+            err.map(|(err, _)| {
                 err.emit();
             })
         })
@@ -1254,7 +1254,7 @@ pub fn check_zero_tts(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream, name: &str
 pub fn parse_expr(p: &mut parser::Parser<'_>) -> Option<P<ast::Expr>> {
     match p.parse_expr() {
         Ok(e) => return Some(e),
-        Err(mut err) => {
+        Err(err) => {
             err.emit();
         }
     }

@@ -896,7 +896,7 @@ impl<'a> Parser<'a> {
             let struct_expr = snapshot.parse_expr_struct(None, path, false);
             let block_tail = self.parse_block_tail(lo, s, AttemptLocalParseRecovery::No);
             return Some(match (struct_expr, block_tail) {
-                (Ok(expr), Err(mut err)) => {
+                (Ok(expr), Err(err)) => {
                     // We have encountered the following:
                     // fn foo() -> Foo {
                     //     field: value,
@@ -1218,7 +1218,7 @@ impl<'a> Parser<'a> {
                             "::",
                             Applicability::MaybeIncorrect,
                         )
-                        .emit();
+                        .emit_without_consuming();
                         match self.parse_expr() {
                             Ok(_) => {
                                 *expr = self.mk_expr_err(expr.span.to(self.prev_token.span));
@@ -2045,7 +2045,7 @@ impl<'a> Parser<'a> {
     ) -> P<Expr> {
         match result {
             Ok(x) => x,
-            Err(mut err) => {
+            Err(err) => {
                 err.emit();
                 // Recover from parse error, callers expect the closing delim to be consumed.
                 self.consume_block(delim, ConsumeClosingDelim::Yes);
@@ -2470,7 +2470,7 @@ impl<'a> Parser<'a> {
                     return Ok(true); // Continue
                 }
             }
-            Err(mut err) => {
+            Err(err) => {
                 args.push(arg);
                 // We will emit a more generic error later.
                 err.delay_as_bug();
@@ -2946,7 +2946,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn recover_diff_marker(&mut self) {
-        if let Err(mut err) = self.err_diff_marker() {
+        if let Err(err) = self.err_diff_marker() {
             err.emit();
             FatalError.raise();
         }

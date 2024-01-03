@@ -74,9 +74,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 && size_to == Pointer(dl.instruction_address_space).size(&tcx)
             {
                 struct_span_err!(tcx.dcx(), span, E0591, "can't transmute zero-sized type")
-                    .note(format!("source type: {from}"))
-                    .note(format!("target type: {to}"))
-                    .help("cast with `as` to a pointer instead")
+                    .note_mv(format!("source type: {from}"))
+                    .note_mv(format!("target type: {to}"))
+                    .help_mv("cast with `as` to a pointer instead")
                     .emit();
                 return;
             }
@@ -125,9 +125,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err.note(format!("source type: `{}` ({})", from, skeleton_string(from, sk_from)))
                 .note(format!("target type: `{}` ({})", to, skeleton_string(to, sk_to)));
             if let Err(LayoutError::ReferencesError(_)) = sk_from {
-                err.delay_as_bug();
+                err.delay_as_bug_without_consuming();
             } else if let Err(LayoutError::ReferencesError(_)) = sk_to {
-                err.delay_as_bug();
+                err.delay_as_bug_without_consuming();
             }
         }
         err.emit();

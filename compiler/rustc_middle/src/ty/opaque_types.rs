@@ -132,7 +132,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
                     .tcx
                     .dcx()
                     .struct_span_err(self.span, "non-defining opaque type use in defining scope")
-                    .span_label(
+                    .span_label_mv(
                         self.span,
                         format!(
                             "lifetime `{r}` is part of concrete type but not used in \

@@ -499,7 +499,7 @@ impl<'a> Parser<'a> {
         let (ident, is_raw) = self.ident_or_err(recover)?;
 
         if !is_raw && ident.is_reserved() {
-            let mut err = self.expected_ident_found_err();
+            let err = self.expected_ident_found_err();
             if recover {
                 err.emit();
             } else {
@@ -847,7 +847,7 @@ impl<'a> Parser<'a> {
                                     pprust::token_to_string(&self.prev_token)
                                 );
                                 expect_err
-                                    .span_suggestion_verbose(
+                                    .span_suggestion_verbose_mv(
                                         self.prev_token.span.shrink_to_hi().until(self.token.span),
                                         msg,
                                         " @ ",
@@ -863,7 +863,7 @@ impl<'a> Parser<'a> {
                                     // Parsed successfully, therefore most probably the code only
                                     // misses a separator.
                                     expect_err
-                                        .span_suggestion_short(
+                                        .span_suggestion_short_mv(
                                             sp,
                                             format!("missing `{token_str}`"),
                                             token_str,

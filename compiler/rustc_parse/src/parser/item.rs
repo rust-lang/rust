@@ -739,11 +739,14 @@ impl<'a> Parser<'a> {
                     break;
                 }
                 Ok(Some(item)) => items.extend(item),
-                Err(mut err) => {
+                Err(err) => {
                     self.consume_block(Delimiter::Brace, ConsumeClosingDelim::Yes);
-                    err.span_label(open_brace_span, "while parsing this item list starting here")
-                        .span_label(self.prev_token.span, "the item list ends here")
-                        .emit();
+                    err.span_label_mv(
+                        open_brace_span,
+                        "while parsing this item list starting here",
+                    )
+                    .span_label_mv(self.prev_token.span, "the item list ends here")
+                    .emit();
                     break;
                 }
             }
@@ -762,8 +765,8 @@ impl<'a> Parser<'a> {
                     E0584,
                     "found a documentation comment that doesn't document anything",
                 )
-                .span_label(self.token.span, "this doc comment doesn't document anything")
-                .help(
+                .span_label_mv(self.token.span, "this doc comment doesn't document anything")
+                .help_mv(
                     "doc comments must come before what they document, if a comment was \
                     intended use `//`",
                 )
@@ -1106,7 +1109,7 @@ impl<'a> Parser<'a> {
             && self.token.is_keyword(kw::Unsafe)
             && self.look_ahead(1, |t| t.kind == token::OpenDelim(Delimiter::Brace))
         {
-            let mut err = self.expect(&token::OpenDelim(Delimiter::Brace)).unwrap_err();
+            let err = self.expect(&token::OpenDelim(Delimiter::Brace)).unwrap_err();
             err.emit();
             unsafety = Unsafe::Yes(self.token.span);
             self.eat_keyword(kw::Unsafe);
@@ -1198,7 +1201,7 @@ impl<'a> Parser<'a> {
         defaultness: Defaultness,
     ) -> PResult<'a, ItemInfo> {
         let impl_span = self.token.span;
-        let mut err = self.expected_ident_found_err();
+        let err = self.expected_ident_found_err();
 
         // Only try to recover if this is implementing a trait for a type
         let mut impl_info = match self.parse_item_impl(attrs, defaultness) {
@@ -1216,7 +1219,7 @@ impl<'a> Parser<'a> {
 
                 let before_trait = trai.path.span.shrink_to_lo();
                 let const_up_to_impl = const_span.with_hi(impl_span.lo());
-                err.multipart_suggestion(
+                err.multipart_suggestion_mv(
                     "you might have meant to write a const trait impl",
                     vec![(const_up_to_impl, "".to_owned()), (before_trait, "const ".to_owned())],
                     Applicability::MaybeIncorrect,
@@ -1454,8 +1457,8 @@ impl<'a> Parser<'a> {
                 let ident = this.parse_field_ident("enum", vlo)?;
 
                 if this.token == token::Not {
-                    if let Err(mut err) = this.unexpected::<()>() {
-                        err.note(fluent::parse_macro_expands_to_enum_variant).emit();
+                    if let Err(err) = this.unexpected::<()>() {
+                        err.note_mv(fluent::parse_macro_expands_to_enum_variant).emit();
                     }
 
                     this.bump();
@@ -1811,7 +1814,7 @@ impl<'a> Parser<'a> {
                             // `check_trailing_angle_brackets` already emitted a nicer error
                             // NOTE(eddyb) this was `.cancel()`, but `err`
                             // gets returned, so we can't fully defuse it.
-                            err.delay_as_bug();
+                            err.delay_as_bug_without_consuming();
                         }
                     }
                 }
@@ -1828,7 +1831,7 @@ impl<'a> Parser<'a> {
                         ",",
                         Applicability::MachineApplicable,
                     );
-                    err.emit();
+                    err.emit_without_consuming();
                     recovered = true;
                 }
 
@@ -1846,7 +1849,7 @@ impl<'a> Parser<'a> {
     }
 
     fn expect_field_ty_separator(&mut self) -> PResult<'a, ()> {
-        if let Err(mut err) = self.expect(&token::Colon) {
+        if let Err(err) = self.expect(&token::Colon) {
             let sm = self.sess.source_map();
             let eq_typo = self.token.kind == token::Eq && self.look_ahead(1, |t| t.is_path_start());
             let semi_typo = self.token.kind == token::Semi
@@ -1862,7 +1865,7 @@ impl<'a> Parser<'a> {
             if eq_typo || semi_typo {
                 self.bump();
                 // Gracefully handle small typos.
-                err.span_suggestion_short(
+                err.span_suggestion_short_mv(
                     self.prev_token.span,
                     "field names and their types are separated with `:`",
                     ":",
@@ -2598,7 +2601,7 @@ impl<'a> Parser<'a> {
         let (mut params, _) = self.parse_paren_comma_seq(|p| {
             p.recover_diff_marker();
             let snapshot = p.create_snapshot_for_diagnostic();
-            let param = p.parse_param_general(req_name, first_param).or_else(|mut e| {
+            let param = p.parse_param_general(req_name, first_param).or_else(|e| {
                 e.emit();
                 let lo = p.prev_token.span;
                 p.restore_snapshot(snapshot);

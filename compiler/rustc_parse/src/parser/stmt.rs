@@ -32,7 +32,7 @@ impl<'a> Parser<'a> {
     /// e.g., a `StmtKind::Semi` parses to a `StmtKind::Expr`, leaving the trailing `;` unconsumed.
     // Public for rustfmt usage.
     pub fn parse_stmt(&mut self, force_collect: ForceCollect) -> PResult<'a, Option<Stmt>> {
-        Ok(self.parse_stmt_without_recovery(false, force_collect).unwrap_or_else(|mut e| {
+        Ok(self.parse_stmt_without_recovery(false, force_collect).unwrap_or_else(|e| {
             e.emit();
             self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
             None
@@ -663,7 +663,7 @@ impl<'a> Parser<'a> {
                     match expect_result {
                         // Recover from parser, skip type error to avoid extra errors.
                         Ok(true) => true,
-                        Err(mut e) => {
+                        Err(e) => {
                             if self.recover_colon_as_semi() {
                                 // recover_colon_as_semi has already emitted a nicer error.
                                 e.delay_as_bug();
@@ -716,7 +716,7 @@ impl<'a> Parser<'a> {
                                 _ => {}
                             }
 
-                            if let Err(mut e) =
+                            if let Err(e) =
                                 self.check_mistyped_turbofish_with_multiple_type_params(e, expr)
                             {
                                 if recover.no() {

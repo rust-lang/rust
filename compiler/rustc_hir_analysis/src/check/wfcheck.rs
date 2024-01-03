@@ -838,8 +838,8 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
                 trait_should_be_self,
                 "associated item referring to unboxed trait object for its own trait",
             )
-            .span_label(trait_name.span, "in this trait")
-            .multipart_suggestion(
+            .span_label_mv(trait_name.span, "in this trait")
+            .multipart_suggestion_mv(
                 "you might have meant to use `Self` to refer to the implementing type",
                 sugg,
                 Applicability::MachineApplicable,
@@ -1599,7 +1599,7 @@ fn check_method_receiver<'tcx>(
                          the `arbitrary_self_types` feature",
                     ),
                 )
-                .help(HELP_FOR_SELF_TYPE)
+                .help_mv(HELP_FOR_SELF_TYPE)
                 .emit()
             } else {
                 // Report error; would not have worked with `arbitrary_self_types`.
@@ -1612,8 +1612,8 @@ fn check_method_receiver<'tcx>(
 
 fn e0307(tcx: TyCtxt<'_>, span: Span, receiver_ty: Ty<'_>) -> ErrorGuaranteed {
     struct_span_err!(tcx.dcx(), span, E0307, "invalid `self` parameter type: {receiver_ty}")
-        .note("type of `self` must be `Self` or a type that dereferences to it")
-        .help(HELP_FOR_SELF_TYPE)
+        .note_mv("type of `self` must be `Self` or a type that dereferences to it")
+        .help_mv(HELP_FOR_SELF_TYPE)
         .emit()
 }
 

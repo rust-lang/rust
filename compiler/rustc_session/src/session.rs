@@ -1491,7 +1491,10 @@ impl EarlyDiagCtxt {
         jobserver::initialize_checked(|err| {
             #[allow(rustc::untranslatable_diagnostic)]
             #[allow(rustc::diagnostic_outside_of_impl)]
-            self.dcx.struct_warn(err).note("the build environment is likely misconfigured").emit()
+            self.dcx
+                .struct_warn(err)
+                .note_mv("the build environment is likely misconfigured")
+                .emit()
         });
     }
 }

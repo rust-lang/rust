@@ -48,7 +48,7 @@ impl DebuggerVisualizerCollector<'_> {
             let file =
                 match resolve_path(&self.sess.parse_sess, visualizer_path.as_str(), attr.span) {
                     Ok(file) => file,
-                    Err(mut err) => {
+                    Err(err) => {
                         err.emit();
                         return;
                     }

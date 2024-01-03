@@ -385,7 +385,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && let hir::ExprKind::Assign(..) = expr.kind
                 {
                     // We defer to the later error produced by `check_lhs_assignable`.
-                    err.delay_as_bug();
+                    err.delay_as_bug_without_consuming();
                 }
 
                 let suggest_deref_binop =

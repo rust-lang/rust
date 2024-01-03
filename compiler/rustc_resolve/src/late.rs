@@ -2600,7 +2600,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     E0637,
                     "`'_` cannot be used here"
                 )
-                .span_label(param.ident.span, "`'_` is a reserved lifetime name")
+                .span_label_mv(param.ident.span, "`'_` is a reserved lifetime name")
                 .emit();
                 // Record lifetime res, so lowering knows there is something fishy.
                 self.record_lifetime_param(param.id, LifetimeRes::Error);
@@ -2615,7 +2615,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     "invalid lifetime parameter name: `{}`",
                     param.ident,
                 )
-                .span_label(param.ident.span, "'static is a reserved lifetime name")
+                .span_label_mv(param.ident.span, "'static is a reserved lifetime name")
                 .emit();
                 // Record lifetime res, so lowering knows there is something fishy.
                 self.record_lifetime_param(param.id, LifetimeRes::Error);

@@ -1384,7 +1384,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "expected struct, variant or union type, found {}",
                     ty.normalized.sort_string(self.tcx)
                 )
-                .span_label(path_span, "not a struct")
+                .span_label_mv(path_span, "not a struct")
                 .emit(),
             })
         }
@@ -1459,8 +1459,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let previous_diverges = self.diverges.get();
             let else_ty = self.check_block_with_expected(blk, NoExpectation);
             let cause = self.cause(blk.span, ObligationCauseCode::LetElse);
-            if let Some(mut err) =
-                self.demand_eqtype_with_origin(&cause, self.tcx.types.never, else_ty)
+            if let Some(err) = self.demand_eqtype_with_origin(&cause, self.tcx.types.never, else_ty)
             {
                 err.emit();
             }
