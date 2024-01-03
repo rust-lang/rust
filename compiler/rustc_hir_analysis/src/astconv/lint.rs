@@ -1,6 +1,7 @@
 use rustc_ast::TraitObjectSyntax;
 use rustc_errors::{Diagnostic, StashKey};
 use rustc_hir as hir;
+use rustc_hir::def::{DefKind, Res};
 use rustc_lint_defs::{builtin::BARE_TRAIT_OBJECTS, Applicability};
 use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
@@ -90,15 +91,29 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             return false;
         };
         let impl_sugg = vec![(self_ty.span.shrink_to_lo(), "impl ".to_string())];
+        let is_object_safe = match self_ty.kind {
+            hir::TyKind::TraitObject(objects, ..) => {
+                objects.iter().all(|o| match o.trait_ref.path.res {
+                    Res::Def(DefKind::Trait, id) => tcx.check_is_object_safe(id),
+                    _ => false,
+                })
+            }
+            _ => false,
+        };
         if let hir::FnRetTy::Return(ty) = sig.decl.output
             && ty.hir_id == self_ty.hir_id
         {
-            diag.multipart_suggestion_verbose(
-                format!("use `impl {trait_name}` to return an opaque type, as long as you return a single underlying type"),
-                impl_sugg,
-                Applicability::MachineApplicable,
+            let pre = if !is_object_safe {
+                format!("`{trait_name}` is not object safe, ")
+            } else {
+                String::new()
+            };
+            let msg = format!(
+                "{pre}use `impl {trait_name}` to return an opaque type, as long as you return a \
+                 single underlying type",
             );
-            if tcx.check_is_object_safe(def_id) {
+            diag.multipart_suggestion_verbose(msg, impl_sugg, Applicability::MachineApplicable);
+            if is_object_safe {
                 diag.multipart_suggestion_verbose(
                     "alternatively, you can return an owned trait object",
                     vec![
@@ -111,25 +126,26 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             return true;
         }
         for ty in sig.decl.inputs {
-            if ty.hir_id == self_ty.hir_id {
-                let sugg = self.add_generic_param_suggestion(generics, self_ty.span, &trait_name);
-                if !sugg.is_empty() {
-                    diag.multipart_suggestion_verbose(
-                        format!("use a new generic type parameter, constrained by `{trait_name}`"),
-                        sugg,
-                        Applicability::MachineApplicable,
-                    );
-                    diag.multipart_suggestion_verbose(
-                        "you can also use an opaque type, but users won't be able to specify the \
-                         type parameter when calling the `fn`, having to rely exclusively on type \
-                         inference",
-                        impl_sugg,
-                        Applicability::MachineApplicable,
-                    );
-                }
-                if !tcx.check_is_object_safe(def_id) {
-                    diag.note(format!("it is not object safe, so it can't be `dyn`"));
-                }
+            if ty.hir_id != self_ty.hir_id {
+                continue;
+            }
+            let sugg = self.add_generic_param_suggestion(generics, self_ty.span, &trait_name);
+            if !sugg.is_empty() {
+                diag.multipart_suggestion_verbose(
+                    format!("use a new generic type parameter, constrained by `{trait_name}`"),
+                    sugg,
+                    Applicability::MachineApplicable,
+                );
+                diag.multipart_suggestion_verbose(
+                    "you can also use an opaque type, but users won't be able to specify the type \
+                     parameter when calling the `fn`, having to rely exclusively on type inference",
+                    impl_sugg,
+                    Applicability::MachineApplicable,
+                );
+            }
+            if !is_object_safe {
+                diag.note(format!("`{trait_name}` it is not object safe, so it can't be `dyn`"));
+            } else {
                 let sugg = if let hir::TyKind::TraitObject([_, _, ..], _, _) = self_ty.kind {
                     // There are more than one trait bound, we need surrounding parentheses.
                     vec![
@@ -147,8 +163,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     sugg,
                     Applicability::MachineApplicable,
                 );
-                return true;
             }
+            return true;
         }
         false
     }
