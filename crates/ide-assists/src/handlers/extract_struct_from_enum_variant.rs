@@ -6,6 +6,7 @@ use ide_db::{
     defs::Definition,
     helpers::mod_path_to_ast,
     imports::insert_use::{insert_use, ImportScope, InsertUseConfig},
+    path_transform::PathTransform,
     search::FileReference,
     FxHashSet, RootDatabase,
 };
@@ -105,6 +106,16 @@ pub(crate) fn extract_struct_from_enum_variant(
                 .generic_param_list()
                 .and_then(|known_generics| extract_generic_params(&known_generics, &field_list));
             let generics = generic_params.as_ref().map(|generics| generics.clone_for_update());
+
+            // resolve GenericArg in field_list to actual type
+            let field_list = field_list.clone_for_update();
+            if let Some((target_scope, source_scope)) =
+                ctx.sema.scope(enum_ast.syntax()).zip(ctx.sema.scope(field_list.syntax()))
+            {
+                PathTransform::generic_transformation(&target_scope, &source_scope)
+                    .apply(field_list.syntax());
+            }
+
             let def =
                 create_struct_def(variant_name.clone(), &variant, &field_list, generics, &enum_ast);
 
@@ -244,31 +255,6 @@ fn create_struct_def(
     // for fields without any existing visibility, use visibility of enum
     let field_list: ast::FieldList = match field_list {
         Either::Left(field_list) => {
-            let field_list = field_list.clone_for_update();
-
-            // replace `Self` with the enum name when construct struct def
-            field_list
-                .fields()
-                .filter_map(|field| match field.ty()? {
-                    ast::Type::PathType(p) => Some(
-                        p.syntax()
-                            .descendants_with_tokens()
-                            .filter_map(|it| {
-                                if it.kind() == T![Self] {
-                                    let type_arg =
-                                        make::type_arg(make::ty(&enum_.name()?.to_string()))
-                                            .clone_for_update();
-                                    Some(ted::replace(it, type_arg.syntax()))
-                                } else {
-                                    None
-                                }
-                            })
-                            .count(),
-                    ),
-                    _ => None,
-                })
-                .count();
-
             if let Some(vis) = &enum_vis {
                 field_list
                     .fields()
@@ -277,11 +263,9 @@ fn create_struct_def(
                     .for_each(|it| insert_vis(it.syntax(), vis.syntax()));
             }
 
-            field_list.into()
+            field_list.clone().into()
         }
         Either::Right(field_list) => {
-            let field_list = field_list.clone_for_update();
-
             if let Some(vis) = &enum_vis {
                 field_list
                     .fields()
@@ -290,7 +274,7 @@ fn create_struct_def(
                     .for_each(|it| insert_vis(it.syntax(), vis.syntax()));
             }
 
-            field_list.into()
+            field_list.clone().into()
         }
     };
     field_list.reindent_to(IndentLevel::single());
