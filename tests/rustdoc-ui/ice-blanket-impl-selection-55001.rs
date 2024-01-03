@@ -1,3 +1,4 @@
+// check-pass
 // https://github.com/rust-lang/rust/issues/55001
 #![crate_name="foo"]
 
