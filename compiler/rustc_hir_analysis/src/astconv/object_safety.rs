@@ -140,6 +140,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let reported = report_object_safety_error(
                     tcx,
                     span,
+                    Some(hir_id),
                     item.trait_ref().def_id(),
                     &object_safety_violations,
                 )

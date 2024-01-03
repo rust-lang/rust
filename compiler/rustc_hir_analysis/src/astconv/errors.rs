@@ -605,7 +605,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let violations =
                     object_safety_violations_for_assoc_item(tcx, trait_def_id, *assoc_item);
                 if !violations.is_empty() {
-                    report_object_safety_error(tcx, *span, trait_def_id, &violations).emit();
+                    report_object_safety_error(tcx, *span, None, trait_def_id, &violations).emit();
                     object_safety_violations = true;
                 }
             }

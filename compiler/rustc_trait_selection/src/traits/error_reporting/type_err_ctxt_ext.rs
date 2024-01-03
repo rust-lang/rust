@@ -816,7 +816,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                     ty::PredicateKind::ObjectSafe(trait_def_id) => {
                         let violations = self.tcx.object_safety_violations(trait_def_id);
-                        report_object_safety_error(self.tcx, span, trait_def_id, violations)
+                        report_object_safety_error(self.tcx, span, None, trait_def_id, violations)
                     }
 
                     ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(ty)) => {
@@ -924,7 +924,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
             TraitNotObjectSafe(did) => {
                 let violations = self.tcx.object_safety_violations(did);
-                report_object_safety_error(self.tcx, span, did, violations)
+                report_object_safety_error(self.tcx, span, None, did, violations)
             }
 
             SelectionError::NotConstEvaluatable(NotConstEvaluatable::MentionsInfer) => {
