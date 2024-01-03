@@ -10,7 +10,7 @@ use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
 use rustc_ast::{self as ast};
 use rustc_ast_pretty::pprust;
-use rustc_errors::{struct_span_err, Applicability, PResult, StashKey};
+use rustc_errors::{struct_span_code_err, Applicability, PResult, StashKey};
 use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
 use rustc_span::source_map;
@@ -759,7 +759,7 @@ impl<'a> Parser<'a> {
         if let token::DocComment(..) = self.token.kind {
             if self.look_ahead(1, |tok| tok == &token::CloseDelim(Delimiter::Brace)) {
                 // FIXME: merge with `DocCommentDoesNotDocumentAnything` (E0585)
-                struct_span_err!(
+                struct_span_code_err!(
                     self.dcx(),
                     self.token.span,
                     E0584,

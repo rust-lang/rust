@@ -25,7 +25,7 @@ use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
-    pluralize, struct_span_err, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder,
+    pluralize, struct_span_code_err, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder,
     DiagnosticId, ErrorGuaranteed, StashKey,
 };
 use rustc_hir as hir;
@@ -1760,7 +1760,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Make sure the programmer specified correct number of fields.
         if adt_kind == AdtKind::Union {
             if ast_fields.len() != 1 {
-                struct_span_err!(
+                struct_span_code_err!(
                     tcx.dcx(),
                     span,
                     E0784,
@@ -1967,7 +1967,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        let mut err = struct_span_err!(
+        let mut err = struct_span_code_err!(
             self.dcx(),
             span,
             E0063,
@@ -2194,7 +2194,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut err = self.err_ctxt().type_error_struct_with_diag(
             field.ident.span,
             |actual| match ty.kind() {
-                ty::Adt(adt, ..) if adt.is_enum() => struct_span_err!(
+                ty::Adt(adt, ..) if adt.is_enum() => struct_span_code_err!(
                     self.dcx(),
                     field.ident.span,
                     E0559,
@@ -2204,7 +2204,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     variant.name,
                     field.ident
                 ),
-                _ => struct_span_err!(
+                _ => struct_span_code_err!(
                     self.dcx(),
                     field.ident.span,
                     E0560,
@@ -2832,7 +2832,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn private_field_err(&self, field: Ident, base_did: DefId) -> DiagnosticBuilder<'_> {
         let struct_path = self.tcx().def_path_str(base_did);
         let kind_name = self.tcx().def_descr(base_did);
-        struct_span_err!(
+        struct_span_code_err!(
             self.dcx(),
             field.span,
             E0616,

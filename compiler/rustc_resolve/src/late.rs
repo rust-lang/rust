@@ -1664,7 +1664,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     } else {
                         ("`'_` cannot be used here", "`'_` is a reserved lifetime name")
                     };
-                    let mut diag = rustc_errors::struct_span_err!(
+                    let mut diag = rustc_errors::struct_span_code_err!(
                         self.r.dcx(),
                         lifetime.ident.span,
                         E0637,
@@ -1853,7 +1853,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     LifetimeRibKind::AnonymousCreateParameter { report_in_path: true, .. }
                     | LifetimeRibKind::AnonymousWarn(_) => {
                         let sess = self.r.tcx.sess;
-                        let mut err = rustc_errors::struct_span_err!(
+                        let mut err = rustc_errors::struct_span_code_err!(
                             sess.dcx(),
                             path_span,
                             E0726,
@@ -2594,7 +2594,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             }
 
             if param.ident.name == kw::UnderscoreLifetime {
-                rustc_errors::struct_span_err!(
+                rustc_errors::struct_span_code_err!(
                     self.r.dcx(),
                     param.ident.span,
                     E0637,
@@ -2608,7 +2608,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             }
 
             if param.ident.name == kw::StaticLifetime {
-                rustc_errors::struct_span_err!(
+                rustc_errors::struct_span_code_err!(
                     self.r.dcx(),
                     param.ident.span,
                     E0262,

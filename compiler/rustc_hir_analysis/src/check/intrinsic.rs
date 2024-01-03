@@ -8,7 +8,7 @@ use crate::errors::{
 };
 
 use hir::def_id::DefId;
-use rustc_errors::{struct_span_err, DiagnosticMessage};
+use rustc_errors::{struct_span_code_err, DiagnosticMessage};
 use rustc_hir as hir;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -29,7 +29,7 @@ fn equate_intrinsic_type<'tcx>(
             (own_counts, generics.span)
         }
         _ => {
-            struct_span_err!(tcx.dcx(), it.span, E0622, "intrinsic must be a function")
+            struct_span_code_err!(tcx.dcx(), it.span, E0622, "intrinsic must be a function")
                 .span_label_mv(it.span, "expected a function")
                 .emit();
             return;

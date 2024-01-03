@@ -3,7 +3,9 @@ use crate::constrained_generic_params::{identify_constrained_generic_params, Par
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{
+    pluralize, struct_span_code_err, Applicability, DiagnosticBuilder, ErrorGuaranteed,
+};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::lang_items::LangItem;
@@ -217,7 +219,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
                     if let hir::Defaultness::Default { .. } = impl_.defaultness {
                         let mut spans = vec![span];
                         spans.extend(impl_.defaultness_span);
-                        res = Err(struct_span_err!(
+                        res = Err(struct_span_code_err!(
                             tcx.dcx(),
                             spans,
                             E0750,
@@ -1116,7 +1118,7 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) -> Result<(), ErrorGuarant
         || matches!(trait_def.specialization_kind, TraitSpecializationKind::Marker)
     {
         for associated_def_id in &*tcx.associated_item_def_ids(def_id) {
-            struct_span_err!(
+            struct_span_code_err!(
                 tcx.dcx(),
                 tcx.def_span(*associated_def_id),
                 E0714,
@@ -1610,7 +1612,7 @@ fn check_method_receiver<'tcx>(
 }
 
 fn e0307(tcx: TyCtxt<'_>, span: Span, receiver_ty: Ty<'_>) -> ErrorGuaranteed {
-    struct_span_err!(tcx.dcx(), span, E0307, "invalid `self` parameter type: {receiver_ty}")
+    struct_span_code_err!(tcx.dcx(), span, E0307, "invalid `self` parameter type: {receiver_ty}")
         .note_mv("type of `self` must be `Self` or a type that dereferences to it")
         .help_mv(HELP_FOR_SELF_TYPE)
         .emit()
@@ -1920,7 +1922,7 @@ fn check_mod_type_wf(tcx: TyCtxt<'_>, module: LocalModDefId) -> Result<(), Error
 }
 
 fn error_392(tcx: TyCtxt<'_>, span: Span, param_name: Symbol) -> DiagnosticBuilder<'_> {
-    struct_span_err!(tcx.dcx(), span, E0392, "parameter `{param_name}` is never used")
+    struct_span_code_err!(tcx.dcx(), span, E0392, "parameter `{param_name}` is never used")
         .span_label_mv(span, "unused parameter")
 }
 

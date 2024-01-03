@@ -2,7 +2,7 @@ use super::potentially_plural_count;
 use crate::errors::LifetimesOrBoundsMismatchOnTrait;
 use hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, ErrorGuaranteed};
+use rustc_errors::{pluralize, struct_span_code_err, Applicability, DiagnosticId, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit;
@@ -625,7 +625,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     match ocx.eq(&cause, param_env, trait_return_ty, impl_return_ty) {
         Ok(()) => {}
         Err(terr) => {
-            let mut diag = struct_span_err!(
+            let mut diag = struct_span_code_err!(
                 tcx.dcx(),
                 cause.span(),
                 E0053,
@@ -972,7 +972,7 @@ fn report_trait_method_mismatch<'tcx>(
     let (impl_err_span, trait_err_span) =
         extract_spans_for_error_reporting(infcx, terr, &cause, impl_m, trait_m);
 
-    let mut diag = struct_span_err!(
+    let mut diag = struct_span_code_err!(
         tcx.dcx(),
         impl_err_span,
         E0053,
@@ -1217,7 +1217,7 @@ fn compare_self_type<'tcx>(
         (false, true) => {
             let self_descr = self_string(impl_m);
             let impl_m_span = tcx.def_span(impl_m.def_id);
-            let mut err = struct_span_err!(
+            let mut err = struct_span_code_err!(
                 tcx.dcx(),
                 impl_m_span,
                 E0185,
@@ -1237,7 +1237,7 @@ fn compare_self_type<'tcx>(
         (true, false) => {
             let self_descr = self_string(trait_m);
             let impl_m_span = tcx.def_span(impl_m.def_id);
-            let mut err = struct_span_err!(
+            let mut err = struct_span_code_err!(
                 tcx.dcx(),
                 impl_m_span,
                 E0186,
@@ -1463,7 +1463,7 @@ fn compare_number_of_method_arguments<'tcx>(
             })
             .unwrap_or_else(|| tcx.def_span(impl_m.def_id));
 
-        let mut err = struct_span_err!(
+        let mut err = struct_span_code_err!(
             tcx.dcx(),
             impl_span,
             E0050,
@@ -1530,7 +1530,7 @@ fn compare_synthetic_generics<'tcx>(
             let impl_def_id = impl_def_id.expect_local();
             let impl_span = tcx.def_span(impl_def_id);
             let trait_span = tcx.def_span(trait_def_id);
-            let mut err = struct_span_err!(
+            let mut err = struct_span_code_err!(
                 tcx.dcx(),
                 impl_span,
                 E0643,
@@ -1689,7 +1689,7 @@ fn compare_generic_param_kinds<'tcx>(
             let param_impl_span = tcx.def_span(param_impl.def_id);
             let param_trait_span = tcx.def_span(param_trait.def_id);
 
-            let mut err = struct_span_err!(
+            let mut err = struct_span_code_err!(
                 tcx.dcx(),
                 param_impl_span,
                 E0053,
@@ -1836,7 +1836,7 @@ fn compare_const_predicate_entailment<'tcx>(
         let (ty, _) = tcx.hir().expect_impl_item(impl_ct_def_id).expect_const();
         cause.span = ty.span;
 
-        let mut diag = struct_span_err!(
+        let mut diag = struct_span_code_err!(
             tcx.dcx(),
             cause.span,
             E0326,

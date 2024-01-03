@@ -3,7 +3,7 @@ use crate::{errors, FnCtxt, RawTy};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{
-    pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+    pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
     MultiSpan,
 };
 use rustc_hir as hir;
@@ -546,7 +546,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (_, Some((true, _, sp))) => sp,
             _ => span_bug!(span, "emit_err_pat_range: no side failed or exists but still error?"),
         };
-        let mut err = struct_span_err!(
+        let mut err = struct_span_code_err!(
             self.dcx(),
             span,
             E0029,
@@ -837,7 +837,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // This is "x = SomeTrait" being reduced from
             // "let &x = &SomeTrait" or "let box x = Box<SomeTrait>", an error.
             let type_str = self.ty_to_string(expected);
-            let mut err = struct_span_err!(
+            let mut err = struct_span_code_err!(
                 self.dcx(),
                 span,
                 E0033,
@@ -1171,7 +1171,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let last_field_def_span = *field_def_spans.last().unwrap();
 
-        let mut err = struct_span_err!(
+        let mut err = struct_span_code_err!(
             self.dcx(),
             MultiSpan::from_spans(subpat_spans),
             E0023,
@@ -1516,7 +1516,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let has_shorthand_field_name = field_patterns.iter().any(|field| field.is_shorthand);
             if has_shorthand_field_name {
                 let path = rustc_hir_pretty::qpath_to_string(qpath);
-                let mut err = struct_span_err!(
+                let mut err = struct_span_code_err!(
                     self.dcx(),
                     pat.span,
                     E0769,
@@ -1541,7 +1541,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let sp_comma = sm.end_point(pat.span.with_hi(sp_brace.hi()));
         let sugg = if no_fields || sp_brace != sp_comma { ".. }" } else { ", .. }" };
 
-        struct_span_err!(
+        struct_span_code_err!(
             self.dcx(),
             pat.span,
             E0638,
@@ -1562,7 +1562,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ident: Ident,
         other_field: Span,
     ) -> ErrorGuaranteed {
-        struct_span_err!(
+        struct_span_code_err!(
             self.dcx(),
             span,
             E0025,
@@ -1601,7 +1601,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             )
         };
         let spans = inexistent_fields.iter().map(|field| field.ident.span).collect::<Vec<_>>();
-        let mut err = struct_span_err!(
+        let mut err = struct_span_code_err!(
             tcx.dcx(),
             spans,
             E0026,
@@ -1698,7 +1698,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             let path = rustc_hir_pretty::qpath_to_string(qpath);
-            let mut err = struct_span_err!(
+            let mut err = struct_span_code_err!(
                 self.dcx(),
                 pat.span,
                 E0769,
@@ -1876,7 +1876,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .join(", ");
             format!("fields {fields}{inaccessible}")
         };
-        let mut err = struct_span_err!(
+        let mut err = struct_span_code_err!(
             self.dcx(),
             pat.span,
             E0027,
@@ -2226,7 +2226,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         min_len: u64,
         size: u64,
     ) -> ErrorGuaranteed {
-        struct_span_err!(
+        struct_span_code_err!(
             self.dcx(),
             span,
             E0527,
@@ -2245,7 +2245,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         min_len: u64,
         size: u64,
     ) -> ErrorGuaranteed {
-        struct_span_err!(
+        struct_span_code_err!(
             self.dcx(),
             span,
             E0528,
@@ -2262,7 +2262,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     fn error_scrutinee_unfixed_length(&self, span: Span) -> ErrorGuaranteed {
-        struct_span_err!(
+        struct_span_code_err!(
             self.dcx(),
             span,
             E0730,
@@ -2277,7 +2277,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty: Ty<'tcx>,
         ti: TopInfo<'tcx>,
     ) -> ErrorGuaranteed {
-        let mut err = struct_span_err!(
+        let mut err = struct_span_code_err!(
             self.dcx(),
             span,
             E0529,

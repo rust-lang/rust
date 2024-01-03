@@ -16,7 +16,7 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust::where_bound_predicate_to_string;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+    pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
     MultiSpan, SuggestionStyle,
 };
 use rustc_hir as hir;
@@ -2603,7 +2603,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     ) {
         debug_assert_ne!(lifetime_ref.ident.name, kw::UnderscoreLifetime);
         let mut err = if let Some(outer) = outer_lifetime_ref {
-            struct_span_err!(
+            struct_span_code_err!(
                 self.r.dcx(),
                 lifetime_ref.ident.span,
                 E0401,
@@ -2612,7 +2612,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             .span_label_mv(lifetime_ref.ident.span, "use of generic parameter from outer item")
             .span_label_mv(outer.span, "lifetime parameter from outer item")
         } else {
-            struct_span_err!(
+            struct_span_code_err!(
                 self.r.dcx(),
                 lifetime_ref.ident.span,
                 E0261,
@@ -2777,7 +2777,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         let num_lifetimes: usize = lifetime_refs.iter().map(|lt| lt.count).sum();
         let spans: Vec<_> = lifetime_refs.iter().map(|lt| lt.span).collect();
 
-        let mut err = struct_span_err!(
+        let mut err = struct_span_code_err!(
             self.r.dcx(),
             spans,
             E0106,
@@ -3282,7 +3282,7 @@ fn mk_where_bound_predicate(
 
 /// Report lifetime/lifetime shadowing as an error.
 pub(super) fn signal_lifetime_shadowing(sess: &Session, orig: Ident, shadower: Ident) {
-    struct_span_err!(
+    struct_span_code_err!(
         sess.dcx(),
         shadower.span,
         E0496,

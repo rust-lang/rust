@@ -19,7 +19,7 @@ use rustc_ast::{self as ast, AssocItem, AssocItemKind, MetaItemKind, StmtKind};
 use rustc_ast::{Block, Fn, ForeignItem, ForeignItemKind, Impl, Item, ItemKind, NodeId};
 use rustc_attr as attr;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{struct_span_err, Applicability};
+use rustc_errors::{struct_span_code_err, Applicability};
 use rustc_expand::expand::AstFragment;
 use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
@@ -1010,7 +1010,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         for attr in &item.attrs {
             if attr.has_name(sym::macro_use) {
                 if self.parent_scope.module.parent.is_some() {
-                    struct_span_err!(
+                    struct_span_code_err!(
                         self.r.dcx(),
                         item.span,
                         E0468,
@@ -1024,7 +1024,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                     }
                 }
                 let ill_formed = |span| {
-                    struct_span_err!(self.r.dcx(), span, E0466, "bad macro import").emit();
+                    struct_span_code_err!(self.r.dcx(), span, E0466, "bad macro import").emit();
                 };
                 match attr.meta() {
                     Some(meta) => match meta.kind {
@@ -1095,8 +1095,13 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                         allow_shadowing,
                     );
                 } else {
-                    struct_span_err!(self.r.dcx(), ident.span, E0469, "imported macro not found")
-                        .emit();
+                    struct_span_code_err!(
+                        self.r.dcx(),
+                        ident.span,
+                        E0469,
+                        "imported macro not found"
+                    )
+                    .emit();
                 }
             }
         }

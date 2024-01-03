@@ -19,7 +19,7 @@ use crate::traits::{
 };
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{
-    pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+    pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
     MultiSpan, StashKey, Style,
 };
 use rustc_hir as hir;
@@ -280,7 +280,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             predicate.print(&mut cx).unwrap();
             pred_str = cx.into_buffer();
         }
-        let mut err = struct_span_err!(
+        let mut err = struct_span_code_err!(
             self.dcx(),
             span,
             E0275,
@@ -525,7 +525,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             (err_msg, None)
                         };
 
-                        let mut err = struct_span_err!(self.dcx(), span, E0277, "{}", err_msg);
+                        let mut err = struct_span_code_err!(self.dcx(), span, E0277, "{}", err_msg);
 
                         let mut suggested = false;
                         if is_try_conversion {
@@ -1236,7 +1236,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 span_bug!(span, "const param tys cannot mention other generic parameters");
             }
             ty::Float(_) => {
-                struct_span_err!(
+                struct_span_code_err!(
                     self.dcx(),
                     span,
                     E0741,
@@ -1244,7 +1244,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 )
             }
             ty::FnPtr(_) => {
-                struct_span_err!(
+                struct_span_code_err!(
                     self.dcx(),
                     span,
                     E0741,
@@ -1252,7 +1252,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 )
             }
             ty::RawPtr(_) => {
-                struct_span_err!(
+                struct_span_code_err!(
                     self.dcx(),
                     span,
                     E0741,
@@ -1261,7 +1261,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             ty::Adt(def, _) => {
                 // We should probably see if we're *allowed* to derive `ConstParamTy` on the type...
-                let mut diag = struct_span_err!(
+                let mut diag = struct_span_code_err!(
                     self.dcx(),
                     span,
                     E0741,
@@ -1293,7 +1293,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 diag
             }
             _ => {
-                struct_span_err!(
+                struct_span_code_err!(
                     self.dcx(),
                     span,
                     E0741,
@@ -1731,7 +1731,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         cx.into_buffer()
                     }))
                 });
-            let mut diag = struct_span_err!(self.dcx(), obligation.cause.span, E0271, "{msg}");
+            let mut diag = struct_span_code_err!(self.dcx(), obligation.cause.span, E0271, "{msg}");
 
             let secondary_span = (|| {
                 let ty::PredicateKind::Clause(ty::ClauseKind::Projection(proj)) =
@@ -2421,7 +2421,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         true,
                     )
                 } else {
-                    struct_span_err!(
+                    struct_span_code_err!(
                         self.dcx(),
                         span,
                         E0283,
@@ -2664,7 +2664,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     .note_mv(format!("cannot satisfy `{predicate}`"))
                 } else {
                     // If we can't find a substitution, just print a generic error
-                    struct_span_err!(
+                    struct_span_code_err!(
                         self.dcx(),
                         span,
                         E0284,
@@ -2691,7 +2691,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     err
                 } else {
                     // If we can't find a substitution, just print a generic error
-                    struct_span_err!(
+                    struct_span_code_err!(
                         self.dcx(),
                         span,
                         E0284,
@@ -2705,7 +2705,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 if self.dcx().has_errors().is_some() || self.tainted_by_errors().is_some() {
                     return;
                 }
-                struct_span_err!(
+                struct_span_code_err!(
                     self.dcx(),
                     span,
                     E0284,

@@ -1,7 +1,9 @@
+// ignore-tidy-filelength
+
 use either::Either;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, MultiSpan};
+use rustc_errors::{struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
@@ -550,8 +552,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         };
 
         let used = desired_action.as_general_verb_in_past_tense();
-        let mut err =
-            struct_span_err!(self.dcx(), span, E0381, "{used} binding {desc}{isnt_initialized}");
+        let mut err = struct_span_code_err!(
+            self.dcx(),
+            span,
+            E0381,
+            "{used} binding {desc}{isnt_initialized}"
+        );
         use_spans.var_path_only_subdiag(&mut err, desired_action);
 
         if let InitializationRequiringAction::PartialAssignment

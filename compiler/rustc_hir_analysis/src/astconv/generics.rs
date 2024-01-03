@@ -5,7 +5,7 @@ use crate::astconv::{
 };
 use crate::structured_errors::{GenericArgsInfo, StructuredDiagnostic, WrongNumberOfGenericArgs};
 use rustc_ast::ast::ParamKindOrd;
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{struct_span_code_err, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -27,7 +27,7 @@ fn generic_arg_mismatch_err(
     help: Option<String>,
 ) -> ErrorGuaranteed {
     let sess = tcx.sess;
-    let mut err = struct_span_err!(
+    let mut err = struct_span_code_err!(
         tcx.dcx(),
         arg.span(),
         E0747,
@@ -650,7 +650,7 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
         if position == GenericArgPosition::Value
             && args.num_lifetime_params() != param_counts.lifetimes
         {
-            struct_span_err!(tcx.dcx(), span, E0794, "{}", msg)
+            struct_span_code_err!(tcx.dcx(), span, E0794, "{}", msg)
                 .span_note_mv(span_late, note)
                 .emit();
         } else {

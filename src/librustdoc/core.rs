@@ -495,7 +495,7 @@ impl<'tcx> Visitor<'tcx> for EmitIgnoredResolutionErrors<'tcx> {
                     .intersperse("::")
                     .collect::<String>()
             );
-            rustc_errors::struct_span_err!(
+            rustc_errors::struct_span_code_err!(
                 self.tcx.dcx(),
                 path.span,
                 E0433,

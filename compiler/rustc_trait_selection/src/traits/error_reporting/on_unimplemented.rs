@@ -6,7 +6,7 @@ use rustc_ast::AttrKind;
 use rustc_ast::{Attribute, MetaItem, NestedMetaItem};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{struct_span_err, ErrorGuaranteed};
+use rustc_errors::{struct_span_code_err, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::GenericArgsRef;
@@ -797,7 +797,7 @@ impl<'tcx> OnUnimplementedFormatString {
                                         },
                                     );
                                 } else {
-                                    result = Err(struct_span_err!(
+                                    result = Err(struct_span_code_err!(
                                         tcx.dcx(),
                                         self.span,
                                         E0230,
@@ -816,7 +816,7 @@ impl<'tcx> OnUnimplementedFormatString {
                     }
                     // `{:1}` and `{}` are not to be used
                     Position::ArgumentIs(..) | Position::ArgumentImplicitlyIs(_) => {
-                        let reported = struct_span_err!(
+                        let reported = struct_span_code_err!(
                             tcx.dcx(),
                             self.span,
                             E0231,
