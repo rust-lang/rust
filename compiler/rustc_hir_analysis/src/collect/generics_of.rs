@@ -315,7 +315,10 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
 
             if is_host_effect {
                 if let Some(idx) = host_effect_index {
-                    bug!("parent also has host effect param? index: {idx}, def: {def_id:?}");
+                    tcx.dcx().span_delayed_bug(
+                        param.span,
+                        format!("parent also has host effect param? index: {idx}, def: {def_id:?}"),
+                    );
                 }
 
                 host_effect_index = Some(index as usize);
