@@ -1698,7 +1698,7 @@ pub enum Level {
     /// internal overflows, some file operation errors.
     ///
     /// Its `EmissionGuarantee` is `FatalAbort`, except in the non-aborting "almost fatal" case
-    /// that is occasionaly used, where it is `FatalError`.
+    /// that is occasionally used, where it is `FatalError`.
     Fatal,
 
     /// An error in the code being compiled, which prevents compilation from finishing. This is the
