@@ -732,19 +732,19 @@ pub fn ensure_sufficient_stack<R>(f: impl FnOnce() -> R) -> R {
 /// Context that provides information local to a place under investigation.
 #[derive(derivative::Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""), Copy(bound = ""))]
-pub(crate) struct PlaceCtxt<'a, 'p, Cx: TypeCx> {
+pub(crate) struct PlaceCtxt<'a, Cx: TypeCx> {
     #[derivative(Debug = "ignore")]
-    pub(crate) mcx: MatchCtxt<'a, 'p, Cx>,
+    pub(crate) mcx: MatchCtxt<'a, Cx>,
     /// Type of the place under investigation.
     pub(crate) ty: Cx::Ty,
     /// Whether the place is the original scrutinee place, as opposed to a subplace of it.
     pub(crate) is_scrutinee: bool,
 }
 
-impl<'a, 'p, Cx: TypeCx> PlaceCtxt<'a, 'p, Cx> {
+impl<'a, Cx: TypeCx> PlaceCtxt<'a, Cx> {
     /// A `PlaceCtxt` when code other than `is_useful` needs one.
     #[cfg_attr(not(feature = "rustc"), allow(dead_code))]
-    pub(crate) fn new_dummy(mcx: MatchCtxt<'a, 'p, Cx>, ty: Cx::Ty) -> Self {
+    pub(crate) fn new_dummy(mcx: MatchCtxt<'a, Cx>, ty: Cx::Ty) -> Self {
         PlaceCtxt { mcx, ty, is_scrutinee: false }
     }
 
@@ -1067,7 +1067,7 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
     /// This computes `specialize(ctor, self)`. See top of the file for explanations.
     fn specialize_constructor(
         &self,
-        pcx: &PlaceCtxt<'_, 'p, Cx>,
+        pcx: &PlaceCtxt<'_, Cx>,
         ctor: &Constructor<Cx>,
         ctor_is_relevant: bool,
     ) -> Matrix<'p, Cx> {
@@ -1226,7 +1226,7 @@ impl<Cx: TypeCx> WitnessStack<Cx> {
     /// pats: [(false, "foo"), _, true]
     /// result: [Enum::Variant { a: (false, "foo"), b: _ }, true]
     /// ```
-    fn apply_constructor(&mut self, pcx: &PlaceCtxt<'_, '_, Cx>, ctor: &Constructor<Cx>) {
+    fn apply_constructor(&mut self, pcx: &PlaceCtxt<'_, Cx>, ctor: &Constructor<Cx>) {
         let len = self.0.len();
         let arity = ctor.arity(pcx);
         let fields = self.0.drain((len - arity)..).rev().collect();
@@ -1277,7 +1277,7 @@ impl<Cx: TypeCx> WitnessMatrix<Cx> {
     /// Reverses specialization by `ctor`. See the section on `unspecialize` at the top of the file.
     fn apply_constructor(
         &mut self,
-        pcx: &PlaceCtxt<'_, '_, Cx>,
+        pcx: &PlaceCtxt<'_, Cx>,
         missing_ctors: &[Constructor<Cx>],
         ctor: &Constructor<Cx>,
         report_individual_missing_ctors: bool,
@@ -1421,7 +1421,7 @@ fn collect_overlapping_range_endpoints<'p, Cx: TypeCx>(
 /// This is all explained at the top of the file.
 #[instrument(level = "debug", skip(mcx, is_top_level), ret)]
 fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
-    mcx: MatchCtxt<'a, 'p, Cx>,
+    mcx: MatchCtxt<'a, Cx>,
     matrix: &mut Matrix<'p, Cx>,
     overlapping_range_endpoints: &mut Vec<OverlappingRanges<'p, Cx>>,
     is_top_level: bool,
@@ -1591,7 +1591,7 @@ pub struct UsefulnessReport<'p, Cx: TypeCx> {
 /// Computes whether a match is exhaustive and which of its arms are useful.
 #[instrument(skip(cx, arms), level = "debug")]
 pub fn compute_match_usefulness<'p, Cx: TypeCx>(
-    cx: MatchCtxt<'_, 'p, Cx>,
+    cx: MatchCtxt<'_, Cx>,
     arms: &[MatchArm<'p, Cx>],
     scrut_ty: Cx::Ty,
     scrut_validity: ValidityConstraint,

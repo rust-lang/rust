@@ -33,11 +33,11 @@ pub type ConstructorSet<'p, 'tcx> =
 pub type DeconstructedPat<'p, 'tcx> =
     crate::pat::DeconstructedPat<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
 pub type MatchArm<'p, 'tcx> = crate::MatchArm<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
-pub type MatchCtxt<'a, 'p, 'tcx> = crate::MatchCtxt<'a, 'p, RustcMatchCheckCtxt<'p, 'tcx>>;
+pub type MatchCtxt<'a, 'p, 'tcx> = crate::MatchCtxt<'a, RustcMatchCheckCtxt<'p, 'tcx>>;
 pub type OverlappingRanges<'p, 'tcx> =
     crate::usefulness::OverlappingRanges<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
 pub(crate) type PlaceCtxt<'a, 'p, 'tcx> =
-    crate::usefulness::PlaceCtxt<'a, 'p, RustcMatchCheckCtxt<'p, 'tcx>>;
+    crate::usefulness::PlaceCtxt<'a, RustcMatchCheckCtxt<'p, 'tcx>>;
 pub(crate) type SplitConstructorSet<'p, 'tcx> =
     crate::constructor::SplitConstructorSet<RustcMatchCheckCtxt<'p, 'tcx>>;
 pub type Usefulness<'p, 'tcx> = crate::usefulness::Usefulness<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
@@ -80,7 +80,9 @@ pub struct RustcMatchCheckCtxt<'p, 'tcx> {
     /// outside its module and should not be matchable with an empty match statement.
     pub module: DefId,
     pub param_env: ty::ParamEnv<'tcx>,
+    /// To allocate lowered patterns
     pub pattern_arena: &'p TypedArena<DeconstructedPat<'p, 'tcx>>,
+    /// To allocate the result of `self.ctor_sub_tys()`
     pub dropless_arena: &'p DroplessArena,
     /// Lint level at the match.
     pub match_lint_level: HirId,
