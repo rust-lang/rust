@@ -56,9 +56,6 @@ mod parallel;
 pub use parallel::scope;
 pub use parallel::{join, par_for_each_in, par_map, parallel_guard, try_par_for_each_in};
 
-pub use std::sync::atomic::Ordering;
-pub use std::sync::atomic::Ordering::SeqCst;
-
 pub use vec::{AppendOnlyIndexVec, AppendOnlyVec};
 
 mod vec;
@@ -67,8 +64,7 @@ mod freeze;
 pub use freeze::{FreezeLock, FreezeReadGuard, FreezeWriteGuard};
 
 mod mode {
-    use super::Ordering;
-    use std::sync::atomic::AtomicU8;
+    use std::sync::atomic::{AtomicU8, Ordering};
 
     const UNINITIALIZED: u8 = 0;
     const DYN_NOT_THREAD_SAFE: u8 = 1;

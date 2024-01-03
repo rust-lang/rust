@@ -14,9 +14,7 @@ use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::jobserver::{self, Client};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
-use rustc_data_structures::sync::{
-    AtomicU64, DynSend, DynSync, Lock, Lrc, OneThread, Ordering::SeqCst,
-};
+use rustc_data_structures::sync::{AtomicU64, DynSend, DynSync, Lock, Lrc, OneThread};
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter;
 use rustc_errors::emitter::{DynEmitter, EmitterWriter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
@@ -44,7 +42,7 @@ use std::fmt;
 use std::ops::{Div, Mul};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::{atomic::AtomicBool, Arc};
+use std::sync::{atomic::AtomicBool, atomic::Ordering::SeqCst, Arc};
 
 struct OptimizationFuel {
     /// If `-zfuel=crate=n` is specified, initially set to `n`, otherwise `0`.
