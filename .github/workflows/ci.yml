@@ -51,6 +51,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - shell: bash
           - name: i686-mingw
             env:
               RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu"
@@ -83,6 +84,14 @@ jobs:
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
               DIST_REQUIRE_ALL_TOOLS: 1
+            os: windows-2019-8core-32gb
+          - name: x86_64-gnu
+            os: ubuntu-20.04-4core-16gb
+            env: {}
+          - name: x86_64-msvc
+            env:
+              RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-msvc --enable-profiler"
+              SCRIPT: make ci-msvc
             os: windows-2019-8core-32gb
     defaults:
       run:
@@ -215,6 +224,7 @@ jobs:
     strategy:
       matrix:
         include:
+          - shell: bash
           - name: aarch64-gnu
             os:
               - self-hosted

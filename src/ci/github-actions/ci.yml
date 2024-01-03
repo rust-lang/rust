@@ -357,6 +357,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - shell: bash
           - name: i686-mingw
             env:
               RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
@@ -410,6 +411,15 @@ jobs:
               DIST_REQUIRE_ALL_TOOLS: 1
             <<: *job-windows-8c
 
+          - name: x86_64-gnu
+            <<: *job-linux-4c
+          
+          - name: x86_64-msvc
+            env:
+              RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
+              SCRIPT: make ci-msvc
+            <<: *job-windows-8c
+
   auto:
     <<: *base-ci-job
     name: auto - ${{ matrix.name }}
@@ -419,6 +429,7 @@ jobs:
     strategy:
       matrix:
         include:
+          - shell: bash
           #############################
           #   Linux/Docker builders   #
           #############################
