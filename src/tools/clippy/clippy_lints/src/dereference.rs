@@ -831,6 +831,7 @@ impl TyCoercionStability {
                 | TyKind::Typeof(..)
                 | TyKind::TraitObject(..)
                 | TyKind::InferDelegation(..)
+                | TyKind::AnonAdt(..)
                 | TyKind::Err(_) => Self::Reborrow,
             };
         }

@@ -789,6 +789,65 @@ fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
     }
 }
 
+/*
+/// In a type definition, we check that unnamed field names are distinct.
+fn check_unnamed_fields_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>) {
+    let mut seen_fields: FxHashMap<Ident, Option<Span>> = Default::default();
+    fn check_fields_anon_adt_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>, seen_fields: &mut FxHashMap<Ident, Option<Span>>) {
+        let fields = match &item.kind {
+            hir::ItemKind::Struct(fields, _) | hir::ItemKind::Union(fields, _) => fields,
+            _ => return,
+        };
+        for field in fields.fields() {
+            if field.ident.name == kw::Underscore {
+                if let hir::TyKind::AnonAdt(item_id) = field.ty.kind() {
+                    let item = tcx.hir().item(item_id);
+                    check_fields_anon_adt_defn(tcx, item, &mut *seen_fields);
+                } else {
+                    let field_ty = match tcx.type_of(field.def_id).instantiate_identity().ty_adt_def() {
+                        Some(adt_ty) => adt_ty,
+                        None => {
+                            tcx.sess.emit_err(err);
+                            return;
+                        }
+                    };
+                    if let Some(def_id) = field_ty.did().as_local() {
+                        let item = tcx.hir().item(hir::ItemId { owner_id: hir::OwnerId { def_id }});
+                        check_fields_anon_adt_defn(tcx, item, &mut *seen_fields);
+                    }
+                }
+                field_ty.flags()
+                let inner_adt_def = field_ty.ty_adt_def().expect("expect an adt");
+                check_fields_anon_adt_defn(tcx, adt_def, &mut *seen_fields);
+            } else {
+                let span = field.did.as_local().map(|did| {
+                    let hir_id = tcx.hir().local_def_id_to_hir_id(did);
+                    tcx.hir().span(hir_id)
+                });
+                match seen_fields.get(&ident.normalize_to_macros_2_0()).cloned() {
+                    Some(Some(prev_span)) => {
+                        tcx.sess.emit_err(errors::FieldAlreadyDeclared {
+                            field_name: ident,
+                            span: f.span,
+                            prev_span,
+                        });
+                    }
+                    Some(None) => {
+                        tcx.sess.emit_err(errors::FieldAlreadyDeclared {
+                            field_name: f.ident,
+                            span: f.span,
+                            prev_span,
+                        });
+                    }
+                    None =>
+                        seen_fields.insert(f.ident.normalize_to_macros_2_0(), f.span);
+                }
+            }
+        }
+    }
+}
+ */
+
 fn convert_variant(
     tcx: TyCtxt<'_>,
     variant_did: Option<LocalDefId>,
@@ -798,11 +857,17 @@ fn convert_variant(
     adt_kind: ty::AdtKind,
     parent_did: LocalDefId,
 ) -> ty::VariantDef {
+    let mut has_unnamed_fields = false;
     let mut seen_fields: FxHashMap<Ident, Span> = Default::default();
     let fields = def
         .fields()
         .iter()
-        .map(|f| {
+        .inspect(|f| {
+            // Skip the unnamed field here, we will check it later.
+            if f.ident.name == kw::Underscore {
+                has_unnamed_fields = true;
+                return;
+            }
             let dup_span = seen_fields.get(&f.ident.normalize_to_macros_2_0()).cloned();
             if let Some(prev_span) = dup_span {
                 tcx.dcx().emit_err(errors::FieldAlreadyDeclared {
@@ -813,12 +878,11 @@ fn convert_variant(
             } else {
                 seen_fields.insert(f.ident.normalize_to_macros_2_0(), f.span);
             }
-
-            ty::FieldDef {
-                did: f.def_id.to_def_id(),
-                name: f.ident.name,
-                vis: tcx.visibility(f.def_id),
-            }
+        })
+        .map(|f| ty::FieldDef {
+            did: f.def_id.to_def_id(),
+            name: f.ident.name,
+            vis: tcx.visibility(f.def_id),
         })
         .collect();
     let recovered = match def {
@@ -837,6 +901,7 @@ fn convert_variant(
         adt_kind == AdtKind::Struct && tcx.has_attr(parent_did, sym::non_exhaustive)
             || variant_did
                 .is_some_and(|variant_did| tcx.has_attr(variant_did, sym::non_exhaustive)),
+        has_unnamed_fields,
     )
 }
 
@@ -847,6 +912,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
         bug!("expected ADT to be an item");
     };
 
+    let is_anonymous = item.ident.name == kw::Empty;
     let repr = tcx.repr_options_of_def(def_id.to_def_id());
     let (kind, variants) = match &item.kind {
         ItemKind::Enum(def, _) => {
@@ -897,7 +963,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
         }
         _ => bug!("{:?} is not an ADT", item.owner_id.def_id),
     };
-    tcx.mk_adt_def(def_id.to_def_id(), kind, variants, repr)
+    tcx.mk_adt_def(def_id.to_def_id(), kind, variants, repr, is_anonymous)
 }
 
 fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {

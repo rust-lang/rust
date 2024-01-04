@@ -219,7 +219,7 @@ impl<'a> AstValidator<'a> {
                     }
                 }
             }
-            TyKind::AnonStruct(ref fields, ..) | TyKind::AnonUnion(ref fields, ..) => {
+            TyKind::AnonStruct(_, ref fields) | TyKind::AnonUnion(_, ref fields) => {
                 walk_list!(self, visit_field_def, fields)
             }
             _ => visit::walk_ty(self, t),

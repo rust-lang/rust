@@ -396,8 +396,9 @@ impl<'a> Parser<'a> {
             self.parse_record_struct_body(if is_union { "union" } else { "struct" }, lo, false)?;
         let span = lo.to(self.prev_token.span);
         self.sess.gated_spans.gate(sym::unnamed_fields, span);
-        // These can be rejected during AST validation in `deny_anon_struct_or_union`.
-        let kind = if is_union { TyKind::AnonUnion(fields) } else { TyKind::AnonStruct(fields) };
+        let id = ast::DUMMY_NODE_ID;
+        let kind =
+            if is_union { TyKind::AnonUnion(id, fields) } else { TyKind::AnonStruct(id, fields) };
         Ok(self.mk_ty(span, kind))
     }
 

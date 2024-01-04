@@ -852,6 +852,9 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) {
         }
         TyKind::Typeof(ref expression) => visitor.visit_anon_const(expression),
         TyKind::Infer | TyKind::InferDelegation(..) | TyKind::Err(_) => {}
+        TyKind::AnonAdt(item_id) => {
+            visitor.visit_nested_item(item_id);
+        }
     }
 }
 

@@ -715,8 +715,16 @@ impl<'tcx> TyCtxt<'tcx> {
         kind: AdtKind,
         variants: IndexVec<VariantIdx, ty::VariantDef>,
         repr: ReprOptions,
+        is_anonymous: bool,
     ) -> ty::AdtDef<'tcx> {
-        self.mk_adt_def_from_data(ty::AdtDefData::new(self, did, kind, variants, repr))
+        self.mk_adt_def_from_data(ty::AdtDefData::new(
+            self,
+            did,
+            kind,
+            variants,
+            repr,
+            is_anonymous,
+        ))
     }
 
     /// Allocates a read-only byte or string literal for `mir::interpret`.

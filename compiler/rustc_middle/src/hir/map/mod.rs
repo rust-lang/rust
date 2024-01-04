@@ -756,6 +756,13 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    pub fn expect_field(self, id: HirId) -> &'hir FieldDef<'hir> {
+        match self.tcx.hir_node(id) {
+            Node::Field(field) => field,
+            _ => bug!("expected field, found {}", self.node_to_string(id)),
+        }
+    }
+
     pub fn expect_foreign_item(self, id: OwnerId) -> &'hir ForeignItem<'hir> {
         match self.tcx.hir_owner_node(id) {
             OwnerNode::ForeignItem(item) => item,

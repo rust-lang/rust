@@ -8,6 +8,7 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_macros::HashStable_Generic;
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::hygiene::MacroKind;
+use rustc_span::symbol::kw;
 use rustc_span::Symbol;
 
 use std::array::IntoIter;
@@ -225,6 +226,7 @@ impl DefKind {
 
     pub fn def_path_data(self, name: Symbol) -> DefPathData {
         match self {
+            DefKind::Struct | DefKind::Union if name == kw::Empty => DefPathData::AnonAdt,
             DefKind::Mod
             | DefKind::Struct
             | DefKind::Union

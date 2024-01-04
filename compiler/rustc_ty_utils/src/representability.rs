@@ -21,8 +21,7 @@ macro_rules! rtry {
 fn representability(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Representability {
     match tcx.def_kind(def_id) {
         DefKind::Struct | DefKind::Union | DefKind::Enum => {
-            let adt_def = tcx.adt_def(def_id);
-            for variant in adt_def.variants() {
+            for variant in tcx.adt_def(def_id).variants() {
                 for field in variant.fields.iter() {
                     rtry!(tcx.representability(field.did.expect_local()));
                 }
