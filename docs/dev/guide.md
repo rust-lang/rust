@@ -74,8 +74,8 @@ to study its methods to understand all the input data.
 [`Change`]: https://github.com/rust-lang/rust-analyzer/blob/2024-01-01/crates/hir-expand/src/change.rs#L10-L42
 [`FileChange`]: https://github.com/rust-lang/rust-analyzer/blob/2024-01-01/crates/base-db/src/change.rs#L14-L78
 
-The `change_file` methods controls the set of the input files, where each file
-has an integer id (`FileId`, picked by the client), text (`Option<Arc<str>>`).
+The `change_file` method controls the set of the input files, where each file
+has an integer id (`FileId`, picked by the client) and text (`Option<Arc<str>>`).
 Paths are tricky; they'll be explained below, in source roots section, 
 together with the `set_roots` method. The "source root" [`is_library`] flag
 along with the concept of [`durability`] allows us to add a group of files which 
@@ -397,7 +397,7 @@ the `foo` function of the `bar` `impl` in the `baz` module").
 
 [`Intern` and `Lookup`] traits allows us to combine the benefits of positional and numeric
 IDs. Implementing both traits effectively creates a bidirectional append-only map
-between locations and integer IDs (typically newtype wrappers of [`salsa::InternId`])
+between locations and integer IDs (typically newtype wrappers for [`salsa::InternId`])
 which can "intern" a location and return an integer ID back. The salsa database we use
 includes a couple of [interners]. How to "garbage collect" unused locations
 is an open question.
@@ -552,9 +552,10 @@ completion] and serialize results into the LSP.
 The [completion implementation] is finally the place where we start doing the actual
 work. The first step is to collect the [`CompletionContext`] -- a struct which
 describes the cursor position in terms of Rust syntax and semantics. For
-example, `function_syntax: Option<&'a ast::FnDef>` stores a reference to
-the enclosing function *syntax*, while `function: Option<hir::Function>` is the
-`Def` for this function.
+example, `expected_name: Option<NameOrNameRef>` is the syntactic representation
+for the expected name of what we're completing (usually the parameter name of
+a function argument), while `expected_type: Option<Type>` is the semantic model
+for the expected type of what we're completing.
 
 To construct the context, we first do an ["IntelliJ Trick"]: we insert a dummy
 identifier at the cursor's position and parse this modified file, to get a
