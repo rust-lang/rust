@@ -2887,3 +2887,11 @@ pub(crate) struct TransposeDynOrImplSugg<'a> {
     pub insertion_span: Span,
     pub kw: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag(parse_array_index_offset_of)]
+pub(crate) struct ArrayIndexInOffsetOf(#[primary_span] pub Span);
+
+#[derive(Diagnostic)]
+#[diag(parse_invalid_offset_of)]
+pub(crate) struct InvalidOffsetOf(#[primary_span] pub Span);

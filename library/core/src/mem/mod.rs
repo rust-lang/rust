@@ -1395,8 +1395,18 @@ impl<T> SizedTypeProperties for T {}
 ///
 /// assert_eq!(mem::offset_of!(Option<&u8>, Some.0), 0);
 /// ```
+#[cfg(not(bootstrap))]
 #[unstable(feature = "offset_of", issue = "106655")]
 #[allow_internal_unstable(builtin_syntax, hint_must_use)]
+pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {
+    // The `{}` is for better error messages
+    crate::hint::must_use({builtin # offset_of($Container, $($fields)+)})
+}
+
+#[cfg(bootstrap)]
+#[unstable(feature = "offset_of", issue = "106655")]
+#[allow_internal_unstable(builtin_syntax, hint_must_use)]
+#[allow(missing_docs)]
 pub macro offset_of($Container:ty, $($fields:tt).+ $(,)?) {
     // The `{}` is for better error messages
     crate::hint::must_use({builtin # offset_of($Container, $($fields).+)})
