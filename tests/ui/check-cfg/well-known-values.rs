@@ -10,7 +10,6 @@
 #![feature(cfg_overflow_checks)]
 #![feature(cfg_relocation_model)]
 #![feature(cfg_sanitize)]
-#![feature(cfg_target_abi)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_has_atomic_equal_alignment)]
 #![feature(cfg_target_thread_local)]
