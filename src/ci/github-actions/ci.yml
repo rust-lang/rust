@@ -365,7 +365,7 @@ jobs:
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
               MSYSTEM: MINGW32
-            msys2: 1
+            msys2: true
             <<: *job-windows-8c
 
           - name: x86_64-mingw
@@ -378,6 +378,7 @@ jobs:
               # incompatible with LLVM downloads today).
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
+            msys2: true
             <<: *job-windows-8c
           
           - name: dist-i686-mingw
@@ -393,6 +394,7 @@ jobs:
               CUSTOM_MINGW: 1
               DIST_REQUIRE_ALL_TOOLS: 1
               MSYSTEM: MINGW32
+            msys2: true
             <<: *job-windows-8c
 
           - name: dist-x86_64-mingw
@@ -407,15 +409,18 @@ jobs:
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
               DIST_REQUIRE_ALL_TOOLS: 1
+            msys2: true
             <<: *job-windows-8c
 
           - name: x86_64-gnu
+            msys2: false
             <<: *job-linux-4c
           
           - name: x86_64-msvc
             env:
               RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-profiler
               SCRIPT: make ci-msvc
+            msys2: false
             <<: *job-windows-8c
 
   auto:
