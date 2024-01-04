@@ -178,6 +178,8 @@ pub struct Config {
     pub patch_binaries_for_nix: Option<bool>,
     pub stage0_metadata: Stage0Metadata,
     pub android_ndk: Option<PathBuf>,
+    /// Whether to use the `c` feature of the `compiler_builtins` crate.
+    pub optimized_compiler_builtins: bool,
 
     pub stdout_is_tty: bool,
     pub stderr_is_tty: bool,
@@ -848,6 +850,7 @@ define_config! {
         // NOTE: only parsed by bootstrap.py, `--feature build-metrics` enables metrics unconditionally
         metrics: Option<bool> = "metrics",
         android_ndk: Option<PathBuf> = "android-ndk",
+        optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
     }
 }
 
@@ -1396,6 +1399,7 @@ impl Config {
             // This field is only used by bootstrap.py
             metrics: _,
             android_ndk,
+            optimized_compiler_builtins,
         } = toml.build.unwrap_or_default();
 
         if let Some(file_build) = build {
@@ -1810,7 +1814,14 @@ impl Config {
                     }
                     target.llvm_config = Some(config.src.join(s));
                 }
-                target.llvm_has_rust_patches = cfg.llvm_has_rust_patches;
+                if let Some(patches) = cfg.llvm_has_rust_patches {
+                    assert_eq!(
+                        config.submodules,
+                        Some(false),
+                        "cannot set `llvm-has-rust-patches` for a managed submodule (set `build.submodules = false` if you want to apply patches)"
+                    );
+                    target.llvm_has_rust_patches = Some(patches);
+                }
                 if let Some(ref s) = cfg.llvm_filecheck {
                     target.llvm_filecheck = Some(config.src.join(s));
                 }
@@ -1909,6 +1920,8 @@ impl Config {
         config.rust_debuginfo_level_std = with_defaults(debuginfo_level_std);
         config.rust_debuginfo_level_tools = with_defaults(debuginfo_level_tools);
         config.rust_debuginfo_level_tests = debuginfo_level_tests.unwrap_or(DebuginfoLevel::None);
+        config.optimized_compiler_builtins =
+            optimized_compiler_builtins.unwrap_or(config.channel != "dev");
 
         let download_rustc = config.download_rustc_commit.is_some();
         // See https://github.com/rust-lang/compiler-team/issues/326
