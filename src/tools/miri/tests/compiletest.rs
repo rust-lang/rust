@@ -111,6 +111,8 @@ fn test_config(target: &str, path: &str, mode: Mode, with_dependencies: bool) ->
             "run".into(), // There is no `cargo miri build` so we just use `cargo miri run`.
         ]);
         config.dependency_builder.args = builder_args.into_iter().map(Into::into).collect();
+        // Reset `RUSTFLAGS` to work around <https://github.com/rust-lang/rust/pull/119574#issuecomment-1876878344>.
+        config.dependency_builder.envs.push(("RUSTFLAGS".into(), None));
     }
     config
 }

@@ -1,7 +1,7 @@
 error: deadlock: the evaluated program deadlocked
   --> $DIR/windows_join_self.rs:LL:CC
    |
-LL |             assert_eq!(WaitForSingleObject(native, INFINITE), 0);
+LL |             assert_eq!(WaitForSingleObject(native, INFINITE), WAIT_OBJECT_0);
    |                                                            ^ the evaluated program deadlocked
    |
    = note: inside closure at $DIR/windows_join_self.rs:LL:CC

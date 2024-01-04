@@ -3,7 +3,6 @@
 // similar to why `offset-of-unsized.rs` is also build-pass
 
 #![feature(offset_of)]
-#![feature(builtin_syntax)]
 
 use std::mem::offset_of;
 
@@ -17,13 +16,13 @@ fn main() {
     // Complex case: do all combinations of spacings because the spacing determines what gets
     // sent to the lexer.
     println!("{}", offset_of!(ComplexTup, 0.1.1.1));
-    println!("{}", builtin # offset_of(ComplexTup, 0. 1.1.1));
+    println!("{}", offset_of!(ComplexTup, 0. 1.1.1));
     println!("{}", offset_of!(ComplexTup, 0 . 1.1.1));
     println!("{}", offset_of!(ComplexTup, 0 .1.1.1));
     println!("{}", offset_of!(ComplexTup, 0.1 .1.1));
     println!("{}", offset_of!(ComplexTup, 0.1 . 1.1));
     println!("{}", offset_of!(ComplexTup, 0.1. 1.1));
-    println!("{}", builtin # offset_of(ComplexTup, 0.1.1. 1));
+    println!("{}", offset_of!(ComplexTup, 0.1.1. 1));
     println!("{}", offset_of!(ComplexTup, 0.1.1 . 1));
     println!("{}", offset_of!(ComplexTup, 0.1.1 .1));
 

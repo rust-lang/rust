@@ -25,7 +25,7 @@ pub fn f(a: *mut u8) {
             Goto(bb1)
         }
         bb1 = {
-            Call(*a = g(), bb1, UnwindUnreachable())
+            Call(*a = g(), ReturnTo(bb1), UnwindUnreachable())
         }
     }
 }

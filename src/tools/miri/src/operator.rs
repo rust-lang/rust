@@ -118,4 +118,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             nan
         }
     }
+
+    fn adjust_nan<F1: Float + FloatConvert<F2>, F2: Float>(&self, f: F2, inputs: &[F1]) -> F2 {
+        if f.is_nan() { self.generate_nan(inputs) } else { f }
+    }
 }
