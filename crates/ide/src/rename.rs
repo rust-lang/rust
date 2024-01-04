@@ -368,7 +368,7 @@ mod tests {
     use std::collections::HashMap;
 
     use expect_test::{expect, Expect};
-    use ide_db::source_change::FileSystemEdit;
+    use ide_db::source_change::{FileSystemEdit, SourceChange};
     use stdx::trim_indent;
     use test_utils::assert_eq_text;
     use text_edit::TextEdit;
@@ -421,39 +421,7 @@ mod tests {
         let (analysis, position) = fixture::position(ra_fixture);
         let source_change =
             analysis.rename(position, new_name).unwrap().expect("Expect returned a RenameError");
-
-        // file_id 1:
-        //     source_file_edits:
-        //         - Indel { insert: "foo2", delete: 4..7 }
-        //
-        // file_id 2:
-        //     file_system_edits:
-        //         MoveFile AnchoredPathBuf { anchor: FileId(2), path: "foo2.rs", }
-
-        let source_file_edits = source_change
-            .source_file_edits
-            .into_iter()
-            .map(|(a, (b, _))| (a, b.into_iter().collect::<Vec<_>>()))
-            .collect::<HashMap<_, _>>();
-
-        let file_system_edits = source_change
-            .file_system_edits
-            .into_iter()
-            .map(|a| {
-                let id = match &a {
-                    FileSystemEdit::CreateFile { .. } => unreachable!(),
-                    FileSystemEdit::MoveFile { src, .. } => src,
-                    FileSystemEdit::MoveDir { src_id, .. } => src_id,
-                };
-                (id.clone(), a)
-            })
-            .collect::<HashMap<_, _>>();
-
-        let b = format!(
-            "source_file_edits: {:#?}\nfile_system_edits: {:#?}",
-            source_file_edits, file_system_edits
-        );
-        expect.assert_eq(&b)
+        expect.assert_eq(&filter_expect(source_change))
     }
 
     fn check_expect_will_rename_file(new_name: &str, ra_fixture: &str, expect: Expect) {
@@ -462,7 +430,7 @@ mod tests {
             .will_rename_file(position.file_id, new_name)
             .unwrap()
             .expect("Expect returned a RenameError");
-        expect.assert_debug_eq(&source_change)
+        expect.assert_eq(&filter_expect(source_change))
     }
 
     fn check_prepare(ra_fixture: &str, expect: Expect) {
@@ -477,6 +445,32 @@ mod tests {
             }
             Err(RenameError(err)) => expect.assert_eq(&err),
         };
+    }
+
+    fn filter_expect(source_change: SourceChange) -> String {
+        let source_file_edits = source_change
+            .source_file_edits
+            .into_iter()
+            .map(|(id, (text_edit, _))| (id, text_edit.into_iter().collect::<Vec<_>>()))
+            .collect::<HashMap<_, _>>();
+
+        let file_system_edits = source_change
+            .file_system_edits
+            .into_iter()
+            .map(|file_system_edit| {
+                let id = match &file_system_edit {
+                    FileSystemEdit::CreateFile { .. } => unreachable!(),
+                    FileSystemEdit::MoveFile { src, .. } => src,
+                    FileSystemEdit::MoveDir { src_id, .. } => src_id,
+                };
+                (id.clone(), file_system_edit)
+            })
+            .collect::<HashMap<_, _>>();
+
+        format!(
+            "source_file_edits: {:#?}\nfile_system_edits: {:#?}",
+            source_file_edits, file_system_edits
+        )
     }
 
     #[test]
