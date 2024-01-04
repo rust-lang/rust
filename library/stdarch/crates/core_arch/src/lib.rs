@@ -35,7 +35,7 @@
     inline_const,
     generic_arg_infer
 )]
-#![cfg_attr(test, feature(test, abi_vectorcall))]
+#![cfg_attr(test, feature(test, abi_vectorcall, stdarch_internal))]
 #![deny(clippy::missing_inline_in_public_items)]
 #![allow(
     clippy::identity_op,

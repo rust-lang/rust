@@ -13,7 +13,7 @@
 //! * `powerpc64`: [`is_powerpc64_feature_detected`]
 //! * `loongarch`: [`is_loongarch_feature_detected`]
 
-#![stable(feature = "stdsimd", since = "1.27.0")]
+#![unstable(feature = "stdarch_internal", issue = "none")]
 #![feature(staged_api, doc_cfg, allow_internal_unstable)]
 #![deny(rust_2018_idioms)]
 #![allow(clippy::shadow_reuse)]
@@ -23,7 +23,7 @@
 // Temporary hack: needed to build against toolchains from before the mass feature renaming.
 // Remove this as soon as the stdarch submodule is updated on nightly.
 #![allow(stable_features)]
-#![feature(stdsimd)]
+#![cfg_attr(not(feature = "rustc-dep-of-std"), feature(stdsimd))]
 #![cfg_attr(
     all(
         any(target_arch = "x86", target_arch = "x86_64"),
@@ -42,5 +42,5 @@ extern crate std;
 extern crate alloc;
 
 #[doc(hidden)]
-#[stable(feature = "stdsimd", since = "1.27.0")]
+#[unstable(feature = "stdarch_internal", issue = "none")]
 pub mod detect;

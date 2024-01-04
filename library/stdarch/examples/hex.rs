@@ -12,8 +12,13 @@
 //!
 //! and you should see `746573740a` get printed out.
 
+#![allow(internal_features)]
 #![feature(wasm_target_feature)]
 #![cfg_attr(test, feature(test))]
+#![cfg_attr(
+    any(target_arch = "x86", target_arch = "x86_64"),
+    feature(stdarch_internal)
+)]
 #![allow(
     clippy::unwrap_used,
     clippy::print_stdout,
