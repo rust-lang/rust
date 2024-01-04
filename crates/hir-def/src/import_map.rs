@@ -295,7 +295,6 @@ pub struct Query {
     search_mode: SearchMode,
     assoc_mode: AssocSearchMode,
     case_sensitive: bool,
-    limit: usize,
 }
 
 impl Query {
@@ -307,7 +306,6 @@ impl Query {
             search_mode: SearchMode::Exact,
             assoc_mode: AssocSearchMode::Include,
             case_sensitive: false,
-            limit: usize::MAX,
         }
     }
 
@@ -327,11 +325,6 @@ impl Query {
     /// Specifies whether we want to include associated items in the result.
     pub fn assoc_search_mode(self, assoc_mode: AssocSearchMode) -> Self {
         Self { assoc_mode, ..self }
-    }
-
-    /// Limits the returned number of items to `limit`.
-    pub fn limit(self, limit: usize) -> Self {
-        Self { limit, ..self }
     }
 
     /// Respect casing of the query string when matching.
@@ -442,10 +435,6 @@ fn search_maps(
                     }
                 });
             res.extend(iter.map(TupleExt::head));
-
-            if res.len() >= query.limit {
-                return res;
-            }
         }
     }
 
@@ -1012,34 +1001,6 @@ pub mod fmt {
             expect![[r#"
                 dep::FMT (t)
                 dep::FMT (v)
-            "#]],
-        );
-    }
-
-    #[test]
-    fn search_limit() {
-        check_search(
-            r#"
-        //- /main.rs crate:main deps:dep
-        //- /dep.rs crate:dep
-        pub mod fmt {
-            pub trait Display {
-                fn fmt();
-            }
-        }
-        #[macro_export]
-        macro_rules! Fmt {
-            () => {};
-        }
-        pub struct Fmt;
-
-        pub fn format() {}
-        pub fn no() {}
-    "#,
-            "main",
-            Query::new("".to_string()).fuzzy().limit(1),
-            expect![[r#"
-                dep::fmt::Display (t)
             "#]],
         );
     }

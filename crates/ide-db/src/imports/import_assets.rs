@@ -339,6 +339,7 @@ fn path_applicable_imports(
                 let mod_path = mod_path(item)?;
                 Some(LocatedImport::new(mod_path, item, item))
             })
+            .take(DEFAULT_QUERY_SEARCH_LIMIT.inner())
             .collect()
         }
         Some(qualifier) => items_locator::items_with_name(
@@ -349,6 +350,7 @@ fn path_applicable_imports(
             Some(DEFAULT_QUERY_SEARCH_LIMIT.inner()),
         )
         .filter_map(|item| import_for_item(sema.db, mod_path, &qualifier, item))
+        .take(DEFAULT_QUERY_SEARCH_LIMIT.inner())
         .collect(),
     }
 }
@@ -517,6 +519,7 @@ fn trait_applicable_items(
             Some(assoc_item_trait.into())
         }
     })
+    .take(DEFAULT_QUERY_SEARCH_LIMIT.inner())
     .collect();
 
     let mut located_imports = FxHashSet::default();

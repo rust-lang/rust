@@ -19,7 +19,7 @@ pub fn items_with_name<'a>(
     krate: Crate,
     name: NameToImport,
     assoc_item_search: AssocSearchMode,
-    limit: Option<usize>,
+    local_limit: Option<usize>,
 ) -> impl Iterator<Item = ItemInNs> + 'a {
     let _p = profile::span("items_with_name").detail(|| {
         format!(
@@ -27,12 +27,12 @@ pub fn items_with_name<'a>(
             name.text(),
             assoc_item_search,
             krate.display_name(sema.db).map(|name| name.to_string()),
-            limit,
+            local_limit,
         )
     });
 
     let prefix = matches!(name, NameToImport::Prefix(..));
-    let (mut local_query, mut external_query) = match name {
+    let (mut local_query, external_query) = match name {
         NameToImport::Prefix(exact_name, case_sensitive)
         | NameToImport::Exact(exact_name, case_sensitive) => {
             let mut local_query = symbol_index::Query::new(exact_name.clone());
@@ -69,8 +69,7 @@ pub fn items_with_name<'a>(
         }
     };
 
-    if let Some(limit) = limit {
-        external_query = external_query.limit(limit);
+    if let Some(limit) = local_limit {
         local_query.limit(limit);
     }
 
