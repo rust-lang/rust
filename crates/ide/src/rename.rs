@@ -366,7 +366,7 @@ fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: &str) -> Opt
 #[cfg(test)]
 mod tests {
     use expect_test::{expect, Expect};
-    use ide_db::source_change::{FileSystemEdit, SourceChange};
+    use ide_db::source_change::SourceChange;
     use stdx::trim_indent;
     use test_utils::assert_eq_text;
     use text_edit::TextEdit;
@@ -452,22 +452,9 @@ mod tests {
             .map(|(id, (text_edit, _))| (id, text_edit.into_iter().collect::<Vec<_>>()))
             .collect::<Vec<_>>();
 
-        let file_system_edits = source_change
-            .file_system_edits
-            .into_iter()
-            .map(|file_system_edit| {
-                let id = match &file_system_edit {
-                    FileSystemEdit::CreateFile { .. } => unreachable!(),
-                    FileSystemEdit::MoveFile { src, .. } => src,
-                    FileSystemEdit::MoveDir { src_id, .. } => src_id,
-                };
-                (id.clone(), file_system_edit)
-            })
-            .collect::<Vec<_>>();
-
         format!(
             "source_file_edits: {:#?}\nfile_system_edits: {:#?}\n",
-            source_file_edits, file_system_edits
+            source_file_edits, source_change.file_system_edits
         )
     }
 
@@ -957,22 +944,17 @@ mod foo$0;
                     ),
                 ]
                 file_system_edits: [
-                    (
-                        FileId(
+                    MoveFile {
+                        src: FileId(
                             2,
                         ),
-                        MoveFile {
-                            src: FileId(
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
                                 2,
                             ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    2,
-                                ),
-                                path: "foo2.rs",
-                            },
+                            path: "foo2.rs",
                         },
-                    ),
+                    },
                 ]
             "#]],
         );
@@ -1020,22 +1002,17 @@ use crate::foo$0::FooContent;
                     ),
                 ]
                 file_system_edits: [
-                    (
-                        FileId(
+                    MoveFile {
+                        src: FileId(
                             1,
                         ),
-                        MoveFile {
-                            src: FileId(
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
                                 1,
                             ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "quux.rs",
-                            },
+                            path: "quux.rs",
                         },
-                    ),
+                    },
                 ]
             "#]],
         );
@@ -1066,28 +1043,23 @@ mod fo$0o;
                     ),
                 ]
                 file_system_edits: [
-                    (
-                        FileId(
-                            1,
-                        ),
-                        MoveDir {
-                            src: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "../foo",
-                            },
-                            src_id: FileId(
+                    MoveDir {
+                        src: AnchoredPathBuf {
+                            anchor: FileId(
                                 1,
                             ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "../foo2",
-                            },
+                            path: "../foo",
                         },
-                    ),
+                        src_id: FileId(
+                            1,
+                        ),
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
+                                1,
+                            ),
+                            path: "../foo2",
+                        },
+                    },
                 ]
             "#]],
         );
@@ -1119,22 +1091,17 @@ mod outer { mod fo$0o; }
                     ),
                 ]
                 file_system_edits: [
-                    (
-                        FileId(
+                    MoveFile {
+                        src: FileId(
                             1,
                         ),
-                        MoveFile {
-                            src: FileId(
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
                                 1,
                             ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "bar.rs",
-                            },
+                            path: "bar.rs",
                         },
-                    ),
+                    },
                 ]
             "#]],
         );
@@ -1206,22 +1173,17 @@ pub mod foo$0;
                     ),
                 ]
                 file_system_edits: [
-                    (
-                        FileId(
+                    MoveFile {
+                        src: FileId(
                             2,
                         ),
-                        MoveFile {
-                            src: FileId(
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
                                 2,
                             ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    2,
-                                ),
-                                path: "foo2.rs",
-                            },
+                            path: "foo2.rs",
                         },
-                    ),
+                    },
                 ]
             "#]],
         );
@@ -1266,44 +1228,34 @@ mod quux;
                     ),
                 ]
                 file_system_edits: [
-                    (
-                        FileId(
+                    MoveFile {
+                        src: FileId(
                             1,
                         ),
-                        MoveFile {
-                            src: FileId(
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
                                 1,
                             ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "foo2.rs",
-                            },
+                            path: "foo2.rs",
                         },
-                    ),
-                    (
-                        FileId(
+                    },
+                    MoveDir {
+                        src: AnchoredPathBuf {
+                            anchor: FileId(
+                                1,
+                            ),
+                            path: "foo",
+                        },
+                        src_id: FileId(
                             1,
                         ),
-                        MoveDir {
-                            src: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "foo",
-                            },
-                            src_id: FileId(
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
                                 1,
                             ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "foo2",
-                            },
+                            path: "foo2",
                         },
-                    ),
+                    },
                 ]
             "#]],
         )
@@ -1413,44 +1365,34 @@ pub fn baz() {}
                     ),
                 ]
                 file_system_edits: [
-                    (
-                        FileId(
+                    MoveFile {
+                        src: FileId(
                             1,
                         ),
-                        MoveFile {
-                            src: FileId(
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
                                 1,
                             ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "fn.rs",
-                            },
+                            path: "fn.rs",
                         },
-                    ),
-                    (
-                        FileId(
+                    },
+                    MoveDir {
+                        src: AnchoredPathBuf {
+                            anchor: FileId(
+                                1,
+                            ),
+                            path: "foo",
+                        },
+                        src_id: FileId(
                             1,
                         ),
-                        MoveDir {
-                            src: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "foo",
-                            },
-                            src_id: FileId(
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
                                 1,
                             ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "fn",
-                            },
+                            path: "fn",
                         },
-                    ),
+                    },
                 ]
             "#]],
         );
@@ -1491,44 +1433,34 @@ pub fn baz() {}
                     ),
                 ]
                 file_system_edits: [
-                    (
-                        FileId(
+                    MoveFile {
+                        src: FileId(
                             1,
                         ),
-                        MoveFile {
-                            src: FileId(
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
                                 1,
                             ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "foo.rs",
-                            },
+                            path: "foo.rs",
                         },
-                    ),
-                    (
-                        FileId(
+                    },
+                    MoveDir {
+                        src: AnchoredPathBuf {
+                            anchor: FileId(
+                                1,
+                            ),
+                            path: "fn",
+                        },
+                        src_id: FileId(
                             1,
                         ),
-                        MoveDir {
-                            src: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "fn",
-                            },
-                            src_id: FileId(
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
                                 1,
                             ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "foo",
-                            },
+                            path: "foo",
                         },
-                    ),
+                    },
                 ]
             "#]],
         );
