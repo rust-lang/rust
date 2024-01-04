@@ -99,7 +99,10 @@ pub use crate::{
     },
     join_lines::JoinLinesConfig,
     markup::Markup,
-    moniker::{MonikerDescriptorKind, MonikerKind, MonikerResult, PackageInformation},
+    moniker::{
+        MonikerDescriptorKind, MonikerKind, MonikerResult, PackageInformation,
+        SymbolInformationKind,
+    },
     move_item::Direction,
     navigation_target::{NavigationTarget, UpmappingResult},
     prime_caches::ParallelPrimeCachesProgress,

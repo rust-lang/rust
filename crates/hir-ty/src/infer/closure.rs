@@ -598,7 +598,7 @@ impl InferenceContext<'_> {
                     self.consume_expr(expr);
                 }
             }
-            Expr::Index { base, index } => {
+            Expr::Index { base, index, is_assignee_expr: _ } => {
                 self.select_from_expr(*base);
                 self.consume_expr(*index);
             }

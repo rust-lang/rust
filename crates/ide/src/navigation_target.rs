@@ -724,11 +724,8 @@ fn orig_range_with_focus(
 ) -> UpmappingResult<(FileRange, Option<TextRange>)> {
     let Some(name) = name else { return orig_range(db, hir_file, value) };
 
-    let call_range = || {
-        db.lookup_intern_macro_call(hir_file.macro_file().unwrap().macro_call_id)
-            .kind
-            .original_call_range(db)
-    };
+    let call_kind =
+        || db.lookup_intern_macro_call(hir_file.macro_file().unwrap().macro_call_id).kind;
 
     let def_range = || {
         db.lookup_intern_macro_call(hir_file.macro_file().unwrap().macro_call_id)
@@ -755,7 +752,22 @@ fn orig_range_with_focus(
                             }
                             // name lies outside the node, so instead point to the macro call which
                             // *should* contain the name
-                            _ => call_range(),
+                            _ => {
+                                let kind = call_kind();
+                                let range = kind.clone().original_call_range_with_body(db);
+                                //If the focus range is in the attribute/derive body, we
+                                // need to point the call site to the entire body, if not, fall back
+                                // to the name range of the attribute/derive call
+                                // FIXME: Do this differently, this is very inflexible the caller
+                                // should choose this behavior
+                                if range.file_id == focus_range.file_id
+                                    && range.range.contains_range(focus_range.range)
+                                {
+                                    range
+                                } else {
+                                    kind.original_call_range(db)
+                                }
+                            }
                         },
                         Some(focus_range),
                     ),
@@ -784,7 +796,7 @@ fn orig_range_with_focus(
                     // node is in macro def, just show the focus
                     _ => (
                         // show the macro call
-                        (call_range(), None),
+                        (call_kind().original_call_range(db), None),
                         Some((focus_range, Some(focus_range))),
                     ),
                 }
