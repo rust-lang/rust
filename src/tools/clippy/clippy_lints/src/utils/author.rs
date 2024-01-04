@@ -318,16 +318,10 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
         self.pat(field!(arm.pat));
         match arm.value.guard {
             None => chain!(self, "{arm}.guard.is_none()"),
-            Some(hir::Guard::If(expr)) => {
+            Some(expr) => {
                 bind!(self, expr);
-                chain!(self, "let Some(Guard::If({expr})) = {arm}.guard");
+                chain!(self, "let Some({expr}) = {arm}.guard");
                 self.expr(expr);
-            },
-            Some(hir::Guard::IfLet(let_expr)) => {
-                bind!(self, let_expr);
-                chain!(self, "let Some(Guard::IfLet({let_expr}) = {arm}.guard");
-                self.pat(field!(let_expr.pat));
-                self.expr(field!(let_expr.init));
             },
         }
         self.expr(field!(arm.body));

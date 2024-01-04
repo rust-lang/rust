@@ -3164,7 +3164,7 @@ pub fn is_never_expr<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<
                             self.is_never = false;
                             if let Some(guard) = arm.guard {
                                 let in_final_expr = mem::replace(&mut self.in_final_expr, false);
-                                self.visit_expr(guard.body());
+                                self.visit_expr(guard);
                                 self.in_final_expr = in_final_expr;
                                 // The compiler doesn't consider diverging guards as causing the arm to diverge.
                                 self.is_never = false;
@@ -3223,7 +3223,7 @@ pub fn is_never_expr<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<
         fn visit_arm(&mut self, arm: &Arm<'tcx>) {
             if let Some(guard) = arm.guard {
                 let in_final_expr = mem::replace(&mut self.in_final_expr, false);
-                self.visit_expr(guard.body());
+                self.visit_expr(guard);
                 self.in_final_expr = in_final_expr;
             }
             self.visit_expr(arm.body);
