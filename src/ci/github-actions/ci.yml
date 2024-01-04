@@ -110,9 +110,9 @@ x--expand-yaml-anchors--remove:
     if: success() && !env.SKIP_JOB
 
   - &base-ci-job
-    # defaults:
-    #   run:
-    #     shell: ${{ matrix.msys2 && 'msys2 {0}'' || 'bash' }}
+    defaults:
+      run:
+        shell: ${{ matrix.msys2 && 'msys2 {0}'' || 'bash' }}
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     env:
@@ -365,7 +365,7 @@ jobs:
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
               MSYSTEM: MINGW32
-            msys2: true
+            msys2: 1
             <<: *job-windows-8c
 
           - name: x86_64-mingw
