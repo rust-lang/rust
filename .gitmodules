@@ -43,3 +43,7 @@
 	path = library/backtrace
 	url = https://github.com/rust-lang/backtrace-rs.git
 	shallow = true
+[submodule "src/tools/enzyme"]
+	path = src/tools/enzyme
+	url = https://github.com/enzymeAD/enzyme
+	shallow = true
