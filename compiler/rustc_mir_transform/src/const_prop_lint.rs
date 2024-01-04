@@ -5,7 +5,7 @@ use std::fmt::Debug;
 
 use either::Left;
 
-use rustc_const_eval::interpret::Immediate;
+use rustc_const_eval::interpret::{ImmTy, Immediate, Projectable};
 use rustc_const_eval::interpret::{
     InterpCx, InterpResult, MemoryKind, OpTy, Scalar, StackPopCleanup,
 };
@@ -21,7 +21,7 @@ use rustc_middle::ty::{
     self, ConstInt, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitableExt,
 };
 use rustc_span::Span;
-use rustc_target::abi::{HasDataLayout, Size, TargetDataLayout};
+use rustc_target::abi::{self, Abi, HasDataLayout, Size, TargetDataLayout};
 
 use crate::const_prop::CanConstProp;
 use crate::const_prop::ConstPropMachine;
@@ -540,6 +540,188 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             )
         }
     }
+
+    #[instrument(level = "trace", skip(self), ret)]
+    fn eval_rvalue(
+        &mut self,
+        rvalue: &Rvalue<'tcx>,
+        location: Location,
+        dest: &Place<'tcx>,
+    ) -> Option<()> {
+        if !dest.projection.is_empty() {
+            return None;
+        }
+        use rustc_middle::mir::Rvalue::*;
+        let dest = self.use_ecx(location, |this| this.ecx.eval_place(*dest))?;
+        trace!(?dest);
+
+        let val = match *rvalue {
+            ThreadLocalRef(_) => return None,
+
+            Use(ref operand) => self.eval_operand(operand, location, Some(dest.layout))?,
+
+            CopyForDeref(place) => self.eval_place(place, location, Some(dest.layout))?,
+
+            BinaryOp(bin_op, box (ref left, ref right)) => {
+                let layout =
+                    rustc_const_eval::util::binop_left_homogeneous(bin_op).then_some(dest.layout);
+                let left = self.eval_operand(left, location, layout)?;
+                let left = self.use_ecx(location, |this| this.ecx.read_immediate(&left))?;
+
+                let layout =
+                    rustc_const_eval::util::binop_right_homogeneous(bin_op).then_some(left.layout);
+                let right = self.eval_operand(right, location, layout)?;
+                let right = self.use_ecx(location, |this| this.ecx.read_immediate(&right))?;
+
+                let val = self
+                    .use_ecx(location, |this| this.ecx.wrapping_binary_op(bin_op, &left, &right))?;
+                val.into()
+            }
+
+            CheckedBinaryOp(bin_op, box (ref left, ref right)) => {
+                let left = self.eval_operand(left, location, None)?;
+                let left = self.use_ecx(location, |this| this.ecx.read_immediate(&left))?;
+
+                let layout =
+                    rustc_const_eval::util::binop_right_homogeneous(bin_op).then_some(left.layout);
+                let right = self.eval_operand(right, location, layout)?;
+                let right = self.use_ecx(location, |this| this.ecx.read_immediate(&right))?;
+
+                let (val, overflowed) = self.use_ecx(location, |this| {
+                    this.ecx.overflowing_binary_op(bin_op, &left, &right)
+                })?;
+                let tuple = Ty::new_tup_from_iter(
+                    self.tcx,
+                    [val.layout.ty, self.tcx.types.bool].into_iter(),
+                );
+                let tuple = self.ecx.layout_of(tuple).ok()?;
+                let val =
+                    ImmTy::from_scalar_pair(val.to_scalar(), Scalar::from_bool(overflowed), tuple);
+                val.into()
+            }
+
+            UnaryOp(un_op, ref operand) => {
+                let operand = self.eval_operand(operand, location, Some(dest.layout))?;
+                let val = self.use_ecx(location, |this| this.ecx.read_immediate(&operand))?;
+
+                let val = self.use_ecx(location, |this| this.ecx.wrapping_unary_op(un_op, &val))?;
+                val.into()
+            }
+
+            Aggregate(ref kind, ref fields) => {
+                trace!(?kind);
+                trace!(?dest.layout);
+                if dest.layout.is_zst() {
+                    ImmTy::uninit(dest.layout).into()
+                } else if let Abi::Scalar(abi::Scalar::Initialized { .. }) = dest.layout.abi {
+                    let fields = fields
+                        .iter()
+                        .map(|field| self.eval_operand(field, location, None))
+                        .collect::<Option<Vec<_>>>()?;
+                    trace!(?fields);
+                    let mut field =
+                        fields.into_iter().find(|field| field.layout.abi.is_scalar())?;
+                    field.layout = dest.layout;
+                    field
+                } else if let Abi::ScalarPair(
+                    abi::Scalar::Initialized { .. },
+                    abi::Scalar::Initialized { .. },
+                ) = dest.layout.abi
+                {
+                    let fields = fields
+                        .iter()
+                        .map(|field| self.eval_operand(field, location, None))
+                        .collect::<Option<Vec<_>>>()?;
+                    trace!(?fields);
+                    let pair =
+                        fields.iter().find(|field| matches!(field.layout.abi, Abi::ScalarPair(..)));
+                    if let Some(pair) = pair {
+                        let mut pair = pair.clone();
+                        pair.layout = dest.layout;
+                        pair
+                    } else {
+                        // TODO: build a pair from two scalars
+                        return None;
+                    }
+                } else {
+                    return None;
+                }
+            }
+
+            Repeat(ref op, n) => {
+                trace!(?op, ?n);
+                return None;
+            }
+
+            Len(place) => {
+                let src = self.eval_place(place, location, None)?;
+                let len = src.len(&self.ecx).ok()?;
+                ImmTy::from_scalar(Scalar::from_target_usize(len, self), dest.layout).into()
+            }
+
+            Ref(..) | AddressOf(..) => return None,
+
+            NullaryOp(ref null_op, ty) => {
+                let layout = self.use_ecx(location, |this| this.ecx.layout_of(ty))?;
+                let val = match null_op {
+                    NullOp::SizeOf => layout.size.bytes(),
+                    NullOp::AlignOf => layout.align.abi.bytes(),
+                    NullOp::OffsetOf(fields) => {
+                        layout.offset_of_subfield(self, fields.iter()).bytes()
+                    }
+                };
+                ImmTy::from_scalar(Scalar::from_target_usize(val, self), dest.layout).into()
+            }
+
+            ShallowInitBox(..) => return None,
+
+            Cast(ref kind, ref value, to) => match kind {
+                CastKind::IntToInt | CastKind::IntToFloat => {
+                    let value = self.eval_operand(value, location, None)?;
+                    let value = self.ecx.read_immediate(&value).ok()?;
+                    let to = self.ecx.layout_of(to).ok()?;
+                    let res = self.ecx.int_to_int_or_float(&value, to).ok()?;
+                    res.into()
+                }
+                CastKind::FloatToFloat | CastKind::FloatToInt => {
+                    let value = self.eval_operand(value, location, None)?;
+                    let value = self.ecx.read_immediate(&value).ok()?;
+                    let to = self.ecx.layout_of(to).ok()?;
+                    let res = self.ecx.float_to_float_or_int(&value, to).ok()?;
+                    res.into()
+                }
+                CastKind::Transmute => {
+                    let value = self.eval_operand(value, location, None)?;
+                    let to = self.ecx.layout_of(to).ok()?;
+                    // `offset` for immediates only supports scalar/scalar-pair ABIs,
+                    // so bail out if the target is not one.
+                    if value.as_mplace_or_imm().is_right() {
+                        match (value.layout.abi, to.abi) {
+                            (Abi::Scalar(..), Abi::Scalar(..)) => {}
+                            (Abi::ScalarPair(..), Abi::ScalarPair(..)) => {}
+                            _ => return None,
+                        }
+                    }
+                    value.offset(Size::ZERO, to, &self.ecx).ok()?
+                }
+                _ => return None,
+            },
+
+            Discriminant(place) => {
+                let op = self.eval_place(place, location, None)?;
+                let variant = self.use_ecx(location, |this| this.ecx.read_discriminant(&op))?;
+                let imm = self.use_ecx(location, |this| {
+                    this.ecx.discriminant_for_variant(op.layout.ty, variant)
+                })?;
+                imm.into()
+            }
+        };
+        trace!(?val);
+
+        self.use_ecx(location, |this| this.ecx.copy_op(&val, &dest, true))?;
+
+        Some(())
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
@@ -574,10 +756,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
             _ if place.is_indirect() => {}
             ConstPropMode::NoPropagation => self.ensure_not_propagated(place.local),
             ConstPropMode::OnlyInsideOwnBlock | ConstPropMode::FullConstProp => {
-                if self
-                    .use_ecx(location, |this| this.ecx.eval_rvalue_into_place(rvalue, *place))
-                    .is_none()
-                {
+                if self.eval_rvalue(rvalue, location, place).is_none() {
                     // Const prop failed, so erase the destination, ensuring that whatever happens
                     // from here on, does not know about the previous value.
                     // This is important in case we have
