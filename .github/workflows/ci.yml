@@ -99,7 +99,7 @@ jobs:
             os: windows-2019-8core-32gb
     defaults:
       run:
-        shell: "${{ matrix.msys2 && 'msys2 {0}'' || 'bash' }}"
+        shell: "${{ matrix.msys2 && 'msys2 {0}' || 'bash' }}"
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
@@ -541,7 +541,7 @@ jobs:
             msys2: false
     defaults:
       run:
-        shell: "${{ matrix.msys2 && 'msys2 {0}'' || 'bash' }}"
+        shell: "${{ matrix.msys2 && 'msys2 {0}' || 'bash' }}"
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
@@ -677,7 +677,7 @@ jobs:
             msys2: false
     defaults:
       run:
-        shell: "${{ matrix.msys2 && 'msys2 {0}'' || 'bash' }}"
+        shell: "${{ matrix.msys2 && 'msys2 {0}' || 'bash' }}"
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
