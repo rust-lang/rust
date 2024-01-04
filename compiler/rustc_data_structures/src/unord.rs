@@ -159,6 +159,7 @@ impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
         self.collect_stable_ord_by_key(project_to_key)
     }
 
+    #[inline]
     pub fn collect_sorted<HCX, C>(self, hcx: &HCX, cache_sort_key: bool) -> C
     where
         T: ToStableHashKey<HCX>,
@@ -178,6 +179,7 @@ impl<T, I: Iterator<Item = T>> UnordItems<T, I> {
         items
     }
 
+    #[inline]
     pub fn collect_stable_ord_by_key<K, C, P>(self, project_to_key: P) -> C
     where
         K: StableCompare,

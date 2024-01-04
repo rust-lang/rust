@@ -1052,8 +1052,6 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
         tcx.dcx().emit_err(errors::UnknownFeature { span, feature: *feature });
     }
 
-    // We only use the hash map contents to emit errors, and the order of
-    // emitted errors do not affect query stability.
     for (&implied_by, &feature) in remaining_implications.to_sorted_stable_ord() {
         let local_defined_features = tcx.lib_features(LOCAL_CRATE);
         let span = local_defined_features
