@@ -132,13 +132,16 @@ pub(crate) struct RenderType {
 
 impl RenderType {
     pub fn write_to_string(&self, string: &mut String) {
-        if self.generics.is_some() || self.bindings.is_some() {
-            string.push('{');
+        fn write_optional_id(id: Option<RenderTypeId>, string: &mut String) {
             // 0 is a sentinel, everything else is one-indexed
-            match self.id {
+            match id {
                 Some(id) => id.write_to_string(string),
                 None => string.push('`'),
             }
+        }
+        if self.generics.is_some() || self.bindings.is_some() {
+            string.push('{');
+            write_optional_id(self.id, string);
             string.push('{');
             for generic in &self.generics.as_ref().map(Vec::as_slice).unwrap_or_default()[..] {
                 generic.write_to_string(string);
@@ -153,18 +156,13 @@ impl RenderType {
                     for constraint in &binding.1[..] {
                         constraint.write_to_string(string);
                     }
-                    string.push('}');
-                    string.push('}');
+                    string.push_str("}}");
                 }
                 string.push('}');
             }
             string.push('}');
         } else {
-            // 0 is a sentinel, everything else is one-indexed
-            match self.id {
-                Some(id) => id.write_to_string(string),
-                None => string.push('`'),
-            }
+            write_optional_id(self.id, string);
         }
     }
 }
@@ -191,6 +189,7 @@ impl RenderTypeId {
         // zig-zag notation
         let value: u32 = (id << 1) | (if sign { 1 } else { 0 });
         // encode
+        // Documented in https://rust-lang.github.io/rustc-dev-guide/rustdoc-internals/search.html
         let mut shift: u32 = 28;
         let mut mask: u32 = 0xF0_00_00_00;
         while shift < 32 {
