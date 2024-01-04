@@ -274,7 +274,7 @@ fn copy_third_party_objects(
 ) -> Vec<(PathBuf, DependencyType)> {
     let mut target_deps = vec![];
 
-    if builder.config.sanitizers_enabled(target) && compiler.stage != 0 {
+    if builder.config.needs_sanitizer_runtime_built(target) && compiler.stage != 0 {
         // The sanitizers are only copied in stage1 or above,
         // to avoid creating dependency on LLVM.
         target_deps.extend(

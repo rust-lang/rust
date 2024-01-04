@@ -534,7 +534,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let coroutines = std::mem::take(&mut *self.deferred_coroutine_interiors.borrow_mut());
         debug!(?coroutines);
 
-        for &(expr_def_id, body_id, interior, _) in coroutines.iter() {
+        for &(expr_def_id, body_id, interior) in coroutines.iter() {
             debug!(?expr_def_id);
 
             // Create the `CoroutineWitness` type that we will unify with `interior`.

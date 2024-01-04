@@ -1274,7 +1274,10 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     // Cannot enable crt-static with sanitizers on Linux
-    if sess.crt_static(None) && !sess.opts.unstable_opts.sanitizer.is_empty() {
+    if sess.crt_static(None)
+        && !sess.opts.unstable_opts.sanitizer.is_empty()
+        && !sess.target.is_like_msvc
+    {
         sess.dcx().emit_err(errors::CannotEnableCrtStaticLinux);
     }
 

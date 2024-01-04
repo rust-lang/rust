@@ -2180,8 +2180,15 @@ impl Config {
         self.target_config.get(&target).map(|t| t.sanitizers).flatten().unwrap_or(self.sanitizers)
     }
 
-    pub fn any_sanitizers_enabled(&self) -> bool {
-        self.target_config.values().any(|t| t.sanitizers == Some(true)) || self.sanitizers
+    pub fn needs_sanitizer_runtime_built(&self, target: TargetSelection) -> bool {
+        // MSVC uses the Microsoft-provided sanitizer runtime, but all other runtimes we build.
+        !target.is_msvc() && self.sanitizers_enabled(target)
+    }
+
+    pub fn any_sanitizers_to_build(&self) -> bool {
+        self.target_config
+            .iter()
+            .any(|(ts, t)| !ts.is_msvc() && t.sanitizers.unwrap_or(self.sanitizers))
     }
 
     pub fn profiler_path(&self, target: TargetSelection) -> Option<&str> {
