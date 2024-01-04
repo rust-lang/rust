@@ -318,7 +318,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             lhs_expr.span,
                             format!("cannot use `{}=` on type `{}`", op.node.as_str(), lhs_ty),
                         );
-                        self.note_unmet_impls_on_type(&mut err, errors);
+                        self.note_unmet_impls_on_type(&mut err, errors, false);
                         (err, None)
                     }
                     IsAssign::No => {
@@ -375,7 +375,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             err.span_label(lhs_expr.span, lhs_ty.to_string());
                             err.span_label(rhs_expr.span, rhs_ty.to_string());
                         }
-                        self.note_unmet_impls_on_type(&mut err, errors);
+                        let suggest_derive = self.can_eq(self.param_env, lhs_ty, rhs_ty);
+                        self.note_unmet_impls_on_type(&mut err, errors, suggest_derive);
                         (err, output_def_id)
                     }
                 };
@@ -852,7 +853,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             Str | Never | Char | Tuple(_) | Array(_, _) => {}
                             Ref(_, lty, _) if *lty.kind() == Str => {}
                             _ => {
-                                self.note_unmet_impls_on_type(&mut err, errors);
+                                self.note_unmet_impls_on_type(&mut err, errors, true);
                             }
                         }
                     }
