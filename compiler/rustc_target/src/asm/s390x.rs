@@ -6,6 +6,7 @@ use std::fmt;
 def_reg_class! {
     S390x S390xInlineAsmRegClass {
         reg,
+        reg_addr,
         freg,
     }
 }
@@ -36,7 +37,7 @@ impl S390xInlineAsmRegClass {
         arch: InlineAsmArch,
     ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match (self, arch) {
-            (Self::reg, _) => types! { _: I8, I16, I32, I64; },
+            (Self::reg | Self::reg_addr, _) => types! { _: I8, I16, I32, I64; },
             (Self::freg, _) => types! { _: F32, F64; },
         }
     }
@@ -45,19 +46,19 @@ impl S390xInlineAsmRegClass {
 def_regs! {
     S390x S390xInlineAsmReg S390xInlineAsmRegClass {
         r0: reg = ["r0"],
-        r1: reg = ["r1"],
-        r2: reg = ["r2"],
-        r3: reg = ["r3"],
-        r4: reg = ["r4"],
-        r5: reg = ["r5"],
-        r6: reg = ["r6"],
-        r7: reg = ["r7"],
-        r8: reg = ["r8"],
-        r9: reg = ["r9"],
-        r10: reg = ["r10"],
-        r12: reg = ["r12"],
-        r13: reg = ["r13"],
-        r14: reg = ["r14"],
+        r1: reg, reg_addr = ["r1"],
+        r2: reg, reg_addr = ["r2"],
+        r3: reg, reg_addr = ["r3"],
+        r4: reg, reg_addr = ["r4"],
+        r5: reg, reg_addr = ["r5"],
+        r6: reg, reg_addr = ["r6"],
+        r7: reg, reg_addr = ["r7"],
+        r8: reg, reg_addr = ["r8"],
+        r9: reg, reg_addr = ["r9"],
+        r10: reg, reg_addr = ["r10"],
+        r12: reg, reg_addr = ["r12"],
+        r13: reg, reg_addr = ["r13"],
+        r14: reg, reg_addr = ["r14"],
         f0: freg = ["f0"],
         f1: freg = ["f1"],
         f2: freg = ["f2"],
