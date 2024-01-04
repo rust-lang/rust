@@ -947,7 +947,7 @@ extern "rust-intrinsic" {
     /// own, or if it does not enable any significant optimizations.
     ///
     /// This intrinsic does not have a stable counterpart.
-    #[rustc_const_unstable(feature = "const_assume", issue = "76972")]
+    #[rustc_const_stable(feature = "const_assume", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_nounwind]
     pub fn assume(b: bool);
 
