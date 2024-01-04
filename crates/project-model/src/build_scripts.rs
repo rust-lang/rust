@@ -24,7 +24,7 @@ use toolchain::Tool;
 
 use crate::{
     cfg_flag::CfgFlag, utf8_stdout, CargoConfig, CargoFeatures, CargoWorkspace, InvocationLocation,
-    InvocationStrategy, Package, Sysroot,
+    InvocationStrategy, Package, Sysroot, TargetKind,
 };
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -467,7 +467,11 @@ impl WorkspaceBuildScripts {
                 .collect();
             for p in rustc.packages() {
                 let package = &rustc[p];
-                if package.targets.iter().any(|&it| rustc[it].is_proc_macro) {
+                if package
+                    .targets
+                    .iter()
+                    .any(|&it| matches!(rustc[it].kind, TargetKind::Lib { is_proc_macro: true }))
+                {
                     if let Some((_, path)) = proc_macro_dylibs
                         .iter()
                         .find(|(name, _)| *name.trim_start_matches("lib") == package.name)

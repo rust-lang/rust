@@ -12,7 +12,13 @@ use syntax::SmolStr;
 use crate::{db::ExpandDatabase, tt, ExpandError, ExpandResult};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct ProcMacroId(pub u32);
+pub struct ProcMacroId(u32);
+
+impl ProcMacroId {
+    pub fn new(u32: u32) -> Self {
+        ProcMacroId(u32)
+    }
+}
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Hash)]
 pub enum ProcMacroKind {

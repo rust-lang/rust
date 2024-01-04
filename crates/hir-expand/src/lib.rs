@@ -227,8 +227,8 @@ pub enum MacroCallKind {
     },
     Attr {
         ast_id: AstId<ast::Item>,
-        // FIXME: This is being interned, subtrees can vary quickly differ just slightly causing
-        // leakage problems here
+        // FIXME: This shouldn't be here, we can derive this from `invoc_attr_index`
+        // but we need to fix the `cfg_attr` handling first.
         attr_args: Option<Arc<tt::Subtree>>,
         /// Syntactical index of the invoking `#[attribute]`.
         ///
