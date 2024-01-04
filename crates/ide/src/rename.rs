@@ -430,22 +430,24 @@ mod tests {
         //     file_system_edits:
         //         MoveFile AnchoredPathBuf { anchor: FileId(2), path: "foo2.rs", }
 
-        let mut source_file_edits = HashMap::new();
-        for (id, (text_edit, _)) in source_change.source_file_edits {
-            let indels = text_edit.into_iter().collect::<Vec<_>>();
-            source_file_edits.insert(id, indels);
-        }
+        let source_file_edits = source_change
+            .source_file_edits
+            .into_iter()
+            .map(|(a, (b, _))| (a, b.into_iter().collect::<Vec<_>>()))
+            .collect::<HashMap<_, _>>();
 
-        let mut file_system_edits = HashMap::new();
-        for a in source_change.file_system_edits {
-            let id = match &a {
-                FileSystemEdit::CreateFile { dst, initial_contents } => unreachable!(),
-                FileSystemEdit::MoveFile { src, dst } => src,
-                FileSystemEdit::MoveDir { src, src_id, dst } => src_id,
-            }
-            .clone();
-            file_system_edits.insert(id, a);
-        }
+        let file_system_edits = source_change
+            .file_system_edits
+            .into_iter()
+            .map(|a| {
+                let id = match &a {
+                    FileSystemEdit::CreateFile { .. } => unreachable!(),
+                    FileSystemEdit::MoveFile { src, .. } => src,
+                    FileSystemEdit::MoveDir { src_id, .. } => src_id,
+                };
+                (id.clone(), a)
+            })
+            .collect::<HashMap<_, _>>();
 
         let b = format!(
             "source_file_edits: {:#?}\nfile_system_edits: {:#?}",
