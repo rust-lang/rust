@@ -101,9 +101,6 @@ pub fn resolve_doc_path_on(
     link: &str,
     ns: Option<Namespace>,
 ) -> Option<DocLinkDef> {
-    // AttrDefId::FieldId(it) => it.parent.resolver(db.upcast()),
-    // AttrDefId::EnumVariantId(it) => it.parent.resolver(db.upcast()),
-
     resolve_doc_path_on_(db, link, def.attr_id(), ns)
 }
 
@@ -267,14 +264,10 @@ fn resolve_impl_trait_item(
         method_resolution::VisibleFromModule::None,
         Some(name),
         &mut |assoc_item_id| {
-            let assoc_item: AssocItem = assoc_item_id.into();
-
-            debug_assert_eq!(assoc_item.name(db).as_ref(), Some(name));
-
             // If two traits in scope define the same item, Rustdoc links to no specific trait (for
             // instance, given two methods `a`, Rustdoc simply links to `method.a` with no
             // disambiguation) so we just pick the first one we find as well.
-            result = as_module_def_if_namespace_matches(assoc_item, ns);
+            result = as_module_def_if_namespace_matches(assoc_item_id.into(), ns);
 
             if result.is_some() {
                 ControlFlow::Break(())
