@@ -1186,15 +1186,22 @@ mod win {
     }
 }
 
-fn add_sanitizer_libraries(sess: &Session, crate_type: CrateType, linker: &mut dyn Linker) {
-    // On macOS the runtimes are distributed as dylibs which should be linked to
-    // both executables and dynamic shared objects. Everywhere else the runtimes
-    // are currently distributed as static libraries which should be linked to
-    // executables only.
+fn add_sanitizer_libraries(
+    sess: &Session,
+    flavor: LinkerFlavor,
+    crate_type: CrateType,
+    linker: &mut dyn Linker,
+) {
+    // On macOS and Windows using MSVC the runtimes are distributed as dylibs
+    // which should be linked to both executables and dynamic libraries.
+    // Everywhere else the runtimes are currently distributed as static
+    // libraries which should be linked to executables only.
     let needs_runtime = !sess.target.is_like_android
         && match crate_type {
             CrateType::Executable => true,
-            CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro => sess.target.is_like_osx,
+            CrateType::Dylib | CrateType::Cdylib | CrateType::ProcMacro => {
+                sess.target.is_like_osx || sess.target.is_like_msvc
+            }
             CrateType::Rlib | CrateType::Staticlib => false,
         };
 
@@ -1204,26 +1211,31 @@ fn add_sanitizer_libraries(sess: &Session, crate_type: CrateType, linker: &mut d
 
     let sanitizer = sess.opts.unstable_opts.sanitizer;
     if sanitizer.contains(SanitizerSet::ADDRESS) {
-        link_sanitizer_runtime(sess, linker, "asan");
+        link_sanitizer_runtime(sess, flavor, linker, "asan");
     }
     if sanitizer.contains(SanitizerSet::LEAK) {
-        link_sanitizer_runtime(sess, linker, "lsan");
+        link_sanitizer_runtime(sess, flavor, linker, "lsan");
     }
     if sanitizer.contains(SanitizerSet::MEMORY) {
-        link_sanitizer_runtime(sess, linker, "msan");
+        link_sanitizer_runtime(sess, flavor, linker, "msan");
     }
     if sanitizer.contains(SanitizerSet::THREAD) {
-        link_sanitizer_runtime(sess, linker, "tsan");
+        link_sanitizer_runtime(sess, flavor, linker, "tsan");
     }
     if sanitizer.contains(SanitizerSet::HWADDRESS) {
-        link_sanitizer_runtime(sess, linker, "hwasan");
+        link_sanitizer_runtime(sess, flavor, linker, "hwasan");
     }
     if sanitizer.contains(SanitizerSet::SAFESTACK) {
-        link_sanitizer_runtime(sess, linker, "safestack");
+        link_sanitizer_runtime(sess, flavor, linker, "safestack");
     }
 }
 
-fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
+fn link_sanitizer_runtime(
+    sess: &Session,
+    flavor: LinkerFlavor,
+    linker: &mut dyn Linker,
+    name: &str,
+) {
     fn find_sanitizer_runtime(sess: &Session, filename: &str) -> PathBuf {
         let session_tlib =
             filesearch::make_target_lib_path(&sess.sysroot, sess.opts.target_triple.triple());
@@ -1254,6 +1266,10 @@ fn link_sanitizer_runtime(sess: &Session, linker: &mut dyn Linker, name: &str) {
         let rpath = path.to_str().expect("non-utf8 component in path");
         linker.args(&["-Wl,-rpath", "-Xlinker", rpath]);
         linker.link_dylib(&filename, false, true);
+    } else if sess.target.is_like_msvc && flavor == LinkerFlavor::Msvc(Lld::No) && name == "asan" {
+        // MSVC provides the `/INFERASANLIBS` argument to automatically find the
+        // compatible ASAN library.
+        linker.arg("/INFERASANLIBS");
     } else {
         let filename = format!("librustc{channel}_rt.{name}.a");
         let path = find_sanitizer_runtime(sess, &filename).join(&filename);
@@ -2076,7 +2092,7 @@ fn linker_with_args<'a>(
     );
 
     // Sanitizer libraries.
-    add_sanitizer_libraries(sess, crate_type, cmd);
+    add_sanitizer_libraries(sess, flavor, crate_type, cmd);
 
     // Object code from the current crate.
     // Take careful note of the ordering of the arguments we pass to the linker
