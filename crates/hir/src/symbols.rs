@@ -163,7 +163,7 @@ impl<'a> SymbolCollector<'a> {
         }
 
         // Record renamed imports.
-        // In case it imports multiple items under different namespaces we just pick one arbitrarily
+        // FIXME: In case it imports multiple items under different namespaces we just pick one arbitrarily
         // for now.
         for id in scope.imports() {
             let loc = id.import.lookup(self.db.upcast());
