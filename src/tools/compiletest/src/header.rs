@@ -321,16 +321,23 @@ impl TestProps {
                     |r| r,
                 );
 
-                if let Some(flags) = config.parse_name_value_directive(ln, COMPILE_FLAGS) {
-                    self.compile_flags.extend(
-                        flags
-                            .split("'")
-                            .enumerate()
-                            .flat_map(|(i, f)| {
+                fn split_flags(flags: &str) -> Vec<String> {
+                    // Individual flags can be single-quoted to preserve spaces; see
+                    // <https://github.com/rust-lang/rust/pull/115948/commits/957c5db6>.
+                    flags
+                        .split("'")
+                        .enumerate()
+                        .flat_map(
+                            |(i, f)| {
                                 if i % 2 == 1 { vec![f] } else { f.split_whitespace().collect() }
-                            })
-                            .map(|s| s.to_owned()),
-                    );
+                            },
+                        )
+                        .map(move |s| s.to_owned())
+                        .collect::<Vec<_>>()
+                }
+
+                if let Some(flags) = config.parse_name_value_directive(ln, COMPILE_FLAGS) {
+                    self.compile_flags.extend(split_flags(&flags));
                 }
                 if config.parse_name_value_directive(ln, INCORRECT_COMPILER_FLAGS).is_some() {
                     panic!("`compiler-flags` directive should be spelled `compile-flags`");
