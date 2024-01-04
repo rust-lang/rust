@@ -244,7 +244,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     /// Returns the value, if any, of evaluating `c`.
-    fn eval_constant(&mut self, c: &ConstOperand<'tcx>, location: Location) -> Option<OpTy<'tcx>> {
+    fn eval_constant(
+        &mut self,
+        c: &ConstOperand<'tcx>,
+        location: Location,
+        layout: Option<TyAndLayout<'tcx>>,
+    ) -> Option<OpTy<'tcx>> {
         // FIXME we need to revisit this for #67176
         if c.has_param() {
             return None;
@@ -258,21 +263,31 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // manually normalized.
         let val = self.tcx.try_normalize_erasing_regions(self.param_env, c.const_).ok()?;
 
-        self.use_ecx(location, |this| this.ecx.eval_mir_constant(&val, Some(c.span), None))
+        self.use_ecx(location, |this| this.ecx.eval_mir_constant(&val, Some(c.span), layout))
     }
 
     /// Returns the value, if any, of evaluating `place`.
-    fn eval_place(&mut self, place: Place<'tcx>, location: Location) -> Option<OpTy<'tcx>> {
+    fn eval_place(
+        &mut self,
+        place: Place<'tcx>,
+        location: Location,
+        layout: Option<TyAndLayout<'tcx>>,
+    ) -> Option<OpTy<'tcx>> {
         trace!("eval_place(place={:?})", place);
-        self.use_ecx(location, |this| this.ecx.eval_place_to_op(place, None))
+        self.use_ecx(location, |this| this.ecx.eval_place_to_op(place, layout))
     }
 
     /// Returns the value, if any, of evaluating `op`. Calls upon `eval_constant`
     /// or `eval_place`, depending on the variant of `Operand` used.
-    fn eval_operand(&mut self, op: &Operand<'tcx>, location: Location) -> Option<OpTy<'tcx>> {
+    fn eval_operand(
+        &mut self,
+        op: &Operand<'tcx>,
+        location: Location,
+        layout: Option<TyAndLayout<'tcx>>,
+    ) -> Option<OpTy<'tcx>> {
         match *op {
-            Operand::Constant(ref c) => self.eval_constant(c, location),
-            Operand::Move(place) | Operand::Copy(place) => self.eval_place(place, location),
+            Operand::Constant(ref c) => self.eval_constant(c, location, layout),
+            Operand::Move(place) | Operand::Copy(place) => self.eval_place(place, location, layout),
         }
     }
 
@@ -453,7 +468,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         cond: &Operand<'tcx>,
         location: Location,
     ) -> Option<!> {
-        let value = &self.eval_operand(cond, location)?;
+        let value = &self.eval_operand(cond, location, None)?;
         trace!("assertion on {:?} should be {:?}", value, expected);
 
         let expected = Scalar::from_bool(expected);
@@ -481,7 +496,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             let mut eval_to_int = |op| {
                 // This can be `None` if the lhs wasn't const propagated and we just
                 // triggered the assert on the value of the rhs.
-                self.eval_operand(op, location)
+                self.eval_operand(op, location, None)
                     .and_then(|op| self.ecx.read_immediate(&op).ok())
                     .map_or(DbgVal::Underscore, |op| DbgVal::Val(op.to_const_int()))
             };
@@ -546,7 +561,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
     fn visit_constant(&mut self, constant: &ConstOperand<'tcx>, location: Location) {
         trace!("visit_constant: {:?}", constant);
         self.super_constant(constant, location);
-        self.eval_constant(constant, location);
+        self.eval_constant(constant, location, None);
     }
 
     fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
@@ -626,7 +641,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                 self.check_assertion(*expected, msg, cond, location);
             }
             TerminatorKind::SwitchInt { ref discr, ref targets } => {
-                if let Some(ref value) = self.eval_operand(discr, location)
+                if let Some(ref value) = self.eval_operand(discr, location, None)
                     && let Some(value_const) =
                         self.use_ecx(location, |this| this.ecx.read_scalar(value))
                     && let Ok(constant) = value_const.try_to_int()
