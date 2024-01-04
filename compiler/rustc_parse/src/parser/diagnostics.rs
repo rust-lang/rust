@@ -35,7 +35,7 @@ use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
     pluralize, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder, FatalError,
-    PResult,
+    PErr, PResult,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
@@ -2044,17 +2044,12 @@ impl<'a> Parser<'a> {
         &mut self,
         delim: Delimiter,
         lo: Span,
-        result: PResult<'a, P<Expr>>,
+        err: PErr<'a>,
     ) -> P<Expr> {
-        match result {
-            Ok(x) => x,
-            Err(err) => {
-                err.emit();
-                // Recover from parse error, callers expect the closing delim to be consumed.
-                self.consume_block(delim, ConsumeClosingDelim::Yes);
-                self.mk_expr(lo.to(self.prev_token.span), ExprKind::Err)
-            }
-        }
+        err.emit();
+        // Recover from parse error, callers expect the closing delim to be consumed.
+        self.consume_block(delim, ConsumeClosingDelim::Yes);
+        self.mk_expr(lo.to(self.prev_token.span), ExprKind::Err)
     }
 
     /// Eats tokens until we can be relatively sure we reached the end of the

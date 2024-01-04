@@ -1272,15 +1272,13 @@ impl<'a> Parser<'a> {
         };
         let open_paren = self.token.span;
 
-        let mut seq = self
+        let seq = self
             .parse_expr_paren_seq()
             .map(|args| self.mk_expr(lo.to(self.prev_token.span), self.mk_call(fun, args)));
-        if let Some(expr) =
-            self.maybe_recover_struct_lit_bad_delims(lo, open_paren, &mut seq, snapshot)
-        {
-            return expr;
+        match self.maybe_recover_struct_lit_bad_delims(lo, open_paren, seq, snapshot) {
+            Ok(expr) => expr,
+            Err(err) => self.recover_seq_parse_error(Delimiter::Parenthesis, lo, err),
         }
-        self.recover_seq_parse_error(Delimiter::Parenthesis, lo, seq)
     }
 
     /// If we encounter a parser state that looks like the user has written a `struct` literal with
@@ -1290,14 +1288,11 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         open_paren: Span,
-        seq: &mut PResult<'a, P<Expr>>,
+        seq: PResult<'a, P<Expr>>,
         snapshot: Option<(SnapshotParser<'a>, ExprKind)>,
-    ) -> Option<P<Expr>> {
-        if !self.may_recover() {
-            return None;
-        }
-        match (seq.as_mut(), snapshot) {
-            (Err(err), Some((mut snapshot, ExprKind::Path(None, path)))) => {
+    ) -> PResult<'a, P<Expr>> {
+        match (self.may_recover(), seq, snapshot) {
+            (true, Err(err), Some((mut snapshot, ExprKind::Path(None, path)))) => {
                 snapshot.bump(); // `(`
                 match snapshot.parse_struct_fields(path.clone(), false, Delimiter::Parenthesis) {
                     Ok((fields, ..))
@@ -1315,11 +1310,13 @@ impl<'a> Parser<'a> {
                         if !fields.is_empty() &&
                             // `token.kind` should not be compared here.
                             // This is because the `snapshot.token.kind` is treated as the same as
-                            // that of the open delim in `TokenTreesReader::parse_token_tree`, even if they are different.
+                            // that of the open delim in `TokenTreesReader::parse_token_tree`, even
+                            // if they are different.
                             self.span_to_snippet(close_paren).is_ok_and(|snippet| snippet == ")")
                         {
-                            let mut replacement_err =
-                                self.dcx().create_err(errors::ParenthesesWithStructFields {
+                            err.cancel();
+                            self.dcx()
+                                .create_err(errors::ParenthesesWithStructFields {
                                     span,
                                     r#type: path,
                                     braces_for_struct: errors::BracesForStructLiteral {
@@ -1332,23 +1329,22 @@ impl<'a> Parser<'a> {
                                             .map(|field| field.span.until(field.expr.span))
                                             .collect(),
                                     },
-                                });
-                            replacement_err.emit_without_consuming();
-
-                            let old_err = mem::replace(err, replacement_err);
-                            old_err.cancel();
+                                })
+                                .emit();
                         } else {
-                            err.emit_without_consuming();
+                            err.emit();
                         }
-                        return Some(self.mk_expr_err(span));
+                        Ok(self.mk_expr_err(span))
                     }
-                    Ok(_) => {}
-                    Err(err) => err.cancel(),
+                    Ok(_) => Err(err),
+                    Err(err2) => {
+                        err2.cancel();
+                        Err(err)
+                    }
                 }
             }
-            _ => {}
+            (_, seq, _) => seq,
         }
-        None
     }
 
     /// Parse an indexing expression `expr[...]`.
@@ -1552,7 +1548,7 @@ impl<'a> Parser<'a> {
         ) {
             Ok(x) => x,
             Err(err) => {
-                return Ok(self.recover_seq_parse_error(Delimiter::Parenthesis, lo, Err(err)));
+                return Ok(self.recover_seq_parse_error(Delimiter::Parenthesis, lo, err));
             }
         };
         let kind = if es.len() == 1 && !trailing_comma {
