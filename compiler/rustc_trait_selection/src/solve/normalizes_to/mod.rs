@@ -468,7 +468,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let self_ty = goal.predicate.self_ty();
-        let ty::Coroutine(def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(def_id, args) = *self_ty.kind() else {
             return Err(NoSolution);
         };
 
@@ -499,7 +499,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let self_ty = goal.predicate.self_ty();
-        let ty::Coroutine(def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(def_id, args) = *self_ty.kind() else {
             return Err(NoSolution);
         };
 
@@ -530,7 +530,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let self_ty = goal.predicate.self_ty();
-        let ty::Coroutine(def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(def_id, args) = *self_ty.kind() else {
             return Err(NoSolution);
         };
 
@@ -564,7 +564,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
         goal: Goal<'tcx, Self>,
     ) -> QueryResult<'tcx> {
         let self_ty = goal.predicate.self_ty();
-        let ty::Coroutine(def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(def_id, args) = *self_ty.kind() else {
             return Err(NoSolution);
         };
 

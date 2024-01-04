@@ -19,7 +19,9 @@ impl DefPathHashMapRef<'_> {
     #[inline]
     pub fn def_path_hash_to_def_index(&self, def_path_hash: &DefPathHash) -> DefIndex {
         match *self {
-            DefPathHashMapRef::OwnedFromMetadata(ref map) => map.get(def_path_hash).unwrap(),
+            DefPathHashMapRef::OwnedFromMetadata(ref map) => {
+                map.get(&def_path_hash.local_hash()).unwrap()
+            }
             DefPathHashMapRef::BorrowedFromTcx(_) => {
                 panic!("DefPathHashMap::BorrowedFromTcx variant only exists for serialization")
             }

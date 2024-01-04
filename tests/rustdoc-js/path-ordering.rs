@@ -1,9 +1,9 @@
-pub mod dd {
+pub mod dbbbbb {
     pub struct Ccccccc;
 }
-pub mod aa {
+pub mod abbbbb {
     pub struct Ccccccc;
 }
-pub mod bb {
+pub mod bbbbbb {
     pub struct Ccccccc;
 }

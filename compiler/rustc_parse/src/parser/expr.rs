@@ -2937,7 +2937,13 @@ impl<'a> Parser<'a> {
             let is_almost_fat_arrow = TokenKind::FatArrow
                 .similar_tokens()
                 .is_some_and(|similar_tokens| similar_tokens.contains(&this.token.kind));
-            let mut result = if !is_fat_arrow && !is_almost_fat_arrow {
+
+            // this avoids the compiler saying that a `,` or `}` was expected even though
+            // the pattern isn't a never pattern (and thus an arm body is required)
+            let armless = (!is_fat_arrow && !is_almost_fat_arrow && pat.could_be_never_pattern())
+                || matches!(this.token.kind, token::Comma | token::CloseDelim(Delimiter::Brace));
+
+            let mut result = if armless {
                 // A pattern without a body, allowed for never patterns.
                 arm_body = None;
                 this.expect_one_of(&[token::Comma], &[token::CloseDelim(Delimiter::Brace)]).map(

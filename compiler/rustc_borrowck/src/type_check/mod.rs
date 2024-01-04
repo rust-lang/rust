@@ -762,7 +762,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         let (variant, args) = match base_ty {
             PlaceTy { ty, variant_index: Some(variant_index) } => match *ty.kind() {
                 ty::Adt(adt_def, args) => (adt_def.variant(variant_index), args),
-                ty::Coroutine(def_id, args, _) => {
+                ty::Coroutine(def_id, args) => {
                     let mut variants = args.as_coroutine().state_tys(def_id, tcx);
                     let Some(mut variant) = variants.nth(variant_index.into()) else {
                         bug!(
@@ -790,7 +790,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                         }),
                     };
                 }
-                ty::Coroutine(_, args, _) => {
+                ty::Coroutine(_, args) => {
                     // Only prefix fields (upvars and current state) are
                     // accessible without a variant index.
                     return match args.as_coroutine().prefix_tys().get(field.index()) {
@@ -1784,7 +1784,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }),
                 }
             }
-            AggregateKind::Coroutine(_, args, _) => {
+            AggregateKind::Coroutine(_, args) => {
                 // It doesn't make sense to look at a field beyond the prefix;
                 // these require a variant index, and are not initialized in
                 // aggregate rvalues.
@@ -2392,7 +2392,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 AggregateKind::Array(_) => None,
                 AggregateKind::Tuple => None,
                 AggregateKind::Closure(_, _) => None,
-                AggregateKind::Coroutine(_, _, _) => None,
+                AggregateKind::Coroutine(_, _) => None,
             },
         }
     }
@@ -2620,7 +2620,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // desugaring. A closure gets desugared to a struct, and
             // these extra requirements are basically like where
             // clauses on the struct.
-            AggregateKind::Closure(def_id, args) | AggregateKind::Coroutine(def_id, args, _) => {
+            AggregateKind::Closure(def_id, args) | AggregateKind::Coroutine(def_id, args) => {
                 (def_id, self.prove_closure_bounds(tcx, def_id.expect_local(), args, location))
             }
 

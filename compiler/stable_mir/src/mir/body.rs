@@ -662,6 +662,7 @@ pub enum AggregateKind {
     Tuple,
     Adt(AdtDef, VariantIdx, GenericArgs, Option<UserTypeAnnotationIndex>, Option<FieldIdx>),
     Closure(ClosureDef, GenericArgs),
+    // FIXME(stable_mir): Movability here is redundant
     Coroutine(CoroutineDef, GenericArgs, Movability),
 }
 

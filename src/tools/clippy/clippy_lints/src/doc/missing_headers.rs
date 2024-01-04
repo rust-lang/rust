@@ -72,7 +72,7 @@ pub fn check(
             && let body = cx.tcx.hir().body(body_id)
             && let ret_ty = typeck.expr_ty(body.value)
             && implements_trait(cx, ret_ty, future, &[])
-            && let ty::Coroutine(_, subs, _) = ret_ty.kind()
+            && let ty::Coroutine(_, subs) = ret_ty.kind()
             && is_type_diagnostic_item(cx, subs.as_coroutine().return_ty(), sym::Result)
         {
             span_lint(

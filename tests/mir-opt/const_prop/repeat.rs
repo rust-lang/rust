@@ -1,8 +1,8 @@
-// unit-test: ConstProp
+// unit-test: GVN
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 
-// EMIT_MIR repeat.main.ConstProp.diff
+// EMIT_MIR repeat.main.GVN.diff
 fn main() {
     // CHECK-LABEL: fn main(
     // CHECK: debug x => [[x:_.*]];

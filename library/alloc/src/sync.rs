@@ -2722,7 +2722,7 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
     pub unsafe fn from_raw_in(ptr: *const T, alloc: A) -> Self {
         // See Weak::as_ptr for context on how the input pointer is derived.
 
-        let ptr = if is_dangling(ptr as *mut T) {
+        let ptr = if is_dangling(ptr) {
             // This is a dangling Weak.
             ptr as *mut ArcInner<T>
         } else {
@@ -2917,20 +2917,17 @@ impl<T: ?Sized, A: Allocator + Clone> Clone for Weak<T, A> {
     /// ```
     #[inline]
     fn clone(&self) -> Weak<T, A> {
-        let inner = if let Some(inner) = self.inner() {
-            inner
-        } else {
-            return Weak { ptr: self.ptr, alloc: self.alloc.clone() };
-        };
-        // See comments in Arc::clone() for why this is relaxed. This can use a
-        // fetch_add (ignoring the lock) because the weak count is only locked
-        // where are *no other* weak pointers in existence. (So we can't be
-        // running this code in that case).
-        let old_size = inner.weak.fetch_add(1, Relaxed);
+        if let Some(inner) = self.inner() {
+            // See comments in Arc::clone() for why this is relaxed. This can use a
+            // fetch_add (ignoring the lock) because the weak count is only locked
+            // where are *no other* weak pointers in existence. (So we can't be
+            // running this code in that case).
+            let old_size = inner.weak.fetch_add(1, Relaxed);
 
-        // See comments in Arc::clone() for why we do this (for mem::forget).
-        if old_size > MAX_REFCOUNT {
-            abort();
+            // See comments in Arc::clone() for why we do this (for mem::forget).
+            if old_size > MAX_REFCOUNT {
+                abort();
+            }
         }
 
         Weak { ptr: self.ptr, alloc: self.alloc.clone() }

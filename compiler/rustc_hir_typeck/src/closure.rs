@@ -105,8 +105,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span: self.tcx.def_span(expr_def_id),
         });
 
-        if let Some(CoroutineTypes { resume_ty, yield_ty, interior, movability }) = coroutine_types
-        {
+        if let Some(CoroutineTypes { resume_ty, yield_ty, interior }) = coroutine_types {
             let coroutine_args = ty::CoroutineArgs::new(
                 self.tcx,
                 ty::CoroutineArgsParts {
@@ -119,12 +118,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 },
             );
 
-            return Ty::new_coroutine(
-                self.tcx,
-                expr_def_id.to_def_id(),
-                coroutine_args.args,
-                movability,
-            );
+            return Ty::new_coroutine(self.tcx, expr_def_id.to_def_id(), coroutine_args.args);
         }
 
         // Tuple up the arguments and insert the resulting function type into

@@ -109,7 +109,7 @@ pub struct GVN;
 
 impl<'tcx> MirPass<'tcx> for GVN {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 4
+        sess.mir_opt_level() >= 2
     }
 
     #[instrument(level = "trace", skip(self, tcx, body))]
@@ -850,7 +850,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 assert!(!fields.is_empty());
                 (AggregateTy::Tuple, FIRST_VARIANT)
             }
-            AggregateKind::Closure(did, substs) | AggregateKind::Coroutine(did, substs, _) => {
+            AggregateKind::Closure(did, substs) | AggregateKind::Coroutine(did, substs) => {
                 (AggregateTy::Def(did, substs), FIRST_VARIANT)
             }
             AggregateKind::Adt(did, variant_index, substs, _, None) => {

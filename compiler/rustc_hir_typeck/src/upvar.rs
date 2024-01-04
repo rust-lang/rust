@@ -172,7 +172,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = self.node_ty(closure_hir_id);
         let (closure_def_id, args) = match *ty.kind() {
             ty::Closure(def_id, args) => (def_id, UpvarArgs::Closure(args)),
-            ty::Coroutine(def_id, args, _) => (def_id, UpvarArgs::Coroutine(args)),
+            ty::Coroutine(def_id, args) => (def_id, UpvarArgs::Coroutine(args)),
             ty::Error(_) => {
                 // #51714: skip analysis when we have already encountered type errors
                 return;

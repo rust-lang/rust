@@ -736,7 +736,6 @@ macro_rules! make_mir_visitor {
                             AggregateKind::Coroutine(
                                 _,
                                 coroutine_args,
-                                _movability,
                             ) => {
                                 self.visit_args(coroutine_args, location);
                             }

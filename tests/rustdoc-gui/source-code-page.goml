@@ -97,7 +97,7 @@ assert-document-property: ({"URL": "/lib.rs.html"}, ENDS_WITH)
 // Checking the source code sidebar.
 
 // First we "open" it.
-click: "#src-sidebar-toggle"
+click: "#sidebar-button"
 assert: ".src-sidebar-expanded"
 
 // We check that the first entry of the sidebar is collapsed
@@ -146,14 +146,14 @@ define-function: (
         )
     }
 )
-store-property: ("#src-sidebar > .title", {
+store-property: (".src-sidebar-title", {
     "offsetHeight": source_sidebar_title_height,
     "offsetTop": source_sidebar_title_y,
 })
 call-function: ("check-sidebar-dir-entry", {
     "x": 0,
-    // border + margin = 6
-    "y": |source_sidebar_title_y| + |source_sidebar_title_height| + 6,
+    // margin = 7px
+    "y": |source_sidebar_title_y| + |source_sidebar_title_height| + 7,
 })
 
 // Check the search form
@@ -175,13 +175,14 @@ assert-property: ("#main-content", {"offsetTop": 50})
 // 8 = 50 - 34 - 8
 
 // Check the sidebar directory entries have a marker and spacing (tablet).
-store-property: ("#src-sidebar > .title", {
+store-property: (".src-sidebar-title", {
     "offsetHeight": source_sidebar_title_height,
     "offsetTop": source_sidebar_title_y,
 })
 call-function: ("check-sidebar-dir-entry", {
     "x": 0,
-    "y": |source_sidebar_title_y| + |source_sidebar_title_height| + 6,
+    // margin = 7px
+    "y": |source_sidebar_title_y| + |source_sidebar_title_height| + 7,
 })
 
 // Tiny, phone mobile gets a different display where the logo is stacked on top.
@@ -189,21 +190,12 @@ set-window-size: (450, 700)
 assert-css: ("nav.sub", {"flex-direction": "column"})
 
 // Check the sidebar directory entries have a marker and spacing (phone).
-store-property: ("#src-sidebar > .title", {
+store-property: (".src-sidebar-title", {
     "offsetHeight": source_sidebar_title_height,
     "offsetTop": source_sidebar_title_y,
 })
 call-function: ("check-sidebar-dir-entry", {
     "x": 0,
-    "y": |source_sidebar_title_y| + |source_sidebar_title_height| + 6,
+    // margin = 7px
+    "y": |source_sidebar_title_y| + |source_sidebar_title_height| + 7,
 })
-
-// The logo is not present on this page.
-assert-false: ".sub-logo-container > img"
-
-// Check the staged-api page instead, which does.
-// Now we check that the logo has a bottom margin so it's not stuck to the search input.
-go-to: "file://" + |DOC_PATH| + "/src/staged_api/lib.rs.html"
-assert-css: (".sub-logo-container > img", {"margin-bottom": "8px"})
-store-property: (".sub-logo-container", {"clientHeight": logo_height})
-assert-position: (".search-form", {"y": |logo_height| + 8})

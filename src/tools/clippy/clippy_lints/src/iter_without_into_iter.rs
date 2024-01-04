@@ -49,7 +49,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
-    #[clippy::version = "1.74.0"]
+    #[clippy::version = "1.75.0"]
     pub ITER_WITHOUT_INTO_ITER,
     pedantic,
     "implementing `iter(_mut)` without an associated `IntoIterator for (&|&mut) Type` impl"
@@ -101,7 +101,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
-    #[clippy::version = "1.74.0"]
+    #[clippy::version = "1.75.0"]
     pub INTO_ITER_WITHOUT_ITER,
     pedantic,
     "implementing `IntoIterator for (&|&mut) Type` without an inherent `iter(_mut)` method"

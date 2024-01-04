@@ -2,12 +2,8 @@
 
 #![deny(non_exhaustive_omitted_patterns)]
 //~^ WARNING unknown lint: `non_exhaustive_omitted_patterns`
-//~| WARNING unknown lint: `non_exhaustive_omitted_patterns`
-//~| WARNING unknown lint: `non_exhaustive_omitted_patterns`
 #![allow(non_exhaustive_omitted_patterns)]
 //~^ WARNING unknown lint: `non_exhaustive_omitted_patterns`
-//~| WARNING unknown lint: `non_exhaustive_omitted_patterns`
-//~| WARNING unknown lint: `non_exhaustive_omitted_patterns`
 
 fn main() {
     enum Foo {
@@ -19,9 +15,6 @@ fn main() {
     #[allow(non_exhaustive_omitted_patterns)]
     //~^ WARNING unknown lint: `non_exhaustive_omitted_patterns`
     //~| WARNING unknown lint: `non_exhaustive_omitted_patterns`
-    //~| WARNING unknown lint: `non_exhaustive_omitted_patterns`
-    //~| WARNING unknown lint: `non_exhaustive_omitted_patterns`
-    //~| WARNING unknown lint: `non_exhaustive_omitted_patterns`
     match Foo::A {
         //~^ ERROR non-exhaustive patterns: `Foo::C` not covered
         Foo::A => {}
@@ -30,9 +23,6 @@ fn main() {
 
     #[warn(non_exhaustive_omitted_patterns)]
     //~^ WARNING unknown lint: `non_exhaustive_omitted_patterns`
-    //~| WARNING unknown lint: `non_exhaustive_omitted_patterns`
-    //~| WARNING unknown lint: `non_exhaustive_omitted_patterns`
-    //~| WARNING unknown lint: `non_exhaustive_omitted_patterns`
     //~| WARNING unknown lint: `non_exhaustive_omitted_patterns`
     match Foo::A {
         Foo::A => {}

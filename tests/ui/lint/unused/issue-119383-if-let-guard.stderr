@@ -1,0 +1,14 @@
+error: unused variable: `b`
+  --> $DIR/issue-119383-if-let-guard.rs:6:24
+   |
+LL |         () if let Some(b) = Some(()) => {}
+   |                        ^ help: if this is intentional, prefix it with an underscore: `_b`
+   |
+note: the lint level is defined here
+  --> $DIR/issue-119383-if-let-guard.rs:2:9
+   |
+LL | #![deny(unused_variables)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

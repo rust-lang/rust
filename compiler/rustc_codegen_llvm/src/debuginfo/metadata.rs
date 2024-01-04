@@ -1066,7 +1066,7 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
     closure_or_coroutine_di_node: &'ll DIType,
 ) -> SmallVec<&'ll DIType> {
     let (&def_id, up_var_tys) = match closure_or_coroutine_ty.kind() {
-        ty::Coroutine(def_id, args, _) => (def_id, args.as_coroutine().prefix_tys()),
+        ty::Coroutine(def_id, args) => (def_id, args.as_coroutine().prefix_tys()),
         ty::Closure(def_id, args) => (def_id, args.as_closure().upvar_tys()),
         _ => {
             bug!(

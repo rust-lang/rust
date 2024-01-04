@@ -482,7 +482,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         span: Span,
         use_spans: UseSpans<'tcx>,
     ) -> DiagnosticBuilder<'cx> {
-        // We need all statements in the body where the binding was assigned to to later find all
+        // We need all statements in the body where the binding was assigned to later find all
         // the branching code paths where the binding *wasn't* assigned to.
         let inits = &self.move_data.init_path_map[mpi];
         let move_path = &self.move_data.move_paths[mpi];
@@ -3067,7 +3067,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) -> Option<AnnotatedBorrowFnSignature<'tcx>> {
         // Define a fallback for when we can't match a closure.
         let fallback = || {
-            let is_closure = self.infcx.tcx.is_closure(self.mir_def_id().to_def_id());
+            let is_closure = self.infcx.tcx.is_closure_or_coroutine(self.mir_def_id().to_def_id());
             if is_closure {
                 None
             } else {
@@ -3277,7 +3277,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         sig: ty::PolyFnSig<'tcx>,
     ) -> Option<AnnotatedBorrowFnSignature<'tcx>> {
         debug!("annotate_fn_sig: did={:?} sig={:?}", did, sig);
-        let is_closure = self.infcx.tcx.is_closure(did.to_def_id());
+        let is_closure = self.infcx.tcx.is_closure_or_coroutine(did.to_def_id());
         let fn_hir_id = self.infcx.tcx.local_def_id_to_hir_id(did);
         let fn_decl = self.infcx.tcx.hir().fn_decl_by_hir_id(fn_hir_id)?;
 

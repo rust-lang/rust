@@ -450,37 +450,39 @@ impl<'a> Parser<'a> {
 
         let mut expected = edible
             .iter()
-            .map(|x| TokenType::Token(x.clone()))
-            .chain(inedible.iter().map(|x| TokenType::Token(x.clone())))
+            .chain(inedible)
+            .cloned()
+            .map(TokenType::Token)
             .chain(self.expected_tokens.iter().cloned())
-            .filter_map(|token| {
-                // filter out suggestions which suggest the same token which was found and deemed incorrect
+            .filter(|token| {
+                // Filter out suggestions that suggest the same token which was found and deemed incorrect.
                 fn is_ident_eq_keyword(found: &TokenKind, expected: &TokenType) -> bool {
-                    if let TokenKind::Ident(current_sym, _) = found {
-                        if let TokenType::Keyword(suggested_sym) = expected {
-                            return current_sym == suggested_sym;
-                        }
+                    if let TokenKind::Ident(current_sym, _) = found
+                        && let TokenType::Keyword(suggested_sym) = expected
+                    {
+                        return current_sym == suggested_sym;
                     }
                     false
                 }
-                if token != parser::TokenType::Token(self.token.kind.clone()) {
-                    let eq = is_ident_eq_keyword(&self.token.kind, &token);
-                    // if the suggestion is a keyword and the found token is an ident,
-                    // the content of which are equal to the suggestion's content,
-                    // we can remove that suggestion (see the return None statement below)
 
-                    // if this isn't the case however, and the suggestion is a token the
-                    // content of which is the same as the found token's, we remove it as well
+                if *token != parser::TokenType::Token(self.token.kind.clone()) {
+                    let eq = is_ident_eq_keyword(&self.token.kind, &token);
+                    // If the suggestion is a keyword and the found token is an ident,
+                    // the content of which are equal to the suggestion's content,
+                    // we can remove that suggestion (see the `return false` below).
+
+                    // If this isn't the case however, and the suggestion is a token the
+                    // content of which is the same as the found token's, we remove it as well.
                     if !eq {
                         if let TokenType::Token(kind) = &token {
                             if kind == &self.token.kind {
-                                return None;
+                                return false;
                             }
                         }
-                        return Some(token);
+                        return true;
                     }
                 }
-                return None;
+                false
             })
             .collect::<Vec<_>>();
         expected.sort_by_cached_key(|x| x.to_string());
@@ -488,10 +490,10 @@ impl<'a> Parser<'a> {
 
         let sm = self.sess.source_map();
 
-        // Special-case "expected `;`" errors
+        // Special-case "expected `;`" errors.
         if expected.contains(&TokenType::Token(token::Semi)) {
             // If the user is trying to write a ternary expression, recover it and
-            // return an Err to prevent a cascade of irrelevant diagnostics
+            // return an Err to prevent a cascade of irrelevant diagnostics.
             if self.prev_token == token::Question
                 && let Err(e) = self.maybe_recover_from_ternary_operator()
             {

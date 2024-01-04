@@ -520,7 +520,7 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
     let kind = tcx.def_kind(def_id);
     let is_function = match kind {
         DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..) => true,
-        _ => tcx.is_closure(def_id),
+        _ => tcx.is_closure_or_coroutine(def_id),
     };
     match (kind, body.source.promoted) {
         (_, Some(i)) => write!(w, "{i:?} in ")?,
@@ -1049,7 +1049,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         struct_fmt.finish()
                     }),
 
-                    AggregateKind::Coroutine(def_id, _, _) => ty::tls::with(|tcx| {
+                    AggregateKind::Coroutine(def_id, _) => ty::tls::with(|tcx| {
                         let name = format!("{{coroutine@{:?}}}", tcx.def_span(def_id));
                         let mut struct_fmt = fmt.debug_struct(&name);
 
@@ -1304,11 +1304,11 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                     self.push(&format!("+ args: {args:#?}"));
                 }
 
-                AggregateKind::Coroutine(def_id, args, movability) => {
+                AggregateKind::Coroutine(def_id, args) => {
                     self.push("coroutine");
                     self.push(&format!("+ def_id: {def_id:?}"));
                     self.push(&format!("+ args: {args:#?}"));
-                    self.push(&format!("+ movability: {movability:?}"));
+                    self.push(&format!("+ kind: {:?}", self.tcx.coroutine_kind(def_id)));
                 }
 
                 AggregateKind::Adt(_, _, _, Some(user_ty), _) => {

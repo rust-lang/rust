@@ -460,6 +460,7 @@ pub enum RigidTy {
     FnDef(FnDef, GenericArgs),
     FnPtr(PolyFnSig),
     Closure(ClosureDef, GenericArgs),
+    // FIXME(stable_mir): Movability here is redundant
     Coroutine(CoroutineDef, GenericArgs, Movability),
     Dynamic(Vec<Binder<ExistentialPredicate>>, Region, DynKind),
     Never,

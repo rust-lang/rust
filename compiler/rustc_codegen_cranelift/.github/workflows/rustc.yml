@@ -43,6 +43,11 @@ jobs:
         path: build/cg_clif
         key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain', '**/Cargo.lock') }}
 
+    - name: Install ripgrep
+      run: |
+        sudo apt update
+        sudo apt install -y ripgrep
+
     - name: Prepare dependencies
       run: ./y.sh prepare
 

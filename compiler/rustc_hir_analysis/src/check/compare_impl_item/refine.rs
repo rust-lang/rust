@@ -32,7 +32,7 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         return;
     }
 
-    // If a type in the trait ref is private, then there's also no reason to to do this check.
+    // If a type in the trait ref is private, then there's also no reason to do this check.
     let impl_def_id = impl_m.container_id(tcx);
     for arg in impl_trait_ref.args {
         if let Some(ty) = arg.as_type()

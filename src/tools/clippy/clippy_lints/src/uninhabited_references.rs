@@ -32,7 +32,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.76.0"]
     pub UNINHABITED_REFERENCES,
-    suspicious,
+    nursery,
     "reference to uninhabited type"
 }
 

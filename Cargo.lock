@@ -285,9 +285,9 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "bitflags"
-version = "2.4.0"
+version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4682ae6287fcf752ecaabbfcc7b6f9b72aa33933dc23a554d853aea8eea8635"
+checksum = "327762f6e5a765692301e5bb513e0d9fef63be86bbc14528052b1cd3e6f03e07"
 
 [[package]]
 name = "block-buffer"
@@ -537,7 +537,7 @@ checksum = "2da6da31387c7e4ef160ffab6d5e7f00c42626fe39aea70a7b0f1773f7dd6c1b"
 
 [[package]]
 name = "clippy"
-version = "0.1.76"
+version = "0.1.77"
 dependencies = [
  "anstream",
  "clippy_config",
@@ -565,7 +565,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_config"
-version = "0.1.76"
+version = "0.1.77"
 dependencies = [
  "rustc-semver",
  "serde",
@@ -588,7 +588,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.76"
+version = "0.1.77"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.15.4",
@@ -613,7 +613,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.76"
+version = "0.1.77"
 dependencies = [
  "arrayvec",
  "clippy_config",
@@ -984,7 +984,7 @@ checksum = "a0afaad2b26fa326569eb264b1363e8ae3357618c43982b3f285f0774ce76b69"
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.76"
+version = "0.1.77"
 dependencies = [
  "itertools",
  "quote",
@@ -3370,7 +3370,7 @@ dependencies = [
 name = "rustc_abi"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "rand",
  "rand_xoshiro",
  "rustc_data_structures",
@@ -3401,7 +3401,7 @@ dependencies = [
 name = "rustc_ast"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "memchr",
  "rustc_data_structures",
  "rustc_index",
@@ -3552,7 +3552,7 @@ dependencies = [
 name = "rustc_codegen_llvm"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "itertools",
  "libc",
  "measureme",
@@ -3587,7 +3587,7 @@ name = "rustc_codegen_ssa"
 version = "0.0.0"
 dependencies = [
  "ar_archive_writer",
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "cc",
  "itertools",
  "jobserver",
@@ -3654,7 +3654,7 @@ name = "rustc_data_structures"
 version = "0.0.0"
 dependencies = [
  "arrayvec",
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "elsa",
  "ena",
  "indexmap",
@@ -4121,7 +4121,7 @@ dependencies = [
 name = "rustc_metadata"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "libloading 0.7.4",
  "odht",
  "rustc_ast",
@@ -4151,7 +4151,7 @@ dependencies = [
 name = "rustc_middle"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "derive_more",
  "either",
  "field-offset",
@@ -4286,7 +4286,7 @@ dependencies = [
 name = "rustc_parse"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_data_structures",
@@ -4424,7 +4424,7 @@ dependencies = [
 name = "rustc_resolve"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "pulldown-cmark",
  "rustc_arena",
  "rustc_ast",
@@ -4463,7 +4463,7 @@ dependencies = [
 name = "rustc_session"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "getopts",
  "libc",
  "rustc_ast",
@@ -4521,7 +4521,7 @@ dependencies = [
 name = "rustc_symbol_mangling"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "punycode",
  "rustc-demangle",
  "rustc_data_structures",
@@ -4539,7 +4539,7 @@ dependencies = [
 name = "rustc_target"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "object",
  "rustc_abi",
  "rustc_data_structures",
@@ -4638,7 +4638,7 @@ dependencies = [
 name = "rustc_type_ir"
 version = "0.0.0"
 dependencies = [
- "bitflags 1.3.2",
+ "bitflags 2.4.1",
  "derivative",
  "rustc_data_structures",
  "rustc_index",
@@ -4768,7 +4768,7 @@ version = "0.38.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "745ecfa778e66b2b63c88a61cb36e0eea109e803b0b86bf9879fbc77c70e86ed"
 dependencies = [
- "bitflags 2.4.0",
+ "bitflags 2.4.1",
  "errno",
  "libc",
  "linux-raw-sys",

@@ -55,7 +55,7 @@ pub use termcolor::{Color, ColorSpec, WriteColor};
 use crate::diagnostic_impls::{DelayedAtWithNewline, DelayedAtWithoutNewline};
 use emitter::{is_case_difference, DynEmitter, Emitter, EmitterWriter};
 use registry::Registry;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
 use rustc_data_structures::sync::{Lock, Lrc};
 use rustc_data_structures::AtomicRef;
@@ -1318,7 +1318,7 @@ impl DiagCtxt {
 
     pub fn update_unstable_expectation_id(
         &self,
-        unstable_to_stable: &FxHashMap<LintExpectationId, LintExpectationId>,
+        unstable_to_stable: &FxIndexMap<LintExpectationId, LintExpectationId>,
     ) {
         let mut inner = self.inner.borrow_mut();
         let diags = std::mem::take(&mut inner.unstable_expect_diagnostics);

@@ -263,7 +263,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
         let self_ty = obligation.self_ty().skip_binder();
-        if let ty::Coroutine(did, args, _) = *self_ty.kind() {
+        if let ty::Coroutine(did, args) = *self_ty.kind() {
             // gen constructs get lowered to a special kind of coroutine that
             // should directly `impl AsyncIterator`.
             if self.tcx().coroutine_is_async_gen(did) {
@@ -486,7 +486,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::RawPtr(_)
                 | ty::Ref(_, _, _)
                 | ty::Closure(_, _)
-                | ty::Coroutine(_, _, _)
+                | ty::Coroutine(_, _)
                 | ty::CoroutineWitness(..)
                 | ty::Never
                 | ty::Tuple(_)
@@ -529,7 +529,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let def_id = obligation.predicate.def_id();
 
         if self.tcx().trait_is_auto(def_id) {
-            match self_ty.kind() {
+            match *self_ty.kind() {
                 ty::Dynamic(..) => {
                     // For object types, we don't know what the closed
                     // over types are. This means we conservatively
@@ -564,10 +564,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // The auto impl might apply; we don't know.
                     candidates.ambiguous = true;
                 }
-                ty::Coroutine(_, _, movability)
+                ty::Coroutine(coroutine_def_id, _)
                     if self.tcx().lang_items().unpin_trait() == Some(def_id) =>
                 {
-                    match movability {
+                    match self.tcx().coroutine_movability(coroutine_def_id) {
                         hir::Movability::Static => {
                             // Immovable coroutines are never `Unpin`, so
                             // suppress the normal auto-impl candidate for it.
@@ -1023,7 +1023,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::FnPtr(_)
             | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)
-            | ty::Coroutine(_, _, _)
+            | ty::Coroutine(_, _)
             | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Alias(..)

@@ -145,7 +145,7 @@ where
                     // for the coroutine witness and check whether any of the contained types
                     // need to be dropped, and only require the captured types to be live
                     // if they do.
-                    ty::Coroutine(_, args, _) => {
+                    ty::Coroutine(_, args) => {
                         if self.reveal_coroutine_witnesses {
                             queue_type(self, args.as_coroutine().witness());
                         } else {

@@ -1805,11 +1805,20 @@ function initSearch(rawSearchIndex) {
             return unifyFunctionTypes([row], [elem], whereClause, mgens);
         }
 
-        function checkPath(contains, ty, maxEditDistance) {
+        /**
+         * Compute an "edit distance" that ignores missing path elements.
+         * @param {string[]} contains search query path
+         * @param {Row} ty indexed item
+         * @returns {null|number} edit distance
+         */
+        function checkPath(contains, ty) {
             if (contains.length === 0) {
                 return 0;
             }
-            let ret_dist = maxEditDistance + 1;
+            const maxPathEditDistance = Math.floor(
+                contains.reduce((acc, next) => acc + next.length, 0) / 3
+            );
+            let ret_dist = maxPathEditDistance + 1;
             const path = ty.path.split("::");
 
             if (ty.parent && ty.parent.name) {
@@ -1821,15 +1830,23 @@ function initSearch(rawSearchIndex) {
             pathiter: for (let i = length - clength; i >= 0; i -= 1) {
                 let dist_total = 0;
                 for (let x = 0; x < clength; ++x) {
-                    const dist = editDistance(path[i + x], contains[x], maxEditDistance);
-                    if (dist > maxEditDistance) {
-                        continue pathiter;
+                    const [p, c] = [path[i + x], contains[x]];
+                    if (Math.floor((p.length - c.length) / 3) <= maxPathEditDistance &&
+                        p.indexOf(c) !== -1
+                    ) {
+                        // discount distance on substring match
+                        dist_total += Math.floor((p.length - c.length) / 3);
+                    } else {
+                        const dist = editDistance(p, c, maxPathEditDistance);
+                        if (dist > maxPathEditDistance) {
+                            continue pathiter;
+                        }
+                        dist_total += dist;
                     }
-                    dist_total += dist;
                 }
                 ret_dist = Math.min(ret_dist, Math.round(dist_total / clength));
             }
-            return ret_dist;
+            return ret_dist > maxPathEditDistance ? null : ret_dist;
         }
 
         function typePassesFilter(filter, type) {
@@ -2030,8 +2047,8 @@ function initSearch(rawSearchIndex) {
             }
 
             if (elem.fullPath.length > 1) {
-                path_dist = checkPath(elem.pathWithoutLast, row, maxEditDistance);
-                if (path_dist > maxEditDistance) {
+                path_dist = checkPath(elem.pathWithoutLast, row);
+                if (path_dist === null) {
                     return;
                 }
             }
@@ -2045,7 +2062,7 @@ function initSearch(rawSearchIndex) {
 
             const dist = editDistance(row.normalizedName, elem.normalizedPathLast, maxEditDistance);
 
-            if (index === -1 && dist + path_dist > maxEditDistance) {
+            if (index === -1 && dist > maxEditDistance) {
                 return;
             }
 
@@ -2100,13 +2117,9 @@ function initSearch(rawSearchIndex) {
         }
 
         function innerRunQuery() {
-            let queryLen = 0;
-            for (const elem of parsedQuery.elems) {
-                queryLen += elem.name.length;
-            }
-            for (const elem of parsedQuery.returned) {
-                queryLen += elem.name.length;
-            }
+            const queryLen =
+                parsedQuery.elems.reduce((acc, next) => acc + next.pathLast.length, 0) +
+                parsedQuery.returned.reduce((acc, next) => acc + next.pathLast.length, 0);
             const maxEditDistance = Math.floor(queryLen / 3);
 
             /**

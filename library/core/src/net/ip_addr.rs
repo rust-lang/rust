@@ -407,7 +407,7 @@ impl IpAddr {
     }
 
     /// Converts this address to an `IpAddr::V4` if it is an IPv4-mapped IPv6 addresses, otherwise it
-    /// return `self` as-is.
+    /// returns `self` as-is.
     ///
     /// # Examples
     ///

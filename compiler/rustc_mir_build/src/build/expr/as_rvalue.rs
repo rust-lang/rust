@@ -387,8 +387,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 closure_id,
                 args,
                 ref upvars,
-                movability,
                 ref fake_reads,
+                movability: _,
             }) => {
                 // Convert the closure fake reads, if any, from `ExprRef` to mir `Place`
                 // and push the fake reads.
@@ -474,10 +474,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let result = match args {
                     UpvarArgs::Coroutine(args) => {
-                        // We implicitly set the discriminant to 0. See
-                        // librustc_mir/transform/deaggregator.rs for details.
-                        let movability = movability.unwrap();
-                        Box::new(AggregateKind::Coroutine(closure_id.to_def_id(), args, movability))
+                        Box::new(AggregateKind::Coroutine(closure_id.to_def_id(), args))
                     }
                     UpvarArgs::Closure(args) => {
                         Box::new(AggregateKind::Closure(closure_id.to_def_id(), args))

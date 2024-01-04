@@ -93,9 +93,10 @@ pub use attr_impl::ArgAttribute;
 #[allow(unused)]
 mod attr_impl {
     // The subset of llvm::Attribute needed for arguments, packed into a bitfield.
+    #[derive(Clone, Copy, Default, Hash, PartialEq, Eq, HashStable_Generic)]
+    pub struct ArgAttribute(u8);
     bitflags::bitflags! {
-        #[derive(Default, HashStable_Generic)]
-        pub struct ArgAttribute: u8 {
+        impl ArgAttribute: u8 {
             const NoAlias   = 1 << 1;
             const NoCapture = 1 << 2;
             const NonNull   = 1 << 3;
@@ -104,6 +105,7 @@ mod attr_impl {
             const NoUndef = 1 << 6;
         }
     }
+    rustc_data_structures::external_bitflags_debug! { ArgAttribute }
 }
 
 /// Sometimes an ABI requires small integers to be extended to a full or partial register. This enum

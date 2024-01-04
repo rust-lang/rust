@@ -18,6 +18,12 @@ fn main() {
 
     if let V6(_) = V6(Ipv6Addr::LOCALHOST) {}
 
+    // Issue 6459
+    if matches!(V4(Ipv4Addr::LOCALHOST), V4(_)) {}
+
+    // Issue 6459
+    if matches!(V6(Ipv6Addr::LOCALHOST), V6(_)) {}
+
     while let V4(_) = V4(Ipv4Addr::LOCALHOST) {}
 
     while let V6(_) = V6(Ipv6Addr::LOCALHOST) {}

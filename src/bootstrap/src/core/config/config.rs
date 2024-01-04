@@ -305,7 +305,7 @@ pub struct Config {
     pub save_toolstates: Option<PathBuf>,
     pub print_step_timings: bool,
     pub print_step_rusage: bool,
-    pub missing_tools: bool,
+    pub missing_tools: bool, // FIXME: Deprecated field. Remove it at 2024.
 
     // Fallback musl-root for all targets
     pub musl_root: Option<PathBuf>,
@@ -1639,7 +1639,7 @@ impl Config {
                 );
             }
 
-            set(&mut config.llvm_tools_enabled, llvm_tools);
+            config.llvm_tools_enabled = llvm_tools.unwrap_or(true);
             config.rustc_parallel =
                 parallel_compiler.unwrap_or(config.channel == "dev" || config.channel == "nightly");
             config.rustc_default_linker = default_linker;
