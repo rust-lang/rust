@@ -333,7 +333,6 @@ fn path_applicable_imports(
                 //
                 // see also an ignored test under FIXME comment in the qualify_path.rs module
                 AssocSearchMode::Exclude,
-                Some(DEFAULT_QUERY_SEARCH_LIMIT.inner()),
             )
             .filter_map(|item| {
                 let mod_path = mod_path(item)?;
@@ -347,7 +346,6 @@ fn path_applicable_imports(
             current_crate,
             path_candidate.name.clone(),
             AssocSearchMode::Include,
-            Some(DEFAULT_QUERY_SEARCH_LIMIT.inner()),
         )
         .filter_map(|item| import_for_item(sema.db, mod_path, &qualifier, item))
         .take(DEFAULT_QUERY_SEARCH_LIMIT.inner())
@@ -507,7 +505,6 @@ fn trait_applicable_items(
         current_crate,
         trait_candidate.assoc_item_name.clone(),
         AssocSearchMode::AssocItemsOnly,
-        Some(DEFAULT_QUERY_SEARCH_LIMIT.inner()),
     )
     .filter_map(|input| item_as_assoc(db, input))
     .filter_map(|assoc| {

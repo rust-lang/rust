@@ -60,7 +60,6 @@ pub struct Query {
     mode: SearchMode,
     assoc_mode: AssocSearchMode,
     case_sensitive: bool,
-    limit: usize,
 }
 
 impl Query {
@@ -74,7 +73,6 @@ impl Query {
             mode: SearchMode::Fuzzy,
             assoc_mode: AssocSearchMode::Include,
             case_sensitive: false,
-            limit: usize::max_value(),
         }
     }
 
@@ -105,10 +103,6 @@ impl Query {
 
     pub fn case_sensitive(&mut self) {
         self.case_sensitive = true;
-    }
-
-    pub fn limit(&mut self, limit: usize) {
-        self.limit = limit
     }
 }
 
