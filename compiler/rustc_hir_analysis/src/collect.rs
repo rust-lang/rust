@@ -31,6 +31,7 @@ use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
+use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
@@ -84,6 +85,7 @@ pub fn provide(providers: &mut Providers) {
         coroutine_for_closure,
         collect_mod_item_types,
         is_type_alias_impl_trait,
+        find_field,
         ..*providers
     };
 }
@@ -875,13 +877,25 @@ fn check_field_uniqueness(
             // Abort due to errors (there must be an error if an unnamed field
             //  has any type kind other than an anonymous adt or a named adt)
             _ => {
-                debug_assert!(tcx.sess.has_errors().is_some());
-                tcx.sess.abort_if_errors()
+                debug_assert!(tcx.dcx().has_errors().is_some());
+                tcx.dcx().abort_if_errors()
             }
         }
         return;
     }
     check(field.ident, field.span.into());
+}
+
+fn find_field(tcx: TyCtxt<'_>, (def_id, ident): (DefId, Ident)) -> Option<FieldIdx> {
+    tcx.adt_def(def_id).non_enum_variant().fields.iter_enumerated().find_map(|(idx, field)| {
+        if field.is_unnamed() {
+            let field_ty = tcx.type_of(field.did).instantiate_identity();
+            let adt_def = field_ty.ty_adt_def().expect("expect Adt for unnamed field");
+            tcx.find_field((adt_def.did(), ident)).map(|_| idx)
+        } else {
+            (field.ident(tcx).normalize_to_macros_2_0() == ident).then_some(idx)
+        }
+    })
 }
 
 fn convert_variant(
@@ -908,14 +922,14 @@ fn convert_variant(
                     let ident = ident.normalize_to_macros_2_0();
                     match (field_decl, seen_fields.get(&ident).copied()) {
                         (NotNested(span), Some(NotNested(prev_span))) => {
-                            tcx.sess.emit_err(errors::FieldAlreadyDeclared::NotNested {
+                            tcx.dcx().emit_err(errors::FieldAlreadyDeclared::NotNested {
                                 field_name,
                                 span,
                                 prev_span,
                             });
                         }
                         (NotNested(span), Some(Nested(prev))) => {
-                            tcx.sess.emit_err(errors::FieldAlreadyDeclared::PreviousNested {
+                            tcx.dcx().emit_err(errors::FieldAlreadyDeclared::PreviousNested {
                                 field_name,
                                 span,
                                 prev_span: prev.span,
@@ -926,7 +940,7 @@ fn convert_variant(
                             Nested(NestedSpan { span, nested_field_span }),
                             Some(NotNested(prev_span)),
                         ) => {
-                            tcx.sess.emit_err(errors::FieldAlreadyDeclared::CurrentNested {
+                            tcx.dcx().emit_err(errors::FieldAlreadyDeclared::CurrentNested {
                                 field_name,
                                 span,
                                 nested_field_span,
@@ -934,7 +948,7 @@ fn convert_variant(
                             });
                         }
                         (Nested(NestedSpan { span, nested_field_span }), Some(Nested(prev))) => {
-                            tcx.sess.emit_err(errors::FieldAlreadyDeclared::BothNested {
+                            tcx.dcx().emit_err(errors::FieldAlreadyDeclared::BothNested {
                                 field_name,
                                 span,
                                 nested_field_span,

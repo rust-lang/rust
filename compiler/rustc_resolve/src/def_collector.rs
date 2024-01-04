@@ -324,8 +324,21 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
     }
 
     fn visit_ty(&mut self, ty: &'a Ty) {
-        match ty.kind {
+        match &ty.kind {
             TyKind::MacCall(..) => self.visit_macro_invoc(ty.id),
+            TyKind::AnonStruct(node_id, fields) | TyKind::AnonUnion(node_id, fields) => {
+                let def_kind = match &ty.kind {
+                    TyKind::AnonStruct(..) => DefKind::Struct,
+                    TyKind::AnonUnion(..) => DefKind::Union,
+                    _ => unreachable!(),
+                };
+                let def_id = self.create_def(*node_id, kw::Empty, def_kind, ty.span);
+                self.with_parent(def_id, |this| {
+                    for f in fields {
+                        this.visit_field_def(f);
+                    }
+                });
+            }
             _ => visit::walk_ty(self, ty),
         }
     }

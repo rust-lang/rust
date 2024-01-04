@@ -1299,33 +1299,28 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // //  ^_____________________|
             // }
             // ```
-            TyKind::AnonStruct(def_node_id, fields) | TyKind::AnonUnion(def_node_id, fields) => {
-                let (def_kind, item_kind): (DefKind, fn(_, _) -> _) = match t.kind {
-                    TyKind::AnonStruct(..) => (DefKind::Struct, hir::ItemKind::Struct),
-                    TyKind::AnonUnion(..) => (DefKind::Union, hir::ItemKind::Union),
-                    _ => unreachable!(),
-                };
-                let def_id = self.create_def(
-                    self.current_hir_id_owner.def_id,
-                    *def_node_id,
-                    kw::Empty,
-                    def_kind,
-                    t.span,
-                );
+            TyKind::AnonStruct(node_id, fields) | TyKind::AnonUnion(node_id, fields) => {
+                // Here its `def_id` is created in `build_reduced_graph`.
+                let def_id = self.local_def_id(*node_id);
                 debug!(?def_id);
                 let owner_id = hir::OwnerId { def_id };
-                self.with_hir_id_owner(*def_node_id, |this| {
+                self.with_hir_id_owner(*node_id, |this| {
                     let fields = this.arena.alloc_from_iter(
                         fields.iter().enumerate().map(|f| this.lower_field_def(f)),
                     );
                     let span = t.span;
-                    let variant_data = hir::VariantData::Struct(fields, false);
+                    let variant_data = hir::VariantData::Struct { fields, recovered: false };
                     // FIXME: capture the generics from the outer adt.
                     let generics = hir::Generics::empty();
+                    let kind = match t.kind {
+                        TyKind::AnonStruct(..) => hir::ItemKind::Struct(variant_data, generics),
+                        TyKind::AnonUnion(..) => hir::ItemKind::Union(variant_data, generics),
+                        _ => unreachable!(),
+                    };
                     hir::OwnerNode::Item(this.arena.alloc(hir::Item {
                         ident: Ident::new(kw::Empty, span),
                         owner_id,
-                        kind: item_kind(variant_data, generics),
+                        kind,
                         span: this.lower_span(span),
                         vis_span: this.lower_span(span.shrink_to_lo()),
                     }))

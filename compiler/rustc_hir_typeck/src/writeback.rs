@@ -596,6 +596,11 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         {
             self.typeck_results.field_indices_mut().insert(hir_id, index);
         }
+        if let Some(nested_fields) =
+            self.fcx.typeck_results.borrow_mut().nested_fields_mut().remove(hir_id)
+        {
+            self.typeck_results.nested_fields_mut().insert(hir_id, nested_fields);
+        }
     }
 
     #[instrument(skip(self, span), level = "debug")]
