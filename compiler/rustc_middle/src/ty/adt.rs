@@ -401,7 +401,7 @@ impl<'tcx> AdtDef<'tcx> {
     }
 
     /// Returns an iterator over all fields contained
-    /// by this ADT.
+    /// by this ADT (nested unnamed fields are not expanded).
     #[inline]
     pub fn all_fields(self) -> impl Iterator<Item = &'tcx FieldDef> + Clone {
         self.variants().iter().flat_map(|v| v.fields.iter())

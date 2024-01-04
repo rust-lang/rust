@@ -789,64 +789,100 @@ fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId) {
     }
 }
 
-/*
-/// In a type definition, we check that unnamed field names are distinct.
-fn check_unnamed_fields_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>) {
-    let mut seen_fields: FxHashMap<Ident, Option<Span>> = Default::default();
-    fn check_fields_anon_adt_defn<'tcx>(tcx: TyCtxt<'tcx>, item: &hir::Item<'tcx>, seen_fields: &mut FxHashMap<Ident, Option<Span>>) {
-        let fields = match &item.kind {
-            hir::ItemKind::Struct(fields, _) | hir::ItemKind::Union(fields, _) => fields,
-            _ => return,
-        };
-        for field in fields.fields() {
-            if field.ident.name == kw::Underscore {
-                if let hir::TyKind::AnonAdt(item_id) = field.ty.kind() {
-                    let item = tcx.hir().item(item_id);
-                    check_fields_anon_adt_defn(tcx, item, &mut *seen_fields);
-                } else {
-                    let field_ty = match tcx.type_of(field.def_id).instantiate_identity().ty_adt_def() {
-                        Some(adt_ty) => adt_ty,
-                        None => {
-                            tcx.sess.emit_err(err);
-                            return;
-                        }
-                    };
-                    if let Some(def_id) = field_ty.did().as_local() {
-                        let item = tcx.hir().item(hir::ItemId { owner_id: hir::OwnerId { def_id }});
-                        check_fields_anon_adt_defn(tcx, item, &mut *seen_fields);
-                    }
+#[derive(Clone, Copy)]
+struct NestedSpan {
+    span: Span,
+    nested_field_span: Span,
+}
+
+#[derive(Clone, Copy)]
+enum FieldDeclSpan {
+    NotNested(Span),
+    Nested(NestedSpan),
+}
+
+impl From<Span> for FieldDeclSpan {
+    fn from(span: Span) -> Self {
+        Self::NotNested(span)
+    }
+}
+
+impl From<NestedSpan> for FieldDeclSpan {
+    fn from(span: NestedSpan) -> Self {
+        Self::Nested(span)
+    }
+}
+
+/// Check the uniqueness of fields across adt where there are
+/// nested fields imported from an unnamed field.
+fn check_field_uniqueness_in_nested_adt(
+    tcx: TyCtxt<'_>,
+    adt_def: ty::AdtDef<'_>,
+    check: &mut impl FnMut(Ident, /* nested_field_span */ Span),
+) {
+    for field in adt_def.all_fields() {
+        if field.is_unnamed() {
+            // Here we don't care about the generic parameters, so `instantiate_identity` is enough.
+            match tcx.type_of(field.did).instantiate_identity().kind() {
+                ty::Adt(adt_def, _) => {
+                    check_field_uniqueness_in_nested_adt(tcx, *adt_def, &mut *check);
                 }
-                field_ty.flags()
-                let inner_adt_def = field_ty.ty_adt_def().expect("expect an adt");
-                check_fields_anon_adt_defn(tcx, adt_def, &mut *seen_fields);
-            } else {
-                let span = field.did.as_local().map(|did| {
-                    let hir_id = tcx.hir().local_def_id_to_hir_id(did);
-                    tcx.hir().span(hir_id)
-                });
-                match seen_fields.get(&ident.normalize_to_macros_2_0()).cloned() {
-                    Some(Some(prev_span)) => {
-                        tcx.sess.emit_err(errors::FieldAlreadyDeclared {
-                            field_name: ident,
-                            span: f.span,
-                            prev_span,
-                        });
-                    }
-                    Some(None) => {
-                        tcx.sess.emit_err(errors::FieldAlreadyDeclared {
-                            field_name: f.ident,
-                            span: f.span,
-                            prev_span,
-                        });
-                    }
-                    None =>
-                        seen_fields.insert(f.ident.normalize_to_macros_2_0(), f.span);
-                }
+                ty_kind => bug!(
+                    "Unexpected ty kind in check_field_uniqueness_in_nested_adt(): {ty_kind:?}"
+                ),
             }
+        } else {
+            check(field.ident(tcx), tcx.def_span(field.did));
         }
     }
 }
- */
+
+/// Check the uniqueness of fields in a struct variant, and recursively
+/// check the nested fields if it is an unnamed field with type of an
+/// annoymous adt.
+fn check_field_uniqueness(
+    tcx: TyCtxt<'_>,
+    field: &hir::FieldDef<'_>,
+    check: &mut impl FnMut(Ident, FieldDeclSpan),
+) {
+    if field.ident.name == kw::Underscore {
+        let ty_span = field.ty.span;
+        match &field.ty.kind {
+            hir::TyKind::AnonAdt(item_id) => {
+                match &tcx.hir_node(item_id.hir_id()).expect_item().kind {
+                    hir::ItemKind::Struct(variant_data, ..)
+                    | hir::ItemKind::Union(variant_data, ..) => {
+                        variant_data
+                            .fields()
+                            .iter()
+                            .for_each(|f| check_field_uniqueness(tcx, f, &mut *check));
+                    }
+                    item_kind => span_bug!(
+                        ty_span,
+                        "Unexpected item kind in check_field_uniqueness(): {item_kind:?}"
+                    ),
+                }
+            }
+            hir::TyKind::Path(hir::QPath::Resolved(_, hir::Path { res, .. })) => {
+                check_field_uniqueness_in_nested_adt(
+                    tcx,
+                    tcx.adt_def(res.def_id()),
+                    &mut |ident, nested_field_span| {
+                        check(ident, NestedSpan { span: field.span, nested_field_span }.into())
+                    },
+                );
+            }
+            // Abort due to errors (there must be an error if an unnamed field
+            //  has any type kind other than an anonymous adt or a named adt)
+            _ => {
+                debug_assert!(tcx.sess.has_errors().is_some());
+                tcx.sess.abort_if_errors()
+            }
+        }
+        return;
+    }
+    check(field.ident, field.span.into());
+}
 
 fn convert_variant(
     tcx: TyCtxt<'_>,
@@ -856,27 +892,61 @@ fn convert_variant(
     def: &hir::VariantData<'_>,
     adt_kind: ty::AdtKind,
     parent_did: LocalDefId,
+    is_anonymous: bool,
 ) -> ty::VariantDef {
     let mut has_unnamed_fields = false;
-    let mut seen_fields: FxHashMap<Ident, Span> = Default::default();
+    let mut seen_fields: FxHashMap<Ident, FieldDeclSpan> = Default::default();
     let fields = def
         .fields()
         .iter()
         .inspect(|f| {
-            // Skip the unnamed field here, we will check it later.
-            if f.ident.name == kw::Underscore {
-                has_unnamed_fields = true;
-                return;
-            }
-            let dup_span = seen_fields.get(&f.ident.normalize_to_macros_2_0()).cloned();
-            if let Some(prev_span) = dup_span {
-                tcx.dcx().emit_err(errors::FieldAlreadyDeclared {
-                    field_name: f.ident,
-                    span: f.span,
-                    prev_span,
+            has_unnamed_fields |= f.ident.name == kw::Underscore;
+            if !is_anonymous {
+                check_field_uniqueness(tcx, f, &mut |ident, field_decl| {
+                    use FieldDeclSpan::*;
+                    let field_name = ident.name;
+                    let ident = ident.normalize_to_macros_2_0();
+                    match (field_decl, seen_fields.get(&ident).copied()) {
+                        (NotNested(span), Some(NotNested(prev_span))) => {
+                            tcx.sess.emit_err(errors::FieldAlreadyDeclared::NotNested {
+                                field_name,
+                                span,
+                                prev_span,
+                            });
+                        }
+                        (NotNested(span), Some(Nested(prev))) => {
+                            tcx.sess.emit_err(errors::FieldAlreadyDeclared::PreviousNested {
+                                field_name,
+                                span,
+                                prev_span: prev.span,
+                                prev_nested_field_span: prev.nested_field_span,
+                            });
+                        }
+                        (
+                            Nested(NestedSpan { span, nested_field_span }),
+                            Some(NotNested(prev_span)),
+                        ) => {
+                            tcx.sess.emit_err(errors::FieldAlreadyDeclared::CurrentNested {
+                                field_name,
+                                span,
+                                nested_field_span,
+                                prev_span,
+                            });
+                        }
+                        (Nested(NestedSpan { span, nested_field_span }), Some(Nested(prev))) => {
+                            tcx.sess.emit_err(errors::FieldAlreadyDeclared::BothNested {
+                                field_name,
+                                span,
+                                nested_field_span,
+                                prev_span: prev.span,
+                                prev_nested_field_span: prev.nested_field_span,
+                            });
+                        }
+                        (field_decl, None) => {
+                            seen_fields.insert(ident, field_decl);
+                        }
+                    }
                 });
-            } else {
-                seen_fields.insert(f.ident.normalize_to_macros_2_0(), f.span);
             }
         })
         .map(|f| ty::FieldDef {
@@ -937,6 +1007,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
                         &v.data,
                         AdtKind::Enum,
                         def_id,
+                        is_anonymous,
                     )
                 })
                 .collect();
@@ -956,6 +1027,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
                 def,
                 adt_kind,
                 def_id,
+                is_anonymous,
             ))
             .collect();
 

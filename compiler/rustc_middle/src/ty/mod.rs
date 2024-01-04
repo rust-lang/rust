@@ -1387,6 +1387,11 @@ impl<'tcx> FieldDef {
     pub fn ident(&self, tcx: TyCtxt<'_>) -> Ident {
         Ident::new(self.name, tcx.def_ident_span(self.did).unwrap())
     }
+
+    /// Returns whether the field is unnamed
+    pub fn is_unnamed(&self) -> bool {
+        self.name == rustc_span::symbol::kw::Underscore
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

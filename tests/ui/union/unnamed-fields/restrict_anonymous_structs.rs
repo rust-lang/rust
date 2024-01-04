@@ -2,8 +2,8 @@
 #![feature(unnamed_fields)]
 
 struct F {
-    field: struct { field: u8 }, //~ ERROR anonymous structs are not allowed outside of unnamed struct or union fields
-    _: struct { field: u8 },
+    field1: struct { field2: u8 }, //~ ERROR anonymous structs are not allowed outside of unnamed struct or union fields
+    _: struct { field3: u8 },
 }
 
 struct G {
@@ -11,8 +11,8 @@ struct G {
 }
 
 union H {
-    field: struct { field: u8 }, //~ ERROR anonymous structs are not allowed outside of unnamed struct or union fields
-    _: struct { field: u8 },
+    field1: struct { field2: u8 }, //~ ERROR anonymous structs are not allowed outside of unnamed struct or union fields
+    _: struct { field3: u8 },
 }
 
 union I {

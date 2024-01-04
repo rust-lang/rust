@@ -123,6 +123,25 @@ hir_analysis_field_already_declared =
     .label = field already declared
     .previous_decl_label = `{$field_name}` first declared here
 
+hir_analysis_field_already_declared_both_nested =
+    field `{$field_name}` is already declared
+    .label = field `{$field_name}` declared in this unnamed field
+    .nested_field_decl_note = field `{$field_name}` declared here
+    .previous_decl_label = `{$field_name}` first declared here in this unnamed field
+    .previous_nested_field_decl_note = field `{$field_name}` first declared here
+
+hir_analysis_field_already_declared_current_nested =
+    field `{$field_name}` is already declared
+    .label = field `{$field_name}` declared in this unnamed field
+    .nested_field_decl_note = field `{$field_name}` declared here
+    .previous_decl_label = `{$field_name}` first declared here
+
+hir_analysis_field_already_declared_previous_nested =
+    field `{$field_name}` is already declared
+    .label = field already declared
+    .previous_decl_label = `{$field_name}` first declared here in this unnamed field
+    .previous_nested_field_decl_note = field `{$field_name}` first declared here
+
 hir_analysis_function_not_found_in_trait = function not found in this trait
 
 hir_analysis_function_not_have_default_implementation = function doesn't have a default implementation

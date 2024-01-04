@@ -1,8 +1,8 @@
 error: anonymous unions are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_unions.rs:5:12
+  --> $DIR/restrict_anonymous_unions.rs:5:13
    |
-LL |     field: union { field: u8 },
-   |            ^^^^^^^^^^^^^^^^^^^ anonymous union declared here
+LL |     field1: union { field2: u8 },
+   |             ^^^^^^^^^^^^^^^^^^^^ anonymous union declared here
 
 error: unnamed fields can only have struct or union types
   --> $DIR/restrict_anonymous_unions.rs:10:5
@@ -11,10 +11,10 @@ LL |     _: (u8, u8),
    |     ^  -------- not a struct or union
 
 error: anonymous unions are not allowed outside of unnamed struct or union fields
-  --> $DIR/restrict_anonymous_unions.rs:14:12
+  --> $DIR/restrict_anonymous_unions.rs:14:13
    |
-LL |     field: union { field: u8 },
-   |            ^^^^^^^^^^^^^^^^^^^ anonymous union declared here
+LL |     field1: union { field2: u8 },
+   |             ^^^^^^^^^^^^^^^^^^^^ anonymous union declared here
 
 error: unnamed fields can only have struct or union types
   --> $DIR/restrict_anonymous_unions.rs:19:5

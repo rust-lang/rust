@@ -175,14 +175,51 @@ pub struct DropImplOnWrongItem {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_field_already_declared, code = E0124)]
-pub struct FieldAlreadyDeclared {
-    pub field_name: Ident,
-    #[primary_span]
-    #[label]
-    pub span: Span,
-    #[label(hir_analysis_previous_decl_label)]
-    pub prev_span: Span,
+pub enum FieldAlreadyDeclared {
+    #[diag(hir_analysis_field_already_declared, code = E0124)]
+    NotNested {
+        field_name: Symbol,
+        #[primary_span]
+        #[label]
+        span: Span,
+        #[label(hir_analysis_previous_decl_label)]
+        prev_span: Span,
+    },
+    #[diag(hir_analysis_field_already_declared_current_nested)]
+    CurrentNested {
+        field_name: Symbol,
+        #[primary_span]
+        #[label]
+        span: Span,
+        #[note(hir_analysis_nested_field_decl_note)]
+        nested_field_span: Span,
+        #[label(hir_analysis_previous_decl_label)]
+        prev_span: Span,
+    },
+    #[diag(hir_analysis_field_already_declared_previous_nested)]
+    PreviousNested {
+        field_name: Symbol,
+        #[primary_span]
+        #[label]
+        span: Span,
+        #[label(hir_analysis_previous_decl_label)]
+        prev_span: Span,
+        #[note(hir_analysis_previous_nested_field_decl_note)]
+        prev_nested_field_span: Span,
+    },
+    #[diag(hir_analysis_field_already_declared_both_nested)]
+    BothNested {
+        field_name: Symbol,
+        #[primary_span]
+        #[label]
+        span: Span,
+        #[note(hir_analysis_nested_field_decl_note)]
+        nested_field_span: Span,
+        #[label(hir_analysis_previous_decl_label)]
+        prev_span: Span,
+        #[note(hir_analysis_previous_nested_field_decl_note)]
+        prev_nested_field_span: Span,
+    },
 }
 
 #[derive(Diagnostic)]
