@@ -1,8 +1,8 @@
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/sized-yield.rs:8:27
+  --> $DIR/sized-yield.rs:8:19
    |
 LL |       let mut gen = move || {
-   |  ___________________________^
+   |  ___________________^
 LL | |
 LL | |         yield s[..];
 LL | |     };

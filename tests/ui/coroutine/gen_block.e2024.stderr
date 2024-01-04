@@ -8,10 +8,10 @@ LL |     let _ = || yield true;
    = help: add `#![feature(coroutines)]` to the crate attributes to enable
 
 error[E0282]: type annotations needed
-  --> $DIR/gen_block.rs:6:17
+  --> $DIR/gen_block.rs:6:13
    |
 LL |     let x = gen {};
-   |                 ^^ cannot infer type
+   |             ^^^^^^ cannot infer type
 
 error: aborting due to 2 previous errors
 
