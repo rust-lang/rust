@@ -1083,7 +1083,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(repeat_vec_with_capacity::RepeatVecWithCapacity));
     store.register_late_pass(|_| Box::new(uninhabited_references::UninhabitedReferences));
     store.register_late_pass(|_| Box::new(ineffective_open_options::IneffectiveOpenOptions));
-    store.register_late_pass(|_| Box::new(unconditional_recursion::UnconditionalRecursion));
+    store.register_late_pass(|_| Box::<unconditional_recursion::UnconditionalRecursion>::default());
     store.register_late_pass(move |_| {
         Box::new(pub_underscore_fields::PubUnderscoreFields {
             behavior: pub_underscore_fields_behavior,
