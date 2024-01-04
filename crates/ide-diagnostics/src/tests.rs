@@ -1,7 +1,6 @@
 #[cfg(not(feature = "in-rust-tree"))]
 mod sourcegen;
 
-use expect_test::Expect;
 use ide_db::{
     assists::AssistResolveStrategy, base_db::SourceDatabaseExt, LineIndexDatabase, RootDatabase,
 };
@@ -80,17 +79,6 @@ pub(crate) fn check_no_fix(ra_fixture: &str) {
     .pop()
     .unwrap();
     assert!(diagnostic.fixes.is_none(), "got a fix when none was expected: {diagnostic:?}");
-}
-
-pub(crate) fn check_expect(ra_fixture: &str, expect: Expect) {
-    let (db, file_id) = RootDatabase::with_single_file(ra_fixture);
-    let diagnostics = super::diagnostics(
-        &db,
-        &DiagnosticsConfig::test_sample(),
-        &AssistResolveStrategy::All,
-        file_id,
-    );
-    expect.assert_debug_eq(&diagnostics)
 }
 
 #[track_caller]
