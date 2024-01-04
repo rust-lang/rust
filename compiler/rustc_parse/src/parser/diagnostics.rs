@@ -1212,29 +1212,32 @@ impl<'a> Parser<'a> {
             match x {
                 Ok((_, _, false)) => {
                     if self.eat(&token::Gt) {
+                        // We made sense of it. Improve the error message.
                         e.span_suggestion_verbose(
                             binop.span.shrink_to_lo(),
                             fluent::parse_sugg_turbofish_syntax,
                             "::",
                             Applicability::MaybeIncorrect,
-                        )
-                        .emit_without_consuming();
+                        );
                         match self.parse_expr() {
                             Ok(_) => {
+                                // The subsequent expression is valid. Mark
+                                // `expr` as erroneous and emit `e` now, but
+                                // return `Ok` so parsing can continue.
+                                e.emit();
                                 *expr = self.mk_expr_err(expr.span.to(self.prev_token.span));
                                 return Ok(());
                             }
                             Err(err) => {
-                                *expr = self.mk_expr_err(expr.span);
                                 err.cancel();
                             }
                         }
                     }
                 }
+                Ok((_, _, true)) => {}
                 Err(err) => {
                     err.cancel();
                 }
-                _ => {}
             }
         }
         Err(e)
