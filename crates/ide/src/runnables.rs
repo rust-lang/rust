@@ -576,8 +576,14 @@ mod tests {
     fn check_tests(ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
         let tests = analysis.related_tests(position, None).unwrap();
-        let test_names = tests.into_iter().map(|a| a.nav.name).collect::<Vec<_>>();
-        expect.assert_debug_eq(&test_names);
+        let test_ids = tests
+            .into_iter()
+            .map(|runnable| match runnable.kind {
+                RunnableKind::Test { test_id, .. } => test_id,
+                _ => unreachable!(),
+            })
+            .collect::<Vec<_>>();
+        expect.assert_debug_eq(&test_ids);
     }
 
     #[test]
@@ -2144,7 +2150,9 @@ mod tests {
 "#,
             expect![[r#"
                 [
-                    "foo_test",
+                    Path(
+                        "tests::foo_test",
+                    ),
                 ]
             "#]],
         );
@@ -2169,7 +2177,9 @@ mod tests {
 "#,
             expect![[r#"
                 [
-                    "foo_test",
+                    Path(
+                        "tests::foo_test",
+                    ),
                 ]
             "#]],
         );
@@ -2201,7 +2211,9 @@ mod tests {
 "#,
             expect![[r#"
                 [
-                    "foo_test",
+                    Path(
+                        "tests::foo_test",
+                    ),
                 ]
             "#]],
         );
@@ -2233,8 +2245,12 @@ mod tests {
 "#,
             expect![[r#"
                 [
-                    "foo2_test",
-                    "foo_test",
+                    Path(
+                        "tests::foo2_test",
+                    ),
+                    Path(
+                        "tests::foo_test",
+                    ),
                 ]
             "#]],
         );
