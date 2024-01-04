@@ -1,7 +1,7 @@
 //@no-rustfix
 
 #![warn(clippy::unconditional_recursion)]
-#![allow(clippy::partialeq_ne_impl)]
+#![allow(clippy::partialeq_ne_impl, clippy::default_constructed_unit_structs)]
 
 enum Foo {
     A,
@@ -229,6 +229,38 @@ impl std::string::ToString for S11 {
     fn to_string(&self) -> String {
         //~^ ERROR: function cannot return without recursing
         (self as &Self).to_string()
+    }
+}
+
+struct S12;
+
+impl std::default::Default for S12 {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl S12 {
+    fn new() -> Self {
+        //~^ ERROR: function cannot return without recursing
+        Self::default()
+    }
+
+    fn bar() -> Self {
+        // Should not warn!
+        Self::default()
+    }
+}
+
+#[derive(Default)]
+struct S13 {
+    f: u32,
+}
+
+impl S13 {
+    fn new() -> Self {
+        // Shoud not warn!
+        Self::default()
     }
 }
 

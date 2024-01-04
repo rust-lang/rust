@@ -325,5 +325,20 @@ note: recursive call site
 LL |         mine == theirs
    |         ^^^^^^^^^^^^^^
 
-error: aborting due to 25 previous errors
+error: function cannot return without recursing
+  --> $DIR/unconditional_recursion.rs:244:5
+   |
+LL | /     fn new() -> Self {
+LL | |
+LL | |         Self::default()
+LL | |     }
+   | |_____^
+   |
+note: recursive call site
+  --> $DIR/unconditional_recursion.rs:246:9
+   |
+LL |         Self::default()
+   |         ^^^^^^^^^^^^^^^
+
+error: aborting due to 26 previous errors
 
