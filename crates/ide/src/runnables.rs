@@ -567,13 +567,15 @@ mod tests {
         let mut runnables = analysis.runnables(position.file_id).unwrap();
         runnables.sort_by_key(|it| (it.nav.full_range.start(), it.nav.name.clone()));
 
-        let navigation_targets = runnables.iter().map(|a| a.nav.clone()).collect::<Vec<_>>();
-        expect.assert_debug_eq(&navigation_targets);
+        let mut navigation_targets = Vec::with_capacity(runnables.len());
+        let mut test_kinds = Vec::with_capacity(runnables.len());
+        for runnable in runnables {
+            test_kinds.push(runnable.test_kind());
+            navigation_targets.push(runnable.nav);
+        }
 
-        assert_eq!(
-            actions,
-            runnables.into_iter().map(|it| it.test_kind()).collect::<Vec<_>>().as_slice()
-        );
+        expect.assert_debug_eq(&navigation_targets);
+        assert_eq!(actions, test_kinds.as_slice());
     }
 
     fn check_tests(ra_fixture: &str, expect: Expect) {
