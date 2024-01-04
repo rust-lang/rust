@@ -6,7 +6,7 @@
 
 use std::{env, fs, iter, ops, path::PathBuf, process::Command};
 
-use anyhow::{format_err, Result};
+use anyhow::{format_err, Context, Result};
 use base_db::CrateName;
 use la_arena::{Arena, Idx};
 use paths::{AbsPath, AbsPathBuf};
@@ -119,12 +119,15 @@ impl Sysroot {
         get_rustc_src(&self.root)
     }
 
-    pub fn discover_rustc(&self) -> Result<AbsPathBuf, std::io::Error> {
+    pub fn discover_rustc(&self) -> anyhow::Result<AbsPathBuf> {
         let rustc = self.root.join("bin/rustc");
         tracing::debug!(?rustc, "checking for rustc binary at location");
         match fs::metadata(&rustc) {
             Ok(_) => Ok(rustc),
-            Err(e) => Err(e),
+            Err(e) => Err(e).context(format!(
+                "failed to discover rustc in sysroot: {:?}",
+                AsRef::<std::path::Path>::as_ref(&self.root)
+            )),
         }
     }
 
