@@ -466,7 +466,7 @@ mod tests {
             .collect::<Vec<_>>();
 
         format!(
-            "source_file_edits: {:#?}\nfile_system_edits: {:#?}",
+            "source_file_edits: {:#?}\nfile_system_edits: {:#?}\n",
             source_file_edits, file_system_edits
         )
     }
@@ -973,7 +973,8 @@ mod foo$0;
                             },
                         },
                     ),
-                ]"#]],
+                ]
+            "#]],
         );
     }
 
@@ -1035,7 +1036,8 @@ use crate::foo$0::FooContent;
                             },
                         },
                     ),
-                ]"#]],
+                ]
+            "#]],
         );
     }
 
@@ -1086,7 +1088,8 @@ mod fo$0o;
                             },
                         },
                     ),
-                ]"#]],
+                ]
+            "#]],
         );
     }
 
@@ -1132,7 +1135,8 @@ mod outer { mod fo$0o; }
                             },
                         },
                     ),
-                ]"#]],
+                ]
+            "#]],
         );
     }
 
@@ -1218,7 +1222,8 @@ pub mod foo$0;
                             },
                         },
                     ),
-                ]"#]],
+                ]
+            "#]],
         );
     }
 
@@ -1299,7 +1304,8 @@ mod quux;
                             },
                         },
                     ),
-                ]"#]],
+                ]
+            "#]],
         )
     }
     #[test]
@@ -1367,7 +1373,8 @@ mod bar$0;
 "#,
             expect![[r#"
                 source_file_edits: []
-                file_system_edits: []"#]],
+                file_system_edits: []
+            "#]],
         )
     }
 
@@ -1444,7 +1451,8 @@ pub fn baz() {}
                             },
                         },
                     ),
-                ]"#]],
+                ]
+            "#]],
         );
     }
 
@@ -1521,7 +1529,8 @@ pub fn baz() {}
                             },
                         },
                     ),
-                ]"#]],
+                ]
+            "#]],
         );
     }
 
