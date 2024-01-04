@@ -24,7 +24,13 @@
 // Remove this as soon as the stdarch submodule is updated on nightly.
 #![allow(stable_features)]
 #![feature(stdsimd)]
-#![cfg_attr(feature = "rustc-dep-of-std", feature(stdarch_x86_has_cpuid))]
+#![cfg_attr(
+    all(
+        any(target_arch = "x86", target_arch = "x86_64"),
+        feature = "rustc-dep-of-std"
+    ),
+    feature(stdarch_x86_has_cpuid)
+)]
 
 #[cfg(test)]
 #[macro_use]
