@@ -20,8 +20,8 @@ LL |     Self::A: Copy,
    |              ---- unsatisfied trait bound introduced here
 help: associated type for the current `impl` cannot be restricted in `where` clauses, remove this bound
    |
+LL - where
 LL -     Self::A: Copy,
-LL +     
    |
 
 error: aborting due to 1 previous error

@@ -5123,8 +5123,24 @@ fn point_at_assoc_type_restriction(
             {
                 // The following block is to determine the right span to delete for this bound
                 // that will leave valid code after the suggestion is applied.
-                let span = if let Some(hir::WherePredicate::BoundPredicate(next)) =
-                    predicates.peek()
+                let span = if pred.origin == hir::PredicateOrigin::WhereClause
+                    && generics
+                        .predicates
+                        .iter()
+                        .filter(|p| {
+                            matches!(
+                                p,
+                                hir::WherePredicate::BoundPredicate(p)
+                                if hir::PredicateOrigin::WhereClause == p.origin
+                            )
+                        })
+                        .count()
+                        == 1
+                {
+                    // There's only one `where` bound, that needs to be removed. Remove the whole
+                    // `where` clause.
+                    generics.where_clause_span
+                } else if let Some(hir::WherePredicate::BoundPredicate(next)) = predicates.peek()
                     && pred.origin == next.origin
                 {
                     // There's another bound, include the comma for the current one.
@@ -5174,7 +5190,7 @@ fn point_at_assoc_type_restriction(
                     err.span_suggestion_verbose(
                         path.span,
                         "replace the associated type with the type specified in this `impl`",
-                        format!("{}", tcx.type_of(new.def_id).skip_binder(),),
+                        tcx.type_of(new.def_id).skip_binder().to_string(),
                         Applicability::MachineApplicable,
                     );
                 }
