@@ -11,7 +11,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 use tracing::*;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ErrorKind {
     Help,
     Error,
