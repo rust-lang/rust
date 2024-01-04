@@ -26,7 +26,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         ref: ${{ github.ref }}
 
@@ -72,7 +72,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Install i686 dependencies
       if: matrix.host == 'i686-unknown-linux-gnu'
@@ -151,7 +151,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Install toolchain
       run: rustup show active-toolchain
@@ -175,7 +175,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Install toolchain
       run: rustup show active-toolchain
@@ -231,7 +231,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Install toolchain
       run: rustup show active-toolchain
