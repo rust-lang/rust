@@ -17,7 +17,7 @@ use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
 use rustc_data_structures::sync::{
     AtomicU64, DynSend, DynSync, Lock, Lrc, OneThread, Ordering::SeqCst,
 };
-use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter;
+use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::emitter::{DynEmitter, HumanEmitter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
@@ -1000,7 +1000,7 @@ fn default_emitter(
             let (short, color_config) = kind.unzip();
 
             if let HumanReadableErrorType::AnnotateSnippet(_) = kind {
-                let emitter = AnnotateSnippetEmitterWriter::new(
+                let emitter = AnnotateSnippetEmitter::new(
                     Some(source_map),
                     bundle,
                     fallback_bundle,
