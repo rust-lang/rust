@@ -5,6 +5,8 @@ use rustc_span::{def_id::DefId, symbol::Ident};
 use crate::MetaItem;
 
 pub mod allocator;
+pub mod typetree;
+pub mod autodiff_attrs;
 
 #[derive(Debug, Clone, Encodable, Decodable, HashStable_Generic)]
 pub struct StrippedCfgItem<ModId = DefId> {
