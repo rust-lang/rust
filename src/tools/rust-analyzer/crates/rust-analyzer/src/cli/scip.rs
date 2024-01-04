@@ -278,8 +278,8 @@ fn token_to_symbol(token: &TokenStaticData) -> Option<scip_types::Symbol> {
 mod test {
     use super::*;
     use ide::{AnalysisHost, FilePosition, StaticIndex, TextSize};
-    use ide_db::base_db::fixture::ChangeFixture;
     use scip::symbol::format_symbol;
+    use test_fixture::ChangeFixture;
 
     fn position(ra_fixture: &str) -> (AnalysisHost, FilePosition) {
         let mut host = AnalysisHost::default();

@@ -1,12 +1,7 @@
 //! Builtin attributes.
+use span::{MacroCallId, Span};
 
-use base_db::{
-    span::{SyntaxContextId, ROOT_ERASED_FILE_AST_ID},
-    FileId,
-};
-use syntax::{TextRange, TextSize};
-
-use crate::{db::ExpandDatabase, name, tt, ExpandResult, MacroCallId, MacroCallKind};
+use crate::{db::ExpandDatabase, name, tt, ExpandResult, MacroCallKind};
 
 macro_rules! register_builtin {
     ($expand_fn:ident: $(($name:ident, $variant:ident) => $expand:ident),* ) => {
@@ -106,7 +101,12 @@ fn derive_attr_expand(
         MacroCallKind::Attr { attr_args: Some(attr_args), .. } if loc.def.is_attribute_derive() => {
             attr_args
         }
-        _ => return ExpandResult::ok(tt::Subtree::empty(tt::DelimSpan::DUMMY)),
+        _ => {
+            return ExpandResult::ok(tt::Subtree::empty(tt::DelimSpan {
+                open: loc.call_site,
+                close: loc.call_site,
+            }))
+        }
     };
     pseudo_derive_attr_expansion(tt, derives, loc.call_site)
 }
@@ -114,20 +114,13 @@ fn derive_attr_expand(
 pub fn pseudo_derive_attr_expansion(
     tt: &tt::Subtree,
     args: &tt::Subtree,
-    call_site: SyntaxContextId,
+    call_site: Span,
 ) -> ExpandResult<tt::Subtree> {
     let mk_leaf = |char| {
         tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct {
             char,
             spacing: tt::Spacing::Alone,
-            span: tt::SpanData {
-                range: TextRange::empty(TextSize::new(0)),
-                anchor: base_db::span::SpanAnchor {
-                    file_id: FileId::BOGUS,
-                    ast_id: ROOT_ERASED_FILE_AST_ID,
-                },
-                ctx: call_site,
-            },
+            span: call_site,
         }))
     };
 

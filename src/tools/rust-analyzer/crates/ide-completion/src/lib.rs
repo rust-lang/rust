@@ -211,12 +211,14 @@ pub fn completions(
             CompletionAnalysis::UnexpandedAttrTT {
                 colon_prefix,
                 fake_attribute_under_caret: Some(attr),
+                extern_crate,
             } => {
                 completions::attribute::complete_known_attribute_input(
                     acc,
                     ctx,
                     colon_prefix,
                     attr,
+                    extern_crate.as_ref(),
                 );
             }
             CompletionAnalysis::UnexpandedAttrTT { .. } | CompletionAnalysis::String { .. } => (),

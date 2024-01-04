@@ -9,7 +9,7 @@ use paths::{AbsPath, AbsPathBuf};
 use stdx::JodChild;
 
 use crate::{
-    msg::{Message, Request, Response, CURRENT_API_VERSION},
+    msg::{Message, Request, Response, SpanMode, CURRENT_API_VERSION, RUST_ANALYZER_SPAN_SUPPORT},
     ProcMacroKind, ServerError,
 };
 
@@ -19,6 +19,7 @@ pub(crate) struct ProcMacroProcessSrv {
     stdin: ChildStdin,
     stdout: BufReader<ChildStdout>,
     version: u32,
+    mode: SpanMode,
 }
 
 impl ProcMacroProcessSrv {
@@ -27,7 +28,13 @@ impl ProcMacroProcessSrv {
             let mut process = Process::run(process_path.clone(), null_stderr)?;
             let (stdin, stdout) = process.stdio().expect("couldn't access child stdio");
 
-            io::Result::Ok(ProcMacroProcessSrv { _process: process, stdin, stdout, version: 0 })
+            io::Result::Ok(ProcMacroProcessSrv {
+                _process: process,
+                stdin,
+                stdout,
+                version: 0,
+                mode: SpanMode::Id,
+            })
         };
         let mut srv = create_srv(true)?;
         tracing::info!("sending version check");
@@ -43,6 +50,11 @@ impl ProcMacroProcessSrv {
                 tracing::info!("got version {v}");
                 srv = create_srv(false)?;
                 srv.version = v;
+                if srv.version > RUST_ANALYZER_SPAN_SUPPORT {
+                    if let Ok(mode) = srv.enable_rust_analyzer_spans() {
+                        srv.mode = mode;
+                    }
+                }
                 Ok(srv)
             }
             Err(e) => {
@@ -62,9 +74,19 @@ impl ProcMacroProcessSrv {
 
         match response {
             Response::ApiVersionCheck(version) => Ok(version),
-            Response::ExpandMacro { .. } | Response::ListMacros { .. } => {
-                Err(ServerError { message: "unexpected response".to_string(), io: None })
-            }
+            _ => Err(ServerError { message: "unexpected response".to_string(), io: None }),
+        }
+    }
+
+    fn enable_rust_analyzer_spans(&mut self) -> Result<SpanMode, ServerError> {
+        let request = Request::SetConfig(crate::msg::ServerConfig {
+            span_mode: crate::msg::SpanMode::RustAnalyzer,
+        });
+        let response = self.send_task(request)?;
+
+        match response {
+            Response::SetConfig(crate::msg::ServerConfig { span_mode }) => Ok(span_mode),
+            _ => Err(ServerError { message: "unexpected response".to_string(), io: None }),
         }
     }
 
@@ -78,9 +100,7 @@ impl ProcMacroProcessSrv {
 
         match response {
             Response::ListMacros(it) => Ok(it),
-            Response::ExpandMacro { .. } | Response::ApiVersionCheck { .. } => {
-                Err(ServerError { message: "unexpected response".to_string(), io: None })
-            }
+            _ => Err(ServerError { message: "unexpected response".to_string(), io: None }),
         }
     }
 

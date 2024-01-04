@@ -38,7 +38,6 @@ jobs:
               - 'crates/proc-macro-api/**'
               - 'crates/proc-macro-srv/**'
               - 'crates/proc-macro-srv-cli/**'
-              - 'crates/proc-macro-test/**'
 
   rust:
     needs: changes

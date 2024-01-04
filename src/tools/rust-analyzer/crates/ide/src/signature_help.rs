@@ -646,8 +646,9 @@ mod tests {
     use std::iter;
 
     use expect_test::{expect, Expect};
-    use ide_db::base_db::{fixture::ChangeFixture, FilePosition};
+    use ide_db::base_db::FilePosition;
     use stdx::format_to;
+    use test_fixture::ChangeFixture;
 
     use crate::RootDatabase;
 

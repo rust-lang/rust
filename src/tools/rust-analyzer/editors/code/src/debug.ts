@@ -135,8 +135,10 @@ async function getDebugConfiguration(
     let sourceFileMap = debugOptions.sourceFileMap;
     if (sourceFileMap === "auto") {
         // let's try to use the default toolchain
-        const commitHash = await getRustcId(wsFolder);
-        const sysroot = await getSysroot(wsFolder);
+        const [commitHash, sysroot] = await Promise.all([
+            getRustcId(wsFolder),
+            getSysroot(wsFolder),
+        ]);
         const rustlib = path.normalize(sysroot + "/lib/rustlib/src/rust");
         sourceFileMap = {};
         sourceFileMap[`/rustc/${commitHash}/`] = rustlib;

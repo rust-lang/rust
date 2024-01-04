@@ -16,7 +16,7 @@ use crate::{
     db::DefDatabase,
     expander::{Expander, Mark},
     item_tree::{self, AssocItem, FnFlags, ItemTree, ItemTreeId, MacroCall, ModItem, TreeId},
-    macro_call_as_call_id, macro_id_to_def_id,
+    macro_call_as_call_id,
     nameres::{
         attr_resolution::ResolvedAttr,
         diagnostics::DefDiagnostic,
@@ -720,7 +720,7 @@ impl<'a> AssocItemCollector<'a> {
                         )
                         .0
                         .take_macros()
-                        .map(|it| macro_id_to_def_id(self.db, it))
+                        .map(|it| self.db.macro_def(it))
                 };
                 match macro_call_as_call_id(
                     self.db.upcast(),
