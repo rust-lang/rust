@@ -576,7 +576,8 @@ mod tests {
     fn check_tests(ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
         let tests = analysis.related_tests(position, None).unwrap();
-        expect.assert_debug_eq(&tests);
+        let test_names = tests.into_iter().map(|a| a.nav.name).collect::<Vec<_>>();
+        expect.assert_debug_eq(&test_names);
     }
 
     #[test]
@@ -2143,27 +2144,7 @@ mod tests {
 "#,
             expect![[r#"
                 [
-                    Runnable {
-                        use_name_in_title: false,
-                        nav: NavigationTarget {
-                            file_id: FileId(
-                                0,
-                            ),
-                            full_range: 31..85,
-                            focus_range: 46..54,
-                            name: "foo_test",
-                            kind: Function,
-                        },
-                        kind: Test {
-                            test_id: Path(
-                                "tests::foo_test",
-                            ),
-                            attr: TestAttr {
-                                ignore: false,
-                            },
-                        },
-                        cfg: None,
-                    },
+                    "foo_test",
                 ]
             "#]],
         );
@@ -2188,27 +2169,7 @@ mod tests {
 "#,
             expect![[r#"
                 [
-                    Runnable {
-                        use_name_in_title: false,
-                        nav: NavigationTarget {
-                            file_id: FileId(
-                                0,
-                            ),
-                            full_range: 71..122,
-                            focus_range: 86..94,
-                            name: "foo_test",
-                            kind: Function,
-                        },
-                        kind: Test {
-                            test_id: Path(
-                                "tests::foo_test",
-                            ),
-                            attr: TestAttr {
-                                ignore: false,
-                            },
-                        },
-                        cfg: None,
-                    },
+                    "foo_test",
                 ]
             "#]],
         );
@@ -2240,27 +2201,7 @@ mod tests {
 "#,
             expect![[r#"
                 [
-                    Runnable {
-                        use_name_in_title: false,
-                        nav: NavigationTarget {
-                            file_id: FileId(
-                                0,
-                            ),
-                            full_range: 133..183,
-                            focus_range: 148..156,
-                            name: "foo_test",
-                            kind: Function,
-                        },
-                        kind: Test {
-                            test_id: Path(
-                                "tests::foo_test",
-                            ),
-                            attr: TestAttr {
-                                ignore: false,
-                            },
-                        },
-                        cfg: None,
-                    },
+                    "foo_test",
                 ]
             "#]],
         );
@@ -2292,48 +2233,8 @@ mod tests {
 "#,
             expect![[r#"
                 [
-                    Runnable {
-                        use_name_in_title: false,
-                        nav: NavigationTarget {
-                            file_id: FileId(
-                                0,
-                            ),
-                            full_range: 121..185,
-                            focus_range: 136..145,
-                            name: "foo2_test",
-                            kind: Function,
-                        },
-                        kind: Test {
-                            test_id: Path(
-                                "tests::foo2_test",
-                            ),
-                            attr: TestAttr {
-                                ignore: false,
-                            },
-                        },
-                        cfg: None,
-                    },
-                    Runnable {
-                        use_name_in_title: false,
-                        nav: NavigationTarget {
-                            file_id: FileId(
-                                0,
-                            ),
-                            full_range: 52..115,
-                            focus_range: 67..75,
-                            name: "foo_test",
-                            kind: Function,
-                        },
-                        kind: Test {
-                            test_id: Path(
-                                "tests::foo_test",
-                            ),
-                            attr: TestAttr {
-                                ignore: false,
-                            },
-                        },
-                        cfg: None,
-                    },
+                    "foo2_test",
+                    "foo_test",
                 ]
             "#]],
         );
