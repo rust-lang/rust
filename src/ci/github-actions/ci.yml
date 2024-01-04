@@ -74,6 +74,7 @@ x--expand-yaml-anchors--remove:
 
   - &base-job
     env: {}
+    msys2: false
 
   - &job-linux-4c
     os: ubuntu-20.04-4core-16gb
