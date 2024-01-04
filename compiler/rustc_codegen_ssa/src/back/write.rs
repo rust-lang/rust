@@ -1848,9 +1848,9 @@ impl SharedEmitterMain {
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)) => {
                     let err_level = match level {
-                        Level::Error { lint: false } => rustc_errors::Level::Error { lint: false },
-                        Level::Warning(_) => rustc_errors::Level::Warning(None),
-                        Level::Note => rustc_errors::Level::Note,
+                        Level::Error { lint: false } => Level::Error { lint: false },
+                        Level::Warning(_) => Level::Warning(None),
+                        Level::Note => Level::Note,
                         _ => bug!("Invalid inline asm diagnostic level"),
                     };
                     let msg = msg.strip_prefix("error: ").unwrap_or(&msg).to_string();
