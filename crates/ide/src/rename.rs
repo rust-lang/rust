@@ -365,8 +365,6 @@ fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: &str) -> Opt
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-
     use expect_test::{expect, Expect};
     use ide_db::source_change::{FileSystemEdit, SourceChange};
     use stdx::trim_indent;
@@ -452,7 +450,7 @@ mod tests {
             .source_file_edits
             .into_iter()
             .map(|(id, (text_edit, _))| (id, text_edit.into_iter().collect::<Vec<_>>()))
-            .collect::<BTreeMap<_, _>>();
+            .collect::<Vec<_>>();
 
         let file_system_edits = source_change
             .file_system_edits
@@ -465,7 +463,7 @@ mod tests {
                 };
                 (id.clone(), file_system_edit)
             })
-            .collect::<BTreeMap<_, _>>();
+            .collect::<Vec<_>>();
 
         format!(
             "source_file_edits: {:#?}\nfile_system_edits: {:#?}",
@@ -945,31 +943,37 @@ mod foo$0;
 // empty
 "#,
             expect![[r#"
-                source_file_edits: {
-                    FileId(
-                        1,
-                    ): [
-                        Indel {
-                            insert: "foo2",
-                            delete: 4..7,
-                        },
-                    ],
-                }
-                file_system_edits: {
-                    FileId(
-                        2,
-                    ): MoveFile {
-                        src: FileId(
+                source_file_edits: [
+                    (
+                        FileId(
+                            1,
+                        ),
+                        [
+                            Indel {
+                                insert: "foo2",
+                                delete: 4..7,
+                            },
+                        ],
+                    ),
+                ]
+                file_system_edits: [
+                    (
+                        FileId(
                             2,
                         ),
-                        dst: AnchoredPathBuf {
-                            anchor: FileId(
+                        MoveFile {
+                            src: FileId(
                                 2,
                             ),
-                            path: "foo2.rs",
+                            dst: AnchoredPathBuf {
+                                anchor: FileId(
+                                    2,
+                                ),
+                                path: "foo2.rs",
+                            },
                         },
-                    },
-                }"#]],
+                    ),
+                ]"#]],
         );
     }
 
@@ -990,39 +994,48 @@ pub struct FooContent;
 use crate::foo$0::FooContent;
 "#,
             expect![[r#"
-                source_file_edits: {
-                    FileId(
-                        0,
-                    ): [
-                        Indel {
-                            insert: "quux",
-                            delete: 8..11,
-                        },
-                    ],
-                    FileId(
-                        2,
-                    ): [
-                        Indel {
-                            insert: "quux",
-                            delete: 11..14,
-                        },
-                    ],
-                }
-                file_system_edits: {
-                    FileId(
-                        1,
-                    ): MoveFile {
-                        src: FileId(
+                source_file_edits: [
+                    (
+                        FileId(
+                            0,
+                        ),
+                        [
+                            Indel {
+                                insert: "quux",
+                                delete: 8..11,
+                            },
+                        ],
+                    ),
+                    (
+                        FileId(
+                            2,
+                        ),
+                        [
+                            Indel {
+                                insert: "quux",
+                                delete: 11..14,
+                            },
+                        ],
+                    ),
+                ]
+                file_system_edits: [
+                    (
+                        FileId(
                             1,
                         ),
-                        dst: AnchoredPathBuf {
-                            anchor: FileId(
+                        MoveFile {
+                            src: FileId(
                                 1,
                             ),
-                            path: "quux.rs",
+                            dst: AnchoredPathBuf {
+                                anchor: FileId(
+                                    1,
+                                ),
+                                path: "quux.rs",
+                            },
                         },
-                    },
-                }"#]],
+                    ),
+                ]"#]],
         );
     }
 
@@ -1037,37 +1050,43 @@ mod fo$0o;
 // empty
 "#,
             expect![[r#"
-                source_file_edits: {
-                    FileId(
-                        0,
-                    ): [
-                        Indel {
-                            insert: "foo2",
-                            delete: 4..7,
-                        },
-                    ],
-                }
-                file_system_edits: {
-                    FileId(
-                        1,
-                    ): MoveDir {
-                        src: AnchoredPathBuf {
-                            anchor: FileId(
-                                1,
-                            ),
-                            path: "../foo",
-                        },
-                        src_id: FileId(
+                source_file_edits: [
+                    (
+                        FileId(
+                            0,
+                        ),
+                        [
+                            Indel {
+                                insert: "foo2",
+                                delete: 4..7,
+                            },
+                        ],
+                    ),
+                ]
+                file_system_edits: [
+                    (
+                        FileId(
                             1,
                         ),
-                        dst: AnchoredPathBuf {
-                            anchor: FileId(
+                        MoveDir {
+                            src: AnchoredPathBuf {
+                                anchor: FileId(
+                                    1,
+                                ),
+                                path: "../foo",
+                            },
+                            src_id: FileId(
                                 1,
                             ),
-                            path: "../foo2",
+                            dst: AnchoredPathBuf {
+                                anchor: FileId(
+                                    1,
+                                ),
+                                path: "../foo2",
+                            },
                         },
-                    },
-                }"#]],
+                    ),
+                ]"#]],
         );
     }
 
@@ -1083,31 +1102,37 @@ mod outer { mod fo$0o; }
 // empty
 "#,
             expect![[r#"
-                source_file_edits: {
-                    FileId(
-                        0,
-                    ): [
-                        Indel {
-                            insert: "bar",
-                            delete: 16..19,
-                        },
-                    ],
-                }
-                file_system_edits: {
-                    FileId(
-                        1,
-                    ): MoveFile {
-                        src: FileId(
+                source_file_edits: [
+                    (
+                        FileId(
+                            0,
+                        ),
+                        [
+                            Indel {
+                                insert: "bar",
+                                delete: 16..19,
+                            },
+                        ],
+                    ),
+                ]
+                file_system_edits: [
+                    (
+                        FileId(
                             1,
                         ),
-                        dst: AnchoredPathBuf {
-                            anchor: FileId(
+                        MoveFile {
+                            src: FileId(
                                 1,
                             ),
-                            path: "bar.rs",
+                            dst: AnchoredPathBuf {
+                                anchor: FileId(
+                                    1,
+                                ),
+                                path: "bar.rs",
+                            },
                         },
-                    },
-                }"#]],
+                    ),
+                ]"#]],
         );
     }
 
@@ -1152,39 +1177,48 @@ pub mod foo$0;
 // pub fn fun() {}
 "#,
             expect![[r#"
-                source_file_edits: {
-                    FileId(
-                        0,
-                    ): [
-                        Indel {
-                            insert: "foo2",
-                            delete: 27..30,
-                        },
-                    ],
-                    FileId(
-                        1,
-                    ): [
-                        Indel {
-                            insert: "foo2",
-                            delete: 8..11,
-                        },
-                    ],
-                }
-                file_system_edits: {
-                    FileId(
-                        2,
-                    ): MoveFile {
-                        src: FileId(
+                source_file_edits: [
+                    (
+                        FileId(
+                            0,
+                        ),
+                        [
+                            Indel {
+                                insert: "foo2",
+                                delete: 27..30,
+                            },
+                        ],
+                    ),
+                    (
+                        FileId(
+                            1,
+                        ),
+                        [
+                            Indel {
+                                insert: "foo2",
+                                delete: 8..11,
+                            },
+                        ],
+                    ),
+                ]
+                file_system_edits: [
+                    (
+                        FileId(
                             2,
                         ),
-                        dst: AnchoredPathBuf {
-                            anchor: FileId(
+                        MoveFile {
+                            src: FileId(
                                 2,
                             ),
-                            path: "foo2.rs",
+                            dst: AnchoredPathBuf {
+                                anchor: FileId(
+                                    2,
+                                ),
+                                path: "foo2.rs",
+                            },
                         },
-                    },
-                }"#]],
+                    ),
+                ]"#]],
         );
     }
 
@@ -1213,37 +1247,59 @@ mod quux;
 // empty
 "#,
             expect![[r#"
-                source_file_edits: {
-                    FileId(
-                        0,
-                    ): [
-                        Indel {
-                            insert: "foo2",
-                            delete: 4..7,
-                        },
-                    ],
-                }
-                file_system_edits: {
-                    FileId(
-                        1,
-                    ): MoveDir {
-                        src: AnchoredPathBuf {
-                            anchor: FileId(
-                                1,
-                            ),
-                            path: "foo",
-                        },
-                        src_id: FileId(
+                source_file_edits: [
+                    (
+                        FileId(
+                            0,
+                        ),
+                        [
+                            Indel {
+                                insert: "foo2",
+                                delete: 4..7,
+                            },
+                        ],
+                    ),
+                ]
+                file_system_edits: [
+                    (
+                        FileId(
                             1,
                         ),
-                        dst: AnchoredPathBuf {
-                            anchor: FileId(
+                        MoveFile {
+                            src: FileId(
                                 1,
                             ),
-                            path: "foo2",
+                            dst: AnchoredPathBuf {
+                                anchor: FileId(
+                                    1,
+                                ),
+                                path: "foo2.rs",
+                            },
                         },
-                    },
-                }"#]],
+                    ),
+                    (
+                        FileId(
+                            1,
+                        ),
+                        MoveDir {
+                            src: AnchoredPathBuf {
+                                anchor: FileId(
+                                    1,
+                                ),
+                                path: "foo",
+                            },
+                            src_id: FileId(
+                                1,
+                            ),
+                            dst: AnchoredPathBuf {
+                                anchor: FileId(
+                                    1,
+                                ),
+                                path: "foo2",
+                            },
+                        },
+                    ),
+                ]"#]],
         )
     }
     #[test]
@@ -1310,8 +1366,8 @@ fn foo() {}
 mod bar$0;
 "#,
             expect![[r#"
-                source_file_edits: {}
-                file_system_edits: {}"#]],
+                source_file_edits: []
+                file_system_edits: []"#]],
         )
     }
 
@@ -1332,41 +1388,63 @@ pub mod bar;
 pub fn baz() {}
 "#,
             expect![[r#"
-                source_file_edits: {
-                    FileId(
-                        0,
-                    ): [
-                        Indel {
-                            insert: "r#fn",
-                            delete: 4..7,
-                        },
-                        Indel {
-                            insert: "r#fn",
-                            delete: 22..25,
-                        },
-                    ],
-                }
-                file_system_edits: {
-                    FileId(
-                        1,
-                    ): MoveDir {
-                        src: AnchoredPathBuf {
-                            anchor: FileId(
-                                1,
-                            ),
-                            path: "foo",
-                        },
-                        src_id: FileId(
+                source_file_edits: [
+                    (
+                        FileId(
+                            0,
+                        ),
+                        [
+                            Indel {
+                                insert: "r#fn",
+                                delete: 4..7,
+                            },
+                            Indel {
+                                insert: "r#fn",
+                                delete: 22..25,
+                            },
+                        ],
+                    ),
+                ]
+                file_system_edits: [
+                    (
+                        FileId(
                             1,
                         ),
-                        dst: AnchoredPathBuf {
-                            anchor: FileId(
+                        MoveFile {
+                            src: FileId(
                                 1,
                             ),
-                            path: "fn",
+                            dst: AnchoredPathBuf {
+                                anchor: FileId(
+                                    1,
+                                ),
+                                path: "fn.rs",
+                            },
                         },
-                    },
-                }"#]],
+                    ),
+                    (
+                        FileId(
+                            1,
+                        ),
+                        MoveDir {
+                            src: AnchoredPathBuf {
+                                anchor: FileId(
+                                    1,
+                                ),
+                                path: "foo",
+                            },
+                            src_id: FileId(
+                                1,
+                            ),
+                            dst: AnchoredPathBuf {
+                                anchor: FileId(
+                                    1,
+                                ),
+                                path: "fn",
+                            },
+                        },
+                    ),
+                ]"#]],
         );
     }
 
@@ -1387,41 +1465,63 @@ pub mod bar;
 pub fn baz() {}
 "#,
             expect![[r#"
-                source_file_edits: {
-                    FileId(
-                        0,
-                    ): [
-                        Indel {
-                            insert: "foo",
-                            delete: 4..8,
-                        },
-                        Indel {
-                            insert: "foo",
-                            delete: 23..27,
-                        },
-                    ],
-                }
-                file_system_edits: {
-                    FileId(
-                        1,
-                    ): MoveDir {
-                        src: AnchoredPathBuf {
-                            anchor: FileId(
-                                1,
-                            ),
-                            path: "fn",
-                        },
-                        src_id: FileId(
+                source_file_edits: [
+                    (
+                        FileId(
+                            0,
+                        ),
+                        [
+                            Indel {
+                                insert: "foo",
+                                delete: 4..8,
+                            },
+                            Indel {
+                                insert: "foo",
+                                delete: 23..27,
+                            },
+                        ],
+                    ),
+                ]
+                file_system_edits: [
+                    (
+                        FileId(
                             1,
                         ),
-                        dst: AnchoredPathBuf {
-                            anchor: FileId(
+                        MoveFile {
+                            src: FileId(
                                 1,
                             ),
-                            path: "foo",
+                            dst: AnchoredPathBuf {
+                                anchor: FileId(
+                                    1,
+                                ),
+                                path: "foo.rs",
+                            },
                         },
-                    },
-                }"#]],
+                    ),
+                    (
+                        FileId(
+                            1,
+                        ),
+                        MoveDir {
+                            src: AnchoredPathBuf {
+                                anchor: FileId(
+                                    1,
+                                ),
+                                path: "fn",
+                            },
+                            src_id: FileId(
+                                1,
+                            ),
+                            dst: AnchoredPathBuf {
+                                anchor: FileId(
+                                    1,
+                                ),
+                                path: "foo",
+                            },
+                        },
+                    ),
+                ]"#]],
         );
     }
 
