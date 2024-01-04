@@ -55,7 +55,6 @@ pub mod mono;
 pub mod patch;
 pub mod pretty;
 mod query;
-pub mod spanview;
 mod statement;
 mod syntax;
 pub mod tcx;
