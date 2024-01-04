@@ -26,23 +26,23 @@
 //!
 //! # Async Iterators
 //!
-//! The heart and soul of this module is the [`AsyncIterator`] trait. The core of
-//! [`AsyncIterator`] looks like this:
+//! The heart and soul of this module is the [`Stream`] trait. The core of
+//! [`Stream`] looks like this:
 //!
 //! ```
 //! # use core::task::{Context, Poll};
 //! # use core::pin::Pin;
-//! trait AsyncIterator {
+//! trait Stream {
 //!     type Item;
 //!     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>>;
 //! }
 //! ```
 //!
-//! Unlike `Iterator`, `AsyncIterator` makes a distinction between the [`poll_next`]
-//! method which is used when implementing an `AsyncIterator`, and a (to-be-implemented)
-//! `next` method which is used when consuming an async iterator. Consumers of `AsyncIterator`
+//! Unlike `Iterator`, `Stream` makes a distinction between the [`poll_next`]
+//! method which is used when implementing an `Stream`, and a (to-be-implemented)
+//! `next` method which is used when consuming an async iterator. Consumers of `Stream`
 //! only need to consider `next`, which when called, returns a future which
-//! yields `Option<AsyncIterator::Item>`.
+//! yields `Option<Stream::Item>`.
 //!
 //! The future returned by `next` will yield `Some(Item)` as long as there are
 //! elements, and once they've all been exhausted, will yield `None` to indicate
@@ -52,17 +52,17 @@
 //! Individual async iterators may choose to resume iteration, and so calling `next`
 //! again may or may not eventually yield `Some(Item)` again at some point.
 //!
-//! [`AsyncIterator`]'s full definition includes a number of other methods as well,
+//! [`Stream`]'s full definition includes a number of other methods as well,
 //! but they are default methods, built on top of [`poll_next`], and so you get
 //! them for free.
 //!
 //! [`Poll`]: super::task::Poll
-//! [`poll_next`]: AsyncIterator::poll_next
+//! [`poll_next`]: Stream::poll_next
 //!
 //! # Implementing Async Iterator
 //!
 //! Creating an async iterator of your own involves two steps: creating a `struct` to
-//! hold the async iterator's state, and then implementing [`AsyncIterator`] for that
+//! hold the async iterator's state, and then implementing [`Stream`] for that
 //! `struct`.
 //!
 //! Let's make an async iterator named `Counter` which counts from `1` to `5`:
@@ -89,7 +89,7 @@
 //!     }
 //! }
 //!
-//! // Then, we implement `AsyncIterator` for our `Counter`:
+//! // Then, we implement `Stream` for our `Counter`:
 //!
 //! impl Stream for Counter {
 //!     // we will be counting with usize
