@@ -1086,7 +1086,7 @@ impl DiagCtxt {
     }
 
     #[track_caller]
-    pub fn create_warning<'a>(
+    pub fn create_warn<'a>(
         &'a self,
         warning: impl IntoDiagnostic<'a, ()>,
     ) -> DiagnosticBuilder<'a, ()> {
@@ -1094,8 +1094,8 @@ impl DiagCtxt {
     }
 
     #[track_caller]
-    pub fn emit_warning<'a>(&'a self, warning: impl IntoDiagnostic<'a, ()>) {
-        self.create_warning(warning).emit()
+    pub fn emit_warn<'a>(&'a self, warning: impl IntoDiagnostic<'a, ()>) {
+        self.create_warn(warning).emit()
     }
 
     #[track_caller]

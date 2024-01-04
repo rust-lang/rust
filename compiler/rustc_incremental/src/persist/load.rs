@@ -51,7 +51,7 @@ impl<T: Default> LoadResult<T> {
 
         match self {
             LoadResult::LoadDepGraph(path, err) => {
-                sess.dcx().emit_warning(errors::LoadDepGraph { path, err });
+                sess.dcx().emit_warn(errors::LoadDepGraph { path, err });
                 Default::default()
             }
             LoadResult::DataOutOfDate => {

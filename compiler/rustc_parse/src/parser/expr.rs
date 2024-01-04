@@ -2150,7 +2150,7 @@ impl<'a> Parser<'a> {
         if [sym::i32, sym::u32, sym::isize, sym::usize].contains(&suffix) {
             // #59553: warn instead of reject out of hand to allow the fix to percolate
             // through the ecosystem when people fix their macros
-            self.dcx().emit_warning(errors::InvalidLiteralSuffixOnTupleIndex {
+            self.dcx().emit_warn(errors::InvalidLiteralSuffixOnTupleIndex {
                 span,
                 suffix,
                 exception: Some(()),

@@ -630,7 +630,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 // current number of evaluated terminators is a power of 2. The latter gives us a cheap
                 // way to implement exponential backoff.
                 let span = ecx.cur_span();
-                ecx.tcx.dcx().emit_warning(LongRunningWarn { span, item_span: ecx.tcx.span });
+                ecx.tcx.dcx().emit_warn(LongRunningWarn { span, item_span: ecx.tcx.span });
             }
         }
 

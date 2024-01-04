@@ -263,7 +263,7 @@ impl Session {
         if !unleashed_features.is_empty() {
             let mut must_err = false;
             // Create a diagnostic pointing at where things got unleashed.
-            self.dcx().emit_warning(errors::SkippingConstChecks {
+            self.dcx().emit_warn(errors::SkippingConstChecks {
                 unleashed_features: unleashed_features
                     .iter()
                     .map(|(span, gate)| {
@@ -574,7 +574,7 @@ impl Session {
                         // We only call `msg` in case we can actually emit warnings.
                         // Otherwise, this could cause a `good_path_delayed_bug` to
                         // trigger (issue #79546).
-                        self.dcx().emit_warning(errors::OptimisationFuelExhausted { msg: msg() });
+                        self.dcx().emit_warn(errors::OptimisationFuelExhausted { msg: msg() });
                     }
                     fuel.out_of_fuel = true;
                 } else if fuel.remaining > 0 {
@@ -1129,7 +1129,7 @@ pub fn build_session(
         match profiler {
             Ok(profiler) => Some(Arc::new(profiler)),
             Err(e) => {
-                dcx.emit_warning(errors::FailedToCreateProfiler { err: e.to_string() });
+                dcx.emit_warn(errors::FailedToCreateProfiler { err: e.to_string() });
                 None
             }
         }
@@ -1341,7 +1341,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
     if sess.opts.unstable_opts.stack_protector != StackProtector::None {
         if !sess.target.options.supports_stack_protector {
-            sess.dcx().emit_warning(errors::StackProtectorNotSupportedForTarget {
+            sess.dcx().emit_warn(errors::StackProtectorNotSupportedForTarget {
                 stack_protector: sess.opts.unstable_opts.stack_protector,
                 target_triple: &sess.opts.target_triple,
             });
