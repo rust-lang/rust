@@ -2,7 +2,8 @@ use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::deref_closure_args;
 use clippy_utils::ty::is_type_lang_item;
-use clippy_utils::{is_trait_method, strip_pat_refs};
+use clippy_utils::{get_parent_expr, is_trait_method, strip_pat_refs};
+use hir::ExprKind;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_hir::PatKind;
@@ -72,16 +73,24 @@ pub(super) fn check<'tcx>(
                 );
             } else {
                 let iter = snippet(cx, search_recv.span, "..");
+                let sugg = if is_receiver_of_method_call(cx, expr) {
+                    format!(
+                        "(!{iter}.any({}))",
+                        any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
+                    )
+                } else {
+                    format!(
+                        "!{iter}.any({})",
+                        any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
+                    )
+                };
                 span_lint_and_sugg(
                     cx,
                     SEARCH_IS_SOME,
                     expr.span,
                     msg,
                     "consider using",
-                    format!(
-                        "!{iter}.any({})",
-                        any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
-                    ),
+                    sugg,
                     applicability,
                 );
             }
@@ -127,13 +136,18 @@ pub(super) fn check<'tcx>(
                     let string = snippet(cx, search_recv.span, "..");
                     let mut applicability = Applicability::MachineApplicable;
                     let find_arg = snippet_with_applicability(cx, search_arg.span, "..", &mut applicability);
+                    let sugg = if is_receiver_of_method_call(cx, expr) {
+                        format!("(!{string}.contains({find_arg}))")
+                    } else {
+                        format!("!{string}.contains({find_arg})")
+                    };
                     span_lint_and_sugg(
                         cx,
                         SEARCH_IS_SOME,
                         expr.span,
                         msg,
                         "consider using",
-                        format!("!{string}.contains({find_arg})"),
+                        sugg,
                         applicability,
                     );
                 },
@@ -141,4 +155,13 @@ pub(super) fn check<'tcx>(
             }
         }
     }
+}
+
+fn is_receiver_of_method_call(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
+    if let Some(parent_expr) = get_parent_expr(cx, expr)
+        && let ExprKind::MethodCall(..) = parent_expr.kind
+    {
+        return true;
+    }
+    false
 }

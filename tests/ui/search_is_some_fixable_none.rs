@@ -219,3 +219,19 @@ mod issue7392 {
         let _ = v.iter().find(|fp| test_u32_2(*fp.field)).is_none();
     }
 }
+
+mod issue_11910 {
+    fn computations() -> u32 {
+        0
+    }
+
+    fn test_then() {
+        let v = vec![3, 2, 1, 0, -1, -2, -3];
+        v.iter().find(|x| **x == 42).is_none().then(computations);
+    }
+
+    fn test_then_some() {
+        let v = vec![3, 2, 1, 0, -1, -2, -3];
+        v.iter().find(|x| **x == 42).is_none().then_some(0);
+    }
+}
