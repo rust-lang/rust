@@ -1,6 +1,8 @@
 [package]
 name = "span"
 version = "0.0.0"
+description = "TBD"
+
 rust-version.workspace = true
 edition.workspace = true
 license.workspace = true
