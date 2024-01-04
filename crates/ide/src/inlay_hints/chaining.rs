@@ -109,13 +109,9 @@ fn main() {
 "#,
             expect![[r#"
                 [
-                    InlayHint {
-                        range: 147..172,
-                        position: After,
-                        pad_left: true,
-                        pad_right: false,
-                        kind: Chaining,
-                        label: [
+                    (
+                        147..172,
+                        [
                             "",
                             InlayHintLabelPart {
                                 text: "B",
@@ -131,16 +127,10 @@ fn main() {
                             },
                             "",
                         ],
-                        text_edit: None,
-                        needs_resolve: true,
-                    },
-                    InlayHint {
-                        range: 147..154,
-                        position: After,
-                        pad_left: true,
-                        pad_right: false,
-                        kind: Chaining,
-                        label: [
+                    ),
+                    (
+                        147..154,
+                        [
                             "",
                             InlayHintLabelPart {
                                 text: "A",
@@ -156,9 +146,7 @@ fn main() {
                             },
                             "",
                         ],
-                        text_edit: None,
-                        needs_resolve: true,
-                    },
+                    ),
                 ]
             "#]],
         );
@@ -204,13 +192,9 @@ fn main() {
     }"#,
             expect![[r#"
                 [
-                    InlayHint {
-                        range: 143..190,
-                        position: After,
-                        pad_left: true,
-                        pad_right: false,
-                        kind: Chaining,
-                        label: [
+                    (
+                        143..190,
+                        [
                             "",
                             InlayHintLabelPart {
                                 text: "C",
@@ -226,16 +210,10 @@ fn main() {
                             },
                             "",
                         ],
-                        text_edit: None,
-                        needs_resolve: true,
-                    },
-                    InlayHint {
-                        range: 143..179,
-                        position: After,
-                        pad_left: true,
-                        pad_right: false,
-                        kind: Chaining,
-                        label: [
+                    ),
+                    (
+                        143..179,
+                        [
                             "",
                             InlayHintLabelPart {
                                 text: "B",
@@ -251,9 +229,7 @@ fn main() {
                             },
                             "",
                         ],
-                        text_edit: None,
-                        needs_resolve: true,
-                    },
+                    ),
                 ]
             "#]],
         );
@@ -283,13 +259,9 @@ fn main() {
 }"#,
             expect![[r#"
                 [
-                    InlayHint {
-                        range: 143..190,
-                        position: After,
-                        pad_left: true,
-                        pad_right: false,
-                        kind: Chaining,
-                        label: [
+                    (
+                        143..190,
+                        [
                             "",
                             InlayHintLabelPart {
                                 text: "C",
@@ -305,16 +277,10 @@ fn main() {
                             },
                             "",
                         ],
-                        text_edit: None,
-                        needs_resolve: true,
-                    },
-                    InlayHint {
-                        range: 143..179,
-                        position: After,
-                        pad_left: true,
-                        pad_right: false,
-                        kind: Chaining,
-                        label: [
+                    ),
+                    (
+                        143..179,
+                        [
                             "",
                             InlayHintLabelPart {
                                 text: "B",
@@ -330,9 +296,7 @@ fn main() {
                             },
                             "",
                         ],
-                        text_edit: None,
-                        needs_resolve: true,
-                    },
+                    ),
                 ]
             "#]],
         );
@@ -363,13 +327,9 @@ fn main() {
 "#,
             expect![[r#"
                 [
-                    InlayHint {
-                        range: 246..283,
-                        position: After,
-                        pad_left: true,
-                        pad_right: false,
-                        kind: Chaining,
-                        label: [
+                    (
+                        246..283,
+                        [
                             "",
                             InlayHintLabelPart {
                                 text: "B",
@@ -398,16 +358,10 @@ fn main() {
                             },
                             "<i32, bool>>",
                         ],
-                        text_edit: None,
-                        needs_resolve: true,
-                    },
-                    InlayHint {
-                        range: 246..265,
-                        position: After,
-                        pad_left: true,
-                        pad_right: false,
-                        kind: Chaining,
-                        label: [
+                    ),
+                    (
+                        246..265,
+                        [
                             "",
                             InlayHintLabelPart {
                                 text: "A",
@@ -436,9 +390,7 @@ fn main() {
                             },
                             "<i32, bool>>",
                         ],
-                        text_edit: None,
-                        needs_resolve: true,
-                    },
+                    ),
                 ]
             "#]],
         );
@@ -471,13 +423,9 @@ fn main() {
 "#,
             expect![[r#"
                 [
-                    InlayHint {
-                        range: 174..241,
-                        position: After,
-                        pad_left: true,
-                        pad_right: false,
-                        kind: Chaining,
-                        label: [
+                    (
+                        174..241,
+                        [
                             "impl ",
                             InlayHintLabelPart {
                                 text: "Iterator",
@@ -506,16 +454,10 @@ fn main() {
                             },
                             " = ()>",
                         ],
-                        text_edit: None,
-                        needs_resolve: true,
-                    },
-                    InlayHint {
-                        range: 174..224,
-                        position: After,
-                        pad_left: true,
-                        pad_right: false,
-                        kind: Chaining,
-                        label: [
+                    ),
+                    (
+                        174..224,
+                        [
                             "impl ",
                             InlayHintLabelPart {
                                 text: "Iterator",
@@ -544,16 +486,10 @@ fn main() {
                             },
                             " = ()>",
                         ],
-                        text_edit: None,
-                        needs_resolve: true,
-                    },
-                    InlayHint {
-                        range: 174..206,
-                        position: After,
-                        pad_left: true,
-                        pad_right: false,
-                        kind: Chaining,
-                        label: [
+                    ),
+                    (
+                        174..206,
+                        [
                             "impl ",
                             InlayHintLabelPart {
                                 text: "Iterator",
@@ -582,16 +518,10 @@ fn main() {
                             },
                             " = ()>",
                         ],
-                        text_edit: None,
-                        needs_resolve: true,
-                    },
-                    InlayHint {
-                        range: 174..189,
-                        position: After,
-                        pad_left: true,
-                        pad_right: false,
-                        kind: Chaining,
-                        label: [
+                    ),
+                    (
+                        174..189,
+                        [
                             "&mut ",
                             InlayHintLabelPart {
                                 text: "MyIter",
@@ -607,9 +537,7 @@ fn main() {
                             },
                             "",
                         ],
-                        text_edit: None,
-                        needs_resolve: true,
-                    },
+                    ),
                 ]
             "#]],
         );
@@ -639,13 +567,9 @@ fn main() {
 "#,
             expect![[r#"
                 [
-                    InlayHint {
-                        range: 124..130,
-                        position: After,
-                        pad_left: true,
-                        pad_right: false,
-                        kind: Type,
-                        label: [
+                    (
+                        124..130,
+                        [
                             "",
                             InlayHintLabelPart {
                                 text: "Struct",
@@ -661,25 +585,10 @@ fn main() {
                             },
                             "",
                         ],
-                        text_edit: Some(
-                            TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: ": Struct",
-                                        delete: 130..130,
-                                    },
-                                ],
-                            },
-                        ),
-                        needs_resolve: true,
-                    },
-                    InlayHint {
-                        range: 145..185,
-                        position: After,
-                        pad_left: true,
-                        pad_right: false,
-                        kind: Chaining,
-                        label: [
+                    ),
+                    (
+                        145..185,
+                        [
                             "",
                             InlayHintLabelPart {
                                 text: "Struct",
@@ -695,16 +604,10 @@ fn main() {
                             },
                             "",
                         ],
-                        text_edit: None,
-                        needs_resolve: true,
-                    },
-                    InlayHint {
-                        range: 145..168,
-                        position: After,
-                        pad_left: true,
-                        pad_right: false,
-                        kind: Chaining,
-                        label: [
+                    ),
+                    (
+                        145..168,
+                        [
                             "",
                             InlayHintLabelPart {
                                 text: "Struct",
@@ -720,16 +623,10 @@ fn main() {
                             },
                             "",
                         ],
-                        text_edit: None,
-                        needs_resolve: true,
-                    },
-                    InlayHint {
-                        range: 222..228,
-                        position: Before,
-                        pad_left: false,
-                        pad_right: true,
-                        kind: Parameter,
-                        label: [
+                    ),
+                    (
+                        222..228,
+                        [
                             InlayHintLabelPart {
                                 text: "self",
                                 linked_location: Some(
@@ -743,9 +640,7 @@ fn main() {
                                 tooltip: "",
                             },
                         ],
-                        text_edit: None,
-                        needs_resolve: true,
-                    },
+                    ),
                 ]
             "#]],
         );

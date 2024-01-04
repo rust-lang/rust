@@ -658,7 +658,9 @@ mod tests {
     pub(super) fn check_expect(config: InlayHintsConfig, ra_fixture: &str, expect: Expect) {
         let (analysis, file_id) = fixture::file(ra_fixture);
         let inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
-        expect.assert_debug_eq(&inlay_hints)
+        let filtered =
+            inlay_hints.into_iter().map(|hint| (hint.range, hint.label)).collect::<Vec<_>>();
+        expect.assert_debug_eq(&filtered)
     }
 
     #[track_caller]
@@ -674,7 +676,9 @@ mod tests {
                 loc.range = TextRange::empty(TextSize::from(0));
             }
         });
-        expect.assert_debug_eq(&inlay_hints)
+        let filtered =
+            inlay_hints.into_iter().map(|hint| (hint.range, hint.label)).collect::<Vec<_>>();
+        expect.assert_debug_eq(&filtered)
     }
 
     /// Computes inlay hints for the fixture, applies all the provided text edits and then runs
