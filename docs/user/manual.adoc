@@ -191,7 +191,7 @@ There are two ways to install `rust-analyzer` under gentoo:
 - When installing dev-lang/rust, or dev-lang/rust-bin, set the `rust-analyzer` USE flag, as well as the `rust-src` USE flag.
 - Use the rustup component to install `rust-analyzer` (see instructions above).
 
-In both cases, the version installed lags behind the official releases on GitHub. If you need a newer version of `rust-analyzer`, then consider installing from source.
+In both cases, the version installed lags behind the official releases on GitHub. If you need a newer version of `rust-analyzer`, then consider installing from source, or one of the binaries made available on the `rust-analyzer` GitHub page with each release.
 
 ==== macOS
 
