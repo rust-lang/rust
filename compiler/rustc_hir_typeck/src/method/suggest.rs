@@ -2339,7 +2339,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Option<ty::Predicate<'tcx>>,
             Option<ObligationCause<'tcx>>,
         )],
-    ) -> Vec<(String, Span, String)> {
+    ) -> Vec<(String, Span, Symbol)> {
         let mut derives = Vec::<(String, Span, Symbol)>::new();
         let mut traits = Vec::new();
         for (pred, _, _) in unsatisfied_predicates {
@@ -2388,21 +2388,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         traits.sort();
         traits.dedup();
 
-        derives.sort();
-        derives.dedup();
-
-        let mut derives_grouped = Vec::<(String, Span, String)>::new();
-        for (self_name, self_span, trait_name) in derives.into_iter() {
-            if let Some((last_self_name, _, ref mut last_trait_names)) = derives_grouped.last_mut()
-            {
-                if last_self_name == &self_name {
-                    last_trait_names.push_str(format!(", {trait_name}").as_str());
-                    continue;
-                }
-            }
-            derives_grouped.push((self_name, self_span, trait_name.to_string()));
-        }
-
         let len = traits.len();
         if len > 0 {
             let span =
@@ -2425,10 +2410,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         }
 
-        derives_grouped
+        derives
     }
 
-    pub fn suggest_derive(
+    pub(crate) fn suggest_derive(
         &self,
         err: &mut Diagnostic,
         unsatisfied_predicates: &[(
@@ -2437,8 +2422,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Option<ObligationCause<'tcx>>,
         )],
     ) {
-        let derives_grouped =
-            self.note_predicate_source_and_get_derives(err, unsatisfied_predicates);
+        let mut derives = self.note_predicate_source_and_get_derives(err, unsatisfied_predicates);
+        derives.sort();
+        derives.dedup();
+
+        let mut derives_grouped = Vec::<(String, Span, String)>::new();
+        for (self_name, self_span, trait_name) in derives.into_iter() {
+            if let Some((last_self_name, _, ref mut last_trait_names)) = derives_grouped.last_mut()
+            {
+                if last_self_name == &self_name {
+                    last_trait_names.push_str(format!(", {trait_name}").as_str());
+                    continue;
+                }
+            }
+            derives_grouped.push((self_name, self_span, trait_name.to_string()));
+        }
+
         for (self_name, self_span, traits) in &derives_grouped {
             err.span_suggestion_verbose(
                 self_span.shrink_to_lo(),
