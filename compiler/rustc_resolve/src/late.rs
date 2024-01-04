@@ -3076,7 +3076,16 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         }
 
         let feed_visibility = |this: &mut Self, def_id| {
-            let vis = this.r.tcx.visibility(def_id).expect_local();
+            let vis = this.r.tcx.visibility(def_id);
+            let vis = if vis.is_visible_locally() {
+                vis.expect_local()
+            } else {
+                this.r.dcx().span_delayed_bug(
+                    span,
+                    "error should be emitted when an unexpected trait item is used",
+                );
+                rustc_middle::ty::Visibility::Public
+            };
             this.r.feed_visibility(this.r.local_def_id(id), vis);
         };
 
