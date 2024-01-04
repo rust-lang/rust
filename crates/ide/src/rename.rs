@@ -365,7 +365,10 @@ fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: &str) -> Opt
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use expect_test::{expect, Expect};
+    use ide_db::source_change::FileSystemEdit;
     use stdx::trim_indent;
     use test_utils::assert_eq_text;
     use text_edit::TextEdit;
@@ -418,7 +421,37 @@ mod tests {
         let (analysis, position) = fixture::position(ra_fixture);
         let source_change =
             analysis.rename(position, new_name).unwrap().expect("Expect returned a RenameError");
-        expect.assert_debug_eq(&source_change)
+
+        // file_id 1:
+        //     source_file_edits:
+        //         - Indel { insert: "foo2", delete: 4..7 }
+        //
+        // file_id 2:
+        //     file_system_edits:
+        //         MoveFile AnchoredPathBuf { anchor: FileId(2), path: "foo2.rs", }
+
+        let mut source_file_edits = HashMap::new();
+        for (id, (text_edit, _)) in source_change.source_file_edits {
+            let indels = text_edit.into_iter().collect::<Vec<_>>();
+            source_file_edits.insert(id, indels);
+        }
+
+        let mut file_system_edits = HashMap::new();
+        for a in source_change.file_system_edits {
+            let id = match &a {
+                FileSystemEdit::CreateFile { dst, initial_contents } => unreachable!(),
+                FileSystemEdit::MoveFile { src, dst } => src,
+                FileSystemEdit::MoveDir { src, src_id, dst } => src_id,
+            }
+            .clone();
+            file_system_edits.insert(id, a);
+        }
+
+        let b = format!(
+            "source_file_edits: {:#?}\nfile_system_edits: {:#?}",
+            source_file_edits, file_system_edits
+        );
+        expect.assert_eq(&b)
     }
 
     fn check_expect_will_rename_file(new_name: &str, ra_fixture: &str, expect: Expect) {
@@ -916,38 +949,31 @@ mod foo$0;
 // empty
 "#,
             expect![[r#"
-                SourceChange {
-                    source_file_edits: {
-                        FileId(
-                            1,
-                        ): (
-                            TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo2",
-                                        delete: 4..7,
-                                    },
-                                ],
-                            },
-                            None,
-                        ),
-                    },
-                    file_system_edits: [
-                        MoveFile {
-                            src: FileId(
-                                2,
-                            ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    2,
-                                ),
-                                path: "foo2.rs",
-                            },
+                source_file_edits: {
+                    FileId(
+                        1,
+                    ): [
+                        Indel {
+                            insert: "foo2",
+                            delete: 4..7,
                         },
                     ],
-                    is_snippet: false,
                 }
-            "#]],
+                file_system_edits: {
+                    FileId(
+                        2,
+                    ): MoveFile {
+                        src: FileId(
+                            2,
+                        ),
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
+                                2,
+                            ),
+                            path: "foo2.rs",
+                        },
+                    },
+                }"#]],
         );
     }
 
@@ -968,51 +994,39 @@ pub struct FooContent;
 use crate::foo$0::FooContent;
 "#,
             expect![[r#"
-                SourceChange {
-                    source_file_edits: {
-                        FileId(
-                            0,
-                        ): (
-                            TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "quux",
-                                        delete: 8..11,
-                                    },
-                                ],
-                            },
-                            None,
-                        ),
-                        FileId(
-                            2,
-                        ): (
-                            TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "quux",
-                                        delete: 11..14,
-                                    },
-                                ],
-                            },
-                            None,
-                        ),
-                    },
-                    file_system_edits: [
-                        MoveFile {
-                            src: FileId(
-                                1,
-                            ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "quux.rs",
-                            },
+                source_file_edits: {
+                    FileId(
+                        0,
+                    ): [
+                        Indel {
+                            insert: "quux",
+                            delete: 8..11,
                         },
                     ],
-                    is_snippet: false,
+                    FileId(
+                        2,
+                    ): [
+                        Indel {
+                            insert: "quux",
+                            delete: 11..14,
+                        },
+                    ],
                 }
-            "#]],
+                file_system_edits: {
+                    FileId(
+                        1,
+                    ): MoveFile {
+                        src: FileId(
+                            1,
+                        ),
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
+                                1,
+                            ),
+                            path: "quux.rs",
+                        },
+                    },
+                }"#]],
         );
     }
 
@@ -1027,44 +1041,37 @@ mod fo$0o;
 // empty
 "#,
             expect![[r#"
-                SourceChange {
-                    source_file_edits: {
-                        FileId(
-                            0,
-                        ): (
-                            TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo2",
-                                        delete: 4..7,
-                                    },
-                                ],
-                            },
-                            None,
-                        ),
-                    },
-                    file_system_edits: [
-                        MoveDir {
-                            src: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "../foo",
-                            },
-                            src_id: FileId(
-                                1,
-                            ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "../foo2",
-                            },
+                source_file_edits: {
+                    FileId(
+                        0,
+                    ): [
+                        Indel {
+                            insert: "foo2",
+                            delete: 4..7,
                         },
                     ],
-                    is_snippet: false,
                 }
-            "#]],
+                file_system_edits: {
+                    FileId(
+                        1,
+                    ): MoveDir {
+                        src: AnchoredPathBuf {
+                            anchor: FileId(
+                                1,
+                            ),
+                            path: "../foo",
+                        },
+                        src_id: FileId(
+                            1,
+                        ),
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
+                                1,
+                            ),
+                            path: "../foo2",
+                        },
+                    },
+                }"#]],
         );
     }
 
@@ -1080,38 +1087,31 @@ mod outer { mod fo$0o; }
 // empty
 "#,
             expect![[r#"
-                SourceChange {
-                    source_file_edits: {
-                        FileId(
-                            0,
-                        ): (
-                            TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "bar",
-                                        delete: 16..19,
-                                    },
-                                ],
-                            },
-                            None,
-                        ),
-                    },
-                    file_system_edits: [
-                        MoveFile {
-                            src: FileId(
-                                1,
-                            ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "bar.rs",
-                            },
+                source_file_edits: {
+                    FileId(
+                        0,
+                    ): [
+                        Indel {
+                            insert: "bar",
+                            delete: 16..19,
                         },
                     ],
-                    is_snippet: false,
                 }
-            "#]],
+                file_system_edits: {
+                    FileId(
+                        1,
+                    ): MoveFile {
+                        src: FileId(
+                            1,
+                        ),
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
+                                1,
+                            ),
+                            path: "bar.rs",
+                        },
+                    },
+                }"#]],
         );
     }
 
@@ -1156,51 +1156,39 @@ pub mod foo$0;
 // pub fn fun() {}
 "#,
             expect![[r#"
-                SourceChange {
-                    source_file_edits: {
-                        FileId(
-                            0,
-                        ): (
-                            TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo2",
-                                        delete: 27..30,
-                                    },
-                                ],
-                            },
-                            None,
-                        ),
-                        FileId(
-                            1,
-                        ): (
-                            TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo2",
-                                        delete: 8..11,
-                                    },
-                                ],
-                            },
-                            None,
-                        ),
-                    },
-                    file_system_edits: [
-                        MoveFile {
-                            src: FileId(
-                                2,
-                            ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    2,
-                                ),
-                                path: "foo2.rs",
-                            },
+                source_file_edits: {
+                    FileId(
+                        0,
+                    ): [
+                        Indel {
+                            insert: "foo2",
+                            delete: 27..30,
                         },
                     ],
-                    is_snippet: false,
+                    FileId(
+                        1,
+                    ): [
+                        Indel {
+                            insert: "foo2",
+                            delete: 8..11,
+                        },
+                    ],
                 }
-            "#]],
+                file_system_edits: {
+                    FileId(
+                        2,
+                    ): MoveFile {
+                        src: FileId(
+                            2,
+                        ),
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
+                                2,
+                            ),
+                            path: "foo2.rs",
+                        },
+                    },
+                }"#]],
         );
     }
 
@@ -1229,55 +1217,37 @@ mod quux;
 // empty
 "#,
             expect![[r#"
-                SourceChange {
-                    source_file_edits: {
-                        FileId(
-                            0,
-                        ): (
-                            TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo2",
-                                        delete: 4..7,
-                                    },
-                                ],
-                            },
-                            None,
-                        ),
-                    },
-                    file_system_edits: [
-                        MoveFile {
-                            src: FileId(
-                                1,
-                            ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "foo2.rs",
-                            },
-                        },
-                        MoveDir {
-                            src: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "foo",
-                            },
-                            src_id: FileId(
-                                1,
-                            ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "foo2",
-                            },
+                source_file_edits: {
+                    FileId(
+                        0,
+                    ): [
+                        Indel {
+                            insert: "foo2",
+                            delete: 4..7,
                         },
                     ],
-                    is_snippet: false,
                 }
-            "#]],
+                file_system_edits: {
+                    FileId(
+                        1,
+                    ): MoveDir {
+                        src: AnchoredPathBuf {
+                            anchor: FileId(
+                                1,
+                            ),
+                            path: "foo",
+                        },
+                        src_id: FileId(
+                            1,
+                        ),
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
+                                1,
+                            ),
+                            path: "foo2",
+                        },
+                    },
+                }"#]],
         )
     }
     #[test]
@@ -1370,59 +1340,41 @@ pub mod bar;
 pub fn baz() {}
 "#,
             expect![[r#"
-                SourceChange {
-                    source_file_edits: {
-                        FileId(
-                            0,
-                        ): (
-                            TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "r#fn",
-                                        delete: 4..7,
-                                    },
-                                    Indel {
-                                        insert: "r#fn",
-                                        delete: 22..25,
-                                    },
-                                ],
-                            },
-                            None,
-                        ),
-                    },
-                    file_system_edits: [
-                        MoveFile {
-                            src: FileId(
-                                1,
-                            ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "fn.rs",
-                            },
+                source_file_edits: {
+                    FileId(
+                        0,
+                    ): [
+                        Indel {
+                            insert: "r#fn",
+                            delete: 4..7,
                         },
-                        MoveDir {
-                            src: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "foo",
-                            },
-                            src_id: FileId(
-                                1,
-                            ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "fn",
-                            },
+                        Indel {
+                            insert: "r#fn",
+                            delete: 22..25,
                         },
                     ],
-                    is_snippet: false,
                 }
-            "#]],
+                file_system_edits: {
+                    FileId(
+                        1,
+                    ): MoveDir {
+                        src: AnchoredPathBuf {
+                            anchor: FileId(
+                                1,
+                            ),
+                            path: "foo",
+                        },
+                        src_id: FileId(
+                            1,
+                        ),
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
+                                1,
+                            ),
+                            path: "fn",
+                        },
+                    },
+                }"#]],
         );
     }
 
@@ -1443,59 +1395,41 @@ pub mod bar;
 pub fn baz() {}
 "#,
             expect![[r#"
-                SourceChange {
-                    source_file_edits: {
-                        FileId(
-                            0,
-                        ): (
-                            TextEdit {
-                                indels: [
-                                    Indel {
-                                        insert: "foo",
-                                        delete: 4..8,
-                                    },
-                                    Indel {
-                                        insert: "foo",
-                                        delete: 23..27,
-                                    },
-                                ],
-                            },
-                            None,
-                        ),
-                    },
-                    file_system_edits: [
-                        MoveFile {
-                            src: FileId(
-                                1,
-                            ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "foo.rs",
-                            },
+                source_file_edits: {
+                    FileId(
+                        0,
+                    ): [
+                        Indel {
+                            insert: "foo",
+                            delete: 4..8,
                         },
-                        MoveDir {
-                            src: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "fn",
-                            },
-                            src_id: FileId(
-                                1,
-                            ),
-                            dst: AnchoredPathBuf {
-                                anchor: FileId(
-                                    1,
-                                ),
-                                path: "foo",
-                            },
+                        Indel {
+                            insert: "foo",
+                            delete: 23..27,
                         },
                     ],
-                    is_snippet: false,
                 }
-            "#]],
+                file_system_edits: {
+                    FileId(
+                        1,
+                    ): MoveDir {
+                        src: AnchoredPathBuf {
+                            anchor: FileId(
+                                1,
+                            ),
+                            path: "fn",
+                        },
+                        src_id: FileId(
+                            1,
+                        ),
+                        dst: AnchoredPathBuf {
+                            anchor: FileId(
+                                1,
+                            ),
+                            path: "foo",
+                        },
+                    },
+                }"#]],
         );
     }
 
