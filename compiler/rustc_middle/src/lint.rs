@@ -314,7 +314,7 @@ pub fn struct_lint_level(
             }
             Level::ForceWarn(Some(expect_id)) => rustc_errors::Level::Warning(Some(expect_id)),
             Level::Warn | Level::ForceWarn(None) => rustc_errors::Level::Warning(None),
-            Level::Deny | Level::Forbid => rustc_errors::Level::Error { lint: true },
+            Level::Deny | Level::Forbid => rustc_errors::Level::Error,
         };
         let mut err = DiagnosticBuilder::new(sess.dcx(), err_level, "");
         if let Some(span) = span {

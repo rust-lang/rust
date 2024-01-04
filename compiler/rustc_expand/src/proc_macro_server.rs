@@ -379,7 +379,7 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
 impl ToInternal<rustc_errors::Level> for Level {
     fn to_internal(self) -> rustc_errors::Level {
         match self {
-            Level::Error => rustc_errors::Level::Error { lint: false },
+            Level::Error => rustc_errors::Level::Error,
             Level::Warning => rustc_errors::Level::Warning(None),
             Level::Note => rustc_errors::Level::Note,
             Level::Help => rustc_errors::Level::Help,
