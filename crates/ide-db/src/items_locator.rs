@@ -36,9 +36,9 @@ pub fn items_with_name<'a>(
         NameToImport::Prefix(exact_name, case_sensitive)
         | NameToImport::Exact(exact_name, case_sensitive) => {
             let mut local_query = symbol_index::Query::new(exact_name.clone());
+            local_query.assoc_search_mode(assoc_item_search);
             let mut external_query =
-                // import_map::Query::new(exact_name).assoc_search_mode(assoc_item_search);
-                import_map::Query::new(exact_name);
+                import_map::Query::new(exact_name).assoc_search_mode(assoc_item_search);
             if prefix {
                 local_query.prefix();
                 external_query = external_query.prefix();
@@ -55,6 +55,7 @@ pub fn items_with_name<'a>(
         NameToImport::Fuzzy(fuzzy_search_string, case_sensitive) => {
             let mut local_query = symbol_index::Query::new(fuzzy_search_string.clone());
             local_query.fuzzy();
+            local_query.assoc_search_mode(assoc_item_search);
 
             let mut external_query = import_map::Query::new(fuzzy_search_string.clone())
                 .fuzzy()
@@ -73,13 +74,12 @@ pub fn items_with_name<'a>(
         local_query.limit(limit);
     }
 
-    find_items(sema, krate, assoc_item_search, local_query, external_query)
+    find_items(sema, krate, local_query, external_query)
 }
 
 fn find_items<'a>(
     sema: &'a Semantics<'_, RootDatabase>,
     krate: Crate,
-    assoc_item_search: AssocSearchMode,
     local_query: symbol_index::Query,
     external_query: import_map::Query,
 ) -> impl Iterator<Item = ItemInNs> + 'a {
@@ -97,18 +97,12 @@ fn find_items<'a>(
         });
 
     // Query the local crate using the symbol index.
-    let local_results = local_query
-        .search(&symbol_index::crate_symbols(db, krate))
-        .into_iter()
-        .filter(move |candidate| match assoc_item_search {
-            AssocSearchMode::Include => true,
-            AssocSearchMode::Exclude => !candidate.is_assoc,
-            AssocSearchMode::AssocItemsOnly => candidate.is_assoc,
-        })
-        .map(|local_candidate| match local_candidate.def {
+    let mut local_results = Vec::new();
+    local_query.search(&symbol_index::crate_symbols(db, krate), |local_candidate| {
+        local_results.push(match local_candidate.def {
             hir::ModuleDef::Macro(macro_def) => ItemInNs::Macros(macro_def),
             def => ItemInNs::from(def),
-        });
-
-    external_importables.chain(local_results)
+        })
+    });
+    local_results.into_iter().chain(external_importables)
 }

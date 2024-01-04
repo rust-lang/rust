@@ -406,6 +406,7 @@ fn search_maps(
                 })
                 // we put all entries with the same lowercased name in a row, so stop once we find a
                 // different name in the importables
+                // FIXME: Consider putting a range into the value: u64 as (u32, u32)?
                 .take_while(|&(_, info, _)| {
                     info.name.to_smol_str().as_bytes().eq_ignore_ascii_case(&key)
                 })
@@ -417,13 +418,32 @@ fn search_maps(
                         return true;
                     }
                     let name = info.name.to_smol_str();
+                    // FIXME: Deduplicate this from ide-db
                     match query.search_mode {
-                        SearchMode::Exact => name == query.query,
-                        SearchMode::Prefix => name.starts_with(&query.query),
+                        SearchMode::Exact => !query.case_sensitive || name == query.query,
+                        SearchMode::Prefix => {
+                            query.query.len() <= name.len() && {
+                                let prefix = &name[..query.query.len() as usize];
+                                if query.case_sensitive {
+                                    prefix == query.query
+                                } else {
+                                    prefix.eq_ignore_ascii_case(&query.query)
+                                }
+                            }
+                        }
                         SearchMode::Fuzzy => {
                             let mut name = &*name;
                             query.query.chars().all(|query_char| {
-                                match name.match_indices(query_char).next() {
+                                let m = if query.case_sensitive {
+                                    name.match_indices(query_char).next()
+                                } else {
+                                    name.match_indices([
+                                        query_char,
+                                        query_char.to_ascii_uppercase(),
+                                    ])
+                                    .next()
+                                };
+                                match m {
                                     Some((index, _)) => {
                                         name = &name[index + 1..];
                                         true
