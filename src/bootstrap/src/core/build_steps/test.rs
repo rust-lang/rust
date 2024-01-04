@@ -385,7 +385,7 @@ impl Step for RustAnalyzer {
             "test",
             crate_path,
             SourceType::InTree,
-            &["sysroot-abi".to_owned()],
+            &["sysroot-abi".to_owned(), "in-rust-tree".to_owned()],
         );
         cargo.allow_features(tool::RustAnalyzer::ALLOW_FEATURES);
 
