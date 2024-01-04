@@ -18,7 +18,7 @@ use rustc_data_structures::sync::{
     AtomicU64, DynSend, DynSync, Lock, Lrc, OneThread, Ordering::SeqCst,
 };
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitterWriter;
-use rustc_errors::emitter::{DynEmitter, EmitterWriter, HumanReadableErrorType};
+use rustc_errors::emitter::{DynEmitter, HumanEmitter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
@@ -1009,7 +1009,7 @@ fn default_emitter(
                 );
                 Box::new(emitter.ui_testing(sopts.unstable_opts.ui_testing))
             } else {
-                let emitter = EmitterWriter::stderr(color_config, fallback_bundle)
+                let emitter = HumanEmitter::stderr(color_config, fallback_bundle)
                     .fluent_bundle(bundle)
                     .sm(Some(source_map))
                     .short_message(short)
@@ -1501,7 +1501,7 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
     let emitter: Box<DynEmitter> = match output {
         config::ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
-            Box::new(EmitterWriter::stderr(color_config, fallback_bundle).short_message(short))
+            Box::new(HumanEmitter::stderr(color_config, fallback_bundle).short_message(short))
         }
         config::ErrorOutputType::Json { pretty, json_rendered } => Box::new(JsonEmitter::basic(
             pretty,

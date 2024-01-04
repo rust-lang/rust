@@ -557,7 +557,7 @@ pub(crate) fn make_test(
     // crate already is included.
     let result = rustc_driver::catch_fatal_errors(|| {
         rustc_span::create_session_if_not_set_then(edition, |_| {
-            use rustc_errors::emitter::{Emitter, EmitterWriter};
+            use rustc_errors::emitter::{Emitter, HumanEmitter};
             use rustc_errors::DiagCtxt;
             use rustc_parse::parser::ForceCollect;
             use rustc_span::source_map::FilePathMapping;
@@ -572,11 +572,11 @@ pub(crate) fn make_test(
                 rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(),
                 false,
             );
-            supports_color = EmitterWriter::stderr(ColorConfig::Auto, fallback_bundle.clone())
+            supports_color = HumanEmitter::stderr(ColorConfig::Auto, fallback_bundle.clone())
                 .diagnostic_width(Some(80))
                 .supports_color();
 
-            let emitter = EmitterWriter::new(Box::new(io::sink()), fallback_bundle);
+            let emitter = HumanEmitter::new(Box::new(io::sink()), fallback_bundle);
 
             // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
             let dcx = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
@@ -739,7 +739,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
     }
     rustc_driver::catch_fatal_errors(|| {
         rustc_span::create_session_if_not_set_then(edition, |_| {
-            use rustc_errors::emitter::EmitterWriter;
+            use rustc_errors::emitter::HumanEmitter;
             use rustc_errors::DiagCtxt;
             use rustc_span::source_map::FilePathMapping;
 
@@ -752,7 +752,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
                 false,
             );
 
-            let emitter = EmitterWriter::new(Box::new(io::sink()), fallback_bundle);
+            let emitter = HumanEmitter::new(Box::new(io::sink()), fallback_bundle);
 
             let dcx = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
             let sess = ParseSess::with_dcx(dcx, sm);

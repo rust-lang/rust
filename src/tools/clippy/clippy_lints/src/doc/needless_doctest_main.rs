@@ -5,7 +5,7 @@ use crate::doc::{NEEDLESS_DOCTEST_MAIN, TEST_ATTR_IN_DOCTEST};
 use clippy_utils::diagnostics::span_lint;
 use rustc_ast::{CoroutineKind, Fn, FnRetTy, Item, ItemKind};
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::emitter::EmitterWriter;
+use rustc_errors::emitter::HumanEmitter;
 use rustc_errors::DiagCtxt;
 use rustc_lint::LateContext;
 use rustc_parse::maybe_new_parser_from_source_str;
@@ -44,7 +44,7 @@ pub fn check(
 
                 let fallback_bundle =
                     rustc_errors::fallback_fluent_bundle(rustc_driver::DEFAULT_LOCALE_RESOURCES.to_vec(), false);
-                let emitter = EmitterWriter::new(Box::new(io::sink()), fallback_bundle);
+                let emitter = HumanEmitter::new(Box::new(io::sink()), fallback_bundle);
                 let dcx = DiagCtxt::with_emitter(Box::new(emitter)).disable_warnings();
                 #[expect(clippy::arc_with_non_send_sync)] // `Lrc` is expected by with_dcx
                 let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));

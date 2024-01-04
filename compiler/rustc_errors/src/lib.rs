@@ -53,7 +53,7 @@ pub use snippet::Style;
 pub use termcolor::{Color, ColorSpec, WriteColor};
 
 use crate::diagnostic_impls::{DelayedAtWithNewline, DelayedAtWithoutNewline};
-use emitter::{is_case_difference, DynEmitter, Emitter, EmitterWriter};
+use emitter::{is_case_difference, DynEmitter, Emitter, HumanEmitter};
 use registry::Registry;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
@@ -574,7 +574,7 @@ impl DiagCtxt {
         sm: Option<Lrc<SourceMap>>,
         fallback_bundle: LazyFallbackBundle,
     ) -> Self {
-        let emitter = Box::new(EmitterWriter::stderr(ColorConfig::Auto, fallback_bundle).sm(sm));
+        let emitter = Box::new(HumanEmitter::stderr(ColorConfig::Auto, fallback_bundle).sm(sm));
         Self::with_emitter(emitter)
     }
     pub fn disable_warnings(mut self) -> Self {

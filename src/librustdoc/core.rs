@@ -1,7 +1,7 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::emitter::{DynEmitter, EmitterWriter};
+use rustc_errors::emitter::{DynEmitter, HumanEmitter};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::TerminalUrl;
 use rustc_feature::UnstableFeatures;
@@ -138,7 +138,7 @@ pub(crate) fn new_dcx(
         ErrorOutputType::HumanReadable(kind) => {
             let (short, color_config) = kind.unzip();
             Box::new(
-                EmitterWriter::stderr(color_config, fallback_bundle)
+                HumanEmitter::stderr(color_config, fallback_bundle)
                     .sm(source_map.map(|sm| sm as _))
                     .short_message(short)
                     .teach(unstable_opts.teach)
