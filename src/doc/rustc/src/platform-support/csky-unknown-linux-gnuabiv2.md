@@ -50,6 +50,7 @@ cc = "${TOOLCHAIN_PATH}/bin/csky-linux-gnuabiv2-gcc"
 [target.csky-unknown-linux-gnuabiv2hf]
 # ADJUST THIS PATH TO POINT AT YOUR TOOLCHAIN
 cc = "${TOOLCHAIN_PATH}/bin/csky-linux-gnuabiv2-gcc"
+```
 
 ### Build
 
