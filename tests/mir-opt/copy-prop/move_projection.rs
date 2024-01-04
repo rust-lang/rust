@@ -18,10 +18,10 @@ fn f(a: Foo) -> bool {
             let b = a;
             // This is a move out of a copy, so must become a copy of `a.0`.
             let c = Move(b.0);
-            Call(RET = opaque(Move(a)), bb1, UnwindContinue())
+            Call(RET = opaque(Move(a)), ReturnTo(bb1), UnwindContinue())
         }
         bb1 = {
-            Call(RET = opaque(Move(c)), ret, UnwindContinue())
+            Call(RET = opaque(Move(c)), ReturnTo(ret), UnwindContinue())
         }
         ret = {
             Return()
