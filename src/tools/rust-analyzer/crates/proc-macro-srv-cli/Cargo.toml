@@ -14,7 +14,7 @@ proc-macro-api.workspace = true
 
 [features]
 sysroot-abi = ["proc-macro-srv/sysroot-abi"]
-in-rust-tree = ["proc-macro-srv/in-rust-tree"]
+in-rust-tree = ["proc-macro-srv/in-rust-tree", "sysroot-abi"]
 
 
 [[bin]]
