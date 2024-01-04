@@ -18,11 +18,11 @@ use crate::{Module, ModuleDef, Semantics};
 /// possible.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FileSymbol {
-    // even though name can be derived from the def, we store it for efficiency
     pub name: SmolStr,
     pub def: ModuleDef,
     pub loc: DeclarationLocation,
     pub container_name: Option<SmolStr>,
+    /// Whether this symbol is a doc alias for the original symbol.
     pub is_alias: bool,
     pub is_assoc: bool,
 }
@@ -166,8 +166,6 @@ impl<'a> SymbolCollector<'a> {
         // FIXME: In case it imports multiple items under different namespaces we just pick one arbitrarily
         // for now.
         for id in scope.imports() {
-            let loc = id.import.lookup(self.db.upcast());
-            loc.id.item_tree(self.db.upcast());
             let source = id.import.child_source(self.db.upcast());
             let Some(use_tree_src) = source.value.get(id.idx) else { continue };
             let Some(rename) = use_tree_src.rename() else { continue };
