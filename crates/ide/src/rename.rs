@@ -365,7 +365,7 @@ fn text_edit_from_self_param(self_param: &ast::SelfParam, new_name: &str) -> Opt
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
     use expect_test::{expect, Expect};
     use ide_db::source_change::{FileSystemEdit, SourceChange};
@@ -452,7 +452,7 @@ mod tests {
             .source_file_edits
             .into_iter()
             .map(|(id, (text_edit, _))| (id, text_edit.into_iter().collect::<Vec<_>>()))
-            .collect::<HashMap<_, _>>();
+            .collect::<BTreeMap<_, _>>();
 
         let file_system_edits = source_change
             .file_system_edits
@@ -465,7 +465,7 @@ mod tests {
                 };
                 (id.clone(), file_system_edit)
             })
-            .collect::<HashMap<_, _>>();
+            .collect::<BTreeMap<_, _>>();
 
         format!(
             "source_file_edits: {:#?}\nfile_system_edits: {:#?}",
@@ -1310,12 +1310,8 @@ fn foo() {}
 mod bar$0;
 "#,
             expect![[r#"
-                SourceChange {
-                    source_file_edits: {},
-                    file_system_edits: [],
-                    is_snippet: false,
-                }
-                "#]],
+                source_file_edits: {}
+                file_system_edits: {}"#]],
         )
     }
 
