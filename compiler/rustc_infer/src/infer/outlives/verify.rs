@@ -175,10 +175,9 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                 // ignore this, we presume it will yield an error
                 // later, since if a type variable is not resolved by
                 // this point it never will be
-                self.tcx.dcx().span_delayed_bug(
-                    rustc_span::DUMMY_SP,
-                    format!("unresolved inference variable in outlives: {v:?}"),
-                );
+                self.tcx
+                    .dcx()
+                    .delayed_bug(format!("unresolved inference variable in outlives: {v:?}"));
                 // add a bound that never holds
                 VerifyBound::AnyBound(vec![])
             }

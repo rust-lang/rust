@@ -341,10 +341,7 @@ impl Session {
         if self.dcx().err_count() == old_count {
             Ok(result)
         } else {
-            Err(self.dcx().span_delayed_bug(
-                rustc_span::DUMMY_SP,
-                "`self.err_count()` changed but an error was not emitted",
-            ))
+            Err(self.dcx().delayed_bug("`self.err_count()` changed but an error was not emitted"))
         }
     }
 

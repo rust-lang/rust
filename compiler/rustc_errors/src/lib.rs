@@ -865,10 +865,16 @@ impl DiagCtxt {
     /// For example, it can be used to create an [`ErrorGuaranteed`]
     /// (but you should prefer threading through the [`ErrorGuaranteed`] from an error emission
     /// directly).
-    ///
-    /// If no span is available, use [`DUMMY_SP`].
-    ///
-    /// [`DUMMY_SP`]: rustc_span::DUMMY_SP
+    #[track_caller]
+    pub fn delayed_bug(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
+        let treat_next_err_as_bug = self.inner.borrow().treat_next_err_as_bug();
+        if treat_next_err_as_bug {
+            self.bug(msg);
+        }
+        DiagnosticBuilder::<ErrorGuaranteed>::new(self, DelayedBug, msg).emit()
+    }
+
+    /// Like `delayed_bug`, but takes an additional span.
     ///
     /// Note: this function used to be called `delay_span_bug`. It was renamed
     /// to match similar functions like `span_err`, `span_warn`, etc.
@@ -882,9 +888,7 @@ impl DiagCtxt {
         if treat_next_err_as_bug {
             self.span_bug(sp, msg);
         }
-        let mut diagnostic = Diagnostic::new(DelayedBug, msg);
-        diagnostic.span(sp);
-        self.emit_diagnostic(diagnostic).unwrap()
+        DiagnosticBuilder::<ErrorGuaranteed>::new(self, DelayedBug, msg).span_mv(sp).emit()
     }
 
     // FIXME(eddyb) note the comment inside `impl Drop for DiagCtxtInner`, that's

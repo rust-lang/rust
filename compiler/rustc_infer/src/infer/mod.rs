@@ -38,7 +38,7 @@ use rustc_middle::ty::{self, GenericParamDefKind, InferConst, InferTy, Ty, TyCtx
 use rustc_middle::ty::{ConstVid, EffectVid, FloatVid, IntVid, TyVid};
 use rustc_middle::ty::{GenericArg, GenericArgKind, GenericArgs, GenericArgsRef};
 use rustc_span::symbol::Symbol;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 
 use std::cell::{Cell, RefCell};
 use std::fmt;
@@ -1434,10 +1434,8 @@ impl<'tcx> InferCtxt<'tcx> {
                     bug!("`{value:?}` is not fully resolved");
                 }
                 if value.has_infer_regions() {
-                    let guar = self
-                        .tcx
-                        .dcx()
-                        .span_delayed_bug(DUMMY_SP, format!("`{value:?}` is not fully resolved"));
+                    let guar =
+                        self.tcx.dcx().delayed_bug(format!("`{value:?}` is not fully resolved"));
                     Ok(self.tcx.fold_regions(value, |re, _| {
                         if re.is_var() { ty::Region::new_error(self.tcx, guar) } else { re }
                     }))

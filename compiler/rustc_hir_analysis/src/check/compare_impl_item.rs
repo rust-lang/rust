@@ -19,7 +19,7 @@ use rustc_middle::ty::{
     self, GenericArgs, Ty, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 use rustc_middle::ty::{GenericParamDefKind, TyCtxt};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::{
@@ -942,9 +942,7 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
                         .note_mv(format!("hidden type inferred to be `{}`", self.ty))
                         .emit()
                 }
-                _ => {
-                    self.tcx.dcx().span_delayed_bug(DUMMY_SP, "should've been able to remap region")
-                }
+                _ => self.tcx.dcx().delayed_bug("should've been able to remap region"),
             };
             return Err(guar);
         };
@@ -1303,8 +1301,7 @@ fn compare_number_of_generics<'tcx>(
     // inheriting the generics from will also have mismatched arguments, and
     // we'll report an error for that instead. Delay a bug for safety, though.
     if trait_.is_impl_trait_in_trait() {
-        return Err(tcx.dcx().span_delayed_bug(
-            rustc_span::DUMMY_SP,
+        return Err(tcx.dcx().delayed_bug(
             "errors comparing numbers of generics of trait/impl functions were not emitted",
         ));
     }

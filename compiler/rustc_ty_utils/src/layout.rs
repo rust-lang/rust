@@ -11,7 +11,6 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, AdtDef, EarlyBinder, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::symbol::Symbol;
-use rustc_span::DUMMY_SP;
 use rustc_target::abi::*;
 
 use std::fmt::Debug;
@@ -91,7 +90,7 @@ fn univariant_uninterned<'tcx>(
     let dl = cx.data_layout();
     let pack = repr.pack;
     if pack.is_some() && repr.align.is_some() {
-        cx.tcx.dcx().span_delayed_bug(DUMMY_SP, "struct cannot be packed and aligned");
+        cx.tcx.dcx().delayed_bug("struct cannot be packed and aligned");
         return Err(cx.tcx.arena.alloc(LayoutError::Unknown(ty)));
     }
 
@@ -344,10 +343,7 @@ fn layout_of_uncached<'tcx>(
         ty::Adt(def, args) if def.repr().simd() => {
             if !def.is_struct() {
                 // Should have yielded E0517 by now.
-                tcx.dcx().span_delayed_bug(
-                    DUMMY_SP,
-                    "#[repr(simd)] was applied to an ADT that is not a struct",
-                );
+                tcx.dcx().delayed_bug("#[repr(simd)] was applied to an ADT that is not a struct");
                 return Err(error(cx, LayoutError::Unknown(ty)));
             }
 
@@ -374,8 +370,7 @@ fn layout_of_uncached<'tcx>(
             // (should be caught by typeck)
             for fi in fields {
                 if fi.ty(tcx, args) != f0_ty {
-                    tcx.dcx().span_delayed_bug(
-                        DUMMY_SP,
+                    tcx.dcx().delayed_bug(
                         "#[repr(simd)] was applied to an ADT with heterogeneous field type",
                     );
                     return Err(error(cx, LayoutError::Unknown(ty)));

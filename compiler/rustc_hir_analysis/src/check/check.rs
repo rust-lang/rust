@@ -659,10 +659,7 @@ pub(super) fn check_specialization_validity<'tcx>(
         if !tcx.is_impl_trait_in_trait(impl_item) {
             report_forbidden_specialization(tcx, impl_item, parent_impl);
         } else {
-            tcx.dcx().span_delayed_bug(
-                DUMMY_SP,
-                format!("parent item: {parent_impl:?} not marked as default"),
-            );
+            tcx.dcx().delayed_bug(format!("parent item: {parent_impl:?} not marked as default"));
         }
     }
 }

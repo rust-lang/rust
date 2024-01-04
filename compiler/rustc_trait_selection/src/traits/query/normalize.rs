@@ -14,7 +14,6 @@ use rustc_infer::traits::Normalized;
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
-use rustc_span::DUMMY_SP;
 
 use std::ops::ControlFlow;
 
@@ -286,10 +285,8 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                     // Rustdoc normalizes possibly not well-formed types, so only
                     // treat this as a bug if we're not in rustdoc.
                     if !tcx.sess.opts.actually_rustdoc {
-                        tcx.dcx().span_delayed_bug(
-                            DUMMY_SP,
-                            format!("unexpected ambiguity: {c_data:?} {result:?}"),
-                        );
+                        tcx.dcx()
+                            .delayed_bug(format!("unexpected ambiguity: {c_data:?} {result:?}"));
                     }
                     return Err(NoSolution);
                 }

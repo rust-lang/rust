@@ -14,7 +14,7 @@ use rustc_middle::ty::{self, GenericParamDefKind, TyCtxt};
 use rustc_parse_format::{ParseMode, Parser, Piece, Position};
 use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 use std::iter;
 
 use crate::errors::{
@@ -657,9 +657,7 @@ impl<'tcx> OnUnimplementedDirective {
 
             Ok(None)
         } else {
-            let reported = tcx
-                .dcx()
-                .span_delayed_bug(DUMMY_SP, "of_item: neither meta_item_list nor value_str");
+            let reported = tcx.dcx().delayed_bug("of_item: neither meta_item_list nor value_str");
             return Err(reported);
         };
         debug!("of_item({:?}) = {:?}", item_def_id, result);

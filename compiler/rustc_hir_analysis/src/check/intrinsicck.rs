@@ -4,7 +4,7 @@ use rustc_hir as hir;
 use rustc_middle::ty::{self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Symbol, DUMMY_SP};
+use rustc_span::Symbol;
 use rustc_target::abi::FieldIdx;
 use rustc_target::asm::{InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass, InlineAsmType};
 
@@ -294,7 +294,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
     pub fn check_asm(&self, asm: &hir::InlineAsm<'tcx>, enclosing_id: LocalDefId) {
         let target_features = self.tcx.asm_target_features(enclosing_id.to_def_id());
         let Some(asm_arch) = self.tcx.sess.asm_arch else {
-            self.tcx.dcx().span_delayed_bug(DUMMY_SP, "target architecture does not support asm");
+            self.tcx.dcx().delayed_bug("target architecture does not support asm");
             return;
         };
         for (idx, (op, op_sp)) in asm.operands.iter().enumerate() {
