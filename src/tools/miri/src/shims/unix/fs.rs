@@ -559,8 +559,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 );
             };
 
-            if mode != 0o666 {
-                throw_unsup_format!("non-default mode 0o{:o} is not supported", mode);
+            #[cfg(unix)]
+            {
+                // Support all modes on UNIX host
+                use std::os::unix::fs::OpenOptionsExt;
+                options.mode(mode);
+            }
+            #[cfg(not(unix))]
+            {
+                // Only support default mode for non-UNIX (i.e. Windows) host
+                if mode != 0o666 {
+                    throw_unsup_format!(
+                        "non-default mode 0o{:o} is not supported on non-Unix hosts",
+                        mode
+                    );
+                }
             }
 
             mirror |= o_creat;

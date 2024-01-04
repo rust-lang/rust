@@ -3,18 +3,16 @@
 
 // Joining a detached thread is undefined behavior.
 
-use std::os::windows::io::{AsRawHandle, RawHandle};
+use std::os::windows::io::AsRawHandle;
 use std::thread;
 
-extern "system" {
-    fn CloseHandle(handle: RawHandle) -> u32;
-}
+use windows_sys::Win32::Foundation::{CloseHandle, HANDLE};
 
 fn main() {
     let thread = thread::spawn(|| ());
 
     unsafe {
-        assert_ne!(CloseHandle(thread.as_raw_handle()), 0);
+        assert_ne!(CloseHandle(thread.as_raw_handle() as HANDLE), 0);
     }
 
     thread.join().unwrap();

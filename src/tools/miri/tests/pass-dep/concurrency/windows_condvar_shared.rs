@@ -2,39 +2,30 @@
 // We are making scheduler assumptions here.
 //@compile-flags: -Zmiri-preemption-rate=0
 
-use std::ffi::c_void;
 use std::ptr::null_mut;
 use std::thread;
+
+use windows_sys::Win32::System::Threading::{
+    AcquireSRWLockExclusive, AcquireSRWLockShared, ReleaseSRWLockExclusive, ReleaseSRWLockShared,
+    SleepConditionVariableSRW, WakeAllConditionVariable, CONDITION_VARIABLE,
+    CONDITION_VARIABLE_LOCKMODE_SHARED, INFINITE, SRWLOCK,
+};
+
+// not in windows-sys
+const SRWLOCK_INIT: SRWLOCK = SRWLOCK { Ptr: null_mut() };
+const CONDITION_VARIABLE_INIT: CONDITION_VARIABLE = CONDITION_VARIABLE { Ptr: null_mut() };
 
 #[derive(Copy, Clone)]
 struct SendPtr<T>(*mut T);
 
 unsafe impl<T> Send for SendPtr<T> {}
 
-extern "system" {
-    fn SleepConditionVariableSRW(
-        condvar: *mut *mut c_void,
-        lock: *mut *mut c_void,
-        timeout: u32,
-        flags: u32,
-    ) -> i32;
-    fn WakeAllConditionVariable(condvar: *mut *mut c_void);
-
-    fn AcquireSRWLockExclusive(lock: *mut *mut c_void);
-    fn AcquireSRWLockShared(lock: *mut *mut c_void);
-    fn ReleaseSRWLockExclusive(lock: *mut *mut c_void);
-    fn ReleaseSRWLockShared(lock: *mut *mut c_void);
-}
-
-const CONDITION_VARIABLE_LOCKMODE_SHARED: u32 = 1;
-const INFINITE: u32 = u32::MAX;
-
 /// threads should be able to reacquire the lock while it is locked by multiple other threads in shared mode
 fn all_shared() {
     println!("all_shared");
 
-    let mut lock = null_mut();
-    let mut condvar = null_mut();
+    let mut lock = SRWLOCK_INIT;
+    let mut condvar = CONDITION_VARIABLE_INIT;
 
     let lock_ptr = SendPtr(&mut lock);
     let condvar_ptr = SendPtr(&mut condvar);
@@ -105,8 +96,8 @@ fn all_shared() {
 fn shared_sleep_and_exclusive_lock() {
     println!("shared_sleep_and_exclusive_lock");
 
-    let mut lock = null_mut();
-    let mut condvar = null_mut();
+    let mut lock = SRWLOCK_INIT;
+    let mut condvar = CONDITION_VARIABLE_INIT;
 
     let lock_ptr = SendPtr(&mut lock);
     let condvar_ptr = SendPtr(&mut condvar);
@@ -166,8 +157,8 @@ fn shared_sleep_and_exclusive_lock() {
 fn exclusive_sleep_and_shared_lock() {
     println!("exclusive_sleep_and_shared_lock");
 
-    let mut lock = null_mut();
-    let mut condvar = null_mut();
+    let mut lock = SRWLOCK_INIT;
+    let mut condvar = CONDITION_VARIABLE_INIT;
 
     let lock_ptr = SendPtr(&mut lock);
     let condvar_ptr = SendPtr(&mut condvar);

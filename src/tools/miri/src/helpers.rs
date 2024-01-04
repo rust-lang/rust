@@ -6,6 +6,7 @@ use std::time::Duration;
 use log::trace;
 
 use rustc_apfloat::ieee::{Double, Single};
+use rustc_apfloat::Float;
 use rustc_hir::def::{DefKind, Namespace};
 use rustc_hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc_index::IndexVec;
@@ -114,6 +115,50 @@ fn try_resolve_did(tcx: TyCtxt<'_>, path: &[&str], namespace: Option<Namespace>)
                     .find(|item| tcx.def_kind(item).ns() == Some(namespace))?,
             ),
         None => Some(cur_item),
+    }
+}
+
+/// Convert a softfloat type to its corresponding hostfloat type.
+pub trait ToHost {
+    type HostFloat;
+    fn to_host(self) -> Self::HostFloat;
+}
+
+/// Convert a hostfloat type to its corresponding softfloat type.
+pub trait ToSoft {
+    type SoftFloat;
+    fn to_soft(self) -> Self::SoftFloat;
+}
+
+impl ToHost for rustc_apfloat::ieee::Double {
+    type HostFloat = f64;
+
+    fn to_host(self) -> Self::HostFloat {
+        f64::from_bits(self.to_bits().try_into().unwrap())
+    }
+}
+
+impl ToSoft for f64 {
+    type SoftFloat = rustc_apfloat::ieee::Double;
+
+    fn to_soft(self) -> Self::SoftFloat {
+        Float::from_bits(self.to_bits().into())
+    }
+}
+
+impl ToHost for rustc_apfloat::ieee::Single {
+    type HostFloat = f32;
+
+    fn to_host(self) -> Self::HostFloat {
+        f32::from_bits(self.to_bits().try_into().unwrap())
+    }
+}
+
+impl ToSoft for f32 {
+    type SoftFloat = rustc_apfloat::ieee::Single;
+
+    fn to_soft(self) -> Self::SoftFloat {
+        Float::from_bits(self.to_bits().into())
     }
 }
 
@@ -1187,12 +1232,4 @@ pub(crate) fn simd_element_to_bool(elem: ImmTy<'_, Provenance>) -> InterpResult<
         -1 => true,
         _ => throw_ub_format!("each element of a SIMD mask must be all-0-bits or all-1-bits"),
     })
-}
-
-// This looks like something that would be nice to have in the standard library...
-pub(crate) fn round_to_next_multiple_of(x: u64, divisor: u64) -> u64 {
-    assert_ne!(divisor, 0);
-    // divisor is nonzero; multiplication cannot overflow since we just divided
-    #[allow(clippy::arithmetic_side_effects)]
-    return (x.checked_add(divisor - 1).unwrap() / divisor) * divisor;
 }
