@@ -1,6 +1,7 @@
 //! This pass statically detects code which has undefined behaviour or is likely to be erroneous.
 //! It can be used to locate problems in MIR building or optimizations. It assumes that all code
 //! can be executed, so it has false positives.
+use rustc_data_structures::fx::FxHashSet;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -31,6 +32,7 @@ pub fn lint_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, when: String) {
         always_live_locals,
         maybe_storage_live,
         maybe_storage_dead,
+        places: Default::default(),
     };
     for (bb, data) in traversal::reachable(body) {
         lint.visit_basic_block_data(bb, data);
@@ -45,6 +47,7 @@ struct Lint<'a, 'tcx> {
     always_live_locals: &'a BitSet<Local>,
     maybe_storage_live: ResultsCursor<'a, 'tcx, MaybeStorageLive<'a>>,
     maybe_storage_dead: ResultsCursor<'a, 'tcx, MaybeStorageDead<'a>>,
+    places: FxHashSet<PlaceRef<'tcx>>,
 }
 
 impl<'a, 'tcx> Lint<'a, 'tcx> {
@@ -75,10 +78,22 @@ impl<'a, 'tcx> Visitor<'tcx> for Lint<'a, 'tcx> {
     }
 
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
-        match statement.kind {
+        match &statement.kind {
+            StatementKind::Assign(box (dest, rvalue)) => {
+                if let Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) = rvalue {
+                    // The sides of an assignment must not alias. Currently this just checks whether
+                    // the places are identical.
+                    if dest == src {
+                        self.fail(
+                            location,
+                            "encountered `Assign` statement with overlapping memory",
+                        );
+                    }
+                }
+            }
             StatementKind::StorageLive(local) => {
                 self.maybe_storage_live.seek_before_primary_effect(location);
-                if self.maybe_storage_live.get().contains(local) {
+                if self.maybe_storage_live.get().contains(*local) {
                     self.fail(
                         location,
                         format!("StorageLive({local:?}) which already has storage here"),
@@ -92,7 +107,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Lint<'a, 'tcx> {
     }
 
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
-        match terminator.kind {
+        match &terminator.kind {
             TerminatorKind::Return => {
                 if self.is_fn_like {
                     self.maybe_storage_live.seek_after_primary_effect(location);
@@ -106,6 +121,28 @@ impl<'a, 'tcx> Visitor<'tcx> for Lint<'a, 'tcx> {
                             );
                         }
                     }
+                }
+            }
+            TerminatorKind::Call { args, destination, .. } => {
+                // The call destination place and Operand::Move place used as an argument might be
+                // passed by a reference to the callee. Consequently they must be non-overlapping.
+                // Currently this simply checks for duplicate places.
+                self.places.clear();
+                self.places.insert(destination.as_ref());
+                let mut has_duplicates = false;
+                for arg in args {
+                    if let Operand::Move(place) = arg {
+                        has_duplicates |= !self.places.insert(place.as_ref());
+                    }
+                }
+                if has_duplicates {
+                    self.fail(
+                        location,
+                        format!(
+                            "encountered overlapping memory in `Move` arguments to `Call` terminator: {:?}",
+                            terminator.kind,
+                        ),
+                    );
                 }
             }
             _ => {}
