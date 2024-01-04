@@ -581,14 +581,8 @@ mod tests {
     fn check_tests(ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
         let tests = analysis.related_tests(position, None).unwrap();
-        let test_ids = tests
-            .into_iter()
-            .map(|runnable| match runnable.kind {
-                RunnableKind::Test { test_id, .. } => test_id,
-                _ => unreachable!(),
-            })
-            .collect::<Vec<_>>();
-        expect.assert_debug_eq(&test_ids);
+        let navigation_targets = tests.into_iter().map(|runnable| runnable.nav).collect::<Vec<_>>();
+        expect.assert_debug_eq(&navigation_targets);
     }
 
     #[test]
@@ -1637,9 +1631,15 @@ mod tests {
 "#,
             expect![[r#"
                 [
-                    Path(
-                        "tests::foo_test",
-                    ),
+                    NavigationTarget {
+                        file_id: FileId(
+                            0,
+                        ),
+                        full_range: 31..85,
+                        focus_range: 46..54,
+                        name: "foo_test",
+                        kind: Function,
+                    },
                 ]
             "#]],
         );
@@ -1664,9 +1664,15 @@ mod tests {
 "#,
             expect![[r#"
                 [
-                    Path(
-                        "tests::foo_test",
-                    ),
+                    NavigationTarget {
+                        file_id: FileId(
+                            0,
+                        ),
+                        full_range: 71..122,
+                        focus_range: 86..94,
+                        name: "foo_test",
+                        kind: Function,
+                    },
                 ]
             "#]],
         );
@@ -1698,9 +1704,15 @@ mod tests {
 "#,
             expect![[r#"
                 [
-                    Path(
-                        "tests::foo_test",
-                    ),
+                    NavigationTarget {
+                        file_id: FileId(
+                            0,
+                        ),
+                        full_range: 133..183,
+                        focus_range: 148..156,
+                        name: "foo_test",
+                        kind: Function,
+                    },
                 ]
             "#]],
         );
@@ -1732,12 +1744,24 @@ mod tests {
 "#,
             expect![[r#"
                 [
-                    Path(
-                        "tests::foo2_test",
-                    ),
-                    Path(
-                        "tests::foo_test",
-                    ),
+                    NavigationTarget {
+                        file_id: FileId(
+                            0,
+                        ),
+                        full_range: 121..185,
+                        focus_range: 136..145,
+                        name: "foo2_test",
+                        kind: Function,
+                    },
+                    NavigationTarget {
+                        file_id: FileId(
+                            0,
+                        ),
+                        full_range: 52..115,
+                        focus_range: 67..75,
+                        name: "foo_test",
+                        kind: Function,
+                    },
                 ]
             "#]],
         );
