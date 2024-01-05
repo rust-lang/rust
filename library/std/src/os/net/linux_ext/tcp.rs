@@ -53,6 +53,51 @@ pub trait TcpStreamExt: Sealed {
     /// ```
     #[unstable(feature = "tcp_quickack", issue = "96256")]
     fn quickack(&self) -> io::Result<bool>;
+
+    /// A socket listener will be awakened solely when data arrives.
+    ///
+    /// The `accept` argument set the delay in seconds until the
+    /// data is available to read, reducing the number of short lived
+    /// connections without data to process.
+    /// Contrary to other platforms `SO_ACCEPTFILTER` feature equivalent, there is
+    /// no necessity to set it after the `listen` call.
+    ///
+    /// See [`man 7 tcp`](https://man7.org/linux/man-pages/man7/tcp.7.html)
+    ///
+    /// # Examples
+    ///
+    /// ```no run
+    /// #![feature(tcp_deferaccept)]
+    /// use std::net::TcpStream;
+    /// use std::os::linux::net::TcpStreamExt;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///         .expect("Couldn't connect to the server...");
+    /// stream.set_deferaccept(1).expect("set_deferaccept call failed");
+    /// ```
+    #[unstable(feature = "tcp_deferaccept", issue = "119639")]
+    #[cfg(target_os = "linux")]
+    fn set_deferaccept(&self, accept: u32) -> io::Result<()>;
+
+    /// Gets the accept delay value (in seconds) of the `TCP_DEFER_ACCEPT` option.
+    ///
+    /// For more information about this option, see [`TcpStreamExt::set_deferaccept`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(tcp_deferaccept)]
+    /// use std::net::TcpStream;
+    /// use std::os::linux::net::TcpStreamExt;
+    ///
+    /// let stream = TcpStream::connect("127.0.0.1:8080")
+    ///         .expect("Couldn't connect to the server...");
+    /// stream.set_deferaccept(1).expect("set_deferaccept call failed");
+    /// assert_eq!(stream.deferaccept().unwrap_or(0), 1);
+    /// ```
+    #[unstable(feature = "tcp_deferaccept", issue = "119639")]
+    #[cfg(target_os = "linux")]
+    fn deferaccept(&self) -> io::Result<u32>;
 }
 
 #[unstable(feature = "tcp_quickack", issue = "96256")]
@@ -66,5 +111,15 @@ impl TcpStreamExt for net::TcpStream {
 
     fn quickack(&self) -> io::Result<bool> {
         self.as_inner().as_inner().quickack()
+    }
+
+    #[cfg(target_os = "linux")]
+    fn set_deferaccept(&self, accept: u32) -> io::Result<()> {
+        self.as_inner().as_inner().set_deferaccept(accept)
+    }
+
+    #[cfg(target_os = "linux")]
+    fn deferaccept(&self) -> io::Result<u32> {
+        self.as_inner().as_inner().deferaccept()
     }
 }
