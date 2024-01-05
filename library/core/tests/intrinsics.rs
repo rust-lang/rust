@@ -4,7 +4,7 @@ use core::intrinsics::assume;
 #[test]
 fn test_typeid_sized_types() {
     struct X;
-    struct Y(u32);
+    struct Y(#[allow(dead_code)] u32);
 
     assert_eq!(TypeId::of::<X>(), TypeId::of::<X>());
     assert_eq!(TypeId::of::<Y>(), TypeId::of::<Y>());
@@ -14,8 +14,8 @@ fn test_typeid_sized_types() {
 #[test]
 fn test_typeid_unsized_types() {
     trait Z {}
-    struct X(str);
-    struct Y(dyn Z + 'static);
+    struct X(#[allow(dead_code)] str);
+    struct Y(#[allow(dead_code)] dyn Z + 'static);
 
     assert_eq!(TypeId::of::<X>(), TypeId::of::<X>());
     assert_eq!(TypeId::of::<Y>(), TypeId::of::<Y>());

@@ -5,7 +5,7 @@
 use std::mem;
 
 const SZ: usize = 100;
-#[allow(unused_tuple_struct_fields)]
+#[allow(dead_code)]
 struct P<T: ?Sized>([u8; SZ], T);
 
 type Ack<T> = P<P<T>>;

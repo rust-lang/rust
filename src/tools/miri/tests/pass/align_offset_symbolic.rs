@@ -46,7 +46,7 @@ fn test_align_to() {
     {
         #[repr(align(8))]
         #[derive(Copy, Clone)]
-        struct Align8(u64);
+        struct Align8(#[allow(dead_code)] u64);
 
         let (_l, m, _r) = unsafe { s.align_to::<Align8>() };
         assert!(m.len() > 0);
@@ -97,7 +97,7 @@ fn huge_align() {
     const SIZE: usize = 1 << 30;
     #[cfg(target_pointer_width = "16")]
     const SIZE: usize = 1 << 13;
-    struct HugeSize([u8; SIZE - 1]);
+    struct HugeSize(#[allow(dead_code)] [u8; SIZE - 1]);
     let _ = std::ptr::invalid::<HugeSize>(SIZE).align_offset(SIZE);
 }
 

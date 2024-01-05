@@ -4,7 +4,7 @@ macro_rules! my_wrapper {
     ($expr:expr) => { MyWrapper($expr) }
 }
 
-pub struct MyWrapper(u32);
+pub struct MyWrapper(#[allow(dead_code)] u32);
 
 fn main() {
     let value = MyWrapper(123);

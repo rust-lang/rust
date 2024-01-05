@@ -3,7 +3,7 @@ error: variant `Variant2` is never constructed
    |
 LL | enum Enum1 {
    |      ----- variant in this enum
-LL |     Variant1(isize),
+LL |     Variant1(#[allow(dead_code)] isize),
 LL |     Variant2
    |     ^^^^^^^^
    |

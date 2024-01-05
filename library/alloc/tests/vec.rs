@@ -547,7 +547,7 @@ fn test_cmp() {
 #[test]
 fn test_vec_truncate_drop() {
     static mut DROPS: u32 = 0;
-    struct Elem(i32);
+    struct Elem(#[allow(dead_code)] i32);
     impl Drop for Elem {
         fn drop(&mut self) {
             unsafe {
@@ -1089,7 +1089,7 @@ fn test_into_iter_advance_by() {
 
 #[test]
 fn test_into_iter_drop_allocator() {
-    struct ReferenceCountedAllocator<'a>(DropCounter<'a>);
+    struct ReferenceCountedAllocator<'a>(#[allow(dead_code)] DropCounter<'a>);
 
     unsafe impl Allocator for ReferenceCountedAllocator<'_> {
         fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, core::alloc::AllocError> {
@@ -2407,7 +2407,7 @@ fn test_vec_dedup_multiple_ident() {
 #[test]
 fn test_vec_dedup_partialeq() {
     #[derive(Debug)]
-    struct Foo(i32, i32);
+    struct Foo(i32, #[allow(dead_code)] i32);
 
     impl PartialEq for Foo {
         fn eq(&self, other: &Foo) -> bool {
