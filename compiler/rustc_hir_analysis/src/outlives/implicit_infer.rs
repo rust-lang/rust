@@ -59,6 +59,17 @@ pub(super) fn infer_predicates(
                     }
                 }
 
+                DefKind::TyAlias if tcx.type_alias_is_lazy(item_did) => {
+                    insert_required_predicates_to_be_wf(
+                        tcx,
+                        tcx.type_of(item_did).instantiate_identity(),
+                        tcx.def_span(item_did),
+                        &global_inferred_outlives,
+                        &mut item_required_predicates,
+                        &mut explicit_map,
+                    );
+                }
+
                 _ => {}
             };
 
@@ -88,14 +99,14 @@ pub(super) fn infer_predicates(
 
 fn insert_required_predicates_to_be_wf<'tcx>(
     tcx: TyCtxt<'tcx>,
-    field_ty: Ty<'tcx>,
-    field_span: Span,
+    ty: Ty<'tcx>,
+    span: Span,
     global_inferred_outlives: &FxHashMap<DefId, ty::EarlyBinder<RequiredPredicates<'tcx>>>,
     required_predicates: &mut RequiredPredicates<'tcx>,
     explicit_map: &mut ExplicitPredicatesMap<'tcx>,
 ) {
-    for arg in field_ty.walk() {
-        let ty = match arg.unpack() {
+    for arg in ty.walk() {
+        let leaf_ty = match arg.unpack() {
             GenericArgKind::Type(ty) => ty,
 
             // No predicates from lifetimes or constants, except potentially
@@ -103,63 +114,26 @@ fn insert_required_predicates_to_be_wf<'tcx>(
             GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => continue,
         };
 
-        match *ty.kind() {
-            // The field is of type &'a T which means that we will have
-            // a predicate requirement of T: 'a (T outlives 'a).
-            //
-            // We also want to calculate potential predicates for the T
+        match *leaf_ty.kind() {
             ty::Ref(region, rty, _) => {
+                // The type is `&'a T` which means that we will have
+                // a predicate requirement of `T: 'a` (`T` outlives `'a`).
+                //
+                // We also want to calculate potential predicates for the `T`.
                 debug!("Ref");
-                insert_outlives_predicate(tcx, rty.into(), region, field_span, required_predicates);
+                insert_outlives_predicate(tcx, rty.into(), region, span, required_predicates);
             }
 
-            // For each Adt (struct/enum/union) type `Foo<'a, T>`, we
-            // can load the current set of inferred and explicit
-            // predicates from `global_inferred_outlives` and filter the
-            // ones that are TypeOutlives.
             ty::Adt(def, args) => {
-                // First check the inferred predicates
-                //
-                // Example 1:
-                //
-                //     struct Foo<'a, T> {
-                //         field1: Bar<'a, T>
-                //     }
-                //
-                //     struct Bar<'b, U> {
-                //         field2: &'b U
-                //     }
-                //
-                // Here, when processing the type of `field1`, we would
-                // request the set of implicit predicates computed for `Bar`
-                // thus far. This will initially come back empty, but in next
-                // round we will get `U: 'b`. We then apply the substitution
-                // `['b => 'a, U => T]` and thus get the requirement that `T:
-                // 'a` holds for `Foo`.
+                // For ADTs (structs/enums/unions), we check inferred and explicit predicates.
                 debug!("Adt");
-                if let Some(unsubstituted_predicates) = global_inferred_outlives.get(&def.did()) {
-                    for (unsubstituted_predicate, &span) in
-                        unsubstituted_predicates.as_ref().skip_binder()
-                    {
-                        // `unsubstituted_predicate` is `U: 'b` in the
-                        // example above. So apply the substitution to
-                        // get `T: 'a` (or `predicate`):
-                        let predicate = unsubstituted_predicates
-                            .rebind(*unsubstituted_predicate)
-                            .instantiate(tcx, args);
-                        insert_outlives_predicate(
-                            tcx,
-                            predicate.0,
-                            predicate.1,
-                            span,
-                            required_predicates,
-                        );
-                    }
-                }
-
-                // Check if the type has any explicit predicates that need
-                // to be added to `required_predicates`
-                // let _: () = args.region_at(0);
+                check_inferred_predicates(
+                    tcx,
+                    def.did(),
+                    args,
+                    global_inferred_outlives,
+                    required_predicates,
+                );
                 check_explicit_predicates(
                     tcx,
                     def.did(),
@@ -170,13 +144,31 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 );
             }
 
+            ty::Alias(ty::Weak, alias) => {
+                // This corresponds to a type like `Type<'a, T>`.
+                // We check inferred and explicit predicates.
+                debug!("Weak");
+                check_inferred_predicates(
+                    tcx,
+                    alias.def_id,
+                    alias.args,
+                    global_inferred_outlives,
+                    required_predicates,
+                );
+                check_explicit_predicates(
+                    tcx,
+                    alias.def_id,
+                    alias.args,
+                    required_predicates,
+                    explicit_map,
+                    None,
+                );
+            }
+
             ty::Dynamic(obj, ..) => {
                 // This corresponds to `dyn Trait<..>`. In this case, we should
                 // use the explicit predicates as well.
-
                 debug!("Dynamic");
-                debug!("field_ty = {}", &field_ty);
-                debug!("ty in field = {}", &ty);
                 if let Some(ex_trait_ref) = obj.principal() {
                     // Here, we are passing the type `usize` as a
                     // placeholder value with the function
@@ -198,21 +190,22 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 }
             }
 
-            ty::Alias(ty::Projection, obj) => {
-                // This corresponds to `<T as Foo<'a>>::Bar`. In this case, we should use the
-                // explicit predicates as well.
+            ty::Alias(ty::Projection, alias) => {
+                // This corresponds to a type like `<() as Trait<'a, T>>::Type`.
+                // We only use the explicit predicates of the trait but
+                // not the ones of the associated type itself.
                 debug!("Projection");
                 check_explicit_predicates(
                     tcx,
-                    tcx.parent(obj.def_id),
-                    obj.args,
+                    tcx.parent(alias.def_id),
+                    alias.args,
                     required_predicates,
                     explicit_map,
                     None,
                 );
             }
 
-            // FIXME(inherent_associated_types): Handle this case properly.
+            // FIXME(inherent_associated_types): Use the explicit predicates from the parent impl.
             ty::Alias(ty::Inherent, _) => {}
 
             _ => {}
@@ -220,19 +213,21 @@ fn insert_required_predicates_to_be_wf<'tcx>(
     }
 }
 
-/// We also have to check the explicit predicates
-/// declared on the type.
+/// Check the explicit predicates declared on the type.
+///
+/// ### Example
+///
 /// ```ignore (illustrative)
-/// struct Foo<'a, T> {
-///     field1: Bar<T>
+/// struct Outer<'a, T> {
+///     field: Inner<T>,
 /// }
 ///
-/// struct Bar<U> where U: 'static, U: Foo {
-///     ...
+/// struct Inner<U> where U: 'static, U: Outer {
+///     // ...
 /// }
 /// ```
 /// Here, we should fetch the explicit predicates, which
-/// will give us `U: 'static` and `U: Foo`. The latter we
+/// will give us `U: 'static` and `U: Outer`. The latter we
 /// can ignore, but we will want to process `U: 'static`,
 /// applying the substitution as above.
 fn check_explicit_predicates<'tcx>(
@@ -301,5 +296,47 @@ fn check_explicit_predicates<'tcx>(
         let predicate = explicit_predicates.rebind(*outlives_predicate).instantiate(tcx, args);
         debug!("predicate = {:?}", &predicate);
         insert_outlives_predicate(tcx, predicate.0, predicate.1, span, required_predicates);
+    }
+}
+
+/// Check the inferred predicates declared on the type.
+///
+/// ### Example
+///
+/// ```ignore (illustrative)
+/// struct Outer<'a, T> {
+///     outer: Inner<'a, T>,
+/// }
+///
+/// struct Inner<'b, U> {
+///     inner: &'b U,
+/// }
+/// ```
+///
+/// Here, when processing the type of field `outer`, we would request the
+/// set of implicit predicates computed for `Inner` thus far. This will
+/// initially come back empty, but in next round we will get `U: 'b`.
+/// We then apply the substitution `['b => 'a, U => T]` and thus get the
+/// requirement that `T: 'a` holds for `Outer`.
+fn check_inferred_predicates<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    args: ty::GenericArgsRef<'tcx>,
+    global_inferred_outlives: &FxHashMap<DefId, ty::EarlyBinder<RequiredPredicates<'tcx>>>,
+    required_predicates: &mut RequiredPredicates<'tcx>,
+) {
+    // Load the current set of inferred and explicit predicates from `global_inferred_outlives`
+    // and filter the ones that are `TypeOutlives`.
+
+    let Some(predicates) = global_inferred_outlives.get(&def_id) else {
+        return;
+    };
+
+    for (&predicate, &span) in predicates.as_ref().skip_binder() {
+        // `predicate` is `U: 'b` in the example above.
+        // So apply the substitution to get `T: 'a`.
+        let ty::OutlivesPredicate(arg, region) =
+            predicates.rebind(predicate).instantiate(tcx, args);
+        insert_outlives_predicate(tcx, arg, region, span, required_predicates);
     }
 }
