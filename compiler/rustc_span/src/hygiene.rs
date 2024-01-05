@@ -850,21 +850,6 @@ impl fmt::Debug for SyntaxContext {
 }
 
 impl Span {
-    /// Creates a fresh expansion with given properties.
-    /// Expansions are normally created by macros, but in some cases expansions are created for
-    /// other compiler-generated code to set per-span properties like allowed unstable features.
-    /// The returned span belongs to the created expansion and has the new properties,
-    /// but its location is inherited from the current span.
-    pub fn fresh_expansion(self, expn_id: LocalExpnId) -> Span {
-        HygieneData::with(|data| {
-            self.with_ctxt(data.apply_mark(
-                self.ctxt(),
-                expn_id.to_expn_id(),
-                Transparency::Transparent,
-            ))
-        })
-    }
-
     /// Reuses the span but adds information like the kind of the desugaring and features that are
     /// allowed inside this span.
     pub fn mark_with_reason(
@@ -879,7 +864,7 @@ impl Span {
             ..ExpnData::default(ExpnKind::Desugaring(reason), self, edition, None, None)
         };
         let expn_id = LocalExpnId::fresh(expn_data, ctx);
-        self.fresh_expansion(expn_id)
+        self.apply_mark(expn_id.to_expn_id(), Transparency::Transparent)
     }
 }
 
