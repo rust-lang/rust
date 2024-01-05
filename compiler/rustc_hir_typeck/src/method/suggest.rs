@@ -913,7 +913,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             for ((span, add_where_or_comma), obligations) in type_params.into_iter() {
                 restrict_type_params = true;
                 // #74886: Sort here so that the output is always the same.
-                let obligations = obligations.to_sorted_stable_ord();
+                let obligations = obligations.into_sorted_stable_ord();
                 err.span_suggestion_verbose(
                     span,
                     format!(

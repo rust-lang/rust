@@ -1,6 +1,6 @@
 use super::potentially_plural_count;
 use crate::errors::LifetimesOrBoundsMismatchOnTrait;
-use hir::def_id::{DefId, LocalDefId};
+use hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticId, ErrorGuaranteed};
 use rustc_hir as hir;
@@ -478,7 +478,7 @@ fn compare_asyncness<'tcx>(
 pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m_def_id: LocalDefId,
-) -> Result<&'tcx FxHashMap<DefId, ty::EarlyBinder<Ty<'tcx>>>, ErrorGuaranteed> {
+) -> Result<&'tcx DefIdMap<ty::EarlyBinder<Ty<'tcx>>>, ErrorGuaranteed> {
     let impl_m = tcx.opt_associated_item(impl_m_def_id.to_def_id()).unwrap();
     let trait_m = tcx.opt_associated_item(impl_m.trait_item_def_id.unwrap()).unwrap();
     let impl_trait_ref =
@@ -706,7 +706,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     );
     ocx.resolve_regions_and_report_errors(impl_m_def_id, &outlives_env)?;
 
-    let mut remapped_types = FxHashMap::default();
+    let mut remapped_types = DefIdMap::default();
     for (def_id, (ty, args)) in collected_types {
         match infcx.fully_resolve((ty, args)) {
             Ok((ty, args)) => {
