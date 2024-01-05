@@ -73,7 +73,8 @@ pub(super) fn check_fn<'a, 'tcx>(
     let inputs_fn = fn_sig.inputs().iter().copied();
     for (idx, (param_ty, param)) in inputs_fn.chain(maybe_va_list).zip(body.params).enumerate() {
         // Check the pattern.
-        let ty_span = try { inputs_hir?.get(idx)?.span };
+        let ty: Option<&hir::Ty<'_>> = try { inputs_hir?.get(idx)? };
+        let ty_span = ty.map(|ty| ty.span);
         fcx.check_pat_top(param.pat, param_ty, ty_span, None, None);
 
         // Check that argument is Sized.
@@ -81,14 +82,14 @@ pub(super) fn check_fn<'a, 'tcx>(
             fcx.require_type_is_sized(
                 param_ty,
                 param.pat.span,
-                // ty_span == binding_span iff this is a closure parameter with no type ascription,
+                // ty.span == binding_span iff this is a closure parameter with no type ascription,
                 // or if it's an implicit `self` parameter
                 traits::SizedArgumentType(
                     if ty_span == Some(param.span) && tcx.is_closure_or_coroutine(fn_def_id.into())
                     {
                         None
                     } else {
-                        ty_span
+                        ty.map(|ty| ty.hir_id)
                     },
                 ),
             );

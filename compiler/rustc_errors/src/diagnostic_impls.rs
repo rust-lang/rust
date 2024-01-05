@@ -254,29 +254,29 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for TargetDataLayoutErrors<'_> 
             TargetDataLayoutErrors::InvalidAddressSpace { addr_space, err, cause } => {
                 diag =
                     DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_address_space);
-                diag.set_arg("addr_space", addr_space);
-                diag.set_arg("cause", cause);
-                diag.set_arg("err", err);
+                diag.arg("addr_space", addr_space);
+                diag.arg("cause", cause);
+                diag.arg("err", err);
                 diag
             }
             TargetDataLayoutErrors::InvalidBits { kind, bit, cause, err } => {
                 diag = DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_bits);
-                diag.set_arg("kind", kind);
-                diag.set_arg("bit", bit);
-                diag.set_arg("cause", cause);
-                diag.set_arg("err", err);
+                diag.arg("kind", kind);
+                diag.arg("bit", bit);
+                diag.arg("cause", cause);
+                diag.arg("err", err);
                 diag
             }
             TargetDataLayoutErrors::MissingAlignment { cause } => {
                 diag = DiagnosticBuilder::new(dcx, level, fluent::errors_target_missing_alignment);
-                diag.set_arg("cause", cause);
+                diag.arg("cause", cause);
                 diag
             }
             TargetDataLayoutErrors::InvalidAlignment { cause, err } => {
                 diag = DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_alignment);
-                diag.set_arg("cause", cause);
-                diag.set_arg("err_kind", err.diag_ident());
-                diag.set_arg("align", err.align());
+                diag.arg("cause", cause);
+                diag.arg("err_kind", err.diag_ident());
+                diag.arg("align", err.align());
                 diag
             }
             TargetDataLayoutErrors::InconsistentTargetArchitecture { dl, target } => {
@@ -285,8 +285,8 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for TargetDataLayoutErrors<'_> 
                     level,
                     fluent::errors_target_inconsistent_architecture,
                 );
-                diag.set_arg("dl", dl);
-                diag.set_arg("target", target);
+                diag.arg("dl", dl);
+                diag.arg("target", target);
                 diag
             }
             TargetDataLayoutErrors::InconsistentTargetPointerWidth { pointer_size, target } => {
@@ -295,13 +295,13 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for TargetDataLayoutErrors<'_> 
                     level,
                     fluent::errors_target_inconsistent_pointer_width,
                 );
-                diag.set_arg("pointer_size", pointer_size);
-                diag.set_arg("target", target);
+                diag.arg("pointer_size", pointer_size);
+                diag.arg("target", target);
                 diag
             }
             TargetDataLayoutErrors::InvalidBitsSize { err } => {
                 diag = DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_bits_size);
-                diag.set_arg("err", err);
+                diag.arg("err", err);
                 diag
             }
         }

@@ -60,7 +60,7 @@ pub(super) struct GatherLocalsVisitor<'a, 'tcx> {
     // parameters are special cases of patterns, but we want to handle them as
     // *distinct* cases. so track when we are hitting a pattern *within* an fn
     // parameter.
-    outermost_fn_param_pat: Option<Span>,
+    outermost_fn_param_pat: Option<(Span, hir::HirId)>,
 }
 
 impl<'a, 'tcx> GatherLocalsVisitor<'a, 'tcx> {
@@ -131,7 +131,8 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
-        let old_outermost_fn_param_pat = self.outermost_fn_param_pat.replace(param.ty_span);
+        let old_outermost_fn_param_pat =
+            self.outermost_fn_param_pat.replace((param.ty_span, param.hir_id));
         intravisit::walk_param(self, param);
         self.outermost_fn_param_pat = old_outermost_fn_param_pat;
     }
@@ -141,7 +142,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
         if let PatKind::Binding(_, _, ident, _) = p.kind {
             let var_ty = self.assign(p.span, p.hir_id, None);
 
-            if let Some(ty_span) = self.outermost_fn_param_pat {
+            if let Some((ty_span, hir_id)) = self.outermost_fn_param_pat {
                 if !self.fcx.tcx.features().unsized_fn_params {
                     self.fcx.require_type_is_sized(
                         var_ty,
@@ -154,7 +155,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                             {
                                 None
                             } else {
-                                Some(ty_span)
+                                Some(hir_id)
                             },
                         ),
                     );

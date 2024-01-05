@@ -1,7 +1,8 @@
 use std::io::Read;
 use std::path::Path;
+use std::str::FromStr;
 
-use crate::common::{Config, Debugger};
+use crate::common::{Config, Debugger, Mode};
 use crate::header::{parse_normalization_string, EarlyProps, HeadersCache};
 
 fn make_test_description<R: Read>(
@@ -55,6 +56,7 @@ fn test_parse_normalization_string() {
 
 #[derive(Default)]
 struct ConfigBuilder {
+    mode: Option<String>,
     channel: Option<String>,
     host: Option<String>,
     target: Option<String>,
@@ -62,9 +64,15 @@ struct ConfigBuilder {
     llvm_version: Option<String>,
     git_hash: bool,
     system_llvm: bool,
+    profiler_support: bool,
 }
 
 impl ConfigBuilder {
+    fn mode(&mut self, s: &str) -> &mut Self {
+        self.mode = Some(s.to_owned());
+        self
+    }
+
     fn channel(&mut self, s: &str) -> &mut Self {
         self.channel = Some(s.to_owned());
         self
@@ -100,10 +108,16 @@ impl ConfigBuilder {
         self
     }
 
+    fn profiler_support(&mut self, s: bool) -> &mut Self {
+        self.profiler_support = s;
+        self
+    }
+
     fn build(&mut self) -> Config {
         let args = &[
             "compiletest",
-            "--mode=ui",
+            "--mode",
+            self.mode.as_deref().unwrap_or("ui"),
             "--suite=ui",
             "--compile-lib-path=",
             "--run-lib-path=",
@@ -141,6 +155,9 @@ impl ConfigBuilder {
         }
         if self.system_llvm {
             args.push("--system-llvm".to_owned());
+        }
+        if self.profiler_support {
+            args.push("--profiler-support".to_owned());
         }
 
         args.push("--rustc-path".to_string());
@@ -341,6 +358,15 @@ fn sanitizers() {
 }
 
 #[test]
+fn profiler_support() {
+    let config: Config = cfg().profiler_support(false).build();
+    assert!(check_ignore(&config, "// needs-profiler-support"));
+
+    let config: Config = cfg().profiler_support(true).build();
+    assert!(!check_ignore(&config, "// needs-profiler-support"));
+}
+
+#[test]
 fn asm_support() {
     let asms = [
         ("avr-unknown-gnu-atmega328", false),
@@ -528,5 +554,19 @@ fn families() {
         assert!(!config.matches_family(other));
         assert!(check_ignore(&config, &format!("// ignore-{family}")));
         assert!(!check_ignore(&config, &format!("// ignore-{other}")));
+    }
+}
+
+#[test]
+fn ignore_mode() {
+    for &mode in Mode::STR_VARIANTS {
+        // Indicate profiler support so that "coverage-run" tests aren't skipped.
+        let config: Config = cfg().mode(mode).profiler_support(true).build();
+        let other = if mode == "coverage-run" { "coverage-map" } else { "coverage-run" };
+        assert_ne!(mode, other);
+        assert_eq!(config.mode, Mode::from_str(mode).unwrap());
+        assert_ne!(config.mode, Mode::from_str(other).unwrap());
+        assert!(check_ignore(&config, &format!("// ignore-mode-{mode}")));
+        assert!(!check_ignore(&config, &format!("// ignore-mode-{other}")));
     }
 }

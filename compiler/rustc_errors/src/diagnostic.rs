@@ -212,6 +212,9 @@ impl StringPart {
     }
 }
 
+// Note: most of these methods are setters that return `&mut Self`. The small
+// number of simple getter functions all have `get_` prefixes to distinguish
+// them from the setters.
 impl Diagnostic {
     #[track_caller]
     pub fn new<M: Into<DiagnosticMessage>>(level: Level, message: M) -> Self {
@@ -241,11 +244,9 @@ impl Diagnostic {
 
     pub fn is_error(&self) -> bool {
         match self.level {
-            Level::Bug
-            | Level::DelayedBug
-            | Level::Fatal
-            | Level::Error { .. }
-            | Level::FailureNote => true,
+            Level::Bug | Level::DelayedBug | Level::Fatal | Level::Error | Level::FailureNote => {
+                true
+            }
 
             Level::Warning(_)
             | Level::Note
@@ -308,25 +309,27 @@ impl Diagnostic {
     /// In the meantime, though, callsites are required to deal with the "bug"
     /// locally in whichever way makes the most sense.
     #[track_caller]
-    pub fn downgrade_to_delayed_bug(&mut self) -> &mut Self {
+    pub fn downgrade_to_delayed_bug(&mut self) {
         assert!(
             self.is_error(),
             "downgrade_to_delayed_bug: cannot downgrade {:?} to DelayedBug: not an error",
             self.level
         );
         self.level = Level::DelayedBug;
-
-        self
     }
 
-    /// Adds a span/label to be included in the resulting snippet.
+    /// Appends a labeled span to the diagnostic.
     ///
-    /// This is pushed onto the [`MultiSpan`] that was created when the diagnostic
-    /// was first built. That means it will be shown together with the original
-    /// span/label, *not* a span added by one of the `span_{note,warn,help,suggestions}` methods.
+    /// Labels are used to convey additional context for the diagnostic's primary span. They will
+    /// be shown together with the original diagnostic's span, *not* with spans added by
+    /// `span_note`, `span_help`, etc. Therefore, if the primary span is not displayable (because
+    /// the span is `DUMMY_SP` or the source code isn't found), labels will not be displayed
+    /// either.
     ///
-    /// This span is *not* considered a ["primary span"][`MultiSpan`]; only
-    /// the `Span` supplied when creating the diagnostic is primary.
+    /// Implementation-wise, the label span is pushed onto the [`MultiSpan`] that was created when
+    /// the diagnostic was constructed. However, the label span is *not* considered a
+    /// ["primary span"][`MultiSpan`]; only the `Span` supplied when creating the diagnostic is
+    /// primary.
     #[rustc_lint_diagnostics]
     pub fn span_label(&mut self, span: Span, label: impl Into<SubdiagnosticMessage>) -> &mut Self {
         self.span.push_span_label(span, self.subdiagnostic_message_to_diagnostic_message(label));
@@ -344,7 +347,7 @@ impl Diagnostic {
 
     pub fn replace_span_with(&mut self, after: Span, keep_label: bool) -> &mut Self {
         let before = self.span.clone();
-        self.set_span(after);
+        self.span(after);
         for span_label in before.span_labels() {
             if let Some(label) = span_label.label {
                 if span_label.is_primary && keep_label {
@@ -876,7 +879,7 @@ impl Diagnostic {
         self
     }
 
-    pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self {
+    pub fn span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self {
         self.span = sp.into();
         if let Some(span) = self.span.primary_span() {
             self.sort_span = span;
@@ -884,7 +887,7 @@ impl Diagnostic {
         self
     }
 
-    pub fn set_is_lint(&mut self) -> &mut Self {
+    pub fn is_lint(&mut self) -> &mut Self {
         self.is_lint = true;
         self
     }
@@ -903,7 +906,7 @@ impl Diagnostic {
         self.code.clone()
     }
 
-    pub fn set_primary_message(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self {
+    pub fn primary_message(&mut self, msg: impl Into<DiagnosticMessage>) -> &mut Self {
         self.messages[0] = (msg.into(), Style::NoStyle);
         self
     }
@@ -915,7 +918,7 @@ impl Diagnostic {
         self.args.iter()
     }
 
-    pub fn set_arg(
+    pub fn arg(
         &mut self,
         name: impl Into<Cow<'static, str>>,
         arg: impl IntoDiagnosticArg,

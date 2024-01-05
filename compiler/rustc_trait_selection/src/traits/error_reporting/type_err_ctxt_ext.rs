@@ -816,7 +816,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                     ty::PredicateKind::ObjectSafe(trait_def_id) => {
                         let violations = self.tcx.object_safety_violations(trait_def_id);
-                        report_object_safety_error(self.tcx, span, trait_def_id, violations)
+                        report_object_safety_error(self.tcx, span, None, trait_def_id, violations)
                     }
 
                     ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(ty)) => {
@@ -924,7 +924,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
             TraitNotObjectSafe(did) => {
                 let violations = self.tcx.object_safety_violations(did);
-                report_object_safety_error(self.tcx, span, did, violations)
+                report_object_safety_error(self.tcx, span, None, did, violations)
             }
 
             SelectionError::NotConstEvaluatable(NotConstEvaluatable::MentionsInfer) => {
@@ -3163,14 +3163,14 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     ) {
         match obligation_cause_code {
             ObligationCauseCode::RustCall => {
-                err.set_primary_message("functions with the \"rust-call\" ABI must take a single non-self tuple argument");
+                err.primary_message("functions with the \"rust-call\" ABI must take a single non-self tuple argument");
             }
             ObligationCauseCode::BindingObligation(def_id, _)
             | ObligationCauseCode::ItemObligation(def_id)
                 if self.tcx.is_fn_trait(*def_id) =>
             {
                 err.code(rustc_errors::error_code!(E0059));
-                err.set_primary_message(format!(
+                err.primary_message(format!(
                     "type parameter to bare `{}` trait must be a tuple",
                     self.tcx.def_path_str(*def_id)
                 ));

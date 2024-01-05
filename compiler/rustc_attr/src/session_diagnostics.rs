@@ -55,10 +55,10 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for UnknownMetaItem<'_> {
     fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
         let expected = self.expected.iter().map(|name| format!("`{name}`")).collect::<Vec<_>>();
         let mut diag = DiagnosticBuilder::new(dcx, level, fluent::attr_unknown_meta_item);
-        diag.set_span(self.span);
+        diag.span(self.span);
         diag.code(error_code!(E0541));
-        diag.set_arg("item", self.item);
-        diag.set_arg("expected", expected.join(", "));
+        diag.arg("item", self.item);
+        diag.arg("expected", expected.join(", "));
         diag.span_label(self.span, fluent::attr_label);
         diag
     }
@@ -215,7 +215,7 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for UnsupportedLiteral {
                 }
             },
         );
-        diag.set_span(self.span);
+        diag.span(self.span);
         diag.code(error_code!(E0565));
         if self.is_bytestr {
             diag.span_suggestion(

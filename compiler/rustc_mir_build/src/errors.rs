@@ -467,11 +467,11 @@ impl<'a> IntoDiagnostic<'a> for NonExhaustivePatternsTypeNotEmpty<'_, '_, '_> {
             level,
             fluent::mir_build_non_exhaustive_patterns_type_not_empty,
         );
-        diag.set_span(self.span);
+        diag.span(self.span);
         diag.code(error_code!(E0004));
         let peeled_ty = self.ty.peel_refs();
-        diag.set_arg("ty", self.ty);
-        diag.set_arg("peeled_ty", peeled_ty);
+        diag.arg("ty", self.ty);
+        diag.arg("peeled_ty", peeled_ty);
 
         if let ty::Adt(def, _) = peeled_ty.kind() {
             let def_span = self
@@ -855,7 +855,7 @@ impl<'tcx> AddToDiagnostic for AdtDefinedHere<'tcx> {
     where
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
     {
-        diag.set_arg("ty", self.ty);
+        diag.arg("ty", self.ty);
         let mut spans = MultiSpan::from(self.adt_def_span);
 
         for Variant { span } in self.variants {

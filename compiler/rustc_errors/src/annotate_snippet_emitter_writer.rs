@@ -20,7 +20,7 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::SourceFile;
 
 /// Generates diagnostics using annotate-snippet
-pub struct AnnotateSnippetEmitterWriter {
+pub struct AnnotateSnippetEmitter {
     source_map: Option<Lrc<SourceMap>>,
     fluent_bundle: Option<Lrc<FluentBundle>>,
     fallback_bundle: LazyFallbackBundle,
@@ -33,7 +33,7 @@ pub struct AnnotateSnippetEmitterWriter {
     macro_backtrace: bool,
 }
 
-impl Translate for AnnotateSnippetEmitterWriter {
+impl Translate for AnnotateSnippetEmitter {
     fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
         self.fluent_bundle.as_ref()
     }
@@ -43,7 +43,7 @@ impl Translate for AnnotateSnippetEmitterWriter {
     }
 }
 
-impl Emitter for AnnotateSnippetEmitterWriter {
+impl Emitter for AnnotateSnippetEmitter {
     /// The entry point for the diagnostics generation
     fn emit_diagnostic(&mut self, diag: &Diagnostic) {
         let fluent_args = to_fluent_args(diag.args());
@@ -86,9 +86,7 @@ fn source_string(file: Lrc<SourceFile>, line: &Line) -> String {
 /// Maps `Diagnostic::Level` to `snippet::AnnotationType`
 fn annotation_type_for_level(level: Level) -> AnnotationType {
     match level {
-        Level::Bug | Level::DelayedBug | Level::Fatal | Level::Error { .. } => {
-            AnnotationType::Error
-        }
+        Level::Bug | Level::DelayedBug | Level::Fatal | Level::Error => AnnotationType::Error,
         Level::Warning(_) => AnnotationType::Warning,
         Level::Note | Level::OnceNote => AnnotationType::Note,
         Level::Help | Level::OnceHelp => AnnotationType::Help,
@@ -99,7 +97,7 @@ fn annotation_type_for_level(level: Level) -> AnnotationType {
     }
 }
 
-impl AnnotateSnippetEmitterWriter {
+impl AnnotateSnippetEmitter {
     pub fn new(
         source_map: Option<Lrc<SourceMap>>,
         fluent_bundle: Option<Lrc<FluentBundle>>,

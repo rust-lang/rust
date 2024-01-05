@@ -961,7 +961,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                          but its trait bounds were not satisfied"
                     )
                 });
-                err.set_primary_message(primary_message);
+                err.primary_message(primary_message);
                 if let Some(label) = label {
                     custom_span_label = true;
                     err.span_label(span, label);

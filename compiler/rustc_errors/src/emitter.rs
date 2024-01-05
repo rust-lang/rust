@@ -61,13 +61,13 @@ impl HumanReadableErrorType {
         self,
         mut dst: Box<dyn WriteColor + Send>,
         fallback_bundle: LazyFallbackBundle,
-    ) -> EmitterWriter {
+    ) -> HumanEmitter {
         let (short, color_config) = self.unzip();
         let color = color_config.suggests_using_colors();
         if !dst.supports_color() && color {
             dst = Box::new(Ansi::new(dst));
         }
-        EmitterWriter::new(dst, fallback_bundle).short_message(short)
+        HumanEmitter::new(dst, fallback_bundle).short_message(short)
     }
 }
 
@@ -196,13 +196,15 @@ pub trait Emitter: Translate {
     fn emit_diagnostic(&mut self, diag: &Diagnostic);
 
     /// Emit a notification that an artifact has been output.
-    /// This is currently only supported for the JSON format,
-    /// other formats can, and will, simply ignore it.
+    /// Currently only supported for the JSON format.
     fn emit_artifact_notification(&mut self, _path: &Path, _artifact_type: &str) {}
 
+    /// Emit a report about future breakage.
+    /// Currently only supported for the JSON format.
     fn emit_future_breakage_report(&mut self, _diags: Vec<Diagnostic>) {}
 
-    /// Emit list of unused externs
+    /// Emit list of unused externs.
+    /// Currently only supported for the JSON format.
     fn emit_unused_externs(
         &mut self,
         _lint_level: rustc_lint_defs::Level,
@@ -501,7 +503,7 @@ pub trait Emitter: Translate {
     }
 }
 
-impl Translate for EmitterWriter {
+impl Translate for HumanEmitter {
     fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
         self.fluent_bundle.as_ref()
     }
@@ -511,7 +513,7 @@ impl Translate for EmitterWriter {
     }
 }
 
-impl Emitter for EmitterWriter {
+impl Emitter for HumanEmitter {
     fn source_map(&self) -> Option<&Lrc<SourceMap>> {
         self.sm.as_ref()
     }
@@ -622,7 +624,7 @@ impl ColorConfig {
 
 /// Handles the writing of `HumanReadableErrorType::Default` and `HumanReadableErrorType::Short`
 #[derive(Setters)]
-pub struct EmitterWriter {
+pub struct HumanEmitter {
     #[setters(skip)]
     dst: IntoDynSyncSend<Destination>,
     sm: Option<Lrc<SourceMap>>,
@@ -647,14 +649,14 @@ pub struct FileWithAnnotatedLines {
     multiline_depth: usize,
 }
 
-impl EmitterWriter {
-    pub fn stderr(color_config: ColorConfig, fallback_bundle: LazyFallbackBundle) -> EmitterWriter {
+impl HumanEmitter {
+    pub fn stderr(color_config: ColorConfig, fallback_bundle: LazyFallbackBundle) -> HumanEmitter {
         let dst = from_stderr(color_config);
         Self::create(dst, fallback_bundle)
     }
 
-    fn create(dst: Destination, fallback_bundle: LazyFallbackBundle) -> EmitterWriter {
-        EmitterWriter {
+    fn create(dst: Destination, fallback_bundle: LazyFallbackBundle) -> HumanEmitter {
+        HumanEmitter {
             dst: IntoDynSyncSend(dst),
             sm: None,
             fluent_bundle: None,
@@ -673,7 +675,7 @@ impl EmitterWriter {
     pub fn new(
         dst: Box<dyn WriteColor + Send>,
         fallback_bundle: LazyFallbackBundle,
-    ) -> EmitterWriter {
+    ) -> HumanEmitter {
         Self::create(dst, fallback_bundle)
     }
 

@@ -1733,7 +1733,7 @@ fn report_diagnostic(
         };
 
         if let Some(sp) = span {
-            lint.set_span(sp);
+            lint.span(sp);
         } else {
             // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
             //                       ^     ~~~~
