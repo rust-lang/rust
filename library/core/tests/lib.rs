@@ -59,6 +59,7 @@
 #![feature(noop_waker)]
 #![feature(numfmt)]
 #![feature(num_midpoint)]
+#![cfg_attr(not(bootstrap), feature(offset_of_nested))]
 #![feature(isqrt)]
 #![feature(step_trait)]
 #![feature(str_internals)]
