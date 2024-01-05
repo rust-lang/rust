@@ -575,6 +575,8 @@ impl<'test> TestCx<'test> {
                 cmd.arg("--object");
                 cmd.arg(bin);
             }
+
+            cmd.args(&self.props.llvm_cov_flags);
         });
         if !proc_res.status.success() {
             self.fatal_proc_rec("llvm-cov show failed!", &proc_res);
