@@ -351,10 +351,7 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
     }
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
-        self.add_from_pat(arm.pat);
-        if let Some(hir::Guard::IfLet(let_expr)) = arm.guard {
-            self.add_from_pat(let_expr.pat);
-        }
+        self.add_from_pat(&arm.pat);
         intravisit::walk_arm(self, arm);
     }
 
@@ -921,14 +918,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 for arm in arms {
                     let body_succ = self.propagate_through_expr(arm.body, succ);
 
-                    let guard_succ = arm.guard.as_ref().map_or(body_succ, |g| match g {
-                        hir::Guard::If(e) => self.propagate_through_expr(e, body_succ),
-                        hir::Guard::IfLet(let_expr) => {
-                            let let_bind = self.define_bindings_in_pat(let_expr.pat, body_succ);
-                            self.propagate_through_expr(let_expr.init, let_bind)
-                        }
-                    });
-                    let arm_succ = self.define_bindings_in_pat(arm.pat, guard_succ);
+                    let guard_succ = arm
+                        .guard
+                        .as_ref()
+                        .map_or(body_succ, |g| self.propagate_through_expr(g, body_succ));
+                    let arm_succ = self.define_bindings_in_pat(&arm.pat, guard_succ);
                     self.merge_from_succ(ln, arm_succ);
                 }
                 self.propagate_through_expr(e, ln)
@@ -1328,9 +1322,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
 
     fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
         self.check_unused_vars_in_pat(arm.pat, None, None, |_, _, _, _| {});
-        if let Some(hir::Guard::IfLet(let_expr)) = arm.guard {
-            self.check_unused_vars_in_pat(let_expr.pat, None, None, |_, _, _, _| {});
-        }
         intravisit::walk_arm(self, arm);
     }
 }
