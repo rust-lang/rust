@@ -29,3 +29,14 @@ fn pin_const() {
 
     pin_mut_const();
 }
+
+#[test]
+fn dont_shadow() {
+    // test that the pointer field does not shadow fields of the pinned data.
+
+    struct Pinned {
+        pointer: i32,
+    }
+
+    let _: i32 = Pin::new(&mut Pinned { pointer: 0 }).pointer;
+}
