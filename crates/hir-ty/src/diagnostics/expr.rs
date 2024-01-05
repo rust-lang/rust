@@ -12,6 +12,7 @@ use hir_expand::name;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use rustc_pattern_analysis::usefulness::{compute_match_usefulness, ValidityConstraint};
+use tracing::debug;
 use triomphe::Arc;
 use typed_arena::Arena;
 
@@ -44,6 +45,10 @@ pub enum BodyValidationDiagnostic {
         match_expr: ExprId,
         uncovered_patterns: String,
     },
+    NonExhaustiveLet {
+        pat: PatId,
+        uncovered_patterns: String,
+    },
     RemoveTrailingReturn {
         return_expr: ExprId,
     },
@@ -68,7 +73,7 @@ struct ExprValidator {
     owner: DefWithBodyId,
     body: Arc<Body>,
     infer: Arc<InferenceResult>,
-    pub(super) diagnostics: Vec<BodyValidationDiagnostic>,
+    diagnostics: Vec<BodyValidationDiagnostic>,
 }
 
 impl ExprValidator {
@@ -104,6 +109,9 @@ impl ExprValidator {
                 }
                 Expr::If { .. } => {
                     self.check_for_unnecessary_else(id, expr, &body);
+                }
+                Expr::Block { .. } => {
+                    self.validate_block(db, expr);
                 }
                 _ => {}
             }
@@ -231,8 +239,52 @@ impl ExprValidator {
         if !witnesses.is_empty() {
             self.diagnostics.push(BodyValidationDiagnostic::MissingMatchArms {
                 match_expr,
-                uncovered_patterns: missing_match_arms(&cx, scrut_ty, witnesses, arms),
+                uncovered_patterns: missing_match_arms(&cx, scrut_ty, witnesses, m_arms.is_empty()),
             });
+        }
+    }
+
+    fn validate_block(&mut self, db: &dyn HirDatabase, expr: &Expr) {
+        let Expr::Block { statements, .. } = expr else { return };
+        let pattern_arena = Arena::new();
+        let cx = MatchCheckCtx::new(self.owner.module(db.upcast()), self.owner, db);
+        for stmt in &**statements {
+            let &Statement::Let { pat, initializer, else_branch: None, .. } = stmt else {
+                continue;
+            };
+            let Some(initializer) = initializer else { continue };
+            let ty = &self.infer[initializer];
+
+            let mut have_errors = false;
+            let deconstructed_pat = self.lower_pattern(&cx, pat, db, &mut have_errors);
+            let match_arm = rustc_pattern_analysis::MatchArm {
+                pat: pattern_arena.alloc(deconstructed_pat),
+                has_guard: false,
+                arm_data: (),
+            };
+            if have_errors {
+                continue;
+            }
+
+            let report = match compute_match_usefulness(
+                &cx,
+                &[match_arm],
+                ty.clone(),
+                ValidityConstraint::ValidOnly,
+            ) {
+                Ok(v) => v,
+                Err(e) => {
+                    debug!(?e, "match usefulness error");
+                    continue;
+                }
+            };
+            let witnesses = report.non_exhaustiveness_witnesses;
+            if !witnesses.is_empty() {
+                self.diagnostics.push(BodyValidationDiagnostic::NonExhaustiveLet {
+                    pat,
+                    uncovered_patterns: missing_match_arms(&cx, ty, witnesses, false),
+                });
+            }
         }
     }
 
@@ -444,7 +496,7 @@ fn missing_match_arms<'p>(
     cx: &MatchCheckCtx<'p>,
     scrut_ty: &Ty,
     witnesses: Vec<WitnessPat<'p>>,
-    arms: &[MatchArm],
+    arms_is_empty: bool,
 ) -> String {
     struct DisplayWitness<'a, 'p>(&'a WitnessPat<'p>, &'a MatchCheckCtx<'p>);
     impl fmt::Display for DisplayWitness<'_, '_> {
@@ -459,7 +511,7 @@ fn missing_match_arms<'p>(
         Some((AdtId::EnumId(e), _)) => !cx.db.enum_data(e).variants.is_empty(),
         _ => false,
     };
-    if arms.is_empty() && !non_empty_enum {
+    if arms_is_empty && !non_empty_enum {
         format!("type `{}` is non-empty", scrut_ty.display(cx.db))
     } else {
         let pat_display = |witness| DisplayWitness(witness, cx);
