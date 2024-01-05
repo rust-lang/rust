@@ -5,14 +5,12 @@ use std::fmt::Debug;
 
 use either::Left;
 
-use rustc_const_eval::interpret::{ImmTy, Immediate, Projectable};
-use rustc_const_eval::interpret::{
-    InterpCx, InterpResult, MemoryKind, OpTy, Scalar, StackPopCleanup,
-};
-use rustc_const_eval::ReportErrorExt;
+use rustc_const_eval::interpret::{ImmTy, MPlaceTy, Projectable};
+use rustc_const_eval::interpret::{InterpCx, InterpResult, OpTy, Scalar, StackPopCleanup};
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
 use rustc_index::bit_set::BitSet;
+use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
@@ -21,18 +19,13 @@ use rustc_middle::ty::{
     self, ConstInt, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitableExt,
 };
 use rustc_span::Span;
-use rustc_target::abi::{self, Abi, HasDataLayout, Size, TargetDataLayout};
+use rustc_target::abi::{Abi, FieldIdx, HasDataLayout, Size, TargetDataLayout, VariantIdx};
 
 use crate::const_prop::CanConstProp;
 use crate::const_prop::ConstPropMachine;
 use crate::const_prop::ConstPropMode;
 use crate::errors::AssertLint;
 use crate::MirLint;
-
-/// The maximum number of bytes that we'll allocate space for a local or the return value.
-/// Needed for #66397, because otherwise we eval into large places and that can cause OOM or just
-/// Severely regress performance.
-const MAX_ALLOC_LIMIT: u64 = 1024;
 
 pub struct ConstPropLint;
 
@@ -86,6 +79,74 @@ struct ConstPropagator<'mir, 'tcx> {
     param_env: ParamEnv<'tcx>,
     worklist: Vec<BasicBlock>,
     visited_blocks: BitSet<BasicBlock>,
+    locals: IndexVec<Local, Value<'tcx>>,
+}
+
+#[derive(Debug, Clone)]
+enum Value<'tcx> {
+    Immediate(OpTy<'tcx>),
+    Aggregate { variant: VariantIdx, fields: IndexVec<FieldIdx, Value<'tcx>> },
+    Uninit,
+}
+
+impl<'tcx> From<OpTy<'tcx>> for Value<'tcx> {
+    fn from(v: OpTy<'tcx>) -> Self {
+        Self::Immediate(v)
+    }
+}
+
+impl<'tcx> From<ImmTy<'tcx>> for Value<'tcx> {
+    fn from(v: ImmTy<'tcx>) -> Self {
+        Self::Immediate(v.into())
+    }
+}
+
+impl<'tcx> Value<'tcx> {
+    fn project(
+        &self,
+        proj: impl Iterator<Item = Option<ProjectionElem<FieldIdx, Ty<'tcx>>>>,
+    ) -> Option<&Value<'tcx>> {
+        let mut this = self;
+        for proj in proj {
+            this = match (proj?, this) {
+                (ProjectionElem::Field(idx, _), Value::Aggregate { fields, .. }) => {
+                    fields.get(idx).unwrap_or(&Value::Uninit)
+                }
+                (ProjectionElem::Index(idx), Value::Aggregate { fields, .. }) => {
+                    fields.get(idx).unwrap_or(&Value::Uninit)
+                }
+                _ => return None,
+            };
+        }
+        Some(this)
+    }
+
+    fn project_mut(&mut self, proj: &[PlaceElem<'_>]) -> Option<&mut Value<'tcx>> {
+        let mut this = self;
+        for proj in proj {
+            this = match (proj, this) {
+                (PlaceElem::Field(idx, _), Value::Aggregate { fields, .. }) => {
+                    fields.ensure_contains_elem(*idx, || Value::Uninit)
+                }
+                (PlaceElem::Field(..), val @ Value::Uninit) => {
+                    *val = Value::Aggregate {
+                        variant: VariantIdx::new(0),
+                        fields: Default::default(),
+                    };
+                    val.project_mut(&[*proj])?
+                }
+                _ => return None,
+            };
+        }
+        Some(this)
+    }
+
+    fn immediate(&self) -> Option<&OpTy<'tcx>> {
+        match self {
+            Value::Immediate(op) => Some(op),
+            _ => None,
+        }
+    }
 }
 
 impl<'tcx> LayoutOfHelpers<'tcx> for ConstPropagator<'_, 'tcx> {
@@ -132,21 +193,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             ConstPropMachine::new(can_const_prop),
         );
 
-        let ret_layout = ecx
-            .layout_of(body.bound_return_ty().instantiate(tcx, args))
-            .ok()
-            // Don't bother allocating memory for large values.
-            // I don't know how return types can seem to be unsized but this happens in the
-            // `type/type-unsatisfiable.rs` test.
-            .filter(|ret_layout| {
-                ret_layout.is_sized() && ret_layout.size < Size::from_bytes(MAX_ALLOC_LIMIT)
-            })
-            .unwrap_or_else(|| ecx.layout_of(tcx.types.unit).unwrap());
-
-        let ret = ecx
-            .allocate(ret_layout, MemoryKind::Stack)
-            .expect("couldn't perform small allocation")
-            .into();
+        let ret = MPlaceTy::fake_alloc_zst(ecx.layout_of(tcx.types.unit).unwrap()).into();
 
         ecx.push_stack_frame(
             Instance::new(def_id, args),
@@ -156,21 +203,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         )
         .expect("failed to push initial stack frame");
 
-        for local in body.local_decls.indices() {
-            // Mark everything initially live.
-            // This is somewhat dicey since some of them might be unsized and it is incoherent to
-            // mark those as live... We rely on `local_to_place`/`local_to_op` in the interpreter
-            // stopping us before those unsized immediates can cause issues deeper in the
-            // interpreter.
-            ecx.frame_mut().locals[local].make_live_uninit();
-        }
-
         ConstPropagator {
             ecx,
             tcx,
             param_env,
             worklist: vec![START_BLOCK],
             visited_blocks: BitSet::new_empty(body.basic_blocks.len()),
+            locals: IndexVec::from_elem_n(Value::Uninit, body.local_decls.len()),
         }
     }
 
@@ -182,38 +221,27 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         &self.body().local_decls
     }
 
-    fn get_const(&self, place: Place<'tcx>) -> Option<OpTy<'tcx>> {
-        let op = match self.ecx.eval_place_to_op(place, None) {
-            Ok(op) => {
-                if op
-                    .as_mplace_or_imm()
-                    .right()
-                    .is_some_and(|imm| matches!(*imm, Immediate::Uninit))
-                {
-                    // Make sure nobody accidentally uses this value.
-                    return None;
-                }
-                op
-            }
-            Err(e) => {
-                trace!("get_const failed: {:?}", e.into_kind().debug());
-                return None;
-            }
-        };
-
-        // Try to read the local as an immediate so that if it is representable as a scalar, we can
-        // handle it as such, but otherwise, just return the value as is.
-        Some(match self.ecx.read_immediate_raw(&op) {
-            Ok(Left(imm)) => imm.into(),
-            _ => op,
-        })
+    fn get_const(&self, place: Place<'tcx>) -> Option<&Value<'tcx>> {
+        self.locals[place.local]
+            .project(place.projection.iter().map(|proj| self.simple_projection(proj)))
     }
 
     /// Remove `local` from the pool of `Locals`. Allows writing to them,
     /// but not reading from them anymore.
-    fn remove_const(ecx: &mut InterpCx<'mir, 'tcx, ConstPropMachine<'mir, 'tcx>>, local: Local) {
-        ecx.frame_mut().locals[local].make_live_uninit();
-        ecx.machine.written_only_inside_own_block_locals.remove(&local);
+    fn remove_const(&mut self, local: Local) {
+        self.locals[local] = Value::Uninit;
+        self.ecx.machine.written_only_inside_own_block_locals.remove(&local);
+    }
+
+    fn access_mut(&mut self, place: &Place<'_>) -> Option<&mut Value<'tcx>> {
+        match self.ecx.machine.can_const_prop[place.local] {
+            ConstPropMode::NoPropagation => return None,
+            ConstPropMode::OnlyInsideOwnBlock => {
+                self.ecx.machine.written_only_inside_own_block_locals.insert(place.local);
+            }
+            ConstPropMode::FullConstProp => {}
+        }
+        self.locals[place.local].project_mut(place.projection)
     }
 
     fn lint_root(&self, source_info: SourceInfo) -> Option<HirId> {
@@ -267,14 +295,17 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     /// Returns the value, if any, of evaluating `place`.
+    #[instrument(level = "trace", skip(self), ret)]
     fn eval_place(
         &mut self,
         place: Place<'tcx>,
-        location: Location,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> Option<OpTy<'tcx>> {
-        trace!("eval_place(place={:?})", place);
-        self.use_ecx(location, |this| this.ecx.eval_place_to_op(place, layout))
+        match self.get_const(place)? {
+            Value::Immediate(op) => Some(op.clone()),
+            Value::Aggregate { .. } => None,
+            Value::Uninit => None,
+        }
     }
 
     /// Returns the value, if any, of evaluating `op`. Calls upon `eval_constant`
@@ -287,7 +318,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     ) -> Option<OpTy<'tcx>> {
         match *op {
             Operand::Constant(ref c) => self.eval_constant(c, location, layout),
-            Operand::Move(place) | Operand::Copy(place) => self.eval_place(place, location, layout),
+            Operand::Move(place) | Operand::Copy(place) => self.eval_place(place, layout),
         }
     }
 
@@ -298,8 +329,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     fn check_unary_op(&mut self, op: UnOp, arg: &Operand<'tcx>, location: Location) -> Option<()> {
+        let arg = self.eval_operand(arg, location, None)?;
         if let (val, true) = self.use_ecx(location, |this| {
-            let val = this.ecx.read_immediate(&this.ecx.eval_operand(arg, None)?)?;
+            let val = this.ecx.read_immediate(&arg)?;
             let (_res, overflow) = this.ecx.overflowing_unary_op(op, &val)?;
             Ok((val, overflow))
         })? {
@@ -327,11 +359,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         right: &Operand<'tcx>,
         location: Location,
     ) -> Option<()> {
-        let r = self.use_ecx(location, |this| {
-            this.ecx.read_immediate(&this.ecx.eval_operand(right, None)?)
-        });
+        let r = self
+            .eval_operand(right, location, None)
+            .and_then(|r| self.use_ecx(location, |this| this.ecx.read_immediate(&r)));
         let l = self
-            .use_ecx(location, |this| this.ecx.read_immediate(&this.ecx.eval_operand(left, None)?));
+            .eval_operand(left, location, None)
+            .and_then(|l| self.use_ecx(location, |this| this.ecx.read_immediate(&l)));
         // Check for exceeding shifts *even if* we cannot evaluate the LHS.
         if matches!(op, BinOp::Shr | BinOp::Shl) {
             let r = r.clone()?;
@@ -426,7 +459,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 // value the local has right now.
                 // Thus, all locals that have their reference taken
                 // must not take part in propagation.
-                Self::remove_const(&mut self.ecx, place.local);
+                self.remove_const(place.local);
 
                 return None;
             }
@@ -478,7 +511,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             // Poison all places this operand references so that further code
             // doesn't use the invalid value
             if let Some(place) = cond.place() {
-                Self::remove_const(&mut self.ecx, place.local);
+                self.remove_const(place.local);
             }
 
             enum DbgVal<T> {
@@ -530,13 +563,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     fn ensure_not_propagated(&self, local: Local) {
         if cfg!(debug_assertions) {
+            let val = self.get_const(local.into());
             assert!(
-                self.get_const(local.into()).is_none()
+                matches!(val, Some(Value::Uninit))
                     || self
                         .layout_of(self.local_decls()[local].ty)
                         .map_or(true, |layout| layout.is_zst()),
-                "failed to remove values for `{local:?}`, value={:?}",
-                self.get_const(local.into()),
+                "failed to remove values for `{local:?}`, value={val:?}",
             )
         }
     }
@@ -552,19 +585,19 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
         use rustc_middle::mir::Rvalue::*;
-        let dest = self.use_ecx(location, |this| this.ecx.eval_place(*dest))?;
-        trace!(?dest);
+        let layout = self.use_ecx(location, |this| this.ecx.eval_place(*dest))?.layout;
+        trace!(?layout);
 
-        let val = match *rvalue {
+        let val: Value<'_> = match *rvalue {
             ThreadLocalRef(_) => return None,
 
-            Use(ref operand) => self.eval_operand(operand, location, Some(dest.layout))?,
+            Use(ref operand) => self.eval_operand(operand, location, Some(layout))?.into(),
 
-            CopyForDeref(place) => self.eval_place(place, location, Some(dest.layout))?,
+            CopyForDeref(place) => self.eval_place(place, Some(layout))?.into(),
 
             BinaryOp(bin_op, box (ref left, ref right)) => {
                 let layout =
-                    rustc_const_eval::util::binop_left_homogeneous(bin_op).then_some(dest.layout);
+                    rustc_const_eval::util::binop_left_homogeneous(bin_op).then_some(layout);
                 let left = self.eval_operand(left, location, layout)?;
                 let left = self.use_ecx(location, |this| this.ecx.read_immediate(&left))?;
 
@@ -590,63 +623,37 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 let (val, overflowed) = self.use_ecx(location, |this| {
                     this.ecx.overflowing_binary_op(bin_op, &left, &right)
                 })?;
-                let tuple = Ty::new_tup_from_iter(
-                    self.tcx,
-                    [val.layout.ty, self.tcx.types.bool].into_iter(),
-                );
-                let tuple = self.ecx.layout_of(tuple).ok()?;
-                let val =
-                    ImmTy::from_scalar_pair(val.to_scalar(), Scalar::from_bool(overflowed), tuple);
-                val.into()
+                let overflowed = ImmTy::from_bool(overflowed, self.tcx);
+                Value::Aggregate {
+                    variant: VariantIdx::new(0),
+                    fields: [Value::from(val), overflowed.into()].into_iter().collect(),
+                }
             }
 
             UnaryOp(un_op, ref operand) => {
-                let operand = self.eval_operand(operand, location, Some(dest.layout))?;
+                let operand = self.eval_operand(operand, location, Some(layout))?;
                 let val = self.use_ecx(location, |this| this.ecx.read_immediate(&operand))?;
 
                 let val = self.use_ecx(location, |this| this.ecx.wrapping_unary_op(un_op, &val))?;
                 val.into()
             }
 
-            Aggregate(ref kind, ref fields) => {
-                trace!(?kind);
-                trace!(?dest.layout);
-                if dest.layout.is_zst() {
-                    ImmTy::uninit(dest.layout).into()
-                } else if let Abi::Scalar(abi::Scalar::Initialized { .. }) = dest.layout.abi {
-                    let fields = fields
-                        .iter()
-                        .map(|field| self.eval_operand(field, location, None))
-                        .collect::<Option<Vec<_>>>()?;
-                    trace!(?fields);
-                    let mut field =
-                        fields.into_iter().find(|field| field.layout.abi.is_scalar())?;
-                    field.layout = dest.layout;
-                    field
-                } else if let Abi::ScalarPair(
-                    abi::Scalar::Initialized { .. },
-                    abi::Scalar::Initialized { .. },
-                ) = dest.layout.abi
-                {
-                    let fields = fields
-                        .iter()
-                        .map(|field| self.eval_operand(field, location, None))
-                        .collect::<Option<Vec<_>>>()?;
-                    trace!(?fields);
-                    let pair =
-                        fields.iter().find(|field| matches!(field.layout.abi, Abi::ScalarPair(..)));
-                    if let Some(pair) = pair {
-                        let mut pair = pair.clone();
-                        pair.layout = dest.layout;
-                        pair
-                    } else {
-                        // TODO: build a pair from two scalars
-                        return None;
-                    }
-                } else {
-                    return None;
-                }
-            }
+            Aggregate(ref kind, ref fields) => Value::Aggregate {
+                fields: fields
+                    .iter()
+                    .map(|field| {
+                        self.eval_operand(field, location, None)
+                            .map_or(Value::Uninit, Value::Immediate)
+                    })
+                    .collect(),
+                variant: match **kind {
+                    AggregateKind::Adt(_, variant, _, _, _) => variant,
+                    AggregateKind::Array(_)
+                    | AggregateKind::Tuple
+                    | AggregateKind::Closure(_, _)
+                    | AggregateKind::Coroutine(_, _) => VariantIdx::new(0),
+                },
+            },
 
             Repeat(ref op, n) => {
                 trace!(?op, ?n);
@@ -654,23 +661,29 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
 
             Len(place) => {
-                let src = self.eval_place(place, location, None)?;
-                let len = src.len(&self.ecx).ok()?;
-                ImmTy::from_scalar(Scalar::from_target_usize(len, self), dest.layout).into()
+                let len = match self.get_const(place)? {
+                    Value::Immediate(src) => src.len(&self.ecx).ok()?,
+                    Value::Aggregate { fields, .. } => fields.len() as u64,
+                    Value::Uninit => match place.ty(self.local_decls(), self.tcx).ty.kind() {
+                        ty::Array(_, n) => n.try_eval_target_usize(self.tcx, self.param_env)?,
+                        _ => return None,
+                    },
+                };
+                ImmTy::from_scalar(Scalar::from_target_usize(len, self), layout).into()
             }
 
             Ref(..) | AddressOf(..) => return None,
 
             NullaryOp(ref null_op, ty) => {
-                let layout = self.use_ecx(location, |this| this.ecx.layout_of(ty))?;
+                let op_layout = self.use_ecx(location, |this| this.ecx.layout_of(ty))?;
                 let val = match null_op {
-                    NullOp::SizeOf => layout.size.bytes(),
-                    NullOp::AlignOf => layout.align.abi.bytes(),
+                    NullOp::SizeOf => op_layout.size.bytes(),
+                    NullOp::AlignOf => op_layout.align.abi.bytes(),
                     NullOp::OffsetOf(fields) => {
-                        layout.offset_of_subfield(self, fields.iter()).bytes()
+                        op_layout.offset_of_subfield(self, fields.iter()).bytes()
                     }
                 };
-                ImmTy::from_scalar(Scalar::from_target_usize(val, self), dest.layout).into()
+                ImmTy::from_scalar(Scalar::from_target_usize(val, self), layout).into()
             }
 
             ShallowInitBox(..) => return None,
@@ -702,25 +715,60 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                             _ => return None,
                         }
                     }
-                    value.offset(Size::ZERO, to, &self.ecx).ok()?
+                    value.offset(Size::ZERO, to, &self.ecx).ok()?.into()
                 }
                 _ => return None,
             },
 
             Discriminant(place) => {
-                let op = self.eval_place(place, location, None)?;
-                let variant = self.use_ecx(location, |this| this.ecx.read_discriminant(&op))?;
+                let variant = match self.get_const(place)? {
+                    Value::Immediate(op) => {
+                        let op = op.clone();
+                        self.use_ecx(location, |this| this.ecx.read_discriminant(&op))?
+                    }
+                    Value::Aggregate { variant, .. } => *variant,
+                    Value::Uninit => return None,
+                };
                 let imm = self.use_ecx(location, |this| {
-                    this.ecx.discriminant_for_variant(op.layout.ty, variant)
+                    this.ecx.discriminant_for_variant(
+                        place.ty(this.local_decls(), this.tcx).ty,
+                        variant,
+                    )
                 })?;
                 imm.into()
             }
         };
         trace!(?val);
 
-        self.use_ecx(location, |this| this.ecx.copy_op(&val, &dest, true))?;
+        *self.access_mut(dest)? = val;
 
         Some(())
+    }
+
+    fn simple_projection(
+        &self,
+        proj: ProjectionElem<Local, Ty<'tcx>>,
+    ) -> Option<ProjectionElem<FieldIdx, Ty<'tcx>>> {
+        Some(match proj {
+            ProjectionElem::Deref => ProjectionElem::Deref,
+            ProjectionElem::Field(idx, ty) => ProjectionElem::Field(idx, ty),
+            ProjectionElem::Index(local) => {
+                let val = self.get_const(local.into())?;
+                let op = val.immediate()?;
+                ProjectionElem::Index(FieldIdx::from_u32(
+                    self.ecx.read_target_usize(op).ok()?.try_into().ok()?,
+                ))
+            }
+            ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
+                ProjectionElem::ConstantIndex { offset, min_length, from_end }
+            }
+            ProjectionElem::Subslice { from, to, from_end } => {
+                ProjectionElem::Subslice { from, to, from_end }
+            }
+            ProjectionElem::Downcast(a, b) => ProjectionElem::Downcast(a, b),
+            ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(ty),
+            ProjectionElem::Subtype(ty) => ProjectionElem::Subtype(ty),
+        })
     }
 }
 
@@ -772,7 +820,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                         Nuking the entire site from orbit, it's the only way to be sure",
                         place,
                     );
-                    Self::remove_const(&mut self.ecx, place.local);
+                    self.remove_const(place.local);
                 }
             }
         }
@@ -786,28 +834,24 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
         self.super_statement(statement, location);
 
         match statement.kind {
-            StatementKind::SetDiscriminant { ref place, .. } => {
+            StatementKind::SetDiscriminant { ref place, variant_index } => {
                 match self.ecx.machine.can_const_prop[place.local] {
                     // Do nothing if the place is indirect.
                     _ if place.is_indirect() => {}
                     ConstPropMode::NoPropagation => self.ensure_not_propagated(place.local),
                     ConstPropMode::FullConstProp | ConstPropMode::OnlyInsideOwnBlock => {
-                        if self.use_ecx(location, |this| this.ecx.statement(statement)).is_some() {
-                            trace!("propped discriminant into {:?}", place);
-                        } else {
-                            Self::remove_const(&mut self.ecx, place.local);
+                        match self.access_mut(place) {
+                            Some(Value::Aggregate { variant, .. }) => *variant = variant_index,
+                            _ => self.remove_const(place.local),
                         }
                     }
                 }
             }
             StatementKind::StorageLive(local) => {
-                let frame = self.ecx.frame_mut();
-                frame.locals[local].make_live_uninit();
+                self.remove_const(local);
             }
             StatementKind::StorageDead(local) => {
-                let frame = self.ecx.frame_mut();
-                // We don't actually track liveness, so the local remains live. But forget its value.
-                frame.locals[local].make_live_uninit();
+                self.remove_const(local);
             }
             _ => {}
         }
@@ -871,7 +915,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                 self.ecx.machine.can_const_prop[local],
                 ConstPropMode::OnlyInsideOwnBlock
             );
-            Self::remove_const(&mut self.ecx, local);
+            self.remove_const(local);
         }
         self.ecx.machine.written_only_inside_own_block_locals =
             written_only_inside_own_block_locals;
