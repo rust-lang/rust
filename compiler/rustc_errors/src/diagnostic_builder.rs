@@ -95,12 +95,12 @@ pub trait EmissionGuarantee: Sized {
     /// `impl` of `EmissionGuarantee`, to make it impossible to create a value
     /// of `Self::EmitResult` without actually performing the emission.
     #[track_caller]
-    fn emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self::EmitResult;
+    fn emit_producing_guarantee(db: DiagnosticBuilder<'_, Self>) -> Self::EmitResult;
 }
 
 impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     /// Most `emit_producing_guarantee` functions use this as a starting point.
-    fn emit_producing_nothing(&mut self) {
+    fn emit_producing_nothing(mut self) {
         match self.state {
             // First `.emit()` call, the `&DiagCtxt` is still available.
             DiagnosticBuilderState::Emittable(dcx) => {
@@ -115,7 +115,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
 
 // FIXME(eddyb) make `ErrorGuaranteed` impossible to create outside `.emit()`.
 impl EmissionGuarantee for ErrorGuaranteed {
-    fn emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
+    fn emit_producing_guarantee(mut db: DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
         // Contrast this with `emit_producing_nothing`.
         match db.state {
             // First `.emit()` call, the `&DiagCtxt` is still available.
@@ -156,7 +156,7 @@ impl EmissionGuarantee for ErrorGuaranteed {
 
 // FIXME(eddyb) should there be a `Option<ErrorGuaranteed>` impl as well?
 impl EmissionGuarantee for () {
-    fn emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
+    fn emit_producing_guarantee(db: DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
         db.emit_producing_nothing();
     }
 }
@@ -169,7 +169,7 @@ pub struct BugAbort;
 impl EmissionGuarantee for BugAbort {
     type EmitResult = !;
 
-    fn emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
+    fn emit_producing_guarantee(db: DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
         db.emit_producing_nothing();
         panic::panic_any(ExplicitBug);
     }
@@ -183,14 +183,14 @@ pub struct FatalAbort;
 impl EmissionGuarantee for FatalAbort {
     type EmitResult = !;
 
-    fn emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
+    fn emit_producing_guarantee(db: DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
         db.emit_producing_nothing();
         crate::FatalError.raise()
     }
 }
 
 impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
-    fn emit_producing_guarantee(db: &mut DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
+    fn emit_producing_guarantee(db: DiagnosticBuilder<'_, Self>) -> Self::EmitResult {
         db.emit_producing_nothing();
         rustc_span::fatal_error::FatalError
     }
@@ -265,8 +265,8 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
 
     /// Emit and consume the diagnostic.
     #[track_caller]
-    pub fn emit(mut self) -> G::EmitResult {
-        G::emit_producing_guarantee(&mut self)
+    pub fn emit(self) -> G::EmitResult {
+        G::emit_producing_guarantee(self)
     }
 
     /// Emit the diagnostic unless `delay` is true,
