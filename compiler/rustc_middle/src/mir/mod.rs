@@ -249,6 +249,9 @@ pub struct CoroutineInfo<'tcx> {
     /// The yield type of the function, if it is a coroutine.
     pub yield_ty: Option<Ty<'tcx>>,
 
+    /// The resume type of the function, if it is a coroutine.
+    pub resume_ty: Option<Ty<'tcx>>,
+
     /// Coroutine drop glue.
     pub coroutine_drop: Option<Body<'tcx>>,
 
@@ -384,6 +387,7 @@ impl<'tcx> Body<'tcx> {
             coroutine: coroutine_kind.map(|coroutine_kind| {
                 Box::new(CoroutineInfo {
                     yield_ty: None,
+                    resume_ty: None,
                     coroutine_drop: None,
                     coroutine_layout: None,
                     coroutine_kind,
@@ -548,6 +552,11 @@ impl<'tcx> Body<'tcx> {
     #[inline]
     pub fn yield_ty(&self) -> Option<Ty<'tcx>> {
         self.coroutine.as_ref().and_then(|coroutine| coroutine.yield_ty)
+    }
+
+    #[inline]
+    pub fn resume_ty(&self) -> Option<Ty<'tcx>> {
+        self.coroutine.as_ref().and_then(|coroutine| coroutine.resume_ty)
     }
 
     #[inline]

@@ -100,20 +100,10 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
     #[instrument(level = "trace", skip(self))]
     fn visit_arm(&mut self, arm: &'p Arm<'tcx>) {
         self.with_lint_level(arm.lint_level, |this| {
-            match arm.guard {
-                Some(Guard::If(expr)) => {
-                    this.with_let_source(LetSource::IfLetGuard, |this| {
-                        this.visit_expr(&this.thir[expr])
-                    });
-                }
-                Some(Guard::IfLet(ref pat, expr)) => {
-                    this.with_let_source(LetSource::IfLetGuard, |this| {
-                        this.check_let(pat, Some(expr), pat.span);
-                        this.visit_pat(pat);
-                        this.visit_expr(&this.thir[expr]);
-                    });
-                }
-                None => {}
+            if let Some(expr) = arm.guard {
+                this.with_let_source(LetSource::IfLetGuard, |this| {
+                    this.visit_expr(&this.thir[expr])
+                });
             }
             this.visit_pat(&arm.pattern);
             this.visit_expr(&self.thir[arm.body]);

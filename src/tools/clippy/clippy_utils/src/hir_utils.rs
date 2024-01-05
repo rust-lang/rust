@@ -8,7 +8,7 @@ use rustc_hir::def::Res;
 use rustc_hir::MatchSource::TryDesugar;
 use rustc_hir::{
     ArrayLen, BinOpKind, BindingAnnotation, Block, BodyId, Closure, Expr, ExprField, ExprKind, FnRetTy, GenericArg,
-    GenericArgs, Guard, HirId, HirIdMap, InlineAsmOperand, Let, Lifetime, LifetimeName, Pat, PatField, PatKind, Path,
+    GenericArgs, HirId, HirIdMap, InlineAsmOperand, Let, Lifetime, LifetimeName, Pat, PatField, PatKind, Path,
     PathSegment, PrimTy, QPath, Stmt, StmtKind, Ty, TyKind, TypeBinding,
 };
 use rustc_lexer::{tokenize, TokenKind};
@@ -320,7 +320,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                     && self.eq_expr(le, re)
                     && over(la, ra, |l, r| {
                         self.eq_pat(l.pat, r.pat)
-                            && both(&l.guard, &r.guard, |l, r| self.eq_guard(l, r))
+                            && both(&l.guard, &r.guard, |l, r| self.eq_expr(l, r))
                             && self.eq_expr(l.body, r.body)
                     })
             },
@@ -408,16 +408,6 @@ impl HirEqInterExpr<'_, '_, '_> {
 
     fn eq_expr_field(&mut self, left: &ExprField<'_>, right: &ExprField<'_>) -> bool {
         left.ident.name == right.ident.name && self.eq_expr(left.expr, right.expr)
-    }
-
-    fn eq_guard(&mut self, left: &Guard<'_>, right: &Guard<'_>) -> bool {
-        match (left, right) {
-            (Guard::If(l), Guard::If(r)) => self.eq_expr(l, r),
-            (Guard::IfLet(l), Guard::IfLet(r)) => {
-                self.eq_pat(l.pat, r.pat) && both(&l.ty, &r.ty, |l, r| self.eq_ty(l, r)) && self.eq_expr(l.init, r.init)
-            },
-            _ => false,
-        }
     }
 
     fn eq_generic_arg(&mut self, left: &GenericArg<'_>, right: &GenericArg<'_>) -> bool {
@@ -876,7 +866,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 for arm in arms {
                     self.hash_pat(arm.pat);
                     if let Some(ref e) = arm.guard {
-                        self.hash_guard(e);
+                        self.hash_expr(e);
                     }
                     self.hash_expr(arm.body);
                 }
@@ -1051,14 +1041,6 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             },
             StmtKind::Item(..) => {},
             StmtKind::Expr(expr) | StmtKind::Semi(expr) => {
-                self.hash_expr(expr);
-            },
-        }
-    }
-
-    pub fn hash_guard(&mut self, g: &Guard<'_>) {
-        match g {
-            Guard::If(expr) | Guard::IfLet(Let { init: expr, .. }) => {
                 self.hash_expr(expr);
             },
         }

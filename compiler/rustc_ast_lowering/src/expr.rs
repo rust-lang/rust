@@ -546,20 +546,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm<'hir> {
         let pat = self.lower_pat(&arm.pat);
-        let guard = arm.guard.as_ref().map(|cond| {
-            if let ExprKind::Let(pat, scrutinee, span, is_recovered) = &cond.kind {
-                hir::Guard::IfLet(self.arena.alloc(hir::Let {
-                    hir_id: self.next_id(),
-                    span: self.lower_span(*span),
-                    pat: self.lower_pat(pat),
-                    ty: None,
-                    init: self.lower_expr(scrutinee),
-                    is_recovered: *is_recovered,
-                }))
-            } else {
-                hir::Guard::If(self.lower_expr(cond))
-            }
-        });
+        let guard = arm.guard.as_ref().map(|cond| self.lower_expr(cond));
         let hir_id = self.next_id();
         let span = self.lower_span(arm.span);
         self.lower_attrs(hir_id, &arm.attrs);
