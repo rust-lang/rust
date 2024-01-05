@@ -13,7 +13,7 @@ LL | impl<T> Windows {
 note: struct defined here, with 1 generic parameter: `T`
   --> $DIR/issue-109071.rs:5:8
    |
-LL | struct Windows<T> {}
+LL | struct Windows<T> { t: T }
    |        ^^^^^^^ -
 help: add missing generic argument
    |
@@ -30,7 +30,7 @@ LL |     type Item = &[T];
    = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
 
 error[E0223]: ambiguous associated type
-  --> $DIR/issue-109071.rs:15:22
+  --> $DIR/issue-109071.rs:16:22
    |
 LL |     fn T() -> Option<Self::Item> {}
    |                      ^^^^^^^^^^
