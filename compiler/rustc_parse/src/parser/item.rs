@@ -1793,52 +1793,43 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 let sp = self.prev_token.span.shrink_to_hi();
-                let mut err = self.dcx().struct_span_err(
-                    sp,
-                    format!("expected `,`, or `}}`, found {}", super::token_descr(&self.token)),
-                );
+                let msg =
+                    format!("expected `,`, or `}}`, found {}", super::token_descr(&self.token));
 
                 // Try to recover extra trailing angle brackets
-                let mut recovered = false;
                 if let TyKind::Path(_, Path { segments, .. }) = &a_var.ty.kind {
                     if let Some(last_segment) = segments.last() {
-                        recovered = self.check_trailing_angle_brackets(
+                        let guar = self.check_trailing_angle_brackets(
                             last_segment,
                             &[&token::Comma, &token::CloseDelim(Delimiter::Brace)],
                         );
-                        if recovered {
+                        if let Some(_guar) = guar {
                             // Handle a case like `Vec<u8>>,` where we can continue parsing fields
                             // after the comma
                             self.eat(&token::Comma);
-                            // `check_trailing_angle_brackets` already emitted a nicer error
-                            // NOTE(eddyb) this was `.cancel()`, but `err`
-                            // gets returned, so we can't fully defuse it.
-                            err.delay_as_bug_without_consuming();
+
+                            // `check_trailing_angle_brackets` already emitted a nicer error, as
+                            // proven by the presence of `_guar`. We can continue parsing.
+                            return Ok(a_var);
                         }
                     }
                 }
+
+                let mut err = self.dcx().struct_span_err(sp, msg);
 
                 if self.token.is_ident()
                     || (self.token.kind == TokenKind::Pound
                         && (self.look_ahead(1, |t| t == &token::OpenDelim(Delimiter::Bracket))))
                 {
-                    // This is likely another field, TokenKind::Pound is used for `#[..]` attribute for next field,
-                    // emit the diagnostic and keep going
+                    // This is likely another field, TokenKind::Pound is used for `#[..]`
+                    // attribute for next field. Emit the diagnostic and continue parsing.
                     err.span_suggestion(
                         sp,
                         "try adding a comma",
                         ",",
                         Applicability::MachineApplicable,
                     );
-                    err.emit_without_consuming();
-                    recovered = true;
-                }
-
-                if recovered {
-                    // Make sure an error was emitted (either by recovering an angle bracket,
-                    // or by finding an identifier as the next token), since we're
-                    // going to continue parsing
-                    assert!(self.dcx().has_errors().is_some());
+                    err.emit();
                 } else {
                     return Err(err);
                 }

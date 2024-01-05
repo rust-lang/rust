@@ -34,8 +34,8 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    pluralize, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder, FatalError,
-    PErr, PResult,
+    pluralize, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
+    ErrorGuaranteed, FatalError, PErr, PResult,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
@@ -1049,9 +1049,9 @@ impl<'a> Parser<'a> {
         &mut self,
         segment: &PathSegment,
         end: &[&TokenKind],
-    ) -> bool {
+    ) -> Option<ErrorGuaranteed> {
         if !self.may_recover() {
-            return false;
+            return None;
         }
 
         // This function is intended to be invoked after parsing a path segment where there are two
@@ -1086,7 +1086,7 @@ impl<'a> Parser<'a> {
             parsed_angle_bracket_args,
         );
         if !parsed_angle_bracket_args {
-            return false;
+            return None;
         }
 
         // Keep the span at the start so we can highlight the sequence of `>` characters to be
@@ -1124,7 +1124,7 @@ impl<'a> Parser<'a> {
             number_of_gt, number_of_shr,
         );
         if number_of_gt < 1 && number_of_shr < 1 {
-            return false;
+            return None;
         }
 
         // Finally, double check that we have our end token as otherwise this is the
@@ -1139,10 +1139,9 @@ impl<'a> Parser<'a> {
             let span = lo.until(self.token.span);
 
             let num_extra_brackets = number_of_gt + number_of_shr * 2;
-            self.dcx().emit_err(UnmatchedAngleBrackets { span, num_extra_brackets });
-            return true;
+            return Some(self.dcx().emit_err(UnmatchedAngleBrackets { span, num_extra_brackets }));
         }
-        false
+        None
     }
 
     /// Check if a method call with an intended turbofish has been written without surrounding
