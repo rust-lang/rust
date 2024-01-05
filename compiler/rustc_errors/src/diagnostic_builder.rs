@@ -366,13 +366,6 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         self.emit()
     }
 
-    /// Non-consuming variant of `delay_as_bug`.
-    #[track_caller]
-    pub fn delay_as_bug_without_consuming(&mut self) -> G::EmitResult {
-        self.downgrade_to_delayed_bug();
-        G::emit_producing_guarantee(self)
-    }
-
     forward!((span_label, span_label_mv)(
         span: Span,
         label: impl Into<SubdiagnosticMessage>,

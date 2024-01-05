@@ -67,7 +67,7 @@ pub(crate) fn parse_token_trees<'a>(
     let (stream, res, unmatched_delims) =
         tokentrees::TokenTreesReader::parse_all_token_trees(string_reader);
     match res {
-        Ok(_open_spacing) if unmatched_delims.is_empty() => Ok(stream),
+        Ok(()) if unmatched_delims.is_empty() => Ok(stream),
         _ => {
             // Return error if there are unmatched delimiters or unclosed delimiters.
             // We emit delimiter mismatch errors first, then emit the unclosing delimiter mismatch

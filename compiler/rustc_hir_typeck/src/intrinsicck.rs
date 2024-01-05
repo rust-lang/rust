@@ -121,15 +121,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         if from == to {
             err.note(format!("`{from}` does not have a fixed size"));
+            err.emit();
         } else {
             err.note(format!("source type: `{}` ({})", from, skeleton_string(from, sk_from)))
                 .note(format!("target type: `{}` ({})", to, skeleton_string(to, sk_to)));
             if let Err(LayoutError::ReferencesError(_)) = sk_from {
-                err.delay_as_bug_without_consuming();
+                err.delay_as_bug();
             } else if let Err(LayoutError::ReferencesError(_)) = sk_to {
-                err.delay_as_bug_without_consuming();
+                err.delay_as_bug();
+            } else {
+                err.emit();
             }
         }
-        err.emit();
     }
 }

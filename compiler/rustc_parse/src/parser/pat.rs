@@ -242,7 +242,7 @@ impl<'a> Parser<'a> {
                 Some(TopLevelOrPatternNotAllowedSugg::WrapInParens { span, pat })
             };
 
-            let mut err = self.dcx().create_err(match syntax_loc {
+            let err = self.dcx().create_err(match syntax_loc {
                 PatternLocation::LetBinding => {
                     TopLevelOrPatternNotAllowed::LetBinding { span, sub }
                 }
@@ -251,9 +251,10 @@ impl<'a> Parser<'a> {
                 }
             });
             if trailing_vert {
-                err.delay_as_bug_without_consuming();
+                err.delay_as_bug();
+            } else {
+                err.emit();
             }
-            err.emit();
         }
 
         Ok((pat, colon))

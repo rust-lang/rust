@@ -281,7 +281,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         };
         if sub.is_error() || sup.is_error() {
-            err.delay_as_bug_without_consuming();
+            err.downgrade_to_delayed_bug();
         }
         err
     }

@@ -2088,7 +2088,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     let ty = self.resolve_vars_if_possible(returned_ty);
                     if ty.references_error() {
                         // don't print out the [type error] here
-                        err.delay_as_bug_without_consuming();
+                        err.downgrade_to_delayed_bug();
                     } else {
                         err.span_label(expr.span, format!("this returned value is of type `{ty}`"));
                     }

@@ -277,9 +277,9 @@ impl<'a> TokenTreesReader<'a> {
             parser.bump();
         }
         if !diff_errs.is_empty() {
-            errs.iter_mut().for_each(|err| {
-                err.delay_as_bug_without_consuming();
-            });
+            for err in errs {
+                err.cancel();
+            }
             return diff_errs;
         }
         return errs;
