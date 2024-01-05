@@ -5,6 +5,7 @@ use std::fmt::Debug;
 
 use rustc_const_eval::interpret::{ImmTy, Projectable};
 use rustc_const_eval::interpret::{InterpCx, InterpResult, OpTy, Scalar};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
 use rustc_index::bit_set::BitSet;
@@ -76,6 +77,8 @@ struct ConstPropagator<'mir, 'tcx> {
     visited_blocks: BitSet<BasicBlock>,
     locals: IndexVec<Local, Value<'tcx>>,
     body: &'mir Body<'tcx>,
+    written_only_inside_own_block_locals: FxHashSet<Local>,
+    can_const_prop: IndexVec<Local, ConstPropMode>,
 }
 
 #[derive(Debug, Clone)]
@@ -181,12 +184,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
 
         let can_const_prop = CanConstProp::check(tcx, param_env, body);
-        let ecx = InterpCx::new(
-            tcx,
-            tcx.def_span(def_id),
-            param_env,
-            ConstPropMachine::new(can_const_prop),
-        );
+        let ecx = InterpCx::new(tcx, tcx.def_span(def_id), param_env, ConstPropMachine);
 
         ConstPropagator {
             ecx,
@@ -196,6 +194,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             visited_blocks: BitSet::new_empty(body.basic_blocks.len()),
             locals: IndexVec::from_elem_n(Value::Uninit, body.local_decls.len()),
             body,
+            can_const_prop,
+            written_only_inside_own_block_locals: Default::default(),
         }
     }
 
@@ -212,14 +212,14 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     /// but not reading from them anymore.
     fn remove_const(&mut self, local: Local) {
         self.locals[local] = Value::Uninit;
-        self.ecx.machine.written_only_inside_own_block_locals.remove(&local);
+        self.written_only_inside_own_block_locals.remove(&local);
     }
 
     fn access_mut(&mut self, place: &Place<'_>) -> Option<&mut Value<'tcx>> {
-        match self.ecx.machine.can_const_prop[place.local] {
+        match self.can_const_prop[place.local] {
             ConstPropMode::NoPropagation => return None,
             ConstPropMode::OnlyInsideOwnBlock => {
-                self.ecx.machine.written_only_inside_own_block_locals.insert(place.local);
+                self.written_only_inside_own_block_locals.insert(place.local);
             }
             ConstPropMode::FullConstProp => {}
         }
@@ -775,7 +775,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
 
         let Some(()) = self.check_rvalue(rvalue, location) else { return };
 
-        match self.ecx.machine.can_const_prop[place.local] {
+        match self.can_const_prop[place.local] {
             // Do nothing if the place is indirect.
             _ if place.is_indirect() => {}
             ConstPropMode::NoPropagation => self.ensure_not_propagated(place.local),
@@ -811,7 +811,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
 
         match statement.kind {
             StatementKind::SetDiscriminant { ref place, variant_index } => {
-                match self.ecx.machine.can_const_prop[place.local] {
+                match self.can_const_prop[place.local] {
                     // Do nothing if the place is indirect.
                     _ if place.is_indirect() => {}
                     ConstPropMode::NoPropagation => self.ensure_not_propagated(place.local),
@@ -878,7 +878,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
         // which were modified in the current block.
         // Take it out of the ecx so we can get a mutable reference to the ecx for `remove_const`.
         let mut written_only_inside_own_block_locals =
-            std::mem::take(&mut self.ecx.machine.written_only_inside_own_block_locals);
+            std::mem::take(&mut self.written_only_inside_own_block_locals);
 
         // This loop can get very hot for some bodies: it check each local in each bb.
         // To avoid this quadratic behaviour, we only clear the locals that were modified inside
@@ -886,17 +886,13 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
         // The order in which we remove consts does not matter.
         #[allow(rustc::potential_query_instability)]
         for local in written_only_inside_own_block_locals.drain() {
-            debug_assert_eq!(
-                self.ecx.machine.can_const_prop[local],
-                ConstPropMode::OnlyInsideOwnBlock
-            );
+            debug_assert_eq!(self.can_const_prop[local], ConstPropMode::OnlyInsideOwnBlock);
             self.remove_const(local);
         }
-        self.ecx.machine.written_only_inside_own_block_locals =
-            written_only_inside_own_block_locals;
+        self.written_only_inside_own_block_locals = written_only_inside_own_block_locals;
 
         if cfg!(debug_assertions) {
-            for (local, &mode) in self.ecx.machine.can_const_prop.iter_enumerated() {
+            for (local, &mode) in self.can_const_prop.iter_enumerated() {
                 match mode {
                     ConstPropMode::FullConstProp => {}
                     ConstPropMode::NoPropagation | ConstPropMode::OnlyInsideOwnBlock => {

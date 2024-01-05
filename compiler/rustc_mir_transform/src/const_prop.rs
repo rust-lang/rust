@@ -5,7 +5,6 @@ use rustc_const_eval::interpret::{
     self, compile_time_machine, AllocId, ConstAllocation, FnArg, Frame, ImmTy, InterpCx,
     InterpResult, OpTy, PlaceTy, Pointer,
 };
-use rustc_data_structures::fx::FxHashSet;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
@@ -49,16 +48,7 @@ pub(crate) macro throw_machine_stop_str($($tt:tt)*) {{
     throw_machine_stop!(Zst)
 }}
 
-pub(crate) struct ConstPropMachine {
-    pub written_only_inside_own_block_locals: FxHashSet<Local>,
-    pub can_const_prop: IndexVec<Local, ConstPropMode>,
-}
-
-impl ConstPropMachine {
-    pub fn new(can_const_prop: IndexVec<Local, ConstPropMode>) -> Self {
-        Self { written_only_inside_own_block_locals: Default::default(), can_const_prop }
-    }
-}
+pub(crate) struct ConstPropMachine;
 
 impl<'mir, 'tcx: 'mir> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
     compile_time_machine!(<'mir, 'tcx>);
@@ -132,23 +122,11 @@ impl<'mir, 'tcx: 'mir> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
     }
 
     fn before_access_local_mut<'a>(
-        ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
-        frame: usize,
-        local: Local,
+        _ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
+        _frame: usize,
+        _local: Local,
     ) -> InterpResult<'tcx> {
-        assert_eq!(frame, 0);
-        match ecx.machine.can_const_prop[local] {
-            ConstPropMode::NoPropagation => {
-                throw_machine_stop_str!(
-                    "tried to write to a local that is marked as not propagatable"
-                )
-            }
-            ConstPropMode::OnlyInsideOwnBlock => {
-                ecx.machine.written_only_inside_own_block_locals.insert(local);
-            }
-            ConstPropMode::FullConstProp => {}
-        }
-        Ok(())
+        unreachable!()
     }
 
     fn before_access_global(
