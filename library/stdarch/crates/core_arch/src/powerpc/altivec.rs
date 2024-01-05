@@ -606,6 +606,57 @@ mod sealed {
     impl_vec_xl! { vec_xl_u32 lxvd2x / lxv u32 }
     impl_vec_xl! { vec_xl_f32 lxvd2x / lxv f32 }
 
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorXst {
+        type Out;
+        unsafe fn vec_xst(self, a: isize, p: Self::Out);
+    }
+
+    macro_rules! impl_vec_xst {
+        ($fun:ident $notpwr9:ident / $pwr9:ident $ty:ident) => {
+            #[inline]
+            #[target_feature(enable = "altivec")]
+            #[cfg_attr(
+                all(test, not(target_feature = "power9-altivec")),
+                assert_instr($notpwr9)
+            )]
+            #[cfg_attr(all(test, target_feature = "power9-altivec"), assert_instr($pwr9))]
+            pub unsafe fn $fun(s: t_t_l!($ty), a: isize, b: *mut $ty) {
+                let addr = (b as *mut u8).offset(a);
+
+                // Workaround ptr::copy_nonoverlapping not being inlined
+                extern "rust-intrinsic" {
+                    #[rustc_nounwind]
+                    pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
+                }
+
+                copy_nonoverlapping(
+                    &s as *const _ as *const u8,
+                    addr,
+                    mem::size_of::<t_t_l!($ty)>(),
+                );
+            }
+
+            #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+            impl VectorXst for t_t_l!($ty) {
+                type Out = *mut $ty;
+                #[inline]
+                #[target_feature(enable = "altivec")]
+                unsafe fn vec_xst(self, a: isize, b: Self::Out) {
+                    $fun(self, a, b)
+                }
+            }
+        };
+    }
+
+    impl_vec_xst! { vec_xst_i8 stxvd2x / stxv i8 }
+    impl_vec_xst! { vec_xst_u8 stxvd2x / stxv u8 }
+    impl_vec_xst! { vec_xst_i16 stxvd2x / stxv i16 }
+    impl_vec_xst! { vec_xst_u16 stxvd2x / stxv u16 }
+    impl_vec_xst! { vec_xst_i32 stxvd2x / stxv i32 }
+    impl_vec_xst! { vec_xst_u32 stxvd2x / stxv u32 }
+    impl_vec_xst! { vec_xst_f32 stxvd2x / stxv f32 }
+
     test_impl! { vec_floor(a: vector_float) -> vector_float [ vfloor, vrfim / xvrspim ] }
 
     test_impl! { vec_vexptefp(a: vector_float) -> vector_float [ vexptefp, vexptefp ] }
@@ -2692,6 +2743,17 @@ where
     p.vec_xl(off)
 }
 
+/// VSX Unaligned Store
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_xst<T>(v: T, off: isize, p: <T as sealed::VectorXst>::Out)
+where
+    T: sealed::VectorXst,
+{
+    v.vec_xst(off, p)
+}
+
 /// Vector Base-2 Logarithm Estimate
 #[inline]
 #[target_feature(enable = "altivec")]
@@ -3575,6 +3637,21 @@ mod tests {
             for i in 0..16 {
                 let v = val.extract(i);
                 assert_eq!(off as usize + i, v as usize);
+            }
+        }
+    }
+
+    #[simd_test(enable = "altivec")]
+    unsafe fn test_vec_xst() {
+        let v: vector_unsigned_char = transmute(u8x16::new(
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+        ));
+
+        for off in 0..16 {
+            let mut buf = [0u8; 32];
+            vec_xst(v, 0, (buf.as_mut_ptr() as *mut u8).offset(off));
+            for i in 0..16 {
+                assert_eq!(i as u8, buf[off as usize..][i]);
             }
         }
     }
