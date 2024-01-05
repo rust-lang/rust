@@ -1735,7 +1735,6 @@ symbols! {
         unsafe_cell,
         unsafe_cell_raw_get,
         unsafe_no_drop_flag,
-        unsafe_pin_internals,
         unsize,
         unsized_fn_params,
         unsized_locals,
