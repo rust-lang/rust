@@ -1,5 +1,6 @@
 #![no_std]
 #![feature(
+    core_intrinsics,
     const_refs_to_cell,
     const_maybe_uninit_as_mut_ptr,
     const_mut_refs,
@@ -7,7 +8,6 @@
     decl_macro,
     inline_const,
     intra_doc_pointers,
-    platform_intrinsics,
     repr_simd,
     simd_ffi,
     staged_api,
