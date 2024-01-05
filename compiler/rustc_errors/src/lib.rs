@@ -514,7 +514,7 @@ fn default_track_diagnostic(d: &mut Diagnostic, f: &mut dyn FnMut(&mut Diagnosti
 pub static TRACK_DIAGNOSTICS: AtomicRef<fn(&mut Diagnostic, &mut dyn FnMut(&mut Diagnostic))> =
     AtomicRef::new(&(default_track_diagnostic as _));
 
-#[derive(Copy, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct DiagCtxtFlags {
     /// If false, warning-level lints are suppressed.
     /// (rustc: see `--allow warnings` and `--cap-lints`)
@@ -535,6 +535,8 @@ pub struct DiagCtxtFlags {
     pub deduplicate_diagnostics: bool,
     /// Track where errors are created. Enabled with `-Ztrack-diagnostics`.
     pub track_diagnostics: bool,
+    /// Track whether error metrics are stored. Enabled with `-Zerror-metrics=path`.
+    pub metrics: Option<PathBuf>,
 }
 
 impl Drop for DiagCtxtInner {
