@@ -868,8 +868,8 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for InvalidAttrAtCrateLevel {
     fn into_diagnostic(self, dcx: &'_ DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
         let mut diag =
             DiagnosticBuilder::new(dcx, level, fluent::passes_invalid_attr_at_crate_level);
-        diag.set_span(self.span);
-        diag.set_arg("name", self.name);
+        diag.span(self.span);
+        diag.arg("name", self.name);
         // Only emit an error with a suggestion if we can create a string out
         // of the attribute span
         if let Some(span) = self.sugg_span {
@@ -881,7 +881,7 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for InvalidAttrAtCrateLevel {
             );
         }
         if let Some(item) = self.item {
-            diag.set_arg("kind", item.kind);
+            diag.arg("kind", item.kind);
             diag.span_label(item.span, fluent::passes_invalid_attr_at_crate_level_item);
         }
         diag
@@ -1018,9 +1018,9 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'_, G> for BreakNonLoop<'a> {
     #[track_caller]
     fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
         let mut diag = DiagnosticBuilder::new(dcx, level, fluent::passes_break_non_loop);
-        diag.set_span(self.span);
+        diag.span(self.span);
         diag.code(error_code!(E0571));
-        diag.set_arg("kind", self.kind);
+        diag.arg("kind", self.kind);
         diag.span_label(self.span, fluent::passes_label);
         if let Some(head) = self.head {
             diag.span_label(head, fluent::passes_label2);
@@ -1162,7 +1162,7 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for NakedFunctionsAsmBlock {
     #[track_caller]
     fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
         let mut diag = DiagnosticBuilder::new(dcx, level, fluent::passes_naked_functions_asm_block);
-        diag.set_span(self.span);
+        diag.span(self.span);
         diag.code(error_code!(E0787));
         for span in self.multiple_asms.iter() {
             diag.span_label(*span, fluent::passes_label_multiple_asm);
@@ -1273,11 +1273,11 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for NoMainErr {
     #[track_caller]
     fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
         let mut diag = DiagnosticBuilder::new(dcx, level, fluent::passes_no_main_function);
-        diag.set_span(DUMMY_SP);
+        diag.span(DUMMY_SP);
         diag.code(error_code!(E0601));
-        diag.set_arg("crate_name", self.crate_name);
-        diag.set_arg("filename", self.filename);
-        diag.set_arg("has_filename", self.has_filename);
+        diag.arg("crate_name", self.crate_name);
+        diag.arg("filename", self.filename);
+        diag.arg("has_filename", self.has_filename);
         let note = if !self.non_main_fns.is_empty() {
             for &span in &self.non_main_fns {
                 diag.span_note(span, fluent::passes_here_is_main);
@@ -1294,7 +1294,7 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for NoMainErr {
         if self.file_empty {
             diag.note(note);
         } else {
-            diag.set_span(self.sp.shrink_to_hi());
+            diag.span(self.sp.shrink_to_hi());
             diag.span_label(self.sp.shrink_to_hi(), note);
         }
 
@@ -1340,15 +1340,15 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for DuplicateLangItem {
             },
         );
         diag.code(error_code!(E0152));
-        diag.set_arg("lang_item_name", self.lang_item_name);
-        diag.set_arg("crate_name", self.crate_name);
-        diag.set_arg("dependency_of", self.dependency_of);
-        diag.set_arg("path", self.path);
-        diag.set_arg("orig_crate_name", self.orig_crate_name);
-        diag.set_arg("orig_dependency_of", self.orig_dependency_of);
-        diag.set_arg("orig_path", self.orig_path);
+        diag.arg("lang_item_name", self.lang_item_name);
+        diag.arg("crate_name", self.crate_name);
+        diag.arg("dependency_of", self.dependency_of);
+        diag.arg("path", self.path);
+        diag.arg("orig_crate_name", self.orig_crate_name);
+        diag.arg("orig_dependency_of", self.orig_dependency_of);
+        diag.arg("orig_path", self.orig_path);
         if let Some(span) = self.local_span {
-            diag.set_span(span);
+            diag.span(span);
         }
         if let Some(span) = self.first_defined_span {
             diag.span_note(span, fluent::passes_first_defined_span);

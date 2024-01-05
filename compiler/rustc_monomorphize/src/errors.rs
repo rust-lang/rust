@@ -51,7 +51,7 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for UnusedGenericParamsHint {
     fn into_diagnostic(self, dcx: &'_ DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
         let mut diag =
             DiagnosticBuilder::new(dcx, level, fluent::monomorphize_unused_generic_params);
-        diag.set_span(self.span);
+        diag.span(self.span);
         for (span, name) in self.param_spans.into_iter().zip(self.param_names) {
             // FIXME: I can figure out how to do a label with a fluent string with a fixed message,
             // or a label with a dynamic value in a hard-coded string, but I haven't figured out

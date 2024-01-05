@@ -673,7 +673,7 @@ impl DiagCtxt {
         let key = (span.with_parent(None), key);
 
         if diag.is_error() {
-            if matches!(diag.level, Error { lint: true }) {
+            if diag.level == Error && diag.is_lint {
                 inner.lint_err_count += 1;
             } else {
                 inner.err_count += 1;
@@ -697,7 +697,7 @@ impl DiagCtxt {
         let key = (span.with_parent(None), key);
         let diag = inner.stashed_diagnostics.remove(&key)?;
         if diag.is_error() {
-            if matches!(diag.level, Error { lint: true }) {
+            if diag.level == Error && diag.is_lint {
                 inner.lint_err_count -= 1;
             } else {
                 inner.err_count -= 1;
@@ -732,7 +732,7 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
         let mut result = self.struct_warn(msg);
-        result.set_span(span);
+        result.span(span);
         result
     }
 
@@ -789,7 +789,7 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_> {
         let mut result = self.struct_err(msg);
-        result.set_span(span);
+        result.span(span);
         result
     }
 
@@ -812,7 +812,7 @@ impl DiagCtxt {
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_err(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_> {
-        DiagnosticBuilder::new(self, Error { lint: false }, msg)
+        DiagnosticBuilder::new(self, Error, msg)
     }
 
     /// Construct a builder at the `Error` level with the `msg` and the `code`.
@@ -850,7 +850,7 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, FatalAbort> {
         let mut result = self.struct_fatal(msg);
-        result.set_span(span);
+        result.span(span);
         result
     }
 
@@ -875,16 +875,6 @@ impl DiagCtxt {
         &self,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, FatalAbort> {
-        DiagnosticBuilder::new(self, Fatal, msg)
-    }
-
-    /// Construct a builder at the `Fatal` level with the `msg`, that doesn't abort.
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn struct_almost_fatal(
-        &self,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, FatalError> {
         DiagnosticBuilder::new(self, Fatal, msg)
     }
 
@@ -917,7 +907,7 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, BugAbort> {
         let mut result = self.struct_bug(msg);
-        result.set_span(span);
+        result.span(span);
         result
     }
 
@@ -1008,7 +998,7 @@ impl DiagCtxt {
             self.span_bug(sp, msg);
         }
         let mut diagnostic = Diagnostic::new(DelayedBug, msg);
-        diagnostic.set_span(sp);
+        diagnostic.span(sp);
         self.emit_diagnostic(diagnostic).unwrap()
     }
 
@@ -1039,7 +1029,7 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
         let mut db = DiagnosticBuilder::new(self, Note, msg);
-        db.set_span(span);
+        db.span(span);
         db
     }
 
@@ -1222,7 +1212,7 @@ impl DiagCtxt {
 
     #[track_caller]
     pub fn create_err<'a>(&'a self, err: impl IntoDiagnostic<'a>) -> DiagnosticBuilder<'a> {
-        err.into_diagnostic(self, Error { lint: false })
+        err.into_diagnostic(self, Error)
     }
 
     #[track_caller]
@@ -1377,7 +1367,7 @@ impl DiagCtxtInner {
         for diag in diags {
             // Decrement the count tracking the stash; emitting will increment it.
             if diag.is_error() {
-                if matches!(diag.level, Error { lint: true }) {
+                if diag.level == Error && diag.is_lint {
                     self.lint_err_count -= 1;
                 } else {
                     self.err_count -= 1;
@@ -1408,7 +1398,7 @@ impl DiagCtxtInner {
         &mut self,
         diagnostic: &mut Diagnostic,
     ) -> Option<ErrorGuaranteed> {
-        if matches!(diagnostic.level, Error { .. } | Fatal) && self.treat_err_as_bug() {
+        if matches!(diagnostic.level, Error | Fatal) && self.treat_err_as_bug() {
             diagnostic.level = Bug;
         }
 
@@ -1509,7 +1499,7 @@ impl DiagCtxtInner {
                 }
             }
             if diagnostic.is_error() {
-                if matches!(diagnostic.level, Error { lint: true }) {
+                if diagnostic.level == Error && diagnostic.is_lint {
                     self.bump_lint_err_count();
                 } else {
                     self.bump_err_count();
@@ -1705,11 +1695,7 @@ pub enum Level {
     /// most common case.
     ///
     /// Its `EmissionGuarantee` is `ErrorGuaranteed`.
-    Error {
-        /// If this error comes from a lint, don't abort compilation even when abort_if_errors() is
-        /// called.
-        lint: bool,
-    },
+    Error,
 
     /// A warning about the code being compiled. Does not prevent compilation from finishing.
     ///
@@ -1768,7 +1754,7 @@ impl Level {
     fn color(self) -> ColorSpec {
         let mut spec = ColorSpec::new();
         match self {
-            Bug | DelayedBug | Fatal | Error { .. } => {
+            Bug | DelayedBug | Fatal | Error => {
                 spec.set_fg(Some(Color::Red)).set_intense(true);
             }
             Warning(_) => {
@@ -1789,7 +1775,7 @@ impl Level {
     pub fn to_str(self) -> &'static str {
         match self {
             Bug | DelayedBug => "error: internal compiler error",
-            Fatal | Error { .. } => "error",
+            Fatal | Error => "error",
             Warning(_) => "warning",
             Note | OnceNote => "note",
             Help | OnceHelp => "help",

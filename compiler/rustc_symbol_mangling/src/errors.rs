@@ -19,7 +19,7 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for TestOutput {
 
         #[allow(rustc::untranslatable_diagnostic)]
         let mut diag = DiagnosticBuilder::new(dcx, level, format!("{kind}({content})"));
-        diag.set_span(span);
+        diag.span(span);
         diag
     }
 }

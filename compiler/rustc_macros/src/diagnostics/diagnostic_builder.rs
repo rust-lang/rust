@@ -5,8 +5,8 @@ use crate::diagnostics::error::{
 };
 use crate::diagnostics::utils::{
     build_field_mapping, is_doc_comment, report_error_if_not_applied_to_span, report_type_error,
-    should_generate_set_arg, type_is_bool, type_is_unit, type_matches_path, FieldInfo,
-    FieldInnerTy, FieldMap, HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
+    should_generate_arg, type_is_bool, type_is_unit, type_matches_path, FieldInfo, FieldInnerTy,
+    FieldMap, HasFieldMap, SetOnce, SpannedOption, SubdiagnosticKind,
 };
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{format_ident, quote, quote_spanned};
@@ -125,15 +125,15 @@ impl DiagnosticDeriveVariantBuilder {
     }
 
     /// Generates calls to `span_label` and similar functions based on the attributes on fields or
-    /// calls to `set_arg` when no attributes are present.
+    /// calls to `arg` when no attributes are present.
     pub(crate) fn body(&mut self, variant: &VariantInfo<'_>) -> TokenStream {
         let mut body = quote! {};
-        // Generate `set_arg` calls first..
-        for binding in variant.bindings().iter().filter(|bi| should_generate_set_arg(bi.ast())) {
+        // Generate `arg` calls first..
+        for binding in variant.bindings().iter().filter(|bi| should_generate_arg(bi.ast())) {
             body.extend(self.generate_field_code(binding));
         }
         // ..and then subdiagnostic additions.
-        for binding in variant.bindings().iter().filter(|bi| !should_generate_set_arg(bi.ast())) {
+        for binding in variant.bindings().iter().filter(|bi| !should_generate_arg(bi.ast())) {
             body.extend(self.generate_field_attrs_code(binding));
         }
         body
@@ -253,7 +253,7 @@ impl DiagnosticDeriveVariantBuilder {
         let ident = format_ident!("{}", ident); // strip `r#` prefix, if present
 
         quote! {
-            diag.set_arg(
+            diag.arg(
                 stringify!(#ident),
                 #field_binding
             );
@@ -312,7 +312,7 @@ impl DiagnosticDeriveVariantBuilder {
         let name = ident.to_string();
         match (&attr.meta, name.as_str()) {
             // Don't need to do anything - by virtue of the attribute existing, the
-            // `set_arg` call will not be generated.
+            // `arg` call will not be generated.
             (Meta::Path(_), "skip_arg") => return Ok(quote! {}),
             (Meta::Path(_), "primary_span") => {
                 match self.kind {
@@ -320,7 +320,7 @@ impl DiagnosticDeriveVariantBuilder {
                         report_error_if_not_applied_to_span(attr, &info)?;
 
                         return Ok(quote! {
-                            diag.set_span(#binding);
+                            diag.span(#binding);
                         });
                     }
                     DiagnosticDeriveKind::LintDiagnostic => {

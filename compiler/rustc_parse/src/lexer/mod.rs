@@ -7,9 +7,7 @@ use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
-use rustc_errors::{
-    error_code, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder, FatalAbort, StashKey,
-};
+use rustc_errors::{error_code, Applicability, DiagCtxt, Diagnostic, StashKey};
 use rustc_lexer::unescape::{self, EscapeError, Mode};
 use rustc_lexer::{Base, DocStyle, RawStrError};
 use rustc_lexer::{Cursor, LiteralKind};
@@ -252,7 +250,7 @@ impl<'a> StringReader<'a> {
                     if starts_with_number {
                         let span = self.mk_sp(start, self.pos);
                         let mut diag = self.dcx().struct_err("lifetimes cannot start with a number");
-                        diag.set_span(span);
+                        diag.span(span);
                         diag.stash(span, StashKey::LifetimeIsChar);
                     }
                     let ident = Symbol::intern(lifetime_name);
@@ -342,18 +340,6 @@ impl<'a> StringReader<'a> {
         let span = self.mk_sp(start, self.pos);
         self.sess.symbol_gallery.insert(sym, span);
         token::Ident(sym, false)
-    }
-
-    fn struct_fatal_span_char(
-        &self,
-        from_pos: BytePos,
-        to_pos: BytePos,
-        m: &str,
-        c: char,
-    ) -> DiagnosticBuilder<'a, FatalAbort> {
-        self.sess
-            .dcx
-            .struct_span_fatal(self.mk_sp(from_pos, to_pos), format!("{}: {}", m, escaped_char(c)))
     }
 
     /// Detect usages of Unicode codepoints changing the direction of the text on screen and loudly
@@ -568,13 +554,16 @@ impl<'a> StringReader<'a> {
     }
 
     fn report_non_started_raw_string(&self, start: BytePos, bad_char: char) -> ! {
-        self.struct_fatal_span_char(
-            start,
-            self.pos,
-            "found invalid character; only `#` is allowed in raw string delimitation",
-            bad_char,
-        )
-        .emit()
+        self.sess
+            .dcx
+            .struct_span_fatal(
+                self.mk_sp(start, self.pos),
+                format!(
+                    "found invalid character; only `#` is allowed in raw string delimitation: {}",
+                    escaped_char(bad_char)
+                ),
+            )
+            .emit()
     }
 
     fn report_unterminated_raw_string(
