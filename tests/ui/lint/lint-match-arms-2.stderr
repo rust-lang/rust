@@ -11,10 +11,10 @@ LL |         #[deny(bindings_with_variant_name)]
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: irrefutable `if let` guard pattern
-  --> $DIR/lint-match-arms-2.rs:18:18
+  --> $DIR/lint-match-arms-2.rs:18:14
    |
 LL |         a if let b = a => {}
-   |                  ^
+   |              ^^^^^^^^^
    |
    = note: this pattern will always match, so the guard is useless
    = help: consider removing the guard and adding a `let` inside the match arm
