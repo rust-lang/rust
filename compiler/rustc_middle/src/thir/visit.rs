@@ -1,5 +1,5 @@
 use super::{
-    AdtExpr, Arm, Block, ClosureExpr, Expr, ExprKind, Guard, InlineAsmExpr, InlineAsmOperand, Pat,
+    AdtExpr, Arm, Block, ClosureExpr, Expr, ExprKind, InlineAsmExpr, InlineAsmOperand, Pat,
     PatKind, Stmt, StmtKind, Thir,
 };
 
@@ -213,13 +213,8 @@ pub fn walk_arm<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
     visitor: &mut V,
     arm: &'thir Arm<'tcx>,
 ) {
-    match arm.guard {
-        Some(Guard::If(expr)) => visitor.visit_expr(&visitor.thir()[expr]),
-        Some(Guard::IfLet(ref pat, expr)) => {
-            visitor.visit_pat(pat);
-            visitor.visit_expr(&visitor.thir()[expr]);
-        }
-        None => {}
+    if let Some(expr) = arm.guard {
+        visitor.visit_expr(&visitor.thir()[expr])
     }
     visitor.visit_pat(&arm.pattern);
     visitor.visit_expr(&visitor.thir()[arm.body]);

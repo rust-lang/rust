@@ -177,6 +177,14 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
 }
 
 fn resolve_arm<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, arm: &'tcx hir::Arm<'tcx>) {
+    fn has_let_expr(expr: &Expr<'_>) -> bool {
+        match &expr.kind {
+            hir::ExprKind::Binary(_, lhs, rhs) => has_let_expr(lhs) || has_let_expr(rhs),
+            hir::ExprKind::Let(..) => true,
+            _ => false,
+        }
+    }
+
     let prev_cx = visitor.cx;
 
     visitor.terminating_scopes.insert(arm.hir_id.local_id);
@@ -184,7 +192,9 @@ fn resolve_arm<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, arm: &'tcx hir
     visitor.enter_node_scope_with_dtor(arm.hir_id.local_id);
     visitor.cx.var_parent = visitor.cx.parent;
 
-    if let Some(hir::Guard::If(expr)) = arm.guard {
+    if let Some(expr) = arm.guard
+        && !has_let_expr(expr)
+    {
         visitor.terminating_scopes.insert(expr.hir_id.local_id);
     }
 
