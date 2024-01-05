@@ -1733,6 +1733,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         }
 
         body.coroutine.as_mut().unwrap().yield_ty = None;
+        body.coroutine.as_mut().unwrap().resume_ty = None;
         body.coroutine.as_mut().unwrap().coroutine_layout = Some(layout);
 
         // Insert `drop(coroutine_struct)` which is used to drop upvars for coroutines in
