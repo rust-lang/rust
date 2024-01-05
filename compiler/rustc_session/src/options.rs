@@ -391,7 +391,6 @@ mod desc {
     pub const parse_strip: &str = "either `none`, `debuginfo`, or `symbols`";
     pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavorCli::one_of();
     pub const parse_optimization_fuel: &str = "crate=integer";
-    pub const parse_mir_spanview: &str = "`statement` (default), `terminator`, or `block`";
     pub const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
     pub const parse_instrument_coverage: &str =
         "`all` (default), `branch`, `except-unused-generics`, `except-unused-functions`, or `off`";
@@ -864,29 +863,6 @@ mod parse {
             }
             _ => false,
         }
-    }
-
-    pub(crate) fn parse_mir_spanview(slot: &mut Option<MirSpanview>, v: Option<&str>) -> bool {
-        if v.is_some() {
-            let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
-                *slot = bool_arg.unwrap().then_some(MirSpanview::Statement);
-                return true;
-            }
-        }
-
-        let Some(v) = v else {
-            *slot = Some(MirSpanview::Statement);
-            return true;
-        };
-
-        *slot = Some(match v.trim_end_matches('s') {
-            "statement" | "stmt" => MirSpanview::Statement,
-            "terminator" | "term" => MirSpanview::Terminator,
-            "block" | "basicblock" => MirSpanview::Block,
-            _ => return false,
-        });
-        true
     }
 
     pub(crate) fn parse_time_passes_format(slot: &mut TimePassesFormat, v: Option<&str>) -> bool {
@@ -1601,11 +1577,6 @@ options! {
         "exclude the pass number when dumping MIR (used in tests) (default: no)"),
     dump_mir_graphviz: bool = (false, parse_bool, [UNTRACKED],
         "in addition to `.mir` files, create graphviz `.dot` files (default: no)"),
-    dump_mir_spanview: Option<MirSpanview> = (None, parse_mir_spanview, [UNTRACKED],
-        "in addition to `.mir` files, create `.html` files to view spans for \
-        all `statement`s (including terminators), only `terminator` spans, or \
-        computed `block` spans (one span encompassing a block's terminator and \
-        all statements)."),
     dump_mono_stats: SwitchWithOptPath = (SwitchWithOptPath::Disabled,
         parse_switch_with_opt_path, [UNTRACKED],
         "output statistics about monomorphization collection"),
