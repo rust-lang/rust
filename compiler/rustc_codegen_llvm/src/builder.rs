@@ -558,10 +558,17 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             OperandValue::Immediate(self.to_immediate(llval, place.layout))
         } else if let abi::Abi::ScalarPair(a, b) = place.layout.abi {
             let b_offset = a.size(self).align_to(b.align(self).abi);
-            let pair_ty = place.layout.llvm_type(self);
 
             let mut load = |i, scalar: abi::Scalar, layout, align, offset| {
-                let llptr = self.struct_gep(pair_ty, place.llval, i as u64);
+                let llptr = if i == 0 {
+                    place.llval
+                } else {
+                    self.inbounds_gep(
+                        self.type_i8(),
+                        place.llval,
+                        &[self.const_usize(b_offset.bytes())],
+                    )
+                };
                 let llty = place.layout.scalar_pair_element_llvm_type(self, i, false);
                 let load = self.load(llty, llptr, align);
                 scalar_load_metadata(self, load, scalar, layout, offset);
