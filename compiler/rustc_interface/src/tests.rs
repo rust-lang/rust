@@ -805,7 +805,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(relax_elf_relocations, Some(true));
     tracked!(relro_level, Some(RelroLevel::Full));
     tracked!(remap_cwd_prefix, Some(PathBuf::from("abc")));
-    tracked!(report_delayed_bugs, true);
     tracked!(sanitizer, SanitizerSet::ADDRESS);
     tracked!(sanitizer_cfi_canonical_jump_tables, None);
     tracked!(sanitizer_cfi_generalize_pointers, Some(true));
