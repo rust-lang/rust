@@ -1860,7 +1860,6 @@ impl Ipv6Addr {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ip)]
     /// use std::net::Ipv6Addr;
     ///
     /// assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0x7f00, 0x1).is_loopback(), false);
