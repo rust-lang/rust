@@ -441,6 +441,18 @@ impl Socket {
         Ok(raw != 0)
     }
 
+    // bionic libc makes no use of this flag
+    #[cfg(target_os = "linux")]
+    pub fn set_deferaccept(&self, accept: u32) -> io::Result<()> {
+        setsockopt(self, libc::IPPROTO_TCP, libc::TCP_DEFER_ACCEPT, accept as c_int)
+    }
+
+    #[cfg(target_os = "linux")]
+    pub fn deferaccept(&self) -> io::Result<u32> {
+        let raw: c_int = getsockopt(self, libc::IPPROTO_TCP, libc::TCP_DEFER_ACCEPT)?;
+        Ok(raw as u32)
+    }
+
     #[cfg(any(target_os = "android", target_os = "linux",))]
     pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
         setsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED, passcred as libc::c_int)
