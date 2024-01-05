@@ -1848,9 +1848,9 @@ impl SharedEmitterMain {
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)) => {
                     let err_level = match level {
-                        Level::Error { lint: false } => rustc_errors::Level::Error { lint: false },
-                        Level::Warning(_) => rustc_errors::Level::Warning(None),
-                        Level::Note => rustc_errors::Level::Note,
+                        Level::Error => Level::Error,
+                        Level::Warning(_) => Level::Warning(None),
+                        Level::Note => Level::Note,
                         _ => bug!("Invalid inline asm diagnostic level"),
                     };
                     let msg = msg.strip_prefix("error: ").unwrap_or(&msg).to_string();
@@ -1860,7 +1860,7 @@ impl SharedEmitterMain {
                     if cookie != 0 {
                         let pos = BytePos::from_u32(cookie);
                         let span = Span::with_root_ctxt(pos, pos);
-                        err.set_span(span);
+                        err.span(span);
                     };
 
                     // Point to the generated assembly if it is available.

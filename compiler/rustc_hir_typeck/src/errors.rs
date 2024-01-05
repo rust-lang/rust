@@ -215,7 +215,7 @@ impl AddToDiagnostic for TypeMismatchFruTypo {
     where
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
     {
-        diag.set_arg("expr", self.expr.as_deref().unwrap_or("NONE"));
+        diag.arg("expr", self.expr.as_deref().unwrap_or("NONE"));
 
         // Only explain that `a ..b` is a range if it's split up
         if self.expr_span.between(self.fru_span).is_empty() {

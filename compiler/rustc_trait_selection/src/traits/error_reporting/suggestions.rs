@@ -2007,7 +2007,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         };
 
         err.code(error_code!(E0746));
-        err.set_primary_message("return type cannot have an unboxed trait object");
+        err.primary_message("return type cannot have an unboxed trait object");
         err.children.clear();
 
         let span = obligation.cause.span;
@@ -2712,7 +2712,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 if name == sym::Send { ("`Send`", "sent") } else { ("`Sync`", "shared") };
 
             err.clear_code();
-            err.set_primary_message(format!(
+            err.primary_message(format!(
                 "{future_or_coroutine} cannot be {trait_verb} between threads safely"
             ));
 
@@ -2800,7 +2800,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 .unwrap_or_else(|| format!("{future_or_coroutine} is not {trait_name}"));
 
             span.push_span_label(original_span, message);
-            err.set_span(span);
+            err.span(span);
 
             format!("is not {trait_name}")
         } else {

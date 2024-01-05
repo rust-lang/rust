@@ -846,7 +846,7 @@ impl<'a> Parser<'a> {
             ) =>
             {
                 let n_hashes: u8 = *n_hashes;
-                err.set_primary_message("too many `#` when terminating raw string");
+                err.primary_message("too many `#` when terminating raw string");
                 let str_span = self.prev_token.span;
                 let mut span = self.token.span;
                 let mut count = 0;
@@ -857,7 +857,7 @@ impl<'a> Parser<'a> {
                     self.bump();
                     count += 1;
                 }
-                err.set_span(span);
+                err.span(span);
                 err.span_suggestion(
                     span,
                     format!("remove the extra `#`{}", pluralize!(count)),
