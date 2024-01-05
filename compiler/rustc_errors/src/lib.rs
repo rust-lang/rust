@@ -1227,7 +1227,7 @@ impl DiagCtxt {
 // Note: we prefer implementing operations on `DiagCtxt`, rather than
 // `DiagCtxtInner`, whenever possible. This minimizes functions where
 // `DiagCtxt::foo()` just borrows `inner` and forwards a call to
-// `HanderInner::foo`.
+// `DiagCtxtInner::foo`.
 impl DiagCtxtInner {
     /// Emit all stashed diagnostics.
     fn emit_stashed_diagnostics(&mut self) -> Option<ErrorGuaranteed> {
