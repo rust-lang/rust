@@ -2,7 +2,7 @@
 //!
 //! If you've found yourself with an asynchronous collection of some kind,
 //! and needed to perform an operation on the elements of said collection,
-//! you'll quickly run into 'async iterators'. Async Iterators are heavily used in
+//! you'll quickly run into 'streams'. streams are heavily used in
 //! idiomatic asynchronous Rust code, so it's worth becoming familiar with them.
 //!
 //! Before explaining more, let's talk about how this module is structured:
@@ -11,20 +11,20 @@
 //!
 //! This module is largely organized by type:
 //!
-//! * [Traits] are the core portion: these traits define what kind of async iterators
+//! * [Traits] are the core portion: these traits define what kind of streams
 //!   exist and what you can do with them. The methods of these traits are worth
 //!   putting some extra study time into.
-//! * Functions provide some helpful ways to create some basic async iterators.
+//! * Functions provide some helpful ways to create some basic streams.
 //! * Structs are often the return types of the various methods on this
 //!   module's traits. You'll usually want to look at the method that creates
 //!   the `struct`, rather than the `struct` itself. For more detail about why,
-//!   see '[Implementing Async Iterator](#implementing-async-iterator)'.
+//!   see '[Implementing Stream](#implementing-stream)'.
 //!
 //! [Traits]: #traits
 //!
-//! That's it! Let's dig into async iterators.
+//! That's it! Let's dig into streams.
 //!
-//! # Async Iterators
+//! # Streams
 //!
 //! The heart and soul of this module is the [`Stream`] trait. The core of
 //! [`Stream`] looks like this:
@@ -40,16 +40,16 @@
 //!
 //! Unlike `Iterator`, `Stream` makes a distinction between the [`poll_next`]
 //! method which is used when implementing an `Stream`, and a (to-be-implemented)
-//! `next` method which is used when consuming an async iterator. Consumers of `Stream`
+//! `next` method which is used when consuming an stream. Consumers of `Stream`
 //! only need to consider `next`, which when called, returns a future which
 //! yields `Option<Stream::Item>`.
 //!
 //! The future returned by `next` will yield `Some(Item)` as long as there are
 //! elements, and once they've all been exhausted, will yield `None` to indicate
 //! that iteration is finished. If we're waiting on something asynchronous to
-//! resolve, the future will wait until the async iterator is ready to yield again.
+//! resolve, the future will wait until the stream is ready to yield again.
 //!
-//! Individual async iterators may choose to resume iteration, and so calling `next`
+//! Individual streams may choose to resume iteration, and so calling `next`
 //! again may or may not eventually yield `Some(Item)` again at some point.
 //!
 //! [`Stream`]'s full definition includes a number of other methods as well,
@@ -59,13 +59,13 @@
 //! [`Poll`]: super::task::Poll
 //! [`poll_next`]: Stream::poll_next
 //!
-//! # Implementing Async Iterator
+//! # Implementing Stream
 //!
-//! Creating an async iterator of your own involves two steps: creating a `struct` to
-//! hold the async iterator's state, and then implementing [`Stream`] for that
+//! Creating an stream of your own involves two steps: creating a `struct` to
+//! hold the stream's state, and then implementing [`Stream`] for that
 //! `struct`.
 //!
-//! Let's make an async iterator named `Counter` which counts from `1` to `5`:
+//! Let's make an stream named `Counter` which counts from `1` to `5`:
 //!
 //! ```no_run
 //! #![feature(async_stream)]
@@ -75,7 +75,7 @@
 //!
 //! // First, the struct:
 //!
-//! /// An async iterator which counts from one to five
+//! /// An stream which counts from one to five
 //! struct Counter {
 //!     count: usize,
 //! }
@@ -112,13 +112,13 @@
 //!
 //! # Laziness
 //!
-//! Async iterators are *lazy*. This means that just creating an async iterator doesn't
+//! Streams are *lazy*. This means that just creating an stream doesn't
 //! _do_ a whole lot. Nothing really happens until you call `poll_next`. This is
-//! sometimes a source of confusion when creating an async iterator solely for its side
+//! sometimes a source of confusion when creating an stream solely for its side
 //! effects. The compiler will warn us about this kind of behavior:
 //!
 //! ```text
-//! warning: unused result that must be used: async iterators do nothing unless polled
+//! warning: unused result that must be used: streams do nothing unless polled
 //! ```
 
 mod from_iter;

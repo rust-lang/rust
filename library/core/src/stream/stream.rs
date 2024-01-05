@@ -12,7 +12,7 @@ use crate::task::{Context, Poll};
 /// may want to know how to [implement `Stream`][impl].
 ///
 /// [module-level documentation]: index.html
-/// [impl]: index.html#implementing-async-stream
+/// [impl]: index.html#implementing-stream
 /// [`AsyncIterator`]: crate::async_iter::AsyncIterator
 #[unstable(feature = "async_stream", issue = "79024")]
 #[must_use = "streams do nothing unless polled"]
