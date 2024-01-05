@@ -479,6 +479,7 @@ impl TargetCfgs {
         let mut targets: HashMap<String, TargetCfg> = serde_json::from_str(&rustc_output(
             config,
             &["--print=all-target-specs-json", "-Zunstable-options"],
+            Default::default(),
         ))
         .unwrap();
 
@@ -491,16 +492,33 @@ impl TargetCfgs {
         let mut all_families = HashSet::new();
         let mut all_pointer_widths = HashSet::new();
 
-        // Handle custom target specs, which are not included in `--print=all-target-specs-json`.
-        if config.target.ends_with(".json") {
-            targets.insert(
-                config.target.clone(),
-                serde_json::from_str(&rustc_output(
-                    config,
-                    &["--print=target-spec-json", "-Zunstable-options", "--target", &config.target],
-                ))
-                .unwrap(),
-            );
+        // If current target is not included in the `--print=all-target-specs-json` output,
+        // we check whether it is a custom target from the user or a synthetic target from bootstrap.
+        if !targets.contains_key(&config.target) {
+            let mut envs: HashMap<String, String> = HashMap::new();
+
+            if let Ok(t) = std::env::var("RUST_TARGET_PATH") {
+                envs.insert("RUST_TARGET_PATH".into(), t);
+            }
+
+            // This returns false only when the target is neither a synthetic target
+            // nor a custom target from the user, indicating it is most likely invalid.
+            if config.target.ends_with(".json") || !envs.is_empty() {
+                targets.insert(
+                    config.target.clone(),
+                    serde_json::from_str(&rustc_output(
+                        config,
+                        &[
+                            "--print=target-spec-json",
+                            "-Zunstable-options",
+                            "--target",
+                            &config.target,
+                        ],
+                        envs,
+                    ))
+                    .unwrap(),
+                );
+            }
         }
 
         for (target, cfg) in targets.iter() {
@@ -545,7 +563,9 @@ impl TargetCfgs {
         // code below extracts them from `--print=cfg`: make sure to only override fields that can
         // actually be changed with `-C` flags.
         for config in
-            rustc_output(config, &["--print=cfg", "--target", &config.target]).trim().lines()
+            rustc_output(config, &["--print=cfg", "--target", &config.target], Default::default())
+                .trim()
+                .lines()
         {
             let (name, value) = config
                 .split_once("=\"")
@@ -624,11 +644,12 @@ pub enum Endian {
     Big,
 }
 
-fn rustc_output(config: &Config, args: &[&str]) -> String {
+fn rustc_output(config: &Config, args: &[&str], envs: HashMap<String, String>) -> String {
     let mut command = Command::new(&config.rustc_path);
     add_dylib_path(&mut command, iter::once(&config.compile_lib_path));
     command.args(&config.target_rustcflags).args(args);
     command.env("RUSTC_BOOTSTRAP", "1");
+    command.envs(envs);
 
     let output = match command.output() {
         Ok(output) => output,
