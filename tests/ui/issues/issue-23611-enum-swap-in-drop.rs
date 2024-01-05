@@ -37,11 +37,9 @@ pub fn main() {
             // | | | +-- Make D(g_b_5, 50000005)
             // | | | |                                 in g_B(b4b2) from GaspB::drop
             // | | | +-- Drop D(g_b_5, 50000005)
-            50000005,
-            // | | |
+            50000005, // | | |
             // | | +-- Drop D(GaspB::drop_3, 30000004)
-            30000004,
-            // | |
+            30000004, // | |
             // +-- Drop D(test_1, 10000000)
             10000000,
             //   |
@@ -49,15 +47,13 @@ pub fn main() {
             // | | +-- Make D(f_a_4, 40000007)
             // | | |                                   in f_A(a3a0) from GaspA::drop
             // | | +-- Drop D(f_a_4, 40000007)
-            40000007,
-            // | |
+            40000007, // | |
             // +-- Drop D(GaspA::drop_2, 20000006)
-            20000006,
-            //   |
+            20000006, //   |
             //   +-- Drop D(drop_6, 60000002)
-            60000002
-            //
-                ]);
+            60000002 //
+        ]
+    );
 
     // For reference purposes, the old (incorrect) behavior would produce the following
     // output, which you can compare to the above:
@@ -106,8 +102,8 @@ fn test<'a>(log: d::Log<'a>) {
     let _e = E::B(GaspB(g_b, 0xB4B0, log, D::new("test", 1, log)), true);
 }
 
-struct GaspA<'a>(for <'b> fn(u32, &'b str, d::Log<'a>), u32, d::Log<'a>, d::D<'a>);
-struct GaspB<'a>(for <'b> fn(u32, &'b str, d::Log<'a>), u32, d::Log<'a>, d::D<'a>);
+struct GaspA<'a>(for<'b> fn(u32, &'b str, d::Log<'a>), u32, d::Log<'a>, d::D<'a>);
+struct GaspB<'a>(for<'b> fn(u32, &'b str, d::Log<'a>), u32, d::Log<'a>, d::D<'a>);
 
 impl<'a> Drop for GaspA<'a> {
     fn drop(&mut self) {
@@ -124,7 +120,8 @@ impl<'a> Drop for GaspB<'a> {
 }
 
 enum E<'a> {
-    A(GaspA<'a>, bool), B(GaspB<'a>, bool),
+    A(GaspA<'a>, bool),
+    B(GaspB<'a>, bool),
 }
 
 fn f_a(x: u32, ctxt: &str, log: d::Log) {
@@ -174,9 +171,9 @@ const PREF_INDENT: u32 = 20;
 
 pub mod d {
     #![allow(unused_parens)]
+    use std::cell::RefCell;
     use std::fmt;
     use std::mem;
-    use std::cell::RefCell;
 
     static mut counter: u16 = 0;
     static mut trails: u64 = 0;
@@ -189,7 +186,8 @@ pub mod d {
 
     pub fn max_width() -> u32 {
         unsafe {
-            (mem::size_of_val(&trails)*8) as u32
+            (mem::size_of_val(&trails) * 8) as u32
+            //~^ WARN shared reference of mutable static is discouraged [static_mut_ref]
         }
     }
 
@@ -223,7 +221,11 @@ pub mod d {
     }
 
     pub struct D<'a> {
-        name: &'static str, i: u8, uid: u32, trail: u32, log: Log<'a>
+        name: &'static str,
+        i: u8,
+        uid: u32,
+        trail: u32,
+        log: Log<'a>,
     }
 
     impl<'a> fmt::Display for D<'a> {
@@ -239,9 +241,7 @@ pub mod d {
                 let ctr = ((i as u32) * 10_000_000) + (counter as u32);
                 counter += 1;
                 trails |= (1 << trail);
-                let ret = D {
-                    name: name, i: i, log: log, uid: ctr, trail: trail
-                };
+                let ret = D { name: name, i: i, log: log, uid: ctr, trail: trail };
                 indent_println(trail, &format!("+-- Make {}", ret));
                 ret
             }
@@ -250,7 +250,9 @@ pub mod d {
 
     impl<'a> Drop for D<'a> {
         fn drop(&mut self) {
-            unsafe { trails &= !(1 << self.trail); };
+            unsafe {
+                trails &= !(1 << self.trail);
+            };
             self.log.borrow_mut().push(self.uid);
             indent_println(self.trail, &format!("+-- Drop {}", self));
             indent_println(::PREF_INDENT, "");

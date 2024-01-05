@@ -18,6 +18,8 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::source_map;
 use rustc_span::Span;
 
+use super::errs::{maybe_expr_static_mut, maybe_stmt_static_mut};
+
 use std::mem;
 
 #[derive(Debug, Copy, Clone)]
@@ -214,6 +216,8 @@ fn resolve_stmt<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, stmt: &'tcx h
     let stmt_id = stmt.hir_id.local_id;
     debug!("resolve_stmt(stmt.id={:?})", stmt_id);
 
+    maybe_stmt_static_mut(visitor.tcx, *stmt);
+
     // Every statement will clean up the temporaries created during
     // execution of that statement. Therefore each statement has an
     // associated destruction scope that represents the scope of the
@@ -231,6 +235,8 @@ fn resolve_stmt<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, stmt: &'tcx h
 
 fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
     debug!("resolve_expr - pre-increment {} expr = {:?}", visitor.expr_and_pat_count, expr);
+
+    maybe_expr_static_mut(visitor.tcx, *expr);
 
     let prev_cx = visitor.cx;
     visitor.enter_node_scope_with_dtor(expr.hir_id.local_id);

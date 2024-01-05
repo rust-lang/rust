@@ -1410,3 +1410,94 @@ pub struct OnlyCurrentTraitsPointerSugg<'a> {
     pub mut_key: &'a str,
     pub ptr_ty: Ty<'a>,
 }
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_static_mut_ref, code = "E0796")]
+#[note]
+pub struct StaticMutRef {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    #[subdiagnostic]
+    pub sugg: StaticMutRefSugg,
+}
+
+#[derive(Subdiagnostic)]
+pub enum StaticMutRefSugg {
+    #[suggestion(
+        hir_analysis_suggestion,
+        style = "verbose",
+        code = "addr_of!({var})",
+        applicability = "maybe-incorrect"
+    )]
+    Shared {
+        #[primary_span]
+        span: Span,
+        var: String,
+    },
+    #[suggestion(
+        hir_analysis_suggestion_mut,
+        style = "verbose",
+        code = "addr_of_mut!({var})",
+        applicability = "maybe-incorrect"
+    )]
+    Mut {
+        #[primary_span]
+        span: Span,
+        var: String,
+    },
+}
+
+// STATIC_MUT_REF lint
+#[derive(LintDiagnostic)]
+#[diag(hir_analysis_static_mut_ref_lint)]
+#[note]
+pub struct RefOfMutStatic<'a> {
+    pub shared: &'a str,
+    #[note(hir_analysis_why_note)]
+    pub why_note: (),
+    #[subdiagnostic]
+    pub label: RefOfMutStaticLabel,
+    #[subdiagnostic]
+    pub sugg: RefOfMutStaticSugg,
+}
+
+#[derive(Subdiagnostic)]
+pub enum RefOfMutStaticLabel {
+    #[label(hir_analysis_label)]
+    Shared {
+        #[primary_span]
+        span: Span,
+    },
+    #[label(hir_analysis_label_mut)]
+    Mut {
+        #[primary_span]
+        span: Span,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub enum RefOfMutStaticSugg {
+    #[suggestion(
+        hir_analysis_suggestion,
+        style = "verbose",
+        code = "addr_of!({var})",
+        applicability = "maybe-incorrect"
+    )]
+    Shared {
+        #[primary_span]
+        span: Span,
+        var: String,
+    },
+    #[suggestion(
+        hir_analysis_suggestion_mut,
+        style = "verbose",
+        code = "addr_of_mut!({var})",
+        applicability = "maybe-incorrect"
+    )]
+    Mut {
+        #[primary_span]
+        span: Span,
+        var: String,
+    },
+}
