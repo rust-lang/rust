@@ -407,14 +407,7 @@ use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Receiver};
 #[repr(transparent)]
 #[derive(Copy, Clone)]
 pub struct Pin<P> {
-    // FIXME(#93176): this field is made `#[unstable] #[doc(hidden)] pub` to:
-    //   - deter downstream users from accessing it (which would be unsound!),
-    //   - let the `pin!` macro access it (such a macro requires using struct
-    //     literal syntax in order to benefit from lifetime extension).
-    // Long-term, `unsafe` fields or macro hygiene are expected to offer more robust alternatives.
-    #[unstable(feature = "unsafe_pin_internals", issue = "none")]
-    #[doc(hidden)]
-    pub pointer: P,
+    pointer: P,
 }
 
 // The following implementations aren't derived in order to avoid soundness
@@ -1173,8 +1166,6 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 ///
 /// [`Box::pin`]: ../../std/boxed/struct.Box.html#method.pin
 #[stable(feature = "pin_macro", since = "1.68.0")]
-#[rustc_macro_transparency = "semitransparent"]
-#[allow_internal_unstable(unsafe_pin_internals)]
 pub macro pin($value:expr $(,)?) {
     // This is `Pin::new_unchecked(&mut { $value })`, so, for starters, let's
     // review such a hypothetical macro (that any user-code could define):
@@ -1246,5 +1237,5 @@ pub macro pin($value:expr $(,)?) {
     //
     // See https://doc.rust-lang.org/1.58.1/reference/destructors.html#temporary-lifetime-extension
     // for more info.
-    $crate::pin::Pin::<&mut _> { pointer: &mut { $value } }
+    Pin { pointer: &mut { $value } }
 }
