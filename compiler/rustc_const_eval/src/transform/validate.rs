@@ -74,7 +74,6 @@ impl<'tcx> MirPass<'tcx> for Validator {
             mir_phase,
             unwind_edge_count: 0,
             reachable_blocks: traversal::reachable_as_bitset(body),
-            place_cache: FxHashSet::default(),
             value_cache: FxHashSet::default(),
             can_unwind,
         };
@@ -106,7 +105,6 @@ struct CfgChecker<'a, 'tcx> {
     mir_phase: MirPhase,
     unwind_edge_count: usize,
     reachable_blocks: BitSet<BasicBlock>,
-    place_cache: FxHashSet<PlaceRef<'tcx>>,
     value_cache: FxHashSet<u128>,
     // If `false`, then the MIR must not contain `UnwindAction::Continue` or
     // `TerminatorKind::Resume`.
@@ -294,19 +292,6 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
 
     fn visit_statement(&mut self, statement: &Statement<'tcx>, location: Location) {
         match &statement.kind {
-            StatementKind::Assign(box (dest, rvalue)) => {
-                // FIXME(JakobDegen): Check this for all rvalues, not just this one.
-                if let Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) = rvalue {
-                    // The sides of an assignment must not alias. Currently this just checks whether
-                    // the places are identical.
-                    if dest == src {
-                        self.fail(
-                            location,
-                            "encountered `Assign` statement with overlapping memory",
-                        );
-                    }
-                }
-            }
             StatementKind::AscribeUserType(..) => {
                 if self.mir_phase >= MirPhase::Runtime(RuntimePhase::Initial) {
                     self.fail(
@@ -341,7 +326,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                     self.fail(location, format!("explicit `{kind:?}` is forbidden"));
                 }
             }
-            StatementKind::StorageLive(_)
+            StatementKind::Assign(..)
+            | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Intrinsic(_)
             | StatementKind::Coverage(_)
@@ -404,10 +390,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                 }
 
                 // The call destination place and Operand::Move place used as an argument might be
-                // passed by a reference to the callee. Consequently they must be non-overlapping
-                // and cannot be packed. Currently this simply checks for duplicate places.
-                self.place_cache.clear();
-                self.place_cache.insert(destination.as_ref());
+                // passed by a reference to the callee. Consequently they cannot be packed.
                 if is_within_packed(self.tcx, &self.body.local_decls, *destination).is_some() {
                     // This is bad! The callee will expect the memory to be aligned.
                     self.fail(
@@ -418,10 +401,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                         ),
                     );
                 }
-                let mut has_duplicates = false;
                 for arg in args {
                     if let Operand::Move(place) = arg {
-                        has_duplicates |= !self.place_cache.insert(place.as_ref());
                         if is_within_packed(self.tcx, &self.body.local_decls, *place).is_some() {
                             // This is bad! The callee will expect the memory to be aligned.
                             self.fail(
@@ -433,16 +414,6 @@ impl<'a, 'tcx> Visitor<'tcx> for CfgChecker<'a, 'tcx> {
                             );
                         }
                     }
-                }
-
-                if has_duplicates {
-                    self.fail(
-                        location,
-                        format!(
-                            "encountered overlapping memory in `Move` arguments to `Call` terminator: {:?}",
-                            terminator.kind,
-                        ),
-                    );
                 }
             }
             TerminatorKind::Assert { target, unwind, .. } => {
@@ -1110,17 +1081,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             location,
                             "`CopyForDeref` should only be used for dereferenceable types",
                         )
-                    }
-                }
-                // FIXME(JakobDegen): Check this for all rvalues, not just this one.
-                if let Rvalue::Use(Operand::Copy(src) | Operand::Move(src)) = rvalue {
-                    // The sides of an assignment must not alias. Currently this just checks whether
-                    // the places are identical.
-                    if dest == src {
-                        self.fail(
-                            location,
-                            "encountered `Assign` statement with overlapping memory",
-                        );
                     }
                 }
             }

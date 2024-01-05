@@ -109,14 +109,15 @@ fn run_passes_inner<'tcx>(
     phase_change: Option<MirPhase>,
     validate_each: bool,
 ) {
-    let lint = tcx.sess.opts.unstable_opts.lint_mir & !body.should_skip();
-    let validate = validate_each & tcx.sess.opts.unstable_opts.validate_mir & !body.should_skip();
     let overridden_passes = &tcx.sess.opts.unstable_opts.mir_enable_passes;
     trace!(?overridden_passes);
 
     let prof_arg = tcx.sess.prof.enabled().then(|| format!("{:?}", body.source.def_id()));
 
     if !body.should_skip() {
+        let validate = validate_each & tcx.sess.opts.unstable_opts.validate_mir;
+        let lint = tcx.sess.opts.unstable_opts.lint_mir;
+
         for pass in passes {
             let name = pass.name();
 
@@ -162,7 +163,12 @@ fn run_passes_inner<'tcx>(
         body.pass_count = 0;
 
         dump_mir_for_phase_change(tcx, body);
-        if validate || new_phase == MirPhase::Runtime(RuntimePhase::Optimized) {
+
+        let validate =
+            (validate_each & tcx.sess.opts.unstable_opts.validate_mir & !body.should_skip())
+                || new_phase == MirPhase::Runtime(RuntimePhase::Optimized);
+        let lint = tcx.sess.opts.unstable_opts.lint_mir & !body.should_skip();
+        if validate {
             validate_body(tcx, body, format!("after phase change to {}", new_phase.name()));
         }
         if lint {
