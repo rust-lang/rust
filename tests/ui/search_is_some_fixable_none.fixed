@@ -219,6 +219,13 @@ mod issue_11910 {
         0
     }
 
+    struct Foo;
+    impl Foo{
+        fn bar(&self, _ : bool) {
+
+        }
+    }
+
     fn test_then() {
         let v = vec![3, 2, 1, 0, -1, -2, -3];
         (!v.iter().any(|x| *x == 42)).then(computations);
@@ -227,5 +234,7 @@ mod issue_11910 {
     fn test_then_some() {
         let v = vec![3, 2, 1, 0, -1, -2, -3];
         (!v.iter().any(|x| *x == 42)).then_some(0);
+
+        Foo.bar(!v.iter().any(|x| *x == 42));
     }
 }

@@ -159,7 +159,8 @@ pub(super) fn check<'tcx>(
 
 fn is_receiver_of_method_call(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
     if let Some(parent_expr) = get_parent_expr(cx, expr)
-        && let ExprKind::MethodCall(..) = parent_expr.kind
+        && let ExprKind::MethodCall(_, receiver, ..) = parent_expr.kind
+        && receiver.hir_id == expr.hir_id
     {
         return true;
     }

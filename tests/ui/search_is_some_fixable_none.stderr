@@ -283,16 +283,22 @@ LL |         let _ = v.iter().find(|fp| test_u32_2(*fp.field)).is_none();
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `!v.iter().any(|fp| test_u32_2(*fp.field))`
 
 error: called `is_none()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some_fixable_none.rs:230:9
+  --> $DIR/search_is_some_fixable_none.rs:237:9
    |
 LL |         v.iter().find(|x| **x == 42).is_none().then(computations);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `(!v.iter().any(|x| *x == 42))`
 
 error: called `is_none()` after searching an `Iterator` with `find`
-  --> $DIR/search_is_some_fixable_none.rs:235:9
+  --> $DIR/search_is_some_fixable_none.rs:242:9
    |
 LL |         v.iter().find(|x| **x == 42).is_none().then_some(0);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `(!v.iter().any(|x| *x == 42))`
 
-error: aborting due to 45 previous errors
+error: called `is_none()` after searching an `Iterator` with `find`
+  --> $DIR/search_is_some_fixable_none.rs:244:17
+   |
+LL |         Foo.bar(v.iter().find(|x| **x == 42).is_none());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|x| *x == 42)`
+
+error: aborting due to 46 previous errors
 
