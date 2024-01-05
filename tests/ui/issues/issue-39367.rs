@@ -1,6 +1,4 @@
 // run-pass
-// revisions: mir thir
-// [thir]compile-flags: -Zthir-unsafeck
 
 use std::ops::Deref;
 

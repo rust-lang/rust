@@ -1,5 +1,3 @@
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
 // only-x86_64
 
 #![feature(target_feature_11)]

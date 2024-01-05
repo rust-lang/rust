@@ -1,6 +1,3 @@
-// revisions: mirunsafeck thirunsafeck
-// [thirunsafeck]compile-flags: -Z thir-unsafeck
-
 //! Test the part of RFC 2514 that is about not applying `DerefMut` coercions
 //! of union fields.
 

@@ -1,5 +1,3 @@
-// revisions: mirunsafeck thirunsafeck
-// [thirunsafeck]compile-flags: -Z thir-unsafeck
 #![allow(unused, dead_code)]
 
 static mut FOO: u64 = 0;

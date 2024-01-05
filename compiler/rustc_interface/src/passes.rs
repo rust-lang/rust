@@ -735,9 +735,9 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) -> Result<()> {
 
     sess.time("MIR_borrow_checking", || {
         tcx.hir().par_body_owners(|def_id| {
-            // Run THIR unsafety check because it's responsible for stealing
-            // and deallocating THIR when enabled.
-            tcx.ensure().thir_check_unsafety(def_id);
+            // Run unsafety check because it's responsible for stealing and
+            // deallocating THIR.
+            tcx.ensure().check_unsafety(def_id);
             tcx.ensure().mir_borrowck(def_id)
         });
     });
