@@ -83,29 +83,42 @@ impl ImportMap {
             .iter()
             // We've only collected items, whose name cannot be tuple field so unwrapping is fine.
             .flat_map(|(&item, (info, _))| {
-                info.iter().enumerate().map(move |(idx, info)| {
-                    (item, info.name.as_str().unwrap().to_ascii_lowercase(), idx as u32)
-                })
+                info.iter()
+                    .enumerate()
+                    .map(move |(idx, info)| (item, info.name.to_smol_str(), idx as u32))
             })
             .collect();
-        importables.sort_by(|(_, lhs_name, _), (_, rhs_name, _)| lhs_name.cmp(rhs_name));
+        importables.sort_by(|(_, l_info, _), (_, r_info, _)| {
+            let lhs_chars = l_info.chars().map(|c| c.to_ascii_lowercase());
+            let rhs_chars = r_info.chars().map(|c| c.to_ascii_lowercase());
+            lhs_chars.cmp(rhs_chars)
+        });
         importables.dedup();
 
         // Build the FST, taking care not to insert duplicate values.
         let mut builder = fst::MapBuilder::memory();
-        let iter = importables
+        let mut iter = importables
             .iter()
             .enumerate()
-            .dedup_by(|(_, (_, lhs, _)), (_, (_, rhs, _))| lhs == rhs);
-        for (start_idx, (_, name, _)) in iter {
-            let _ = builder.insert(name, start_idx as u64);
+            .dedup_by(|&(_, (_, lhs, _)), &(_, (_, rhs, _))| lhs.eq_ignore_ascii_case(rhs));
+
+        let mut insert = |name: &str, start, end| {
+            builder.insert(name.to_ascii_lowercase(), ((start as u64) << 32) | end as u64).unwrap()
+        };
+
+        if let Some((mut last, (_, name, _))) = iter.next() {
+            debug_assert_eq!(last, 0);
+            let mut last_name = name;
+            for (next, (_, next_name, _)) in iter {
+                insert(last_name, last, next);
+                last = next;
+                last_name = next_name;
+            }
+            insert(last_name, last, importables.len());
         }
 
-        Arc::new(ImportMap {
-            item_to_info_map: map,
-            fst: builder.into_map(),
-            importables: importables.into_iter().map(|(item, _, idx)| (item, idx)).collect(),
-        })
+        let importables = importables.into_iter().map(|(item, _, idx)| (item, idx)).collect();
+        Arc::new(ImportMap { item_to_info_map: map, fst: builder.into_map(), importables })
     }
 
     pub fn import_info_for(&self, item: ItemInNs) -> Option<&[ImportInfo]> {
@@ -266,8 +279,8 @@ impl fmt::Debug for ImportMap {
 }
 
 /// A way to match import map contents against the search query.
-#[derive(Copy, Clone, Debug)]
-enum SearchMode {
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum SearchMode {
     /// Import map entry should strictly match the query string.
     Exact,
     /// Import map entry should contain all letters from the query string,
@@ -275,6 +288,42 @@ enum SearchMode {
     Fuzzy,
     /// Import map entry should match the query string by prefix.
     Prefix,
+}
+
+impl SearchMode {
+    pub fn check(self, query: &str, case_sensitive: bool, candidate: &str) -> bool {
+        match self {
+            SearchMode::Exact if case_sensitive => candidate == query,
+            SearchMode::Exact => candidate.eq_ignore_ascii_case(&query),
+            SearchMode::Prefix => {
+                query.len() <= candidate.len() && {
+                    let prefix = &candidate[..query.len() as usize];
+                    if case_sensitive {
+                        prefix == query
+                    } else {
+                        prefix.eq_ignore_ascii_case(&query)
+                    }
+                }
+            }
+            SearchMode::Fuzzy => {
+                let mut name = candidate;
+                query.chars().all(|query_char| {
+                    let m = if case_sensitive {
+                        name.match_indices(query_char).next()
+                    } else {
+                        name.match_indices([query_char, query_char.to_ascii_uppercase()]).next()
+                    };
+                    match m {
+                        Some((index, _)) => {
+                            name = &name[index + 1..];
+                            true
+                        }
+                        None => false,
+                    }
+                })
+            }
+        }
+    }
 }
 
 /// Three possible ways to search for the name in associated and/or other items.
@@ -392,67 +441,28 @@ fn search_maps(
     query: &Query,
 ) -> FxHashSet<ItemInNs> {
     let mut res = FxHashSet::default();
-    while let Some((key, indexed_values)) = stream.next() {
+    while let Some((_, indexed_values)) = stream.next() {
         for &IndexedValue { index: import_map_idx, value } in indexed_values {
-            let import_map = &import_maps[import_map_idx];
-            let importables = &import_map.importables[value as usize..];
+            let end = (value & 0xFFFF_FFFF) as usize;
+            let start = (value >> 32) as usize;
+            let ImportMap { item_to_info_map, importables, .. } = &*import_maps[import_map_idx];
+            let importables = &importables[start as usize..end];
 
             let iter = importables
                 .iter()
                 .copied()
-                .map(|(item, info_idx)| {
-                    let (import_infos, assoc_mode) = &import_map.item_to_info_map[&item];
-                    (item, &import_infos[info_idx as usize], *assoc_mode)
+                .filter_map(|(item, info_idx)| {
+                    let (import_infos, assoc_mode) = &item_to_info_map[&item];
+                    query
+                        .matches_assoc_mode(*assoc_mode)
+                        .then(|| (item, &import_infos[info_idx as usize]))
                 })
-                // we put all entries with the same lowercased name in a row, so stop once we find a
-                // different name in the importables
-                // FIXME: Consider putting a range into the value: u64 as (u32, u32)?
-                .take_while(|&(_, info, _)| {
-                    info.name.to_smol_str().as_bytes().eq_ignore_ascii_case(&key)
-                })
-                .filter(|&(_, info, assoc_mode)| {
-                    if !query.matches_assoc_mode(assoc_mode) {
-                        return false;
-                    }
-                    if !query.case_sensitive {
-                        return true;
-                    }
-                    let name = info.name.to_smol_str();
-                    // FIXME: Deduplicate this from ide-db
-                    match query.search_mode {
-                        SearchMode::Exact => !query.case_sensitive || name == query.query,
-                        SearchMode::Prefix => {
-                            query.query.len() <= name.len() && {
-                                let prefix = &name[..query.query.len() as usize];
-                                if query.case_sensitive {
-                                    prefix == query.query
-                                } else {
-                                    prefix.eq_ignore_ascii_case(&query.query)
-                                }
-                            }
-                        }
-                        SearchMode::Fuzzy => {
-                            let mut name = &*name;
-                            query.query.chars().all(|query_char| {
-                                let m = if query.case_sensitive {
-                                    name.match_indices(query_char).next()
-                                } else {
-                                    name.match_indices([
-                                        query_char,
-                                        query_char.to_ascii_uppercase(),
-                                    ])
-                                    .next()
-                                };
-                                match m {
-                                    Some((index, _)) => {
-                                        name = &name[index + 1..];
-                                        true
-                                    }
-                                    None => false,
-                                }
-                            })
-                        }
-                    }
+                .filter(|&(_, info)| {
+                    query.search_mode.check(
+                        &query.query,
+                        query.case_sensitive,
+                        &info.name.to_smol_str(),
+                    )
                 });
             res.extend(iter.map(TupleExt::head));
         }

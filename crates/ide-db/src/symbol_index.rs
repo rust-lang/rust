@@ -34,7 +34,7 @@ use base_db::{
 use fst::{self, raw::IndexedValue, Automaton, Streamer};
 use hir::{
     db::HirDatabase,
-    import_map::AssocSearchMode,
+    import_map::{AssocSearchMode, SearchMode},
     symbols::{FileSymbol, SymbolCollector},
     Crate, Module,
 };
@@ -44,22 +44,15 @@ use triomphe::Arc;
 
 use crate::RootDatabase;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum SearchMode {
-    Fuzzy,
-    Exact,
-    Prefix,
-}
-
 #[derive(Debug, Clone)]
 pub struct Query {
     query: String,
     lowercased: String,
-    only_types: bool,
-    libs: bool,
     mode: SearchMode,
     assoc_mode: AssocSearchMode,
     case_sensitive: bool,
+    only_types: bool,
+    libs: bool,
 }
 
 impl Query {
@@ -381,43 +374,7 @@ impl Query {
                     if non_type_for_type_only_query || !self.matches_assoc_mode(symbol.is_assoc) {
                         continue;
                     }
-                    // FIXME: Deduplicate this from hir-def
-                    let matches = match self.mode {
-                        SearchMode::Exact if self.case_sensitive => symbol.name == self.query,
-                        SearchMode::Exact => symbol.name.eq_ignore_ascii_case(&self.query),
-                        SearchMode::Prefix => {
-                            self.query.len() <= symbol.name.len() && {
-                                let prefix = &symbol.name[..self.query.len() as usize];
-                                if self.case_sensitive {
-                                    prefix == self.query
-                                } else {
-                                    prefix.eq_ignore_ascii_case(&self.query)
-                                }
-                            }
-                        }
-                        SearchMode::Fuzzy => {
-                            let mut name = &*symbol.name;
-                            self.query.chars().all(|query_char| {
-                                let m = if self.case_sensitive {
-                                    name.match_indices(query_char).next()
-                                } else {
-                                    name.match_indices([
-                                        query_char,
-                                        query_char.to_ascii_uppercase(),
-                                    ])
-                                    .next()
-                                };
-                                match m {
-                                    Some((index, _)) => {
-                                        name = &name[index + 1..];
-                                        true
-                                    }
-                                    None => false,
-                                }
-                            })
-                        }
-                    };
-                    if matches {
+                    if self.mode.check(&self.query, self.case_sensitive, &symbol.name) {
                         cb(symbol);
                     }
                 }
