@@ -525,9 +525,6 @@ pub struct DiagCtxtFlags {
     /// If true, immediately emit diagnostics that would otherwise be buffered.
     /// (rustc: see `-Z dont-buffer-diagnostics` and `-Z treat-err-as-bug`)
     pub dont_buffer_diagnostics: bool,
-    /// If true, immediately print bugs registered with `span_delayed_bug`.
-    /// (rustc: see `-Z report-delayed-bugs`)
-    pub report_delayed_bugs: bool,
     /// Show macro backtraces.
     /// (rustc: see `-Z macro-backtrace`)
     pub macro_backtrace: bool,
@@ -1004,7 +1001,6 @@ impl DiagCtxt {
     ) -> ErrorGuaranteed {
         let treat_next_err_as_bug = self.inner.borrow().treat_next_err_as_bug();
         if treat_next_err_as_bug {
-            // FIXME: don't abort here if report_delayed_bugs is off
             self.span_bug(sp, msg);
         }
         let mut diagnostic = Diagnostic::new(DelayedBug, msg);
@@ -1016,11 +1012,7 @@ impl DiagCtxt {
     // where the explanation of what "good path" is (also, it should be renamed).
     pub fn good_path_delayed_bug(&self, msg: impl Into<DiagnosticMessage>) {
         let mut inner = self.inner.borrow_mut();
-
-        let mut diagnostic = Diagnostic::new(DelayedBug, msg);
-        if inner.flags.report_delayed_bugs {
-            inner.emit_diagnostic_without_consuming(&mut diagnostic);
-        }
+        let diagnostic = Diagnostic::new(DelayedBug, msg);
         let backtrace = std::backtrace::Backtrace::capture();
         inner.good_path_delayed_bugs.push(DelayedDiagnostic::with_backtrace(diagnostic, backtrace));
     }
@@ -1430,10 +1422,8 @@ impl DiagCtxtInner {
             self.span_delayed_bugs
                 .push(DelayedDiagnostic::with_backtrace(diagnostic.clone(), backtrace));
 
-            if !self.flags.report_delayed_bugs {
-                #[allow(deprecated)]
-                return Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
-            }
+            #[allow(deprecated)]
+            return Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
         }
 
         if diagnostic.has_future_breakage() {
