@@ -724,6 +724,14 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         // Invariant: `value` holds the value up-to the `index`th projection excluded.
         let mut value = self.locals[place.local]?;
         for (index, proj) in place.projection.iter().enumerate() {
+            if let Value::Projection(pointer, ProjectionElem::Deref) = *self.get(value)
+                && let Value::Address { place: mut pointee, kind, .. } = *self.get(pointer)
+                && let AddressKind::Ref(BorrowKind::Shared) = kind
+                && let Some(v) = self.simplify_place_value(&mut pointee, location)
+            {
+                value = v;
+                place_ref = pointee.project_deeper(&place.projection[index..], self.tcx).as_ref();
+            }
             if let Some(local) = self.try_as_local(value, location) {
                 // Both `local` and `Place { local: place.local, projection: projection[..index] }`
                 // hold the same value. Therefore, following place holds the value in the original
@@ -735,6 +743,14 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             value = self.project(base, value, proj)?;
         }
 
+        if let Value::Projection(pointer, ProjectionElem::Deref) = *self.get(value)
+            && let Value::Address { place: mut pointee, kind, .. } = *self.get(pointer)
+            && let AddressKind::Ref(BorrowKind::Shared) = kind
+            && let Some(v) = self.simplify_place_value(&mut pointee, location)
+        {
+            value = v;
+            place_ref = pointee.project_deeper(&[], self.tcx).as_ref();
+        }
         if let Some(new_local) = self.try_as_local(value, location) {
             place_ref = PlaceRef { local: new_local, projection: &[] };
         }
