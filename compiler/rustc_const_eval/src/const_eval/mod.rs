@@ -1,12 +1,10 @@
 // Not in interpret to make sure we do not use private implementation details
 
-use crate::errors::MaxNumNodesInConstErr;
 use crate::interpret::InterpCx;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId};
+use rustc_middle::mir::interpret::{InterpError, InterpErrorInfo};
 use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::DUMMY_SP;
+use rustc_middle::ty::{self, Ty};
 
 mod error;
 mod eval_queries;
@@ -18,55 +16,32 @@ pub use error::*;
 pub use eval_queries::*;
 pub use fn_queries::*;
 pub use machine::*;
-pub(crate) use valtrees::{const_to_valtree_inner, valtree_to_const_value};
+pub(crate) use valtrees::{eval_to_valtree, valtree_to_const_value};
 
 // We forbid type-level constants that contain more than `VALTREE_MAX_NODES` nodes.
 const VALTREE_MAX_NODES: usize = 100000;
 
 pub(crate) enum ValTreeCreationError {
     NodesOverflow,
+    /// Values of this type, or this particular value, are not supported as valtrees.
     NonSupportedType,
+    /// The value pointed to non-read-only memory, so we cannot make it a valtree.
+    NotReadOnly,
     Other,
 }
 pub(crate) type ValTreeCreationResult<'tcx> = Result<ty::ValTree<'tcx>, ValTreeCreationError>;
 
-/// Evaluates a constant and turns it into a type-level constant value.
-pub(crate) fn eval_to_valtree<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    cid: GlobalId<'tcx>,
-) -> EvalToValTreeResult<'tcx> {
-    let const_alloc = tcx.eval_to_allocation_raw(param_env.and(cid))?;
-
-    // FIXME Need to provide a span to `eval_to_valtree`
-    let ecx = mk_eval_cx(
-        tcx,
-        DUMMY_SP,
-        param_env,
-        // It is absolutely crucial for soundness that
-        // we do not read from static items or other mutable memory.
-        CanAccessStatics::No,
-    );
-    let place = ecx.raw_const_to_mplace(const_alloc).unwrap();
-    debug!(?place);
-
-    let mut num_nodes = 0;
-    let valtree_result = const_to_valtree_inner(&ecx, &place, &mut num_nodes);
-
-    match valtree_result {
-        Ok(valtree) => Ok(Some(valtree)),
-        Err(err) => {
-            let did = cid.instance.def_id();
-            let global_const_id = cid.display(tcx);
-            match err {
-                ValTreeCreationError::NodesOverflow => {
-                    let span = tcx.hir().span_if_local(did);
-                    tcx.dcx().emit_err(MaxNumNodesInConstErr { span, global_const_id });
-
-                    Ok(None)
+impl From<InterpErrorInfo<'_>> for ValTreeCreationError {
+    fn from(err: InterpErrorInfo<'_>) -> Self {
+        match err.kind() {
+            InterpError::MachineStop(err) => {
+                let err = err.downcast_ref::<ConstEvalErrKind>().unwrap();
+                match err {
+                    ConstEvalErrKind::ConstAccessesMutGlobal => ValTreeCreationError::NotReadOnly,
+                    _ => ValTreeCreationError::Other,
                 }
-                ValTreeCreationError::NonSupportedType | ValTreeCreationError::Other => Ok(None),
             }
+            _ => ValTreeCreationError::Other,
         }
     }
 }
@@ -78,7 +53,7 @@ pub(crate) fn try_destructure_mir_constant_for_user_output<'tcx>(
     ty: Ty<'tcx>,
 ) -> Option<mir::DestructuredConstant<'tcx>> {
     let param_env = ty::ParamEnv::reveal_all();
-    let ecx = mk_eval_cx(tcx.tcx, tcx.span, param_env, CanAccessStatics::No);
+    let ecx = mk_eval_cx(tcx.tcx, tcx.span, param_env, CanAccessMutGlobal::No);
     let op = ecx.const_val_to_op(val, ty, None).ok()?;
 
     // We go to `usize` as we cannot allocate anything bigger anyway.

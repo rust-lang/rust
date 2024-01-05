@@ -409,6 +409,8 @@ declare_features! (
     (unstable, const_precise_live_drops, "1.46.0", Some(73255)),
     /// Allows references to types with interior mutability within constants
     (unstable, const_refs_to_cell, "1.51.0", Some(80384)),
+    /// Allows creating pointers and references to `static` items in constants.
+    (unstable, const_refs_to_static, "CURRENT_RUSTC_VERSION", Some(119618)),
     /// Allows `impl const Trait for T` syntax.
     (unstable, const_trait_impl, "1.42.0", Some(67792)),
     /// Allows the `?` operator in const contexts.

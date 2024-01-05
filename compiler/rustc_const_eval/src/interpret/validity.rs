@@ -132,7 +132,6 @@ pub enum CtfeValidationMode {
     /// `allow_immutable_unsafe_cell` says whether we allow `UnsafeCell` in immutable memory (which is the
     /// case for the top-level allocation of a `const`, where this is fine because the allocation will be
     /// copied at each use site).
-    /// `allow_static_ptrs` says if pointers to statics are permitted (which is the case for promoteds in statics).
     Const { allow_immutable_unsafe_cell: bool, allow_static_ptrs: bool },
 }
 
@@ -143,13 +142,6 @@ impl CtfeValidationMode {
             CtfeValidationMode::Const { allow_immutable_unsafe_cell, .. } => {
                 allow_immutable_unsafe_cell
             }
-        }
-    }
-
-    fn allow_static_ptrs(self) -> bool {
-        match self {
-            CtfeValidationMode::Static { .. } => true, // statics can point to statics
-            CtfeValidationMode::Const { allow_static_ptrs, .. } => allow_static_ptrs,
         }
     }
 
@@ -468,13 +460,6 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                         // Special handling for pointers to statics (irrespective of their type).
                         assert!(!self.ecx.tcx.is_thread_local_static(did));
                         assert!(self.ecx.tcx.is_static(did));
-                        if self.ctfe_mode.is_some_and(|c| !c.allow_static_ptrs()) {
-                            // See const_eval::machine::MemoryExtra::can_access_statics for why
-                            // this check is so important.
-                            // This check is reachable when the const just referenced the static,
-                            // but never read it (so we never entered `before_access_global`).
-                            throw_validation_failure!(self.path, PtrToStatic { ptr_kind });
-                        }
                         // Mutability check.
                         if ptr_expected_mutbl == Mutability::Mut {
                             if matches!(

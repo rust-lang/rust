@@ -56,21 +56,9 @@ pub(crate) struct UnstableInStable {
 
 #[derive(Diagnostic)]
 #[diag(const_eval_thread_local_access, code = E0625)]
-pub(crate) struct NonConstOpErr {
+pub(crate) struct ThreadLocalAccessErr {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(const_eval_static_access, code = E0013)]
-#[help]
-pub(crate) struct StaticAccessErr {
-    #[primary_span]
-    pub span: Span,
-    pub kind: ConstContext,
-    #[note(const_eval_teach_note)]
-    #[help(const_eval_teach_help)]
-    pub teach: Option<()>,
 }
 
 #[derive(Diagnostic)]
@@ -124,6 +112,14 @@ pub(crate) struct TransientMutRawErr {
 #[derive(Diagnostic)]
 #[diag(const_eval_max_num_nodes_in_const)]
 pub(crate) struct MaxNumNodesInConstErr {
+    #[primary_span]
+    pub span: Option<Span>,
+    pub global_const_id: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(const_eval_mutable_data_in_const)]
+pub(crate) struct MutableDataInConstErr {
     #[primary_span]
     pub span: Option<Span>,
     pub global_const_id: String,
