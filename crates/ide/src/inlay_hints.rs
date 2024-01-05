@@ -593,7 +593,6 @@ mod tests {
     use hir::ClosureStyle;
     use itertools::Itertools;
     use test_utils::extract_annotations;
-    use text_edit::{TextRange, TextSize};
 
     use crate::inlay_hints::{AdjustmentHints, AdjustmentHintsMode};
     use crate::DiscriminantHints;
@@ -652,29 +651,6 @@ mod tests {
         expected.sort_by_key(|(range, _)| range.start());
 
         assert_eq!(expected, actual, "\nExpected:\n{expected:#?}\n\nActual:\n{actual:#?}");
-    }
-
-    #[track_caller]
-    pub(super) fn check_expect(config: InlayHintsConfig, ra_fixture: &str, expect: Expect) {
-        let (analysis, file_id) = fixture::file(ra_fixture);
-        let inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
-        expect.assert_debug_eq(&inlay_hints)
-    }
-
-    #[track_caller]
-    pub(super) fn check_expect_clear_loc(
-        config: InlayHintsConfig,
-        ra_fixture: &str,
-        expect: Expect,
-    ) {
-        let (analysis, file_id) = fixture::file(ra_fixture);
-        let mut inlay_hints = analysis.inlay_hints(&config, file_id, None).unwrap();
-        inlay_hints.iter_mut().flat_map(|hint| &mut hint.label.parts).for_each(|hint| {
-            if let Some(loc) = &mut hint.linked_location {
-                loc.range = TextRange::empty(TextSize::from(0));
-            }
-        });
-        expect.assert_debug_eq(&inlay_hints)
     }
 
     /// Computes inlay hints for the fixture, applies all the provided text edits and then runs
