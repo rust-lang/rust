@@ -1,6 +1,9 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
+#[allow(unused_imports)]
+use rustc_ast::expand::autodiff_attrs::DiffActivity;
+
 use super::debuginfo::{
     DIArray, DIBasicType, DIBuilder, DICompositeType, DIDerivedType, DIDescriptor, DIEnumerator,
     DIFile, DIFlags, DIGlobalVariableExpression, DILexicalBlock, DILocation, DINameSpace,
@@ -11,6 +14,8 @@ use super::debuginfo::{
 use libc::{c_char, c_int, c_uint, size_t};
 use libc::{c_ulonglong, c_void};
 
+use core::fmt;
+use std::ffi::{CStr, CString};
 use std::marker::PhantomData;
 
 use super::RustString;
@@ -832,7 +837,184 @@ pub type SelfProfileAfterPassCallback = unsafe extern "C" fn(*mut c_void);
 pub type GetSymbolsCallback = unsafe extern "C" fn(*mut c_void, *const c_char) -> *mut c_void;
 pub type GetSymbolsErrorCallback = unsafe extern "C" fn(*const c_char) -> *mut c_void;
 
+#[repr(C)]
+pub enum LLVMVerifierFailureAction {
+    LLVMAbortProcessAction,
+    LLVMPrintMessageAction,
+    LLVMReturnStatusAction,
+}
+
+#[allow(dead_code)]
+pub(crate) unsafe fn enzyme_rust_forward_diff(
+    logic_ref: EnzymeLogicRef,
+    type_analysis: EnzymeTypeAnalysisRef,
+    fnc: &Value,
+    input_diffactivity: Vec<DiffActivity>,
+    ret_diffactivity: DiffActivity,
+    mut ret_primary_ret: bool,
+    input_tts: Vec<TypeTree>,
+    output_tt: TypeTree,
+) -> &Value {
+    let ret_activity = cdiffe_from(ret_diffactivity);
+    assert!(ret_activity != CDIFFE_TYPE::DFT_OUT_DIFF);
+    let mut input_activity: Vec<CDIFFE_TYPE> = vec![];
+    for input in input_diffactivity {
+        let act = cdiffe_from(input);
+        assert!(act == CDIFFE_TYPE::DFT_CONSTANT || act == CDIFFE_TYPE::DFT_DUP_ARG || act == CDIFFE_TYPE::DFT_DUP_NONEED);
+        input_activity.push(act);
+    }
+
+    if ret_activity == CDIFFE_TYPE::DFT_DUP_ARG {
+        if ret_primary_ret != true {
+            dbg!("overwriting ret_primary_ret!");
+        }
+        ret_primary_ret = true;
+    } else if ret_activity == CDIFFE_TYPE::DFT_DUP_NONEED {
+        if ret_primary_ret != false {
+            dbg!("overwriting ret_primary_ret!");
+        }
+        ret_primary_ret = false;
+    }
+
+    let mut args_tree = input_tts.iter().map(|x| x.inner).collect::<Vec<_>>();
+    //let mut args_tree = vec![TypeTree::new().inner; typetree.input_tt.len()];
+
+    // We don't support volatile / extern / (global?) values.
+    // Just because I didn't had time to test them, and it seems less urgent.
+    let args_uncacheable = vec![0; input_activity.len()];
+
+    let kv_tmp = IntList { data: std::ptr::null_mut(), size: 0 };
+
+    let mut known_values = vec![kv_tmp; input_activity.len()];
+
+    let dummy_type = CFnTypeInfo {
+        Arguments: args_tree.as_mut_ptr(),
+        Return: output_tt.inner.clone(),
+        KnownValues: known_values.as_mut_ptr(),
+    };
+
+    EnzymeCreateForwardDiff(
+        logic_ref, // Logic
+        std::ptr::null(),
+        std::ptr::null(),
+        fnc,
+        ret_activity, // LLVM function, return type
+        input_activity.as_ptr(),
+        input_activity.len(), // constant arguments
+        type_analysis,        // type analysis struct
+        ret_primary_ret as u8,
+        CDerivativeMode::DEM_ForwardMode, // return value, dret_used, top_level which was 1
+        1,                                // free memory
+        1,                                // vector mode width
+        Option::None,
+        dummy_type, // additional_arg, type info (return + args)
+        args_uncacheable.as_ptr(),
+        args_uncacheable.len(), // uncacheable arguments
+        std::ptr::null_mut(),   // write augmented function to this
+    )
+}
+
+#[allow(dead_code)]
+pub(crate) unsafe fn enzyme_rust_reverse_diff(
+    logic_ref: EnzymeLogicRef,
+    type_analysis: EnzymeTypeAnalysisRef,
+    fnc: &Value,
+    input_activity: Vec<DiffActivity>,
+    ret_activity: DiffActivity,
+    mut ret_primary_ret: bool,
+    diff_primary_ret: bool,
+    input_tts: Vec<TypeTree>,
+    output_tt: TypeTree,
+) -> &Value {
+    let ret_activity = cdiffe_from(ret_activity);
+    assert!(ret_activity == CDIFFE_TYPE::DFT_CONSTANT || ret_activity == CDIFFE_TYPE::DFT_OUT_DIFF);
+    let input_activity: Vec<CDIFFE_TYPE> = input_activity.iter().map(|&x| cdiffe_from(x)).collect();
+
+    dbg!(&fnc);
+
+    if ret_activity == CDIFFE_TYPE::DFT_DUP_ARG {
+        if ret_primary_ret != true {
+            dbg!("overwriting ret_primary_ret!");
+        }
+        ret_primary_ret = true;
+    } else if ret_activity == CDIFFE_TYPE::DFT_DUP_NONEED {
+        if ret_primary_ret != false {
+            dbg!("overwriting ret_primary_ret!");
+        }
+        ret_primary_ret = false;
+    }
+
+    let mut args_tree = input_tts.iter().map(|x| x.inner).collect::<Vec<_>>();
+
+    // We don't support volatile / extern / (global?) values.
+    // Just because I didn't had time to test them, and it seems less urgent.
+    let args_uncacheable = vec![0; input_tts.len()];
+    assert!(args_uncacheable.len() == input_activity.len());
+    let num_fnc_args = LLVMCountParams(fnc);
+    println!("num_fnc_args: {}", num_fnc_args);
+    println!("input_activity.len(): {}", input_activity.len());
+    assert!(num_fnc_args == input_activity.len() as u32);
+    let kv_tmp = IntList { data: std::ptr::null_mut(), size: 0 };
+
+
+    let mut known_values = vec![kv_tmp; input_tts.len()];
+
+    let dummy_type = CFnTypeInfo {
+        Arguments: args_tree.as_mut_ptr(),
+        Return: output_tt.inner.clone(),
+        KnownValues: known_values.as_mut_ptr(),
+    };
+
+    let res = EnzymeCreatePrimalAndGradient(
+        logic_ref, // Logic
+        std::ptr::null(),
+        std::ptr::null(),
+        fnc,
+        ret_activity, // LLVM function, return type
+        input_activity.as_ptr(),
+        input_activity.len(), // constant arguments
+        type_analysis,        // type analysis struct
+        ret_primary_ret as u8,
+        diff_primary_ret as u8,                   //0
+        CDerivativeMode::DEM_ReverseModeCombined, // return value, dret_used, top_level which was 1
+        1,                                        // vector mode width
+        1,                                        // free memory
+        Option::None,
+        0, // do not force anonymous tape
+        dummy_type, // additional_arg, type info (return + args)
+        args_uncacheable.as_ptr(),
+        args_uncacheable.len(), // uncacheable arguments
+        std::ptr::null_mut(),   // write augmented function to this
+        0,
+    );
+    dbg!(&res);
+    res
+}
+
 extern "C" {
+    // Enzyme
+    pub fn LLVMGetReturnType(T: &Type) -> &Type;
+    pub fn LLVMDumpModule(M: &Module);
+    pub fn LLVMCountStructElementTypes(T: &Type) -> c_uint;
+    pub fn LLVMDeleteFunction(V: &Value);
+    pub fn LLVMVerifyFunction(V: &Value, action: LLVMVerifierFailureAction) -> bool;
+    pub fn LLVMGetParams(Fnc: &Value, parms: *mut &Value);
+    pub fn LLVMBuildCall2<'a>(
+        arg1: &Builder<'a>,
+        ty: &Type,
+        func: &Value,
+        args: *mut &Value,
+        num_args: size_t,
+        name: *const c_char,
+    ) -> &'a Value;
+    pub fn LLVMGetBasicBlockTerminator(B: &BasicBlock) -> &Value;
+    pub fn LLVMAddFunction<'a>(M: &Module, Name: *const c_char, Ty: &Type) -> &'a Value;
+    pub fn LLVMGetFirstFunction(M: &Module) -> Option<&Value>;
+    pub fn LLVMGetNextFunction(V: &Value) -> Option<&Value>;
+    pub fn LLVMGetNamedFunction(M: &Module, Name: *const c_char) -> Option<&Value>;
+    pub fn LLVMGlobalGetValueType(val: &Value) -> &Type;
+    pub fn LLVMRustGetFunctionType(fnc: &Value) -> &Type;
+
     // Create and destroy contexts.
     pub fn LLVMContextDispose(C: &'static mut Context);
     pub fn LLVMGetMDKindIDInContext(C: &Context, Name: *const c_char, SLen: c_uint) -> c_uint;
@@ -996,6 +1178,16 @@ extern "C" {
         Value: *const c_char,
         ValueLen: c_uint,
     ) -> &Attribute;
+    pub fn LLVMRemoveStringAttributeAtIndex(F : &Value, Idx: c_uint, K: *const c_char, KLen : c_uint);
+    pub fn LLVMGetStringAttributeAtIndex(F : &Value, Idx: c_uint, K: *const c_char, KLen : c_uint) -> &Attribute;
+    pub fn LLVMAddAttributeAtIndex(F : &Value, Idx: c_uint, K: &Attribute);
+    pub fn LLVMRemoveEnumAttributeAtIndex(F : &Value, Idx: c_uint, K: Attribute);
+    pub fn LLVMGetEnumAttributeAtIndex(F : &Value, Idx: c_uint, K: Attribute) -> &Attribute;
+    pub fn LLVMIsEnumAttribute(A : &Attribute) -> bool;
+    pub fn LLVMIsStringAttribute(A : &Attribute) -> bool;
+    pub fn LLVMRustAddEnumAttributeAtIndex(C: &Context, V: &Value, index: c_uint, attr: AttributeKind);
+    pub fn LLVMRustRemoveEnumAttributeAtIndex(V: &Value, index: c_uint, attr: AttributeKind);
+    pub fn LLVMRustGetEnumAttributeAtIndex(V: &Value, index: c_uint, attr: AttributeKind) ->&Attribute;
 
     // Operations on functions
     pub fn LLVMSetFunctionCallConv(Fn: &Value, CC: c_uint);
@@ -2404,4 +2596,304 @@ extern "C" {
         callback: GetSymbolsCallback,
         error_callback: GetSymbolsErrorCallback,
     ) -> *mut c_void;
+}
+
+// Enzyme
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct EnzymeOpaqueTypeAnalysis {
+    _unused: [u8; 0],
+}
+pub type EnzymeTypeAnalysisRef = *mut EnzymeOpaqueTypeAnalysis;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct EnzymeOpaqueLogic {
+    _unused: [u8; 0],
+}
+pub type EnzymeLogicRef = *mut EnzymeOpaqueLogic;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct EnzymeOpaqueAugmentedReturn {
+    _unused: [u8; 0],
+}
+pub type EnzymeAugmentedReturnPtr = *mut EnzymeOpaqueAugmentedReturn;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct IntList {
+    pub data: *mut i64,
+    pub size: size_t,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum CConcreteType {
+    DT_Anything = 0,
+    DT_Integer = 1,
+    DT_Pointer = 2,
+    DT_Half = 3,
+    DT_Float = 4,
+    DT_Double = 5,
+    DT_Unknown = 6,
+}
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct EnzymeTypeTree {
+    _unused: [u8; 0],
+}
+pub type CTypeTreeRef = *mut EnzymeTypeTree;
+extern "C" {
+    fn EnzymeNewTypeTree() -> CTypeTreeRef;
+}
+extern "C" {
+    fn EnzymeFreeTypeTree(CTT: CTypeTreeRef);
+}
+extern "C" {
+    pub fn EnzymeSetCLBool(arg1: *mut ::std::os::raw::c_void, arg2: u8);
+}
+extern "C" {
+    pub fn EnzymeSetCLInteger(arg1: *mut ::std::os::raw::c_void, arg2: i64);
+}
+
+extern "C" {
+    pub static mut MaxIntOffset: c_void;
+    pub static mut MaxTypeOffset: c_void;
+    pub static mut EnzymeMaxTypeDepth: c_void;
+
+    pub static mut EnzymePrintPerf: c_void;
+    pub static mut EnzymePrintActivity: c_void;
+    pub static mut EnzymePrintType: c_void;
+    pub static mut EnzymePrint: c_void;
+    pub static mut EnzymeStrictAliasing: c_void;
+}
+
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct CFnTypeInfo {
+    #[doc = " Types of arguments, assumed of size len(Arguments)"]
+    pub Arguments: *mut CTypeTreeRef,
+    #[doc = " Type of return"]
+    pub Return: CTypeTreeRef,
+    #[doc = " The specific constant(s) known to represented by an argument, if constant"]
+    pub KnownValues: *mut IntList,
+}
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum CDIFFE_TYPE {
+    DFT_OUT_DIFF = 0,
+    DFT_DUP_ARG = 1,
+    DFT_CONSTANT = 2,
+    DFT_DUP_NONEED = 3,
+}
+
+fn cdiffe_from(act: DiffActivity) -> CDIFFE_TYPE {
+    return match act {
+        DiffActivity::None => CDIFFE_TYPE::DFT_CONSTANT,
+        DiffActivity::Active => CDIFFE_TYPE::DFT_OUT_DIFF,
+        DiffActivity::Const => CDIFFE_TYPE::DFT_CONSTANT,
+        DiffActivity::Duplicated => CDIFFE_TYPE::DFT_DUP_ARG,
+        DiffActivity::DuplicatedNoNeed => CDIFFE_TYPE::DFT_DUP_NONEED,
+    };
+}
+
+#[repr(u32)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum CDerivativeMode {
+    DEM_ForwardMode = 0,
+    DEM_ReverseModePrimal = 1,
+    DEM_ReverseModeGradient = 2,
+    DEM_ReverseModeCombined = 3,
+    DEM_ForwardModeSplit = 4,
+}
+extern "C" {
+    #[allow(dead_code)]
+    fn EnzymeCreatePrimalAndGradient<'a>(
+        arg1: EnzymeLogicRef,
+        _builderCtx: *const u8, // &'a Builder<'_>,
+        _callerCtx: *const u8,// &'a Value,
+        todiff: &'a Value,
+        retType: CDIFFE_TYPE,
+        constant_args: *const CDIFFE_TYPE,
+        constant_args_size: size_t,
+        TA: EnzymeTypeAnalysisRef,
+        returnValue: u8,
+        dretUsed: u8,
+        mode: CDerivativeMode,
+        width: ::std::os::raw::c_uint,
+        freeMemory: u8,
+        additionalArg: Option<&Type>,
+        forceAnonymousTape: u8,
+        typeInfo: CFnTypeInfo,
+        _uncacheable_args: *const u8,
+        uncacheable_args_size: size_t,
+        augmented: EnzymeAugmentedReturnPtr,
+        AtomicAdd: u8,
+    ) -> &'a Value;
+    //) -> LLVMValueRef;
+}
+extern "C" {
+    fn EnzymeCreateForwardDiff<'a>(
+        arg1: EnzymeLogicRef,
+        _builderCtx: *const u8,// &'a Builder<'_>,
+        _callerCtx: *const u8,// &'a Value,
+        todiff: &'a Value,
+        retType: CDIFFE_TYPE,
+        constant_args: *const CDIFFE_TYPE,
+        constant_args_size: size_t,
+        TA: EnzymeTypeAnalysisRef,
+        returnValue: u8,
+        mode: CDerivativeMode,
+        freeMemory: u8,
+        width: ::std::os::raw::c_uint,
+        additionalArg: Option<&Type>,
+        typeInfo: CFnTypeInfo,
+        _uncacheable_args: *const u8,
+        uncacheable_args_size: size_t,
+        augmented: EnzymeAugmentedReturnPtr,
+    ) -> &'a Value;
+}
+pub type CustomRuleType = ::std::option::Option<
+    unsafe extern "C" fn(
+        direction: ::std::os::raw::c_int,
+        ret: CTypeTreeRef,
+        args: *mut CTypeTreeRef,
+        known_values: *mut IntList,
+        num_args: size_t,
+        fnc: &Value,
+        ta: *const ::std::os::raw::c_void,
+    ) -> u8,
+>;
+extern "C" {
+    pub fn CreateTypeAnalysis(
+        Log: EnzymeLogicRef,
+        customRuleNames: *mut *mut ::std::os::raw::c_char,
+        customRules: *mut CustomRuleType,
+        numRules: size_t,
+    ) -> EnzymeTypeAnalysisRef;
+}
+extern "C" {
+    pub fn ClearTypeAnalysis(arg1: EnzymeTypeAnalysisRef);
+}
+extern "C" {
+    pub fn FreeTypeAnalysis(arg1: EnzymeTypeAnalysisRef);
+}
+extern "C" {
+    pub fn CreateEnzymeLogic(PostOpt: u8) -> EnzymeLogicRef;
+}
+extern "C" {
+    pub fn ClearEnzymeLogic(arg1: EnzymeLogicRef);
+}
+extern "C" {
+    pub fn FreeEnzymeLogic(arg1: EnzymeLogicRef);
+}
+
+extern "C" {
+    fn EnzymeNewTypeTreeCT(arg1: CConcreteType, ctx: &Context) -> CTypeTreeRef;
+    fn EnzymeNewTypeTreeTR(arg1: CTypeTreeRef) -> CTypeTreeRef;
+    fn EnzymeMergeTypeTree(arg1: CTypeTreeRef, arg2: CTypeTreeRef) -> bool;
+    fn EnzymeTypeTreeOnlyEq(arg1: CTypeTreeRef, pos: i64);
+    fn EnzymeTypeTreeData0Eq(arg1: CTypeTreeRef);
+    fn EnzymeTypeTreeShiftIndiciesEq(
+        arg1: CTypeTreeRef,
+        data_layout: *const c_char,
+        offset: i64,
+        max_size: i64,
+        add_offset: u64,
+    );
+    fn EnzymeTypeTreeToStringFree(arg1: *const c_char);
+    fn EnzymeTypeTreeToString(arg1: CTypeTreeRef) -> *const c_char;
+}
+
+pub struct TypeTree {
+    pub inner: CTypeTreeRef,
+}
+
+impl TypeTree {
+    pub fn new() -> TypeTree {
+        let inner = unsafe { EnzymeNewTypeTree() };
+
+        TypeTree { inner }
+    }
+
+    #[must_use]
+    pub fn from_type(t: CConcreteType, ctx: &Context) -> TypeTree {
+        let inner = unsafe { EnzymeNewTypeTreeCT(t, ctx) };
+
+        TypeTree { inner }
+    }
+
+    #[must_use]
+    pub fn only(self, idx: isize) -> TypeTree {
+        unsafe {
+            EnzymeTypeTreeOnlyEq(self.inner, idx as i64);
+        }
+        self
+    }
+
+    #[must_use]
+    pub fn data0(self) -> TypeTree {
+        unsafe {
+            EnzymeTypeTreeData0Eq(self.inner);
+        }
+        self
+    }
+
+    pub fn merge(self, other: Self) -> Self {
+        unsafe {
+            EnzymeMergeTypeTree(self.inner, other.inner);
+        }
+        drop(other);
+
+        self
+    }
+
+    #[must_use]
+    pub fn shift(self, layout: &str, offset: isize, max_size: isize, add_offset: usize) -> Self {
+        let layout = CString::new(layout).unwrap();
+
+        unsafe {
+            EnzymeTypeTreeShiftIndiciesEq(
+                self.inner,
+                layout.as_ptr(),
+                offset as i64,
+                max_size as i64,
+                add_offset as u64,
+            )
+        }
+
+        self
+    }
+}
+
+impl Clone for TypeTree {
+    fn clone(&self) -> Self {
+        let inner = unsafe { EnzymeNewTypeTreeTR(self.inner) };
+        TypeTree { inner }
+    }
+}
+
+impl fmt::Display for TypeTree {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let ptr = unsafe { EnzymeTypeTreeToString(self.inner) };
+        let cstr = unsafe { CStr::from_ptr(ptr) };
+        match cstr.to_str() {
+            Ok(x) => write!(f, "{}", x)?,
+            Err(err) => write!(f, "could not parse: {}", err)?,
+        }
+
+        // delete C string pointer
+        unsafe { EnzymeTypeTreeToStringFree(ptr) }
+
+        Ok(())
+    }
+}
+
+impl fmt::Debug for TypeTree {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <Self as fmt::Display>::fmt(self, f)
+    }
+}
+
+impl Drop for TypeTree {
+    fn drop(&mut self) {
+        unsafe { EnzymeFreeTypeTree(self.inner) }
+    }
 }
