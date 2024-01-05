@@ -10,6 +10,7 @@
     clippy::nonminimal_bool,
     clippy::short_circuit_statement,
     clippy::unnecessary_operation,
+    clippy::redundant_pattern_matching,
     unused
 )]
 #![warn(clippy::needless_if)]

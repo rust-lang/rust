@@ -285,7 +285,7 @@ impl AssertMessage {
             AssertMessage::RemainderByZero(_) => {
                 Ok("attempt to calculate the remainder with a divisor of zero")
             }
-            AssertMessage::ResumedAfterReturn(CoroutineKind::Coroutine) => {
+            AssertMessage::ResumedAfterReturn(CoroutineKind::Coroutine(_)) => {
                 Ok("coroutine resumed after completion")
             }
             AssertMessage::ResumedAfterReturn(CoroutineKind::Desugared(
@@ -300,7 +300,7 @@ impl AssertMessage {
                 CoroutineDesugaring::AsyncGen,
                 _,
             )) => Ok("`gen fn` should just keep returning `AssertMessage::None` after completion"),
-            AssertMessage::ResumedAfterPanic(CoroutineKind::Coroutine) => {
+            AssertMessage::ResumedAfterPanic(CoroutineKind::Coroutine(_)) => {
                 Ok("coroutine resumed after panicking")
             }
             AssertMessage::ResumedAfterPanic(CoroutineKind::Desugared(
@@ -399,7 +399,7 @@ pub enum UnOp {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum CoroutineKind {
     Desugared(CoroutineDesugaring, CoroutineSource),
-    Coroutine,
+    Coroutine(Movability),
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -662,6 +662,7 @@ pub enum AggregateKind {
     Tuple,
     Adt(AdtDef, VariantIdx, GenericArgs, Option<UserTypeAnnotationIndex>, Option<FieldIdx>),
     Closure(ClosureDef, GenericArgs),
+    // FIXME(stable_mir): Movability here is redundant
     Coroutine(CoroutineDef, GenericArgs, Movability),
 }
 

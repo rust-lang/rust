@@ -5,17 +5,19 @@
 use std::{collections::hash_map::Entry, mem, path::Path, sync};
 
 use crossbeam_channel::{unbounded, Receiver};
-use ide::{AnalysisHost, Change, SourceRoot};
+use hir_expand::proc_macro::{
+    ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacroLoadResult,
+    ProcMacros,
+};
+use ide::{AnalysisHost, SourceRoot};
 use ide_db::{
-    base_db::{
-        span::SpanData, CrateGraph, Env, ProcMacro, ProcMacroExpander, ProcMacroExpansionError,
-        ProcMacroKind, ProcMacroLoadResult, ProcMacros,
-    },
-    FxHashMap,
+    base_db::{CrateGraph, Env},
+    Change, FxHashMap,
 };
 use itertools::Itertools;
 use proc_macro_api::{MacroDylib, ProcMacroServer};
 use project_model::{CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace};
+use span::Span;
 use tt::DelimSpan;
 use vfs::{file_set::FileSetConfig, loader::Handle, AbsPath, AbsPathBuf, VfsPath};
 
@@ -374,13 +376,13 @@ struct Expander(proc_macro_api::ProcMacro);
 impl ProcMacroExpander for Expander {
     fn expand(
         &self,
-        subtree: &tt::Subtree<SpanData>,
-        attrs: Option<&tt::Subtree<SpanData>>,
+        subtree: &tt::Subtree<Span>,
+        attrs: Option<&tt::Subtree<Span>>,
         env: &Env,
-        def_site: SpanData,
-        call_site: SpanData,
-        mixed_site: SpanData,
-    ) -> Result<tt::Subtree<SpanData>, ProcMacroExpansionError> {
+        def_site: Span,
+        call_site: Span,
+        mixed_site: Span,
+    ) -> Result<tt::Subtree<Span>, ProcMacroExpansionError> {
         let env = env.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
         match self.0.expand(subtree, attrs, env, def_site, call_site, mixed_site) {
             Ok(Ok(subtree)) => Ok(subtree),
@@ -397,13 +399,13 @@ struct IdentityExpander;
 impl ProcMacroExpander for IdentityExpander {
     fn expand(
         &self,
-        subtree: &tt::Subtree<SpanData>,
-        _: Option<&tt::Subtree<SpanData>>,
+        subtree: &tt::Subtree<Span>,
+        _: Option<&tt::Subtree<Span>>,
         _: &Env,
-        _: SpanData,
-        _: SpanData,
-        _: SpanData,
-    ) -> Result<tt::Subtree<SpanData>, ProcMacroExpansionError> {
+        _: Span,
+        _: Span,
+        _: Span,
+    ) -> Result<tt::Subtree<Span>, ProcMacroExpansionError> {
         Ok(subtree.clone())
     }
 }
@@ -415,13 +417,13 @@ struct EmptyExpander;
 impl ProcMacroExpander for EmptyExpander {
     fn expand(
         &self,
-        _: &tt::Subtree<SpanData>,
-        _: Option<&tt::Subtree<SpanData>>,
+        _: &tt::Subtree<Span>,
+        _: Option<&tt::Subtree<Span>>,
         _: &Env,
-        call_site: SpanData,
-        _: SpanData,
-        _: SpanData,
-    ) -> Result<tt::Subtree<SpanData>, ProcMacroExpansionError> {
+        call_site: Span,
+        _: Span,
+        _: Span,
+    ) -> Result<tt::Subtree<Span>, ProcMacroExpansionError> {
         Ok(tt::Subtree::empty(DelimSpan { open: call_site, close: call_site }))
     }
 }

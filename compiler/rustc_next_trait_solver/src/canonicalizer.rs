@@ -333,7 +333,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
             | ty::FnPtr(_)
             | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)
-            | ty::Coroutine(_, _, _)
+            | ty::Coroutine(_, _)
             | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)

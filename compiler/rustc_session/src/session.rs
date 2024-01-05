@@ -665,8 +665,8 @@ impl Session {
 // JUSTIFICATION: defn of the suggested wrapper fns
 #[allow(rustc::bad_opt_access)]
 impl Session {
-    pub fn verbose(&self) -> bool {
-        self.opts.unstable_opts.verbose
+    pub fn verbose_internals(&self) -> bool {
+        self.opts.unstable_opts.verbose_internals
     }
 
     pub fn print_llvm_stats(&self) -> bool {
@@ -1274,7 +1274,10 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     // Cannot enable crt-static with sanitizers on Linux
-    if sess.crt_static(None) && !sess.opts.unstable_opts.sanitizer.is_empty() {
+    if sess.crt_static(None)
+        && !sess.opts.unstable_opts.sanitizer.is_empty()
+        && !sess.target.is_like_msvc
+    {
         sess.dcx().emit_err(errors::CannotEnableCrtStaticLinux);
     }
 

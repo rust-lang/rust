@@ -315,7 +315,10 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
 
             if is_host_effect {
                 if let Some(idx) = host_effect_index {
-                    bug!("parent also has host effect param? index: {idx}, def: {def_id:?}");
+                    tcx.dcx().span_delayed_bug(
+                        param.span,
+                        format!("parent also has host effect param? index: {idx}, def: {def_id:?}"),
+                    );
                 }
 
                 host_effect_index = Some(index as usize);
@@ -338,14 +341,14 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
     // cares about anything but the length is instantiation,
     // and we don't do that for closures.
     if let Node::Expr(&hir::Expr {
-        kind: hir::ExprKind::Closure(hir::Closure { movability: gen, .. }),
-        ..
+        kind: hir::ExprKind::Closure(hir::Closure { kind, .. }), ..
     }) = node
     {
-        let dummy_args = if gen.is_some() {
-            &["<resume_ty>", "<yield_ty>", "<return_ty>", "<witness>", "<upvars>"][..]
-        } else {
-            &["<closure_kind>", "<closure_signature>", "<upvars>"][..]
+        let dummy_args = match kind {
+            ClosureKind::Closure => &["<closure_kind>", "<closure_signature>", "<upvars>"][..],
+            ClosureKind::Coroutine(_) => {
+                &["<resume_ty>", "<yield_ty>", "<return_ty>", "<witness>", "<upvars>"][..]
+            }
         };
 
         params.extend(dummy_args.iter().map(|&arg| ty::GenericParamDef {

@@ -102,8 +102,10 @@ pub struct ItemScope {
     // FIXME: Macro shadowing in one module is not properly handled. Non-item place macros will
     // be all resolved to the last one defined if shadowing happens.
     legacy_macros: FxHashMap<Name, SmallVec<[MacroId; 1]>>,
-    /// The derive macro invocations in this scope.
+    /// The attribute macro invocations in this scope.
     attr_macros: FxHashMap<AstId<ast::Item>, MacroCallId>,
+    /// The macro invocations in this scope.
+    pub macro_invocations: FxHashMap<AstId<ast::MacroCall>, MacroCallId>,
     /// The derive macro invocations in this scope, keyed by the owner item over the actual derive attributes
     /// paired with the derive macro invocations for the specific attribute.
     derive_macros: FxHashMap<AstId<ast::Adt>, SmallVec<[DeriveMacroInvocation; 1]>>,
@@ -343,6 +345,10 @@ impl ItemScope {
 
     pub(crate) fn add_attr_macro_invoc(&mut self, item: AstId<ast::Item>, call: MacroCallId) {
         self.attr_macros.insert(item, call);
+    }
+
+    pub(crate) fn add_macro_invoc(&mut self, call: AstId<ast::MacroCall>, call_id: MacroCallId) {
+        self.macro_invocations.insert(call, call_id);
     }
 
     pub(crate) fn attr_macro_invocs(
@@ -692,6 +698,7 @@ impl ItemScope {
             use_imports_values,
             use_imports_types,
             use_imports_macros,
+            macro_invocations,
         } = self;
         types.shrink_to_fit();
         values.shrink_to_fit();
@@ -709,6 +716,7 @@ impl ItemScope {
         derive_macros.shrink_to_fit();
         extern_crate_decls.shrink_to_fit();
         use_decls.shrink_to_fit();
+        macro_invocations.shrink_to_fit();
     }
 }
 

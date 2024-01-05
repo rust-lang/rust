@@ -128,7 +128,7 @@ pub fn simplify_type<'tcx>(
         },
         ty::Ref(_, _, mutbl) => Some(SimplifiedType::Ref(mutbl)),
         ty::FnDef(def_id, _) | ty::Closure(def_id, _) => Some(SimplifiedType::Closure(def_id)),
-        ty::Coroutine(def_id, _, _) => Some(SimplifiedType::Coroutine(def_id)),
+        ty::Coroutine(def_id, _) => Some(SimplifiedType::Coroutine(def_id)),
         ty::CoroutineWitness(def_id, _) => Some(SimplifiedType::CoroutineWitness(def_id)),
         ty::Never => Some(SimplifiedType::Never),
         ty::Tuple(tys) => Some(SimplifiedType::Tuple(tys.len())),

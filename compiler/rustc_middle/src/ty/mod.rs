@@ -309,23 +309,22 @@ impl Visibility {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable)]
 pub enum BoundConstness {
-    /// `T: Trait`
+    /// `Type: Trait`
     NotConst,
-    /// `T: ~const Trait`
+    /// `Type: const Trait`
+    Const,
+    /// `Type: ~const Trait`
     ///
     /// Requires resolving to const only when we are in a const context.
     ConstIfConst,
 }
 
 impl BoundConstness {
-    /// Reduce `self` and `constness` to two possible combined states instead of four.
-    pub fn and(&mut self, constness: hir::Constness) -> hir::Constness {
-        match (constness, self) {
-            (hir::Constness::Const, BoundConstness::ConstIfConst) => hir::Constness::Const,
-            (_, this) => {
-                *this = BoundConstness::NotConst;
-                hir::Constness::NotConst
-            }
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::NotConst => "",
+            Self::Const => "const",
+            Self::ConstIfConst => "~const",
         }
     }
 }
@@ -334,7 +333,8 @@ impl fmt::Display for BoundConstness {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::NotConst => f.write_str("normal"),
-            Self::ConstIfConst => f.write_str("`~const`"),
+            Self::Const => f.write_str("const"),
+            Self::ConstIfConst => f.write_str("~const"),
         }
     }
 }
@@ -1772,9 +1772,10 @@ pub struct Destructor {
     pub constness: hir::Constness,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
+pub struct VariantFlags(u8);
 bitflags! {
-    #[derive(HashStable, TyEncodable, TyDecodable)]
-    pub struct VariantFlags: u8 {
+    impl VariantFlags: u8 {
         const NO_VARIANT_FLAGS        = 0;
         /// Indicates whether the field list of this variant is `#[non_exhaustive]`.
         const IS_FIELD_LIST_NON_EXHAUSTIVE = 1 << 0;
@@ -1783,6 +1784,7 @@ bitflags! {
         const IS_RECOVERED = 1 << 1;
     }
 }
+rustc_data_structures::external_bitflags_debug! { VariantFlags }
 
 /// Definition of a variant -- a struct's fields or an enum variant.
 #[derive(Debug, HashStable, TyEncodable, TyDecodable)]

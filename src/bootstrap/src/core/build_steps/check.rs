@@ -386,7 +386,7 @@ impl Step for RustAnalyzer {
             cargo_subcommand(builder.kind),
             "src/tools/rust-analyzer",
             SourceType::InTree,
-            &["rust-analyzer/in-rust-tree".to_owned()],
+            &["in-rust-tree".to_owned()],
         );
 
         cargo.allow_features(crate::core::build_steps::tool::RustAnalyzer::ALLOW_FEATURES);

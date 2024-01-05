@@ -12,7 +12,7 @@ authors.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-crossbeam-channel = "0.5.5"
+crossbeam-channel.workspace = true
 itertools.workspace = true
 tracing.workspace = true
 
@@ -23,3 +23,9 @@ project-model.workspace = true
 tt.workspace = true
 vfs.workspace = true
 vfs-notify.workspace = true
+span.workspace = true
+
+hir-expand.workspace = true
+
+[lints]
+workspace = true

@@ -837,11 +837,11 @@ fn main() {
 }
 "#,
             expect![[r#"
-                fn main []
-                fn test []
+                fn main() []
+                fn test(…) []
                 md dep []
                 fn function (use dep::test_mod_a::function) [requires_import]
-                fn function (use dep::test_mod_b::function) [requires_import]
+                fn function(…) (use dep::test_mod_b::function) [requires_import]
             "#]],
         );
     }

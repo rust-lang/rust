@@ -714,7 +714,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(unpretty, Some("expanded".to_string()));
     untracked!(unstable_options, true);
     untracked!(validate_mir, true);
-    untracked!(verbose, true);
+    untracked!(verbose_internals, true);
     untracked!(write_long_types_to_disk, false);
     // tidy-alphabetical-end
 

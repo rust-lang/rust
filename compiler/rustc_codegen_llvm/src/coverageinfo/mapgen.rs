@@ -58,11 +58,6 @@ pub fn finalize(cx: &CodegenCx<'_, '_>) {
         return;
     }
 
-    // The entries of the map are only used to get a list of all files with
-    // coverage info. In the end the list of files is passed into
-    // `GlobalFileTable::new()` which internally do `.sort_unstable_by()`, so
-    // the iteration order here does not matter.
-    #[allow(rustc::potential_query_instability)]
     let function_coverage_entries = function_coverage_map
         .into_iter()
         .map(|(instance, function_coverage)| (instance, function_coverage.into_finished()))

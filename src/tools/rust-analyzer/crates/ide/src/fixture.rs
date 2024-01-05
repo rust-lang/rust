@@ -1,5 +1,5 @@
 //! Utilities for creating `Analysis` instances for tests.
-use ide_db::base_db::fixture::ChangeFixture;
+use test_fixture::ChangeFixture;
 use test_utils::{extract_annotations, RangeOrOffset};
 
 use crate::{Analysis, AnalysisHost, FileId, FilePosition, FileRange};

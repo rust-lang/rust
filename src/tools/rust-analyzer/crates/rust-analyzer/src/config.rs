@@ -7,7 +7,11 @@
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
 
-use std::{fmt, iter, ops::Not, path::PathBuf};
+use std::{
+    fmt, iter,
+    ops::Not,
+    path::{Path, PathBuf},
+};
 
 use cfg::{CfgAtom, CfgDiff};
 use flycheck::FlycheckConfig;
@@ -105,6 +109,9 @@ config_data! {
         /// ```
         /// .
         cargo_buildScripts_overrideCommand: Option<Vec<String>> = "null",
+        /// Rerun proc-macros building/build-scripts running when proc-macro
+        /// or build-script sources change and are saved.
+        cargo_buildScripts_rebuildOnSave: bool = "false",
         /// Use `RUSTC_WRAPPER=rust-analyzer` when running build scripts to
         /// avoid checking unnecessary things.
         cargo_buildScripts_useRustcWrapper: bool = "true",
@@ -164,15 +171,15 @@ config_data! {
         /// Specifies the working directory for running checks.
         /// - "workspace": run checks for workspaces in the corresponding workspaces' root directories.
         // FIXME: Ideally we would support this in some way
-        ///   This falls back to "root" if `#rust-analyzer.cargo.check.invocationStrategy#` is set to `once`.
+        ///   This falls back to "root" if `#rust-analyzer.check.invocationStrategy#` is set to `once`.
         /// - "root": run checks in the project's root directory.
-        /// This config only has an effect when `#rust-analyzer.cargo.check.overrideCommand#`
+        /// This config only has an effect when `#rust-analyzer.check.overrideCommand#`
         /// is set.
         check_invocationLocation | checkOnSave_invocationLocation: InvocationLocation = "\"workspace\"",
         /// Specifies the invocation strategy to use when running the check command.
         /// If `per_workspace` is set, the command will be executed for each workspace.
         /// If `once` is set, the command will be executed once.
-        /// This config only has an effect when `#rust-analyzer.cargo.check.overrideCommand#`
+        /// This config only has an effect when `#rust-analyzer.check.overrideCommand#`
         /// is set.
         check_invocationStrategy | checkOnSave_invocationStrategy: InvocationStrategy = "\"per_workspace\"",
         /// Whether to pass `--no-default-features` to Cargo. Defaults to
@@ -191,8 +198,8 @@ config_data! {
         /// If there are multiple linked projects/workspaces, this command is invoked for
         /// each of them, with the working directory being the workspace root
         /// (i.e., the folder containing the `Cargo.toml`). This can be overwritten
-        /// by changing `#rust-analyzer.cargo.check.invocationStrategy#` and
-        /// `#rust-analyzer.cargo.check.invocationLocation#`.
+        /// by changing `#rust-analyzer.check.invocationStrategy#` and
+        /// `#rust-analyzer.check.invocationLocation#`.
         ///
         /// An example command would be:
         ///
@@ -917,7 +924,19 @@ impl Config {
     pub fn has_linked_projects(&self) -> bool {
         !self.data.linkedProjects.is_empty()
     }
-    pub fn linked_projects(&self) -> Vec<LinkedProject> {
+    pub fn linked_manifests(&self) -> impl Iterator<Item = &Path> + '_ {
+        self.data.linkedProjects.iter().filter_map(|it| match it {
+            ManifestOrProjectJson::Manifest(p) => Some(&**p),
+            ManifestOrProjectJson::ProjectJson(_) => None,
+        })
+    }
+    pub fn has_linked_project_jsons(&self) -> bool {
+        self.data
+            .linkedProjects
+            .iter()
+            .any(|it| matches!(it, ManifestOrProjectJson::ProjectJson(_)))
+    }
+    pub fn linked_or_discovered_projects(&self) -> Vec<LinkedProject> {
         match self.data.linkedProjects.as_slice() {
             [] => {
                 let exclude_dirs: Vec<_> =
@@ -950,15 +969,6 @@ impl Config {
                 })
                 .collect(),
         }
-    }
-
-    pub fn add_linked_projects(&mut self, linked_projects: Vec<ProjectJsonData>) {
-        let mut linked_projects = linked_projects
-            .into_iter()
-            .map(ManifestOrProjectJson::ProjectJson)
-            .collect::<Vec<ManifestOrProjectJson>>();
-
-        self.data.linkedProjects.append(&mut linked_projects);
     }
 
     pub fn did_save_text_document_dynamic_registration(&self) -> bool {
@@ -1367,6 +1377,10 @@ impl Config {
 
     pub fn check_on_save(&self) -> bool {
         self.data.checkOnSave
+    }
+
+    pub fn script_rebuild_on_save(&self) -> bool {
+        self.data.cargo_buildScripts_rebuildOnSave
     }
 
     pub fn runnables(&self) -> RunnablesConfig {

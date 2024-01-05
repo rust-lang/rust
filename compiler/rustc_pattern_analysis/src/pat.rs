@@ -71,19 +71,17 @@ impl<'p, Cx: TypeCx> DeconstructedPat<'p, Cx> {
         self.data.as_ref()
     }
 
-    pub fn iter_fields<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = &'p DeconstructedPat<'p, Cx>> + Captures<'a> {
+    pub fn iter_fields(&self) -> impl Iterator<Item = &'p DeconstructedPat<'p, Cx>> + Captures<'_> {
         self.fields.iter()
     }
 
     /// Specialize this pattern with a constructor.
     /// `other_ctor` can be different from `self.ctor`, but must be covered by it.
-    pub(crate) fn specialize<'a>(
+    pub(crate) fn specialize(
         &self,
-        pcx: &PlaceCtxt<'a, 'p, Cx>,
+        pcx: &PlaceCtxt<'_, 'p, Cx>,
         other_ctor: &Constructor<Cx>,
-    ) -> SmallVec<[&'a DeconstructedPat<'p, Cx>; 2]> {
+    ) -> SmallVec<[&'p DeconstructedPat<'p, Cx>; 2]> {
         let wildcard_sub_tys = || {
             let tys = pcx.ctor_sub_tys(other_ctor);
             tys.iter()
@@ -196,7 +194,7 @@ impl<Cx: TypeCx> WitnessPat<Cx> {
         self.ty
     }
 
-    pub fn iter_fields<'a>(&'a self) -> impl Iterator<Item = &'a WitnessPat<Cx>> {
+    pub fn iter_fields(&self) -> impl Iterator<Item = &WitnessPat<Cx>> {
         self.fields.iter()
     }
 }

@@ -10,7 +10,7 @@ use crate::mbe::transcribe::transcribe;
 
 use rustc_ast as ast;
 use rustc_ast::token::{self, Delimiter, NonterminalKind, Token, TokenKind, TokenKind::*};
-use rustc_ast::tokenstream::{DelimSpan, TokenStream, TokenTree};
+use rustc_ast::tokenstream::{DelimSpan, TokenStream};
 use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, TransparencyError};
@@ -213,44 +213,13 @@ fn expand_macro<'cx>(
             let arm_span = rhses[i].span();
 
             // rhs has holes ( `$id` and `$(...)` that need filled)
-            let mut tts = match transcribe(cx, &named_matches, rhs, rhs_span, transparency) {
+            let tts = match transcribe(cx, &named_matches, rhs, rhs_span, transparency) {
                 Ok(tts) => tts,
                 Err(mut err) => {
                     err.emit();
                     return DummyResult::any(arm_span);
                 }
             };
-
-            // Replace all the tokens for the corresponding positions in the macro, to maintain
-            // proper positions in error reporting, while maintaining the macro_backtrace.
-            if tts.len() == rhs.tts.len() {
-                tts = tts.map_enumerated_owned(|i, mut tt| {
-                    let rhs_tt = &rhs.tts[i];
-                    let ctxt = tt.span().ctxt();
-                    match (&mut tt, rhs_tt) {
-                        // preserve the delim spans if able
-                        (
-                            TokenTree::Delimited(target_sp, ..),
-                            mbe::TokenTree::Delimited(source_sp, ..),
-                        ) => {
-                            target_sp.open = source_sp.open.with_ctxt(ctxt);
-                            target_sp.close = source_sp.close.with_ctxt(ctxt);
-                        }
-                        (
-                            TokenTree::Delimited(target_sp, ..),
-                            mbe::TokenTree::MetaVar(source_sp, ..),
-                        ) => {
-                            target_sp.open = source_sp.with_ctxt(ctxt);
-                            target_sp.close = source_sp.with_ctxt(ctxt).shrink_to_hi();
-                        }
-                        _ => {
-                            let sp = rhs_tt.span().with_ctxt(ctxt);
-                            tt.set_span(sp);
-                        }
-                    }
-                    tt
-                });
-            }
 
             if cx.trace_macros() {
                 let msg = format!("to `{}`", pprust::tts_to_string(&tts));

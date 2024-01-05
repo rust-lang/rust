@@ -547,7 +547,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// closure appears (and, sadly, a corresponding `NodeId`, since
     /// those are not yet phased out). The parent of the closure's
     /// `DefId` will also be the context where it appears.
-    pub fn is_closure(self, def_id: DefId) -> bool {
+    pub fn is_closure_or_coroutine(self, def_id: DefId) -> bool {
         matches!(self.def_kind(def_id), DefKind::Closure)
     }
 
@@ -735,7 +735,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, _) => {
                         "async gen closure"
                     }
-                    hir::CoroutineKind::Coroutine => "coroutine",
+                    hir::CoroutineKind::Coroutine(_) => "coroutine",
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, _) => {
                         "gen closure"
                     }
@@ -759,7 +759,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, ..) => "an",
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::AsyncGen, ..) => "an",
                     hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Gen, ..) => "a",
-                    hir::CoroutineKind::Coroutine => "a",
+                    hir::CoroutineKind::Coroutine(_) => "a",
                 }
             }
             _ => def_kind.article(),

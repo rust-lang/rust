@@ -627,7 +627,7 @@ pub enum WorkspaceSymbol {}
 
 impl Request for WorkspaceSymbol {
     type Params = WorkspaceSymbolParams;
-    type Result = Option<Vec<lsp_types::SymbolInformation>>;
+    type Result = Option<lsp_types::WorkspaceSymbolResponse>;
     const METHOD: &'static str = "workspace/symbol";
 }
 

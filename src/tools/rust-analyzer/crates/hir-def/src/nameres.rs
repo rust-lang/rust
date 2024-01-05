@@ -59,8 +59,11 @@ mod tests;
 
 use std::{cmp::Ord, ops::Deref};
 
-use base_db::{CrateId, Edition, FileId, ProcMacroKind};
-use hir_expand::{ast_id_map::FileAstId, name::Name, HirFileId, InFile, MacroCallId, MacroDefId};
+use base_db::{CrateId, Edition, FileId};
+use hir_expand::{
+    ast_id_map::FileAstId, name::Name, proc_macro::ProcMacroKind, HirFileId, InFile, MacroCallId,
+    MacroDefId,
+};
 use itertools::Itertools;
 use la_arena::Arena;
 use profile::Count;
@@ -97,7 +100,7 @@ pub struct DefMap {
     /// contains this block.
     block: Option<BlockInfo>,
     /// The modules and their data declared in this crate.
-    modules: Arena<ModuleData>,
+    pub modules: Arena<ModuleData>,
     krate: CrateId,
     /// The prelude module for this crate. This either comes from an import
     /// marked with the `prelude_import` attribute, or (in the normal case) from
@@ -623,8 +626,9 @@ impl DefMap {
         self.diagnostics.as_slice()
     }
 
-    pub fn recursion_limit(&self) -> Option<u32> {
-        self.data.recursion_limit
+    pub fn recursion_limit(&self) -> u32 {
+        // 128 is the default in rustc
+        self.data.recursion_limit.unwrap_or(128)
     }
 }
 

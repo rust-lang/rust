@@ -33,6 +33,7 @@
 #![allow(internal_features)]
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
+#![feature(if_let_guard)]
 #![feature(box_patterns)]
 #![feature(let_chains)]
 #![recursion_limit = "256"]
@@ -770,6 +771,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.resolver.get_import_res(id).present_items()
     }
 
+    fn make_lang_item_qpath(&mut self, lang_item: hir::LangItem, span: Span) -> hir::QPath<'hir> {
+        hir::QPath::Resolved(None, self.make_lang_item_path(lang_item, span, None))
+    }
+
     fn make_lang_item_path(
         &mut self,
         lang_item: hir::LangItem,
@@ -787,7 +792,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 hir_id: self.next_id(),
                 res,
                 args,
-                infer_args: false,
+                infer_args: args.is_none(),
             }]),
         })
     }
@@ -1324,7 +1329,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         span: t.span,
                     },
                     itctx,
-                    ast::Const::No,
+                    ast::BoundConstness::Never,
                 );
                 let bounds = this.arena.alloc_from_iter([bound]);
                 let lifetime_bound = this.elided_dyn_bound(t.span);
@@ -1429,19 +1434,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let (bounds, lifetime_bound) = self.with_dyn_type_scope(true, |this| {
                     let bounds =
                         this.arena.alloc_from_iter(bounds.iter().filter_map(|bound| match bound {
-                            GenericBound::Trait(
-                                ty,
-                                TraitBoundModifiers {
-                                    polarity: BoundPolarity::Positive | BoundPolarity::Negative(_),
-                                    constness,
-                                },
-                            ) => Some(this.lower_poly_trait_ref(ty, itctx, (*constness).into())),
-                            // We can safely ignore constness here, since AST validation
-                            // will take care of invalid modifier combinations.
-                            GenericBound::Trait(
-                                _,
-                                TraitBoundModifiers { polarity: BoundPolarity::Maybe(_), .. },
-                            ) => None,
+                            // We can safely ignore constness here since AST validation
+                            // takes care of rejecting invalid modifier combinations and
+                            // const trait bounds in trait object types.
+                            GenericBound::Trait(ty, modifiers) => match modifiers.polarity {
+                                BoundPolarity::Positive | BoundPolarity::Negative(_) => {
+                                    Some(this.lower_poly_trait_ref(
+                                        ty,
+                                        itctx,
+                                        // Still, don't pass along the constness here; we don't want to
+                                        // synthesize any host effect args, it'd only cause problems.
+                                        ast::BoundConstness::Never,
+                                    ))
+                                }
+                                BoundPolarity::Maybe(_) => None,
+                            },
                             GenericBound::Outlives(lifetime) => {
                                 if lifetime_bound.is_none() {
                                     lifetime_bound = Some(this.lower_lifetime(lifetime));
@@ -2111,7 +2118,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         param: &GenericParam,
         source: hir::GenericParamSource,
     ) -> hir::GenericParam<'hir> {
-        let (name, kind) = self.lower_generic_param_kind(param);
+        let (name, kind) = self.lower_generic_param_kind(param, source);
 
         let hir_id = self.lower_node_id(param.id);
         self.lower_attrs(hir_id, &param.attrs);
@@ -2130,6 +2137,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_generic_param_kind(
         &mut self,
         param: &GenericParam,
+        source: hir::GenericParamSource,
     ) -> (hir::ParamName, hir::GenericParamKind<'hir>) {
         match &param.kind {
             GenericParamKind::Lifetime => {
@@ -2148,22 +2156,51 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 (param_name, kind)
             }
             GenericParamKind::Type { default, .. } => {
-                let kind = hir::GenericParamKind::Type {
-                    default: default.as_ref().map(|x| {
+                // Not only do we deny type param defaults in binders but we also map them to `None`
+                // since later compiler stages cannot handle them (and shouldn't need to be able to).
+                let default = default
+                    .as_ref()
+                    .filter(|_| match source {
+                        hir::GenericParamSource::Generics => true,
+                        hir::GenericParamSource::Binder => {
+                            self.dcx().emit_err(errors::GenericParamDefaultInBinder {
+                                span: param.span(),
+                            });
+
+                            false
+                        }
+                    })
+                    .map(|def| {
                         self.lower_ty(
-                            x,
+                            def,
                             &ImplTraitContext::Disallowed(ImplTraitPosition::GenericDefault),
                         )
-                    }),
-                    synthetic: false,
-                };
+                    });
+
+                let kind = hir::GenericParamKind::Type { default, synthetic: false };
 
                 (hir::ParamName::Plain(self.lower_ident(param.ident)), kind)
             }
             GenericParamKind::Const { ty, kw_span: _, default } => {
                 let ty = self
                     .lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::GenericDefault));
-                let default = default.as_ref().map(|def| self.lower_anon_const(def));
+
+                // Not only do we deny const param defaults in binders but we also map them to `None`
+                // since later compiler stages cannot handle them (and shouldn't need to be able to).
+                let default = default
+                    .as_ref()
+                    .filter(|_| match source {
+                        hir::GenericParamSource::Generics => true,
+                        hir::GenericParamSource::Binder => {
+                            self.dcx().emit_err(errors::GenericParamDefaultInBinder {
+                                span: param.span(),
+                            });
+
+                            false
+                        }
+                    })
+                    .map(|def| self.lower_anon_const(def));
+
                 (
                     hir::ParamName::Plain(self.lower_ident(param.ident)),
                     hir::GenericParamKind::Const { ty, default, is_host_effect: false },
@@ -2174,7 +2211,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_trait_ref(
         &mut self,
-        constness: ast::Const,
+        constness: ast::BoundConstness,
         p: &TraitRef,
         itctx: &ImplTraitContext,
     ) -> hir::TraitRef<'hir> {
@@ -2197,7 +2234,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         p: &PolyTraitRef,
         itctx: &ImplTraitContext,
-        constness: ast::Const,
+        constness: ast::BoundConstness,
     ) -> hir::PolyTraitRef<'hir> {
         let bound_generic_params =
             self.lower_lifetime_binder(p.trait_ref.ref_id, &p.bound_generic_params);
@@ -2322,9 +2359,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         modifiers: TraitBoundModifiers,
     ) -> hir::TraitBoundModifier {
+        // Invalid modifier combinations will cause an error during AST validation.
+        // Arbitrarily pick a placeholder for them to make compilation proceed.
         match (modifiers.constness, modifiers.polarity) {
             (BoundConstness::Never, BoundPolarity::Positive) => hir::TraitBoundModifier::None,
-            (BoundConstness::Never, BoundPolarity::Maybe(_)) => hir::TraitBoundModifier::Maybe,
+            (_, BoundPolarity::Maybe(_)) => hir::TraitBoundModifier::Maybe,
             (BoundConstness::Never, BoundPolarity::Negative(_)) => {
                 if self.tcx.features().negative_bounds {
                     hir::TraitBoundModifier::Negative
@@ -2332,15 +2371,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     hir::TraitBoundModifier::None
                 }
             }
-            (BoundConstness::Maybe(_), BoundPolarity::Positive) => {
-                hir::TraitBoundModifier::MaybeConst
-            }
-            // Invalid modifier combinations will cause an error during AST validation.
-            // Arbitrarily pick a placeholder for compilation to proceed.
-            (BoundConstness::Maybe(_), BoundPolarity::Maybe(_)) => hir::TraitBoundModifier::Maybe,
-            (BoundConstness::Maybe(_), BoundPolarity::Negative(_)) => {
-                hir::TraitBoundModifier::MaybeConst
-            }
+            (BoundConstness::Always(_), _) => hir::TraitBoundModifier::Const,
+            (BoundConstness::Maybe(_), _) => hir::TraitBoundModifier::MaybeConst,
         }
     }
 
@@ -2558,45 +2590,62 @@ struct GenericArgsCtor<'hir> {
 }
 
 impl<'hir> GenericArgsCtor<'hir> {
-    fn push_constness(&mut self, lcx: &mut LoweringContext<'_, 'hir>, constness: ast::Const) {
+    fn push_constness(
+        &mut self,
+        lcx: &mut LoweringContext<'_, 'hir>,
+        constness: ast::BoundConstness,
+    ) {
         if !lcx.tcx.features().effects {
             return;
         }
 
-        // if bound is non-const, don't add host effect param
-        let ast::Const::Yes(span) = constness else { return };
+        let (span, body) = match constness {
+            BoundConstness::Never => return,
+            BoundConstness::Always(span) => {
+                let span = lcx.lower_span(span);
 
-        let span = lcx.lower_span(span);
+                let body = hir::ExprKind::Lit(
+                    lcx.arena.alloc(hir::Lit { node: LitKind::Bool(false), span }),
+                );
 
-        let id = lcx.next_node_id();
-        let hir_id = lcx.next_id();
+                (span, body)
+            }
+            BoundConstness::Maybe(span) => {
+                let span = lcx.lower_span(span);
 
-        let Some(host_param_id) = lcx.host_param_id else {
-            lcx.dcx().span_delayed_bug(
-                span,
-                "no host param id for call in const yet no errors reported",
-            );
-            return;
-        };
+                let Some(host_param_id) = lcx.host_param_id else {
+                    lcx.dcx().span_delayed_bug(
+                        span,
+                        "no host param id for call in const yet no errors reported",
+                    );
+                    return;
+                };
 
-        let body = lcx.lower_body(|lcx| {
-            (&[], {
                 let hir_id = lcx.next_id();
                 let res = Res::Def(DefKind::ConstParam, host_param_id.to_def_id());
-                let expr_kind = hir::ExprKind::Path(hir::QPath::Resolved(
+                let body = hir::ExprKind::Path(hir::QPath::Resolved(
                     None,
                     lcx.arena.alloc(hir::Path {
                         span,
                         res,
-                        segments: arena_vec![lcx; hir::PathSegment::new(Ident {
-                            name: sym::host,
-                            span,
-                        }, hir_id, res)],
+                        segments: arena_vec![
+                            lcx;
+                            hir::PathSegment::new(
+                                Ident { name: sym::host, span },
+                                hir_id,
+                                res
+                            )
+                        ],
                     }),
                 ));
-                lcx.expr(span, expr_kind)
-            })
-        });
+
+                (span, body)
+            }
+        };
+        let body = lcx.lower_body(|lcx| (&[], lcx.expr(span, body)));
+
+        let id = lcx.next_node_id();
+        let hir_id = lcx.next_id();
 
         let def_id = lcx.create_def(
             lcx.current_hir_id_owner.def_id,

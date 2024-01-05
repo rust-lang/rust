@@ -585,9 +585,9 @@ fn find_local_import_locations(
 
 #[cfg(test)]
 mod tests {
-    use base_db::fixture::WithFixture;
     use hir_expand::db::ExpandDatabase;
     use syntax::ast::AstNode;
+    use test_fixture::WithFixture;
 
     use crate::test_db::TestDB;
 

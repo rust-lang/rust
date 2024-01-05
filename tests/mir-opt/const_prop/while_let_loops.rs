@@ -1,5 +1,5 @@
-// unit-test: ConstProp
-// EMIT_MIR while_let_loops.change_loop_body.ConstProp.diff
+// unit-test: GVN
+// EMIT_MIR while_let_loops.change_loop_body.GVN.diff
 
 pub fn change_loop_body() {
     // CHECK-LABEL: fn change_loop_body(

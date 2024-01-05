@@ -520,7 +520,7 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
     let kind = tcx.def_kind(def_id);
     let is_function = match kind {
         DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..) => true,
-        _ => tcx.is_closure(def_id),
+        _ => tcx.is_closure_or_coroutine(def_id),
     };
     match (kind, body.source.promoted) {
         (_, Some(i)) => write!(w, "{i:?} in ")?,
@@ -627,7 +627,11 @@ where
                 w,
                 "{:A$} // {}{}",
                 indented_body,
-                if tcx.sess.verbose() { format!("{current_location:?}: ") } else { String::new() },
+                if tcx.sess.verbose_internals() {
+                    format!("{current_location:?}: ")
+                } else {
+                    String::new()
+                },
                 comment(tcx, statement.source_info),
                 A = ALIGN,
             )?;
@@ -652,7 +656,11 @@ where
             w,
             "{:A$} // {}{}",
             indented_terminator,
-            if tcx.sess.verbose() { format!("{current_location:?}: ") } else { String::new() },
+            if tcx.sess.verbose_internals() {
+                format!("{current_location:?}: ")
+            } else {
+                String::new()
+            },
             comment(tcx, data.terminator().source_info),
             A = ALIGN,
         )?;
@@ -943,7 +951,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                 // When printing regions, add trailing space if necessary.
                 let print_region = ty::tls::with(|tcx| {
-                    tcx.sess.verbose() || tcx.sess.opts.unstable_opts.identify_regions
+                    tcx.sess.verbose_internals() || tcx.sess.opts.unstable_opts.identify_regions
                 });
                 let region = if print_region {
                     let mut region = region.to_string();
@@ -1041,7 +1049,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         struct_fmt.finish()
                     }),
 
-                    AggregateKind::Coroutine(def_id, _, _) => ty::tls::with(|tcx| {
+                    AggregateKind::Coroutine(def_id, _) => ty::tls::with(|tcx| {
                         let name = format!("{{coroutine@{:?}}}", tcx.def_span(def_id));
                         let mut struct_fmt = fmt.debug_struct(&name);
 
@@ -1296,11 +1304,11 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
                     self.push(&format!("+ args: {args:#?}"));
                 }
 
-                AggregateKind::Coroutine(def_id, args, movability) => {
+                AggregateKind::Coroutine(def_id, args) => {
                     self.push("coroutine");
                     self.push(&format!("+ def_id: {def_id:?}"));
                     self.push(&format!("+ args: {args:#?}"));
-                    self.push(&format!("+ movability: {movability:?}"));
+                    self.push(&format!("+ kind: {:?}", self.tcx.coroutine_kind(def_id)));
                 }
 
                 AggregateKind::Adt(_, _, _, Some(user_ty), _) => {
@@ -1668,7 +1676,7 @@ fn pretty_print_const_value_tcx<'tcx>(
 ) -> fmt::Result {
     use crate::ty::print::PrettyPrinter;
 
-    if tcx.sess.verbose() {
+    if tcx.sess.verbose_internals() {
         fmt.write_str(&format!("ConstValue({ct:?}: {ty})"))?;
         return Ok(());
     }

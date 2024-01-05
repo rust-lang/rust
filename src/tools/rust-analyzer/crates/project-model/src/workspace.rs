@@ -7,7 +7,7 @@ use std::{collections::VecDeque, fmt, fs, iter, process::Command, str::FromStr, 
 use anyhow::{format_err, Context};
 use base_db::{
     CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, DependencyKind,
-    Edition, Env, FileId, LangCrateOrigin, ProcMacroPaths, ReleaseChannel, TargetLayoutLoadResult,
+    Edition, Env, FileId, LangCrateOrigin, ProcMacroPaths, TargetLayoutLoadResult,
 };
 use cfg::{CfgDiff, CfgOptions};
 use paths::{AbsPath, AbsPathBuf};
@@ -619,7 +619,7 @@ impl ProjectWorkspace {
                     sysroot.as_ref().ok(),
                     extra_env,
                     Err("rust-project.json projects have no target layout set".into()),
-                    toolchain.as_ref().and_then(|it| ReleaseChannel::from_str(it.pre.as_str())),
+                    toolchain.clone(),
                 )
             }
             ProjectWorkspace::Cargo {
@@ -644,7 +644,7 @@ impl ProjectWorkspace {
                     Ok(it) => Ok(Arc::from(it.as_str())),
                     Err(it) => Err(Arc::from(it.as_str())),
                 },
-                toolchain.as_ref().and_then(|it| ReleaseChannel::from_str(it.pre.as_str())),
+                toolchain.as_ref(),
             ),
             ProjectWorkspace::DetachedFiles { files, sysroot, rustc_cfg } => {
                 detached_files_to_crate_graph(
@@ -733,7 +733,7 @@ fn project_json_to_crate_graph(
     sysroot: Option<&Sysroot>,
     extra_env: &FxHashMap<String, String>,
     target_layout: TargetLayoutLoadResult,
-    channel: Option<ReleaseChannel>,
+    toolchain: Option<Version>,
 ) -> (CrateGraph, ProcMacroPaths) {
     let mut res = (CrateGraph::default(), ProcMacroPaths::default());
     let (crate_graph, proc_macros) = &mut res;
@@ -744,7 +744,7 @@ fn project_json_to_crate_graph(
             rustc_cfg.clone(),
             target_layout.clone(),
             load,
-            channel,
+            toolchain.as_ref(),
         )
     });
 
@@ -807,7 +807,7 @@ fn project_json_to_crate_graph(
                         CrateOrigin::Local { repo: None, name: None }
                     },
                     target_layout.clone(),
-                    channel,
+                    toolchain.clone(),
                 );
                 if *is_proc_macro {
                     if let Some(path) = proc_macro_dylib_path.clone() {
@@ -853,7 +853,7 @@ fn cargo_to_crate_graph(
     forced_cfg: Option<CfgOptions>,
     build_scripts: &WorkspaceBuildScripts,
     target_layout: TargetLayoutLoadResult,
-    channel: Option<ReleaseChannel>,
+    toolchain: Option<&Version>,
 ) -> (CrateGraph, ProcMacroPaths) {
     let _p = profile::span("cargo_to_crate_graph");
     let mut res = (CrateGraph::default(), ProcMacroPaths::default());
@@ -866,7 +866,7 @@ fn cargo_to_crate_graph(
             rustc_cfg.clone(),
             target_layout.clone(),
             load,
-            channel,
+            toolchain,
         ),
         None => (SysrootPublicDeps::default(), None),
     };
@@ -950,7 +950,7 @@ fn cargo_to_crate_graph(
                 is_proc_macro,
                 target_layout.clone(),
                 false,
-                channel,
+                toolchain.cloned(),
             );
             if kind == TargetKind::Lib {
                 lib_tgt = Some((crate_id, name.clone()));
@@ -1038,7 +1038,7 @@ fn cargo_to_crate_graph(
                     rustc_build_scripts
                 },
                 target_layout,
-                channel,
+                toolchain,
             );
         }
     }
@@ -1117,7 +1117,7 @@ fn handle_rustc_crates(
     override_cfg: &CfgOverrides,
     build_scripts: &WorkspaceBuildScripts,
     target_layout: TargetLayoutLoadResult,
-    channel: Option<ReleaseChannel>,
+    toolchain: Option<&Version>,
 ) {
     let mut rustc_pkg_crates = FxHashMap::default();
     // The root package of the rustc-dev component is rustc_driver, so we match that
@@ -1172,7 +1172,7 @@ fn handle_rustc_crates(
                         rustc_workspace[tgt].is_proc_macro,
                         target_layout.clone(),
                         true,
-                        channel,
+                        toolchain.cloned(),
                     );
                     pkg_to_lib_crate.insert(pkg, crate_id);
                     // Add dependencies on core / std / alloc for this crate
@@ -1248,7 +1248,7 @@ fn add_target_crate_root(
     is_proc_macro: bool,
     target_layout: TargetLayoutLoadResult,
     rustc_crate: bool,
-    channel: Option<ReleaseChannel>,
+    toolchain: Option<Version>,
 ) -> CrateId {
     let edition = pkg.edition;
     let potential_cfg_options = if pkg.features.is_empty() {
@@ -1304,7 +1304,7 @@ fn add_target_crate_root(
             CrateOrigin::Library { repo: pkg.repository.clone(), name: pkg.name.clone() }
         },
         target_layout,
-        channel,
+        toolchain,
     );
     if is_proc_macro {
         let proc_macro = match build_data.as_ref().map(|it| it.proc_macro_dylib_path.as_ref()) {
@@ -1346,7 +1346,7 @@ fn sysroot_to_crate_graph(
     rustc_cfg: Vec<CfgFlag>,
     target_layout: TargetLayoutLoadResult,
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
-    channel: Option<ReleaseChannel>,
+    toolchain: Option<&Version>,
 ) -> (SysrootPublicDeps, Option<CrateId>) {
     let _p = profile::span("sysroot_to_crate_graph");
     let cfg_options = create_cfg_options(rustc_cfg.clone());
@@ -1357,7 +1357,7 @@ fn sysroot_to_crate_graph(
             rustc_cfg,
             cfg_options,
             target_layout,
-            channel,
+            toolchain,
             crate_graph,
             sysroot,
         ),
@@ -1380,7 +1380,7 @@ fn sysroot_to_crate_graph(
                     false,
                     CrateOrigin::Lang(LangCrateOrigin::from(&*sysroot[krate].name)),
                     target_layout.clone(),
-                    channel,
+                    toolchain.cloned(),
                 );
                 Some((krate, crate_id))
             })
@@ -1412,7 +1412,7 @@ fn handle_hack_cargo_workspace(
     rustc_cfg: Vec<CfgFlag>,
     cfg_options: CfgOptions,
     target_layout: Result<Arc<str>, Arc<str>>,
-    channel: Option<ReleaseChannel>,
+    toolchain: Option<&Version>,
     crate_graph: &mut CrateGraph,
     sysroot: &Sysroot,
 ) -> FxHashMap<SysrootCrate, CrateId> {
@@ -1426,7 +1426,7 @@ fn handle_hack_cargo_workspace(
         Some(cfg_options),
         &WorkspaceBuildScripts::default(),
         target_layout,
-        channel,
+        toolchain,
     );
     crate_graph.extend(cg, &mut pm);
     for crate_name in ["std", "alloc", "core"] {

@@ -2,7 +2,7 @@
 
 use std::iter;
 
-use hir_expand::{span::SpanMapRef, InFile};
+use hir_expand::{span_map::SpanMapRef, InFile};
 use la_arena::ArenaMap;
 use syntax::ast;
 use triomphe::Arc;

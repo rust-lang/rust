@@ -1,4 +1,4 @@
-error: ~const can only be applied to `#[const_trait]` traits
+error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/const-closure-trait-method.rs:14:39
    |
 LL | const fn need_const_closure<T: ~const FnOnce(()) -> i32>(x: T) -> i32 {

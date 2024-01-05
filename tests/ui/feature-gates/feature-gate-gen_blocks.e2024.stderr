@@ -35,16 +35,16 @@ LL |     async gen {};
    = help: add `#![feature(gen_blocks)]` to the crate attributes to enable
 
 error[E0282]: type annotations needed
-  --> $DIR/feature-gate-gen_blocks.rs:5:9
+  --> $DIR/feature-gate-gen_blocks.rs:5:5
    |
 LL |     gen {};
-   |         ^^ cannot infer type
+   |     ^^^^^^ cannot infer type
 
 error[E0282]: type annotations needed
-  --> $DIR/feature-gate-gen_blocks.rs:12:15
+  --> $DIR/feature-gate-gen_blocks.rs:12:5
    |
 LL |     async gen {};
-   |               ^^ cannot infer type
+   |     ^^^^^^^^^^^^ cannot infer type
 
 error: aborting due to 6 previous errors
 

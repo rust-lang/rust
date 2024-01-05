@@ -193,7 +193,7 @@ fn typeck_with_fallback<'tcx>(
         let fn_sig = tcx.liberate_late_bound_regions(def_id.to_def_id(), fn_sig);
         let fn_sig = fcx.normalize(body.value.span, fn_sig);
 
-        check_fn(&mut fcx, fn_sig, decl, def_id, body, None, tcx.features().unsized_fn_params);
+        check_fn(&mut fcx, fn_sig, None, decl, def_id, body, tcx.features().unsized_fn_params);
     } else {
         let expected_type = if let Some(&hir::Ty { kind: hir::TyKind::Infer, span, .. }) = body_ty {
             Some(fcx.next_ty_var(TypeVariableOrigin {
@@ -295,18 +295,13 @@ fn typeck_with_fallback<'tcx>(
 /// When `check_fn` is invoked on a coroutine (i.e., a body that
 /// includes yield), it returns back some information about the yield
 /// points.
+#[derive(Debug, PartialEq, Copy, Clone)]
 struct CoroutineTypes<'tcx> {
     /// Type of coroutine argument / values returned by `yield`.
     resume_ty: Ty<'tcx>,
 
     /// Type of value that is yielded.
     yield_ty: Ty<'tcx>,
-
-    /// Types that are captured (see `CoroutineInterior` for more).
-    interior: Ty<'tcx>,
-
-    /// Indicates if the coroutine is movable or static (immovable).
-    movability: hir::Movability,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

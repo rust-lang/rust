@@ -11,7 +11,7 @@ use core::intrinsics::mir::*;
 pub fn main() {
     mir!(
         {
-            Call(RET = main(), block, UnwindCleanup(block))
+            Call(RET = main(), ReturnTo(block), UnwindCleanup(block))
         }
         block = {
             Return()

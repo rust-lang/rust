@@ -129,12 +129,6 @@ fn run_passes_inner<'tcx>(
             if dump_enabled {
                 dump_mir_for_pass(tcx, body, name, false);
             }
-            if validate {
-                validate_body(tcx, body, format!("before pass {name}"));
-            }
-            if lint {
-                lint_body(tcx, body, format!("before pass {name}"));
-            }
 
             if let Some(prof_arg) = &prof_arg {
                 tcx.sess

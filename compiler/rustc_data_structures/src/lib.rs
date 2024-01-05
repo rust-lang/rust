@@ -150,3 +150,14 @@ pub fn make_display(f: impl Fn(&mut fmt::Formatter<'_>) -> fmt::Result) -> impl 
 // See comments in src/librustc_middle/lib.rs
 #[doc(hidden)]
 pub fn __noop_fix_for_27438() {}
+
+#[macro_export]
+macro_rules! external_bitflags_debug {
+    ($Name:ident) => {
+        impl ::std::fmt::Debug for $Name {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                ::bitflags::parser::to_writer(self, f)
+            }
+        }
+    };
+}

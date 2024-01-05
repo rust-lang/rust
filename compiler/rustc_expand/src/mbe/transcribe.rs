@@ -4,7 +4,7 @@ use crate::errors::{
     NoSyntaxVarsExprRepeat, VarStillRepeating,
 };
 use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, MatchedTokenTree, NamedMatch};
-use crate::mbe::{self, MetaVarExpr};
+use crate::mbe::{self, KleeneOp, MetaVarExpr};
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
@@ -42,6 +42,7 @@ enum Frame<'a> {
         tts: &'a [mbe::TokenTree],
         idx: usize,
         sep: Option<Token>,
+        kleene_op: KleeneOp,
     },
 }
 
@@ -207,7 +208,7 @@ pub(super) fn transcribe<'a>(
 
                         // Is the repetition empty?
                         if len == 0 {
-                            if seq.kleene.op == mbe::KleeneOp::OneOrMore {
+                            if seq.kleene.op == KleeneOp::OneOrMore {
                                 // FIXME: this really ought to be caught at macro definition
                                 // time... It happens when the Kleene operator in the matcher and
                                 // the body for the same meta-variable do not match.
@@ -227,6 +228,7 @@ pub(super) fn transcribe<'a>(
                                 idx: 0,
                                 sep: seq.separator.clone(),
                                 tts: &delimited.tts,
+                                kleene_op: seq.kleene.op,
                             });
                         }
                     }
@@ -243,7 +245,7 @@ pub(super) fn transcribe<'a>(
                         MatchedTokenTree(tt) => {
                             // `tt`s are emitted into the output stream directly as "raw tokens",
                             // without wrapping them into groups.
-                            result.push(tt.clone());
+                            result.push(maybe_use_metavar_location(cx, &stack, sp, tt));
                         }
                         MatchedNonterminal(nt) => {
                             // Other variables are emitted into the output stream as groups with
@@ -304,6 +306,62 @@ pub(super) fn transcribe<'a>(
 
             // There should be no meta-var declarations in the invocation of a macro.
             mbe::TokenTree::MetaVarDecl(..) => panic!("unexpected `TokenTree::MetaVarDecl`"),
+        }
+    }
+}
+
+/// Usually metavariables `$var` produce interpolated tokens, which have an additional place for
+/// keeping both the original span and the metavariable span. For `tt` metavariables that's not the
+/// case however, and there's no place for keeping a second span. So we try to give the single
+/// produced span a location that would be most useful in practice (the hygiene part of the span
+/// must not be changed).
+///
+/// Different locations are useful for different purposes:
+/// - The original location is useful when we need to report a diagnostic for the original token in
+///   isolation, without combining it with any surrounding tokens. This case occurs, but it is not
+///   very common in practice.
+/// - The metavariable location is useful when we need to somehow combine the token span with spans
+///   of its surrounding tokens. This is the most common way to use token spans.
+///
+/// So this function replaces the original location with the metavariable location in all cases
+/// except these two:
+/// - The metavariable is an element of undelimited sequence `$($tt)*`.
+///   These are typically used for passing larger amounts of code, and tokens in that code usually
+///   combine with each other and not with tokens outside of the sequence.
+/// - The metavariable span comes from a different crate, then we prefer the more local span.
+///
+/// FIXME: Find a way to keep both original and metavariable spans for all tokens without
+/// regressing compilation time too much. Several experiments for adding such spans were made in
+/// the past (PR #95580, #118517, #118671) and all showed some regressions.
+fn maybe_use_metavar_location(
+    cx: &ExtCtxt<'_>,
+    stack: &[Frame<'_>],
+    metavar_span: Span,
+    orig_tt: &TokenTree,
+) -> TokenTree {
+    let undelimited_seq = matches!(
+        stack.last(),
+        Some(Frame::Sequence {
+            tts: [_],
+            sep: None,
+            kleene_op: KleeneOp::ZeroOrMore | KleeneOp::OneOrMore,
+            ..
+        })
+    );
+    if undelimited_seq || cx.source_map().is_imported(metavar_span) {
+        return orig_tt.clone();
+    }
+
+    match orig_tt {
+        TokenTree::Token(Token { kind, span }, spacing) => {
+            let span = metavar_span.with_ctxt(span.ctxt());
+            TokenTree::Token(Token { kind: kind.clone(), span }, *spacing)
+        }
+        TokenTree::Delimited(dspan, dspacing, delimiter, tts) => {
+            let open = metavar_span.shrink_to_lo().with_ctxt(dspan.open.ctxt());
+            let close = metavar_span.shrink_to_hi().with_ctxt(dspan.close.ctxt());
+            let dspan = DelimSpan::from_pair(open, close);
+            TokenTree::Delimited(dspan, *dspacing, *delimiter, tts.clone())
         }
     }
 }

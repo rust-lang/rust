@@ -432,7 +432,7 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             | ty::FnPtr(_)
             | ty::Dynamic(_, _, _)
             | ty::Closure(_, _)
-            | ty::Coroutine(_, _, _)
+            | ty::Coroutine(_, _)
             | ty::Never
             | ty::Tuple(_) => {
                 let simp =

@@ -64,7 +64,15 @@ fn main() -> Result<(), Box<dyn Error + Sync + Send>> {
         ..Default::default()
     })
     .unwrap();
-    let initialization_params = connection.initialize(server_capabilities)?;
+    let initialization_params = match connection.initialize(server_capabilities) {
+        Ok(it) => it,
+        Err(e) => {
+            if e.channel_is_disconnected() {
+                io_threads.join()?;
+            }
+            return Err(e.into());
+        }
+    };
     main_loop(connection, initialization_params)?;
     io_threads.join()?;
 

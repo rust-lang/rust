@@ -15,6 +15,7 @@ use crate::errors::{
 use crate::fatally_break_rust;
 use crate::method::SelfSource;
 use crate::type_error_struct;
+use crate::CoroutineTypes;
 use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
 use crate::{
     report_unexpected_variant_res, BreakableCtxt, Diverges, FnCtxt, Needs,
@@ -187,8 +188,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
         args: &'tcx [hir::Expr<'tcx>],
     ) -> Ty<'tcx> {
-        if self.tcx().sess.verbose() {
-            // make this code only run with -Zverbose because it is probably slow
+        if self.tcx().sess.verbose_internals() {
+            // make this code only run with -Zverbose-internals because it is probably slow
             if let Ok(lint_str) = self.tcx.sess.source_map().span_to_snippet(expr.span) {
                 if !lint_str.contains('\n') {
                     debug!("expr text: {lint_str}");
@@ -349,7 +350,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Index(base, idx, brackets_span) => {
                 self.check_expr_index(base, idx, expr, brackets_span)
             }
-            ExprKind::Yield(value, ref src) => self.check_expr_yield(value, expr, src),
+            ExprKind::Yield(value, _) => self.check_expr_yield(value, expr),
             hir::ExprKind::Err(guar) => Ty::new_error(tcx, guar),
         }
     }
@@ -1131,8 +1132,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let mut err = self.demand_suptype_diag(expr.span, expected_ty, actual_ty).unwrap();
             let lhs_ty = self.check_expr(lhs);
             let rhs_ty = self.check_expr(rhs);
+            let refs_can_coerce = |lhs: Ty<'tcx>, rhs: Ty<'tcx>| {
+                let lhs = Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, lhs.peel_refs());
+                let rhs = Ty::new_imm_ref(self.tcx, self.tcx.lifetimes.re_erased, rhs.peel_refs());
+                self.can_coerce(rhs, lhs)
+            };
             let (applicability, eq) = if self.can_coerce(rhs_ty, lhs_ty) {
                 (Applicability::MachineApplicable, true)
+            } else if refs_can_coerce(rhs_ty, lhs_ty) {
+                // The lhs and rhs are likely missing some references in either side. Subsequent
+                // suggestions will show up.
+                (Applicability::MaybeIncorrect, true)
             } else if let ExprKind::Binary(
                 Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
                 _,
@@ -1142,7 +1152,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // if x == 1 && y == 2 { .. }
                 //                 +
                 let actual_lhs_ty = self.check_expr(rhs_expr);
-                (Applicability::MaybeIncorrect, self.can_coerce(rhs_ty, actual_lhs_ty))
+                (
+                    Applicability::MaybeIncorrect,
+                    self.can_coerce(rhs_ty, actual_lhs_ty)
+                        || refs_can_coerce(rhs_ty, actual_lhs_ty),
+                )
             } else if let ExprKind::Binary(
                 Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
                 lhs_expr,
@@ -1152,7 +1166,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // if x == 1 && y == 2 { .. }
                 //       +
                 let actual_rhs_ty = self.check_expr(lhs_expr);
-                (Applicability::MaybeIncorrect, self.can_coerce(actual_rhs_ty, lhs_ty))
+                (
+                    Applicability::MaybeIncorrect,
+                    self.can_coerce(actual_rhs_ty, lhs_ty)
+                        || refs_can_coerce(actual_rhs_ty, lhs_ty),
+                )
             } else {
                 (Applicability::MaybeIncorrect, false)
             };
@@ -3145,21 +3163,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         value: &'tcx hir::Expr<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
-        src: &'tcx hir::YieldSource,
     ) -> Ty<'tcx> {
-        match self.resume_yield_tys {
-            Some((resume_ty, yield_ty)) => {
+        match self.coroutine_types {
+            Some(CoroutineTypes { resume_ty, yield_ty }) => {
                 self.check_expr_coercible_to_type(value, yield_ty, None);
 
                 resume_ty
-            }
-            // Given that this `yield` expression was generated as a result of lowering a `.await`,
-            // we know that the yield type must be `()`; however, the context won't contain this
-            // information. Hence, we check the source of the yield expression here and check its
-            // value's type against `()` (this check should always hold).
-            None if src.is_await() => {
-                self.check_expr_coercible_to_type(value, Ty::new_unit(self.tcx), None);
-                Ty::new_unit(self.tcx)
             }
             _ => {
                 self.dcx().emit_err(YieldExprOutsideOfCoroutine { span: expr.span });

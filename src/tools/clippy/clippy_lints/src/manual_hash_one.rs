@@ -40,7 +40,7 @@ declare_clippy_lint! {
     ///
     /// let hash = s.hash_one(&value);
     /// ```
-    #[clippy::version = "1.74.0"]
+    #[clippy::version = "1.75.0"]
     pub MANUAL_HASH_ONE,
     complexity,
     "manual implementations of `BuildHasher::hash_one`"

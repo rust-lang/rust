@@ -1,13 +1,13 @@
-// unit-test: ConstProp
+// unit-test: GVN
 // Check that we do not propagate past an indirect mutation.
 #![feature(raw_ref_op)]
 
-// EMIT_MIR indirect_mutation.foo.ConstProp.diff
+// EMIT_MIR indirect_mutation.foo.GVN.diff
 fn foo() {
     // CHECK-LABEL: fn foo(
     // CHECK: debug u => _1;
     // CHECK: debug y => _3;
-    // CHECK: _1 = (const 1_i32,);
+    // CHECK: _1 = const (1_i32,);
     // CHECK: _2 = &mut (_1.0: i32);
     // CHECK: (*_2) = const 5_i32;
     // CHECK: _4 = (_1.0: i32);
@@ -18,7 +18,7 @@ fn foo() {
     let y = { u.0 } == 5;
 }
 
-// EMIT_MIR indirect_mutation.bar.ConstProp.diff
+// EMIT_MIR indirect_mutation.bar.GVN.diff
 fn bar() {
     // CHECK-LABEL: fn bar(
     // CHECK: debug v => _1;

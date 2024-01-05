@@ -1,10 +1,10 @@
 [workspace]
 members = ["xtask/", "lib/*", "crates/*"]
-exclude = ["crates/proc-macro-test/imp"]
+exclude = ["crates/proc-macro-srv/proc-macro-test/"]
 resolver = "2"
 
 [workspace.package]
-rust-version = "1.70"
+rust-version = "1.74"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = ["rust-analyzer team"]
@@ -70,10 +70,9 @@ proc-macro-srv = { path = "./crates/proc-macro-srv", version = "0.0.0" }
 proc-macro-srv-cli = { path = "./crates/proc-macro-srv-cli", version = "0.0.0" }
 profile = { path = "./crates/profile", version = "0.0.0" }
 project-model = { path = "./crates/project-model", version = "0.0.0" }
-sourcegen = { path = "./crates/sourcegen", version = "0.0.0" }
+span = { path = "./crates/span", version = "0.0.0" }
 stdx = { path = "./crates/stdx", version = "0.0.0" }
 syntax = { path = "./crates/syntax", version = "0.0.0" }
-test-utils = { path = "./crates/test-utils", version = "0.0.0" }
 text-edit = { path = "./crates/text-edit", version = "0.0.0" }
 toolchain = { path = "./crates/toolchain", version = "0.0.0" }
 tt = { path = "./crates/tt", version = "0.0.0" }
@@ -82,19 +81,25 @@ vfs = { path = "./crates/vfs", version = "0.0.0" }
 rustc-dependencies = { path = "./crates/rustc-dependencies", version = "0.0.0" }
 
 # local crates that aren't published to crates.io. These should not have versions.
-proc-macro-test = { path = "./crates/proc-macro-test" }
+sourcegen = { path = "./crates/sourcegen" }
+test-fixture = { path = "./crates/test-fixture" }
+test-utils = { path = "./crates/test-utils" }
 
 # In-tree crates that are published separately and follow semver. See lib/README.md
 line-index = { version = "0.1.1" }
 la-arena = { version = "0.3.1" }
-lsp-server = { version = "0.7.4" }
+lsp-server = { version = "0.7.6" }
 
 # non-local crates
 anyhow = "1.0.75"
+arrayvec = "0.7.4"
 bitflags = "2.4.1"
 cargo_metadata = "0.18.1"
+command-group = "2.0.1"
+crossbeam-channel = "0.5.8"
 dissimilar = "1.0.7"
 either = "1.9.0"
+expect-test = "1.4.0"
 hashbrown = { version = "0.14", features = [
   "inline-more",
 ], default-features = false }
@@ -105,6 +110,7 @@ nohash-hasher = "0.2.0"
 rayon = "1.8.0"
 rust-analyzer-salsa = "0.17.0-pre.4"
 rustc-hash = "1.1.0"
+semver = "1.0.14"
 serde = { version = "1.0.192", features = ["derive"] }
 serde_json = "1.0.108"
 smallvec = { version = "1.10.0", features = [
@@ -124,5 +130,12 @@ tracing-subscriber = { version = "0.3.18", default-features = false, features = 
 triomphe = { version = "0.1.10", default-features = false, features = ["std"] }
 xshell = "0.2.5"
 
+
 # We need to freeze the version of the crate, as the raw-api feature is considered unstable
 dashmap = { version = "=5.5.3", features = ["raw-api"] }
+
+[workspace.lints.clippy]
+collapsible_if = "allow"
+needless_pass_by_value = "allow"
+nonminimal_bool = "allow"
+redundant_pattern_matching = "allow"

@@ -30,7 +30,7 @@
 #
 # If `change-id` does not match the version that is currently running,
 # `x.py` will inform you about the changes made on bootstrap.
-# change-id = <latest change id in src/bootstrap/src/utils/change_tracker.rs>
+#change-id = <latest change id in src/bootstrap/src/utils/change_tracker.rs>
 
 # =============================================================================
 # Tweaking how LLVM is compiled
@@ -661,7 +661,7 @@
 
 # Indicates whether some LLVM tools, like llvm-objdump, will be made available in the
 # sysroot.
-#llvm-tools = false
+#llvm-tools = true
 
 # Whether to deny warnings in crates
 #deny-warnings = true

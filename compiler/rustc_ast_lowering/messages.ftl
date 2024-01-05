@@ -56,6 +56,9 @@ ast_lowering_functional_record_update_destructuring_assignment =
     functional record updates are not allowed in destructuring assignments
     .suggestion = consider removing the trailing pattern
 
+ast_lowering_generic_param_default_in_binder =
+    defaults for generic parameters are not allowed in `for<...>` binders
+
 ast_lowering_generic_type_with_parentheses =
     parenthesized type parameters may only be used with a `Fn` trait
     .label = only `Fn` traits may use parentheses

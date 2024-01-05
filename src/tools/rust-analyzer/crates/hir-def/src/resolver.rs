@@ -2,7 +2,10 @@
 use std::{fmt, hash::BuildHasherDefault};
 
 use base_db::CrateId;
-use hir_expand::name::{name, Name};
+use hir_expand::{
+    name::{name, Name},
+    MacroDefId,
+};
 use indexmap::IndexMap;
 use intern::Interned;
 use rustc_hash::FxHashSet;
@@ -404,6 +407,15 @@ impl Resolver {
             .resolve_path(db, module, path, BuiltinShadowMode::Other, expected_macro_kind)
             .0
             .take_macros_import()
+    }
+
+    pub fn resolve_path_as_macro_def(
+        &self,
+        db: &dyn DefDatabase,
+        path: &ModPath,
+        expected_macro_kind: Option<MacroSubNs>,
+    ) -> Option<MacroDefId> {
+        self.resolve_path_as_macro(db, path, expected_macro_kind).map(|(it, _)| db.macro_def(it))
     }
 
     /// Returns a set of names available in the current scope.
