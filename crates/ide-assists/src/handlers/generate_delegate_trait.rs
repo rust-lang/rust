@@ -351,11 +351,7 @@ fn generate_impl(
                 transform_impl(ctx, ast_strukt, &old_impl, &transform_args, &trait_args.syntax())?;
             }
 
-            let mut type_gen_args = strukt_params.clone().map(|params| params.to_generic_args());
-            if let Some(type_args) = &mut type_gen_args {
-                *type_args = type_args.clone_for_update();
-                transform_impl(ctx, ast_strukt, &old_impl, &transform_args, &type_args.syntax())?;
-            }
+            let type_gen_args = strukt_params.clone().map(|params| params.to_generic_args());
 
             let path_type = make::ty(&trait_.name(db).to_smol_str()).clone_for_update();
             transform_impl(ctx, ast_strukt, &old_impl, &transform_args, &path_type.syntax())?;
