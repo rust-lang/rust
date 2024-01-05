@@ -132,7 +132,10 @@ pub fn report_object_safety_error<'tcx>(
     };
     let externally_visible = if !impls.is_empty()
         && let Some(def_id) = trait_def_id.as_local()
-        && tcx.effective_visibilities(()).is_exported(def_id)
+        // We may be executing this during typeck, which would result in cycle
+        // if we used effective_visibilities query, which looks into opaque types
+        // (and therefore calls typeck).
+        && tcx.resolutions(()).effective_visibilities.is_exported(def_id)
     {
         true
     } else {
