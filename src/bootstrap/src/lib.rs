@@ -799,6 +799,10 @@ impl Build {
         self.out.join(&*target.triple).join("lld")
     }
 
+    fn enzyme_out(&self, target: TargetSelection) -> PathBuf {
+        self.out.join(&*target.triple).join("enzyme")
+    }
+
     /// Output directory for all documentation for a target
     fn doc_out(&self, target: TargetSelection) -> PathBuf {
         self.out.join(&*target.triple).join("doc")

@@ -1576,6 +1576,7 @@ pub struct Assemble {
     pub target_compiler: Compiler,
 }
 
+#[allow(unreachable_code)]
 impl Step for Assemble {
     type Output = Compiler;
     const ONLY_HOSTS: bool = true;
@@ -1634,6 +1635,26 @@ impl Step for Assemble {
                 builder.info(&format!("Creating a sysroot for stage{stage} compiler (use `rustup toolchain link 'name' build/host/stage{stage}`)", stage=target_compiler.stage));
             }
             return target_compiler;
+        }
+
+        // Build enzyme
+        let enzyme_install =
+            Some(builder.ensure(llvm::Enzyme { target: build_compiler.host }));
+        //let enzyme_install = if builder.config.llvm_enzyme {
+        //    Some(builder.ensure(llvm::Enzyme { target: build_compiler.host }))
+        //} else {
+        //    None
+        //};
+
+        if let Some(enzyme_install) = enzyme_install {
+            let src_lib = enzyme_install.join("build/Enzyme/LLVMEnzyme-17.so");
+
+            let libdir = builder.sysroot_libdir(build_compiler, build_compiler.host);
+            let target_libdir = builder.sysroot_libdir(target_compiler, target_compiler.host);
+            let dst_lib = libdir.join("libLLVMEnzyme-17.so");
+            let target_dst_lib = target_libdir.join("libLLVMEnzyme-17.so");
+            builder.copy(&src_lib, &dst_lib);
+            builder.copy(&src_lib, &target_dst_lib);
         }
 
         // Build the libraries for this compiler to link to (i.e., the libraries
