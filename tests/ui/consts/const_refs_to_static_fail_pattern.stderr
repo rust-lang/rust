@@ -1,0 +1,14 @@
+error: constant refers to mutable data
+  --> $DIR/const_refs_to_static_fail_pattern.rs:5:1
+   |
+LL | const C: &i32 = unsafe { &S_MUT };
+   | ^^^^^^^^^^^^^
+
+error: could not evaluate constant pattern
+  --> $DIR/const_refs_to_static_fail_pattern.rs:12:9
+   |
+LL |         C => {},
+   |         ^
+
+error: aborting due to 2 previous errors
+

@@ -6,7 +6,7 @@ use rustc_middle::ty::layout::LayoutOf;
 use rustc_span::symbol::Symbol;
 use rustc_type_ir::Mutability;
 
-use crate::const_eval::{mk_eval_cx, CanAccessStatics, CompileTimeEvalContext};
+use crate::const_eval::{mk_eval_cx, CanAccessMutGlobal, CompileTimeEvalContext};
 use crate::interpret::*;
 
 /// Allocate a `const core::panic::Location` with the provided filename and line/column numbers.
@@ -57,7 +57,7 @@ pub(crate) fn const_caller_location_provider(
     col: u32,
 ) -> mir::ConstValue<'_> {
     trace!("const_caller_location: {}:{}:{}", file, line, col);
-    let mut ecx = mk_eval_cx(tcx.tcx, tcx.span, ty::ParamEnv::reveal_all(), CanAccessStatics::No);
+    let mut ecx = mk_eval_cx(tcx.tcx, tcx.span, ty::ParamEnv::reveal_all(), CanAccessMutGlobal::No);
 
     let loc_place = alloc_caller_location(&mut ecx, file, line, col);
     if intern_const_alloc_recursive(&mut ecx, InternKind::Constant, &loc_place).is_err() {

@@ -1,0 +1,15 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_refs_to_static_fail.rs:9:13
+   |
+LL |     assert!(*C1.get() == 0);
+   |             ^^^^^^^^^ constant accesses mutable global memory
+
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const_refs_to_static_fail.rs:14:13
+   |
+LL |     assert!(*C2 == 0);
+   |             ^^^ constant accesses mutable global memory
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

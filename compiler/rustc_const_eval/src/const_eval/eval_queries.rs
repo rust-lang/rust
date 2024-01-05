@@ -13,7 +13,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Span;
 use rustc_target::abi::{self, Abi};
 
-use super::{CanAccessStatics, CompileTimeEvalContext, CompileTimeInterpreter};
+use super::{CanAccessMutGlobal, CompileTimeEvalContext, CompileTimeInterpreter};
 use crate::const_eval::CheckAlignment;
 use crate::errors;
 use crate::errors::ConstEvalError;
@@ -94,14 +94,14 @@ pub(crate) fn mk_eval_cx<'mir, 'tcx>(
     tcx: TyCtxt<'tcx>,
     root_span: Span,
     param_env: ty::ParamEnv<'tcx>,
-    can_access_statics: CanAccessStatics,
+    can_access_mut_global: CanAccessMutGlobal,
 ) -> CompileTimeEvalContext<'mir, 'tcx> {
     debug!("mk_eval_cx: {:?}", param_env);
     InterpCx::new(
         tcx,
         root_span,
         param_env,
-        CompileTimeInterpreter::new(can_access_statics, CheckAlignment::No),
+        CompileTimeInterpreter::new(can_access_mut_global, CheckAlignment::No),
     )
 }
 
@@ -204,7 +204,7 @@ pub(crate) fn turn_into_const_value<'tcx>(
         tcx,
         tcx.def_span(key.value.instance.def_id()),
         key.param_env,
-        CanAccessStatics::from(is_static),
+        CanAccessMutGlobal::from(is_static),
     );
 
     let mplace = ecx.raw_const_to_mplace(constant).expect(
@@ -281,9 +281,11 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         tcx,
         tcx.def_span(def),
         key.param_env,
-        // Statics (and promoteds inside statics) may access other statics, because unlike consts
+        // Statics (and promoteds inside statics) may access mutable global memory, because unlike consts
         // they do not have to behave "as if" they were evaluated at runtime.
-        CompileTimeInterpreter::new(CanAccessStatics::from(is_static), CheckAlignment::Error),
+        // For consts however we want to ensure they behave "as if" they were evaluated at runtime,
+        // so we have to reject reading mutable global memory.
+        CompileTimeInterpreter::new(CanAccessMutGlobal::from(is_static), CheckAlignment::Error),
     );
     eval_in_interpreter(ecx, cid, is_static)
 }

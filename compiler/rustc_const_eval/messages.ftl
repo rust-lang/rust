@@ -30,7 +30,9 @@ const_eval_closure_non_const =
     cannot call non-const closure in {const_eval_const_context}s
 const_eval_consider_dereferencing =
     consider dereferencing here
-const_eval_const_accesses_static = constant accesses static
+
+const_eval_const_accesses_mut_global =
+    constant accesses mutable global memory
 
 const_eval_const_context = {$kind ->
     [const] constant
@@ -213,6 +215,9 @@ const_eval_modified_global =
 const_eval_mut_deref =
     mutation through a reference is not allowed in {const_eval_const_context}s
 
+const_eval_mutable_data_in_const =
+    constant refers to mutable data
+
 const_eval_mutable_ptr_in_final = encountered mutable pointer in final value of {const_eval_intern_kind}
 
 const_eval_non_const_fmt_macro_call =
@@ -318,12 +323,6 @@ const_eval_size_overflow =
 
 const_eval_stack_frame_limit_reached =
     reached the configured maximum number of stack frames
-
-const_eval_static_access =
-    {const_eval_const_context}s cannot refer to statics
-    .help = consider extracting the value of the `static` to a `const`, and referring to that
-    .teach_note = `static` and `const` variables can refer to other `const` variables. A `const` variable, however, cannot refer to a `static` variable.
-    .teach_help = To fix this, the value can be extracted to a `const` and then used.
 
 const_eval_thread_local_access =
     thread-local statics cannot be accessed at compile-time
