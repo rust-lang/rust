@@ -1237,5 +1237,16 @@ pub macro pin($value:expr $(,)?) {
     //
     // See https://doc.rust-lang.org/1.58.1/reference/destructors.html#temporary-lifetime-extension
     // for more info.
-    Pin { pointer: &mut { $value } }
+    //
+    // # Avoiding coercion
+    //
+    // We need to explicitly constrain the pointer type to avoid (unsound) coercion. Otherwise, you
+    // could write code like
+    // ```rust
+    // let rc = Rc::new(PhantomPinned);
+    // let _pinned: Pin<&PhantomPinned> = pin!(rc.clone());
+    // let moved = Rc::into_inner(rc).unwrap();
+    // ```
+    // since the `&mut Rc` is coerced to a `&PhantomPinned`.
+    Pin::<&mut _> { pointer: &mut { $value } }
 }
