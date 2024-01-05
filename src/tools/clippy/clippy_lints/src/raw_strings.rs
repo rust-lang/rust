@@ -108,7 +108,7 @@ impl EarlyLintPass for RawStrings {
                 }
             }
 
-            let req = {
+            let mut req = {
                 let mut following_quote = false;
                 let mut req = 0;
                 // `once` so a raw string ending in hashes is still checked
@@ -136,7 +136,9 @@ impl EarlyLintPass for RawStrings {
                     ControlFlow::Continue(num) | ControlFlow::Break(num) => num,
                 }
             };
-
+            if self.allow_one_hash_in_raw_strings {
+                req = req.max(1);
+            }
             if req < max {
                 span_lint_and_then(
                     cx,
