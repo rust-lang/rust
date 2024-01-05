@@ -49,24 +49,18 @@ pub(crate) macro throw_machine_stop_str($($tt:tt)*) {{
     throw_machine_stop!(Zst)
 }}
 
-pub(crate) struct ConstPropMachine<'mir, 'tcx> {
-    /// The virtual call stack.
-    stack: Vec<Frame<'mir, 'tcx>>,
+pub(crate) struct ConstPropMachine {
     pub written_only_inside_own_block_locals: FxHashSet<Local>,
     pub can_const_prop: IndexVec<Local, ConstPropMode>,
 }
 
-impl ConstPropMachine<'_, '_> {
+impl ConstPropMachine {
     pub fn new(can_const_prop: IndexVec<Local, ConstPropMode>) -> Self {
-        Self {
-            stack: Vec::new(),
-            written_only_inside_own_block_locals: Default::default(),
-            can_const_prop,
-        }
+        Self { written_only_inside_own_block_locals: Default::default(), can_const_prop }
     }
 }
 
-impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx> {
+impl<'mir, 'tcx: 'mir> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
     compile_time_machine!(<'mir, 'tcx>);
 
     const PANIC_ON_ALLOC_FAIL: bool = true; // all allocations are small (see `MAX_ALLOC_LIMIT`)
@@ -192,16 +186,16 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
 
     #[inline(always)]
     fn stack<'a>(
-        ecx: &'a InterpCx<'mir, 'tcx, Self>,
+        _ecx: &'a InterpCx<'mir, 'tcx, Self>,
     ) -> &'a [Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>] {
-        &ecx.machine.stack
+        &[]
     }
 
     #[inline(always)]
     fn stack_mut<'a>(
-        ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
+        _ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
     ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>> {
-        &mut ecx.machine.stack
+        unreachable!()
     }
 }
 

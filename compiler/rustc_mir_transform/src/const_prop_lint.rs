@@ -3,8 +3,8 @@
 
 use std::fmt::Debug;
 
-use rustc_const_eval::interpret::{ImmTy, MPlaceTy, Projectable};
-use rustc_const_eval::interpret::{InterpCx, InterpResult, OpTy, Scalar, StackPopCleanup};
+use rustc_const_eval::interpret::{ImmTy, Projectable};
+use rustc_const_eval::interpret::{InterpCx, InterpResult, OpTy, Scalar};
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
 use rustc_index::bit_set::BitSet;
@@ -12,10 +12,7 @@ use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayout};
-use rustc_middle::ty::GenericArgs;
-use rustc_middle::ty::{
-    self, ConstInt, Instance, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitableExt,
-};
+use rustc_middle::ty::{self, ConstInt, ParamEnv, ScalarInt, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::Span;
 use rustc_target::abi::{Abi, FieldIdx, HasDataLayout, Size, TargetDataLayout, VariantIdx};
 
@@ -72,12 +69,13 @@ impl<'tcx> MirLint<'tcx> for ConstPropLint {
 
 /// Finds optimization opportunities on the MIR.
 struct ConstPropagator<'mir, 'tcx> {
-    ecx: InterpCx<'mir, 'tcx, ConstPropMachine<'mir, 'tcx>>,
+    ecx: InterpCx<'mir, 'tcx, ConstPropMachine>,
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     worklist: Vec<BasicBlock>,
     visited_blocks: BitSet<BasicBlock>,
     locals: IndexVec<Local, Value<'tcx>>,
+    body: &'mir Body<'tcx>,
 }
 
 #[derive(Debug, Clone)]
@@ -180,26 +178,15 @@ impl<'tcx> ty::layout::HasParamEnv<'tcx> for ConstPropagator<'_, 'tcx> {
 impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn new(body: &'mir Body<'tcx>, tcx: TyCtxt<'tcx>) -> ConstPropagator<'mir, 'tcx> {
         let def_id = body.source.def_id();
-        let args = &GenericArgs::identity_for_item(tcx, def_id);
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
 
         let can_const_prop = CanConstProp::check(tcx, param_env, body);
-        let mut ecx = InterpCx::new(
+        let ecx = InterpCx::new(
             tcx,
             tcx.def_span(def_id),
             param_env,
             ConstPropMachine::new(can_const_prop),
         );
-
-        let ret = MPlaceTy::fake_alloc_zst(ecx.layout_of(tcx.types.unit).unwrap()).into();
-
-        ecx.push_stack_frame(
-            Instance::new(def_id, args),
-            body,
-            &ret,
-            StackPopCleanup::Root { cleanup: false },
-        )
-        .expect("failed to push initial stack frame");
 
         ConstPropagator {
             ecx,
@@ -208,15 +195,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             worklist: vec![START_BLOCK],
             visited_blocks: BitSet::new_empty(body.basic_blocks.len()),
             locals: IndexVec::from_elem_n(Value::Uninit, body.local_decls.len()),
+            body,
         }
     }
 
-    fn body(&self) -> &'mir Body<'tcx> {
-        self.ecx.frame().body
-    }
-
     fn local_decls(&self) -> &'mir LocalDecls<'tcx> {
-        &self.body().local_decls
+        &self.body.local_decls
     }
 
     fn get_const(&self, place: Place<'tcx>) -> Option<&Value<'tcx>> {
@@ -243,7 +227,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     fn lint_root(&self, source_info: SourceInfo) -> Option<HirId> {
-        source_info.scope.lint_root(&self.body().source_scopes)
+        source_info.scope.lint_root(&self.body.source_scopes)
     }
 
     fn use_ecx<F, T>(&mut self, f: F) -> Option<T>
@@ -332,7 +316,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             // `AssertKind` only has an `OverflowNeg` variant, so make sure that is
             // appropriate to use.
             assert_eq!(op, UnOp::Neg, "Neg is the only UnOp that can overflow");
-            let source_info = self.body().source_info(location);
+            let source_info = self.body.source_info(location);
             self.report_assert_as_lint(
                 source_info,
                 AssertLint::ArithmeticOverflow(
@@ -370,7 +354,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             let r_bits = r.to_scalar().to_bits(right_size).ok();
             if r_bits.is_some_and(|b| b >= left_size.bits() as u128) {
                 debug!("check_binary_op: reporting assert for {:?}", location);
-                let source_info = self.body().source_info(location);
+                let source_info = self.body.source_info(location);
                 let panic = AssertKind::Overflow(
                     op,
                     match l {
@@ -398,7 +382,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 let (_res, overflow) = this.ecx.overflowing_binary_op(op, &l, &r)?;
                 Ok(overflow)
             })? {
-                let source_info = self.body().source_info(location);
+                let source_info = self.body.source_info(location);
                 self.report_assert_as_lint(
                     source_info,
                     AssertLint::ArithmeticOverflow(
@@ -545,7 +529,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 // Need proper const propagator for these.
                 _ => return None,
             };
-            let source_info = self.body().source_info(location);
+            let source_info = self.body.source_info(location);
             self.report_assert_as_lint(
                 source_info,
                 AssertLint::UnconditionalPanic(source_info.span, msg),
@@ -579,7 +563,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
         use rustc_middle::mir::Rvalue::*;
-        let layout = self.use_ecx(|this| this.ecx.eval_place(*dest))?.layout;
+        let layout = self.ecx.layout_of(dest.ty(self.body, self.tcx).ty).ok()?;
         trace!(?layout);
 
         let val: Value<'_> = match *rvalue {
