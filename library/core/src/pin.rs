@@ -1244,7 +1244,7 @@ pub macro pin($value:expr $(,)?) {
     // could write code like
     // ```rust
     // let rc = Rc::new(PhantomPinned);
-    // let _pinned: Pin<&PhantomPinned> = pin!(rc.clone());
+    // { let _pinned: Pin<&PhantomPinned> = pin!(rc.clone()); }
     // let moved = Rc::into_inner(rc).unwrap();
     // ```
     // since the `&mut Rc` is coerced to a `&PhantomPinned`.
