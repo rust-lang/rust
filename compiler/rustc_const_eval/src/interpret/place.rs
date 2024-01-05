@@ -519,11 +519,7 @@ where
         } else {
             // Unsized `Local` isn't okay (we cannot store the metadata).
             match frame_ref.locals[local].access()? {
-                Operand::Immediate(_) => {
-                    // ConstProp marks *all* locals as `Immediate::Uninit` since it cannot
-                    // efficiently check whether they are sized. We have to catch that case here.
-                    throw_inval!(ConstPropNonsense);
-                }
+                Operand::Immediate(_) => bug!(),
                 Operand::Indirect(mplace) => Place::Ptr(*mplace),
             }
         };
@@ -816,17 +812,8 @@ where
         // avoid force_allocation.
         let src = match self.read_immediate_raw(src)? {
             Right(src_val) => {
-                // FIXME(const_prop): Const-prop can possibly evaluate an
-                // unsized copy operation when it thinks that the type is
-                // actually sized, due to a trivially false where-clause
-                // predicate like `where Self: Sized` with `Self = dyn Trait`.
-                // See #102553 for an example of such a predicate.
-                if src.layout().is_unsized() {
-                    throw_inval!(ConstPropNonsense);
-                }
-                if dest.layout().is_unsized() {
-                    throw_inval!(ConstPropNonsense);
-                }
+                assert!(!src.layout().is_unsized());
+                assert!(!dest.layout().is_unsized());
                 assert_eq!(src.layout().size, dest.layout().size);
                 // Yay, we got a value that we can write directly.
                 return if layout_compat {

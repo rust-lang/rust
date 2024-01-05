@@ -200,8 +200,6 @@ pub enum InvalidProgramInfo<'tcx> {
     /// (which unfortunately typeck does not reject).
     /// Not using `FnAbiError` as that contains a nested `LayoutError`.
     FnAbiAdjustForForeignAbi(call::AdjustForForeignAbiError),
-    /// We are runnning into a nonsense situation due to ConstProp violating our invariants.
-    ConstPropNonsense,
 }
 
 /// Details of why a pointer had to be in-bounds.
