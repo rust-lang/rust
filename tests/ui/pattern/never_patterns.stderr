@@ -1,19 +1,17 @@
-error[E0408]: variable `_x` is not bound in all patterns
-  --> $DIR/never_patterns.rs:12:19
+error[E0005]: refutable pattern in local binding
+  --> $DIR/never_patterns.rs:10:9
    |
-LL |     let (Ok(_x) | Err(!)) = &res;
-   |             --    ^^^^^^ pattern doesn't bind `_x`
-   |             |
-   |             variable not in all patterns
-
-error[E0408]: variable `_x` is not bound in all patterns
-  --> $DIR/never_patterns.rs:14:19
+LL |     let Ok(_x) = res;
+   |         ^^^^^^ pattern `Err(_)` not covered
    |
-LL |     let (Ok(_x) | Err(&!)) = res.as_ref();
-   |             --    ^^^^^^^ pattern doesn't bind `_x`
-   |             |
-   |             variable not in all patterns
+   = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+   = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+   = note: the matched value is of type `Result<T, Void>`
+help: you might want to use `let else` to handle the variant that isn't matched
+   |
+LL |     let Ok(_x) = res else { todo!() };
+   |                      ++++++++++++++++
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0408`.
+For more information about this error, try `rustc --explain E0005`.

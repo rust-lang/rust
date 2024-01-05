@@ -7,12 +7,9 @@ fn main() {}
 
 // The classic use for empty types.
 fn safe_unwrap_result<T>(res: Result<T, Void>) {
-    let Ok(_x) = res;
-    // FIXME(never_patterns): These should be allowed
+    let Ok(_x) = res; //~ ERROR refutable pattern in local binding
     let (Ok(_x) | Err(!)) = &res;
-    //~^ ERROR: is not bound in all patterns
     let (Ok(_x) | Err(&!)) = res.as_ref();
-    //~^ ERROR: is not bound in all patterns
 }
 
 // Check we only accept `!` where we want to.

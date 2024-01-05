@@ -65,6 +65,8 @@ enum IsRepeatExpr {
     Yes,
 }
 
+struct IsNeverPattern;
+
 /// Describes whether an `AnonConst` is a type level const arg or
 /// some other form of anon const (i.e. inline consts or enum discriminants)
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -3191,11 +3193,15 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     }
 
     /// Build a map from pattern identifiers to binding-info's, and check the bindings are
-    /// consistent when encountering or-patterns.
+    /// consistent when encountering or-patterns and never patterns.
     /// This is done hygienically: this could arise for a macro that expands into an or-pattern
     /// where one 'x' was from the user and one 'x' came from the macro.
-    fn compute_and_check_binding_map(&mut self, pat: &Pat) -> FxIndexMap<Ident, BindingInfo> {
+    fn compute_and_check_binding_map(
+        &mut self,
+        pat: &Pat,
+    ) -> Result<FxIndexMap<Ident, BindingInfo>, IsNeverPattern> {
         let mut binding_map = FxIndexMap::default();
+        let mut is_never_pat = false;
 
         pat.walk(&mut |pat| {
             match pat.kind {
@@ -3207,17 +3213,26 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 PatKind::Or(ref ps) => {
                     // Check the consistency of this or-pattern and
                     // then add all bindings to the larger map.
-                    let bm = self.compute_and_check_or_pat_binding_map(ps);
+                    let (bm, np) = self.compute_and_check_or_pat_binding_map(ps);
                     binding_map.extend(bm);
+                    is_never_pat |= np;
                     return false;
                 }
+                PatKind::Never => is_never_pat = true,
                 _ => {}
             }
 
             true
         });
 
-        binding_map
+        if is_never_pat {
+            for (_, binding) in binding_map {
+                self.report_error(binding.span, ResolutionError::BindingInNeverPattern);
+            }
+            Err(IsNeverPattern)
+        } else {
+            Ok(binding_map)
+        }
     }
 
     fn is_base_res_local(&self, nid: NodeId) -> bool {
@@ -3229,24 +3244,29 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
     /// Compute the binding map for an or-pattern. Checks that all of the arms in the or-pattern
     /// have exactly the same set of bindings, with the same binding modes for each.
-    /// Returns the computed binding map.
+    /// Returns the computed binding map and a boolean indicating whether the pattern is a never
+    /// pattern.
     fn compute_and_check_or_pat_binding_map(
         &mut self,
         pats: &[P<Pat>],
-    ) -> FxIndexMap<Ident, BindingInfo> {
+    ) -> (FxIndexMap<Ident, BindingInfo>, bool) {
         let mut missing_vars = FxIndexMap::default();
         let mut inconsistent_vars = FxIndexMap::default();
 
-        // 1) Compute the binding maps of all arms.
-        let maps =
-            pats.iter().map(|pat| self.compute_and_check_binding_map(pat)).collect::<Vec<_>>();
+        // 1) Compute the binding maps of all arms; never patterns don't participate in this.
+        let not_never_pats = pats
+            .iter()
+            .filter_map(|pat| {
+                let binding_map = self.compute_and_check_binding_map(pat).ok()?;
+                Some((binding_map, pat))
+            })
+            .collect::<Vec<_>>();
 
         // 2) Record any missing bindings or binding mode inconsistencies.
-        for (map_outer, pat_outer) in maps.iter().zip(pats.iter()) {
+        for (map_outer, pat_outer) in not_never_pats.iter() {
             // Check against all arms except for the same pattern which is always self-consistent.
-            let inners = maps
+            let inners = not_never_pats
                 .iter()
-                .zip(pats.iter())
                 .filter(|(_, pat)| pat.id != pat_outer.id)
                 .flat_map(|(map, _)| map);
 
@@ -3294,22 +3314,17 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         }
 
         // 5) Bubble up the final binding map.
+        let is_never_pat = not_never_pats.is_empty();
         let mut binding_map = FxIndexMap::default();
-        for bm in maps {
+        for (bm, _) in not_never_pats {
             binding_map.extend(bm);
         }
-        binding_map
+        (binding_map, is_never_pat)
     }
 
-    /// Check the consistency of bindings wrt or-patterns.
+    /// Check the consistency of bindings wrt or-patterns and never patterns.
     fn check_consistent_bindings(&mut self, pat: &'ast Pat) {
-        pat.walk(&mut |pat| match pat.kind {
-            PatKind::Or(ref ps) => {
-                let _ = self.compute_and_check_or_pat_binding_map(ps);
-                false
-            }
-            _ => true,
-        })
+        let _ = self.compute_and_check_binding_map(pat);
     }
 
     fn resolve_arm(&mut self, arm: &'ast Arm) {

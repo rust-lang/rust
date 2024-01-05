@@ -1,43 +1,26 @@
-error[E0408]: variable `_x` is not bound in all patterns
-  --> $DIR/bindings.rs:11:18
+error: never patterns cannot contain variable bindings
+  --> $DIR/bindings.rs:16:15
    |
-LL |         Ok(_x) | Err(&!) => {}
-   |            --    ^^^^^^^ pattern doesn't bind `_x`
-   |            |
-   |            variable not in all patterns
+LL |         Err(&(_a, _b, !)),
+   |               ^^ help: use a wildcard `_` instead
 
-error[E0408]: variable `_x` is not bound in all patterns
-  --> $DIR/bindings.rs:14:19
+error: never patterns cannot contain variable bindings
+  --> $DIR/bindings.rs:16:19
    |
-LL |     let (Ok(_x) | Err(&!)) = x;
-   |             --    ^^^^^^^ pattern doesn't bind `_x`
-   |             |
-   |             variable not in all patterns
+LL |         Err(&(_a, _b, !)),
+   |                   ^^ help: use a wildcard `_` instead
 
-error[E0408]: variable `_a` is not bound in all patterns
-  --> $DIR/bindings.rs:23:9
+error: never patterns cannot contain variable bindings
+  --> $DIR/bindings.rs:21:25
    |
 LL |         Ok(_ok) | Err(&(_a, _b, !)) => {}
-   |         ^^^^^^^         -- variable not in all patterns
-   |         |
-   |         pattern doesn't bind `_a`
+   |                         ^^ help: use a wildcard `_` instead
 
-error[E0408]: variable `_b` is not bound in all patterns
-  --> $DIR/bindings.rs:23:9
+error: never patterns cannot contain variable bindings
+  --> $DIR/bindings.rs:21:29
    |
 LL |         Ok(_ok) | Err(&(_a, _b, !)) => {}
-   |         ^^^^^^^             -- variable not in all patterns
-   |         |
-   |         pattern doesn't bind `_b`
+   |                             ^^ help: use a wildcard `_` instead
 
-error[E0408]: variable `_ok` is not bound in all patterns
-  --> $DIR/bindings.rs:23:19
-   |
-LL |         Ok(_ok) | Err(&(_a, _b, !)) => {}
-   |            ---    ^^^^^^^^^^^^^^^^^ pattern doesn't bind `_ok`
-   |            |
-   |            variable not in all patterns
+error: aborting due to 4 previous errors
 
-error: aborting due to 5 previous errors
-
-For more information about this error, try `rustc --explain E0408`.
