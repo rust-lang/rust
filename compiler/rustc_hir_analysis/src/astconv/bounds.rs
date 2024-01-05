@@ -26,23 +26,36 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
         span: Span,
     ) {
         let tcx = self.tcx();
+        let sized_def_id = tcx.lang_items().sized_trait();
+        let mut seen_negative_sized_bound = false;
 
         // Try to find an unbound in bounds.
         let mut unbounds: SmallVec<[_; 1]> = SmallVec::new();
         let mut search_bounds = |ast_bounds: &'tcx [hir::GenericBound<'tcx>]| {
             for ab in ast_bounds {
-                if let hir::GenericBound::Trait(ptr, hir::TraitBoundModifier::Maybe) = ab {
-                    unbounds.push(ptr)
+                let hir::GenericBound::Trait(ptr, modifier) = ab else {
+                    continue;
+                };
+                match modifier {
+                    hir::TraitBoundModifier::Maybe => unbounds.push(ptr),
+                    hir::TraitBoundModifier::Negative => {
+                        if let Some(sized_def_id) = sized_def_id
+                            && ptr.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id)
+                        {
+                            seen_negative_sized_bound = true;
+                        }
+                    }
+                    _ => {}
                 }
             }
         };
         search_bounds(ast_bounds);
         if let Some((self_ty, where_clause)) = self_ty_where_predicates {
             for clause in where_clause {
-                if let hir::WherePredicate::BoundPredicate(pred) = clause {
-                    if pred.is_param_bound(self_ty.to_def_id()) {
-                        search_bounds(pred.bounds);
-                    }
+                if let hir::WherePredicate::BoundPredicate(pred) = clause
+                    && pred.is_param_bound(self_ty.to_def_id())
+                {
+                    search_bounds(pred.bounds);
                 }
             }
         }
@@ -53,15 +66,13 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             });
         }
 
-        let sized_def_id = tcx.lang_items().sized_trait();
-
         let mut seen_sized_unbound = false;
         for unbound in unbounds {
-            if let Some(sized_def_id) = sized_def_id {
-                if unbound.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id) {
-                    seen_sized_unbound = true;
-                    continue;
-                }
+            if let Some(sized_def_id) = sized_def_id
+                && unbound.trait_ref.path.res == Res::Def(DefKind::Trait, sized_def_id)
+            {
+                seen_sized_unbound = true;
+                continue;
             }
             // There was a `?Trait` bound, but it was not `?Sized`; warn.
             tcx.dcx().span_warn(
@@ -71,15 +82,12 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             );
         }
 
-        // If the above loop finished there was no `?Sized` bound; add implicitly sized if `Sized` is available.
-        if sized_def_id.is_none() {
-            // No lang item for `Sized`, so we can't add it as a bound.
-            return;
-        }
-        if seen_sized_unbound {
-            // There was in fact a `?Sized` bound, return without doing anything
-        } else {
-            // There was no `?Sized` bound; add implicitly sized if `Sized` is available.
+        if seen_sized_unbound || seen_negative_sized_bound {
+            // There was in fact a `?Sized` or `!Sized` bound;
+            // we don't need to do anything.
+        } else if sized_def_id.is_some() {
+            // There was no `?Sized` or `!Sized` bound;
+            // add `Sized` if it's available.
             bounds.push_sized(tcx, self_ty, span);
         }
     }

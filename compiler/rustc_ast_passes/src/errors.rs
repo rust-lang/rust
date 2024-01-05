@@ -764,6 +764,13 @@ pub struct ConstraintOnNegativeBound {
 }
 
 #[derive(Diagnostic)]
+#[diag(ast_passes_negative_bound_with_parenthetical_notation)]
+pub struct NegativeBoundWithParentheticalNotation {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(ast_passes_invalid_unnamed_field_ty)]
 pub struct InvalidUnnamedFieldTy {
     #[primary_span]
