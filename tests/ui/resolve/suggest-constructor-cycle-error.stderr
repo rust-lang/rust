@@ -1,0 +1,15 @@
+error[E0391]: cycle detected when getting the resolver for lowering
+   |
+   = note: ...which requires normalizing `[u8; suggest_constructor_cycle_error::::m::{impl#0}::encode_buffer::{constant#0}]`...
+note: ...which requires resolving instance `suggest_constructor_cycle_error::m::Uuid::encode_buffer::{constant#0}`...
+  --> $DIR/auxiliary/suggest-constructor-cycle-error.rs:5:40
+   |
+LL |         pub fn encode_buffer() -> [u8; LENGTH] {
+   |                                        ^^^^^^
+   = note: ...which requires calculating the lang items map...
+   = note: ...which again requires getting the resolver for lowering, completing the cycle
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

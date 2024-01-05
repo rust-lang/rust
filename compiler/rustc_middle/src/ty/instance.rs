@@ -293,12 +293,16 @@ impl<'tcx> InstanceDef<'tcx> {
 fn fmt_instance(
     f: &mut fmt::Formatter<'_>,
     instance: &Instance<'_>,
-    type_length: rustc_session::Limit,
+    type_length: Option<rustc_session::Limit>,
 ) -> fmt::Result {
     ty::tls::with(|tcx| {
         let args = tcx.lift(instance.args).expect("could not lift for printing");
 
-        let mut cx = FmtPrinter::new_with_limit(tcx, Namespace::ValueNS, type_length);
+        let mut cx = if let Some(type_length) = type_length {
+            FmtPrinter::new_with_limit(tcx, Namespace::ValueNS, type_length)
+        } else {
+            FmtPrinter::new(tcx, Namespace::ValueNS)
+        };
         cx.print_def_path(instance.def_id(), args)?;
         let s = cx.into_buffer();
         f.write_str(&s)
@@ -324,13 +328,13 @@ pub struct ShortInstance<'a, 'tcx>(pub &'a Instance<'tcx>, pub usize);
 
 impl<'a, 'tcx> fmt::Display for ShortInstance<'a, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt_instance(f, self.0, rustc_session::Limit(self.1))
+        fmt_instance(f, self.0, Some(rustc_session::Limit(self.1)))
     }
 }
 
 impl<'tcx> fmt::Display for Instance<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        ty::tls::with(|tcx| fmt_instance(f, self, tcx.type_length_limit()))
+        fmt_instance(f, self, None)
     }
 }
 
