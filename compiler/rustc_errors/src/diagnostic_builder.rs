@@ -269,12 +269,6 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         G::emit_producing_guarantee(&mut self)
     }
 
-    /// Emit the diagnostic without consuming it. `emit` should be preferred.
-    #[track_caller]
-    pub fn emit_without_consuming(&mut self) -> G::EmitResult {
-        G::emit_producing_guarantee(self)
-    }
-
     /// Emit the diagnostic unless `delay` is true,
     /// in which case the emission will be delayed as a bug.
     ///
@@ -376,7 +370,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     #[track_caller]
     pub fn delay_as_bug_without_consuming(&mut self) -> G::EmitResult {
         self.downgrade_to_delayed_bug();
-        self.emit_without_consuming()
+        G::emit_producing_guarantee(self)
     }
 
     forward!((span_label, span_label_mv)(
