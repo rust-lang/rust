@@ -94,7 +94,7 @@ impl RawVisibility {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Visibility {
     /// Visibility is restricted to a certain module.
-    Module(ModuleId),
+    Module(ModuleId, VisibilityExplicity),
     /// Visibility is unrestricted.
     Public,
 }
@@ -102,7 +102,7 @@ pub enum Visibility {
 impl Visibility {
     pub fn is_visible_from(self, db: &dyn DefDatabase, from_module: ModuleId) -> bool {
         let to_module = match self {
-            Visibility::Module(m) => m,
+            Visibility::Module(m, _) => m,
             Visibility::Public => return true,
         };
         // if they're not in the same crate, it can't be visible
@@ -124,7 +124,7 @@ impl Visibility {
         mut from_module: LocalModuleId,
     ) -> bool {
         let mut to_module = match self {
-            Visibility::Module(m) => m,
+            Visibility::Module(m, _) => m,
             Visibility::Public => return true,
         };
 
@@ -181,9 +181,9 @@ impl Visibility {
     /// visible in unrelated modules).
     pub(crate) fn max(self, other: Visibility, def_map: &DefMap) -> Option<Visibility> {
         match (self, other) {
-            (Visibility::Module(_) | Visibility::Public, Visibility::Public)
-            | (Visibility::Public, Visibility::Module(_)) => Some(Visibility::Public),
-            (Visibility::Module(mod_a), Visibility::Module(mod_b)) => {
+            (Visibility::Module(_, _) | Visibility::Public, Visibility::Public)
+            | (Visibility::Public, Visibility::Module(_, _)) => Some(Visibility::Public),
+            (Visibility::Module(mod_a, vis_a), Visibility::Module(mod_b, vis_b)) => {
                 if mod_a.krate != mod_b.krate {
                     return None;
                 }
@@ -199,17 +199,31 @@ impl Visibility {
 
                 if a_ancestors.any(|m| m == mod_b.local_id) {
                     // B is above A
-                    return Some(Visibility::Module(mod_b));
+                    return Some(Visibility::Module(mod_b, vis_b));
                 }
 
                 if b_ancestors.any(|m| m == mod_a.local_id) {
                     // A is above B
-                    return Some(Visibility::Module(mod_a));
+                    return Some(Visibility::Module(mod_a, vis_a));
                 }
 
                 None
             }
         }
+    }
+}
+
+/// Whether the item was imported through `pub(crate) use` or just `use`.
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum VisibilityExplicity {
+    Explicit,
+    #[default]
+    Implicit,
+}
+
+impl VisibilityExplicity {
+    pub fn is_explicit(&self) -> bool {
+        matches!(self, Self::Explicit)
     }
 }
 

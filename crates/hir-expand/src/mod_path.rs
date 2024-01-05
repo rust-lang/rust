@@ -96,6 +96,10 @@ impl ModPath {
         self.kind == PathKind::Super(0) && self.segments.is_empty()
     }
 
+    pub fn is_pub_crate(&self) -> bool {
+        self.kind == PathKind::Crate && self.segments.is_empty()
+    }
+
     #[allow(non_snake_case)]
     pub fn is_Self(&self) -> bool {
         self.kind == PathKind::Plain

@@ -356,7 +356,7 @@ impl Definition {
         if let Some(Visibility::Public) = vis {
             return SearchScope::reverse_dependencies(db, module.krate());
         }
-        if let Some(Visibility::Module(module)) = vis {
+        if let Some(Visibility::Module(module, _)) = vis {
             return SearchScope::module_and_children(db, module.into());
         }
 
