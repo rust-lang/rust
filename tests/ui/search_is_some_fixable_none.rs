@@ -226,10 +226,8 @@ mod issue_11910 {
     }
 
     struct Foo;
-    impl Foo{
-        fn bar(&self, _ : bool) {
-
-        }
+    impl Foo {
+        fn bar(&self, _: bool) {}
     }
 
     fn test_then() {
