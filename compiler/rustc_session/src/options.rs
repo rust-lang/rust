@@ -223,6 +223,8 @@ top_level_options!(
         /// The (potentially remapped) working directory
         working_dir: RealFileName [TRACKED],
         color: ColorConfig [UNTRACKED],
+
+        verbose: bool [UNTRACKED],
     }
 );
 
@@ -1991,8 +1993,8 @@ written to standard error output)"),
         "use legacy .ctors section for initializers rather than .init_array"),
     validate_mir: bool = (false, parse_bool, [UNTRACKED],
         "validate MIR after each transformation"),
-    #[rustc_lint_opt_deny_field_access("use `Session::verbose` instead of this field")]
-    verbose: bool = (false, parse_bool, [UNTRACKED],
+    #[rustc_lint_opt_deny_field_access("use `Session::verbose_internals` instead of this field")]
+    verbose_internals: bool = (false, parse_bool, [UNTRACKED],
         "in general, enable more debug printouts (default: no)"),
     #[rustc_lint_opt_deny_field_access("use `Session::verify_llvm_ir` instead of this field")]
     verify_llvm_ir: bool = (false, parse_bool, [TRACKED],

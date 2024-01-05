@@ -1,11 +1,11 @@
-// unit-test: ConstProp
+// unit-test: GVN
 // compile-flags: -Zmir-enable-passes=+SimplifyConstCondition-after-const-prop
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
 #[inline(never)]
 fn foo(_: i32) { }
 
-// EMIT_MIR switch_int.main.ConstProp.diff
+// EMIT_MIR switch_int.main.GVN.diff
 // EMIT_MIR switch_int.main.SimplifyConstCondition-after-const-prop.diff
 fn main() {
     // CHECK-LABEL: fn main(

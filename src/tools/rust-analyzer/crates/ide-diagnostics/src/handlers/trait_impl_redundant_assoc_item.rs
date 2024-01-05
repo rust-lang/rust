@@ -76,4 +76,24 @@ impl Marker for Foo {
             "#,
         )
     }
+
+    #[test]
+    fn dont_work_for_negative_impl() {
+        check_diagnostics(
+            r#"
+trait Marker {
+    const FLAG: bool = false;
+    fn boo();
+    fn foo () {}
+}
+struct Foo;
+impl !Marker for Foo {
+    type T = i32;
+    const FLAG: bool = true;
+    fn bar() {}
+    fn boo() {}
+}
+            "#,
+        )
+    }
 }

@@ -458,8 +458,12 @@ where
         match self.v.iter().position(|x| (self.pred)(x)) {
             None => self.finish(),
             Some(idx) => {
-                let ret = Some(&self.v[..idx]);
-                self.v = &self.v[idx + 1..];
+                let (left, right) =
+                    // SAFETY: if v.iter().position returns Some(idx), that
+                    // idx is definitely a valid index for v
+                    unsafe { (self.v.get_unchecked(..idx), self.v.get_unchecked(idx + 1..)) };
+                let ret = Some(left);
+                self.v = right;
                 ret
             }
         }
@@ -491,8 +495,12 @@ where
         match self.v.iter().rposition(|x| (self.pred)(x)) {
             None => self.finish(),
             Some(idx) => {
-                let ret = Some(&self.v[idx + 1..]);
-                self.v = &self.v[..idx];
+                let (left, right) =
+                    // SAFETY: if v.iter().rposition returns Some(idx), then
+                    // idx is definitely a valid index for v
+                    unsafe { (self.v.get_unchecked(..idx), self.v.get_unchecked(idx + 1..)) };
+                let ret = Some(right);
+                self.v = left;
                 ret
             }
         }

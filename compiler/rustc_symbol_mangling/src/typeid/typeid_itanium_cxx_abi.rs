@@ -895,8 +895,8 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
             ty = Ty::new_closure(tcx, *def_id, transform_args(tcx, args, options));
         }
 
-        ty::Coroutine(def_id, args, movability) => {
-            ty = Ty::new_coroutine(tcx, *def_id, transform_args(tcx, args, options), *movability);
+        ty::Coroutine(def_id, args) => {
+            ty = Ty::new_coroutine(tcx, *def_id, transform_args(tcx, args, options));
         }
 
         ty::Ref(region, ty0, ..) => {

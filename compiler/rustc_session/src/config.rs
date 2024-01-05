@@ -1021,6 +1021,7 @@ impl OutputFilenames {
 
 bitflags::bitflags! {
     /// Scopes used to determined if it need to apply to --remap-path-prefix
+    #[derive(Clone, Copy, PartialEq, Eq, Hash)]
     pub struct RemapPathScopeComponents: u8 {
         /// Apply remappings to the expansion of std::file!() macro
         const MACRO = 1 << 0;
@@ -1041,7 +1042,7 @@ bitflags::bitflags! {
         /// An alias for macro,unsplit-debuginfo,split-debuginfo-path. This
         /// ensures all paths in compiled executables or libraries are remapped
         /// but not elsewhere.
-        const OBJECT = Self::MACRO.bits | Self::UNSPLIT_DEBUGINFO.bits | Self::SPLIT_DEBUGINFO_PATH.bits;
+        const OBJECT = Self::MACRO.bits() | Self::UNSPLIT_DEBUGINFO.bits() | Self::SPLIT_DEBUGINFO_PATH.bits();
     }
 }
 
@@ -1116,6 +1117,7 @@ impl Default for Options {
             working_dir: RealFileName::LocalPath(std::env::current_dir().unwrap()),
             color: ColorConfig::Auto,
             logical_env: FxIndexMap::default(),
+            verbose: false,
         }
     }
 }
@@ -2916,6 +2918,8 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         RealFileName::LocalPath(path.into_owned())
     };
 
+    let verbose = matches.opt_present("verbose") || unstable_opts.verbose_internals;
+
     Options {
         assert_incr_state,
         crate_types,
@@ -2957,6 +2961,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         working_dir,
         color,
         logical_env,
+        verbose,
     }
 }
 

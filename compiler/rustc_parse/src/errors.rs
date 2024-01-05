@@ -2379,6 +2379,27 @@ pub(crate) struct ExpectedCommaAfterPatternField {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_unexpected_paren_in_range_pat)]
+pub(crate) struct UnexpectedParenInRangePat {
+    #[primary_span]
+    pub span: Vec<Span>,
+    #[subdiagnostic]
+    pub sugg: UnexpectedParenInRangePatSugg,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    parse_unexpected_paren_in_range_pat_sugg,
+    applicability = "machine-applicable"
+)]
+pub(crate) struct UnexpectedParenInRangePatSugg {
+    #[suggestion_part(code = "")]
+    pub start_span: Span,
+    #[suggestion_part(code = "")]
+    pub end_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_return_types_use_thin_arrow)]
 pub(crate) struct ReturnTypesUseThinArrow {
     #[primary_span]
@@ -2556,19 +2577,12 @@ pub(crate) struct AssocLifetime {
 }
 
 #[derive(Diagnostic)]
-#[diag(parse_tilde_const_lifetime)]
-pub(crate) struct TildeConstLifetime {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(parse_modifier_lifetime)]
 pub(crate) struct ModifierLifetime {
     #[primary_span]
     #[suggestion(style = "tool-only", applicability = "maybe-incorrect", code = "")]
     pub span: Span,
-    pub sigil: &'static str,
+    pub modifier: &'static str,
 }
 
 #[derive(Diagnostic)]
@@ -2579,15 +2593,6 @@ pub(crate) struct ParenthesizedLifetime {
     #[suggestion(style = "short", applicability = "machine-applicable", code = "{snippet}")]
     pub sugg: Option<Span>,
     pub snippet: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(parse_const_bounds_missing_tilde)]
-pub(crate) struct ConstMissingTilde {
-    #[primary_span]
-    pub span: Span,
-    #[suggestion(code = "~", applicability = "machine-applicable")]
-    pub start: Span,
 }
 
 #[derive(Diagnostic)]
@@ -2903,3 +2908,11 @@ pub(crate) struct TransposeDynOrImplSugg<'a> {
     pub insertion_span: Span,
     pub kw: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag(parse_array_index_offset_of)]
+pub(crate) struct ArrayIndexInOffsetOf(#[primary_span] pub Span);
+
+#[derive(Diagnostic)]
+#[diag(parse_invalid_offset_of)]
+pub(crate) struct InvalidOffsetOf(#[primary_span] pub Span);

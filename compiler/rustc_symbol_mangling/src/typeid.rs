@@ -11,6 +11,7 @@ use twox_hash::XxHash64;
 
 bitflags! {
     /// Options for typeid_for_fnabi and typeid_for_fnsig.
+    #[derive(Clone, Copy, Debug)]
     pub struct TypeIdOptions: u32 {
         const GENERALIZE_POINTERS = 1;
         const GENERALIZE_REPR_C = 2;

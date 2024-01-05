@@ -257,7 +257,7 @@ impl<'tcx> TransformVisitor<'tcx> {
             CoroutineKind::Desugared(CoroutineDesugaring::Async, _) => {
                 span_bug!(body.span, "`Future`s are not fused inherently")
             }
-            CoroutineKind::Coroutine => span_bug!(body.span, "`Coroutine`s cannot be fused"),
+            CoroutineKind::Coroutine(_) => span_bug!(body.span, "`Coroutine`s cannot be fused"),
             // `gen` continues return `None`
             CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {
                 let option_def_id = self.tcx.require_lang_item(LangItem::Option, None);
@@ -396,7 +396,7 @@ impl<'tcx> TransformVisitor<'tcx> {
                     Rvalue::Use(val)
                 }
             }
-            CoroutineKind::Coroutine => {
+            CoroutineKind::Coroutine(_) => {
                 let coroutine_state_def_id =
                     self.tcx.require_lang_item(LangItem::CoroutineState, None);
                 let args = self.tcx.mk_args(&[self.old_yield_ty.into(), self.old_ret_ty.into()]);
@@ -1417,19 +1417,18 @@ fn create_coroutine_resume_function<'tcx>(
     cases.insert(0, (UNRESUMED, START_BLOCK));
 
     // Panic when resumed on the returned or poisoned state
-    let coroutine_kind = body.coroutine_kind().unwrap();
-
     if can_unwind {
         cases.insert(
             1,
-            (POISONED, insert_panic_block(tcx, body, ResumedAfterPanic(coroutine_kind))),
+            (POISONED, insert_panic_block(tcx, body, ResumedAfterPanic(transform.coroutine_kind))),
         );
     }
 
     if can_return {
-        let block = match coroutine_kind {
-            CoroutineKind::Desugared(CoroutineDesugaring::Async, _) | CoroutineKind::Coroutine => {
-                insert_panic_block(tcx, body, ResumedAfterReturn(coroutine_kind))
+        let block = match transform.coroutine_kind {
+            CoroutineKind::Desugared(CoroutineDesugaring::Async, _)
+            | CoroutineKind::Coroutine(_) => {
+                insert_panic_block(tcx, body, ResumedAfterReturn(transform.coroutine_kind))
             }
             CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _)
             | CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {
@@ -1443,7 +1442,7 @@ fn create_coroutine_resume_function<'tcx>(
 
     make_coroutine_state_argument_indirect(tcx, body);
 
-    match coroutine_kind {
+    match transform.coroutine_kind {
         // Iterator::next doesn't accept a pinned argument,
         // unlike for all other coroutine kinds.
         CoroutineKind::Desugared(CoroutineDesugaring::Gen, _) => {}
@@ -1564,7 +1563,7 @@ pub(crate) fn mir_coroutine_witnesses<'tcx>(
     let coroutine_ty = body.local_decls[ty::CAPTURE_STRUCT_LOCAL].ty;
 
     let movable = match *coroutine_ty.kind() {
-        ty::Coroutine(_, _, movability) => movability == hir::Movability::Movable,
+        ty::Coroutine(def_id, _) => tcx.coroutine_movability(def_id) == hir::Movability::Movable,
         ty::Error(_) => return None,
         _ => span_bug!(body.span, "unexpected coroutine type {}", coroutine_ty),
     };
@@ -1596,12 +1595,13 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 
         // The first argument is the coroutine type passed by value
         let coroutine_ty = body.local_decls.raw[1].ty;
+        let coroutine_kind = body.coroutine_kind().unwrap();
 
         // Get the discriminant type and args which typeck computed
         let (discr_ty, movable) = match *coroutine_ty.kind() {
-            ty::Coroutine(_, args, movability) => {
+            ty::Coroutine(_, args) => {
                 let args = args.as_coroutine();
-                (args.discr_ty(tcx), movability == hir::Movability::Movable)
+                (args.discr_ty(tcx), coroutine_kind.movability() == hir::Movability::Movable)
             }
             _ => {
                 tcx.dcx().span_delayed_bug(
@@ -1612,19 +1612,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             }
         };
 
-        let is_async_kind = matches!(
-            body.coroutine_kind(),
-            Some(CoroutineKind::Desugared(CoroutineDesugaring::Async, _))
-        );
-        let is_async_gen_kind = matches!(
-            body.coroutine_kind(),
-            Some(CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, _))
-        );
-        let is_gen_kind = matches!(
-            body.coroutine_kind(),
-            Some(CoroutineKind::Desugared(CoroutineDesugaring::Gen, _))
-        );
-        let new_ret_ty = match body.coroutine_kind().unwrap() {
+        let new_ret_ty = match coroutine_kind {
             CoroutineKind::Desugared(CoroutineDesugaring::Async, _) => {
                 // Compute Poll<return_ty>
                 let poll_did = tcx.require_lang_item(LangItem::Poll, None);
@@ -1643,7 +1631,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
                 // The yield ty is already `Poll<Option<yield_ty>>`
                 old_yield_ty
             }
-            CoroutineKind::Coroutine => {
+            CoroutineKind::Coroutine(_) => {
                 // Compute CoroutineState<yield_ty, return_ty>
                 let state_did = tcx.require_lang_item(LangItem::CoroutineState, None);
                 let state_adt_ref = tcx.adt_def(state_did);
@@ -1657,7 +1645,10 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         let old_ret_local = replace_local(RETURN_PLACE, new_ret_ty, body, tcx);
 
         // Replace all occurrences of `ResumeTy` with `&mut Context<'_>` within async bodies.
-        if is_async_kind || is_async_gen_kind {
+        if matches!(
+            coroutine_kind,
+            CoroutineKind::Desugared(CoroutineDesugaring::Async | CoroutineDesugaring::AsyncGen, _)
+        ) {
             transform_async_context(tcx, body);
         }
 
@@ -1666,11 +1657,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         // case there is no `Assign` to it that the transform can turn into a store to the coroutine
         // state. After the yield the slot in the coroutine state would then be uninitialized.
         let resume_local = Local::new(2);
-        let resume_ty = if is_async_kind {
-            Ty::new_task_context(tcx)
-        } else {
-            body.local_decls[resume_local].ty
-        };
+        let resume_ty = body.local_decls[resume_local].ty;
         let old_resume_local = replace_local(resume_local, resume_ty, body, tcx);
 
         // When first entering the coroutine, move the resume argument into its old local
@@ -1713,11 +1700,11 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         // Run the transformation which converts Places from Local to coroutine struct
         // accesses for locals in `remap`.
         // It also rewrites `return x` and `yield y` as writing a new coroutine state and returning
-        // either CoroutineState::Complete(x) and CoroutineState::Yielded(y),
-        // or Poll::Ready(x) and Poll::Pending respectively depending on `is_async_kind`.
+        // either `CoroutineState::Complete(x)` and `CoroutineState::Yielded(y)`,
+        // or `Poll::Ready(x)` and `Poll::Pending` respectively depending on the coroutine kind.
         let mut transform = TransformVisitor {
             tcx,
-            coroutine_kind: body.coroutine_kind().unwrap(),
+            coroutine_kind,
             remap,
             storage_liveness,
             always_live_locals,
@@ -1734,7 +1721,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         body.spread_arg = None;
 
         // Remove the context argument within generator bodies.
-        if is_gen_kind {
+        if matches!(coroutine_kind, CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) {
             transform_gen_context(tcx, body);
         }
 

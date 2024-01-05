@@ -2734,10 +2734,13 @@ impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
     #[allow(rustc::diagnostic_outside_of_impl)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         if let hir::Expr {
-            kind: hir::ExprKind::InlineAsm(hir::InlineAsm { template_strs, .. }),
+            kind: hir::ExprKind::InlineAsm(hir::InlineAsm { template_strs, options, .. }),
             ..
         } = expr
         {
+            // asm with `options(raw)` does not do replacement with `{` and `}`.
+            let raw = options.contains(InlineAsmOptions::RAW);
+
             for (template_sym, template_snippet, template_span) in template_strs.iter() {
                 let template_str = template_sym.as_str();
                 let find_label_span = |needle: &str| -> Option<Span> {
@@ -2763,24 +2766,57 @@ impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
                 for statement in statements {
                     // If there's a comment, trim it from the statement
                     let statement = statement.find("//").map_or(statement, |idx| &statement[..idx]);
+
+                    // In this loop, if there is ever a non-label, no labels can come after it.
                     let mut start_idx = 0;
-                    for (idx, _) in statement.match_indices(':') {
+                    'label_loop: for (idx, _) in statement.match_indices(':') {
                         let possible_label = statement[start_idx..idx].trim();
                         let mut chars = possible_label.chars();
-                        let Some(c) = chars.next() else {
-                            // Empty string means a leading ':' in this section, which is not a label
-                            break;
+
+                        let Some(start) = chars.next() else {
+                            // Empty string means a leading ':' in this section, which is not a label.
+                            break 'label_loop;
                         };
-                        // A label starts with an alphabetic character or . or _ and continues with alphanumeric characters, _, or $
-                        if (c.is_alphabetic() || matches!(c, '.' | '_'))
-                            && chars.all(|c| c.is_alphanumeric() || matches!(c, '_' | '$'))
-                        {
-                            found_labels.push(possible_label);
-                        } else {
-                            // If we encounter a non-label, there cannot be any further labels, so stop checking
-                            break;
+
+                        // Whether a { bracket has been seen and its } hasn't been found yet.
+                        let mut in_bracket = false;
+
+                        // A label starts with an ASCII alphabetic character or . or _
+                        // A label can also start with a format arg, if it's not a raw asm block.
+                        if !raw && start == '{' {
+                            in_bracket = true;
+                        } else if !(start.is_ascii_alphabetic() || matches!(start, '.' | '_')) {
+                            break 'label_loop;
                         }
 
+                        // Labels continue with ASCII alphanumeric characters, _, or $
+                        for c in chars {
+                            // Inside a template format arg, any character is permitted for the puproses of label detection
+                            // because we assume that it can be replaced with some other valid label string later.
+                            // `options(raw)` asm blocks cannot have format args, so they are excluded from this special case.
+                            if !raw && in_bracket {
+                                if c == '{' {
+                                    // Nested brackets are not allowed in format args, this cannot be a label.
+                                    break 'label_loop;
+                                }
+
+                                if c == '}' {
+                                    // The end of the format arg.
+                                    in_bracket = false;
+                                }
+                            } else if !raw && c == '{' {
+                                // Start of a format arg.
+                                in_bracket = true;
+                            } else {
+                                if !(c.is_ascii_alphanumeric() || matches!(c, '_' | '$')) {
+                                    // The potential label had an invalid character inside it, it cannot be a label.
+                                    break 'label_loop;
+                                }
+                            }
+                        }
+
+                        // If all characters passed the label checks, this is likely a label.
+                        found_labels.push(possible_label);
                         start_idx = idx + 1;
                     }
                 }

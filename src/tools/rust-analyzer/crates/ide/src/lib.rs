@@ -67,6 +67,7 @@ use std::ffi::OsStr;
 
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
+use hir::Change;
 use ide_db::{
     base_db::{
         salsa::{self, ParallelDatabase},
@@ -122,7 +123,7 @@ pub use ide_completion::{
 };
 pub use ide_db::{
     base_db::{
-        Cancelled, Change, CrateGraph, CrateId, Edition, FileId, FilePosition, FileRange,
+        Cancelled, CrateGraph, CrateId, Edition, FileChange, FileId, FilePosition, FileRange,
         SourceRoot, SourceRootId,
     },
     documentation::Documentation,
@@ -183,7 +184,7 @@ impl AnalysisHost {
     /// Applies changes to the current state of the world. If there are
     /// outstanding snapshots, they will be canceled.
     pub fn apply_change(&mut self, change: Change) {
-        self.db.apply_change(change)
+        self.db.apply_change(change);
     }
 
     /// NB: this clears the database

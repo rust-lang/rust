@@ -2252,6 +2252,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut Diagnostic,
         errors: Vec<FulfillmentError<'tcx>>,
+        suggest_derive: bool,
     ) {
         let all_local_types_needing_impls =
             errors.iter().all(|e| match e.obligation.predicate.kind().skip_binder() {
@@ -2322,10 +2323,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .iter()
             .map(|e| (e.obligation.predicate, None, Some(e.obligation.cause.clone())))
             .collect();
-        self.suggest_derive(err, &preds);
+        if suggest_derive {
+            self.suggest_derive(err, &preds);
+        } else {
+            // The predicate comes from a binop where the lhs and rhs have different types.
+            let _ = self.note_predicate_source_and_get_derives(err, &preds);
+        }
     }
 
-    pub fn suggest_derive(
+    fn note_predicate_source_and_get_derives(
         &self,
         err: &mut Diagnostic,
         unsatisfied_predicates: &[(
@@ -2333,7 +2339,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Option<ty::Predicate<'tcx>>,
             Option<ObligationCause<'tcx>>,
         )],
-    ) {
+    ) -> Vec<(String, Span, Symbol)> {
         let mut derives = Vec::<(String, Span, Symbol)>::new();
         let mut traits = Vec::new();
         for (pred, _, _) in unsatisfied_predicates {
@@ -2382,21 +2388,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         traits.sort();
         traits.dedup();
 
-        derives.sort();
-        derives.dedup();
-
-        let mut derives_grouped = Vec::<(String, Span, String)>::new();
-        for (self_name, self_span, trait_name) in derives.into_iter() {
-            if let Some((last_self_name, _, ref mut last_trait_names)) = derives_grouped.last_mut()
-            {
-                if last_self_name == &self_name {
-                    last_trait_names.push_str(format!(", {trait_name}").as_str());
-                    continue;
-                }
-            }
-            derives_grouped.push((self_name, self_span, trait_name.to_string()));
-        }
-
         let len = traits.len();
         if len > 0 {
             let span =
@@ -2417,6 +2408,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 span,
                 format!("the trait{} {} must be implemented", pluralize!(len), names),
             );
+        }
+
+        derives
+    }
+
+    pub(crate) fn suggest_derive(
+        &self,
+        err: &mut Diagnostic,
+        unsatisfied_predicates: &[(
+            ty::Predicate<'tcx>,
+            Option<ty::Predicate<'tcx>>,
+            Option<ObligationCause<'tcx>>,
+        )],
+    ) {
+        let mut derives = self.note_predicate_source_and_get_derives(err, unsatisfied_predicates);
+        derives.sort();
+        derives.dedup();
+
+        let mut derives_grouped = Vec::<(String, Span, String)>::new();
+        for (self_name, self_span, trait_name) in derives.into_iter() {
+            if let Some((last_self_name, _, ref mut last_trait_names)) = derives_grouped.last_mut()
+            {
+                if last_self_name == &self_name {
+                    last_trait_names.push_str(format!(", {trait_name}").as_str());
+                    continue;
+                }
+            }
+            derives_grouped.push((self_name, self_span, trait_name.to_string()));
         }
 
         for (self_name, self_span, traits) in &derives_grouped {
@@ -3306,6 +3325,7 @@ fn print_disambiguation_help<'tcx>(
     span: Span,
     item: ty::AssocItem,
 ) -> Option<String> {
+    let trait_impl_type = trait_ref.self_ty().peel_refs();
     let trait_ref = if item.fn_has_self_parameter {
         trait_ref.print_only_trait_name().to_string()
     } else {
@@ -3318,27 +3338,34 @@ fn print_disambiguation_help<'tcx>(
         {
             let def_kind_descr = tcx.def_kind_descr(item.kind.as_def_kind(), item.def_id);
             let item_name = item.ident(tcx);
-            let rcvr_ref = tcx
-                .fn_sig(item.def_id)
-                .skip_binder()
-                .skip_binder()
-                .inputs()
-                .get(0)
-                .and_then(|ty| ty.ref_mutability())
-                .map_or("", |mutbl| mutbl.ref_prefix_str());
-            let args = format!(
-                "({}{})",
-                rcvr_ref,
-                std::iter::once(receiver)
-                    .chain(args.iter())
-                    .map(|arg| tcx
-                        .sess
-                        .source_map()
-                        .span_to_snippet(arg.span)
-                        .unwrap_or_else(|_| { "_".to_owned() }))
-                    .collect::<Vec<_>>()
-                    .join(", "),
+            let first_input =
+                tcx.fn_sig(item.def_id).instantiate_identity().skip_binder().inputs().get(0);
+            let (first_arg_type, rcvr_ref) = (
+                first_input.map(|first| first.peel_refs()),
+                first_input
+                    .and_then(|ty| ty.ref_mutability())
+                    .map_or("", |mutbl| mutbl.ref_prefix_str()),
             );
+
+            // If the type of first arg of this assoc function is `Self` or current trait impl type or `arbitrary_self_types`, we need to take the receiver as args. Otherwise, we don't.
+            let args = if let Some(first_arg_type) = first_arg_type
+                && (first_arg_type == tcx.types.self_param
+                    || first_arg_type == trait_impl_type
+                    || item.fn_has_self_parameter)
+            {
+                Some(receiver)
+            } else {
+                None
+            }
+            .into_iter()
+            .chain(args)
+            .map(|arg| {
+                tcx.sess.source_map().span_to_snippet(arg.span).unwrap_or_else(|_| "_".to_owned())
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+
+            let args = format!("({}{})", rcvr_ref, args);
             err.span_suggestion_verbose(
                 span,
                 format!(

@@ -335,7 +335,7 @@ impl<'tcx> InferCtxt<'tcx> {
         // constants and generic expressions are not yet handled correctly.
         let Generalization { value_may_be_infer: value, needs_wf: _ } = generalize::generalize(
             self,
-            &mut CombineDelegate { infcx: self, span, param_env },
+            &mut CombineDelegate { infcx: self, span },
             ct,
             target_vid,
             ty::Variance::Invariant,
@@ -454,11 +454,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
         // adding constraints like `'x: '?2` and `?1 <: ?3`.)
         let Generalization { value_may_be_infer: b_ty, needs_wf } = generalize::generalize(
             self.infcx,
-            &mut CombineDelegate {
-                infcx: self.infcx,
-                param_env: self.param_env,
-                span: self.trace.span(),
-            },
+            &mut CombineDelegate { infcx: self.infcx, span: self.trace.span() },
             a_ty,
             b_vid,
             ambient_variance,

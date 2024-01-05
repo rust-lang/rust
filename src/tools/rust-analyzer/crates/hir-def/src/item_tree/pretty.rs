@@ -464,8 +464,8 @@ impl Printer<'_> {
                 let MacroRules { name, ast_id: _ } = &self.tree[it];
                 wln!(self, "macro_rules! {} {{ ... }}", name.display(self.db.upcast()));
             }
-            ModItem::MacroDef(it) => {
-                let MacroDef { name, visibility, ast_id: _ } = &self.tree[it];
+            ModItem::Macro2(it) => {
+                let Macro2 { name, visibility, ast_id: _ } = &self.tree[it];
                 self.print_visibility(*visibility);
                 wln!(self, "macro {} {{ ... }}", name.display(self.db.upcast()));
             }

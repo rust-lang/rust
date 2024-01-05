@@ -1,6 +1,7 @@
 use std::mem;
 
 use rustc_data_structures::sso::SsoHashMap;
+use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
 use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use rustc_middle::ty::error::TypeError;
@@ -55,8 +56,6 @@ pub fn generalize<'tcx, D: GeneralizerDelegate<'tcx>, T: Into<Term<'tcx>> + Rela
 /// Abstracts the handling of region vars between HIR and MIR/NLL typechecking
 /// in the generalizer code.
 pub trait GeneralizerDelegate<'tcx> {
-    fn param_env(&self) -> ty::ParamEnv<'tcx>;
-
     fn forbid_inference_vars() -> bool;
 
     fn span(&self) -> Span;
@@ -66,15 +65,10 @@ pub trait GeneralizerDelegate<'tcx> {
 
 pub struct CombineDelegate<'cx, 'tcx> {
     pub infcx: &'cx InferCtxt<'tcx>,
-    pub param_env: ty::ParamEnv<'tcx>,
     pub span: Span,
 }
 
 impl<'tcx> GeneralizerDelegate<'tcx> for CombineDelegate<'_, 'tcx> {
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        self.param_env
-    }
-
     fn forbid_inference_vars() -> bool {
         false
     }
@@ -95,10 +89,6 @@ impl<'tcx, T> GeneralizerDelegate<'tcx> for T
 where
     T: TypeRelatingDelegate<'tcx>,
 {
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        <Self as TypeRelatingDelegate<'tcx>>::param_env(self)
-    }
-
     fn forbid_inference_vars() -> bool {
         <Self as TypeRelatingDelegate<'tcx>>::forbid_inference_vars()
     }
@@ -226,7 +216,9 @@ where
         let old_ambient_variance = self.ambient_variance;
         self.ambient_variance = self.ambient_variance.xform(variance);
         debug!(?self.ambient_variance, "new ambient variance");
-        let r = self.relate(a, b)?;
+        // Recursive calls to `relate` can overflow the stack. For example a deeper version of
+        // `ui/associated-consts/issue-93775.rs`.
+        let r = ensure_sufficient_stack(|| self.relate(a, b))?;
         self.ambient_variance = old_ambient_variance;
         Ok(r)
     }

@@ -86,6 +86,18 @@ fn can_continue_type_after_non_fn_ident(t: &Token) -> bool {
     t == &token::ModSep || t == &token::Lt || t == &token::BinOp(token::Shl)
 }
 
+fn can_begin_dyn_bound_in_edition_2015(t: &Token) -> bool {
+    // `Not`, `Tilde` & `Const` are deliberately not part of this list to
+    // contain the number of potential regressions esp. in MBE code.
+    // `Const` would regress `rfc-2632-const-trait-impl/mbe-dyn-const-2015.rs`.
+    // `Not` would regress `dyn!(...)` macro calls in Rust 2015.
+    t.is_path_start()
+        || t.is_lifetime()
+        || t == &TokenKind::Question
+        || t.is_keyword(kw::For)
+        || t == &TokenKind::OpenDelim(Delimiter::Parenthesis)
+}
+
 impl<'a> Parser<'a> {
     /// Parses a type.
     pub fn parse_ty(&mut self) -> PResult<'a, P<Ty>> {
@@ -665,7 +677,8 @@ impl<'a> Parser<'a> {
         self.check_keyword(kw::Dyn)
             && (self.token.uninterpolated_span().at_least_rust_2018()
                 || self.look_ahead(1, |t| {
-                    (t.can_begin_bound() || t.kind == TokenKind::BinOp(token::Star))
+                    (can_begin_dyn_bound_in_edition_2015(t)
+                        || t.kind == TokenKind::BinOp(token::Star))
                         && !can_continue_type_after_non_fn_ident(t)
                 }))
     }
@@ -758,12 +771,12 @@ impl<'a> Parser<'a> {
 
     /// Can the current token begin a bound?
     fn can_begin_bound(&mut self) -> bool {
-        // This needs to be synchronized with `TokenKind::can_begin_bound`.
         self.check_path()
             || self.check_lifetime()
             || self.check(&token::Not)
             || self.check(&token::Question)
             || self.check(&token::Tilde)
+            || self.check_keyword(kw::Const)
             || self.check_keyword(kw::For)
             || self.check(&token::OpenDelim(Delimiter::Parenthesis))
     }
@@ -812,8 +825,11 @@ impl<'a> Parser<'a> {
     fn error_lt_bound_with_modifiers(&self, modifiers: TraitBoundModifiers) {
         match modifiers.constness {
             BoundConstness::Never => {}
-            BoundConstness::Maybe(span) => {
-                self.dcx().emit_err(errors::TildeConstLifetime { span });
+            BoundConstness::Always(span) | BoundConstness::Maybe(span) => {
+                self.dcx().emit_err(errors::ModifierLifetime {
+                    span,
+                    modifier: modifiers.constness.as_str(),
+                });
             }
         }
 
@@ -822,7 +838,7 @@ impl<'a> Parser<'a> {
             BoundPolarity::Negative(span) | BoundPolarity::Maybe(span) => {
                 self.dcx().emit_err(errors::ModifierLifetime {
                     span,
-                    sigil: modifiers.polarity.as_str(),
+                    modifier: modifiers.polarity.as_str(),
                 });
             }
         }
@@ -848,7 +864,7 @@ impl<'a> Parser<'a> {
     /// If no modifiers are present, this does not consume any tokens.
     ///
     /// ```ebnf
-    /// TRAIT_BOUND_MODIFIERS = ["~const"] ["?" | "!"]
+    /// TRAIT_BOUND_MODIFIERS = [["~"] "const"] ["?" | "!"]
     /// ```
     fn parse_trait_bound_modifiers(&mut self) -> PResult<'a, TraitBoundModifiers> {
         let constness = if self.eat(&token::Tilde) {
@@ -858,11 +874,8 @@ impl<'a> Parser<'a> {
             self.sess.gated_spans.gate(sym::const_trait_impl, span);
             BoundConstness::Maybe(span)
         } else if self.eat_keyword(kw::Const) {
-            let span = self.prev_token.span;
-            self.sess.gated_spans.gate(sym::const_trait_impl, span);
-            self.dcx().emit_err(errors::ConstMissingTilde { span, start: span.shrink_to_lo() });
-
-            BoundConstness::Maybe(span)
+            self.sess.gated_spans.gate(sym::const_trait_impl, self.prev_token.span);
+            BoundConstness::Always(self.prev_token.span)
         } else {
             BoundConstness::Never
         };

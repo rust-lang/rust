@@ -1,5 +1,9 @@
 //! A standalone binary for `proc-macro-srv`.
 //! Driver for proc macro server
+#![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_driver as _;
+
 use std::io;
 
 fn main() -> std::io::Result<()> {
@@ -39,9 +43,21 @@ fn run() -> io::Result<()> {
             msg::Request::ListMacros { dylib_path } => {
                 msg::Response::ListMacros(srv.list_macros(&dylib_path))
             }
-            msg::Request::ExpandMacro(task) => msg::Response::ExpandMacro(srv.expand(task)),
+            msg::Request::ExpandMacro(task) => match srv.span_mode() {
+                msg::SpanMode::Id => msg::Response::ExpandMacro(srv.expand(task).map(|(it, _)| it)),
+                msg::SpanMode::RustAnalyzer => msg::Response::ExpandMacroExtended(
+                    srv.expand(task).map(|(tree, span_data_table)| msg::ExpandMacroExtended {
+                        tree,
+                        span_data_table,
+                    }),
+                ),
+            },
             msg::Request::ApiVersionCheck {} => {
                 msg::Response::ApiVersionCheck(proc_macro_api::msg::CURRENT_API_VERSION)
+            }
+            msg::Request::SetConfig(config) => {
+                srv.set_span_mode(config.span_mode);
+                msg::Response::SetConfig(config)
             }
         };
         write_response(res)?

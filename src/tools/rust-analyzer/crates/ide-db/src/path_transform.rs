@@ -82,6 +82,34 @@ impl<'a> PathTransform<'a> {
         }
     }
 
+    pub fn impl_transformation(
+        target_scope: &'a SemanticsScope<'a>,
+        source_scope: &'a SemanticsScope<'a>,
+        impl_: hir::Impl,
+        generic_arg_list: ast::GenericArgList,
+    ) -> PathTransform<'a> {
+        PathTransform {
+            source_scope,
+            target_scope,
+            generic_def: Some(impl_.into()),
+            substs: get_type_args_from_arg_list(generic_arg_list).unwrap_or_default(),
+        }
+    }
+
+    pub fn adt_transformation(
+        target_scope: &'a SemanticsScope<'a>,
+        source_scope: &'a SemanticsScope<'a>,
+        adt: hir::Adt,
+        generic_arg_list: ast::GenericArgList,
+    ) -> PathTransform<'a> {
+        PathTransform {
+            source_scope,
+            target_scope,
+            generic_def: Some(adt.into()),
+            substs: get_type_args_from_arg_list(generic_arg_list).unwrap_or_default(),
+        }
+    }
+
     pub fn generic_transformation(
         target_scope: &'a SemanticsScope<'a>,
         source_scope: &'a SemanticsScope<'a>,

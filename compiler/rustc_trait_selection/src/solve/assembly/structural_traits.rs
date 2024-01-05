@@ -57,7 +57,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_auto_trait<'tcx>(
 
         ty::Closure(_, args) => Ok(vec![args.as_closure().tupled_upvars_ty()]),
 
-        ty::Coroutine(_, args, _) => {
+        ty::Coroutine(_, args) => {
             let coroutine_args = args.as_coroutine();
             Ok(vec![coroutine_args.tupled_upvars_ty(), coroutine_args.witness()])
         }
@@ -177,7 +177,6 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         ty::Dynamic(..)
         | ty::Str
         | ty::Slice(_)
-        | ty::Coroutine(_, _, Movability::Static)
         | ty::Foreign(..)
         | ty::Ref(_, _, Mutability::Mut)
         | ty::Adt(_, _)
@@ -194,14 +193,17 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
 
         ty::Closure(_, args) => Ok(vec![args.as_closure().tupled_upvars_ty()]),
 
-        ty::Coroutine(_, args, Movability::Movable) => {
-            if ecx.tcx().features().coroutine_clone {
-                let coroutine = args.as_coroutine();
-                Ok(vec![coroutine.tupled_upvars_ty(), coroutine.witness()])
-            } else {
-                Err(NoSolution)
+        ty::Coroutine(def_id, args) => match ecx.tcx().coroutine_movability(def_id) {
+            Movability::Static => Err(NoSolution),
+            Movability::Movable => {
+                if ecx.tcx().features().coroutine_clone {
+                    let coroutine = args.as_coroutine();
+                    Ok(vec![coroutine.tupled_upvars_ty(), coroutine.witness()])
+                } else {
+                    Err(NoSolution)
+                }
             }
-        }
+        },
 
         ty::CoroutineWitness(def_id, args) => Ok(ecx
             .tcx()
@@ -278,7 +280,7 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<'tcx>(
         | ty::RawPtr(_)
         | ty::Ref(_, _, _)
         | ty::Dynamic(_, _, _)
-        | ty::Coroutine(_, _, _)
+        | ty::Coroutine(_, _)
         | ty::CoroutineWitness(..)
         | ty::Never
         | ty::Tuple(_)

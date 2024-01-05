@@ -49,7 +49,7 @@ pub(super) fn check<'tcx>(
             if let FnRetTy::DefaultReturn(ret_span) = parent_fn_ret {
                 diag.span_suggestion(
                     ret_span,
-                    "if this is intentional, consider specifing `!` as function return",
+                    "if this is intentional, consider specifying `!` as function return",
                     " -> !",
                     Applicability::MaybeIncorrect,
                 );

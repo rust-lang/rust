@@ -135,7 +135,18 @@ LL |     let _: usize = 0 = 0;
    |            |
    |            expected due to this
 
-error: aborting due to 13 previous errors
+error[E0308]: mismatched types
+  --> $DIR/assignment-expected-bool.rs:37:8
+   |
+LL |     if foo = bar {}
+   |        ^^^^^^^^^ expected `bool`, found `()`
+   |
+help: you might have meant to compare for equality
+   |
+LL |     if foo == bar {}
+   |             +
+
+error: aborting due to 14 previous errors
 
 Some errors have detailed explanations: E0070, E0308.
 For more information about an error, try `rustc --explain E0070`.

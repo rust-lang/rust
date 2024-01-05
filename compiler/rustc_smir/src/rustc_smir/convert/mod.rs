@@ -42,7 +42,7 @@ impl<'tcx> Stable<'tcx> for rustc_hir::CoroutineKind {
     type T = stable_mir::mir::CoroutineKind;
     fn stable(&self, tables: &mut Tables<'tcx>) -> Self::T {
         use rustc_hir::{CoroutineDesugaring, CoroutineKind};
-        match self {
+        match *self {
             CoroutineKind::Desugared(CoroutineDesugaring::Async, source) => {
                 stable_mir::mir::CoroutineKind::Desugared(
                     stable_mir::mir::CoroutineDesugaring::Async,
@@ -55,7 +55,9 @@ impl<'tcx> Stable<'tcx> for rustc_hir::CoroutineKind {
                     source.stable(tables),
                 )
             }
-            CoroutineKind::Coroutine => stable_mir::mir::CoroutineKind::Coroutine,
+            CoroutineKind::Coroutine(movability) => {
+                stable_mir::mir::CoroutineKind::Coroutine(movability.stable(tables))
+            }
             CoroutineKind::Desugared(CoroutineDesugaring::AsyncGen, source) => {
                 stable_mir::mir::CoroutineKind::Desugared(
                     stable_mir::mir::CoroutineDesugaring::AsyncGen,

@@ -370,7 +370,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 ty::Array(ty, _) | ty::Slice(ty) => {
                     self.describe_field_from_ty(ty, field, variant_index, including_tuple_field)
                 }
-                ty::Closure(def_id, _) | ty::Coroutine(def_id, _, _) => {
+                ty::Closure(def_id, _) | ty::Coroutine(def_id, _) => {
                     // We won't be borrowck'ing here if the closure came from another crate,
                     // so it's safe to call `expect_local`.
                     //
@@ -505,7 +505,7 @@ pub(super) enum UseSpans<'tcx> {
     /// The access is caused by capturing a variable for a closure.
     ClosureUse {
         /// This is true if the captured variable was from a coroutine.
-        coroutine_kind: Option<CoroutineKind>,
+        closure_kind: hir::ClosureKind,
         /// The span of the args of the closure, including the `move` keyword if
         /// it's present.
         args_span: Span,
@@ -572,9 +572,13 @@ impl UseSpans<'_> {
         }
     }
 
+    // FIXME(coroutines): Make this just return the `ClosureKind` directly?
     pub(super) fn coroutine_kind(self) -> Option<CoroutineKind> {
         match self {
-            UseSpans::ClosureUse { coroutine_kind, .. } => coroutine_kind,
+            UseSpans::ClosureUse {
+                closure_kind: hir::ClosureKind::Coroutine(coroutine_kind),
+                ..
+            } => Some(coroutine_kind),
             _ => None,
         }
     }
@@ -599,9 +603,9 @@ impl UseSpans<'_> {
     ) {
         use crate::InitializationRequiringAction::*;
         use CaptureVarPathUseCause::*;
-        if let UseSpans::ClosureUse { coroutine_kind, path_span, .. } = self {
-            match coroutine_kind {
-                Some(_) => {
+        if let UseSpans::ClosureUse { closure_kind, path_span, .. } = self {
+            match closure_kind {
+                hir::ClosureKind::Coroutine(_) => {
                     err.subdiagnostic(match action {
                         Borrow => BorrowInCoroutine { path_span },
                         MatchOn | Use => UseInCoroutine { path_span },
@@ -609,7 +613,7 @@ impl UseSpans<'_> {
                         PartialAssignment => AssignPartInCoroutine { path_span },
                     });
                 }
-                None => {
+                hir::ClosureKind::Closure => {
                     err.subdiagnostic(match action {
                         Borrow => BorrowInClosure { path_span },
                         MatchOn | Use => UseInClosure { path_span },
@@ -627,9 +631,9 @@ impl UseSpans<'_> {
         dcx: Option<&rustc_errors::DiagCtxt>,
         err: &mut Diagnostic,
         kind: Option<rustc_middle::mir::BorrowKind>,
-        f: impl FnOnce(Option<CoroutineKind>, Span) -> CaptureVarCause,
+        f: impl FnOnce(hir::ClosureKind, Span) -> CaptureVarCause,
     ) {
-        if let UseSpans::ClosureUse { coroutine_kind, capture_kind_span, path_span, .. } = self {
+        if let UseSpans::ClosureUse { closure_kind, capture_kind_span, path_span, .. } = self {
             if capture_kind_span != path_span {
                 err.subdiagnostic(match kind {
                     Some(kd) => match kd {
@@ -645,7 +649,7 @@ impl UseSpans<'_> {
                     None => CaptureVarKind::Move { kind_span: capture_kind_span },
                 });
             };
-            let diag = f(coroutine_kind, path_span);
+            let diag = f(closure_kind, path_span);
             match dcx {
                 Some(hd) => err.eager_subdiagnostic(hd, diag),
                 None => err.subdiagnostic(diag),
@@ -656,7 +660,9 @@ impl UseSpans<'_> {
     /// Returns `false` if this place is not used in a closure.
     pub(super) fn for_closure(&self) -> bool {
         match *self {
-            UseSpans::ClosureUse { coroutine_kind, .. } => coroutine_kind.is_none(),
+            UseSpans::ClosureUse { closure_kind, .. } => {
+                matches!(closure_kind, hir::ClosureKind::Closure)
+            }
             _ => false,
         }
     }
@@ -664,7 +670,10 @@ impl UseSpans<'_> {
     /// Returns `false` if this place is not used in a coroutine.
     pub(super) fn for_coroutine(&self) -> bool {
         match *self {
-            UseSpans::ClosureUse { coroutine_kind, .. } => coroutine_kind.is_some(),
+            // FIXME(coroutines): Do we want this to apply to synthetic coroutines?
+            UseSpans::ClosureUse { closure_kind, .. } => {
+                matches!(closure_kind, hir::ClosureKind::Coroutine(..))
+            }
             _ => false,
         }
     }
@@ -783,15 +792,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
         debug!("move_spans: moved_place={:?} location={:?} stmt={:?}", moved_place, location, stmt);
         if let StatementKind::Assign(box (_, Rvalue::Aggregate(kind, places))) = &stmt.kind
-            && let AggregateKind::Closure(def_id, _) | AggregateKind::Coroutine(def_id, _, _) =
-                **kind
+            && let AggregateKind::Closure(def_id, _) | AggregateKind::Coroutine(def_id, _) = **kind
         {
             debug!("move_spans: def_id={:?} places={:?}", def_id, places);
             let def_id = def_id.expect_local();
-            if let Some((args_span, coroutine_kind, capture_kind_span, path_span)) =
+            if let Some((args_span, closure_kind, capture_kind_span, path_span)) =
                 self.closure_span(def_id, moved_place, places)
             {
-                return ClosureUse { coroutine_kind, args_span, capture_kind_span, path_span };
+                return ClosureUse { closure_kind, args_span, capture_kind_span, path_span };
             }
         }
 
@@ -803,11 +811,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 | FakeReadCause::ForLet(Some(closure_def_id)) => {
                     debug!("move_spans: def_id={:?} place={:?}", closure_def_id, place);
                     let places = &[Operand::Move(place)];
-                    if let Some((args_span, coroutine_kind, capture_kind_span, path_span)) =
+                    if let Some((args_span, closure_kind, capture_kind_span, path_span)) =
                         self.closure_span(closure_def_id, moved_place, IndexSlice::from_raw(places))
                     {
                         return ClosureUse {
-                            coroutine_kind,
+                            closure_kind,
                             args_span,
                             capture_kind_span,
                             path_span,
@@ -919,7 +927,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             if let StatementKind::Assign(box (_, Rvalue::Aggregate(kind, places))) = &stmt.kind {
                 let (&def_id, is_coroutine) = match kind {
                     box AggregateKind::Closure(def_id, _) => (def_id, false),
-                    box AggregateKind::Coroutine(def_id, _, _) => (def_id, true),
+                    box AggregateKind::Coroutine(def_id, _) => (def_id, true),
                     _ => continue,
                 };
                 let def_id = def_id.expect_local();
@@ -928,10 +936,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     "borrow_spans: def_id={:?} is_coroutine={:?} places={:?}",
                     def_id, is_coroutine, places
                 );
-                if let Some((args_span, coroutine_kind, capture_kind_span, path_span)) =
+                if let Some((args_span, closure_kind, capture_kind_span, path_span)) =
                     self.closure_span(def_id, Place::from(target).as_ref(), places)
                 {
-                    return ClosureUse { coroutine_kind, args_span, capture_kind_span, path_span };
+                    return ClosureUse { closure_kind, args_span, capture_kind_span, path_span };
                 } else {
                     return OtherUse(use_span);
                 }
@@ -953,7 +961,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         def_id: LocalDefId,
         target_place: PlaceRef<'tcx>,
         places: &IndexSlice<FieldIdx, Operand<'tcx>>,
-    ) -> Option<(Span, Option<CoroutineKind>, Span, Span)> {
+    ) -> Option<(Span, hir::ClosureKind, Span, Span)> {
         debug!(
             "closure_span: def_id={:?} target_place={:?} places={:?}",
             def_id, target_place, places
@@ -961,7 +969,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let hir_id = self.infcx.tcx.local_def_id_to_hir_id(def_id);
         let expr = &self.infcx.tcx.hir().expect_expr(hir_id).kind;
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
-        if let hir::ExprKind::Closure(&hir::Closure { body, fn_decl_span, .. }) = expr {
+        if let hir::ExprKind::Closure(&hir::Closure { kind, fn_decl_span, .. }) = expr {
             for (captured_place, place) in
                 self.infcx.tcx.closure_captures(def_id).iter().zip(places)
             {
@@ -970,12 +978,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         if target_place == place.as_ref() =>
                     {
                         debug!("closure_span: found captured local {:?}", place);
-                        let body = self.infcx.tcx.hir().body(body);
-                        let coroutine_kind = body.coroutine_kind();
-
                         return Some((
                             fn_decl_span,
-                            coroutine_kind,
+                            kind,
                             captured_place.get_capture_kind_span(self.infcx.tcx),
                             captured_place.get_path_span(self.infcx.tcx),
                         ));
@@ -1242,8 +1247,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // another message for the same span
             if !is_loop_message {
                 move_spans.var_subdiag(None, err, None, |kind, var_span| match kind {
-                    Some(_) => CaptureVarCause::PartialMoveUseInCoroutine { var_span, is_partial },
-                    None => CaptureVarCause::PartialMoveUseInClosure { var_span, is_partial },
+                    hir::ClosureKind::Coroutine(_) => {
+                        CaptureVarCause::PartialMoveUseInCoroutine { var_span, is_partial }
+                    }
+                    hir::ClosureKind::Closure => {
+                        CaptureVarCause::PartialMoveUseInClosure { var_span, is_partial }
+                    }
                 })
             }
         }

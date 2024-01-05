@@ -91,7 +91,7 @@ pub struct MatchCtxt<'a, 'p, Cx: TypeCx> {
     /// The context for type information.
     pub tycx: &'a Cx,
     /// An arena to store the wildcards we produce during analysis.
-    pub wildcard_arena: &'a TypedArena<DeconstructedPat<'p, Cx>>,
+    pub wildcard_arena: &'p TypedArena<DeconstructedPat<'p, Cx>>,
 }
 
 /// The arm of a match expression.

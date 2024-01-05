@@ -10,6 +10,8 @@ parse_ambiguous_range_pattern = the range pattern here has ambiguous interpretat
 parse_array_brackets_instead_of_braces = this is a block expression, not an array
     .suggestion = to make an array, use square brackets instead of curly braces
 
+parse_array_index_offset_of = array indexing not supported in offset_of
+
 parse_assignment_else_not_allowed = <assignment> ... else {"{"} ... {"}"} is not allowed
 
 parse_assoc_lifetime = associated lifetimes are not supported
@@ -94,9 +96,6 @@ parse_comparison_operators_cannot_be_chained = comparison operators cannot be ch
 parse_compound_assignment_expression_in_let = can't reassign to an uninitialized variable
     .suggestion = initialize the variable
     .help = if you meant to overwrite, remove the `let` binding
-
-parse_const_bounds_missing_tilde = const bounds must start with `~`
-    .suggestion = add `~`
 
 parse_const_generic_without_braces = expressions must be enclosed in braces to be used as const generic arguments
     .suggestion = enclose the `const` expression in braces
@@ -408,6 +407,8 @@ parse_invalid_logical_operator = `{$incorrect}` is not a logical operator
 
 parse_invalid_meta_item = expected unsuffixed literal or identifier, found `{$token}`
 
+parse_invalid_offset_of = offset_of expects dot-separated field and variant names
+
 parse_invalid_unicode_escape = invalid unicode character escape
     .label = invalid escape
     .help = unicode escape must {$surrogate ->
@@ -555,8 +556,8 @@ parse_missing_trait_in_trait_impl = missing trait in a trait impl
     .suggestion_add_trait = add a trait here
     .suggestion_remove_for = for an inherent impl, drop this `for`
 
-parse_modifier_lifetime = `{$sigil}` may only modify trait bounds, not lifetime bounds
-    .suggestion = remove the `{$sigil}`
+parse_modifier_lifetime = `{$modifier}` may only modify trait bounds, not lifetime bounds
+    .suggestion = remove the `{$modifier}`
 
 parse_more_than_one_char = character literal may only contain one codepoint
     .followed_by = this `{$chr}` is followed by the combining {$len ->
@@ -729,8 +730,6 @@ parse_switch_ref_box_order = switch the order of `ref` and `box`
 parse_ternary_operator = Rust has no ternary operator
     .help = use an `if-else` expression instead
 
-parse_tilde_const_lifetime = `~const` may only modify trait bounds, not lifetime bounds
-
 parse_tilde_is_not_unary_operator = `~` cannot be used as a unary operator
     .suggestion = use `!` to perform bitwise not
 
@@ -771,6 +770,9 @@ parse_unexpected_if_with_if = unexpected `if` in the condition expression
 
 parse_unexpected_lifetime_in_pattern = unexpected lifetime `{$symbol}` in pattern
     .suggestion = remove the lifetime
+
+parse_unexpected_paren_in_range_pat = range pattern bounds cannot have parentheses
+parse_unexpected_paren_in_range_pat_sugg = remove these parentheses
 
 parse_unexpected_parentheses_in_for_head = unexpected parentheses surrounding `for` loop head
     .suggestion = remove parentheses in `for` loop

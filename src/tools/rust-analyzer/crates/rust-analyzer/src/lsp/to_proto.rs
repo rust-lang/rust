@@ -857,7 +857,7 @@ pub(crate) fn location_from_nav(
 ) -> Cancellable<lsp_types::Location> {
     let url = url(snap, nav.file_id);
     let line_index = snap.file_line_index(nav.file_id)?;
-    let range = range(&line_index, nav.full_range);
+    let range = range(&line_index, nav.focus_or_full_range());
     let loc = lsp_types::Location::new(url, range);
     Ok(loc)
 }

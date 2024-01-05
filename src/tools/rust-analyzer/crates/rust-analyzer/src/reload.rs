@@ -16,10 +16,9 @@
 use std::{iter, mem};
 
 use flycheck::{FlycheckConfig, FlycheckHandle};
-use hir::db::DefDatabase;
-use ide::Change;
+use hir::{db::DefDatabase, Change, ProcMacros};
 use ide_db::{
-    base_db::{salsa::Durability, CrateGraph, ProcMacroPaths, ProcMacros},
+    base_db::{salsa::Durability, CrateGraph, ProcMacroPaths},
     FxHashMap,
 };
 use itertools::Itertools;
@@ -81,7 +80,8 @@ impl GlobalState {
                 &self.config.lru_query_capacities().cloned().unwrap_or_default(),
             );
         }
-        if self.config.linked_projects() != old_config.linked_projects() {
+        if self.config.linked_or_discovered_projects() != old_config.linked_or_discovered_projects()
+        {
             self.fetch_workspaces_queue.request_op("linked projects changed".to_string(), false)
         } else if self.config.flycheck() != old_config.flycheck() {
             self.reload_flycheck();
@@ -129,7 +129,7 @@ impl GlobalState {
             status.health = lsp_ext::Health::Warning;
             message.push_str("Auto-reloading is disabled and the workspace has changed, a manual workspace reload is required.\n\n");
         }
-        if self.config.linked_projects().is_empty()
+        if self.config.linked_or_discovered_projects().is_empty()
             && self.config.detached_files().is_empty()
             && self.config.notifications().cargo_toml_not_found
         {
@@ -175,7 +175,21 @@ impl GlobalState {
 
         if let Err(_) = self.fetch_workspace_error() {
             status.health = lsp_ext::Health::Error;
-            message.push_str("Failed to load workspaces.\n\n");
+            message.push_str("Failed to load workspaces.");
+
+            if self.config.has_linked_projects() {
+                message.push_str(
+                    "`rust-analyzer.linkedProjects` have been specified, which may be incorrect. Specified project paths:\n",
+                );
+                message.push_str(&format!(
+                    "    {}",
+                    self.config.linked_manifests().map(|it| it.display()).format("\n    ")
+                ));
+                if self.config.has_linked_project_jsons() {
+                    message.push_str("\nAdditionally, one or more project jsons are specified")
+                }
+            }
+            message.push_str("\n\n");
         }
 
         if !message.is_empty() {
@@ -188,7 +202,7 @@ impl GlobalState {
         tracing::info!(%cause, "will fetch workspaces");
 
         self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, {
-            let linked_projects = self.config.linked_projects();
+            let linked_projects = self.config.linked_or_discovered_projects();
             let detached_files = self.config.detached_files().to_vec();
             let cargo_config = self.config.cargo();
 

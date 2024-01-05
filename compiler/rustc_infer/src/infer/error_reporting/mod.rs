@@ -1212,6 +1212,23 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             s.push_highlighted(mutbl.prefix_str());
         }
 
+        fn maybe_highlight<T: Eq + ToString>(
+            t1: T,
+            t2: T,
+            (buf1, buf2): &mut (DiagnosticStyledString, DiagnosticStyledString),
+            tcx: TyCtxt<'_>,
+        ) {
+            let highlight = t1 != t2;
+            let (t1, t2) = if highlight || tcx.sess.opts.verbose {
+                (t1.to_string(), t2.to_string())
+            } else {
+                // The two types are the same, elide and don't highlight.
+                ("_".into(), "_".into())
+            };
+            buf1.push(t1, highlight);
+            buf2.push(t2, highlight);
+        }
+
         fn cmp_ty_refs<'tcx>(
             r1: ty::Region<'tcx>,
             mut1: hir::Mutability,
@@ -1308,7 +1325,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         if lifetimes.0 != lifetimes.1 {
                             values.0.push_highlighted(l1);
                             values.1.push_highlighted(l2);
-                        } else if lifetimes.0.is_bound() {
+                        } else if lifetimes.0.is_bound() || self.tcx.sess.opts.verbose {
                             values.0.push_normal(l1);
                             values.1.push_normal(l2);
                         } else {
@@ -1329,7 +1346,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     let num_display_types = consts_offset - regions_len;
                     for (i, (ta1, ta2)) in type_arguments.take(num_display_types).enumerate() {
                         let i = i + regions_len;
-                        if ta1 == ta2 && !self.tcx.sess.verbose() {
+                        if ta1 == ta2 && !self.tcx.sess.opts.verbose {
                             values.0.push_normal("_");
                             values.1.push_normal("_");
                         } else {
@@ -1343,13 +1360,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     let const_arguments = sub1.consts().zip(sub2.consts());
                     for (i, (ca1, ca2)) in const_arguments.enumerate() {
                         let i = i + consts_offset;
-                        if ca1 == ca2 && !self.tcx.sess.verbose() {
-                            values.0.push_normal("_");
-                            values.1.push_normal("_");
-                        } else {
-                            values.0.push_highlighted(ca1.to_string());
-                            values.1.push_highlighted(ca2.to_string());
-                        }
+                        maybe_highlight(ca1, ca2, &mut values, self.tcx);
                         self.push_comma(&mut values.0, &mut values.1, len, i);
                     }
 
@@ -1513,16 +1524,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             (ty::FnPtr(sig1), ty::FnPtr(sig2)) => self.cmp_fn_sig(sig1, sig2),
 
             _ => {
-                if t1 == t2 && !self.tcx.sess.verbose() {
-                    // The two types are the same, elide and don't highlight.
-                    (DiagnosticStyledString::normal("_"), DiagnosticStyledString::normal("_"))
-                } else {
-                    // We couldn't find anything in common, highlight everything.
-                    (
-                        DiagnosticStyledString::highlighted(t1.to_string()),
-                        DiagnosticStyledString::highlighted(t2.to_string()),
-                    )
-                }
+                let mut strs = (DiagnosticStyledString::new(), DiagnosticStyledString::new());
+                maybe_highlight(t1, t2, &mut strs, self.tcx);
+                strs
             }
         }
     }

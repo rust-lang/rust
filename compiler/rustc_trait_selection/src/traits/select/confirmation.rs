@@ -730,7 +730,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let ty::Coroutine(coroutine_def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(coroutine_def_id, args) = *self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
         };
 
@@ -768,7 +768,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let ty::Coroutine(coroutine_def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(coroutine_def_id, args) = *self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
         };
 
@@ -797,7 +797,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let ty::Coroutine(coroutine_def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(coroutine_def_id, args) = *self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
         };
 
@@ -826,7 +826,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // touch bound regions, they just capture the in-scope
         // type/region parameters.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty().skip_binder());
-        let ty::Coroutine(coroutine_def_id, args, _) = *self_ty.kind() else {
+        let ty::Coroutine(coroutine_def_id, args) = *self_ty.kind() else {
             bug!("closure candidate for non-closure {:?}", obligation);
         };
 
@@ -1298,7 +1298,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::Closure(_, args) => {
                     stack.push(args.as_closure().tupled_upvars_ty());
                 }
-                ty::Coroutine(_, args, _) => {
+                ty::Coroutine(_, args) => {
                     let coroutine = args.as_coroutine();
                     stack.extend([coroutine.tupled_upvars_ty(), coroutine.witness()]);
                 }

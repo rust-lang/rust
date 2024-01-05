@@ -279,7 +279,8 @@ function preLoadCss(cssUrl) {
             const params = {};
             window.location.search.substring(1).split("&").
                 map(s => {
-                    const pair = s.split("=");
+                    // https://github.com/rust-lang/rust/issues/119219
+                    const pair = s.split("=").map(x => x.replace(/\+/g, " "));
                     params[decodeURIComponent(pair[0])] =
                         typeof pair[1] === "undefined" ? null : decodeURIComponent(pair[1]);
                 });
@@ -1522,6 +1523,9 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         sidebarButton.addEventListener("click", e => {
             removeClass(document.documentElement, "hide-sidebar");
             updateLocalStorage("hide-sidebar", "false");
+            if (document.querySelector(".rustdoc.src")) {
+                window.rustdocToggleSrcSidebar();
+            }
             e.preventDefault();
         });
     }
@@ -1646,7 +1650,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
             return;
         }
         e.preventDefault();
-        const pos = e.clientX - sidebar.offsetLeft - 3;
+        const pos = e.clientX - 3;
         if (pos < SIDEBAR_VANISH_THRESHOLD) {
             hideSidebar();
         } else if (pos >= SIDEBAR_MIN) {

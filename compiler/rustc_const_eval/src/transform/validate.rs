@@ -694,7 +694,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         };
                         check_equal(self, location, f_ty);
                     }
-                    &ty::Coroutine(def_id, args, _) => {
+                    &ty::Coroutine(def_id, args) => {
                         let f_ty = if let Some(var) = parent_ty.variant_index {
                             let gen_body = if def_id == self.body.source.def_id() {
                                 self.body

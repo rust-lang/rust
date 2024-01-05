@@ -40,8 +40,10 @@
 -         _2 = Option::<Layout>::None;
 +         _2 = const Option::<Layout>::None;
           StorageLive(_10);
-          _10 = const 0_isize;
-          switchInt(const 0_isize) -> [0: bb2, 1: bb4, otherwise: bb3];
+-         _10 = discriminant(_2);
+-         switchInt(move _10) -> [0: bb2, 1: bb4, otherwise: bb3];
++         _10 = const 0_isize;
++         switchInt(const 0_isize) -> [0: bb2, 1: bb4, otherwise: bb3];
       }
   
       bb1: {

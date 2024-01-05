@@ -339,9 +339,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let itctx = ImplTraitContext::Universal;
                 let (generics, (trait_ref, lowered_ty)) =
                     self.lower_generics(ast_generics, *constness, id, &itctx, |this| {
+                        let constness = match *constness {
+                            Const::Yes(span) => BoundConstness::Maybe(span),
+                            Const::No => BoundConstness::Never,
+                        };
+
                         let trait_ref = trait_ref.as_ref().map(|trait_ref| {
                             this.lower_trait_ref(
-                                *constness,
+                                constness,
                                 trait_ref,
                                 &ImplTraitContext::Disallowed(ImplTraitPosition::Trait),
                             )
@@ -952,11 +957,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         params: &'hir [hir::Param<'hir>],
         value: hir::Expr<'hir>,
     ) -> hir::BodyId {
-        let body = hir::Body {
-            coroutine_kind: self.coroutine_kind,
-            params,
-            value: self.arena.alloc(value),
-        };
+        let body = hir::Body { params, value: self.arena.alloc(value) };
         let id = body.id();
         debug_assert_eq!(id.hir_id.owner, self.current_hir_id_owner);
         self.bodies.push((id.hir_id.local_id, self.arena.alloc(body)));
@@ -1208,33 +1209,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 this.expr_block(body)
             };
-            // FIXME(gen_blocks): Consider unifying the `make_*_expr` functions.
-            let coroutine_expr = match coroutine_kind {
-                CoroutineKind::Async { .. } => this.make_async_expr(
-                    CaptureBy::Value { move_kw: rustc_span::DUMMY_SP },
-                    closure_id,
-                    None,
-                    body.span,
-                    hir::CoroutineSource::Fn,
-                    mkbody,
-                ),
-                CoroutineKind::Gen { .. } => this.make_gen_expr(
-                    CaptureBy::Value { move_kw: rustc_span::DUMMY_SP },
-                    closure_id,
-                    None,
-                    body.span,
-                    hir::CoroutineSource::Fn,
-                    mkbody,
-                ),
-                CoroutineKind::AsyncGen { .. } => this.make_async_gen_expr(
-                    CaptureBy::Value { move_kw: rustc_span::DUMMY_SP },
-                    closure_id,
-                    None,
-                    body.span,
-                    hir::CoroutineSource::Fn,
-                    mkbody,
-                ),
+            let desugaring_kind = match coroutine_kind {
+                CoroutineKind::Async { .. } => hir::CoroutineDesugaring::Async,
+                CoroutineKind::Gen { .. } => hir::CoroutineDesugaring::Gen,
+                CoroutineKind::AsyncGen { .. } => hir::CoroutineDesugaring::AsyncGen,
             };
+            let coroutine_expr = this.make_desugared_coroutine_expr(
+                CaptureBy::Value { move_kw: rustc_span::DUMMY_SP },
+                closure_id,
+                None,
+                body.span,
+                desugaring_kind,
+                hir::CoroutineSource::Fn,
+                mkbody,
+            );
 
             let hir_id = this.lower_node_id(closure_id);
             this.maybe_forward_track_caller(body.span, fn_id, hir_id);
@@ -1253,11 +1241,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
         coroutine_kind: Option<CoroutineKind>,
     ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header);
+        // Don't pass along the user-provided constness of trait associated functions; we don't want to
+        // synthesize a host effect param for them. We reject `const` on them during AST validation.
+        let constness = if kind == FnDeclKind::Inherent { sig.header.constness } else { Const::No };
         let itctx = ImplTraitContext::Universal;
-        let (generics, decl) =
-            self.lower_generics(generics, sig.header.constness, id, &itctx, |this| {
-                this.lower_fn_decl(&sig.decl, id, sig.span, kind, coroutine_kind)
-            });
+        let (generics, decl) = self.lower_generics(generics, constness, id, &itctx, |this| {
+            this.lower_fn_decl(&sig.decl, id, sig.span, kind, coroutine_kind)
+        });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })
     }
 

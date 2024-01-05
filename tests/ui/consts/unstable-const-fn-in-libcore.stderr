@@ -1,4 +1,4 @@
-error: ~const can only be applied to `#[const_trait]` traits
+error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/unstable-const-fn-in-libcore.rs:19:39
    |
 LL |     const fn unwrap_or_else<F: ~const FnOnce() -> T>(self, f: F) -> T {

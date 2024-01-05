@@ -305,7 +305,7 @@ pub struct Config {
     pub save_toolstates: Option<PathBuf>,
     pub print_step_timings: bool,
     pub print_step_rusage: bool,
-    pub missing_tools: bool,
+    pub missing_tools: bool, // FIXME: Deprecated field. Remove it at 2024.
 
     // Fallback musl-root for all targets
     pub musl_root: Option<PathBuf>,
@@ -1630,7 +1630,7 @@ impl Config {
                 );
             }
 
-            set(&mut config.llvm_tools_enabled, llvm_tools);
+            config.llvm_tools_enabled = llvm_tools.unwrap_or(true);
             config.rustc_parallel =
                 parallel_compiler.unwrap_or(config.channel == "dev" || config.channel == "nightly");
             config.rustc_default_linker = default_linker;
@@ -2180,8 +2180,15 @@ impl Config {
         self.target_config.get(&target).map(|t| t.sanitizers).flatten().unwrap_or(self.sanitizers)
     }
 
-    pub fn any_sanitizers_enabled(&self) -> bool {
-        self.target_config.values().any(|t| t.sanitizers == Some(true)) || self.sanitizers
+    pub fn needs_sanitizer_runtime_built(&self, target: TargetSelection) -> bool {
+        // MSVC uses the Microsoft-provided sanitizer runtime, but all other runtimes we build.
+        !target.is_msvc() && self.sanitizers_enabled(target)
+    }
+
+    pub fn any_sanitizers_to_build(&self) -> bool {
+        self.target_config
+            .iter()
+            .any(|(ts, t)| !ts.is_msvc() && t.sanitizers.unwrap_or(self.sanitizers))
     }
 
     pub fn profiler_path(&self, target: TargetSelection) -> Option<&str> {

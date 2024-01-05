@@ -177,7 +177,7 @@ impl<'tcx> ObligationCause<'tcx> {
 
         // NOTE(flaper87): As of now, it keeps track of the whole error
         // chain. Ideally, we should have a way to configure this either
-        // by using -Z verbose or just a CLI argument.
+        // by using -Z verbose-internals or just a CLI argument.
         self.code =
             variant(DerivedObligationCause { parent_trait_pred, parent_code: self.code }).into();
         self
@@ -429,8 +429,10 @@ pub enum ObligationCauseCode<'tcx> {
     MatchImpl(ObligationCause<'tcx>, DefId),
 
     BinOp {
+        lhs_hir_id: hir::HirId,
+        rhs_hir_id: Option<hir::HirId>,
         rhs_span: Option<Span>,
-        is_lit: bool,
+        rhs_is_lit: bool,
         output_ty: Option<Ty<'tcx>>,
     },
 
@@ -508,6 +510,21 @@ impl<'tcx> ObligationCauseCode<'tcx> {
             base_cause = parent_code;
         }
         base_cause
+    }
+
+    /// Returns the base obligation and the base trait predicate, if any, ignoring
+    /// derived obligations.
+    pub fn peel_derives_with_predicate(&self) -> (&Self, Option<ty::PolyTraitPredicate<'tcx>>) {
+        let mut base_cause = self;
+        let mut base_trait_pred = None;
+        while let Some((parent_code, parent_pred)) = base_cause.parent() {
+            base_cause = parent_code;
+            if let Some(parent_pred) = parent_pred {
+                base_trait_pred = Some(parent_pred);
+            }
+        }
+
+        (base_cause, base_trait_pred)
     }
 
     pub fn parent(&self) -> Option<(&Self, Option<ty::PolyTraitPredicate<'tcx>>)> {

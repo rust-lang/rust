@@ -3,7 +3,7 @@ use Context::*;
 use rustc_hir as hir;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_hir::intravisit::{self, Visitor};
-use rustc_hir::{Destination, Movability, Node};
+use rustc_hir::{Destination, Node};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
@@ -86,16 +86,15 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 self.with_context(Loop(source), |v| v.visit_block(b));
             }
             hir::ExprKind::Closure(&hir::Closure {
-                ref fn_decl,
-                body,
-                fn_decl_span,
-                movability,
-                ..
+                ref fn_decl, body, fn_decl_span, kind, ..
             }) => {
-                let cx = if let Some(Movability::Static) = movability {
-                    AsyncClosure(fn_decl_span)
-                } else {
-                    Closure(fn_decl_span)
+                // FIXME(coroutines): This doesn't handle coroutines correctly
+                let cx = match kind {
+                    hir::ClosureKind::Coroutine(hir::CoroutineKind::Desugared(
+                        hir::CoroutineDesugaring::Async,
+                        hir::CoroutineSource::Block,
+                    )) => AsyncClosure(fn_decl_span),
+                    _ => Closure(fn_decl_span),
                 };
                 self.visit_fn_decl(fn_decl);
                 self.with_context(cx, |v| v.visit_nested_body(body));

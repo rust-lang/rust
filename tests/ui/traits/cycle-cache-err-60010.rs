@@ -29,9 +29,8 @@ struct SalsaStorage {
 }
 
 impl Database for RootDatabase {
-    // This would also be an error if we didn't abort compilation on the error
-    // above.
     type Storage = SalsaStorage;
+    //~^ ERROR overflow
 }
 impl HasQueryGroup for RootDatabase {}
 impl<DB> Query<DB> for ParseQuery

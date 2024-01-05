@@ -10,7 +10,7 @@ LL | #![deny(fuzzy_provenance_casts)]
    = note: `#[warn(unknown_lints)]` on by default
 
 warning: unknown lint: `lossy_provenance_casts`
-  --> $DIR/feature-gate-strict_provenance.rs:7:1
+  --> $DIR/feature-gate-strict_provenance.rs:5:1
    |
 LL | #![deny(lossy_provenance_casts)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -19,49 +19,5 @@ LL | #![deny(lossy_provenance_casts)]
    = note: see issue #95228 <https://github.com/rust-lang/rust/issues/95228> for more information
    = help: add `#![feature(strict_provenance)]` to the crate attributes to enable
 
-warning: unknown lint: `fuzzy_provenance_casts`
-  --> $DIR/feature-gate-strict_provenance.rs:3:1
-   |
-LL | #![deny(fuzzy_provenance_casts)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: the `fuzzy_provenance_casts` lint is unstable
-   = note: see issue #95228 <https://github.com/rust-lang/rust/issues/95228> for more information
-   = help: add `#![feature(strict_provenance)]` to the crate attributes to enable
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-warning: unknown lint: `lossy_provenance_casts`
-  --> $DIR/feature-gate-strict_provenance.rs:7:1
-   |
-LL | #![deny(lossy_provenance_casts)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: the `lossy_provenance_casts` lint is unstable
-   = note: see issue #95228 <https://github.com/rust-lang/rust/issues/95228> for more information
-   = help: add `#![feature(strict_provenance)]` to the crate attributes to enable
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-warning: unknown lint: `fuzzy_provenance_casts`
-  --> $DIR/feature-gate-strict_provenance.rs:3:1
-   |
-LL | #![deny(fuzzy_provenance_casts)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: the `fuzzy_provenance_casts` lint is unstable
-   = note: see issue #95228 <https://github.com/rust-lang/rust/issues/95228> for more information
-   = help: add `#![feature(strict_provenance)]` to the crate attributes to enable
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-warning: unknown lint: `lossy_provenance_casts`
-  --> $DIR/feature-gate-strict_provenance.rs:7:1
-   |
-LL | #![deny(lossy_provenance_casts)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: the `lossy_provenance_casts` lint is unstable
-   = note: see issue #95228 <https://github.com/rust-lang/rust/issues/95228> for more information
-   = help: add `#![feature(strict_provenance)]` to the crate attributes to enable
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-warning: 6 warnings emitted
+warning: 2 warnings emitted
 

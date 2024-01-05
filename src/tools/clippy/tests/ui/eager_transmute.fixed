@@ -1,0 +1,72 @@
+#![feature(rustc_attrs)]
+#![warn(clippy::eager_transmute)]
+#![allow(clippy::transmute_int_to_non_zero)]
+
+use std::num::NonZeroU8;
+
+#[repr(u8)]
+enum Opcode {
+    Add = 0,
+    Sub = 1,
+    Mul = 2,
+    Div = 3,
+}
+
+fn int_to_opcode(op: u8) -> Option<Opcode> {
+    (op < 4).then(|| unsafe { std::mem::transmute(op) })
+}
+
+fn f(op: u8, unrelated: u8) {
+    true.then_some(unsafe { std::mem::transmute::<_, Opcode>(op) });
+    (unrelated < 4).then_some(unsafe { std::mem::transmute::<_, Opcode>(op) });
+    (op < 4).then(|| unsafe { std::mem::transmute::<_, Opcode>(op) });
+    (op > 4).then(|| unsafe { std::mem::transmute::<_, Opcode>(op) });
+    (op == 0).then(|| unsafe { std::mem::transmute::<_, Opcode>(op) });
+}
+
+unsafe fn f2(op: u8) {
+    (op < 4).then(|| std::mem::transmute::<_, Opcode>(op));
+}
+
+#[rustc_layout_scalar_valid_range_end(254)]
+struct NonMaxU8(u8);
+#[rustc_layout_scalar_valid_range_end(254)]
+#[rustc_layout_scalar_valid_range_start(1)]
+struct NonZeroNonMaxU8(u8);
+
+macro_rules! impls {
+    ($($t:ty),*) => {
+        $(
+            impl PartialEq<u8> for $t {
+                fn eq(&self, other: &u8) -> bool {
+                    self.0 == *other
+                }
+            }
+            impl PartialOrd<u8> for $t {
+                fn partial_cmp(&self, other: &u8) -> Option<std::cmp::Ordering> {
+                    self.0.partial_cmp(other)
+                }
+            }
+        )*
+    };
+}
+impls!(NonMaxU8, NonZeroNonMaxU8);
+
+fn niche_tests(v1: u8, v2: NonZeroU8, v3: NonZeroNonMaxU8) {
+    // u8 -> NonZeroU8, do lint
+    let _: Option<NonZeroU8> = (v1 > 0).then(|| unsafe { std::mem::transmute(v1) });
+
+    // NonZeroU8 -> u8, don't lint, target type has no niche and therefore a higher validity range
+    let _: Option<u8> = (v2 > NonZeroU8::new(1).unwrap()).then_some(unsafe { std::mem::transmute(v2) });
+
+    // NonZeroU8 -> NonMaxU8, do lint, different niche
+    let _: Option<NonMaxU8> = (v2 < NonZeroU8::new(255).unwrap()).then(|| unsafe { std::mem::transmute(v2) });
+
+    // NonZeroNonMaxU8 -> NonMaxU8, don't lint, target type has more validity
+    let _: Option<NonMaxU8> = (v3 < 255).then_some(unsafe { std::mem::transmute(v2) });
+
+    // NonZeroU8 -> NonZeroNonMaxU8, do lint, target type has less validity
+    let _: Option<NonZeroNonMaxU8> = (v2 < NonZeroU8::new(255).unwrap()).then(|| unsafe { std::mem::transmute(v2) });
+}
+
+fn main() {}

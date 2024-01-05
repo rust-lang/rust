@@ -2443,7 +2443,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     };
 
-                    // Suggest dereferencing the lhs for expressions such as `&T == T`
+                    // Suggest dereferencing the lhs for expressions such as `&T <= T`
                     if let Some(hir::Node::Expr(hir::Expr {
                         kind: hir::ExprKind::Binary(_, lhs, ..),
                         ..

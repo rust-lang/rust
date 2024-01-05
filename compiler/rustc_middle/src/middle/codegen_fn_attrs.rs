@@ -45,9 +45,10 @@ pub struct CodegenFnAttrs {
     pub alignment: Option<u32>,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, TyEncodable, TyDecodable, HashStable)]
+pub struct CodegenFnAttrFlags(u32);
 bitflags! {
-    #[derive(TyEncodable, TyDecodable, HashStable)]
-    pub struct CodegenFnAttrFlags: u32 {
+    impl CodegenFnAttrFlags: u32 {
         /// `#[cold]`: a hint to LLVM that this function, when called, is never on
         /// the hot path.
         const COLD                      = 1 << 0;
@@ -104,6 +105,7 @@ bitflags! {
         const NO_BUILTINS               = 1 << 20;
     }
 }
+rustc_data_structures::external_bitflags_debug! { CodegenFnAttrFlags }
 
 impl CodegenFnAttrs {
     pub const EMPTY: &'static Self = &Self::new();

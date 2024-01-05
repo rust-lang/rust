@@ -1,7 +1,7 @@
 // skip-filecheck
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 // compile-flags: -O -C debug-assertions=on
-// This needs inlining followed by ConstProp to reproduce, so we cannot use "unit-test".
+// This needs inlining followed by GVN to reproduce, so we cannot use "unit-test".
 
 #[inline]
 pub fn imm8(x: u32) -> u32 {
@@ -10,7 +10,7 @@ pub fn imm8(x: u32) -> u32 {
     out
 }
 
-// EMIT_MIR issue_101973.inner.ConstProp.diff
+// EMIT_MIR issue_101973.inner.GVN.diff
 #[inline(never)]
 pub fn inner(fields: u32) -> i64 {
     imm8(fields).rotate_right(((fields >> 8) & 0xf) << 1) as i32 as i64

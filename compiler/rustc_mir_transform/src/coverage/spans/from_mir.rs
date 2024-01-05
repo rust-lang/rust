@@ -74,7 +74,7 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
             let expn_span = filtered_statement_span(statement)?;
             let span = unexpand_into_body_span(expn_span, body_span)?;
 
-            Some(CoverageSpan::new(span, expn_span, bcb, is_closure(statement)))
+            Some(CoverageSpan::new(span, expn_span, bcb, is_closure_or_coroutine(statement)))
         });
 
         let terminator_span = Some(data.terminator()).into_iter().filter_map(move |terminator| {
@@ -88,10 +88,10 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
     })
 }
 
-fn is_closure(statement: &Statement<'_>) -> bool {
+fn is_closure_or_coroutine(statement: &Statement<'_>) -> bool {
     match statement.kind {
         StatementKind::Assign(box (_, Rvalue::Aggregate(box ref agg_kind, _))) => match agg_kind {
-            AggregateKind::Closure(_, _) | AggregateKind::Coroutine(_, _, _) => true,
+            AggregateKind::Closure(_, _) | AggregateKind::Coroutine(_, _) => true,
             _ => false,
         },
         _ => false,
@@ -204,10 +204,5 @@ fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Span> {
 /// etc.).
 #[inline]
 fn unexpand_into_body_span(span: Span, body_span: Span) -> Option<Span> {
-    use rustc_span::source_map::original_sp;
-
-    // FIXME(#118525): Consider switching from `original_sp` to `Span::find_ancestor_inside`,
-    // which is similar but gives slightly different results in some edge cases.
-    let original_span = original_sp(span, body_span).with_ctxt(body_span.ctxt());
-    body_span.contains(original_span).then_some(original_span)
+    span.find_ancestor_inside_same_ctxt(body_span)
 }

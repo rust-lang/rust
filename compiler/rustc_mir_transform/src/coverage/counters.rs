@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
@@ -47,7 +47,10 @@ pub(super) struct CoverageCounters {
     bcb_counters: IndexVec<BasicCoverageBlock, Option<BcbCounter>>,
     /// Coverage counters/expressions that are associated with the control-flow
     /// edge between two BCBs.
-    bcb_edge_counters: FxHashMap<(BasicCoverageBlock, BasicCoverageBlock), BcbCounter>,
+    ///
+    /// The iteration order of this map can affect the precise contents of MIR,
+    /// so we use `FxIndexMap` to avoid query stability hazards.
+    bcb_edge_counters: FxIndexMap<(BasicCoverageBlock, BasicCoverageBlock), BcbCounter>,
     /// Tracks which BCBs have a counter associated with some incoming edge.
     /// Only used by assertions, to verify that BCBs with incoming edge
     /// counters do not have their own physical counters (expressions are allowed).
@@ -58,27 +61,27 @@ pub(super) struct CoverageCounters {
 }
 
 impl CoverageCounters {
-    pub(super) fn new(basic_coverage_blocks: &CoverageGraph) -> Self {
-        let num_bcbs = basic_coverage_blocks.num_nodes();
-
-        Self {
-            next_counter_id: CounterId::START,
-            bcb_counters: IndexVec::from_elem_n(None, num_bcbs),
-            bcb_edge_counters: FxHashMap::default(),
-            bcb_has_incoming_edge_counters: BitSet::new_empty(num_bcbs),
-            expressions: IndexVec::new(),
-        }
-    }
-
     /// Makes [`BcbCounter`] `Counter`s and `Expressions` for the `BasicCoverageBlock`s directly or
     /// indirectly associated with coverage spans, and accumulates additional `Expression`s
     /// representing intermediate values.
-    pub fn make_bcb_counters(
-        &mut self,
+    pub(super) fn make_bcb_counters(
         basic_coverage_blocks: &CoverageGraph,
         bcb_has_coverage_spans: impl Fn(BasicCoverageBlock) -> bool,
-    ) {
-        MakeBcbCounters::new(self, basic_coverage_blocks).make_bcb_counters(bcb_has_coverage_spans)
+    ) -> Self {
+        let num_bcbs = basic_coverage_blocks.num_nodes();
+
+        let mut this = Self {
+            next_counter_id: CounterId::START,
+            bcb_counters: IndexVec::from_elem_n(None, num_bcbs),
+            bcb_edge_counters: FxIndexMap::default(),
+            bcb_has_incoming_edge_counters: BitSet::new_empty(num_bcbs),
+            expressions: IndexVec::new(),
+        };
+
+        MakeBcbCounters::new(&mut this, basic_coverage_blocks)
+            .make_bcb_counters(bcb_has_coverage_spans);
+
+        this
     }
 
     fn make_counter(&mut self) -> BcbCounter {
@@ -186,8 +189,8 @@ impl CoverageCounters {
             .map(|(&(from_bcb, to_bcb), counter_kind)| (from_bcb, to_bcb, counter_kind))
     }
 
-    pub(super) fn take_expressions(&mut self) -> IndexVec<ExpressionId, Expression> {
-        std::mem::take(&mut self.expressions)
+    pub(super) fn into_expressions(self) -> IndexVec<ExpressionId, Expression> {
+        self.expressions
     }
 }
 

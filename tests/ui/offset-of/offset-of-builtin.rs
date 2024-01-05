@@ -8,37 +8,25 @@ fn main() {
     builtin # offset_of(NotEnoughArguments); //~ ERROR expected one of
 }
 fn t1() {
-    // Already errored upon at the macro level. Yielding an error would require
-    // extra effort.
-    builtin # offset_of(NotEnoughArgumentsWithAComma, );
+    builtin # offset_of(NotEnoughArgumentsWithAComma, ); //~ ERROR expected expression
 }
 fn t2() {
-    builtin # offset_of(Container, field, too many arguments); //~ ERROR expected identifier, found
-    //~| ERROR found `,`
-    //~| ERROR found `many`
-    //~| ERROR found `arguments`
+    builtin # offset_of(S, f, too many arguments); //~ ERROR expected `)`, found `too`
 }
 fn t3() {
     builtin # offset_of(S, f); // compiles fine
 }
 fn t4() {
-    // Already errored upon at the macro level. Yielding an error would require
-    // extra effort.
-    builtin # offset_of(S, f);
+    builtin # offset_of(S, f.); //~ ERROR unexpected token
 }
 fn t5() {
-    builtin # offset_of(S, f.); //~ ERROR expected identifier
+    builtin # offset_of(S, f.,); //~ ERROR unexpected token
 }
 fn t6() {
-    builtin # offset_of(S, f.,); //~ ERROR expected identifier
+    builtin # offset_of(S, f..); //~ ERROR offset_of expects dot-separated field and variant names
 }
 fn t7() {
-    builtin # offset_of(S, f..); //~ ERROR expected one of
-}
-fn t8() {
-    // Already errored upon at the macro level. Yielding an error would require
-    // extra effort.
-    builtin # offset_of(S, f..,);
+    builtin # offset_of(S, f..,); //~ ERROR offset_of expects dot-separated field and variant names
 }
 
 struct S { f: u8, }

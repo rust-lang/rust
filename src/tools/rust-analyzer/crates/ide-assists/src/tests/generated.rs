@@ -1153,7 +1153,7 @@ impl SomeTrait for B {
     }
 
     fn method_(&mut self) -> bool {
-        <A as SomeTrait>::method_( &mut self.a )
+        <A as SomeTrait>::method_(&mut self.a)
     }
 }
 "#####,

@@ -2171,9 +2171,10 @@ pub enum InlineAsmRegOrRegClass {
     RegClass(Symbol),
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Encodable, Decodable, HashStable_Generic)]
+pub struct InlineAsmOptions(u16);
 bitflags::bitflags! {
-    #[derive(Encodable, Decodable, HashStable_Generic)]
-    pub struct InlineAsmOptions: u16 {
+    impl InlineAsmOptions: u16 {
         const PURE            = 1 << 0;
         const NOMEM           = 1 << 1;
         const READONLY        = 1 << 2;
@@ -2183,6 +2184,12 @@ bitflags::bitflags! {
         const ATT_SYNTAX      = 1 << 6;
         const RAW             = 1 << 7;
         const MAY_UNWIND      = 1 << 8;
+    }
+}
+
+impl std::fmt::Debug for InlineAsmOptions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        bitflags::parser::to_writer(self, f)
     }
 }
 
@@ -2481,15 +2488,6 @@ pub enum Const {
     No,
 }
 
-impl From<BoundConstness> for Const {
-    fn from(constness: BoundConstness) -> Self {
-        match constness {
-            BoundConstness::Maybe(span) => Self::Yes(span),
-            BoundConstness::Never => Self::No,
-        }
-    }
-}
-
 /// Item defaultness.
 /// For details see the [RFC #2532](https://github.com/rust-lang/rfcs/pull/2532).
 #[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
@@ -2543,6 +2541,8 @@ impl BoundPolarity {
 pub enum BoundConstness {
     /// `Type: Trait`
     Never,
+    /// `Type: const Trait`
+    Always(Span),
     /// `Type: ~const Trait`
     Maybe(Span),
 }
@@ -2551,6 +2551,7 @@ impl BoundConstness {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Never => "",
+            Self::Always(_) => "const",
             Self::Maybe(_) => "~const",
         }
     }

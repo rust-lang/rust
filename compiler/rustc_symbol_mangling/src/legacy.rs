@@ -211,10 +211,10 @@ impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
             ty::FnDef(def_id, args)
             | ty::Alias(ty::Projection | ty::Opaque, ty::AliasTy { def_id, args, .. })
             | ty::Closure(def_id, args)
-            | ty::Coroutine(def_id, args, _) => self.print_def_path(def_id, args),
+            | ty::Coroutine(def_id, args) => self.print_def_path(def_id, args),
 
             // The `pretty_print_type` formatting of array size depends on
-            // -Zverbose flag, so we cannot reuse it here.
+            // -Zverbose-internals flag, so we cannot reuse it here.
             ty::Array(ty, size) => {
                 self.write_str("[")?;
                 self.print_type(ty)?;
@@ -255,7 +255,7 @@ impl<'tcx> Printer<'tcx> for SymbolPrinter<'tcx> {
         // only print integers
         match (ct.kind(), ct.ty().kind()) {
             (ty::ConstKind::Value(ty::ValTree::Leaf(scalar)), ty::Int(_) | ty::Uint(_)) => {
-                // The `pretty_print_const` formatting depends on -Zverbose
+                // The `pretty_print_const` formatting depends on -Zverbose-internals
                 // flag, so we cannot reuse it here.
                 let signed = matches!(ct.ty().kind(), ty::Int(_));
                 write!(

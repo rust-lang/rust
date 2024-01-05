@@ -244,7 +244,7 @@ fn find_resolution(resolutions: &DocLinkResMap, path: &str) -> Option<Res<NodeId
         .find_map(|ns| resolutions.get(&(Symbol::intern(path), ns)).copied().flatten())
 }
 
-/// Collects all neccessary data of link.
+/// Collects all necessary data of link.
 fn collect_link_data(offset_iter: &mut OffsetIter<'_, '_>) -> LinkData {
     let mut resolvable_link = None;
     let mut resolvable_link_range = None;

@@ -46,7 +46,7 @@ fn range_iter_next(_1: &mut std::ops::Range<u32>) -> Option<u32> {
     bb1: {
         StorageDead(_3);
         StorageDead(_2);
-        _0 = Option::<u32>::None;
+        _0 = const Option::<u32>::None;
         goto -> bb4;
     }
 
@@ -70,4 +70,8 @@ fn range_iter_next(_1: &mut std::ops::Range<u32>) -> Option<u32> {
         StorageDead(_7);
         return;
     }
+}
+
+ALLOC0 (size: 8, align: 4) {
+    00 00 00 00 __ __ __ __                         │ ....░░░░
 }

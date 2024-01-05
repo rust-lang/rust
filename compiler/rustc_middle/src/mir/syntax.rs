@@ -14,7 +14,6 @@ use crate::ty::{Region, UserTypeAnnotationIndex};
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir};
 use rustc_hir::{self, CoroutineKind};
 use rustc_index::IndexVec;
 use rustc_target::abi::{FieldIdx, VariantIdx};
@@ -1344,7 +1343,7 @@ pub enum AggregateKind<'tcx> {
     Adt(DefId, VariantIdx, GenericArgsRef<'tcx>, Option<UserTypeAnnotationIndex>, Option<FieldIdx>),
 
     Closure(DefId, GenericArgsRef<'tcx>),
-    Coroutine(DefId, GenericArgsRef<'tcx>, hir::Movability),
+    Coroutine(DefId, GenericArgsRef<'tcx>),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, TyEncodable, TyDecodable, Hash, HashStable)]

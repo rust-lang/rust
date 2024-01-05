@@ -378,9 +378,9 @@ impl Query {
 #[cfg(test)]
 mod tests {
 
-    use base_db::fixture::WithFixture;
     use expect_test::expect_file;
     use hir::symbols::SymbolCollector;
+    use test_fixture::WithFixture;
 
     use super::*;
 
@@ -412,6 +412,12 @@ union Union {}
 
 impl Struct {
     fn impl_fn() {}
+}
+
+struct StructT<T>;
+
+impl <T> StructT<T> {
+    fn generic_impl_fn() {}
 }
 
 trait Trait {

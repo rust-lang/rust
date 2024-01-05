@@ -3,9 +3,6 @@ name = "test"
 version = "0.0.0"
 edition = "2021"
 
-[lib]
-crate-type = ["dylib", "rlib"]
-
 [dependencies]
 getopts = { version = "0.2.21", features = ['rustc-dep-of-std'] }
 std = { path = "../std" }

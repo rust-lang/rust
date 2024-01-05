@@ -112,6 +112,9 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             match ast_bound {
                 hir::GenericBound::Trait(poly_trait_ref, modifier) => {
                     let (constness, polarity) = match modifier {
+                        hir::TraitBoundModifier::Const => {
+                            (ty::BoundConstness::Const, ty::ImplPolarity::Positive)
+                        }
                         hir::TraitBoundModifier::MaybeConst => {
                             (ty::BoundConstness::ConstIfConst, ty::ImplPolarity::Positive)
                         }

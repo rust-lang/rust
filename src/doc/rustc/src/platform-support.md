@@ -161,7 +161,9 @@ target | std | notes
 [`nvptx64-nvidia-cuda`](platform-support/nvptx64-nvidia-cuda.md) | * | --emit=asm generates PTX code that [runs on NVIDIA GPUs]
 [`riscv32imac-unknown-none-elf`](platform-support/riscv32imac-unknown-none-elf.md) | * | Bare RISC-V (RV32IMAC ISA)
 [`riscv32i-unknown-none-elf`](platform-support/riscv32imac-unknown-none-elf.md) | * | Bare RISC-V (RV32I ISA)
+[`riscv32im-unknown-none-elf`](platform-support/riscv32imac-unknown-none-elf.md) | * |  | Bare RISC-V (RV32IM ISA)
 [`riscv32imc-unknown-none-elf`](platform-support/riscv32imac-unknown-none-elf.md) | * | Bare RISC-V (RV32IMC ISA)
+[`riscv32imafc-unknown-none-elf`](platform-support/riscv32imac-unknown-none-elf.md) | * | Bare RISC-V (RV32IMAFC ISA)
 `riscv64gc-unknown-none-elf` | * | Bare RISC-V (RV64IMAFDC ISA)
 `riscv64imac-unknown-none-elf` | * | Bare RISC-V (RV64IMAC ISA)
 `sparc64-unknown-linux-gnu` | ✓ | SPARC Linux (kernel 4.4, glibc 2.23)
@@ -318,8 +320,6 @@ target | std | host | notes
 [`powerpc64-ibm-aix`](platform-support/aix.md) | ? |  | 64-bit AIX (7.2 and newer)
 `riscv32gc-unknown-linux-gnu` |   |   | RISC-V Linux (kernel 5.4, glibc 2.33)
 `riscv32gc-unknown-linux-musl` |   |   | RISC-V Linux (kernel 5.4, musl + RISCV32 support patches)
-[`riscv32imafc-unknown-none-elf`](platform-support/riscv32imac-unknown-none-elf.md) | * | Bare RISC-V (RV32IMAFC ISA)
-[`riscv32im-unknown-none-elf`](platform-support/riscv32imac-unknown-none-elf.md) | * |  | Bare RISC-V (RV32IM ISA)
 [`riscv32imac-unknown-xous-elf`](platform-support/riscv32imac-unknown-xous-elf.md) | ? |  | RISC-V Xous (RV32IMAC ISA)
 [`riscv32imc-esp-espidf`](platform-support/esp-idf.md) | ✓ |  | RISC-V ESP-IDF
 [`riscv32imac-esp-espidf`](platform-support/esp-idf.md) | ✓ |  | RISC-V ESP-IDF

@@ -1096,14 +1096,22 @@ impl<'a> State<'a> {
             ast::StmtKind::Item(item) => self.print_item(item),
             ast::StmtKind::Expr(expr) => {
                 self.space_if_not_bol();
-                self.print_expr_outer_attr_style(expr, false, FixupContext::default());
+                self.print_expr_outer_attr_style(
+                    expr,
+                    false,
+                    FixupContext { stmt: true, ..FixupContext::default() },
+                );
                 if classify::expr_requires_semi_to_be_stmt(expr) {
                     self.word(";");
                 }
             }
             ast::StmtKind::Semi(expr) => {
                 self.space_if_not_bol();
-                self.print_expr_outer_attr_style(expr, false, FixupContext::default());
+                self.print_expr_outer_attr_style(
+                    expr,
+                    false,
+                    FixupContext { stmt: true, ..FixupContext::default() },
+                );
                 self.word(";");
             }
             ast::StmtKind::Empty => {
@@ -1155,7 +1163,11 @@ impl<'a> State<'a> {
                 ast::StmtKind::Expr(expr) if i == blk.stmts.len() - 1 => {
                     self.maybe_print_comment(st.span.lo());
                     self.space_if_not_bol();
-                    self.print_expr_outer_attr_style(expr, false, FixupContext::default());
+                    self.print_expr_outer_attr_style(
+                        expr,
+                        false,
+                        FixupContext { stmt: true, ..FixupContext::default() },
+                    );
                     self.maybe_print_trailing_comment(expr.span, Some(blk.span.hi()));
                 }
                 _ => self.print_stmt(st),
@@ -1561,7 +1573,7 @@ impl<'a> State<'a> {
                 GenericBound::Trait(tref, modifier) => {
                     match modifier.constness {
                         ast::BoundConstness::Never => {}
-                        ast::BoundConstness::Maybe(_) => {
+                        ast::BoundConstness::Always(_) | ast::BoundConstness::Maybe(_) => {
                             self.word_space(modifier.constness.as_str());
                         }
                     }

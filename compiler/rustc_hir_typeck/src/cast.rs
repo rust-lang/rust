@@ -539,25 +539,19 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         match self.expr_ty.kind() {
             ty::Ref(_, _, mt) => {
                 let mtstr = mt.prefix_str();
-                if self.cast_ty.is_trait() {
-                    match fcx.tcx.sess.source_map().span_to_snippet(self.cast_span) {
-                        Ok(s) => {
-                            err.span_suggestion(
-                                self.cast_span,
-                                "try casting to a reference instead",
-                                format!("&{mtstr}{s}"),
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                        Err(_) => {
-                            let msg = format!("did you mean `&{mtstr}{tstr}`?");
-                            err.span_help(self.cast_span, msg);
-                        }
+                match fcx.tcx.sess.source_map().span_to_snippet(self.cast_span) {
+                    Ok(s) => {
+                        err.span_suggestion(
+                            self.cast_span,
+                            "try casting to a reference instead",
+                            format!("&{mtstr}{s}"),
+                            Applicability::MachineApplicable,
+                        );
                     }
-                } else {
-                    let msg =
-                        format!("consider using an implicit coercion to `&{mtstr}{tstr}` instead");
-                    err.span_help(self.span, msg);
+                    Err(_) => {
+                        let msg = format!("did you mean `&{mtstr}{tstr}`?");
+                        err.span_help(self.cast_span, msg);
+                    }
                 }
             }
             ty::Adt(def, ..) if def.is_box() => {
