@@ -8,7 +8,7 @@ use rustc_attr as attr;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind};
-use rustc_hir::def_id::LocalModDefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::Node;
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::{Obligation, TraitEngineExt as _};
@@ -198,8 +198,8 @@ fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
 /// Checks that an opaque type does not contain cycles and does not use `Self` or `T::Foo`
 /// projections that would result in "inheriting lifetimes".
-fn check_opaque(tcx: TyCtxt<'_>, id: hir::ItemId) {
-    let item = tcx.hir().item(id);
+fn check_opaque(tcx: TyCtxt<'_>, def_id: LocalDefId) {
+    let item = tcx.hir().expect_item(def_id);
     let hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) = item.kind else {
         tcx.dcx().span_delayed_bug(item.span, "expected opaque item");
         return;
@@ -440,40 +440,31 @@ fn check_static_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     }
 }
 
-fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
-    debug!(
-        "check_item_type(it.def_id={:?}, it.name={})",
-        id.owner_id,
-        tcx.def_path_str(id.owner_id)
-    );
+pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let _indenter = indenter();
-    match tcx.def_kind(id.owner_id) {
+    match tcx.def_kind(def_id) {
         DefKind::Static(..) => {
-            tcx.ensure().typeck(id.owner_id.def_id);
-            maybe_check_static_with_link_section(tcx, id.owner_id.def_id);
-            check_static_inhabited(tcx, id.owner_id.def_id);
-            check_static_linkage(tcx, id.owner_id.def_id);
+            tcx.ensure().typeck(def_id);
+            maybe_check_static_with_link_section(tcx, def_id);
+            check_static_inhabited(tcx, def_id);
+            check_static_linkage(tcx, def_id);
         }
         DefKind::Const => {
-            tcx.ensure().typeck(id.owner_id.def_id);
+            tcx.ensure().typeck(def_id);
         }
         DefKind::Enum => {
-            check_enum(tcx, id.owner_id.def_id);
+            check_enum(tcx, def_id);
         }
         DefKind::Fn => {} // entirely within check_item_body
         DefKind::Impl { of_trait } => {
-            if of_trait && let Some(impl_trait_ref) = tcx.impl_trait_ref(id.owner_id) {
-                check_impl_items_against_trait(
-                    tcx,
-                    id.owner_id.def_id,
-                    impl_trait_ref.instantiate_identity(),
-                );
-                check_on_unimplemented(tcx, id);
+            if of_trait && let Some(impl_trait_ref) = tcx.impl_trait_ref(def_id) {
+                check_impl_items_against_trait(tcx, def_id, impl_trait_ref.instantiate_identity());
+                check_on_unimplemented(tcx, def_id);
             }
         }
         DefKind::Trait => {
-            let assoc_items = tcx.associated_items(id.owner_id);
-            check_on_unimplemented(tcx, id);
+            let assoc_items = tcx.associated_items(def_id);
+            check_on_unimplemented(tcx, def_id);
 
             for &assoc_item in assoc_items.in_definition_order() {
                 match assoc_item.kind {
@@ -482,12 +473,12 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
                         forbid_intrinsic_abi(tcx, assoc_item.ident(tcx).span, abi);
                     }
                     ty::AssocKind::Type if assoc_item.defaultness(tcx).has_value() => {
-                        let trait_args = GenericArgs::identity_for_item(tcx, id.owner_id);
+                        let trait_args = GenericArgs::identity_for_item(tcx, def_id);
                         let _: Result<_, rustc_errors::ErrorGuaranteed> = check_type_bounds(
                             tcx,
                             assoc_item,
                             assoc_item,
-                            ty::TraitRef::new(tcx, id.owner_id.to_def_id(), trait_args),
+                            ty::TraitRef::new(tcx, def_id.to_def_id(), trait_args),
                         );
                     }
                     _ => {}
@@ -495,13 +486,13 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
             }
         }
         DefKind::Struct => {
-            check_struct(tcx, id.owner_id.def_id);
+            check_struct(tcx, def_id);
         }
         DefKind::Union => {
-            check_union(tcx, id.owner_id.def_id);
+            check_union(tcx, def_id);
         }
         DefKind::OpaqueTy => {
-            let origin = tcx.opaque_type_origin(id.owner_id.def_id);
+            let origin = tcx.opaque_type_origin(def_id);
             if let hir::OpaqueTyOrigin::FnReturn(fn_def_id)
             | hir::OpaqueTyOrigin::AsyncFn(fn_def_id) = origin
                 && let hir::Node::TraitItem(trait_item) = tcx.hir_node_by_def_id(fn_def_id)
@@ -509,16 +500,16 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
             {
                 // Skip opaques from RPIT in traits with no default body.
             } else {
-                check_opaque(tcx, id);
+                check_opaque(tcx, def_id);
             }
         }
         DefKind::TyAlias => {
-            let pty_ty = tcx.type_of(id.owner_id).instantiate_identity();
-            let generics = tcx.generics_of(id.owner_id);
+            let pty_ty = tcx.type_of(def_id).instantiate_identity();
+            let generics = tcx.generics_of(def_id);
             check_type_params_are_used(tcx, generics, pty_ty);
         }
         DefKind::ForeignMod => {
-            let it = tcx.hir().item(id);
+            let it = tcx.hir().expect_item(def_id);
             let hir::ItemKind::ForeignMod { abi, items } = it.kind else {
                 return;
             };
@@ -589,19 +580,19 @@ fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
             }
         }
         DefKind::GlobalAsm => {
-            let it = tcx.hir().item(id);
+            let it = tcx.hir().expect_item(def_id);
             let hir::ItemKind::GlobalAsm(asm) = it.kind else {
                 span_bug!(it.span, "DefKind::GlobalAsm but got {:#?}", it)
             };
-            InlineAsmCtxt::new_global_asm(tcx).check_asm(asm, id.owner_id.def_id);
+            InlineAsmCtxt::new_global_asm(tcx).check_asm(asm, def_id);
         }
         _ => {}
     }
 }
 
-pub(super) fn check_on_unimplemented(tcx: TyCtxt<'_>, item: hir::ItemId) {
+pub(super) fn check_on_unimplemented(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     // an error would be reported if this fails.
-    let _ = OnUnimplementedDirective::of_item(tcx, item.owner_id.to_def_id());
+    let _ = OnUnimplementedDirective::of_item(tcx, def_id.to_def_id());
 }
 
 pub(super) fn check_specialization_validity<'tcx>(
@@ -1306,16 +1297,6 @@ pub(super) fn check_type_params_are_used<'tcx>(
                 .span_label(span, "unused type parameter")
                 .emit();
         }
-    }
-}
-
-pub(super) fn check_mod_item_types(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
-    let module = tcx.hir_module_items(module_def_id);
-    for id in module.items() {
-        check_item_type(tcx, id);
-    }
-    if module_def_id == LocalModDefId::CRATE_DEF_ID {
-        super::entry::check_for_entry_fn(tcx);
     }
 }
 

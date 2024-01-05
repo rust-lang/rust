@@ -323,7 +323,9 @@ pub(crate) fn run_global_ctxt(
         tcx.hir().try_par_for_each_module(|module| tcx.ensure().check_mod_type_wf(module))
     });
     tcx.sess.time("item_types_checking", || {
-        tcx.hir().for_each_module(|module| tcx.ensure().check_mod_item_types(module))
+        tcx.hir().for_each_module(|module| {
+            let _ = tcx.ensure().check_mod_type_wf(module);
+        });
     });
 
     tcx.dcx().abort_if_errors();
