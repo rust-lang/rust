@@ -42,7 +42,6 @@ where
 /// access in the methods of `DiagnosticBuilder` here, consider
 /// extending `DiagCtxtFlags`.
 #[must_use]
-#[derive(Clone)]
 pub struct DiagnosticBuilder<'a, G: EmissionGuarantee = ErrorGuaranteed> {
     state: DiagnosticBuilderState<'a>,
 
@@ -54,6 +53,10 @@ pub struct DiagnosticBuilder<'a, G: EmissionGuarantee = ErrorGuaranteed> {
 
     _marker: PhantomData<G>,
 }
+
+// Cloning a `DiagnosticBuilder` is a recipe for a diagnostic being emitted
+// twice, which would be bad.
+impl<G> !Clone for DiagnosticBuilder<'_, G> {}
 
 #[derive(Clone)]
 enum DiagnosticBuilderState<'a> {

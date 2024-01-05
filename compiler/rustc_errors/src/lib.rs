@@ -10,6 +10,7 @@
 #![feature(extract_if)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
+#![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![feature(yeet_expr)]
