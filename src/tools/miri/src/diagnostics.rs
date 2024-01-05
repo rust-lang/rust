@@ -454,12 +454,12 @@ pub fn report_msg<'tcx>(
     let span = stacktrace.first().map_or(DUMMY_SP, |fi| fi.span);
     let sess = machine.tcx.sess;
     let level = match diag_level {
-        DiagLevel::Error => Level::Error { lint: false },
+        DiagLevel::Error => Level::Error,
         DiagLevel::Warning => Level::Warning(None),
         DiagLevel::Note => Level::Note,
     };
     let mut err = DiagnosticBuilder::<()>::new(sess.dcx(), level, title);
-    err.set_span(span);
+    err.span(span);
 
     // Show main message.
     if span != DUMMY_SP {
