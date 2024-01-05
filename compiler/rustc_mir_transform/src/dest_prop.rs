@@ -131,11 +131,9 @@
 //! [attempt 2]: https://github.com/rust-lang/rust/pull/71003
 //! [attempt 3]: https://github.com/rust-lang/rust/pull/72632
 
-use std::collections::hash_map::{Entry, OccupiedEntry};
-
 use crate::simplify::remove_dead_blocks;
 use crate::MirPass;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxIndexMap, IndexEntry, IndexOccupiedEntry};
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::HasLocalDecls;
@@ -212,7 +210,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
             let mut merged_locals: BitSet<Local> = BitSet::new_empty(body.local_decls.len());
 
             // This is the set of merges we will apply this round. It is a subset of the candidates.
-            let mut merges = FxHashMap::default();
+            let mut merges = FxIndexMap::default();
 
             for (src, candidates) in candidates.c.iter() {
                 if merged_locals.contains(*src) {
@@ -257,8 +255,8 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
 /// frequently. Everything with a `&'alloc` lifetime points into here.
 #[derive(Default)]
 struct Allocations {
-    candidates: FxHashMap<Local, Vec<Local>>,
-    candidates_reverse: FxHashMap<Local, Vec<Local>>,
+    candidates: FxIndexMap<Local, Vec<Local>>,
+    candidates_reverse: FxIndexMap<Local, Vec<Local>>,
     write_info: WriteInfo,
     // PERF: Do this for `MaybeLiveLocals` allocations too.
 }
@@ -279,11 +277,11 @@ struct Candidates<'alloc> {
     ///
     /// We will still report that we would like to merge `_1` and `_2` in an attempt to allow us to
     /// remove that assignment.
-    c: &'alloc mut FxHashMap<Local, Vec<Local>>,
+    c: &'alloc mut FxIndexMap<Local, Vec<Local>>,
     /// A reverse index of the `c` set; if the `c` set contains `a => Place { local: b, proj }`,
     /// then this contains `b => a`.
     // PERF: Possibly these should be `SmallVec`s?
-    reverse: &'alloc mut FxHashMap<Local, Vec<Local>>,
+    reverse: &'alloc mut FxIndexMap<Local, Vec<Local>>,
 }
 
 //////////////////////////////////////////////////////////
@@ -294,7 +292,7 @@ struct Candidates<'alloc> {
 fn apply_merges<'tcx>(
     body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
-    merges: &FxHashMap<Local, Local>,
+    merges: &FxIndexMap<Local, Local>,
     merged_locals: &BitSet<Local>,
 ) {
     let mut merger = Merger { tcx, merges, merged_locals };
@@ -303,7 +301,7 @@ fn apply_merges<'tcx>(
 
 struct Merger<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    merges: &'a FxHashMap<Local, Local>,
+    merges: &'a FxIndexMap<Local, Local>,
     merged_locals: &'a BitSet<Local>,
 }
 
@@ -386,7 +384,7 @@ impl<'alloc> Candidates<'alloc> {
 
     /// `vec_filter_candidates` but for an `Entry`
     fn entry_filter_candidates(
-        mut entry: OccupiedEntry<'_, Local, Vec<Local>>,
+        mut entry: IndexOccupiedEntry<'_, Local, Vec<Local>>,
         p: Local,
         f: impl FnMut(Local) -> CandidateFilter,
         at: Location,
@@ -406,7 +404,7 @@ impl<'alloc> Candidates<'alloc> {
         at: Location,
     ) {
         // Cover the cases where `p` appears as a `src`
-        if let Entry::Occupied(entry) = self.c.entry(p) {
+        if let IndexEntry::Occupied(entry) = self.c.entry(p) {
             Self::entry_filter_candidates(entry, p, &mut f, at);
         }
         // And the cases where `p` appears as a `dest`
@@ -419,7 +417,7 @@ impl<'alloc> Candidates<'alloc> {
             if f(*src) == CandidateFilter::Keep {
                 return true;
             }
-            let Entry::Occupied(entry) = self.c.entry(*src) else {
+            let IndexEntry::Occupied(entry) = self.c.entry(*src) else {
                 return false;
             };
             Self::entry_filter_candidates(
@@ -728,8 +726,8 @@ fn places_to_candidate_pair<'tcx>(
 fn find_candidates<'alloc, 'tcx>(
     body: &Body<'tcx>,
     borrowed: &BitSet<Local>,
-    candidates: &'alloc mut FxHashMap<Local, Vec<Local>>,
-    candidates_reverse: &'alloc mut FxHashMap<Local, Vec<Local>>,
+    candidates: &'alloc mut FxIndexMap<Local, Vec<Local>>,
+    candidates_reverse: &'alloc mut FxIndexMap<Local, Vec<Local>>,
 ) -> Candidates<'alloc> {
     candidates.clear();
     candidates_reverse.clear();
@@ -751,7 +749,7 @@ fn find_candidates<'alloc, 'tcx>(
 
 struct FindAssignments<'a, 'alloc, 'tcx> {
     body: &'a Body<'tcx>,
-    candidates: &'alloc mut FxHashMap<Local, Vec<Local>>,
+    candidates: &'alloc mut FxIndexMap<Local, Vec<Local>>,
     borrowed: &'a BitSet<Local>,
 }
 
