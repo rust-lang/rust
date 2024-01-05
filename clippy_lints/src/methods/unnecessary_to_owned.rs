@@ -3,13 +3,13 @@ use super::unnecessary_iter_cloned::{self, is_into_iter};
 use clippy_config::msrvs::{self, Msrv};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, peel_mid_ty_refs};
+use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, is_type_lang_item, peel_mid_ty_refs};
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, return_ty};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{BorrowKind, Expr, ExprKind, ItemKind, Node};
+use rustc_hir::{BorrowKind, Expr, ExprKind, ItemKind, LangItem, Node};
 use rustc_hir_typeck::{FnCtxt, Inherited};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
@@ -246,6 +246,19 @@ fn check_split_call_arg(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symb
         && let Some(receiver_snippet) = snippet_opt(cx, receiver.span)
         && let Some(arg_snippet) = snippet_opt(cx, argument_expr.span)
     {
+        // We may end-up here because of an expression like `x.to_string().split(…)` where the type of `x`
+        // implements `AsRef<str>` but does not implement `Deref<Target = str>`. In this case, we have to
+        // add `.as_ref()` to the suggestion.
+        let as_ref = if is_type_lang_item(cx, cx.typeck_results().expr_ty(expr), LangItem::String)
+            && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
+            && cx.get_associated_type(cx.typeck_results().expr_ty(receiver), deref_trait_id, "Target")
+                != Some(cx.tcx.types.str_)
+        {
+            ".as_ref()"
+        } else {
+            ""
+        };
+
         // The next suggestion may be incorrect because the removal of the `to_owned`-like
         // function could cause the iterator to hold a reference to a resource that is used
         // mutably. See https://github.com/rust-lang/rust-clippy/issues/8148.
@@ -255,7 +268,7 @@ fn check_split_call_arg(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: Symb
             parent.span,
             &format!("unnecessary use of `{method_name}`"),
             "use",
-            format!("{receiver_snippet}.split({arg_snippet})"),
+            format!("{receiver_snippet}{as_ref}.split({arg_snippet})"),
             Applicability::MaybeIncorrect,
         );
         return true;
