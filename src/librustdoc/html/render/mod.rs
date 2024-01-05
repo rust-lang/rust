@@ -131,6 +131,10 @@ pub(crate) struct RenderType {
 }
 
 impl RenderType {
+    // Types are rendered as lists of lists, because that's pretty compact.
+    // The contents of the lists are always integers in self-terminating hex
+    // form, handled by `RenderTypeId::write_to_string`, so no commas are
+    // needed to separate the items.
     pub fn write_to_string(&self, string: &mut String) {
         fn write_optional_id(id: Option<RenderTypeId>, string: &mut String) {
             // 0 is a sentinel, everything else is one-indexed
@@ -139,6 +143,9 @@ impl RenderType {
                 None => string.push('`'),
             }
         }
+        // Either just the type id, or `{type, generics, bindings?}`
+        // where generics is a list of types,
+        // and bindings is a list of `{id, typelist}` pairs.
         if self.generics.is_some() || self.bindings.is_some() {
             string.push('{');
             write_optional_id(self.id, string);
@@ -186,10 +193,19 @@ impl RenderTypeId {
             RenderTypeId::Index(idx) => (true, (-*idx).try_into().unwrap()),
             _ => panic!("must convert render types to indexes before serializing"),
         };
-        // zig-zag notation
+        // zig-zag encoding
         let value: u32 = (id << 1) | (if sign { 1 } else { 0 });
-        // encode
-        // Documented in https://rust-lang.github.io/rustc-dev-guide/rustdoc-internals/search.html
+        // Self-terminating hex use capital letters for everything but the
+        // least significant digit, which is lowercase. For example, decimal 17
+        // would be `` Aa `` if zig-zag encoding weren't used.
+        //
+        // Zig-zag encoding, however, stores the sign bit as the last bit.
+        // This means, in the last hexit, 1 is actually `c`, -1 is `b`
+        // (`a` is the imaginary -0), and, because all the bits are shifted
+        // by one, `` A` `` is actually 8 and `` Aa `` is -8.
+        //
+        // https://rust-lang.github.io/rustc-dev-guide/rustdoc-internals/search.html
+        // describes the encoding in more detail.
         let mut shift: u32 = 28;
         let mut mask: u32 = 0xF0_00_00_00;
         while shift < 32 {
@@ -219,8 +235,9 @@ impl IndexItemFunctionType {
         string: &mut String,
         backref_queue: &mut VecDeque<&'a IndexItemFunctionType>,
     ) {
-        assert!(backref_queue.len() < 16);
-        // If we couldn't figure out a type, just write `0`.
+        assert!(backref_queue.len() <= 16);
+        // If we couldn't figure out a type, just write 0,
+        // which is encoded as `` ` `` (see RenderTypeId::write_to_string).
         let has_missing = self
             .inputs
             .iter()
@@ -229,13 +246,15 @@ impl IndexItemFunctionType {
         if has_missing {
             string.push('`');
         } else if let Some(idx) = backref_queue.iter().position(|other| *other == self) {
+            // The backref queue has 16 items, so backrefs use
+            // a single hexit, disjoint from the ones used for numbers.
             string.push(
                 char::try_from('0' as u32 + u32::try_from(idx).unwrap())
                     .expect("last possible value is '?'"),
             );
         } else {
             backref_queue.push_front(self);
-            if backref_queue.len() >= 16 {
+            if backref_queue.len() > 16 {
                 backref_queue.pop_back();
             }
             string.push('{');

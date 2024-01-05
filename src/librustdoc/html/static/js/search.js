@@ -2858,7 +2858,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             inputs, output, where_clause,
         };
         itemFunctionDecoder.backrefQueue.unshift(ret);
-        if (itemFunctionDecoder.backrefQueue.length >= 16) {
+        if (itemFunctionDecoder.backrefQueue.length > 16) {
             itemFunctionDecoder.backrefQueue.pop();
         }
         return ret;
