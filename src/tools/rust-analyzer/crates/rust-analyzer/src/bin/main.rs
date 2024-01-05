@@ -5,8 +5,7 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #[cfg(feature = "in-rust-tree")]
-#[allow(unused_extern_crates)]
-extern crate rustc_driver;
+extern crate rustc_driver as _;
 
 mod logger;
 mod rustc_wrapper;

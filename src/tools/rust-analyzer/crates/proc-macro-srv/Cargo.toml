@@ -38,6 +38,7 @@ proc-macro-test.path = "./proc-macro-test"
 
 [features]
 sysroot-abi = ["proc-macro-test/sysroot-abi"]
+in-rust-tree = ["mbe/in-rust-tree", "sysroot-abi"]
 
 [lints]
 workspace = true
