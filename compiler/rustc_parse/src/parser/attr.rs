@@ -174,7 +174,7 @@ impl<'a> Parser<'a> {
         ) {
             Ok(Some(item)) => {
                 // FIXME(#100717)
-                err.set_arg("item", item.kind.descr());
+                err.arg("item", item.kind.descr());
                 err.span_label(item.span, fluent::parse_label_does_not_annotate_this);
                 err.span_suggestion_verbose(
                     replacement_span,

@@ -500,10 +500,10 @@ pub(crate) struct MultipleCandidates {
 impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for MultipleCandidates {
     fn into_diagnostic(self, dcx: &'_ DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
         let mut diag = DiagnosticBuilder::new(dcx, level, fluent::metadata_multiple_candidates);
-        diag.set_arg("crate_name", self.crate_name);
-        diag.set_arg("flavor", self.flavor);
+        diag.arg("crate_name", self.crate_name);
+        diag.arg("flavor", self.flavor);
         diag.code(error_code!(E0464));
-        diag.set_span(self.span);
+        diag.span(self.span);
         for (i, candidate) in self.candidates.iter().enumerate() {
             diag.note(format!("candidate #{}: {}", i + 1, candidate.display()));
         }
@@ -596,10 +596,10 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for InvalidMetadataFiles {
     #[track_caller]
     fn into_diagnostic(self, dcx: &'_ DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
         let mut diag = DiagnosticBuilder::new(dcx, level, fluent::metadata_invalid_meta_files);
-        diag.set_arg("crate_name", self.crate_name);
-        diag.set_arg("add_info", self.add_info);
+        diag.arg("crate_name", self.crate_name);
+        diag.arg("add_info", self.add_info);
         diag.code(error_code!(E0786));
-        diag.set_span(self.span);
+        diag.span(self.span);
         for crate_rejection in self.crate_rejections {
             diag.note(crate_rejection);
         }
@@ -623,12 +623,12 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for CannotFindCrate {
     #[track_caller]
     fn into_diagnostic(self, dcx: &'_ DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
         let mut diag = DiagnosticBuilder::new(dcx, level, fluent::metadata_cannot_find_crate);
-        diag.set_arg("crate_name", self.crate_name);
-        diag.set_arg("current_crate", self.current_crate);
-        diag.set_arg("add_info", self.add_info);
-        diag.set_arg("locator_triple", self.locator_triple.triple());
+        diag.arg("crate_name", self.crate_name);
+        diag.arg("current_crate", self.current_crate);
+        diag.arg("add_info", self.add_info);
+        diag.arg("locator_triple", self.locator_triple.triple());
         diag.code(error_code!(E0463));
-        diag.set_span(self.span);
+        diag.span(self.span);
         if (self.crate_name == sym::std || self.crate_name == sym::core)
             && self.locator_triple != TargetTriple::from_triple(config::host_triple())
         {

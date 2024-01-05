@@ -1383,7 +1383,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 | PathSource::TupleStruct(span, _) => {
                     // We want the main underline to cover the suggested code as well for
                     // cleaner output.
-                    err.set_span(*span);
+                    err.span(*span);
                     *span
                 }
                 _ => span,
@@ -1615,7 +1615,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 let field_spans = match source {
                     // e.g. `if let Enum::TupleVariant(field1, field2) = _`
                     PathSource::TupleStruct(_, pattern_spans) => {
-                        err.set_primary_message(
+                        err.primary_message(
                             "cannot match against a tuple struct which contains private fields",
                         );
 
@@ -1628,7 +1628,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                         span: call_span,
                         ..
                     })) => {
-                        err.set_primary_message(
+                        err.primary_message(
                             "cannot initialize a tuple struct which contains private fields",
                         );
                         self.suggest_alternative_construction_methods(
