@@ -2118,7 +2118,7 @@ impl<'a> Parser<'a> {
                 Applicability::MaybeIncorrect,
             );
             err.span_suggestion(
-                span.shrink_to_hi(),
+                span.with_neighbor(self.token.span).shrink_to_hi(),
                 "add a semicolon",
                 ';',
                 Applicability::MaybeIncorrect,
@@ -2632,7 +2632,7 @@ impl<'a> Parser<'a> {
 
             let is_name_required = match this.token.kind {
                 token::DotDotDot => false,
-                _ => req_name(this.token.span.edition()),
+                _ => req_name(this.token.span.with_neighbor(this.prev_token.span).edition()),
             };
             let (pat, ty) = if is_name_required || this.is_named_param() {
                 debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);

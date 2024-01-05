@@ -2489,7 +2489,7 @@ impl<'a> Parser<'a> {
                 }
                 ExprKind::Block(_, None) => {
                     this.dcx().emit_err(errors::IfExpressionMissingCondition {
-                        if_span: lo.shrink_to_hi(),
+                        if_span: lo.with_neighbor(cond.span).shrink_to_hi(),
                         block_span: self.sess.source_map().start_point(cond_span),
                     });
                     std::mem::replace(&mut cond, this.mk_expr_err(cond_span.shrink_to_hi()))
