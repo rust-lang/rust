@@ -10,12 +10,12 @@
 set -euo pipefail
 IFS=$'\n\t'
 
-echo MAJAHA
-which which
-which cygpath
-cygpath -w /
-echo MAJAHA2
-ls /
+# echo MAJAHA
+# which which
+# which cygpath
+# cygpath -w /
+# echo MAJAHA2
+# ls /
 # mkdir /home/runneradmin
 # ls /home/
 

@@ -13,14 +13,14 @@ MINGW_ARCHIVE_32="i686-12.2.0-release-posix-dwarf-rt_v10-rev0.7z"
 MINGW_ARCHIVE_64="x86_64-12.2.0-release-posix-seh-rt_v10-rev0.7z"
 
 if isWindows; then
-    echo "Path of / : $(cygpath -w /)"
-    echo "PATH: $PATH"
-    echo "MAJAHA PWD: $(pwd) | $(cygpath -w $(pwd))"
-    echo "MSYSTEM: ${MSYSTEM-unset}"
-    echo "MAJAHA 3: $(cygpath -w $(which git))"
-    echo "MAJAHA 3: $(cygpath -w $(which python))"
-    echo "GITHUB_PATH: $GITHUB_PATH"
-    cat "$GITHUB_PATH"
+    # echo "Path of / : $(cygpath -w /)"
+    # echo "PATH: $PATH"
+    # echo "MAJAHA PWD: $(pwd) | $(cygpath -w $(pwd))"
+    # echo "MSYSTEM: ${MSYSTEM-unset}"
+    # echo "MAJAHA 3: $(cygpath -w $(which git))"
+    # echo "MAJAHA 3: $(cygpath -w $(which python))"
+    # echo "GITHUB_PATH: $GITHUB_PATH"
+    # cat "$GITHUB_PATH"
     case "${CI_JOB_NAME}" in
         *i686*)
             bits=32
@@ -48,7 +48,7 @@ if isWindows; then
 
     if [[ "${CUSTOM_MINGW-0}" -ne 1 ]]; then
         echo "1pacman -Qg mingw-w64-x86_64-toolchain:"
-        pacman -Qg mingw-w64-x86_64-toolchain
+        pacman -Qg mingw-w64-x86_64-toolchain # this gets run even for msvc jobs
         pacman -Syu --noconfirm
         pacman -S --noconfirm --needed mingw-w64-$arch-toolchain mingw-w64-$arch-cmake \
             mingw-w64-$arch-gcc \
@@ -63,14 +63,14 @@ if isWindows; then
         curl -o mingw.7z "${MIRRORS_BASE}/${mingw_archive}" # This doesn't seem to include python. Should install in msys2 step instead?
         7z x -y mingw.7z > /dev/null
         ciCommandAddPath "$(pwd)/${mingw_dir}/bin"
-        echo "CUSTOM MINGW PATH 1: $(pwd)/${mingw_dir}/bin | $(cygpath -w $(pwd)/${mingw_dir}/bin)"
+        # echo "CUSTOM MINGW PATH 1: $(pwd)/${mingw_dir}/bin | $(cygpath -w $(pwd)/${mingw_dir}/bin)"
     fi
-    echo "MAJAHA 4: $(cygpath -w $(which git))"
-    echo "MAJAHA 4: $(cygpath -w $(which python))"
-    echo "MAJAHA 4: $(cygpath -w $(which gcc))"
-    echo "LS: $(ls)"
-    echo "GITHUB_PATH: $GITHUB_PATH"
-    cat "$GITHUB_PATH"
+    # echo "MAJAHA 4: $(cygpath -w $(which git))"
+    # echo "MAJAHA 4: $(cygpath -w $(which python))"
+    # echo "MAJAHA 4: $(cygpath -w $(which gcc))"
+    # echo "LS: $(ls)"
+    # echo "GITHUB_PATH: $GITHUB_PATH"
+    # cat "$GITHUB_PATH"
     # echo "MAJAHA /etc/pacman.conf"
     # cat /etc/pacman.conf
     # echo "\n"
