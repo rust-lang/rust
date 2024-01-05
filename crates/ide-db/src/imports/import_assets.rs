@@ -500,7 +500,7 @@ fn trait_applicable_items(
     let related_traits = inherent_traits.chain(env_traits).collect::<FxHashSet<_>>();
 
     let mut required_assoc_items = FxHashSet::default();
-    let trait_candidates = items_locator::items_with_name(
+    let trait_candidates: FxHashSet<_> = items_locator::items_with_name(
         sema,
         current_crate,
         trait_candidate.assoc_item_name.clone(),
@@ -508,15 +508,17 @@ fn trait_applicable_items(
     )
     .filter_map(|input| item_as_assoc(db, input))
     .filter_map(|assoc| {
+        if !trait_assoc_item && matches!(assoc, AssocItem::Const(_) | AssocItem::TypeAlias(_)) {
+            return None;
+        }
+
         let assoc_item_trait = assoc.containing_trait(db)?;
         if related_traits.contains(&assoc_item_trait) {
-            None
-        } else {
-            required_assoc_items.insert(assoc);
-            Some(assoc_item_trait.into())
+            return None;
         }
+        required_assoc_items.insert(assoc);
+        Some(assoc_item_trait.into())
     })
-    .take(DEFAULT_QUERY_SEARCH_LIMIT.inner())
     .collect();
 
     let mut located_imports = FxHashSet::default();
@@ -531,11 +533,6 @@ fn trait_applicable_items(
             None,
             |assoc| {
                 if required_assoc_items.contains(&assoc) {
-                    if let AssocItem::Function(f) = assoc {
-                        if f.self_param(db).is_some() {
-                            return None;
-                        }
-                    }
                     let located_trait = assoc.containing_trait(db)?;
                     let trait_item = ItemInNs::from(ModuleDef::from(located_trait));
                     let import_path = trait_import_paths
