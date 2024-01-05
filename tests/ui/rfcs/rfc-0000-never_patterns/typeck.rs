@@ -1,4 +1,3 @@
-// check-pass
 #![feature(never_patterns)]
 #![feature(exhaustive_patterns)]
 #![allow(incomplete_features)]
@@ -17,40 +16,48 @@ fn safe_unwrap_result<T: Copy>(res: Result<T, Void>) {
 
 // Check we only accept `!` where we want to.
 fn never_pattern_typeck(void: Void) {
-    // FIXME(never_patterns): Don't accept on a non-empty type.
+    // Don't accept on a non-empty type.
     match () {
         !,
+        //~^ ERROR: mismatched types
     }
     match (0, false) {
         !,
+        //~^ ERROR: mismatched types
     }
     match (0, false) {
         (_, !),
+        //~^ ERROR: mismatched types
     }
     match Some(0) {
         None => {}
         Some(!),
+        //~^ ERROR: mismatched types
     }
 
-    // FIXME(never_patterns): Don't accept on an arbitrary type, even if there are no more branches.
+    // Don't accept on an arbitrary type, even if there are no more branches.
     match () {
         () => {}
         !,
+        //~^ ERROR: mismatched types
     }
 
-    // FIXME(never_patterns): Don't accept even on an empty branch.
+    // Don't accept even on an empty branch.
     match None::<Void> {
         None => {}
         !,
+        //~^ ERROR: mismatched types
     }
     match (&[] as &[Void]) {
         [] => {}
         !,
+        //~^ ERROR: mismatched types
     }
-    // FIXME(never_patterns): Let alone if the emptiness is behind a reference.
+    // Let alone if the emptiness is behind a reference.
     match None::<&Void> {
         None => {}
         !,
+        //~^ ERROR: mismatched types
     }
 
     // Participate in match ergonomics.

@@ -276,10 +276,13 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         } else {
             // Check the pattern for some things unrelated to exhaustiveness.
             let refutable = if cx.refutable { Refutable } else { Irrefutable };
+            let mut err = Ok(());
             pat.walk_always(|pat| {
                 check_borrow_conflicts_in_at_patterns(self, pat);
                 check_for_bindings_named_same_as_variants(self, pat, refutable);
+                err = err.and(check_never_pattern(cx, pat));
             });
+            err?;
             Ok(cx.pattern_arena.alloc(cx.lower_pat(pat)))
         }
     }
@@ -809,6 +812,19 @@ fn check_for_bindings_named_same_as_variants(
             },
         )
     }
+}
+
+/// Check that never patterns are only used on inhabited types.
+fn check_never_pattern<'tcx>(
+    cx: &MatchCheckCtxt<'_, 'tcx>,
+    pat: &Pat<'tcx>,
+) -> Result<(), ErrorGuaranteed> {
+    if let PatKind::Never = pat.kind {
+        if !cx.is_uninhabited(pat.ty) {
+            return Err(cx.tcx.dcx().emit_err(NonEmptyNeverPattern { span: pat.span, ty: pat.ty }));
+        }
+    }
+    Ok(())
 }
 
 fn report_irrefutable_let_patterns(
