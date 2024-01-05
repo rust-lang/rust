@@ -188,6 +188,9 @@ ast_passes_module_nonascii = trying to load file for module `{$name}` with non-a
 ast_passes_negative_bound_not_supported =
     negative bounds are not supported
 
+ast_passes_negative_bound_with_parenthetical_notation =
+    parenthetical notation may not be used for negative bounds
+
 ast_passes_nested_impl_trait = nested `impl Trait` is not allowed
     .outer = outer `impl Trait`
     .inner = nested `impl Trait` here

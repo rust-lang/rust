@@ -912,7 +912,8 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
         let mut traits = FxIndexMap::default();
         let mut fn_traits = FxIndexMap::default();
-        let mut is_sized = false;
+        let mut has_sized_bound = false;
+        let mut has_negative_sized_bound = false;
         let mut lifetimes = SmallVec::<[ty::Region<'tcx>; 1]>::new();
 
         for (predicate, _) in bounds.iter_instantiated_copied(tcx, args) {
@@ -922,13 +923,24 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 ty::ClauseKind::Trait(pred) => {
                     let trait_ref = bound_predicate.rebind(pred.trait_ref);
 
-                    // Don't print + Sized, but rather + ?Sized if absent.
+                    // Don't print `+ Sized`, but rather `+ ?Sized` if absent.
                     if Some(trait_ref.def_id()) == tcx.lang_items().sized_trait() {
-                        is_sized = true;
-                        continue;
+                        match pred.polarity {
+                            ty::ImplPolarity::Positive | ty::ImplPolarity::Reservation => {
+                                has_sized_bound = true;
+                                continue;
+                            }
+                            ty::ImplPolarity::Negative => has_negative_sized_bound = true,
+                        }
                     }
 
-                    self.insert_trait_and_projection(trait_ref, None, &mut traits, &mut fn_traits);
+                    self.insert_trait_and_projection(
+                        trait_ref,
+                        pred.polarity,
+                        None,
+                        &mut traits,
+                        &mut fn_traits,
+                    );
                 }
                 ty::ClauseKind::Projection(pred) => {
                     let proj_ref = bound_predicate.rebind(pred);
@@ -939,6 +951,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
                     self.insert_trait_and_projection(
                         trait_ref,
+                        ty::ImplPolarity::Positive,
                         Some(proj_ty),
                         &mut traits,
                         &mut fn_traits,
@@ -955,7 +968,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
         let mut first = true;
         // Insert parenthesis around (Fn(A, B) -> C) if the opaque ty has more than one other trait
-        let paren_needed = fn_traits.len() > 1 || traits.len() > 0 || !is_sized;
+        let paren_needed = fn_traits.len() > 1 || traits.len() > 0 || !has_sized_bound;
 
         for (fn_once_trait_ref, entry) in fn_traits {
             write!(self, "{}", if first { "" } else { " + " })?;
@@ -1002,18 +1015,21 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     // trait_refs we collected in the OpaqueFnEntry as normal trait refs.
                     _ => {
                         if entry.has_fn_once {
-                            traits.entry(fn_once_trait_ref).or_default().extend(
-                                // Group the return ty with its def id, if we had one.
-                                entry
-                                    .return_ty
-                                    .map(|ty| (tcx.require_lang_item(LangItem::FnOnce, None), ty)),
-                            );
+                            traits
+                                .entry((fn_once_trait_ref, ty::ImplPolarity::Positive))
+                                .or_default()
+                                .extend(
+                                    // Group the return ty with its def id, if we had one.
+                                    entry.return_ty.map(|ty| {
+                                        (tcx.require_lang_item(LangItem::FnOnce, None), ty)
+                                    }),
+                                );
                         }
                         if let Some(trait_ref) = entry.fn_mut_trait_ref {
-                            traits.entry(trait_ref).or_default();
+                            traits.entry((trait_ref, ty::ImplPolarity::Positive)).or_default();
                         }
                         if let Some(trait_ref) = entry.fn_trait_ref {
-                            traits.entry(trait_ref).or_default();
+                            traits.entry((trait_ref, ty::ImplPolarity::Positive)).or_default();
                         }
                     }
                 }
@@ -1023,11 +1039,15 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         }
 
         // Print the rest of the trait types (that aren't Fn* family of traits)
-        for (trait_ref, assoc_items) in traits {
+        for ((trait_ref, polarity), assoc_items) in traits {
             write!(self, "{}", if first { "" } else { " + " })?;
 
             self.wrap_binder(&trait_ref, |trait_ref, cx| {
                 define_scoped_cx!(cx);
+
+                if polarity == ty::ImplPolarity::Negative {
+                    p!("!");
+                }
                 p!(print(trait_ref.print_only_trait_name()));
 
                 let generics = tcx.generics_of(trait_ref.def_id);
@@ -1094,9 +1114,15 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             })?;
         }
 
-        if !is_sized {
-            write!(self, "{}?Sized", if first { "" } else { " + " })?;
-        } else if first {
+        let add_sized = has_sized_bound && (first || has_negative_sized_bound);
+        let add_maybe_sized = !has_sized_bound && !has_negative_sized_bound;
+        if add_sized || add_maybe_sized {
+            if !first {
+                write!(self, " + ")?;
+            }
+            if add_maybe_sized {
+                write!(self, "?")?;
+            }
             write!(self, "Sized")?;
         }
 
@@ -1128,9 +1154,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     fn insert_trait_and_projection(
         &mut self,
         trait_ref: ty::PolyTraitRef<'tcx>,
+        polarity: ty::ImplPolarity,
         proj_ty: Option<(DefId, ty::Binder<'tcx, Term<'tcx>>)>,
         traits: &mut FxIndexMap<
-            ty::PolyTraitRef<'tcx>,
+            (ty::PolyTraitRef<'tcx>, ty::ImplPolarity),
             FxIndexMap<DefId, ty::Binder<'tcx, Term<'tcx>>>,
         >,
         fn_traits: &mut FxIndexMap<ty::PolyTraitRef<'tcx>, OpaqueFnEntry<'tcx>>,
@@ -1139,7 +1166,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
         // If our trait_ref is FnOnce or any of its children, project it onto the parent FnOnce
         // super-trait ref and record it there.
-        if let Some(fn_once_trait) = self.tcx().lang_items().fn_once_trait() {
+        // We skip negative Fn* bounds since they can't use parenthetical notation anyway.
+        if polarity == ty::ImplPolarity::Positive
+            && let Some(fn_once_trait) = self.tcx().lang_items().fn_once_trait()
+        {
             // If we have a FnOnce, then insert it into
             if trait_def_id == fn_once_trait {
                 let entry = fn_traits.entry(trait_ref).or_default();
@@ -1167,7 +1197,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         }
 
         // Otherwise, just group our traits and projection types.
-        traits.entry(trait_ref).or_default().extend(proj_ty);
+        traits.entry((trait_ref, polarity)).or_default().extend(proj_ty);
     }
 
     fn pretty_print_inherent_projection(
