@@ -2035,23 +2035,14 @@ fn check_error_format_stability(
     early_dcx: &mut EarlyDiagCtxt,
     unstable_opts: &UnstableOptions,
     error_format: ErrorOutputType,
-    json_rendered: HumanReadableErrorType,
 ) {
     if !unstable_opts.unstable_options {
-        if let ErrorOutputType::Json { pretty: true, json_rendered } = error_format {
-            early_dcx.abort_if_error_and_set_error_format(ErrorOutputType::Json {
-                pretty: false,
-                json_rendered,
-            });
+        if let ErrorOutputType::Json { pretty: true, .. } = error_format {
             early_dcx.early_fatal("`--error-format=pretty-json` is unstable");
         }
         if let ErrorOutputType::HumanReadable(HumanReadableErrorType::AnnotateSnippet(_)) =
             error_format
         {
-            early_dcx.abort_if_error_and_set_error_format(ErrorOutputType::Json {
-                pretty: false,
-                json_rendered,
-            });
             early_dcx.early_fatal("`--error-format=human-annotate-rs` is unstable");
         }
     }
@@ -2649,7 +2640,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let mut unstable_opts = UnstableOptions::build(early_dcx, matches);
     let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(early_dcx, matches);
 
-    check_error_format_stability(early_dcx, &unstable_opts, error_format, json_rendered);
+    check_error_format_stability(early_dcx, &unstable_opts, error_format);
 
     if !unstable_opts.unstable_options && json_unused_externs.is_enabled() {
         early_dcx.early_fatal(

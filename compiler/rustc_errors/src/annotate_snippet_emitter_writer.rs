@@ -20,7 +20,7 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::SourceFile;
 
 /// Generates diagnostics using annotate-snippet
-pub struct AnnotateSnippetEmitterWriter {
+pub struct AnnotateSnippetEmitter {
     source_map: Option<Lrc<SourceMap>>,
     fluent_bundle: Option<Lrc<FluentBundle>>,
     fallback_bundle: LazyFallbackBundle,
@@ -33,7 +33,7 @@ pub struct AnnotateSnippetEmitterWriter {
     macro_backtrace: bool,
 }
 
-impl Translate for AnnotateSnippetEmitterWriter {
+impl Translate for AnnotateSnippetEmitter {
     fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
         self.fluent_bundle.as_ref()
     }
@@ -43,7 +43,7 @@ impl Translate for AnnotateSnippetEmitterWriter {
     }
 }
 
-impl Emitter for AnnotateSnippetEmitterWriter {
+impl Emitter for AnnotateSnippetEmitter {
     /// The entry point for the diagnostics generation
     fn emit_diagnostic(&mut self, diag: &Diagnostic) {
         let fluent_args = to_fluent_args(diag.args());
@@ -97,7 +97,7 @@ fn annotation_type_for_level(level: Level) -> AnnotationType {
     }
 }
 
-impl AnnotateSnippetEmitterWriter {
+impl AnnotateSnippetEmitter {
     pub fn new(
         source_map: Option<Lrc<SourceMap>>,
         fluent_bundle: Option<Lrc<FluentBundle>>,

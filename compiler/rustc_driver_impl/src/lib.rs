@@ -1393,7 +1393,7 @@ fn report_ice(
 ) {
     let fallback_bundle =
         rustc_errors::fallback_fluent_bundle(crate::DEFAULT_LOCALE_RESOURCES.to_vec(), false);
-    let emitter = Box::new(rustc_errors::emitter::EmitterWriter::stderr(
+    let emitter = Box::new(rustc_errors::emitter::HumanEmitter::stderr(
         rustc_errors::ColorConfig::Auto,
         fallback_bundle,
     ));
