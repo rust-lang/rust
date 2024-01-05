@@ -314,16 +314,13 @@ fn build_isa(sess: &Session, backend_config: &BackendConfig) -> Arc<dyn isa::Tar
     let flags = settings::Flags::new(flags_builder);
 
     let isa_builder = match sess.opts.cg.target_cpu.as_deref() {
-        Some("native") => {
-            let builder = cranelift_native::builder_with_options(true).unwrap();
-            builder
-        }
+        Some("native") => cranelift_native::builder_with_options(true).unwrap(),
         Some(value) => {
             let mut builder =
                 cranelift_codegen::isa::lookup(target_triple.clone()).unwrap_or_else(|err| {
                     sess.dcx().fatal(format!("can't compile for {}: {}", target_triple, err));
                 });
-            if let Err(_) = builder.enable(value) {
+            if builder.enable(value).is_err() {
                 sess.dcx()
                     .fatal("the specified target cpu isn't currently supported by Cranelift.");
             }

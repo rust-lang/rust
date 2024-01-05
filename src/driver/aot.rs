@@ -467,7 +467,7 @@ pub(crate) fn run_aot(
 
             let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
             let metadata_cgu_name = cgu_name_builder
-                .build_cgu_name(LOCAL_CRATE, &["crate"], Some("metadata"))
+                .build_cgu_name(LOCAL_CRATE, ["crate"], Some("metadata"))
                 .as_str()
                 .to_string();
 

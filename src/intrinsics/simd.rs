@@ -293,7 +293,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             }
 
             ret.write_cvalue(fx, base);
-            let ret_lane = ret.place_lane(fx, idx.try_into().unwrap());
+            let ret_lane = ret.place_lane(fx, idx.into());
             ret_lane.write_cvalue(fx, val);
         }
 
@@ -340,7 +340,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                 );
             }
 
-            let ret_lane = v.value_lane(fx, idx.try_into().unwrap());
+            let ret_lane = v.value_lane(fx, idx.into());
             ret.write_cvalue(fx, ret_lane);
         }
 

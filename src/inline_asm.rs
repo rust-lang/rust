@@ -52,7 +52,7 @@ pub(crate) fn codegen_inline_asm_terminator<'tcx>(
     }
 
     let operands = operands
-        .into_iter()
+        .iter()
         .map(|operand| match *operand {
             InlineAsmOperand::In { reg, ref value } => CInlineAsmOperand::In {
                 reg,
@@ -763,7 +763,7 @@ fn call_inline_asm<'tcx>(
             },
         )
         .unwrap();
-    let inline_asm_func = fx.module.declare_func_in_func(inline_asm_func, &mut fx.bcx.func);
+    let inline_asm_func = fx.module.declare_func_in_func(inline_asm_func, fx.bcx.func);
     if fx.clif_comments.enabled() {
         fx.add_comment(inline_asm_func, asm_name);
     }
