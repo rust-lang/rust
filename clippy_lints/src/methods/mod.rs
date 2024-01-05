@@ -71,6 +71,7 @@ mod no_effect_replace;
 mod obfuscated_if_else;
 mod ok_expect;
 mod open_options;
+mod option_as_ref_cloned;
 mod option_as_ref_deref;
 mod option_map_or_err_ok;
 mod option_map_or_none;
@@ -3887,6 +3888,31 @@ declare_clippy_lint! {
     "splitting a trimmed string at hard-coded newlines"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `.as_ref().cloned()` and `.as_mut().cloned()` on `Option`s
+    ///
+    /// ### Why is this bad?
+    /// This can be written more concisely by cloning the `Option` directly.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// fn foo(bar: &Option<Vec<u8>>) -> Option<Vec<u8>> {
+    ///     bar.as_ref().cloned()
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// fn foo(bar: &Option<Vec<u8>>) -> Option<Vec<u8>> {
+    ///     bar.clone()
+    /// }
+    /// ```
+    #[clippy::version = "1.77.0"]
+    pub OPTION_AS_REF_CLONED,
+    pedantic,
+    "cloning an `Option` via `as_ref().cloned()`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -4043,6 +4069,7 @@ impl_lint_pass!(Methods => [
     ITER_FILTER_IS_OK,
     MANUAL_IS_VARIANT_AND,
     STR_SPLIT_AT_NEWLINE,
+    OPTION_AS_REF_CLONED,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4290,7 +4317,10 @@ impl Methods {
                 ("as_mut", []) => useless_asref::check(cx, expr, "as_mut", recv),
                 ("as_ref", []) => useless_asref::check(cx, expr, "as_ref", recv),
                 ("assume_init", []) => uninit_assumed_init::check(cx, expr, recv),
-                ("cloned", []) => cloned_instead_of_copied::check(cx, expr, recv, span, &self.msrv),
+                ("cloned", []) => {
+                    cloned_instead_of_copied::check(cx, expr, recv, span, &self.msrv);
+                    option_as_ref_cloned::check(cx, recv, span);
+                },
                 ("collect", []) if is_trait_method(cx, expr, sym::Iterator) => {
                     needless_collect::check(cx, span, expr, recv, call_span);
                     match method_call(recv) {
