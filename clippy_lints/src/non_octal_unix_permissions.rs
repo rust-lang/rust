@@ -50,10 +50,15 @@ fn check_binary_unix_permissions(lit_kind: &LitKind, snip: &str) -> bool {
 
         let group_sizes: Vec<usize> = num_lit.integer.split('_').map(str::len).collect();
         // check whether is binary format unix permissions
-        if group_sizes.len() != 3 && group_sizes.len() != 4 {
-            return false;
+        if group_sizes.len() == 1 && (num_lit.integer.len() == 9 || num_lit.integer.len() == 12) {
+            // 0bxxxxxxxxx or 0bxxxxxxxxxxxx
+            true
+        } else if group_sizes.len() == 3 || group_sizes.len() == 4 {
+            // 0bxxx_xxx_xxx or 0bxxx_xxx_xxx_xxx
+            group_sizes.iter().all(|len| *len == 3)
+        } else {
+            false
         }
-        group_sizes.iter().all(|len| *len == 3)
     } else {
         false
     }
