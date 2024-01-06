@@ -153,16 +153,26 @@ will match these queries:
 
 But it *does not* match `Result<Vec, u8>` or `Result<u8<Vec>>`.
 
+To search for a function that accepts a function as a parameter,
+like `Iterator::all`, wrap the nested signature in parenthesis,
+as in [`Iterator<T>, (T -> bool) -> bool`][iterator-all].
+You can also search for a specific closure trait,
+such as `Iterator<T>, (FnMut(T) -> bool) -> bool`,
+but you need to know which one you want.
+
+[iterator-all]: ../../std/vec/struct.Vec.html?search=Iterator<T>%2C+(T+->+bool)+->+bool&filter-crate=std
+
 ### Primitives with Special Syntax
 
-| Shorthand | Explicit names                                   |
-| --------- | ------------------------------------------------ |
-| `[]`      | `primitive:slice` and/or `primitive:array`       |
-| `[T]`     | `primitive:slice<T>` and/or `primitive:array<T>` |
-| `()`      | `primitive:unit` and/or `primitive:tuple`        |
-| `(T)`     | `T`                                              |
-| `(T,)`    | `primitive:tuple<T>`                             |
-| `!`       | `primitive:never`                                |
+| Shorthand        | Explicit names                                    |
+| ---------------- | ------------------------------------------------- |
+| `[]`             | `primitive:slice` and/or `primitive:array`        |
+| `[T]`            | `primitive:slice<T>` and/or `primitive:array<T>`  |
+| `()`             | `primitive:unit` and/or `primitive:tuple`         |
+| `(T)`            | `T`                                               |
+| `(T,)`           | `primitive:tuple<T>`                              |
+| `!`              | `primitive:never`                                 |
+| `(T, U -> V, W)` | `fn(T, U) -> (V, W)`, `Fn`, `FnMut`, and `FnOnce` |
 
 When searching for `[]`, Rustdoc will return search results with either slices
 or arrays. If you know which one you want, you can force it to return results
@@ -181,6 +191,10 @@ However, since items can be left out of the query, `(T)` will still return
 results for types that match tuples, even though it also matches the type on
 its own. That is, `(u32)` matches `(u32,)` for the exact same reason that it
 also matches `Result<u32, Error>`.
+
+The `->` operator has lower precedence than comma. If it's not wrapped
+in brackets, it delimits the return value for the function being searched for.
+To search for functions that take functions as parameters, use parenthesis.
 
 ### Limitations and quirks of type-based search
 
@@ -220,9 +234,6 @@ Most of these limitations should be addressed in future version of Rustdoc.
 
   * Searching for lifetimes is not supported.
 
-  * It's impossible to search for closures based on their parameters or
-    return values.
-
   * It's impossible to search based on the length of an array.
 
 ## Item filtering
@@ -239,19 +250,21 @@ Item filters can be used in both name-based and type signature-based searches.
 
 ```text
 ident = *(ALPHA / DIGIT / "_")
-path = ident *(DOUBLE-COLON ident) [!]
+path = ident *(DOUBLE-COLON ident) [BANG]
 slice-like = OPEN-SQUARE-BRACKET [ nonempty-arg-list ] CLOSE-SQUARE-BRACKET
 tuple-like = OPEN-PAREN [ nonempty-arg-list ] CLOSE-PAREN
-arg = [type-filter *WS COLON *WS] (path [generics] / slice-like / tuple-like / [!])
+arg = [type-filter *WS COLON *WS] (path [generics] / slice-like / tuple-like)
 type-sep = COMMA/WS *(COMMA/WS)
-nonempty-arg-list = *(type-sep) arg *(type-sep arg) *(type-sep)
+nonempty-arg-list = *(type-sep) arg *(type-sep arg) *(type-sep) [ return-args ]
 generic-arg-list = *(type-sep) arg [ EQUAL arg ] *(type-sep arg [ EQUAL arg ]) *(type-sep)
-generics = OPEN-ANGLE-BRACKET [ generic-arg-list ] *(type-sep)
+normal-generics = OPEN-ANGLE-BRACKET [ generic-arg-list ] *(type-sep)
             CLOSE-ANGLE-BRACKET
+fn-like-generics = OPEN-PAREN [ nonempty-arg-list ] CLOSE-PAREN [ RETURN-ARROW arg ]
+generics = normal-generics / fn-like-generics
 return-args = RETURN-ARROW *(type-sep) nonempty-arg-list
 
 exact-search = [type-filter *WS COLON] [ RETURN-ARROW ] *WS QUOTE ident QUOTE [ generics ]
-type-search = [ nonempty-arg-list ] [ return-args ]
+type-search = [ nonempty-arg-list ]
 
 query = *WS (exact-search / type-search) *WS
 
@@ -296,6 +309,7 @@ QUOTE = %x22
 COMMA = ","
 RETURN-ARROW = "->"
 EQUAL = "="
+BANG = "!"
 
 ALPHA = %x41-5A / %x61-7A ; A-Z / a-z
 DIGIT = %x30-39
