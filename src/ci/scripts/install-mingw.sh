@@ -33,7 +33,7 @@ if isWindows; then
             mingw_archive="${MINGW_ARCHIVE_64}"
             ;;
         *aarch64*)
-            # aarch64 is a cross-compiled target. Use the x86_64
+            # aarch64 is a cross-compiled target. Use the x86_64 #NOTE check msystem variable CI
             # mingw, since that's the host architecture.
             bits=64
             arch=x86_64
