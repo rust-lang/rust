@@ -74,6 +74,7 @@
 - [Serialization in Rustc](./serialization.md)
 - [Parallel Compilation](./parallel-rustc.md)
 - [Rustdoc internals](./rustdoc-internals.md)
+    - [Search](./rustdoc-internals/search.md)
 
 # Source Code Representation
 
