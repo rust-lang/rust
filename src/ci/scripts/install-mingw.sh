@@ -46,25 +46,25 @@ if isWindows; then
             ;;
     esac
 
-    if [[ "${CUSTOM_MINGW-0}" -ne 1 ]]; then
-        echo "1pacman -Qg mingw-w64-x86_64-toolchain:"
-        pacman -Qg mingw-w64-x86_64-toolchain # this gets run even for msvc jobs
-        pacman -Syu --noconfirm
-        pacman -S --noconfirm --needed mingw-w64-$arch-toolchain mingw-w64-$arch-cmake \
-            mingw-w64-$arch-gcc \
-            mingw-w64-$arch-python # the python package is actually for python3 #suspect, is this python even used?
-        #ciCommandAddPath "/mingw${bits}/bin" # alternatively, could maybe run bash without --noprofile and --norc in ci.yml
-        echo "CUSTOM MINGW PATH 0: /mingw${bits}/bin | $(cygpath -w "/mingw${bits}/bin")"
-        echo "2pacman -Qg mingw-w64-x86_64-toolchain:"
-        pacman -Qg mingw-w64-x86_64-toolchain
-    else
-        mingw_dir="mingw${bits}"
+    # if [[ "${CUSTOM_MINGW-0}" -ne 1 ]]; then
+    #     echo "1pacman -Qg mingw-w64-x86_64-toolchain:"
+    #     pacman -Qg mingw-w64-x86_64-toolchain # this gets run even for msvc jobs, checks if the package (group) is installed
+    #     pacman -Syu --noconfirm
+    #     pacman -S --noconfirm --needed mingw-w64-$arch-toolchain mingw-w64-$arch-cmake \
+    #         mingw-w64-$arch-gcc \
+    #         mingw-w64-$arch-python # the python package is actually for python3 #suspect, is this python even used?
+    #     #ciCommandAddPath "/mingw${bits}/bin" # alternatively, could maybe run bash without --noprofile and --norc in ci.yml
+    #     echo "CUSTOM MINGW PATH 0: /mingw${bits}/bin | $(cygpath -w "/mingw${bits}/bin")"
+    #     echo "2pacman -Qg mingw-w64-x86_64-toolchain:"
+    #     pacman -Qg mingw-w64-x86_64-toolchain
+    # else
+    #     mingw_dir="mingw${bits}"
 
-        curl -o mingw.7z "${MIRRORS_BASE}/${mingw_archive}" # This doesn't seem to include python. Should install in msys2 step instead?
-        7z x -y mingw.7z > /dev/null
-        ciCommandAddPath "$(pwd)/${mingw_dir}/bin"
-        # echo "CUSTOM MINGW PATH 1: $(pwd)/${mingw_dir}/bin | $(cygpath -w $(pwd)/${mingw_dir}/bin)"
-    fi
+    #     curl -o mingw.7z "${MIRRORS_BASE}/${mingw_archive}" # This doesn't seem to include python. Should install in msys2 step instead?
+    #     7z x -y mingw.7z > /dev/null
+    #     ciCommandAddPath "$(pwd)/${mingw_dir}/bin"
+    #     # echo "CUSTOM MINGW PATH 1: $(pwd)/${mingw_dir}/bin | $(cygpath -w $(pwd)/${mingw_dir}/bin)"
+    # fi
     # echo "MAJAHA 4: $(cygpath -w $(which git))"
     # echo "MAJAHA 4: $(cygpath -w $(which python))"
     # echo "MAJAHA 4: $(cygpath -w $(which gcc))"
