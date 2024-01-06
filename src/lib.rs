@@ -257,8 +257,8 @@ impl FormatReport {
         self.internal
             .borrow()
             .0
-            .iter()
-            .map(|(_, errors)| errors.len())
+            .values()
+            .map(|errors| errors.len())
             .sum()
     }
 

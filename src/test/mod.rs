@@ -332,7 +332,7 @@ fn assert_stdin_output(
         let mut session = Session::new(config, Some(&mut buf));
         session.format(input).unwrap();
         let errors = ReportedErrors {
-            has_diff: has_diff,
+            has_diff,
             ..Default::default()
         };
         assert_eq!(session.errors, errors);

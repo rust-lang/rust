@@ -507,7 +507,7 @@ fn run_rustfmt(
         let mut command = rustfmt_command()
             .stdout(stdout)
             .args(files)
-            .args(&["--edition", edition.as_str()])
+            .args(["--edition", edition.as_str()])
             .args(fmt_args)
             .spawn()
             .map_err(|e| match e.kind() {

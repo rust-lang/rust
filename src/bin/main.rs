@@ -387,16 +387,11 @@ fn format_and_emit_report<T: Write>(session: &mut Session<'_, T>, input: Input) 
 }
 
 fn should_print_with_colors<T: Write>(session: &mut Session<'_, T>) -> bool {
-    match term::stderr() {
-        Some(ref t)
-            if session.config.color().use_colored_tty()
-                && t.supports_color()
-                && t.supports_attr(term::Attr::Bold) =>
-        {
-            true
-        }
-        _ => false,
-    }
+    term::stderr().is_some_and(|t| {
+        session.config.color().use_colored_tty()
+            && t.supports_color()
+            && t.supports_attr(term::Attr::Bold)
+    })
 }
 
 fn print_usage_to_stdout(opts: &Options, reason: &str) {
@@ -445,7 +440,7 @@ fn print_version() {
 fn determine_operation(matches: &Matches) -> Result<Operation, OperationError> {
     if matches.opt_present("h") {
         let topic = matches.opt_str("h");
-        if topic == None {
+        if topic.is_none() {
             return Ok(Operation::Help(HelpOp::None));
         } else if topic == Some("config".to_owned()) {
             return Ok(Operation::Help(HelpOp::Config));

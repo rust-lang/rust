@@ -389,7 +389,7 @@ fn rewrite_empty_macro_def_body(
         stmts: vec![].into(),
         id: rustc_ast::node_id::DUMMY_NODE_ID,
         rules: ast::BlockCheckMode::Default,
-        span: span,
+        span,
         tokens: None,
         could_be_bare_literal: false,
     };
