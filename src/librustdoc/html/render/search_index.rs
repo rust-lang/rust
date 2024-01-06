@@ -4,6 +4,7 @@ use std::collections::{BTreeMap, VecDeque};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_span::def_id::DefId;
+use rustc_span::sym;
 use rustc_span::symbol::Symbol;
 use serde::ser::{Serialize, SerializeSeq, SerializeStruct, Serializer};
 use thin_vec::ThinVec;
@@ -566,6 +567,7 @@ fn get_index_type_id(
         // The type parameters are converted to generics in `simplify_fn_type`
         clean::Slice(_) => Some(RenderTypeId::Primitive(clean::PrimitiveType::Slice)),
         clean::Array(_, _) => Some(RenderTypeId::Primitive(clean::PrimitiveType::Array)),
+        clean::BareFunction(_) => Some(RenderTypeId::Primitive(clean::PrimitiveType::Fn)),
         clean::Tuple(ref n) if n.is_empty() => {
             Some(RenderTypeId::Primitive(clean::PrimitiveType::Unit))
         }
@@ -584,7 +586,7 @@ fn get_index_type_id(
             }
         }
         // Not supported yet
-        clean::BareFunction(_) | clean::Generic(_) | clean::ImplTrait(_) | clean::Infer => None,
+        clean::Generic(_) | clean::ImplTrait(_) | clean::Infer => None,
     }
 }
 
@@ -785,6 +787,42 @@ fn simplify_fn_type<'tcx, 'a>(
             );
         }
         res.push(get_index_type(arg, ty_generics, rgen));
+    } else if let Type::BareFunction(ref bf) = *arg {
+        let mut ty_generics = Vec::new();
+        for ty in bf.decl.inputs.values.iter().map(|arg| &arg.type_) {
+            simplify_fn_type(
+                self_,
+                generics,
+                ty,
+                tcx,
+                recurse + 1,
+                &mut ty_generics,
+                rgen,
+                is_return,
+                cache,
+            );
+        }
+        // The search index, for simplicity's sake, represents fn pointers and closures
+        // the same way: as a tuple for the parameters, and an associated type for the
+        // return type.
+        let mut ty_output = Vec::new();
+        simplify_fn_type(
+            self_,
+            generics,
+            &bf.decl.output,
+            tcx,
+            recurse + 1,
+            &mut ty_output,
+            rgen,
+            is_return,
+            cache,
+        );
+        let ty_bindings = vec![(RenderTypeId::AssociatedType(sym::Output), ty_output)];
+        res.push(RenderType {
+            id: get_index_type_id(&arg, rgen),
+            bindings: Some(ty_bindings),
+            generics: Some(ty_generics),
+        });
     } else {
         // This is not a type parameter. So for example if we have `T, U: Option<T>`, and we're
         // looking at `Option`, we enter this "else" condition, otherwise if it's `T`, we don't.

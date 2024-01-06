@@ -63,11 +63,12 @@ Before describing the syntax in more detail, here's a few sample searches of
 the standard library and functions that are included in the results list:
 
 | Query | Results |
-|-------|--------|
+|-------|---------|
 | [`usize -> vec`][] | `slice::repeat` and `Vec::with_capacity` |
 | [`vec, vec -> bool`][] | `Vec::eq` |
 | [`option<T>, fnonce -> option<U>`][] | `Option::map` and `Option::and_then` |
-| [`option<T>, fnonce -> option<T>`][] | `Option::filter` and `Option::inspect` |
+| [`option<T>, (fnonce (T) -> bool) -> option<T>`][optionfilter] | `Option::filter` |
+| [`option<T>, (T -> bool) -> option<T>`][optionfilter2] | `Option::filter` |
 | [`option -> default`][] | `Option::unwrap_or_default` |
 | [`stdout, [u8]`][stdoutu8] | `Stdout::write` |
 | [`any -> !`][] | `panic::panic_any` |
@@ -77,7 +78,8 @@ the standard library and functions that are included in the results list:
 [`usize -> vec`]: ../../std/vec/struct.Vec.html?search=usize%20-%3E%20vec&filter-crate=std
 [`vec, vec -> bool`]: ../../std/vec/struct.Vec.html?search=vec,%20vec%20-%3E%20bool&filter-crate=std
 [`option<T>, fnonce -> option<U>`]: ../../std/vec/struct.Vec.html?search=option<T>%2C%20fnonce%20->%20option<U>&filter-crate=std
-[`option<T>, fnonce -> option<T>`]: ../../std/vec/struct.Vec.html?search=option<T>%2C%20fnonce%20->%20option<T>&filter-crate=std
+[optionfilter]: ../../std/vec/struct.Vec.html?search=option<T>%2C+(fnonce+(T)+->+bool)+->+option<T>&filter-crate=std
+[optionfilter2]: ../../std/vec/struct.Vec.html?search=option<T>%2C+(T+->+bool)+->+option<T>&filter-crate=std
 [`option -> default`]: ../../std/vec/struct.Vec.html?search=option%20-%3E%20default&filter-crate=std
 [`any -> !`]: ../../std/vec/struct.Vec.html?search=any%20-%3E%20!&filter-crate=std
 [stdoutu8]: ../../std/vec/struct.Vec.html?search=stdout%2C%20[u8]&filter-crate=std
