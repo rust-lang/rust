@@ -16,6 +16,17 @@ error[E0080]: evaluation of constant value failed
 LL | const READ_MUT: u32 = unsafe { MUTABLE };
    |                                ^^^^^^^ constant accesses mutable global memory
 
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/const_refers_to_static.rs:21:1
+   |
+LL | const REF_INTERIOR_MUT: &usize = {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 4, align: 4) {
+               ╾ALLOC0<imm>╼                                     │ ╾──╼
+           }
+
 warning: skipping const checks
    |
 help: skipping check for `const_refs_to_static` feature
@@ -44,16 +55,16 @@ help: skipping check for `const_refs_to_static` feature
 LL | const READ_MUT: u32 = unsafe { MUTABLE };
    |                                ^^^^^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static.rs:23:18
+  --> $DIR/const_refers_to_static.rs:24:18
    |
 LL |     unsafe { &*(&FOO as *const _ as *const usize) }
    |                  ^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static.rs:27:25
+  --> $DIR/const_refers_to_static.rs:29:25
    |
 LL | const REF_IMMUT: &u8 = &MY_STATIC;
    |                         ^^^^^^^^^
 
-error: aborting due to 3 previous errors; 1 warning emitted
+error: aborting due to 4 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0080`.

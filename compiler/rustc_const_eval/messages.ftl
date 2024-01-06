@@ -215,9 +215,6 @@ const_eval_modified_global =
 const_eval_mut_deref =
     mutation through a reference is not allowed in {const_eval_const_context}s
 
-const_eval_mutable_data_in_const =
-    constant refers to mutable data
-
 const_eval_mutable_ptr_in_final = encountered mutable pointer in final value of {const_eval_intern_kind}
 
 const_eval_non_const_fmt_macro_call =
@@ -414,6 +411,9 @@ const_eval_upcast_mismatch =
 ## (We'd love to sort this differently to make that more clear but tidy won't let us...)
 const_eval_validation_box_to_static = {$front_matter}: encountered a box pointing to a static variable in a constant
 const_eval_validation_box_to_uninhabited = {$front_matter}: encountered a box pointing to uninhabited type {$ty}
+
+const_eval_validation_const_ref_to_mutable = {$front_matter}: encountered reference to mutable memory in `const`
+
 const_eval_validation_dangling_box_no_provenance = {$front_matter}: encountered a dangling box ({$pointer} has no provenance)
 const_eval_validation_dangling_box_out_of_bounds = {$front_matter}: encountered a dangling box (going beyond the bounds of its allocation)
 const_eval_validation_dangling_box_use_after_free = {$front_matter}: encountered a dangling box (use-after-free)

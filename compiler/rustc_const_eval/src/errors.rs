@@ -118,14 +118,6 @@ pub(crate) struct MaxNumNodesInConstErr {
 }
 
 #[derive(Diagnostic)]
-#[diag(const_eval_mutable_data_in_const)]
-pub(crate) struct MutableDataInConstErr {
-    #[primary_span]
-    pub span: Option<Span>,
-    pub global_const_id: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(const_eval_unallowed_fn_pointer_call)]
 pub(crate) struct UnallowedFnPointerCall {
     #[primary_span]
@@ -619,6 +611,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
 
             PointerAsInt { .. } => const_eval_validation_pointer_as_int,
             PartialPointer => const_eval_validation_partial_pointer,
+            ConstRefToMutable => const_eval_validation_const_ref_to_mutable,
             MutableRefInConst => const_eval_validation_mutable_ref_in_const,
             MutableRefToImmutable => const_eval_validation_mutable_ref_to_immutable,
             NullFnPtr => const_eval_validation_null_fn_ptr,
@@ -773,6 +766,7 @@ impl<'tcx> ReportErrorExt for ValidationErrorInfo<'tcx> {
             NullPtr { .. }
             | PtrToStatic { .. }
             | MutableRefInConst
+            | ConstRefToMutable
             | MutableRefToImmutable
             | NullFnPtr
             | NeverVal

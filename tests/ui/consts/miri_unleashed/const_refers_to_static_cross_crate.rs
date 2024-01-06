@@ -7,17 +7,20 @@ extern crate static_cross_crate;
 
 // Sneaky: reference to a mutable static.
 // Allowing this would be a disaster for pattern matching, we could violate exhaustiveness checking!
-const SLICE_MUT: &[u8; 1] = { //~ ERROR constant refers to mutable data
+const SLICE_MUT: &[u8; 1] = { //~ ERROR undefined behavior
+    //~| encountered reference to mutable memory
     unsafe { &static_cross_crate::ZERO }
     //~^ WARN shared reference of mutable static is discouraged [static_mut_ref]
 };
 
-const U8_MUT: &u8 = { //~ ERROR constant refers to mutable data
+const U8_MUT: &u8 = { //~ ERROR undefined behavior
+    //~| encountered reference to mutable memory
     unsafe { &static_cross_crate::ZERO[0] }
 };
 
 // Also test indirection that reads from other static.
-const U8_MUT2: &u8 = { //~ ERROR constant refers to mutable data
+const U8_MUT2: &u8 = { //~ ERROR undefined behavior
+    //~| encountered reference to mutable memory
     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
 };
 const U8_MUT3: &u8 = {
