@@ -283,11 +283,6 @@ impl ast::Path {
         self.first_qualifier_or_self().segment()
     }
 
-    // FIXME: Check usages of Self::segments, they might be wrong because of the logic of the bloew function
-    pub fn segments_of_this_path_only_rev(&self) -> impl Iterator<Item = ast::PathSegment> + Clone {
-        self.qualifiers_and_self().filter_map(|it| it.segment())
-    }
-
     pub fn segments(&self) -> impl Iterator<Item = ast::PathSegment> + Clone {
         let path_range = self.syntax().text_range();
         successors(self.first_segment(), move |p| {
@@ -303,10 +298,6 @@ impl ast::Path {
 
     pub fn qualifiers(&self) -> impl Iterator<Item = ast::Path> + Clone {
         successors(self.qualifier(), |p| p.qualifier())
-    }
-
-    pub fn qualifiers_and_self(&self) -> impl Iterator<Item = ast::Path> + Clone {
-        successors(Some(self.clone()), |p| p.qualifier())
     }
 
     pub fn top_path(&self) -> ast::Path {
