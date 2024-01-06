@@ -36,35 +36,6 @@ impl<T> std::ops::Deref for InternedWrapper<T> {
     }
 }
 
-#[derive(Eq)]
-pub struct PreHashedWrapper<T>(T, u64);
-
-impl<T: fmt::Debug> fmt::Debug for PreHashedWrapper<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Debug::fmt(&self.0, f)
-    }
-}
-
-impl<T: PartialEq> PartialEq for PreHashedWrapper<T> {
-    fn eq(&self, other: &Self) -> bool {
-        self.1 == other.1 && self.0 == other.0
-    }
-}
-
-impl<T> std::ops::Deref for PreHashedWrapper<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<T: std::hash::Hash> std::hash::Hash for PreHashedWrapper<T> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.1);
-    }
-}
-
 impl_internable!(
     InternedWrapper<Vec<VariableKind>>,
     InternedWrapper<SmallVec<[GenericArg; 2]>>,
@@ -76,7 +47,6 @@ impl_internable!(
     InternedWrapper<Vec<ProgramClause>>,
     InternedWrapper<Vec<QuantifiedWhereClause>>,
     InternedWrapper<SmallVec<[Variance; 16]>>,
-    // InternedWrapper<PreHashedWrapper<Goals>>,
 );
 
 impl chalk_ir::interner::Interner for Interner {
@@ -88,7 +58,6 @@ impl chalk_ir::interner::Interner for Interner {
     // We could do the following, but that saves "only" 20mb on self while increasing inferecene
     // time by ~2.5%
     // type InternedGoal = Interned<InternedWrapper<GoalData>>;
-    // type InternedGoal = Interned<InternedWrapper<PreHashedWrapper<GoalData>>>;
     type InternedGoal = Arc<GoalData>;
     type InternedGoals = Vec<Goal>;
     type InternedSubstitution = Interned<InternedWrapper<SmallVec<[GenericArg; 2]>>>;
@@ -97,7 +66,6 @@ impl chalk_ir::interner::Interner for Interner {
     type InternedQuantifiedWhereClauses = Interned<InternedWrapper<Vec<QuantifiedWhereClause>>>;
     type InternedVariableKinds = Interned<InternedWrapper<Vec<VariableKind>>>;
     type InternedCanonicalVarKinds = Interned<InternedWrapper<Vec<CanonicalVarKind>>>;
-    // type InternedConstraints = SmallVec<[InEnvironment<Constraint>; 1]>;
     type InternedConstraints = Vec<InEnvironment<Constraint>>;
     type InternedVariances = SmallVec<[Variance; 16]>;
     type DefId = InternId;

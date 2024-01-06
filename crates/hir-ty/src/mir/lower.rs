@@ -1403,31 +1403,27 @@ impl<'ctx> MirLowerCtx<'ctx> {
         const USIZE_SIZE: usize = mem::size_of::<usize>();
         let bytes: Box<[_]> = match l {
             hir_def::hir::Literal::String(b) => {
-                let b = b.as_bytes();
-                let mut data = Box::new([0; { 2 * USIZE_SIZE }]);
+                let mut data = [0; { 2 * USIZE_SIZE }];
                 data[..USIZE_SIZE].copy_from_slice(&0usize.to_le_bytes());
                 data[USIZE_SIZE..].copy_from_slice(&b.len().to_le_bytes());
-                let mut mm = MemoryMap::default();
-                mm.insert(0, b.to_vec());
-                return Ok(Operand::from_concrete_const(data, mm, ty));
+                let mm = MemoryMap::simple(b.as_bytes().into());
+                return Ok(Operand::from_concrete_const(Box::new(data), mm, ty));
             }
             hir_def::hir::Literal::CString(b) => {
-                let bytes = b.iter().copied().chain(iter::once(0)).collect::<Vec<_>>();
+                let bytes = b.iter().copied().chain(iter::once(0)).collect::<Box<_>>();
 
-                let mut data = Box::new([0; { 2 * USIZE_SIZE }]);
+                let mut data = [0; { 2 * USIZE_SIZE }];
                 data[..USIZE_SIZE].copy_from_slice(&0usize.to_le_bytes());
                 data[USIZE_SIZE..].copy_from_slice(&bytes.len().to_le_bytes());
-                let mut mm = MemoryMap::default();
-                mm.insert(0, bytes);
-                return Ok(Operand::from_concrete_const(data, mm, ty));
+                let mm = MemoryMap::simple(bytes);
+                return Ok(Operand::from_concrete_const(Box::new(data), mm, ty));
             }
             hir_def::hir::Literal::ByteString(b) => {
-                let mut data = Box::new([0; { 2 * USIZE_SIZE }]);
+                let mut data = [0; { 2 * USIZE_SIZE }];
                 data[..USIZE_SIZE].copy_from_slice(&0usize.to_le_bytes());
                 data[USIZE_SIZE..].copy_from_slice(&b.len().to_le_bytes());
-                let mut mm = MemoryMap::default();
-                mm.insert(0, b.to_vec());
-                return Ok(Operand::from_concrete_const(data, mm, ty));
+                let mm = MemoryMap::simple(b.clone());
+                return Ok(Operand::from_concrete_const(Box::new(data), mm, ty));
             }
             hir_def::hir::Literal::Char(c) => Box::new(u32::from(*c).to_le_bytes()),
             hir_def::hir::Literal::Bool(b) => Box::new([*b as u8]),

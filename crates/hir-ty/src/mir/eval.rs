@@ -1,13 +1,6 @@
 //! This module provides a MIR interpreter, which is used in const eval.
 
-use std::{
-    borrow::Cow,
-    cell::RefCell,
-    collections::{HashMap, HashSet},
-    fmt::Write,
-    iter, mem,
-    ops::Range,
-};
+use std::{borrow::Cow, cell::RefCell, fmt::Write, iter, mem, ops::Range};
 
 use base_db::{CrateId, FileId};
 use chalk_ir::{cast::Cast, Mutability};
@@ -40,8 +33,8 @@ use crate::{
     name, static_lifetime,
     traits::FnTrait,
     utils::{detect_variant_from_bytes, ClosureSubst},
-    CallableDefId, ClosureId, Const, ConstScalar, FnDefId, Interner, MemoryMap, Substitution,
-    TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
+    CallableDefId, ClosureId, ComplexMemoryMap, Const, ConstScalar, FnDefId, Interner, MemoryMap,
+    Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
 };
 
 use super::{
@@ -97,6 +90,15 @@ impl VTableMap {
     fn ty_of_bytes(&self, bytes: &[u8]) -> Result<&Ty> {
         let id = from_bytes!(usize, bytes);
         self.ty(id)
+    }
+
+    pub fn shrink_to_fit(&mut self) {
+        self.id_to_ty.shrink_to_fit();
+        self.ty_to_id.shrink_to_fit();
+    }
+
+    fn is_empty(&self) -> bool {
+        self.id_to_ty.is_empty() && self.ty_to_id.is_empty()
     }
 }
 
@@ -251,13 +253,6 @@ impl From<Interval> for IntervalOrOwned {
 }
 
 impl IntervalOrOwned {
-    pub(crate) fn to_vec(self, memory: &Evaluator<'_>) -> Result<Vec<u8>> {
-        Ok(match self {
-            IntervalOrOwned::Owned(o) => o,
-            IntervalOrOwned::Borrowed(b) => b.get(memory)?.to_vec(),
-        })
-    }
-
     fn get<'a>(&'a self, memory: &'a Evaluator<'a>) -> Result<&'a [u8]> {
         Ok(match self {
             IntervalOrOwned::Owned(o) => o,
@@ -291,8 +286,8 @@ impl Address {
         }
     }
 
-    fn to_bytes(&self) -> Vec<u8> {
-        usize::to_le_bytes(self.to_usize()).to_vec()
+    fn to_bytes(&self) -> [u8; mem::size_of::<usize>()] {
+        usize::to_le_bytes(self.to_usize())
     }
 
     fn to_usize(&self) -> usize {
@@ -510,6 +505,20 @@ struct Locals {
     drop_flags: DropFlags,
 }
 
+pub struct MirOutput {
+    stdout: Vec<u8>,
+    stderr: Vec<u8>,
+}
+
+impl MirOutput {
+    pub fn stdout(&self) -> Cow<'_, str> {
+        String::from_utf8_lossy(&self.stdout)
+    }
+    pub fn stderr(&self) -> Cow<'_, str> {
+        String::from_utf8_lossy(&self.stderr)
+    }
+}
+
 pub fn interpret_mir(
     db: &dyn HirDatabase,
     body: Arc<MirBody>,
@@ -520,7 +529,7 @@ pub fn interpret_mir(
     // (and probably should) do better here, for example by excluding bindings outside of the target expression.
     assert_placeholder_ty_is_unused: bool,
     trait_env: Option<Arc<TraitEnvironment>>,
-) -> (Result<Const>, String, String) {
+) -> (Result<Const>, MirOutput) {
     let ty = body.locals[return_slot()].ty.clone();
     let mut evaluator = Evaluator::new(db, body.owner, assert_placeholder_ty_is_unused, trait_env);
     let it: Result<Const> = (|| {
@@ -534,14 +543,17 @@ pub fn interpret_mir(
             &ty,
             &Locals { ptr: ArenaMap::new(), body, drop_flags: DropFlags::default() },
         )?;
-        memory_map.vtable = evaluator.vtable_map.clone();
-        return Ok(intern_const_scalar(ConstScalar::Bytes(bytes.into(), memory_map), ty));
+        let bytes = bytes.into();
+        let memory_map = if memory_map.memory.is_empty() && evaluator.vtable_map.is_empty() {
+            MemoryMap::Empty
+        } else {
+            memory_map.vtable = mem::take(&mut evaluator.vtable_map);
+            memory_map.vtable.shrink_to_fit();
+            MemoryMap::Complex(Box::new(memory_map))
+        };
+        return Ok(intern_const_scalar(ConstScalar::Bytes(bytes, memory_map), ty));
     })();
-    (
-        it,
-        String::from_utf8_lossy(&evaluator.stdout).into_owned(),
-        String::from_utf8_lossy(&evaluator.stderr).into_owned(),
-    )
+    (it, MirOutput { stdout: evaluator.stdout, stderr: evaluator.stderr })
 }
 
 #[cfg(test)]
@@ -563,7 +575,7 @@ impl Evaluator<'_> {
             code_stack: vec![],
             vtable_map: VTableMap::default(),
             thread_local_storage: TlsData::default(),
-            static_locations: HashMap::default(),
+            static_locations: Default::default(),
             db,
             random_state: oorandom::Rand64::new(0),
             trait_env: trait_env.unwrap_or_else(|| db.trait_environment_for_body(owner)),
@@ -574,11 +586,11 @@ impl Evaluator<'_> {
             stack_depth_limit: 100,
             execution_limit: EXECUTION_LIMIT,
             memory_limit: 1000_000_000, // 2GB, 1GB for stack and 1GB for heap
-            layout_cache: RefCell::new(HashMap::default()),
-            projected_ty_cache: RefCell::new(HashMap::default()),
-            not_special_fn_cache: RefCell::new(HashSet::default()),
-            mir_or_dyn_index_cache: RefCell::new(HashMap::default()),
-            unused_locals_store: RefCell::new(HashMap::default()),
+            layout_cache: RefCell::new(Default::default()),
+            projected_ty_cache: RefCell::new(Default::default()),
+            not_special_fn_cache: RefCell::new(Default::default()),
+            mir_or_dyn_index_cache: RefCell::new(Default::default()),
+            unused_locals_store: RefCell::new(Default::default()),
             cached_ptr_size: match db.target_data_layout(crate_id) {
                 Some(it) => it.pointer_size.bytes_usize(),
                 None => 8,
@@ -838,8 +850,8 @@ impl Evaluator<'_> {
                         match &statement.kind {
                             StatementKind::Assign(l, r) => {
                                 let addr = self.place_addr(l, &locals)?;
-                                let result = self.eval_rvalue(r, &mut locals)?.to_vec(&self)?;
-                                self.write_memory(addr, &result)?;
+                                let result = self.eval_rvalue(r, &mut locals)?;
+                                self.copy_from_interval_or_owned(addr, result)?;
                                 locals
                                     .drop_flags
                                     .add_place(l.clone(), &locals.body.projection_store);
@@ -1051,7 +1063,7 @@ impl Evaluator<'_> {
             Rvalue::Use(it) => Borrowed(self.eval_operand(it, locals)?),
             Rvalue::Ref(_, p) => {
                 let (addr, _, metadata) = self.place_addr_and_ty_and_metadata(p, locals)?;
-                let mut r = addr.to_bytes();
+                let mut r = addr.to_bytes().to_vec();
                 if let Some(metadata) = metadata {
                     r.extend(metadata.get(self)?);
                 }
@@ -1284,7 +1296,7 @@ impl Evaluator<'_> {
                     not_supported!("unsized box initialization");
                 };
                 let addr = self.heap_allocate(size, align)?;
-                Owned(addr.to_bytes())
+                Owned(addr.to_bytes().to_vec())
             }
             Rvalue::CopyForDeref(_) => not_supported!("copy for deref"),
             Rvalue::Aggregate(kind, values) => {
@@ -1716,7 +1728,18 @@ impl Evaluator<'_> {
         }
         let addr = self.heap_allocate(size, align)?;
         self.write_memory(addr, &v)?;
-        self.patch_addresses(&patch_map, &memory_map.vtable, addr, ty, locals)?;
+        self.patch_addresses(
+            &patch_map,
+            |bytes| match &memory_map {
+                MemoryMap::Empty | MemoryMap::Simple(_) => {
+                    Err(MirEvalError::InvalidVTableId(from_bytes!(usize, bytes)))
+                }
+                MemoryMap::Complex(cm) => cm.vtable.ty_of_bytes(bytes),
+            },
+            addr,
+            ty,
+            locals,
+        )?;
         Ok(Interval::new(addr, size))
     }
 
@@ -1766,6 +1789,13 @@ impl Evaluator<'_> {
         }
         self.write_memory_using_ref(addr, r.len())?.copy_from_slice(r);
         Ok(())
+    }
+
+    fn copy_from_interval_or_owned(&mut self, addr: Address, r: IntervalOrOwned) -> Result<()> {
+        match r {
+            IntervalOrOwned::Borrowed(r) => self.copy_from_interval(addr, r),
+            IntervalOrOwned::Owned(r) => self.write_memory(addr, &r),
+        }
     }
 
     fn copy_from_interval(&mut self, addr: Address, r: Interval) -> Result<()> {
@@ -1888,13 +1918,18 @@ impl Evaluator<'_> {
         }
     }
 
-    fn create_memory_map(&self, bytes: &[u8], ty: &Ty, locals: &Locals) -> Result<MemoryMap> {
+    fn create_memory_map(
+        &self,
+        bytes: &[u8],
+        ty: &Ty,
+        locals: &Locals,
+    ) -> Result<ComplexMemoryMap> {
         fn rec(
             this: &Evaluator<'_>,
             bytes: &[u8],
             ty: &Ty,
             locals: &Locals,
-            mm: &mut MemoryMap,
+            mm: &mut ComplexMemoryMap,
         ) -> Result<()> {
             match ty.kind(Interner) {
                 TyKind::Ref(_, _, t) => {
@@ -1904,7 +1939,7 @@ impl Evaluator<'_> {
                             let addr_usize = from_bytes!(usize, bytes);
                             mm.insert(
                                 addr_usize,
-                                this.read_memory(Address::from_usize(addr_usize), size)?.to_vec(),
+                                this.read_memory(Address::from_usize(addr_usize), size)?.into(),
                             )
                         }
                         None => {
@@ -1930,7 +1965,7 @@ impl Evaluator<'_> {
                             let size = element_size * count;
                             let addr = Address::from_bytes(addr)?;
                             let b = this.read_memory(addr, size)?;
-                            mm.insert(addr.to_usize(), b.to_vec());
+                            mm.insert(addr.to_usize(), b.into());
                             if let Some(ty) = check_inner {
                                 for i in 0..count {
                                     let offset = element_size * i;
@@ -2003,15 +2038,15 @@ impl Evaluator<'_> {
             }
             Ok(())
         }
-        let mut mm = MemoryMap::default();
-        rec(self, bytes, ty, locals, &mut mm)?;
+        let mut mm = ComplexMemoryMap::default();
+        rec(&self, bytes, ty, locals, &mut mm)?;
         Ok(mm)
     }
 
-    fn patch_addresses(
+    fn patch_addresses<'vtable>(
         &mut self,
-        patch_map: &HashMap<usize, usize>,
-        old_vtable: &VTableMap,
+        patch_map: &FxHashMap<usize, usize>,
+        ty_of_bytes: impl Fn(&[u8]) -> Result<&'vtable Ty> + Copy,
         addr: Address,
         ty: &Ty,
         locals: &Locals,
@@ -2038,7 +2073,7 @@ impl Evaluator<'_> {
                 }
             }
             TyKind::Function(_) => {
-                let ty = old_vtable.ty_of_bytes(self.read_memory(addr, my_size)?)?.clone();
+                let ty = ty_of_bytes(self.read_memory(addr, my_size)?)?.clone();
                 let new_id = self.vtable_map.id(ty);
                 self.write_memory(addr, &new_id.to_le_bytes())?;
             }
@@ -2049,7 +2084,7 @@ impl Evaluator<'_> {
                         let ty = ty.clone().substitute(Interner, subst);
                         self.patch_addresses(
                             patch_map,
-                            old_vtable,
+                            ty_of_bytes,
                             addr.offset(offset),
                             &ty,
                             locals,
@@ -2071,7 +2106,7 @@ impl Evaluator<'_> {
                             let ty = ty.clone().substitute(Interner, subst);
                             self.patch_addresses(
                                 patch_map,
-                                old_vtable,
+                                ty_of_bytes,
                                 addr.offset(offset),
                                 &ty,
                                 locals,
@@ -2084,7 +2119,7 @@ impl Evaluator<'_> {
                 for (id, ty) in subst.iter(Interner).enumerate() {
                     let ty = ty.assert_ty_ref(Interner); // Tuple only has type argument
                     let offset = layout.fields.offset(id).bytes_usize();
-                    self.patch_addresses(patch_map, old_vtable, addr.offset(offset), ty, locals)?;
+                    self.patch_addresses(patch_map, ty_of_bytes, addr.offset(offset), ty, locals)?;
                 }
             }
             TyKind::Array(inner, len) => {
@@ -2096,7 +2131,7 @@ impl Evaluator<'_> {
                 for i in 0..len {
                     self.patch_addresses(
                         patch_map,
-                        old_vtable,
+                        ty_of_bytes,
                         addr.offset(i * size),
                         inner,
                         locals,
@@ -2167,7 +2202,7 @@ impl Evaluator<'_> {
             .map_err(|it| MirEvalError::MirLowerErrorForClosure(closure, it))?;
         let closure_data = if mir_body.locals[mir_body.param_locals[0]].ty.as_reference().is_some()
         {
-            closure_data.addr.to_bytes()
+            closure_data.addr.to_bytes().to_vec()
         } else {
             closure_data.get(self)?.to_owned()
         };
@@ -2553,7 +2588,7 @@ impl Evaluator<'_> {
                 body,
                 locals,
                 drop_fn,
-                [IntervalOrOwned::Owned(addr.to_bytes())].into_iter(),
+                iter::once(IntervalOrOwned::Owned(addr.to_bytes().to_vec())),
                 span,
                 Interval { addr: Address::Invalid(0), size: 0 },
                 None,

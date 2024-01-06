@@ -37,8 +37,8 @@ mod tests;
 mod test_db;
 
 use std::{
-    collections::{hash_map::Entry, HashMap},
-    hash::Hash,
+    collections::hash_map::Entry,
+    hash::{BuildHasherDefault, Hash},
 };
 
 use chalk_ir::{
@@ -52,7 +52,7 @@ use hir_def::{hir::ExprId, type_ref::Rawness, GeneralConstId, TypeOrConstParamId
 use hir_expand::name;
 use la_arena::{Arena, Idx};
 use mir::{MirEvalError, VTableMap};
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::ast::{make, ConstArg};
 use traits::FnTrait;
 use triomphe::Arc;
@@ -171,23 +171,44 @@ pub type Variances = chalk_ir::Variances<Interner>;
 /// the necessary bits of memory of the const eval session to keep the constant
 /// meaningful.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct MemoryMap {
-    pub memory: HashMap<usize, Vec<u8>>,
-    pub vtable: VTableMap,
+pub enum MemoryMap {
+    #[default]
+    Empty,
+    Simple(Box<[u8]>),
+    Complex(Box<ComplexMemoryMap>),
 }
 
-impl MemoryMap {
-    fn insert(&mut self, addr: usize, x: Vec<u8>) {
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct ComplexMemoryMap {
+    memory: FxHashMap<usize, Box<[u8]>>,
+    vtable: VTableMap,
+}
+
+impl ComplexMemoryMap {
+    fn insert(&mut self, addr: usize, val: Box<[u8]>) {
         match self.memory.entry(addr) {
             Entry::Occupied(mut e) => {
-                if e.get().len() < x.len() {
-                    e.insert(x);
+                if e.get().len() < val.len() {
+                    e.insert(val);
                 }
             }
             Entry::Vacant(e) => {
-                e.insert(x);
+                e.insert(val);
             }
         }
+    }
+}
+
+impl MemoryMap {
+    pub fn vtable_ty(&self, id: usize) -> Result<&Ty, MirEvalError> {
+        match self {
+            MemoryMap::Empty | MemoryMap::Simple(_) => Err(MirEvalError::InvalidVTableId(id)),
+            MemoryMap::Complex(cm) => cm.vtable.ty(id),
+        }
+    }
+
+    fn simple(v: Box<[u8]>) -> Self {
+        MemoryMap::Simple(v)
     }
 
     /// This functions convert each address by a function `f` which gets the byte intervals and assign an address
@@ -196,22 +217,33 @@ impl MemoryMap {
     fn transform_addresses(
         &self,
         mut f: impl FnMut(&[u8], usize) -> Result<usize, MirEvalError>,
-    ) -> Result<HashMap<usize, usize>, MirEvalError> {
-        self.memory
-            .iter()
-            .map(|x| {
-                let addr = *x.0;
-                let align = if addr == 0 { 64 } else { (addr - (addr & (addr - 1))).min(64) };
-                Ok((addr, f(x.1, align)?))
-            })
-            .collect()
+    ) -> Result<FxHashMap<usize, usize>, MirEvalError> {
+        let mut transform = |(addr, val): (&usize, &Box<[u8]>)| {
+            let addr = *addr;
+            let align = if addr == 0 { 64 } else { (addr - (addr & (addr - 1))).min(64) };
+            f(val, align).and_then(|it| Ok((addr, it)))
+        };
+        match self {
+            MemoryMap::Empty => Ok(Default::default()),
+            MemoryMap::Simple(m) => transform((&0, m)).map(|(addr, val)| {
+                let mut map = FxHashMap::with_capacity_and_hasher(1, BuildHasherDefault::default());
+                map.insert(addr, val);
+                map
+            }),
+            MemoryMap::Complex(cm) => cm.memory.iter().map(transform).collect(),
+        }
     }
 
-    fn get<'a>(&'a self, addr: usize, size: usize) -> Option<&'a [u8]> {
+    fn get(&self, addr: usize, size: usize) -> Option<&[u8]> {
         if size == 0 {
             Some(&[])
         } else {
-            self.memory.get(&addr)?.get(0..size)
+            match self {
+                MemoryMap::Empty => Some(&[]),
+                MemoryMap::Simple(m) if addr == 0 => m.get(0..size),
+                MemoryMap::Simple(_) => None,
+                MemoryMap::Complex(cm) => cm.memory.get(&addr)?.get(0..size),
+            }
         }
     }
 }

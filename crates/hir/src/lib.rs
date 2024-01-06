@@ -2183,7 +2183,7 @@ impl Function {
                 return r;
             }
         };
-        let (result, stdout, stderr) = interpret_mir(db, body, false, None);
+        let (result, output) = interpret_mir(db, body, false, None);
         let mut text = match result {
             Ok(_) => "pass".to_string(),
             Err(e) => {
@@ -2192,10 +2192,12 @@ impl Function {
                 r
             }
         };
+        let stdout = output.stdout().into_owned();
         if !stdout.is_empty() {
             text += "\n--------- stdout ---------\n";
             text += &stdout;
         }
+        let stderr = output.stdout().into_owned();
         if !stderr.is_empty() {
             text += "\n--------- stderr ---------\n";
             text += &stderr;
