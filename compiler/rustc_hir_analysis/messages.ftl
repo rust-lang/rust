@@ -439,6 +439,17 @@ hir_analysis_typeof_reserved_keyword_used =
 hir_analysis_unconstrained_opaque_type = unconstrained opaque type
     .note = `{$name}` must be used in combination with a concrete type within the same {$what}
 
+hir_analysis_unnamed_fields_repr_field_defined = unnamed field defined here
+
+hir_analysis_unnamed_fields_repr_field_missing_repr_c =
+    named type of unnamed field must have `#[repr(C)]` representation
+    .label = unnamed field defined here
+    .field_ty_label = `{$field_ty}` defined here
+
+hir_analysis_unnamed_fields_repr_missing_repr_c =
+    {$adt_kind} with unnamed fields must have `#[repr(C)]` representation
+    .label = {$adt_kind} `{$adt_name}` defined here
+
 hir_analysis_unrecognized_atomic_operation =
     unrecognized atomic operation function: `{$op}`
     .label = unrecognized atomic operation

@@ -1,5 +1,5 @@
 error[E0658]: unnamed fields are not yet fully implemented
-  --> $DIR/feature-gate-unnamed_fields.rs:3:5
+  --> $DIR/feature-gate-unnamed_fields.rs:4:5
    |
 LL |     _: union {
    |     ^
@@ -9,7 +9,7 @@ LL |     _: union {
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: unnamed fields are not yet fully implemented
-  --> $DIR/feature-gate-unnamed_fields.rs:3:8
+  --> $DIR/feature-gate-unnamed_fields.rs:4:8
    |
 LL |       _: union {
    |  ________^
@@ -24,7 +24,7 @@ LL | |     }
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: unnamed fields are not yet fully implemented
-  --> $DIR/feature-gate-unnamed_fields.rs:12:5
+  --> $DIR/feature-gate-unnamed_fields.rs:14:5
    |
 LL |     _: struct {
    |     ^
@@ -34,7 +34,7 @@ LL |     _: struct {
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: unnamed fields are not yet fully implemented
-  --> $DIR/feature-gate-unnamed_fields.rs:12:8
+  --> $DIR/feature-gate-unnamed_fields.rs:14:8
    |
 LL |       _: struct {
    |  ________^
@@ -49,7 +49,7 @@ LL | |     }
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: unnamed fields are not yet fully implemented
-  --> $DIR/feature-gate-unnamed_fields.rs:21:5
+  --> $DIR/feature-gate-unnamed_fields.rs:26:5
    |
 LL |     _: S
    |     ^

@@ -1,3 +1,4 @@
+#[repr(C)]
 struct Foo {
     foo: u8,
     _: union { //~ ERROR unnamed fields are not yet fully implemented [E0658]
@@ -7,6 +8,7 @@ struct Foo {
     }
 }
 
+#[repr(C)]
 union Bar {
     foobar: u8,
     _: struct { //~ ERROR unnamed fields are not yet fully implemented [E0658]
@@ -16,7 +18,10 @@ union Bar {
     }
 }
 
+#[repr(C)]
 struct S;
+
+#[repr(C)]
 struct Baz {
     _: S //~ ERROR unnamed fields are not yet fully implemented [E0658]
 }

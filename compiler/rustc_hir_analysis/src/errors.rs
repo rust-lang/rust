@@ -1571,3 +1571,33 @@ pub(crate) enum UnusedGenericParameterHelp {
     #[help(hir_analysis_unused_generic_parameter_ty_alias_help)]
     TyAlias { param_name: Ident },
 }
+
+#[derive(Diagnostic)]
+pub enum UnnamedFieldsRepr<'a> {
+    #[diag(hir_analysis_unnamed_fields_repr_missing_repr_c)]
+    MissingReprC {
+        #[primary_span]
+        #[label]
+        span: Span,
+        adt_kind: &'static str,
+        adt_name: Symbol,
+        #[subdiagnostic]
+        unnamed_fields: Vec<UnnamedFieldsReprFieldDefined>,
+    },
+    #[diag(hir_analysis_unnamed_fields_repr_field_missing_repr_c)]
+    FieldMissingReprC {
+        #[primary_span]
+        #[label]
+        span: Span,
+        #[label(hir_analysis_field_ty_label)]
+        field_ty_span: Span,
+        field_ty: Ty<'a>,
+    },
+}
+
+#[derive(Subdiagnostic)]
+#[note(hir_analysis_unnamed_fields_repr_field_defined)]
+pub struct UnnamedFieldsReprFieldDefined {
+    #[primary_span]
+    pub span: Span,
+}
