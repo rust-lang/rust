@@ -1,6 +1,6 @@
 //! Inference of closure parameter types based on the closure's expected type.
 
-use std::{cmp, collections::HashMap, convert::Infallible, mem};
+use std::{cmp, convert::Infallible, mem};
 
 use chalk_ir::{
     cast::Cast,
@@ -778,7 +778,7 @@ impl InferenceContext<'_> {
 
     fn minimize_captures(&mut self) {
         self.current_captures.sort_by_key(|it| it.place.projections.len());
-        let mut hash_map = HashMap::<HirPlace, usize>::new();
+        let mut hash_map = FxHashMap::<HirPlace, usize>::default();
         let result = mem::take(&mut self.current_captures);
         for item in result {
             let mut lookup_place = HirPlace { local: item.place.local, projections: vec![] };

@@ -98,16 +98,16 @@ pub enum Operand {
 }
 
 impl Operand {
-    fn from_concrete_const(data: Vec<u8>, memory_map: MemoryMap, ty: Ty) -> Self {
+    fn from_concrete_const(data: Box<[u8]>, memory_map: MemoryMap, ty: Ty) -> Self {
         Operand::Constant(intern_const_scalar(ConstScalar::Bytes(data, memory_map), ty))
     }
 
-    fn from_bytes(data: Vec<u8>, ty: Ty) -> Self {
+    fn from_bytes(data: Box<[u8]>, ty: Ty) -> Self {
         Operand::from_concrete_const(data, MemoryMap::default(), ty)
     }
 
     fn const_zst(ty: Ty) -> Operand {
-        Self::from_bytes(vec![], ty)
+        Self::from_bytes(Box::default(), ty)
     }
 
     fn from_fn(
@@ -118,7 +118,7 @@ impl Operand {
         let ty =
             chalk_ir::TyKind::FnDef(CallableDefId::FunctionId(func_id).to_chalk(db), generic_args)
                 .intern(Interner);
-        Operand::from_bytes(vec![], ty)
+        Operand::from_bytes(Box::default(), ty)
     }
 }
 
