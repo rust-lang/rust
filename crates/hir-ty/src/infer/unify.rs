@@ -106,10 +106,6 @@ pub fn could_unify_deeply(
     let ty2_with_vars = vars.apply(tys.value.1.clone(), Interner);
     let ty1_with_vars = table.normalize_associated_types_in(ty1_with_vars);
     let ty2_with_vars = table.normalize_associated_types_in(ty2_with_vars);
-    // table.resolve_obligations_as_possible();
-    // table.propagate_diverging_flag();
-    // let ty1_with_vars = table.resolve_completely(ty1_with_vars);
-    // let ty2_with_vars = table.resolve_completely(ty2_with_vars);
     table.unify_deeply(&ty1_with_vars, &ty2_with_vars)
 }
 

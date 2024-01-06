@@ -88,7 +88,7 @@ fn non_default_generics(db: &dyn HirDatabase, def: GenericDef, generics: &[Type]
 /// So in short it pretty much gives us a way to get type `Option<i32>` using the items we have in
 /// scope.
 #[derive(Debug, Clone, Eq, Hash, PartialEq)]
-pub enum TypeTree {
+pub enum Expr {
     /// Constant
     Const(Const),
     /// Static variable
@@ -99,21 +99,23 @@ pub enum TypeTree {
     ConstParam(ConstParam),
     /// Well known type (such as `true` for bool)
     FamousType { ty: Type, value: &'static str },
-    /// Function or method call
-    Function { func: Function, generics: Vec<Type>, params: Vec<TypeTree> },
+    /// Function call (does not take self param)
+    Function { func: Function, generics: Vec<Type>, params: Vec<Expr> },
+    /// Method call (has self param)
+    Method { func: Function, generics: Vec<Type>, target: Box<Expr>, params: Vec<Expr> },
     /// Enum variant construction
-    Variant { variant: Variant, generics: Vec<Type>, params: Vec<TypeTree> },
+    Variant { variant: Variant, generics: Vec<Type>, params: Vec<Expr> },
     /// Struct construction
-    Struct { strukt: Struct, generics: Vec<Type>, params: Vec<TypeTree> },
+    Struct { strukt: Struct, generics: Vec<Type>, params: Vec<Expr> },
     /// Struct field access
-    Field { type_tree: Box<TypeTree>, field: Field },
+    Field { expr: Box<Expr>, field: Field },
     /// Passing type as reference (with `&`)
-    Reference(Box<TypeTree>),
+    Reference(Box<Expr>),
     /// Indicates possibility of many different options that all evaluate to `ty`
     Many(Type),
 }
 
-impl TypeTree {
+impl Expr {
     /// Generate source code for type tree.
     ///
     /// Note that trait imports are not added to generated code.
@@ -126,78 +128,70 @@ impl TypeTree {
     ) -> String {
         let db = sema_scope.db;
         match self {
-            TypeTree::Const(it) => mod_item_path_str(sema_scope, &ModuleDef::Const(*it)),
-            TypeTree::Static(it) => mod_item_path_str(sema_scope, &ModuleDef::Static(*it)),
-            TypeTree::Local(it) => return it.name(db).display(db.upcast()).to_string(),
-            TypeTree::ConstParam(it) => return it.name(db).display(db.upcast()).to_string(),
-            TypeTree::FamousType { value, .. } => return value.to_string(),
-            TypeTree::Function { func, params, .. } => {
-                if let Some(self_param) = func.self_param(db) {
-                    let func_name = func.name(db).display(db.upcast()).to_string();
-                    let target = params
-                        .first()
-                        .expect("no self param")
-                        .gen_source_code(sema_scope, many_formatter);
-                    let args = params
-                        .iter()
-                        .skip(1)
-                        .map(|f| f.gen_source_code(sema_scope, many_formatter))
-                        .join(", ");
+            Expr::Const(it) => mod_item_path_str(sema_scope, &ModuleDef::Const(*it)),
+            Expr::Static(it) => mod_item_path_str(sema_scope, &ModuleDef::Static(*it)),
+            Expr::Local(it) => return it.name(db).display(db.upcast()).to_string(),
+            Expr::ConstParam(it) => return it.name(db).display(db.upcast()).to_string(),
+            Expr::FamousType { value, .. } => return value.to_string(),
+            Expr::Function { func, params, .. } => {
+                let args =
+                    params.iter().map(|f| f.gen_source_code(sema_scope, many_formatter)).join(", ");
 
-                    match func.as_assoc_item(db).unwrap().containing_trait_or_trait_impl(db) {
-                        Some(trait_) => {
-                            let trait_name =
-                                mod_item_path_str(sema_scope, &ModuleDef::Trait(trait_));
-                            let target = match self_param.access(db) {
-                                crate::Access::Shared => format!("&{target}"),
-                                crate::Access::Exclusive => format!("&mut {target}"),
-                                crate::Access::Owned => target,
-                            };
-                            match args.is_empty() {
-                                true => format!("{trait_name}::{func_name}({target})",),
-                                false => format!("{trait_name}::{func_name}({target}, {args})",),
+                match func.as_assoc_item(db).map(|it| it.container(db)) {
+                    Some(container) => {
+                        let container_name = match container {
+                            crate::AssocItemContainer::Trait(trait_) => {
+                                mod_item_path_str(sema_scope, &ModuleDef::Trait(trait_))
                             }
-                        }
-                        None => format!("{target}.{func_name}({args})"),
+                            crate::AssocItemContainer::Impl(imp) => {
+                                let self_ty = imp.self_ty(db);
+                                // Should it be guaranteed that `mod_item_path` always exists?
+                                match self_ty
+                                    .as_adt()
+                                    .and_then(|adt| mod_item_path(sema_scope, &adt.into()))
+                                {
+                                    Some(path) => path.display(sema_scope.db.upcast()).to_string(),
+                                    None => self_ty.display(db).to_string(),
+                                }
+                            }
+                        };
+                        let fn_name = func.name(db).display(db.upcast()).to_string();
+                        format!("{container_name}::{fn_name}({args})",)
                     }
-                } else {
-                    let args = params
-                        .iter()
-                        .map(|f| f.gen_source_code(sema_scope, many_formatter))
-                        .join(", ");
-
-                    match func.as_assoc_item(db).map(|it| it.container(db)) {
-                        Some(container) => {
-                            let container_name = match container {
-                                crate::AssocItemContainer::Trait(trait_) => {
-                                    mod_item_path_str(sema_scope, &ModuleDef::Trait(trait_))
-                                }
-                                crate::AssocItemContainer::Impl(imp) => {
-                                    let self_ty = imp.self_ty(db);
-                                    // Should it be guaranteed that `mod_item_path` always exists?
-                                    match self_ty
-                                        .as_adt()
-                                        .and_then(|adt| mod_item_path(sema_scope, &adt.into()))
-                                    {
-                                        Some(path) => {
-                                            path.display(sema_scope.db.upcast()).to_string()
-                                        }
-                                        None => self_ty.display(db).to_string(),
-                                    }
-                                }
-                            };
-                            let fn_name = func.name(db).display(db.upcast()).to_string();
-                            format!("{container_name}::{fn_name}({args})",)
-                        }
-                        None => {
-                            let fn_name =
-                                mod_item_path_str(sema_scope, &ModuleDef::Function(*func));
-                            format!("{fn_name}({args})",)
-                        }
+                    None => {
+                        let fn_name = mod_item_path_str(sema_scope, &ModuleDef::Function(*func));
+                        format!("{fn_name}({args})",)
                     }
                 }
             }
-            TypeTree::Variant { variant, generics, params } => {
+            Expr::Method { func, target, params, .. } => {
+                if target.contains_many_in_illegal_pos() {
+                    return many_formatter(&target.ty(db));
+                }
+
+                let func_name = func.name(db).display(db.upcast()).to_string();
+                let self_param = func.self_param(db).unwrap();
+                let target = target.gen_source_code(sema_scope, many_formatter);
+                let args =
+                    params.iter().map(|f| f.gen_source_code(sema_scope, many_formatter)).join(", ");
+
+                match func.as_assoc_item(db).and_then(|it| it.containing_trait_or_trait_impl(db)) {
+                    Some(trait_) => {
+                        let trait_name = mod_item_path_str(sema_scope, &ModuleDef::Trait(trait_));
+                        let target = match self_param.access(db) {
+                            crate::Access::Shared => format!("&{target}"),
+                            crate::Access::Exclusive => format!("&mut {target}"),
+                            crate::Access::Owned => target,
+                        };
+                        match args.is_empty() {
+                            true => format!("{trait_name}::{func_name}({target})",),
+                            false => format!("{trait_name}::{func_name}({target}, {args})",),
+                        }
+                    }
+                    None => format!("{target}.{func_name}({args})"),
+                }
+            }
+            Expr::Variant { variant, generics, params } => {
                 let generics = non_default_generics(db, (*variant).into(), generics);
                 let generics_str = match generics.is_empty() {
                     true => String::new(),
@@ -236,7 +230,7 @@ impl TypeTree {
                 let prefix = mod_item_path_str(sema_scope, &ModuleDef::Variant(*variant));
                 format!("{prefix}{inner}")
             }
-            TypeTree::Struct { strukt, generics, params } => {
+            Expr::Struct { strukt, generics, params } => {
                 let generics = non_default_generics(db, (*strukt).into(), generics);
                 let inner = match strukt.kind(db) {
                     StructKind::Tuple => {
@@ -274,16 +268,24 @@ impl TypeTree {
                 let prefix = mod_item_path_str(sema_scope, &ModuleDef::Adt(Adt::Struct(*strukt)));
                 format!("{prefix}{inner}")
             }
-            TypeTree::Field { type_tree, field } => {
-                let strukt = type_tree.gen_source_code(sema_scope, many_formatter);
+            Expr::Field { expr, field } => {
+                if expr.contains_many_in_illegal_pos() {
+                    return many_formatter(&expr.ty(db));
+                }
+
+                let strukt = expr.gen_source_code(sema_scope, many_formatter);
                 let field = field.name(db).display(db.upcast()).to_string();
                 format!("{strukt}.{field}")
             }
-            TypeTree::Reference(type_tree) => {
-                let inner = type_tree.gen_source_code(sema_scope, many_formatter);
+            Expr::Reference(expr) => {
+                if expr.contains_many_in_illegal_pos() {
+                    return many_formatter(&expr.ty(db));
+                }
+
+                let inner = expr.gen_source_code(sema_scope, many_formatter);
                 format!("&{inner}")
             }
-            TypeTree::Many(ty) => many_formatter(ty),
+            Expr::Many(ty) => many_formatter(ty),
         }
     }
 
@@ -292,29 +294,27 @@ impl TypeTree {
     /// Same as getting the type of root node
     pub fn ty(&self, db: &dyn HirDatabase) -> Type {
         match self {
-            TypeTree::Const(it) => it.ty(db),
-            TypeTree::Static(it) => it.ty(db),
-            TypeTree::Local(it) => it.ty(db),
-            TypeTree::ConstParam(it) => it.ty(db),
-            TypeTree::FamousType { ty, .. } => ty.clone(),
-            TypeTree::Function { func, generics, params } => match func.has_self_param(db) {
-                true => func.ret_type_with_generics(
-                    db,
-                    params[0].ty(db).type_arguments().chain(generics.iter().cloned()),
-                ),
-                false => func.ret_type_with_generics(db, generics.iter().cloned()),
-            },
-            TypeTree::Variant { variant, generics, .. } => {
-                variant.parent_enum(db).ty_with_generics(db, generics.iter().cloned())
+            Expr::Const(it) => it.ty(db),
+            Expr::Static(it) => it.ty(db),
+            Expr::Local(it) => it.ty(db),
+            Expr::ConstParam(it) => it.ty(db),
+            Expr::FamousType { ty, .. } => ty.clone(),
+            Expr::Function { func, generics, .. } => {
+                func.ret_type_with_args(db, generics.iter().cloned())
             }
-            TypeTree::Struct { strukt, generics, .. } => {
-                strukt.ty_with_generics(db, generics.iter().cloned())
+            Expr::Method { func, generics, target, .. } => func.ret_type_with_args(
+                db,
+                target.ty(db).type_arguments().chain(generics.iter().cloned()),
+            ),
+            Expr::Variant { variant, generics, .. } => {
+                variant.parent_enum(db).ty_with_args(db, generics.iter().cloned())
             }
-            TypeTree::Field { type_tree, field } => {
-                field.ty_with_generics(db, type_tree.ty(db).type_arguments())
+            Expr::Struct { strukt, generics, .. } => {
+                strukt.ty_with_args(db, generics.iter().cloned())
             }
-            TypeTree::Reference(it) => it.ty(db),
-            TypeTree::Many(ty) => ty.clone(),
+            Expr::Field { expr, field } => field.ty_with_args(db, expr.ty(db).type_arguments()),
+            Expr::Reference(it) => it.ty(db),
+            Expr::Many(ty) => ty.clone(),
         }
     }
 
@@ -323,7 +323,7 @@ impl TypeTree {
         let mut res = Vec::new();
 
         match self {
-            TypeTree::Function { func, params, .. } => {
+            Expr::Method { func, params, .. } => {
                 res.extend(params.iter().flat_map(|it| it.traits_used(db)));
                 if let Some(it) = func.as_assoc_item(db) {
                     if let Some(it) = it.containing_trait_or_trait_impl(db) {
@@ -335,5 +335,29 @@ impl TypeTree {
         }
 
         res
+    }
+
+    /// Check in the tree contains `Expr::Many` variant in illegal place to insert `todo`,
+    /// `unimplemented` or similar macro
+    ///
+    /// Some examples are following
+    /// ```no_compile
+    /// macro!().foo
+    /// macro!().bar()
+    /// &macro!()
+    /// ```
+    fn contains_many_in_illegal_pos(&self) -> bool {
+        match self {
+            Expr::Method { target, .. } => target.contains_many_in_illegal_pos(),
+            Expr::Field { expr, .. } => expr.contains_many_in_illegal_pos(),
+            Expr::Reference(target) => target.is_many(),
+            Expr::Many(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Helper function to check if outermost type tree is `Expr::Many` variant
+    pub fn is_many(&self) -> bool {
+        matches!(self, Expr::Many(_))
     }
 }

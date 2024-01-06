@@ -19,7 +19,7 @@ use crate::{
     Variant,
 };
 
-use crate::term_search::{TermSearchConfig, TypeTree};
+use crate::term_search::{Expr, TermSearchConfig};
 
 use super::{LookupTable, NewTypesKey, TermSearchCtx};
 
@@ -41,13 +41,13 @@ pub(super) fn trivial<'a, DB: HirDatabase>(
     ctx: &'a TermSearchCtx<'a, DB>,
     defs: &'a FxHashSet<ScopeDef>,
     lookup: &'a mut LookupTable,
-) -> impl Iterator<Item = TypeTree> + 'a {
+) -> impl Iterator<Item = Expr> + 'a {
     let db = ctx.sema.db;
     defs.iter().filter_map(|def| {
-        let tt = match def {
-            ScopeDef::ModuleDef(ModuleDef::Const(it)) => Some(TypeTree::Const(*it)),
-            ScopeDef::ModuleDef(ModuleDef::Static(it)) => Some(TypeTree::Static(*it)),
-            ScopeDef::GenericParam(GenericParam::ConstParam(it)) => Some(TypeTree::ConstParam(*it)),
+        let expr = match def {
+            ScopeDef::ModuleDef(ModuleDef::Const(it)) => Some(Expr::Const(*it)),
+            ScopeDef::ModuleDef(ModuleDef::Static(it)) => Some(Expr::Static(*it)),
+            ScopeDef::GenericParam(GenericParam::ConstParam(it)) => Some(Expr::ConstParam(*it)),
             ScopeDef::Local(it) => {
                 if ctx.config.enable_borrowcheck {
                     let borrowck = db.borrowck(it.parent).ok()?;
@@ -67,22 +67,22 @@ pub(super) fn trivial<'a, DB: HirDatabase>(
                     }
                 }
 
-                Some(TypeTree::Local(*it))
+                Some(Expr::Local(*it))
             }
             _ => None,
         }?;
 
         lookup.mark_exhausted(*def);
 
-        let ty = tt.ty(db);
-        lookup.insert(ty.clone(), std::iter::once(tt.clone()));
+        let ty = expr.ty(db);
+        lookup.insert(ty.clone(), std::iter::once(expr.clone()));
 
         // Don't suggest local references as they are not valid for return
-        if matches!(tt, TypeTree::Local(_)) && ty.contains_reference(db) {
+        if matches!(expr, Expr::Local(_)) && ty.contains_reference(db) {
             return None;
         }
 
-        ty.could_unify_with_deeply(db, &ctx.goal).then(|| tt)
+        ty.could_unify_with_deeply(db, &ctx.goal).then(|| expr)
     })
 }
 
@@ -101,7 +101,7 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
     ctx: &'a TermSearchCtx<'a, DB>,
     defs: &'a FxHashSet<ScopeDef>,
     lookup: &'a mut LookupTable,
-) -> impl Iterator<Item = TypeTree> + 'a {
+) -> impl Iterator<Item = Expr> + 'a {
     let db = ctx.sema.db;
     let module = ctx.scope.module();
     fn variant_helper(
@@ -111,13 +111,13 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
         variant: Variant,
         goal: &Type,
         config: &TermSearchConfig,
-    ) -> Vec<(Type, Vec<TypeTree>)> {
-        let generics = GenericDef::from(variant.parent_enum(db));
-
-        // Ignore unstable variants
+    ) -> Vec<(Type, Vec<Expr>)> {
+        // Ignore unstable
         if variant.is_unstable(db) {
             return Vec::new();
         }
+
+        let generics = GenericDef::from(variant.parent_enum(db));
 
         // Ignore enums with const generics
         if !generics.const_params(db).is_empty() {
@@ -160,7 +160,7 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
                     })
                     .collect();
 
-                let enum_ty = parent_enum.ty_with_generics(db, generics.iter().cloned());
+                let enum_ty = parent_enum.ty_with_args(db, generics.iter().cloned());
 
                 // Allow types with generics only if they take us straight to goal for
                 // performance reasons
@@ -174,52 +174,42 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
                 }
 
                 // Early exit if some param cannot be filled from lookup
-                let param_trees: Vec<Vec<TypeTree>> = variant
+                let param_exprs: Vec<Vec<Expr>> = variant
                     .fields(db)
                     .into_iter()
-                    .map(|field| {
-                        lookup.find(db, &field.ty_with_generics(db, generics.iter().cloned()))
-                    })
+                    .map(|field| lookup.find(db, &field.ty_with_args(db, generics.iter().cloned())))
                     .collect::<Option<_>>()?;
 
                 // Note that we need special case for 0 param constructors because of multi cartesian
                 // product
-                let variant_trees: Vec<TypeTree> = if param_trees.is_empty() {
-                    vec![TypeTree::Variant {
-                        variant,
-                        generics: generics.clone(),
-                        params: Vec::new(),
-                    }]
+                let variant_exprs: Vec<Expr> = if param_exprs.is_empty() {
+                    vec![Expr::Variant { variant, generics: generics.clone(), params: Vec::new() }]
                 } else {
-                    param_trees
+                    param_exprs
                         .into_iter()
                         .multi_cartesian_product()
-                        .map(|params| TypeTree::Variant {
-                            variant,
-                            generics: generics.clone(),
-                            params,
-                        })
+                        .map(|params| Expr::Variant { variant, generics: generics.clone(), params })
                         .collect()
                 };
-                lookup.insert(enum_ty.clone(), variant_trees.iter().cloned());
+                lookup.insert(enum_ty.clone(), variant_exprs.iter().cloned());
 
-                Some((enum_ty, variant_trees))
+                Some((enum_ty, variant_exprs))
             })
             .collect()
     }
     defs.iter()
         .filter_map(move |def| match def {
             ScopeDef::ModuleDef(ModuleDef::Variant(it)) => {
-                let variant_trees =
+                let variant_exprs =
                     variant_helper(db, lookup, it.parent_enum(db), *it, &ctx.goal, &ctx.config);
-                if variant_trees.is_empty() {
+                if variant_exprs.is_empty() {
                     return None;
                 }
                 lookup.mark_fulfilled(ScopeDef::ModuleDef(ModuleDef::Variant(*it)));
-                Some(variant_trees)
+                Some(variant_exprs)
             }
             ScopeDef::ModuleDef(ModuleDef::Adt(Adt::Enum(enum_))) => {
-                let trees: Vec<(Type, Vec<TypeTree>)> = enum_
+                let exprs: Vec<(Type, Vec<Expr>)> = enum_
                     .variants(db)
                     .into_iter()
                     .flat_map(|it| {
@@ -227,11 +217,11 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
                     })
                     .collect();
 
-                if !trees.is_empty() {
+                if !exprs.is_empty() {
                     lookup.mark_fulfilled(ScopeDef::ModuleDef(ModuleDef::Adt(Adt::Enum(*enum_))));
                 }
 
-                Some(trees)
+                Some(exprs)
             }
             ScopeDef::ModuleDef(ModuleDef::Adt(Adt::Struct(it))) => {
                 // Ignore unstable and not visible
@@ -269,7 +259,7 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
                     .into_iter()
                     .permutations(non_default_type_params_len);
 
-                let trees = generic_params
+                let exprs = generic_params
                     .filter_map(|generics| {
                         // Insert default type params
                         let mut g = generics.into_iter();
@@ -280,7 +270,7 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
                                 None => g.next().expect("Missing type param"),
                             })
                             .collect();
-                        let struct_ty = it.ty_with_generics(db, generics.iter().cloned());
+                        let struct_ty = it.ty_with_args(db, generics.iter().cloned());
 
                         // Allow types with generics only if they take us straight to goal for
                         // performance reasons
@@ -301,20 +291,20 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
                         }
 
                         // Early exit if some param cannot be filled from lookup
-                        let param_trees: Vec<Vec<TypeTree>> = fileds
+                        let param_exprs: Vec<Vec<Expr>> = fileds
                             .into_iter()
                             .map(|field| lookup.find(db, &field.ty(db)))
                             .collect::<Option<_>>()?;
 
                         // Note that we need special case for 0 param constructors because of multi cartesian
                         // product
-                        let struct_trees: Vec<TypeTree> = if param_trees.is_empty() {
-                            vec![TypeTree::Struct { strukt: *it, generics, params: Vec::new() }]
+                        let struct_exprs: Vec<Expr> = if param_exprs.is_empty() {
+                            vec![Expr::Struct { strukt: *it, generics, params: Vec::new() }]
                         } else {
-                            param_trees
+                            param_exprs
                                 .into_iter()
                                 .multi_cartesian_product()
-                                .map(|params| TypeTree::Struct {
+                                .map(|params| Expr::Struct {
                                     strukt: *it,
                                     generics: generics.clone(),
                                     params,
@@ -324,17 +314,17 @@ pub(super) fn type_constructor<'a, DB: HirDatabase>(
 
                         lookup
                             .mark_fulfilled(ScopeDef::ModuleDef(ModuleDef::Adt(Adt::Struct(*it))));
-                        lookup.insert(struct_ty.clone(), struct_trees.iter().cloned());
+                        lookup.insert(struct_ty.clone(), struct_exprs.iter().cloned());
 
-                        Some((struct_ty, struct_trees))
+                        Some((struct_ty, struct_exprs))
                     })
                     .collect();
-                Some(trees)
+                Some(exprs)
             }
             _ => None,
         })
         .flatten()
-        .filter_map(|(ty, trees)| ty.could_unify_with_deeply(db, &ctx.goal).then(|| trees))
+        .filter_map(|(ty, exprs)| ty.could_unify_with_deeply(db, &ctx.goal).then(|| exprs))
         .flatten()
 }
 
@@ -354,7 +344,7 @@ pub(super) fn free_function<'a, DB: HirDatabase>(
     ctx: &'a TermSearchCtx<'a, DB>,
     defs: &'a FxHashSet<ScopeDef>,
     lookup: &'a mut LookupTable,
-) -> impl Iterator<Item = TypeTree> + 'a {
+) -> impl Iterator<Item = Expr> + 'a {
     let db = ctx.sema.db;
     let module = ctx.scope.module();
     defs.iter()
@@ -394,7 +384,7 @@ pub(super) fn free_function<'a, DB: HirDatabase>(
                     .into_iter()
                     .permutations(non_default_type_params_len);
 
-                let trees: Vec<_> = generic_params
+                let exprs: Vec<_> = generic_params
                     .filter_map(|generics| {
                         // Insert default type params
                         let mut g = generics.into_iter();
@@ -406,7 +396,7 @@ pub(super) fn free_function<'a, DB: HirDatabase>(
                             })
                             .collect();
 
-                        let ret_ty = it.ret_type_with_generics(db, generics.iter().cloned());
+                        let ret_ty = it.ret_type_with_args(db, generics.iter().cloned());
                         // Filter out private and unsafe functions
                         if !it.is_visible_from(db, module)
                             || it.is_unsafe_to_call(db)
@@ -418,7 +408,7 @@ pub(super) fn free_function<'a, DB: HirDatabase>(
                         }
 
                         // Early exit if some param cannot be filled from lookup
-                        let param_trees: Vec<Vec<TypeTree>> = it
+                        let param_exprs: Vec<Vec<Expr>> = it
                             .params_without_self_with_generics(db, generics.iter().cloned())
                             .into_iter()
                             .map(|field| {
@@ -432,13 +422,13 @@ pub(super) fn free_function<'a, DB: HirDatabase>(
 
                         // Note that we need special case for 0 param constructors because of multi cartesian
                         // product
-                        let fn_trees: Vec<TypeTree> = if param_trees.is_empty() {
-                            vec![TypeTree::Function { func: *it, generics, params: Vec::new() }]
+                        let fn_exprs: Vec<Expr> = if param_exprs.is_empty() {
+                            vec![Expr::Function { func: *it, generics, params: Vec::new() }]
                         } else {
-                            param_trees
+                            param_exprs
                                 .into_iter()
                                 .multi_cartesian_product()
-                                .map(|params| TypeTree::Function {
+                                .map(|params| Expr::Function {
                                     func: *it,
                                     generics: generics.clone(),
 
@@ -448,16 +438,16 @@ pub(super) fn free_function<'a, DB: HirDatabase>(
                         };
 
                         lookup.mark_fulfilled(ScopeDef::ModuleDef(ModuleDef::Function(*it)));
-                        lookup.insert(ret_ty.clone(), fn_trees.iter().cloned());
-                        Some((ret_ty, fn_trees))
+                        lookup.insert(ret_ty.clone(), fn_exprs.iter().cloned());
+                        Some((ret_ty, fn_exprs))
                     })
                     .collect();
-                Some(trees)
+                Some(exprs)
             }
             _ => None,
         })
         .flatten()
-        .filter_map(|(ty, trees)| ty.could_unify_with_deeply(db, &ctx.goal).then(|| trees))
+        .filter_map(|(ty, exprs)| ty.could_unify_with_deeply(db, &ctx.goal).then(|| exprs))
         .flatten()
 }
 
@@ -479,7 +469,7 @@ pub(super) fn impl_method<'a, DB: HirDatabase>(
     ctx: &'a TermSearchCtx<'a, DB>,
     _defs: &'a FxHashSet<ScopeDef>,
     lookup: &'a mut LookupTable,
-) -> impl Iterator<Item = TypeTree> + 'a {
+) -> impl Iterator<Item = Expr> + 'a {
     let db = ctx.sema.db;
     let module = ctx.scope.module();
     lookup
@@ -546,7 +536,7 @@ pub(super) fn impl_method<'a, DB: HirDatabase>(
                 .into_iter()
                 .permutations(non_default_type_params_len);
 
-            let trees: Vec<_> = generic_params
+            let exprs: Vec<_> = generic_params
                 .filter_map(|generics| {
                     // Insert default type params
                     let mut g = generics.into_iter();
@@ -559,7 +549,7 @@ pub(super) fn impl_method<'a, DB: HirDatabase>(
                         })
                         .collect();
 
-                    let ret_ty = it.ret_type_with_generics(
+                    let ret_ty = it.ret_type_with_args(
                         db,
                         ty.type_arguments().chain(generics.iter().cloned()),
                     );
@@ -578,17 +568,17 @@ pub(super) fn impl_method<'a, DB: HirDatabase>(
                     let self_ty = it
                         .self_param(db)
                         .expect("No self param")
-                        .ty_with_generics(db, ty.type_arguments().chain(generics.iter().cloned()));
+                        .ty_with_args(db, ty.type_arguments().chain(generics.iter().cloned()));
 
                     // Ignore functions that have different self type
                     if !self_ty.autoderef(db).any(|s_ty| ty == s_ty) {
                         return None;
                     }
 
-                    let target_type_trees = lookup.find(db, &ty).expect("Type not in lookup");
+                    let target_type_exprs = lookup.find(db, &ty).expect("Type not in lookup");
 
                     // Early exit if some param cannot be filled from lookup
-                    let param_trees: Vec<Vec<TypeTree>> = it
+                    let param_exprs: Vec<Vec<Expr>> = it
                         .params_without_self_with_generics(
                             db,
                             ty.type_arguments().chain(generics.iter().cloned()),
@@ -597,20 +587,29 @@ pub(super) fn impl_method<'a, DB: HirDatabase>(
                         .map(|field| lookup.find_autoref(db, &field.ty()))
                         .collect::<Option<_>>()?;
 
-                    let fn_trees: Vec<TypeTree> = std::iter::once(target_type_trees)
-                        .chain(param_trees.into_iter())
+                    let fn_exprs: Vec<Expr> = std::iter::once(target_type_exprs)
+                        .chain(param_exprs.into_iter())
                         .multi_cartesian_product()
-                        .map(|params| TypeTree::Function { func: it, generics: Vec::new(), params })
+                        .map(|params| {
+                            let mut params = params.into_iter();
+                            let target = Box::new(params.next().unwrap());
+                            Expr::Method {
+                                func: it,
+                                generics: generics.clone(),
+                                target,
+                                params: params.collect(),
+                            }
+                        })
                         .collect();
 
-                    lookup.insert(ret_ty.clone(), fn_trees.iter().cloned());
-                    Some((ret_ty, fn_trees))
+                    lookup.insert(ret_ty.clone(), fn_exprs.iter().cloned());
+                    Some((ret_ty, fn_exprs))
                 })
                 .collect();
-            Some(trees)
+            Some(exprs)
         })
         .flatten()
-        .filter_map(|(ty, trees)| ty.could_unify_with_deeply(db, &ctx.goal).then(|| trees))
+        .filter_map(|(ty, exprs)| ty.could_unify_with_deeply(db, &ctx.goal).then(|| exprs))
         .flatten()
 }
 
@@ -629,26 +628,26 @@ pub(super) fn struct_projection<'a, DB: HirDatabase>(
     ctx: &'a TermSearchCtx<'a, DB>,
     _defs: &'a FxHashSet<ScopeDef>,
     lookup: &'a mut LookupTable,
-) -> impl Iterator<Item = TypeTree> + 'a {
+) -> impl Iterator<Item = Expr> + 'a {
     let db = ctx.sema.db;
     let module = ctx.scope.module();
     lookup
         .new_types(NewTypesKey::StructProjection)
         .into_iter()
-        .map(|ty| (ty.clone(), lookup.find(db, &ty).expect("TypeTree not in lookup")))
+        .map(|ty| (ty.clone(), lookup.find(db, &ty).expect("Expr not in lookup")))
         .flat_map(move |(ty, targets)| {
             ty.fields(db).into_iter().filter_map(move |(field, filed_ty)| {
                 if !field.is_visible_from(db, module) {
                     return None;
                 }
-                let trees = targets
+                let exprs = targets
                     .clone()
                     .into_iter()
-                    .map(move |target| TypeTree::Field { field, type_tree: Box::new(target) });
-                Some((filed_ty, trees))
+                    .map(move |target| Expr::Field { field, expr: Box::new(target) });
+                Some((filed_ty, exprs))
             })
         })
-        .filter_map(|(ty, trees)| ty.could_unify_with_deeply(db, &ctx.goal).then(|| trees))
+        .filter_map(|(ty, exprs)| ty.could_unify_with_deeply(db, &ctx.goal).then(|| exprs))
         .flatten()
 }
 
@@ -669,20 +668,20 @@ pub(super) fn famous_types<'a, DB: HirDatabase>(
     ctx: &'a TermSearchCtx<'a, DB>,
     _defs: &'a FxHashSet<ScopeDef>,
     lookup: &'a mut LookupTable,
-) -> impl Iterator<Item = TypeTree> + 'a {
+) -> impl Iterator<Item = Expr> + 'a {
     let db = ctx.sema.db;
     let module = ctx.scope.module();
     [
-        TypeTree::FamousType { ty: Type::new(db, module.id, TyBuilder::bool()), value: "true" },
-        TypeTree::FamousType { ty: Type::new(db, module.id, TyBuilder::bool()), value: "false" },
-        TypeTree::FamousType { ty: Type::new(db, module.id, TyBuilder::unit()), value: "()" },
+        Expr::FamousType { ty: Type::new(db, module.id, TyBuilder::bool()), value: "true" },
+        Expr::FamousType { ty: Type::new(db, module.id, TyBuilder::bool()), value: "false" },
+        Expr::FamousType { ty: Type::new(db, module.id, TyBuilder::unit()), value: "()" },
     ]
     .into_iter()
-    .map(|tt| {
-        lookup.insert(tt.ty(db), std::iter::once(tt.clone()));
-        tt
+    .map(|exprs| {
+        lookup.insert(exprs.ty(db), std::iter::once(exprs.clone()));
+        exprs
     })
-    .filter(|tt| tt.ty(db).could_unify_with_deeply(db, &ctx.goal))
+    .filter(|expr| expr.ty(db).could_unify_with_deeply(db, &ctx.goal))
 }
 
 /// # Impl static method (without self type) tactic
@@ -700,7 +699,7 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
     ctx: &'a TermSearchCtx<'a, DB>,
     _defs: &'a FxHashSet<ScopeDef>,
     lookup: &'a mut LookupTable,
-) -> impl Iterator<Item = TypeTree> + 'a {
+) -> impl Iterator<Item = Expr> + 'a {
     let db = ctx.sema.db;
     let module = ctx.scope.module();
     lookup
@@ -771,7 +770,7 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
                 .into_iter()
                 .permutations(non_default_type_params_len);
 
-            let trees: Vec<_> = generic_params
+            let exprs: Vec<_> = generic_params
                 .filter_map(|generics| {
                     // Insert default type params
                     let mut g = generics.into_iter();
@@ -784,7 +783,7 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
                         })
                         .collect();
 
-                    let ret_ty = it.ret_type_with_generics(
+                    let ret_ty = it.ret_type_with_args(
                         db,
                         ty.type_arguments().chain(generics.iter().cloned()),
                     );
@@ -801,7 +800,7 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
                     // }
 
                     // Early exit if some param cannot be filled from lookup
-                    let param_trees: Vec<Vec<TypeTree>> = it
+                    let param_exprs: Vec<Vec<Expr>> = it
                         .params_without_self_with_generics(
                             db,
                             ty.type_arguments().chain(generics.iter().cloned()),
@@ -812,28 +811,27 @@ pub(super) fn impl_static_method<'a, DB: HirDatabase>(
 
                     // Note that we need special case for 0 param constructors because of multi cartesian
                     // product
-                    let fn_trees: Vec<TypeTree> = if param_trees.is_empty() {
-                        vec![TypeTree::Function { func: it, generics, params: Vec::new() }]
+                    let fn_exprs: Vec<Expr> = if param_exprs.is_empty() {
+                        vec![Expr::Function { func: it, generics, params: Vec::new() }]
                     } else {
-                        param_trees
+                        param_exprs
                             .into_iter()
                             .multi_cartesian_product()
-                            .map(|params| TypeTree::Function {
+                            .map(|params| Expr::Function {
                                 func: it,
                                 generics: generics.clone(),
-
                                 params,
                             })
                             .collect()
                     };
 
-                    lookup.insert(ret_ty.clone(), fn_trees.iter().cloned());
-                    Some((ret_ty, fn_trees))
+                    lookup.insert(ret_ty.clone(), fn_exprs.iter().cloned());
+                    Some((ret_ty, fn_exprs))
                 })
                 .collect();
-            Some(trees)
+            Some(exprs)
         })
         .flatten()
-        .filter_map(|(ty, trees)| ty.could_unify_with_deeply(db, &ctx.goal).then(|| trees))
+        .filter_map(|(ty, exprs)| ty.could_unify_with_deeply(db, &ctx.goal).then(|| exprs))
         .flatten()
 }

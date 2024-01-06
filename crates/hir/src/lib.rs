@@ -1085,20 +1085,21 @@ impl Field {
         Type::new(db, var_id, ty)
     }
 
-    pub fn ty_with_generics(
-        &self,
-        db: &dyn HirDatabase,
-        mut generics: impl Iterator<Item = Type>,
-    ) -> Type {
+    pub fn ty_with_args(&self, db: &dyn HirDatabase, generics: impl Iterator<Item = Type>) -> Type {
         let var_id = self.parent.into();
         let def_id: AdtId = match self.parent {
             VariantDef::Struct(it) => it.id.into(),
             VariantDef::Union(it) => it.id.into(),
             VariantDef::Variant(it) => it.parent_enum(db).id.into(),
         };
+        let mut generics = generics.map(|it| it.ty.clone());
         let substs = TyBuilder::subst_for_def(db, def_id, None)
-            .fill(|_| {
-                GenericArg::new(Interner, GenericArgData::Ty(generics.next().unwrap().ty.clone()))
+            .fill(|x| {
+                let ty = generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
+                match x {
+                    ParamKind::Type => ty.cast(Interner),
+                    ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+                }
             })
             .build();
         let ty = db.field_types(var_id)[self.id].clone().substitute(Interner, &substs);
@@ -1158,14 +1159,15 @@ impl Struct {
         Type::from_def(db, self.id)
     }
 
-    pub fn ty_with_generics(
-        self,
-        db: &dyn HirDatabase,
-        mut generics: impl Iterator<Item = Type>,
-    ) -> Type {
+    pub fn ty_with_args(self, db: &dyn HirDatabase, generics: impl Iterator<Item = Type>) -> Type {
+        let mut generics = generics.map(|it| it.ty.clone());
         let substs = TyBuilder::subst_for_def(db, self.id, None)
-            .fill(|_| {
-                GenericArg::new(Interner, GenericArgData::Ty(generics.next().unwrap().ty.clone()))
+            .fill(|x| {
+                let ty = generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
+                match x {
+                    ParamKind::Type => ty.cast(Interner),
+                    ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+                }
             })
             .build();
         let ty = db.ty(self.id.into()).substitute(Interner, &substs);
@@ -1271,16 +1273,18 @@ impl Enum {
         Type::from_def(db, self.id)
     }
 
-    pub fn ty_with_generics(
-        &self,
-        db: &dyn HirDatabase,
-        mut generics: impl Iterator<Item = Type>,
-    ) -> Type {
+    pub fn ty_with_args(&self, db: &dyn HirDatabase, generics: impl Iterator<Item = Type>) -> Type {
+        let mut generics = generics.map(|it| it.ty.clone());
         let substs = TyBuilder::subst_for_def(db, self.id, None)
-            .fill(|_| {
-                GenericArg::new(Interner, GenericArgData::Ty(generics.next().unwrap().ty.clone()))
+            .fill(|x| {
+                let ty = generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
+                match x {
+                    ParamKind::Type => ty.cast(Interner),
+                    ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+                }
             })
             .build();
+
         let ty = db.ty(self.id.into()).substitute(Interner, &substs);
         Type::new(db, self.id, ty)
     }
@@ -1854,10 +1858,10 @@ impl Function {
         Type::new_with_resolver_inner(db, &resolver, ty)
     }
 
-    pub fn ret_type_with_generics(
+    pub fn ret_type_with_args(
         self,
         db: &dyn HirDatabase,
-        mut generics: impl Iterator<Item = Type>,
+        generics: impl Iterator<Item = Type>,
     ) -> Type {
         let resolver = self.id.resolver(db.upcast());
         let parent_id: Option<GenericDefId> = match self.id.lookup(db.upcast()).container {
@@ -1865,22 +1869,18 @@ impl Function {
             ItemContainerId::TraitId(it) => Some(it.into()),
             ItemContainerId::ModuleId(_) | ItemContainerId::ExternBlockId(_) => None,
         };
-        let parent_substs = parent_id.map(|id| {
-            TyBuilder::subst_for_def(db, id, None)
-                .fill(|_| {
-                    GenericArg::new(
-                        Interner,
-                        GenericArgData::Ty(generics.next().unwrap().ty.clone()),
-                    )
-                })
-                .build()
-        });
+        let mut generics = generics.map(|it| it.ty.clone());
+        let mut filler = |x: &_| {
+            let ty = generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
+            match x {
+                ParamKind::Type => ty.cast(Interner),
+                ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+            }
+        };
 
-        let substs = TyBuilder::subst_for_def(db, self.id, parent_substs)
-            .fill(|_| {
-                GenericArg::new(Interner, GenericArgData::Ty(generics.next().unwrap().ty.clone()))
-            })
-            .build();
+        let parent_substs =
+            parent_id.map(|id| TyBuilder::subst_for_def(db, id, None).fill(&mut filler).build());
+        let substs = TyBuilder::subst_for_def(db, self.id, parent_substs).fill(&mut filler).build();
 
         let callable_sig = db.callable_item_signature(self.id.into()).substitute(Interner, &substs);
         let ty = callable_sig.ret().clone();
@@ -2197,11 +2197,7 @@ impl SelfParam {
         Type { env: environment, ty }
     }
 
-    pub fn ty_with_generics(
-        &self,
-        db: &dyn HirDatabase,
-        mut generics: impl Iterator<Item = Type>,
-    ) -> Type {
+    pub fn ty_with_args(&self, db: &dyn HirDatabase, generics: impl Iterator<Item = Type>) -> Type {
         let parent_id: GenericDefId = match self.func.lookup(db.upcast()).container {
             ItemContainerId::ImplId(it) => it.into(),
             ItemContainerId::TraitId(it) => it.into(),
@@ -2210,16 +2206,18 @@ impl SelfParam {
             }
         };
 
-        let parent_substs = TyBuilder::subst_for_def(db, parent_id, None)
-            .fill(|_| {
-                GenericArg::new(Interner, GenericArgData::Ty(generics.next().unwrap().ty.clone()))
-            })
-            .build();
-        let substs = TyBuilder::subst_for_def(db, self.func, Some(parent_substs))
-            .fill(|_| {
-                GenericArg::new(Interner, GenericArgData::Ty(generics.next().unwrap().ty.clone()))
-            })
-            .build();
+        let mut generics = generics.map(|it| it.ty.clone());
+        let mut filler = |x: &_| {
+            let ty = generics.next().unwrap_or_else(|| TyKind::Error.intern(Interner));
+            match x {
+                ParamKind::Type => ty.cast(Interner),
+                ParamKind::Const(ty) => unknown_const_as_generic(ty.clone()),
+            }
+        };
+
+        let parent_substs = TyBuilder::subst_for_def(db, parent_id, None).fill(&mut filler).build();
+        let substs =
+            TyBuilder::subst_for_def(db, self.func, Some(parent_substs)).fill(&mut filler).build();
         let callable_sig =
             db.callable_item_signature(self.func.into()).substitute(Interner, &substs);
         let environment = db.trait_environment(self.func.into());

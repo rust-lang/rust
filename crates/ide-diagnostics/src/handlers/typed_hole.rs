@@ -46,7 +46,7 @@ fn fixes(sema: &Semantics<'_, RootDatabase>, d: &hir::TypedHole) -> Option<Vec<A
 
     let ctx =
         TermSearchCtx { sema, scope: &scope, goal: d.expected.clone(), config: Default::default() };
-    let paths = term_search(ctx);
+    let paths = term_search(&ctx);
 
     let mut assists = vec![];
     let mut formatter = |_: &hir::Type| String::from("_");

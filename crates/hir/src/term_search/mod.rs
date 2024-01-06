@@ -7,8 +7,8 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{ModuleDef, ScopeDef, Semantics, SemanticsScope, Type};
 
-pub mod type_tree;
-pub use type_tree::TypeTree;
+mod expr;
+pub use expr::Expr;
 
 mod tactics;
 
@@ -19,48 +19,57 @@ enum NewTypesKey {
     StructProjection,
 }
 
+/// Helper enum to squash big number of alternative trees into `Many` variant as there is too many
+/// to take into account.
 #[derive(Debug)]
-enum AlternativeTrees {
-    Few(FxHashSet<TypeTree>),
-    Many(Type),
+enum AlternativeExprs {
+    /// There are few trees, so we keep track of them all
+    Few(FxHashSet<Expr>),
+    /// There are too many trees to keep track of
+    Many,
 }
 
-impl AlternativeTrees {
-    pub fn new(
-        threshold: usize,
-        ty: Type,
-        trees: impl Iterator<Item = TypeTree>,
-    ) -> AlternativeTrees {
-        let mut it = AlternativeTrees::Few(Default::default());
-        it.extend_with_threshold(threshold, ty, trees);
+impl AlternativeExprs {
+    /// Construct alternative trees
+    ///
+    /// # Arguments
+    /// `threshold` - threshold value for many trees (more than that is many)
+    /// `exprs` - expressions iterator
+    fn new(threshold: usize, exprs: impl Iterator<Item = Expr>) -> AlternativeExprs {
+        let mut it = AlternativeExprs::Few(Default::default());
+        it.extend_with_threshold(threshold, exprs);
         it
     }
 
-    pub fn trees(&self) -> Vec<TypeTree> {
+    /// Get type trees stored in alternative trees (or `Expr::Many` in case of many)
+    ///
+    /// # Arguments
+    /// `ty` - Type of expressions queried (this is used to give type to `Expr::Many`)
+    fn exprs(&self, ty: &Type) -> Vec<Expr> {
         match self {
-            AlternativeTrees::Few(trees) => trees.iter().cloned().collect(),
-            AlternativeTrees::Many(ty) => vec![TypeTree::Many(ty.clone())],
+            AlternativeExprs::Few(exprs) => exprs.iter().cloned().collect(),
+            AlternativeExprs::Many => vec![Expr::Many(ty.clone())],
         }
     }
 
-    pub fn extend_with_threshold(
-        &mut self,
-        threshold: usize,
-        ty: Type,
-        mut trees: impl Iterator<Item = TypeTree>,
-    ) {
+    /// Extend alternative expressions
+    ///
+    /// # Arguments
+    /// `threshold` - threshold value for many trees (more than that is many)
+    /// `exprs` - expressions iterator
+    fn extend_with_threshold(&mut self, threshold: usize, mut exprs: impl Iterator<Item = Expr>) {
         match self {
-            AlternativeTrees::Few(tts) => {
-                while let Some(it) = trees.next() {
+            AlternativeExprs::Few(tts) => {
+                while let Some(it) = exprs.next() {
                     if tts.len() > threshold {
-                        *self = AlternativeTrees::Many(ty);
+                        *self = AlternativeExprs::Many;
                         break;
                     }
 
                     tts.insert(it);
                 }
             }
-            AlternativeTrees::Many(_) => (),
+            AlternativeExprs::Many => (),
         }
     }
 }
@@ -76,8 +85,8 @@ impl AlternativeTrees {
 /// not produce any new results.
 #[derive(Default, Debug)]
 struct LookupTable {
-    /// All the `TypeTree`s in "value" produce the type of "key"
-    data: FxHashMap<Type, AlternativeTrees>,
+    /// All the `Expr`s in "value" produce the type of "key"
+    data: FxHashMap<Type, AlternativeExprs>,
     /// New types reached since last query by the `NewTypesKey`
     new_types: FxHashMap<NewTypesKey, Vec<Type>>,
     /// ScopeDefs that are not interesting any more
@@ -94,40 +103,40 @@ struct LookupTable {
 
 impl LookupTable {
     /// Initialize lookup table
-    fn new() -> Self {
-        let mut res: Self = Default::default();
+    fn new(many_threshold: usize) -> Self {
+        let mut res = Self { many_threshold, ..Default::default() };
         res.new_types.insert(NewTypesKey::ImplMethod, Vec::new());
         res.new_types.insert(NewTypesKey::StructProjection, Vec::new());
         res
     }
 
-    /// Find all `TypeTree`s that unify with the `ty`
-    fn find(&self, db: &dyn HirDatabase, ty: &Type) -> Option<Vec<TypeTree>> {
+    /// Find all `Expr`s that unify with the `ty`
+    fn find(&self, db: &dyn HirDatabase, ty: &Type) -> Option<Vec<Expr>> {
         self.data
             .iter()
             .find(|(t, _)| t.could_unify_with_deeply(db, ty))
-            .map(|(_, tts)| tts.trees())
+            .map(|(t, tts)| tts.exprs(t))
     }
 
     /// Same as find but automatically creates shared reference of types in the lookup
     ///
     /// For example if we have type `i32` in data and we query for `&i32` it map all the type
-    /// trees we have for `i32` with `TypeTree::Reference` and returns them.
-    fn find_autoref(&self, db: &dyn HirDatabase, ty: &Type) -> Option<Vec<TypeTree>> {
+    /// trees we have for `i32` with `Expr::Reference` and returns them.
+    fn find_autoref(&self, db: &dyn HirDatabase, ty: &Type) -> Option<Vec<Expr>> {
         self.data
             .iter()
             .find(|(t, _)| t.could_unify_with_deeply(db, ty))
-            .map(|(_, tts)| tts.trees())
+            .map(|(t, it)| it.exprs(t))
             .or_else(|| {
                 self.data
                     .iter()
                     .find(|(t, _)| {
                         Type::reference(t, Mutability::Shared).could_unify_with_deeply(db, &ty)
                     })
-                    .map(|(_, tts)| {
-                        tts.trees()
+                    .map(|(t, it)| {
+                        it.exprs(t)
                             .into_iter()
-                            .map(|tt| TypeTree::Reference(Box::new(tt)))
+                            .map(|expr| Expr::Reference(Box::new(expr)))
                             .collect()
                     })
             })
@@ -138,14 +147,11 @@ impl LookupTable {
     /// Note that the types have to be the same, unification is not enough as unification is not
     /// transitive. For example Vec<i32> and FxHashSet<i32> both unify with Iterator<Item = i32>,
     /// but they clearly do not unify themselves.
-    fn insert(&mut self, ty: Type, trees: impl Iterator<Item = TypeTree>) {
+    fn insert(&mut self, ty: Type, exprs: impl Iterator<Item = Expr>) {
         match self.data.get_mut(&ty) {
-            Some(it) => it.extend_with_threshold(self.many_threshold, ty, trees),
+            Some(it) => it.extend_with_threshold(self.many_threshold, exprs),
             None => {
-                self.data.insert(
-                    ty.clone(),
-                    AlternativeTrees::new(self.many_threshold, ty.clone(), trees),
-                );
+                self.data.insert(ty.clone(), AlternativeExprs::new(self.many_threshold, exprs));
                 for it in self.new_types.values_mut() {
                     it.push(ty.clone());
                 }
@@ -206,6 +212,7 @@ impl LookupTable {
 }
 
 /// Context for the `term_search` function
+#[derive(Debug)]
 pub struct TermSearchCtx<'a, DB: HirDatabase> {
     /// Semantics for the program
     pub sema: &'a Semantics<'a, DB>,
@@ -230,7 +237,7 @@ pub struct TermSearchConfig {
 
 impl Default for TermSearchConfig {
     fn default() -> Self {
-        Self { enable_borrowcheck: true, many_alternatives_threshold: 1, depth: 5 }
+        Self { enable_borrowcheck: true, many_alternatives_threshold: 1, depth: 6 }
     }
 }
 
@@ -239,9 +246,7 @@ impl Default for TermSearchConfig {
 /// Search for terms (expressions) that unify with the `goal` type.
 ///
 /// # Arguments
-/// * `sema` - Semantics for the program
-/// * `scope` - Semantic scope, captures context for the term search
-/// * `goal` - Target / expected output type
+/// * `ctx` - Context for term search
 ///
 /// Internally this function uses Breadth First Search to find path to `goal` type.
 /// The general idea is following:
@@ -258,7 +263,7 @@ impl Default for TermSearchConfig {
 /// Note that there are usually more ways we can get to the `goal` type but some are discarded to
 /// reduce the memory consumption. It is also unlikely anyone is willing ti browse through
 /// thousands of possible responses so we currently take first 10 from every tactic.
-pub fn term_search<DB: HirDatabase>(ctx: TermSearchCtx<'_, DB>) -> Vec<TypeTree> {
+pub fn term_search<DB: HirDatabase>(ctx: &TermSearchCtx<'_, DB>) -> Vec<Expr> {
     let module = ctx.scope.module();
     let mut defs = FxHashSet::default();
     defs.insert(ScopeDef::ModuleDef(ModuleDef::Module(module)));
@@ -267,30 +272,21 @@ pub fn term_search<DB: HirDatabase>(ctx: TermSearchCtx<'_, DB>) -> Vec<TypeTree>
         defs.insert(def);
     });
 
-    let mut lookup = LookupTable::new();
+    let mut lookup = LookupTable::new(ctx.config.many_alternatives_threshold);
 
     // Try trivial tactic first, also populates lookup table
-    let mut solutions: Vec<TypeTree> = tactics::trivial(&ctx, &defs, &mut lookup).collect();
+    let mut solutions: Vec<Expr> = tactics::trivial(ctx, &defs, &mut lookup).collect();
     // Use well known types tactic before iterations as it does not depend on other tactics
-    solutions.extend(tactics::famous_types(&ctx, &defs, &mut lookup));
-
-    let mut solution_found = !solutions.is_empty();
+    solutions.extend(tactics::famous_types(ctx, &defs, &mut lookup));
 
     for _ in 0..ctx.config.depth {
         lookup.new_round();
 
-        solutions.extend(tactics::type_constructor(&ctx, &defs, &mut lookup));
-        solutions.extend(tactics::free_function(&ctx, &defs, &mut lookup));
-        solutions.extend(tactics::impl_method(&ctx, &defs, &mut lookup));
-        solutions.extend(tactics::struct_projection(&ctx, &defs, &mut lookup));
-        solutions.extend(tactics::impl_static_method(&ctx, &defs, &mut lookup));
-
-        // Break after 1 round after successful solution
-        if solution_found {
-            break;
-        }
-
-        solution_found = !solutions.is_empty();
+        solutions.extend(tactics::type_constructor(ctx, &defs, &mut lookup));
+        solutions.extend(tactics::free_function(ctx, &defs, &mut lookup));
+        solutions.extend(tactics::impl_method(ctx, &defs, &mut lookup));
+        solutions.extend(tactics::struct_projection(ctx, &defs, &mut lookup));
+        solutions.extend(tactics::impl_static_method(ctx, &defs, &mut lookup));
 
         // Discard not interesting `ScopeDef`s for speedup
         for def in lookup.exhausted_scopedefs() {
@@ -298,5 +294,5 @@ pub fn term_search<DB: HirDatabase>(ctx: TermSearchCtx<'_, DB>) -> Vec<TypeTree>
         }
     }
 
-    solutions.into_iter().unique().collect()
+    solutions.into_iter().filter(|it| !it.is_many()).unique().collect()
 }

@@ -30,7 +30,7 @@ pub(crate) fn term_search(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
         goal: target_ty,
         config: Default::default(),
     };
-    let paths = hir::term_search::term_search(term_search_ctx);
+    let paths = hir::term_search::term_search(&term_search_ctx);
 
     if paths.is_empty() {
         return None;

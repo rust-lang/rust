@@ -415,7 +415,7 @@ impl flags::AnalysisStats {
                         ..Default::default()
                     },
                 };
-                let found_terms = hir::term_search::term_search(ctx);
+                let found_terms = hir::term_search::term_search(&ctx);
 
                 if found_terms.is_empty() {
                     acc.tail_expr_no_term += 1;
@@ -428,7 +428,8 @@ impl flags::AnalysisStats {
                     s.chars().into_iter().filter(|c| !c.is_whitespace()).collect()
                 }
 
-                let mut formatter = |_: &hir::Type| syntax::ast::make::ext::expr_todo().to_string();
+                let todo = syntax::ast::make::ext::expr_todo().to_string();
+                let mut formatter = |_: &hir::Type| todo.clone();
                 let mut syntax_hit_found = false;
                 for term in found_terms {
                     let generated = term.gen_source_code(&scope, &mut formatter);
@@ -449,8 +450,10 @@ impl flags::AnalysisStats {
                                 if let Some(mut err_idx) = err.find("error[E") {
                                     err_idx += 7;
                                     let err_code = &err[err_idx..err_idx + 4];
-                                    if err_code == "0282" {
-                                        continue; // Byproduct of testing method
+                                    match err_code {
+                                        "0282" => continue,                              // Byproduct of testing method
+                                        "0277" if generated.contains(&todo) => continue, // See https://github.com/rust-lang/rust/issues/69882
+                                        _ => (),
                                     }
                                     bar.println(err);
                                     bar.println(generated);
