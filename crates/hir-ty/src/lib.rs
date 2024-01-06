@@ -45,7 +45,7 @@ use chalk_ir::{
     fold::{Shift, TypeFoldable},
     interner::HasInterner,
     visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
-    NoSolution, TyData,
+    NoSolution,
 };
 use either::Either;
 use hir_def::{hir::ExprId, type_ref::Rawness, GeneralConstId, TypeOrConstParamId};
@@ -152,9 +152,20 @@ pub type DomainGoal = chalk_ir::DomainGoal<Interner>;
 pub type Goal = chalk_ir::Goal<Interner>;
 pub type AliasEq = chalk_ir::AliasEq<Interner>;
 pub type Solution = chalk_solve::Solution<Interner>;
+pub type Constraint = chalk_ir::Constraint<Interner>;
+pub type Constraints = chalk_ir::Constraints<Interner>;
 pub type ConstrainedSubst = chalk_ir::ConstrainedSubst<Interner>;
 pub type Guidance = chalk_solve::Guidance<Interner>;
 pub type WhereClause = chalk_ir::WhereClause<Interner>;
+
+pub type CanonicalVarKind = chalk_ir::CanonicalVarKind<Interner>;
+pub type GoalData = chalk_ir::GoalData<Interner>;
+pub type Goals = chalk_ir::Goals<Interner>;
+pub type ProgramClauseData = chalk_ir::ProgramClauseData<Interner>;
+pub type ProgramClause = chalk_ir::ProgramClause<Interner>;
+pub type ProgramClauses = chalk_ir::ProgramClauses<Interner>;
+pub type TyData = chalk_ir::TyData<Interner>;
+pub type Variances = chalk_ir::Variances<Interner>;
 
 /// A constant can have reference to other things. Memory map job is holding
 /// the necessary bits of memory of the const eval session to keep the constant
