@@ -50,6 +50,10 @@ pub(crate) fn generate_constant(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
         ty.original().display_source_code(ctx.db(), constant_module.into(), false).ok()?;
     let target = statement.syntax().parent()?.text_range();
     let path = constant_token.syntax().ancestors().find_map(ast::Path::cast)?;
+    if path.parent_path().is_some() {
+        cov_mark::hit!(not_last_path_segment);
+        return None;
+    }
 
     let name_refs = path.segments().map(|s| s.name_ref());
     let mut outer_exists = false;
@@ -250,6 +254,18 @@ fn bar() -> i32 {
 }
 fn bar() -> i32 {
     foo::goo::A_CONSTANT
+}"#,
+        );
+    }
+
+    #[test]
+    fn test_wont_apply_when_not_last_path_segment() {
+        cov_mark::check!(not_last_path_segment);
+        check_assist_not_applicable(
+            generate_constant,
+            r#"mod foo {}
+fn bar() -> i32 {
+    foo::A_CON$0STANT::invalid_segment
 }"#,
         );
     }
