@@ -55,7 +55,7 @@ use hir_def::{
     AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId,
     EnumId, EnumVariantId, ExternCrateId, FunctionId, GenericDefId, GenericParamId, HasModule,
     ImplId, InTypeConstId, ItemContainerId, LifetimeParamId, LocalEnumVariantId, LocalFieldId,
-    Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId, TraitAliasId, TraitId,
+    Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId, TraitAliasId, TraitId, TupleId,
     TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
 };
 use hir_expand::{attrs::collect_attrs, name::name, proc_macro::ProcMacroKind, MacroCallKind};
@@ -1036,6 +1036,29 @@ impl HasVisibility for Module {
 pub struct Field {
     pub(crate) parent: VariantDef,
     pub(crate) id: LocalFieldId,
+}
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
+pub struct TupleField {
+    pub owner: DefWithBodyId,
+    pub tuple: TupleId,
+    pub index: u32,
+}
+
+impl TupleField {
+    pub fn name(&self) -> Name {
+        Name::new_tuple_field(self.index as usize)
+    }
+
+    pub fn ty(&self, db: &dyn HirDatabase) -> Type {
+        let ty = db.infer(self.owner).tuple_field_access_types[&self.tuple]
+            .as_slice(Interner)
+            .get(self.index as usize)
+            .and_then(|arg| arg.ty(Interner))
+            .cloned()
+            .unwrap_or_else(|| TyKind::Error.intern(Interner));
+        Type { env: db.trait_environment_for_body(self.owner), ty }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

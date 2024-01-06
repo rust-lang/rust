@@ -7,12 +7,13 @@ use chalk_ir::{
     fold::{FallibleTypeFolder, TypeFoldable},
     AliasEq, AliasTy, BoundVar, DebruijnIndex, FnSubst, Mutability, TyKind, WhereClause,
 };
+use either::Either;
 use hir_def::{
     data::adt::VariantData,
     hir::{Array, BinaryOp, BindingId, CaptureBy, Expr, ExprId, Pat, PatId, Statement, UnaryOp},
     lang_item::LangItem,
     resolver::{resolver_for_expr, ResolveValueResult, ValueNs},
-    DefWithBodyId, FieldId, HasModule, VariantId,
+    DefWithBodyId, FieldId, HasModule, TupleFieldId, TupleId, VariantId,
 };
 use hir_expand::name;
 use rustc_hash::FxHashMap;
@@ -186,7 +187,7 @@ impl CapturedItem {
                     result = format!("*{result}");
                     field_need_paren = true;
                 }
-                ProjectionElem::Field(f) => {
+                ProjectionElem::Field(Either::Left(f)) => {
                     if field_need_paren {
                         result = format!("({result})");
                     }
@@ -207,7 +208,15 @@ impl CapturedItem {
                     result = format!("{result}.{field}");
                     field_need_paren = false;
                 }
-                &ProjectionElem::TupleOrClosureField(field) => {
+                ProjectionElem::Field(Either::Right(f)) => {
+                    let field = f.index;
+                    if field_need_paren {
+                        result = format!("({result})");
+                    }
+                    result = format!("{result}.{field}");
+                    field_need_paren = false;
+                }
+                &ProjectionElem::ClosureField(field) => {
                     if field_need_paren {
                         result = format!("({result})");
                     }
@@ -329,15 +338,10 @@ impl InferenceContext<'_> {
                     }
                 }
             }
-            Expr::Field { expr, name } => {
+            Expr::Field { expr, name: _ } => {
                 let mut place = self.place_of_expr(*expr)?;
-                if let TyKind::Tuple(..) = self.expr_ty(*expr).kind(Interner) {
-                    let index = name.as_tuple_index()?;
-                    place.projections.push(ProjectionElem::TupleOrClosureField(index))
-                } else {
-                    let field = self.result.field_resolution(tgt_expr)?;
-                    place.projections.push(ProjectionElem::Field(field));
-                }
+                let field = self.result.field_resolution(tgt_expr)?;
+                place.projections.push(ProjectionElem::Field(field));
                 return Some(place);
             }
             Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
@@ -825,7 +829,10 @@ impl InferenceContext<'_> {
                 let it = al.iter().zip(fields.clone()).chain(ar.iter().rev().zip(fields.rev()));
                 for (arg, i) in it {
                     let mut p = place.clone();
-                    p.projections.push(ProjectionElem::TupleOrClosureField(i));
+                    p.projections.push(ProjectionElem::Field(Either::Right(TupleFieldId {
+                        tuple: TupleId(!0), // dummy this, as its unused anyways
+                        index: i as u32,
+                    })));
                     self.consume_with_pat(p, *arg);
                 }
             }
@@ -850,10 +857,10 @@ impl InferenceContext<'_> {
                                 continue;
                             };
                             let mut p = place.clone();
-                            p.projections.push(ProjectionElem::Field(FieldId {
+                            p.projections.push(ProjectionElem::Field(Either::Left(FieldId {
                                 parent: variant.into(),
                                 local_id,
-                            }));
+                            })));
                             self.consume_with_pat(p, arg);
                         }
                     }
@@ -894,10 +901,10 @@ impl InferenceContext<'_> {
                             al.iter().zip(fields.clone()).chain(ar.iter().rev().zip(fields.rev()));
                         for (arg, (i, _)) in it {
                             let mut p = place.clone();
-                            p.projections.push(ProjectionElem::Field(FieldId {
+                            p.projections.push(ProjectionElem::Field(Either::Left(FieldId {
                                 parent: variant.into(),
                                 local_id: i,
-                            }));
+                            })));
                             self.consume_with_pat(p, *arg);
                         }
                     }

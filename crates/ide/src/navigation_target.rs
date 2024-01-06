@@ -237,7 +237,7 @@ impl TryToNav for Definition {
             Definition::TraitAlias(it) => it.try_to_nav(db),
             Definition::TypeAlias(it) => it.try_to_nav(db),
             Definition::ExternCrateDecl(it) => Some(it.try_to_nav(db)?),
-            Definition::BuiltinType(_) => None,
+            Definition::BuiltinType(_) | Definition::TupleField(_) => None,
             Definition::ToolModule(_) => None,
             Definition::BuiltinAttr(_) => None,
             // FIXME: The focus range should be set to the helper declaration

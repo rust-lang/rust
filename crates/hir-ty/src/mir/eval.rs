@@ -720,13 +720,19 @@ impl Evaluator<'_> {
                         self.size_of_sized(&inner_ty, locals, "array inner type should be sized")?;
                     addr = addr.offset(ty_size * (from as usize));
                 }
-                &ProjectionElem::TupleOrClosureField(f) => {
+                &ProjectionElem::ClosureField(f) => {
                     let layout = self.layout(&prev_ty)?;
                     let offset = layout.fields.offset(f).bytes_usize();
                     addr = addr.offset(offset);
-                    metadata = None; // tuple field is always sized
+                    metadata = None;
                 }
-                ProjectionElem::Field(f) => {
+                ProjectionElem::Field(Either::Right(f)) => {
+                    let layout = self.layout(&prev_ty)?;
+                    let offset = layout.fields.offset(f.index as usize).bytes_usize();
+                    addr = addr.offset(offset);
+                    metadata = None; // tuple field is always sized FIXME: This is wrong, the tail can be unsized
+                }
+                ProjectionElem::Field(Either::Left(f)) => {
                     let layout = self.layout(&prev_ty)?;
                     let variant_layout = match &layout.variants {
                         Variants::Single { .. } => &layout,

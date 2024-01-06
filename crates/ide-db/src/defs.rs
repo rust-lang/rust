@@ -6,11 +6,13 @@
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
 use arrayvec::ArrayVec;
+use either::Either;
 use hir::{
     Adt, AsAssocItem, AssocItem, AttributeTemplate, BuiltinAttr, BuiltinType, Const, Crate,
     DefWithBody, DeriveHelper, DocLinkDef, ExternCrateDecl, Field, Function, GenericParam,
     HasVisibility, HirDisplay, Impl, Label, Local, Macro, Module, ModuleDef, Name, PathResolution,
-    Semantics, Static, ToolModule, Trait, TraitAlias, TypeAlias, Variant, VariantDef, Visibility,
+    Semantics, Static, ToolModule, Trait, TraitAlias, TupleField, TypeAlias, Variant, VariantDef,
+    Visibility,
 };
 use stdx::{format_to, impl_from};
 use syntax::{
@@ -27,6 +29,7 @@ use crate::RootDatabase;
 pub enum Definition {
     Macro(Macro),
     Field(Field),
+    TupleField(TupleField),
     Module(Module),
     Function(Function),
     Adt(Adt),
@@ -78,9 +81,10 @@ impl Definition {
             Definition::Label(it) => it.module(db),
             Definition::ExternCrateDecl(it) => it.module(db),
             Definition::DeriveHelper(it) => it.derive().module(db),
-            Definition::BuiltinAttr(_) | Definition::BuiltinType(_) | Definition::ToolModule(_) => {
-                return None
-            }
+            Definition::BuiltinAttr(_)
+            | Definition::BuiltinType(_)
+            | Definition::TupleField(_)
+            | Definition::ToolModule(_) => return None,
         };
         Some(module)
     }
@@ -105,7 +109,7 @@ impl Definition {
             Definition::TypeAlias(it) => it.visibility(db),
             Definition::Variant(it) => it.visibility(db),
             Definition::ExternCrateDecl(it) => it.visibility(db),
-            Definition::BuiltinType(_) => Visibility::Public,
+            Definition::BuiltinType(_) | Definition::TupleField(_) => Visibility::Public,
             Definition::Macro(_) => return None,
             Definition::BuiltinAttr(_)
             | Definition::ToolModule(_)
@@ -132,6 +136,7 @@ impl Definition {
             Definition::TraitAlias(it) => it.name(db),
             Definition::TypeAlias(it) => it.name(db),
             Definition::BuiltinType(it) => it.name(),
+            Definition::TupleField(it) => it.name(),
             Definition::SelfType(_) => return None,
             Definition::Local(it) => it.name(db),
             Definition::GenericParam(it) => it.name(db),
@@ -194,6 +199,7 @@ impl Definition {
             }
             Definition::ToolModule(_) => None,
             Definition::DeriveHelper(_) => None,
+            Definition::TupleField(_) => None,
         };
 
         docs.or_else(|| {
@@ -211,6 +217,7 @@ impl Definition {
         let label = match *self {
             Definition::Macro(it) => it.display(db).to_string(),
             Definition::Field(it) => it.display(db).to_string(),
+            Definition::TupleField(it) => it.display(db).to_string(),
             Definition::Module(it) => it.display(db).to_string(),
             Definition::Function(it) => it.display(db).to_string(),
             Definition::Adt(it) => it.display(db).to_string(),
@@ -630,9 +637,11 @@ impl NameRefClass {
                 ast::FieldExpr(field_expr) => {
                     sema.resolve_field_fallback(&field_expr)
                     .map(|it| {
-                        it.map_left(Definition::Field)
-                            .map_right(Definition::Function)
-                            .either(NameRefClass::Definition, NameRefClass::Definition)
+                        NameRefClass::Definition(match it {
+                            Either::Left(Either::Left(field)) => Definition::Field(field),
+                            Either::Left(Either::Right(field)) => Definition::TupleField(field),
+                            Either::Right(fun) => Definition::Function(fun),
+                        })
                     })
                 },
                 ast::RecordPatField(record_pat_field) => {

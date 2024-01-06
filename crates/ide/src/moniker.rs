@@ -179,7 +179,7 @@ pub(crate) fn def_to_kind(db: &RootDatabase, def: Definition) -> SymbolInformati
             MacroKind::Attr => Attribute,
             MacroKind::ProcMacro => Macro,
         },
-        Definition::Field(..) => Field,
+        Definition::Field(..) | Definition::TupleField(..) => Field,
         Definition::Module(..) => Module,
         Definition::Function(it) => {
             if it.as_assoc_item(db).is_some() {
@@ -360,6 +360,9 @@ pub(crate) fn def_to_moniker(
         },
         Definition::Field(it) => {
             MonikerDescriptor { name: it.name(db).display(db).to_string(), desc }
+        }
+        Definition::TupleField(it) => {
+            MonikerDescriptor { name: it.name().display(db).to_string(), desc }
         }
         Definition::Adt(adt) => {
             MonikerDescriptor { name: adt.name(db).display(db).to_string(), desc }
