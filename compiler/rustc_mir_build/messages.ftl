@@ -107,8 +107,6 @@ mir_build_extern_static_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
     .note = extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
     .label = use of extern static
 
-mir_build_float_pattern = floating-point types cannot be used in patterns
-
 mir_build_indirect_structural_match =
     to use a constant of type `{$non_sm_ty}` in a pattern, `{$non_sm_ty}` must be annotated with `#[derive(PartialEq)]`
 

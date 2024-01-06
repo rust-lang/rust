@@ -790,10 +790,6 @@ pub struct NaNPattern {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(mir_build_float_pattern)]
-pub struct FloatPattern;
-
-#[derive(LintDiagnostic)]
 #[diag(mir_build_pointer_pattern)]
 pub struct PointerPattern;
 

@@ -17,7 +17,7 @@ use std::cell::Cell;
 
 use super::PatCtxt;
 use crate::errors::{
-    FloatPattern, IndirectStructuralMatch, InvalidPattern, NaNPattern, NonPartialEqMatch,
+    IndirectStructuralMatch, InvalidPattern, NaNPattern, NonPartialEqMatch,
     NontrivialStructuralMatch, PointerPattern, TypeNotStructural, UnionPattern, UnsizedPattern,
 };
 
@@ -488,16 +488,10 @@ impl<'tcx> ConstToPat<'tcx> {
                     // Also see <https://github.com/rust-lang/rfcs/pull/3535>.
                     let e = tcx.dcx().emit_err(NaNPattern { span });
                     self.saw_const_match_error.set(Some(e));
+                    return Err(FallbackToOpaqueConst);
                 } else {
-                    self.saw_const_match_lint.set(true);
-                    tcx.emit_node_span_lint(
-                        lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
-                        id,
-                        span,
-                        FloatPattern,
-                    );
+                    PatKind::Constant { value: mir::Const::Ty(ty::Const::new_value(tcx, cv, ty)) }
                 }
-                return Err(FallbackToOpaqueConst);
             }
             ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::RawPtr(..) => {
                 // The raw pointers we see here have been "vetted" by valtree construction to be
