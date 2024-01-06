@@ -128,7 +128,7 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
                     } else {
                         0
                     };
-                    let pack = Align::from_bytes(pack).unwrap();
+                    let pack = Align::from_bytes(pack).unwrap_or(Align::ONE);
                     min_pack =
                         Some(if let Some(min_pack) = min_pack { min_pack.min(pack) } else { pack });
                     ReprFlags::empty()
