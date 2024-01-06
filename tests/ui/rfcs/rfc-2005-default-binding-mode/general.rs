@@ -58,6 +58,7 @@ fn match_with_or() {
 fn nested_mixed() {
     match (&Some(5), &Some(6)) {
         (Some(a), &Some(mut b)) => {
+            //~^ WARN value assigned to `b` is never read
             // Here, the `a` will be `&i32`, because in the first half of the tuple
             // we hit a non-reference pattern and shift into `ref` mode.
             //

@@ -7,7 +7,7 @@ use crate::fluent_generated as fluent;
 use rustc_ast::Label;
 use rustc_errors::{
     codes::*, Applicability, Diag, DiagCtxt, DiagSymbolList, Diagnostic, EmissionGuarantee, Level,
-    MultiSpan, SubdiagMessageOp, Subdiagnostic,
+    MultiSpan,
 };
 use rustc_hir::{self as hir, ExprKind, Target};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -1641,45 +1641,6 @@ pub struct UnreachableDueToUninhabited<'desc, 'tcx> {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(passes_unused_var_maybe_capture_ref)]
-#[help]
-pub struct UnusedVarMaybeCaptureRef {
-    pub name: String,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(passes_unused_capture_maybe_capture_ref)]
-#[help]
-pub struct UnusedCaptureMaybeCaptureRef {
-    pub name: String,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(passes_unused_var_remove_field)]
-pub struct UnusedVarRemoveField {
-    pub name: String,
-    #[subdiagnostic]
-    pub sugg: UnusedVarRemoveFieldSugg,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    passes_unused_var_remove_field_suggestion,
-    applicability = "machine-applicable"
-)]
-pub struct UnusedVarRemoveFieldSugg {
-    #[suggestion_part(code = "")]
-    pub spans: Vec<Span>,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(passes_unused_var_assigned_only)]
-#[note]
-pub struct UnusedVarAssignedOnly {
-    pub name: String,
-}
-
-#[derive(LintDiagnostic)]
 #[diag(passes_unnecessary_stable_feature)]
 pub struct UnnecessaryStableFeature {
     pub feature: Symbol,
@@ -1702,86 +1663,6 @@ pub struct UnnecessaryPartialStableFeature {
 #[diag(passes_ineffective_unstable_impl)]
 #[note]
 pub struct IneffectiveUnstableImpl;
-
-#[derive(LintDiagnostic)]
-#[diag(passes_unused_assign)]
-#[help]
-pub struct UnusedAssign {
-    pub name: String,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(passes_unused_assign_passed)]
-#[help]
-pub struct UnusedAssignPassed {
-    pub name: String,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(passes_unused_variable_try_prefix)]
-pub struct UnusedVariableTryPrefix {
-    #[label]
-    pub label: Option<Span>,
-    #[subdiagnostic]
-    pub string_interp: Vec<UnusedVariableStringInterp>,
-    #[subdiagnostic]
-    pub sugg: UnusedVariableSugg,
-    pub name: String,
-}
-
-#[derive(Subdiagnostic)]
-pub enum UnusedVariableSugg {
-    #[multipart_suggestion(passes_suggestion, applicability = "maybe-incorrect")]
-    TryPrefixSugg {
-        #[suggestion_part(code = "_{name}")]
-        spans: Vec<Span>,
-        name: String,
-    },
-    #[help(passes_unused_variable_args_in_macro)]
-    NoSugg {
-        #[primary_span]
-        span: Span,
-        name: String,
-    },
-}
-
-pub struct UnusedVariableStringInterp {
-    pub lit: Span,
-    pub lo: Span,
-    pub hi: Span,
-}
-
-impl Subdiagnostic for UnusedVariableStringInterp {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _f: F,
-    ) {
-        diag.span_label(self.lit, crate::fluent_generated::passes_maybe_string_interpolation);
-        diag.multipart_suggestion(
-            crate::fluent_generated::passes_string_interpolation_only_works,
-            vec![(self.lo, String::from("format!(")), (self.hi, String::from(")"))],
-            Applicability::MachineApplicable,
-        );
-    }
-}
-
-#[derive(LintDiagnostic)]
-#[diag(passes_unused_variable_try_ignore)]
-pub struct UnusedVarTryIgnore {
-    #[subdiagnostic]
-    pub sugg: UnusedVarTryIgnoreSugg,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(passes_suggestion, applicability = "maybe-incorrect")]
-pub struct UnusedVarTryIgnoreSugg {
-    #[suggestion_part(code = "{name}: _")]
-    pub shorthands: Vec<Span>,
-    #[suggestion_part(code = "_")]
-    pub non_shorthands: Vec<Span>,
-    pub name: String,
-}
 
 #[derive(LintDiagnostic)]
 #[diag(passes_attr_crate_level)]

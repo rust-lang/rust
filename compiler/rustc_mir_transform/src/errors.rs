@@ -1,4 +1,7 @@
-use rustc_errors::{codes::*, Diag, DiagMessage, LintDiagnostic};
+use rustc_errors::{
+    codes::*, Applicability, Diag, DiagMessage, EmissionGuarantee, LintDiagnostic,
+    SubdiagMessageOp, Subdiagnostic,
+};
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::mir::AssertKind;
 use rustc_middle::ty::TyCtxt;
@@ -89,6 +92,101 @@ pub(crate) struct FnItemRef {
     pub span: Span,
     pub sugg: String,
     pub ident: String,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(mir_transform_unused_capture_maybe_capture_ref)]
+#[help]
+pub(crate) struct UnusedCaptureMaybeCaptureRef {
+    pub name: String,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(mir_transform_unused_var_assigned_only)]
+#[note]
+pub(crate) struct UnusedVarAssignedOnly {
+    pub name: String,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(mir_transform_unused_assign)]
+#[help]
+pub(crate) struct UnusedAssign {
+    pub name: String,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(mir_transform_unused_assign_passed)]
+#[help]
+pub(crate) struct UnusedAssignPassed {
+    pub name: String,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(mir_transform_unused_variable)]
+pub(crate) struct UnusedVariable {
+    pub name: String,
+    #[subdiagnostic]
+    pub string_interp: Vec<UnusedVariableStringInterp>,
+    #[subdiagnostic]
+    pub sugg: UnusedVariableSugg,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum UnusedVariableSugg {
+    #[multipart_suggestion(
+        mir_transform_unused_variable_try_ignore,
+        applicability = "machine-applicable"
+    )]
+    TryIgnore {
+        #[suggestion_part(code = "{name}: _")]
+        shorthands: Vec<Span>,
+        #[suggestion_part(code = "_")]
+        non_shorthands: Vec<Span>,
+        name: String,
+    },
+
+    #[multipart_suggestion(
+        mir_transform_unused_var_underscore,
+        applicability = "machine-applicable"
+    )]
+    TryPrefix {
+        #[suggestion_part(code = "_{name}")]
+        spans: Vec<Span>,
+        name: String,
+    },
+
+    #[help(mir_transform_unused_variable_args_in_macro)]
+    NoSugg {
+        #[primary_span]
+        span: Span,
+        name: String,
+    },
+}
+
+pub(crate) struct UnusedVariableStringInterp {
+    pub lit: Span,
+}
+
+impl Subdiagnostic for UnusedVariableStringInterp {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+        self,
+        diag: &mut Diag<'_, G>,
+        _: F,
+    ) {
+        diag.span_label(
+            self.lit,
+            crate::fluent_generated::mir_transform_maybe_string_interpolation,
+        );
+        diag.multipart_suggestion(
+            crate::fluent_generated::mir_transform_string_interpolation_only_works,
+            vec![
+                (self.lit.shrink_to_lo(), String::from("format!(")),
+                (self.lit.shrink_to_hi(), String::from(")")),
+            ],
+            Applicability::MachineApplicable,
+        );
+    }
 }
 
 pub(crate) struct MustNotSupend<'tcx, 'a> {

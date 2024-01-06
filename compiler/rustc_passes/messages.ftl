@@ -445,7 +445,6 @@ passes_macro_export_on_decl_macro =
 passes_macro_use =
     `#[{$name}]` only has an effect on `extern crate` and modules
 
-passes_maybe_string_interpolation = you might have meant to use string interpolation in this string literal
 passes_missing_const_err =
     attributes `#[rustc_const_unstable]` and `#[rustc_const_stable]` require the function or method to be `const`
     .help = make the function or method const
@@ -669,8 +668,6 @@ passes_skipping_const_checks = skipping const checks
 passes_stability_promotable =
     attribute cannot be applied to an expression
 
-passes_string_interpolation_only_works = string interpolation only works in `format!` invocations
-
 passes_target_feature_on_statement =
     {passes_should_be_applied_to_fn}
     .warn = {-passes_previously_accepted}
@@ -729,15 +726,6 @@ passes_unused =
     unused attribute
     .suggestion = remove this attribute
 
-passes_unused_assign = value assigned to `{$name}` is never read
-    .help = maybe it is overwritten before being read?
-
-passes_unused_assign_passed = value passed to `{$name}` is never read
-    .help = maybe it is overwritten before being read?
-
-passes_unused_capture_maybe_capture_ref = value captured by `{$name}` is never read
-    .help = did you mean to capture by reference instead?
-
 passes_unused_default_method_body_const_note =
     `default_method_body_is_const` has been replaced with `#[const_trait]` on traits
 
@@ -757,25 +745,6 @@ passes_unused_multiple =
 
 passes_unused_no_lints_note =
     attribute `{$name}` without any lints has no effect
-
-passes_unused_var_assigned_only = variable `{$name}` is assigned to, but never used
-    .note = consider using `_{$name}` instead
-
-passes_unused_var_maybe_capture_ref = unused variable: `{$name}`
-    .help = did you mean to capture by reference instead?
-
-passes_unused_var_remove_field = unused variable: `{$name}`
-passes_unused_var_remove_field_suggestion = try removing the field
-
-passes_unused_variable_args_in_macro = `{$name}` is captured in macro and introduced a unused variable
-
-passes_unused_variable_try_ignore = unused variable: `{$name}`
-    .suggestion = try ignoring the field
-
-passes_unused_variable_try_prefix = unused variable: `{$name}`
-    .label = unused variable
-    .suggestion = if this is intentional, prefix it with an underscore
-
 
 passes_used_compiler_linker =
     `used(compiler)` and `used(linker)` can't be used together

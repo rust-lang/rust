@@ -84,6 +84,7 @@ mod jump_threading;
 mod known_panics_lint;
 mod large_enums;
 mod lint;
+mod liveness;
 mod lower_intrinsics;
 mod lower_slice_len;
 mod match_branches;
@@ -112,6 +113,7 @@ mod sroa;
 mod unreachable_enum_branching;
 mod unreachable_prop;
 
+use liveness::check_liveness;
 use rustc_const_eval::transform::check_consts::{self, ConstCx};
 use rustc_const_eval::transform::validate;
 use rustc_mir_dataflow::rustc_peek;
@@ -132,6 +134,7 @@ pub fn provide(providers: &mut Providers) {
         mir_for_ctfe,
         mir_coroutine_witnesses: coroutine::mir_coroutine_witnesses,
         optimized_mir,
+        check_liveness,
         is_mir_available,
         is_ctfe_mir_available: |tcx, did| is_mir_available(tcx, did),
         mir_callgraph_reachable: inline::cycle::mir_callgraph_reachable,
@@ -399,6 +402,8 @@ fn mir_drops_elaborated_and_const_checked(tcx: TyCtxt<'_>, def: LocalDefId) -> &
             tcx.ensure_with_value().mir_inliner_callees(ty::InstanceDef::Item(def.to_def_id()));
         }
     }
+
+    tcx.ensure_with_value().check_liveness(def);
 
     let (body, _) = tcx.mir_promoted(def);
     let mut body = body.steal();

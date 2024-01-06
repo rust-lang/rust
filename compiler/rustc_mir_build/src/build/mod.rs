@@ -60,12 +60,6 @@ pub(crate) fn mir_build<'tcx>(tcx: TyCtxtAt<'tcx>, def: LocalDefId) -> Body<'tcx
                 thir::BodyTy::Const(ty) => construct_const(tcx, def, thir, expr, ty),
             };
 
-            // this must run before MIR dump, because
-            // "not all control paths return a value" is reported here.
-            //
-            // maybe move the check to a MIR pass?
-            tcx.ensure().check_liveness(def);
-
             // Don't steal here, instead steal in unsafeck. This is so that
             // pattern inline constants can be evaluated as part of building the
             // THIR of the parent function without a cycle.

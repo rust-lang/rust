@@ -50,7 +50,7 @@ impl<'tcx> StatementKind<'tcx> {
 impl<V, T> ProjectionElem<V, T> {
     /// Returns `true` if the target of this projection may refer to a different region of memory
     /// than the base.
-    fn is_indirect(&self) -> bool {
+    pub fn is_indirect(&self) -> bool {
         match self {
             Self::Deref => true,
 

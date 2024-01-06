@@ -4,7 +4,7 @@
 
 //@ pretty-expanded FIXME #23616
 
-#![allow(dead_code)]
+#![allow(dead_code, unused)]
 
 use std::fmt::Display;
 

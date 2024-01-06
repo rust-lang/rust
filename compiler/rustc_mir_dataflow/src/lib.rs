@@ -17,10 +17,11 @@ pub use self::drop_flag_effects::{
     drop_flag_effects_for_function_entry, drop_flag_effects_for_location,
     move_path_children_matching, on_all_children_bits, on_lookup_result_bits,
 };
+use self::framework::SwitchIntEdgeEffects;
 pub use self::framework::{
     fmt, graphviz, lattice, visit_results, Analysis, AnalysisDomain, Backward, Direction, Engine,
     Forward, GenKill, GenKillAnalysis, JoinSemiLattice, MaybeReachable, Results, ResultsCursor,
-    ResultsVisitable, ResultsVisitor, SwitchIntEdgeEffects,
+    ResultsVisitable, ResultsVisitor,
 };
 use self::move_paths::MoveData;
 
