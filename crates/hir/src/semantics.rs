@@ -428,7 +428,7 @@ impl<'db> SemanticsImpl<'db> {
         if let Some(original_string) = ast::String::cast(original_token.clone()) {
             if let Some(quote) = original_string.open_quote_text_range() {
                 return self
-                    .descend_into_macros(DescendPreference::SameText, original_token.clone())
+                    .descend_into_macros(DescendPreference::SameText, original_token)
                     .into_iter()
                     .find_map(|token| {
                         self.resolve_offset_in_format_args(

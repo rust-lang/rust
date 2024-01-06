@@ -336,7 +336,7 @@ impl InferenceContext<'_> {
             &Pat::Lit(expr) => {
                 // Don't emit type mismatches again, the expression lowering already did that.
                 let ty = self.infer_lit_pat(expr, &expected);
-                self.write_pat_ty(pat, ty.clone());
+                self.write_pat_ty(pat, ty);
                 return self.pat_ty_after_adjustment(pat);
             }
             Pat::Box { inner } => match self.resolve_boxed_box() {

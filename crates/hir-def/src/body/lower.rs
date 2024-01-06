@@ -1610,7 +1610,7 @@ impl ExprCollector<'_> {
                 |name| self.alloc_expr_desugared(Expr::Path(Path::from(name))),
                 |name, span| {
                     if let Some(span) = span {
-                        mappings.push((span, name.clone()))
+                        mappings.push((span, name))
                     }
                 },
             ),

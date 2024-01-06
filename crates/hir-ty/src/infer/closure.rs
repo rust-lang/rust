@@ -130,7 +130,7 @@ impl HirPlace {
                 ctx.owner.module(ctx.db.upcast()).krate(),
             );
         }
-        ty.clone()
+        ty
     }
 
     fn capture_kind_of_truncated_place(
@@ -245,7 +245,7 @@ pub(crate) struct CapturedItemWithoutTy {
 
 impl CapturedItemWithoutTy {
     fn with_ty(self, ctx: &mut InferenceContext<'_>) -> CapturedItem {
-        let ty = self.place.ty(ctx).clone();
+        let ty = self.place.ty(ctx);
         let ty = match &self.kind {
             CaptureKind::ByValue => ty,
             CaptureKind::ByRef(bk) => {
@@ -396,7 +396,7 @@ impl InferenceContext<'_> {
 
     fn consume_place(&mut self, place: HirPlace, span: MirSpan) {
         if self.is_upvar(&place) {
-            let ty = place.ty(self).clone();
+            let ty = place.ty(self);
             let kind = if self.is_ty_copy(ty) {
                 CaptureKind::ByRef(BorrowKind::Shared)
             } else {

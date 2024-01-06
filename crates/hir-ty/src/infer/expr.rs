@@ -978,7 +978,7 @@ impl InferenceContext<'_> {
                 .push(callee_ty.clone())
                 .push(TyBuilder::tuple_with(params.iter().cloned()))
                 .build();
-            self.write_method_resolution(tgt_expr, func, subst.clone());
+            self.write_method_resolution(tgt_expr, func, subst);
         }
     }
 

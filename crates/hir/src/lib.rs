@@ -1093,7 +1093,7 @@ impl Field {
 
     pub fn layout(&self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
         db.layout_of_ty(
-            self.ty(db).ty.clone(),
+            self.ty(db).ty,
             db.trait_environment(match hir_def::VariantId::from(self.parent) {
                 hir_def::VariantId::EnumVariantId(id) => GenericDefId::EnumVariantId(id),
                 hir_def::VariantId::StructId(id) => GenericDefId::AdtId(id.into()),

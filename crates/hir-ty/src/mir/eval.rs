@@ -1533,7 +1533,7 @@ impl Evaluator<'_> {
                 }
             },
             TyKind::Dyn(_) => {
-                let vtable = self.vtable_map.id(current_ty.clone());
+                let vtable = self.vtable_map.id(current_ty);
                 let mut r = Vec::with_capacity(16);
                 let addr = addr.get(self)?;
                 r.extend(addr.iter().copied());

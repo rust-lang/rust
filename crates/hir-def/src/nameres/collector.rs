@@ -1397,7 +1397,7 @@ impl DefCollector<'_> {
                     always!(krate == loc.def.krate);
                     DefDiagnostic::unresolved_proc_macro(module_id, loc.kind.clone(), loc.def.krate)
                 }
-                _ => DefDiagnostic::macro_error(module_id, loc.kind.clone(), err.to_string()),
+                _ => DefDiagnostic::macro_error(module_id, loc.kind, err.to_string()),
             };
 
             self.def_map.diagnostics.push(diag);
