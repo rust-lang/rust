@@ -133,10 +133,10 @@ x--expand-yaml-anchors--remove:
           install: >
             make
             git
-          pacboy: >
-            toolchain:p
-            cmake:p
-            gcc:p
+          # pacboy: >
+          #   toolchain:p
+          #   cmake:p
+          #   gcc:p
           #python:p
           #   mingw-w64-x86_64-python
           #   mingw-w64-x86_64-jq
