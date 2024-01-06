@@ -295,11 +295,13 @@ impl ExpnId {
     pub fn expansion_cause(mut self) -> Option<Span> {
         let mut last_macro = None;
         loop {
+            // Fast path to avoid locking.
+            if self == ExpnId::root() {
+                break;
+            }
             let expn_data = self.expn_data();
             // Stop going up the backtrace once include! is encountered
-            if expn_data.is_root()
-                || expn_data.kind == ExpnKind::Macro(MacroKind::Bang, sym::include)
-            {
+            if expn_data.kind == ExpnKind::Macro(MacroKind::Bang, sym::include) {
                 break;
             }
             self = expn_data.call_site.ctxt().outer_expn();
@@ -433,7 +435,7 @@ impl HygieneData {
 
     fn marks(&self, mut ctxt: SyntaxContext) -> Vec<(ExpnId, Transparency)> {
         let mut marks = Vec::new();
-        while ctxt != SyntaxContext::root() {
+        while !ctxt.is_root() {
             debug!("marks: getting parent of {:?}", ctxt);
             marks.push(self.outer_mark(ctxt));
             ctxt = self.parent_ctxt(ctxt);

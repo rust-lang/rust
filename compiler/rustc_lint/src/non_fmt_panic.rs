@@ -111,10 +111,11 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
     let mut arg_span = arg.span;
     let mut arg_macro = None;
     while !span.contains(arg_span) {
-        let expn = arg_span.ctxt().outer_expn_data();
-        if expn.is_root() {
+        let ctxt = arg_span.ctxt();
+        if ctxt.is_root() {
             break;
         }
+        let expn = ctxt.outer_expn_data();
         arg_macro = expn.macro_def_id;
         arg_span = expn.call_site;
     }

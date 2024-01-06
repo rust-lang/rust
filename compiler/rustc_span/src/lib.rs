@@ -544,10 +544,6 @@ impl Span {
         self.data().with_hi(hi)
     }
     #[inline]
-    pub fn eq_ctxt(self, other: Span) -> bool {
-        self.data_untracked().ctxt == other.data_untracked().ctxt
-    }
-    #[inline]
     pub fn with_ctxt(self, ctxt: SyntaxContext) -> Span {
         self.data_untracked().with_ctxt(ctxt)
     }
@@ -568,7 +564,7 @@ impl Span {
     /// Returns `true` if this span comes from any kind of macro, desugaring or inlining.
     #[inline]
     pub fn from_expansion(self) -> bool {
-        self.ctxt() != SyntaxContext::root()
+        !self.ctxt().is_root()
     }
 
     /// Returns `true` if `span` originates in a macro's expansion where debuginfo should be
@@ -657,15 +653,15 @@ impl Span {
     /// Returns the source span -- this is either the supplied span, or the span for
     /// the macro callsite that expanded to it.
     pub fn source_callsite(self) -> Span {
-        let expn_data = self.ctxt().outer_expn_data();
-        if !expn_data.is_root() { expn_data.call_site.source_callsite() } else { self }
+        let ctxt = self.ctxt();
+        if !ctxt.is_root() { ctxt.outer_expn_data().call_site.source_callsite() } else { self }
     }
 
     /// The `Span` for the tokens in the previous macro expansion from which `self` was generated,
     /// if any.
     pub fn parent_callsite(self) -> Option<Span> {
-        let expn_data = self.ctxt().outer_expn_data();
-        if !expn_data.is_root() { Some(expn_data.call_site) } else { None }
+        let ctxt = self.ctxt();
+        (!ctxt.is_root()).then(|| ctxt.outer_expn_data().call_site)
     }
 
     /// Walk down the expansion ancestors to find a span that's contained within `outer`.
@@ -750,15 +746,14 @@ impl Span {
     /// else returns the `ExpnData` for the macro definition
     /// corresponding to the source callsite.
     pub fn source_callee(self) -> Option<ExpnData> {
-        let expn_data = self.ctxt().outer_expn_data();
-
-        // Create an iterator of call site expansions
-        iter::successors(Some(expn_data), |expn_data| {
-            Some(expn_data.call_site.ctxt().outer_expn_data())
-        })
-        // Find the last expansion which is not root
-        .take_while(|expn_data| !expn_data.is_root())
-        .last()
+        let mut ctxt = self.ctxt();
+        let mut opt_expn_data = None;
+        while !ctxt.is_root() {
+            let expn_data = ctxt.outer_expn_data();
+            ctxt = expn_data.call_site.ctxt();
+            opt_expn_data = Some(expn_data);
+        }
+        opt_expn_data
     }
 
     /// Checks if a span is "internal" to a macro in which `#[unstable]`
@@ -799,11 +794,12 @@ impl Span {
         let mut prev_span = DUMMY_SP;
         iter::from_fn(move || {
             loop {
-                let expn_data = self.ctxt().outer_expn_data();
-                if expn_data.is_root() {
+                let ctxt = self.ctxt();
+                if ctxt.is_root() {
                     return None;
                 }
 
+                let expn_data = ctxt.outer_expn_data();
                 let is_recursive = expn_data.call_site.source_equal(prev_span);
 
                 prev_span = self;
