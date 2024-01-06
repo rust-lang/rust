@@ -1699,14 +1699,15 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
         let (read_start, read_end) = self.range(read);
         let (write_start, write_end) = self.range(write);
         let words = &mut self.words[..];
-        let mut changed = false;
+        let mut changed = 0;
         for (read_index, write_index) in iter::zip(read_start..read_end, write_start..write_end) {
             let word = words[write_index];
             let new_word = word | words[read_index];
             words[write_index] = new_word;
-            changed |= word != new_word;
+            // See `bitwise` for the rationale.
+            changed |= word ^ new_word;
         }
-        changed
+        changed != 0
     }
 
     /// Adds the bits from `with` to the bits from row `write`, and
@@ -1715,14 +1716,7 @@ impl<R: Idx, C: Idx> BitMatrix<R, C> {
         assert!(write.index() < self.num_rows);
         assert_eq!(with.domain_size(), self.num_columns);
         let (write_start, write_end) = self.range(write);
-        let mut changed = false;
-        for (read_index, write_index) in iter::zip(0..with.words.len(), write_start..write_end) {
-            let word = self.words[write_index];
-            let new_word = word | with.words[read_index];
-            self.words[write_index] = new_word;
-            changed |= word != new_word;
-        }
-        changed
+        bitwise(&mut self.words[write_start..write_end], &with.words, |a, b| a | b)
     }
 
     /// Sets every cell in `row` to true.
