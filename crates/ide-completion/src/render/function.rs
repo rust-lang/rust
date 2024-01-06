@@ -79,6 +79,11 @@ fn render(
         .and_then(|trait_| trait_.containing_trait_or_trait_impl(ctx.db()))
         .map_or(false, |trait_| completion.is_ops_trait(trait_));
 
+    let is_item_from_notable_trait = func
+        .as_assoc_item(ctx.db())
+        .and_then(|trait_| trait_.containing_trait(ctx.db()))
+        .map_or(false, |trait_| completion.is_doc_notable_trait(trait_));
+
     let (has_dot_receiver, has_call_parens, cap) = match func_kind {
         FuncKind::Function(&PathCompletionCtx {
             kind: PathKind::Expr { .. },
@@ -105,6 +110,7 @@ fn render(
         },
         exact_name_match: compute_exact_name_match(completion, &call),
         is_op_method,
+        is_item_from_notable_trait,
         ..ctx.completion_relevance()
     });
 
