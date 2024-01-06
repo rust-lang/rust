@@ -825,6 +825,39 @@ impl Span {
         )
     }
 
+    /// Prepare two spans to a combine operation like `to` or `between`.
+    /// FIXME: consider using declarative macro metavariable spans for the given spans if they are
+    /// better suitable for combining (#119412).
+    fn prepare_to_combine(
+        a_orig: Span,
+        b_orig: Span,
+    ) -> Result<(SpanData, SpanData, Option<LocalDefId>), Span> {
+        let (a, b) = (a_orig.data(), b_orig.data());
+
+        if a.ctxt != b.ctxt {
+            // Context mismatches usually happen when procedural macros combine spans copied from
+            // the macro input with spans produced by the macro (`Span::*_site`).
+            // In that case we consider the combined span to be produced by the macro and return
+            // the original macro-produced span as the result.
+            // Otherwise we just fall back to returning the first span.
+            // Combining locations typically doesn't make sense in case of context mismatches.
+            // `is_root` here is a fast path optimization.
+            let a_is_callsite = a.ctxt.is_root() || a.ctxt == b.span().source_callsite().ctxt();
+            return Err(if a_is_callsite { b_orig } else { a_orig });
+        }
+
+        let parent = if a.parent == b.parent { a.parent } else { None };
+        Ok((a, b, parent))
+    }
+
+    /// This span, but in a larger context, may switch to the metavariable span if suitable.
+    pub fn with_neighbor(self, neighbor: Span) -> Span {
+        match Span::prepare_to_combine(self, neighbor) {
+            Ok((this, ..)) => Span::new(this.lo, this.hi, this.ctxt, this.parent),
+            Err(_) => self,
+        }
+    }
+
     /// Returns a `Span` that would enclose both `self` and `end`.
     ///
     /// Note that this can also be used to extend the span "backwards":
@@ -836,26 +869,12 @@ impl Span {
     ///     ^^^^^^^^^^^^^^^^^^^^
     /// ```
     pub fn to(self, end: Span) -> Span {
-        let span_data = self.data();
-        let end_data = end.data();
-        // FIXME(jseyfried): `self.ctxt` should always equal `end.ctxt` here (cf. issue #23480).
-        // Return the macro span on its own to avoid weird diagnostic output. It is preferable to
-        // have an incomplete span than a completely nonsensical one.
-        if span_data.ctxt != end_data.ctxt {
-            if span_data.ctxt.is_root() {
-                return end;
-            } else if end_data.ctxt.is_root() {
-                return self;
+        match Span::prepare_to_combine(self, end) {
+            Ok((from, to, parent)) => {
+                Span::new(cmp::min(from.lo, to.lo), cmp::max(from.hi, to.hi), from.ctxt, parent)
             }
-            // Both spans fall within a macro.
-            // FIXME(estebank): check if it is the *same* macro.
+            Err(fallback) => fallback,
         }
-        Span::new(
-            cmp::min(span_data.lo, end_data.lo),
-            cmp::max(span_data.hi, end_data.hi),
-            if span_data.ctxt.is_root() { end_data.ctxt } else { span_data.ctxt },
-            if span_data.parent == end_data.parent { span_data.parent } else { None },
-        )
     }
 
     /// Returns a `Span` between the end of `self` to the beginning of `end`.
@@ -866,14 +885,12 @@ impl Span {
     ///         ^^^^^^^^^^^^^
     /// ```
     pub fn between(self, end: Span) -> Span {
-        let span = self.data();
-        let end = end.data();
-        Span::new(
-            span.hi,
-            end.lo,
-            if end.ctxt.is_root() { end.ctxt } else { span.ctxt },
-            if span.parent == end.parent { span.parent } else { None },
-        )
+        match Span::prepare_to_combine(self, end) {
+            Ok((from, to, parent)) => {
+                Span::new(cmp::min(from.hi, to.hi), cmp::max(from.lo, to.lo), from.ctxt, parent)
+            }
+            Err(fallback) => fallback,
+        }
     }
 
     /// Returns a `Span` from the beginning of `self` until the beginning of `end`.
@@ -884,31 +901,12 @@ impl Span {
     ///     ^^^^^^^^^^^^^^^^^
     /// ```
     pub fn until(self, end: Span) -> Span {
-        // Most of this function's body is copied from `to`.
-        // We can't just do `self.to(end.shrink_to_lo())`,
-        // because to also does some magic where it uses min/max so
-        // it can handle overlapping spans. Some advanced mis-use of
-        // `until` with different ctxts makes this visible.
-        let span_data = self.data();
-        let end_data = end.data();
-        // FIXME(jseyfried): `self.ctxt` should always equal `end.ctxt` here (cf. issue #23480).
-        // Return the macro span on its own to avoid weird diagnostic output. It is preferable to
-        // have an incomplete span than a completely nonsensical one.
-        if span_data.ctxt != end_data.ctxt {
-            if span_data.ctxt.is_root() {
-                return end;
-            } else if end_data.ctxt.is_root() {
-                return self;
+        match Span::prepare_to_combine(self, end) {
+            Ok((from, to, parent)) => {
+                Span::new(cmp::min(from.lo, to.lo), cmp::max(from.lo, to.lo), from.ctxt, parent)
             }
-            // Both spans fall within a macro.
-            // FIXME(estebank): check if it is the *same* macro.
+            Err(fallback) => fallback,
         }
-        Span::new(
-            span_data.lo,
-            end_data.lo,
-            if end_data.ctxt.is_root() { end_data.ctxt } else { span_data.ctxt },
-            if span_data.parent == end_data.parent { span_data.parent } else { None },
-        )
     }
 
     pub fn from_inner(self, inner: InnerSpan) -> Span {

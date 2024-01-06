@@ -260,6 +260,18 @@ function initSearch(rawSearchIndex) {
      * Special type name IDs for searching by both array and slice (`[]` syntax).
      */
     let typeNameIdOfArrayOrSlice;
+    /**
+     * Special type name IDs for searching by tuple.
+     */
+    let typeNameIdOfTuple;
+    /**
+     * Special type name IDs for searching by unit.
+     */
+    let typeNameIdOfUnit;
+    /**
+     * Special type name IDs for searching by both tuple and unit (`()` syntax).
+     */
+    let typeNameIdOfTupleOrUnit;
 
     /**
      * Add an item to the type Name->ID map, or, if one already exists, use it.
@@ -295,11 +307,7 @@ function initSearch(rawSearchIndex) {
     }
 
     function isEndCharacter(c) {
-        return "=,>-]".indexOf(c) !== -1;
-    }
-
-    function isErrorCharacter(c) {
-        return "()".indexOf(c) !== -1;
+        return "=,>-])".indexOf(c) !== -1;
     }
 
     function itemTypeFromName(typename) {
@@ -585,8 +593,6 @@ function initSearch(rawSearchIndex) {
                         throw ["Unexpected ", "!", ": it can only be at the end of an ident"];
                     }
                     foundExclamation = parserState.pos;
-                } else if (isErrorCharacter(c)) {
-                    throw ["Unexpected ", c];
                 } else if (isPathSeparator(c)) {
                     if (c === ":") {
                         if (!isPathStart(parserState)) {
@@ -616,11 +622,14 @@ function initSearch(rawSearchIndex) {
                     }
                 } else if (
                     c === "[" ||
+                    c === "(" ||
                     isEndCharacter(c) ||
                     isSpecialStartCharacter(c) ||
                     isSeparatorCharacter(c)
                 ) {
                     break;
+                } else if (parserState.pos > 0) {
+                    throw ["Unexpected ", c, " after ", parserState.userQuery[parserState.pos - 1]];
                 } else {
                     throw ["Unexpected ", c];
                 }
@@ -661,15 +670,24 @@ function initSearch(rawSearchIndex) {
         skipWhitespace(parserState);
         let start = parserState.pos;
         let end;
-        if (parserState.userQuery[parserState.pos] === "[") {
+        if ("[(".indexOf(parserState.userQuery[parserState.pos]) !== -1) {
+let endChar = ")";
+let name = "()";
+let friendlyName = "tuple";
+
+if (parserState.userQuery[parserState.pos] === "[") {
+    endChar = "]";
+    name = "[]";
+    friendlyName = "slice";
+}
             parserState.pos += 1;
-            getItemsBefore(query, parserState, generics, "]");
+            const { foundSeparator } = getItemsBefore(query, parserState, generics, endChar);
             const typeFilter = parserState.typeFilter;
             const isInBinding = parserState.isInBinding;
             if (typeFilter !== null && typeFilter !== "primitive") {
                 throw [
                     "Invalid search type: primitive ",
-                    "[]",
+                    name,
                     " and ",
                     typeFilter,
                     " both specified",
@@ -677,27 +695,31 @@ function initSearch(rawSearchIndex) {
             }
             parserState.typeFilter = null;
             parserState.isInBinding = null;
-            parserState.totalElems += 1;
-            if (isInGenerics) {
-                parserState.genericsElems += 1;
-            }
             for (const gen of generics) {
                 if (gen.bindingName !== null) {
-                    throw ["Type parameter ", "=", " cannot be within slice ", "[]"];
+                    throw ["Type parameter ", "=", ` cannot be within ${friendlyName} `, name];
                 }
             }
-            elems.push({
-                name: "[]",
-                id: null,
-                fullPath: ["[]"],
-                pathWithoutLast: [],
-                pathLast: "[]",
-                normalizedPathLast: "[]",
-                generics,
-                typeFilter: "primitive",
-                bindingName: isInBinding,
-                bindings: new Map(),
-            });
+            if (name === "()" && !foundSeparator && generics.length === 1 && typeFilter === null) {
+                elems.push(generics[0]);
+            } else {
+                parserState.totalElems += 1;
+                if (isInGenerics) {
+                    parserState.genericsElems += 1;
+                }
+                elems.push({
+                    name: name,
+                    id: null,
+                    fullPath: [name],
+                    pathWithoutLast: [],
+                    pathLast: name,
+                    normalizedPathLast: name,
+                    generics,
+                    bindings: new Map(),
+                    typeFilter: "primitive",
+                    bindingName: isInBinding,
+                });
+            }
         } else {
             const isStringElem = parserState.userQuery[start] === "\"";
             // We handle the strings on their own mostly to make code easier to follow.
@@ -770,9 +792,11 @@ function initSearch(rawSearchIndex) {
      * @param {Array<QueryElement>} elems - This is where the new {QueryElement} will be added.
      * @param {string} endChar            - This function will stop when it'll encounter this
      *                                      character.
+     * @returns {{foundSeparator: bool}}
      */
     function getItemsBefore(query, parserState, elems, endChar) {
         let foundStopChar = true;
+        let foundSeparator = false;
         let start = parserState.pos;
 
         // If this is a generic, keep the outer item's type filter around.
@@ -786,6 +810,8 @@ function initSearch(rawSearchIndex) {
             extra = "<";
         } else if (endChar === "]") {
             extra = "[";
+        } else if (endChar === ")") {
+            extra = "(";
         } else if (endChar === "") {
             extra = "->";
         } else {
@@ -802,6 +828,7 @@ function initSearch(rawSearchIndex) {
             } else if (isSeparatorCharacter(c)) {
                 parserState.pos += 1;
                 foundStopChar = true;
+                foundSeparator = true;
                 continue;
             } else if (c === ":" && isPathStart(parserState)) {
                 throw ["Unexpected ", "::", ": paths cannot start with ", "::"];
@@ -879,6 +906,8 @@ function initSearch(rawSearchIndex) {
 
         parserState.typeFilter = oldTypeFilter;
         parserState.isInBinding = oldIsInBinding;
+
+        return { foundSeparator };
     }
 
     /**
@@ -926,6 +955,8 @@ function initSearch(rawSearchIndex) {
                         break;
                     }
                     throw ["Unexpected ", c, " (did you mean ", "->", "?)"];
+                } else if (parserState.pos > 0) {
+                    throw ["Unexpected ", c, " after ", parserState.userQuery[parserState.pos - 1]];
                 }
                 throw ["Unexpected ", c];
             } else if (c === ":" && !isPathStart(parserState)) {
@@ -1599,6 +1630,11 @@ function initSearch(rawSearchIndex) {
                 ) {
                     // [] matches primitive:array or primitive:slice
                     // if it matches, then we're fine, and this is an appropriate match candidate
+                } else if (queryElem.id === typeNameIdOfTupleOrUnit &&
+                    (fnType.id === typeNameIdOfTuple || fnType.id === typeNameIdOfUnit)
+                ) {
+                    // () matches primitive:tuple or primitive:unit
+                    // if it matches, then we're fine, and this is an appropriate match candidate
                 } else if (fnType.id !== queryElem.id || queryElem.id === null) {
                     return false;
                 }
@@ -1792,7 +1828,7 @@ function initSearch(rawSearchIndex) {
                 if (row.id > 0 && elem.id > 0 && elem.pathWithoutLast.length === 0 &&
                     typePassesFilter(elem.typeFilter, row.ty) && elem.generics.length === 0 &&
                     // special case
-                    elem.id !== typeNameIdOfArrayOrSlice
+                    elem.id !== typeNameIdOfArrayOrSlice && elem.id !== typeNameIdOfTupleOrUnit
                 ) {
                     return row.id === elem.id || checkIfInList(
                         row.generics,
@@ -2886,11 +2922,14 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      */
     function buildFunctionTypeFingerprint(type, output, fps) {
         let input = type.id;
-        // All forms of `[]` get collapsed down to one thing in the bloom filter.
+        // All forms of `[]`/`()` get collapsed down to one thing in the bloom filter.
         // Differentiating between arrays and slices, if the user asks for it, is
         // still done in the matching algorithm.
         if (input === typeNameIdOfArray || input === typeNameIdOfSlice) {
             input = typeNameIdOfArrayOrSlice;
+        }
+        if (input === typeNameIdOfTuple || input === typeNameIdOfUnit) {
+            input = typeNameIdOfTupleOrUnit;
         }
         // http://burtleburtle.net/bob/hash/integer.html
         // ~~ is toInt32. It's used before adding, so
@@ -2991,7 +3030,10 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         // that can be searched using `[]` syntax.
         typeNameIdOfArray = buildTypeMapIndex("array");
         typeNameIdOfSlice = buildTypeMapIndex("slice");
+        typeNameIdOfTuple = buildTypeMapIndex("tuple");
+        typeNameIdOfUnit = buildTypeMapIndex("unit");
         typeNameIdOfArrayOrSlice = buildTypeMapIndex("[]");
+        typeNameIdOfTupleOrUnit = buildTypeMapIndex("()");
 
         // Function type fingerprints are 128-bit bloom filters that are used to
         // estimate the distance between function and query.

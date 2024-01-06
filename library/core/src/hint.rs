@@ -287,7 +287,7 @@ pub fn spin_loop() {
 ///
 /// The compiler could theoretically make optimizations like the following:
 ///
-/// - `needle` and `haystack` are always the same, move the call to `contains` outside the loop and
+/// - The `needle` and `haystack` do not change, move the call to `contains` outside the loop and
 ///   delete the loop
 /// - Inline `contains`
 /// - `needle` and `haystack` have values known at compile time, `contains` is always true. Remove

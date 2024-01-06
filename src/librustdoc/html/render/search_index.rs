@@ -566,6 +566,9 @@ fn get_index_type_id(
         // The type parameters are converted to generics in `simplify_fn_type`
         clean::Slice(_) => Some(RenderTypeId::Primitive(clean::PrimitiveType::Slice)),
         clean::Array(_, _) => Some(RenderTypeId::Primitive(clean::PrimitiveType::Array)),
+        clean::Tuple(ref n) if n.is_empty() => {
+            Some(RenderTypeId::Primitive(clean::PrimitiveType::Unit))
+        }
         clean::Tuple(_) => Some(RenderTypeId::Primitive(clean::PrimitiveType::Tuple)),
         clean::QPath(ref data) => {
             if data.self_type.is_self_type()

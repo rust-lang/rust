@@ -17,7 +17,7 @@ pub use self::unwind_safe::{AssertUnwindSafe, RefUnwindSafe, UnwindSafe};
 
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
-#[allow_internal_unstable(core_panic, const_format_args)]
+#[allow_internal_unstable(panic_internals, const_format_args)]
 #[rustc_diagnostic_item = "core_panic_2015_macro"]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro panic_2015 {
@@ -44,7 +44,7 @@ pub macro panic_2015 {
 
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
-#[allow_internal_unstable(core_panic, const_format_args)]
+#[allow_internal_unstable(panic_internals, const_format_args)]
 #[rustc_diagnostic_item = "core_panic_2021_macro"]
 #[rustc_macro_transparency = "semitransparent"]
 #[cfg(feature = "panic_immediate_abort")]
@@ -66,7 +66,7 @@ pub macro panic_2021 {
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use panic!() instead")]
 #[allow_internal_unstable(
-    core_panic,
+    panic_internals,
     core_intrinsics,
     const_dispatch,
     const_eval_select,
@@ -109,7 +109,7 @@ pub macro panic_2021 {
 
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use unreachable!() instead")]
-#[allow_internal_unstable(core_panic)]
+#[allow_internal_unstable(panic_internals)]
 #[rustc_diagnostic_item = "unreachable_2015_macro"]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro unreachable_2015 {
@@ -128,7 +128,7 @@ pub macro unreachable_2015 {
 
 #[doc(hidden)]
 #[unstable(feature = "edition_panic", issue = "none", reason = "use unreachable!() instead")]
-#[allow_internal_unstable(core_panic)]
+#[allow_internal_unstable(panic_internals)]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro unreachable_2021 {
     () => (
@@ -145,8 +145,8 @@ pub macro unreachable_2021 {
 /// unwind. For example, checks in `_unchecked` functions that are intended for debugging but should
 /// not compromise unwind safety.
 #[doc(hidden)]
-#[unstable(feature = "core_panic", issue = "none")]
-#[allow_internal_unstable(core_panic, const_format_args)]
+#[unstable(feature = "panic_internals", issue = "none")]
+#[allow_internal_unstable(panic_internals, const_format_args)]
 #[rustc_macro_transparency = "semitransparent"]
 pub macro debug_assert_nounwind {
     ($cond:expr $(,)?) => {
