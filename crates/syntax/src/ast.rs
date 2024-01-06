@@ -136,6 +136,16 @@ where
 {
 }
 
+/// Trait to describe operations common to both `RangeExpr` and `RangePat`.
+pub trait RangeItem {
+    type Bound;
+
+    fn start(&self) -> Option<Self::Bound>;
+    fn end(&self) -> Option<Self::Bound>;
+    fn op_kind(&self) -> Option<RangeOp>;
+    fn op_token(&self) -> Option<SyntaxToken>;
+}
+
 mod support {
     use super::{AstChildren, AstNode, SyntaxKind, SyntaxNode, SyntaxToken};
 

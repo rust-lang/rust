@@ -399,6 +399,8 @@ config_data! {
         /// Whether to show function parameter name inlay hints at the call
         /// site.
         inlayHints_parameterHints_enable: bool                     = "true",
+        /// Whether to show exclusive range inlay hints.
+        inlayHints_rangeExclusiveHints_enable: bool                = "false",
         /// Whether to show inlay hints for compiler inserted reborrows.
         /// This setting is deprecated in favor of #rust-analyzer.inlayHints.expressionAdjustmentHints.enable#.
         inlayHints_reborrowHints_enable: ReborrowHintsDef          = "\"never\"",
@@ -1464,6 +1466,7 @@ impl Config {
             } else {
                 None
             },
+            range_exclusive_hints: self.data.inlayHints_rangeExclusiveHints_enable,
             fields_to_resolve: InlayFieldsToResolve {
                 resolve_text_edits: client_capability_fields.contains("textEdits"),
                 resolve_hint_tooltip: client_capability_fields.contains("tooltip"),
