@@ -137,7 +137,7 @@ x--expand-yaml-anchors--remove:
             toolchain:p
             cmake:p
             gcc:p
-            python:p
+          #python:p
           #   mingw-w64-x86_64-python
           #   mingw-w64-x86_64-jq
           #   mingw-w64-x86_64-7zip
