@@ -1,4 +1,5 @@
 #![feature(float_gamma)]
+#![feature(round_ties_even)]
 use std::{f32, f64};
 
 macro_rules! assert_approx_eq {
@@ -73,7 +74,14 @@ pub fn main() {
     assert_approx_eq!(3.0f64.hypot(4.0f64), 5.0f64);
 
     assert_eq!(3.3_f32.round(), 3.0);
-    assert_eq!(3.3_f64.round(), 3.0);
+    assert_eq!(2.5_f32.round(), 3.0);
+    assert_eq!(3.9_f64.round(), 4.0);
+    assert_eq!(2.5_f64.round(), 3.0);
+
+    assert_eq!(3.3_f32.round_ties_even(), 3.0);
+    assert_eq!(2.5_f32.round_ties_even(), 2.0);
+    assert_eq!(3.9_f64.round_ties_even(), 4.0);
+    assert_eq!(2.5_f64.round_ties_even(), 2.0);
 
     assert_eq!(ldexp(0.65f64, 3i32), 5.2f64);
     assert_eq!(ldexp(1.42, 0xFFFF), f64::INFINITY);
