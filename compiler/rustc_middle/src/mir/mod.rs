@@ -1576,6 +1576,7 @@ impl Location {
     ///
     /// Note that if this location represents a terminator, then the
     /// resulting location would be out of bounds and invalid.
+    #[inline]
     pub fn successor_within_block(&self) -> Location {
         Location { block: self.block, statement_index: self.statement_index + 1 }
     }
@@ -1612,6 +1613,7 @@ impl Location {
         false
     }
 
+    #[inline]
     pub fn dominates(&self, other: Location, dominators: &Dominators<BasicBlock>) -> bool {
         if self.block == other.block {
             self.statement_index <= other.statement_index
@@ -1631,6 +1633,7 @@ pub enum DefLocation {
 }
 
 impl DefLocation {
+    #[inline]
     pub fn dominates(self, location: Location, dominators: &Dominators<BasicBlock>) -> bool {
         match self {
             DefLocation::Argument => true,
