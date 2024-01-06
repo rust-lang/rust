@@ -2,7 +2,9 @@
 #![allow(
     clippy::explicit_auto_deref,
     clippy::uninlined_format_args,
-    clippy::needless_pass_by_ref_mut
+    clippy::map_clone,
+    clippy::needless_pass_by_ref_mut,
+    clippy::redundant_closure
 )]
 
 use std::fmt::Debug;
@@ -134,10 +136,12 @@ fn generic_ok<U: AsMut<T> + AsRef<T> + ?Sized, T: Debug + ?Sized>(mru: &mut U) {
 
 fn foo() {
     let x = Some(String::new());
-    let y = x.as_ref().map(Clone::clone);
-    //~^ ERROR: you are explicitly cloning with `.map()`
-    let y = x.as_ref().map(String::clone);
-    //~^ ERROR: you are explicitly cloning with `.map()`
+    let z = x.as_ref().map(String::clone);
+    //~^ ERROR: this call to `as_ref.map(...)` does nothing
+    let z = x.as_ref().map(|z| z.clone());
+    //~^ ERROR: this call to `as_ref.map(...)` does nothing
+    let z = x.as_ref().map(|z| String::clone(z));
+    //~^ ERROR: this call to `as_ref.map(...)` does nothing
 }
 
 fn main() {

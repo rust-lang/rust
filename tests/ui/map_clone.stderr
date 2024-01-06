@@ -38,10 +38,22 @@ LL |     let _ = std::env::args().map(|v| v.clone());
    |                             ^^^^^^^^^^^^^^^^^^^ help: remove the `map` call
 
 error: you are explicitly cloning with `.map()`
-  --> $DIR/map_clone.rs:66:13
+  --> $DIR/map_clone.rs:67:13
    |
-LL |     let y = x.as_ref().map(|x| String::clone(x));
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.as_ref().cloned()`
+LL |     let y = x.map(|x| String::clone(x));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
 
-error: aborting due to 7 previous errors
+error: you are explicitly cloning with `.map()`
+  --> $DIR/map_clone.rs:69:13
+   |
+LL |     let y = x.map(Clone::clone);
+   |             ^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
+
+error: you are explicitly cloning with `.map()`
+  --> $DIR/map_clone.rs:71:13
+   |
+LL |     let y = x.map(String::clone);
+   |             ^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
+
+error: aborting due to 9 previous errors
 

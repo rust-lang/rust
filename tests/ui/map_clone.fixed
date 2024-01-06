@@ -63,6 +63,11 @@ fn main() {
     }
 
     let x = Some(String::new());
-    let y = x.as_ref().cloned();
+    let x = x.as_ref(); // We do this to prevent triggering the `useless_asref` lint.
+    let y = x.cloned();
+    //~^ ERROR: you are explicitly cloning with `.map()`
+    let y = x.cloned();
+    //~^ ERROR: you are explicitly cloning with `.map()`
+    let y = x.cloned();
     //~^ ERROR: you are explicitly cloning with `.map()`
 }
