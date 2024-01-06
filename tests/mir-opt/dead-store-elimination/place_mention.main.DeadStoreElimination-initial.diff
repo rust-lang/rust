@@ -1,5 +1,5 @@
-- // MIR for `main` before DeadStoreElimination
-+ // MIR for `main` after DeadStoreElimination
+- // MIR for `main` before DeadStoreElimination-initial
++ // MIR for `main` after DeadStoreElimination-initial
   
   fn main() -> () {
       let mut _0: ();

@@ -31,7 +31,7 @@ fn unwrap_unchecked(_1: Option<T>) -> T {
         _2 = discriminant(_1);
         _3 = Eq(_2, const 1_isize);
         assume(move _3);
-        _0 = move ((_1 as Some).0: T);
+        _0 = ((_1 as Some).0: T);
         StorageDead(_3);
         StorageDead(_2);
         StorageDead(_4);

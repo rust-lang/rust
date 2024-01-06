@@ -1,5 +1,5 @@
-- // MIR for `pointer_to_int` before DeadStoreElimination
-+ // MIR for `pointer_to_int` after DeadStoreElimination
+- // MIR for `pointer_to_int` before DeadStoreElimination-initial
++ // MIR for `pointer_to_int` after DeadStoreElimination-initial
   
   fn pointer_to_int(_1: *mut i32) -> () {
       debug p => _1;

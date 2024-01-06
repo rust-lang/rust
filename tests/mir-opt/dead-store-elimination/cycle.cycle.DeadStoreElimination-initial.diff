@@ -1,5 +1,5 @@
-- // MIR for `cycle` before DeadStoreElimination
-+ // MIR for `cycle` after DeadStoreElimination
+- // MIR for `cycle` before DeadStoreElimination-initial
++ // MIR for `cycle` after DeadStoreElimination-initial
   
   fn cycle(_1: i32, _2: i32, _3: i32) -> () {
       let mut _0: ();

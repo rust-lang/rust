@@ -1,9 +1,8 @@
-// skip-filecheck
 // This example is interesting because the non-transitive version of `MaybeLiveLocals` would
 // report that *all* of these stores are live.
 //
 // needs-unwind
-// unit-test: DeadStoreElimination
+// unit-test: DeadStoreElimination-initial
 
 #![feature(core_intrinsics, custom_mir)]
 use std::intrinsics::mir::*;
@@ -13,9 +12,13 @@ fn cond() -> bool {
     false
 }
 
-// EMIT_MIR cycle.cycle.DeadStoreElimination.diff
+// EMIT_MIR cycle.cycle.DeadStoreElimination-initial.diff
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
 fn cycle(mut x: i32, mut y: i32, mut z: i32) {
+    // CHECK-LABEL: fn cycle(
+    // CHECK-NOT: {{_.*}} = {{_.*}};
+    // CHECK-NOT: {{_.*}} = move {{_.*}};
+
     // We use custom MIR to avoid generating debuginfo, that would force to preserve writes.
     mir!(
         let condition: bool;
