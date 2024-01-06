@@ -15,7 +15,7 @@ use hir_def::{
     path::Path,
     resolver::{resolver_for_expr, HasResolver, ResolveValueResult, ValueNs},
     AdtId, DefWithBodyId, EnumVariantId, GeneralConstId, HasModule, ItemContainerId, LocalFieldId,
-    Lookup, TraitId, TypeOrConstParamId,
+    Lookup, TraitId, TupleId, TypeOrConstParamId,
 };
 use hir_expand::name::Name;
 use la_arena::ArenaMap;
@@ -828,12 +828,12 @@ impl<'ctx> MirLowerCtx<'ctx> {
                                         Some(it) => it,
                                         None => {
                                             let p = sp.project(
-                                                ProjectionElem::Field(FieldId {
+                                                ProjectionElem::Field(Either::Left(FieldId {
                                                     parent: variant_id,
                                                     local_id: LocalFieldId::from_raw(RawIdx::from(
                                                         i as u32,
                                                     )),
-                                                }),
+                                                })),
                                                 &mut self.result.projection_store,
                                             );
                                             Operand::Copy(p)
@@ -855,7 +855,10 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         let local_id =
                             variant_data.field(name).ok_or(MirLowerError::UnresolvedField)?;
                         let place = place.project(
-                            PlaceElem::Field(FieldId { parent: union_id.into(), local_id }),
+                            PlaceElem::Field(Either::Left(FieldId {
+                                parent: union_id.into(),
+                                local_id,
+                            })),
                             &mut self.result.projection_store,
                         );
                         self.lower_expr_to_place(*expr, place, current)
@@ -1142,8 +1145,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
                                 .map(|it| match it {
                                     ProjectionElem::Deref => ProjectionElem::Deref,
                                     ProjectionElem::Field(it) => ProjectionElem::Field(it),
-                                    ProjectionElem::TupleOrClosureField(it) => {
-                                        ProjectionElem::TupleOrClosureField(it)
+                                    ProjectionElem::ClosureField(it) => {
+                                        ProjectionElem::ClosureField(it)
                                     }
                                     ProjectionElem::ConstantIndex { offset, from_end } => {
                                         ProjectionElem::ConstantIndex { offset, from_end }
@@ -1273,7 +1276,10 @@ impl<'ctx> MirLowerCtx<'ctx> {
             Expr::Tuple { exprs, is_assignee_expr: _ } => {
                 for (i, expr) in exprs.iter().enumerate() {
                     let rhs = rhs.project(
-                        ProjectionElem::TupleOrClosureField(i),
+                        ProjectionElem::Field(Either::Right(TupleFieldId {
+                            tuple: TupleId(!0), // Dummy this as its unused
+                            index: i as u32,
+                        })),
                         &mut self.result.projection_store,
                     );
                     let Some(c) = self.lower_destructing_assignment(current, *expr, rhs, span)?
@@ -1337,11 +1343,14 @@ impl<'ctx> MirLowerCtx<'ctx> {
     fn push_field_projection(&mut self, place: &mut Place, expr_id: ExprId) -> Result<()> {
         if let Expr::Field { expr, name } = &self.body[expr_id] {
             if let TyKind::Tuple(..) = self.expr_ty_after_adjustments(*expr).kind(Interner) {
-                let index = name
-                    .as_tuple_index()
-                    .ok_or(MirLowerError::TypeError("named field on tuple"))?;
+                let index =
+                    name.as_tuple_index().ok_or(MirLowerError::TypeError("named field on tuple"))?
+                        as u32;
                 *place = place.project(
-                    ProjectionElem::TupleOrClosureField(index),
+                    ProjectionElem::Field(Either::Right(TupleFieldId {
+                        tuple: TupleId(!0), // dummy as its unused
+                        index,
+                    })),
                     &mut self.result.projection_store,
                 )
             } else {
@@ -2041,10 +2050,11 @@ pub fn mir_body_for_closure_query(
                     match (it, y) {
                         (ProjectionElem::Deref, ProjectionElem::Deref) => (),
                         (ProjectionElem::Field(it), ProjectionElem::Field(y)) if it == y => (),
-                        (
-                            ProjectionElem::TupleOrClosureField(it),
-                            ProjectionElem::TupleOrClosureField(y),
-                        ) if it == y => (),
+                        (ProjectionElem::ClosureField(it), ProjectionElem::ClosureField(y))
+                            if it == y =>
+                        {
+                            ()
+                        }
                         _ => return false,
                     }
                 }
@@ -2054,7 +2064,7 @@ pub fn mir_body_for_closure_query(
                 Some(it) => {
                     p.local = closure_local;
                     let mut next_projs = closure_projection.clone();
-                    next_projs.push(PlaceElem::TupleOrClosureField(it.1));
+                    next_projs.push(PlaceElem::ClosureField(it.1));
                     let prev_projs = p.projection;
                     if it.0.kind != CaptureKind::ByValue {
                         next_projs.push(ProjectionElem::Deref);

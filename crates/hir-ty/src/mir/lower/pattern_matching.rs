@@ -108,7 +108,12 @@ impl MirLowerCtx<'_> {
                     current_else,
                     args,
                     *ellipsis,
-                    (0..subst.len(Interner)).map(|i| PlaceElem::TupleOrClosureField(i)),
+                    (0..subst.len(Interner)).map(|i| {
+                        PlaceElem::Field(Either::Right(TupleFieldId {
+                            tuple: TupleId(!0), // Dummy as it is unused
+                            index: i as u32,
+                        }))
+                    }),
                     &(&mut cond_place),
                     mode,
                 )?
@@ -566,7 +571,10 @@ impl MirLowerCtx<'_> {
                         let field_id =
                             variant_data.field(&x.name).ok_or(MirLowerError::UnresolvedField)?;
                         Ok((
-                            PlaceElem::Field(FieldId { parent: v.into(), local_id: field_id }),
+                            PlaceElem::Field(Either::Left(FieldId {
+                                parent: v.into(),
+                                local_id: field_id,
+                            })),
                             x.pat,
                         ))
                     })
@@ -574,10 +582,9 @@ impl MirLowerCtx<'_> {
                 self.pattern_match_adt(current, current_else, it.into_iter(), cond_place, mode)?
             }
             AdtPatternShape::Tuple { args, ellipsis } => {
-                let fields = variant_data
-                    .fields()
-                    .iter()
-                    .map(|(x, _)| PlaceElem::Field(FieldId { parent: v.into(), local_id: x }));
+                let fields = variant_data.fields().iter().map(|(x, _)| {
+                    PlaceElem::Field(Either::Left(FieldId { parent: v.into(), local_id: x }))
+                });
                 self.pattern_match_tuple_like(
                     current,
                     current_else,

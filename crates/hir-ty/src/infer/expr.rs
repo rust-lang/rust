@@ -6,6 +6,7 @@ use std::{
 };
 
 use chalk_ir::{cast::Cast, fold::Shift, DebruijnIndex, Mutability, TyVariableKind};
+use either::Either;
 use hir_def::{
     generics::TypeOrConstParamData,
     hir::{
@@ -13,7 +14,7 @@ use hir_def::{
     },
     lang_item::{LangItem, LangItemTarget},
     path::{GenericArg, GenericArgs},
-    BlockId, ConstParamId, FieldId, ItemContainerId, Lookup,
+    BlockId, ConstParamId, FieldId, ItemContainerId, Lookup, TupleFieldId, TupleId,
 };
 use hir_expand::name::{name, Name};
 use stdx::always;
@@ -1406,7 +1407,7 @@ impl InferenceContext<'_> {
         &mut self,
         receiver_ty: &Ty,
         name: &Name,
-    ) -> Option<(Ty, Option<FieldId>, Vec<Adjustment>, bool)> {
+    ) -> Option<(Ty, Either<FieldId, TupleFieldId>, Vec<Adjustment>, bool)> {
         let mut autoderef = Autoderef::new(&mut self.table, receiver_ty.clone(), false);
         let mut private_field = None;
         let res = autoderef.by_ref().find_map(|(derefed_ty, _)| {
@@ -1418,7 +1419,20 @@ impl InferenceContext<'_> {
                             .get(idx)
                             .map(|a| a.assert_ty_ref(Interner))
                             .cloned()
-                            .map(|ty| (None, ty))
+                            .map(|ty| {
+                                (
+                                    Either::Right(TupleFieldId {
+                                        tuple: TupleId(
+                                            self.tuple_field_accesses_rev
+                                                .insert_full(substs.clone())
+                                                .0
+                                                as u32,
+                                        ),
+                                        index: idx as u32,
+                                    }),
+                                    ty,
+                                )
+                            })
                     });
                 }
                 TyKind::Adt(AdtId(hir_def::AdtId::StructId(s)), parameters) => {
@@ -1444,7 +1458,7 @@ impl InferenceContext<'_> {
             let ty = self.db.field_types(field_id.parent)[field_id.local_id]
                 .clone()
                 .substitute(Interner, &parameters);
-            Some((Some(field_id), ty))
+            Some((Either::Left(field_id), ty))
         });
 
         Some(match res {
@@ -1464,7 +1478,7 @@ impl InferenceContext<'_> {
                 let ty = self.insert_type_vars(ty);
                 let ty = self.normalize_associated_types_in(ty);
 
-                (ty, Some(field_id), adjustments, false)
+                (ty, Either::Left(field_id), adjustments, false)
             }
         })
     }
@@ -1487,11 +1501,9 @@ impl InferenceContext<'_> {
         match self.lookup_field(&receiver_ty, name) {
             Some((ty, field_id, adjustments, is_public)) => {
                 self.write_expr_adj(receiver, adjustments);
-                if let Some(field_id) = field_id {
-                    self.result.field_resolutions.insert(tgt_expr, field_id);
-                }
+                self.result.field_resolutions.insert(tgt_expr, field_id);
                 if !is_public {
-                    if let Some(field) = field_id {
+                    if let Either::Left(field) = field_id {
                         // FIXME: Merge this diagnostic into UnresolvedField?
                         self.result
                             .diagnostics
@@ -1581,9 +1593,7 @@ impl InferenceContext<'_> {
                 {
                     Some((ty, field_id, adjustments, _public)) => {
                         self.write_expr_adj(receiver, adjustments);
-                        if let Some(field_id) = field_id {
-                            self.result.field_resolutions.insert(tgt_expr, field_id);
-                        }
+                        self.result.field_resolutions.insert(tgt_expr, field_id);
                         Some(ty)
                     }
                     None => None,

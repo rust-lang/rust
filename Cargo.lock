@@ -569,6 +569,7 @@ dependencies = [
  "expect-test",
  "hir-def",
  "hir-expand",
+ "indexmap",
  "intern",
  "itertools",
  "la-arena 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
