@@ -1,11 +1,14 @@
 use rustc_data_structures::captures::Captures;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir::{
     self, AggregateKind, FakeReadCause, Rvalue, Statement, StatementKind, Terminator,
     TerminatorKind,
 };
-use rustc_span::Span;
+use rustc_span::{ExpnKind, MacroKind, Span, Symbol};
 
-use crate::coverage::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
+use crate::coverage::graph::{
+    BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph, START_BCB,
+};
 use crate::coverage::spans::CoverageSpan;
 use crate::coverage::ExtractedHirInfo;
 
@@ -15,26 +18,29 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
     basic_coverage_blocks: &CoverageGraph,
 ) -> Vec<CoverageSpan> {
     let &ExtractedHirInfo { is_async_fn, fn_sig_span, body_span, .. } = hir_info;
+
+    let mut initial_spans = vec![SpanFromMir::for_fn_sig(fn_sig_span)];
+
     if is_async_fn {
         // An async function desugars into a function that returns a future,
         // with the user code wrapped in a closure. Any spans in the desugared
-        // outer function will be unhelpful, so just produce a single span
-        // associating the function signature with its entry BCB.
-        return vec![CoverageSpan::for_fn_sig(fn_sig_span)];
+        // outer function will be unhelpful, so just keep the signature span
+        // and ignore all of the spans in the MIR body.
+    } else {
+        for (bcb, bcb_data) in basic_coverage_blocks.iter_enumerated() {
+            initial_spans.extend(bcb_to_initial_coverage_spans(mir_body, body_span, bcb, bcb_data));
+        }
+
+        // If no spans were extracted from the body, discard the signature span.
+        // FIXME: This preserves existing behavior; consider getting rid of it.
+        if initial_spans.len() == 1 {
+            initial_spans.clear();
+        }
     }
 
-    let mut initial_spans = Vec::with_capacity(mir_body.basic_blocks.len() * 2);
-    for (bcb, bcb_data) in basic_coverage_blocks.iter_enumerated() {
-        initial_spans.extend(bcb_to_initial_coverage_spans(mir_body, body_span, bcb, bcb_data));
-    }
-
-    if initial_spans.is_empty() {
-        // This can happen if, for example, the function is unreachable (contains only a
-        // `BasicBlock`(s) with an `Unreachable` terminator).
-        return initial_spans;
-    }
-
-    initial_spans.push(CoverageSpan::for_fn_sig(fn_sig_span));
+    initial_spans.sort_by(|a, b| basic_coverage_blocks.cmp_in_dominator_order(a.bcb, b.bcb));
+    remove_unwanted_macro_spans(&mut initial_spans);
+    split_visible_macro_spans(&mut initial_spans);
 
     initial_spans.sort_by(|a, b| {
         // First sort by span start.
@@ -53,7 +59,62 @@ pub(super) fn mir_to_initial_sorted_coverage_spans(
             .then_with(|| Ord::cmp(&a.is_closure, &b.is_closure).reverse())
     });
 
-    initial_spans
+    initial_spans.into_iter().map(SpanFromMir::into_coverage_span).collect::<Vec<_>>()
+}
+
+/// Macros that expand into branches (e.g. `assert!`, `trace!`) tend to generate
+/// multiple condition/consequent blocks that have the span of the whole macro
+/// invocation, which is unhelpful. Keeping only the first such span seems to
+/// give better mappings, so remove the others.
+///
+/// (The input spans should be sorted in BCB dominator order, so that the
+/// retained "first" span is likely to dominate the others.)
+fn remove_unwanted_macro_spans(initial_spans: &mut Vec<SpanFromMir>) {
+    let mut seen_macro_spans = FxHashSet::default();
+    initial_spans.retain(|covspan| {
+        // Ignore (retain) closure spans and non-macro-expansion spans.
+        if covspan.is_closure || covspan.visible_macro.is_none() {
+            return true;
+        }
+
+        // Retain only the first macro-expanded covspan with this span.
+        seen_macro_spans.insert(covspan.span)
+    });
+}
+
+/// When a span corresponds to a macro invocation that is visible from the
+/// function body, split it into two parts. The first part covers just the
+/// macro name plus `!`, and the second part covers the rest of the macro
+/// invocation. This seems to give better results for code that uses macros.
+fn split_visible_macro_spans(initial_spans: &mut Vec<SpanFromMir>) {
+    let mut extra_spans = vec![];
+
+    initial_spans.retain(|covspan| {
+        if covspan.is_closure {
+            return true;
+        }
+
+        let Some(visible_macro) = covspan.visible_macro else { return true };
+
+        let split_len = visible_macro.as_str().len() as u32 + 1;
+        let (before, after) = covspan.span.split_at(split_len);
+        if !covspan.span.contains(before) || !covspan.span.contains(after) {
+            // Something is unexpectedly wrong with the split point.
+            // The debug assertion in `split_at` will have already caught this,
+            // but in release builds it's safer to do nothing and maybe get a
+            // bug report for unexpected coverage, rather than risk an ICE.
+            return true;
+        }
+
+        assert!(!covspan.is_closure);
+        extra_spans.push(SpanFromMir::new(before, covspan.visible_macro, covspan.bcb, false));
+        extra_spans.push(SpanFromMir::new(after, covspan.visible_macro, covspan.bcb, false));
+        false // Discard the original covspan that we just split.
+    });
+
+    // The newly-split spans are added at the end, so any previous sorting
+    // is not preserved.
+    initial_spans.extend(extra_spans);
 }
 
 // Generate a set of `CoverageSpan`s from the filtered set of `Statement`s and `Terminator`s of
@@ -66,22 +127,24 @@ fn bcb_to_initial_coverage_spans<'a, 'tcx>(
     body_span: Span,
     bcb: BasicCoverageBlock,
     bcb_data: &'a BasicCoverageBlockData,
-) -> impl Iterator<Item = CoverageSpan> + Captures<'a> + Captures<'tcx> {
+) -> impl Iterator<Item = SpanFromMir> + Captures<'a> + Captures<'tcx> {
     bcb_data.basic_blocks.iter().flat_map(move |&bb| {
         let data = &mir_body[bb];
 
         let statement_spans = data.statements.iter().filter_map(move |statement| {
             let expn_span = filtered_statement_span(statement)?;
-            let span = unexpand_into_body_span(expn_span, body_span)?;
+            let (span, visible_macro) =
+                unexpand_into_body_span_with_visible_macro(expn_span, body_span)?;
 
-            Some(CoverageSpan::new(span, expn_span, bcb, is_closure_or_coroutine(statement)))
+            Some(SpanFromMir::new(span, visible_macro, bcb, is_closure_or_coroutine(statement)))
         });
 
         let terminator_span = Some(data.terminator()).into_iter().filter_map(move |terminator| {
             let expn_span = filtered_terminator_span(terminator)?;
-            let span = unexpand_into_body_span(expn_span, body_span)?;
+            let (span, visible_macro) =
+                unexpand_into_body_span_with_visible_macro(expn_span, body_span)?;
 
-            Some(CoverageSpan::new(span, expn_span, bcb, false))
+            Some(SpanFromMir::new(span, visible_macro, bcb, false))
         });
 
         statement_spans.chain(terminator_span)
@@ -202,7 +265,83 @@ fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Span> {
 ///
 /// [^1]Expansions result from Rust syntax including macros, syntactic sugar,
 /// etc.).
-#[inline]
-fn unexpand_into_body_span(span: Span, body_span: Span) -> Option<Span> {
-    span.find_ancestor_inside_same_ctxt(body_span)
+fn unexpand_into_body_span_with_visible_macro(
+    original_span: Span,
+    body_span: Span,
+) -> Option<(Span, Option<Symbol>)> {
+    let (span, prev) = unexpand_into_body_span_with_prev(original_span, body_span)?;
+
+    let visible_macro = prev
+        .map(|prev| match prev.ctxt().outer_expn_data().kind {
+            ExpnKind::Macro(MacroKind::Bang, name) => Some(name),
+            _ => None,
+        })
+        .flatten();
+
+    Some((span, visible_macro))
+}
+
+/// Walks through the expansion ancestors of `original_span` to find a span that
+/// is contained in `body_span` and has the same [`SyntaxContext`] as `body_span`.
+/// The ancestor that was traversed just before the matching span (if any) is
+/// also returned.
+///
+/// For example, a return value of `Some((ancestor, Some(prev))` means that:
+/// - `ancestor == original_span.find_ancestor_inside_same_ctxt(body_span)`
+/// - `ancestor == prev.parent_callsite()`
+///
+/// [`SyntaxContext`]: rustc_span::SyntaxContext
+fn unexpand_into_body_span_with_prev(
+    original_span: Span,
+    body_span: Span,
+) -> Option<(Span, Option<Span>)> {
+    let mut prev = None;
+    let mut curr = original_span;
+
+    while !body_span.contains(curr) || !curr.eq_ctxt(body_span) {
+        prev = Some(curr);
+        curr = curr.parent_callsite()?;
+    }
+
+    debug_assert_eq!(Some(curr), original_span.find_ancestor_in_same_ctxt(body_span));
+    if let Some(prev) = prev {
+        debug_assert_eq!(Some(curr), prev.parent_callsite());
+    }
+
+    Some((curr, prev))
+}
+
+#[derive(Debug)]
+struct SpanFromMir {
+    /// A span that has been extracted from MIR and then "un-expanded" back to
+    /// within the current function's `body_span`. After various intermediate
+    /// processing steps, this span is emitted as part of the final coverage
+    /// mappings.
+    ///
+    /// With the exception of `fn_sig_span`, this should always be contained
+    /// within `body_span`.
+    span: Span,
+    visible_macro: Option<Symbol>,
+    bcb: BasicCoverageBlock,
+    is_closure: bool,
+}
+
+impl SpanFromMir {
+    fn for_fn_sig(fn_sig_span: Span) -> Self {
+        Self::new(fn_sig_span, None, START_BCB, false)
+    }
+
+    fn new(
+        span: Span,
+        visible_macro: Option<Symbol>,
+        bcb: BasicCoverageBlock,
+        is_closure: bool,
+    ) -> Self {
+        Self { span, visible_macro, bcb, is_closure }
+    }
+
+    fn into_coverage_span(self) -> CoverageSpan {
+        let Self { span, visible_macro: _, bcb, is_closure } = self;
+        CoverageSpan::new(span, bcb, is_closure)
+    }
 }

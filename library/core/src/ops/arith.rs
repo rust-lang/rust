@@ -307,7 +307,7 @@ sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 #[lang = "mul"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "cannot multiply `{Self}` by `{Rhs}`",
     label = "no implementation for `{Self} * {Rhs}`"
 )]
@@ -441,7 +441,7 @@ mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 #[lang = "div"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "cannot divide `{Self}` by `{Rhs}`",
     label = "no implementation for `{Self} / {Rhs}`"
 )]
@@ -543,7 +543,7 @@ div_impl_float! { f32 f64 }
 /// ```
 #[lang = "rem"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "cannot calculate the remainder of `{Self}` divided by `{Rhs}`",
     label = "no implementation for `{Self} % {Rhs}`"
 )]
@@ -729,7 +729,7 @@ neg_impl! { isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 #[lang = "add_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "cannot add-assign `{Rhs}` to `{Self}`",
     label = "no implementation for `{Self} += {Rhs}`"
 )]
@@ -796,7 +796,7 @@ add_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 #[lang = "sub_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "cannot subtract-assign `{Rhs}` from `{Self}`",
     label = "no implementation for `{Self} -= {Rhs}`"
 )]
@@ -854,7 +854,7 @@ sub_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 #[lang = "mul_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "cannot multiply-assign `{Self}` by `{Rhs}`",
     label = "no implementation for `{Self} *= {Rhs}`"
 )]
@@ -912,7 +912,7 @@ mul_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 #[lang = "div_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "cannot divide-assign `{Self}` by `{Rhs}`",
     label = "no implementation for `{Self} /= {Rhs}`"
 )]
@@ -973,7 +973,7 @@ div_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 /// ```
 #[lang = "rem_assign"]
 #[stable(feature = "op_assign_traits", since = "1.8.0")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "cannot calculate and assign the remainder of `{Self}` divided by `{Rhs}`",
     label = "no implementation for `{Self} %= {Rhs}`"
 )]
