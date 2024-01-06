@@ -5,6 +5,9 @@
 macro_rules! local_mac {
     ($ident:ident) => { let $ident = 42; }
 }
+macro_rules! local_mac_tt {
+    ($tt:tt) => { let $tt = 42; }
+}
 
 fn main() {
     let x = 2.0.neg();
@@ -22,6 +25,10 @@ fn main() {
 
     local_mac!(local_bar);
     local_bar.pow(2);
+    //~^ ERROR can't call method `pow` on ambiguous numeric type `{integer}`
+
+    local_mac_tt!(local_bar_tt);
+    local_bar_tt.pow(2);
     //~^ ERROR can't call method `pow` on ambiguous numeric type `{integer}`
 }
 

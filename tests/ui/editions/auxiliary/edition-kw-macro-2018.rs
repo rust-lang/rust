@@ -26,3 +26,8 @@ macro_rules! consumes_async_raw {
 macro_rules! passes_ident {
     ($i: ident) => ($i)
 }
+
+#[macro_export]
+macro_rules! passes_tt {
+    ($i: tt) => ($i)
+}
