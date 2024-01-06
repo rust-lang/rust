@@ -132,6 +132,14 @@ fn generic_ok<U: AsMut<T> + AsRef<T> + ?Sized, T: Debug + ?Sized>(mru: &mut U) {
     foo_rt(mru.as_ref());
 }
 
+fn foo() {
+    let x = Some(String::new());
+    let y = x.as_ref().map(Clone::clone);
+    //~^ ERROR: you are explicitly cloning with `.map()`
+    let y = x.as_ref().map(String::clone);
+    //~^ ERROR: you are explicitly cloning with `.map()`
+}
+
 fn main() {
     not_ok();
     ok();
