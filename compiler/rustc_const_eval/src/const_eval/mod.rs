@@ -1,10 +1,11 @@
 // Not in interpret to make sure we do not use private implementation details
 
-use crate::interpret::InterpCx;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{InterpError, InterpErrorInfo};
+use rustc_middle::mir::interpret::InterpErrorInfo;
 use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::{self, Ty};
+
+use crate::interpret::{format_interp_error, InterpCx};
 
 mod error;
 mod eval_queries;
@@ -25,24 +26,17 @@ pub(crate) enum ValTreeCreationError {
     NodesOverflow,
     /// Values of this type, or this particular value, are not supported as valtrees.
     NonSupportedType,
-    /// The value pointed to non-read-only memory, so we cannot make it a valtree.
-    NotReadOnly,
-    Other,
 }
 pub(crate) type ValTreeCreationResult<'tcx> = Result<ty::ValTree<'tcx>, ValTreeCreationError>;
 
 impl From<InterpErrorInfo<'_>> for ValTreeCreationError {
     fn from(err: InterpErrorInfo<'_>) -> Self {
-        match err.kind() {
-            InterpError::MachineStop(err) => {
-                let err = err.downcast_ref::<ConstEvalErrKind>().unwrap();
-                match err {
-                    ConstEvalErrKind::ConstAccessesMutGlobal => ValTreeCreationError::NotReadOnly,
-                    _ => ValTreeCreationError::Other,
-                }
-            }
-            _ => ValTreeCreationError::Other,
-        }
+        ty::tls::with(|tcx| {
+            bug!(
+                "Unexpected Undefined Behavior error during valtree construction: {}",
+                format_interp_error(tcx.dcx(), err),
+            )
+        })
     }
 }
 

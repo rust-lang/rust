@@ -9,7 +9,7 @@ use super::eval_queries::{mk_eval_cx, op_to_const};
 use super::machine::CompileTimeEvalContext;
 use super::{ValTreeCreationError, ValTreeCreationResult, VALTREE_MAX_NODES};
 use crate::const_eval::CanAccessMutGlobal;
-use crate::errors::{MaxNumNodesInConstErr, MutableDataInConstErr};
+use crate::errors::MaxNumNodesInConstErr;
 use crate::interpret::MPlaceTy;
 use crate::interpret::{
     intern_const_alloc_recursive, ImmTy, Immediate, InternKind, MemPlaceMeta, MemoryKind, PlaceTy,
@@ -246,18 +246,6 @@ pub(crate) fn eval_to_valtree<'tcx>(
                 ValTreeCreationError::NodesOverflow => {
                     let handled =
                         tcx.dcx().emit_err(MaxNumNodesInConstErr { span, global_const_id });
-                    Err(handled.into())
-                }
-                ValTreeCreationError::NotReadOnly => {
-                    let handled =
-                        tcx.dcx().emit_err(MutableDataInConstErr { span, global_const_id });
-                    Err(handled.into())
-                }
-                ValTreeCreationError::Other => {
-                    let handled = tcx.dcx().span_delayed_bug(
-                        span.unwrap_or(DUMMY_SP),
-                        "unexpected error during valtree construction",
-                    );
                     Err(handled.into())
                 }
                 ValTreeCreationError::NonSupportedType => Ok(None),

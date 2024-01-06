@@ -44,10 +44,9 @@ static mut MUT_TO_READONLY: &mut i32 = unsafe { &mut *(&READONLY as *const _ as 
 // Check for consts pointing to mutable memory.
 // These are fine as long as they are not being read.
 static mut MUTABLE: i32 = 42;
-const POINTS_TO_MUTABLE1: &i32 = unsafe { &MUTABLE };
+const POINTS_TO_MUTABLE1: &i32 = unsafe { &MUTABLE }; //~ERROR: undefined behavior
+//~| encountered reference to mutable memory
 const READS_FROM_MUTABLE: i32 = *POINTS_TO_MUTABLE1;
-//~^ ERROR: evaluation of constant value failed
-//~| accesses mutable global memory
 static mut MUTABLE_REF: &mut i32 = &mut 42;
 const POINTS_TO_MUTABLE2: &i32 = unsafe { &*MUTABLE_REF };
 //~^ ERROR: evaluation of constant value failed

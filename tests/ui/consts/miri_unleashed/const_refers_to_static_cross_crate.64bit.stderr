@@ -1,5 +1,5 @@
 warning: shared reference of mutable static is discouraged
-  --> $DIR/const_refers_to_static_cross_crate.rs:11:14
+  --> $DIR/const_refers_to_static_cross_crate.rs:12:14
    |
 LL |     unsafe { &static_cross_crate::ZERO }
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^ shared reference of mutable static
@@ -13,50 +13,65 @@ help: shared references are dangerous since if there's any kind of mutation of t
 LL |     unsafe { addr_of!(static_cross_crate::ZERO) }
    |              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-error: constant refers to mutable data
+error[E0080]: it is undefined behavior to use this value
   --> $DIR/const_refers_to_static_cross_crate.rs:10:1
    |
 LL | const SLICE_MUT: &[u8; 1] = {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾ALLOC0<imm>╼                         │ ╾──────╼
+           }
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:36:9
+  --> $DIR/const_refers_to_static_cross_crate.rs:39:9
    |
 LL |         SLICE_MUT => true,
    |         ^^^^^^^^^
 
-error: constant refers to mutable data
-  --> $DIR/const_refers_to_static_cross_crate.rs:15:1
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/const_refers_to_static_cross_crate.rs:16:1
    |
 LL | const U8_MUT: &u8 = {
-   | ^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾ALLOC0<imm>╼                         │ ╾──────╼
+           }
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:44:9
+  --> $DIR/const_refers_to_static_cross_crate.rs:47:9
    |
 LL |         U8_MUT => true,
    |         ^^^^^^
 
-error: constant refers to mutable data
-  --> $DIR/const_refers_to_static_cross_crate.rs:20:1
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/const_refers_to_static_cross_crate.rs:22:1
    |
 LL | const U8_MUT2: &u8 = {
-   | ^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered reference to mutable memory in `const`
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 8) {
+               ╾ALLOC0<imm>╼                         │ ╾──────╼
+           }
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:54:9
+  --> $DIR/const_refers_to_static_cross_crate.rs:57:9
    |
 LL |         U8_MUT2 => true,
    |         ^^^^^^^
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/const_refers_to_static_cross_crate.rs:25:15
+  --> $DIR/const_refers_to_static_cross_crate.rs:28:15
    |
 LL |         match static_cross_crate::OPT_ZERO {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ constant accesses mutable global memory
 
 error: could not evaluate constant pattern
-  --> $DIR/const_refers_to_static_cross_crate.rs:61:9
+  --> $DIR/const_refers_to_static_cross_crate.rs:64:9
    |
 LL |         U8_MUT3 => true,
    |         ^^^^^^^
@@ -64,57 +79,57 @@ LL |         U8_MUT3 => true,
 warning: skipping const checks
    |
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:11:15
+  --> $DIR/const_refers_to_static_cross_crate.rs:12:15
    |
 LL |     unsafe { &static_cross_crate::ZERO }
    |               ^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:11:15
+  --> $DIR/const_refers_to_static_cross_crate.rs:12:15
    |
 LL |     unsafe { &static_cross_crate::ZERO }
    |               ^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:16:15
+  --> $DIR/const_refers_to_static_cross_crate.rs:18:15
    |
 LL |     unsafe { &static_cross_crate::ZERO[0] }
    |               ^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:16:15
+  --> $DIR/const_refers_to_static_cross_crate.rs:18:15
    |
 LL |     unsafe { &static_cross_crate::ZERO[0] }
    |               ^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:16:15
+  --> $DIR/const_refers_to_static_cross_crate.rs:18:15
    |
 LL |     unsafe { &static_cross_crate::ZERO[0] }
    |               ^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:21:17
+  --> $DIR/const_refers_to_static_cross_crate.rs:24:17
    |
 LL |     unsafe { &(*static_cross_crate::ZERO_REF)[0] }
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:25:15
+  --> $DIR/const_refers_to_static_cross_crate.rs:28:15
    |
 LL |         match static_cross_crate::OPT_ZERO {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:25:15
+  --> $DIR/const_refers_to_static_cross_crate.rs:28:15
    |
 LL |         match static_cross_crate::OPT_ZERO {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:25:15
+  --> $DIR/const_refers_to_static_cross_crate.rs:28:15
    |
 LL |         match static_cross_crate::OPT_ZERO {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:25:15
+  --> $DIR/const_refers_to_static_cross_crate.rs:28:15
    |
 LL |         match static_cross_crate::OPT_ZERO {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: skipping check for `const_refs_to_static` feature
-  --> $DIR/const_refers_to_static_cross_crate.rs:25:15
+  --> $DIR/const_refers_to_static_cross_crate.rs:28:15
    |
 LL |         match static_cross_crate::OPT_ZERO {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
