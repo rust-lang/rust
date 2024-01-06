@@ -1755,11 +1755,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             .filter_map(|item| {
                 // Only assoc fns that return `Self`
                 let fn_sig = self.r.tcx.fn_sig(item.def_id).skip_binder();
-                let ret_ty = fn_sig.output();
-                let ret_ty = self
-                    .r
-                    .tcx
-                    .normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), ret_ty);
+                // Don't normalize the return type, because that can cause cycle errors.
+                let ret_ty = fn_sig.output().skip_binder();
                 let ty::Adt(def, _args) = ret_ty.kind() else {
                     return None;
                 };
