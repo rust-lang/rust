@@ -418,6 +418,7 @@ pub enum ValidationErrorKind<'tcx> {
     PtrToStatic { ptr_kind: PointerKind },
     MutableRefInConst,
     ConstRefToMutable,
+    ConstRefToExtern,
     MutableRefToImmutable,
     UnsafeCellInImmutable,
     NullFnPtr,

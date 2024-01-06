@@ -133,7 +133,7 @@ pub enum CtfeValidationMode {
     /// `allow_immutable_unsafe_cell` says whether we allow `UnsafeCell` in immutable memory (which is the
     /// case for the top-level allocation of a `const`, where this is fine because the allocation will be
     /// copied at each use site).
-    Const { allow_immutable_unsafe_cell: bool, allow_static_ptrs: bool },
+    Const { allow_immutable_unsafe_cell: bool, allow_extern_static_ptrs: bool },
 }
 
 impl CtfeValidationMode {
@@ -488,12 +488,22 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
                                 // This could miss some UB, but that's fine.
                                 return Ok(());
                             }
-                            Some(CtfeValidationMode::Const { .. }) => {
+                            Some(CtfeValidationMode::Const {
+                                allow_extern_static_ptrs, ..
+                            }) => {
                                 // For consts on the other hand we have to recursively check;
                                 // pattern matching assumes a valid value. However we better make
                                 // sure this is not mutable.
                                 if is_mut {
                                     throw_validation_failure!(self.path, ConstRefToMutable);
+                                }
+                                if self.ecx.tcx.is_foreign_item(did) {
+                                    if !allow_extern_static_ptrs {
+                                        throw_validation_failure!(self.path, ConstRefToExtern);
+                                    } else {
+                                        // We can't validate this...
+                                        return Ok(());
+                                    }
                                 }
                             }
                             None => {}
