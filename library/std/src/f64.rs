@@ -293,6 +293,34 @@ impl f64 {
         unsafe { intrinsics::fmaf64(self, a, b) }
     }
 
+    /// Possibly-fused multiply-add. Computes `(self * a) + b` that can be
+    /// fused if the code generator determines that (a) the target instruction
+    /// set has support for a fused operation, and (b) that the fused operation
+    /// is more efficient than the equivalent, separate pair of mul and add
+    /// instructions.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_mul_add_fast)]
+    /// let m = 10.0_f64;
+    /// let x = 4.0_f64;
+    /// let b = 60.0_f64;
+    ///
+    /// // 100.0
+    /// let abs_difference = (m.mul_add_fast(x, b) - ((m * x) + b)).abs();
+    ///
+    /// assert!(abs_difference < 1e-10);
+    /// ```
+    #[cfg(not(bootstrap))]
+    #[cfg_attr(not(bootstrap), rustc_allow_incoherent_impl)]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[inline]
+    #[unstable(feature = "float_mul_add_fast", issue = "none")]
+    pub fn mul_add_fast(self, a: f64, b: f64) -> f64 {
+        unsafe { intrinsics::fmuladdf64(self, a, b) }
+    }
+
     /// Calculates Euclidean division, the matching method for `rem_euclid`.
     ///
     /// This computes the integer `n` such that
