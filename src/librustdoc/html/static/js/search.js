@@ -245,49 +245,49 @@ function initSearch(rawSearchIndex) {
      *
      * @type {Map<string, {id: integer, assocOnly: boolean}>}
      */
-    let typeNameIdMap;
+    const typeNameIdMap = new Map();
     const ALIASES = new Map();
 
     /**
      * Special type name IDs for searching by array.
      */
-    let typeNameIdOfArray;
+    const typeNameIdOfArray = buildTypeMapIndex("array");
     /**
      * Special type name IDs for searching by slice.
      */
-    let typeNameIdOfSlice;
+    const typeNameIdOfSlice = buildTypeMapIndex("slice");
     /**
      * Special type name IDs for searching by both array and slice (`[]` syntax).
      */
-    let typeNameIdOfArrayOrSlice;
+    const typeNameIdOfArrayOrSlice = buildTypeMapIndex("[]");
     /**
      * Special type name IDs for searching by tuple.
      */
-    let typeNameIdOfTuple;
+    const typeNameIdOfTuple = buildTypeMapIndex("tuple");
     /**
      * Special type name IDs for searching by unit.
      */
-    let typeNameIdOfUnit;
+    const typeNameIdOfUnit = buildTypeMapIndex("unit");
     /**
      * Special type name IDs for searching by both tuple and unit (`()` syntax).
      */
-    let typeNameIdOfTupleOrUnit;
+    const typeNameIdOfTupleOrUnit = buildTypeMapIndex("()");
     /**
      * Special type name IDs for searching `fn`.
      */
-    let typeNameIdOfFn;
+    const typeNameIdOfFn = buildTypeMapIndex("fn");
     /**
      * Special type name IDs for searching `fnmut`.
      */
-    let typeNameIdOfFnMut;
+    const typeNameIdOfFnMut = buildTypeMapIndex("fnmut");
     /**
      * Special type name IDs for searching `fnonce`.
      */
-    let typeNameIdOfFnOnce;
+    const typeNameIdOfFnOnce = buildTypeMapIndex("fnonce");
     /**
      * Special type name IDs for searching higher order functions (`->` syntax).
      */
-    let typeNameIdOfHof;
+    const typeNameIdOfHof = buildTypeMapIndex("->");
 
     /**
      * Add an item to the type Name->ID map, or, if one already exists, use it.
@@ -3159,23 +3159,9 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      */
     function buildIndex(rawSearchIndex) {
         searchIndex = [];
-        typeNameIdMap = new Map();
         const charA = "A".charCodeAt(0);
         let currentIndex = 0;
         let id = 0;
-
-        // Initialize type map indexes for primitive list types
-        // that can be searched using `[]` syntax.
-        typeNameIdOfArray = buildTypeMapIndex("array");
-        typeNameIdOfSlice = buildTypeMapIndex("slice");
-        typeNameIdOfTuple = buildTypeMapIndex("tuple");
-        typeNameIdOfUnit = buildTypeMapIndex("unit");
-        typeNameIdOfArrayOrSlice = buildTypeMapIndex("[]");
-        typeNameIdOfTupleOrUnit = buildTypeMapIndex("()");
-        typeNameIdOfFn = buildTypeMapIndex("fn");
-        typeNameIdOfFnMut = buildTypeMapIndex("fnmut");
-        typeNameIdOfFnOnce = buildTypeMapIndex("fnonce");
-        typeNameIdOfHof = buildTypeMapIndex("->");
 
         // Function type fingerprints are 128-bit bloom filters that are used to
         // estimate the distance between function and query.
