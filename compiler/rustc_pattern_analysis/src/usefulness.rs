@@ -874,11 +874,12 @@ impl<'p, Cx: TypeCx> PatStack<'p, Cx> {
         &self,
         pcx: &PlaceCtxt<'_, 'p, Cx>,
         ctor: &Constructor<Cx>,
+        ctor_sub_tys: &[Cx::Ty],
         ctor_is_relevant: bool,
     ) -> PatStack<'p, Cx> {
         // We pop the head pattern and push the new fields extracted from the arguments of
         // `self.head()`.
-        let mut new_pats = self.head().specialize(pcx, ctor);
+        let mut new_pats = self.head().specialize(pcx, ctor, ctor_sub_tys);
         new_pats.extend_from_slice(&self.pats[1..]);
         // `ctor` is relevant for this row if it is the actual constructor of this row, or if the
         // row has a wildcard and `ctor` is relevant for wildcards.
@@ -950,11 +951,12 @@ impl<'p, Cx: TypeCx> MatrixRow<'p, Cx> {
         &self,
         pcx: &PlaceCtxt<'_, 'p, Cx>,
         ctor: &Constructor<Cx>,
+        ctor_sub_tys: &[Cx::Ty],
         ctor_is_relevant: bool,
         parent_row: usize,
     ) -> MatrixRow<'p, Cx> {
         MatrixRow {
-            pats: self.pats.pop_head_constructor(pcx, ctor, ctor_is_relevant),
+            pats: self.pats.pop_head_constructor(pcx, ctor, ctor_sub_tys, ctor_is_relevant),
             parent_row,
             is_under_guard: self.is_under_guard,
             useful: false,
@@ -1079,7 +1081,8 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
         };
         for (i, row) in self.rows().enumerate() {
             if ctor.is_covered_by(pcx, row.head().ctor()) {
-                let new_row = row.pop_head_constructor(pcx, ctor, ctor_is_relevant, i);
+                let new_row =
+                    row.pop_head_constructor(pcx, ctor, ctor_sub_tys, ctor_is_relevant, i);
                 matrix.expand_and_push(new_row);
             }
         }
