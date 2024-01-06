@@ -48,7 +48,8 @@ if isWindows; then
 
     # if [[ "${CUSTOM_MINGW-0}" -ne 1 ]]; then
     #     echo "1pacman -Qg mingw-w64-x86_64-toolchain:"
-    #     pacman -Qg mingw-w64-x86_64-toolchain # this gets run even for msvc jobs, checks if the package (group) is installed
+    #     pacman -Qg mingw-w64-x86_64-toolchain # this gets run even for msvc jobs,
+    #     # checks if the package (group) is installed
     #     pacman -Syu --noconfirm
     #     pacman -S --noconfirm --needed mingw-w64-$arch-toolchain mingw-w64-$arch-cmake \
     #         mingw-w64-$arch-gcc \

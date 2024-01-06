@@ -57,7 +57,6 @@ jobs:
               SCRIPT: make ci-mingw
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
-              MSYSTEM: MINGW32
             os: windows-2019-8core-32gb
           - name: x86_64-mingw
             env:
@@ -73,7 +72,6 @@ jobs:
               SCRIPT: python x.py dist bootstrap --include-default-paths
               CUSTOM_MINGW: 1
               DIST_REQUIRE_ALL_TOOLS: 1
-              MSYSTEM: MINGW32
             os: windows-2019-8core-32gb
           - name: dist-x86_64-mingw
             env:
@@ -100,11 +98,12 @@ jobs:
       - if: "contains(matrix.os, 'windows')"
         uses: msys2/setup-msys2@76b1bed68bac51ebe46cb431077217d4b98e2b7b
         with:
-          msystem: MINGW64
+          msystem: "${{ contains(matrix.name, x86_64) && 'mingw64' || 'mingw32' }}"
           update: false
           release: true
           path-type: inherit
           install: "make git\n"
+          pacboy: "toolchain:p"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -490,11 +489,12 @@ jobs:
       - if: "contains(matrix.os, 'windows')"
         uses: msys2/setup-msys2@76b1bed68bac51ebe46cb431077217d4b98e2b7b
         with:
-          msystem: MINGW64
+          msystem: "${{ contains(matrix.name, x86_64) && 'mingw64' || 'mingw32' }}"
           update: false
           release: true
           path-type: inherit
           install: "make git\n"
+          pacboy: "toolchain:p"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -626,11 +626,12 @@ jobs:
       - if: "contains(matrix.os, 'windows')"
         uses: msys2/setup-msys2@76b1bed68bac51ebe46cb431077217d4b98e2b7b
         with:
-          msystem: MINGW64
+          msystem: "${{ contains(matrix.name, x86_64) && 'mingw64' || 'mingw32' }}"
           update: false
           release: true
           path-type: inherit
           install: "make git\n"
+          pacboy: "toolchain:p"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
