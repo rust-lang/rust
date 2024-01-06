@@ -2174,7 +2174,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // report the error as an illegal reassignment
                 let init = &self.move_data.inits[init_index];
                 let assigned_span = init.span(self.body);
-                self.report_illegal_reassignment(location, (place, span), assigned_span, place);
+                self.report_illegal_reassignment((place, span), assigned_span, place);
             } else {
                 self.report_mutability_error(place, span, the_place_err, error_access, location)
             }
