@@ -221,6 +221,36 @@ fn recursive() {
 }
 
 #[test]
+fn repr_packed() {
+    size_and_align! {
+        #[repr(packed)]
+        struct Goal;
+    }
+    size_and_align! {
+        #[repr(packed(2))]
+        struct Goal;
+    }
+    size_and_align! {
+        #[repr(packed(4))]
+        struct Goal;
+    }
+    size_and_align! {
+        #[repr(packed)]
+        struct Goal(i32);
+    }
+    size_and_align! {
+        #[repr(packed(2))]
+        struct Goal(i32);
+    }
+    size_and_align! {
+        #[repr(packed(4))]
+        struct Goal(i32);
+    }
+
+    check_size_and_align("#[repr(packed(5))] struct Goal(i32);", "", 4, 1);
+}
+
+#[test]
 fn generic() {
     size_and_align! {
         struct Pair<A, B>(A, B);
