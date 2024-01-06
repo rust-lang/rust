@@ -606,14 +606,14 @@ fn rounding() {
     assert_eq((-1.5f64).round_ties_even(), -2.0f64);
     assert_eq((-1.7f64).round_ties_even(), -2.0f64);
 
-    assert_approx_eq!(3.8f32.floor(), 3.0f32);
-    assert_approx_eq!((-1.1f64).floor(), -2.0f64);
+    assert_eq!(3.8f32.floor(), 3.0f32);
+    assert_eq!((-1.1f64).floor(), -2.0f64);
 
-    assert_approx_eq!((-2.3f32).ceil(), -2.0f32);
-    assert_approx_eq!(3.8f64.ceil(), 4.0f64);
+    assert_eq!((-2.3f32).ceil(), -2.0f32);
+    assert_eq!(3.8f64.ceil(), 4.0f64);
 
-    assert_approx_eq!(0.1f32.trunc(), 0.0f32);
-    assert_approx_eq!((-0.1f64).trunc(), 0.0f64);
+    assert_eq!(0.1f32.trunc(), 0.0f32);
+    assert_eq!((-0.1f64).trunc(), 0.0f64);
 
     assert_eq!(3.3_f32.round(), 3.0);
     assert_eq!(2.5_f32.round(), 3.0);
@@ -622,9 +622,9 @@ fn rounding() {
 }
 
 fn mul_add() {
-    assert_approx_eq!(3.0f32.mul_add(2.0f32, 5.0f32), 11.0);
+    assert_eq!(3.0f32.mul_add(2.0f32, 5.0f32), 11.0);
     assert_eq!(0.0f32.mul_add(-2.0, f32::consts::E), f32::consts::E);
-    assert_approx_eq!(3.0f64.mul_add(2.0, 5.0), 11.0);
+    assert_eq!(3.0f64.mul_add(2.0, 5.0), 11.0);
     assert_eq!(0.0f64.mul_add(-2.0f64, f64::consts::E), f64::consts::E);
     assert_eq!((-3.2f32).mul_add(2.4, f32::NEG_INFINITY), f32::NEG_INFINITY);
     assert_eq!((-3.2f64).mul_add(2.4, f64::NEG_INFINITY), f64::NEG_INFINITY);
