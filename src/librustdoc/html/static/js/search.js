@@ -1,3 +1,4 @@
+// ignore-tidy-filelength
 /* global addClass, getNakedUrl, getSettingValue */
 /* global onEachLazy, removeClass, searchState, browserSupportsHistoryApi, exports */
 
@@ -578,7 +579,10 @@ function initSearch(rawSearchIndex) {
                 // Syntactically, bindings are parsed as generics,
                 // but the query engine treats them differently.
                 if (gen.bindingName !== null) {
-                    bindings.set(gen.bindingName.name, [gen, ...gen.bindingName.generics]);
+                    if (gen.name !== null) {
+                        gen.bindingName.generics.unshift(gen);
+                    }
+                    bindings.set(gen.bindingName.name, gen.bindingName.generics);
                     return false;
                 }
                 return true;
@@ -678,6 +682,38 @@ function initSearch(rawSearchIndex) {
         return end;
     }
 
+    function getFilteredNextElem(query, parserState, elems, isInGenerics) {
+        const start = parserState.pos;
+        if (parserState.userQuery[parserState.pos] === ":" && !isPathStart(parserState)) {
+            throw ["Expected type filter before ", ":"];
+        }
+        getNextElem(query, parserState, elems, isInGenerics);
+        if (parserState.userQuery[parserState.pos] === ":" && !isPathStart(parserState)) {
+            if (parserState.typeFilter !== null) {
+                throw [
+                    "Unexpected ",
+                    ":",
+                    " (expected path after type filter ",
+                    parserState.typeFilter + ":",
+                    ")",
+                ];
+            }
+            if (elems.length === 0) {
+                throw ["Expected type filter before ", ":"];
+            } else if (query.literalSearch) {
+                throw ["Cannot use quotes on type filter"];
+            }
+            // The type filter doesn't count as an element since it's a modifier.
+            const typeFilterElem = elems.pop();
+            checkExtraTypeFilterCharacters(start, parserState);
+            parserState.typeFilter = typeFilterElem.name;
+            parserState.pos += 1;
+            parserState.totalElems -= 1;
+            query.literalSearch = false;
+            getNextElem(query, parserState, elems, isInGenerics);
+        }
+    }
+
     /**
      * @param {ParsedQuery} query
      * @param {ParserState} parserState
@@ -752,6 +788,32 @@ function initSearch(rawSearchIndex) {
                 }
                 parserState.pos += 1;
                 getItemsBefore(query, parserState, generics, ">");
+            } else if (parserState.pos < parserState.length &&
+                parserState.userQuery[parserState.pos] === "("
+            ) {
+                if (start >= end) {
+                    throw ["Found generics without a path"];
+                }
+                if (parserState.isInBinding) {
+                    throw ["Unexpected ", "(", " after ", "="];
+                }
+                parserState.pos += 1;
+                const typeFilter = parserState.typeFilter;
+                parserState.typeFilter = null;
+                getItemsBefore(query, parserState, generics, ")");
+                skipWhitespace(parserState);
+                if (isReturnArrow(parserState)) {
+                    parserState.pos += 2;
+                    skipWhitespace(parserState);
+                    getFilteredNextElem(query, parserState, generics, isInGenerics);
+                    generics[generics.length - 1].bindingName = makePrimitiveElement("output");
+                } else {
+                    generics.push(makePrimitiveElement(null, {
+                        bindingName: makePrimitiveElement("output"),
+                        typeFilter: null,
+                    }));
+                }
+                parserState.typeFilter = typeFilter;
             }
             if (isStringElem) {
                 skipWhitespace(parserState);
@@ -811,7 +873,6 @@ function initSearch(rawSearchIndex) {
     function getItemsBefore(query, parserState, elems, endChar) {
         let foundStopChar = true;
         let foundSeparator = false;
-        let start = parserState.pos;
 
         // If this is a generic, keep the outer item's type filter around.
         const oldTypeFilter = parserState.typeFilter;
@@ -874,24 +935,6 @@ function initSearch(rawSearchIndex) {
                 continue;
             } else if (c === ":" && isPathStart(parserState)) {
                 throw ["Unexpected ", "::", ": paths cannot start with ", "::"];
-            }  else if (c === ":") {
-                if (parserState.typeFilter !== null) {
-                    throw ["Unexpected ", ":"];
-                }
-                if (elems.length === 0) {
-                    throw ["Expected type filter before ", ":"];
-                } else if (query.literalSearch) {
-                    throw ["Cannot use quotes on type filter"];
-                }
-                // The type filter doesn't count as an element since it's a modifier.
-                const typeFilterElem = elems.pop();
-                checkExtraTypeFilterCharacters(start, parserState);
-                parserState.typeFilter = typeFilterElem.name;
-                parserState.pos += 1;
-                parserState.totalElems -= 1;
-                query.literalSearch = false;
-                foundStopChar = true;
-                continue;
             } else if (isEndCharacter(c)) {
                 throw ["Unexpected ", c, " after ", extra];
             }
@@ -926,8 +969,7 @@ function initSearch(rawSearchIndex) {
                 ];
             }
             const posBefore = parserState.pos;
-            start = parserState.pos;
-            getNextElem(query, parserState, elems, endChar !== "");
+            getFilteredNextElem(query, parserState, elems, endChar !== "");
             if (endChar !== "" && parserState.pos >= parserState.length) {
                 throw ["Unclosed ", extra];
             }
@@ -1004,7 +1046,6 @@ function initSearch(rawSearchIndex) {
      */
     function parseInput(query, parserState) {
         let foundStopChar = true;
-        let start = parserState.pos;
 
         while (parserState.pos < parserState.length) {
             const c = parserState.userQuery[parserState.pos];
@@ -1022,29 +1063,6 @@ function initSearch(rawSearchIndex) {
                     throw ["Unexpected ", c, " after ", parserState.userQuery[parserState.pos - 1]];
                 }
                 throw ["Unexpected ", c];
-            } else if (c === ":" && !isPathStart(parserState)) {
-                if (parserState.typeFilter !== null) {
-                    throw [
-                        "Unexpected ",
-                        ":",
-                        " (expected path after type filter ",
-                        parserState.typeFilter + ":",
-                        ")",
-                    ];
-                } else if (query.elems.length === 0) {
-                    throw ["Expected type filter before ", ":"];
-                } else if (query.literalSearch) {
-                    throw ["Cannot use quotes on type filter"];
-                }
-                // The type filter doesn't count as an element since it's a modifier.
-                const typeFilterElem = query.elems.pop();
-                checkExtraTypeFilterCharacters(start, parserState);
-                parserState.typeFilter = typeFilterElem.name;
-                parserState.pos += 1;
-                parserState.totalElems -= 1;
-                query.literalSearch = false;
-                foundStopChar = true;
-                continue;
             } else if (c === " ") {
                 skipWhitespace(parserState);
                 continue;
@@ -1080,8 +1098,7 @@ function initSearch(rawSearchIndex) {
                 ];
             }
             const before = query.elems.length;
-            start = parserState.pos;
-            getNextElem(query, parserState, query.elems, false);
+            getFilteredNextElem(query, parserState, query.elems, false);
             if (query.elems.length === before) {
                 // Nothing was added, weird... Let's increase the position to not remain stuck.
                 parserState.pos += 1;

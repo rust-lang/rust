@@ -1,6 +1,12 @@
 // exact-check
 
 const EXPECTED = [
+    // not a HOF query
+    {
+        'query': 'u32 -> !',
+        'others': [],
+    },
+
     // ML-style higher-order function notation
     {
         'query': 'bool, (u32 -> !) -> ()',
@@ -54,11 +60,6 @@ const EXPECTED = [
         ],
     },
     {
-        'query': 'u32 -> !',
-        // not a HOF query
-        'others': [],
-    },
-    {
         'query': '(str, str -> i8) -> ()',
         'others': [
             {"path": "hof", "name": "multiple"},
@@ -90,5 +91,86 @@ const EXPECTED = [
         'query': '(-> str) -> ()',
         // params and return are not the same
         'others': [],
+    },
+
+    // Rust-style higher-order function notation
+    {
+        'query': 'bool, fn(u32) -> ! -> ()',
+        'others': [
+            {"path": "hof", "name": "fn_ptr"},
+        ],
+    },
+    {
+        'query': 'u8, fnonce(u32) -> ! -> ()',
+        'others': [
+            {"path": "hof", "name": "fn_once"},
+        ],
+    },
+    {
+        'query': 'u8, fn(u32) -> ! -> ()',
+        // fnonce != fn
+        'others': [],
+    },
+    {
+        'query': 'i8, fnmut(u32) -> ! -> ()',
+        'others': [
+            {"path": "hof", "name": "fn_mut"},
+        ],
+    },
+    {
+        'query': 'i8, fn(u32) -> ! -> ()',
+        // fnmut != fn
+        'others': [],
+    },
+    {
+        'query': 'char, fn(u32) -> ! -> ()',
+        'others': [
+            {"path": "hof", "name": "fn_"},
+        ],
+    },
+    {
+        'query': 'char, fnmut(u32) -> ! -> ()',
+        // fn != fnmut
+        'others': [],
+    },
+    {
+        'query': 'fn(first<u32>) -> ! -> ()',
+        'others': [
+            {"path": "hof", "name": "fn_ptr"},
+        ],
+    },
+    {
+        'query': 'fnonce(second<u32>) -> ! -> ()',
+        'others': [
+            {"path": "hof", "name": "fn_once"},
+        ],
+    },
+    {
+        'query': 'fnmut(third<u32>) -> ! -> ()',
+        'others': [
+            {"path": "hof", "name": "fn_mut"},
+        ],
+    },
+    {
+        'query': 'fn(u32) -> ! -> ()',
+        'others': [
+            // fn matches primitive:fn and trait:Fn
+            {"path": "hof", "name": "fn_"},
+            {"path": "hof", "name": "fn_ptr"},
+        ],
+    },
+    {
+        'query': 'trait:fn(u32) -> ! -> ()',
+        'others': [
+            // fn matches primitive:fn and trait:Fn
+            {"path": "hof", "name": "fn_"},
+        ],
+    },
+    {
+        'query': 'primitive:fn(u32) -> ! -> ()',
+        'others': [
+            // fn matches primitive:fn and trait:Fn
+            {"path": "hof", "name": "fn_ptr"},
+        ],
     },
 ];
