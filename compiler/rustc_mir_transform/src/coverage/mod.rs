@@ -107,6 +107,12 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
         );
 
         let mappings = self.create_mappings(&coverage_spans, &coverage_counters);
+        if mappings.is_empty() {
+            // No spans could be converted into valid mappings, so skip this function.
+            debug!("no spans could be converted into valid mappings; skipping");
+            return;
+        }
+
         self.inject_coverage_statements(bcb_has_coverage_spans, &coverage_counters);
 
         self.mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
@@ -148,9 +154,9 @@ impl<'a, 'tcx> Instrumentor<'a, 'tcx> {
             // Flatten the spans into individual term/span pairs.
             .flat_map(|(term, spans)| spans.iter().map(move |&span| (term, span)))
             // Convert each span to a code region, and create the final mapping.
-            .map(|(term, span)| {
-                let code_region = make_code_region(source_map, file_name, span, body_span);
-                Mapping { term, code_region }
+            .filter_map(|(term, span)| {
+                let code_region = make_code_region(source_map, file_name, span, body_span)?;
+                Some(Mapping { term, code_region })
             })
             .collect::<Vec<_>>()
     }
@@ -258,7 +264,7 @@ fn make_code_region(
     file_name: Symbol,
     span: Span,
     body_span: Span,
-) -> CodeRegion {
+) -> Option<CodeRegion> {
     debug!(
         "Called make_code_region(file_name={}, span={}, body_span={})",
         file_name,
@@ -280,13 +286,13 @@ fn make_code_region(
         start_line = source_map.doctest_offset_line(&file.name, start_line);
         end_line = source_map.doctest_offset_line(&file.name, end_line);
     }
-    CodeRegion {
+    Some(CodeRegion {
         file_name,
         start_line: start_line as u32,
         start_col: start_col as u32,
         end_line: end_line as u32,
         end_col: end_col as u32,
-    }
+    })
 }
 
 fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
