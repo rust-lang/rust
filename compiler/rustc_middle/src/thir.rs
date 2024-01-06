@@ -86,8 +86,6 @@ macro_rules! thir_with_elements {
     }
 }
 
-pub const UPVAR_ENV_PARAM: ParamId = ParamId::from_u32(0);
-
 thir_with_elements! {
     body_type: BodyTy<'tcx>,
 
