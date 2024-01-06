@@ -669,7 +669,7 @@ struct LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     /// State used to know whether to ignore resolution errors for function bodies.
     ///
     /// In particular, rustdoc uses this to avoid giving errors for `cfg()` items.
-    /// In most cases this will be `None`, in which case errors will always be reported.
+    /// In most cases this will be `false`, in which case errors will always be reported.
     /// If it is `true`, then it will be updated when entering a nested function or trait body.
     in_func_body: bool,
 
