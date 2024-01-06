@@ -121,7 +121,7 @@ x--expand-yaml-anchors--remove:
       - if: contains(matrix.os, 'windows')
         uses: msys2/setup-msys2@76b1bed68bac51ebe46cb431077217d4b98e2b7b #git SHA for v2.21.0
         with:
-          msystem: ${{ contains(matrix.name, x86_64) && 'mingw64' || 'mingw32' }}
+          msystem: ${{ contains(matrix.name, 'x86_64') && 'mingw64' || 'mingw32' }}
           # don't try to download package updates from the network
           update: false
           # don't try to use the msys that comes built-in to the github runner,

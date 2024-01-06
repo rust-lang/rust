@@ -98,7 +98,7 @@ jobs:
       - if: "contains(matrix.os, 'windows')"
         uses: msys2/setup-msys2@76b1bed68bac51ebe46cb431077217d4b98e2b7b
         with:
-          msystem: "${{ contains(matrix.name, x86_64) && 'mingw64' || 'mingw32' }}"
+          msystem: "${{ contains(matrix.name, 'x86_64') && 'mingw64' || 'mingw32' }}"
           update: false
           release: true
           path-type: inherit
@@ -489,7 +489,7 @@ jobs:
       - if: "contains(matrix.os, 'windows')"
         uses: msys2/setup-msys2@76b1bed68bac51ebe46cb431077217d4b98e2b7b
         with:
-          msystem: "${{ contains(matrix.name, x86_64) && 'mingw64' || 'mingw32' }}"
+          msystem: "${{ contains(matrix.name, 'x86_64') && 'mingw64' || 'mingw32' }}"
           update: false
           release: true
           path-type: inherit
@@ -626,7 +626,7 @@ jobs:
       - if: "contains(matrix.os, 'windows')"
         uses: msys2/setup-msys2@76b1bed68bac51ebe46cb431077217d4b98e2b7b
         with:
-          msystem: "${{ contains(matrix.name, x86_64) && 'mingw64' || 'mingw32' }}"
+          msystem: "${{ contains(matrix.name, 'x86_64') && 'mingw64' || 'mingw32' }}"
           update: false
           release: true
           path-type: inherit
