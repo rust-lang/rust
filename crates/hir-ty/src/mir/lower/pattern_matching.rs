@@ -244,7 +244,7 @@ impl MirLowerCtx<'_> {
                             );
                         } else {
                             let c = Operand::from_concrete_const(
-                                pattern_len.to_le_bytes().to_vec(),
+                                pattern_len.to_le_bytes().into(),
                                 MemoryMap::default(),
                                 TyBuilder::usize(),
                             );

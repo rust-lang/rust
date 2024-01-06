@@ -527,14 +527,15 @@ pub fn interpret_mir(
         if evaluator.ptr_size() != std::mem::size_of::<usize>() {
             not_supported!("targets with different pointer size from host");
         }
-        let bytes = evaluator.interpret_mir(body.clone(), None.into_iter())?;
+        let interval = evaluator.interpret_mir(body.clone(), None.into_iter())?;
+        let bytes = interval.get(&evaluator)?;
         let mut memory_map = evaluator.create_memory_map(
-            &bytes,
+            bytes,
             &ty,
             &Locals { ptr: ArenaMap::new(), body, drop_flags: DropFlags::default() },
         )?;
         memory_map.vtable = evaluator.vtable_map.clone();
-        return Ok(intern_const_scalar(ConstScalar::Bytes(bytes, memory_map), ty));
+        return Ok(intern_const_scalar(ConstScalar::Bytes(bytes.into(), memory_map), ty));
     })();
     (
         it,
@@ -803,11 +804,11 @@ impl Evaluator<'_> {
         })
     }
 
-    fn interpret_mir(
-        &mut self,
+    fn interpret_mir<'slf>(
+        &'slf mut self,
         body: Arc<MirBody>,
         args: impl Iterator<Item = IntervalOrOwned>,
-    ) -> Result<Vec<u8>> {
+    ) -> Result<Interval> {
         if let Some(it) = self.stack_depth_limit.checked_sub(1) {
             self.stack_depth_limit = it;
         } else {
@@ -957,7 +958,7 @@ impl Evaluator<'_> {
                 None => {
                     self.code_stack = prev_code_stack;
                     self.stack_depth_limit += 1;
-                    return Ok(return_interval.get(self)?.to_vec());
+                    return Ok(return_interval);
                 }
                 Some(bb) => {
                     // We don't support const promotion, so we can't truncate the stack yet.
@@ -2173,7 +2174,7 @@ impl Evaluator<'_> {
         let arg_bytes = iter::once(Ok(closure_data))
             .chain(args.iter().map(|it| Ok(it.get(&self)?.to_owned())))
             .collect::<Result<Vec<_>>>()?;
-        let bytes = self
+        let interval = self
             .interpret_mir(mir_body, arg_bytes.into_iter().map(IntervalOrOwned::Owned))
             .map_err(|e| {
                 MirEvalError::InFunction(
@@ -2181,7 +2182,7 @@ impl Evaluator<'_> {
                     vec![(Either::Right(closure), span, locals.body.owner)],
                 )
             })?;
-        destination.write_from_bytes(self, &bytes)?;
+        destination.write_from_interval(self, interval)?;
         Ok(None)
     }
 
@@ -2374,7 +2375,7 @@ impl Evaluator<'_> {
                     vec![(Either::Left(def), span, locals.body.owner)],
                 )
             })?;
-            destination.write_from_bytes(self, &result)?;
+            destination.write_from_interval(self, result)?;
             None
         })
     }
@@ -2680,11 +2681,12 @@ pub fn render_const_using_debug_impl(
     ) else {
         not_supported!("std::fmt::format not found");
     };
-    let message_string = evaluator.interpret_mir(
+    let interval = evaluator.interpret_mir(
         db.mir_body(format_fn.into()).map_err(|e| MirEvalError::MirLowerError(format_fn, e))?,
         [IntervalOrOwned::Borrowed(Interval { addr: a3, size: evaluator.ptr_size() * 6 })]
             .into_iter(),
     )?;
+    let message_string = interval.get(&evaluator)?;
     let addr =
         Address::from_bytes(&message_string[evaluator.ptr_size()..2 * evaluator.ptr_size()])?;
     let size = from_bytes!(usize, message_string[2 * evaluator.ptr_size()..]);

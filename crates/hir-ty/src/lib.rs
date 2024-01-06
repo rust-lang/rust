@@ -219,7 +219,7 @@ impl MemoryMap {
 /// A concrete constant value
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConstScalar {
-    Bytes(Vec<u8>, MemoryMap),
+    Bytes(Box<[u8]>, MemoryMap),
     // FIXME: this is a hack to get around chalk not being able to represent unevaluatable
     // constants
     UnevaluatedConst(GeneralConstId, Substitution),
