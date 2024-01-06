@@ -183,6 +183,7 @@ impl<'cx, 'tcx> Visitor<'tcx> for LiveVariablesVisitor<'cx, 'tcx> {
         match ty_context {
             TyContext::ReturnTy(SourceInfo { span, .. })
             | TyContext::YieldTy(SourceInfo { span, .. })
+            | TyContext::ResumeTy(SourceInfo { span, .. })
             | TyContext::UserTy(span)
             | TyContext::LocalDecl { source_info: SourceInfo { span, .. }, .. } => {
                 span_bug!(span, "should not be visiting outside of the CFG: {:?}", ty_context);

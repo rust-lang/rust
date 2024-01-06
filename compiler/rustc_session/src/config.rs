@@ -125,21 +125,6 @@ pub enum LtoCli {
     Unspecified,
 }
 
-/// The different settings that the `-Z dump_mir_spanview` flag can have. `Statement` generates a
-/// document highlighting each span of every statement (including terminators). `Terminator` and
-/// `Block` highlight a single span per `BasicBlock`: the span of the block's `Terminator`, or a
-/// computed span for the block, representing the entire range, covering the block's terminator and
-/// all of its statements.
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
-pub enum MirSpanview {
-    /// Default `-Z dump_mir_spanview` or `-Z dump_mir_spanview=statement`
-    Statement,
-    /// `-Z dump_mir_spanview=terminator`
-    Terminator,
-    /// `-Z dump_mir_spanview=block`
-    Block,
-}
-
 /// The different settings that the `-C instrument-coverage` flag can have.
 ///
 /// Coverage instrumentation now supports combining `-C instrument-coverage`
@@ -1162,7 +1147,6 @@ impl UnstableOptions {
             can_emit_warnings,
             treat_err_as_bug: self.treat_err_as_bug,
             dont_buffer_diagnostics: self.dont_buffer_diagnostics,
-            report_delayed_bugs: self.report_delayed_bugs,
             macro_backtrace: self.macro_backtrace,
             deduplicate_diagnostics: self.deduplicate_diagnostics,
             track_diagnostics: self.track_diagnostics,
@@ -2051,23 +2035,14 @@ fn check_error_format_stability(
     early_dcx: &mut EarlyDiagCtxt,
     unstable_opts: &UnstableOptions,
     error_format: ErrorOutputType,
-    json_rendered: HumanReadableErrorType,
 ) {
     if !unstable_opts.unstable_options {
-        if let ErrorOutputType::Json { pretty: true, json_rendered } = error_format {
-            early_dcx.abort_if_error_and_set_error_format(ErrorOutputType::Json {
-                pretty: false,
-                json_rendered,
-            });
+        if let ErrorOutputType::Json { pretty: true, .. } = error_format {
             early_dcx.early_fatal("`--error-format=pretty-json` is unstable");
         }
         if let ErrorOutputType::HumanReadable(HumanReadableErrorType::AnnotateSnippet(_)) =
             error_format
         {
-            early_dcx.abort_if_error_and_set_error_format(ErrorOutputType::Json {
-                pretty: false,
-                json_rendered,
-            });
             early_dcx.early_fatal("`--error-format=human-annotate-rs` is unstable");
         }
     }
@@ -2665,7 +2640,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let mut unstable_opts = UnstableOptions::build(early_dcx, matches);
     let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(early_dcx, matches);
 
-    check_error_format_stability(early_dcx, &unstable_opts, error_format, json_rendered);
+    check_error_format_stability(early_dcx, &unstable_opts, error_format);
 
     if !unstable_opts.unstable_options && json_unused_externs.is_enabled() {
         early_dcx.early_fatal(

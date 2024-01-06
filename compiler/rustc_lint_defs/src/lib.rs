@@ -9,7 +9,9 @@ pub use self::Level::*;
 use rustc_ast::node_id::NodeId;
 use rustc_ast::{AttrId, Attribute};
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
+use rustc_data_structures::stable_hasher::{
+    HashStable, StableCompare, StableHasher, ToStableHashKey,
+};
 use rustc_error_messages::{DiagnosticMessage, MultiSpan};
 use rustc_hir::HashStableContext;
 use rustc_hir::HirId;
@@ -538,6 +540,14 @@ impl<HCX> ToStableHashKey<HCX> for LintId {
     #[inline]
     fn to_stable_hash_key(&self, _: &HCX) -> &'static str {
         self.lint_name_raw()
+    }
+}
+
+impl StableCompare for LintId {
+    const CAN_USE_UNSTABLE_SORT: bool = true;
+
+    fn stable_cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.lint_name_raw().cmp(&other.lint_name_raw())
     }
 }
 

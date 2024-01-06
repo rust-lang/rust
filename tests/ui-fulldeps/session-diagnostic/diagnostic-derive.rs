@@ -741,7 +741,7 @@ struct SubdiagnosticEagerCorrect {
 }
 
 // Check that formatting of `correct` in suggestion doesn't move the binding for that field, making
-// the `set_arg` call a compile error; and that isn't worked around by moving the `set_arg` call
+// the `arg` call a compile error; and that isn't worked around by moving the `arg` call
 // after the `span_suggestion` call - which breaks eager translation.
 
 #[derive(Subdiagnostic)]

@@ -262,7 +262,7 @@ fn array_default_impl_avoids_leaks_on_panic() {
     use core::sync::atomic::{AtomicUsize, Ordering::Relaxed};
     static COUNTER: AtomicUsize = AtomicUsize::new(0);
     #[derive(Debug)]
-    struct Bomb(usize);
+    struct Bomb(#[allow(dead_code)] usize);
 
     impl Default for Bomb {
         fn default() -> Bomb {

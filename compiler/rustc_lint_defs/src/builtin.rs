@@ -125,7 +125,6 @@ declare_lint_pass! {
         UNUSED_MACROS,
         UNUSED_MUT,
         UNUSED_QUALIFICATIONS,
-        UNUSED_TUPLE_STRUCT_FIELDS,
         UNUSED_UNSAFE,
         UNUSED_VARIABLES,
         USELESS_DEPRECATED,
@@ -697,8 +696,13 @@ declare_lint! {
     /// Dead code may signal a mistake or unfinished code. To silence the
     /// warning for individual items, prefix the name with an underscore such
     /// as `_foo`. If it was intended to expose the item outside of the crate,
-    /// consider adding a visibility modifier like `pub`. Otherwise consider
-    /// removing the unused code.
+    /// consider adding a visibility modifier like `pub`.
+    ///
+    /// To preserve the numbering of tuple structs with unused fields,
+    /// change the unused fields to have unit type or use
+    /// `PhantomData`.
+    ///
+    /// Otherwise consider removing the unused code.
     pub DEAD_CODE,
     Warn,
     "detect unused, unexported items"
@@ -730,32 +734,6 @@ declare_lint! {
     pub UNUSED_ATTRIBUTES,
     Warn,
     "detects attributes that were not used by the compiler"
-}
-
-declare_lint! {
-    /// The `unused_tuple_struct_fields` lint detects fields of tuple structs
-    /// that are never read.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// #[warn(unused_tuple_struct_fields)]
-    /// struct S(i32, i32, i32);
-    /// let s = S(1, 2, 3);
-    /// let _ = (s.0, s.2);
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Tuple struct fields that are never read anywhere may indicate a
-    /// mistake or unfinished code. To silence this warning, consider
-    /// removing the unused field(s) or, to preserve the numbering of the
-    /// remaining fields, change the unused field(s) to have unit type.
-    pub UNUSED_TUPLE_STRUCT_FIELDS,
-    Allow,
-    "detects tuple struct fields that are never read"
 }
 
 declare_lint! {

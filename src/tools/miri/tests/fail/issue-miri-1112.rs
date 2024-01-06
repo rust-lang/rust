@@ -1,7 +1,7 @@
 trait Empty {}
 
 #[repr(transparent)]
-pub struct FunnyPointer(dyn Empty);
+pub struct FunnyPointer(#[allow(dead_code)] dyn Empty);
 
 #[repr(C)]
 pub struct Meta {

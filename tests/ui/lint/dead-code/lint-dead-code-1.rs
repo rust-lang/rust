@@ -37,7 +37,7 @@ struct UsedStruct1 {
     #[allow(dead_code)]
     x: isize
 }
-struct UsedStruct2(isize);
+struct UsedStruct2(#[allow(dead_code)] isize);
 struct UsedStruct3;
 pub struct UsedStruct4;
 // this struct is never used directly, but its method is, so we don't want

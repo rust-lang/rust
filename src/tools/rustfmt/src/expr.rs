@@ -1947,7 +1947,7 @@ fn rewrite_unary_op(
 }
 
 pub(crate) enum RhsAssignKind<'ast> {
-    Expr(&'ast ast::ExprKind, Span),
+    Expr(&'ast ast::ExprKind, #[allow(dead_code)] Span),
     Bounds,
     Ty,
 }

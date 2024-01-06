@@ -70,7 +70,7 @@ fn generic_arg_mismatch_err(
             Res::Err => {
                 add_braces_suggestion(arg, &mut err);
                 return err
-                    .set_primary_message("unresolved item provided when a constant was expected")
+                    .primary_message("unresolved item provided when a constant was expected")
                     .emit();
             }
             Res::Def(DefKind::TyParam, src_def_id) => {

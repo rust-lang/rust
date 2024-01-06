@@ -619,13 +619,8 @@ pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt<'v>) {
 pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm<'v>) {
     visitor.visit_id(arm.hir_id);
     visitor.visit_pat(arm.pat);
-    if let Some(ref g) = arm.guard {
-        match g {
-            Guard::If(ref e) => visitor.visit_expr(e),
-            Guard::IfLet(ref l) => {
-                visitor.visit_let_expr(l);
-            }
-        }
+    if let Some(ref e) = arm.guard {
+        visitor.visit_expr(e);
     }
     visitor.visit_expr(arm.body);
 }

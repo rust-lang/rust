@@ -16,6 +16,7 @@
 
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Applicability, DiagnosticBuilder, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -979,7 +980,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
         })
         // Check for duplicates
         .and_then(|list| {
-            let mut set: FxHashMap<Symbol, Span> = FxHashMap::default();
+            let mut set: UnordMap<Symbol, Span> = Default::default();
             let mut no_dups = true;
 
             for ident in &*list {

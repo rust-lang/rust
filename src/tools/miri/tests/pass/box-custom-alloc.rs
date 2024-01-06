@@ -57,7 +57,7 @@ fn test1() {
 }
 
 // Make the allocator itself so big that the Box is not even a ScalarPair any more.
-struct OnceAllocRef<'s, 'a>(&'s OnceAlloc<'a>, u64);
+struct OnceAllocRef<'s, 'a>(&'s OnceAlloc<'a>, #[allow(dead_code)] u64);
 
 unsafe impl<'shared, 'a: 'shared> Allocator for OnceAllocRef<'shared, 'a> {
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {

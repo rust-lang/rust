@@ -1,6 +1,4 @@
 // edition:2018
-// revisions: mir thir
-//thir: -Zthir-unsafeck
 
 #![feature(thread_local)]
 #![feature(const_swap)]

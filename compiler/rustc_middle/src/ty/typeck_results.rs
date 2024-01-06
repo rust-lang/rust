@@ -527,7 +527,7 @@ impl<'a, V> LocalTableInContext<'a, V> {
     }
 
     pub fn items_in_stable_order(&self) -> Vec<(ItemLocalId, &'a V)> {
-        self.data.to_sorted_stable_ord()
+        self.data.items().map(|(&k, v)| (k, v)).into_sorted_stable_ord_by_key(|(k, _)| k)
     }
 }
 

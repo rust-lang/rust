@@ -669,12 +669,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         );
         self.walk_pat(discr_place, arm.pat, arm.guard.is_some());
 
-        match arm.guard {
-            Some(hir::Guard::If(e)) => self.consume_expr(e),
-            Some(hir::Guard::IfLet(l)) => {
-                self.walk_local(l.init, l.pat, None, |t| t.borrow_expr(l.init, ty::ImmBorrow))
-            }
-            None => {}
+        if let Some(ref e) = arm.guard {
+            self.consume_expr(e)
         }
 
         self.consume_expr(arm.body);

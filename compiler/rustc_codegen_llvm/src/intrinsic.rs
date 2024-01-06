@@ -179,7 +179,10 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 unsafe {
                     llvm::LLVMSetAlignment(load, align);
                 }
-                self.to_immediate(load, self.layout_of(tp_ty))
+                if !result.layout.is_zst() {
+                    self.store(load, result.llval, result.align);
+                }
+                return;
             }
             sym::volatile_store => {
                 let dst = args[0].deref(self.cx());

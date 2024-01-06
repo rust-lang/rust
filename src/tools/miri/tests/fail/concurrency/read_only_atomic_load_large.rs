@@ -6,7 +6,7 @@
 use std::sync::atomic::{AtomicI64, Ordering};
 
 #[repr(align(8))]
-struct AlignedI64(i64);
+struct AlignedI64(#[allow(dead_code)] i64);
 
 fn main() {
     static X: AlignedI64 = AlignedI64(0);

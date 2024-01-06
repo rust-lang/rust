@@ -31,7 +31,7 @@ impl AddToDiagnostic for OverruledAttributeSub {
         match self {
             OverruledAttributeSub::DefaultSource { id } => {
                 diag.note(fluent::lint_default_source);
-                diag.set_arg("id", id);
+                diag.arg("id", id);
             }
             OverruledAttributeSub::NodeSource { span, reason } => {
                 diag.span_label(span, fluent::lint_node_source);

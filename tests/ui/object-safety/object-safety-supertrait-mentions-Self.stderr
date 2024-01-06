@@ -11,6 +11,10 @@ LL | trait Baz : Bar<Self> {
    |       ---   ^^^^^^^^^ ...because it uses `Self` as a type parameter
    |       |
    |       this trait cannot be made into an object...
+help: consider using an opaque type instead
+   |
+LL | fn make_baz<T:Baz>(t: &T) -> &impl Baz {
+   |                               ~~~~
 
 error: aborting due to 1 previous error
 

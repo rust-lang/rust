@@ -100,20 +100,10 @@ impl<'p, 'tcx> Visitor<'p, 'tcx> for MatchVisitor<'p, 'tcx> {
     #[instrument(level = "trace", skip(self))]
     fn visit_arm(&mut self, arm: &'p Arm<'tcx>) {
         self.with_lint_level(arm.lint_level, |this| {
-            match arm.guard {
-                Some(Guard::If(expr)) => {
-                    this.with_let_source(LetSource::IfLetGuard, |this| {
-                        this.visit_expr(&this.thir[expr])
-                    });
-                }
-                Some(Guard::IfLet(ref pat, expr)) => {
-                    this.with_let_source(LetSource::IfLetGuard, |this| {
-                        this.check_let(pat, Some(expr), pat.span);
-                        this.visit_pat(pat);
-                        this.visit_expr(&this.thir[expr]);
-                    });
-                }
-                None => {}
+            if let Some(expr) = arm.guard {
+                this.with_let_source(LetSource::IfLetGuard, |this| {
+                    this.visit_expr(&this.thir[expr])
+                });
             }
             this.visit_pat(&arm.pattern);
             this.visit_expr(&self.thir[arm.body]);
@@ -554,7 +544,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         let cx = self.new_cx(refutability, None, scrut, pat.span);
         let pat = self.lower_pattern(&cx, pat)?;
         let arms = [MatchArm { pat, arm_data: self.lint_level, has_guard: false }];
-        let report = analyze_match(&cx, &arms, pat.ty());
+        let report = analyze_match(&cx, &arms, pat.ty().inner());
         Ok((cx, report))
     }
 
@@ -972,7 +962,7 @@ fn report_non_exhaustive_match<'p, 'tcx>(
                 }
             } else if ty == cx.tcx.types.str_ {
                 err.note("`&str` cannot be matched exhaustively, so a wildcard `_` is necessary");
-            } else if cx.is_foreign_non_exhaustive_enum(ty) {
+            } else if cx.is_foreign_non_exhaustive_enum(cx.reveal_opaque_ty(ty)) {
                 err.note(format!("`{ty}` is marked as non-exhaustive, so a wildcard `_` is necessary to match exhaustively"));
             }
         }
@@ -1112,12 +1102,12 @@ fn collect_non_exhaustive_tys<'tcx>(
     non_exhaustive_tys: &mut FxIndexSet<Ty<'tcx>>,
 ) {
     if matches!(pat.ctor(), Constructor::NonExhaustive) {
-        non_exhaustive_tys.insert(pat.ty());
+        non_exhaustive_tys.insert(pat.ty().inner());
     }
     if let Constructor::IntRange(range) = pat.ctor() {
         if cx.is_range_beyond_boundaries(range, pat.ty()) {
             // The range denotes the values before `isize::MIN` or the values after `usize::MAX`/`isize::MAX`.
-            non_exhaustive_tys.insert(pat.ty());
+            non_exhaustive_tys.insert(pat.ty().inner());
         }
     }
     pat.iter_fields()

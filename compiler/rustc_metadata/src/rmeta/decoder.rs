@@ -8,7 +8,7 @@ use rustc_ast as ast;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::owned_slice::OwnedSlice;
-use rustc_data_structures::sync::{AppendOnlyVec, AtomicBool, Lock, Lrc, OnceLock};
+use rustc_data_structures::sync::{Lock, Lrc, OnceLock};
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
@@ -31,7 +31,6 @@ use rustc_span::{BytePos, Pos, SpanData, SyntaxContext, DUMMY_SP};
 use proc_macro::bridge::client::ProcMacro;
 use std::iter::TrustedLen;
 use std::path::Path;
-use std::sync::atomic::Ordering;
 use std::{io, iter, mem};
 
 pub(super) use cstore_impl::provide;
@@ -96,15 +95,15 @@ pub(crate) struct CrateMetadata {
     /// IDs as they are seen from the current compilation session.
     cnum_map: CrateNumMap,
     /// Same ID set as `cnum_map` plus maybe some injected crates like panic runtime.
-    dependencies: AppendOnlyVec<CrateNum>,
+    dependencies: Vec<CrateNum>,
     /// How to link (or not link) this crate to the currently compiled crate.
-    dep_kind: Lock<CrateDepKind>,
+    dep_kind: CrateDepKind,
     /// Filesystem location of this crate.
     source: Lrc<CrateSource>,
     /// Whether or not this crate should be consider a private dependency.
     /// Used by the 'exported_private_dependencies' lint, and for determining
     /// whether to emit suggestions that reference this crate.
-    private_dep: AtomicBool,
+    private_dep: bool,
     /// The hash for the host proc macro. Used to support `-Z dual-proc-macro`.
     host_hash: Option<Svh>,
 
@@ -118,7 +117,7 @@ pub(crate) struct CrateMetadata {
     // --- Data used only for improving diagnostics ---
     /// Information about the `extern crate` item or path that caused this crate to be loaded.
     /// If this is `None`, then the crate was injected (e.g., by the allocator).
-    extern_crate: Lock<Option<ExternCrate>>,
+    extern_crate: Option<ExternCrate>,
 }
 
 /// Holds information about a rustc_span::SourceFile imported from another crate.
@@ -1818,11 +1817,11 @@ impl CrateMetadata {
             cnum,
             cnum_map,
             dependencies,
-            dep_kind: Lock::new(dep_kind),
+            dep_kind,
             source: Lrc::new(source),
-            private_dep: AtomicBool::new(private_dep),
+            private_dep,
             host_hash,
-            extern_crate: Lock::new(None),
+            extern_crate: None,
             hygiene_context: Default::default(),
             def_key_cache: Default::default(),
         };
@@ -1839,18 +1838,18 @@ impl CrateMetadata {
     }
 
     pub(crate) fn dependencies(&self) -> impl Iterator<Item = CrateNum> + '_ {
-        self.dependencies.iter()
+        self.dependencies.iter().copied()
     }
 
-    pub(crate) fn add_dependency(&self, cnum: CrateNum) {
+    pub(crate) fn add_dependency(&mut self, cnum: CrateNum) {
         self.dependencies.push(cnum);
     }
 
-    pub(crate) fn update_extern_crate(&self, new_extern_crate: ExternCrate) -> bool {
-        let mut extern_crate = self.extern_crate.borrow_mut();
-        let update = Some(new_extern_crate.rank()) > extern_crate.as_ref().map(ExternCrate::rank);
+    pub(crate) fn update_extern_crate(&mut self, new_extern_crate: ExternCrate) -> bool {
+        let update =
+            Some(new_extern_crate.rank()) > self.extern_crate.as_ref().map(ExternCrate::rank);
         if update {
-            *extern_crate = Some(new_extern_crate);
+            self.extern_crate = Some(new_extern_crate);
         }
         update
     }
@@ -1860,15 +1859,15 @@ impl CrateMetadata {
     }
 
     pub(crate) fn dep_kind(&self) -> CrateDepKind {
-        *self.dep_kind.lock()
+        self.dep_kind
     }
 
-    pub(crate) fn update_dep_kind(&self, f: impl FnOnce(CrateDepKind) -> CrateDepKind) {
-        self.dep_kind.with_lock(|dep_kind| *dep_kind = f(*dep_kind))
+    pub(crate) fn set_dep_kind(&mut self, dep_kind: CrateDepKind) {
+        self.dep_kind = dep_kind;
     }
 
-    pub(crate) fn update_and_private_dep(&self, private_dep: bool) {
-        self.private_dep.fetch_and(private_dep, Ordering::SeqCst);
+    pub(crate) fn update_and_private_dep(&mut self, private_dep: bool) {
+        self.private_dep &= private_dep;
     }
 
     pub(crate) fn required_panic_strategy(&self) -> Option<PanicStrategy> {

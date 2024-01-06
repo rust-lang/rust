@@ -1,6 +1,3 @@
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
-
 #![allow(unused_variables)]
 
 union Foo {

@@ -285,9 +285,9 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: LocalDefId) -> ConstQualifs {
 /// FIXME(oli-obk): it's unclear whether we still need this phase (and its corresponding query).
 /// We used to have this for pre-miri MIR based const eval.
 fn mir_const(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
-    // Unsafety check uses the raw mir, so make sure it is run.
+    // MIR unsafety check uses the raw mir, so make sure it is run.
     if !tcx.sess.opts.unstable_opts.thir_unsafeck {
-        tcx.ensure_with_value().unsafety_check_result(def);
+        tcx.ensure_with_value().mir_unsafety_check_result(def);
     }
 
     // has_ffi_unwind_calls query uses the raw mir, so make sure it is run.

@@ -1,5 +1,5 @@
 // run-pass
-#[allow(unused_tuple_struct_fields)]
+#[allow(dead_code)]
 #[derive(Debug)]
 struct Foo(isize, isize);
 

@@ -847,8 +847,11 @@ impl<'p, Cx: TypeCx> PatStack<'p, Cx> {
         self.pats.len()
     }
 
+    fn head_opt(&self) -> Option<&'p DeconstructedPat<'p, Cx>> {
+        self.pats.first().copied()
+    }
     fn head(&self) -> &'p DeconstructedPat<'p, Cx> {
-        self.pats[0]
+        self.head_opt().unwrap()
     }
 
     fn iter(&self) -> impl Iterator<Item = &'p DeconstructedPat<'p, Cx>> + Captures<'_> {
@@ -1028,14 +1031,8 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
         matrix
     }
 
-    fn head_ty(&self, mcx: MatchCtxt<'_, 'p, Cx>) -> Option<Cx::Ty> {
-        if self.column_count() == 0 {
-            return None;
-        }
-
-        let ty = self.wildcard_row.head().ty();
-        // FIXME(Nadrieril): `Cx` should only give us revealed types.
-        Some(mcx.tycx.reveal_opaque_ty(ty))
+    fn head_ty(&self) -> Option<Cx::Ty> {
+        self.wildcard_row.head_opt().map(|pat| pat.ty())
     }
     fn column_count(&self) -> usize {
         self.wildcard_row.len()
@@ -1345,7 +1342,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
         return WitnessMatrix::empty();
     }
 
-    let Some(ty) = matrix.head_ty(mcx) else {
+    let Some(ty) = matrix.head_ty() else {
         // The base case: there are no columns in the matrix. We are morally pattern-matching on ().
         // A row is useful iff it has no (unguarded) rows above it.
         for row in matrix.rows_mut() {

@@ -1,6 +1,3 @@
-// revisions: mirunsafeck thirunsafeck
-// [thirunsafeck]compile-flags: -Z thir-unsafeck
-
 #![feature(rustc_attrs)]
 
 use std::cell::Cell;

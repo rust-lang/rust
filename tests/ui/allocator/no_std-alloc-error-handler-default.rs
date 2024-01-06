@@ -61,7 +61,7 @@ fn panic(panic_info: &core::panic::PanicInfo) -> ! {
 extern "C" fn rust_eh_personality() {}
 
 #[derive(Default, Debug)]
-struct Page(#[allow(unused_tuple_struct_fields)] [[u64; 32]; 16]);
+struct Page(#[allow(dead_code)] [[u64; 32]; 16]);
 
 #[no_mangle]
 fn main(_argc: i32, _argv: *const *const u8) -> isize {

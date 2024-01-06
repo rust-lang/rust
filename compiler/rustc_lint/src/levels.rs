@@ -1069,7 +1069,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                         Some(span.into()),
                         fluent::lint_unknown_gated_lint,
                         |lint| {
-                            lint.set_arg("name", lint_id.lint.name_lower());
+                            lint.arg("name", lint_id.lint.name_lower());
                             lint.note(fluent::lint_note);
                             rustc_session::parse::add_feature_diagnostics_for_issue(
                                 lint,

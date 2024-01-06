@@ -3590,7 +3590,7 @@ impl<'b, 'v> Visitor<'v> for ConditionVisitor<'b> {
                                 ));
                             } else if let Some(guard) = &arm.guard {
                                 self.errors.push((
-                                    arm.pat.span.to(guard.body().span),
+                                    arm.pat.span.to(guard.span),
                                     format!(
                                         "if this pattern and condition are matched, {} is not \
                                          initialized",

@@ -1,8 +1,8 @@
 use crate::errors;
 use rustc_ast::ast;
 use rustc_attr::InstructionSetAttr;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -18,7 +18,7 @@ use rustc_span::Span;
 pub fn from_target_feature(
     tcx: TyCtxt<'_>,
     attr: &ast::Attribute,
-    supported_target_features: &FxHashMap<String, Option<Symbol>>,
+    supported_target_features: &UnordMap<String, Option<Symbol>>,
     target_features: &mut Vec<Symbol>,
 ) {
     let Some(list) = attr.meta_item_list() else { return };

@@ -855,7 +855,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
             Err(mut err) => {
                 if err.span.is_dummy() {
-                    err.set_span(span);
+                    err.span(span);
                 }
                 annotate_err_with_kind(&mut err, kind, span);
                 err.emit();
