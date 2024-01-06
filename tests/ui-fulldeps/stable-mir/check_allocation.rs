@@ -111,7 +111,7 @@ fn check_other_consts(item: CrateItem) {
     // Instance body will force constant evaluation.
     let body = Instance::try_from(item).unwrap().body().unwrap();
     let assigns = collect_consts(&body);
-    assert_eq!(assigns.len(), 9);
+    assert_eq!(assigns.len(), 8);
     for (name, alloc) in assigns {
         match name.as_str() {
             "_max_u128" => {
