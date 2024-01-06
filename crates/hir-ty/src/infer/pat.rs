@@ -233,7 +233,6 @@ impl InferenceContext<'_> {
         };
         let mut expectations_iter = expectations
             .iter()
-            .cloned()
             .map(|a| a.assert_ty_ref(Interner).clone())
             .chain(repeat_with(|| self.table.new_type_var()));
 
