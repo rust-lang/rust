@@ -922,3 +922,13 @@ Whether to allow certain wildcard imports (prelude, super in tests).
 * [`wildcard_imports`](https://rust-lang.github.io/rust-clippy/master/index.html#wildcard_imports)
 
 
+## `warn-unsafe-macro-metavars-in-private-macros`
+Whether to also emit warnings for unsafe blocks with metavariable expansions in **private** macros.
+
+**Default Value:** `false`
+
+---
+**Affected lints:**
+* [`macro_metavars_in_unsafe`](https://rust-lang.github.io/rust-clippy/master/index.html#macro_metavars_in_unsafe)
+
+

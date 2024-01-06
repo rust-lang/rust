@@ -193,6 +193,7 @@ mod lifetimes;
 mod lines_filter_map_ok;
 mod literal_representation;
 mod loops;
+mod macro_metavars_in_unsafe;
 mod macro_use;
 mod main_recursion;
 mod manual_assert;
@@ -599,6 +600,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
 
         blacklisted_names: _,
         cyclomatic_complexity_threshold: _,
+        warn_unsafe_macro_metavars_in_private_macros,
     } = *conf;
     let msrv = || msrv.clone();
 
@@ -1155,6 +1157,12 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(|_| Box::new(zero_repeat_side_effects::ZeroRepeatSideEffects));
     store.register_late_pass(|_| Box::new(manual_unwrap_or_default::ManualUnwrapOrDefault));
     store.register_late_pass(|_| Box::new(integer_division_remainder_used::IntegerDivisionRemainderUsed));
+    store.register_late_pass(move |_| {
+        Box::new(macro_metavars_in_unsafe::ExprMetavarsInUnsafe {
+            warn_unsafe_macro_metavars_in_private_macros,
+            ..Default::default()
+        })
+    });
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

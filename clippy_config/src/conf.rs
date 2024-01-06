@@ -632,6 +632,10 @@ define_Conf! {
     /// default configuration of Clippy. By default, any configuration will replace the default value.
     (allow_renamed_params_for: Vec<String> =
         DEFAULT_ALLOWED_TRAITS_WITH_RENAMED_PARAMS.iter().map(ToString::to_string).collect()),
+    /// Lint: MACRO_METAVARS_IN_UNSAFE.
+    ///
+    /// Whether to also emit warnings for unsafe blocks with metavariable expansions in **private** macros.
+    (warn_unsafe_macro_metavars_in_private_macros: bool = false),
 }
 
 /// Search for the configuration file.
