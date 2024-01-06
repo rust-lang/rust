@@ -4644,6 +4644,7 @@ dependencies = [
  "rustc_index",
  "rustc_macros",
  "rustc_serialize",
+ "rustc_span",
  "smallvec",
 ]
 

@@ -226,7 +226,7 @@ trait UnordCollection {}
 ///
 /// See [MCP 533](https://github.com/rust-lang/compiler-team/issues/533)
 /// for more information.
-#[derive(Debug, Eq, PartialEq, Clone, Encodable, Decodable)]
+#[derive(Debug, Eq, PartialEq, Clone, Encodable_Generic, Decodable_Generic)]
 pub struct UnordSet<V: Eq + Hash> {
     inner: FxHashSet<V>,
 }
@@ -417,7 +417,7 @@ impl<HCX, V: Hash + Eq + HashStable<HCX>> HashStable<HCX> for UnordSet<V> {
 ///
 /// See [MCP 533](https://github.com/rust-lang/compiler-team/issues/533)
 /// for more information.
-#[derive(Debug, Eq, PartialEq, Clone, Encodable, Decodable)]
+#[derive(Debug, Eq, PartialEq, Clone, Encodable_Generic, Decodable_Generic)]
 pub struct UnordMap<K: Eq + Hash, V> {
     inner: FxHashMap<K, V>,
 }
@@ -626,7 +626,7 @@ impl<HCX, K: Hash + Eq + HashStable<HCX>, V: HashStable<HCX>> HashStable<HCX> fo
 ///
 /// See [MCP 533](https://github.com/rust-lang/compiler-team/issues/533)
 /// for more information.
-#[derive(Default, Debug, Eq, PartialEq, Clone, Encodable, Decodable)]
+#[derive(Default, Debug, Eq, PartialEq, Clone, Encodable_Generic, Decodable_Generic)]
 pub struct UnordBag<V> {
     inner: Vec<V>,
 }

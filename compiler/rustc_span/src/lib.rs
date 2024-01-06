@@ -35,6 +35,8 @@
 #![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 
+extern crate self as rustc_span;
+
 #[macro_use]
 extern crate rustc_macros;
 
@@ -43,6 +45,7 @@ extern crate tracing;
 
 use rustc_data_structures::{outline, AtomicRef};
 use rustc_macros::HashStable_Generic;
+use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 mod caching_source_map_view;
@@ -58,7 +61,7 @@ pub use hygiene::{DesugaringKind, ExpnKind, MacroKind};
 pub use hygiene::{ExpnData, ExpnHash, ExpnId, LocalExpnId, SyntaxContext};
 use rustc_data_structures::stable_hasher::HashingControls;
 pub mod def_id;
-use def_id::{CrateNum, DefId, DefPathHash, LocalDefId, StableCrateId, LOCAL_CRATE};
+use def_id::{CrateNum, DefId, DefIndex, DefPathHash, LocalDefId, StableCrateId, LOCAL_CRATE};
 pub mod edit_distance;
 mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
@@ -1016,19 +1019,202 @@ impl Default for Span {
     }
 }
 
-impl<E: Encoder> Encodable<E> for Span {
-    default fn encode(&self, s: &mut E) {
-        let span = self.data();
-        span.lo.encode(s);
-        span.hi.encode(s);
+rustc_index::newtype_index! {
+    #[orderable]
+    #[debug_format = "AttrId({})"]
+    pub struct AttrId {}
+}
+
+/// This trait is used to allow encoder specific encodings of certain types.
+/// It is similar to rustc_type_ir's TyEncoder.
+pub trait SpanEncoder: Encoder {
+    fn encode_span(&mut self, span: Span);
+    fn encode_symbol(&mut self, symbol: Symbol);
+    fn encode_expn_id(&mut self, expn_id: ExpnId);
+    fn encode_syntax_context(&mut self, syntax_context: SyntaxContext);
+    /// As a local identifier, a `CrateNum` is only meaningful within its context, e.g. within a tcx.
+    /// Therefore, make sure to include the context when encode a `CrateNum`.
+    fn encode_crate_num(&mut self, crate_num: CrateNum);
+    fn encode_def_index(&mut self, def_index: DefIndex);
+    fn encode_def_id(&mut self, def_id: DefId);
+}
+
+impl SpanEncoder for FileEncoder {
+    fn encode_span(&mut self, span: Span) {
+        let span = span.data();
+        span.lo.encode(self);
+        span.hi.encode(self);
+    }
+
+    fn encode_symbol(&mut self, symbol: Symbol) {
+        self.emit_str(symbol.as_str());
+    }
+
+    fn encode_expn_id(&mut self, _expn_id: ExpnId) {
+        panic!("cannot encode `ExpnId` with `FileEncoder`");
+    }
+
+    fn encode_syntax_context(&mut self, _syntax_context: SyntaxContext) {
+        panic!("cannot encode `SyntaxContext` with `FileEncoder`");
+    }
+
+    fn encode_crate_num(&mut self, crate_num: CrateNum) {
+        self.emit_u32(crate_num.as_u32());
+    }
+
+    fn encode_def_index(&mut self, _def_index: DefIndex) {
+        panic!("cannot encode `DefIndex` with `FileEncoder`");
+    }
+
+    fn encode_def_id(&mut self, def_id: DefId) {
+        def_id.krate.encode(self);
+        def_id.index.encode(self);
     }
 }
-impl<D: Decoder> Decodable<D> for Span {
-    default fn decode(s: &mut D) -> Span {
-        let lo = Decodable::decode(s);
-        let hi = Decodable::decode(s);
+
+impl<E: SpanEncoder> Encodable<E> for Span {
+    fn encode(&self, s: &mut E) {
+        s.encode_span(*self);
+    }
+}
+
+impl<E: SpanEncoder> Encodable<E> for Symbol {
+    fn encode(&self, s: &mut E) {
+        s.encode_symbol(*self);
+    }
+}
+
+impl<E: SpanEncoder> Encodable<E> for ExpnId {
+    fn encode(&self, s: &mut E) {
+        s.encode_expn_id(*self)
+    }
+}
+
+impl<E: SpanEncoder> Encodable<E> for SyntaxContext {
+    fn encode(&self, s: &mut E) {
+        s.encode_syntax_context(*self)
+    }
+}
+
+impl<E: SpanEncoder> Encodable<E> for CrateNum {
+    fn encode(&self, s: &mut E) {
+        s.encode_crate_num(*self)
+    }
+}
+
+impl<E: SpanEncoder> Encodable<E> for DefIndex {
+    fn encode(&self, s: &mut E) {
+        s.encode_def_index(*self)
+    }
+}
+
+impl<E: SpanEncoder> Encodable<E> for DefId {
+    fn encode(&self, s: &mut E) {
+        s.encode_def_id(*self)
+    }
+}
+
+impl<E: SpanEncoder> Encodable<E> for AttrId {
+    fn encode(&self, _s: &mut E) {
+        // A fresh id will be generated when decoding
+    }
+}
+
+/// This trait is used to allow decoder specific encodings of certain types.
+/// It is similar to rustc_type_ir's TyDecoder.
+pub trait SpanDecoder: Decoder {
+    fn decode_span(&mut self) -> Span;
+    fn decode_symbol(&mut self) -> Symbol;
+    fn decode_expn_id(&mut self) -> ExpnId;
+    fn decode_syntax_context(&mut self) -> SyntaxContext;
+    fn decode_crate_num(&mut self) -> CrateNum;
+    fn decode_def_index(&mut self) -> DefIndex;
+    fn decode_def_id(&mut self) -> DefId;
+    fn decode_attr_id(&mut self) -> AttrId;
+}
+
+impl SpanDecoder for MemDecoder<'_> {
+    fn decode_span(&mut self) -> Span {
+        let lo = Decodable::decode(self);
+        let hi = Decodable::decode(self);
 
         Span::new(lo, hi, SyntaxContext::root(), None)
+    }
+
+    fn decode_symbol(&mut self) -> Symbol {
+        Symbol::intern(self.read_str())
+    }
+
+    fn decode_expn_id(&mut self) -> ExpnId {
+        panic!("cannot decode `ExpnId` with `MemDecoder`");
+    }
+
+    fn decode_syntax_context(&mut self) -> SyntaxContext {
+        panic!("cannot decode `SyntaxContext` with `MemDecoder`");
+    }
+
+    fn decode_crate_num(&mut self) -> CrateNum {
+        CrateNum::from_u32(self.read_u32())
+    }
+
+    fn decode_def_index(&mut self) -> DefIndex {
+        panic!("cannot decode `DefIndex` with `MemDecoder`");
+    }
+
+    fn decode_def_id(&mut self) -> DefId {
+        DefId { krate: Decodable::decode(self), index: Decodable::decode(self) }
+    }
+
+    fn decode_attr_id(&mut self) -> AttrId {
+        panic!("cannot decode `AttrId` with `MemDecoder`");
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for Span {
+    fn decode(s: &mut D) -> Span {
+        s.decode_span()
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for Symbol {
+    fn decode(s: &mut D) -> Symbol {
+        s.decode_symbol()
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for ExpnId {
+    fn decode(s: &mut D) -> ExpnId {
+        s.decode_expn_id()
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for SyntaxContext {
+    fn decode(s: &mut D) -> SyntaxContext {
+        s.decode_syntax_context()
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for CrateNum {
+    fn decode(s: &mut D) -> CrateNum {
+        s.decode_crate_num()
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for DefIndex {
+    fn decode(s: &mut D) -> DefIndex {
+        s.decode_def_index()
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for DefId {
+    fn decode(s: &mut D) -> DefId {
+        s.decode_def_id()
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for AttrId {
+    fn decode(s: &mut D) -> AttrId {
+        s.decode_attr_id()
     }
 }
 
@@ -1360,7 +1546,7 @@ impl Clone for SourceFile {
     }
 }
 
-impl<S: Encoder> Encodable<S> for SourceFile {
+impl<S: SpanEncoder> Encodable<S> for SourceFile {
     fn encode(&self, s: &mut S) {
         self.name.encode(s);
         self.src_hash.encode(s);
@@ -1434,7 +1620,7 @@ impl<S: Encoder> Encodable<S> for SourceFile {
     }
 }
 
-impl<D: Decoder> Decodable<D> for SourceFile {
+impl<D: SpanDecoder> Decodable<D> for SourceFile {
     fn decode(d: &mut D) -> SourceFile {
         let name: FileName = Decodable::decode(d);
         let src_hash: SourceFileHash = Decodable::decode(d);

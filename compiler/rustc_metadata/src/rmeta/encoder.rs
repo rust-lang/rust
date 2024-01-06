@@ -25,7 +25,7 @@ use rustc_session::config::{CrateType, OptLevel};
 use rustc_span::hygiene::HygieneEncodeContext;
 use rustc_span::symbol::sym;
 use rustc_span::{
-    ExternalSource, FileName, SourceFile, SpanData, StableSourceFileId, SyntaxContext,
+    ExternalSource, FileName, SourceFile, SpanData, SpanEncoder, StableSourceFileId, SyntaxContext,
 };
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
@@ -123,70 +123,90 @@ impl<'a, 'tcx, I, T> Encodable<EncodeContext<'a, 'tcx>> for LazyTable<I, T> {
     }
 }
 
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for CrateNum {
-    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
-        if *self != LOCAL_CRATE && s.is_proc_macro {
-            panic!("Attempted to encode non-local CrateNum {self:?} for proc-macro crate");
-        }
-        s.emit_u32(self.as_u32());
-    }
-}
-
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for DefIndex {
-    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
-        s.emit_u32(self.as_u32());
-    }
-}
-
 impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for ExpnIndex {
     fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
         s.emit_u32(self.as_u32());
     }
 }
 
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SyntaxContext {
-    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
-        rustc_span::hygiene::raw_encode_syntax_context(*self, s.hygiene_ctxt, s);
+impl<'a, 'tcx> SpanEncoder for EncodeContext<'a, 'tcx> {
+    fn encode_crate_num(&mut self, crate_num: CrateNum) {
+        if crate_num != LOCAL_CRATE && self.is_proc_macro {
+            panic!("Attempted to encode non-local CrateNum {crate_num:?} for proc-macro crate");
+        }
+        self.emit_u32(crate_num.as_u32());
     }
-}
 
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for ExpnId {
-    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
-        if self.krate == LOCAL_CRATE {
+    fn encode_def_index(&mut self, def_index: DefIndex) {
+        self.emit_u32(def_index.as_u32());
+    }
+
+    fn encode_def_id(&mut self, def_id: DefId) {
+        def_id.krate.encode(self);
+        def_id.index.encode(self);
+    }
+
+    fn encode_syntax_context(&mut self, syntax_context: SyntaxContext) {
+        rustc_span::hygiene::raw_encode_syntax_context(syntax_context, self.hygiene_ctxt, self);
+    }
+
+    fn encode_expn_id(&mut self, expn_id: ExpnId) {
+        if expn_id.krate == LOCAL_CRATE {
             // We will only write details for local expansions. Non-local expansions will fetch
             // data from the corresponding crate's metadata.
             // FIXME(#43047) FIXME(#74731) We may eventually want to avoid relying on external
             // metadata from proc-macro crates.
-            s.hygiene_ctxt.schedule_expn_data_for_encoding(*self);
+            self.hygiene_ctxt.schedule_expn_data_for_encoding(expn_id);
         }
-        self.krate.encode(s);
-        self.local_id.encode(s);
+        expn_id.krate.encode(self);
+        expn_id.local_id.encode(self);
     }
-}
 
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
-    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
-        match s.span_shorthands.entry(*self) {
+    fn encode_span(&mut self, span: Span) {
+        match self.span_shorthands.entry(span) {
             Entry::Occupied(o) => {
                 // If an offset is smaller than the absolute position, we encode with the offset.
                 // This saves space since smaller numbers encode in less bits.
                 let last_location = *o.get();
                 // This cannot underflow. Metadata is written with increasing position(), so any
                 // previously saved offset must be smaller than the current position.
-                let offset = s.opaque.position() - last_location;
+                let offset = self.opaque.position() - last_location;
                 if offset < last_location {
-                    SpanTag::indirect(true).encode(s);
-                    offset.encode(s);
+                    SpanTag::indirect(true).encode(self);
+                    offset.encode(self);
                 } else {
-                    SpanTag::indirect(false).encode(s);
-                    last_location.encode(s);
+                    SpanTag::indirect(false).encode(self);
+                    last_location.encode(self);
                 }
             }
             Entry::Vacant(v) => {
-                let position = s.opaque.position();
+                let position = self.opaque.position();
                 v.insert(position);
                 // Data is encoded with a SpanTag prefix (see below).
-                self.data().encode(s);
+                span.data().encode(self);
+            }
+        }
+    }
+
+    fn encode_symbol(&mut self, symbol: Symbol) {
+        // if symbol preinterned, emit tag and symbol index
+        if symbol.is_preinterned() {
+            self.opaque.emit_u8(SYMBOL_PREINTERNED);
+            self.opaque.emit_u32(symbol.as_u32());
+        } else {
+            // otherwise write it as string or as offset to it
+            match self.symbol_table.entry(symbol) {
+                Entry::Vacant(o) => {
+                    self.opaque.emit_u8(SYMBOL_STR);
+                    let pos = self.opaque.position();
+                    o.insert(pos);
+                    self.emit_str(symbol.as_str());
+                }
+                Entry::Occupied(o) => {
+                    let x = *o.get();
+                    self.emit_u8(SYMBOL_OFFSET);
+                    self.emit_usize(x);
+                }
             }
         }
     }
@@ -331,31 +351,6 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for SpanData {
             // while calling `cnum.encode(s)`
             let cnum = s.source_file_cache.0.cnum;
             cnum.encode(s);
-        }
-    }
-}
-
-impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Symbol {
-    fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
-        // if symbol preinterned, emit tag and symbol index
-        if self.is_preinterned() {
-            s.opaque.emit_u8(SYMBOL_PREINTERNED);
-            s.opaque.emit_u32(self.as_u32());
-        } else {
-            // otherwise write it as string or as offset to it
-            match s.symbol_table.entry(*self) {
-                Entry::Vacant(o) => {
-                    s.opaque.emit_u8(SYMBOL_STR);
-                    let pos = s.opaque.position();
-                    o.insert(pos);
-                    s.emit_str(self.as_str());
-                }
-                Entry::Occupied(o) => {
-                    let x = *o.get();
-                    s.emit_u8(SYMBOL_OFFSET);
-                    s.emit_usize(x);
-                }
-            }
         }
     }
 }

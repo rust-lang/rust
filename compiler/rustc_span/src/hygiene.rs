@@ -27,7 +27,7 @@
 use crate::def_id::{CrateNum, DefId, StableCrateId, CRATE_DEF_ID, LOCAL_CRATE};
 use crate::edition::Edition;
 use crate::symbol::{kw, sym, Symbol};
-use crate::{with_session_globals, HashStableContext, Span, DUMMY_SP};
+use crate::{with_session_globals, HashStableContext, Span, SpanDecoder, SpanEncoder, DUMMY_SP};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stable_hasher::{Hash64, HashStable, HashingControls, StableHasher};
@@ -1431,27 +1431,15 @@ fn for_all_expns_in(
     }
 }
 
-impl<E: Encoder> Encodable<E> for LocalExpnId {
+impl<E: SpanEncoder> Encodable<E> for LocalExpnId {
     fn encode(&self, e: &mut E) {
         self.to_expn_id().encode(e);
     }
 }
 
-impl<E: Encoder> Encodable<E> for ExpnId {
-    default fn encode(&self, _: &mut E) {
-        panic!("cannot encode `ExpnId` with `{}`", std::any::type_name::<E>());
-    }
-}
-
-impl<D: Decoder> Decodable<D> for LocalExpnId {
+impl<D: SpanDecoder> Decodable<D> for LocalExpnId {
     fn decode(d: &mut D) -> Self {
         ExpnId::expect_local(ExpnId::decode(d))
-    }
-}
-
-impl<D: Decoder> Decodable<D> for ExpnId {
-    default fn decode(_: &mut D) -> Self {
-        panic!("cannot decode `ExpnId` with `{}`", std::any::type_name::<D>());
     }
 }
 
@@ -1464,18 +1452,6 @@ pub fn raw_encode_syntax_context<E: Encoder>(
         context.latest_ctxts.lock().insert(ctxt);
     }
     ctxt.0.encode(e);
-}
-
-impl<E: Encoder> Encodable<E> for SyntaxContext {
-    default fn encode(&self, _: &mut E) {
-        panic!("cannot encode `SyntaxContext` with `{}`", std::any::type_name::<E>());
-    }
-}
-
-impl<D: Decoder> Decodable<D> for SyntaxContext {
-    default fn decode(_: &mut D) -> Self {
-        panic!("cannot decode `SyntaxContext` with `{}`", std::any::type_name::<D>());
-    }
 }
 
 /// Updates the `disambiguator` field of the corresponding `ExpnData`
