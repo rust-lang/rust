@@ -519,18 +519,11 @@ pub struct FruInfo<'tcx> {
 #[derive(Clone, Debug, HashStable)]
 pub struct Arm<'tcx> {
     pub pattern: Box<Pat<'tcx>>,
-    pub guard: Option<Guard<'tcx>>,
+    pub guard: Option<ExprId>,
     pub body: ExprId,
     pub lint_level: LintLevel,
     pub scope: region::Scope,
     pub span: Span,
-}
-
-/// A `match` guard.
-#[derive(Clone, Debug, HashStable)]
-pub enum Guard<'tcx> {
-    If(ExprId),
-    IfLet(Box<Pat<'tcx>>, ExprId),
 }
 
 #[derive(Copy, Clone, Debug, HashStable)]

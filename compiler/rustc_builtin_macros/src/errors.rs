@@ -454,7 +454,7 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for EnvNotDefinedWithUserMe
             reason = "cannot translate user-provided messages"
         )]
         let mut diag = DiagnosticBuilder::new(dcx, level, self.msg_from_user.to_string());
-        diag.set_span(self.span);
+        diag.span(self.span);
         diag
     }
 }
@@ -618,7 +618,7 @@ impl AddToDiagnostic for FormatUnusedArg {
             rustc_errors::SubdiagnosticMessage,
         ) -> rustc_errors::SubdiagnosticMessage,
     {
-        diag.set_arg("named", self.named);
+        diag.arg("named", self.named);
         let msg = f(diag, crate::fluent_generated::builtin_macros_format_unused_arg.into());
         diag.span_label(self.span, msg);
     }
@@ -808,7 +808,7 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for AsmClobberNoReg {
             level,
             crate::fluent_generated::builtin_macros_asm_clobber_no_reg,
         );
-        diag.set_span(self.spans.clone());
+        diag.span(self.spans.clone());
         // eager translation as `span_labels` takes `AsRef<str>`
         let lbl1 = dcx.eagerly_translate_to_string(
             crate::fluent_generated::builtin_macros_asm_clobber_abi,

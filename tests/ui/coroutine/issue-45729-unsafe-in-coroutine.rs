@@ -1,6 +1,3 @@
-// revisions: mir thir
-// [thir]compile-flags: -Z thir-unsafeck
-
 #![feature(coroutines)]
 
 fn main() {

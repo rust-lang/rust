@@ -1,6 +1,5 @@
 // Tests that no ICE occurs when a closure appears inside a node
 // that does not have a body when compiling with
-// compile-flags: -Zthir-unsafeck=yes
 // check-pass
 
 #![allow(dead_code)]

@@ -41,6 +41,30 @@ pub type UsefulnessReport<'p, 'tcx> =
     crate::usefulness::UsefulnessReport<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
 pub type WitnessPat<'p, 'tcx> = crate::pat::WitnessPat<RustcMatchCheckCtxt<'p, 'tcx>>;
 
+/// A type which has gone through `cx.reveal_opaque_ty`, i.e. if it was opaque it was replaced by
+/// the hidden type if allowed in the current body. This ensures we consistently inspect the hidden
+/// types when we should.
+///
+/// Use `.inner()` or deref to get to the `Ty<'tcx>`.
+#[repr(transparent)]
+#[derive(derivative::Derivative)]
+#[derive(Clone, Copy)]
+#[derivative(Debug = "transparent")]
+pub struct RevealedTy<'tcx>(Ty<'tcx>);
+
+impl<'tcx> std::ops::Deref for RevealedTy<'tcx> {
+    type Target = Ty<'tcx>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<'tcx> RevealedTy<'tcx> {
+    pub fn inner(self) -> Ty<'tcx> {
+        self.0
+    }
+}
+
 #[derive(Clone)]
 pub struct RustcMatchCheckCtxt<'p, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
@@ -74,20 +98,48 @@ impl<'p, 'tcx> fmt::Debug for RustcMatchCheckCtxt<'p, 'tcx> {
 }
 
 impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
-    fn reveal_opaque(&self, key: OpaqueTypeKey<'tcx>) -> Option<Ty<'tcx>> {
+    /// Type inference occasionally gives us opaque types in places where corresponding patterns
+    /// have more specific types. To avoid inconsistencies as well as detect opaque uninhabited
+    /// types, we use the corresponding concrete type if possible.
+    #[inline]
+    pub fn reveal_opaque_ty(&self, ty: Ty<'tcx>) -> RevealedTy<'tcx> {
+        fn reveal_inner<'tcx>(
+            cx: &RustcMatchCheckCtxt<'_, 'tcx>,
+            ty: Ty<'tcx>,
+        ) -> RevealedTy<'tcx> {
+            let ty::Alias(ty::Opaque, alias_ty) = *ty.kind() else { bug!() };
+            if let Some(local_def_id) = alias_ty.def_id.as_local() {
+                let key = ty::OpaqueTypeKey { def_id: local_def_id, args: alias_ty.args };
+                if let Some(ty) = cx.reveal_opaque_key(key) {
+                    return RevealedTy(ty);
+                }
+            }
+            RevealedTy(ty)
+        }
+        if let ty::Alias(ty::Opaque, _) = ty.kind() {
+            reveal_inner(self, ty)
+        } else {
+            RevealedTy(ty)
+        }
+    }
+
+    /// Returns the hidden type corresponding to this key if the body under analysis is allowed to
+    /// know it.
+    fn reveal_opaque_key(&self, key: OpaqueTypeKey<'tcx>) -> Option<Ty<'tcx>> {
         self.typeck_results.concrete_opaque_types.get(&key).map(|x| x.ty)
     }
+    // This can take a non-revealed `Ty` because it reveals opaques itself.
     pub fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
         !ty.inhabited_predicate(self.tcx).apply_revealing_opaque(
             self.tcx,
             self.param_env,
             self.module,
-            &|key| self.reveal_opaque(key),
+            &|key| self.reveal_opaque_key(key),
         )
     }
 
     /// Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
-    pub fn is_foreign_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
+    pub fn is_foreign_non_exhaustive_enum(&self, ty: RevealedTy<'tcx>) -> bool {
         match ty.kind() {
             ty::Adt(def, ..) => {
                 def.is_enum() && def.is_variant_list_non_exhaustive() && !def.did().is_local()
@@ -98,7 +150,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
 
     /// Whether the range denotes the fictitious values before `isize::MIN` or after
     /// `usize::MAX`/`isize::MAX` (see doc of [`IntRange::split`] for why these exist).
-    pub fn is_range_beyond_boundaries(&self, range: &IntRange, ty: Ty<'tcx>) -> bool {
+    pub fn is_range_beyond_boundaries(&self, range: &IntRange, ty: RevealedTy<'tcx>) -> bool {
         ty.is_ptr_sized_integral() && {
             // The two invalid ranges are `NegInfinity..isize::MIN` (represented as
             // `NegInfinity..0`), and `{u,i}size::MAX+1..PosInfinity`. `hoist_pat_range_bdy`
@@ -110,29 +162,14 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
         }
     }
 
-    /// Type inference occasionally gives us opaque types in places where corresponding patterns
-    /// have more specific types. To avoid inconsistencies as well as detect opaque uninhabited
-    /// types, we use the corresponding concrete type if possible.
-    fn reveal_opaque_ty(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Alias(ty::Opaque, alias_ty) = ty.kind() {
-            if let Some(local_def_id) = alias_ty.def_id.as_local() {
-                let key = ty::OpaqueTypeKey { def_id: local_def_id, args: alias_ty.args };
-                if let Some(real_ty) = self.typeck_results.concrete_opaque_types.get(&key) {
-                    return real_ty.ty;
-                }
-            }
-        }
-        ty
-    }
-
     // In the cases of either a `#[non_exhaustive]` field list or a non-public field, we hide
     // uninhabited fields in order not to reveal the uninhabitedness of the whole variant.
     // This lists the fields we keep along with their types.
     pub(crate) fn list_variant_nonhidden_fields(
         &self,
-        ty: Ty<'tcx>,
+        ty: RevealedTy<'tcx>,
         variant: &'tcx VariantDef,
-    ) -> impl Iterator<Item = (FieldIdx, Ty<'tcx>)> + Captures<'p> + Captures<'_> {
+    ) -> impl Iterator<Item = (FieldIdx, RevealedTy<'tcx>)> + Captures<'p> + Captures<'_> {
         let cx = self;
         let ty::Adt(adt, args) = ty.kind() else { bug!() };
         // Whether we must not match the fields of this variant exhaustively.
@@ -148,6 +185,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
             if is_uninhabited && (!is_visible || is_non_exhaustive) {
                 None
             } else {
+                let ty = cx.reveal_opaque_ty(ty);
                 Some((FieldIdx::new(i), ty))
             }
         })
@@ -170,16 +208,26 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
     /// Returns the types of the fields for a given constructor. The result must have a length of
     /// `ctor.arity()`.
     #[instrument(level = "trace", skip(self))]
-    pub(crate) fn ctor_sub_tys(&self, ctor: &Constructor<'p, 'tcx>, ty: Ty<'tcx>) -> &[Ty<'tcx>] {
+    pub(crate) fn ctor_sub_tys(
+        &self,
+        ctor: &Constructor<'p, 'tcx>,
+        ty: RevealedTy<'tcx>,
+    ) -> &[RevealedTy<'tcx>] {
+        fn reveal_and_alloc<'a, 'tcx>(
+            cx: &'a RustcMatchCheckCtxt<'_, 'tcx>,
+            iter: impl Iterator<Item = Ty<'tcx>>,
+        ) -> &'a [RevealedTy<'tcx>] {
+            cx.dropless_arena.alloc_from_iter(iter.map(|ty| cx.reveal_opaque_ty(ty)))
+        }
         let cx = self;
         match ctor {
             Struct | Variant(_) | UnionField => match ty.kind() {
-                ty::Tuple(fs) => cx.dropless_arena.alloc_from_iter(fs.iter()),
+                ty::Tuple(fs) => reveal_and_alloc(cx, fs.iter()),
                 ty::Adt(adt, args) => {
                     if adt.is_box() {
                         // The only legal patterns of type `Box` (outside `std`) are `_` and box
                         // patterns. If we're here we can assume this is a box pattern.
-                        cx.dropless_arena.alloc_from_iter(once(args.type_at(0)))
+                        reveal_and_alloc(cx, once(args.type_at(0)))
                     } else {
                         let variant =
                             &adt.variant(RustcMatchCheckCtxt::variant_index_for_adt(&ctor, *adt));
@@ -190,13 +238,13 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                 _ => bug!("Unexpected type for constructor `{ctor:?}`: {ty:?}"),
             },
             Ref => match ty.kind() {
-                ty::Ref(_, rty, _) => cx.dropless_arena.alloc_from_iter(once(*rty)),
+                ty::Ref(_, rty, _) => reveal_and_alloc(cx, once(*rty)),
                 _ => bug!("Unexpected type for `Ref` constructor: {ty:?}"),
             },
             Slice(slice) => match *ty.kind() {
                 ty::Slice(ty) | ty::Array(ty, _) => {
                     let arity = slice.arity();
-                    cx.dropless_arena.alloc_from_iter((0..arity).map(|_| ty))
+                    reveal_and_alloc(cx, (0..arity).map(|_| ty))
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", ctor, ty),
             },
@@ -217,7 +265,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
     }
 
     /// The number of fields for this constructor.
-    pub(crate) fn ctor_arity(&self, ctor: &Constructor<'p, 'tcx>, ty: Ty<'tcx>) -> usize {
+    pub(crate) fn ctor_arity(&self, ctor: &Constructor<'p, 'tcx>, ty: RevealedTy<'tcx>) -> usize {
         match ctor {
             Struct | Variant(_) | UnionField => match ty.kind() {
                 ty::Tuple(fs) => fs.len(),
@@ -254,7 +302,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
     ///
     /// See [`crate::constructor`] for considerations of emptiness.
     #[instrument(level = "debug", skip(self), ret)]
-    pub fn ctors_for_ty(&self, ty: Ty<'tcx>) -> ConstructorSet<'p, 'tcx> {
+    pub fn ctors_for_ty(&self, ty: RevealedTy<'tcx>) -> ConstructorSet<'p, 'tcx> {
         let cx = self;
         let make_uint_range = |start, end| {
             IntRange::from_range(
@@ -328,7 +376,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                             .inhabited_predicate(cx.tcx, *def)
                             .instantiate(cx.tcx, args)
                             .apply_revealing_opaque(cx.tcx, cx.param_env, cx.module, &|key| {
-                                cx.reveal_opaque(key)
+                                cx.reveal_opaque_key(key)
                             });
                         // Variants that depend on a disabled unstable feature.
                         let is_unstable = matches!(
@@ -353,7 +401,9 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                 }
             }
             ty::Adt(def, _) if def.is_union() => ConstructorSet::Union,
-            ty::Adt(..) | ty::Tuple(..) => ConstructorSet::Struct { empty: cx.is_uninhabited(ty) },
+            ty::Adt(..) | ty::Tuple(..) => {
+                ConstructorSet::Struct { empty: cx.is_uninhabited(ty.inner()) }
+            }
             ty::Ref(..) => ConstructorSet::Ref,
             ty::Never => ConstructorSet::NoConstructors,
             // This type is one for which we cannot list constructors, like `str` or `f64`.
@@ -379,7 +429,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
     pub(crate) fn lower_pat_range_bdy(
         &self,
         bdy: PatRangeBoundary<'tcx>,
-        ty: Ty<'tcx>,
+        ty: RevealedTy<'tcx>,
     ) -> MaybeInfiniteInt {
         match bdy {
             PatRangeBoundary::NegInfinity => MaybeInfiniteInt::NegInfinity,
@@ -402,6 +452,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
     pub fn lower_pat(&self, pat: &'p Pat<'tcx>) -> DeconstructedPat<'p, 'tcx> {
         let singleton = |pat| std::slice::from_ref(self.pattern_arena.alloc(pat));
         let cx = self;
+        let ty = cx.reveal_opaque_ty(pat.ty);
         let ctor;
         let fields: &[_];
         match &pat.kind {
@@ -414,19 +465,22 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
             }
             PatKind::Deref { subpattern } => {
                 fields = singleton(self.lower_pat(subpattern));
-                ctor = match pat.ty.kind() {
+                ctor = match ty.kind() {
                     // This is a box pattern.
                     ty::Adt(adt, ..) if adt.is_box() => Struct,
                     ty::Ref(..) => Ref,
-                    _ => bug!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, pat.ty),
+                    _ => bug!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, ty),
                 };
             }
             PatKind::Leaf { subpatterns } | PatKind::Variant { subpatterns, .. } => {
-                match pat.ty.kind() {
+                match ty.kind() {
                     ty::Tuple(fs) => {
                         ctor = Struct;
-                        let mut wilds: SmallVec<[_; 2]> =
-                            fs.iter().map(|ty| DeconstructedPat::wildcard(ty)).collect();
+                        let mut wilds: SmallVec<[_; 2]> = fs
+                            .iter()
+                            .map(|ty| cx.reveal_opaque_ty(ty))
+                            .map(|ty| DeconstructedPat::wildcard(ty))
+                            .collect();
                         for pat in subpatterns {
                             wilds[pat.field.index()] = self.lower_pat(&pat.pattern);
                         }
@@ -449,7 +503,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                         let pat = if let Some(pat) = pattern {
                             self.lower_pat(&pat.pattern)
                         } else {
-                            DeconstructedPat::wildcard(args.type_at(0))
+                            DeconstructedPat::wildcard(self.reveal_opaque_ty(args.type_at(0)))
                         };
                         ctor = Struct;
                         fields = singleton(pat);
@@ -466,13 +520,12 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                         // For each field in the variant, we store the relevant index into `self.fields` if any.
                         let mut field_id_to_id: Vec<Option<usize>> =
                             (0..variant.fields.len()).map(|_| None).collect();
-                        let tys = cx
-                            .list_variant_nonhidden_fields(pat.ty, variant)
-                            .enumerate()
-                            .map(|(i, (field, ty))| {
+                        let tys = cx.list_variant_nonhidden_fields(ty, variant).enumerate().map(
+                            |(i, (field, ty))| {
                                 field_id_to_id[field.index()] = Some(i);
                                 ty
-                            });
+                            },
+                        );
                         let mut wilds: SmallVec<[_; 2]> =
                             tys.map(|ty| DeconstructedPat::wildcard(ty)).collect();
                         for pat in subpatterns {
@@ -482,11 +535,11 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                         }
                         fields = cx.pattern_arena.alloc_from_iter(wilds);
                     }
-                    _ => bug!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, pat.ty),
+                    _ => bug!("pattern has unexpected type: pat: {:?}, ty: {:?}", pat, ty),
                 }
             }
             PatKind::Constant { value } => {
-                match pat.ty.kind() {
+                match ty.kind() {
                     ty::Bool => {
                         ctor = match value.try_eval_bool(cx.tcx, cx.param_env) {
                             Some(b) => Bool(b),
@@ -497,7 +550,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                     ty::Char | ty::Int(_) | ty::Uint(_) => {
                         ctor = match value.try_eval_bits(cx.tcx, cx.param_env) {
                             Some(bits) => {
-                                let x = match *pat.ty.kind() {
+                                let x = match *ty.kind() {
                                     ty::Int(ity) => {
                                         let size = Integer::from_int_ty(&cx.tcx, ity).size().bits();
                                         MaybeInfiniteInt::new_finite_int(bits, size)
@@ -540,7 +593,8 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                         // `Ref`), and has one field. That field has constructor `Str(value)` and no
                         // subfields.
                         // Note: `t` is `str`, not `&str`.
-                        let subpattern = DeconstructedPat::new(Str(*value), &[], *t, pat);
+                        let ty = self.reveal_opaque_ty(*t);
+                        let subpattern = DeconstructedPat::new(Str(*value), &[], ty, pat);
                         ctor = Ref;
                         fields = singleton(subpattern)
                     }
@@ -559,7 +613,6 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                     rustc_hir::RangeEnd::Included => RangeEnd::Included,
                     rustc_hir::RangeEnd::Excluded => RangeEnd::Excluded,
                 };
-                let ty = pat.ty;
                 ctor = match ty.kind() {
                     ty::Char | ty::Int(_) | ty::Uint(_) => {
                         let lo = cx.lower_pat_range_bdy(*lo, ty);
@@ -585,17 +638,17 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                             }
                         }
                     }
-                    _ => bug!("invalid type for range pattern: {}", ty),
+                    _ => bug!("invalid type for range pattern: {}", ty.inner()),
                 };
                 fields = &[];
             }
             PatKind::Array { prefix, slice, suffix } | PatKind::Slice { prefix, slice, suffix } => {
-                let array_len = match pat.ty.kind() {
+                let array_len = match ty.kind() {
                     ty::Array(_, length) => {
                         Some(length.eval_target_usize(cx.tcx, cx.param_env) as usize)
                     }
                     ty::Slice(_) => None,
-                    _ => span_bug!(pat.span, "bad ty {:?} for slice pattern", pat.ty),
+                    _ => span_bug!(pat.span, "bad ty {:?} for slice pattern", ty),
                 };
                 let kind = if slice.is_some() {
                     SliceKind::VarLen(prefix.len(), suffix.len())
@@ -624,7 +677,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                 fields = &[];
             }
         }
-        DeconstructedPat::new(ctor, fields, pat.ty, pat)
+        DeconstructedPat::new(ctor, fields, ty, pat)
     }
 
     /// Convert back to a `thir::PatRangeBoundary` for diagnostic purposes.
@@ -634,7 +687,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
     pub(crate) fn hoist_pat_range_bdy(
         &self,
         miint: MaybeInfiniteInt,
-        ty: Ty<'tcx>,
+        ty: RevealedTy<'tcx>,
     ) -> PatRangeBoundary<'tcx> {
         use MaybeInfiniteInt::*;
         let tcx = self.tcx;
@@ -648,7 +701,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                 };
                 match Scalar::try_from_uint(bits, size) {
                     Some(scalar) => {
-                        let value = mir::Const::from_scalar(tcx, scalar, ty);
+                        let value = mir::Const::from_scalar(tcx, scalar, ty.inner());
                         PatRangeBoundary::Finite(value)
                     }
                     // The value doesn't fit. Since `x >= 0` and 0 always encodes the minimum value
@@ -662,7 +715,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
     }
 
     /// Convert back to a `thir::Pat` for diagnostic purposes.
-    pub(crate) fn hoist_pat_range(&self, range: &IntRange, ty: Ty<'tcx>) -> Pat<'tcx> {
+    pub(crate) fn hoist_pat_range(&self, range: &IntRange, ty: RevealedTy<'tcx>) -> Pat<'tcx> {
         use MaybeInfiniteInt::*;
         let cx = self;
         let kind = if matches!((range.lo, range.hi), (NegInfinity, PosInfinity)) {
@@ -693,10 +746,10 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                 range.hi.minus_one()
             };
             let hi = cx.hoist_pat_range_bdy(hi, ty);
-            PatKind::Range(Box::new(PatRange { lo, hi, end, ty }))
+            PatKind::Range(Box::new(PatRange { lo, hi, end, ty: ty.inner() }))
         };
 
-        Pat { ty, span: DUMMY_SP, kind }
+        Pat { ty: ty.inner(), span: DUMMY_SP, kind }
     }
     /// Convert back to a `thir::Pat` for diagnostic purposes. This panics for patterns that don't
     /// appear in diagnostics, like float ranges.
@@ -768,7 +821,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
                             }
                         }
                         let suffix: Box<[_]> = subpatterns.collect();
-                        let wild = Pat::wildcard_from_ty(pat.ty());
+                        let wild = Pat::wildcard_from_ty(pat.ty().inner());
                         PatKind::Slice {
                             prefix: prefix.into_boxed_slice(),
                             slice: Some(Box::new(wild)),
@@ -788,7 +841,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
             }
         };
 
-        Pat { ty: pat.ty(), span: DUMMY_SP, kind }
+        Pat { ty: pat.ty().inner(), span: DUMMY_SP, kind }
     }
 
     /// Best-effort `Debug` implementation.
@@ -890,7 +943,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
 }
 
 impl<'p, 'tcx> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
-    type Ty = Ty<'tcx>;
+    type Ty = RevealedTy<'tcx>;
     type VariantIdx = VariantIdx;
     type StrLit = Const<'tcx>;
     type ArmData = HirId;
@@ -898,10 +951,6 @@ impl<'p, 'tcx> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
 
     fn is_exhaustive_patterns_feature_on(&self) -> bool {
         self.tcx.features().exhaustive_patterns
-    }
-
-    fn reveal_opaque_ty(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.reveal_opaque_ty(ty)
     }
 
     fn ctor_arity(&self, ctor: &crate::constructor::Constructor<Self>, ty: Self::Ty) -> usize {

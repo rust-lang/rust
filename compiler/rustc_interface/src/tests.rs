@@ -6,8 +6,8 @@ use rustc_session::config::{
     build_configuration, build_session_options, rustc_optgroups, BranchProtection, CFGuard, Cfg,
     DebugInfo, DumpMonoStatsFormat, ErrorOutputType, ExternEntry, ExternLocation, Externs,
     FunctionReturn, InliningThreshold, Input, InstrumentCoverage, InstrumentXRay,
-    LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli, MirSpanview, NextSolverConfig,
-    OomStrategy, Options, OutFileName, OutputType, OutputTypes, PAuthKey, PacRet, Passes, Polonius,
+    LinkSelfContained, LinkerPluginLto, LocationDetail, LtoCli, NextSolverConfig, OomStrategy,
+    Options, OutFileName, OutputType, OutputTypes, PAuthKey, PacRet, Passes, Polonius,
     ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
 };
 use rustc_session::lint::Level;
@@ -666,7 +666,6 @@ fn test_unstable_options_tracking_hash() {
     untracked!(dump_mir_dir, String::from("abc"));
     untracked!(dump_mir_exclude_pass_number, true);
     untracked!(dump_mir_graphviz, true);
-    untracked!(dump_mir_spanview, Some(MirSpanview::Statement));
     untracked!(dump_mono_stats, SwitchWithOptPath::Enabled(Some("mono-items-dir/".into())));
     untracked!(dump_mono_stats_format, DumpMonoStatsFormat::Json);
     untracked!(dylib_lto, true);
@@ -806,7 +805,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(relax_elf_relocations, Some(true));
     tracked!(relro_level, Some(RelroLevel::Full));
     tracked!(remap_cwd_prefix, Some(PathBuf::from("abc")));
-    tracked!(report_delayed_bugs, true);
     tracked!(sanitizer, SanitizerSet::ADDRESS);
     tracked!(sanitizer_cfi_canonical_jump_tables, None);
     tracked!(sanitizer_cfi_generalize_pointers, Some(true));
@@ -822,7 +820,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(stack_protector, StackProtector::All);
     tracked!(teach, true);
     tracked!(thinlto, Some(true));
-    tracked!(thir_unsafeck, true);
+    tracked!(thir_unsafeck, false);
     tracked!(tiny_const_eval_limit, true);
     tracked!(tls_model, Some(TlsModel::GeneralDynamic));
     tracked!(translate_remapped_path_to_local_path, false);

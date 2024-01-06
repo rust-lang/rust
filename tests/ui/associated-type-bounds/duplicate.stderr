@@ -7,6 +7,30 @@ LL | struct SI1<T: Iterator<Item: Copy, Item: Send>> {
    |                        `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
+  --> $DIR/duplicate.rs:255:40
+   |
+LL | type TADyn1 = dyn Iterator<Item: Copy, Item: Send>;
+   |                            ----------  ^^^^^^^^^^ re-bound here
+   |                            |
+   |                            `Item` bound here first
+
+error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
+  --> $DIR/duplicate.rs:257:44
+   |
+LL | type TADyn2 = Box<dyn Iterator<Item: Copy, Item: Copy>>;
+   |                                ----------  ^^^^^^^^^^ re-bound here
+   |                                |
+   |                                `Item` bound here first
+
+error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
+  --> $DIR/duplicate.rs:259:43
+   |
+LL | type TADyn3 = dyn Iterator<Item: 'static, Item: 'static>;
+   |                            -------------  ^^^^^^^^^^^^^ re-bound here
+   |                            |
+   |                            `Item` bound here first
+
+error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
   --> $DIR/duplicate.rs:11:36
    |
 LL | struct SI2<T: Iterator<Item: Copy, Item: Copy>> {
@@ -489,30 +513,6 @@ LL |     Self: Iterator<Item: 'static, Item: 'static>,
    |                    `Item` bound here first
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/duplicate.rs:255:40
-   |
-LL | type TADyn1 = dyn Iterator<Item: Copy, Item: Send>;
-   |                            ----------  ^^^^^^^^^^ re-bound here
-   |                            |
-   |                            `Item` bound here first
-
-error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/duplicate.rs:257:44
-   |
-LL | type TADyn2 = Box<dyn Iterator<Item: Copy, Item: Copy>>;
-   |                                ----------  ^^^^^^^^^^ re-bound here
-   |                                |
-   |                                `Item` bound here first
-
-error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
-  --> $DIR/duplicate.rs:259:43
-   |
-LL | type TADyn3 = dyn Iterator<Item: 'static, Item: 'static>;
-   |                            -------------  ^^^^^^^^^^^^^ re-bound here
-   |                            |
-   |                            `Item` bound here first
 
 error[E0719]: the value of the associated type `Item` in trait `Iterator` is already specified
   --> $DIR/duplicate.rs:243:34

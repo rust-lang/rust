@@ -1,8 +1,7 @@
 // run-pass
 
-// revisions: default nomiropt thirunsafeck
+// revisions: default nomiropt
 //[nomiropt]compile-flags: -Z mir-opt-level=0
-//[thirunsafeck]compile-flags: -Zthir-unsafeck
 
 #![allow(unused)]
 

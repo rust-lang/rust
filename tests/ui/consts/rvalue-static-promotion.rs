@@ -4,7 +4,7 @@ use std::cell::Cell;
 
 const NONE_CELL_STRING: Option<Cell<String>> = None;
 
-struct Foo<T>(#[allow(unused_tuple_struct_fields)] T);
+struct Foo<T>(#[allow(dead_code)] T);
 impl<T> Foo<T> {
     const FOO: Option<Box<T>> = None;
 }

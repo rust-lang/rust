@@ -387,6 +387,10 @@ pub struct Config {
     // Needed both to construct build_helper::git::GitConfig
     pub git_repository: String,
     pub nightly_branch: String,
+
+    /// True if the profiler runtime is enabled for this target.
+    /// Used by the "needs-profiler-support" header in test files.
+    pub profiler_support: bool,
 }
 
 impl Config {

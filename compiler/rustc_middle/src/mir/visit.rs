@@ -996,6 +996,12 @@ macro_rules! super_body {
                     TyContext::YieldTy(SourceInfo::outermost(span))
                 );
             }
+            if let Some(resume_ty) = $(& $mutability)? gen.resume_ty {
+                $self.visit_ty(
+                    resume_ty,
+                    TyContext::ResumeTy(SourceInfo::outermost(span))
+                );
+            }
         }
 
         for (bb, data) in basic_blocks_iter!($body, $($mutability, $invalidate)?) {
@@ -1243,6 +1249,8 @@ pub enum TyContext {
     ReturnTy(SourceInfo),
 
     YieldTy(SourceInfo),
+
+    ResumeTy(SourceInfo),
 
     /// A type found at some location.
     Location(Location),

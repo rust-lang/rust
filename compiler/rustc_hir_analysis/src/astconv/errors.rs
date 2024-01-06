@@ -6,6 +6,7 @@ use crate::errors::{
 use crate::fluent_generated as fluent;
 use crate::traits::error_reporting::report_object_safety_error;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{pluralize, struct_span_err, Applicability, Diagnostic, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -605,7 +606,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let violations =
                     object_safety_violations_for_assoc_item(tcx, trait_def_id, *assoc_item);
                 if !violations.is_empty() {
-                    report_object_safety_error(tcx, *span, trait_def_id, &violations).emit();
+                    report_object_safety_error(tcx, *span, None, trait_def_id, &violations).emit();
                     object_safety_violations = true;
                 }
             }
@@ -673,7 +674,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }))
             })
             .flatten()
-            .collect::<FxHashMap<Symbol, &ty::AssocItem>>();
+            .collect::<UnordMap<Symbol, &ty::AssocItem>>();
 
         let mut names = names
             .into_iter()
@@ -709,7 +710,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut where_constraints = vec![];
         let mut already_has_generics_args_suggestion = false;
         for (span, assoc_items) in &associated_types {
-            let mut names: FxHashMap<_, usize> = FxHashMap::default();
+            let mut names: UnordMap<_, usize> = Default::default();
             for item in assoc_items {
                 types_count += 1;
                 *names.entry(item.name).or_insert(0) += 1;

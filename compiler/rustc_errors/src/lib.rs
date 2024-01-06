@@ -53,7 +53,7 @@ pub use snippet::Style;
 pub use termcolor::{Color, ColorSpec, WriteColor};
 
 use crate::diagnostic_impls::{DelayedAtWithNewline, DelayedAtWithoutNewline};
-use emitter::{is_case_difference, DynEmitter, Emitter, EmitterWriter};
+use emitter::{is_case_difference, DynEmitter, Emitter, HumanEmitter};
 use registry::Registry;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::stable_hasher::{Hash128, StableHasher};
@@ -525,9 +525,6 @@ pub struct DiagCtxtFlags {
     /// If true, immediately emit diagnostics that would otherwise be buffered.
     /// (rustc: see `-Z dont-buffer-diagnostics` and `-Z treat-err-as-bug`)
     pub dont_buffer_diagnostics: bool,
-    /// If true, immediately print bugs registered with `span_delayed_bug`.
-    /// (rustc: see `-Z report-delayed-bugs`)
-    pub report_delayed_bugs: bool,
     /// Show macro backtraces.
     /// (rustc: see `-Z macro-backtrace`)
     pub macro_backtrace: bool,
@@ -574,7 +571,7 @@ impl DiagCtxt {
         sm: Option<Lrc<SourceMap>>,
         fallback_bundle: LazyFallbackBundle,
     ) -> Self {
-        let emitter = Box::new(EmitterWriter::stderr(ColorConfig::Auto, fallback_bundle).sm(sm));
+        let emitter = Box::new(HumanEmitter::stderr(ColorConfig::Auto, fallback_bundle).sm(sm));
         Self::with_emitter(emitter)
     }
     pub fn disable_warnings(mut self) -> Self {
@@ -673,7 +670,7 @@ impl DiagCtxt {
         let key = (span.with_parent(None), key);
 
         if diag.is_error() {
-            if matches!(diag.level, Error { lint: true }) {
+            if diag.level == Error && diag.is_lint {
                 inner.lint_err_count += 1;
             } else {
                 inner.err_count += 1;
@@ -697,7 +694,7 @@ impl DiagCtxt {
         let key = (span.with_parent(None), key);
         let diag = inner.stashed_diagnostics.remove(&key)?;
         if diag.is_error() {
-            if matches!(diag.level, Error { lint: true }) {
+            if diag.level == Error && diag.is_lint {
                 inner.lint_err_count -= 1;
             } else {
                 inner.err_count -= 1;
@@ -732,7 +729,7 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
         let mut result = self.struct_warn(msg);
-        result.set_span(span);
+        result.span(span);
         result
     }
 
@@ -789,7 +786,7 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_> {
         let mut result = self.struct_err(msg);
-        result.set_span(span);
+        result.span(span);
         result
     }
 
@@ -812,7 +809,7 @@ impl DiagCtxt {
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_err(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_> {
-        DiagnosticBuilder::new(self, Error { lint: false }, msg)
+        DiagnosticBuilder::new(self, Error, msg)
     }
 
     /// Construct a builder at the `Error` level with the `msg` and the `code`.
@@ -850,7 +847,7 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, FatalAbort> {
         let mut result = self.struct_fatal(msg);
-        result.set_span(span);
+        result.span(span);
         result
     }
 
@@ -875,16 +872,6 @@ impl DiagCtxt {
         &self,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, FatalAbort> {
-        DiagnosticBuilder::new(self, Fatal, msg)
-    }
-
-    /// Construct a builder at the `Fatal` level with the `msg`, that doesn't abort.
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn struct_almost_fatal(
-        &self,
-        msg: impl Into<DiagnosticMessage>,
-    ) -> DiagnosticBuilder<'_, FatalError> {
         DiagnosticBuilder::new(self, Fatal, msg)
     }
 
@@ -917,7 +904,7 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, BugAbort> {
         let mut result = self.struct_bug(msg);
-        result.set_span(span);
+        result.span(span);
         result
     }
 
@@ -1004,11 +991,10 @@ impl DiagCtxt {
     ) -> ErrorGuaranteed {
         let treat_next_err_as_bug = self.inner.borrow().treat_next_err_as_bug();
         if treat_next_err_as_bug {
-            // FIXME: don't abort here if report_delayed_bugs is off
             self.span_bug(sp, msg);
         }
         let mut diagnostic = Diagnostic::new(DelayedBug, msg);
-        diagnostic.set_span(sp);
+        diagnostic.span(sp);
         self.emit_diagnostic(diagnostic).unwrap()
     }
 
@@ -1016,11 +1002,7 @@ impl DiagCtxt {
     // where the explanation of what "good path" is (also, it should be renamed).
     pub fn good_path_delayed_bug(&self, msg: impl Into<DiagnosticMessage>) {
         let mut inner = self.inner.borrow_mut();
-
-        let mut diagnostic = Diagnostic::new(DelayedBug, msg);
-        if inner.flags.report_delayed_bugs {
-            inner.emit_diagnostic_without_consuming(&mut diagnostic);
-        }
+        let diagnostic = Diagnostic::new(DelayedBug, msg);
         let backtrace = std::backtrace::Backtrace::capture();
         inner.good_path_delayed_bugs.push(DelayedDiagnostic::with_backtrace(diagnostic, backtrace));
     }
@@ -1039,7 +1021,7 @@ impl DiagCtxt {
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
         let mut db = DiagnosticBuilder::new(self, Note, msg);
-        db.set_span(span);
+        db.span(span);
         db
     }
 
@@ -1222,7 +1204,7 @@ impl DiagCtxt {
 
     #[track_caller]
     pub fn create_err<'a>(&'a self, err: impl IntoDiagnostic<'a>) -> DiagnosticBuilder<'a> {
-        err.into_diagnostic(self, Error { lint: false })
+        err.into_diagnostic(self, Error)
     }
 
     #[track_caller]
@@ -1377,7 +1359,7 @@ impl DiagCtxtInner {
         for diag in diags {
             // Decrement the count tracking the stash; emitting will increment it.
             if diag.is_error() {
-                if matches!(diag.level, Error { lint: true }) {
+                if diag.level == Error && diag.is_lint {
                     self.lint_err_count -= 1;
                 } else {
                     self.err_count -= 1;
@@ -1408,7 +1390,7 @@ impl DiagCtxtInner {
         &mut self,
         diagnostic: &mut Diagnostic,
     ) -> Option<ErrorGuaranteed> {
-        if matches!(diagnostic.level, Error { .. } | Fatal) && self.treat_err_as_bug() {
+        if matches!(diagnostic.level, Error | Fatal) && self.treat_err_as_bug() {
             diagnostic.level = Bug;
         }
 
@@ -1430,10 +1412,8 @@ impl DiagCtxtInner {
             self.span_delayed_bugs
                 .push(DelayedDiagnostic::with_backtrace(diagnostic.clone(), backtrace));
 
-            if !self.flags.report_delayed_bugs {
-                #[allow(deprecated)]
-                return Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
-            }
+            #[allow(deprecated)]
+            return Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
         }
 
         if diagnostic.has_future_breakage() {
@@ -1509,7 +1489,7 @@ impl DiagCtxtInner {
                 }
             }
             if diagnostic.is_error() {
-                if matches!(diagnostic.level, Error { lint: true }) {
+                if diagnostic.level == Error && diagnostic.is_lint {
                     self.bump_lint_err_count();
                 } else {
                     self.bump_err_count();
@@ -1705,11 +1685,7 @@ pub enum Level {
     /// most common case.
     ///
     /// Its `EmissionGuarantee` is `ErrorGuaranteed`.
-    Error {
-        /// If this error comes from a lint, don't abort compilation even when abort_if_errors() is
-        /// called.
-        lint: bool,
-    },
+    Error,
 
     /// A warning about the code being compiled. Does not prevent compilation from finishing.
     ///
@@ -1768,7 +1744,7 @@ impl Level {
     fn color(self) -> ColorSpec {
         let mut spec = ColorSpec::new();
         match self {
-            Bug | DelayedBug | Fatal | Error { .. } => {
+            Bug | DelayedBug | Fatal | Error => {
                 spec.set_fg(Some(Color::Red)).set_intense(true);
             }
             Warning(_) => {
@@ -1789,7 +1765,7 @@ impl Level {
     pub fn to_str(self) -> &'static str {
         match self {
             Bug | DelayedBug => "error: internal compiler error",
-            Fatal | Error { .. } => "error",
+            Fatal | Error => "error",
             Warning(_) => "warning",
             Note | OnceNote => "note",
             Help | OnceHelp => "help",

@@ -22,7 +22,7 @@ pub(super) enum Op<'a> {
 
     // rm `.cloned()`
     // e.g. `map` `for_each` `all` `any`
-    NeedlessMove(&'a str, &'a Expr<'a>),
+    NeedlessMove(&'a Expr<'a>),
 
     // later `.cloned()`
     // and add `&` to the parameter of closure parameter
@@ -59,7 +59,7 @@ pub(super) fn check<'tcx>(
             return;
         }
 
-        if let Op::NeedlessMove(_, expr) = op {
+        if let Op::NeedlessMove(expr) = op {
             let rustc_hir::ExprKind::Closure(closure) = expr.kind else {
                 return;
             };
@@ -104,7 +104,7 @@ pub(super) fn check<'tcx>(
         }
 
         let (lint, msg, trailing_clone) = match op {
-            Op::RmCloned | Op::NeedlessMove(_, _) => (REDUNDANT_CLONE, "unneeded cloning of iterator items", ""),
+            Op::RmCloned | Op::NeedlessMove(_) => (REDUNDANT_CLONE, "unneeded cloning of iterator items", ""),
             Op::LaterCloned | Op::FixClosure(_, _) => (
                 ITER_OVEREAGER_CLONED,
                 "unnecessarily eager cloning of iterator items",
@@ -133,7 +133,7 @@ pub(super) fn check<'tcx>(
                     diag.span_suggestion(replace_span, "try", snip, Applicability::MachineApplicable);
                 }
             },
-            Op::NeedlessMove(_, _) => {
+            Op::NeedlessMove(_) => {
                 let method_span = expr.span.with_lo(cloned_call.span.hi());
                 if let Some(snip) = snippet_opt(cx, method_span) {
                     let replace_span = expr.span.with_lo(cloned_recv.span.hi());

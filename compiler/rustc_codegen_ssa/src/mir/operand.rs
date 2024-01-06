@@ -231,14 +231,12 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         bx: &mut Bx,
     ) -> V {
         if let OperandValue::Pair(a, b) = self.val {
-            let llty = bx.cx().backend_type(self.layout);
+            let llty = bx.cx().immediate_backend_type(self.layout);
             debug!("Operand::immediate_or_packed_pair: packing {:?} into {:?}", self, llty);
             // Reconstruct the immediate aggregate.
             let mut llpair = bx.cx().const_poison(llty);
-            let imm_a = bx.from_immediate(a);
-            let imm_b = bx.from_immediate(b);
-            llpair = bx.insert_value(llpair, imm_a, 0);
-            llpair = bx.insert_value(llpair, imm_b, 1);
+            llpair = bx.insert_value(llpair, a, 0);
+            llpair = bx.insert_value(llpair, b, 1);
             llpair
         } else {
             self.immediate()
@@ -251,14 +249,12 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         llval: V,
         layout: TyAndLayout<'tcx>,
     ) -> Self {
-        let val = if let Abi::ScalarPair(a, b) = layout.abi {
+        let val = if let Abi::ScalarPair(..) = layout.abi {
             debug!("Operand::from_immediate_or_packed_pair: unpacking {:?} @ {:?}", llval, layout);
 
             // Deconstruct the immediate aggregate.
             let a_llval = bx.extract_value(llval, 0);
-            let a_llval = bx.to_immediate_scalar(a_llval, a);
             let b_llval = bx.extract_value(llval, 1);
-            let b_llval = bx.to_immediate_scalar(b_llval, b);
             OperandValue::Pair(a_llval, b_llval)
         } else {
             OperandValue::Immediate(llval)
@@ -435,15 +431,14 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
                 let Abi::ScalarPair(a_scalar, b_scalar) = dest.layout.abi else {
                     bug!("store_with_flags: invalid ScalarPair layout: {:#?}", dest.layout);
                 };
-                let ty = bx.backend_type(dest.layout);
                 let b_offset = a_scalar.size(bx).align_to(b_scalar.align(bx).abi);
 
-                let llptr = bx.struct_gep(ty, dest.llval, 0);
                 let val = bx.from_immediate(a);
                 let align = dest.align;
-                bx.store_with_flags(val, llptr, align, flags);
+                bx.store_with_flags(val, dest.llval, align, flags);
 
-                let llptr = bx.struct_gep(ty, dest.llval, 1);
+                let llptr =
+                    bx.inbounds_gep(bx.type_i8(), dest.llval, &[bx.const_usize(b_offset.bytes())]);
                 let val = bx.from_immediate(b);
                 let align = dest.align.restrict_for_offset(b_offset);
                 bx.store_with_flags(val, llptr, align, flags);

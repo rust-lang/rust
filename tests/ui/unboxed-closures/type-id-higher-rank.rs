@@ -4,7 +4,7 @@
 
 use std::any::{Any, TypeId};
 
-struct Struct<'a>(#[allow(unused_tuple_struct_fields)] &'a ());
+struct Struct<'a>(#[allow(dead_code)] &'a ());
 trait Trait<'a> {}
 
 fn main() {

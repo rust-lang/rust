@@ -2,9 +2,10 @@ use super::ObjectSafetyViolation;
 
 use crate::infer::InferCtxt;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{struct_span_err, DiagnosticBuilder, MultiSpan};
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::intravisit::Map;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::Span;
@@ -42,6 +43,7 @@ impl<'tcx> InferCtxt<'tcx> {
 pub fn report_object_safety_error<'tcx>(
     tcx: TyCtxt<'tcx>,
     span: Span,
+    hir_id: Option<hir::HirId>,
     trait_def_id: DefId,
     violations: &[ObjectSafetyViolation],
 ) -> DiagnosticBuilder<'tcx> {
@@ -59,6 +61,24 @@ pub fn report_object_safety_error<'tcx>(
     );
     err.span_label(span, format!("`{trait_str}` cannot be made into an object"));
 
+    if let Some(hir_id) = hir_id
+        && let Some(hir::Node::Ty(ty)) = tcx.hir().find(hir_id)
+        && let hir::TyKind::TraitObject([trait_ref, ..], ..) = ty.kind
+    {
+        let mut hir_id = hir_id;
+        while let hir::Node::Ty(ty) = tcx.hir().get_parent(hir_id) {
+            hir_id = ty.hir_id;
+        }
+        if tcx.hir().get_parent(hir_id).fn_sig().is_some() {
+            // Do not suggest `impl Trait` when dealing with things like super-traits.
+            err.span_suggestion_verbose(
+                ty.span.until(trait_ref.span),
+                "consider using an opaque type instead",
+                "impl ",
+                Applicability::MaybeIncorrect,
+            );
+        }
+    }
     let mut reported_violations = FxIndexSet::default();
     let mut multi_span = vec![];
     let mut messages = vec![];
@@ -132,7 +152,10 @@ pub fn report_object_safety_error<'tcx>(
     };
     let externally_visible = if !impls.is_empty()
         && let Some(def_id) = trait_def_id.as_local()
-        && tcx.effective_visibilities(()).is_exported(def_id)
+        // We may be executing this during typeck, which would result in cycle
+        // if we used effective_visibilities query, which looks into opaque types
+        // (and therefore calls typeck).
+        && tcx.resolutions(()).effective_visibilities.is_exported(def_id)
     {
         true
     } else {

@@ -1,0 +1,23 @@
+error[E0308]: mismatched types
+  --> $DIR/fn-ptr.rs:9:21
+   |
+LL | #[target_feature(enable = "sse2")]
+   | ---------------------------------- `#[target_feature]` added here
+...
+LL |     let foo: fn() = foo;
+   |              ----   ^^^ cannot coerce functions with `#[target_feature]` to safe function pointers
+   |              |
+   |              expected due to this
+   |
+   = note: expected fn pointer `fn()`
+                 found fn item `fn() {foo}`
+   = note: fn items are distinct from fn pointers
+   = note: functions with `#[target_feature]` can only be coerced to `unsafe` function pointers
+help: consider casting to a fn pointer
+   |
+LL |     let foo: fn() = foo as fn();
+   |                     ~~~~~~~~~~~
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

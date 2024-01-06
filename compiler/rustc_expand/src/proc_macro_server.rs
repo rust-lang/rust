@@ -379,7 +379,7 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
 impl ToInternal<rustc_errors::Level> for Level {
     fn to_internal(self) -> rustc_errors::Level {
         match self {
-            Level::Error => rustc_errors::Level::Error { lint: false },
+            Level::Error => rustc_errors::Level::Error,
             Level::Warning => rustc_errors::Level::Warning(None),
             Level::Note => rustc_errors::Level::Note,
             Level::Help => rustc_errors::Level::Help,
@@ -497,7 +497,7 @@ impl server::FreeFunctions for Rustc<'_, '_> {
     fn emit_diagnostic(&mut self, diagnostic: Diagnostic<Self::Span>) {
         let mut diag =
             rustc_errors::Diagnostic::new(diagnostic.level.to_internal(), diagnostic.message);
-        diag.set_span(MultiSpan::from_spans(diagnostic.spans));
+        diag.span(MultiSpan::from_spans(diagnostic.spans));
         for child in diagnostic.children {
             diag.sub(child.level.to_internal(), child.message, MultiSpan::from_spans(child.spans));
         }

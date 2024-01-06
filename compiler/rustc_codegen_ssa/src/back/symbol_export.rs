@@ -3,7 +3,7 @@ use crate::base::allocator_kind_for_codegen;
 use std::collections::hash_map::Entry::*;
 
 use rustc_ast::expand::allocator::{ALLOCATOR_METHODS, NO_ALLOC_SHIM_IS_UNSTABLE};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LOCAL_CRATE};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
@@ -393,10 +393,10 @@ fn exported_symbols_provider_local(
 fn upstream_monomorphizations_provider(
     tcx: TyCtxt<'_>,
     (): (),
-) -> DefIdMap<FxHashMap<GenericArgsRef<'_>, CrateNum>> {
+) -> DefIdMap<UnordMap<GenericArgsRef<'_>, CrateNum>> {
     let cnums = tcx.crates(());
 
-    let mut instances: DefIdMap<FxHashMap<_, _>> = Default::default();
+    let mut instances: DefIdMap<UnordMap<_, _>> = Default::default();
 
     let drop_in_place_fn_def_id = tcx.lang_items().drop_in_place_fn();
 
@@ -445,7 +445,7 @@ fn upstream_monomorphizations_provider(
 fn upstream_monomorphizations_for_provider(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-) -> Option<&FxHashMap<GenericArgsRef<'_>, CrateNum>> {
+) -> Option<&UnordMap<GenericArgsRef<'_>, CrateNum>> {
     debug_assert!(!def_id.is_local());
     tcx.upstream_monomorphizations(()).get(&def_id)
 }
@@ -656,7 +656,7 @@ fn maybe_emutls_symbol_name<'tcx>(
     }
 }
 
-fn wasm_import_module_map(tcx: TyCtxt<'_>, cnum: CrateNum) -> FxHashMap<DefId, String> {
+fn wasm_import_module_map(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<String> {
     // Build up a map from DefId to a `NativeLib` structure, where
     // `NativeLib` internally contains information about
     // `#[link(wasm_import_module = "...")]` for example.
@@ -665,9 +665,9 @@ fn wasm_import_module_map(tcx: TyCtxt<'_>, cnum: CrateNum) -> FxHashMap<DefId, S
     let def_id_to_native_lib = native_libs
         .iter()
         .filter_map(|lib| lib.foreign_module.map(|id| (id, lib)))
-        .collect::<FxHashMap<_, _>>();
+        .collect::<DefIdMap<_>>();
 
-    let mut ret = FxHashMap::default();
+    let mut ret = DefIdMap::default();
     for (def_id, lib) in tcx.foreign_modules(cnum).iter() {
         let module = def_id_to_native_lib.get(def_id).and_then(|s| s.wasm_import_module());
         let Some(module) = module else { continue };

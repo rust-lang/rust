@@ -912,7 +912,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         drop_order: bool,
     ) -> MigrationWarningReason {
         MigrationWarningReason {
-            auto_traits: auto_trait_reasons.to_sorted_stable_ord(),
+            auto_traits: auto_trait_reasons.into_sorted_stable_ord(),
             drop_order,
         }
     }

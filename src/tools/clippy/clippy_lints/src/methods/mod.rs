@@ -4186,7 +4186,7 @@ impl Methods {
                             expr,
                             recv,
                             recv2,
-                            iter_overeager_cloned::Op::NeedlessMove(name, arg),
+                            iter_overeager_cloned::Op::NeedlessMove(arg),
                             false,
                         );
                     }
@@ -4204,7 +4204,7 @@ impl Methods {
                         expr,
                         recv,
                         recv2,
-                        iter_overeager_cloned::Op::NeedlessMove(name, arg),
+                        iter_overeager_cloned::Op::NeedlessMove(arg),
                         false,
                     ),
                     Some(("chars", recv, _, _, _))
@@ -4379,7 +4379,7 @@ impl Methods {
                         expr,
                         recv,
                         recv2,
-                        iter_overeager_cloned::Op::NeedlessMove(name, arg),
+                        iter_overeager_cloned::Op::NeedlessMove(arg),
                         false,
                     ),
                     _ => {},
@@ -4433,7 +4433,7 @@ impl Methods {
                                 expr,
                                 recv,
                                 recv2,
-                                iter_overeager_cloned::Op::NeedlessMove(name, m_arg),
+                                iter_overeager_cloned::Op::NeedlessMove(m_arg),
                                 false,
                             ),
                             _ => {},

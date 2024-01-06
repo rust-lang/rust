@@ -488,7 +488,7 @@ fn construct_fn<'tcx>(
 
     let arguments = &thir.params;
 
-    let (yield_ty, return_ty) = if coroutine_kind.is_some() {
+    let (resume_ty, yield_ty, return_ty) = if coroutine_kind.is_some() {
         let coroutine_ty = arguments[thir::UPVAR_ENV_PARAM].ty;
         let coroutine_sig = match coroutine_ty.kind() {
             ty::Coroutine(_, gen_args, ..) => gen_args.as_coroutine().sig(),
@@ -496,9 +496,9 @@ fn construct_fn<'tcx>(
                 span_bug!(span, "coroutine w/o coroutine type: {:?}", coroutine_ty)
             }
         };
-        (Some(coroutine_sig.yield_ty), coroutine_sig.return_ty)
+        (Some(coroutine_sig.resume_ty), Some(coroutine_sig.yield_ty), coroutine_sig.return_ty)
     } else {
-        (None, fn_sig.output())
+        (None, None, fn_sig.output())
     };
 
     if let Some(custom_mir_attr) =
@@ -562,9 +562,12 @@ fn construct_fn<'tcx>(
     } else {
         None
     };
-    if yield_ty.is_some() {
+
+    if coroutine_kind.is_some() {
         body.coroutine.as_mut().unwrap().yield_ty = yield_ty;
+        body.coroutine.as_mut().unwrap().resume_ty = resume_ty;
     }
+
     body
 }
 
@@ -631,18 +634,18 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
     let coroutine_kind = tcx.coroutine_kind(def_id);
 
-    let (inputs, output, yield_ty) = match tcx.def_kind(def_id) {
+    let (inputs, output, resume_ty, yield_ty) = match tcx.def_kind(def_id) {
         DefKind::Const
         | DefKind::AssocConst
         | DefKind::AnonConst
         | DefKind::InlineConst
-        | DefKind::Static(_) => (vec![], tcx.type_of(def_id).instantiate_identity(), None),
+        | DefKind::Static(_) => (vec![], tcx.type_of(def_id).instantiate_identity(), None, None),
         DefKind::Ctor(..) | DefKind::Fn | DefKind::AssocFn => {
             let sig = tcx.liberate_late_bound_regions(
                 def_id.to_def_id(),
                 tcx.fn_sig(def_id).instantiate_identity(),
             );
-            (sig.inputs().to_vec(), sig.output(), None)
+            (sig.inputs().to_vec(), sig.output(), None, None)
         }
         DefKind::Closure if coroutine_kind.is_some() => {
             let coroutine_ty = tcx.type_of(def_id).instantiate_identity();
@@ -650,9 +653,10 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
                 bug!("expected type of coroutine-like closure to be a coroutine")
             };
             let args = args.as_coroutine();
+            let resume_ty = args.resume_ty();
             let yield_ty = args.yield_ty();
             let return_ty = args.return_ty();
-            (vec![coroutine_ty, args.resume_ty()], return_ty, Some(yield_ty))
+            (vec![coroutine_ty, args.resume_ty()], return_ty, Some(resume_ty), Some(yield_ty))
         }
         DefKind::Closure => {
             let closure_ty = tcx.type_of(def_id).instantiate_identity();
@@ -666,7 +670,7 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
                 ty::ClosureKind::FnMut => Ty::new_mut_ref(tcx, tcx.lifetimes.re_erased, closure_ty),
                 ty::ClosureKind::FnOnce => closure_ty,
             };
-            ([self_ty].into_iter().chain(sig.inputs().to_vec()).collect(), sig.output(), None)
+            ([self_ty].into_iter().chain(sig.inputs().to_vec()).collect(), sig.output(), None, None)
         }
         dk => bug!("{:?} is not a body: {:?}", def_id, dk),
     };
@@ -705,7 +709,10 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
         Some(guar),
     );
 
-    body.coroutine.as_mut().map(|gen| gen.yield_ty = yield_ty);
+    body.coroutine.as_mut().map(|gen| {
+        gen.yield_ty = yield_ty;
+        gen.resume_ty = resume_ty;
+    });
 
     body
 }
