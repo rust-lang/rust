@@ -33,15 +33,19 @@ pub(crate) struct PatternColumn<'p, 'tcx> {
 
 impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
     pub(crate) fn new(arms: &[MatchArm<'p, 'tcx>]) -> Self {
-        let mut patterns = Vec::with_capacity(arms.len());
+        let patterns = Vec::with_capacity(arms.len());
+        let mut column = PatternColumn { patterns };
         for arm in arms {
-            if arm.pat.is_or_pat() {
-                patterns.extend(arm.pat.flatten_or_pat())
-            } else {
-                patterns.push(arm.pat)
-            }
+            column.expand_and_push(arm.pat);
         }
-        Self { patterns }
+        column
+    }
+    fn expand_and_push(&mut self, pat: &'p DeconstructedPat<'p, 'tcx>) {
+        if pat.is_or_pat() {
+            self.patterns.extend(pat.flatten_or_pat())
+        } else {
+            self.patterns.push(pat)
+        }
     }
 
     fn is_empty(&self) -> bool {
@@ -87,11 +91,7 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
         for pat in relevant_patterns {
             let specialized = pat.specialize(pcx, ctor, ctor_sub_tys);
             for (subpat, column) in specialized.iter().zip(&mut specialized_columns) {
-                if subpat.is_or_pat() {
-                    column.patterns.extend(subpat.flatten_or_pat())
-                } else {
-                    column.patterns.push(subpat)
-                }
+                column.expand_and_push(subpat);
             }
         }
 
