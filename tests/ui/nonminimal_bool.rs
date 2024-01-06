@@ -145,3 +145,14 @@ fn issue10836() {
     // Should not lint
     let _: bool = !!Foo(true);
 }
+
+fn issue11932() {
+    let x: i32 = unimplemented!();
+
+    #[allow(clippy::nonminimal_bool)]
+    let _ = x % 2 == 0 || {
+        // Should not lint
+        assert!(x > 0);
+        x % 3 == 0
+    };
+}

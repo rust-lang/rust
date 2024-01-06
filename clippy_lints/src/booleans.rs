@@ -499,11 +499,10 @@ struct NotSimplificationVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for NotSimplificationVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         if let ExprKind::Unary(UnOp::Not, inner) = &expr.kind
+            && !expr.span.from_expansion()
             && !inner.span.from_expansion()
             && let Some(suggestion) = simplify_not(self.cx, inner)
             && self.cx.tcx.lint_level_at_node(NONMINIMAL_BOOL, expr.hir_id).0 != Level::Allow
-            && let Some(snippet) = snippet_opt(self.cx, expr.span)
-            && !snippet.contains("assert")
         {
             span_lint_and_sugg(
                 self.cx,
