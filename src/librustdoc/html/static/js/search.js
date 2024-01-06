@@ -272,6 +272,22 @@ function initSearch(rawSearchIndex) {
      * Special type name IDs for searching by both tuple and unit (`()` syntax).
      */
     let typeNameIdOfTupleOrUnit;
+    /**
+     * Special type name IDs for searching `fn`.
+     */
+    let typeNameIdOfFn;
+    /**
+     * Special type name IDs for searching `fnmut`.
+     */
+    let typeNameIdOfFnMut;
+    /**
+     * Special type name IDs for searching `fnonce`.
+     */
+    let typeNameIdOfFnOnce;
+    /**
+     * Special type name IDs for searching higher order functions (`->` syntax).
+     */
+    let typeNameIdOfHof;
 
     /**
      * Add an item to the type Name->ID map, or, if one already exists, use it.
@@ -464,6 +480,21 @@ function initSearch(rawSearchIndex) {
         }
     }
 
+    function makePrimitiveElement(name, extra) {
+        return Object.assign({
+            name,
+            id: null,
+            fullPath: [name],
+            pathWithoutLast: [],
+            pathLast: name,
+            normalizedPathLast: name,
+            generics: [],
+            bindings: new Map(),
+            typeFilter: "primitive",
+            bindingName: null,
+        }, extra);
+    }
+
     /**
      * @param {ParsedQuery} query
      * @param {ParserState} parserState
@@ -501,18 +532,7 @@ function initSearch(rawSearchIndex) {
             }
             const bindingName = parserState.isInBinding;
             parserState.isInBinding = null;
-            return {
-                name: "never",
-                id: null,
-                fullPath: ["never"],
-                pathWithoutLast: [],
-                pathLast: "never",
-                normalizedPathLast: "never",
-                generics: [],
-                bindings: new Map(),
-                typeFilter: "primitive",
-                bindingName,
-            };
+            return makePrimitiveElement("never", { bindingName });
         }
         const quadcolon = /::\s*::/.exec(path);
         if (path.startsWith("::")) {
@@ -671,28 +691,19 @@ function initSearch(rawSearchIndex) {
         let start = parserState.pos;
         let end;
         if ("[(".indexOf(parserState.userQuery[parserState.pos]) !== -1) {
-let endChar = ")";
-let name = "()";
-let friendlyName = "tuple";
+            let endChar = ")";
+            let name = "()";
+            let friendlyName = "tuple";
 
-if (parserState.userQuery[parserState.pos] === "[") {
-    endChar = "]";
-    name = "[]";
-    friendlyName = "slice";
-}
+            if (parserState.userQuery[parserState.pos] === "[") {
+                endChar = "]";
+                name = "[]";
+                friendlyName = "slice";
+            }
             parserState.pos += 1;
             const { foundSeparator } = getItemsBefore(query, parserState, generics, endChar);
             const typeFilter = parserState.typeFilter;
-            const isInBinding = parserState.isInBinding;
-            if (typeFilter !== null && typeFilter !== "primitive") {
-                throw [
-                    "Invalid search type: primitive ",
-                    name,
-                    " and ",
-                    typeFilter,
-                    " both specified",
-                ];
-            }
+            const bindingName = parserState.isInBinding;
             parserState.typeFilter = null;
             parserState.isInBinding = null;
             for (const gen of generics) {
@@ -702,23 +713,26 @@ if (parserState.userQuery[parserState.pos] === "[") {
             }
             if (name === "()" && !foundSeparator && generics.length === 1 && typeFilter === null) {
                 elems.push(generics[0]);
+            } else if (name === "()" && generics.length === 1 && generics[0].name === "->") {
+                // `primitive:(a -> b)` parser to `primitive:"->"<output=b, (a,)>`
+                // not `primitive:"()"<"->"<output=b, (a,)>>`
+                generics[0].typeFilter = typeFilter;
+                elems.push(generics[0]);
             } else {
+                if (typeFilter !== null && typeFilter !== "primitive") {
+                    throw [
+                        "Invalid search type: primitive ",
+                        name,
+                        " and ",
+                        typeFilter,
+                        " both specified",
+                    ];
+                }
                 parserState.totalElems += 1;
                 if (isInGenerics) {
                     parserState.genericsElems += 1;
                 }
-                elems.push({
-                    name: name,
-                    id: null,
-                    fullPath: [name],
-                    pathWithoutLast: [],
-                    pathLast: name,
-                    normalizedPathLast: name,
-                    generics,
-                    bindings: new Map(),
-                    typeFilter: "primitive",
-                    bindingName: isInBinding,
-                });
+                elems.push(makePrimitiveElement(name, { bindingName, generics }));
             }
         } else {
             const isStringElem = parserState.userQuery[start] === "\"";
@@ -805,6 +819,19 @@ if (parserState.userQuery[parserState.pos] === "[") {
         const oldIsInBinding = parserState.isInBinding;
         parserState.isInBinding = null;
 
+        // ML-style Higher Order Function notation
+        //
+        // a way to search for any closure or fn pointer regardless of
+        // which closure trait is used
+        //
+        // Looks like this:
+        //
+        //     `option<t>, (t -> u) -> option<u>`
+        //                  ^^^^^^
+        //
+        // The Rust-style closure notation is implemented in getNextElem
+        let hofParameters = null;
+
         let extra = "";
         if (endChar === ">") {
             extra = "<";
@@ -825,6 +852,21 @@ if (parserState.userQuery[parserState.pos] === "[") {
                     throw ["Unexpected ", endChar, " after ", "="];
                 }
                 break;
+            } else if (endChar !== "" && isReturnArrow(parserState)) {
+                // ML-style HOF notation only works when delimited in something,
+                // otherwise a function arrow starts the return type of the top
+                if (parserState.isInBinding) {
+                    throw ["Unexpected ", "->", " after ", "="];
+                }
+                hofParameters = [...elems];
+                elems.length = 0;
+                parserState.pos += 2;
+                foundStopChar = true;
+                foundSeparator = false;
+                continue;
+            } else if (c === " ") {
+                parserState.pos += 1;
+                continue;
             } else if (isSeparatorCharacter(c)) {
                 parserState.pos += 1;
                 foundStopChar = true;
@@ -903,6 +945,27 @@ if (parserState.userQuery[parserState.pos] === "[") {
         // We are either at the end of the string or on the `endChar` character, let's move forward
         // in any case.
         parserState.pos += 1;
+
+        if (hofParameters) {
+            // Commas in a HOF don't cause wrapping parens to become a tuple.
+            // If you want a one-tuple with a HOF in it, write `((a -> b),)`.
+            foundSeparator = false;
+            // HOFs can't have directly nested bindings.
+            if ([...elems, ...hofParameters].some(x => x.bindingName) || parserState.isInBinding) {
+                throw ["Unexpected ", "=", " within ", "->"];
+            }
+            // HOFs are represented the same way closures are.
+            // The arguments are wrapped in a tuple, and the output
+            // is a binding, even though the compiler doesn't technically
+            // represent fn pointers that way.
+            const hofElem = makePrimitiveElement("->", {
+                generics: hofParameters,
+                bindings: new Map([["output", [...elems]]]),
+                typeFilter: null,
+            });
+            elems.length = 0;
+            elems[0] = hofElem;
+        }
 
         parserState.typeFilter = oldTypeFilter;
         parserState.isInBinding = oldIsInBinding;
@@ -1635,6 +1698,12 @@ if (parserState.userQuery[parserState.pos] === "[") {
                 ) {
                     // () matches primitive:tuple or primitive:unit
                     // if it matches, then we're fine, and this is an appropriate match candidate
+                } else if (queryElem.id === typeNameIdOfHof &&
+                    (fnType.id === typeNameIdOfFn || fnType.id === typeNameIdOfFnMut ||
+                        fnType.id === typeNameIdOfFnOnce)
+                ) {
+                    // -> matches fn, fnonce, and fnmut
+                    // if it matches, then we're fine, and this is an appropriate match candidate
                 } else if (fnType.id !== queryElem.id || queryElem.id === null) {
                     return false;
                 }
@@ -1829,6 +1898,7 @@ if (parserState.userQuery[parserState.pos] === "[") {
                     typePassesFilter(elem.typeFilter, row.ty) && elem.generics.length === 0 &&
                     // special case
                     elem.id !== typeNameIdOfArrayOrSlice && elem.id !== typeNameIdOfTupleOrUnit
+                    && elem.id !== typeNameIdOfHof
                 ) {
                     return row.id === elem.id || checkIfInList(
                         row.generics,
@@ -2991,7 +3061,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      */
     function buildFunctionTypeFingerprint(type, output, fps) {
         let input = type.id;
-        // All forms of `[]`/`()` get collapsed down to one thing in the bloom filter.
+        // All forms of `[]`/`()`/`->` get collapsed down to one thing in the bloom filter.
         // Differentiating between arrays and slices, if the user asks for it, is
         // still done in the matching algorithm.
         if (input === typeNameIdOfArray || input === typeNameIdOfSlice) {
@@ -2999,6 +3069,10 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         }
         if (input === typeNameIdOfTuple || input === typeNameIdOfUnit) {
             input = typeNameIdOfTupleOrUnit;
+        }
+        if (input === typeNameIdOfFn || input === typeNameIdOfFnMut ||
+            input === typeNameIdOfFnOnce) {
+            input = typeNameIdOfHof;
         }
         // http://burtleburtle.net/bob/hash/integer.html
         // ~~ is toInt32. It's used before adding, so
@@ -3103,6 +3177,10 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         typeNameIdOfUnit = buildTypeMapIndex("unit");
         typeNameIdOfArrayOrSlice = buildTypeMapIndex("[]");
         typeNameIdOfTupleOrUnit = buildTypeMapIndex("()");
+        typeNameIdOfFn = buildTypeMapIndex("fn");
+        typeNameIdOfFnMut = buildTypeMapIndex("fnmut");
+        typeNameIdOfFnOnce = buildTypeMapIndex("fnonce");
+        typeNameIdOfHof = buildTypeMapIndex("->");
 
         // Function type fingerprints are 128-bit bloom filters that are used to
         // estimate the distance between function and query.

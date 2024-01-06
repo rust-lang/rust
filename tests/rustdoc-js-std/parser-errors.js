@@ -114,7 +114,7 @@ const PARSED = [
         original: "(p -> p",
         returned: [],
         userQuery: "(p -> p",
-        error: "Unexpected `-` after `(`",
+        error: "Unclosed `(`",
     },
     {
         query: "::a::b",
@@ -330,7 +330,7 @@ const PARSED = [
         original: 'a<->',
         returned: [],
         userQuery: 'a<->',
-        error: 'Unexpected `-` after `<`',
+        error: 'Unclosed `<`',
     },
     {
         query: "a<a>:",
