@@ -412,6 +412,7 @@ const_eval_upcast_mismatch =
 const_eval_validation_box_to_static = {$front_matter}: encountered a box pointing to a static variable in a constant
 const_eval_validation_box_to_uninhabited = {$front_matter}: encountered a box pointing to uninhabited type {$ty}
 
+const_eval_validation_const_ref_to_extern = {$front_matter}: encountered reference to `extern` static in `const`
 const_eval_validation_const_ref_to_mutable = {$front_matter}: encountered reference to mutable memory in `const`
 
 const_eval_validation_dangling_box_no_provenance = {$front_matter}: encountered a dangling box ({$pointer} has no provenance)

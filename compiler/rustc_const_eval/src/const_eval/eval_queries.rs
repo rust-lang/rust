@@ -360,7 +360,7 @@ pub fn const_validate_mplace<'mir, 'tcx>(
                 // Promoteds in statics are consts that re allowed to point to statics.
                 CtfeValidationMode::Const {
                     allow_immutable_unsafe_cell: false,
-                    allow_static_ptrs: true,
+                    allow_extern_static_ptrs: true,
                 }
             }
             Some(mutbl) => CtfeValidationMode::Static { mutbl }, // a `static`
@@ -368,7 +368,10 @@ pub fn const_validate_mplace<'mir, 'tcx>(
                 // In normal `const` (not promoted), the outermost allocation is always only copied,
                 // so having `UnsafeCell` in there is okay despite them being in immutable memory.
                 let allow_immutable_unsafe_cell = cid.promoted.is_none() && !inner;
-                CtfeValidationMode::Const { allow_immutable_unsafe_cell, allow_static_ptrs: false }
+                CtfeValidationMode::Const {
+                    allow_immutable_unsafe_cell,
+                    allow_extern_static_ptrs: false,
+                }
             }
         };
         ecx.const_validate_operand(&mplace.into(), path, &mut ref_tracking, mode)?;
