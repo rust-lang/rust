@@ -70,5 +70,20 @@ error: this call to `as_ref` does nothing
 LL |     foo_rt(mrt.as_ref());
    |            ^^^^^^^^^^^^ help: try: `mrt`
 
-error: aborting due to 11 previous errors
+error: you are explicitly cloning with `.map()`
+  --> $DIR/useless_asref.rs:137:13
+   |
+LL |     let y = x.as_ref().map(Clone::clone);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.as_ref().cloned()`
+   |
+   = note: `-D clippy::map-clone` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::map_clone)]`
+
+error: you are explicitly cloning with `.map()`
+  --> $DIR/useless_asref.rs:139:13
+   |
+LL |     let y = x.as_ref().map(String::clone);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.as_ref().cloned()`
+
+error: aborting due to 13 previous errors
 
