@@ -135,7 +135,7 @@ where
     ) {
         let point = self.elements.point_from_location(location);
         // Use internal iterator manually as it is much more efficient.
-        state.iter().fold((), |(), node| {
+        state.iter().for_each(|node| {
             self.values.insert(node, point);
         });
     }
@@ -149,7 +149,7 @@ where
     ) {
         let point = self.elements.point_from_location(location);
         // Use internal iterator manually as it is much more efficient.
-        state.iter().fold((), |(), node| {
+        state.iter().for_each(|node| {
             self.values.insert(node, point);
         });
     }
