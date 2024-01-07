@@ -1,8 +1,8 @@
 # line-index
 
-This crate is developped as part of `rust-analyzer`.
+This crate is developed as part of `rust-analyzer`.
 
-line-index is a library to convert between text offset and its corresponding line/column.
+line-index is a library to convert between text offsets and corresponding line/column coordinates.
 
 ## Installation
 
@@ -10,7 +10,9 @@ To add this crate to a project simply run `cargo add line-index`.
 
 ## Usage
 
-The main structure is `LineIndex`. It is constructed with an utf-8 text then various utility functions can be used on it.
+The main structure is `LineIndex`.
+
+It is constructed with an UTF-8 string, but also supports UTF-16 and UTF-32 offsets.
 
 ### Example
 
@@ -25,4 +27,4 @@ line_index.offset(LineCol { line: 2, col: 3 }); // Some (24)
 
 ## SemVer
 
-This crate follows [semver principles]([url](https://semver.org/)https://semver.org/).
+This crate uses [semver](https://semver.org/) versioning.
