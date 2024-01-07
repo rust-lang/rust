@@ -43,7 +43,7 @@ LL | type InReturnInTypeAlias<R> = fn() -> impl Debug;
    = note: see issue #63063 <https://github.com/rust-lang/rust/issues/63063> for more information
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
-error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in `fn` pointer params
+error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in `fn` pointer parameters
   --> $DIR/where-allowed.rs:18:40
    |
 LL | fn in_fn_parameter_in_parameters(_: fn(impl Debug)) { panic!() }
@@ -55,7 +55,7 @@ error[E0562]: `impl Trait` only allowed in function and inherent method argument
 LL | fn in_fn_return_in_parameters(_: fn() -> impl Debug) { panic!() }
    |                                          ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in `fn` pointer params
+error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in `fn` pointer parameters
   --> $DIR/where-allowed.rs:26:38
    |
 LL | fn in_fn_parameter_in_return() -> fn(impl Debug) { panic!() }
@@ -67,49 +67,49 @@ error[E0562]: `impl Trait` only allowed in function and inherent method argument
 LL | fn in_fn_return_in_return() -> fn() -> impl Debug { panic!() }
    |                                        ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in `Fn` trait params
+error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in the parameters of `Fn` trait bounds
   --> $DIR/where-allowed.rs:34:49
    |
 LL | fn in_dyn_Fn_parameter_in_parameters(_: &dyn Fn(impl Debug)) { panic!() }
    |                                                 ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in `Fn` trait return types
+error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in the return types of `Fn` trait bounds
   --> $DIR/where-allowed.rs:38:51
    |
 LL | fn in_dyn_Fn_return_in_parameters(_: &dyn Fn() -> impl Debug) { panic!() }
    |                                                   ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in `Fn` trait params
+error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in the parameters of `Fn` trait bounds
   --> $DIR/where-allowed.rs:42:55
    |
 LL | fn in_dyn_Fn_parameter_in_return() -> &'static dyn Fn(impl Debug) { panic!() }
    |                                                       ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in `Fn` trait params
+error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in the parameters of `Fn` trait bounds
   --> $DIR/where-allowed.rs:49:51
    |
 LL | fn in_impl_Fn_parameter_in_parameters(_: &impl Fn(impl Debug)) { panic!() }
    |                                                   ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in `Fn` trait return types
+error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in the return types of `Fn` trait bounds
   --> $DIR/where-allowed.rs:54:53
    |
 LL | fn in_impl_Fn_return_in_parameters(_: &impl Fn() -> impl Debug) { panic!() }
    |                                                     ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in `Fn` trait params
+error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in the parameters of `Fn` trait bounds
   --> $DIR/where-allowed.rs:58:57
    |
 LL | fn in_impl_Fn_parameter_in_return() -> &'static impl Fn(impl Debug) { panic!() }
    |                                                         ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in `Fn` trait params
+error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in the parameters of `Fn` trait bounds
   --> $DIR/where-allowed.rs:66:38
    |
 LL | fn in_Fn_parameter_in_generics<F: Fn(impl Debug)> (_: F) { panic!() }
    |                                      ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in `Fn` trait return types
+error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in the return types of `Fn` trait bounds
   --> $DIR/where-allowed.rs:70:40
    |
 LL | fn in_Fn_return_in_generics<F: Fn() -> impl Debug> (_: F) { panic!() }
@@ -145,7 +145,7 @@ error[E0562]: `impl Trait` only allowed in function and inherent method argument
 LL |     InTupleVariant(impl Debug),
    |                    ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in `extern fn` params
+error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in `extern fn` parameters
   --> $DIR/where-allowed.rs:138:33
    |
 LL |     fn in_foreign_parameters(_: impl Debug);
@@ -205,13 +205,13 @@ error[E0562]: `impl Trait` only allowed in function and inherent method argument
 LL |     where T: PartialEq<impl Debug>
    |                        ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in `Fn` trait params
+error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in the parameters of `Fn` trait bounds
   --> $DIR/where-allowed.rs:205:17
    |
 LL |     where T: Fn(impl Debug)
    |                 ^^^^^^^^^^
 
-error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in `Fn` trait return types
+error[E0562]: `impl Trait` only allowed in function and inherent method argument and return types, not in the return types of `Fn` trait bounds
   --> $DIR/where-allowed.rs:212:22
    |
 LL |     where T: Fn() -> impl Debug
