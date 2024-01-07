@@ -10,14 +10,13 @@
 //!
 //! is called "pinning." We would say that a value which satisfies these guarantees has been
 //! "pinned," in that it has been permanently (until the end of its lifespan) attached to its
-//! location in memory, as though pinned to a pinboard. Pinning a value is incredibly useful in
-//! that it provides the necessary guarantees[^guarantees] for [`unsafe`] code to be able to
-//! dereference raw pointers to the pinned value for the duration it is pinned (which,
-//! [as we'll see later][drop-guarantee], is necessarily from the time the value is first pinned
-//! until the end of its lifespan). This concept of "pinning" is necessary to implement safe
-//! interfaces on top of things like self-referential types and intrusive data structures which
-//! cannot currently be modeled in fully safe Rust using only borrow-checked
-//! [references][reference].
+//! location in memory, as though pinned to a pinboard. Pinning a value is an incredibly useful
+//! building block for [unsafe] code to be able to reason about whether a raw pointer to the
+//! pinned value is still valid. [As we'll see later][drop-guarantee], this is necessarily from the
+//! time the value is first pinned until the end of its lifespan. This concept of "pinning" is
+//! necessary to implement safe interfaces on top of things like self-referential types and
+//! intrusive data structures which cannot currently be modeled in fully safe Rust using only
+//! borrow-checked [references][reference].
 //!
 //! "Pinning" allows us to put a *value* which exists at some location in memory into a state where
 //! safe code cannot *move* that value to a different location in memory or otherwise invalidate it
@@ -27,13 +26,6 @@
 //! violate them, using the [`unsafe`] keyword to mark that such a promise is upheld by the user
 //! and not the compiler. In this way, we can allow other [`unsafe`] code to rely on any pointers
 //! that point to the pinned value to be valid to dereference while it is pinned.
-//!
-//! [^guarantees]: Pinning on its own does not provide *all* the invariants necessary here. However,
-//! in order to validly pin a value in the first place, it must already satisfy the other invariants
-//! for it to be valid to dereference a pointer to that value while it is pinned, and using the
-//! [`Drop` guarantee][self#subtle-details-and-the-drop-guarantee], we can ensure that any
-//! interested parties are notified before the value becomes no longer pinned, i.e. when the value
-//! goes out of scope and is invalidated.
 //!
 //! Note that as long as you don't use [`unsafe`], it's impossible to create or misuse a pinned
 //! value in a way that is unsound. See the documentation of [`Pin<Ptr>`] for more
