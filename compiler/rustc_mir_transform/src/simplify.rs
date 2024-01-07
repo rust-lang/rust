@@ -27,6 +27,7 @@
 //! naively generate still contains the `_a = ()` write in the unreachable block "after" the
 //! return.
 
+use rustc_index::bit_set::BitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_middle::mir::visit::{MutVisitor, MutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
@@ -62,7 +63,11 @@ impl SimplifyCfg {
 }
 
 pub(crate) fn simplify_cfg(body: &mut Body<'_>) {
-    CfgSimplifier::new(body).simplify();
+    let mut simplifier = CfgSimplifier::new(body);
+    simplifier.simplify();
+    let reachable =
+        BitSet::from_fn_n(simplifier.pred_count.len(), |i| simplifier.pred_count[i] > 0);
+    body.basic_blocks.assume_reachable_as_bitset(reachable);
     remove_dead_blocks(body);
 
     // FIXME: Should probably be moved into some kind of pass manager
@@ -109,7 +114,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         CfgSimplifier { basic_blocks, pred_count }
     }
 
-    pub fn simplify(mut self) {
+    pub fn simplify(&mut self) {
         self.strip_nops();
 
         // Vec of the blocks that should be merged. We store the indices here, instead of the

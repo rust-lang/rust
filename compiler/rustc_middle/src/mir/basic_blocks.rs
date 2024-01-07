@@ -70,6 +70,13 @@ impl<'tcx> BasicBlocks<'tcx> {
         self.cache.reachable_as_bitset.get_or_init(|| reachable_as_bitset(&self.basic_blocks))
     }
 
+    /// Records reachable blocks in the cache.
+    #[inline]
+    pub fn assume_reachable_as_bitset(&self, reachable: BitSet<BasicBlock>) {
+        debug_assert_eq!(&reachable, self.reachable_as_bitset());
+        self.cache.reachable_as_bitset.get_or_init(|| reachable);
+    }
+
     /// Returns basic blocks in a reverse postorder.
     ///
     /// See [`traversal::reverse_postorder`]'s docs to learn what is preorder traversal.

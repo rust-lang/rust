@@ -145,6 +145,19 @@ impl<T: Idx> BitSet<T> {
         result
     }
 
+    /// Creates a new bitset with a given `domain_size` using the given function to fill it.
+    #[inline]
+    pub fn from_fn_n(domain_size: usize, f: impl Fn(T) -> bool) -> BitSet<T> {
+        let mut result = BitSet::new_empty(domain_size);
+        for i in 0..domain_size {
+            let i = T::new(i);
+            if f(i) {
+                result.insert(i);
+            }
+        }
+        result
+    }
+
     /// Clear all elements.
     #[inline]
     pub fn clear(&mut self) {
