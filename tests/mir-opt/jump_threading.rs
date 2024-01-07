@@ -66,14 +66,13 @@ fn identity(x: Result<i32, i32>) -> Result<i32, i32> {
     // CHECK: bb5: {
     // CHECK:     goto -> bb1;
     // CHECK: bb6: {
-    // CHECK:     {{_.*}} = move (([[x]] as Err).0: i32);
+    // CHECK:     {{_.*}} = Result::<Infallible, i32>::Err(move (([[x]] as Err).0: i32));
     // CHECK:     [[controlflow]] = ControlFlow::<Result<Infallible, i32>, i32>::Break(
     // CHECK:     goto -> bb9;
     // CHECK: bb7: {
     // CHECK:     unreachable;
     // CHECK: bb8: {
-    // CHECK:     {{_.*}} = move (([[x]] as Ok).0: i32);
-    // CHECK:     [[controlflow]] = ControlFlow::<Result<Infallible, i32>, i32>::Continue(
+    // CHECK:     [[controlflow]] = ControlFlow::<Result<Infallible, i32>, i32>::Continue(move (([[x]] as Ok).0: i32));
     // CHECK:     goto -> bb5;
     // CHECK: bb9: {
     // CHECK:     goto -> bb3;

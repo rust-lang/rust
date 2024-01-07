@@ -10,14 +10,13 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     let mut _15: &mut std::iter::Rev<std::slice::Iter<'_, T>>;
     let mut _17: std::option::Option<&T>;
     let mut _18: isize;
-    let mut _20: &impl Fn(&T);
-    let mut _21: (&T,);
-    let _22: ();
+    let mut _19: &impl Fn(&T);
+    let mut _20: (&T,);
+    let _21: ();
     scope 1 {
         debug iter => _14;
-        let _19: &T;
         scope 2 {
-            debug x => _19;
+            debug x => ((_17 as Some).0: &T);
         }
         scope 25 (inlined <Rev<std::slice::Iter<'_, T>> as Iterator>::next) {
             debug self => _15;
@@ -48,15 +47,15 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                                     debug ptr => _9;
                                     scope 16 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null) {
                                         debug self => _9;
-                                        let mut _23: *mut u8;
+                                        let mut _22: *mut u8;
                                         scope 17 {
                                             scope 18 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) {
-                                                debug ptr => _23;
+                                                debug ptr => _22;
                                                 scope 19 (inlined std::ptr::mut_ptr::<impl *mut u8>::addr) {
-                                                    debug self => _23;
+                                                    debug self => _22;
                                                     scope 20 {
                                                         scope 21 (inlined std::ptr::mut_ptr::<impl *mut u8>::cast::<()>) {
-                                                            debug self => _23;
+                                                            debug self => _22;
                                                         }
                                                     }
                                                 }
@@ -131,10 +130,10 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
         StorageLive(_9);
         _9 = _4 as *mut T (PtrToPtr);
         StorageLive(_10);
-        StorageLive(_23);
+        StorageLive(_22);
         _10 = _9 as *const T (PointerCoercion(MutToConstPointer));
         _11 = NonNull::<T> { pointer: _10 };
-        StorageDead(_23);
+        StorageDead(_22);
         StorageDead(_10);
         StorageDead(_9);
         _12 = std::slice::Iter::<'_, T> { ptr: move _11, end_or_len: move _7, _marker: const ZeroSized: PhantomData<&T> };
@@ -149,7 +148,6 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb4: {
-        StorageLive(_17);
         _15 = &mut _14;
         StorageLive(_16);
         _16 = &mut (_14.0: std::slice::Iter<'_, T>);
@@ -163,7 +161,6 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb6: {
-        StorageDead(_17);
         StorageDead(_14);
         drop(_2) -> [return: bb7, unwind unreachable];
     }
@@ -173,18 +170,16 @@ fn reverse_loop(_1: &[T], _2: impl Fn(&T)) -> () {
     }
 
     bb8: {
-        _19 = ((_17 as Some).0: &T);
+        StorageLive(_19);
+        _19 = &_2;
         StorageLive(_20);
-        _20 = &_2;
-        StorageLive(_21);
-        _21 = (_19,);
-        _22 = <impl Fn(&T) as Fn<(&T,)>>::call(move _20, move _21) -> [return: bb9, unwind unreachable];
+        _20 = (((_17 as Some).0: &T),);
+        _21 = <impl Fn(&T) as Fn<(&T,)>>::call(move _19, move _20) -> [return: bb9, unwind unreachable];
     }
 
     bb9: {
-        StorageDead(_21);
         StorageDead(_20);
-        StorageDead(_17);
+        StorageDead(_19);
         goto -> bb4;
     }
 

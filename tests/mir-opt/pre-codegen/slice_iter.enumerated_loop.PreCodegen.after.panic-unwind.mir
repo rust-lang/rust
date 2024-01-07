@@ -10,16 +10,14 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     let mut _15: &mut std::iter::Enumerate<std::slice::Iter<'_, T>>;
     let mut _16: std::option::Option<(usize, &T)>;
     let mut _17: isize;
-    let mut _20: &impl Fn(usize, &T);
-    let mut _21: (usize, &T);
-    let _22: ();
+    let mut _18: &impl Fn(usize, &T);
+    let mut _19: (usize, &T);
+    let _20: ();
     scope 1 {
         debug iter => _14;
-        let _18: usize;
-        let _19: &T;
         scope 2 {
-            debug i => _18;
-            debug x => _19;
+            debug i => (((_16 as Some).0: (usize, &T)).0: usize);
+            debug x => (((_16 as Some).0: (usize, &T)).1: &T);
         }
     }
     scope 3 (inlined core::slice::<impl [T]>::iter) {
@@ -46,15 +44,15 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
                                     debug ptr => _9;
                                     scope 16 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null) {
                                         debug self => _9;
-                                        let mut _23: *mut u8;
+                                        let mut _21: *mut u8;
                                         scope 17 {
                                             scope 18 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) {
-                                                debug ptr => _23;
+                                                debug ptr => _21;
                                                 scope 19 (inlined std::ptr::mut_ptr::<impl *mut u8>::addr) {
-                                                    debug self => _23;
+                                                    debug self => _21;
                                                     scope 20 {
                                                         scope 21 (inlined std::ptr::mut_ptr::<impl *mut u8>::cast::<()>) {
-                                                            debug self => _23;
+                                                            debug self => _21;
                                                         }
                                                     }
                                                 }
@@ -129,10 +127,10 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         StorageLive(_9);
         _9 = _4 as *mut T (PtrToPtr);
         StorageLive(_10);
-        StorageLive(_23);
+        StorageLive(_21);
         _10 = _9 as *const T (PointerCoercion(MutToConstPointer));
         _11 = NonNull::<T> { pointer: _10 };
-        StorageDead(_23);
+        StorageDead(_21);
         StorageDead(_10);
         StorageDead(_9);
         _12 = std::slice::Iter::<'_, T> { ptr: move _11, end_or_len: move _7, _marker: const ZeroSized: PhantomData<&T> };
@@ -147,7 +145,6 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb4: {
-        StorageLive(_16);
         StorageLive(_15);
         _15 = &mut _14;
         _16 = <Enumerate<std::slice::Iter<'_, T>> as Iterator>::next(move _15) -> [return: bb5, unwind: bb11];
@@ -160,7 +157,6 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb6: {
-        StorageDead(_16);
         StorageDead(_14);
         drop(_2) -> [return: bb7, unwind continue];
     }
@@ -170,19 +166,16 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
     }
 
     bb8: {
-        _18 = (((_16 as Some).0: (usize, &T)).0: usize);
-        _19 = (((_16 as Some).0: (usize, &T)).1: &T);
-        StorageLive(_20);
-        _20 = &_2;
-        StorageLive(_21);
-        _21 = (_18, _19);
-        _22 = <impl Fn(usize, &T) as Fn<(usize, &T)>>::call(move _20, move _21) -> [return: bb9, unwind: bb11];
+        StorageLive(_18);
+        _18 = &_2;
+        StorageLive(_19);
+        _19 = ((((_16 as Some).0: (usize, &T)).0: usize), (((_16 as Some).0: (usize, &T)).1: &T));
+        _20 = <impl Fn(usize, &T) as Fn<(usize, &T)>>::call(move _18, move _19) -> [return: bb9, unwind: bb11];
     }
 
     bb9: {
-        StorageDead(_21);
-        StorageDead(_20);
-        StorageDead(_16);
+        StorageDead(_19);
+        StorageDead(_18);
         goto -> bb4;
     }
 

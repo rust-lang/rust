@@ -10,14 +10,13 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     let mut _6: &mut std::ops::Range<u32>;
     let mut _12: std::option::Option<u32>;
     let mut _15: isize;
-    let mut _17: &impl Fn(u32);
-    let mut _18: (u32,);
-    let _19: ();
+    let mut _16: &impl Fn(u32);
+    let mut _17: (u32,);
+    let _18: ();
     scope 1 {
         debug iter => _5;
-        let _16: u32;
         scope 2 {
-            debug x => _16;
+            debug x => ((_12 as Some).0: u32);
         }
         scope 4 (inlined iter::range::<impl Iterator for std::ops::Range<u32>>::next) {
             debug self => _6;
@@ -54,7 +53,6 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     }
 
     bb1: {
-        StorageLive(_12);
         _6 = &mut _5;
         StorageLive(_13);
         StorageLive(_11);
@@ -102,7 +100,6 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     }
 
     bb6: {
-        StorageDead(_12);
         StorageDead(_5);
         drop(_3) -> [return: bb7, unwind unreachable];
     }
@@ -112,18 +109,16 @@ fn forward_loop(_1: u32, _2: u32, _3: impl Fn(u32)) -> () {
     }
 
     bb8: {
-        _16 = ((_12 as Some).0: u32);
+        StorageLive(_16);
+        _16 = &_3;
         StorageLive(_17);
-        _17 = &_3;
-        StorageLive(_18);
-        _18 = (_16,);
-        _19 = <impl Fn(u32) as Fn<(u32,)>>::call(move _17, move _18) -> [return: bb9, unwind unreachable];
+        _17 = (((_12 as Some).0: u32),);
+        _18 = <impl Fn(u32) as Fn<(u32,)>>::call(move _16, move _17) -> [return: bb9, unwind unreachable];
     }
 
     bb9: {
-        StorageDead(_18);
         StorageDead(_17);
-        StorageDead(_12);
+        StorageDead(_16);
         goto -> bb1;
     }
 

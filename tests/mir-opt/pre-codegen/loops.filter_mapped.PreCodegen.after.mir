@@ -9,12 +9,11 @@ fn filter_mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> Option<U>) -> ()
     let mut _5: &mut std::iter::FilterMap<impl Iterator<Item = T>, impl Fn(T) -> Option<U>>;
     let mut _8: std::option::Option<U>;
     let mut _9: isize;
-    let _11: ();
+    let _10: ();
     scope 1 {
         debug iter => _4;
-        let _10: U;
         scope 2 {
-            debug x => _10;
+            debug x => ((_8 as Some).0: U);
         }
         scope 4 (inlined <FilterMap<impl Iterator<Item = T>, impl Fn(T) -> Option<U>> as Iterator>::next) {
             debug self => _5;
@@ -37,7 +36,6 @@ fn filter_mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> Option<U>) -> ()
     }
 
     bb2: {
-        StorageLive(_8);
         _5 = &mut _4;
         StorageLive(_6);
         _6 = &mut (_4.0: impl Iterator<Item = T>);
@@ -54,7 +52,6 @@ fn filter_mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> Option<U>) -> ()
     }
 
     bb4: {
-        StorageDead(_8);
         drop(_4) -> [return: bb5, unwind continue];
     }
 
@@ -64,12 +61,10 @@ fn filter_mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> Option<U>) -> ()
     }
 
     bb6: {
-        _10 = move ((_8 as Some).0: U);
-        _11 = opaque::<U>(move _10) -> [return: bb7, unwind: bb9];
+        _10 = opaque::<U>(move ((_8 as Some).0: U)) -> [return: bb7, unwind: bb9];
     }
 
     bb7: {
-        StorageDead(_8);
         goto -> bb2;
     }
 

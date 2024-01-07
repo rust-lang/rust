@@ -180,6 +180,7 @@ fn calculate_debuginfo_offset<
             mir::ProjectionElem::Downcast(_, variant) => {
                 place = place.downcast(bx, variant);
             }
+            mir::ProjectionElem::Subtype(_) => {}
             mir::ProjectionElem::ConstantIndex {
                 offset: index,
                 min_length: _,

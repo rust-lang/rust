@@ -26,6 +26,8 @@
 +         let mut _6: &mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8};
 +         let mut _7: u32;
 +         let mut _8: i32;
++         let mut _9: &mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8};
++         let mut _10: &mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8};
 +     }
   
       bb0: {
@@ -42,7 +44,9 @@
 +         _5 = const false;
 +         StorageLive(_6);
 +         StorageLive(_7);
-+         _6 = (_2.0: &mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8});
++         StorageLive(_9);
++         StorageLive(_10);
++         _6 = deref_copy (_2.0: &mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8});
 +         _7 = discriminant((*_6));
 +         switchInt(move _7) -> [0: bb3, 1: bb7, 3: bb8, otherwise: bb9];
       }
@@ -59,6 +63,8 @@
       bb2: {
 -         StorageDead(_3);
 -         _1 = <{coroutine@$DIR/inline_coroutine.rs:19:5: 19:8} as Coroutine<bool>>::resume(move _2, const false) -> [return: bb3, unwind unreachable];
++         StorageDead(_10);
++         StorageDead(_9);
 +         StorageDead(_7);
 +         StorageDead(_6);
 +         StorageDead(_5);
@@ -90,7 +96,8 @@
 +     bb6: {
 +         _1 = CoroutineState::<i32, bool>::Yielded(move _8);
 +         StorageDead(_8);
-+         discriminant((*_6)) = 3;
++         _9 = deref_copy (_2.0: &mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8});
++         discriminant((*_9)) = 3;
 +         goto -> bb2;
 +     }
 + 
@@ -102,7 +109,8 @@
 +         StorageLive(_8);
 +         StorageDead(_8);
 +         _1 = CoroutineState::<i32, bool>::Complete(_5);
-+         discriminant((*_6)) = 1;
++         _10 = deref_copy (_2.0: &mut {coroutine@$DIR/inline_coroutine.rs:19:5: 19:8});
++         discriminant((*_10)) = 1;
 +         goto -> bb2;
 +     }
 + 
