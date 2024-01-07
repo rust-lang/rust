@@ -46,6 +46,7 @@ pub struct Std {
     /// but we need to use the downloaded copy of std for linking to rustdoc. Allow this to be overriden by `builder.ensure` from other steps.
     force_recompile: bool,
     extra_rust_args: &'static [&'static str],
+    is_for_mir_opt_tests: bool,
 }
 
 impl Std {
@@ -56,6 +57,7 @@ impl Std {
             crates: Default::default(),
             force_recompile: false,
             extra_rust_args: &[],
+            is_for_mir_opt_tests: false,
         }
     }
 
@@ -66,6 +68,18 @@ impl Std {
             crates: Default::default(),
             force_recompile: true,
             extra_rust_args: &[],
+            is_for_mir_opt_tests: false,
+        }
+    }
+
+    pub fn new_for_mir_opt_tests(compiler: Compiler, target: TargetSelection) -> Self {
+        Self {
+            target,
+            compiler,
+            crates: Default::default(),
+            force_recompile: false,
+            extra_rust_args: &[],
+            is_for_mir_opt_tests: true,
         }
     }
 
@@ -80,6 +94,7 @@ impl Std {
             crates: Default::default(),
             force_recompile: false,
             extra_rust_args,
+            is_for_mir_opt_tests: false,
         }
     }
 }
@@ -109,6 +124,7 @@ impl Step for Std {
             crates,
             force_recompile: false,
             extra_rust_args: &[],
+            is_for_mir_opt_tests: false,
         });
     }
 
@@ -206,11 +222,19 @@ impl Step for Std {
             }
         }
 
-        let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "build");
-        std_cargo(builder, target, compiler.stage, &mut cargo);
-        for krate in &*self.crates {
-            cargo.arg("-p").arg(krate);
-        }
+        let mut cargo = if self.is_for_mir_opt_tests {
+            let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "rustc");
+            cargo.arg("-p").arg("std").arg("--crate-type=lib");
+            std_cargo(builder, target, compiler.stage, &mut cargo);
+            cargo
+        } else {
+            let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "build");
+            std_cargo(builder, target, compiler.stage, &mut cargo);
+            for krate in &*self.crates {
+                cargo.arg("-p").arg(krate);
+            }
+            cargo
+        };
 
         // See src/bootstrap/synthetic_targets.rs
         if target.is_synthetic() {

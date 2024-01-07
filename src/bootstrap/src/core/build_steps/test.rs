@@ -1611,7 +1611,12 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 .ensure(dist::DebuggerScripts { sysroot: builder.sysroot(compiler), host: target });
         }
 
-        builder.ensure(compile::Std::new(compiler, target));
+        if suite == "mir-opt" {
+            builder.ensure(compile::Std::new_for_mir_opt_tests(compiler, target));
+        } else {
+            builder.ensure(compile::Std::new(compiler, target));
+        }
+
         // ensure that `libproc_macro` is available on the host.
         builder.ensure(compile::Std::new(compiler, compiler.host));
 
@@ -1619,7 +1624,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         builder.ensure(TestHelpers { target: compiler.host });
 
         // As well as the target, except for plain wasm32, which can't build it
-        if !target.contains("wasm") || target.contains("emscripten") {
+        if suite != "mir-opt" && !target.contains("wasm") && !target.contains("emscripten") {
             builder.ensure(TestHelpers { target });
         }
 
