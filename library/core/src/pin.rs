@@ -9,12 +9,12 @@
 //! 2. More generally, remain *valid* at that same memory location
 //!
 //! is called "pinning." We would say that a value which satisfies these guarantees has been
-//! "pinned," in that it has been permanently (until the end of its lifetime) attached to its
+//! "pinned," in that it has been permanently (until the end of its lifespan) attached to its
 //! location in memory, as though pinned to a pinboard. Pinning a value is incredibly useful in
 //! that it provides the necessary guarantees[^guarantees] for [`unsafe`] code to be able to
 //! dereference raw pointers to the pinned value for the duration it is pinned (which,
 //! [as we'll see later][drop-guarantee], is necessarily from the time the value is first pinned
-//! until the end of its lifetime). This concept of "pinning" is necessary to implement safe
+//! until the end of its lifespan). This concept of "pinning" is necessary to implement safe
 //! interfaces on top of things like self-referential types and intrusive data structures which
 //! cannot currently be modeled in fully safe Rust using only borrow-checked
 //! [references][reference].
@@ -126,7 +126,7 @@
 //! [`Pin`] is specifically targeted at allowing the implementation of *safe interfaces* around
 //! types which have some state during which they become "address-sensitive." A value in such an
 //! "address-sensitive" state is *not* okay with being *moved* around at-will. Such a value must
-//! stay *un-moved* and valid during the address-sensitive portion of its lifetime because some
+//! stay *un-moved* and valid during the address-sensitive portion of its lifespan because some
 //! interface is relying on those invariants to be true in order for its implementation to be sound.
 //!
 //! As a motivating example of a type which may become address-sensitive, consider a type which
@@ -535,7 +535,7 @@
 //! but it also implies that,
 //!
 //! 2. The memory location that stores the value must not get invalidated or otherwise repurposed
-//! during the lifetime of the pinned value until its [`drop`] returns or panics
+//! during the lifespan of the pinned value until its [`drop`] returns or panics
 //!
 //! This point is subtle but required for intrusive data structures to be implemented soundly.
 //!
@@ -1505,8 +1505,8 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     /// Note: `Pin` also implements `Deref` to the target, which can be used
     /// to access the inner value. However, `Deref` only provides a reference
     /// that lives for as long as the borrow of the `Pin`, not the lifetime of
-    /// the `Pin` itself. This method allows turning the `Pin` into a reference
-    /// with the same lifetime as the original `Pin`.
+    /// the reference contained in the `Pin`. This method allows turning the `Pin` into a reference
+    /// with the same lifetime as the reference it wraps.
     ///
     /// ["pinning projections"]: self#projections-and-structural-pinning
     #[inline(always)]
