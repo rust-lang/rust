@@ -123,8 +123,6 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let Operand::Copy(place) = *arg else { bug!() };
         *arg = Operand::Move(place);
     }
-
-    crate::simplify::simplify_locals(body, tcx)
 }
 
 pub enum DeadStoreElimination {
