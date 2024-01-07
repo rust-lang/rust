@@ -1,23 +1,65 @@
 error: `filter` for `is_some` on iterator over `Option`
-  --> $DIR/iter_filter_is_some.rs:4:39
+  --> $DIR/iter_filter_is_some.rs:14:58
    |
-LL |     let _ = vec![Some(1)].into_iter().filter(Option::is_some);
-   |                                       ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
+LL |         let _ = vec![Some(1), None, Some(3)].into_iter().filter(Option::is_some);
+   |                                                          ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
    |
    = note: `-D clippy::iter-filter-is-some` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::iter_filter_is_some)]`
 
 error: `filter` for `is_some` on iterator over `Option`
-  --> $DIR/iter_filter_is_some.rs:6:39
+  --> $DIR/iter_filter_is_some.rs:16:58
    |
-LL |     let _ = vec![Some(1)].into_iter().filter(|o| o.is_some());
-   |                                       ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
+LL |         let _ = vec![Some(1), None, Some(3)].into_iter().filter(|a| a.is_some());
+   |                                                          ^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `is_some` on iterator over `Option`
-  --> $DIR/iter_filter_is_some.rs:10:39
+  --> $DIR/iter_filter_is_some.rs:19:58
    |
-LL |     let _ = vec![Some(1)].into_iter().filter(|o| { o.is_some() });
-   |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
+LL |         let _ = vec![Some(1), None, Some(3)].into_iter().filter(|o| { o.is_some() });
+   |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
-error: aborting due to 3 previous errors
+error: `filter` for `is_some` on iterator over `Option`
+  --> $DIR/iter_filter_is_some.rs:26:14
+   |
+LL |             .filter(std::option::Option::is_some);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
+
+error: `filter` for `is_some` on iterator over `Option`
+  --> $DIR/iter_filter_is_some.rs:31:14
+   |
+LL |             .filter(|a| std::option::Option::is_some(a));
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
+
+error: `filter` for `is_some` on iterator over `Option`
+  --> $DIR/iter_filter_is_some.rs:34:58
+   |
+LL |         let _ = vec![Some(1), None, Some(3)].into_iter().filter(|a| { std::option::Option::is_some(a) });
+   |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
+
+error: `filter` for `is_some` on iterator over `Option`
+  --> $DIR/iter_filter_is_some.rs:39:58
+   |
+LL |         let _ = vec![Some(1), None, Some(3)].into_iter().filter(|&a| a.is_some());
+   |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
+
+error: `filter` for `is_some` on iterator over `Option`
+  --> $DIR/iter_filter_is_some.rs:43:58
+   |
+LL |         let _ = vec![Some(1), None, Some(3)].into_iter().filter(|&o| { o.is_some() });
+   |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
+
+error: `filter` for `is_some` on iterator over `Option`
+  --> $DIR/iter_filter_is_some.rs:48:58
+   |
+LL |         let _ = vec![Some(1), None, Some(3)].into_iter().filter(|ref a| a.is_some());
+   |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
+
+error: `filter` for `is_some` on iterator over `Option`
+  --> $DIR/iter_filter_is_some.rs:52:58
+   |
+LL |         let _ = vec![Some(1), None, Some(3)].into_iter().filter(|ref o| { o.is_some() });
+   |                                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
+
+error: aborting due to 10 previous errors
 
