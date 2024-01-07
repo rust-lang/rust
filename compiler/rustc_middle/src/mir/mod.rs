@@ -263,6 +263,23 @@ pub struct CoroutineInfo<'tcx> {
     pub coroutine_kind: CoroutineKind,
 }
 
+impl<'tcx> CoroutineInfo<'tcx> {
+    // Sets up `CoroutineInfo` for a pre-coroutine-transform MIR body.
+    pub fn initial(
+        coroutine_kind: CoroutineKind,
+        yield_ty: Ty<'tcx>,
+        resume_ty: Ty<'tcx>,
+    ) -> CoroutineInfo<'tcx> {
+        CoroutineInfo {
+            coroutine_kind,
+            yield_ty: Some(yield_ty),
+            resume_ty: Some(resume_ty),
+            coroutine_drop: None,
+            coroutine_layout: None,
+        }
+    }
+}
+
 /// The lowered representation of a single function.
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Body<'tcx> {
@@ -367,7 +384,7 @@ impl<'tcx> Body<'tcx> {
         arg_count: usize,
         var_debug_info: Vec<VarDebugInfo<'tcx>>,
         span: Span,
-        coroutine_kind: Option<CoroutineKind>,
+        coroutine: Option<Box<CoroutineInfo<'tcx>>>,
         tainted_by_errors: Option<ErrorGuaranteed>,
     ) -> Self {
         // We need `arg_count` locals, and one for the return place.
@@ -384,15 +401,7 @@ impl<'tcx> Body<'tcx> {
             source,
             basic_blocks: BasicBlocks::new(basic_blocks),
             source_scopes,
-            coroutine: coroutine_kind.map(|coroutine_kind| {
-                Box::new(CoroutineInfo {
-                    yield_ty: None,
-                    resume_ty: None,
-                    coroutine_drop: None,
-                    coroutine_layout: None,
-                    coroutine_kind,
-                })
-            }),
+            coroutine,
             local_decls,
             user_type_annotations,
             arg_count,
