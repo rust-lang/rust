@@ -7,6 +7,7 @@
 #![feature(rustdoc_internals)]
 #![feature(array_windows)]
 #![feature(associated_type_defaults)]
+#![feature(box_into_inner)]
 #![feature(extract_if)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
