@@ -1828,11 +1828,11 @@ impl<T: ?Sized> Arc<T> {
         mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcInner<T>,
     ) -> *mut ArcInner<T> {
         let inner = mem_to_arcinner(ptr.as_non_null_ptr().as_ptr());
-        debug_assert_eq!(unsafe { Layout::for_value(&*inner) }, layout);
+        debug_assert_eq!(unsafe { Layout::for_value_raw(inner) }, layout);
 
         unsafe {
-            ptr::write(&mut (*inner).strong, atomic::AtomicUsize::new(1));
-            ptr::write(&mut (*inner).weak, atomic::AtomicUsize::new(1));
+            ptr::write(ptr::addr_of_mut!((*inner).strong), atomic::AtomicUsize::new(1));
+            ptr::write(ptr::addr_of_mut!((*inner).weak), atomic::AtomicUsize::new(1));
         }
 
         inner
@@ -1847,7 +1847,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
         // Allocate for the `ArcInner<T>` using the given value.
         unsafe {
             Arc::allocate_for_layout(
-                Layout::for_value(&*ptr),
+                Layout::for_value_raw(ptr),
                 |layout| alloc.allocate(layout),
                 |mem| mem.with_metadata_of(ptr as *const ArcInner<T>),
             )
@@ -1863,7 +1863,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
             // Copy value as bytes
             ptr::copy_nonoverlapping(
                 &*src as *const T as *const u8,
-                &mut (*ptr).data as *mut _ as *mut u8,
+                ptr::addr_of_mut!((*ptr).data) as *mut u8,
                 value_size,
             );
 
@@ -1898,7 +1898,7 @@ impl<T> Arc<[T]> {
         unsafe {
             let ptr = Self::allocate_for_slice(v.len());
 
-            ptr::copy_nonoverlapping(v.as_ptr(), &mut (*ptr).data as *mut [T] as *mut T, v.len());
+            ptr::copy_nonoverlapping(v.as_ptr(), ptr::addr_of_mut!((*ptr).data) as *mut T, v.len());
 
             Self::from_ptr(ptr)
         }
@@ -1934,15 +1934,15 @@ impl<T> Arc<[T]> {
             let ptr = Self::allocate_for_slice(len);
 
             let mem = ptr as *mut _ as *mut u8;
-            let layout = Layout::for_value(&*ptr);
+            let layout = Layout::for_value_raw(ptr);
 
             // Pointer to first element
-            let elems = &mut (*ptr).data as *mut [T] as *mut T;
+            let elems = ptr::addr_of_mut!((*ptr).data) as *mut T;
 
             let mut guard = Guard { mem: NonNull::new_unchecked(mem), elems, layout, n_elems: 0 };
 
-            for (i, item) in iter.enumerate() {
-                ptr::write(elems.add(i), item);
+            for item in iter {
+                ptr::write(elems.add(guard.n_elems), item);
                 guard.n_elems += 1;
             }
 
@@ -2305,7 +2305,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     pub unsafe fn get_mut_unchecked(this: &mut Self) -> &mut T {
         // We are careful to *not* create a reference covering the "count" fields, as
         // this would alias with concurrent access to the reference counts (e.g. by `Weak`).
-        unsafe { &mut (*this.ptr.as_ptr()).data }
+        unsafe { &mut *ptr::addr_of_mut!((*this.ptr.as_ptr()).data) }
     }
 
     /// Determine whether this is the unique reference (including weak refs) to
@@ -2849,7 +2849,12 @@ impl<T: ?Sized, A: Allocator> Weak<T, A> {
             // We are careful to *not* create a reference covering the "data" field, as
             // the field may be mutated concurrently (for example, if the last `Arc`
             // is dropped, the data field will be dropped in-place).
-            Some(unsafe { WeakInner { strong: &(*ptr).strong, weak: &(*ptr).weak } })
+            Some(unsafe {
+                WeakInner {
+                    strong: &*ptr::addr_of!((*ptr).strong),
+                    weak: &*ptr::addr_of!((*ptr).weak),
+                }
+            })
         }
     }
 
@@ -3380,7 +3385,7 @@ impl<T, A: Allocator + Clone> From<Vec<T, A>> for Arc<[T], A> {
             let (vec_ptr, len, cap, alloc) = v.into_raw_parts_with_alloc();
 
             let rc_ptr = Self::allocate_for_slice_in(len, &alloc);
-            ptr::copy_nonoverlapping(vec_ptr, &mut (*rc_ptr).data as *mut [T] as *mut T, len);
+            ptr::copy_nonoverlapping(vec_ptr, ptr::addr_of_mut!((*rc_ptr).data) as *mut T, len);
 
             // Create a `Vec<T, &A>` with length 0, to deallocate the buffer
             // without dropping its contents or the allocator
