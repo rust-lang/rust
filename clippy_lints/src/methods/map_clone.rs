@@ -61,23 +61,36 @@ pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_
                                     }
                                 }
                             },
+                            hir::ExprKind::Call(call, [_]) => {
+                                if let hir::ExprKind::Path(qpath) = call.kind {
+                                    handle_path(cx, call, &qpath, e, recv);
+                                }
+                            },
                             _ => {},
                         }
                     },
                     _ => {},
                 }
             },
-            hir::ExprKind::Path(qpath) => {
-                if let Some(path_def_id) = cx.qpath_res(&qpath, arg.hir_id).opt_def_id()
-                    && match_def_path(cx, path_def_id, &paths::CLONE_TRAIT_METHOD)
-                {
-                    // FIXME: It would be better to infer the type to check if it's copyable or not
-                    // to suggest to use `.copied()` instead of `.cloned()` where applicable.
-                    lint_path(cx, e.span, recv.span);
-                }
-            },
+            hir::ExprKind::Path(qpath) => handle_path(cx, arg, &qpath, e, recv),
             _ => {},
         }
+    }
+}
+
+fn handle_path(
+    cx: &LateContext<'_>,
+    arg: &hir::Expr<'_>,
+    qpath: &hir::QPath<'_>,
+    e: &hir::Expr<'_>,
+    recv: &hir::Expr<'_>,
+) {
+    if let Some(path_def_id) = cx.qpath_res(qpath, arg.hir_id).opt_def_id()
+        && match_def_path(cx, path_def_id, &paths::CLONE_TRAIT_METHOD)
+    {
+        // FIXME: It would be better to infer the type to check if it's copyable or not
+        // to suggest to use `.copied()` instead of `.cloned()` where applicable.
+        lint_path(cx, e.span, recv.span);
     }
 }
 
