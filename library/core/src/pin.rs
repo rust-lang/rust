@@ -146,10 +146,10 @@
 //! There are two possible ways to ensure the invariants required for 2. and 3. above (which
 //! apply to any address-sensitive type, not just self-referrential types) do not get broken.
 //!
-//! 1. Have the value detect when it is moved and update all the pointers that point to itself
+//! 1. Have the value detect when it is moved and update all the pointers that point to itself.
 //! 2. Guarantee that the address of the value does not change (and that memory is not re-used
 //! for anything else) during the time that the pointers to it are expected to be valid to
-//! dereference
+//! dereference.
 //!
 //! Since, as we discussed, Rust can move values without notifying them that they have moved, the
 //! first option is ruled out.
@@ -203,7 +203,7 @@
 //! will not be *moved* or [otherwise invalidated][subtle-details].
 //!
 //! We call such a [`Pin`]-wrapped pointer a **pinning pointer,** (or pinning reference, or pinning
-//! `Box`, etc.) because its existince is the thing that is *symbolically* pinning the underlying
+//! `Box`, etc.) because its existence is the thing that is conceptually pinning the underlying
 //! pointee in place: it is the metaphorical "pin" securing the data in place on the pinboard
 //! (in memory).
 //!
@@ -332,7 +332,7 @@
 //!
 //! ## [`Unpin`]
 //!
-//! The vast majority of Rust types have no address-sensitive states; these types
+//! The vast majority of Rust types have no address-sensitive states. These types
 //! implement the [`Unpin`] auto-trait, which cancels the restrictive effects of
 //! [`Pin`] when the *pointee* type `T` is [`Unpin`]. When [`T: Unpin`][Unpin],
 //! <code>[Pin]<[Box]\<T>></code> functions identically to a non-pinning [`Box<T>`]; similarly,
