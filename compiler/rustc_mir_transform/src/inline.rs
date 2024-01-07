@@ -4,14 +4,14 @@ use rustc_attr::InlineAttr;
 use rustc_const_eval::transform::validate::validate_types;
 use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
-use rustc_index::Idx;
+use rustc_index::{Idx, IndexVec};
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
-use rustc_target::abi::FieldIdx;
+use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
 use rustc_target::spec::abi::Abi;
 
 use crate::cost_checker::CostChecker;
@@ -120,12 +120,11 @@ impl<'tcx> Inliner<'tcx> {
         };
         let mut inlined_count = 0;
         for bb in blocks {
-            let bb_data = &caller_body[bb];
-            if bb_data.is_cleanup {
+            if caller_body[bb].is_cleanup {
                 continue;
             }
 
-            let Some(callsite) = self.resolve_callsite(caller_body, bb, bb_data) else {
+            let Some(callsite) = self.resolve_callsite(caller_body, bb) else {
                 continue;
             };
 
@@ -357,38 +356,69 @@ impl<'tcx> Inliner<'tcx> {
         }
     }
 
-    fn resolve_callsite(
-        &self,
-        caller_body: &Body<'tcx>,
-        bb: BasicBlock,
-        bb_data: &BasicBlockData<'tcx>,
-    ) -> Option<CallSite<'tcx>> {
+    fn resolve_callsite(&self, body: &mut Body<'tcx>, bb: BasicBlock) -> Option<CallSite<'tcx>> {
         // Only consider direct calls to functions
-        let terminator = bb_data.terminator();
-        if let TerminatorKind::Call { ref func, fn_span, .. } = terminator.kind {
-            let func_ty = func.ty(caller_body, self.tcx);
-            if let ty::FnDef(def_id, args) = *func_ty.kind() {
-                // To resolve an instance its args have to be fully normalized.
-                let args = self.tcx.try_normalize_erasing_regions(self.param_env, args).ok()?;
-                let callee =
-                    Instance::resolve(self.tcx, self.param_env, def_id, args).ok().flatten()?;
+        let bbdata = &mut body.basic_blocks.as_mut()[bb];
+        let terminator = bbdata.terminator_mut();
+        let TerminatorKind::Call { ref func, fn_span, .. } = terminator.kind else { return None };
 
-                if let InstanceDef::Virtual(..) | InstanceDef::Intrinsic(_) = callee.def {
-                    return None;
-                }
+        let func_ty = func.ty(&body.local_decls, self.tcx);
+        let ty::FnDef(def_id, args) = *func_ty.kind() else { return None };
 
-                if self.history.contains(&callee.def_id()) {
-                    return None;
-                }
+        // To resolve an instance its args have to be fully normalized.
+        let args = self.tcx.try_normalize_erasing_regions(self.param_env, args).ok()?;
+        let callee = Instance::resolve(self.tcx, self.param_env, def_id, args).ok().flatten()?;
 
-                let fn_sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args);
-                let source_info = SourceInfo { span: fn_span, ..terminator.source_info };
-
-                return Some(CallSite { callee, fn_sig, block: bb, source_info });
-            }
+        if let InstanceDef::Virtual(..) | InstanceDef::Intrinsic(_) = callee.def {
+            return None;
         }
 
-        None
+        if self.history.contains(&callee.def_id()) {
+            return None;
+        }
+
+        let fn_sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args);
+        let source_info = SourceInfo { span: fn_span, ..terminator.source_info };
+
+        // If the callee is an ADT constructor, do not bother going through the full
+        // inlining machinery, and just create the statement.
+        if self.tcx.is_constructor(def_id) {
+            let mut terminator = bbdata.terminator.take().unwrap();
+            let TerminatorKind::Call { target, destination, args, .. } = terminator.kind else {
+                bug!()
+            };
+
+            let fn_sig = fn_sig.no_bound_vars().expect("LBR in ADT constructor signature");
+            let ty::Adt(adt_def, adt_args) = fn_sig.output().kind() else {
+                bug!("unexpected type for ADT ctor {:?}", fn_sig.output());
+            };
+
+            let variant_index = if adt_def.is_enum() {
+                adt_def.variant_index_with_ctor_id(def_id)
+            } else {
+                FIRST_VARIANT
+            };
+
+            let kind = AggregateKind::Adt(adt_def.did(), variant_index, adt_args, None, None);
+            debug_assert_eq!(adt_def.variant(variant_index).fields.len(), args.len());
+            let statement = Statement {
+                kind: StatementKind::Assign(Box::new((
+                    destination,
+                    Rvalue::Aggregate(Box::new(kind), IndexVec::from_raw(args)),
+                ))),
+                source_info,
+            };
+
+            terminator.kind = match target {
+                Some(target) => TerminatorKind::Goto { target },
+                None => TerminatorKind::Unreachable,
+            };
+            bbdata.terminator = Some(terminator);
+            bbdata.statements.push(statement);
+            return None;
+        }
+
+        Some(CallSite { callee, fn_sig, block: bb, source_info })
     }
 
     /// Returns an error if inlining is not possible based on codegen attributes alone. A success
