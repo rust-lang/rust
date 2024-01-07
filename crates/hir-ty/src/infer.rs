@@ -738,7 +738,7 @@ impl<'a> InferenceContext<'a> {
         result.tuple_field_access_types = tuple_field_accesses_rev
             .into_iter()
             .enumerate()
-            .map(|(idx, subst)| (TupleId(idx as u32), table.resolve_completely(subst.clone())))
+            .map(|(idx, subst)| (TupleId(idx as u32), table.resolve_completely(subst)))
             .collect();
         result
     }

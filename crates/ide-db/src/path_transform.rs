@@ -159,7 +159,7 @@ impl<'a> PathTransform<'a> {
             .for_each(|(k, v)| match (k.split(db), v) {
                 (Either::Right(k), Some(TypeOrConst::Either(v))) => {
                     if let Some(ty) = v.ty() {
-                        type_substs.insert(k, ty.clone());
+                        type_substs.insert(k, ty);
                     }
                 }
                 (Either::Right(k), None) => {

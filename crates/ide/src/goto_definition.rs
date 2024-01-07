@@ -79,7 +79,7 @@ pub(crate) fn goto_definition(
                     return Some(vec![x]);
                 }
 
-                if let Some(x) = try_lookup_macro_def_in_macro_use(sema, token.clone()) {
+                if let Some(x) = try_lookup_macro_def_in_macro_use(sema, token) {
                     return Some(vec![x]);
                 }
             }

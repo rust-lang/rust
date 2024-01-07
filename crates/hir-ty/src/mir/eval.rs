@@ -386,7 +386,7 @@ impl MirEvalError {
                 write!(
                     f,
                     "Layout for type `{}` is not available due {err:?}",
-                    ty.display(db).with_closure_style(ClosureStyle::ClosureWithId).to_string()
+                    ty.display(db).with_closure_style(ClosureStyle::ClosureWithId)
                 )?;
             }
             MirEvalError::MirLowerError(func, err) => {
@@ -1533,7 +1533,7 @@ impl Evaluator<'_> {
                 }
             },
             TyKind::Dyn(_) => {
-                let vtable = self.vtable_map.id(current_ty.clone());
+                let vtable = self.vtable_map.id(current_ty);
                 let mut r = Vec::with_capacity(16);
                 let addr = addr.get(self)?;
                 r.extend(addr.iter().copied());

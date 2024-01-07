@@ -42,8 +42,9 @@ fn check_nth_fix(nth: usize, ra_fixture_before: &str, ra_fixture_after: &str) {
         super::diagnostics(&db, &conf, &AssistResolveStrategy::All, file_position.file_id)
             .pop()
             .expect("no diagnostics");
-    let fix =
-        &diagnostic.fixes.expect(&format!("{:?} diagnostic misses fixes", diagnostic.code))[nth];
+    let fix = &diagnostic
+        .fixes
+        .unwrap_or_else(|| panic!("{:?} diagnostic misses fixes", diagnostic.code))[nth];
     let actual = {
         let source_change = fix.source_change.as_ref().unwrap();
         let file_id = *source_change.source_file_edits.keys().next().unwrap();

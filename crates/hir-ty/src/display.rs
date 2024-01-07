@@ -609,7 +609,7 @@ fn render_const_scalar(
                 }
                 hir_def::AdtId::EnumId(e) => {
                     let Some((var_id, var_layout)) =
-                        detect_variant_from_bytes(&layout, f.db, trait_env.clone(), b, e)
+                        detect_variant_from_bytes(&layout, f.db, trait_env, b, e)
                     else {
                         return f.write_str("<failed-to-detect-variant>");
                     };

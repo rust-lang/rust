@@ -1093,7 +1093,7 @@ impl Field {
 
     pub fn layout(&self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
         db.layout_of_ty(
-            self.ty(db).ty.clone(),
+            self.ty(db).ty,
             db.trait_environment(match hir_def::VariantId::from(self.parent) {
                 hir_def::VariantId::EnumVariantId(id) => GenericDefId::EnumVariantId(id),
                 hir_def::VariantId::StructId(id) => GenericDefId::AdtId(id.into()),
@@ -1854,7 +1854,7 @@ impl DefWithBody {
                     let local = Local { parent: self.into(), binding_id };
                     match (need_mut, local.is_mut(db)) {
                         (mir::MutabilityReason::Unused, _) => {
-                            let should_ignore = matches!(body[binding_id].name.as_str(), Some(it) if it.starts_with("_"));
+                            let should_ignore = matches!(body[binding_id].name.as_str(), Some(it) if it.starts_with('_'));
                             if !should_ignore {
                                 acc.push(UnusedVariable { local }.into())
                             }
@@ -1879,7 +1879,7 @@ impl DefWithBody {
                         }
                         (mir::MutabilityReason::Not, true) => {
                             if !infer.mutated_bindings_in_closure.contains(&binding_id) {
-                                let should_ignore = matches!(body[binding_id].name.as_str(), Some(it) if it.starts_with("_"));
+                                let should_ignore = matches!(body[binding_id].name.as_str(), Some(it) if it.starts_with('_'));
                                 if !should_ignore {
                                     acc.push(UnusedMut { local }.into())
                                 }
@@ -3673,7 +3673,6 @@ impl Closure {
         let (captures, _) = infer.closure_info(&self.id);
         captures
             .iter()
-            .cloned()
             .map(|capture| Type {
                 env: db.trait_environment_for_body(owner),
                 ty: capture.ty(&self.subst),

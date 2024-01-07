@@ -266,11 +266,8 @@ fn generate_impl(
             .clone_for_update();
 
             // Goto link : https://doc.rust-lang.org/reference/paths.html#qualified-paths
-            let qualified_path_type = make::path_from_text(&format!(
-                "<{} as {}>",
-                field_ty.to_string(),
-                delegate.trait_()?.to_string()
-            ));
+            let qualified_path_type =
+                make::path_from_text(&format!("<{} as {}>", field_ty, delegate.trait_()?));
 
             let delegate_assoc_items = delegate.get_or_create_assoc_item_list();
             match bound_def.assoc_item_list() {
@@ -373,11 +370,8 @@ fn generate_impl(
             .clone_for_update();
 
             // Goto link : https://doc.rust-lang.org/reference/paths.html#qualified-paths
-            let qualified_path_type = make::path_from_text(&format!(
-                "<{} as {}>",
-                field_ty.to_string(),
-                delegate.trait_()?.to_string()
-            ));
+            let qualified_path_type =
+                make::path_from_text(&format!("<{} as {}>", field_ty, delegate.trait_()?));
 
             // 4) Transform associated items in delegte trait impl
             let delegate_assoc_items = delegate.get_or_create_assoc_item_list();
@@ -759,7 +753,7 @@ fn ty_assoc_item(item: syntax::ast::TypeAlias, qual_path_ty: Path) -> Option<Ass
 }
 
 fn qualified_path(qual_path_ty: ast::Path, path_expr_seg: ast::Path) -> ast::Path {
-    make::path_from_text(&format!("{}::{}", qual_path_ty.to_string(), path_expr_seg.to_string()))
+    make::path_from_text(&format!("{}::{}", qual_path_ty, path_expr_seg))
 }
 
 #[cfg(test)]

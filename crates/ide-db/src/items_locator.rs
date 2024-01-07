@@ -55,7 +55,7 @@ pub fn items_with_name<'a>(
             local_query.fuzzy();
             local_query.assoc_search_mode(assoc_item_search);
 
-            let mut external_query = import_map::Query::new(fuzzy_search_string.clone())
+            let mut external_query = import_map::Query::new(fuzzy_search_string)
                 .fuzzy()
                 .assoc_search_mode(assoc_item_search);
 
