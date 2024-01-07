@@ -1,4 +1,4 @@
-use crate::mir::traversal::{reachable_as_bitset, Postorder};
+use crate::mir::traversal::Postorder;
 use crate::mir::{BasicBlock, BasicBlockData, Successors, Terminator, TerminatorKind, START_BLOCK};
 
 use rustc_data_structures::fx::FxHashMap;
@@ -67,7 +67,15 @@ impl<'tcx> BasicBlocks<'tcx> {
     /// Returns reachable basic blocks.
     #[inline]
     pub fn reachable_as_bitset(&self) -> &BitSet<BasicBlock> {
-        self.cache.reachable_as_bitset.get_or_init(|| reachable_as_bitset(&self.basic_blocks))
+        self.cache.reachable_as_bitset.get_or_init(|| {
+            // Compute reachability from RPO, as it is cached.
+            let rpo = self.reverse_postorder();
+            let mut reachable = BitSet::new_empty(self.basic_blocks.len());
+            for &bb in rpo {
+                reachable.insert(bb);
+            }
+            reachable
+        })
     }
 
     /// Records reachable blocks in the cache.
