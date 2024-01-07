@@ -2825,14 +2825,8 @@ impl<T, A: Allocator> IntoIterator for Vec<T, A> {
                 begin.add(me.len()) as *const T
             };
             let cap = me.buf.capacity();
-            IntoIter {
-                buf: NonNull::new_unchecked(begin),
-                phantom: PhantomData,
-                cap,
-                alloc,
-                ptr: begin,
-                end,
-            }
+            let buf = NonNull::new_unchecked(begin);
+            IntoIter { buf, phantom: PhantomData, cap, alloc, ptr: buf, end }
         }
     }
 }

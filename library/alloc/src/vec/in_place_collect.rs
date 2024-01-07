@@ -257,7 +257,7 @@ where
         // then the source pointer will stay in its initial position and we can't use it as reference
         if src.ptr != src_ptr {
             debug_assert!(
-                unsafe { dst_buf.add(len) as *const _ } <= src.ptr,
+                unsafe { dst_buf.add(len) as *const _ } <= src.ptr.as_ptr(),
                 "InPlaceIterable contract violation, write pointer advanced beyond read pointer"
             );
         }
