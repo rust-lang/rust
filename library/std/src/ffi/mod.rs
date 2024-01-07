@@ -162,6 +162,7 @@ pub use core::ffi::FromBytesUntilNulError;
 pub use core::ffi::{CStr, FromBytesWithNulError};
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(inline)]
 pub use self::os_str::{OsStr, OsString};
 
 #[stable(feature = "core_ffi_c", since = "1.64.0")]
@@ -181,4 +182,5 @@ pub use core::ffi::c_void;
 )]
 pub use core::ffi::{VaList, VaListImpl};
 
-mod os_str;
+#[unstable(feature = "os_str_display", issue = "120048")]
+pub mod os_str;
