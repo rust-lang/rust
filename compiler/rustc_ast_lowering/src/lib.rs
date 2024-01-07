@@ -322,7 +322,7 @@ impl std::fmt::Display for ImplTraitPosition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let name = match self {
             ImplTraitPosition::Path => "paths",
-            ImplTraitPosition::Variable => "variable bindings",
+            ImplTraitPosition::Variable => "the type of variable bindings",
             ImplTraitPosition::Trait => "traits",
             ImplTraitPosition::AsyncBlock => "async blocks",
             ImplTraitPosition::Bound => "bounds",
@@ -334,7 +334,7 @@ impl std::fmt::Display for ImplTraitPosition {
             ImplTraitPosition::ExternFnReturn => "`extern fn` return types",
             ImplTraitPosition::ClosureReturn => "closure return types",
             ImplTraitPosition::PointerReturn => "`fn` pointer return types",
-            ImplTraitPosition::FnTraitReturn => "the return types of `Fn` trait bounds",
+            ImplTraitPosition::FnTraitReturn => "the return type of `Fn` trait bounds",
             ImplTraitPosition::GenericDefault => "generic parameter defaults",
             ImplTraitPosition::ConstTy => "const types",
             ImplTraitPosition::StaticTy => "static types",
