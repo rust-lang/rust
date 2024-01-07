@@ -105,7 +105,7 @@
 //! [what-is-pinning]: self#what-is-pinning
 //!
 //! We say that a value has been *pinned* when it has been put into a state where it is guaranteed
-//! to remain *valid* and *located at the same place in memory* from the time it is pinned until its
+//! to remain *located at the same place in memory* from the time it is pinned until its
 //! [`drop`] is called.
 //!
 //! ## Address-sensitive values, AKA "when we need pinning"
