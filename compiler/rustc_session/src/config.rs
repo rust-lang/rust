@@ -1146,7 +1146,6 @@ impl UnstableOptions {
         DiagCtxtFlags {
             can_emit_warnings,
             treat_err_as_bug: self.treat_err_as_bug,
-            dont_buffer_diagnostics: self.dont_buffer_diagnostics,
             macro_backtrace: self.macro_backtrace,
             deduplicate_diagnostics: self.deduplicate_diagnostics,
             track_diagnostics: self.track_diagnostics,
