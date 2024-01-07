@@ -13,6 +13,7 @@ use rustc_middle::mir::{self, Const};
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt, VariantDef};
+use rustc_span::ErrorGuaranteed;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, Integer, VariantIdx, FIRST_VARIANT};
 use smallvec::SmallVec;
@@ -944,6 +945,7 @@ impl<'p, 'tcx> RustcMatchCheckCtxt<'p, 'tcx> {
 
 impl<'p, 'tcx> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
     type Ty = RevealedTy<'tcx>;
+    type Error = ErrorGuaranteed;
     type VariantIdx = VariantIdx;
     type StrLit = Const<'tcx>;
     type ArmData = HirId;

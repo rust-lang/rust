@@ -430,7 +430,10 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         }
 
         let scrut_ty = scrut.ty;
-        let report = analyze_match(&cx, &tarms, scrut_ty);
+        let Ok(report) = analyze_match(&cx, &tarms, scrut_ty).map_err(|err| self.error = Err(err))
+        else {
+            return;
+        };
 
         match source {
             // Don't report arm reachability of desugared `match $iter.into_iter() { iter => .. }`
@@ -544,7 +547,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         let cx = self.new_cx(refutability, None, scrut, pat.span);
         let pat = self.lower_pattern(&cx, pat)?;
         let arms = [MatchArm { pat, arm_data: self.lint_level, has_guard: false }];
-        let report = analyze_match(&cx, &arms, pat.ty().inner());
+        let report = analyze_match(&cx, &arms, pat.ty().inner())?;
         Ok((cx, report))
     }
 

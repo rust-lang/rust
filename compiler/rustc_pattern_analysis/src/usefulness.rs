@@ -1341,14 +1341,14 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
     mcx: MatchCtxt<'a, 'p, Cx>,
     matrix: &mut Matrix<'p, Cx>,
     is_top_level: bool,
-) -> WitnessMatrix<Cx> {
+) -> Result<WitnessMatrix<Cx>, Cx::Error> {
     debug_assert!(matrix.rows().all(|r| r.len() == matrix.column_count()));
 
     if !matrix.wildcard_row_is_relevant && matrix.rows().all(|r| !r.pats.relevant) {
         // Here we know that nothing will contribute further to exhaustiveness or usefulness. This
         // is purely an optimization: skipping this check doesn't affect correctness. See the top of
         // the file for details.
-        return WitnessMatrix::empty();
+        return Ok(WitnessMatrix::empty());
     }
 
     let Some(ty) = matrix.head_ty() else {
@@ -1360,16 +1360,16 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
             // When there's an unguarded row, the match is exhaustive and any subsequent row is not
             // useful.
             if !row.is_under_guard {
-                return WitnessMatrix::empty();
+                return Ok(WitnessMatrix::empty());
             }
         }
         // No (unguarded) rows, so the match is not exhaustive. We return a new witness unless
         // irrelevant.
         return if matrix.wildcard_row_is_relevant {
-            WitnessMatrix::unit_witness()
+            Ok(WitnessMatrix::unit_witness())
         } else {
             // We choose to not report anything here; see at the top for details.
-            WitnessMatrix::empty()
+            Ok(WitnessMatrix::empty())
         };
     };
 
@@ -1422,7 +1422,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
         let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor, ctor_is_relevant);
         let mut witnesses = ensure_sufficient_stack(|| {
             compute_exhaustiveness_and_usefulness(mcx, &mut spec_matrix, false)
-        });
+        })?;
 
         // Transform witnesses for `spec_matrix` into witnesses for `matrix`.
         witnesses.apply_constructor(pcx, &missing_ctors, &ctor, report_individual_missing_ctors);
@@ -1443,7 +1443,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
         }
     }
 
-    ret
+    Ok(ret)
 }
 
 /// Indicates whether or not a given arm is useful.
@@ -1474,9 +1474,10 @@ pub fn compute_match_usefulness<'p, Cx: TypeCx>(
     arms: &[MatchArm<'p, Cx>],
     scrut_ty: Cx::Ty,
     scrut_validity: ValidityConstraint,
-) -> UsefulnessReport<'p, Cx> {
+) -> Result<UsefulnessReport<'p, Cx>, Cx::Error> {
     let mut matrix = Matrix::new(arms, scrut_ty, scrut_validity);
-    let non_exhaustiveness_witnesses = compute_exhaustiveness_and_usefulness(cx, &mut matrix, true);
+    let non_exhaustiveness_witnesses =
+        compute_exhaustiveness_and_usefulness(cx, &mut matrix, true)?;
 
     let non_exhaustiveness_witnesses: Vec<_> = non_exhaustiveness_witnesses.single_column();
     let arm_usefulness: Vec<_> = arms
@@ -1493,5 +1494,5 @@ pub fn compute_match_usefulness<'p, Cx: TypeCx>(
             (arm, usefulness)
         })
         .collect();
-    UsefulnessReport { arm_usefulness, non_exhaustiveness_witnesses }
+    Ok(UsefulnessReport { arm_usefulness, non_exhaustiveness_witnesses })
 }
