@@ -790,7 +790,7 @@
 //!
 //! Structural pinning comes with a few extra requirements:
 //!
-//! 1.  *Structural [`Unpin`].* A struct can be [`Unpin`] if, and only if, all of its
+//! 1.  *Structural [`Unpin`].* A struct can be [`Unpin`] only if all of its
 //!     structurally-pinned fields are, too. This is [`Unpin`]'s behavior by default.
 //!     However, as a libray author, it is your responsibility not to write something like
 //!     <code>impl\<T> [Unpin] for Struct\<T> {}</code> and then offer a method that provides
