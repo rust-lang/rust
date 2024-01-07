@@ -717,7 +717,7 @@ use std::fmt;
 
 use crate::constructor::{Constructor, ConstructorSet};
 use crate::pat::{DeconstructedPat, WitnessPat};
-use crate::{Captures, MatchArm, MatchCtxt, TypeCx, TypedArena};
+use crate::{Captures, MatchArm, MatchCtxt, TypeCx};
 
 use self::ValidityConstraint::*;
 
@@ -874,11 +874,12 @@ impl<'p, Cx: TypeCx> PatStack<'p, Cx> {
         &self,
         pcx: &PlaceCtxt<'_, 'p, Cx>,
         ctor: &Constructor<Cx>,
+        ctor_sub_tys: &[Cx::Ty],
         ctor_is_relevant: bool,
     ) -> PatStack<'p, Cx> {
         // We pop the head pattern and push the new fields extracted from the arguments of
         // `self.head()`.
-        let mut new_pats = self.head().specialize(pcx, ctor);
+        let mut new_pats = self.head().specialize(pcx, ctor, ctor_sub_tys);
         new_pats.extend_from_slice(&self.pats[1..]);
         // `ctor` is relevant for this row if it is the actual constructor of this row, or if the
         // row has a wildcard and `ctor` is relevant for wildcards.
@@ -950,11 +951,12 @@ impl<'p, Cx: TypeCx> MatrixRow<'p, Cx> {
         &self,
         pcx: &PlaceCtxt<'_, 'p, Cx>,
         ctor: &Constructor<Cx>,
+        ctor_sub_tys: &[Cx::Ty],
         ctor_is_relevant: bool,
         parent_row: usize,
     ) -> MatrixRow<'p, Cx> {
         MatrixRow {
-            pats: self.pats.pop_head_constructor(pcx, ctor, ctor_is_relevant),
+            pats: self.pats.pop_head_constructor(pcx, ctor, ctor_sub_tys, ctor_is_relevant),
             parent_row,
             is_under_guard: self.is_under_guard,
             useful: false,
@@ -984,11 +986,13 @@ struct Matrix<'p, Cx: TypeCx> {
     /// each column must have the same type. Each column corresponds to a place within the
     /// scrutinee.
     rows: Vec<MatrixRow<'p, Cx>>,
-    /// Stores an extra fictitious row full of wildcards. Mostly used to keep track of the type of
-    /// each column. This must obey the same invariants as the real rows.
-    wildcard_row: PatStack<'p, Cx>,
+    /// Track the type of each column/place.
+    place_ty: SmallVec<[Cx::Ty; 2]>,
     /// Track for each column/place whether it contains a known valid value.
     place_validity: SmallVec<[ValidityConstraint; 2]>,
+    /// Track whether the virtual wildcard row used to compute exhaustiveness is relevant. See top
+    /// of the file for details on relevancy.
+    wildcard_row_is_relevant: bool,
 }
 
 impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
@@ -1007,17 +1011,15 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
 
     /// Build a new matrix from an iterator of `MatchArm`s.
     fn new(
-        wildcard_arena: &'p TypedArena<DeconstructedPat<'p, Cx>>,
         arms: &[MatchArm<'p, Cx>],
         scrut_ty: Cx::Ty,
         scrut_validity: ValidityConstraint,
     ) -> Self {
-        let wild_pattern = wildcard_arena.alloc(DeconstructedPat::wildcard(scrut_ty));
-        let wildcard_row = PatStack::from_pattern(wild_pattern);
         let mut matrix = Matrix {
             rows: Vec::with_capacity(arms.len()),
-            wildcard_row,
+            place_ty: smallvec![scrut_ty],
             place_validity: smallvec![scrut_validity],
+            wildcard_row_is_relevant: true,
         };
         for (row_id, arm) in arms.iter().enumerate() {
             let v = MatrixRow {
@@ -1032,10 +1034,10 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
     }
 
     fn head_ty(&self) -> Option<Cx::Ty> {
-        self.wildcard_row.head_opt().map(|pat| pat.ty())
+        self.place_ty.first().copied()
     }
     fn column_count(&self) -> usize {
-        self.wildcard_row.len()
+        self.place_ty.len()
     }
 
     fn rows(
@@ -1063,17 +1065,24 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
         ctor: &Constructor<Cx>,
         ctor_is_relevant: bool,
     ) -> Matrix<'p, Cx> {
-        let wildcard_row = self.wildcard_row.pop_head_constructor(pcx, ctor, ctor_is_relevant);
-        let new_validity = self.place_validity[0].specialize(ctor);
-        let new_place_validity = std::iter::repeat(new_validity)
+        let ctor_sub_tys = pcx.ctor_sub_tys(ctor);
+        let specialized_place_ty =
+            ctor_sub_tys.iter().chain(self.place_ty[1..].iter()).copied().collect();
+        let ctor_sub_validity = self.place_validity[0].specialize(ctor);
+        let specialized_place_validity = std::iter::repeat(ctor_sub_validity)
             .take(ctor.arity(pcx))
             .chain(self.place_validity[1..].iter().copied())
             .collect();
-        let mut matrix =
-            Matrix { rows: Vec::new(), wildcard_row, place_validity: new_place_validity };
+        let mut matrix = Matrix {
+            rows: Vec::new(),
+            place_ty: specialized_place_ty,
+            place_validity: specialized_place_validity,
+            wildcard_row_is_relevant: self.wildcard_row_is_relevant && ctor_is_relevant,
+        };
         for (i, row) in self.rows().enumerate() {
             if ctor.is_covered_by(pcx, row.head().ctor()) {
-                let new_row = row.pop_head_constructor(pcx, ctor, ctor_is_relevant, i);
+                let new_row =
+                    row.pop_head_constructor(pcx, ctor, ctor_sub_tys, ctor_is_relevant, i);
                 matrix.expand_and_push(new_row);
             }
         }
@@ -1335,7 +1344,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
 ) -> WitnessMatrix<Cx> {
     debug_assert!(matrix.rows().all(|r| r.len() == matrix.column_count()));
 
-    if !matrix.wildcard_row.relevant && matrix.rows().all(|r| !r.pats.relevant) {
+    if !matrix.wildcard_row_is_relevant && matrix.rows().all(|r| !r.pats.relevant) {
         // Here we know that nothing will contribute further to exhaustiveness or usefulness. This
         // is purely an optimization: skipping this check doesn't affect correctness. See the top of
         // the file for details.
@@ -1356,7 +1365,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
         }
         // No (unguarded) rows, so the match is not exhaustive. We return a new witness unless
         // irrelevant.
-        return if matrix.wildcard_row.relevant {
+        return if matrix.wildcard_row_is_relevant {
             WitnessMatrix::unit_witness()
         } else {
             // We choose to not report anything here; see at the top for details.
@@ -1466,7 +1475,7 @@ pub fn compute_match_usefulness<'p, Cx: TypeCx>(
     scrut_ty: Cx::Ty,
     scrut_validity: ValidityConstraint,
 ) -> UsefulnessReport<'p, Cx> {
-    let mut matrix = Matrix::new(cx.wildcard_arena, arms, scrut_ty, scrut_validity);
+    let mut matrix = Matrix::new(arms, scrut_ty, scrut_validity);
     let non_exhaustiveness_witnesses = compute_exhaustiveness_and_usefulness(cx, &mut matrix, true);
 
     let non_exhaustiveness_witnesses: Vec<_> = non_exhaustiveness_witnesses.single_column();
