@@ -254,7 +254,7 @@ fn compute_replacement<'tcx>(
         can_perform_opt,
         allowed_replacements: FxHashSet::default(),
     };
-    let reachable_blocks = traversal::reachable_as_bitset(body);
+    let reachable_blocks = body.basic_blocks.reachable_as_bitset();
     for (bb, bbdata) in body.basic_blocks.iter_enumerated() {
         // Only visit reachable blocks as we rely on dataflow.
         if reachable_blocks.contains(bb) {

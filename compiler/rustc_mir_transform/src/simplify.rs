@@ -93,8 +93,11 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
         // dead blocks, which we don't want to.
         pred_count[START_BLOCK] = 1;
 
-        for (_, data) in traversal::preorder(body) {
-            if let Some(ref term) = data.terminator {
+        let reachable = body.basic_blocks.reachable_as_bitset();
+        for (bb, data) in body.basic_blocks.iter_enumerated() {
+            if reachable.contains(bb)
+                && let Some(ref term) = data.terminator
+            {
                 for tgt in term.successors() {
                     pred_count[tgt] += 1;
                 }
@@ -297,7 +300,7 @@ pub(crate) fn remove_dead_blocks(body: &mut Body<'_>) {
         bbdata.terminator.is_some() && bbdata.is_empty_unreachable() && !bbdata.is_cleanup
     };
 
-    let reachable = traversal::reachable_as_bitset(body);
+    let reachable = body.basic_blocks.reachable_as_bitset().clone();
     let empty_unreachable_blocks = body
         .basic_blocks
         .iter_enumerated()

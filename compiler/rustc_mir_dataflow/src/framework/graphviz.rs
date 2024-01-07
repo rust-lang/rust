@@ -36,7 +36,7 @@ where
     body: &'mir Body<'tcx>,
     results: RefCell<Option<Results<'tcx, A>>>,
     style: OutputStyle,
-    reachable: BitSet<BasicBlock>,
+    reachable: &'mir BitSet<BasicBlock>,
 }
 
 impl<'mir, 'tcx, A> Formatter<'mir, 'tcx, A>
@@ -48,7 +48,7 @@ where
         results: Results<'tcx, A>,
         style: OutputStyle,
     ) -> Self {
-        let reachable = mir::traversal::reachable_as_bitset(body);
+        let reachable = body.basic_blocks.reachable_as_bitset();
         Formatter { body, results: Some(results).into(), style, reachable }
     }
 

@@ -804,10 +804,8 @@ fn dest_prop_mir_dump<'body, 'tcx>(
     live: &mut ResultsCursor<'body, 'tcx, MaybeLiveLocals>,
     round: usize,
 ) {
-    let mut reachable = None;
     dump_mir(tcx, false, "DestinationPropagation-dataflow", &round, body, |pass_where, w| {
-        let reachable = reachable.get_or_insert_with(|| traversal::reachable_as_bitset(body));
-
+        let reachable = body.basic_blocks.reachable_as_bitset();
         match pass_where {
             PassWhere::BeforeLocation(loc) if reachable.contains(loc.block) => {
                 live.seek_after_primary_effect(loc);

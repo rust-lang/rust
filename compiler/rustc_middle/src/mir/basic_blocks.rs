@@ -1,4 +1,4 @@
-use crate::mir::traversal::Postorder;
+use crate::mir::traversal::{reachable_as_bitset, Postorder};
 use crate::mir::{BasicBlock, BasicBlockData, Successors, Terminator, TerminatorKind, START_BLOCK};
 
 use rustc_data_structures::fx::FxHashMap;
@@ -6,6 +6,7 @@ use rustc_data_structures::graph;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::OnceLock;
+use rustc_index::bit_set::BitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use smallvec::SmallVec;
@@ -26,6 +27,7 @@ struct Cache {
     predecessors: OnceLock<Predecessors>,
     switch_sources: OnceLock<SwitchSources>,
     is_cyclic: OnceLock<bool>,
+    reachable_as_bitset: OnceLock<BitSet<BasicBlock>>,
     reverse_postorder: OnceLock<Vec<BasicBlock>>,
     dominators: OnceLock<Dominators<BasicBlock>>,
 }
@@ -60,6 +62,12 @@ impl<'tcx> BasicBlocks<'tcx> {
             }
             preds
         })
+    }
+
+    /// Returns reachable basic blocks.
+    #[inline]
+    pub fn reachable_as_bitset(&self) -> &BitSet<BasicBlock> {
+        self.cache.reachable_as_bitset.get_or_init(|| reachable_as_bitset(&self.basic_blocks))
     }
 
     /// Returns basic blocks in a reverse postorder.

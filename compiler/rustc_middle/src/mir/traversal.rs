@@ -22,19 +22,22 @@ use super::*;
 /// A preorder traversal of this graph is either `A B D C` or `A C D B`
 #[derive(Clone)]
 pub struct Preorder<'a, 'tcx> {
-    body: &'a Body<'tcx>,
+    basic_blocks: &'a IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
     visited: BitSet<BasicBlock>,
     worklist: Vec<BasicBlock>,
     root_is_start_block: bool,
 }
 
 impl<'a, 'tcx> Preorder<'a, 'tcx> {
-    pub fn new(body: &'a Body<'tcx>, root: BasicBlock) -> Preorder<'a, 'tcx> {
+    pub fn new(
+        basic_blocks: &'a IndexSlice<BasicBlock, BasicBlockData<'tcx>>,
+        root: BasicBlock,
+    ) -> Preorder<'a, 'tcx> {
         let worklist = vec![root];
 
         Preorder {
-            body,
-            visited: BitSet::new_empty(body.basic_blocks.len()),
+            basic_blocks,
+            visited: BitSet::new_empty(basic_blocks.len()),
             worklist,
             root_is_start_block: root == START_BLOCK,
         }
@@ -48,7 +51,7 @@ impl<'a, 'tcx> Preorder<'a, 'tcx> {
 ///
 /// See [`Preorder`]'s docs to learn what is preorder traversal.
 pub fn preorder<'a, 'tcx>(body: &'a Body<'tcx>) -> Preorder<'a, 'tcx> {
-    Preorder::new(body, START_BLOCK)
+    Preorder::new(&body.basic_blocks, START_BLOCK)
 }
 
 impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
@@ -60,7 +63,7 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
                 continue;
             }
 
-            let data = &self.body[idx];
+            let data = &self.basic_blocks[idx];
 
             if let Some(ref term) = data.terminator {
                 self.worklist.extend(term.successors());
@@ -74,7 +77,7 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         // All the blocks, minus the number of blocks we've visited.
-        let upper = self.body.basic_blocks.len() - self.visited.count();
+        let upper = self.basic_blocks.len() - self.visited.count();
 
         let lower = if self.root_is_start_block {
             // We will visit all remaining blocks exactly once.
@@ -245,8 +248,10 @@ pub fn reachable<'a, 'tcx>(
 }
 
 /// Returns a `BitSet` containing all basic blocks reachable from the `START_BLOCK`.
-pub fn reachable_as_bitset(body: &Body<'_>) -> BitSet<BasicBlock> {
-    let mut iter = preorder(body);
+pub fn reachable_as_bitset(
+    basic_blocks: &IndexSlice<BasicBlock, BasicBlockData<'_>>,
+) -> BitSet<BasicBlock> {
+    let mut iter = Preorder::new(basic_blocks, START_BLOCK);
     iter.by_ref().for_each(drop);
     iter.visited
 }

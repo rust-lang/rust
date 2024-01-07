@@ -73,7 +73,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
             tcx,
             mir_phase,
             unwind_edge_count: 0,
-            reachable_blocks: traversal::reachable_as_bitset(body),
+            reachable_blocks: body.basic_blocks.reachable_as_bitset(),
             value_cache: FxHashSet::default(),
             can_unwind,
         };
@@ -104,7 +104,7 @@ struct CfgChecker<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     mir_phase: MirPhase,
     unwind_edge_count: usize,
-    reachable_blocks: BitSet<BasicBlock>,
+    reachable_blocks: &'a BitSet<BasicBlock>,
     value_cache: FxHashSet<u128>,
     // If `false`, then the MIR must not contain `UnwindAction::Continue` or
     // `TerminatorKind::Resume`.
