@@ -19,14 +19,14 @@ use rustc_span::Span;
 
 /// Contains the sub-token-trees of a "delimited" token tree such as `(a b c)`.
 /// The delimiters are not represented explicitly in the `tts` vector.
-#[derive(PartialEq, Encodable, Decodable, Debug)]
+#[derive(Clone, PartialEq, Encodable, Decodable, Debug)]
 struct Delimited {
     delim: Delimiter,
     /// FIXME: #67062 has details about why this is sub-optimal.
     tts: Vec<TokenTree>,
 }
 
-#[derive(PartialEq, Encodable, Decodable, Debug)]
+#[derive(Clone, PartialEq, Encodable, Decodable, Debug)]
 struct SequenceRepetition {
     /// The sequence of token trees
     tts: Vec<TokenTree>,
@@ -64,7 +64,7 @@ pub(crate) enum KleeneOp {
 
 /// Similar to `tokenstream::TokenTree`, except that `Sequence`, `MetaVar`, `MetaVarDecl`, and
 /// `MetaVarExpr` are "first-class" token trees. Useful for parsing macros.
-#[derive(Debug, PartialEq, Encodable, Decodable)]
+#[derive(Clone, Debug, PartialEq, Encodable, Decodable)]
 enum TokenTree {
     Token(Token),
     /// A delimited sequence, e.g. `($e:expr)` (RHS) or `{ $e }` (LHS).
@@ -72,7 +72,7 @@ enum TokenTree {
     /// A kleene-style repetition sequence, e.g. `$($e:expr)*` (RHS) or `$($e),*` (LHS).
     Sequence(DelimSpan, SequenceRepetition),
     /// e.g., `$var`.
-    MetaVar(Span, Ident),
+    MetaVar(Span, Ident, Span),
     /// e.g., `$var:expr`. Only appears on the LHS.
     MetaVarDecl(Span, Ident /* name to bind */, Option<NonterminalKind>),
     /// A meta-variable expression inside `${...}`.
@@ -97,7 +97,7 @@ impl TokenTree {
     fn span(&self) -> Span {
         match *self {
             TokenTree::Token(Token { span, .. })
-            | TokenTree::MetaVar(span, _)
+            | TokenTree::MetaVar(span, ..)
             | TokenTree::MetaVarDecl(span, _, _) => span,
             TokenTree::Delimited(span, ..)
             | TokenTree::MetaVarExpr(span, _)

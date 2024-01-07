@@ -242,7 +242,7 @@ fn check_binders(
         // the outer macro. See ui/macros/macro-of-higher-order.rs where $y:$fragment in the
         // LHS of the nested macro (and RHS of the outer macro) is parsed as MetaVar(y) Colon
         // MetaVar(fragment) and not as MetaVarDecl(y, fragment).
-        TokenTree::MetaVar(span, name) => {
+        TokenTree::MetaVar(span, name, _) => {
             if macros.is_empty() {
                 sess.dcx.span_bug(span, "unexpected MetaVar in lhs");
             }
@@ -342,7 +342,7 @@ fn check_occurrences(
         TokenTree::MetaVarDecl(span, _name, _kind) => {
             sess.dcx.span_bug(span, "unexpected MetaVarDecl in rhs")
         }
-        TokenTree::MetaVar(span, name) => {
+        TokenTree::MetaVar(span, name, _) => {
             let name = MacroRulesNormalizedIdent::new(name);
             check_ops_is_prefix(sess, node_id, macros, binders, ops, span, name);
         }

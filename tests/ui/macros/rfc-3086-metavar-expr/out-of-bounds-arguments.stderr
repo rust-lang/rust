@@ -3,18 +3,33 @@ error: depth parameter of meta-variable expression `count` must be less than 4
    |
 LL |             ${count($foo, 10)},
    |              ^^^^^^^^^^^^^^^^^
+...
+LL |     a!( { [ (a) ] [ (b c) ] } );
+   |     --------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `a` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: depth parameter of meta-variable expression `index` must be less than 3
   --> $DIR/out-of-bounds-arguments.rs:19:18
    |
 LL |                 ${index(10)},
    |                  ^^^^^^^^^^^
+...
+LL |     b!( { [ a b ] } );
+   |     ----------------- in this macro invocation
+   |
+   = note: this error originates in the macro `b` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: depth parameter of meta-variable expression `length` must be less than 2
   --> $DIR/out-of-bounds-arguments.rs:32:18
    |
 LL |                 ${length(10)}
    |                  ^^^^^^^^^^^^
+...
+LL |     c!({ a });
+   |     --------- in this macro invocation
+   |
+   = note: this error originates in the macro `c` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 

@@ -3,14 +3,22 @@ error: variable 'v' is still repeating at this depth
    |
 LL |         $v
    |         ^^
+...
+LL |     mac!(0);
+   |     ------- in this macro invocation
+   |
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: variable 'v' is still repeating at this depth
   --> $DIR/macro-repeat.rs:3:9
    |
 LL |         $v
    |         ^^
+...
+LL |     mac!(1);
+   |     ------- in this macro invocation
    |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

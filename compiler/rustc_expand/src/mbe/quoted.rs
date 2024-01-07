@@ -54,7 +54,7 @@ pub(super) fn parse(
         // parse out the matcher (i.e., in `$id:ident` this would parse the `:` and `ident`).
         let tree = parse_tree(tree, &mut trees, parsing_patterns, sess, node_id, features, edition);
         match tree {
-            TokenTree::MetaVar(start_sp, ident) if parsing_patterns => {
+            TokenTree::MetaVar(start_sp, ident, _) if parsing_patterns => {
                 let span = match trees.next() {
                     Some(&tokenstream::TokenTree::Token(Token { kind: token::Colon, span }, _)) => {
                         match trees.next() {
@@ -223,7 +223,7 @@ fn parse_tree<'a>(
                     if ident.name == kw::Crate && !is_raw {
                         TokenTree::token(token::Ident(kw::DollarCrate, is_raw), span)
                     } else {
-                        TokenTree::MetaVar(span, ident)
+                        TokenTree::MetaVar(span, ident, ident.span)
                     }
                 }
 
@@ -245,7 +245,8 @@ fn parse_tree<'a>(
                     let msg =
                         format!("expected identifier, found `{}`", pprust::token_to_string(token),);
                     sess.dcx.span_err(token.span, msg);
-                    TokenTree::MetaVar(token.span, Ident::empty())
+                    let ident = Ident::empty();
+                    TokenTree::MetaVar(token.span, ident, ident.span)
                 }
 
                 // There are no more tokens. Just return the `$` we already have.

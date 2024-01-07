@@ -76,6 +76,55 @@ impl<'a> Iterator for Frame<'a> {
     }
 }
 
+fn mark_tt(tt: &mut mbe::TokenTree, marker: &mut Marker) {
+    // Spans that never end up in the output don't need to be marked.
+    // `_ident`s are metavariable names and need to keep their original spans to resolve correctly
+    // (they also never end up in the output).
+    match tt {
+        mbe::TokenTree::Token(token) => mut_visit::visit_token(token, marker),
+        mbe::TokenTree::Delimited(dspan, _dspacing, delimited) => {
+            mut_visit::visit_delim_span(dspan, marker);
+            mark_delimited(delimited, marker);
+        }
+        mbe::TokenTree::Sequence(_dspan, rep) => {
+            // Sequence delimiter spans never ends up in the output.
+            mark_sequence_repetition(rep, marker);
+        }
+        mbe::TokenTree::MetaVar(span, _ident, marked_span) => {
+            marker.visit_span(span);
+            marker.visit_span(marked_span);
+        }
+        mbe::TokenTree::MetaVarExpr(dspan, expr) => {
+            mut_visit::visit_delim_span(dspan, marker);
+            match expr {
+                MetaVarExpr::Count(_ident, _depth) => {}
+                MetaVarExpr::Ignore(_ident) => {}
+                MetaVarExpr::Index(_depth) | MetaVarExpr::Length(_depth) => {}
+            }
+        }
+        mbe::TokenTree::MetaVarDecl(..) => unreachable!(),
+    }
+}
+
+fn mark_sequence_repetition(rep: &mut mbe::SequenceRepetition, marker: &mut Marker) {
+    let mbe::SequenceRepetition { tts, separator, kleene, num_captures: _ } = rep;
+    for tt in tts {
+        mark_tt(tt, marker);
+    }
+    if let Some(sep) = separator {
+        mut_visit::visit_token(sep, marker);
+    }
+    // Kleenee token span never ends up in the output.
+    let mbe::KleeneToken { span: _, op: _ } = kleene;
+}
+
+fn mark_delimited(delimited: &mut mbe::Delimited, marker: &mut Marker) {
+    let mbe::Delimited { delim: _, tts } = delimited;
+    for tt in tts {
+        mark_tt(tt, marker);
+    }
+}
+
 /// This can do Macro-By-Example transcription.
 /// - `interp` is a map of meta-variables to the tokens (non-terminals) they matched in the
 ///   invocation. We are assuming we already know there is a match.
@@ -108,11 +157,15 @@ pub(super) fn transcribe<'a>(
         return Ok(TokenStream::default());
     }
 
+    let mut src = src.clone();
+    let expn_id = cx.current_expansion.id;
+    mark_delimited(&mut src, &mut Marker(expn_id, transparency, Default::default()));
+
     // We descend into the RHS (`src`), expanding things as we go. This stack contains the things
     // we have yet to expand/are still expanding. We start the stack off with the whole RHS. The
     // choice of spacing values doesn't matter.
     let mut stack: SmallVec<[Frame<'_>; 1]> =
-        smallvec![Frame::new(src, src_span, DelimSpacing::new(Spacing::Alone, Spacing::Alone))];
+        smallvec![Frame::new(&src, src_span, DelimSpacing::new(Spacing::Alone, Spacing::Alone))];
 
     // As we descend in the RHS, we will need to be able to match nested sequences of matchers.
     // `repeats` keeps track of where we are in matching at each level, with the last element being
@@ -132,7 +185,6 @@ pub(super) fn transcribe<'a>(
     // again, and we are done transcribing.
     let mut result: Vec<TokenTree> = Vec::new();
     let mut result_stack = Vec::new();
-    let mut marker = Marker(cx.current_expansion.id, transparency, Default::default());
 
     loop {
         // Look at the last frame on the stack.
@@ -245,10 +297,11 @@ pub(super) fn transcribe<'a>(
             }
 
             // Replace the meta-var with the matched token tree from the invocation.
-            mbe::TokenTree::MetaVar(mut sp, mut original_ident) => {
+            mbe::TokenTree::MetaVar(sp, original_ident, marked_span) => {
+                let sp = *sp;
                 // Find the matched nonterminal from the macro invocation, and use it to replace
                 // the meta-var.
-                let ident = MacroRulesNormalizedIdent::new(original_ident);
+                let ident = MacroRulesNormalizedIdent::new(*original_ident);
                 if let Some(cur_matched) = lookup_cur_matched(ident, interp, &repeats) {
                     match cur_matched {
                         MatchedTokenTree(tt) => {
@@ -260,7 +313,6 @@ pub(super) fn transcribe<'a>(
                             // Other variables are emitted into the output stream as groups with
                             // `Delimiter::Invisible` to maintain parsing priorities.
                             // `Interpolated` is currently used for such groups in rustc parser.
-                            marker.visit_span(&mut sp);
                             result
                                 .push(TokenTree::token_alone(token::Interpolated(nt.clone()), sp));
                         }
@@ -272,11 +324,9 @@ pub(super) fn transcribe<'a>(
                 } else {
                     // If we aren't able to match the meta-var, we push it back into the result but
                     // with modified syntax context. (I believe this supports nested macros).
-                    marker.visit_span(&mut sp);
-                    marker.visit_ident(&mut original_ident);
                     result.push(TokenTree::token_joint_hidden(token::Dollar, sp));
                     result.push(TokenTree::Token(
-                        Token::from_ast_ident(original_ident),
+                        Token::from_ast_ident(Ident::new(original_ident.name, *marked_span)),
                         Spacing::Alone,
                     ));
                 }
@@ -284,7 +334,7 @@ pub(super) fn transcribe<'a>(
 
             // Replace meta-variable expressions with the result of their expansion.
             mbe::TokenTree::MetaVarExpr(sp, expr) => {
-                transcribe_metavar_expr(cx, expr, interp, &mut marker, &repeats, &mut result, sp)?;
+                transcribe_metavar_expr(cx, expr, interp, &repeats, &mut result, sp)?;
             }
 
             // If we are entering a new delimiter, we push its contents to the `stack` to be
@@ -292,13 +342,12 @@ pub(super) fn transcribe<'a>(
             // We will produce all of the results of the inside of the `Delimited` and then we will
             // jump back out of the Delimited, pop the result_stack and add the new results back to
             // the previous results (from outside the Delimited).
-            mbe::TokenTree::Delimited(mut span, spacing, delimited) => {
-                mut_visit::visit_delim_span(&mut span, &mut marker);
+            mbe::TokenTree::Delimited(span, spacing, delimited) => {
                 stack.push(Frame::Delimited {
                     tts: &delimited.tts,
                     delim: delimited.delim,
                     idx: 0,
-                    span,
+                    span: *span,
                     spacing: *spacing,
                 });
                 result_stack.push(mem::take(&mut result));
@@ -307,10 +356,7 @@ pub(super) fn transcribe<'a>(
             // Nothing much to do here. Just push the token to the result, being careful to
             // preserve syntax context.
             mbe::TokenTree::Token(token) => {
-                let mut token = token.clone();
-                mut_visit::visit_token(&mut token, &mut marker);
-                let tt = TokenTree::Token(token, Spacing::Alone);
-                result.push(tt);
+                result.push(TokenTree::Token(token.clone(), Spacing::Alone));
             }
 
             // There should be no meta-var declarations in the invocation of a macro.
@@ -475,7 +521,7 @@ fn lockstep_iter_size(
                 size.with(lockstep_iter_size(tt, interpolations, repeats))
             })
         }
-        TokenTree::MetaVar(_, name) | TokenTree::MetaVarDecl(_, name, _) => {
+        TokenTree::MetaVar(_, name, _) | TokenTree::MetaVarDecl(_, name, _) => {
             let name = MacroRulesNormalizedIdent::new(*name);
             match lookup_cur_matched(name, interpolations, repeats) {
                 Some(matched) => match matched {
@@ -620,23 +666,17 @@ fn transcribe_metavar_expr<'a>(
     cx: &ExtCtxt<'a>,
     expr: &MetaVarExpr,
     interp: &FxHashMap<MacroRulesNormalizedIdent, NamedMatch>,
-    marker: &mut Marker,
     repeats: &[(usize, usize)],
     result: &mut Vec<TokenTree>,
     sp: &DelimSpan,
 ) -> PResult<'a, ()> {
-    let mut visited_span = || {
-        let mut span = sp.entire();
-        marker.visit_span(&mut span);
-        span
-    };
     match *expr {
         MetaVarExpr::Count(original_ident, depth) => {
             let matched = matched_from_ident(cx, original_ident, interp)?;
             let count = count_repetitions(cx, depth, matched, repeats, sp)?;
             let tt = TokenTree::token_alone(
                 TokenKind::lit(token::Integer, sym::integer(count), None),
-                visited_span(),
+                sp.entire(),
             );
             result.push(tt);
         }
@@ -648,7 +688,7 @@ fn transcribe_metavar_expr<'a>(
             Some((index, _)) => {
                 result.push(TokenTree::token_alone(
                     TokenKind::lit(token::Integer, sym::integer(*index), None),
-                    visited_span(),
+                    sp.entire(),
                 ));
             }
             None => return Err(out_of_bounds_err(cx, repeats.len(), sp.entire(), "index")),
@@ -657,7 +697,7 @@ fn transcribe_metavar_expr<'a>(
             Some((_, length)) => {
                 result.push(TokenTree::token_alone(
                     TokenKind::lit(token::Integer, sym::integer(*length), None),
-                    visited_span(),
+                    sp.entire(),
                 ));
             }
             None => return Err(out_of_bounds_err(cx, repeats.len(), sp.entire(), "length")),
