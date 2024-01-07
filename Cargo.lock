@@ -2465,6 +2465,7 @@ dependencies = [
  "ctrlc",
  "env_logger",
  "getrandom",
+ "jemalloc-sys",
  "lazy_static",
  "libc",
  "libffi",
@@ -2474,7 +2475,6 @@ dependencies = [
  "rand",
  "regex",
  "rustc_version",
- "serde",
  "smallvec",
  "ui_test",
 ]
