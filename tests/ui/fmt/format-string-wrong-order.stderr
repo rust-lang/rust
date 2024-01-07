@@ -50,5 +50,29 @@ LL |     format!("{?:#?}", bar);
    |
    = note: `?` comes after `:`, try `:?` instead
 
-error: aborting due to 6 previous errors
+error: invalid format string: expected format parameter to occur after `:`
+  --> $DIR/format-string-wrong-order.rs:15:21
+   |
+LL |     format!("Hello {<5:}!", "x");
+   |                     ^ expected `<` to occur after `:` in format string
+   |
+   = note: `<` comes after `:`.
+
+error: invalid format string: expected format parameter to occur after `:`
+  --> $DIR/format-string-wrong-order.rs:17:21
+   |
+LL |     format!("Hello {^5:}!", "x");
+   |                     ^ expected `^` to occur after `:` in format string
+   |
+   = note: `^` comes after `:`.
+
+error: invalid format string: expected format parameter to occur after `:`
+  --> $DIR/format-string-wrong-order.rs:19:21
+   |
+LL |     format!("Hello {>5:}!", "x");
+   |                     ^ expected `>` to occur after `:` in format string
+   |
+   = note: `>` comes after `:`.
+
+error: aborting due to 9 previous errors
 
