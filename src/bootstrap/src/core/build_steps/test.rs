@@ -1596,8 +1596,13 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // NOTE: Only stage 1 is special cased because we need the rustc_private artifacts to match the
         // running compiler in stage 2 when plugins run.
         let stage_id = if suite == "ui-fulldeps" && compiler.stage == 1 {
-            compiler = builder.compiler(compiler.stage - 1, target);
-            format!("stage{}-{}", compiler.stage + 1, target)
+            // At stage 0 (stage - 1) we are using the beta compiler. Using `self.target` can lead finding
+            // an incorrect compiler path on cross-targets, as the stage 0 beta compiler is always equal
+            // to `build.build` in the configuration.
+            let build = builder.build.build;
+
+            compiler = builder.compiler(compiler.stage - 1, build);
+            format!("stage{}-{}", compiler.stage + 1, build)
         } else {
             format!("stage{}-{}", compiler.stage, target)
         };
