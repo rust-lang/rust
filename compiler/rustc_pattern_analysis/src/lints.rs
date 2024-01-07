@@ -94,12 +94,6 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
                 column.expand_and_push(subpat);
             }
         }
-
-        assert!(
-            !specialized_columns[0].is_empty(),
-            "ctor {ctor:?} was listed as present but isn't;
-            there is an inconsistency between `Constructor::is_covered_by` and `ConstructorSet::split`"
-        );
         specialized_columns
     }
 }
