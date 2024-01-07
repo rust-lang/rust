@@ -1123,6 +1123,18 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
                 matrix.expand_and_push(new_row);
             }
         }
+
+        // If a row is irrelevant we don't care whether or not it's useful. So if there are no
+        // relevant rows below it, we can discard it entirely. This is purely an optimization.
+        if !matrix.wildcard_row_is_relevant {
+            while let Some(row) = matrix.rows.last() {
+                if !row.pats.relevant {
+                    matrix.rows.pop();
+                } else {
+                    break;
+                }
+            }
+        }
         Ok(matrix)
     }
 }
@@ -1459,7 +1471,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
 ) -> Result<WitnessMatrix<Cx>, Cx::Error> {
     debug_assert!(matrix.rows().all(|r| r.len() == matrix.column_count()));
 
-    if !matrix.wildcard_row_is_relevant && matrix.rows().all(|r| !r.pats.relevant) {
+    if matrix.rows.is_empty() && !matrix.wildcard_row_is_relevant {
         // Here we know that nothing will contribute further to exhaustiveness or usefulness. This
         // is purely an optimization: skipping this check doesn't affect correctness. See the top of
         // the file for details.
