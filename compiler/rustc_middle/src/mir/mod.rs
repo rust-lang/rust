@@ -1316,6 +1316,7 @@ impl<'tcx> BasicBlockData<'tcx> {
     }
 
     /// Does the block have no statements and an unreachable terminator?
+    #[inline]
     pub fn is_empty_unreachable(&self) -> bool {
         self.statements.is_empty() && matches!(self.terminator().kind, TerminatorKind::Unreachable)
     }
