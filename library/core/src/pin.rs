@@ -714,7 +714,7 @@
 //! return [`&mut Field`] or <code>[Pin]<[`&mut Field`]></code>? This question also arises with
 //! `enum`s and wrapper types like [`Vec<T>`], [`Box<T>`], and [`RefCell<T>`]. (This question
 //! applies just as well to shared references, but we'll examine the more common case of mutable
-//! references for illustration).
+//! references for illustration)
 //!
 //! It turns out that it's up to the author of `Struct` to decide which type the "projection"
 //! should produce. The choice must be *consistent* though: if a pin is projected to a field
@@ -792,7 +792,7 @@
 //!     structural pinning to an inner field of `T`, which may not be [`Unpin`]! (Adding *any*
 //!     projection operation requires unsafe code, so the fact that [`Unpin`] is a safe trait does
 //!     not break the principle that you only have to worry about any of this if you use
-//!     [`unsafe`].)
+//!     [`unsafe`])
 //!
 //! 2.  *Pinned Destruction.* As discussed [above][drop-impl], [`drop`] takes
 //!     [`&mut self`], but the struct (and hence its fields) might have been pinned
