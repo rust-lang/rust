@@ -1,3 +1,12 @@
+warning: the feature `never_patterns` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/empty-types.rs:14:33
+   |
+LL | #![cfg_attr(never_pats, feature(never_patterns))]
+   |                                 ^^^^^^^^^^^^^^
+   |
+   = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
 error: unreachable pattern
   --> $DIR/empty-types.rs:51:9
    |
@@ -629,7 +638,7 @@ LL ~         None => {},
 LL +         Some(_) => todo!()
    |
 
-error: aborting due to 49 previous errors
+error: aborting due to 49 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0004, E0005.
 For more information about an error, try `rustc --explain E0004`.
