@@ -2070,8 +2070,8 @@ pub fn mir_body_for_closure_query(
                         prev_projs
                             .lookup(&store)
                             .iter()
-                            .cloned()
-                            .skip(it.0.place.projections.len()),
+                            .skip(it.0.place.projections.len())
+                            .cloned(),
                     );
                     p.projection = store.intern(next_projs.into());
                 }

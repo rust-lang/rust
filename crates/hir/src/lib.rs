@@ -1854,7 +1854,7 @@ impl DefWithBody {
                     let local = Local { parent: self.into(), binding_id };
                     match (need_mut, local.is_mut(db)) {
                         (mir::MutabilityReason::Unused, _) => {
-                            let should_ignore = matches!(body[binding_id].name.as_str(), Some(it) if it.starts_with("_"));
+                            let should_ignore = matches!(body[binding_id].name.as_str(), Some(it) if it.starts_with('_'));
                             if !should_ignore {
                                 acc.push(UnusedVariable { local }.into())
                             }
@@ -1879,7 +1879,7 @@ impl DefWithBody {
                         }
                         (mir::MutabilityReason::Not, true) => {
                             if !infer.mutated_bindings_in_closure.contains(&binding_id) {
-                                let should_ignore = matches!(body[binding_id].name.as_str(), Some(it) if it.starts_with("_"));
+                                let should_ignore = matches!(body[binding_id].name.as_str(), Some(it) if it.starts_with('_'));
                                 if !should_ignore {
                                     acc.push(UnusedMut { local }.into())
                                 }
