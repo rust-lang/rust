@@ -899,13 +899,15 @@ marker_impls! {
         {T: ?Sized} &mut T,
 }
 
-/// Types that do not need to follow the rules of pinning.
+/// Types that do not require any pinning guarantees.
 ///
 /// For information on what "pinning" is, see the [`pin` module] documentation.
 ///
-/// Implementing the `Unpin` trait for `T` lifts the restrictions of pinning off that type.
-/// This means that, if `T: Unpin`, it cannot be assumed that a value of type `T` will be bound
-/// by the invariants that pinning infers, *even* when "pinned" by a [`Pin<Ptr>`] pointing at it.
+/// Implementing the `Unpin` trait for `T` expresses the fact that `T` is pinning-agnostic:
+/// it shall not expose nor rely on any pinning guarantees. This, in turn, means that a
+/// `Pin`-wrapped pointer to such a type can feature a *fully unrestricted* API.
+/// In other words, if `T: Unpin`, a value of type `T` will *not* be bound by the invariants
+/// which pinning otherwise offers, even when "pinned" by a [`Pin<Ptr>`] pointing at it.
 /// When a value of type `T` is pointed at by a [`Pin<Ptr>`], [`Pin`] will not restrict access
 /// to the pointee value like it normally would, thus allowing the user to do anything that they
 /// normally could with a non-[`Pin`]-wrapped `Ptr` to that value.
