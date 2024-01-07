@@ -138,8 +138,8 @@ use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::HasLocalDecls;
 use rustc_middle::mir::{dump_mir, PassWhere};
 use rustc_middle::mir::{
-    traversal, Body, InlineAsmOperand, Local, LocalKind, Location, Operand, Place, Rvalue,
-    Statement, StatementKind, TerminatorKind,
+    Body, InlineAsmOperand, Local, LocalKind, Location, Operand, Place, Rvalue, Statement,
+    StatementKind, TerminatorKind,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::MaybeLiveLocals;
@@ -470,7 +470,8 @@ impl<'a, 'body, 'alloc, 'tcx> FilterInformation<'a, 'body, 'alloc, 'tcx> {
     }
 
     fn internal_filter_liveness(&mut self) {
-        for (block, data) in traversal::preorder(self.body) {
+        for &block in self.body.basic_blocks.reverse_postorder() {
+            let data = &self.body.basic_blocks[block];
             self.at = Location { block, statement_index: data.statements.len() };
             self.live.seek_after_primary_effect(self.at);
             self.write_info.for_terminator(&data.terminator().kind);

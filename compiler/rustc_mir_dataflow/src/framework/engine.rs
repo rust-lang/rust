@@ -69,8 +69,8 @@ where
         body: &'mir mir::Body<'tcx>,
         vis: &mut impl ResultsVisitor<'mir, 'tcx, Self, FlowState = A::Domain>,
     ) {
-        let blocks = mir::traversal::reachable(body);
-        visit_results(body, blocks.map(|(bb, _)| bb), self, vis)
+        let blocks = body.basic_blocks.reverse_postorder();
+        visit_results(body, blocks.iter().copied(), self, vis)
     }
 }
 

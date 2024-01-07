@@ -34,7 +34,8 @@ pub fn lint_body<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, when: String) {
         maybe_storage_dead,
         places: Default::default(),
     };
-    for (bb, data) in traversal::reachable(body) {
+    for &bb in body.basic_blocks.reverse_postorder() {
+        let data = &body.basic_blocks[bb];
         lint.visit_basic_block_data(bb, data);
     }
 }

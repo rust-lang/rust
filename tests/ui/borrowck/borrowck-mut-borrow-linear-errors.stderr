@@ -2,30 +2,31 @@ error[E0499]: cannot borrow `x` as mutable more than once at a time
   --> $DIR/borrowck-mut-borrow-linear-errors.rs:10:30
    |
 LL |             1 => { addr.push(&mut x); }
-   |                              ^^^^^^ second mutable borrow occurs here
+   |                              ^^^^^^ `x` was mutably borrowed here in the previous iteration of the loop
 LL |             2 => { addr.push(&mut x); }
 LL |             _ => { addr.push(&mut x); }
-   |                    ----      ------ first mutable borrow occurs here
-   |                    |
-   |                    first borrow later used here
+   |                    ---- first borrow used here, in later iteration of loop
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time
   --> $DIR/borrowck-mut-borrow-linear-errors.rs:11:30
    |
+LL |             1 => { addr.push(&mut x); }
+   |                              ------ first mutable borrow occurs here
 LL |             2 => { addr.push(&mut x); }
    |                              ^^^^^^ second mutable borrow occurs here
 LL |             _ => { addr.push(&mut x); }
-   |                    ----      ------ first mutable borrow occurs here
-   |                    |
-   |                    first borrow later used here
+   |                    ---- first borrow later used here
 
 error[E0499]: cannot borrow `x` as mutable more than once at a time
   --> $DIR/borrowck-mut-borrow-linear-errors.rs:12:30
    |
+LL |             1 => { addr.push(&mut x); }
+   |                              ------ first mutable borrow occurs here
+LL |             2 => { addr.push(&mut x); }
 LL |             _ => { addr.push(&mut x); }
-   |                    ----      ^^^^^^ `x` was mutably borrowed here in the previous iteration of the loop
+   |                    ----      ^^^^^^ second mutable borrow occurs here
    |                    |
-   |                    first borrow used here, in later iteration of loop
+   |                    first borrow later used here
 
 error: aborting due to 3 previous errors
 

@@ -44,7 +44,8 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let mut call_operands_to_move = Vec::new();
     let mut patch = Vec::new();
 
-    for (bb, bb_data) in traversal::preorder(body) {
+    for &bb in body.basic_blocks.reverse_postorder() {
+        let bb_data = &body.basic_blocks[bb];
         if let TerminatorKind::Call { ref args, .. } = bb_data.terminator().kind {
             let loc = Location { block: bb, statement_index: bb_data.statements.len() };
 

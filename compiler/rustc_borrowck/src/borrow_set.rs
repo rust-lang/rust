@@ -5,7 +5,6 @@ use crate::place_ext::PlaceExt;
 use crate::BorrowIndex;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_index::bit_set::BitSet;
-use rustc_middle::mir::traversal;
 use rustc_middle::mir::visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{RegionVid, TyCtxt};
@@ -140,7 +139,8 @@ impl<'tcx> BorrowSet<'tcx> {
             ),
         };
 
-        for (block, block_data) in traversal::preorder(body) {
+        for &block in body.basic_blocks.reverse_postorder() {
+            let block_data = &body.basic_blocks[block];
             visitor.visit_basic_block_data(block, block_data);
         }
 

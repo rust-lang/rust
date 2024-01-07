@@ -44,16 +44,6 @@ impl<'a, 'tcx> Preorder<'a, 'tcx> {
     }
 }
 
-/// Preorder traversal of a graph.
-///
-/// This function creates an iterator over the `Body`'s basic blocks, that
-/// returns basic blocks in a preorder.
-///
-/// See [`Preorder`]'s docs to learn what is preorder traversal.
-pub fn preorder<'a, 'tcx>(body: &'a Body<'tcx>) -> Preorder<'a, 'tcx> {
-    Preorder::new(&body.basic_blocks, START_BLOCK)
-}
-
 impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
     type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
 
@@ -235,25 +225,6 @@ pub fn postorder<'a, 'tcx>(
 ) -> impl Iterator<Item = (BasicBlock, &'a BasicBlockData<'tcx>)> + ExactSizeIterator + DoubleEndedIterator
 {
     reverse_postorder(body).rev()
-}
-
-/// Returns an iterator over all basic blocks reachable from the `START_BLOCK` in no particular
-/// order.
-///
-/// This is clearer than writing `preorder` in cases where the order doesn't matter.
-pub fn reachable<'a, 'tcx>(
-    body: &'a Body<'tcx>,
-) -> impl 'a + Iterator<Item = (BasicBlock, &'a BasicBlockData<'tcx>)> {
-    preorder(body)
-}
-
-/// Returns a `BitSet` containing all basic blocks reachable from the `START_BLOCK`.
-pub fn reachable_as_bitset(
-    basic_blocks: &IndexSlice<BasicBlock, BasicBlockData<'_>>,
-) -> BitSet<BasicBlock> {
-    let mut iter = Preorder::new(basic_blocks, START_BLOCK);
-    iter.by_ref().for_each(drop);
-    iter.visited
 }
 
 /// Reverse postorder traversal of a graph.
