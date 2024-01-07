@@ -182,7 +182,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_use_tree(use_tree, &prefix, id, vis_span, ident, attrs)
             }
             ItemKind::Static(box ast::StaticItem { ty: t, mutability: m, expr: e }) => {
-                let (ty, body_id) = self.lower_const_item(t, span, e.as_deref());
+                let (ty, body_id) =
+                    self.lower_const_item(t, span, e.as_deref(), ImplTraitPosition::StaticTy);
                 hir::ItemKind::Static(ty, *m, body_id)
             }
             ItemKind::Const(box ast::ConstItem { generics, ty, expr, .. }) => {
@@ -191,7 +192,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     Const::No,
                     id,
                     &ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
-                    |this| this.lower_const_item(ty, span, expr.as_deref()),
+                    |this| {
+                        this.lower_const_item(ty, span, expr.as_deref(), ImplTraitPosition::ConstTy)
+                    },
                 );
                 hir::ItemKind::Const(ty, generics, body_id)
             }
@@ -448,8 +451,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         ty: &Ty,
         span: Span,
         body: Option<&Expr>,
+        impl_trait_position: ImplTraitPosition,
     ) -> (&'hir hir::Ty<'hir>, hir::BodyId) {
-        let ty = self.lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
+        let ty = self.lower_ty(ty, &ImplTraitContext::Disallowed(impl_trait_position));
         (ty, self.lower_const_body(span, body))
     }
 
