@@ -950,6 +950,7 @@ pub struct NonBindingLetSub {
     pub suggestion: Span,
     pub multi_suggestion_start: Span,
     pub multi_suggestion_end: Span,
+    pub is_assign_desugar: bool,
 }
 
 impl AddToDiagnostic for NonBindingLetSub {
@@ -960,10 +961,11 @@ impl AddToDiagnostic for NonBindingLetSub {
             rustc_errors::SubdiagnosticMessage,
         ) -> rustc_errors::SubdiagnosticMessage,
     {
+        let prefix = if self.is_assign_desugar { "let " } else { "" };
         diag.span_suggestion_verbose(
             self.suggestion,
             fluent::lint_non_binding_let_suggestion,
-            "_unused",
+            format!("{prefix}_unused"),
             Applicability::MachineApplicable,
         );
         diag.multipart_suggestion(
