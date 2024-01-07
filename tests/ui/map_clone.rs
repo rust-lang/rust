@@ -4,6 +4,7 @@
     clippy::iter_cloned_collect,
     clippy::many_single_char_names,
     clippy::redundant_clone,
+    clippy::redundant_closure,
     clippy::useless_vec
 )]
 
@@ -60,4 +61,8 @@ fn main() {
 
         let _ = Some(RefCell::new(String::new()).borrow()).map(|s| s.clone());
     }
+
+    let x = Some(String::new());
+    let y = x.as_ref().map(|x| String::clone(x));
+    //~^ ERROR: you are explicitly cloning with `.map()`
 }
