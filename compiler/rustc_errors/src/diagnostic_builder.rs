@@ -305,9 +305,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
             }
         };
 
-        if dcx.inner.lock().flags.dont_buffer_diagnostics
-            || dcx.inner.lock().flags.treat_err_as_bug.is_some()
-        {
+        if dcx.inner.lock().flags.treat_err_as_bug.is_some() {
             self.emit();
             return None;
         }
