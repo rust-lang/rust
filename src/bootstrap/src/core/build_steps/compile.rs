@@ -406,9 +406,7 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
 
     // Determine if we're going to compile in optimized C intrinsics to
     // the `compiler-builtins` crate. These intrinsics live in LLVM's
-    // `compiler-rt` repository, but our `src/llvm-project` submodule isn't
-    // always checked out, so we need to conditionally look for this. (e.g. if
-    // an external LLVM is used we skip the LLVM submodule checkout).
+    // `compiler-rt` repository.
     //
     // Note that this shouldn't affect the correctness of `compiler-builtins`,
     // but only its speed. Some intrinsics in C haven't been translated to Rust
@@ -419,8 +417,21 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
     // If `compiler-rt` is available ensure that the `c` feature of the
     // `compiler-builtins` crate is enabled and it's configured to learn where
     // `compiler-rt` is located.
-    let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
-    let compiler_builtins_c_feature = if compiler_builtins_root.exists() {
+    let compiler_builtins_c_feature = if builder.config.optimized_compiler_builtins {
+        // NOTE: this interacts strangely with `llvm-has-rust-patches`. In that case, we enforce `submodules = false`, so this is a no-op.
+        // But, the user could still decide to manually use an in-tree submodule.
+        //
+        // NOTE: if we're using system llvm, we'll end up building a version of `compiler-rt` that doesn't match the LLVM we're linking to.
+        // That's probably ok? At least, the difference wasn't enforced before. There's a comment in
+        // the compiler_builtins build script that makes me nervous, though:
+        // https://github.com/rust-lang/compiler-builtins/blob/31ee4544dbe47903ce771270d6e3bea8654e9e50/build.rs#L575-L579
+        builder.update_submodule(&Path::new("src").join("llvm-project"));
+        let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
+        if !compiler_builtins_root.exists() {
+            panic!(
+                "need LLVM sources available to build `compiler-rt`, but they weren't present; consider enabling `build.submodules = true` or disabling `optimized-compiler-builtins`"
+            );
+        }
         // Note that `libprofiler_builtins/build.rs` also computes this so if
         // you're changing something here please also change that.
         cargo.env("RUST_COMPILER_RT_ROOT", &compiler_builtins_root);
