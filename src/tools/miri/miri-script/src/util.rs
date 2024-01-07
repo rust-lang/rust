@@ -111,9 +111,11 @@ impl MiriEnv {
     ) -> Result<()> {
         let MiriEnv { toolchain, cargo_extra_flags, .. } = self;
         let quiet_flag = if quiet { Some("--quiet") } else { None };
+        // We build the tests as well, (a) to avoid having rebuilds when building the tests later
+        // and (b) to have more parallelism during the build of Miri and its tests.
         let mut cmd = cmd!(
             self.sh,
-            "cargo +{toolchain} build {cargo_extra_flags...} --manifest-path {manifest_path} {quiet_flag...} {args...}"
+            "cargo +{toolchain} build --bins --tests {cargo_extra_flags...} --manifest-path {manifest_path} {quiet_flag...} {args...}"
         );
         cmd.set_quiet(quiet);
         cmd.run()?;
