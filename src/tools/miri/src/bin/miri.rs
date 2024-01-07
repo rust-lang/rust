@@ -298,6 +298,7 @@ fn parse_comma_list<T: FromStr>(input: &str) -> Result<Vec<T>, T::Err> {
     input.split(',').map(str::parse::<T>).collect()
 }
 
+#[cfg(unix)]
 fn jemalloc_magic() {
     // These magic runes are copied from
     // <https://github.com/rust-lang/rust/blob/e89bd9428f621545c979c0ec686addc6563a394e/compiler/rustc/src/main.rs#L39>.
@@ -334,6 +335,7 @@ fn jemalloc_magic() {
 }
 
 fn main() {
+    #[cfg(unix)]
     jemalloc_magic();
 
     let early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
