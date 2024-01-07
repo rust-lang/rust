@@ -13,19 +13,28 @@ use rustc_errors::DiagnosticBuilder;
 use rustc_errors::{pluralize, PResult};
 use rustc_span::hygiene::{LocalExpnId, Transparency};
 use rustc_span::symbol::{sym, Ident, MacroRulesNormalizedIdent};
-use rustc_span::Span;
+use rustc_span::{Span, SyntaxContext};
 
 use smallvec::{smallvec, SmallVec};
 use std::mem;
 
 // A Marker adds the given mark to the syntax context.
-struct Marker(LocalExpnId, Transparency);
+struct Marker(LocalExpnId, Transparency, FxHashMap<SyntaxContext, SyntaxContext>);
 
 impl MutVisitor for Marker {
     const VISIT_TOKENS: bool = true;
 
     fn visit_span(&mut self, span: &mut Span) {
-        *span = span.apply_mark(self.0.to_expn_id(), self.1)
+        // `apply_mark` is a relatively expensive operation, both due to taking hygiene lock, and
+        // by itself. All tokens in a macro body typically have the same syntactic context, unless
+        // it's some advanced case with macro-generated macros. So if we cache the marked version
+        // of that context once, we'll typically have a 100% cache hit rate after that.
+        let Marker(expn_id, transparency, ref mut cache) = *self;
+        let data = span.data();
+        let marked_ctxt = *cache
+            .entry(data.ctxt)
+            .or_insert_with(|| data.ctxt.apply_mark(expn_id.to_expn_id(), transparency));
+        *span = data.with_ctxt(marked_ctxt);
     }
 }
 
@@ -123,7 +132,7 @@ pub(super) fn transcribe<'a>(
     // again, and we are done transcribing.
     let mut result: Vec<TokenTree> = Vec::new();
     let mut result_stack = Vec::new();
-    let mut marker = Marker(cx.current_expansion.id, transparency);
+    let mut marker = Marker(cx.current_expansion.id, transparency, Default::default());
 
     loop {
         // Look at the last frame on the stack.
