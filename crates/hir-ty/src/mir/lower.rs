@@ -177,7 +177,7 @@ impl MirLowerError {
                 )?;
                 writeln!(f, "Provided args: [")?;
                 for g in subst.iter(Interner) {
-                    write!(f, "    {},", g.display(db).to_string())?;
+                    write!(f, "    {},", g.display(db))?;
                 }
                 writeln!(f, "]")?;
             }
