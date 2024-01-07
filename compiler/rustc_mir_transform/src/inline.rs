@@ -15,7 +15,7 @@ use rustc_target::abi::FieldIdx;
 use rustc_target::spec::abi::Abi;
 
 use crate::cost_checker::CostChecker;
-use crate::simplify::{remove_dead_blocks, CfgSimplifier};
+use crate::simplify::simplify_cfg;
 use crate::util;
 use std::iter;
 use std::ops::{Range, RangeFrom};
@@ -56,8 +56,7 @@ impl<'tcx> MirPass<'tcx> for Inline {
         let _guard = span.enter();
         if inline(tcx, body) {
             debug!("running simplify cfg on {:?}", body.source);
-            CfgSimplifier::new(body).simplify();
-            remove_dead_blocks(body);
+            simplify_cfg(body);
             deref_finder(tcx, body);
         }
     }
