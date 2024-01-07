@@ -106,7 +106,8 @@ ast_lowering_misplaced_double_dot =
     .note = only allowed in tuple, tuple struct, and slice patterns
 
 ast_lowering_misplaced_impl_trait =
-    `impl Trait` only allowed in function and inherent method argument and return types, not in {$position}
+    `impl Trait` is not allowed in {$position}
+    .note = `impl Trait` is only allowed in arguments and return types of functions and methods
 
 ast_lowering_misplaced_relax_trait_bound =
     `?Trait` bounds are only permitted at the point where a type parameter is declared

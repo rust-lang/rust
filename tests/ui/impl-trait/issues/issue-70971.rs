@@ -1,4 +1,4 @@
 fn main() {
     let x : (impl Copy,) = (true,);
-    //~^ `impl Trait` only allowed in function and inherent method argument and return types
+    //~^ `impl Trait` is not allowed in the type of variable bindings
 }
