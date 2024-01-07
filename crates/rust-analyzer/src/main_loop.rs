@@ -576,6 +576,8 @@ impl GlobalState {
                 let vfs = &mut self.vfs.write().0;
                 for (path, contents) in files {
                     let path = VfsPath::from(path);
+                    // if the file is in mem docs, it's managed by the client via notifications
+                    // so only set it if its not in there
                     if !self.mem_docs.contains(&path) {
                         vfs.set_file_contents(path, contents);
                     }
