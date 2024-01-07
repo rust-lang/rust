@@ -728,17 +728,19 @@
 //! "propagates" to this field or not. Pinning that propagates is also called "structural",
 //! because it follows the structure of the type.
 //!
-//! The choice of whether to pin depends on how the type is being used. If [`unsafe`] code
-//! that consumes <code>[Pin]\<[&mut Struct][&mut]></code> also needs to take note of
-//! the address of the field itself, it may be evidence that that field is structurally
-//! pinned. Unfortunately, there are no hard-and-fast rules.
+//! This choice depends on what guarantees you need from the field for your [`unsafe`] code to work.
+//! If the field is itself address-sensitive, or participates in the parent struct's address
+//! sensitivity, it will need to be structurally pinned.
+//!
+//! A useful test is if [`unsafe`] code that consumes <code>[Pin]\<[&mut Struct][&mut]></code>
+//! also needs to take note of the address of the field itself, it may be evidence that that field
+//! is structurally pinned. Unfortunately, there are no hard-and-fast rules.
 //!
 //! ### Choosing pinning *not to be* structural for `field`...
 //!
-//! While counter-intuitive, it's actually the easier choice: if you do not expose a
-//! <code>[Pin]<[&mut] Field></code>, then no code must be written assuming that the field is
-//! pinned and so nothing can go wrong. So, if you decide that some field does not
-//! have structural pinning, all you have to ensure is that you never create pinning
+//! While counter-intuitive, it's often the easier choice: if you do not expose a
+//! <code>[Pin]<[&mut] Field></code>, you do not need to be careful about other code
+//! moving out of that field, you just have to ensure is that you never create pinning
 //! reference to that field. This does of course also mean that if you decide a field does not
 //! have structural pinning, you must not write [`unsafe`] code that assumes (invalidly) that the
 //! field *is* structurally pinned!
