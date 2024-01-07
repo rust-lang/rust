@@ -2483,7 +2483,7 @@ impl<T> [T] {
     /// Splits the slice on the first element that matches the specified
     /// predicate.
     ///
-    /// If any matching elements are resent in the slice, returns the prefix
+    /// If any matching elements are present in the slice, returns the prefix
     /// before the match and suffix after. The matching element itself is not
     /// included. If no elements match, returns `None`.
     ///
@@ -2511,7 +2511,7 @@ impl<T> [T] {
     /// Splits the slice on the last element that matches the specified
     /// predicate.
     ///
-    /// If any matching elements are resent in the slice, returns the prefix
+    /// If any matching elements are present in the slice, returns the prefix
     /// before the match and suffix after. The matching element itself is not
     /// included. If no elements match, returns `None`.
     ///
