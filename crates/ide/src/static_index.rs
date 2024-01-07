@@ -133,6 +133,7 @@ impl StaticIndex<'_> {
                     closure_capture_hints: false,
                     closing_brace_hints_min_lines: Some(25),
                     fields_to_resolve: InlayFieldsToResolve::empty(),
+                    range_exclusive_hints: false,
                 },
                 file_id,
                 None,

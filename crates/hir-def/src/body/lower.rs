@@ -17,7 +17,7 @@ use smallvec::SmallVec;
 use syntax::{
     ast::{
         self, ArrayExprKind, AstChildren, BlockExpr, HasArgList, HasAttrs, HasLoopBody, HasName,
-        SlicePatComponents,
+        RangeItem, SlicePatComponents,
     },
     AstNode, AstPtr, SyntaxNodePtr,
 };

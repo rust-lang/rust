@@ -9,7 +9,7 @@ use rustc_dependencies::lexer::unescape::{self, unescape_literal, Mode};
 
 use crate::{
     algo,
-    ast::{self, HasAttrs, HasVisibility, IsString},
+    ast::{self, HasAttrs, HasVisibility, IsString, RangeItem},
     match_ast, AstNode, SyntaxError,
     SyntaxKind::{CONST, FN, INT_NUMBER, TYPE_ALIAS},
     SyntaxNode, SyntaxToken, TextSize, T,

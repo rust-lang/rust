@@ -32,6 +32,7 @@ mod fn_lifetime_fn;
 mod implicit_static;
 mod param_name;
 mod implicit_drop;
+mod range_exclusive;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlayHintsConfig {
@@ -51,6 +52,7 @@ pub struct InlayHintsConfig {
     pub param_names_for_lifetime_elision_hints: bool,
     pub hide_named_constructor_hints: bool,
     pub hide_closure_initialization_hints: bool,
+    pub range_exclusive_hints: bool,
     pub closure_style: ClosureStyle,
     pub max_length: Option<usize>,
     pub closing_brace_hints_min_lines: Option<usize>,
@@ -127,6 +129,7 @@ pub enum InlayKind {
     Parameter,
     Type,
     Drop,
+    RangeExclusive,
 }
 
 #[derive(Debug)]
@@ -517,13 +520,20 @@ fn hints(
                         closure_captures::hints(hints, famous_defs, config, file_id, it.clone());
                         closure_ret::hints(hints, famous_defs, config, file_id, it)
                     },
+                    ast::Expr::RangeExpr(it) => range_exclusive::hints(hints, config, it),
                     _ => None,
                 }
             },
             ast::Pat(it) => {
                 binding_mode::hints(hints, sema, config, &it);
-                if let ast::Pat::IdentPat(it) = it {
-                    bind_pat::hints(hints, famous_defs, config, file_id, &it);
+                match it {
+                    ast::Pat::IdentPat(it) => {
+                        bind_pat::hints(hints, famous_defs, config, file_id, &it);
+                    }
+                    ast::Pat::RangePat(it) => {
+                        range_exclusive::hints(hints, config, it);
+                    }
+                    _ => {}
                 }
                 Some(())
             },
@@ -621,6 +631,7 @@ mod tests {
         closing_brace_hints_min_lines: None,
         fields_to_resolve: InlayFieldsToResolve::empty(),
         implicit_drop_hints: false,
+        range_exclusive_hints: false,
     };
     pub(super) const TEST_CONFIG: InlayHintsConfig = InlayHintsConfig {
         type_hints: true,

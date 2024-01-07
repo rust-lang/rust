@@ -1,7 +1,7 @@
 //! Precedence representation.
 
 use crate::{
-    ast::{self, BinaryOp, Expr, HasArgList},
+    ast::{self, BinaryOp, Expr, HasArgList, RangeItem},
     match_ast, AstNode, SyntaxNode,
 };
 
