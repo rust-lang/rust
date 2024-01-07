@@ -10,6 +10,7 @@ use crate::usefulness::PlaceCtxt;
 use crate::{Captures, TypeCx};
 
 use self::Constructor::*;
+use self::PatOrWild::*;
 
 /// Values and patterns can be represented as a constructor applied to some fields. This represents
 /// a pattern in this form.
@@ -50,14 +51,6 @@ impl<'p, Cx: TypeCx> DeconstructedPat<'p, Cx> {
     pub(crate) fn is_or_pat(&self) -> bool {
         matches!(self.ctor, Or)
     }
-    /// Expand this (possibly-nested) or-pattern into its alternatives.
-    pub(crate) fn flatten_or_pat(&self) -> SmallVec<[&Self; 1]> {
-        if self.is_or_pat() {
-            self.iter_fields().flat_map(|p| p.flatten_or_pat()).collect()
-        } else {
-            smallvec![self]
-        }
-    }
 
     pub fn ctor(&self) -> &Constructor<Cx> {
         &self.ctor
@@ -79,17 +72,11 @@ impl<'p, Cx: TypeCx> DeconstructedPat<'p, Cx> {
     /// `other_ctor` can be different from `self.ctor`, but must be covered by it.
     pub(crate) fn specialize(
         &self,
-        pcx: &PlaceCtxt<'_, 'p, Cx>,
+        _pcx: &PlaceCtxt<'_, 'p, Cx>,
         other_ctor: &Constructor<Cx>,
         ctor_sub_tys: &[Cx::Ty],
-    ) -> SmallVec<[&'p DeconstructedPat<'p, Cx>; 2]> {
-        let wildcard_sub_tys = || {
-            ctor_sub_tys
-                .iter()
-                .map(|ty| DeconstructedPat::wildcard(*ty))
-                .map(|pat| pcx.mcx.wildcard_arena.alloc(pat) as &_)
-                .collect()
-        };
+    ) -> SmallVec<[PatOrWild<'p, Cx>; 2]> {
+        let wildcard_sub_tys = || ctor_sub_tys.iter().map(|_| Wild).collect();
         match (&self.ctor, other_ctor) {
             // Return a wildcard for each field of `other_ctor`.
             (Wildcard, _) => wildcard_sub_tys(),
@@ -105,14 +92,14 @@ impl<'p, Cx: TypeCx> DeconstructedPat<'p, Cx> {
                 // Fill in the fields from both ends.
                 let new_arity = fields.len();
                 for i in 0..prefix {
-                    fields[i] = &self.fields[i];
+                    fields[i] = Pat(&self.fields[i]);
                 }
                 for i in 0..suffix {
-                    fields[new_arity - 1 - i] = &self.fields[self.fields.len() - 1 - i];
+                    fields[new_arity - 1 - i] = Pat(&self.fields[self.fields.len() - 1 - i]);
                 }
                 fields
             }
-            _ => self.fields.iter().collect(),
+            _ => self.fields.iter().map(Pat).collect(),
         }
     }
 
@@ -153,11 +140,84 @@ impl<'p, Cx: TypeCx> DeconstructedPat<'p, Cx> {
     }
 }
 
-/// This is mostly copied from the `Pat` impl. This is best effort and not good enough for a
-/// `Display` impl.
+/// This is best effort and not good enough for a `Display` impl.
 impl<'p, Cx: TypeCx> fmt::Debug for DeconstructedPat<'p, Cx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         Cx::debug_pat(f, self)
+    }
+}
+
+/// Represents either a pattern obtained from user input or a wildcard constructed during the
+/// algorithm. Do not use `Wild` to represent a wildcard pattern comping from user input.
+///
+/// This is morally `Option<&'p DeconstructedPat>` where `None` is interpreted as a wildcard.
+#[derive(derivative::Derivative)]
+#[derivative(Clone(bound = ""), Copy(bound = ""))]
+pub(crate) enum PatOrWild<'p, Cx: TypeCx> {
+    /// A non-user-provided wildcard, created during specialization.
+    Wild,
+    /// A user-provided pattern.
+    Pat(&'p DeconstructedPat<'p, Cx>),
+}
+
+impl<'p, Cx: TypeCx> PatOrWild<'p, Cx> {
+    pub(crate) fn as_pat(&self) -> Option<&'p DeconstructedPat<'p, Cx>> {
+        match self {
+            Wild => None,
+            Pat(pat) => Some(pat),
+        }
+    }
+    pub(crate) fn ctor(self) -> &'p Constructor<Cx> {
+        match self {
+            Wild => &Wildcard,
+            Pat(pat) => pat.ctor(),
+        }
+    }
+
+    pub(crate) fn is_or_pat(&self) -> bool {
+        match self {
+            Wild => false,
+            Pat(pat) => pat.is_or_pat(),
+        }
+    }
+
+    /// Expand this (possibly-nested) or-pattern into its alternatives.
+    pub(crate) fn flatten_or_pat(self) -> SmallVec<[Self; 1]> {
+        match self {
+            Pat(pat) if pat.is_or_pat() => {
+                pat.iter_fields().flat_map(|p| Pat(p).flatten_or_pat()).collect()
+            }
+            _ => smallvec![self],
+        }
+    }
+
+    /// Specialize this pattern with a constructor.
+    /// `other_ctor` can be different from `self.ctor`, but must be covered by it.
+    pub(crate) fn specialize(
+        &self,
+        pcx: &PlaceCtxt<'_, 'p, Cx>,
+        other_ctor: &Constructor<Cx>,
+        ctor_sub_tys: &[Cx::Ty],
+    ) -> SmallVec<[PatOrWild<'p, Cx>; 2]> {
+        match self {
+            Wild => ctor_sub_tys.iter().map(|_| Wild).collect(),
+            Pat(pat) => pat.specialize(pcx, other_ctor, ctor_sub_tys),
+        }
+    }
+
+    pub(crate) fn set_useful(&self) {
+        if let Pat(pat) = self {
+            pat.set_useful()
+        }
+    }
+}
+
+impl<'p, Cx: TypeCx> fmt::Debug for PatOrWild<'p, Cx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Wild => write!(f, "_"),
+            Pat(pat) => pat.fmt(f),
+        }
     }
 }
 

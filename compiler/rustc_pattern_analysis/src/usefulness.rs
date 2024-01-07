@@ -716,7 +716,7 @@ use smallvec::{smallvec, SmallVec};
 use std::fmt;
 
 use crate::constructor::{Constructor, ConstructorSet};
-use crate::pat::{DeconstructedPat, WitnessPat};
+use crate::pat::{DeconstructedPat, PatOrWild, WitnessPat};
 use crate::{Captures, MatchArm, MatchCtxt, TypeCx};
 
 use self::ValidityConstraint::*;
@@ -827,7 +827,7 @@ impl fmt::Display for ValidityConstraint {
 #[derivative(Clone(bound = ""))]
 struct PatStack<'p, Cx: TypeCx> {
     // Rows of len 1 are very common, which is why `SmallVec[_; 2]` works well.
-    pats: SmallVec<[&'p DeconstructedPat<'p, Cx>; 2]>,
+    pats: SmallVec<[PatOrWild<'p, Cx>; 2]>,
     /// Sometimes we know that as far as this row is concerned, the current case is already handled
     /// by a different, more general, case. When the case is irrelevant for all rows this allows us
     /// to skip a case entirely. This is purely an optimization. See at the top for details.
@@ -836,7 +836,7 @@ struct PatStack<'p, Cx: TypeCx> {
 
 impl<'p, Cx: TypeCx> PatStack<'p, Cx> {
     fn from_pattern(pat: &'p DeconstructedPat<'p, Cx>) -> Self {
-        PatStack { pats: smallvec![pat], relevant: true }
+        PatStack { pats: smallvec![PatOrWild::Pat(pat)], relevant: true }
     }
 
     fn is_empty(&self) -> bool {
@@ -847,14 +847,11 @@ impl<'p, Cx: TypeCx> PatStack<'p, Cx> {
         self.pats.len()
     }
 
-    fn head_opt(&self) -> Option<&'p DeconstructedPat<'p, Cx>> {
-        self.pats.first().copied()
-    }
-    fn head(&self) -> &'p DeconstructedPat<'p, Cx> {
-        self.head_opt().unwrap()
+    fn head(&self) -> PatOrWild<'p, Cx> {
+        self.pats[0]
     }
 
-    fn iter(&self) -> impl Iterator<Item = &'p DeconstructedPat<'p, Cx>> + Captures<'_> {
+    fn iter(&self) -> impl Iterator<Item = PatOrWild<'p, Cx>> + Captures<'_> {
         self.pats.iter().copied()
     }
 
@@ -926,11 +923,11 @@ impl<'p, Cx: TypeCx> MatrixRow<'p, Cx> {
         self.pats.len()
     }
 
-    fn head(&self) -> &'p DeconstructedPat<'p, Cx> {
+    fn head(&self) -> PatOrWild<'p, Cx> {
         self.pats.head()
     }
 
-    fn iter(&self) -> impl Iterator<Item = &'p DeconstructedPat<'p, Cx>> + Captures<'_> {
+    fn iter(&self) -> impl Iterator<Item = PatOrWild<'p, Cx>> + Captures<'_> {
         self.pats.iter()
     }
 
@@ -1054,7 +1051,7 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
     }
 
     /// Iterate over the first pattern of each row.
-    fn heads(&self) -> impl Iterator<Item = &'p DeconstructedPat<'p, Cx>> + Clone + Captures<'_> {
+    fn heads(&self) -> impl Iterator<Item = PatOrWild<'p, Cx>> + Clone + Captures<'_> {
         self.rows().map(|r| r.head())
     }
 

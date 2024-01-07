@@ -11,6 +11,7 @@ use crate::errors::{
     NonExhaustiveOmittedPattern, NonExhaustiveOmittedPatternLintOnArm, Overlap,
     OverlappingRangeEndpoints, Uncovered,
 };
+use crate::pat::PatOrWild;
 use crate::rustc::{
     Constructor, DeconstructedPat, MatchArm, MatchCtxt, PlaceCtxt, RevealedTy, RustcMatchCheckCtxt,
     SplitConstructorSet, WitnessPat,
@@ -36,21 +37,21 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
         let patterns = Vec::with_capacity(arms.len());
         let mut column = PatternColumn { patterns };
         for arm in arms {
-            column.expand_and_push(arm.pat);
+            column.expand_and_push(PatOrWild::Pat(arm.pat));
         }
         column
     }
-    fn expand_and_push(&mut self, pat: &'p DeconstructedPat<'p, 'tcx>) {
+    fn expand_and_push(&mut self, pat: PatOrWild<'p, RustcMatchCheckCtxt<'p, 'tcx>>) {
+        // We flatten or-patterns and skip wildcards
         if pat.is_or_pat() {
-            self.patterns.extend(pat.flatten_or_pat())
-        } else {
+            self.patterns.extend(
+                pat.flatten_or_pat().into_iter().filter_map(|pat_or_wild| pat_or_wild.as_pat()),
+            )
+        } else if let Some(pat) = pat.as_pat() {
             self.patterns.push(pat)
         }
     }
 
-    fn is_empty(&self) -> bool {
-        self.patterns.is_empty()
-    }
     fn head_ty(&self) -> Option<RevealedTy<'tcx>> {
         self.patterns.first().map(|pat| pat.ty())
     }
@@ -90,7 +91,7 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
         let ctor_sub_tys = pcx.ctor_sub_tys(ctor);
         for pat in relevant_patterns {
             let specialized = pat.specialize(pcx, ctor, ctor_sub_tys);
-            for (subpat, column) in specialized.iter().zip(&mut specialized_columns) {
+            for (subpat, column) in specialized.into_iter().zip(&mut specialized_columns) {
                 column.expand_and_push(subpat);
             }
         }
