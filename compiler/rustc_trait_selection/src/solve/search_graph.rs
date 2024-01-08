@@ -12,6 +12,7 @@ use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Limit;
 use std::collections::hash_map::Entry;
+use std::mem;
 
 rustc_index::newtype_index! {
     #[orderable]
@@ -25,23 +26,17 @@ struct StackEntry<'tcx> {
     /// The maximum depth reached by this stack entry, only up-to date
     /// for the top of the stack and lazily updated for the rest.
     reached_depth: StackDepth,
-    /// In case of a cycle, the depth of the root.
-    cycle_root_depth: StackDepth,
+    /// Whether this entry is a cycle participant which is not a root.
+    ///
+    /// If so, it must not be moved to the global cache. See
+    /// [SearchGraph::cycle_participants] for more details.
+    non_root_cycle_participant: bool,
 
     encountered_overflow: bool,
     has_been_used: bool,
     /// Starts out as `None` and gets set when rerunning this
     /// goal in case we encounter a cycle.
     provisional_result: Option<QueryResult<'tcx>>,
-
-    /// We put only the root goal of a coinductive cycle into the global cache.
-    ///
-    /// If we were to use that result when later trying to prove another cycle
-    /// participant, we can end up with unstable query results.
-    ///
-    /// See tests/ui/next-solver/coinduction/incompleteness-unstable-result.rs for
-    /// an example of where this is needed.
-    cycle_participants: FxHashSet<CanonicalInput<'tcx>>,
 }
 
 pub(super) struct SearchGraph<'tcx> {
@@ -52,6 +47,14 @@ pub(super) struct SearchGraph<'tcx> {
     /// An element is *deeper* in the stack if its index is *lower*.
     stack: IndexVec<StackDepth, StackEntry<'tcx>>,
     stack_entries: FxHashMap<CanonicalInput<'tcx>, StackDepth>,
+    /// We put only the root goal of a coinductive cycle into the global cache.
+    ///
+    /// If we were to use that result when later trying to prove another cycle
+    /// participant, we can end up with unstable query results.
+    ///
+    /// See tests/ui/next-solver/coinduction/incompleteness-unstable-result.rs for
+    /// an example of where this is needed.
+    cycle_participants: FxHashSet<CanonicalInput<'tcx>>,
 }
 
 impl<'tcx> SearchGraph<'tcx> {
@@ -61,6 +64,7 @@ impl<'tcx> SearchGraph<'tcx> {
             local_overflow_limit: tcx.recursion_limit().0.checked_ilog2().unwrap_or(0) as usize,
             stack: Default::default(),
             stack_entries: Default::default(),
+            cycle_participants: Default::default(),
         }
     }
 
@@ -109,7 +113,13 @@ impl<'tcx> SearchGraph<'tcx> {
     }
 
     pub(super) fn is_empty(&self) -> bool {
-        self.stack.is_empty()
+        if self.stack.is_empty() {
+            debug_assert!(self.stack_entries.is_empty());
+            debug_assert!(self.cycle_participants.is_empty());
+            true
+        } else {
+            false
+        }
     }
 
     pub(super) fn current_goal_is_normalizes_to(&self) -> bool {
@@ -209,11 +219,10 @@ impl<'tcx> SearchGraph<'tcx> {
                     input,
                     available_depth,
                     reached_depth: depth,
-                    cycle_root_depth: depth,
+                    non_root_cycle_participant: false,
                     encountered_overflow: false,
                     has_been_used: false,
                     provisional_result: None,
-                    cycle_participants: Default::default(),
                 };
                 assert_eq!(self.stack.push(entry), depth);
                 v.insert(depth);
@@ -232,26 +241,11 @@ impl<'tcx> SearchGraph<'tcx> {
 
                 let stack_depth = *entry.get();
                 debug!("encountered cycle with depth {stack_depth:?}");
-                // We start by updating the root depth of all cycle participants, and
-                // add all cycle participants to the root.
-                let root_depth = self.stack[stack_depth].cycle_root_depth;
-                let (prev, participants) = self.stack.raw.split_at_mut(stack_depth.as_usize() + 1);
-                let root = &mut prev[root_depth.as_usize()];
+                // We start by tagging all non-root cycle participants.
+                let participants = self.stack.raw.iter_mut().skip(stack_depth.as_usize() + 1);
                 for entry in participants {
-                    debug_assert!(entry.cycle_root_depth >= root_depth);
-                    entry.cycle_root_depth = root_depth;
-                    root.cycle_participants.insert(entry.input);
-                    // FIXME(@lcnr): I believe that this line is needed as we could
-                    // otherwise access a cache entry for the root of a cycle while
-                    // computing the result for a cycle participant. This can result
-                    // in unstable results due to incompleteness.
-                    //
-                    // However, a test for this would be an even more complex version of
-                    // tests/ui/traits/next-solver/coinduction/incompleteness-unstable-result.rs.
-                    // I did not bother to write such a test and we have no regression test
-                    // for this. It would be good to have such a test :)
-                    #[allow(rustc::potential_query_instability)]
-                    root.cycle_participants.extend(entry.cycle_participants.drain());
+                    entry.non_root_cycle_participant = true;
+                    self.cycle_participants.insert(entry.input);
                 }
 
                 // If we're in a cycle, we have to retry proving the cycle head
@@ -325,23 +319,24 @@ impl<'tcx> SearchGraph<'tcx> {
         //
         // It is not possible for any nested goal to depend on something deeper on the
         // stack, as this would have also updated the depth of the current goal.
-        if final_entry.cycle_root_depth == self.stack.next_index() {
+        if !final_entry.non_root_cycle_participant {
             // When encountering a cycle, both inductive and coinductive, we only
             // move the root into the global cache. We also store all other cycle
             // participants involved.
             //
-            // We disable the global cache entry of the root goal if a cycle
+            // We must not use the global cache entry of a root goal if a cycle
             // participant is on the stack. This is necessary to prevent unstable
-            // results. See the comment of `StackEntry::cycle_participants` for
+            // results. See the comment of `SearchGraph::cycle_participants` for
             // more details.
             let reached_depth = final_entry.reached_depth.as_usize() - self.stack.len();
+            let cycle_participants = mem::take(&mut self.cycle_participants);
             self.global_cache(tcx).insert(
                 tcx,
                 input,
                 proof_tree,
                 reached_depth,
                 final_entry.encountered_overflow,
-                final_entry.cycle_participants,
+                cycle_participants,
                 dep_node,
                 result,
             )
