@@ -4,17 +4,6 @@
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
 #[cfg(feature = "in-rust-tree")]
-extern crate rustc_parse_format;
-
-pub mod parse_format {
-    #[cfg(not(feature = "in-rust-tree"))]
-    pub use ::ra_ap_rustc_parse_format::*;
-
-    #[cfg(feature = "in-rust-tree")]
-    pub use ::rustc_parse_format::*;
-}
-
-#[cfg(feature = "in-rust-tree")]
 extern crate rustc_abi;
 
 pub mod abi {

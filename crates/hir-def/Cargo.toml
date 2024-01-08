@@ -29,6 +29,7 @@ smallvec.workspace = true
 hashbrown.workspace = true
 triomphe.workspace = true
 
+ra-ap-rustc_parse_format.workspace = true
 rustc-dependencies.workspace = true
 
 # local deps

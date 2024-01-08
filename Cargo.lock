@@ -513,6 +513,7 @@ dependencies = [
  "mbe",
  "once_cell",
  "profile",
+ "ra-ap-rustc_parse_format",
  "rustc-dependencies",
  "rustc-hash",
  "smallvec",
@@ -1605,7 +1606,6 @@ version = "0.0.0"
 dependencies = [
  "ra-ap-rustc_abi",
  "ra-ap-rustc_index",
- "ra-ap-rustc_parse_format",
 ]
 
 [[package]]
