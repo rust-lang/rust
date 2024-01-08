@@ -16,7 +16,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_metadata::rendered_const;
 use rustc_middle::mir;
-use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt};
+use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, GenericParamDef, TyCtxt};
 use rustc_middle::ty::{TypeVisitable, TypeVisitableExt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::fmt::Write as _;
@@ -75,30 +75,23 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     Crate { module, external_traits: cx.external_traits.clone() }
 }
 
-pub(crate) fn ty_args_to_args<'tcx>(
+fn ty_arg_to_arg<'tcx>(
     cx: &mut DocContext<'tcx>,
     ty_args: ty::Binder<'tcx, &'tcx [ty::GenericArg<'tcx>]>,
     has_self: bool,
     owner: DefId,
-) -> Vec<GenericArg> {
-    if ty_args.skip_binder().is_empty() {
-        // Fast path which avoids executing the query `generics_of`.
-        return Vec::new();
-    }
-
-    let params = &cx.tcx.generics_of(owner).params;
-    let mut elision_has_failed_once_before = false;
-
-    let offset = if has_self { 1 } else { 0 };
-    let mut args = Vec::with_capacity(ty_args.skip_binder().len().saturating_sub(offset));
-
-    let ty_arg_to_arg = |(index, arg): (usize, &ty::GenericArg<'tcx>)| match arg.unpack() {
+    params: &[GenericParamDef],
+    index: usize,
+    arg: &ty::GenericArg<'tcx>,
+    elision_has_failed_once_before: &mut bool,
+) -> Option<GenericArg> {
+    match arg.unpack() {
         GenericArgKind::Lifetime(lt) => {
             Some(GenericArg::Lifetime(clean_middle_region(lt).unwrap_or(Lifetime::elided())))
         }
         GenericArgKind::Type(_) if has_self && index == 0 => None,
         GenericArgKind::Type(ty) => {
-            if !elision_has_failed_once_before
+            if !*elision_has_failed_once_before
                 && let Some(default) = params[index].default_value(cx.tcx)
             {
                 let default =
@@ -108,7 +101,7 @@ pub(crate) fn ty_args_to_args<'tcx>(
                     return None;
                 }
 
-                elision_has_failed_once_before = true;
+                *elision_has_failed_once_before = true;
             }
 
             Some(GenericArg::Type(clean_middle_ty(
@@ -129,9 +122,24 @@ pub(crate) fn ty_args_to_args<'tcx>(
                 return None;
             }
 
-            if !elision_has_failed_once_before
+            if !*elision_has_failed_once_before
                 && let Some(default) = params[index].default_value(cx.tcx)
             {
+                match default.skip_binder().unpack() {
+                    GenericArgKind::Const(_) => {}
+                    GenericArgKind::Type(_) | GenericArgKind::Lifetime(_) => {
+                        return ty_arg_to_arg(
+                            cx,
+                            ty_args,
+                            has_self,
+                            owner,
+                            params,
+                            index,
+                            &default.skip_binder(),
+                            elision_has_failed_once_before,
+                        );
+                    }
+                }
                 let default =
                     ty_args.map_bound(|args| default.instantiate(cx.tcx, args).expect_const());
 
@@ -139,14 +147,43 @@ pub(crate) fn ty_args_to_args<'tcx>(
                     return None;
                 }
 
-                elision_has_failed_once_before = true;
+                *elision_has_failed_once_before = true;
             }
 
             Some(GenericArg::Const(Box::new(clean_middle_const(ty_args.rebind(ct), cx))))
         }
-    };
+    }
+}
 
-    args.extend(ty_args.skip_binder().iter().enumerate().rev().filter_map(ty_arg_to_arg));
+pub(crate) fn ty_args_to_args<'tcx>(
+    cx: &mut DocContext<'tcx>,
+    ty_args: ty::Binder<'tcx, &'tcx [ty::GenericArg<'tcx>]>,
+    has_self: bool,
+    owner: DefId,
+) -> Vec<GenericArg> {
+    if ty_args.skip_binder().is_empty() {
+        // Fast path which avoids executing the query `generics_of`.
+        return Vec::new();
+    }
+
+    let params = &cx.tcx.generics_of(owner).params;
+    let mut elision_has_failed_once_before = false;
+
+    let offset = if has_self { 1 } else { 0 };
+    let mut args = Vec::with_capacity(ty_args.skip_binder().len().saturating_sub(offset));
+
+    args.extend(ty_args.skip_binder().iter().enumerate().rev().filter_map(|(index, arg)| {
+        ty_arg_to_arg(
+            cx,
+            ty_args,
+            has_self,
+            owner,
+            params,
+            index,
+            arg,
+            &mut elision_has_failed_once_before,
+        )
+    }));
     args.reverse();
     args
 }
