@@ -794,6 +794,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 let ty = lhs.ty(self.local_decls, self.tcx);
                 let lhs = self.simplify_operand(lhs, location);
                 let rhs = self.simplify_operand(rhs, location);
+                // Only short-circuit options after we called `simplify_operand`
+                // on both operands for side effect.
                 let lhs = lhs?;
                 let rhs = rhs?;
                 if let Some(value) = self.simplify_binary(op, false, ty, lhs, rhs) {
@@ -805,6 +807,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 let ty = lhs.ty(self.local_decls, self.tcx);
                 let lhs = self.simplify_operand(lhs, location);
                 let rhs = self.simplify_operand(rhs, location);
+                // Only short-circuit options after we called `simplify_operand`
+                // on both operands for side effect.
                 let lhs = lhs?;
                 let rhs = rhs?;
                 if let Some(value) = self.simplify_binary(op, true, ty, lhs, rhs) {
