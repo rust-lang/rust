@@ -966,12 +966,13 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
         };
 
-        // Represent the values as `Ok(bits)` or `Err(VnIndex)`.
-        let a = as_bits(lhs).ok_or(lhs);
-        let b = as_bits(rhs).ok_or(rhs);
+        // Represent the values as `Left(bits)` or `Right(VnIndex)`.
+        use Either::{Left, Right};
+        let a = as_bits(lhs).map_or(Right(lhs), Left);
+        let b = as_bits(rhs).map_or(Right(rhs), Left);
         let result = match (op, a, b) {
             // Neutral elements.
-            (BinOp::Add | BinOp::BitOr | BinOp::BitXor, Ok(0), Err(p))
+            (BinOp::Add | BinOp::BitOr | BinOp::BitXor, Left(0), Right(p))
             | (
                 BinOp::Add
                 | BinOp::BitOr
@@ -980,28 +981,28 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 | BinOp::Offset
                 | BinOp::Shl
                 | BinOp::Shr,
-                Err(p),
-                Ok(0),
+                Right(p),
+                Left(0),
             )
-            | (BinOp::Mul, Ok(1), Err(p))
-            | (BinOp::Mul | BinOp::Div, Err(p), Ok(1)) => p,
+            | (BinOp::Mul, Left(1), Right(p))
+            | (BinOp::Mul | BinOp::Div, Right(p), Left(1)) => p,
             // Attempt to simplify `x & ALL_ONES` to `x`, with `ALL_ONES` depending on type size.
-            (BinOp::BitAnd, Err(p), Ok(ones)) | (BinOp::BitAnd, Ok(ones), Err(p))
+            (BinOp::BitAnd, Right(p), Left(ones)) | (BinOp::BitAnd, Left(ones), Right(p))
                 if ones == layout.size.truncate(u128::MAX)
                     || (layout.ty.is_bool() && ones == 1) =>
             {
                 p
             }
             // Absorbing elements.
-            (BinOp::Mul | BinOp::BitAnd, _, Ok(0))
-            | (BinOp::Rem, _, Ok(1))
+            (BinOp::Mul | BinOp::BitAnd, _, Left(0))
+            | (BinOp::Rem, _, Left(1))
             | (
                 BinOp::Mul | BinOp::Div | BinOp::Rem | BinOp::BitAnd | BinOp::Shl | BinOp::Shr,
-                Ok(0),
+                Left(0),
                 _,
             ) => self.insert_scalar(Scalar::from_uint(0u128, layout.size), lhs_ty),
             // Attempt to simplify `x | ALL_ONES` to `ALL_ONES`.
-            (BinOp::BitOr, _, Ok(ones)) | (BinOp::BitOr, Ok(ones), _)
+            (BinOp::BitOr, _, Left(ones)) | (BinOp::BitOr, Left(ones), _)
                 if ones == layout.size.truncate(u128::MAX)
                     || (layout.ty.is_bool() && ones == 1) =>
             {
@@ -1015,8 +1016,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             // - if both operands can be computed as bits, just compare the bits;
             // - if we proved that both operands have the same value, we can insert true/false;
             // - otherwise, do nothing, as we do not try to prove inequality.
-            (BinOp::Eq, a, b) if (a.is_ok() && b.is_ok()) || a == b => self.insert_bool(a == b),
-            (BinOp::Ne, a, b) if (a.is_ok() && b.is_ok()) || a == b => self.insert_bool(a != b),
+            (BinOp::Eq, Left(a), Left(b)) => self.insert_bool(a == b),
+            (BinOp::Eq, a, b) if a == b => self.insert_bool(true),
+            (BinOp::Ne, Left(a), Left(b)) => self.insert_bool(a != b),
+            (BinOp::Ne, a, b) if a == b => self.insert_bool(false),
             _ => return None,
         };
 
