@@ -594,7 +594,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     // Run the monomorphization collector and partition the collected items into
     // codegen units.
-    let codegen_units = tcx.collect_and_partition_mono_items(()).1;
+    let codegen_units = tcx.collect_and_partition_mono_items(()).2;
 
     // Force all codegen_unit queries so they are already either red or green
     // when compile_codegen_unit accesses them. We are not able to re-execute
@@ -980,7 +980,7 @@ pub fn provide(providers: &mut Providers) {
             config::OptLevel::SizeMin => config::OptLevel::Default,
         };
 
-        let (defids, _) = tcx.collect_and_partition_mono_items(cratenum);
+        let (defids, _, _) = tcx.collect_and_partition_mono_items(cratenum);
 
         let any_for_speed = defids.items().any(|id| {
             let CodegenFnAttrs { optimize, .. } = tcx.codegen_fn_attrs(*id);

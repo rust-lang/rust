@@ -206,7 +206,7 @@ pub enum MonoItemCollectionMode {
 
 pub struct UsageMap<'tcx> {
     // Maps every mono item to the mono items used by it.
-    used_map: FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
+    pub used_map: FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,
 
     // Maps every mono item to the mono items that use it.
     user_map: FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>>,

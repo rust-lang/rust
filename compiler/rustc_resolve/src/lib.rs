@@ -1539,6 +1539,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             next_node_id: self.next_node_id,
             node_id_to_def_id: self.node_id_to_def_id,
             def_id_to_node_id: self.def_id_to_node_id,
+            autodiff_map: Default::default(),
             trait_map: self.trait_map,
             lifetime_elision_allowed: self.lifetime_elision_allowed,
             lint_buffer: Steal::new(self.lint_buffer),

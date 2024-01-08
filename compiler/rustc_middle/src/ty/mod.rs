@@ -195,6 +195,8 @@ pub struct ResolverAstLowering {
     pub node_id_to_def_id: NodeMap<LocalDefId>,
     pub def_id_to_node_id: IndexVec<LocalDefId, ast::NodeId>,
 
+    /// Mapping of autodiff function IDs
+    pub autodiff_map: FxHashMap<LocalDefId, LocalDefId>,
     pub trait_map: NodeMap<Vec<hir::TraitCandidate>>,
     /// List functions and methods for which lifetime elision was successful.
     pub lifetime_elision_allowed: FxHashSet<ast::NodeId>,

@@ -331,7 +331,7 @@ fn exported_symbols_provider_local(
         // external linkage is enough for monomorphization to be linked to.
         let need_visibility = tcx.sess.target.dynamic_linking && !tcx.sess.target.only_cdylib;
 
-        let (_, cgus) = tcx.collect_and_partition_mono_items(());
+        let (_, _, cgus) = tcx.collect_and_partition_mono_items(());
 
         for (mono_item, data) in cgus.iter().flat_map(|cgu| cgu.items().iter()) {
             if data.linkage != Linkage::External {
