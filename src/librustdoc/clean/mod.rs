@@ -1988,8 +1988,9 @@ pub(crate) enum ContainerTy<'tcx> {
     Ref(ty::Region<'tcx>),
     Regular {
         ty: DefId,
+        /// The arguments *have* to contain an arg for the self type if the corresponding generics
+        /// contain a self type.
         args: ty::Binder<'tcx, &'tcx [ty::GenericArg<'tcx>]>,
-        has_self: bool,
         arg: usize,
     },
 }
@@ -1998,7 +1999,7 @@ impl<'tcx> ContainerTy<'tcx> {
     fn object_lifetime_default(self, tcx: TyCtxt<'tcx>) -> ObjectLifetimeDefault<'tcx> {
         match self {
             Self::Ref(region) => ObjectLifetimeDefault::Arg(region),
-            Self::Regular { ty: container, args, has_self, arg: index } => {
+            Self::Regular { ty: container, args, arg: index } => {
                 let (DefKind::Struct
                 | DefKind::Union
                 | DefKind::Enum
@@ -2011,14 +2012,7 @@ impl<'tcx> ContainerTy<'tcx> {
                 let generics = tcx.generics_of(container);
                 debug_assert_eq!(generics.parent_count, 0);
 
-                // If the container is a trait object type, the arguments won't contain the self type but the
-                // generics of the corresponding trait will. In such a case, offset the index by one.
-                // For comparison, if the container is a trait inside a bound, the arguments do contain the
-                // self type.
-                let offset =
-                    if !has_self && generics.parent.is_none() && generics.has_self { 1 } else { 0 };
-                let param = generics.params[index + offset].def_id;
-
+                let param = generics.params[index].def_id;
                 let default = tcx.object_lifetime_default(param);
                 match default {
                     rbv::ObjectLifetimeDefault::Param(lifetime) => {
