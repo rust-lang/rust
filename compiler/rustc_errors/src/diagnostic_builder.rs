@@ -265,7 +265,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
 
     /// Converts the builder to a `Diagnostic` for later emission,
     /// unless dcx has disabled such buffering.
-    pub fn into_diagnostic(mut self) -> Option<(Diagnostic, &'a DiagCtxt)> {
+    fn into_diagnostic(mut self) -> Option<(Diagnostic, &'a DiagCtxt)> {
         if self.dcx.inner.lock().flags.treat_err_as_bug.is_some() {
             self.emit();
             return None;
@@ -424,6 +424,10 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         name: impl Into<Cow<'static, str>>, arg: impl IntoDiagnosticArg,
     ));
     forward!((subdiagnostic, with_subdiagnostic)(
+        subdiagnostic: impl crate::AddToDiagnostic,
+    ));
+    forward!((eager_subdiagnostic, with_eager_subdiagnostic)(
+        dcx: &DiagCtxt,
         subdiagnostic: impl crate::AddToDiagnostic,
     ));
 }
