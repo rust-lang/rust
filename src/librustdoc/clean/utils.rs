@@ -3,8 +3,9 @@ use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::render_macro_matchers::render_macro_matcher;
 use crate::clean::{
     clean_doc_module, clean_middle_const, clean_middle_region, clean_middle_ty, inline, Crate,
-    ExternalCrate, Generic, GenericArg, GenericArgs, ImportSource, Item, ItemKind, Lifetime, Path,
-    PathSegment, Primitive, PrimitiveType, Term, Type, TypeBinding, TypeBindingKind,
+    ExternalCrate, Generic, GenericArg, GenericArgs, ImportSource, Item, ItemKind, Lifetime,
+    ObjectLifetimeDefault, Path, PathSegment, Primitive, PrimitiveType, Term, Type, TypeBinding,
+    TypeBindingKind,
 };
 use crate::core::DocContext;
 use crate::html::format::visibility_to_src_with_space;
@@ -15,6 +16,7 @@ use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_metadata::rendered_const;
+use rustc_middle::middle::resolve_bound_vars as rbv;
 use rustc_middle::mir;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt};
 use rustc_middle::ty::{TypeVisitable, TypeVisitableExt};
@@ -131,11 +133,13 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
                 ty,
                 cx,
                 None,
-                Some(crate::clean::ContainerTy::Regular {
-                    ty: owner,
-                    args: ty.rebind(args.as_ref()),
-                    arg: index,
-                }),
+                Some(object_lifetime_default(
+                    cx.tcx,
+                    owner,
+                    generics.params[index].def_id,
+                    args.as_ref(),
+                    generics,
+                )),
             )))
         }
         GenericArgKind::Const(ct) => {
@@ -206,6 +210,34 @@ where
     // suffices to only perform a syntactic / structural check by comparing the memory addresses of
     // the interned arguments.
     actual.skip_binder() == default.skip_binder()
+}
+
+fn object_lifetime_default<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    owner: DefId,
+    param: DefId,
+    args: &[ty::GenericArg<'tcx>],
+    generics: &'tcx ty::Generics,
+) -> ObjectLifetimeDefault<'tcx> {
+    let (DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::TyAlias | DefKind::Trait) =
+        tcx.def_kind(owner)
+    else {
+        return ObjectLifetimeDefault::Empty;
+    };
+    let default = tcx.object_lifetime_default(param);
+    match default {
+        rbv::ObjectLifetimeDefault::Param(lifetime) => {
+            debug_assert_eq!(generics.parent_count, 0);
+            // The index is relative to the parent generics but since we don't have any,
+            // we don't need to translate it.
+            let index = generics.param_def_id_to_index[&lifetime];
+            let arg = args[index as usize].expect_region();
+            ObjectLifetimeDefault::Arg(arg)
+        }
+        rbv::ObjectLifetimeDefault::Empty => ObjectLifetimeDefault::Empty,
+        rbv::ObjectLifetimeDefault::Static => ObjectLifetimeDefault::Static,
+        rbv::ObjectLifetimeDefault::Ambiguous => ObjectLifetimeDefault::Ambiguous,
+    }
 }
 
 fn clean_middle_generic_args_with_bindings<'tcx>(

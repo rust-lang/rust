@@ -1908,7 +1908,7 @@ fn normalize<'tcx>(
 
 fn clean_trait_object_lifetime_bound<'tcx>(
     region: ty::Region<'tcx>,
-    container: Option<ContainerTy<'_, 'tcx>>,
+    container: Option<ObjectLifetimeDefault<'tcx>>,
     preds: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     tcx: TyCtxt<'tcx>,
 ) -> Option<Lifetime> {
@@ -1937,7 +1937,7 @@ fn clean_trait_object_lifetime_bound<'tcx>(
 
 fn can_elide_trait_object_lifetime_bound<'tcx>(
     region: ty::Region<'tcx>,
-    container: Option<ContainerTy<'_, 'tcx>>,
+    default: Option<ObjectLifetimeDefault<'tcx>>,
     preds: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     tcx: TyCtxt<'tcx>,
 ) -> bool {
@@ -1945,8 +1945,7 @@ fn can_elide_trait_object_lifetime_bound<'tcx>(
 
     // > If the trait object is used as a type argument of a generic type then the containing type is
     // > first used to try to infer a bound.
-    let default = container
-        .map_or(ObjectLifetimeDefault::Empty, |container| container.object_lifetime_default(tcx));
+    let default = default.unwrap_or(ObjectLifetimeDefault::Empty);
 
     // > If there is a unique bound from the containing type then that is the default
     // If there is a default object lifetime and the given region is lexically equal to it, elide it.
@@ -1983,54 +1982,6 @@ fn can_elide_trait_object_lifetime_bound<'tcx>(
     }
 }
 
-#[derive(Debug)]
-pub(crate) enum ContainerTy<'a, 'tcx> {
-    Ref(ty::Region<'tcx>),
-    Regular {
-        ty: DefId,
-        /// The arguments *have* to contain an arg for the self type if the corresponding generics
-        /// contain a self type.
-        args: ty::Binder<'tcx, &'a [ty::GenericArg<'tcx>]>,
-        arg: usize,
-    },
-}
-
-impl<'tcx> ContainerTy<'_, 'tcx> {
-    fn object_lifetime_default(self, tcx: TyCtxt<'tcx>) -> ObjectLifetimeDefault<'tcx> {
-        match self {
-            Self::Ref(region) => ObjectLifetimeDefault::Arg(region),
-            Self::Regular { ty: container, args, arg: index } => {
-                let (DefKind::Struct
-                | DefKind::Union
-                | DefKind::Enum
-                | DefKind::TyAlias
-                | DefKind::Trait) = tcx.def_kind(container)
-                else {
-                    return ObjectLifetimeDefault::Empty;
-                };
-
-                let generics = tcx.generics_of(container);
-                debug_assert_eq!(generics.parent_count, 0);
-
-                let param = generics.params[index].def_id;
-                let default = tcx.object_lifetime_default(param);
-                match default {
-                    rbv::ObjectLifetimeDefault::Param(lifetime) => {
-                        // The index is relative to the parent generics but since we don't have any,
-                        // we don't need to translate it.
-                        let index = generics.param_def_id_to_index[&lifetime];
-                        let arg = args.skip_binder()[index as usize].expect_region();
-                        ObjectLifetimeDefault::Arg(arg)
-                    }
-                    rbv::ObjectLifetimeDefault::Empty => ObjectLifetimeDefault::Empty,
-                    rbv::ObjectLifetimeDefault::Static => ObjectLifetimeDefault::Static,
-                    rbv::ObjectLifetimeDefault::Ambiguous => ObjectLifetimeDefault::Ambiguous,
-                }
-            }
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum ObjectLifetimeDefault<'tcx> {
     Empty,
@@ -2044,7 +1995,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
     bound_ty: ty::Binder<'tcx, Ty<'tcx>>,
     cx: &mut DocContext<'tcx>,
     parent_def_id: Option<DefId>,
-    container: Option<ContainerTy<'_, 'tcx>>,
+    container: Option<ObjectLifetimeDefault<'tcx>>,
 ) -> Type {
     let bound_ty = normalize(cx, bound_ty).unwrap_or(bound_ty);
     match *bound_ty.skip_binder().kind() {
@@ -2071,7 +2022,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 bound_ty.rebind(ty),
                 cx,
                 None,
-                Some(ContainerTy::Ref(r)),
+                Some(ObjectLifetimeDefault::Arg(r)),
             )),
         },
         ty::FnDef(..) | ty::FnPtr(_) => {
