@@ -2717,8 +2717,24 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      * @return {Array<FunctionSearchType>}
      */
     function buildItemSearchTypeAll(types, lowercasePaths) {
-        return types.map(type => buildItemSearchType(type, lowercasePaths));
+        return types.length > 0 ?
+            types.map(type => buildItemSearchType(type, lowercasePaths)) :
+            EMPTY_GENERICS_ARRAY;
     }
+
+    /**
+     * Empty, immutable map used in item search types with no bindings.
+     *
+     * @type {Map<integer, Array<Functiontype>>}
+     */
+    const EMPTY_BINDINGS_MAP = new Map();
+
+    /**
+     * Empty, immutable map used in item search types with no bindings.
+     *
+     * @type {Array<Functiontype>}
+     */
+    const EMPTY_GENERICS_ARRAY = [];
 
     /**
      * Converts a single type.
@@ -2732,15 +2748,15 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         let pathIndex, generics, bindings;
         if (typeof type === "number") {
             pathIndex = type;
-            generics = [];
-            bindings = new Map();
+            generics = EMPTY_GENERICS_ARRAY;
+            bindings = EMPTY_BINDINGS_MAP;
         } else {
             pathIndex = type[PATH_INDEX_DATA];
             generics = buildItemSearchTypeAll(
                 type[GENERICS_DATA],
                 lowercasePaths
             );
-            if (type.length > BINDINGS_DATA) {
+            if (type.length > BINDINGS_DATA && type[BINDINGS_DATA].length > 0) {
                 bindings = new Map(type[BINDINGS_DATA].map(binding => {
                     const [assocType, constraints] = binding;
                     // Associated type constructors are represented sloppily in rustdoc's
@@ -2759,7 +2775,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                     ];
                 }));
             } else {
-                bindings = new Map();
+                bindings = EMPTY_BINDINGS_MAP;
             }
         }
         if (pathIndex < 0) {
