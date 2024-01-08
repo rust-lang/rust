@@ -445,16 +445,44 @@ impl HygieneData {
     }
 
     fn walk_chain(&self, mut span: Span, to: SyntaxContext) -> Span {
+        let orig_span = span;
         debug!("walk_chain({:?}, {:?})", span, to);
         debug!("walk_chain: span ctxt = {:?}", span.ctxt());
-        while span.from_expansion() && span.ctxt() != to {
+        while span.ctxt() != to && span.from_expansion() {
             let outer_expn = self.outer_expn(span.ctxt());
             debug!("walk_chain({:?}): outer_expn={:?}", span, outer_expn);
             let expn_data = self.expn_data(outer_expn);
             debug!("walk_chain({:?}): expn_data={:?}", span, expn_data);
             span = expn_data.call_site;
         }
+        debug!("walk_chain: for span {:?} >>> return span = {:?}", orig_span, span);
         span
+    }
+
+    // We need to walk up and update return span if we meet macro instantiation to be collapsed
+    fn walk_chain_collapsed(
+        &self,
+        mut span: Span,
+        to: Span,
+        collapse_debuginfo_enabled: bool,
+    ) -> Span {
+        let orig_span = span;
+        let mut ret_span = span;
+
+        debug!("walk_chain_collapsed({:?}, {:?})", span, to);
+        debug!("walk_chain_collapsed: span ctxt = {:?}", span.ctxt());
+        while !span.eq_ctxt(to) && span.from_expansion() {
+            let outer_expn = self.outer_expn(span.ctxt());
+            debug!("walk_chain_collapsed({:?}): outer_expn={:?}", span, outer_expn);
+            let expn_data = self.expn_data(outer_expn);
+            debug!("walk_chain_collapsed({:?}): expn_data={:?}", span, expn_data);
+            span = expn_data.call_site;
+            if !collapse_debuginfo_enabled || expn_data.collapse_debuginfo {
+                ret_span = span;
+            }
+        }
+        debug!("walk_chain_collapsed: for span {:?} >>> return span = {:?}", orig_span, ret_span);
+        ret_span
     }
 
     fn adjust(&self, ctxt: &mut SyntaxContext, expn_id: ExpnId) -> Option<ExpnId> {
@@ -571,6 +599,10 @@ impl HygieneData {
 
 pub fn walk_chain(span: Span, to: SyntaxContext) -> Span {
     HygieneData::with(|data| data.walk_chain(span, to))
+}
+
+pub fn walk_chain_collapsed(span: Span, to: Span, collapse_debuginfo_enabled: bool) -> Span {
+    HygieneData::with(|hdata| hdata.walk_chain_collapsed(span, to, collapse_debuginfo_enabled))
 }
 
 pub fn update_dollar_crate_names(mut get_name: impl FnMut(SyntaxContext) -> Symbol) {
