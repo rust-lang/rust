@@ -19,4 +19,5 @@ pub trait MiscMethods<'tcx>: BackendTypes {
     fn apply_target_cpu_attr(&self, llfn: Self::Function);
     /// Declares the extern "C" main function for the entry point. Returns None if the symbol already exists.
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function>;
+    fn create_autodiff(&self) -> Vec<Self::Function>;
 }

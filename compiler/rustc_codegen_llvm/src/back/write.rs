@@ -5,18 +5,32 @@ use crate::back::profiling::{
 };
 use crate::base;
 use crate::common;
+use crate::DiffTypeTree;
 use crate::errors::{
     CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, UnknownCompression,
     WithLlvmError, WriteBytecode,
 };
 use crate::llvm::{self, DiagnosticInfo, PassManager};
+use crate::llvm::{LLVMReplaceAllUsesWith, LLVMVerifyFunction, Value, LLVMRustGetEnumAttributeAtIndex, LLVMRustAddEnumAttributeAtIndex, LLVMRustRemoveEnumAttributeAtIndex,
+    enzyme_rust_forward_diff, enzyme_rust_reverse_diff, BasicBlock, CreateEnzymeLogic,
+    CreateTypeAnalysis, EnzymeLogicRef, EnzymeTypeAnalysisRef, LLVMAddFunction,
+    LLVMAppendBasicBlockInContext, LLVMBuildCall2, LLVMBuildExtractValue, LLVMBuildRet,
+    LLVMCountParams, LLVMCountStructElementTypes, LLVMCreateBuilderInContext, LLVMDeleteFunction,
+    LLVMDisposeBuilder, LLVMGetBasicBlockTerminator, LLVMGetElementType, LLVMGetModuleContext,
+    LLVMGetParams, LLVMGetReturnType, LLVMPositionBuilderAtEnd, LLVMSetValueName2, LLVMTypeOf,
+    LLVMVoidTypeInContext, LLVMGlobalGetValueType, LLVMGetStringAttributeAtIndex,
+    LLVMIsStringAttribute, LLVMRemoveStringAttributeAtIndex, AttributeKind,
+    LLVMGetFirstFunction, LLVMGetNextFunction, LLVMIsEnumAttribute,
+    LLVMCreateStringAttribute, LLVMRustAddFunctionAttributes, LLVMDumpModule};
 use crate::llvm_util;
 use crate::type_::Type;
+use crate::typetree::to_enzyme_typetree;
 use crate::LlvmCodegenBackend;
 use crate::ModuleLlvm;
 use llvm::{
     LLVMRustLLVMHasZlibCompressionForDebugSymbols, LLVMRustLLVMHasZstdCompressionForDebugSymbols,
 };
+use rustc_ast::expand::autodiff_attrs::{AutoDiffItem, DiffActivity, DiffMode};
 use rustc_codegen_ssa::back::link::ensure_removed;
 use rustc_codegen_ssa::back::write::{
     BitcodeSection, CodegenContext, EmitObj, ModuleConfig, TargetMachineFactoryConfig,
@@ -26,6 +40,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{DiagCtxt, FatalError, Level};
 use rustc_fs_util::{link_or_copy, path_to_c_string};
 use rustc_middle::ty::TyCtxt;
@@ -37,7 +52,7 @@ use rustc_target::spec::{CodeModel, RelocModel, SanitizerSet, SplitDebuginfo, Tl
 
 use crate::llvm::diagnostic::OptimizationDiagnosticKind;
 use libc::{c_char, c_int, c_uint, c_void, size_t};
-use std::ffi::CString;
+use std::ffi::{CStr, CString};
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -511,8 +526,19 @@ pub(crate) unsafe fn llvm_optimize(
     opt_level: config::OptLevel,
     opt_stage: llvm::OptStage,
 ) -> Result<(), FatalError> {
-    let unroll_loops =
+    // Enzyme:
+    // We want to simplify / optimize functions before AD.
+    // However, benchmarks show that optimizations increasing the code size
+    // tend to reduce AD performance. Therefore activate them first, then differentiate the code
+    // and finally re-optimize the module, now with all optimizations available.
+    // RIP compile time.
+    // let unroll_loops =
+    //     opt_level != config::OptLevel::Size && opt_level != config::OptLevel::SizeMin;
+    let _unroll_loops =
         opt_level != config::OptLevel::Size && opt_level != config::OptLevel::SizeMin;
+    let unroll_loops = false;
+    let vectorize_slp = false;
+    let vectorize_loop = false;
     let using_thin_buffers = opt_stage == llvm::OptStage::PreLinkThinLTO || config.bitcode_needed();
     let pgo_gen_path = get_pgo_gen_path(config);
     let pgo_use_path = get_pgo_use_path(config);
@@ -567,8 +593,8 @@ pub(crate) unsafe fn llvm_optimize(
         using_thin_buffers,
         config.merge_functions,
         unroll_loops,
-        config.vectorize_slp,
-        config.vectorize_loop,
+        vectorize_slp,
+        vectorize_loop,
         config.emit_lifetime_markers,
         sanitizer_options.as_ref(),
         pgo_gen_path.as_ref().map_or(std::ptr::null(), |s| s.as_ptr()),
@@ -587,6 +613,261 @@ pub(crate) unsafe fn llvm_optimize(
         llvm_plugins.len(),
     );
     result.into_result().map_err(|()| llvm_err(dcx, LlvmError::RunLlvmPasses))
+}
+
+fn get_params(fnc: &Value) -> Vec<&Value> {
+    unsafe {
+        let param_num = LLVMCountParams(fnc) as usize;
+        let mut fnc_args: Vec<&Value> = vec![];
+        fnc_args.reserve(param_num);
+        LLVMGetParams(fnc, fnc_args.as_mut_ptr());
+        fnc_args.set_len(param_num);
+        fnc_args
+    }
+}
+
+// TODO: Here we could start adding length checks for the shaddow args.
+unsafe fn create_wrapper<'a>(
+    llmod: &'a llvm::Module,
+    fnc: &'a Value,
+    u_type: &Type,
+    fnc_name: String,
+) -> (&'a Value, &'a BasicBlock, Vec<&'a Value>, Vec<&'a Value>, CString) {
+    let context = LLVMGetModuleContext(llmod);
+    let inner_fnc_name = "inner_".to_string() + &fnc_name;
+    let c_inner_fnc_name = CString::new(inner_fnc_name.clone()).unwrap();
+    LLVMSetValueName2(fnc, c_inner_fnc_name.as_ptr(), inner_fnc_name.len() as usize);
+
+    let c_outer_fnc_name = CString::new(fnc_name).unwrap();
+    let outer_fnc: &Value =
+        LLVMAddFunction(llmod, c_outer_fnc_name.as_ptr(), LLVMGetElementType(u_type) as &Type);
+
+    let entry = "fnc_entry".to_string();
+    let c_entry = CString::new(entry).unwrap();
+    let basic_block = LLVMAppendBasicBlockInContext(context, outer_fnc, c_entry.as_ptr());
+
+    let outer_params: Vec<&Value> = get_params(outer_fnc);
+    let inner_params: Vec<&Value> = get_params(fnc);
+
+    (outer_fnc, basic_block, outer_params, inner_params, c_inner_fnc_name)
+}
+
+pub(crate) unsafe fn extract_return_type<'a>(
+    llmod: &'a llvm::Module,
+    fnc: &'a Value,
+    u_type: &Type,
+    fnc_name: String,
+) -> &'a Value {
+    let context = llvm::LLVMGetModuleContext(llmod);
+
+    let inner_param_num = LLVMCountParams(fnc);
+    let (outer_fnc, outer_bb, mut outer_args, _inner_args, c_inner_fnc_name) =
+        create_wrapper(llmod, fnc, u_type, fnc_name);
+
+    if inner_param_num as usize != outer_args.len() {
+        panic!("Args len shouldn't differ. Please report this.");
+    }
+
+    let builder = LLVMCreateBuilderInContext(context);
+    LLVMPositionBuilderAtEnd(builder, outer_bb);
+    let struct_ret = LLVMBuildCall2(
+        builder,
+        u_type,
+        fnc,
+        outer_args.as_mut_ptr(),
+        outer_args.len(),
+        c_inner_fnc_name.as_ptr(),
+    );
+    // We can use an arbitrary name here, since it will be used to store a tmp value.
+    let inner_grad_name = "foo".to_string();
+    let c_inner_grad_name = CString::new(inner_grad_name).unwrap();
+    let struct_ret = LLVMBuildExtractValue(builder, struct_ret, 0, c_inner_grad_name.as_ptr());
+    let _ret = LLVMBuildRet(builder, struct_ret);
+    let _terminator = LLVMGetBasicBlockTerminator(outer_bb);
+    LLVMDisposeBuilder(builder);
+    let _fnc_ok =
+        LLVMVerifyFunction(outer_fnc, llvm::LLVMVerifierFailureAction::LLVMAbortProcessAction);
+    outer_fnc
+}
+
+// As unsafe as it can be.
+#[allow(unused_variables)]
+#[allow(unused)]
+pub(crate) unsafe fn enzyme_ad(
+    llmod: &llvm::Module,
+    llcx: &llvm::Context,
+    diag_handler: &DiagCtxt,
+    item: AutoDiffItem,
+) -> Result<(), FatalError> {
+    dbg!("cg_llvm enzyme_ad");
+    let autodiff_mode = item.attrs.mode;
+    let rust_name = item.source;
+    let rust_name2 = &item.target;
+
+    let args_activity = item.attrs.input_activity.clone();
+    let ret_activity: DiffActivity = item.attrs.ret_activity;
+
+    // get target and source function
+    let name = CString::new(rust_name.to_owned()).unwrap();
+    let name2 = CString::new(rust_name2.clone()).unwrap();
+    let src_fnc_opt = llvm::LLVMGetNamedFunction(llmod, name.as_c_str().as_ptr());
+    let src_fnc = match src_fnc_opt {
+        Some(x) => x,
+        None => {
+            return Err(llvm_err(diag_handler, LlvmError::PrepareAutoDiff{
+                src: rust_name.to_owned(),
+                target: rust_name2.to_owned(),
+                error: "could not find src function".to_owned(),
+            }));
+        }
+    };
+    let target_fnc_opt = llvm::LLVMGetNamedFunction(llmod, name2.as_ptr());
+    let target_fnc = match target_fnc_opt {
+        Some(x) => x,
+        None => {
+            return Err(llvm_err(diag_handler, LlvmError::PrepareAutoDiff{
+                src: rust_name.to_owned(),
+                target: rust_name2.to_owned(),
+                error: "could not find target function".to_owned(),
+            }));
+        }
+    };
+    let src_num_args = llvm::LLVMCountParams(src_fnc);
+    let target_num_args = llvm::LLVMCountParams(target_fnc);
+    assert!(src_num_args <= target_num_args);
+
+    // create enzyme typetrees
+    let llvm_data_layout = unsafe { llvm::LLVMGetDataLayoutStr(&*llmod) };
+    let llvm_data_layout =
+        std::str::from_utf8(unsafe { CStr::from_ptr(llvm_data_layout) }.to_bytes())
+            .expect("got a non-UTF8 data-layout from LLVM");
+
+    let input_tts =
+        item.inputs.into_iter().map(|x| to_enzyme_typetree(x, llvm_data_layout, llcx)).collect();
+    let output_tt = to_enzyme_typetree(item.output, llvm_data_layout, llcx);
+
+    let opt = 1;
+    let ret_primary_ret = false;
+    let diff_primary_ret = false;
+    let logic_ref: EnzymeLogicRef = CreateEnzymeLogic(opt as u8);
+    let type_analysis: EnzymeTypeAnalysisRef =
+        CreateTypeAnalysis(logic_ref, std::ptr::null_mut(), std::ptr::null_mut(), 0);
+
+    llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymeStrictAliasing), 0);
+
+    if std::env::var("ENZYME_PRINT_TA").is_ok() {
+      llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintType), 1);
+    }
+    if std::env::var("ENZYME_PRINT_AA").is_ok() {
+        llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintActivity), 1);
+    }
+    if std::env::var("ENZYME_PRINT_PERF").is_ok() {
+      llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrintPerf), 1);
+    }
+    if std::env::var("ENZYME_PRINT").is_ok() {
+        llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymePrint), 1);
+    }
+
+    let mut res: &Value = match item.attrs.mode {
+        DiffMode::Forward => enzyme_rust_forward_diff(
+            logic_ref,
+            type_analysis,
+            src_fnc,
+            args_activity,
+            ret_activity,
+            ret_primary_ret,
+            input_tts,
+            output_tt,
+        ),
+        DiffMode::Reverse => enzyme_rust_reverse_diff(
+            logic_ref,
+            type_analysis,
+            src_fnc,
+            args_activity,
+            ret_activity,
+            ret_primary_ret,
+            diff_primary_ret,
+            input_tts,
+            output_tt,
+        ),
+        _ => unreachable!(),
+    };
+    let f_return_type = LLVMGetReturnType(LLVMGlobalGetValueType(res));
+
+    let void_type = LLVMVoidTypeInContext(llcx);
+    if item.attrs.mode == DiffMode::Reverse && f_return_type != void_type {
+        let num_elem_in_ret_struct = LLVMCountStructElementTypes(f_return_type);
+        if num_elem_in_ret_struct == 1 {
+            let u_type = LLVMTypeOf(target_fnc);
+            res = extract_return_type(llmod, res, u_type, rust_name2.clone()); // TODO: check if name or name2
+        }
+    }
+    LLVMSetValueName2(res, name2.as_ptr(), rust_name2.len());
+    LLVMReplaceAllUsesWith(target_fnc, res);
+    LLVMDeleteFunction(target_fnc);
+
+    Ok(())
+}
+
+pub(crate) unsafe fn differentiate(
+    module: &ModuleCodegen<ModuleLlvm>,
+    cgcx: &CodegenContext<LlvmCodegenBackend>,
+    diff_items: Vec<AutoDiffItem>,
+    _typetrees: FxHashMap<String, DiffTypeTree>,
+    _config: &ModuleConfig,
+) -> Result<(), FatalError> {
+    dbg!("cg_llvm differentiate");
+    dbg!(&diff_items);
+
+    let llmod = module.module_llvm.llmod();
+    let llcx = &module.module_llvm.llcx;
+    let diag_handler = cgcx.create_dcx();
+
+    llvm::EnzymeSetCLBool(std::ptr::addr_of_mut!(llvm::EnzymeStrictAliasing), 0);
+
+    if std::env::var("ENZYME_PRINT_MOD").is_ok() {
+        unsafe {LLVMDumpModule(llmod);}
+    }
+    if std::env::var("ENZYME_TT_DEPTH").is_ok() {
+        let depth = std::env::var("ENZYME_TT_DEPTH").unwrap();
+        let depth = depth.parse::<i64>().unwrap();
+        assert!(depth >= 1);
+        llvm::EnzymeSetCLInteger(std::ptr::addr_of_mut!(llvm::EnzymeMaxTypeDepth), depth);
+    }
+    if std::env::var("ENZYME_TT_WIDTH").is_ok() {
+        let width = std::env::var("ENZYME_TT_WIDTH").unwrap();
+        let width = width.parse::<i64>().unwrap();
+        assert!(width >= 1);
+        llvm::EnzymeSetCLInteger(std::ptr::addr_of_mut!(llvm::MaxTypeOffset), width);
+    }
+
+    for item in diff_items {
+        let res = enzyme_ad(llmod, llcx, &diag_handler, item);
+        assert!(res.is_ok());
+    }
+
+    let mut f = LLVMGetFirstFunction(llmod);
+    loop {
+        if let Some(lf) = f {
+        f = LLVMGetNextFunction(lf);
+        let myhwattr = "enzyme_hw";
+        let attr = LLVMGetStringAttributeAtIndex(lf, c_uint::MAX, myhwattr.as_ptr() as *const c_char, myhwattr.as_bytes().len() as c_uint);
+        if LLVMIsStringAttribute(attr) {
+            LLVMRemoveStringAttributeAtIndex(lf, c_uint::MAX, myhwattr.as_ptr() as *const c_char, myhwattr.as_bytes().len() as c_uint);
+        } else {
+            LLVMRustRemoveEnumAttributeAtIndex(lf, c_uint::MAX, AttributeKind::SanitizeHWAddress);
+        }
+
+
+        } else {
+            break;
+        }
+    }
+    if std::env::var("ENZYME_PRINT_MOD_AFTER").is_ok() {
+        unsafe {LLVMDumpModule(llmod);}
+    }
+
+    Ok(())
 }
 
 // Unsafe due to LLVM calls.
@@ -609,6 +890,32 @@ pub(crate) unsafe fn optimize(
         let out = cgcx.output_filenames.temp_path_ext("no-opt.bc", module_name);
         let out = path_to_c_string(&out);
         llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
+    }
+
+    // This code enables Enzyme to differentiate code containing Rust enums.
+    // By adding the SanitizeHWAddress attribute we prevent LLVM from Optimizing
+    // away the enums and allows Enzyme to understand why a value can be of different types in
+    // different code sections. We remove this attribute after Enzyme is done, to not affect the
+    // rest of the compilation.
+    {
+        let mut f = LLVMGetFirstFunction(llmod);
+        loop {
+            if let Some(lf) = f {
+            f = LLVMGetNextFunction(lf);
+            let myhwattr = "enzyme_hw";
+            let myhwv = "";
+            let prevattr = LLVMRustGetEnumAttributeAtIndex(lf, c_uint::MAX, AttributeKind::SanitizeHWAddress);
+            if LLVMIsEnumAttribute(prevattr) {
+                let attr = LLVMCreateStringAttribute(llcx, myhwattr.as_ptr() as *const c_char, myhwattr.as_bytes().len() as c_uint, myhwv.as_ptr() as *const c_char, myhwv.as_bytes().len() as c_uint);
+                LLVMRustAddFunctionAttributes(lf, c_uint::MAX, &attr, 1);
+            } else {
+                LLVMRustAddEnumAttributeAtIndex(llcx, lf, c_uint::MAX, AttributeKind::SanitizeHWAddress);
+            }
+
+            } else {
+                break;
+            }
+        }
     }
 
     if let Some(opt_level) = config.opt_level {

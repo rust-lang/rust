@@ -294,6 +294,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     instance: ty::Instance<'tcx>,
 ) {
     let codegen_fn_attrs = cx.tcx.codegen_fn_attrs(instance.def_id());
+    let autodiff_attrs = cx.tcx.autodiff_attrs(instance.def_id());
 
     let mut to_add = SmallVec::<[_; 16]>::new();
 
@@ -311,6 +312,8 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     let inline =
         if codegen_fn_attrs.inline == InlineAttr::None && instance.def.requires_inline(cx.tcx) {
             InlineAttr::Hint
+        } else if autodiff_attrs.is_active() {
+            InlineAttr::Never
         } else {
             codegen_fn_attrs.inline
         };

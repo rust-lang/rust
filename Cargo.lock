@@ -4261,6 +4261,7 @@ dependencies = [
 name = "rustc_monomorphize"
 version = "0.0.0"
 dependencies = [
+ "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",
@@ -4269,6 +4270,7 @@ dependencies = [
  "rustc_middle",
  "rustc_session",
  "rustc_span",
+ "rustc_symbol_mangling",
  "rustc_target",
  "serde",
  "serde_json",

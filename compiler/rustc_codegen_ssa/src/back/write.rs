@@ -9,6 +9,7 @@ use crate::{
 };
 use jobserver::{Acquired, Client};
 use rustc_ast::attr;
+use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::{SelfProfilerRef, VerboseTimingGuard};
@@ -374,6 +375,8 @@ impl<B: WriteBackendMethods> CodegenContext<B> {
 
 fn generate_lto_work<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
+    autodiff: Vec<AutoDiffItem>,
+    typetrees: FxHashMap<String, B::TypeTree>,
     needs_fat_lto: Vec<FatLtoInput<B>>,
     needs_thin_lto: Vec<(String, B::ThinBuffer)>,
     import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>,
@@ -382,8 +385,12 @@ fn generate_lto_work<B: ExtraBackendMethods>(
 
     if !needs_fat_lto.is_empty() {
         assert!(needs_thin_lto.is_empty());
-        let module =
+        let mut module =
             B::run_fat_lto(cgcx, needs_fat_lto, import_only_modules).unwrap_or_else(|e| e.raise());
+        if cgcx.lto == Lto::Fat {
+            let config = cgcx.config(ModuleKind::Regular);
+            module = unsafe { module.autodiff(cgcx, autodiff, typetrees, config).unwrap() };
+        }
         // We are adding a single work item, so the cost doesn't matter.
         vec![(WorkItem::LTO(module), 0)]
     } else {
@@ -970,6 +977,8 @@ pub(crate) enum Message<B: WriteBackendMethods> {
         work_product: WorkProduct,
     },
 
+    AddAutoDiffItems(Vec<AutoDiffItem>),
+
     /// The frontend has finished generating everything for all codegen units.
     /// Sent from the main thread.
     CodegenComplete,
@@ -1264,6 +1273,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
 
         // This is where we collect codegen units that have gone all the way
         // through codegen and LLVM.
+        let mut autodiff_items = Vec::new();
         let mut compiled_modules = vec![];
         let mut compiled_allocator_module = None;
         let mut needs_link = Vec::new();
@@ -1271,6 +1281,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         let mut needs_thin_lto = Vec::new();
         let mut lto_import_only_modules = Vec::new();
         let mut started_lto = false;
+        let mut typetrees = FxHashMap::<String, B::TypeTree>::default();
 
         /// Possible state transitions:
         /// - Ongoing -> Completed
@@ -1375,9 +1386,14 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     let needs_thin_lto = mem::take(&mut needs_thin_lto);
                     let import_only_modules = mem::take(&mut lto_import_only_modules);
 
-                    for (work, cost) in
-                        generate_lto_work(&cgcx, needs_fat_lto, needs_thin_lto, import_only_modules)
-                    {
+                    for (work, cost) in generate_lto_work(
+                        &cgcx,
+                        autodiff_items.clone(),
+                        typetrees.clone(),
+                        needs_fat_lto,
+                        needs_thin_lto,
+                        import_only_modules,
+                    ) {
                         let insertion_index = work_items
                             .binary_search_by_key(&cost, |&(_, cost)| cost)
                             .unwrap_or_else(|e| e);
@@ -1490,7 +1506,16 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     }
                 }
 
-                Message::CodegenDone { llvm_work_item, cost } => {
+                Message::CodegenDone { mut llvm_work_item, cost } => {
+                    //// extract build typetrees
+                    match &mut llvm_work_item {
+                        WorkItem::Optimize(module) => {
+                            let tt = B::typetrees(&mut module.module_llvm);
+                            typetrees.extend(tt);
+                        }
+                        _ => {},
+                    }
+
                     // We keep the queue sorted by estimated processing cost,
                     // so that more expensive items are processed earlier. This
                     // is good for throughput as it gives the main thread more
@@ -1511,6 +1536,12 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     assert_eq!(main_thread_state, MainThreadState::Codegenning);
                     main_thread_state = MainThreadState::Idle;
                 }
+
+                Message::AddAutoDiffItems(mut items) => {
+                    dbg!("AddAutoDiffItems");
+                    autodiff_items.append(&mut items);
+                }
+
 
                 Message::CodegenComplete => {
                     if codegen_state != Aborted {
@@ -1979,6 +2010,11 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
         self.wait_for_signal_to_codegen_item();
         self.check_for_errors(tcx.sess);
         drop(self.coordinator.sender.send(Box::new(Message::CodegenComplete::<B>)));
+    }
+
+    pub fn submit_autodiff_items(&self, items: Vec<AutoDiffItem>) {
+        dbg!("submit_autodiff_items");
+        drop(self.coordinator.sender.send(Box::new(Message::<B>::AddAutoDiffItems(items))));
     }
 
     pub fn check_for_errors(&self, sess: &Session) {

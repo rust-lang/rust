@@ -300,15 +300,37 @@ extern "C" void LLVMRustAddFunctionAttributes(LLVMValueRef Fn, unsigned Index,
   AddAttributes(F, Index, Attrs, AttrsLen);
 }
 
+extern "C" LLVMAttributeRef
+LLVMRustCreateAttrNoValue(LLVMContextRef C, LLVMRustAttribute RustAttr) {
+  return wrap(Attribute::get(*unwrap(C), fromRust(RustAttr)));
+}
+
+extern "C" LLVMTypeRef LLVMRustGetFunctionType(LLVMValueRef Fn) {
+  auto Ftype = unwrap<Function>(Fn)->getFunctionType();
+  return wrap(Ftype);
+}
+
+extern "C" void LLVMRustRemoveEnumAttributeAtIndex(LLVMValueRef F, size_t index,
+                                                   LLVMRustAttribute RustAttr) {
+  LLVMRemoveEnumAttributeAtIndex(F, index, fromRust(RustAttr));
+}
+
+extern "C" void LLVMRustAddEnumAttributeAtIndex(LLVMContextRef C,
+                                                LLVMValueRef F, size_t index,
+                                                LLVMRustAttribute RustAttr) {
+  LLVMAddAttributeAtIndex(F, index, LLVMRustCreateAttrNoValue(C, RustAttr));
+}
+
+extern "C" LLVMAttributeRef
+LLVMRustGetEnumAttributeAtIndex(LLVMValueRef F, size_t index,
+                                LLVMRustAttribute RustAttr) {
+  return LLVMGetEnumAttributeAtIndex(F, index, fromRust(RustAttr));
+}
+
 extern "C" void LLVMRustAddCallSiteAttributes(LLVMValueRef Instr, unsigned Index,
                                               LLVMAttributeRef *Attrs, size_t AttrsLen) {
   CallBase *Call = unwrap<CallBase>(Instr);
   AddAttributes(Call, Index, Attrs, AttrsLen);
-}
-
-extern "C" LLVMAttributeRef LLVMRustCreateAttrNoValue(LLVMContextRef C,
-                                                      LLVMRustAttribute RustAttr) {
-  return wrap(Attribute::get(*unwrap(C), fromRust(RustAttr)));
 }
 
 extern "C" LLVMAttributeRef LLVMRustCreateAlignmentAttr(LLVMContextRef C,
