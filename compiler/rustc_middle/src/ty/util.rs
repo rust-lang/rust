@@ -1,7 +1,7 @@
 //! Miscellaneous type-system utilities that are too small to deserve their own modules.
 
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use crate::query::Providers;
+use crate::query::{IntoQueryParam, Providers};
 use crate::ty::layout::IntegerExt;
 use crate::ty::{
     self, FallibleTypeFolder, ToPredicate, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
@@ -784,6 +784,13 @@ impl<'tcx> TyCtxt<'tcx> {
             // Treat that kind of crate as "indirect", since it's an implementation detail of
             // the language.
             || self.extern_crate(key.as_def_id()).is_some_and(|e| e.is_direct())
+    }
+
+    /// Whether the item has a host effect param. This is different from `TyCtxt::is_const`,
+    /// because the item must also be "maybe const", and the crate where the item is
+    /// defined must also have the effects feature enabled.
+    pub fn has_host_param(self, def_id: impl IntoQueryParam<DefId>) -> bool {
+        self.generics_of(def_id).host_effect_index.is_some()
     }
 
     pub fn expected_host_effect_param_for_body(self, def_id: impl Into<DefId>) -> ty::Const<'tcx> {
