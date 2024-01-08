@@ -2465,6 +2465,7 @@ dependencies = [
  "ctrlc",
  "env_logger",
  "getrandom",
+ "jemalloc-sys",
  "lazy_static",
  "libc",
  "libffi",
@@ -2474,7 +2475,6 @@ dependencies = [
  "rand",
  "regex",
  "rustc_version",
- "serde",
  "smallvec",
  "ui_test",
 ]
@@ -3280,9 +3280,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-build-sysroot"
-version = "0.4.2"
+version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ed2a90dfa5232ed5ff21d53d4df655f315ab316ea06fc508f1c74bcedb1ce6c"
+checksum = "39dcf8d82b1f79a179bdb284dc44db440a9666eefa5a6df5ef282d6db930d544"
 dependencies = [
  "anyhow",
  "rustc_version",
