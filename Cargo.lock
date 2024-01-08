@@ -1196,7 +1196,7 @@ dependencies = [
  "drop_bomb",
  "expect-test",
  "limit",
- "rustc-dependencies",
+ "ra-ap-rustc_lexer",
  "sourcegen",
  "stdx",
 ]
@@ -1605,7 +1605,6 @@ version = "0.0.0"
 dependencies = [
  "ra-ap-rustc_abi",
  "ra-ap-rustc_index",
- "ra-ap-rustc_lexer",
  "ra-ap-rustc_parse_format",
 ]
 
@@ -1808,9 +1807,9 @@ dependencies = [
  "proc-macro2",
  "profile",
  "quote",
+ "ra-ap-rustc_lexer",
  "rayon",
  "rowan",
- "rustc-dependencies",
  "rustc-hash",
  "smol_str",
  "sourcegen",

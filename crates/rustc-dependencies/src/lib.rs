@@ -4,17 +4,6 @@
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
 #[cfg(feature = "in-rust-tree")]
-extern crate rustc_lexer;
-
-pub mod lexer {
-    #[cfg(not(feature = "in-rust-tree"))]
-    pub use ::ra_ap_rustc_lexer::*;
-
-    #[cfg(feature = "in-rust-tree")]
-    pub use ::rustc_lexer::*;
-}
-
-#[cfg(feature = "in-rust-tree")]
 extern crate rustc_parse_format;
 
 pub mod parse_format {
