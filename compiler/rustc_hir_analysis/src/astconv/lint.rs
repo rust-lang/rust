@@ -122,7 +122,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     ],
                     Applicability::MachineApplicable,
                 );
-            } else {
+            } else if diag.is_error() {
                 // We'll emit the object safety error already, with a structured suggestion.
                 diag.downgrade_to_delayed_bug();
             }
@@ -148,8 +148,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             if !is_object_safe {
                 diag.note(format!("`{trait_name}` it is not object safe, so it can't be `dyn`"));
-                // We'll emit the object safety error already, with a structured suggestion.
-                diag.downgrade_to_delayed_bug();
+                if diag.is_error() {
+                    // We'll emit the object safety error already, with a structured suggestion.
+                    diag.downgrade_to_delayed_bug();
+                }
             } else {
                 let sugg = if let hir::TyKind::TraitObject([_, _, ..], _, _) = self_ty.kind {
                     // There are more than one trait bound, we need surrounding parentheses.
