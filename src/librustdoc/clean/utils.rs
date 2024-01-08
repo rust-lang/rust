@@ -78,7 +78,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
 pub(crate) fn clean_middle_generic_args<'tcx>(
     cx: &mut DocContext<'tcx>,
     args: ty::Binder<'tcx, &'tcx [ty::GenericArg<'tcx>]>,
-    has_self: bool,
+    mut has_self: bool,
     owner: DefId,
 ) -> Vec<GenericArg> {
     if args.skip_binder().is_empty() {
@@ -86,11 +86,29 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
         return Vec::new();
     }
 
-    let params = &cx.tcx.generics_of(owner).params;
+    let generics = cx.tcx.generics_of(owner);
     let mut elision_has_failed_once_before = false;
 
     let offset = if has_self { 1 } else { 0 };
     let mut clean_args = Vec::with_capacity(args.skip_binder().len().saturating_sub(offset));
+
+    // If the container is a trait object type, the arguments won't contain the self type but the
+    // generics of the corresponding trait will. In such a case, prepend a dummy self type in order
+    // to align the arguments and parameters for the iteration below and to enable us to correctly
+    // instantiate the generic parameter default later.
+    let args = if !has_self && generics.parent.is_none() && generics.has_self {
+        has_self = true;
+        // FIXME(fmease): Don't arena-allocate the args (blocked on further refactorings)!
+        args.map_bound(|args| {
+            &*cx.tcx.arena.alloc_from_iter(
+                [cx.tcx.types.trait_object_dummy_self.into()]
+                    .into_iter()
+                    .chain(args.iter().copied()),
+            )
+        })
+    } else {
+        args
+    };
 
     let clean_middle_arg = |(index, arg): (usize, &ty::GenericArg<'tcx>)| match arg.unpack() {
         GenericArgKind::Lifetime(lt) => {
@@ -99,7 +117,7 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
         GenericArgKind::Type(_) if has_self && index == 0 => None,
         GenericArgKind::Type(ty) => {
             if !elision_has_failed_once_before
-                && let Some(default) = params[index].default_value(cx.tcx)
+                && let Some(default) = generics.params[index].default_value(cx.tcx)
             {
                 let default = args.map_bound(|args| default.instantiate(cx.tcx, args).expect_ty());
 
@@ -114,17 +132,18 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
                 args.rebind(ty),
                 cx,
                 None,
-                Some(crate::clean::ContainerTy::Regular { ty: owner, args, has_self, arg: index }),
+                Some(crate::clean::ContainerTy::Regular { ty: owner, args, arg: index }),
             )))
         }
         GenericArgKind::Const(ct) => {
-            if let ty::GenericParamDefKind::Const { is_host_effect: true, .. } = params[index].kind
+            if let ty::GenericParamDefKind::Const { is_host_effect: true, .. } =
+                generics.params[index].kind
             {
                 return None;
             }
 
             if !elision_has_failed_once_before
-                && let Some(default) = params[index].default_value(cx.tcx)
+                && let Some(default) = generics.params[index].default_value(cx.tcx)
             {
                 let default =
                     args.map_bound(|args| default.instantiate(cx.tcx, args).expect_const());
