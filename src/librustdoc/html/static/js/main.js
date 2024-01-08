@@ -1721,6 +1721,7 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
             }
             currentPointerId = e.pointerId;
         }
+        window.hideAllModals(false);
         e.preventDefault();
         window.addEventListener("pointermove", resize, false);
         window.addEventListener("pointercancel", stopResize, false);
