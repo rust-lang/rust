@@ -656,9 +656,16 @@ impl<'a> FmtVisitor<'a> {
         }
 
         let context = self.get_context();
-        // 1 = ','
-        let shape = self.shape().sub_width(1)?;
-        let attrs_str = field.attrs.rewrite(&context, shape)?;
+        let shape = self.shape();
+        let attrs_str = if context.config.version() == Version::Two {
+            field.attrs.rewrite(&context, shape)?
+        } else {
+            // Version::One formatting that was off by 1. See issue #5801
+            field.attrs.rewrite(&context, shape.sub_width(1)?)?
+        };
+        // sub_width(1) to take the trailing comma into account
+        let shape = shape.sub_width(1)?;
+
         let lo = field
             .attrs
             .last()
