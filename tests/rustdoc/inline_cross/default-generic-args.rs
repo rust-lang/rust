@@ -79,15 +79,14 @@ pub use default_generic_args::P1;
 pub use default_generic_args::P2;
 
 // @has user/type.A0.html
-// Ensure that we elide generic arguments that are alpha-equivalent to their respective
-// generic parameter (modulo substs) (#1):
-// @has - '//*[@class="rust item-decl"]//code' "Alpha"
+// @has - '//*[@class="rust item-decl"]//code' "Alpha;"
 pub use default_generic_args::A0;
 
 // @has user/type.A1.html
-// Ensure that we elide generic arguments that are alpha-equivalent to their respective
-// generic parameter (modulo substs) (#1):
-// @has - '//*[@class="rust item-decl"]//code' "Alpha"
+// Demonstrates that we currently don't elide generic arguments that are alpha-equivalent to their
+// respective generic parameter (after instantiation) for perf reasons (it would require us to
+// create an inference context).
+// @has - '//*[@class="rust item-decl"]//code' "Alpha<for<'arbitrary> fn(_: &'arbitrary ())>"
 pub use default_generic_args::A1;
 
 // @has user/type.M0.html
@@ -97,8 +96,19 @@ pub use default_generic_args::A1;
 // @has - '//*[@class="rust item-decl"]//code' "Multi<u64, ()>"
 pub use default_generic_args::M0;
 
-// @has user/type.F.html
-// FIXME: Ideally, we would elide `&'a ()` but `'a` is an escaping bound var which we can't reason
-//        about at the moment since we don't keep track of bound vars.
-// @has - '//*[@class="rust item-decl"]//code' "dyn for<'a> Trait<'a, &'a ()>"
-pub use default_generic_args::F;
+// @has user/type.D0.html
+// @has - '//*[@class="rust item-decl"]//code' "dyn for<'a> Trait0<'a>"
+pub use default_generic_args::D0;
+
+// Regression test for issue #119529.
+// Check that we correctly elide def ty&const args inside trait object types.
+
+// @has user/type.D1.html
+// @has - '//*[@class="rust item-decl"]//code' "dyn Trait1<T>"
+pub use default_generic_args::D1;
+// @has user/type.D2.html
+// @has - '//*[@class="rust item-decl"]//code' "dyn Trait1<(), K>"
+pub use default_generic_args::D2;
+// @has user/type.D3.html
+// @has - '//*[@class="rust item-decl"]//code' "dyn Trait1;"
+pub use default_generic_args::D3;
