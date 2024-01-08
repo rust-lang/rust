@@ -2725,16 +2725,24 @@ ${item.displayPath}<span class="${type}">${name}</span>\
     /**
      * Empty, immutable map used in item search types with no bindings.
      *
-     * @type {Map<integer, Array<Functiontype>>}
+     * @type {Map<number, Array<FunctionType>>}
      */
     const EMPTY_BINDINGS_MAP = new Map();
 
     /**
      * Empty, immutable map used in item search types with no bindings.
      *
-     * @type {Array<Functiontype>}
+     * @type {Array<FunctionType>}
      */
     const EMPTY_GENERICS_ARRAY = [];
+
+    /**
+     * Object pool for function types with no bindings or generics.
+     * This is reset after loading the index.
+     *
+     * @type {Map<number|null, FunctionType>}
+     */
+    let TYPES_POOL = new Map();
 
     /**
      * Converts a single type.
@@ -2778,35 +2786,80 @@ ${item.displayPath}<span class="${type}">${name}</span>\
                 bindings = EMPTY_BINDINGS_MAP;
             }
         }
+        /**
+         * @type {FunctionType}
+         */
+        let result;
         if (pathIndex < 0) {
             // types less than 0 are generic parameters
             // the actual names of generic parameters aren't stored, since they aren't API
-            return {
+            result = {
                 id: pathIndex,
                 ty: TY_GENERIC,
                 path: null,
                 generics,
                 bindings,
             };
-        }
-        if (pathIndex === 0) {
+        } else if (pathIndex === 0) {
             // `0` is used as a sentinel because it's fewer bytes than `null`
-            return {
+            result = {
                 id: null,
                 ty: null,
                 path: null,
                 generics,
                 bindings,
             };
+        } else {
+            const item = lowercasePaths[pathIndex - 1];
+            result = {
+                id: buildTypeMapIndex(item.name, isAssocType),
+                ty: item.ty,
+                path: item.path,
+                generics,
+                bindings,
+            };
         }
-        const item = lowercasePaths[pathIndex - 1];
-        return {
-            id: buildTypeMapIndex(item.name, isAssocType),
-            ty: item.ty,
-            path: item.path,
-            generics,
-            bindings,
-        };
+        const cr = TYPES_POOL.get(result.id);
+        if (cr) {
+            // Shallow equality check. Since this function is used
+            // to construct every type object, this should be mostly
+            // equivalent to a deep equality check, except if there's
+            // a conflict, we don't keep the old one around, so it's
+            // not a fully precise implementation of hashcons.
+            if (cr.generics.length === result.generics.length &&
+                cr.generics !== result.generics &&
+                cr.generics.every((x, i) => result.generics[i] === x)
+            ) {
+                result.generics = cr.generics;
+            }
+            if (cr.bindings.size === result.bindings.size && cr.bindings !== result.bindings) {
+                let ok = true;
+                for (const [k, v] of cr.bindings.entries()) {
+                    const v2 = result.bindings.get(v);
+                    if (!v2) {
+                        ok = false;
+                        break;
+                    }
+                    if (v !== v2 && v.length === v2.length && v.every((x, i) => v2[i] === x)) {
+                        result.bindings.set(k, v);
+                    } else if (v !== v2) {
+                        ok = false;
+                        break;
+                    }
+                }
+                if (ok) {
+                    result.bindings = cr.bindings;
+                }
+            }
+            if (cr.ty === result.ty && cr.path === result.path
+                && cr.bindings === result.bindings && cr.generics === result.generics
+                && cr.ty === result.ty
+            ) {
+                return cr;
+            }
+        }
+        TYPES_POOL.set(result.id, result);
+        return result;
     }
 
     /**
@@ -2817,7 +2870,7 @@ ${item.displayPath}<span class="${type}">${name}</span>\
      * object-based encoding so that the actual search code is more readable and easier to debug.
      *
      * The raw function search type format is generated using serde in
-     * librustdoc/html/render/mod.rs: impl Serialize for IndexItemFunctionType
+     * librustdoc/html/render/mod.rs: IndexItemFunctionType::write_to_string
      *
      * @param {{
      *  string: string,
@@ -2986,8 +3039,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
         const fb = {
             id: null,
             ty: 0,
-            generics: [],
-            bindings: new Map(),
+            generics: EMPTY_GENERICS_ARRAY,
+            bindings: EMPTY_BINDINGS_MAP,
         };
         for (const [k, v] of type.bindings.entries()) {
             fb.id = k;
@@ -3215,6 +3268,8 @@ ${item.displayPath}<span class="${type}">${name}</span>\
             }
             currentIndex += itemTypes.length;
         }
+        // Drop the (rather large) hash table used for reusing function items
+        TYPES_POOL = new Map();
     }
 
     /**
