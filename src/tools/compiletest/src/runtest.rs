@@ -19,7 +19,6 @@ use miropt_test_tools::{files_for_miropt_test, MiroptTest, MiroptTestFile};
 use regex::{Captures, Regex};
 use rustfix::{apply_suggestions, get_suggestions_from_json, Filter};
 
-use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::ffi::{OsStr, OsString};
@@ -725,7 +724,7 @@ impl<'test> TestCx<'test> {
 
     /// Replace line numbers in coverage reports with the placeholder `LL`,
     /// so that the tests are less sensitive to lines being added/removed.
-    fn anonymize_coverage_line_numbers(coverage: &str) -> Cow<'_, str> {
+    fn anonymize_coverage_line_numbers(coverage: &str) -> String {
         // The coverage reporter prints line numbers at the start of a line.
         // They are truncated or left-padded to occupy exactly 5 columns.
         // (`LineNumberColumnWidth` in `SourceCoverageViewText.cpp`.)
@@ -733,9 +732,28 @@ impl<'test> TestCx<'test> {
         //
         // Line numbers that appear inside expansion/instantiation subviews
         // have an additional prefix of `  |` for each nesting level.
+        //
+        // Branch views also include the relevant line number, so we want to
+        // redact those too. (These line numbers don't have padding.)
+        //
+        // Note: The pattern `(?m:^)` matches the start of a line.
+
+        // `    1|` => `   LL|`
+        // `   10|` => `   LL|`
+        // `  100|` => `   LL|`
+        // `  | 1000|`    => `  |   LL|`
+        // `  |  | 1000|` => `  |  |   LL|`
         static LINE_NUMBER_RE: Lazy<Regex> =
             Lazy::new(|| Regex::new(r"(?m:^)(?<prefix>(?:  \|)*) *[0-9]+\|").unwrap());
-        LINE_NUMBER_RE.replace_all(coverage, "$prefix   LL|")
+        let coverage = LINE_NUMBER_RE.replace_all(&coverage, "${prefix}   LL|");
+
+        // `  |  Branch (1:`     => `  |  Branch (LL:`
+        // `  |  |  Branch (10:` => `  |  |  Branch (LL:`
+        static BRANCH_LINE_NUMBER_RE: Lazy<Regex> =
+            Lazy::new(|| Regex::new(r"(?m:^)(?<prefix>(?:  \|)+  Branch \()[0-9]+:").unwrap());
+        let coverage = BRANCH_LINE_NUMBER_RE.replace_all(&coverage, "${prefix}LL:");
+
+        coverage.into_owned()
     }
 
     /// Coverage reports can describe multiple source files, separated by
