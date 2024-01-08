@@ -141,7 +141,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
                 }
                 TempState::Unpromotable
             }
-            _ => TempState::Unpromotable,
+            TempState::Unpromotable | TempState::PromotedOut => TempState::Unpromotable,
         };
     }
 
