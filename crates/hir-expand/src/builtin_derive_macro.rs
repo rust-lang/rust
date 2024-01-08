@@ -1,6 +1,5 @@
 //! Builtin derives.
 
-use base_db::{CrateOrigin, LangCrateOrigin};
 use itertools::izip;
 use rustc_hash::FxHashSet;
 use span::{MacroCallId, Span};
@@ -10,6 +9,7 @@ use tracing::debug;
 use crate::{
     hygiene::span_with_def_site_ctxt,
     name::{AsName, Name},
+    quote::dollar_crate,
     span_map::SpanMapRef,
     tt,
 };
@@ -38,7 +38,7 @@ macro_rules! register_builtin {
 
                 let span = db.lookup_intern_macro_call(id).call_site;
                 let span = span_with_def_site_ctxt(db, span, id);
-                expander(db, id, span, tt, token_map)
+                expander(span, tt, token_map)
             }
 
             fn find_by_name(name: &name::Name) -> Option<Self> {
@@ -398,41 +398,13 @@ fn expand_simple_derive(
     ExpandResult::ok(expanded)
 }
 
-fn find_builtin_crate(db: &dyn ExpandDatabase, id: MacroCallId, span: Span) -> tt::TokenTree {
-    // FIXME: make hygiene works for builtin derive macro
-    // such that $crate can be used here.
-    let cg = db.crate_graph();
-    let krate = db.lookup_intern_macro_call(id).krate;
-
-    let tt = if matches!(cg[krate].origin, CrateOrigin::Lang(LangCrateOrigin::Core)) {
-        cov_mark::hit!(test_copy_expand_in_core);
-        quote! {span => crate }
-    } else {
-        quote! {span => core }
-    };
-
-    tt.token_trees[0].clone()
-}
-
-fn copy_expand(
-    db: &dyn ExpandDatabase,
-    id: MacroCallId,
-    span: Span,
-    tt: &ast::Adt,
-    tm: SpanMapRef<'_>,
-) -> ExpandResult<tt::Subtree> {
-    let krate = find_builtin_crate(db, id, span);
+fn copy_expand(span: Span, tt: &ast::Adt, tm: SpanMapRef<'_>) -> ExpandResult<tt::Subtree> {
+    let krate = dollar_crate(span);
     expand_simple_derive(span, tt, tm, quote! {span => #krate::marker::Copy }, |_| quote! {span =>})
 }
 
-fn clone_expand(
-    db: &dyn ExpandDatabase,
-    id: MacroCallId,
-    span: Span,
-    tt: &ast::Adt,
-    tm: SpanMapRef<'_>,
-) -> ExpandResult<tt::Subtree> {
-    let krate = find_builtin_crate(db, id, span);
+fn clone_expand(span: Span, tt: &ast::Adt, tm: SpanMapRef<'_>) -> ExpandResult<tt::Subtree> {
+    let krate = dollar_crate(span);
     expand_simple_derive(span, tt, tm, quote! {span => #krate::clone::Clone }, |adt| {
         if matches!(adt.shape, AdtShape::Union) {
             let star = tt::Punct { char: '*', spacing: ::tt::Spacing::Alone, span };
@@ -482,14 +454,8 @@ fn and_and(span: Span) -> tt::Subtree {
     quote! {span => #and& }
 }
 
-fn default_expand(
-    db: &dyn ExpandDatabase,
-    id: MacroCallId,
-    span: Span,
-    tt: &ast::Adt,
-    tm: SpanMapRef<'_>,
-) -> ExpandResult<tt::Subtree> {
-    let krate = &find_builtin_crate(db, id, span);
+fn default_expand(span: Span, tt: &ast::Adt, tm: SpanMapRef<'_>) -> ExpandResult<tt::Subtree> {
+    let krate = &dollar_crate(span);
     expand_simple_derive(span, tt, tm, quote! {span => #krate::default::Default }, |adt| {
         let body = match &adt.shape {
             AdtShape::Struct(fields) => {
@@ -527,14 +493,8 @@ fn default_expand(
     })
 }
 
-fn debug_expand(
-    db: &dyn ExpandDatabase,
-    id: MacroCallId,
-    span: Span,
-    tt: &ast::Adt,
-    tm: SpanMapRef<'_>,
-) -> ExpandResult<tt::Subtree> {
-    let krate = &find_builtin_crate(db, id, span);
+fn debug_expand(span: Span, tt: &ast::Adt, tm: SpanMapRef<'_>) -> ExpandResult<tt::Subtree> {
+    let krate = &dollar_crate(span);
     expand_simple_derive(span, tt, tm, quote! {span => #krate::fmt::Debug }, |adt| {
         let for_variant = |name: String, v: &VariantShape| match v {
             VariantShape::Struct(fields) => {
@@ -605,14 +565,8 @@ fn debug_expand(
     })
 }
 
-fn hash_expand(
-    db: &dyn ExpandDatabase,
-    id: MacroCallId,
-    span: Span,
-    tt: &ast::Adt,
-    tm: SpanMapRef<'_>,
-) -> ExpandResult<tt::Subtree> {
-    let krate = &find_builtin_crate(db, id, span);
+fn hash_expand(span: Span, tt: &ast::Adt, tm: SpanMapRef<'_>) -> ExpandResult<tt::Subtree> {
+    let krate = &dollar_crate(span);
     expand_simple_derive(span, tt, tm, quote! {span => #krate::hash::Hash }, |adt| {
         if matches!(adt.shape, AdtShape::Union) {
             // FIXME: Return expand error here
@@ -658,25 +612,13 @@ fn hash_expand(
     })
 }
 
-fn eq_expand(
-    db: &dyn ExpandDatabase,
-    id: MacroCallId,
-    span: Span,
-    tt: &ast::Adt,
-    tm: SpanMapRef<'_>,
-) -> ExpandResult<tt::Subtree> {
-    let krate = find_builtin_crate(db, id, span);
+fn eq_expand(span: Span, tt: &ast::Adt, tm: SpanMapRef<'_>) -> ExpandResult<tt::Subtree> {
+    let krate = dollar_crate(span);
     expand_simple_derive(span, tt, tm, quote! {span => #krate::cmp::Eq }, |_| quote! {span =>})
 }
 
-fn partial_eq_expand(
-    db: &dyn ExpandDatabase,
-    id: MacroCallId,
-    span: Span,
-    tt: &ast::Adt,
-    tm: SpanMapRef<'_>,
-) -> ExpandResult<tt::Subtree> {
-    let krate = find_builtin_crate(db, id, span);
+fn partial_eq_expand(span: Span, tt: &ast::Adt, tm: SpanMapRef<'_>) -> ExpandResult<tt::Subtree> {
+    let krate = dollar_crate(span);
     expand_simple_derive(span, tt, tm, quote! {span => #krate::cmp::PartialEq }, |adt| {
         if matches!(adt.shape, AdtShape::Union) {
             // FIXME: Return expand error here
@@ -747,17 +689,11 @@ fn self_and_other_patterns(
     (self_patterns, other_patterns)
 }
 
-fn ord_expand(
-    db: &dyn ExpandDatabase,
-    id: MacroCallId,
-    span: Span,
-    tt: &ast::Adt,
-    tm: SpanMapRef<'_>,
-) -> ExpandResult<tt::Subtree> {
-    let krate = &find_builtin_crate(db, id, span);
+fn ord_expand(span: Span, tt: &ast::Adt, tm: SpanMapRef<'_>) -> ExpandResult<tt::Subtree> {
+    let krate = &dollar_crate(span);
     expand_simple_derive(span, tt, tm, quote! {span => #krate::cmp::Ord }, |adt| {
         fn compare(
-            krate: &tt::TokenTree,
+            krate: &tt::Ident,
             left: tt::Subtree,
             right: tt::Subtree,
             rest: tt::Subtree,
@@ -811,17 +747,11 @@ fn ord_expand(
     })
 }
 
-fn partial_ord_expand(
-    db: &dyn ExpandDatabase,
-    id: MacroCallId,
-    span: Span,
-    tt: &ast::Adt,
-    tm: SpanMapRef<'_>,
-) -> ExpandResult<tt::Subtree> {
-    let krate = &find_builtin_crate(db, id, span);
+fn partial_ord_expand(span: Span, tt: &ast::Adt, tm: SpanMapRef<'_>) -> ExpandResult<tt::Subtree> {
+    let krate = &dollar_crate(span);
     expand_simple_derive(span, tt, tm, quote! {span => #krate::cmp::PartialOrd }, |adt| {
         fn compare(
-            krate: &tt::TokenTree,
+            krate: &tt::Ident,
             left: tt::Subtree,
             right: tt::Subtree,
             rest: tt::Subtree,
