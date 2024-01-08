@@ -260,13 +260,13 @@ impl<'tcx> SearchGraph<'tcx> {
                 } else {
                     // If we don't have a provisional result yet we're in the first iteration,
                     // so we start with no constraints.
-                    let is_coinductive = self.stack.raw[stack_depth.index()..]
+                    let is_inductive = self.stack.raw[stack_depth.index()..]
                         .iter()
-                        .all(|entry| entry.input.value.goal.predicate.is_coinductive(tcx));
-                    if is_coinductive {
-                        Self::response_no_constraints(tcx, input, Certainty::Yes)
-                    } else {
+                        .any(|entry| !entry.input.value.goal.predicate.is_coinductive(tcx));
+                    if is_inductive {
                         Self::response_no_constraints(tcx, input, Certainty::OVERFLOW)
+                    } else {
+                        Self::response_no_constraints(tcx, input, Certainty::Yes)
                     }
                 };
             }
