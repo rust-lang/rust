@@ -293,13 +293,12 @@ impl ast::GenericParamList {
     }
 
     /// Removes the corresponding generic arg
-    pub fn remove_generic_arg(&self, generic_arg: &ast::GenericArg) -> Option<GenericParam> {
+    pub fn remove_generic_arg(&self, generic_arg: &ast::GenericArg) {
         let param_to_remove = self.find_generic_arg(generic_arg);
 
         if let Some(param) = &param_to_remove {
             self.remove_generic_param(param.clone());
         }
-        param_to_remove
     }
 
     /// Constructs a matching [`ast::GenericArgList`]

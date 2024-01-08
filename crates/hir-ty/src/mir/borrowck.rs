@@ -205,7 +205,7 @@ fn place_case(db: &dyn HirDatabase, body: &MirBody, lvalue: &Place) -> Projectio
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. }
             | ProjectionElem::Field(_)
-            | ProjectionElem::TupleOrClosureField(_)
+            | ProjectionElem::ClosureField(_)
             | ProjectionElem::Index(_) => {
                 is_part_of = true;
             }

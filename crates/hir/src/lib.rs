@@ -55,7 +55,7 @@ use hir_def::{
     AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId,
     EnumId, EnumVariantId, ExternCrateId, FunctionId, GenericDefId, GenericParamId, HasModule,
     ImplId, InTypeConstId, ItemContainerId, LifetimeParamId, LocalEnumVariantId, LocalFieldId,
-    Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId, TraitAliasId, TraitId,
+    Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId, TraitAliasId, TraitId, TupleId,
     TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
 };
 use hir_expand::{attrs::collect_attrs, name::name, proc_macro::ProcMacroKind, MacroCallKind};
@@ -1038,6 +1038,29 @@ pub struct Field {
     pub(crate) id: LocalFieldId,
 }
 
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
+pub struct TupleField {
+    pub owner: DefWithBodyId,
+    pub tuple: TupleId,
+    pub index: u32,
+}
+
+impl TupleField {
+    pub fn name(&self) -> Name {
+        Name::new_tuple_field(self.index as usize)
+    }
+
+    pub fn ty(&self, db: &dyn HirDatabase) -> Type {
+        let ty = db.infer(self.owner).tuple_field_access_types[&self.tuple]
+            .as_slice(Interner)
+            .get(self.index as usize)
+            .and_then(|arg| arg.ty(Interner))
+            .cloned()
+            .unwrap_or_else(|| TyKind::Error.intern(Interner));
+        Type { env: db.trait_environment_for_body(self.owner), ty }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum FieldSource {
     Named(ast::RecordField),
@@ -1070,7 +1093,7 @@ impl Field {
 
     pub fn layout(&self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
         db.layout_of_ty(
-            self.ty(db).ty.clone(),
+            self.ty(db).ty,
             db.trait_environment(match hir_def::VariantId::from(self.parent) {
                 hir_def::VariantId::EnumVariantId(id) => GenericDefId::EnumVariantId(id),
                 hir_def::VariantId::StructId(id) => GenericDefId::AdtId(id.into()),
@@ -1831,7 +1854,7 @@ impl DefWithBody {
                     let local = Local { parent: self.into(), binding_id };
                     match (need_mut, local.is_mut(db)) {
                         (mir::MutabilityReason::Unused, _) => {
-                            let should_ignore = matches!(body[binding_id].name.as_str(), Some(it) if it.starts_with("_"));
+                            let should_ignore = matches!(body[binding_id].name.as_str(), Some(it) if it.starts_with('_'));
                             if !should_ignore {
                                 acc.push(UnusedVariable { local }.into())
                             }
@@ -1856,7 +1879,7 @@ impl DefWithBody {
                         }
                         (mir::MutabilityReason::Not, true) => {
                             if !infer.mutated_bindings_in_closure.contains(&binding_id) {
-                                let should_ignore = matches!(body[binding_id].name.as_str(), Some(it) if it.starts_with("_"));
+                                let should_ignore = matches!(body[binding_id].name.as_str(), Some(it) if it.starts_with('_'));
                                 if !should_ignore {
                                     acc.push(UnusedMut { local }.into())
                                 }
@@ -2160,7 +2183,7 @@ impl Function {
                 return r;
             }
         };
-        let (result, stdout, stderr) = interpret_mir(db, body, false, None);
+        let (result, output) = interpret_mir(db, body, false, None);
         let mut text = match result {
             Ok(_) => "pass".to_string(),
             Err(e) => {
@@ -2169,10 +2192,12 @@ impl Function {
                 r
             }
         };
+        let stdout = output.stdout().into_owned();
         if !stdout.is_empty() {
             text += "\n--------- stdout ---------\n";
             text += &stdout;
         }
+        let stderr = output.stdout().into_owned();
         if !stderr.is_empty() {
             text += "\n--------- stderr ---------\n";
             text += &stderr;
@@ -3648,7 +3673,6 @@ impl Closure {
         let (captures, _) = infer.closure_info(&self.id);
         captures
             .iter()
-            .cloned()
             .map(|capture| Type {
                 env: db.trait_environment_for_body(owner),
                 ty: capture.ty(&self.subst),
@@ -4119,6 +4143,10 @@ impl Type {
         } else {
             None
         }
+    }
+
+    pub(crate) fn canonical(&self) -> Canonical<Ty> {
+        hir_ty::replace_errors_with_variables(&self.ty)
     }
 
     /// Returns types that this type dereferences to (including this type itself). The returned

@@ -69,7 +69,7 @@ impl FieldOrTupleIdx {
                 .as_str()
                 .map(|s| s.to_owned())
                 .unwrap_or_else(|| format!(".{}", f.name(db).as_tuple_index().unwrap())),
-            FieldOrTupleIdx::TupleIdx(i) => format!(".{i}").to_owned(),
+            FieldOrTupleIdx::TupleIdx(i) => format!(".{i}"),
         }
     }
 }
@@ -203,7 +203,7 @@ pub(crate) fn view_memory_layout(
 
             let mut nodes = vec![MemoryLayoutNode {
                 item_name,
-                typename: typename.clone(),
+                typename,
                 size: layout.size(),
                 offset: 0,
                 alignment: layout.align(),

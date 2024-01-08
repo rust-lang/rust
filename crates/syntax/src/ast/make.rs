@@ -263,9 +263,6 @@ pub fn impl_(
     ast_from_text(&format!("impl{gen_params} {path_type}{tr_gen_args}{where_clause}{{{}}}", body))
 }
 
-// FIXME : We must make *_gen_args' type ast::GenericArgList but in order to do so we must implement in `edit_in_place.rs`
-// `add_generic_arg()` just like `add_generic_param()`
-// is implemented for `ast::GenericParamList`
 pub fn impl_trait(
     is_unsafe: bool,
     trait_gen_params: Option<ast::GenericParamList>,
