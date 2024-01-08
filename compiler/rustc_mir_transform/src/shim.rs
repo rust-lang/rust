@@ -656,7 +656,7 @@ fn build_call_shim<'tcx>(
     // `FnPtrShim` contains the fn pointer type that a call shim is being built for - this is used
     // to substitute into the signature of the shim. It is not necessary for users of this
     // MIR body to perform further substitutions (see `InstanceDef::has_polymorphic_mir_body`).
-    let (sig_args, untuple_args) = if let ty::InstanceDef::FnPtrShim(_, ty) = instance {
+    let (sig_args, untuple_args) = if let ty::InstanceDef::FnPtrShim(def_id, ty) = instance {
         let sig = tcx.instantiate_bound_regions_with_erased(ty.fn_sig(tcx));
 
         let untuple_args = sig.inputs();
@@ -664,7 +664,14 @@ fn build_call_shim<'tcx>(
         // Create substitutions for the `Self` and `Args` generic parameters of the shim body.
         let arg_tup = Ty::new_tup(tcx, untuple_args);
 
-        (Some([ty.into(), arg_tup.into()]), Some(untuple_args))
+        let sig_args = if tcx.generics_of(def_id).host_effect_index.is_some() {
+            // FIXME(effects): `true` because we only have non-const ptrs, double check this!
+            vec![ty.into(), arg_tup.into(), tcx.consts.true_.into()]
+        } else {
+            vec![ty.into(), arg_tup.into()]
+        };
+
+        (Some(sig_args), Some(untuple_args))
     } else {
         (None, None)
     };

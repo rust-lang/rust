@@ -4,6 +4,7 @@ use crate::traits::{Obligation, ObligationCause, ObligationCtxt};
 use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder};
 use rustc_hir as hir;
 use rustc_hir::Node;
+use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -248,8 +249,26 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                     span: DUMMY_SP,
                     kind: TypeVariableOriginKind::MiscVariable,
                 });
-                // FIXME(effects)
-                let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, [ty.skip_binder(), var]);
+
+                // FIXME(effects): We should report back the inferred constness here too.
+                let args = if self.tcx.generics_of(trait_def_id).host_effect_index.is_some() {
+                    self.tcx.mk_args(&[
+                        ty.skip_binder().into(),
+                        var.into(),
+                        self.next_const_var(
+                            self.tcx.types.bool,
+                            ConstVariableOrigin {
+                                kind: ConstVariableOriginKind::MiscVariable,
+                                span: DUMMY_SP,
+                            },
+                        )
+                        .into(),
+                    ])
+                } else {
+                    self.tcx.mk_args(&[ty.skip_binder().into(), var.into()])
+                };
+
+                let trait_ref = ty::TraitRef::new(self.tcx, trait_def_id, args);
                 let obligation = Obligation::new(
                     self.tcx,
                     ObligationCause::dummy(),

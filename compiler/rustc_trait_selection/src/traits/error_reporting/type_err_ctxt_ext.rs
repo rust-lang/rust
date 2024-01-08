@@ -971,11 +971,18 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 obligation.param_env,
                 trait_ref,
                 sig.map_bound(|sig| {
-                    ty::TraitRef::new(
-                        self.tcx,
-                        trait_ref.def_id(),
-                        [trait_ref.self_ty().skip_binder(), sig.inputs()[0]],
-                    )
+                    let args: Vec<ty::GenericArg<'tcx>> =
+                        if self.tcx.generics_of(trait_ref.def_id()).host_effect_index.is_some() {
+                            // FIXME(effects): Const traits!
+                            vec![
+                                trait_ref.self_ty().skip_binder().into(),
+                                sig.inputs()[0].into(),
+                                self.tcx.consts.true_.into(),
+                            ]
+                        } else {
+                            vec![trait_ref.self_ty().skip_binder().into(), sig.inputs()[0].into()]
+                        };
+                    ty::TraitRef::new(self.tcx, trait_ref.def_id(), args)
                 }),
             )
         {

@@ -566,7 +566,15 @@ impl<'tcx> Instance<'tcx> {
         let sig =
             tcx.try_normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), sig).ok()?;
         assert_eq!(sig.inputs().len(), 1);
-        let args = tcx.mk_args_trait(self_ty, [sig.inputs()[0].into()]);
+
+        let args = if tcx.generics_of(fn_once).host_effect_index.is_some() {
+            // FIXME(effects): const closures. We really should pass in a
+            // `requested_constness` above that we get from the callee of
+            // `resolve_closure`.
+            tcx.mk_args(&[self_ty.into(), sig.inputs()[0].into(), tcx.consts.true_.into()])
+        } else {
+            tcx.mk_args(&[self_ty.into(), sig.inputs()[0].into()])
+        };
 
         debug!(?self_ty, ?sig);
         Some(Instance { def, args })
