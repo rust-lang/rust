@@ -69,7 +69,7 @@ where
             pos: CursorPosition::block_entry(mir::START_BLOCK),
 
             #[cfg(debug_assertions)]
-            reachable_blocks: mir::traversal::reachable_as_bitset(body),
+            reachable_blocks: body.basic_blocks.reachable_as_bitset().clone(),
         }
     }
 

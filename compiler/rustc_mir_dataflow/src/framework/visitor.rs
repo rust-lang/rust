@@ -15,7 +15,7 @@ pub fn visit_results<'mir, 'tcx, F, R>(
     let mut state = results.new_flow_state(body);
 
     #[cfg(debug_assertions)]
-    let reachable_blocks = mir::traversal::reachable_as_bitset(body);
+    let reachable_blocks = body.basic_blocks.reachable_as_bitset();
 
     for block in blocks {
         #[cfg(debug_assertions)]
