@@ -55,24 +55,18 @@ error: invalid format string: expected format parameter to occur after `:`
    |
 LL |     format!("Hello {<5:}!", "x");
    |                     ^ expected `<` to occur after `:` in format string
-   |
-   = note: `<` comes after `:`.
 
 error: invalid format string: expected format parameter to occur after `:`
   --> $DIR/format-string-wrong-order.rs:17:21
    |
 LL |     format!("Hello {^5:}!", "x");
    |                     ^ expected `^` to occur after `:` in format string
-   |
-   = note: `^` comes after `:`.
 
 error: invalid format string: expected format parameter to occur after `:`
   --> $DIR/format-string-wrong-order.rs:19:21
    |
 LL |     format!("Hello {>5:}!", "x");
    |                     ^ expected `>` to occur after `:` in format string
-   |
-   = note: `>` comes after `:`.
 
 error: aborting due to 9 previous errors
 

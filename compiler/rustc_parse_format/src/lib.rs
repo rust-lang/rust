@@ -893,7 +893,7 @@ impl<'a> Parser<'a> {
                 0,
                 ParseError {
                     description: "expected format parameter to occur after `:`".to_owned(),
-                    note: Some(format!("`{}` comes after `:`.", alignment)),
+                    note: None,
                     label: format!("expected `{}` to occur after `:`", alignment).to_owned(),
                     span: pos.to(pos),
                     secondary_label: None,
