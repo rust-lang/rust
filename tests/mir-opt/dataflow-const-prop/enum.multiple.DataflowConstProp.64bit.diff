@@ -14,7 +14,7 @@
           let _6: u8;
           let _8: u8;
           scope 2 {
-              debug x => _6;
+              debug x2 => _6;
               let _9: u8;
               scope 4 {
                   debug y => _9;

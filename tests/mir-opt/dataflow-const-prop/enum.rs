@@ -1,4 +1,3 @@
-// skip-filecheck
 // unit-test: DataflowConstProp
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 
@@ -13,27 +12,66 @@ enum E {
 }
 
 // EMIT_MIR enum.simple.DataflowConstProp.diff
+
+// CHECK-LABEL: fn simple(
 fn simple() {
+    // CHECK: debug e => [[e:_.*]];
+    // CHECK: debug x => [[x:_.*]];
+    // CHECK: [[e]] = const E::V1(0_i32);
     let e = E::V1(0);
-    let x = match e { E::V1(x) => x, E::V2(x) => x };
+
+    // CHECK: switchInt(const 0_isize) -> [0: bb[[target_bb:[0-9]+]], 1: bb1, otherwise: bb2];
+    // CHECK: bb[[target_bb]]: {
+    // CHECK:     [[x]] = const 0_i32;
+    let x = match e { E::V1(x1) => x1, E::V2(x2) => x2 };
 }
 
 // EMIT_MIR enum.constant.DataflowConstProp.diff
+
+// CHECK-LABEL: fn constant(
 fn constant() {
+    // CHECK: debug e => [[e:_.*]];
+    // CHECK: debug x => [[x:_.*]];
     const C: E = E::V1(0);
+
+    // CHECK: [[e]] = const _;
     let e = C;
-    let x = match e { E::V1(x) => x, E::V2(x) => x };
+    // CHECK: switchInt(const 0_isize) -> [0: bb[[target_bb:[0-9]+]], 1: bb1, otherwise: bb2];
+    // CHECK: bb[[target_bb]]: {
+    // CHECK:     [[x]] = const 0_i32;
+    let x = match e { E::V1(x1) => x1, E::V2(x2) => x2 };
 }
 
 // EMIT_MIR enum.statics.DataflowConstProp.diff
+
+// CHECK-LABEL: fn statics(
 fn statics() {
+    // CHECK: debug e1 => [[e1:_.*]];
+    // CHECK: debug x1 => [[x1:_.*]];
+    // CHECK: debug e2 => [[e2:_.*]];
+    // CHECK: debug x2 => [[x2:_.*]];
+
     static C: E = E::V1(0);
-    let e = C;
-    let x = match e { E::V1(x) => x, E::V2(x) => x };
+
+    // CHECK: [[e1]] = const E::V1(0_i32);
+    let e1 = C;
+    // CHECK: switchInt(const 0_isize) -> [0: bb[[target_bb1:[0-9]+]], 1: bb1, otherwise: bb2];
+    // CHECK: bb[[target_bb]]: {
+    // CHECK:     [[x1]] = const 0_i32;
+    let x1 = match e1 { E::V1(x11) => x11, E::V2(x12) => x12 };
 
     static RC: &E = &E::V2(4);
-    let e = RC;
-    let x = match e { E::V1(x) => x, E::V2(x) => x };
+
+    // CHECK: [[t:_.*]] = const {alloc2: &&E};
+    // CHECK: [[e2]] = (*[[t]]);
+    let e2 = RC;
+    // CHECK: switchInt(move _{{[0-9]+}}) -> [0: bb{{[0-9]+}}, 1: bb{{[0-9]+}}, otherwise: bb{{[0-9]+}}];
+    // FIXME: add checks for x2. Currently, their MIRs are not symmetric in the two
+    // switch branches.
+    // One is `_9 = &(*_12) and another is `_9 = _11`. It is different from what we can
+    // get by printing MIR directly. It is better to check if there are any bugs in the
+    // MIR passes around this stage.
+    let x2 = match e2 { E::V1(x21) => x21, E::V2(x22) => x22 };
 }
 
 #[rustc_layout_scalar_valid_range_start(1)]
@@ -41,6 +79,8 @@ fn statics() {
 struct NonZeroUsize(usize);
 
 // EMIT_MIR enum.mutate_discriminant.DataflowConstProp.diff
+
+// CHECK-LABEL: fn mutate_discriminant(
 #[custom_mir(dialect = "runtime", phase = "post-cleanup")]
 fn mutate_discriminant() -> u8 {
     mir!(
@@ -50,7 +90,11 @@ fn mutate_discriminant() -> u8 {
             // This assignment overwrites the niche in which the discriminant is stored.
             place!(Field(Field(Variant(x, 1), 0), 0)) = 0_usize;
             // So we cannot know the value of this discriminant.
+
+            // CHECK: [[a:_.*]] = discriminant(_{{[0-9]*}});
             let a = Discriminant(x);
+
+            // CHECK: switchInt([[a]]) -> [0: bb{{[0-9]+}}, otherwise: bb{{[0-9]+}}];
             match a {
                 0 => bb1,
                 _ => bad,
@@ -68,18 +112,26 @@ fn mutate_discriminant() -> u8 {
 }
 
 // EMIT_MIR enum.multiple.DataflowConstProp.diff
+// CHECK-LABEL: fn multiple(
 fn multiple(x: bool, i: u8) {
+    // CHECK: debug x => [[x:_.*]];
+    // CHECK: debug e => [[e:_.*]];
+    // CHECK: debug x2 => [[x2:_.*]];
     let e = if x {
+        // CHECK: [[e]] = Option::<u8>::Some(move _{{[0-9]+}});
         Some(i)
     } else {
+        // CHECK: [[e]] = Option::<u8>::None;
         None
     };
     // The dataflow state must have:
     //   discriminant(e) => Top
     //   (e as Some).0 => Top
-    let x = match e { Some(i) => i, None => 0 };
-    // Therefore, `x` should be `Top` here, and no replacement shall happen.
-    let y = x;
+    // CHECK: [[x2]] = const 0_u8;
+    // CHECK: [[x2]] = _{{[0-9]+}}
+    let x2 = match e { Some(i) => i, None => 0 };
+    // Therefore, `x2` should be `Top` here, and no replacement shall happen.
+    let y = x2;
 }
 
 fn main() {
