@@ -75,13 +75,13 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
     Crate { module, external_traits: cx.external_traits.clone() }
 }
 
-pub(crate) fn ty_args_to_args<'tcx>(
+pub(crate) fn clean_middle_generic_args<'tcx>(
     cx: &mut DocContext<'tcx>,
-    ty_args: ty::Binder<'tcx, &'tcx [ty::GenericArg<'tcx>]>,
+    args: ty::Binder<'tcx, &'tcx [ty::GenericArg<'tcx>]>,
     has_self: bool,
     owner: DefId,
 ) -> Vec<GenericArg> {
-    if ty_args.skip_binder().is_empty() {
+    if args.skip_binder().is_empty() {
         // Fast path which avoids executing the query `generics_of`.
         return Vec::new();
     }
@@ -90,9 +90,9 @@ pub(crate) fn ty_args_to_args<'tcx>(
     let mut elision_has_failed_once_before = false;
 
     let offset = if has_self { 1 } else { 0 };
-    let mut args = Vec::with_capacity(ty_args.skip_binder().len().saturating_sub(offset));
+    let mut clean_args = Vec::with_capacity(args.skip_binder().len().saturating_sub(offset));
 
-    let ty_arg_to_arg = |(index, arg): (usize, &ty::GenericArg<'tcx>)| match arg.unpack() {
+    let clean_arg = |(index, arg): (usize, &ty::GenericArg<'tcx>)| match arg.unpack() {
         GenericArgKind::Lifetime(lt) => {
             Some(GenericArg::Lifetime(clean_middle_region(lt).unwrap_or(Lifetime::elided())))
         }
@@ -101,10 +101,9 @@ pub(crate) fn ty_args_to_args<'tcx>(
             if !elision_has_failed_once_before
                 && let Some(default) = params[index].default_value(cx.tcx)
             {
-                let default =
-                    ty_args.map_bound(|args| default.instantiate(cx.tcx, args).expect_ty());
+                let default = args.map_bound(|args| default.instantiate(cx.tcx, args).expect_ty());
 
-                if can_elide_generic_arg(ty_args.rebind(ty), default) {
+                if can_elide_generic_arg(args.rebind(ty), default) {
                     return None;
                 }
 
@@ -112,15 +111,10 @@ pub(crate) fn ty_args_to_args<'tcx>(
             }
 
             Some(GenericArg::Type(clean_middle_ty(
-                ty_args.rebind(ty),
+                args.rebind(ty),
                 cx,
                 None,
-                Some(crate::clean::ContainerTy::Regular {
-                    ty: owner,
-                    args: ty_args,
-                    has_self,
-                    arg: index,
-                }),
+                Some(crate::clean::ContainerTy::Regular { ty: owner, args, has_self, arg: index }),
             )))
         }
         GenericArgKind::Const(ct) => {
@@ -133,22 +127,22 @@ pub(crate) fn ty_args_to_args<'tcx>(
                 && let Some(default) = params[index].default_value(cx.tcx)
             {
                 let default =
-                    ty_args.map_bound(|args| default.instantiate(cx.tcx, args).expect_const());
+                    args.map_bound(|args| default.instantiate(cx.tcx, args).expect_const());
 
-                if can_elide_generic_arg(ty_args.rebind(ct), default) {
+                if can_elide_generic_arg(args.rebind(ct), default) {
                     return None;
                 }
 
                 elision_has_failed_once_before = true;
             }
 
-            Some(GenericArg::Const(Box::new(clean_middle_const(ty_args.rebind(ct), cx))))
+            Some(GenericArg::Const(Box::new(clean_middle_const(args.rebind(ct), cx))))
         }
     };
 
-    args.extend(ty_args.skip_binder().iter().enumerate().rev().filter_map(ty_arg_to_arg));
-    args.reverse();
-    args
+    clean_args.extend(args.skip_binder().iter().enumerate().rev().filter_map(clean_arg));
+    clean_args.reverse();
+    clean_args
 }
 
 /// Check if the generic argument `actual` coincides with the `default` and can therefore be elided.
@@ -192,14 +186,14 @@ where
     actual.skip_binder() == default.skip_binder()
 }
 
-fn external_generic_args<'tcx>(
+fn clean_middle_generic_args_with_bindings<'tcx>(
     cx: &mut DocContext<'tcx>,
     did: DefId,
     has_self: bool,
     bindings: ThinVec<TypeBinding>,
     ty_args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
 ) -> GenericArgs {
-    let args = ty_args_to_args(cx, ty_args.map_bound(|args| &args[..]), has_self, did);
+    let args = clean_middle_generic_args(cx, ty_args.map_bound(|args| &args[..]), has_self, did);
 
     if cx.tcx.fn_trait_kind_from_def_id(did).is_some() {
         let ty = ty_args
@@ -225,7 +219,7 @@ fn external_generic_args<'tcx>(
     }
 }
 
-pub(super) fn external_path<'tcx>(
+pub(super) fn clean_middle_path<'tcx>(
     cx: &mut DocContext<'tcx>,
     did: DefId,
     has_self: bool,
@@ -238,7 +232,7 @@ pub(super) fn external_path<'tcx>(
         res: Res::Def(def_kind, did),
         segments: thin_vec![PathSegment {
             name,
-            args: external_generic_args(cx, did, has_self, bindings, args),
+            args: clean_middle_generic_args_with_bindings(cx, did, has_self, bindings, args),
         }],
     }
 }

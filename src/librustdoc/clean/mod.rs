@@ -207,8 +207,13 @@ pub(crate) fn clean_trait_ref_with_bindings<'tcx>(
         span_bug!(cx.tcx.def_span(trait_ref.def_id()), "`TraitRef` had unexpected kind {kind:?}");
     }
     inline::record_extern_fqn(cx, trait_ref.def_id(), kind);
-    let path =
-        external_path(cx, trait_ref.def_id(), true, bindings, trait_ref.map_bound(|tr| tr.args));
+    let path = clean_middle_path(
+        cx,
+        trait_ref.def_id(),
+        true,
+        bindings,
+        trait_ref.map_bound(|tr| tr.args),
+    );
 
     debug!(?trait_ref);
 
@@ -467,7 +472,7 @@ fn projection_to_path_segment<'tcx>(
     PathSegment {
         name: item.name,
         args: GenericArgs::AngleBracketed {
-            args: ty_args_to_args(
+            args: clean_middle_generic_args(
                 cx,
                 ty.map_bound(|ty| &ty.args[generics.parent_count..]),
                 false,
@@ -2096,12 +2101,12 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 AdtKind::Enum => ItemType::Enum,
             };
             inline::record_extern_fqn(cx, did, kind);
-            let path = external_path(cx, did, false, ThinVec::new(), bound_ty.rebind(args));
+            let path = clean_middle_path(cx, did, false, ThinVec::new(), bound_ty.rebind(args));
             Type::Path { path }
         }
         ty::Foreign(did) => {
             inline::record_extern_fqn(cx, did, ItemType::ForeignType);
-            let path = external_path(
+            let path = clean_middle_path(
                 cx,
                 did,
                 false,
@@ -2132,7 +2137,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             let mut bounds = dids
                 .map(|did| {
                     let empty = ty::Binder::dummy(ty::GenericArgs::empty());
-                    let path = external_path(cx, did, false, ThinVec::new(), empty);
+                    let path = clean_middle_path(cx, did, false, ThinVec::new(), empty);
                     inline::record_extern_fqn(cx, did, ItemType::Trait);
                     PolyTrait { trait_: path, generic_params: Vec::new() }
                 })
@@ -2171,7 +2176,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 .collect();
             let late_bound_regions = late_bound_regions.into_iter().collect();
 
-            let path = external_path(cx, did, false, bindings, args);
+            let path = clean_middle_path(cx, did, false, bindings, args);
             bounds.insert(0, PolyTrait { trait_: path, generic_params: late_bound_regions });
 
             DynTrait(bounds, lifetime)
@@ -2193,7 +2198,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
                 assoc: PathSegment {
                     name: cx.tcx.associated_item(def_id).name,
                     args: GenericArgs::AngleBracketed {
-                        args: ty_args_to_args(
+                        args: clean_middle_generic_args(
                             cx,
                             alias_ty.map_bound(|ty| ty.args.as_slice()),
                             true,
@@ -2213,7 +2218,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             if cx.tcx.features().lazy_type_alias {
                 // Weak type alias `data` represents the `type X` in `type X = Y`. If we need `Y`,
                 // we need to use `type_of`.
-                let path = external_path(
+                let path = clean_middle_path(
                     cx,
                     data.def_id,
                     false,
@@ -2243,7 +2248,8 @@ pub(crate) fn clean_middle_ty<'tcx>(
         ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => {
             // If it's already in the same alias, don't get an infinite loop.
             if cx.current_type_aliases.contains_key(&def_id) {
-                let path = external_path(cx, def_id, false, ThinVec::new(), bound_ty.rebind(args));
+                let path =
+                    clean_middle_path(cx, def_id, false, ThinVec::new(), bound_ty.rebind(args));
                 Type::Path { path }
             } else {
                 *cx.current_type_aliases.entry(def_id).or_insert(0) += 1;
