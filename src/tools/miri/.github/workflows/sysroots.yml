@@ -1,8 +1,8 @@
 name: Tier 2 sysroots
 
-on: push
-#  schedule:
-#    - cron: '44 4 * * *' # At 4:44 UTC every day.
+on:
+  schedule:
+    - cron: '44 4 * * *' # At 4:44 UTC every day.
 
 defaults:
   run:
