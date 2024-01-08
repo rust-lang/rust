@@ -577,13 +577,13 @@ impl Options {
             {
                 if !theme_file.is_file() {
                     dcx.struct_err(format!("invalid argument: \"{theme_s}\""))
-                        .help("arguments to --theme must be files")
+                        .help_mv("arguments to --theme must be files")
                         .emit();
                     return Err(1);
                 }
                 if theme_file.extension() != Some(OsStr::new("css")) {
                     dcx.struct_err(format!("invalid argument: \"{theme_s}\""))
-                        .help("arguments to --theme must have a .css extension")
+                        .help_mv("arguments to --theme must have a .css extension")
                         .emit();
                     return Err(1);
                 }
@@ -595,8 +595,8 @@ impl Options {
                     dcx.struct_warn(format!(
                         "theme file \"{theme_s}\" is missing CSS rules from the default theme",
                     ))
-                    .warn("the theme may appear incorrect when loaded")
-                    .help(format!(
+                    .warn_mv("the theme may appear incorrect when loaded")
+                    .help_mv(format!(
                         "to see what rules are missing, call `rustdoc --check-theme \"{theme_s}\"`",
                     ))
                     .emit();
@@ -809,7 +809,7 @@ fn check_deprecated_options(matches: &getopts::Matches, dcx: &rustc_errors::Diag
     for &flag in deprecated_flags.iter() {
         if matches.opt_present(flag) {
             dcx.struct_warn(format!("the `{flag}` flag is deprecated"))
-                .note(
+                .note_mv(
                     "see issue #44136 <https://github.com/rust-lang/rust/issues/44136> \
                     for more information",
                 )

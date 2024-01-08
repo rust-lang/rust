@@ -245,9 +245,9 @@ pub fn parse_cfg_attr(
             crate::validate_attr::check_cfg_attr_bad_delim(parse_sess, dspan, delim);
             match parse_in(parse_sess, tokens.clone(), "`cfg_attr` input", |p| p.parse_cfg_attr()) {
                 Ok(r) => return Some(r),
-                Err(mut e) => {
-                    e.help(format!("the valid syntax is `{CFG_ATTR_GRAMMAR_HELP}`"))
-                        .note(CFG_ATTR_NOTE_REF)
+                Err(e) => {
+                    e.help_mv(format!("the valid syntax is `{CFG_ATTR_GRAMMAR_HELP}`"))
+                        .note_mv(CFG_ATTR_NOTE_REF)
                         .emit();
                 }
             }

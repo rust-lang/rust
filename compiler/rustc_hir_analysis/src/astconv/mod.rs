@@ -1647,9 +1647,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let msg = format!("{kind} `{name}` is private");
             let def_span = tcx.def_span(item);
             tcx.dcx()
-                .struct_span_err_with_code(span, msg, rustc_errors::error_code!(E0624))
-                .span_label(span, format!("private {kind}"))
-                .span_label(def_span, format!("{kind} defined here"))
+                .struct_span_err(span, msg)
+                .code_mv(rustc_errors::error_code!(E0624))
+                .span_label_mv(span, format!("private {kind}"))
+                .span_label_mv(def_span, format!("{kind} defined here"))
                 .emit();
         }
         tcx.check_stability(item, Some(block), span, None);

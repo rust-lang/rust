@@ -329,15 +329,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         if let PlaceRef { local, projection: [] } = deref_base {
             let decl = &self.body.local_decls[local];
             if decl.is_ref_for_guard() {
-                let mut err = self.cannot_move_out_of(
-                    span,
-                    &format!("`{}` in pattern guard", self.local_names[local].unwrap()),
-                );
-                err.note(
-                    "variables bound in patterns cannot be moved from \
+                return self
+                    .cannot_move_out_of(
+                        span,
+                        &format!("`{}` in pattern guard", self.local_names[local].unwrap()),
+                    )
+                    .note_mv(
+                        "variables bound in patterns cannot be moved from \
                      until after the end of the pattern guard",
-                );
-                return err;
+                    );
             } else if decl.is_ref_to_static() {
                 return self.report_cannot_move_from_static(move_place, span);
             }
@@ -381,15 +381,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     closure_kind_ty, closure_kind, place_description,
                 );
 
-                let mut diag = self.cannot_move_out_of(span, &place_description);
-
-                diag.span_label(upvar_span, "captured outer variable");
-                diag.span_label(
-                    self.infcx.tcx.def_span(def_id),
-                    format!("captured by this `{closure_kind}` closure"),
-                );
-
-                diag
+                self.cannot_move_out_of(span, &place_description)
+                    .span_label_mv(upvar_span, "captured outer variable")
+                    .span_label_mv(
+                        self.infcx.tcx.def_span(def_id),
+                        format!("captured by this `{closure_kind}` closure"),
+                    )
             }
             _ => {
                 let source = self.borrowed_content_source(deref_base);

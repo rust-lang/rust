@@ -402,7 +402,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 callee_expr.span,
                                 format!("evaluate({predicate:?}) = {result:?}"),
                             )
-                            .span_label(predicate_span, "predicate")
+                            .span_label_mv(predicate_span, "predicate")
                             .emit();
                     }
                 }

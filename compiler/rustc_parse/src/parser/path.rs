@@ -128,7 +128,7 @@ impl<'a> Parser<'a> {
                 self.prev_token.span,
                 "found single colon before projection in qualified path",
             )
-            .span_suggestion(
+            .span_suggestion_mv(
                 self.prev_token.span,
                 "use double colon",
                 "::",
@@ -493,7 +493,7 @@ impl<'a> Parser<'a> {
                 self.angle_bracket_nesting -= 1;
                 Ok(args)
             }
-            Err(mut e) if self.angle_bracket_nesting > 10 => {
+            Err(e) if self.angle_bracket_nesting > 10 => {
                 self.angle_bracket_nesting -= 1;
                 // When encountering severely malformed code where there are several levels of
                 // nested unclosed angle args (`f::<f::<f::<f::<...`), we avoid severe O(n^2)

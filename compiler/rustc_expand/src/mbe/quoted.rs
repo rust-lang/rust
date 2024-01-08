@@ -86,7 +86,7 @@ pub(super) fn parse(
                                                 );
                                                 sess.dcx
                                                     .struct_span_err(span, msg)
-                                                    .help(VALID_FRAGMENT_NAMES_MSG)
+                                                    .help_mv(VALID_FRAGMENT_NAMES_MSG)
                                                     .emit();
                                                 token::NonterminalKind::Ident
                                             },
@@ -175,7 +175,7 @@ fn parse_tree<'a>(
                                 // of a meta-variable expression (e.g. `${count(ident)}`).
                                 // Try to parse the meta-variable expression.
                                 match MetaVarExpr::parse(tts, delim_span.entire(), sess) {
-                                    Err(mut err) => {
+                                    Err(err) => {
                                         err.emit();
                                         // Returns early the same read `$` to avoid spanning
                                         // unrelated diagnostics that could be performed afterwards

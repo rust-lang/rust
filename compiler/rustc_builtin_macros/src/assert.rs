@@ -22,7 +22,7 @@ pub fn expand_assert<'cx>(
 ) -> Box<dyn MacResult + 'cx> {
     let Assert { cond_expr, custom_message } = match parse_assert(cx, span, tts) {
         Ok(assert) => assert,
-        Err(mut err) => {
+        Err(err) => {
             err.emit();
             return DummyResult::any(span);
         }

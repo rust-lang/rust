@@ -429,8 +429,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
         let base_error = self.make_base_error(path, span, source, res);
 
         let code = source.error_code(res.is_some());
-        let mut err =
-            self.r.dcx().struct_span_err_with_code(base_error.span, base_error.msg.clone(), code);
+        let mut err = self.r.dcx().struct_span_err(base_error.span, base_error.msg.clone());
+        err.code(code);
 
         self.suggest_at_operator_in_slice_pat_with_range(&mut err, path);
         self.suggest_swapping_misplaced_self_ty_and_trait(&mut err, source, res, base_error.span);
@@ -2603,25 +2603,23 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
     ) {
         debug_assert_ne!(lifetime_ref.ident.name, kw::UnderscoreLifetime);
         let mut err = if let Some(outer) = outer_lifetime_ref {
-            let mut err = struct_span_err!(
+            struct_span_err!(
                 self.r.dcx(),
                 lifetime_ref.ident.span,
                 E0401,
                 "can't use generic parameters from outer item",
-            );
-            err.span_label(lifetime_ref.ident.span, "use of generic parameter from outer item");
-            err.span_label(outer.span, "lifetime parameter from outer item");
-            err
+            )
+            .span_label_mv(lifetime_ref.ident.span, "use of generic parameter from outer item")
+            .span_label_mv(outer.span, "lifetime parameter from outer item")
         } else {
-            let mut err = struct_span_err!(
+            struct_span_err!(
                 self.r.dcx(),
                 lifetime_ref.ident.span,
                 E0261,
                 "use of undeclared lifetime name `{}`",
                 lifetime_ref.ident
-            );
-            err.span_label(lifetime_ref.ident.span, "undeclared lifetime");
-            err
+            )
+            .span_label_mv(lifetime_ref.ident.span, "undeclared lifetime")
         };
         self.suggest_introducing_lifetime(
             &mut err,
@@ -3284,16 +3282,16 @@ fn mk_where_bound_predicate(
 
 /// Report lifetime/lifetime shadowing as an error.
 pub(super) fn signal_lifetime_shadowing(sess: &Session, orig: Ident, shadower: Ident) {
-    let mut err = struct_span_err!(
+    struct_span_err!(
         sess.dcx(),
         shadower.span,
         E0496,
         "lifetime name `{}` shadows a lifetime name that is already in scope",
         orig.name,
-    );
-    err.span_label(orig.span, "first declared here");
-    err.span_label(shadower.span, format!("lifetime `{}` already in scope", orig.name));
-    err.emit();
+    )
+    .span_label_mv(orig.span, "first declared here")
+    .span_label_mv(shadower.span, format!("lifetime `{}` already in scope", orig.name))
+    .emit();
 }
 
 struct LifetimeFinder<'ast> {
@@ -3319,11 +3317,12 @@ impl<'ast> Visitor<'ast> for LifetimeFinder<'ast> {
 pub(super) fn signal_label_shadowing(sess: &Session, orig: Span, shadower: Ident) {
     let name = shadower.name;
     let shadower = shadower.span;
-    let mut err = sess.dcx().struct_span_warn(
-        shadower,
-        format!("label name `{name}` shadows a label name that is already in scope"),
-    );
-    err.span_label(orig, "first declared here");
-    err.span_label(shadower, format!("label `{name}` already in scope"));
-    err.emit();
+    sess.dcx()
+        .struct_span_warn(
+            shadower,
+            format!("label name `{name}` shadows a label name that is already in scope"),
+        )
+        .span_label_mv(orig, "first declared here")
+        .span_label_mv(shadower, format!("label `{name}` already in scope"))
+        .emit();
 }

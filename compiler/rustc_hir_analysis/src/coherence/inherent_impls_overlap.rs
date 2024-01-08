@@ -70,17 +70,16 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
             match seen_items.entry(norm_ident) {
                 Entry::Occupied(entry) => {
                     let former = entry.get();
-                    let mut err = struct_span_err!(
+                    struct_span_err!(
                         self.tcx.dcx(),
                         span,
                         E0592,
                         "duplicate definitions with name `{}`",
                         ident,
-                    );
-                    err.span_label(span, format!("duplicate definitions for `{ident}`"));
-                    err.span_label(*former, format!("other definition for `{ident}`"));
-
-                    err.emit();
+                    )
+                    .span_label_mv(span, format!("duplicate definitions for `{ident}`"))
+                    .span_label_mv(*former, format!("other definition for `{ident}`"))
+                    .emit();
                 }
                 Entry::Vacant(entry) => {
                     entry.insert(span);

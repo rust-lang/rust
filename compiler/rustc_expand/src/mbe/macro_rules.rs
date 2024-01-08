@@ -215,7 +215,7 @@ fn expand_macro<'cx>(
             // rhs has holes ( `$id` and `$(...)` that need filled)
             let tts = match transcribe(cx, &named_matches, rhs, rhs_span, transparency) {
                 Ok(tts) => tts,
-                Err(mut err) => {
+                Err(err) => {
                     err.emit();
                     return DummyResult::any(arm_span);
                 }

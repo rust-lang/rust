@@ -934,12 +934,12 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
                             return_span,
                             "return type captures more lifetimes than trait definition",
                         )
-                        .span_label(self.tcx.def_span(def_id), "this lifetime was captured")
-                        .span_note(
+                        .span_label_mv(self.tcx.def_span(def_id), "this lifetime was captured")
+                        .span_note_mv(
                             self.tcx.def_span(self.def_id),
                             "hidden type must only reference lifetimes captured by this impl trait",
                         )
-                        .note(format!("hidden type inferred to be `{}`", self.ty))
+                        .note_mv(format!("hidden type inferred to be `{}`", self.ty))
                         .emit()
                 }
                 _ => {
@@ -1371,7 +1371,7 @@ fn compare_number_of_generics<'tcx>(
             let spans = arg_spans(impl_.kind, impl_item.generics);
             let span = spans.first().copied();
 
-            let mut err = tcx.dcx().struct_span_err_with_code(
+            let mut err = tcx.dcx().struct_span_err(
                 spans,
                 format!(
                     "{} `{}` has {} {kind} parameter{} but its trait \
@@ -1384,8 +1384,8 @@ fn compare_number_of_generics<'tcx>(
                     pluralize!(trait_count),
                     kind = kind,
                 ),
-                DiagnosticId::Error("E0049".into()),
             );
+            err.code(DiagnosticId::Error("E0049".into()));
 
             let msg =
                 format!("expected {trait_count} {kind} parameter{}", pluralize!(trait_count),);

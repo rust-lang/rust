@@ -803,24 +803,23 @@ pub(crate) struct AsmClobberNoReg {
 
 impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for AsmClobberNoReg {
     fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
-        let mut diag = DiagnosticBuilder::new(
-            dcx,
-            level,
-            crate::fluent_generated::builtin_macros_asm_clobber_no_reg,
-        );
-        diag.span(self.spans.clone());
         // eager translation as `span_labels` takes `AsRef<str>`
         let lbl1 = dcx.eagerly_translate_to_string(
             crate::fluent_generated::builtin_macros_asm_clobber_abi,
             [].into_iter(),
         );
-        diag.span_labels(self.clobbers, &lbl1);
         let lbl2 = dcx.eagerly_translate_to_string(
             crate::fluent_generated::builtin_macros_asm_clobber_outputs,
             [].into_iter(),
         );
-        diag.span_labels(self.spans, &lbl2);
-        diag
+        DiagnosticBuilder::new(
+            dcx,
+            level,
+            crate::fluent_generated::builtin_macros_asm_clobber_no_reg,
+        )
+        .span_mv(self.spans.clone())
+        .span_labels_mv(self.clobbers, &lbl1)
+        .span_labels_mv(self.spans, &lbl2)
     }
 }
 

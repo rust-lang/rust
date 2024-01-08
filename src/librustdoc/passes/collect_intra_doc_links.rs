@@ -1228,7 +1228,7 @@ impl LinkCollector<'_, '_> {
             span,
             "linking to associated items of raw pointers is experimental",
         )
-        .note("rustdoc does not allow disambiguating between `*const` and `*mut`, and pointers are unstable until it does")
+        .note_mv("rustdoc does not allow disambiguating between `*const` and `*mut`, and pointers are unstable until it does")
         .emit();
     }
 

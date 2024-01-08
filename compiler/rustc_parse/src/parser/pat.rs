@@ -144,7 +144,7 @@ impl<'a> Parser<'a> {
         // Parse the first pattern (`p_0`).
         let mut first_pat = match self.parse_pat_no_top_alt(expected, syntax_loc) {
             Ok(pat) => pat,
-            Err(mut err)
+            Err(err)
                 if self.token.is_reserved_ident()
                     && !self.token.is_keyword(kw::In)
                     && !self.token.is_keyword(kw::If) =>
@@ -242,7 +242,7 @@ impl<'a> Parser<'a> {
                 Some(TopLevelOrPatternNotAllowedSugg::WrapInParens { span, pat })
             };
 
-            let mut err = self.dcx().create_err(match syntax_loc {
+            let err = self.dcx().create_err(match syntax_loc {
                 PatternLocation::LetBinding => {
                     TopLevelOrPatternNotAllowed::LetBinding { span, sub }
                 }
@@ -252,8 +252,9 @@ impl<'a> Parser<'a> {
             });
             if trailing_vert {
                 err.delay_as_bug();
+            } else {
+                err.emit();
             }
-            err.emit();
         }
 
         Ok((pat, colon))
@@ -460,9 +461,10 @@ impl<'a> Parser<'a> {
                         super::token_descr(&self_.token)
                     );
 
-                    let mut err = self_.dcx().struct_span_err(self_.token.span, msg);
-                    err.span_label(self_.token.span, format!("expected {expected}"));
-                    err
+                    self_
+                        .dcx()
+                        .struct_span_err(self_.token.span, msg)
+                        .span_label_mv(self_.token.span, format!("expected {expected}"))
                 });
             PatKind::Lit(self.mk_expr(lo, ExprKind::Lit(lit)))
         } else {
@@ -1028,7 +1030,7 @@ impl<'a> Parser<'a> {
             let attrs = match self.parse_outer_attributes() {
                 Ok(attrs) => attrs,
                 Err(err) => {
-                    if let Some(mut delayed) = delayed_err {
+                    if let Some(delayed) = delayed_err {
                         delayed.emit();
                     }
                     return Err(err);
@@ -1040,7 +1042,7 @@ impl<'a> Parser<'a> {
             if !ate_comma {
                 let mut err =
                     self.dcx().create_err(ExpectedCommaAfterPatternField { span: self.token.span });
-                if let Some(mut delayed) = delayed_err {
+                if let Some(delayed) = delayed_err {
                     delayed.emit();
                 }
                 self.recover_misplaced_pattern_modifiers(&fields, &mut err);
@@ -1113,14 +1115,14 @@ impl<'a> Parser<'a> {
                     // This way we avoid "pattern missing fields" errors afterwards.
                     // We delay this error until the end in order to have a span for a
                     // suggested fix.
-                    if let Some(mut delayed_err) = delayed_err {
+                    if let Some(delayed_err) = delayed_err {
                         delayed_err.emit();
                         return Err(err);
                     } else {
                         delayed_err = Some(err);
                     }
                 } else {
-                    if let Some(mut err) = delayed_err {
+                    if let Some(err) = delayed_err {
                         err.emit();
                     }
                     return Err(err);
@@ -1132,7 +1134,7 @@ impl<'a> Parser<'a> {
                     let field = match this.parse_pat_field(lo, attrs) {
                         Ok(field) => Ok(field),
                         Err(err) => {
-                            if let Some(mut delayed_err) = delayed_err.take() {
+                            if let Some(delayed_err) = delayed_err.take() {
                                 delayed_err.emit();
                             }
                             return Err(err);

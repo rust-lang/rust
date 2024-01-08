@@ -171,7 +171,7 @@ impl MultiItemModifier for DeriveProcMacro {
                         items.push(Annotatable::Item(item));
                     }
                 }
-                Err(mut err) => {
+                Err(err) => {
                     err.emit();
                     break;
                 }

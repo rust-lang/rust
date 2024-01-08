@@ -34,8 +34,8 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    pluralize, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder, FatalError,
-    PResult,
+    pluralize, AddToDiagnostic, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
+    ErrorGuaranteed, FatalError, PErr, PResult,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
@@ -896,7 +896,7 @@ impl<'a> Parser<'a> {
             let struct_expr = snapshot.parse_expr_struct(None, path, false);
             let block_tail = self.parse_block_tail(lo, s, AttemptLocalParseRecovery::No);
             return Some(match (struct_expr, block_tail) {
-                (Ok(expr), Err(mut err)) => {
+                (Ok(expr), Err(err)) => {
                     // We have encountered the following:
                     // fn foo() -> Foo {
                     //     field: value,
@@ -1049,9 +1049,9 @@ impl<'a> Parser<'a> {
         &mut self,
         segment: &PathSegment,
         end: &[&TokenKind],
-    ) -> bool {
+    ) -> Option<ErrorGuaranteed> {
         if !self.may_recover() {
-            return false;
+            return None;
         }
 
         // This function is intended to be invoked after parsing a path segment where there are two
@@ -1086,7 +1086,7 @@ impl<'a> Parser<'a> {
             parsed_angle_bracket_args,
         );
         if !parsed_angle_bracket_args {
-            return false;
+            return None;
         }
 
         // Keep the span at the start so we can highlight the sequence of `>` characters to be
@@ -1124,7 +1124,7 @@ impl<'a> Parser<'a> {
             number_of_gt, number_of_shr,
         );
         if number_of_gt < 1 && number_of_shr < 1 {
-            return false;
+            return None;
         }
 
         // Finally, double check that we have our end token as otherwise this is the
@@ -1139,10 +1139,9 @@ impl<'a> Parser<'a> {
             let span = lo.until(self.token.span);
 
             let num_extra_brackets = number_of_gt + number_of_shr * 2;
-            self.dcx().emit_err(UnmatchedAngleBrackets { span, num_extra_brackets });
-            return true;
+            return Some(self.dcx().emit_err(UnmatchedAngleBrackets { span, num_extra_brackets }));
         }
-        false
+        None
     }
 
     /// Check if a method call with an intended turbofish has been written without surrounding
@@ -1212,29 +1211,32 @@ impl<'a> Parser<'a> {
             match x {
                 Ok((_, _, false)) => {
                     if self.eat(&token::Gt) {
+                        // We made sense of it. Improve the error message.
                         e.span_suggestion_verbose(
                             binop.span.shrink_to_lo(),
                             fluent::parse_sugg_turbofish_syntax,
                             "::",
                             Applicability::MaybeIncorrect,
-                        )
-                        .emit();
+                        );
                         match self.parse_expr() {
                             Ok(_) => {
+                                // The subsequent expression is valid. Mark
+                                // `expr` as erroneous and emit `e` now, but
+                                // return `Ok` so parsing can continue.
+                                e.emit();
                                 *expr = self.mk_expr_err(expr.span.to(self.prev_token.span));
                                 return Ok(());
                             }
                             Err(err) => {
-                                *expr = self.mk_expr_err(expr.span);
                                 err.cancel();
                             }
                         }
                     }
                 }
+                Ok((_, _, true)) => {}
                 Err(err) => {
                     err.cancel();
                 }
-                _ => {}
             }
         }
         Err(e)
@@ -2041,17 +2043,12 @@ impl<'a> Parser<'a> {
         &mut self,
         delim: Delimiter,
         lo: Span,
-        result: PResult<'a, P<Expr>>,
+        err: PErr<'a>,
     ) -> P<Expr> {
-        match result {
-            Ok(x) => x,
-            Err(mut err) => {
-                err.emit();
-                // Recover from parse error, callers expect the closing delim to be consumed.
-                self.consume_block(delim, ConsumeClosingDelim::Yes);
-                self.mk_expr(lo.to(self.prev_token.span), ExprKind::Err)
-            }
-        }
+        err.emit();
+        // Recover from parse error, callers expect the closing delim to be consumed.
+        self.consume_block(delim, ConsumeClosingDelim::Yes);
+        self.mk_expr(lo.to(self.prev_token.span), ExprKind::Err)
     }
 
     /// Eats tokens until we can be relatively sure we reached the end of the
@@ -2470,7 +2467,7 @@ impl<'a> Parser<'a> {
                     return Ok(true); // Continue
                 }
             }
-            Err(mut err) => {
+            Err(err) => {
                 args.push(arg);
                 // We will emit a more generic error later.
                 err.delay_as_bug();
@@ -2848,15 +2845,16 @@ impl<'a> Parser<'a> {
         let label = self.eat_label().expect("just checked if a label exists");
         self.bump(); // eat `:`
         let span = label.ident.span.to(self.prev_token.span);
-        let mut err = self.dcx().struct_span_err(span, "block label not supported here");
-        err.span_label(span, "not supported here");
-        err.tool_only_span_suggestion(
-            label.ident.span.until(self.token.span),
-            "remove this block label",
-            "",
-            Applicability::MachineApplicable,
-        );
-        err.emit();
+        self.dcx()
+            .struct_span_err(span, "block label not supported here")
+            .span_label_mv(span, "not supported here")
+            .tool_only_span_suggestion_mv(
+                label.ident.span.until(self.token.span),
+                "remove this block label",
+                "",
+                Applicability::MachineApplicable,
+            )
+            .emit();
         true
     }
 
@@ -2946,7 +2944,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn recover_diff_marker(&mut self) {
-        if let Err(mut err) = self.err_diff_marker() {
+        if let Err(err) = self.err_diff_marker() {
             err.emit();
             FatalError.raise();
         }
