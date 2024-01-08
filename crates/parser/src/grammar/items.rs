@@ -58,7 +58,21 @@ pub(super) fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool) {
         Err(m) => m,
     };
 
-    if paths::is_use_path_start(p) {
+    // test macro_rules_as_macro_name
+    // macro_rules! {}
+    // macro_rules! {};
+    // macro_rules! ();
+    // macro_rules! [];
+    // fn main() {
+    //     let foo = macro_rules!();
+    // }
+
+    // test_err macro_rules_as_macro_name
+    // macro_rules! ()
+    // macro_rules! []
+    if paths::is_use_path_start(p)
+        || (p.at_contextual_kw(T![macro_rules]) && p.nth_at(1, BANG) && !p.nth_at(2, IDENT))
+    {
         match macro_call(p) {
             BlockLike::Block => (),
             BlockLike::NotBlock => {
@@ -228,7 +242,15 @@ fn opt_item_without_modifiers(p: &mut Parser<'_>, m: Marker) -> Result<(), Marke
         IDENT if p.at_contextual_kw(T![union]) && p.nth(1) == IDENT => adt::union(p, m),
 
         T![macro] => macro_def(p, m),
-        IDENT if p.at_contextual_kw(T![macro_rules]) && p.nth(1) == BANG => macro_rules(p, m),
+        // check if current token is "macro_rules" followed by "!" followed by an identifier or "try"
+        // try is keyword since the 2018 edition and the parser is not edition aware (yet!)
+        IDENT
+            if p.at_contextual_kw(T![macro_rules])
+                && p.nth_at(1, BANG)
+                && (p.nth_at(2, IDENT) || p.nth_at(2, T![try])) =>
+        {
+            macro_rules(p, m)
+        }
 
         T![const] if (la == IDENT || la == T![_] || la == T![mut]) => consts::konst(p, m),
         T![static] if (la == IDENT || la == T![_] || la == T![mut]) => consts::static_(p, m),
