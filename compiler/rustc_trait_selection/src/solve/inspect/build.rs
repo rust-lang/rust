@@ -118,6 +118,7 @@ pub(in crate::solve) enum WipGoalEvaluationKind<'tcx> {
 pub(in crate::solve) enum WipCanonicalGoalEvaluationKind<'tcx> {
     Overflow,
     CycleInStack,
+    ProvisionalCacheHit,
     Interned { revisions: &'tcx [inspect::GoalEvaluationStep<'tcx>] },
 }
 
@@ -126,6 +127,7 @@ impl std::fmt::Debug for WipCanonicalGoalEvaluationKind<'_> {
         match self {
             Self::Overflow => write!(f, "Overflow"),
             Self::CycleInStack => write!(f, "CycleInStack"),
+            Self::ProvisionalCacheHit => write!(f, "ProvisionalCacheHit"),
             Self::Interned { revisions: _ } => f.debug_struct("Interned").finish_non_exhaustive(),
         }
     }
@@ -150,6 +152,9 @@ impl<'tcx> WipCanonicalGoalEvaluation<'tcx> {
             }
             WipCanonicalGoalEvaluationKind::CycleInStack => {
                 inspect::CanonicalGoalEvaluationKind::CycleInStack
+            }
+            WipCanonicalGoalEvaluationKind::ProvisionalCacheHit => {
+                inspect::CanonicalGoalEvaluationKind::ProvisionalCacheHit
             }
             WipCanonicalGoalEvaluationKind::Interned { revisions } => {
                 inspect::CanonicalGoalEvaluationKind::Evaluation { revisions }
