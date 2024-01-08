@@ -13,6 +13,7 @@ use rustc_span::{ErrorGuaranteed, Span};
 
 use std::collections::VecDeque;
 use std::fmt::Write;
+use std::ops::ControlFlow;
 
 impl<'tcx> Value<TyCtxt<'tcx>> for Ty<'_> {
     fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &CycleError, guar: ErrorGuaranteed) -> Self {
@@ -130,16 +131,34 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::EarlyBinder<ty::Binder<'_, ty::FnSig<'_>>
     }
 }
 
+// Take a cycle of `Q` and try `try_cycle` on every permutation, falling back to `otherwise`.
+fn search_for_cycle_permutation<Q, T>(
+    cycle: &[Q],
+    try_cycle: impl Fn(&mut VecDeque<&Q>) -> ControlFlow<T, ()>,
+    otherwise: impl FnOnce() -> T,
+) -> T {
+    let mut cycle: VecDeque<_> = cycle.iter().collect();
+    for _ in 0..cycle.len() {
+        match try_cycle(&mut cycle) {
+            ControlFlow::Continue(_) => {
+                cycle.rotate_left(1);
+            }
+            ControlFlow::Break(t) => return t,
+        }
+    }
+
+    otherwise()
+}
+
 impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>> {
     fn from_cycle_error(
         tcx: TyCtxt<'tcx>,
         cycle_error: &CycleError,
         _guar: ErrorGuaranteed,
     ) -> Self {
-        let mut cycle: VecDeque<_> = cycle_error.cycle.iter().collect();
-
-        let guar = 'search: {
-            for _ in 0..cycle.len() {
+        let diag = search_for_cycle_permutation(
+            &cycle_error.cycle,
+            |cycle| {
                 if cycle[0].query.dep_kind == dep_kinds::layout_of
                     && let Some(def_id) = cycle[0].query.ty_def_id
                     && let Some(def_id) = def_id.as_local()
@@ -204,13 +223,16 @@ impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>>
                     ) {
                         diag.note("a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future");
                     }
-                    break 'search diag.emit();
+
+                    ControlFlow::Break(diag)
                 } else {
-                    cycle.rotate_left(1);
+                    ControlFlow::Continue(())
                 }
-            }
-            report_cycle(tcx.sess, cycle_error).emit()
-        };
+            },
+            || report_cycle(tcx.sess, cycle_error),
+        );
+
+        let guar = diag.emit();
 
         // tcx.arena.alloc cannot be used because we are not allowed to use &'tcx LayoutError under
         // min_specialization. Since this is an error path anyways, leaking doesn't matter (and really,
