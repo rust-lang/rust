@@ -22,10 +22,10 @@ rustc_index::newtype_index! {
 struct StackEntry<'tcx> {
     input: CanonicalInput<'tcx>,
     available_depth: Limit,
-    // The maximum depth reached by this stack entry, only up-to date
-    // for the top of the stack and lazily updated for the rest.
+    /// The maximum depth reached by this stack entry, only up-to date
+    /// for the top of the stack and lazily updated for the rest.
     reached_depth: StackDepth,
-    // In case of a cycle, the depth of the root.
+    /// In case of a cycle, the depth of the root.
     cycle_root_depth: StackDepth,
 
     encountered_overflow: bool,
