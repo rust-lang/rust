@@ -147,7 +147,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
                     None => {
                         let name = &strukt_name.to_string();
                         let params = strukt.generic_param_list();
-                        let ty_params = params.clone();
+                        let ty_params = params;
                         let where_clause = strukt.where_clause();
 
                         let impl_def = make::impl_(

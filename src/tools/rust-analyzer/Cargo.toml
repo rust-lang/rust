@@ -1,6 +1,6 @@
 [workspace]
 members = ["xtask/", "lib/*", "crates/*"]
-exclude = ["crates/proc-macro-srv/proc-macro-test/"]
+exclude = ["crates/proc-macro-srv/proc-macro-test/imp"]
 resolver = "2"
 
 [workspace.package]

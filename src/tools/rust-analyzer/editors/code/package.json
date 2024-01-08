@@ -1308,6 +1308,11 @@
                     "default": true,
                     "type": "boolean"
                 },
+                "rust-analyzer.inlayHints.rangeExclusiveHints.enable": {
+                    "markdownDescription": "Whether to show exclusive range inlay hints.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.inlayHints.reborrowHints.enable": {
                     "markdownDescription": "Whether to show inlay hints for compiler inserted reborrows.\nThis setting is deprecated in favor of #rust-analyzer.inlayHints.expressionAdjustmentHints.enable#.",
                     "default": "never",

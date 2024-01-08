@@ -1,5 +1,6 @@
 //! Computes color for a single element.
 
+use either::Either;
 use hir::{AsAssocItem, HasVisibility, MacroFileIdExt, Semantics};
 use ide_db::{
     defs::{Definition, IdentClass, NameClass, NameRefClass},
@@ -359,7 +360,9 @@ pub(super) fn highlight_def(
     let db = sema.db;
     let mut h = match def {
         Definition::Macro(m) => Highlight::new(HlTag::Symbol(m.kind(sema.db).into())),
-        Definition::Field(_) => Highlight::new(HlTag::Symbol(SymbolKind::Field)),
+        Definition::Field(_) | Definition::TupleField(_) => {
+            Highlight::new(HlTag::Symbol(SymbolKind::Field))
+        }
         Definition::Module(module) => {
             let mut h = Highlight::new(HlTag::Symbol(SymbolKind::Module));
             if module.is_crate_root() {
@@ -647,8 +650,11 @@ fn highlight_name_ref_by_syntax(
             let h = HlTag::Symbol(SymbolKind::Field);
             let is_union = ast::FieldExpr::cast(parent)
                 .and_then(|field_expr| sema.resolve_field(&field_expr))
-                .map_or(false, |field| {
-                    matches!(field.parent_def(sema.db), hir::VariantDef::Union(_))
+                .map_or(false, |field| match field {
+                    Either::Left(field) => {
+                        matches!(field.parent_def(sema.db), hir::VariantDef::Union(_))
+                    }
+                    Either::Right(_) => false,
                 });
             if is_union {
                 h | HlMod::Unsafe

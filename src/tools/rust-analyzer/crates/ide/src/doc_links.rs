@@ -219,6 +219,7 @@ pub(crate) fn resolve_doc_path_for_def(
         Definition::BuiltinAttr(_)
         | Definition::ToolModule(_)
         | Definition::BuiltinType(_)
+        | Definition::TupleField(_)
         | Definition::Local(_)
         | Definition::GenericParam(_)
         | Definition::Label(_)
@@ -639,6 +640,7 @@ fn filename_and_frag_for_def(
         }
         Definition::Local(_)
         | Definition::GenericParam(_)
+        | Definition::TupleField(_)
         | Definition::Label(_)
         | Definition::BuiltinAttr(_)
         | Definition::ToolModule(_)

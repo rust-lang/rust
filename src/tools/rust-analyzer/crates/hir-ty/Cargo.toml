@@ -32,6 +32,7 @@ once_cell = "1.17.0"
 triomphe.workspace = true
 nohash-hasher.workspace = true
 typed-arena = "2.0.1"
+indexmap.workspace = true
 
 rustc-dependencies.workspace = true
 

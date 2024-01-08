@@ -1,5 +1,7 @@
 //! Attributes & documentation for hir types.
 
+use std::ops::ControlFlow;
+
 use base_db::FileId;
 use hir_def::{
     attr::AttrsWithOwner,
@@ -13,13 +15,13 @@ use hir_expand::{
     name::Name,
     span_map::{RealSpanMap, SpanMapRef},
 };
-use hir_ty::db::HirDatabase;
+use hir_ty::{db::HirDatabase, method_resolution};
 use syntax::{ast, AstNode};
 
 use crate::{
     Adt, AsAssocItem, AssocItem, BuiltinType, Const, ConstParam, DocLinkDef, Enum, ExternCrateDecl,
-    Field, Function, GenericParam, Impl, LifetimeParam, Macro, Module, ModuleDef, Static, Struct,
-    Trait, TraitAlias, TypeAlias, TypeParam, Union, Variant, VariantDef,
+    Field, Function, GenericParam, HasCrate, Impl, LifetimeParam, Macro, Module, ModuleDef, Static,
+    Struct, Trait, TraitAlias, Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
 };
 
 pub trait HasAttrs {
@@ -99,9 +101,6 @@ pub fn resolve_doc_path_on(
     link: &str,
     ns: Option<Namespace>,
 ) -> Option<DocLinkDef> {
-    // AttrDefId::FieldId(it) => it.parent.resolver(db.upcast()),
-    // AttrDefId::EnumVariantId(it) => it.parent.resolver(db.upcast()),
-
     resolve_doc_path_on_(db, link, def.attr_id(), ns)
 }
 
@@ -205,8 +204,14 @@ fn resolve_assoc_or_field(
         }
     };
 
-    // FIXME: Resolve associated items here, e.g. `Option::map`. Note that associated items take
-    // precedence over fields.
+    // Resolve inherent items first, then trait items, then fields.
+    if let Some(assoc_item_def) = resolve_assoc_item(db, &ty, &name, ns) {
+        return Some(assoc_item_def);
+    }
+
+    if let Some(impl_trait_item_def) = resolve_impl_trait_item(db, resolver, &ty, &name, ns) {
+        return Some(impl_trait_item_def);
+    }
 
     let variant_def = match ty.as_adt()? {
         Adt::Struct(it) => it.into(),
@@ -214,6 +219,65 @@ fn resolve_assoc_or_field(
         Adt::Enum(_) => return None,
     };
     resolve_field(db, variant_def, name, ns)
+}
+
+fn resolve_assoc_item(
+    db: &dyn HirDatabase,
+    ty: &Type,
+    name: &Name,
+    ns: Option<Namespace>,
+) -> Option<DocLinkDef> {
+    ty.iterate_assoc_items(db, ty.krate(db), move |assoc_item| {
+        if assoc_item.name(db)? != *name {
+            return None;
+        }
+        as_module_def_if_namespace_matches(assoc_item, ns)
+    })
+}
+
+fn resolve_impl_trait_item(
+    db: &dyn HirDatabase,
+    resolver: Resolver,
+    ty: &Type,
+    name: &Name,
+    ns: Option<Namespace>,
+) -> Option<DocLinkDef> {
+    let canonical = ty.canonical();
+    let krate = ty.krate(db);
+    let environment = resolver.generic_def().map_or_else(
+        || crate::TraitEnvironment::empty(krate.id).into(),
+        |d| db.trait_environment(d),
+    );
+    let traits_in_scope = resolver.traits_in_scope(db.upcast());
+
+    let mut result = None;
+
+    // `ty.iterate_path_candidates()` require a scope, which is not available when resolving
+    // attributes here. Use path resolution directly instead.
+    //
+    // FIXME: resolve type aliases (which are not yielded by iterate_path_candidates)
+    method_resolution::iterate_path_candidates(
+        &canonical,
+        db,
+        environment,
+        &traits_in_scope,
+        method_resolution::VisibleFromModule::None,
+        Some(name),
+        &mut |assoc_item_id| {
+            // If two traits in scope define the same item, Rustdoc links to no specific trait (for
+            // instance, given two methods `a`, Rustdoc simply links to `method.a` with no
+            // disambiguation) so we just pick the first one we find as well.
+            result = as_module_def_if_namespace_matches(assoc_item_id.into(), ns);
+
+            if result.is_some() {
+                ControlFlow::Break(())
+            } else {
+                ControlFlow::Continue(())
+            }
+        },
+    );
+
+    result
 }
 
 fn resolve_field(
@@ -226,6 +290,19 @@ fn resolve_field(
         return None;
     }
     def.fields(db).into_iter().find(|f| f.name(db) == name).map(DocLinkDef::Field)
+}
+
+fn as_module_def_if_namespace_matches(
+    assoc_item: AssocItem,
+    ns: Option<Namespace>,
+) -> Option<DocLinkDef> {
+    let (def, expected_ns) = match assoc_item {
+        AssocItem::Function(it) => (ModuleDef::Function(it), Namespace::Values),
+        AssocItem::Const(it) => (ModuleDef::Const(it), Namespace::Values),
+        AssocItem::TypeAlias(it) => (ModuleDef::TypeAlias(it), Namespace::Types),
+    };
+
+    (ns.unwrap_or(expected_ns) == expected_ns).then(|| DocLinkDef::ModuleDef(def))
 }
 
 fn modpath_from_str(db: &dyn HirDatabase, link: &str) -> Option<ModPath> {

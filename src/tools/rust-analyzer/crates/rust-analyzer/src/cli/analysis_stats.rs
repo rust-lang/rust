@@ -792,6 +792,7 @@ impl flags::AnalysisStats {
                     max_length: Some(25),
                     closing_brace_hints_min_lines: Some(20),
                     fields_to_resolve: InlayFieldsToResolve::empty(),
+                    range_exclusive_hints: true,
                 },
                 file_id,
                 None,
