@@ -90,6 +90,7 @@ pub enum AssocTyParenthesesSub {
 
 #[derive(Diagnostic)]
 #[diag(ast_lowering_misplaced_impl_trait, code = "E0562")]
+#[note]
 pub struct MisplacedImplTrait<'a> {
     #[primary_span]
     pub span: Span,
