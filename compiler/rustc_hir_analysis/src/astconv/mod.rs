@@ -1032,7 +1032,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             self.trait_defines_associated_item_named(r.def_id(), assoc_kind, assoc_name)
         });
 
-        let Some(mut bound) = matching_candidates.next() else {
+        let Some(bound) = matching_candidates.next() else {
             let reported = self.complain_about_assoc_item_not_found(
                 all_candidates,
                 &ty_param_name.to_string(),
@@ -1046,38 +1046,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         };
         debug!(?bound);
 
-        // look for a candidate that is not the same as our first bound, disregarding
-        // whether the bound is const.
-        let mut next_cand = matching_candidates.next();
-        while let Some(mut bound2) = next_cand {
-            debug!(?bound2);
-            if bound2.bound_vars() != bound.bound_vars() {
-                break;
-            }
-
-            let generics = tcx.generics_of(bound.def_id());
-            let Some(host_index) = generics.host_effect_index else { break };
-
-            // always return the bound that contains the host param.
-            if let ty::ConstKind::Param(_) = bound2.skip_binder().args.const_at(host_index).kind() {
-                (bound, bound2) = (bound2, bound);
-            }
-
-            let unconsted_args = bound
-                .skip_binder()
-                .args
-                .iter()
-                .enumerate()
-                .map(|(n, arg)| if host_index == n { tcx.consts.true_.into() } else { arg });
-
-            if unconsted_args.eq(bound2.skip_binder().args.iter()) {
-                next_cand = matching_candidates.next();
-            } else {
-                break;
-            }
-        }
-
-        if let Some(bound2) = next_cand {
+        if let Some(bound2) = matching_candidates.next() {
             debug!(?bound2);
 
             let assoc_kind_str = assoc_kind_str(assoc_kind);
