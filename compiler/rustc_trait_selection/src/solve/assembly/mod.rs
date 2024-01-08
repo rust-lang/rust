@@ -253,17 +253,6 @@ pub(super) trait GoalKind<'tcx>:
         ecx: &mut EvalCtxt<'_, 'tcx>,
         goal: Goal<'tcx, Self>,
     ) -> Vec<(CanonicalResponse<'tcx>, BuiltinImplSource)>;
-
-    /// Consider the `Unsize` candidate corresponding to coercing a sized type
-    /// into a `dyn Trait`.
-    ///
-    /// This is computed separately from the rest of the `Unsize` candidates
-    /// since it is only done once per self type, and not once per
-    /// *normalization step* (in `assemble_candidates_via_self_ty`).
-    fn consider_unsize_to_dyn_candidate(
-        ecx: &mut EvalCtxt<'_, 'tcx>,
-        goal: Goal<'tcx, Self>,
-    ) -> QueryResult<'tcx>;
 }
 
 impl<'tcx> EvalCtxt<'_, 'tcx> {
@@ -305,8 +294,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         self.assemble_alias_bound_candidates(goal, &mut candidates);
 
         self.assemble_object_bound_candidates(goal, &mut candidates);
-
-        self.assemble_unsize_to_dyn_candidate(goal, &mut candidates);
 
         self.assemble_blanket_impl_candidates(goal, &mut candidates);
 
@@ -419,24 +406,6 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
             | ty::Param(_)
             | ty::Bound(_, _) => bug!("unexpected self type: {self_ty}"),
-        }
-    }
-
-    #[instrument(level = "debug", skip_all)]
-    fn assemble_unsize_to_dyn_candidate<G: GoalKind<'tcx>>(
-        &mut self,
-        goal: Goal<'tcx, G>,
-        candidates: &mut Vec<Candidate<'tcx>>,
-    ) {
-        let tcx = self.tcx();
-        if tcx.lang_items().unsize_trait() == Some(goal.predicate.trait_def_id(tcx)) {
-            match G::consider_unsize_to_dyn_candidate(self, goal) {
-                Ok(result) => candidates.push(Candidate {
-                    source: CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
-                    result,
-                }),
-                Err(NoSolution) => (),
-            }
         }
     }
 
