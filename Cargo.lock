@@ -3797,7 +3797,6 @@ dependencies = [
 name = "rustc_expand"
 version = "0.0.0"
 dependencies = [
- "crossbeam-channel",
  "rustc_ast",
  "rustc_ast_passes",
  "rustc_ast_pretty",
