@@ -513,8 +513,8 @@ dependencies = [
  "mbe",
  "once_cell",
  "profile",
+ "ra-ap-rustc_abi",
  "ra-ap-rustc_parse_format",
- "rustc-dependencies",
  "rustc-hash",
  "smallvec",
  "span",
@@ -580,7 +580,8 @@ dependencies = [
  "oorandom",
  "profile",
  "project-model",
- "rustc-dependencies",
+ "ra-ap-rustc_abi",
+ "ra-ap-rustc_index",
  "rustc-hash",
  "scoped-tls",
  "smallvec",
@@ -1541,7 +1542,6 @@ dependencies = [
  "profile",
  "project-model",
  "rayon",
- "rustc-dependencies",
  "rustc-hash",
  "scip",
  "serde",
@@ -1599,14 +1599,6 @@ name = "rustc-demangle"
 version = "0.1.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d626bb9dae77e28219937af045c257c28bfd3f69333c512553507f5f9798cb76"
-
-[[package]]
-name = "rustc-dependencies"
-version = "0.0.0"
-dependencies = [
- "ra-ap-rustc_abi",
- "ra-ap-rustc_index",
-]
 
 [[package]]
 name = "rustc-hash"
