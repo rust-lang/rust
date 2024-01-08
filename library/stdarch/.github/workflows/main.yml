@@ -13,7 +13,7 @@ jobs:
     name: Check Style
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v4
     - name: Install Rust
       run: rustup update nightly && rustup default nightly
     - run: ci/style.sh
@@ -23,7 +23,7 @@ jobs:
     needs: [style]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v4
     - name: Install Rust
       run: rustup update nightly && rustup default nightly
     - run: ci/dox.sh
@@ -43,7 +43,7 @@ jobs:
     needs: [style]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v4
     - name: Install Rust
       run: rustup update nightly && rustup default nightly
     - run: cargo test --manifest-path crates/stdarch-verify/Cargo.toml
@@ -53,7 +53,7 @@ jobs:
     needs: [style]
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v4
     - name: Install Rust
       run: rustup update nightly && rustup default nightly
     - run: RUST_STD_DETECT_UNSTABLE=avx cargo test --features=std_detect_env_override --manifest-path crates/std_detect/Cargo.toml env_override_no_avx
@@ -164,7 +164,7 @@ jobs:
           os: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
     - name: Install Rust (rustup)
@@ -221,7 +221,7 @@ jobs:
     name: Build std_detect
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v4
     - name: Install Rust
       run: rustup update nightly && rustup default nightly
     - run: ./ci/build-std-detect.sh
