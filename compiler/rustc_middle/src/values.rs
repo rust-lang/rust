@@ -318,7 +318,7 @@ pub fn recursive_type_error(
         items_list,
         pluralize!("has", cycle_len),
     )
-    .multipart_suggestion_mv(
+    .with_multipart_suggestion(
         "insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle",
         suggestion,
         Applicability::HasPlaceholders,

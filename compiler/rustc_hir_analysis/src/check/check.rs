@@ -566,8 +566,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                                 E0044,
                                 "foreign items may not have {kinds} parameters",
                             )
-                            .span_label_mv(item.span, format!("can't have {kinds} parameters"))
-                            .help_mv(
+                            .with_span_label(item.span, format!("can't have {kinds} parameters"))
+                            .with_help(
                                 // FIXME: once we start storing spans for type arguments, turn this
                                 // into a suggestion.
                                 format!(
@@ -801,10 +801,9 @@ fn check_impl_items_against_trait<'tcx>(
                 };
                 tcx.dcx()
                     .struct_span_err(tcx.def_span(def_id), msg)
-                    .note_mv(format!(
-                        "specialization behaves in inconsistent and \
-                        surprising ways with {feature}, \
-                        and for now is disallowed"
+                    .with_note(format!(
+                        "specialization behaves in inconsistent and surprising ways with \
+                        {feature}, and for now is disallowed"
                     ))
                     .emit();
             }
@@ -843,7 +842,7 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
         let e = fields[FieldIdx::from_u32(0)].ty(tcx, args);
         if !fields.iter().all(|f| f.ty(tcx, args) == e) {
             struct_span_code_err!(tcx.dcx(), sp, E0076, "SIMD vector should be homogeneous")
-                .span_label_mv(sp, "SIMD elements must have the same type")
+                .with_span_label(sp, "SIMD elements must have the same type")
                 .emit();
             return;
         }
@@ -1120,7 +1119,7 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 E0084,
                 "unsupported representation for zero-variant enum"
             )
-            .span_label_mv(tcx.def_span(def_id), "zero-variant enum")
+            .with_span_label(tcx.def_span(def_id), "zero-variant enum")
             .emit();
         }
     }
@@ -1313,7 +1312,7 @@ pub(super) fn check_type_params_are_used<'tcx>(
                 "type parameter `{}` is unused",
                 param.name,
             )
-            .span_label_mv(span, "unused type parameter")
+            .with_span_label(span, "unused type parameter")
             .emit();
         }
     }

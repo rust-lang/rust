@@ -77,8 +77,8 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
                         "duplicate definitions with name `{}`",
                         ident,
                     )
-                    .span_label_mv(span, format!("duplicate definitions for `{ident}`"))
-                    .span_label_mv(*former, format!("other definition for `{ident}`"))
+                    .with_span_label(span, format!("duplicate definitions for `{ident}`"))
+                    .with_span_label(*former, format!("other definition for `{ident}`"))
                     .emit();
                 }
                 Entry::Vacant(entry) => {

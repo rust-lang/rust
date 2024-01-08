@@ -86,7 +86,7 @@ pub(super) fn parse(
                                                 );
                                                 sess.dcx
                                                     .struct_span_err(span, msg)
-                                                    .help_mv(VALID_FRAGMENT_NAMES_MSG)
+                                                    .with_help(VALID_FRAGMENT_NAMES_MSG)
                                                     .emit();
                                                 token::NonterminalKind::Ident
                                             },

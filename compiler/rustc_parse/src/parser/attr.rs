@@ -204,8 +204,11 @@ impl<'a> Parser<'a> {
                             attr_sp,
                             fluent::parse_inner_attr_not_permitted_after_outer_doc_comment,
                         )
-                        .span_label_mv(attr_sp, fluent::parse_label_attr)
-                        .span_label_mv(prev_doc_comment_span, fluent::parse_label_prev_doc_comment)
+                        .with_span_label(attr_sp, fluent::parse_label_attr)
+                        .with_span_label(
+                            prev_doc_comment_span,
+                            fluent::parse_label_prev_doc_comment,
+                        )
                 }
                 Some(InnerAttrForbiddenReason::AfterOuterAttribute { prev_outer_attr_sp }) => self
                     .dcx()
@@ -213,8 +216,8 @@ impl<'a> Parser<'a> {
                         attr_sp,
                         fluent::parse_inner_attr_not_permitted_after_outer_attr,
                     )
-                    .span_label_mv(attr_sp, fluent::parse_label_attr)
-                    .span_label_mv(prev_outer_attr_sp, fluent::parse_label_prev_attr),
+                    .with_span_label(attr_sp, fluent::parse_label_attr)
+                    .with_span_label(prev_outer_attr_sp, fluent::parse_label_prev_attr),
                 Some(InnerAttrForbiddenReason::InCodeBlock) | None => {
                     self.dcx().struct_span_err(attr_sp, fluent::parse_inner_attr_not_permitted)
                 }

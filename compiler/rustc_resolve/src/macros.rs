@@ -128,7 +128,7 @@ pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
                         let msg = format!("{} `{}` was already registered", "tool", ident);
                         tcx.dcx()
                             .struct_span_err(ident.span, msg)
-                            .span_label_mv(old_ident.span, "already registered here")
+                            .with_span_label(old_ident.span, "already registered here")
                             .emit();
                     }
                 }
@@ -137,7 +137,7 @@ pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
                     let span = nested_meta.span();
                     tcx.dcx()
                         .struct_span_err(span, msg)
-                        .span_label_mv(span, "not an identifier")
+                        .with_span_label(span, "not an identifier")
                         .emit();
                 }
             }
@@ -578,7 +578,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             self.dcx()
                 .create_err(err)
-                .span_label_mv(path.span, format!("not {article} {expected}"))
+                .with_span_label(path.span, format!("not {article} {expected}"))
                 .emit();
 
             return Ok((self.dummy_ext(kind), Res::Err));
@@ -954,7 +954,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             E0773,
                             "attempted to define built-in macro more than once"
                         )
-                        .span_note_mv(span, "previously defined here")
+                        .with_span_note(span, "previously defined here")
                         .emit();
                     }
                 }

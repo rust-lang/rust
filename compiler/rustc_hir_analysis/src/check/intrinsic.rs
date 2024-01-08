@@ -30,7 +30,7 @@ fn equate_intrinsic_type<'tcx>(
         }
         _ => {
             struct_span_code_err!(tcx.dcx(), it.span, E0622, "intrinsic must be a function")
-                .span_label_mv(it.span, "expected a function")
+                .with_span_label(it.span, "expected a function")
                 .emit();
             return;
         }

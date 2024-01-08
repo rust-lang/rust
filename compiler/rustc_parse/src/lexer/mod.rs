@@ -250,7 +250,7 @@ impl<'a> StringReader<'a> {
                     if starts_with_number {
                         let span = self.mk_sp(start, self.pos);
                         self.dcx().struct_err("lifetimes cannot start with a number")
-                            .span_mv(span)
+                            .with_span(span)
                             .stash(span, StashKey::LifetimeIsChar);
                     }
                     let ident = Symbol::intern(lifetime_name);
@@ -397,7 +397,7 @@ impl<'a> StringReader<'a> {
                 if !terminated {
                     self.dcx()
                         .struct_span_fatal(self.mk_sp(start, end), "unterminated character literal")
-                        .code_mv(error_code!(E0762))
+                        .with_code(error_code!(E0762))
                         .emit()
                 }
                 self.cook_quoted(token::Char, Mode::Char, start, end, 1, 1) // ' '
@@ -409,7 +409,7 @@ impl<'a> StringReader<'a> {
                             self.mk_sp(start + BytePos(1), end),
                             "unterminated byte constant",
                         )
-                        .code_mv(error_code!(E0763))
+                        .with_code(error_code!(E0763))
                         .emit()
                 }
                 self.cook_quoted(token::Byte, Mode::Byte, start, end, 2, 1) // b' '
@@ -421,7 +421,7 @@ impl<'a> StringReader<'a> {
                             self.mk_sp(start, end),
                             "unterminated double quote string",
                         )
-                        .code_mv(error_code!(E0765))
+                        .with_code(error_code!(E0765))
                         .emit()
                 }
                 self.cook_quoted(token::Str, Mode::Str, start, end, 1, 1) // " "
@@ -433,7 +433,7 @@ impl<'a> StringReader<'a> {
                             self.mk_sp(start + BytePos(1), end),
                             "unterminated double quote byte string",
                         )
-                        .code_mv(error_code!(E0766))
+                        .with_code(error_code!(E0766))
                         .emit()
                 }
                 self.cook_quoted(token::ByteStr, Mode::ByteStr, start, end, 2, 1) // b" "
@@ -445,7 +445,7 @@ impl<'a> StringReader<'a> {
                             self.mk_sp(start + BytePos(1), end),
                             "unterminated C string",
                         )
-                        .code_mv(error_code!(E0767))
+                        .with_code(error_code!(E0767))
                         .emit()
                 }
                 self.cook_c_string(token::CStr, Mode::CStr, start, end, 2, 1) // c" "

@@ -309,7 +309,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                             attr.span,
                             "`#[target_feature(..)]` can only be applied to `unsafe` functions",
                         )
-                        .span_label_mv(tcx.def_span(did), "not an `unsafe` function")
+                        .with_span_label(tcx.def_span(did), "not an `unsafe` function")
                         .emit();
                     } else {
                         check_target_feature_trait_unsafe(tcx, did, attr.span);
@@ -478,7 +478,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     InlineAttr::Never
                 } else {
                     struct_span_code_err!(tcx.dcx(), items[0].span(), E0535, "invalid argument")
-                        .help_mv("valid inline arguments are `always` and `never`")
+                        .with_help("valid inline arguments are `always` and `never`")
                         .emit();
 
                     InlineAttr::None
@@ -663,7 +663,7 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
             let msg = format!("ordinal value in `link_ordinal` is too large: `{}`", &ordinal);
             tcx.dcx()
                 .struct_span_err(attr.span, msg)
-                .note_mv("the value may not exceed `u16::MAX`")
+                .with_note("the value may not exceed `u16::MAX`")
                 .emit();
             None
         }

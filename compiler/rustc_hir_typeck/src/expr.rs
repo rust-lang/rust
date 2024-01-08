@@ -2838,7 +2838,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             E0616,
             "field `{field}` of {kind_name} `{struct_path}` is private",
         )
-        .span_label_mv(field.span, "private field")
+        .with_span_label(field.span, "private field")
     }
 
     pub(crate) fn get_field_candidates_considering_privacy(
@@ -3181,7 +3181,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if !is_input && !expr.is_syntactic_place_expr() {
             self.dcx()
                 .struct_span_err(expr.span, "invalid asm output")
-                .span_label_mv(expr.span, "cannot assign to this expression")
+                .with_span_label(expr.span, "cannot assign to this expression")
                 .emit();
         }
 
@@ -3282,7 +3282,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             E0599,
                             "no variant named `{ident}` found for enum `{container}`",
                         )
-                        .span_label_mv(field.span, "variant not found")
+                        .with_span_label(field.span, "variant not found")
                         .emit();
                         break;
                     };
@@ -3294,7 +3294,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             E0795,
                             "`{ident}` is an enum variant; expected field at end of `offset_of`",
                         )
-                        .span_label_mv(field.span, "enum variant")
+                        .with_span_label(field.span, "enum variant")
                         .emit();
                         break;
                     };
@@ -3313,8 +3313,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             E0609,
                             "no field named `{subfield}` on enum variant `{container}::{ident}`",
                         )
-                        .span_label_mv(field.span, "this enum variant...")
-                        .span_label_mv(subident.span, "...does not have this field")
+                        .with_span_label(field.span, "this enum variant...")
+                        .with_span_label(subident.span, "...does not have this field")
                         .emit();
                         break;
                     };

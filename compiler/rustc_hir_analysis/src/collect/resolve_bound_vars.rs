@@ -751,7 +751,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                             lifetime.ident.span,
                             "higher kinded lifetime bounds on nested opaque types are not supported yet",
                         )
-                        .span_note_mv(self.tcx.def_span(def_id), "lifetime declared here")
+                        .with_span_note(self.tcx.def_span(def_id), "lifetime declared here")
                         .emit();
                         self.uninsert_lifetime_on_error(lifetime, def.unwrap());
                     }

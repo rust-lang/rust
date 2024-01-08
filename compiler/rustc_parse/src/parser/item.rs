@@ -741,11 +741,11 @@ impl<'a> Parser<'a> {
                 Ok(Some(item)) => items.extend(item),
                 Err(err) => {
                     self.consume_block(Delimiter::Brace, ConsumeClosingDelim::Yes);
-                    err.span_label_mv(
+                    err.with_span_label(
                         open_brace_span,
                         "while parsing this item list starting here",
                     )
-                    .span_label_mv(self.prev_token.span, "the item list ends here")
+                    .with_span_label(self.prev_token.span, "the item list ends here")
                     .emit();
                     break;
                 }
@@ -765,8 +765,8 @@ impl<'a> Parser<'a> {
                     E0584,
                     "found a documentation comment that doesn't document anything",
                 )
-                .span_label_mv(self.token.span, "this doc comment doesn't document anything")
-                .help_mv(
+                .with_span_label(self.token.span, "this doc comment doesn't document anything")
+                .with_help(
                     "doc comments must come before what they document, if a comment was \
                     intended use `//`",
                 )
@@ -1218,7 +1218,7 @@ impl<'a> Parser<'a> {
 
                 let before_trait = trai.path.span.shrink_to_lo();
                 let const_up_to_impl = const_span.with_hi(impl_span.lo());
-                err.multipart_suggestion_mv(
+                err.with_multipart_suggestion(
                     "you might have meant to write a const trait impl",
                     vec![(const_up_to_impl, "".to_owned()), (before_trait, "const ".to_owned())],
                     Applicability::MaybeIncorrect,
@@ -1457,7 +1457,7 @@ impl<'a> Parser<'a> {
 
                 if this.token == token::Not {
                     if let Err(err) = this.unexpected::<()>() {
-                        err.note_mv(fluent::parse_macro_expands_to_enum_variant).emit();
+                        err.with_note(fluent::parse_macro_expands_to_enum_variant).emit();
                     }
 
                     this.bump();
@@ -1855,7 +1855,7 @@ impl<'a> Parser<'a> {
             if eq_typo || semi_typo {
                 self.bump();
                 // Gracefully handle small typos.
-                err.span_suggestion_short_mv(
+                err.with_span_suggestion_short(
                     self.prev_token.span,
                     "field names and their types are separated with `:`",
                     ":",
@@ -1935,10 +1935,10 @@ impl<'a> Parser<'a> {
                             lo.to(self.prev_token.span),
                             format!("functions are not allowed in {adt_ty} definitions"),
                         )
-                        .help_mv(
+                        .with_help(
                             "unlike in C++, Java, and C#, functions are declared in `impl` blocks",
                         )
-                        .help_mv("see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information")
+                        .with_help("see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information")
                     }
                     Err(err) => {
                         err.cancel();
@@ -1954,7 +1954,9 @@ impl<'a> Parser<'a> {
                             lo.with_hi(ident.span.hi()),
                             format!("structs are not allowed in {adt_ty} definitions"),
                         )
-                        .help_mv("consider creating a new `struct` definition instead of nesting"),
+                        .with_help(
+                            "consider creating a new `struct` definition instead of nesting",
+                        ),
                     Err(err) => {
                         err.cancel();
                         self.restore_snapshot(snapshot);

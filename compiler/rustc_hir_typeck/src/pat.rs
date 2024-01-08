@@ -1547,7 +1547,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             E0638,
             "`..` required with {descr} marked as non-exhaustive",
         )
-        .span_suggestion_verbose_mv(
+        .with_span_suggestion_verbose(
             sp_comma,
             "add `..` at the end of the field list to ignore all other fields",
             sugg,
@@ -1569,8 +1569,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             "field `{}` bound multiple times in the pattern",
             ident
         )
-        .span_label_mv(span, format!("multiple uses of `{ident}` in pattern"))
-        .span_label_mv(other_field, format!("first use of `{ident}`"))
+        .with_span_label(span, format!("multiple uses of `{ident}` in pattern"))
+        .with_span_label(other_field, format!("first use of `{ident}`"))
         .emit()
     }
 
@@ -2235,7 +2235,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             pluralize!(min_len),
             size,
         )
-        .span_label_mv(span, format!("expected {} element{}", size, pluralize!(size)))
+        .with_span_label(span, format!("expected {} element{}", size, pluralize!(size)))
         .emit()
     }
 
@@ -2254,7 +2254,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             pluralize!(min_len),
             size,
         )
-        .span_label_mv(
+        .with_span_label(
             span,
             format!("pattern cannot match array of {} element{}", size, pluralize!(size),),
         )

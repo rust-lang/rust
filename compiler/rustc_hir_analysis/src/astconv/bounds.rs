@@ -305,7 +305,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                     binding.span,
                     format!("{} `{}` is private", assoc_item.kind, binding.item_name),
                 )
-                .span_label_mv(binding.span, format!("private {}", assoc_item.kind))
+                .with_span_label(binding.span, format!("private {}", assoc_item.kind))
                 .emit();
         }
         tcx.check_stability(assoc_item.def_id, Some(hir_ref_id), binding.span, None);

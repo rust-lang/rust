@@ -1753,7 +1753,7 @@ impl<'a> Parser<'a> {
         err: impl FnOnce(&Self) -> DiagnosticBuilder<'a>,
     ) -> L {
         if let Some(diag) = self.dcx().steal_diagnostic(lifetime.span, StashKey::LifetimeIsChar) {
-            diag.span_suggestion_verbose_mv(
+            diag.with_span_suggestion_verbose(
                 lifetime.span.shrink_to_hi(),
                 "add `'` to close the char literal",
                 "'",
@@ -1762,7 +1762,7 @@ impl<'a> Parser<'a> {
             .emit();
         } else {
             err(self)
-                .span_suggestion_verbose_mv(
+                .with_span_suggestion_verbose(
                     lifetime.span.shrink_to_hi(),
                     "add `'` to close the char literal",
                     "'",

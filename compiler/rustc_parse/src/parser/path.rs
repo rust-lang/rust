@@ -128,7 +128,7 @@ impl<'a> Parser<'a> {
                 self.prev_token.span,
                 "found single colon before projection in qualified path",
             )
-            .span_suggestion_mv(
+            .with_span_suggestion(
                 self.prev_token.span,
                 "use double colon",
                 "::",

@@ -30,7 +30,7 @@ where
     G: EmissionGuarantee,
 {
     fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a, G> {
-        self.node.into_diagnostic(dcx, level).span_mv(self.span)
+        self.node.into_diagnostic(dcx, level).with_span(self.span)
     }
 }
 
@@ -173,26 +173,26 @@ impl EmissionGuarantee for rustc_span::fatal_error::FatalError {
 ///   `Diagnostic` method. It is mostly to modify existing diagnostics, either
 ///   in a standalone fashion, e.g. `err.code(code)`, or in a chained fashion
 ///   to make multiple modifications, e.g. `err.code(code).span(span)`.
-/// - A `self -> Self` method, with `_mv` suffix added (short for "move").
+/// - A `self -> Self` method, which has a `with_` prefix added.
 ///   It is mostly used in a chained fashion when producing a new diagnostic,
-///   e.g. `let err = struct_err(msg).code_mv(code)`, or when emitting a new
-///   diagnostic , e.g. `struct_err(msg).code_mv(code).emit()`.
+///   e.g. `let err = struct_err(msg).with_code(code)`, or when emitting a new
+///   diagnostic , e.g. `struct_err(msg).with_code(code).emit()`.
 ///
 /// Although the latter method can be used to modify an existing diagnostic,
-/// e.g. `err = err.code_mv(code)`, this should be avoided because the former
-/// method give shorter code, e.g. `err.code(code)`.
+/// e.g. `err = err.with_code(code)`, this should be avoided because the former
+/// method gives shorter code, e.g. `err.code(code)`.
 macro_rules! forward {
     (
-        ($n:ident, $n_mv:ident)($($name:ident: $ty:ty),* $(,)?)
+        ($f:ident, $with_f:ident)($($name:ident: $ty:ty),* $(,)?)
     ) => {
-        #[doc = concat!("See [`Diagnostic::", stringify!($n), "()`].")]
-        pub fn $n(&mut self, $($name: $ty),*) -> &mut Self {
-            self.diag.as_mut().unwrap().$n($($name),*);
+        #[doc = concat!("See [`Diagnostic::", stringify!($f), "()`].")]
+        pub fn $f(&mut self, $($name: $ty),*) -> &mut Self {
+            self.diag.as_mut().unwrap().$f($($name),*);
             self
         }
-        #[doc = concat!("See [`Diagnostic::", stringify!($n), "()`].")]
-        pub fn $n_mv(mut self, $($name: $ty),*) -> Self {
-            self.diag.as_mut().unwrap().$n($($name),*);
+        #[doc = concat!("See [`Diagnostic::", stringify!($f), "()`].")]
+        pub fn $with_f(mut self, $($name: $ty),*) -> Self {
+            self.diag.as_mut().unwrap().$f($($name),*);
             self
         }
     };
@@ -302,21 +302,21 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         self.emit()
     }
 
-    forward!((span_label, span_label_mv)(
+    forward!((span_label, with_span_label)(
         span: Span,
         label: impl Into<SubdiagnosticMessage>,
     ));
-    forward!((span_labels, span_labels_mv)(
+    forward!((span_labels, with_span_labels)(
         spans: impl IntoIterator<Item = Span>,
         label: &str,
     ));
-    forward!((note_expected_found, note_expected_found_mv)(
+    forward!((note_expected_found, with_note_expected_found)(
         expected_label: &dyn fmt::Display,
         expected: DiagnosticStyledString,
         found_label: &dyn fmt::Display,
         found: DiagnosticStyledString,
     ));
-    forward!((note_expected_found_extra, note_expected_found_extra_mv)(
+    forward!((note_expected_found_extra, with_note_expected_found_extra)(
         expected_label: &dyn fmt::Display,
         expected: DiagnosticStyledString,
         found_label: &dyn fmt::Display,
@@ -324,106 +324,106 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         expected_extra: &dyn fmt::Display,
         found_extra: &dyn fmt::Display,
     ));
-    forward!((note, note_mv)(
+    forward!((note, with_note)(
         msg: impl Into<SubdiagnosticMessage>,
     ));
-    forward!((note_once, note_once_mv)(
+    forward!((note_once, with_note_once)(
         msg: impl Into<SubdiagnosticMessage>,
     ));
-    forward!((span_note, span_note_mv)(
+    forward!((span_note, with_span_note)(
         sp: impl Into<MultiSpan>,
         msg: impl Into<SubdiagnosticMessage>,
     ));
-    forward!((span_note_once, span_note_once_mv)(
+    forward!((span_note_once, with_span_note_once)(
         sp: impl Into<MultiSpan>,
         msg: impl Into<SubdiagnosticMessage>,
     ));
-    forward!((warn, warn_mv)(
+    forward!((warn, with_warn)(
         msg: impl Into<SubdiagnosticMessage>,
     ));
-    forward!((span_warn, span_warn_mv)(
+    forward!((span_warn, with_span_warn)(
         sp: impl Into<MultiSpan>,
         msg: impl Into<SubdiagnosticMessage>,
     ));
-    forward!((help, help_mv)(
+    forward!((help, with_help)(
         msg: impl Into<SubdiagnosticMessage>,
     ));
-    forward!((help_once, help_once_mv)(
+    forward!((help_once, with_help_once)(
         msg: impl Into<SubdiagnosticMessage>,
     ));
-    forward!((span_help, span_help_once_mv)(
+    forward!((span_help, with_span_help_once)(
         sp: impl Into<MultiSpan>,
         msg: impl Into<SubdiagnosticMessage>,
     ));
-    forward!((multipart_suggestion, multipart_suggestion_mv)(
+    forward!((multipart_suggestion, with_multipart_suggestion)(
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
     ));
-    forward!((multipart_suggestion_verbose, multipart_suggestion_verbose_mv)(
+    forward!((multipart_suggestion_verbose, with_multipart_suggestion_verbose)(
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
     ));
-    forward!((tool_only_multipart_suggestion, tool_only_multipart_suggestion_mv)(
+    forward!((tool_only_multipart_suggestion, with_tool_only_multipart_suggestion)(
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: Vec<(Span, String)>,
         applicability: Applicability,
     ));
-    forward!((span_suggestion, span_suggestion_mv)(
+    forward!((span_suggestion, with_span_suggestion)(
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
     ));
-    forward!((span_suggestions, span_suggestions_mv)(
+    forward!((span_suggestions, with_span_suggestions)(
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
         suggestions: impl IntoIterator<Item = String>,
         applicability: Applicability,
     ));
-    forward!((multipart_suggestions, multipart_suggestions_mv)(
+    forward!((multipart_suggestions, with_multipart_suggestions)(
         msg: impl Into<SubdiagnosticMessage>,
         suggestions: impl IntoIterator<Item = Vec<(Span, String)>>,
         applicability: Applicability,
     ));
-    forward!((span_suggestion_short, span_suggestion_short_mv)(
+    forward!((span_suggestion_short, with_span_suggestion_short)(
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
     ));
-    forward!((span_suggestion_verbose, span_suggestion_verbose_mv)(
+    forward!((span_suggestion_verbose, with_span_suggestion_verbose)(
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
     ));
-    forward!((span_suggestion_hidden, span_suggestion_hidden_mv)(
+    forward!((span_suggestion_hidden, with_span_suggestion_hidden)(
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
     ));
-    forward!((tool_only_span_suggestion, tool_only_span_suggestion_mv)(
+    forward!((tool_only_span_suggestion, with_tool_only_span_suggestion)(
         sp: Span,
         msg: impl Into<SubdiagnosticMessage>,
         suggestion: impl ToString,
         applicability: Applicability,
     ));
-    forward!((primary_message, primary_message_mv)(
+    forward!((primary_message, with_primary_message)(
         msg: impl Into<DiagnosticMessage>,
     ));
-    forward!((span, span_mv)(
+    forward!((span, with_span)(
         sp: impl Into<MultiSpan>,
     ));
-    forward!((code, code_mv)(
+    forward!((code, with_code)(
         s: DiagnosticId,
     ));
-    forward!((arg, arg_mv)(
+    forward!((arg, with_arg)(
         name: impl Into<Cow<'static, str>>, arg: impl IntoDiagnosticArg,
     ));
-    forward!((subdiagnostic, subdiagnostic_mv)(
+    forward!((subdiagnostic, with_subdiagnostic)(
         subdiagnostic: impl crate::AddToDiagnostic,
     ));
 }
@@ -459,7 +459,7 @@ macro_rules! struct_span_code_err {
             $span,
             format!($($message)*),
         )
-        .code_mv($crate::error_code!($code))
+        .with_code($crate::error_code!($code))
     })
 }
 

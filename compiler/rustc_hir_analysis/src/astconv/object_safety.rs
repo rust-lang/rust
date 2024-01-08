@@ -298,7 +298,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         tcx.def_descr(def_id),
                         tcx.item_name(def_id),
                     )
-                    .note_mv(
+                    .with_note(
                         rustc_middle::traits::ObjectSafetyViolation::SupertraitSelf(smallvec![])
                             .error_msg(),
                     )

@@ -727,7 +727,7 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
-        self.struct_warn(msg).span_mv(span)
+        self.struct_warn(msg).with_span(span)
     }
 
     /// Construct a builder at the `Warning` level with the `msg`.
@@ -767,7 +767,7 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_> {
-        self.struct_err(msg).span_mv(span)
+        self.struct_err(msg).with_span(span)
     }
 
     /// Construct a builder at the `Error` level with the `msg`.
@@ -786,7 +786,7 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, FatalAbort> {
-        self.struct_fatal(msg).span_mv(span)
+        self.struct_fatal(msg).with_span(span)
     }
 
     /// Construct a builder at the `Fatal` level with the `msg`.
@@ -827,7 +827,7 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, BugAbort> {
-        self.struct_bug(msg).span_mv(span)
+        self.struct_bug(msg).with_span(span)
     }
 
     #[rustc_lint_diagnostics]
@@ -888,7 +888,7 @@ impl DiagCtxt {
         if treat_next_err_as_bug {
             self.span_bug(sp, msg);
         }
-        DiagnosticBuilder::<ErrorGuaranteed>::new(self, DelayedBug, msg).span_mv(sp).emit()
+        DiagnosticBuilder::<ErrorGuaranteed>::new(self, DelayedBug, msg).with_span(sp).emit()
     }
 
     // FIXME(eddyb) note the comment inside `impl Drop for DiagCtxtInner`, that's
@@ -913,7 +913,7 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
-        DiagnosticBuilder::new(self, Note, msg).span_mv(span)
+        DiagnosticBuilder::new(self, Note, msg).with_span(span)
     }
 
     #[rustc_lint_diagnostics]

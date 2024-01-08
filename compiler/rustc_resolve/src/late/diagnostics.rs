@@ -2609,8 +2609,8 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 E0401,
                 "can't use generic parameters from outer item",
             )
-            .span_label_mv(lifetime_ref.ident.span, "use of generic parameter from outer item")
-            .span_label_mv(outer.span, "lifetime parameter from outer item")
+            .with_span_label(lifetime_ref.ident.span, "use of generic parameter from outer item")
+            .with_span_label(outer.span, "lifetime parameter from outer item")
         } else {
             struct_span_code_err!(
                 self.r.dcx(),
@@ -2619,7 +2619,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                 "use of undeclared lifetime name `{}`",
                 lifetime_ref.ident
             )
-            .span_label_mv(lifetime_ref.ident.span, "undeclared lifetime")
+            .with_span_label(lifetime_ref.ident.span, "undeclared lifetime")
         };
         self.suggest_introducing_lifetime(
             &mut err,
@@ -3289,8 +3289,8 @@ pub(super) fn signal_lifetime_shadowing(sess: &Session, orig: Ident, shadower: I
         "lifetime name `{}` shadows a lifetime name that is already in scope",
         orig.name,
     )
-    .span_label_mv(orig.span, "first declared here")
-    .span_label_mv(shadower.span, format!("lifetime `{}` already in scope", orig.name))
+    .with_span_label(orig.span, "first declared here")
+    .with_span_label(shadower.span, format!("lifetime `{}` already in scope", orig.name))
     .emit();
 }
 
@@ -3322,7 +3322,7 @@ pub(super) fn signal_label_shadowing(sess: &Session, orig: Span, shadower: Ident
             shadower,
             format!("label name `{name}` shadows a label name that is already in scope"),
         )
-        .span_label_mv(orig, "first declared here")
-        .span_label_mv(shadower, format!("label `{name}` already in scope"))
+        .with_span_label(orig, "first declared here")
+        .with_span_label(shadower, format!("label `{name}` already in scope"))
         .emit();
 }

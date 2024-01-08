@@ -828,7 +828,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         pluralize!("was", provided_args.len())
                     ),
                 )
-                .code_mv(DiagnosticId::Error(err_code.to_owned()))
+                .with_code(DiagnosticId::Error(err_code.to_owned()))
         };
 
         // As we encounter issues, keep track of what we want to provide for the suggestion
@@ -1386,7 +1386,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "expected struct, variant or union type, found {}",
                     ty.normalized.sort_string(self.tcx)
                 )
-                .span_label_mv(path_span, "not a struct")
+                .with_span_label(path_span, "not a struct")
                 .emit(),
             })
         }

@@ -25,7 +25,7 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     "implementing the trait `{}` is not unsafe",
                     trait_ref.print_trait_sugared()
                 )
-                .span_suggestion_verbose_mv(
+                .with_span_suggestion_verbose(
                     item.span.with_hi(item.span.lo() + rustc_span::BytePos(7)),
                     "remove `unsafe` from this trait implementation",
                     "",
@@ -42,13 +42,13 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     "the trait `{}` requires an `unsafe impl` declaration",
                     trait_ref.print_trait_sugared()
                 )
-                .note_mv(format!(
+                .with_note(format!(
                     "the trait `{}` enforces invariants that the compiler can't check. \
                     Review the trait documentation and make sure this implementation \
                     upholds those invariants before adding the `unsafe` keyword",
                     trait_ref.print_trait_sugared()
                 ))
-                .span_suggestion_verbose_mv(
+                .with_span_suggestion_verbose(
                     item.span.shrink_to_lo(),
                     "add `unsafe` to this trait implementation",
                     "unsafe ",
@@ -65,13 +65,13 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     "requires an `unsafe impl` declaration due to `#[{}]` attribute",
                     attr_name
                 )
-                .note_mv(format!(
+                .with_note(format!(
                     "the trait `{}` enforces invariants that the compiler can't check. \
                     Review the trait documentation and make sure this implementation \
                     upholds those invariants before adding the `unsafe` keyword",
                     trait_ref.print_trait_sugared()
                 ))
-                .span_suggestion_verbose_mv(
+                .with_span_suggestion_verbose(
                     item.span.shrink_to_lo(),
                     "add `unsafe` to this trait implementation",
                     "unsafe ",

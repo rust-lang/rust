@@ -70,7 +70,7 @@ fn generic_arg_mismatch_err(
             Res::Err => {
                 add_braces_suggestion(arg, &mut err);
                 return err
-                    .primary_message_mv("unresolved item provided when a constant was expected")
+                    .with_primary_message("unresolved item provided when a constant was expected")
                     .emit();
             }
             Res::Def(DefKind::TyParam, src_def_id) => {
@@ -651,7 +651,7 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
             && args.num_lifetime_params() != param_counts.lifetimes
         {
             struct_span_code_err!(tcx.dcx(), span, E0794, "{}", msg)
-                .span_note_mv(span_late, note)
+                .with_span_note(span_late, note)
                 .emit();
         } else {
             let mut multispan = MultiSpan::from_span(span);

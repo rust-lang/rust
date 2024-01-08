@@ -369,14 +369,14 @@ fn report_unexpected_variant_res(
     let err = tcx
         .dcx()
         .struct_span_err(span, format!("expected {expected}, found {res_descr} `{path_str}`"))
-        .code_mv(DiagnosticId::Error(err_code.into()));
+        .with_code(DiagnosticId::Error(err_code.into()));
     match res {
         Res::Def(DefKind::Fn | DefKind::AssocFn, _) if err_code == "E0164" => {
             let patterns_url = "https://doc.rust-lang.org/book/ch18-00-patterns.html";
-            err.span_label_mv(span, "`fn` calls are not allowed in patterns")
-                .help_mv(format!("for more information, visit {patterns_url}"))
+            err.with_span_label(span, "`fn` calls are not allowed in patterns")
+                .with_help(format!("for more information, visit {patterns_url}"))
         }
-        _ => err.span_label_mv(span, format!("not a {expected}")),
+        _ => err.with_span_label(span, format!("not a {expected}")),
     }
     .emit()
 }

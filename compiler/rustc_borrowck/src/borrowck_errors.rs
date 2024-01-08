@@ -38,8 +38,8 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
             "cannot use {} because it was mutably borrowed",
             desc,
         )
-        .span_label_mv(borrow_span, format!("{borrow_desc} is borrowed here"))
-        .span_label_mv(span, format!("use of borrowed {borrow_desc}"))
+        .with_span_label(borrow_span, format!("{borrow_desc} is borrowed here"))
+        .with_span_label(span, format!("use of borrowed {borrow_desc}"))
     }
 
     pub(crate) fn cannot_mutably_borrow_multiply(
@@ -243,8 +243,8 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
             "cannot assign to {} because it is borrowed",
             desc,
         )
-        .span_label_mv(borrow_span, format!("{desc} is borrowed here"))
-        .span_label_mv(span, format!("{desc} is assigned to here but it was already borrowed"))
+        .with_span_label(borrow_span, format!("{desc} is borrowed here"))
+        .with_span_label(span, format!("{desc} is assigned to here but it was already borrowed"))
     }
 
     pub(crate) fn cannot_reassign_immutable(
@@ -297,7 +297,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
             ty,
             type_name,
         )
-        .span_label_mv(move_from_span, "cannot move out of here")
+        .with_span_label(move_from_span, "cannot move out of here")
     }
 
     pub(crate) fn cannot_move_out_of_interior_of_drop(
@@ -312,7 +312,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
             "cannot move out of type `{}`, which implements the `Drop` trait",
             container_ty,
         )
-        .span_label_mv(move_from_span, "cannot move out of here")
+        .with_span_label(move_from_span, "cannot move out of here")
     }
 
     pub(crate) fn cannot_act_on_moved_value(
@@ -368,8 +368,8 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
             immutable_place,
             immutable_section,
         )
-        .span_label_mv(mutate_span, format!("cannot {action}"))
-        .span_label_mv(immutable_span, format!("value is immutable in {immutable_section}"))
+        .with_span_label(mutate_span, format!("cannot {action}"))
+        .with_span_label(immutable_span, format!("value is immutable in {immutable_section}"))
     }
 
     pub(crate) fn cannot_borrow_across_coroutine_yield(
@@ -384,7 +384,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
             E0626,
             "borrow may still be in use when {coroutine_kind:#} yields",
         )
-        .span_label_mv(yield_span, "possible yield occurs here")
+        .with_span_label(yield_span, "possible yield occurs here")
     }
 
     pub(crate) fn cannot_borrow_across_destructor(
@@ -423,7 +423,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
             REFERENCE = reference_desc,
             LOCAL = path_desc,
         )
-        .span_label_mv(
+        .with_span_label(
             span,
             format!("{return_kind}s a {reference_desc} data owned by the current function"),
         )
@@ -444,8 +444,8 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
             "{closure_kind} may outlive the current {scope}, but it borrows {borrowed_path}, \
              which is owned by the current {scope}",
         )
-        .span_label_mv(capture_span, format!("{borrowed_path} is borrowed here"))
-        .span_label_mv(closure_span, format!("may outlive borrowed value {borrowed_path}"))
+        .with_span_label(capture_span, format!("{borrowed_path} is borrowed here"))
+        .with_span_label(closure_span, format!("may outlive borrowed value {borrowed_path}"))
     }
 
     pub(crate) fn thread_local_value_does_not_live_long_enough(

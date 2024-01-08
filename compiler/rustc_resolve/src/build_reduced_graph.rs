@@ -818,7 +818,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             self.r
                 .dcx()
                 .struct_span_err(item.span, "`extern crate self;` requires renaming")
-                .span_suggestion_mv(
+                .with_span_suggestion(
                     item.span,
                     "rename the `self` crate to be able to import it",
                     "extern crate self as name;",
@@ -999,7 +999,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             let msg = format!("`{name}` is already in scope");
             let note =
                 "macro-expanded `#[macro_use]`s may not shadow existing macros (see RFC 1560)";
-            self.r.dcx().struct_span_err(span, msg).note_mv(note).emit();
+            self.r.dcx().struct_span_err(span, msg).with_note(note).emit();
         }
     }
 

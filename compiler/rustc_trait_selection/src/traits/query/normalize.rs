@@ -14,6 +14,7 @@ use rustc_infer::traits::Normalized;
 use rustc_middle::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitor};
+use rustc_span::DUMMY_SP;
 
 use std::ops::ControlFlow;
 

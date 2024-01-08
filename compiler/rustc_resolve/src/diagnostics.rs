@@ -950,9 +950,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         "item `{name}` is an associated {kind}, which doesn't match its trait `{trait_path}`",
                     ),
                 )
-                .code_mv(code)
-                .span_label_mv(span, "does not match trait")
-                .span_label_mv(trait_item_span, "item in trait")
+                .with_code(code)
+                .with_span_label(span, "does not match trait")
+                .with_span_label(trait_item_span, "item in trait")
             }
             ResolutionError::TraitImplDuplicate { name, trait_item_span, old_span } => self
                 .dcx()

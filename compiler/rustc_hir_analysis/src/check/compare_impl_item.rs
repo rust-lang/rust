@@ -934,12 +934,12 @@ impl<'tcx> ty::FallibleTypeFolder<TyCtxt<'tcx>> for RemapHiddenTyRegions<'tcx> {
                             return_span,
                             "return type captures more lifetimes than trait definition",
                         )
-                        .span_label_mv(self.tcx.def_span(def_id), "this lifetime was captured")
-                        .span_note_mv(
+                        .with_span_label(self.tcx.def_span(def_id), "this lifetime was captured")
+                        .with_span_note(
                             self.tcx.def_span(self.def_id),
                             "hidden type must only reference lifetimes captured by this impl trait",
                         )
-                        .note_mv(format!("hidden type inferred to be `{}`", self.ty))
+                        .with_note(format!("hidden type inferred to be `{}`", self.ty))
                         .emit()
                 }
                 _ => self.tcx.dcx().delayed_bug("should've been able to remap region"),

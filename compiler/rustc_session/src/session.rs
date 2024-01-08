@@ -1488,7 +1488,7 @@ impl EarlyDiagCtxt {
             #[allow(rustc::diagnostic_outside_of_impl)]
             self.dcx
                 .struct_warn(err)
-                .note_mv("the build environment is likely misconfigured")
+                .with_note("the build environment is likely misconfigured")
                 .emit()
         });
     }

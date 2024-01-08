@@ -464,7 +464,7 @@ impl<'a> Parser<'a> {
                     self_
                         .dcx()
                         .struct_span_err(self_.token.span, msg)
-                        .span_label_mv(self_.token.span, format!("expected {expected}"))
+                        .with_span_label(self_.token.span, format!("expected {expected}"))
                 });
             PatKind::Lit(self.mk_expr(lo, ExprKind::Lit(lit)))
         } else {

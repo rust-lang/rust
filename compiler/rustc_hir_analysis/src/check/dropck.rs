@@ -165,7 +165,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
                         "`Drop` impl requires `{root_predicate}` \
                         but the {self_descr} it is implemented for does not",
                     )
-                    .span_note_mv(item_span, "the implementor must specify the same requirement")
+                    .with_span_note(item_span, "the implementor must specify the same requirement")
                     .emit(),
                 );
             }
@@ -197,7 +197,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
                     "`Drop` impl requires `{outlives}` \
                     but the {self_descr} it is implemented for does not",
                 )
-                .span_note_mv(item_span, "the implementor must specify the same requirement")
+                .with_span_note(item_span, "the implementor must specify the same requirement")
                 .emit(),
             );
         }

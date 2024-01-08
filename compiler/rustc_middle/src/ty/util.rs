@@ -369,7 +369,7 @@ impl<'tcx> TyCtxt<'tcx> {
             if let Some((old_item_id, _)) = dtor_candidate {
                 self.dcx()
                     .struct_span_err(self.def_span(item_id), "multiple drop impls found")
-                    .span_note_mv(self.def_span(old_item_id), "other impl here")
+                    .with_span_note(self.def_span(old_item_id), "other impl here")
                     .delay_as_bug();
             }
 

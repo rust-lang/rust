@@ -2661,7 +2661,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         ErrorCode::E0284,
                         true,
                     )
-                    .note_mv(format!("cannot satisfy `{predicate}`"))
+                    .with_note(format!("cannot satisfy `{predicate}`"))
                 } else {
                     // If we can't find a substitution, just print a generic error
                     struct_span_code_err!(
@@ -2671,7 +2671,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         "type annotations needed: cannot satisfy `{}`",
                         predicate,
                     )
-                    .span_label_mv(span, format!("cannot satisfy `{predicate}`"))
+                    .with_span_label(span, format!("cannot satisfy `{predicate}`"))
                 }
             }
 
@@ -2698,7 +2698,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         "type annotations needed: cannot satisfy `{}`",
                         predicate,
                     )
-                    .span_label_mv(span, format!("cannot satisfy `{predicate}`"))
+                    .with_span_label(span, format!("cannot satisfy `{predicate}`"))
                 }
             }
             _ => {
@@ -2712,7 +2712,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     "type annotations needed: cannot satisfy `{}`",
                     predicate,
                 )
-                .span_label_mv(span, format!("cannot satisfy `{predicate}`"))
+                .with_span_label(span, format!("cannot satisfy `{predicate}`"))
             }
         };
         self.note_obligation_cause(&mut err, obligation);
@@ -3552,7 +3552,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 //
                 // Note that with `feature(generic_const_exprs)` this case should not
                 // be reachable.
-                .note_mv("this may fail depending on what value the parameter takes")
+                .with_note("this may fail depending on what value the parameter takes")
                 .emit();
             return None;
         }

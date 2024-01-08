@@ -181,7 +181,7 @@ fn check_object_overlap<'tcx>(
                         trait_ref.self_ty(),
                         tcx.def_path_str(trait_def_id)
                     )
-                    .span_label_mv(
+                    .with_span_label(
                         span,
                         format!(
                             "`{}` automatically implements trait `{}`",
