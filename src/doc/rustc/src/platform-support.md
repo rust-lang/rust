@@ -323,6 +323,7 @@ target | std | host | notes
 [`riscv32imac-unknown-xous-elf`](platform-support/riscv32imac-unknown-xous-elf.md) | ? |  | RISC-V Xous (RV32IMAC ISA)
 [`riscv32imc-esp-espidf`](platform-support/esp-idf.md) | ✓ |  | RISC-V ESP-IDF
 [`riscv32imac-esp-espidf`](platform-support/esp-idf.md) | ✓ |  | RISC-V ESP-IDF
+[`riscv32imafc-esp-espidf`](platform-support/esp-idf.md) | ✓ |  | RISC-V ESP-IDF
 [`riscv64gc-unknown-hermit`](platform-support/hermit.md) | ✓ |   | RISC-V Hermit
 `riscv64gc-unknown-freebsd` |   |   | RISC-V FreeBSD
 `riscv64gc-unknown-fuchsia` |   |   | RISC-V Fuchsia
