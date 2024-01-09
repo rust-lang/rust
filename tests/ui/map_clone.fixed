@@ -70,4 +70,10 @@ fn main() {
     //~^ ERROR: you are explicitly cloning with `.map()`
     let y = x.cloned();
     //~^ ERROR: you are explicitly cloning with `.map()`
+
+    // Testing with `Result` now.
+    let x: Result<String, ()> = Ok(String::new());
+    let x = x.as_ref(); // We do this to prevent triggering the `useless_asref` lint.
+    let y = x.cloned();
+    //~^ ERROR: you are explicitly cloning with `.map()`
 }

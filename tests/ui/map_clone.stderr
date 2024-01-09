@@ -55,5 +55,11 @@ error: you are explicitly cloning with `.map()`
 LL |     let y = x.map(String::clone);
    |             ^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
 
-error: aborting due to 9 previous errors
+error: you are explicitly cloning with `.map()`
+  --> $DIR/map_clone.rs:77:13
+   |
+LL |     let y = x.map(|x| String::clone(x));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
+
+error: aborting due to 10 previous errors
 
