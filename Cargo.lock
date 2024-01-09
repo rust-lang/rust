@@ -4563,6 +4563,7 @@ checksum = "8ba09476327c4b70ccefb6180f046ef588c26a24cf5d269a9feba316eb4f029f"
 name = "rustc_trait_selection"
 version = "0.0.0"
 dependencies = [
+ "bitflags 2.4.1",
  "itertools",
  "rustc_ast",
  "rustc_attr",

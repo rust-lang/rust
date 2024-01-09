@@ -18,6 +18,14 @@ rustc_index::newtype_index! {
     pub struct StackDepth {}
 }
 
+bitflags::bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    struct HasBeenUsed: u8 {
+        const INDUCTIVE_CYCLE = 1 << 0;
+        const COINDUCTIVE_CYCLE = 1 << 1;
+    }
+}
+
 #[derive(Debug)]
 struct StackEntry<'tcx> {
     input: CanonicalInput<'tcx>,
@@ -32,7 +40,7 @@ struct StackEntry<'tcx> {
     non_root_cycle_participant: Option<StackDepth>,
 
     encountered_overflow: bool,
-    has_been_used: bool,
+    has_been_used: HasBeenUsed,
     /// Starts out as `None` and gets set when rerunning this
     /// goal in case we encounter a cycle.
     provisional_result: Option<QueryResult<'tcx>>,
@@ -195,9 +203,11 @@ impl<'tcx> SearchGraph<'tcx> {
     fn tag_cycle_participants(
         stack: &mut IndexVec<StackDepth, StackEntry<'tcx>>,
         cycle_participants: &mut FxHashSet<CanonicalInput<'tcx>>,
+        usage_kind: HasBeenUsed,
         head: StackDepth,
     ) {
-        stack[head].has_been_used = true;
+        stack[head].has_been_used |= usage_kind;
+        debug_assert!(!stack[head].has_been_used.is_empty());
         for entry in &mut stack.raw[head.index() + 1..] {
             entry.non_root_cycle_participant = entry.non_root_cycle_participant.max(Some(head));
             cycle_participants.insert(entry.input);
@@ -272,29 +282,33 @@ impl<'tcx> SearchGraph<'tcx> {
 
         // Check whether the goal is in the provisional cache.
         let cache_entry = self.provisional_cache.entry(input).or_default();
-        if let Some(with_coinductive_stack) = &mut cache_entry.with_coinductive_stack
+        if let Some(with_coinductive_stack) = &cache_entry.with_coinductive_stack
             && Self::stack_coinductive_from(tcx, &self.stack, with_coinductive_stack.head)
         {
             // We have a nested goal which is already in the provisional cache, use
-            // its result.
+            // its result. We do not provide any usage kind as that should have been
+            // already set correctly while computing the cache entry.
             inspect
                 .goal_evaluation_kind(inspect::WipCanonicalGoalEvaluationKind::ProvisionalCacheHit);
             Self::tag_cycle_participants(
                 &mut self.stack,
                 &mut self.cycle_participants,
+                HasBeenUsed::empty(),
                 with_coinductive_stack.head,
             );
             return with_coinductive_stack.result;
-        } else if let Some(with_inductive_stack) = &mut cache_entry.with_inductive_stack
+        } else if let Some(with_inductive_stack) = &cache_entry.with_inductive_stack
             && !Self::stack_coinductive_from(tcx, &self.stack, with_inductive_stack.head)
         {
             // We have a nested goal which is already in the provisional cache, use
-            // its result.
+            // its result. We do not provide any usage kind as that should have been
+            // already set correctly while computing the cache entry.
             inspect
                 .goal_evaluation_kind(inspect::WipCanonicalGoalEvaluationKind::ProvisionalCacheHit);
             Self::tag_cycle_participants(
                 &mut self.stack,
                 &mut self.cycle_participants,
+                HasBeenUsed::empty(),
                 with_inductive_stack.head,
             );
             return with_inductive_stack.result;
@@ -310,21 +324,27 @@ impl<'tcx> SearchGraph<'tcx> {
             // Finally we can return either the provisional response for that goal if we have a
             // coinductive cycle or an ambiguous result if the cycle is inductive.
             inspect.goal_evaluation_kind(inspect::WipCanonicalGoalEvaluationKind::CycleInStack);
+            let is_coinductive_cycle = Self::stack_coinductive_from(tcx, &self.stack, stack_depth);
+            let usage_kind = if is_coinductive_cycle {
+                HasBeenUsed::COINDUCTIVE_CYCLE
+            } else {
+                HasBeenUsed::INDUCTIVE_CYCLE
+            };
             Self::tag_cycle_participants(
                 &mut self.stack,
                 &mut self.cycle_participants,
+                usage_kind,
                 stack_depth,
             );
+
+            // Return the provisional result or, if we're in the first iteration,
+            // start with no constraints.
             return if let Some(result) = self.stack[stack_depth].provisional_result {
                 result
+            } else if is_coinductive_cycle {
+                Self::response_no_constraints(tcx, input, Certainty::Yes)
             } else {
-                // If we don't have a provisional result yet we're in the first iteration,
-                // so we start with no constraints.
-                if Self::stack_coinductive_from(tcx, &self.stack, stack_depth) {
-                    Self::response_no_constraints(tcx, input, Certainty::Yes)
-                } else {
-                    Self::response_no_constraints(tcx, input, Certainty::OVERFLOW)
-                }
+                Self::response_no_constraints(tcx, input, Certainty::OVERFLOW)
             };
         } else {
             // No entry, we push this goal on the stack and try to prove it.
@@ -335,7 +355,7 @@ impl<'tcx> SearchGraph<'tcx> {
                 reached_depth: depth,
                 non_root_cycle_participant: None,
                 encountered_overflow: false,
-                has_been_used: false,
+                has_been_used: HasBeenUsed::empty(),
                 provisional_result: None,
             };
             assert_eq!(self.stack.push(entry), depth);
@@ -354,41 +374,58 @@ impl<'tcx> SearchGraph<'tcx> {
                 // point we are done.
                 for _ in 0..self.local_overflow_limit() {
                     let result = prove_goal(self, inspect);
+                    let stack_entry = self.pop_stack();
+                    debug_assert_eq!(stack_entry.input, input);
 
-                    // Check whether the current goal is the root of a cycle.
-                    // If so, we have to retry proving the cycle head
-                    // until its result reaches a fixpoint. We need to do so for
-                    // all cycle heads, not only for the root.
+                    // If the current goal is not the root of a cycle, we are done.
+                    if stack_entry.has_been_used.is_empty() {
+                        return (stack_entry, result);
+                    }
+
+                    // If it is a cycle head, we have to keep trying to prove it until
+                    // we reach a fixpoint. We need to do so for all cycle heads,
+                    // not only for the root.
                     //
                     // See tests/ui/traits/next-solver/cycles/fixpoint-rerun-all-cycle-heads.rs
                     // for an example.
-                    let stack_entry = self.pop_stack();
-                    debug_assert_eq!(stack_entry.input, input);
-                    if stack_entry.has_been_used {
-                        Self::clear_dependent_provisional_results(
-                            &mut self.provisional_cache,
-                            self.stack.next_index(),
-                        );
-                    }
 
-                    if stack_entry.has_been_used
-                        && stack_entry.provisional_result.map_or(true, |r| r != result)
-                    {
-                        // If so, update its provisional result and reevaluate it.
+                    // Start by clearing all provisional cache entries which depend on this
+                    // the current goal.
+                    Self::clear_dependent_provisional_results(
+                        &mut self.provisional_cache,
+                        self.stack.next_index(),
+                    );
+
+                    // Check whether we reached a fixpoint, either because the final result
+                    // is equal to the provisional result of the previous iteration, or because
+                    // this was only the root of either coinductive or inductive cycles, and the
+                    // final result is equal to the initial response for that case.
+                    let reached_fixpoint = if let Some(r) = stack_entry.provisional_result {
+                        r == result
+                    } else if stack_entry.has_been_used == HasBeenUsed::COINDUCTIVE_CYCLE {
+                        Self::response_no_constraints(tcx, input, Certainty::Yes) == result
+                    } else if stack_entry.has_been_used == HasBeenUsed::INDUCTIVE_CYCLE {
+                        Self::response_no_constraints(tcx, input, Certainty::OVERFLOW) == result
+                    } else {
+                        false
+                    };
+
+                    if reached_fixpoint {
+                        return (stack_entry, result);
+                    } else {
+                        // Did not reach a fixpoint, update the provisional result and reevaluate.
                         let depth = self.stack.push(StackEntry {
-                            has_been_used: false,
+                            has_been_used: HasBeenUsed::empty(),
                             provisional_result: Some(result),
                             ..stack_entry
                         });
                         debug_assert_eq!(self.provisional_cache[&input].stack_depth, Some(depth));
-                    } else {
-                        return (stack_entry, result);
                     }
                 }
 
                 debug!("canonical cycle overflow");
                 let current_entry = self.pop_stack();
-                debug_assert!(!current_entry.has_been_used);
+                debug_assert!(current_entry.has_been_used.is_empty());
                 let result = Self::response_no_constraints(tcx, input, Certainty::OVERFLOW);
                 (current_entry, result)
             });
