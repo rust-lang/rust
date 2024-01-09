@@ -322,7 +322,7 @@ fn load_crate_graph(
                     break;
                 }
             }
-            vfs::loader::Message::Loaded { files } => {
+            vfs::loader::Message::Loaded { files } | vfs::loader::Message::Changed { files } => {
                 for (path, contents) in files {
                     vfs.set_file_contents(path.into(), contents);
                 }
