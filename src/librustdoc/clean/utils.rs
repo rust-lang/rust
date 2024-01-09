@@ -16,9 +16,10 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LOCAL_CRATE};
 use rustc_metadata::rendered_const;
 use rustc_middle::mir;
+use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::{self, GenericArgKind, GenericArgsRef, TyCtxt};
-use rustc_middle::ty::{TypeVisitable, TypeVisitableExt};
 use rustc_span::symbol::{kw, sym, Symbol};
+use std::assert_matches::debug_assert_matches;
 use std::fmt::Write as _;
 use std::mem;
 use std::sync::LazyLock as Lazy;
@@ -108,57 +109,46 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
         std::borrow::Cow::from(args)
     };
 
-    let clean_arg = |(index, arg): (usize, &ty::GenericArg<'tcx>)| match arg.unpack() {
-        GenericArgKind::Lifetime(lt) => {
-            Some(GenericArg::Lifetime(clean_middle_region(lt).unwrap_or(Lifetime::elided())))
+    let clean_arg = |(index, &arg): (usize, &ty::GenericArg<'tcx>)| {
+        // Elide the self type.
+        if has_self && index == 0 {
+            return None;
         }
-        GenericArgKind::Type(_) if has_self && index == 0 => None,
-        GenericArgKind::Type(ty) => {
-            let ty = ty::Binder::bind_with_vars(ty, bound_vars);
 
-            if !elision_has_failed_once_before
-                && let Some(default) = generics.param_at(index, cx.tcx).default_value(cx.tcx)
-            {
-                let default = default.instantiate(cx.tcx, args.as_ref()).expect_ty();
-                if can_elide_generic_arg(ty, ty.rebind(default)) {
-                    return None;
-                }
+        // Elide internal host effect args.
+        let param = generics.param_at(index, cx.tcx);
+        if param.is_host_effect() {
+            return None;
+        }
 
-                elision_has_failed_once_before = true;
+        let arg = ty::Binder::bind_with_vars(arg, bound_vars);
+
+        // Elide arguments that coincide with their default.
+        if !elision_has_failed_once_before && let Some(default) = param.default_value(cx.tcx) {
+            let default = default.instantiate(cx.tcx, args.as_ref());
+            if can_elide_generic_arg(arg, arg.rebind(default)) {
+                return None;
             }
+            elision_has_failed_once_before = true;
+        }
 
-            Some(GenericArg::Type(clean_middle_ty(
-                ty,
+        match arg.skip_binder().unpack() {
+            GenericArgKind::Lifetime(lt) => {
+                Some(GenericArg::Lifetime(clean_middle_region(lt).unwrap_or(Lifetime::elided())))
+            }
+            GenericArgKind::Type(ty) => Some(GenericArg::Type(clean_middle_ty(
+                arg.rebind(ty),
                 cx,
                 None,
                 Some(crate::clean::ContainerTy::Regular {
                     ty: owner,
-                    args: ty.rebind(args.as_ref()),
+                    args: arg.rebind(args.as_ref()),
                     arg: index,
                 }),
-            )))
-        }
-        GenericArgKind::Const(ct) => {
-            if let ty::GenericParamDefKind::Const { is_host_effect: true, .. } =
-                generics.param_at(index, cx.tcx).kind
-            {
-                return None;
+            ))),
+            GenericArgKind::Const(ct) => {
+                Some(GenericArg::Const(Box::new(clean_middle_const(arg.rebind(ct), cx))))
             }
-
-            let ct = ty::Binder::bind_with_vars(ct, bound_vars);
-
-            if !elision_has_failed_once_before
-                && let Some(default) = generics.param_at(index, cx.tcx).default_value(cx.tcx)
-            {
-                let default = default.instantiate(cx.tcx, args.as_ref()).expect_const();
-                if can_elide_generic_arg(ct, ct.rebind(default)) {
-                    return None;
-                }
-
-                elision_has_failed_once_before = true;
-            }
-
-            Some(GenericArg::Const(Box::new(clean_middle_const(ct, cx))))
         }
     };
 
@@ -172,13 +162,17 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
 /// This uses a very conservative approach for performance and correctness reasons, meaning for
 /// several classes of terms it claims that they cannot be elided even if they theoretically could.
 /// This is absolutely fine since it mostly concerns edge cases.
-fn can_elide_generic_arg<'tcx, Term>(
-    actual: ty::Binder<'tcx, Term>,
-    default: ty::Binder<'tcx, Term>,
-) -> bool
-where
-    Term: Eq + TypeVisitable<TyCtxt<'tcx>>,
-{
+fn can_elide_generic_arg<'tcx>(
+    actual: ty::Binder<'tcx, ty::GenericArg<'tcx>>,
+    default: ty::Binder<'tcx, ty::GenericArg<'tcx>>,
+) -> bool {
+    debug_assert_matches!(
+        (actual.skip_binder().unpack(), default.skip_binder().unpack()),
+        (ty::GenericArgKind::Lifetime(_), ty::GenericArgKind::Lifetime(_))
+            | (ty::GenericArgKind::Type(_), ty::GenericArgKind::Type(_))
+            | (ty::GenericArgKind::Const(_), ty::GenericArgKind::Const(_))
+    );
+
     // In practice, we shouldn't have any inference variables at this point.
     // However to be safe, we bail out if we do happen to stumble upon them.
     if actual.has_infer() || default.has_infer() {
