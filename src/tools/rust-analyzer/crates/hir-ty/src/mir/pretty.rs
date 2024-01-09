@@ -5,6 +5,7 @@ use std::{
     mem,
 };
 
+use either::Either;
 use hir_def::{body::Body, hir::BindingId};
 use hir_expand::name::Name;
 use la_arena::ArenaMap;
@@ -298,7 +299,7 @@ impl<'a> MirPrettyCtx<'a> {
                     f(this, local, head);
                     w!(this, ")");
                 }
-                ProjectionElem::Field(field) => {
+                ProjectionElem::Field(Either::Left(field)) => {
                     let variant_data = field.parent.variant_data(this.db.upcast());
                     let name = &variant_data.fields()[field.local_id].name;
                     match field.parent {
@@ -320,7 +321,11 @@ impl<'a> MirPrettyCtx<'a> {
                         }
                     }
                 }
-                ProjectionElem::TupleOrClosureField(it) => {
+                ProjectionElem::Field(Either::Right(field)) => {
+                    f(this, local, head);
+                    w!(this, ".{}", field.index);
+                }
+                ProjectionElem::ClosureField(it) => {
                     f(this, local, head);
                     w!(this, ".{}", it);
                 }

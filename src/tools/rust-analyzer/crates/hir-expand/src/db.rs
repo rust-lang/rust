@@ -390,7 +390,13 @@ fn parse_macro_expansion(
     let expand_to = loc.expand_to();
     let mbe::ValueResult { value: tt, err } = macro_expand(db, macro_file.macro_call_id, loc);
 
-    let (parse, rev_token_map) = token_tree_to_syntax_node(&tt, expand_to);
+    let (parse, rev_token_map) = token_tree_to_syntax_node(
+        match &tt {
+            CowArc::Arc(it) => it,
+            CowArc::Owned(it) => it,
+        },
+        expand_to,
+    );
 
     ExpandResult { value: (parse, Arc::new(rev_token_map)), err }
 }
@@ -669,15 +675,20 @@ fn macro_expander(db: &dyn ExpandDatabase, id: MacroDefId) -> TokenExpander {
     }
 }
 
+enum CowArc<T> {
+    Arc(Arc<T>),
+    Owned(T),
+}
+
 fn macro_expand(
     db: &dyn ExpandDatabase,
     macro_call_id: MacroCallId,
     loc: MacroCallLoc,
-) -> ExpandResult<Arc<tt::Subtree>> {
+) -> ExpandResult<CowArc<tt::Subtree>> {
     let _p = profile::span("macro_expand");
 
     let ExpandResult { value: tt, mut err } = match loc.def.kind {
-        MacroDefKind::ProcMacro(..) => return db.expand_proc_macro(macro_call_id),
+        MacroDefKind::ProcMacro(..) => return db.expand_proc_macro(macro_call_id).map(CowArc::Arc),
         MacroDefKind::BuiltInDerive(expander, ..) => {
             let (root, map) = parse_with_map(db, loc.kind.file_id());
             let root = root.syntax_node();
@@ -692,7 +703,7 @@ fn macro_expand(
             let ValueResult { value, err } = db.macro_arg(macro_call_id);
             let Some((macro_arg, undo_info)) = value else {
                 return ExpandResult {
-                    value: Arc::new(tt::Subtree {
+                    value: CowArc::Owned(tt::Subtree {
                         delimiter: tt::Delimiter::invisible_spanned(loc.call_site),
                         token_trees: Vec::new(),
                     }),
@@ -718,7 +729,7 @@ fn macro_expand(
                 // As such we just return the input subtree here.
                 MacroDefKind::BuiltInEager(..) if loc.eager.is_none() => {
                     return ExpandResult {
-                        value: macro_arg.clone(),
+                        value: CowArc::Arc(macro_arg.clone()),
                         err: err.map(|err| {
                             let mut buf = String::new();
                             for err in &**err {
@@ -752,12 +763,17 @@ fn macro_expand(
     // Skip checking token tree limit for include! macro call
     if !loc.def.is_include() {
         // Set a hard limit for the expanded tt
-        if let Err(value) = check_tt_count(&tt, loc.call_site) {
-            return value;
+        if let Err(value) = check_tt_count(&tt) {
+            return value.map(|()| {
+                CowArc::Owned(tt::Subtree {
+                    delimiter: tt::Delimiter::invisible_spanned(loc.call_site),
+                    token_trees: vec![],
+                })
+            });
         }
     }
 
-    ExpandResult { value: Arc::new(tt), err }
+    ExpandResult { value: CowArc::Owned(tt), err }
 }
 
 fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<Arc<tt::Subtree>> {
@@ -796,8 +812,13 @@ fn expand_proc_macro(db: &dyn ExpandDatabase, id: MacroCallId) -> ExpandResult<A
     );
 
     // Set a hard limit for the expanded tt
-    if let Err(value) = check_tt_count(&tt, loc.call_site) {
-        return value;
+    if let Err(value) = check_tt_count(&tt) {
+        return value.map(|()| {
+            Arc::new(tt::Subtree {
+                delimiter: tt::Delimiter::invisible_spanned(loc.call_site),
+                token_trees: vec![],
+            })
+        });
     }
 
     fixup::reverse_fixups(&mut tt, &undo_info);
@@ -819,14 +840,11 @@ fn token_tree_to_syntax_node(
     mbe::token_tree_to_syntax_node(tt, entry_point)
 }
 
-fn check_tt_count(tt: &tt::Subtree, call_site: Span) -> Result<(), ExpandResult<Arc<tt::Subtree>>> {
+fn check_tt_count(tt: &tt::Subtree) -> Result<(), ExpandResult<()>> {
     let count = tt.count();
     if TOKEN_LIMIT.check(count).is_err() {
         Err(ExpandResult {
-            value: Arc::new(tt::Subtree {
-                delimiter: tt::Delimiter::invisible_spanned(call_site),
-                token_trees: vec![],
-            }),
+            value: (),
             err: Some(ExpandError::other(format!(
                 "macro invocation exceeds token limit: produced {} tokens, limit is {}",
                 count,

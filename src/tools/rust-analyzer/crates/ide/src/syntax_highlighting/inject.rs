@@ -301,7 +301,7 @@ fn module_def_to_hl_tag(def: Definition) -> HlTag {
         Definition::TypeAlias(_) => SymbolKind::TypeAlias,
         Definition::BuiltinType(_) => return HlTag::BuiltinType,
         Definition::Macro(_) => SymbolKind::Macro,
-        Definition::Field(_) => SymbolKind::Field,
+        Definition::Field(_) | Definition::TupleField(_) => SymbolKind::Field,
         Definition::SelfType(_) => SymbolKind::Impl,
         Definition::Local(_) => SymbolKind::Local,
         Definition::GenericParam(gp) => match gp {

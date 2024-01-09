@@ -341,13 +341,13 @@ impl SourceChangeBuilder {
     /// Adds a tabstop snippet to place the cursor before `token`
     pub fn add_tabstop_before_token(&mut self, _cap: SnippetCap, token: SyntaxToken) {
         assert!(token.parent().is_some());
-        self.add_snippet(PlaceSnippet::Before(token.clone().into()));
+        self.add_snippet(PlaceSnippet::Before(token.into()));
     }
 
     /// Adds a tabstop snippet to place the cursor after `token`
     pub fn add_tabstop_after_token(&mut self, _cap: SnippetCap, token: SyntaxToken) {
         assert!(token.parent().is_some());
-        self.add_snippet(PlaceSnippet::After(token.clone().into()));
+        self.add_snippet(PlaceSnippet::After(token.into()));
     }
 
     /// Adds a snippet to move the cursor selected over `node`

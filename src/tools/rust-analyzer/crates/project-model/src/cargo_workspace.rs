@@ -274,7 +274,7 @@ impl CargoWorkspace {
             other_options.append(
                 &mut targets
                     .into_iter()
-                    .flat_map(|target| ["--filter-platform".to_owned().to_string(), target])
+                    .flat_map(|target| ["--filter-platform".to_owned(), target])
                     .collect(),
             );
         }
