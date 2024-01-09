@@ -6,6 +6,7 @@ trait Bar<T> {
 }
 
 trait Baz : Bar<Self> {
+    //~^ ERROR the size for values of type `Self` cannot be known
 }
 
 fn make_bar<T:Bar<u32>>(t: &T) -> &dyn Bar<u32> {

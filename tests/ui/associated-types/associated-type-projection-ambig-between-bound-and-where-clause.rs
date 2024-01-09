@@ -25,7 +25,7 @@ fn c<C>(_: C::Color) where C : Vehicle, C : Box {
     //~^ ERROR ambiguous associated type `Color` in bounds of `C`
 }
 
-struct D<X>;
+struct D<X>(X);
 impl<X> D<X> where X : Vehicle {
     fn d(&self, _: X::Color) where X : Box { }
     //~^ ERROR ambiguous associated type `Color` in bounds of `X`

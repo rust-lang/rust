@@ -1,5 +1,5 @@
 error[E0407]: method `from` is not a member of trait `Fn`
-  --> $DIR/issue-87558.rs:6:5
+  --> $DIR/issue-87558.rs:8:5
    |
 LL |     fn from() {}
    |     ^^^^^^^^^^^^ not a member of trait `Fn`
@@ -24,7 +24,25 @@ help: parenthesized trait syntax expands to `Fn<(&isize,), Output=()>`
 LL | impl Fn(&isize) for Error {
    |      ^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error[E0277]: expected a `FnMut(&isize)` closure, found `Error`
+  --> $DIR/issue-87558.rs:3:21
+   |
+LL | impl Fn(&isize) for Error {
+   |                     ^^^^^ expected an `FnMut(&isize)` closure, found `Error`
+   |
+   = help: the trait `FnMut<(&isize,)>` is not implemented for `Error`
+note: required by a bound in `Fn`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
-Some errors have detailed explanations: E0183, E0229, E0407.
-For more information about an error, try `rustc --explain E0183`.
+error[E0046]: not all trait items implemented, missing: `call`
+  --> $DIR/issue-87558.rs:3:1
+   |
+LL | impl Fn(&isize) for Error {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ missing `call` in implementation
+   |
+   = help: implement the missing item: `fn call(&self, _: (&isize,)) -> <Self as FnOnce<(&isize,)>>::Output { todo!() }`
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0046, E0183, E0229, E0277, E0407.
+For more information about an error, try `rustc --explain E0046`.
