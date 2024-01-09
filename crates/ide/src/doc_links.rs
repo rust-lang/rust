@@ -64,13 +64,12 @@ pub(crate) fn rewrite_links(db: &RootDatabase, markdown: &str, definition: Defin
             // * path-based links: `../../module/struct.MyStruct.html`
             // * module-based links (AKA intra-doc links): `super::super::module::MyStruct`
             if let Some((target, title)) = rewrite_intra_doc_link(db, definition, target, title) {
-                return (None, target, title);
+                (None, target, title)
+            } else if let Some(target) = rewrite_url_link(db, definition, target) {
+                (Some(LinkType::Inline), target, title.to_string())
+            } else {
+                (None, target.to_string(), title.to_string())
             }
-            if let Some(target) = rewrite_url_link(db, definition, target) {
-                return (Some(LinkType::Inline), target, title.to_string());
-            }
-
-            (None, target.to_string(), title.to_string())
         }
     });
     let mut out = String::new();
