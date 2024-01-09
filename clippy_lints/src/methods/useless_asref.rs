@@ -90,10 +90,9 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str,
             && segment.ident.name == sym::map
             // And that it only has one argument.
             && let [arg] = args
+            && is_calling_clone(cx, arg)
         {
-            if is_calling_clone(cx, arg) {
-                lint_as_ref_clone(cx, expr.span.with_hi(parent.span.hi()), recvr, call_name);
-            }
+            lint_as_ref_clone(cx, expr.span.with_hi(parent.span.hi()), recvr, call_name);
         }
     }
 }

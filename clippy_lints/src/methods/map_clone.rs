@@ -15,14 +15,20 @@ use rustc_span::{sym, Span};
 
 use super::MAP_CLONE;
 
+// If this `map` is called on an `Option` or a `Result` and the previous call is `as_ref`, we don't
+// run this lint because it would overlap with `useless_asref` which provides a better suggestion
+// in this case.
 fn should_run_lint(cx: &LateContext<'_>, e: &hir::Expr<'_>, method_id: DefId) -> bool {
     if is_diag_trait_item(cx, method_id, sym::Iterator) {
         return true;
     }
-    if !cx.tcx.impl_of_method(method_id).map_or(false, |id| {
+    // We check if it's an `Option` or a `Result`.
+    if let Some(id) = cx.tcx.impl_of_method(method_id) {
         let identity = cx.tcx.type_of(id).instantiate_identity();
-        is_type_diagnostic_item(cx, identity, sym::Option) || is_type_diagnostic_item(cx, identity, sym::Result)
-    }) {
+        if !is_type_diagnostic_item(cx, identity, sym::Option) && !is_type_diagnostic_item(cx, identity, sym::Result) {
+            return false;
+        }
+    } else {
         return false;
     }
     // We check if the previous method call is `as_ref`.
@@ -32,7 +38,7 @@ fn should_run_lint(cx: &LateContext<'_>, e: &hir::Expr<'_>, method_id: DefId) ->
         return path2.ident.name != sym::as_ref || path1.ident.name != sym::map;
     }
 
-    return true;
+    true
 }
 
 pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>, msrv: &Msrv) {
