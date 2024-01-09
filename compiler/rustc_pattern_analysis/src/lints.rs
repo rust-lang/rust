@@ -24,9 +24,9 @@ use crate::rustc::{
 /// the depth of patterns, whereas `compute_exhaustiveness_and_usefulness` is worst-case exponential
 /// (exhaustiveness is NP-complete). The core difference is that we treat sub-columns separately.
 ///
-/// This must not contain an or-pattern. `specialize` takes care to expand them.
+/// This must not contain an or-pattern. `expand_and_push` takes care to expand them.
 ///
-/// This is not used in the main algorithm; only in lints.
+/// This is not used in the usefulness algorithm; only in lints.
 #[derive(Debug)]
 pub(crate) struct PatternColumn<'p, 'tcx> {
     patterns: Vec<&'p DeconstructedPat<'p, 'tcx>>,
@@ -41,8 +41,10 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
         }
         column
     }
+    /// Pushes a pattern onto the column, expanding any or-patterns into its subpatterns.
+    /// Internal method, prefer [`PatternColumn::new`].
     fn expand_and_push(&mut self, pat: PatOrWild<'p, RustcMatchCheckCtxt<'p, 'tcx>>) {
-        // We flatten or-patterns and skip wildcards
+        // We flatten or-patterns and skip algorithm-generated wildcards.
         if pat.is_or_pat() {
             self.patterns.extend(
                 pat.flatten_or_pat().into_iter().filter_map(|pat_or_wild| pat_or_wild.as_pat()),
