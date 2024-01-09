@@ -428,10 +428,12 @@ struct DiagCtxtInner {
     /// This is not necessarily the count that's reported to the user once
     /// compilation ends.
     err_count: usize,
-    warn_count: usize,
     deduplicated_err_count: usize,
     /// The warning count, used for a recap upon finishing
     deduplicated_warn_count: usize,
+    /// Has this diagnostic context printed any diagnostics? (I.e. has
+    /// `self.emitter.emit_diagnostic()` been called?
+    has_printed: bool,
 
     emitter: Box<DynEmitter>,
     span_delayed_bugs: Vec<DelayedDiagnostic>,
@@ -548,8 +550,7 @@ impl Drop for DiagCtxtInner {
         // instead of "require some error happened". Sadly that isn't ideal, as
         // lints can be `#[allow]`'d, potentially leading to this triggering.
         // Also, "good path" should be replaced with a better naming.
-        let has_any_message = self.err_count > 0 || self.lint_err_count > 0 || self.warn_count > 0;
-        if !has_any_message && !self.suppressed_expected_diag && !std::thread::panicking() {
+        if !self.has_printed && !self.suppressed_expected_diag && !std::thread::panicking() {
             let bugs = std::mem::replace(&mut self.good_path_delayed_bugs, Vec::new());
             self.flush_delayed(
                 bugs,
@@ -595,9 +596,9 @@ impl DiagCtxt {
                 flags: DiagCtxtFlags { can_emit_warnings: true, ..Default::default() },
                 lint_err_count: 0,
                 err_count: 0,
-                warn_count: 0,
                 deduplicated_err_count: 0,
                 deduplicated_warn_count: 0,
+                has_printed: false,
                 emitter,
                 span_delayed_bugs: Vec::new(),
                 good_path_delayed_bugs: Vec::new(),
@@ -650,9 +651,9 @@ impl DiagCtxt {
         let mut inner = self.inner.borrow_mut();
         inner.lint_err_count = 0;
         inner.err_count = 0;
-        inner.warn_count = 0;
         inner.deduplicated_err_count = 0;
         inner.deduplicated_warn_count = 0;
+        inner.has_printed = false;
 
         // actually free the underlying memory (which `clear` would not do)
         inner.span_delayed_bugs = Default::default();
@@ -676,11 +677,6 @@ impl DiagCtxt {
             } else {
                 inner.err_count += 1;
             }
-        } else {
-            // Warnings are only automatically flushed if they're forced.
-            if diag.is_force_warn() {
-                inner.warn_count += 1;
-            }
         }
 
         // FIXME(Centril, #69537): Consider reintroducing panic on overwriting a stashed diagnostic
@@ -699,10 +695,6 @@ impl DiagCtxt {
                 inner.lint_err_count -= 1;
             } else {
                 inner.err_count -= 1;
-            }
-        } else {
-            if diag.is_force_warn() {
-                inner.warn_count -= 1;
             }
         }
         Some(DiagnosticBuilder::new_diagnostic(self, diag))
@@ -1249,15 +1241,11 @@ impl DiagCtxtInner {
                     self.err_count -= 1;
                 }
             } else {
-                if diag.is_force_warn() {
-                    self.warn_count -= 1;
-                } else {
-                    // Unless they're forced, don't flush stashed warnings when
-                    // there are errors, to avoid causing warning overload. The
-                    // stash would've been stolen already if it were important.
-                    if has_errors {
-                        continue;
-                    }
+                // Unless they're forced, don't flush stashed warnings when
+                // there are errors, to avoid causing warning overload. The
+                // stash would've been stolen already if it were important.
+                if !diag.is_force_warn() && has_errors {
+                    continue;
                 }
             }
             let reported_this = self.emit_diagnostic(diag);
@@ -1361,6 +1349,7 @@ impl DiagCtxtInner {
                 } else if matches!(diagnostic.level, ForceWarning(_) | Warning) {
                     self.deduplicated_warn_count += 1;
                 }
+                self.has_printed = true;
             }
             if diagnostic.is_error() {
                 if diagnostic.level == Error && diagnostic.is_lint {
@@ -1373,8 +1362,6 @@ impl DiagCtxtInner {
                 {
                     guaranteed = Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
                 }
-            } else {
-                self.bump_warn_count();
             }
         });
 
@@ -1468,10 +1455,6 @@ impl DiagCtxtInner {
     fn bump_err_count(&mut self) {
         self.err_count += 1;
         self.panic_if_treat_err_as_bug();
-    }
-
-    fn bump_warn_count(&mut self) {
-        self.warn_count += 1;
     }
 
     fn panic_if_treat_err_as_bug(&self) {
