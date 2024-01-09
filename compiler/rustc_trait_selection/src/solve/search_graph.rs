@@ -19,6 +19,9 @@ rustc_index::newtype_index! {
 }
 
 bitflags::bitflags! {
+    /// Whether and how this goal has been used as the root of a
+    /// cycle. We track the kind of cycle as we're otherwise forced
+    /// to always rerun at least once.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     struct HasBeenUsed: u8 {
         const INDUCTIVE_CYCLE = 1 << 0;
@@ -29,23 +32,30 @@ bitflags::bitflags! {
 #[derive(Debug)]
 struct StackEntry<'tcx> {
     input: CanonicalInput<'tcx>,
+
     available_depth: Limit,
+
     /// The maximum depth reached by this stack entry, only up-to date
     /// for the top of the stack and lazily updated for the rest.
     reached_depth: StackDepth,
-    /// Whether this entry is a cycle participant which is not a root.
+
+    /// Whether this entry is a non-root cycle participant.
     ///
-    /// If so, it must not be moved to the global cache. See
-    /// [SearchGraph::cycle_participants] for more details.
+    /// We must not move the result of non-root cycle participants to the
+    /// global cache. See [SearchGraph::cycle_participants] for more details.
+    /// We store the highest stack depth of a head of a cycle this goal is involved
+    /// in. This necessary to soundly cache its provisional result.
     non_root_cycle_participant: Option<StackDepth>,
 
     encountered_overflow: bool,
+
     has_been_used: HasBeenUsed,
     /// Starts out as `None` and gets set when rerunning this
     /// goal in case we encounter a cycle.
     provisional_result: Option<QueryResult<'tcx>>,
 }
 
+/// The provisional result for a goal which is not on the stack.
 struct DetachedEntry<'tcx> {
     /// The head of the smallest non-trivial cycle involving this entry.
     ///
@@ -59,6 +69,18 @@ struct DetachedEntry<'tcx> {
     result: QueryResult<'tcx>,
 }
 
+/// Stores the stack depth of a currently evaluated goal *and* already
+/// computed results for goals which depend on other goals still on the stack.
+///
+/// The provisional result may depend on whether the stack above it is inductive
+/// or coinductive. Because of this, we store separate provisional results for
+/// each case. If an provisional entry is not applicable, it may be the case
+/// that we already have provisional result while computing a goal. In this case
+/// we prefer the provisional result to potentially avoid fixpoint iterations.
+/// See tests/ui/traits/next-solver/cycles/mixed-cycles-2.rs for an example.
+///
+/// The provisional cache can theoretically result in changes to the observable behavior,
+/// see tests/ui/traits/next-solver/cycles/provisional-cache-impacts-behavior.rs.
 #[derive(Default)]
 struct ProvisionalCacheEntry<'tcx> {
     stack_depth: Option<StackDepth>,
@@ -200,6 +222,16 @@ impl<'tcx> SearchGraph<'tcx> {
             .all(|entry| entry.input.value.goal.predicate.is_coinductive(tcx))
     }
 
+    // When encountering a solver cycle, the result of the current goal
+    // depends on goals lower on the stack.
+    //
+    // We have to therefore be careful when caching goals. Only the final result
+    // of the cycle root, i.e. the lowest goal on the stack involved in this cycle,
+    // is moved to the global cache while all others are stored in a provisional cache.
+    //
+    // We update both the head of this cycle to rerun its evaluation until
+    // we reach a fixpoint and all other cycle participants to make sure that
+    // their result does not get moved to the global cache.
     fn tag_cycle_participants(
         stack: &mut IndexVec<StackDepth, StackEntry<'tcx>>,
         cycle_participants: &mut FxHashSet<CanonicalInput<'tcx>>,
@@ -281,9 +313,20 @@ impl<'tcx> SearchGraph<'tcx> {
         }
 
         // Check whether the goal is in the provisional cache.
+        // The provisional result may rely on the path to its cycle roots,
+        // so we have to check the path of the current goal matches that of
+        // the cache entry.
         let cache_entry = self.provisional_cache.entry(input).or_default();
-        if let Some(with_coinductive_stack) = &cache_entry.with_coinductive_stack
-            && Self::stack_coinductive_from(tcx, &self.stack, with_coinductive_stack.head)
+        if let Some(entry) = cache_entry
+            .with_coinductive_stack
+            .as_ref()
+            .filter(|p| Self::stack_coinductive_from(tcx, &self.stack, p.head))
+            .or_else(|| {
+                cache_entry
+                    .with_inductive_stack
+                    .as_ref()
+                    .filter(|p| !Self::stack_coinductive_from(tcx, &self.stack, p.head))
+            })
         {
             // We have a nested goal which is already in the provisional cache, use
             // its result. We do not provide any usage kind as that should have been
@@ -294,35 +337,17 @@ impl<'tcx> SearchGraph<'tcx> {
                 &mut self.stack,
                 &mut self.cycle_participants,
                 HasBeenUsed::empty(),
-                with_coinductive_stack.head,
+                entry.head,
             );
-            return with_coinductive_stack.result;
-        } else if let Some(with_inductive_stack) = &cache_entry.with_inductive_stack
-            && !Self::stack_coinductive_from(tcx, &self.stack, with_inductive_stack.head)
-        {
-            // We have a nested goal which is already in the provisional cache, use
-            // its result. We do not provide any usage kind as that should have been
-            // already set correctly while computing the cache entry.
-            inspect
-                .goal_evaluation_kind(inspect::WipCanonicalGoalEvaluationKind::ProvisionalCacheHit);
-            Self::tag_cycle_participants(
-                &mut self.stack,
-                &mut self.cycle_participants,
-                HasBeenUsed::empty(),
-                with_inductive_stack.head,
-            );
-            return with_inductive_stack.result;
+            return entry.result;
         } else if let Some(stack_depth) = cache_entry.stack_depth {
             debug!("encountered cycle with depth {stack_depth:?}");
-            // We have a nested goal which relies on a goal `root` deeper in the stack.
+            // We have a nested goal which directly relies on a goal deeper in the stack.
             //
-            // We first store that we may have to reprove `root` in case the provisional
-            // response is not equal to the final response. We also update the depth of all
-            // goals which recursively depend on our current goal to depend on `root`
-            // instead.
+            // We start by tagging all cycle participants, as that's necessary for caching.
             //
-            // Finally we can return either the provisional response for that goal if we have a
-            // coinductive cycle or an ambiguous result if the cycle is inductive.
+            // Finally we can return either the provisional response or the initial response
+            // in case we're in the first fixpoint iteration for this goal.
             inspect.goal_evaluation_kind(inspect::WipCanonicalGoalEvaluationKind::CycleInStack);
             let is_coinductive_cycle = Self::stack_coinductive_from(tcx, &self.stack, stack_depth);
             let usage_kind = if is_coinductive_cycle {
@@ -410,10 +435,10 @@ impl<'tcx> SearchGraph<'tcx> {
                         false
                     };
 
+                    // If we did not reach a fixpoint, update the provisional result and reevaluate.
                     if reached_fixpoint {
                         return (stack_entry, result);
                     } else {
-                        // Did not reach a fixpoint, update the provisional result and reevaluate.
                         let depth = self.stack.push(StackEntry {
                             has_been_used: HasBeenUsed::empty(),
                             provisional_result: Some(result),
@@ -435,9 +460,6 @@ impl<'tcx> SearchGraph<'tcx> {
         // We're now done with this goal. In case this goal is involved in a larger cycle
         // do not remove it from the provisional cache and update its provisional result.
         // We only add the root of cycles to the global cache.
-        //
-        // It is not possible for any nested goal to depend on something deeper on the
-        // stack, as this would have also updated the depth of the current goal.
         if let Some(head) = final_entry.non_root_cycle_participant {
             let coinductive_stack = Self::stack_coinductive_from(tcx, &self.stack, head);
 
@@ -449,6 +471,9 @@ impl<'tcx> SearchGraph<'tcx> {
                 entry.with_inductive_stack = Some(DetachedEntry { head, result });
             }
         } else {
+            self.provisional_cache.remove(&input);
+            let reached_depth = final_entry.reached_depth.as_usize() - self.stack.len();
+            let cycle_participants = mem::take(&mut self.cycle_participants);
             // When encountering a cycle, both inductive and coinductive, we only
             // move the root into the global cache. We also store all other cycle
             // participants involved.
@@ -457,9 +482,6 @@ impl<'tcx> SearchGraph<'tcx> {
             // participant is on the stack. This is necessary to prevent unstable
             // results. See the comment of `SearchGraph::cycle_participants` for
             // more details.
-            self.provisional_cache.remove(&input);
-            let reached_depth = final_entry.reached_depth.as_usize() - self.stack.len();
-            let cycle_participants = mem::take(&mut self.cycle_participants);
             self.global_cache(tcx).insert(
                 tcx,
                 input,
