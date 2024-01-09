@@ -1,0 +1,105 @@
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/object-unsafe-trait-should-use-self-2021-without-dyn.rs:4:13
+   |
+LL |     fn f(a: A) -> A;
+   |             ^
+   |
+help: use a new generic type parameter, constrained by `A`
+   |
+LL |     fn f<T: A>(a: T) -> A;
+   |         ++++++    ~
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL |     fn f(a: impl A) -> A;
+   |             ++++
+help: alternatively, use a trait object to accept any type that implements `A`, accessing its methods at runtime using dynamic dispatch
+   |
+LL |     fn f(a: &dyn A) -> A;
+   |             ++++
+
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/object-unsafe-trait-should-use-self-2021-without-dyn.rs:4:19
+   |
+LL |     fn f(a: A) -> A;
+   |                   ^
+   |
+help: use `impl A` to return an opaque type, as long as you return a single underlying type
+   |
+LL |     fn f(a: A) -> impl A;
+   |                   ++++
+help: alternatively, you can return an owned trait object
+   |
+LL |     fn f(a: A) -> Box<dyn A>;
+   |                   +++++++  +
+
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/object-unsafe-trait-should-use-self-2021-without-dyn.rs:9:13
+   |
+LL |     fn f(a: B) -> B;
+   |             ^
+   |
+help: use a new generic type parameter, constrained by `B`
+   |
+LL |     fn f<T: B>(a: T) -> B;
+   |         ++++++    ~
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL |     fn f(a: impl B) -> B;
+   |             ++++
+help: alternatively, use a trait object to accept any type that implements `B`, accessing its methods at runtime using dynamic dispatch
+   |
+LL |     fn f(a: &dyn B) -> B;
+   |             ++++
+
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/object-unsafe-trait-should-use-self-2021-without-dyn.rs:9:19
+   |
+LL |     fn f(a: B) -> B;
+   |                   ^
+   |
+help: use `impl B` to return an opaque type, as long as you return a single underlying type
+   |
+LL |     fn f(a: B) -> impl B;
+   |                   ++++
+help: alternatively, you can return an owned trait object
+   |
+LL |     fn f(a: B) -> Box<dyn B>;
+   |                   +++++++  +
+
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/object-unsafe-trait-should-use-self-2021-without-dyn.rs:14:20
+   |
+LL |     fn f(&self, a: C) -> C;
+   |                    ^
+   |
+help: use a new generic type parameter, constrained by `C`
+   |
+LL |     fn f<T: C>(&self, a: T) -> C;
+   |         ++++++           ~
+help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
+   |
+LL |     fn f(&self, a: impl C) -> C;
+   |                    ++++
+help: alternatively, use a trait object to accept any type that implements `C`, accessing its methods at runtime using dynamic dispatch
+   |
+LL |     fn f(&self, a: &dyn C) -> C;
+   |                    ++++
+
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/object-unsafe-trait-should-use-self-2021-without-dyn.rs:14:26
+   |
+LL |     fn f(&self, a: C) -> C;
+   |                          ^
+   |
+help: use `impl C` to return an opaque type, as long as you return a single underlying type
+   |
+LL |     fn f(&self, a: C) -> impl C;
+   |                          ++++
+help: alternatively, you can return an owned trait object
+   |
+LL |     fn f(&self, a: C) -> Box<dyn C>;
+   |                          +++++++  +
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0782`.
