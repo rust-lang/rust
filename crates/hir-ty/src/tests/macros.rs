@@ -987,15 +987,12 @@ fn infer_builtin_macros_env() {
 fn infer_builtin_macros_option_env() {
     check_types(
         r#"
-        //- minicore: option
-        //- /main.rs env:foo=bar
-        #[rustc_builtin_macro]
-        macro_rules! option_env {() => {}}
-
-        fn main() {
-            let x = option_env!("foo");
-              //^ Option<&str>
-        }
+//- minicore: env
+//- /main.rs env:foo=bar
+fn main() {
+    let x = option_env!("foo");
+      //^ Option<&str>
+}
         "#,
     );
 }
@@ -1005,6 +1002,21 @@ fn infer_derive_clone_simple() {
     check_types(
         r#"
 //- minicore: derive, clone
+#[derive(Clone)]
+struct S;
+fn test() {
+    S.clone();
+} //^^^^^^^^^ S
+"#,
+    );
+}
+
+#[test]
+fn infer_builtin_derive_resolves_with_core_module() {
+    check_types(
+        r#"
+//- minicore: derive, clone
+mod core {}
 #[derive(Clone)]
 struct S;
 fn test() {
