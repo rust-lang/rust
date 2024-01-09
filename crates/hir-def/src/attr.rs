@@ -355,7 +355,7 @@ fn parse_comma_sep<S>(subtree: &tt::Subtree<S>) -> Vec<SmolStr> {
 }
 
 impl AttrsWithOwner {
-    pub(crate) fn attrs_with_owner(db: &dyn DefDatabase, owner: AttrDefId) -> Self {
+    pub fn attrs_with_owner(db: &dyn DefDatabase, owner: AttrDefId) -> Self {
         Self { attrs: db.attrs(owner), owner }
     }
 
