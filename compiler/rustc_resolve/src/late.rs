@@ -3213,9 +3213,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 PatKind::Or(ref ps) => {
                     // Check the consistency of this or-pattern and
                     // then add all bindings to the larger map.
-                    let (bm, np) = self.compute_and_check_or_pat_binding_map(ps);
-                    binding_map.extend(bm);
-                    is_never_pat |= np;
+                    match self.compute_and_check_or_pat_binding_map(ps) {
+                        Ok(bm) => binding_map.extend(bm),
+                        Err(IsNeverPattern) => is_never_pat = true,
+                    }
                     return false;
                 }
                 PatKind::Never => is_never_pat = true,
@@ -3249,7 +3250,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     fn compute_and_check_or_pat_binding_map(
         &mut self,
         pats: &[P<Pat>],
-    ) -> (FxIndexMap<Ident, BindingInfo>, bool) {
+    ) -> Result<FxIndexMap<Ident, BindingInfo>, IsNeverPattern> {
         let mut missing_vars = FxIndexMap::default();
         let mut inconsistent_vars = FxIndexMap::default();
 
@@ -3314,12 +3315,16 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         }
 
         // 5) Bubble up the final binding map.
-        let is_never_pat = not_never_pats.is_empty();
-        let mut binding_map = FxIndexMap::default();
-        for (bm, _) in not_never_pats {
-            binding_map.extend(bm);
+        if not_never_pats.is_empty() {
+            // All the patterns are never patterns, so the whole or-pattern is one too.
+            Err(IsNeverPattern)
+        } else {
+            let mut binding_map = FxIndexMap::default();
+            for (bm, _) in not_never_pats {
+                binding_map.extend(bm);
+            }
+            Ok(binding_map)
         }
-        (binding_map, is_never_pat)
     }
 
     /// Check the consistency of bindings wrt or-patterns and never patterns.
