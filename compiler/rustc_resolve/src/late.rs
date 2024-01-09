@@ -3324,7 +3324,17 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
     /// Check the consistency of bindings wrt or-patterns and never patterns.
     fn check_consistent_bindings(&mut self, pat: &'ast Pat) {
-        let _ = self.compute_and_check_binding_map(pat);
+        let mut is_or_or_never = false;
+        pat.walk(&mut |pat| match pat.kind {
+            PatKind::Or(..) | PatKind::Never => {
+                is_or_or_never = true;
+                false
+            }
+            _ => true,
+        });
+        if is_or_or_never {
+            let _ = self.compute_and_check_binding_map(pat);
+        }
     }
 
     fn resolve_arm(&mut self, arm: &'ast Arm) {
