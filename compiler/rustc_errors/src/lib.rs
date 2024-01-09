@@ -647,6 +647,7 @@ impl DiagCtxt {
     /// the overall count of emitted error diagnostics.
     pub fn reset_err_count(&self) {
         let mut inner = self.inner.borrow_mut();
+        inner.lint_err_count = 0;
         inner.err_count = 0;
         inner.warn_count = 0;
         inner.deduplicated_err_count = 0;
