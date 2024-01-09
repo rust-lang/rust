@@ -81,7 +81,8 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
     mut has_self: bool,
     owner: DefId,
 ) -> Vec<GenericArg> {
-    if args.skip_binder().is_empty() {
+    let (args, bound_vars) = (args.skip_binder(), args.bound_vars());
+    if args.is_empty() {
         // Fast path which avoids executing the query `generics_of`.
         return Vec::new();
     }
@@ -90,7 +91,7 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
     let mut elision_has_failed_once_before = false;
 
     let offset = if has_self { 1 } else { 0 };
-    let mut clean_args = Vec::with_capacity(args.skip_binder().len().saturating_sub(offset));
+    let mut clean_args = Vec::with_capacity(args.len().saturating_sub(offset));
 
     // If the container is a trait object type, the arguments won't contain the self type but the
     // generics of the corresponding trait will. In such a case, prepend a dummy self type in order
@@ -98,16 +99,13 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
     // instantiate the generic parameter default later.
     let args = if !has_self && generics.parent.is_none() && generics.has_self {
         has_self = true;
-        // FIXME(fmease): Don't arena-allocate the args (blocked on further refactorings)!
-        args.map_bound(|args| {
-            &*cx.tcx.arena.alloc_from_iter(
-                [cx.tcx.types.trait_object_dummy_self.into()]
-                    .into_iter()
-                    .chain(args.iter().copied()),
-            )
-        })
+        [cx.tcx.types.trait_object_dummy_self.into()]
+            .into_iter()
+            .chain(args.iter().copied())
+            .collect::<Vec<_>>()
+            .into()
     } else {
-        args
+        std::borrow::Cow::from(args)
     };
 
     let clean_middle_arg = |(index, arg): (usize, &ty::GenericArg<'tcx>)| match arg.unpack() {
@@ -116,12 +114,13 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
         }
         GenericArgKind::Type(_) if has_self && index == 0 => None,
         GenericArgKind::Type(ty) => {
+            let ty = ty::Binder::bind_with_vars(ty, bound_vars);
+
             if !elision_has_failed_once_before
                 && let Some(default) = generics.params[index].default_value(cx.tcx)
             {
-                let default = args.map_bound(|args| default.instantiate(cx.tcx, args).expect_ty());
-
-                if can_elide_generic_arg(args.rebind(ty), default) {
+                let default = default.instantiate(cx.tcx, args.as_ref()).expect_ty();
+                if can_elide_generic_arg(ty, ty.rebind(default)) {
                     return None;
                 }
 
@@ -129,10 +128,14 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
             }
 
             Some(GenericArg::Type(clean_middle_ty(
-                args.rebind(ty),
+                ty,
                 cx,
                 None,
-                Some(crate::clean::ContainerTy::Regular { ty: owner, args, arg: index }),
+                Some(crate::clean::ContainerTy::Regular {
+                    ty: owner,
+                    args: ty.rebind(args.as_ref()),
+                    arg: index,
+                }),
             )))
         }
         GenericArgKind::Const(ct) => {
@@ -142,24 +145,24 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
                 return None;
             }
 
+            let ct = ty::Binder::bind_with_vars(ct, bound_vars);
+
             if !elision_has_failed_once_before
                 && let Some(default) = generics.params[index].default_value(cx.tcx)
             {
-                let default =
-                    args.map_bound(|args| default.instantiate(cx.tcx, args).expect_const());
-
-                if can_elide_generic_arg(args.rebind(ct), default) {
+                let default = default.instantiate(cx.tcx, args.as_ref()).expect_const();
+                if can_elide_generic_arg(ct, ct.rebind(default)) {
                     return None;
                 }
 
                 elision_has_failed_once_before = true;
             }
 
-            Some(GenericArg::Const(Box::new(clean_middle_const(args.rebind(ct), cx))))
+            Some(GenericArg::Const(Box::new(clean_middle_const(ct, cx))))
         }
     };
 
-    clean_args.extend(args.skip_binder().iter().enumerate().rev().filter_map(clean_middle_arg));
+    clean_args.extend(args.iter().enumerate().rev().filter_map(clean_middle_arg));
     clean_args.reverse();
     clean_args
 }
