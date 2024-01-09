@@ -672,7 +672,7 @@ impl DiagCtxt {
         let key = (span.with_parent(None), key);
 
         if diag.is_error() {
-            if diag.level == Error && diag.is_lint {
+            if diag.is_lint {
                 inner.lint_err_count += 1;
             } else {
                 inner.err_count += 1;
@@ -691,7 +691,7 @@ impl DiagCtxt {
         let key = (span.with_parent(None), key);
         let diag = inner.stashed_diagnostics.remove(&key)?;
         if diag.is_error() {
-            if diag.level == Error && diag.is_lint {
+            if diag.is_lint {
                 inner.lint_err_count -= 1;
             } else {
                 inner.err_count -= 1;
@@ -1235,7 +1235,7 @@ impl DiagCtxtInner {
         for diag in diags {
             // Decrement the count tracking the stash; emitting will increment it.
             if diag.is_error() {
-                if diag.level == Error && diag.is_lint {
+                if diag.is_lint {
                     self.lint_err_count -= 1;
                 } else {
                     self.err_count -= 1;
@@ -1352,7 +1352,7 @@ impl DiagCtxtInner {
                 self.has_printed = true;
             }
             if diagnostic.is_error() {
-                if diagnostic.level == Error && diagnostic.is_lint {
+                if diagnostic.is_lint {
                     self.bump_lint_err_count();
                 } else {
                     self.bump_err_count();
