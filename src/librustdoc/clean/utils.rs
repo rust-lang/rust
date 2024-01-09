@@ -88,16 +88,11 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
         return Vec::new();
     }
 
-    let generics = cx.tcx.generics_of(owner);
-    let mut elision_has_failed_once_before = false;
-
-    let offset = if has_self { 1 } else { 0 };
-    let mut clean_args = Vec::with_capacity(args.len().saturating_sub(offset));
-
     // If the container is a trait object type, the arguments won't contain the self type but the
     // generics of the corresponding trait will. In such a case, prepend a dummy self type in order
     // to align the arguments and parameters for the iteration below and to enable us to correctly
     // instantiate the generic parameter default later.
+    let generics = cx.tcx.generics_of(owner);
     let args = if !has_self && generics.parent.is_none() && generics.has_self {
         has_self = true;
         [cx.tcx.types.trait_object_dummy_self.into()]
@@ -109,6 +104,7 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
         std::borrow::Cow::from(args)
     };
 
+    let mut elision_has_failed_once_before = false;
     let clean_arg = |(index, &arg): (usize, &ty::GenericArg<'tcx>)| {
         // Elide the self type.
         if has_self && index == 0 {
@@ -152,6 +148,8 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
         }
     };
 
+    let offset = if has_self { 1 } else { 0 };
+    let mut clean_args = Vec::with_capacity(args.len().saturating_sub(offset));
     clean_args.extend(args.iter().enumerate().rev().filter_map(clean_arg));
     clean_args.reverse();
     clean_args
