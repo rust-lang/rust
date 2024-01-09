@@ -76,8 +76,17 @@ fn decodable_body(
                 ty_name,
                 variants.len()
             );
+            let tag = if variants.len() < u8::MAX as usize {
+                quote! {
+                    ::rustc_serialize::Decoder::read_u8(__decoder) as usize
+                }
+            } else {
+                quote! {
+                    ::rustc_serialize::Decoder::read_usize(__decoder)
+                }
+            };
             quote! {
-                match ::rustc_serialize::Decoder::read_usize(__decoder) {
+                match #tag {
                     #match_inner
                     n => panic!(#message, n),
                 }
@@ -206,11 +215,20 @@ fn encodable_body(
                     variant_idx += 1;
                     result
                 });
-                quote! {
-                    let disc = match *self {
-                        #encode_inner
-                    };
-                    ::rustc_serialize::Encoder::emit_usize(__encoder, disc);
+                if variant_idx < u8::MAX as usize {
+                    quote! {
+                        let disc = match *self {
+                            #encode_inner
+                        };
+                        ::rustc_serialize::Encoder::emit_u8(__encoder, disc as u8);
+                    }
+                } else {
+                    quote! {
+                        let disc = match *self {
+                            #encode_inner
+                        };
+                        ::rustc_serialize::Encoder::emit_usize(__encoder, disc);
+                    }
                 }
             };
 
