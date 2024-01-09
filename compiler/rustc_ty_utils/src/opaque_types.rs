@@ -272,6 +272,13 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
     }
 }
 
+fn impl_trait_in_assoc_types_defined_by<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    item: LocalDefId,
+) -> &'tcx ty::List<LocalDefId> {
+    opaque_types_defined_by(tcx, item)
+}
+
 fn opaque_types_defined_by<'tcx>(
     tcx: TyCtxt<'tcx>,
     item: LocalDefId,
@@ -321,5 +328,6 @@ fn opaque_types_defined_by<'tcx>(
 }
 
 pub(super) fn provide(providers: &mut Providers) {
-    *providers = Providers { opaque_types_defined_by, ..*providers };
+    *providers =
+        Providers { opaque_types_defined_by, impl_trait_in_assoc_types_defined_by, ..*providers };
 }
