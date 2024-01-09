@@ -738,7 +738,7 @@ impl DiagCtxt {
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
-        DiagnosticBuilder::new(self, Warning(None), msg)
+        DiagnosticBuilder::new(self, Warning, msg)
     }
 
     /// Construct a builder at the `Allow` level with the `msg`.
@@ -1005,7 +1005,7 @@ impl DiagCtxt {
             (0, 0) => return,
             (0, _) => inner
                 .emitter
-                .emit_diagnostic(&Diagnostic::new(Warning(None), DiagnosticMessage::Str(warnings))),
+                .emit_diagnostic(&Diagnostic::new(Warning, DiagnosticMessage::Str(warnings))),
             (_, 0) => {
                 inner.emit_diagnostic(Diagnostic::new(Fatal, errors));
             }
@@ -1094,7 +1094,7 @@ impl DiagCtxt {
         &'a self,
         warning: impl IntoDiagnostic<'a, ()>,
     ) -> DiagnosticBuilder<'a, ()> {
-        warning.into_diagnostic(self, Warning(None))
+        warning.into_diagnostic(self, Warning)
     }
 
     #[track_caller]
@@ -1304,10 +1304,7 @@ impl DiagCtxtInner {
             self.fulfilled_expectations.insert(expectation_id.normalize());
         }
 
-        if matches!(diagnostic.level, Warning(_))
-            && !self.flags.can_emit_warnings
-            && !diagnostic.is_force_warn()
-        {
+        if diagnostic.level == Warning && !self.flags.can_emit_warnings {
             if diagnostic.has_future_breakage() {
                 (*TRACK_DIAGNOSTIC)(diagnostic, &mut |_| {});
             }
@@ -1359,7 +1356,7 @@ impl DiagCtxtInner {
                 self.emitter.emit_diagnostic(&diagnostic);
                 if diagnostic.is_error() {
                     self.deduplicated_err_count += 1;
-                } else if let Warning(_) = diagnostic.level {
+                } else if matches!(diagnostic.level, ForceWarning(_) | Warning) {
                     self.deduplicated_warn_count += 1;
                 }
             }
@@ -1562,14 +1559,17 @@ pub enum Level {
     /// Its `EmissionGuarantee` is `ErrorGuaranteed`.
     Error,
 
+    /// A `force-warn` lint warning about the code being compiled. Does not prevent compilation
+    /// from finishing.
+    ///
+    /// The [`LintExpectationId`] is used for expected lint diagnostics. In all other cases this
+    /// should be `None`.
+    ForceWarning(Option<LintExpectationId>),
+
     /// A warning about the code being compiled. Does not prevent compilation from finishing.
     ///
-    /// This [`LintExpectationId`] is used for expected lint diagnostics, which should
-    /// also emit a warning due to the `force-warn` flag. In all other cases this should
-    /// be `None`.
-    ///
     /// Its `EmissionGuarantee` is `()`.
-    Warning(Option<LintExpectationId>),
+    Warning,
 
     /// A message giving additional context. Rare, because notes are more commonly attached to other
     /// diagnostics such as errors.
@@ -1622,7 +1622,7 @@ impl Level {
             Bug | DelayedBug | Fatal | Error => {
                 spec.set_fg(Some(Color::Red)).set_intense(true);
             }
-            Warning(_) => {
+            ForceWarning(_) | Warning => {
                 spec.set_fg(Some(Color::Yellow)).set_intense(cfg!(windows));
             }
             Note | OnceNote => {
@@ -1641,7 +1641,7 @@ impl Level {
         match self {
             Bug | DelayedBug => "error: internal compiler error",
             Fatal | Error => "error",
-            Warning(_) => "warning",
+            ForceWarning(_) | Warning => "warning",
             Note | OnceNote => "note",
             Help | OnceHelp => "help",
             FailureNote => "failure-note",
@@ -1655,7 +1655,7 @@ impl Level {
 
     pub fn get_expectation_id(&self) -> Option<LintExpectationId> {
         match self {
-            Expect(id) | Warning(Some(id)) => Some(*id),
+            Expect(id) | ForceWarning(Some(id)) => Some(*id),
             _ => None,
         }
     }

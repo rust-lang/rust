@@ -198,7 +198,7 @@ impl Emitter for JsonEmitter {
             .into_iter()
             .map(|mut diag| {
                 if diag.level == crate::Level::Allow {
-                    diag.level = crate::Level::Warning(None);
+                    diag.level = crate::Level::Warning;
                 }
                 FutureBreakageItem {
                     diagnostic: EmitTyped::Diagnostic(Diagnostic::from_errors_diagnostic(
