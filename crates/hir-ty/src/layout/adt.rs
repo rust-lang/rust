@@ -9,7 +9,7 @@ use hir_def::{
     AdtId, EnumVariantId, LocalEnumVariantId, VariantId,
 };
 use la_arena::RawIdx;
-use rustc_dependencies::index::IndexVec;
+use rustc_index::IndexVec;
 use smallvec::SmallVec;
 use triomphe::Arc;
 

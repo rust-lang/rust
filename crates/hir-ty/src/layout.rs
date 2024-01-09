@@ -12,10 +12,9 @@ use hir_def::{
     LocalEnumVariantId, LocalFieldId, StructId,
 };
 use la_arena::{Idx, RawIdx};
-use rustc_dependencies::{
-    abi::AddressSpace,
-    index::{IndexSlice, IndexVec},
-};
+use rustc_abi::AddressSpace;
+use rustc_index::{IndexSlice, IndexVec};
+
 use stdx::never;
 use triomphe::Arc;
 
@@ -35,7 +34,7 @@ mod target;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RustcEnumVariantIdx(pub LocalEnumVariantId);
 
-impl rustc_dependencies::index::Idx for RustcEnumVariantIdx {
+impl rustc_index::Idx for RustcEnumVariantIdx {
     fn new(idx: usize) -> Self {
         RustcEnumVariantIdx(Idx::from_raw(RawIdx::from(idx as u32)))
     }
@@ -54,7 +53,7 @@ impl RustcFieldIdx {
     }
 }
 
-impl rustc_dependencies::index::Idx for RustcFieldIdx {
+impl rustc_index::Idx for RustcFieldIdx {
     fn new(idx: usize) -> Self {
         RustcFieldIdx(Idx::from_raw(RawIdx::from(idx as u32)))
     }
