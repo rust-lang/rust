@@ -266,8 +266,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     /// Converts the builder to a `Diagnostic` for later emission,
     /// unless dcx has disabled such buffering.
     pub fn into_diagnostic(mut self) -> Option<(Diagnostic, &'a DiagCtxt)> {
-        let flags = self.dcx.inner.lock().flags;
-        if flags.dont_buffer_diagnostics || flags.treat_err_as_bug.is_some() {
+        if self.dcx.inner.lock().flags.treat_err_as_bug.is_some() {
             self.emit();
             return None;
         }

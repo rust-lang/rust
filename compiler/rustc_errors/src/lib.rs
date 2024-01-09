@@ -524,9 +524,6 @@ pub struct DiagCtxtFlags {
     /// If Some, the Nth error-level diagnostic is upgraded to bug-level.
     /// (rustc: see `-Z treat-err-as-bug`)
     pub treat_err_as_bug: Option<NonZeroUsize>,
-    /// If true, immediately emit diagnostics that would otherwise be buffered.
-    /// (rustc: see `-Z dont-buffer-diagnostics` and `-Z treat-err-as-bug`)
-    pub dont_buffer_diagnostics: bool,
     /// Show macro backtraces.
     /// (rustc: see `-Z macro-backtrace`)
     pub macro_backtrace: bool,
