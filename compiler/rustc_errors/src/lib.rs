@@ -513,7 +513,7 @@ fn default_track_diagnostic(diag: Diagnostic, f: &mut dyn FnMut(Diagnostic)) {
     (*f)(diag)
 }
 
-pub static TRACK_DIAGNOSTICS: AtomicRef<fn(Diagnostic, &mut dyn FnMut(Diagnostic))> =
+pub static TRACK_DIAGNOSTIC: AtomicRef<fn(Diagnostic, &mut dyn FnMut(Diagnostic))> =
     AtomicRef::new(&(default_track_diagnostic as _));
 
 #[derive(Copy, Clone, Default)]
@@ -1309,18 +1309,18 @@ impl DiagCtxtInner {
             && !diagnostic.is_force_warn()
         {
             if diagnostic.has_future_breakage() {
-                (*TRACK_DIAGNOSTICS)(diagnostic, &mut |_| {});
+                (*TRACK_DIAGNOSTIC)(diagnostic, &mut |_| {});
             }
             return None;
         }
 
         if matches!(diagnostic.level, Expect(_) | Allow) {
-            (*TRACK_DIAGNOSTICS)(diagnostic, &mut |_| {});
+            (*TRACK_DIAGNOSTIC)(diagnostic, &mut |_| {});
             return None;
         }
 
         let mut guaranteed = None;
-        (*TRACK_DIAGNOSTICS)(diagnostic, &mut |mut diagnostic| {
+        (*TRACK_DIAGNOSTIC)(diagnostic, &mut |mut diagnostic| {
             if let Some(ref code) = diagnostic.code {
                 self.emitted_diagnostic_codes.insert(code.clone());
             }
