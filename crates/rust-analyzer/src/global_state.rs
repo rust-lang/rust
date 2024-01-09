@@ -218,7 +218,7 @@ impl GlobalState {
         let _p = profile::span("GlobalState::process_changes");
 
         let mut file_changes = FxHashMap::<_, (bool, ChangedFile)>::default();
-        let (change, modified_files, workspace_structure_change) = {
+        let (change, modified_rust_files, workspace_structure_change) = {
             let mut change = Change::new();
             let mut guard = self.vfs.write();
             let changed_files = guard.0.take_changes();
@@ -254,8 +254,8 @@ impl GlobalState {
                                 *change = Create(new);
                                 *just_created = true;
                             }
-                            // shouldn't occur, but collapse into `Modify`
-                            (Modify(prev), _, Create(new)) => *prev = new,
+                            // shouldn't occur, but keep the Create
+                            (prev @ Modify(_), _, new @ Create(_)) => *prev = new,
                         }
                     }
                     Entry::Vacant(v) => {
@@ -276,7 +276,7 @@ impl GlobalState {
             // A file was added or deleted
             let mut has_structure_changes = false;
             let mut bytes = vec![];
-            let mut modified_files = vec![];
+            let mut modified_rust_files = vec![];
             for file in changed_files {
                 let vfs_path = &vfs.file_path(file.file_id);
                 if let Some(path) = vfs_path.as_path() {
@@ -288,8 +288,8 @@ impl GlobalState {
                         has_structure_changes = true;
                         workspace_structure_change =
                             Some((path, self.crate_graph_file_dependencies.contains(vfs_path)));
-                    } else {
-                        modified_files.push(file.file_id);
+                    } else if path.extension() == Some("rs".as_ref()) {
+                        modified_rust_files.push(file.file_id);
                     }
                 }
 
@@ -324,7 +324,7 @@ impl GlobalState {
                 let roots = self.source_root_config.partition(vfs);
                 change.set_roots(roots);
             }
-            (change, modified_files, workspace_structure_change)
+            (change, modified_rust_files, workspace_structure_change)
         };
 
         self.analysis_host.apply_change(change);
@@ -339,7 +339,7 @@ impl GlobalState {
                     force_crate_graph_reload,
                 );
             }
-            self.proc_macro_changed = modified_files.into_iter().any(|file_id| {
+            self.proc_macro_changed = modified_rust_files.into_iter().any(|file_id| {
                 let crates = raw_database.relevant_crates(file_id);
                 let crate_graph = raw_database.crate_graph();
 
