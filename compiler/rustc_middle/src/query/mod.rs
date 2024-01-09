@@ -1878,7 +1878,6 @@ rustc_queries! {
     }
 
     query collect_and_partition_mono_items(_: ()) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
-        eval_always
         desc { "collect_and_partition_mono_items" }
     }
 
