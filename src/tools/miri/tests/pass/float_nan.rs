@@ -266,6 +266,10 @@ fn test_f32() {
     );
     check_all_outcomes(
         HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
+        || F32::from(nan.floor()),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F32::nan(Pos, Quiet, 0), F32::nan(Neg, Quiet, 0)]),
         || F32::from(nan.sin()),
     );
     check_all_outcomes(
@@ -375,6 +379,10 @@ fn test_f64() {
     check_all_outcomes(
         HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
         || F64::from(f64::min(nan, nan)),
+    );
+    check_all_outcomes(
+        HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
+        || F64::from(nan.floor()),
     );
     check_all_outcomes(
         HashSet::from_iter([F64::nan(Pos, Quiet, 0), F64::nan(Neg, Quiet, 0)]),
