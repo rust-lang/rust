@@ -118,6 +118,69 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         }
         TaitInBodyFinder { collector: self }.visit_expr(body);
     }
+
+    fn visit_opaque_ty(&mut self, alias_ty: &ty::AliasTy<'tcx>) {
+        if !self.seen.insert(alias_ty.def_id.expect_local()) {
+            return;
+        }
+
+        // TAITs outside their defining scopes are ignored.
+        let origin = self.tcx.opaque_type_origin(alias_ty.def_id.expect_local());
+        trace!(?origin);
+        match origin {
+            rustc_hir::OpaqueTyOrigin::FnReturn(_) | rustc_hir::OpaqueTyOrigin::AsyncFn(_) => {}
+            rustc_hir::OpaqueTyOrigin::TyAlias { in_assoc_ty } => {
+                if !in_assoc_ty {
+                    if !self.check_tait_defining_scope(alias_ty.def_id.expect_local()) {
+                        return;
+                    }
+                }
+            }
+        }
+
+        self.opaques.push(alias_ty.def_id.expect_local());
+
+        let parent_count = self.tcx.generics_of(alias_ty.def_id).parent_count;
+        // Only check that the parent generics of the TAIT/RPIT are unique.
+        // the args owned by the opaque are going to always be duplicate
+        // lifetime params for RPITs, and empty for TAITs.
+        match self
+            .tcx
+            .uses_unique_generic_params(&alias_ty.args[..parent_count], CheckRegions::FromFunction)
+        {
+            Ok(()) => {
+                // FIXME: implement higher kinded lifetime bounds on nested opaque types. They are not
+                // supported at all, so this is sound to do, but once we want to support them, you'll
+                // start seeing the error below.
+
+                // Collect opaque types nested within the associated type bounds of this opaque type.
+                // We use identity args here, because we already know that the opaque type uses
+                // only generic parameters, and thus substituting would not give us more information.
+                for (pred, span) in self
+                    .tcx
+                    .explicit_item_bounds(alias_ty.def_id)
+                    .instantiate_identity_iter_copied()
+                {
+                    trace!(?pred);
+                    self.visit_spanned(span, pred);
+                }
+            }
+            Err(NotUniqueParam::NotParam(arg)) => {
+                self.tcx.dcx().emit_err(NotParam {
+                    arg,
+                    span: self.span(),
+                    opaque_span: self.tcx.def_span(alias_ty.def_id),
+                });
+            }
+            Err(NotUniqueParam::DuplicateParam(arg)) => {
+                self.tcx.dcx().emit_err(DuplicateArg {
+                    arg,
+                    span: self.span(),
+                    opaque_span: self.tcx.def_span(alias_ty.def_id),
+                });
+            }
+        }
+    }
 }
 
 impl<'tcx> super::sig_types::SpannedTypeVisitor<'tcx> for OpaqueTypeCollector<'tcx> {
@@ -134,67 +197,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for OpaqueTypeCollector<'tcx> {
         t.super_visit_with(self)?;
         match t.kind() {
             ty::Alias(ty::Opaque, alias_ty) if alias_ty.def_id.is_local() => {
-                if !self.seen.insert(alias_ty.def_id.expect_local()) {
-                    return ControlFlow::Continue(());
-                }
-
-                // TAITs outside their defining scopes are ignored.
-                let origin = self.tcx.opaque_type_origin(alias_ty.def_id.expect_local());
-                trace!(?origin);
-                match origin {
-                    rustc_hir::OpaqueTyOrigin::FnReturn(_)
-                    | rustc_hir::OpaqueTyOrigin::AsyncFn(_) => {}
-                    rustc_hir::OpaqueTyOrigin::TyAlias { in_assoc_ty } => {
-                        if !in_assoc_ty {
-                            if !self.check_tait_defining_scope(alias_ty.def_id.expect_local()) {
-                                return ControlFlow::Continue(());
-                            }
-                        }
-                    }
-                }
-
-                self.opaques.push(alias_ty.def_id.expect_local());
-
-                let parent_count = self.tcx.generics_of(alias_ty.def_id).parent_count;
-                // Only check that the parent generics of the TAIT/RPIT are unique.
-                // the args owned by the opaque are going to always be duplicate
-                // lifetime params for RPITs, and empty for TAITs.
-                match self.tcx.uses_unique_generic_params(
-                    &alias_ty.args[..parent_count],
-                    CheckRegions::FromFunction,
-                ) {
-                    Ok(()) => {
-                        // FIXME: implement higher kinded lifetime bounds on nested opaque types. They are not
-                        // supported at all, so this is sound to do, but once we want to support them, you'll
-                        // start seeing the error below.
-
-                        // Collect opaque types nested within the associated type bounds of this opaque type.
-                        // We use identity args here, because we already know that the opaque type uses
-                        // only generic parameters, and thus substituting would not give us more information.
-                        for (pred, span) in self
-                            .tcx
-                            .explicit_item_bounds(alias_ty.def_id)
-                            .instantiate_identity_iter_copied()
-                        {
-                            trace!(?pred);
-                            self.visit_spanned(span, pred);
-                        }
-                    }
-                    Err(NotUniqueParam::NotParam(arg)) => {
-                        self.tcx.dcx().emit_err(NotParam {
-                            arg,
-                            span: self.span(),
-                            opaque_span: self.tcx.def_span(alias_ty.def_id),
-                        });
-                    }
-                    Err(NotUniqueParam::DuplicateParam(arg)) => {
-                        self.tcx.dcx().emit_err(DuplicateArg {
-                            arg,
-                            span: self.span(),
-                            opaque_span: self.tcx.def_span(alias_ty.def_id),
-                        });
-                    }
-                }
+                self.visit_opaque_ty(alias_ty);
             }
             ty::Alias(ty::Weak, alias_ty) if alias_ty.def_id.is_local() => {
                 self.tcx
