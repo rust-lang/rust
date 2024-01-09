@@ -642,7 +642,7 @@ fn convert_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             tcx.ensure().generics_of(def_id);
             tcx.ensure().type_of(def_id);
             tcx.ensure().predicates_of(def_id);
-            if !is_suggestable_infer_ty(ty) {
+            if !ty.is_suggestable_infer_ty() {
                 let mut visitor = HirPlaceholderCollector::default();
                 visitor.visit_item(it);
                 placeholder_type_error(tcx, None, visitor.0, false, None, it.kind.descr());
@@ -674,7 +674,7 @@ fn convert_trait_item(tcx: TyCtxt<'_>, trait_item_id: hir::TraitItemId) {
         hir::TraitItemKind::Const(ty, body_id) => {
             tcx.ensure().type_of(def_id);
             if !tcx.dcx().has_stashed_diagnostic(ty.span, StashKey::ItemNoType)
-                && !(is_suggestable_infer_ty(ty) && body_id.is_some())
+                && !(ty.is_suggestable_infer_ty() && body_id.is_some())
             {
                 // Account for `const C: _;`.
                 let mut visitor = HirPlaceholderCollector::default();
@@ -726,7 +726,7 @@ fn convert_impl_item(tcx: TyCtxt<'_>, impl_item_id: hir::ImplItemId) {
         }
         hir::ImplItemKind::Const(ty, _) => {
             // Account for `const T: _ = ..;`
-            if !is_suggestable_infer_ty(ty) {
+            if !ty.is_suggestable_infer_ty() {
                 let mut visitor = HirPlaceholderCollector::default();
                 visitor.visit_impl_item(impl_item);
                 placeholder_type_error(tcx, None, visitor.0, false, None, "associated constant");
@@ -1054,48 +1054,6 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     }
 }
 
-fn are_suggestable_generic_args(generic_args: &[hir::GenericArg<'_>]) -> bool {
-    generic_args.iter().any(|arg| match arg {
-        hir::GenericArg::Type(ty) => is_suggestable_infer_ty(ty),
-        hir::GenericArg::Infer(_) => true,
-        _ => false,
-    })
-}
-
-/// Whether `ty` is a type with `_` placeholders that can be inferred. Used in diagnostics only to
-/// use inference to provide suggestions for the appropriate type if possible.
-fn is_suggestable_infer_ty(ty: &hir::Ty<'_>) -> bool {
-    debug!(?ty);
-    use hir::TyKind::*;
-    match &ty.kind {
-        Infer => true,
-        Slice(ty) => is_suggestable_infer_ty(ty),
-        Array(ty, length) => {
-            is_suggestable_infer_ty(ty) || matches!(length, hir::ArrayLen::Infer(_, _))
-        }
-        Tup(tys) => tys.iter().any(is_suggestable_infer_ty),
-        Ptr(mut_ty) | Ref(_, mut_ty) => is_suggestable_infer_ty(mut_ty.ty),
-        OpaqueDef(_, generic_args, _) => are_suggestable_generic_args(generic_args),
-        Path(hir::QPath::TypeRelative(ty, segment)) => {
-            is_suggestable_infer_ty(ty) || are_suggestable_generic_args(segment.args().args)
-        }
-        Path(hir::QPath::Resolved(ty_opt, hir::Path { segments, .. })) => {
-            ty_opt.is_some_and(is_suggestable_infer_ty)
-                || segments.iter().any(|segment| are_suggestable_generic_args(segment.args().args))
-        }
-        _ => false,
-    }
-}
-
-pub fn get_infer_ret_ty<'hir>(output: &'hir hir::FnRetTy<'hir>) -> Option<&'hir hir::Ty<'hir>> {
-    if let hir::FnRetTy::Return(ty) = output {
-        if is_suggestable_infer_ty(ty) {
-            return Some(*ty);
-        }
-    }
-    None
-}
-
 #[instrument(level = "debug", skip(tcx))]
 fn fn_sig(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<ty::PolyFnSig<'_>> {
     use rustc_hir::Node::*;
@@ -1188,7 +1146,7 @@ fn infer_return_ty_for_fn_sig<'tcx>(
 ) -> ty::PolyFnSig<'tcx> {
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
 
-    match get_infer_ret_ty(&sig.decl.output) {
+    match sig.decl.output.get_infer_ret_ty() {
         Some(ty) => {
             let fn_sig = tcx.typeck(def_id).liberated_fn_sigs()[hir_id];
             // Typeck doesn't expect erased regions to be returned from `type_of`.

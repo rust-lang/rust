@@ -9,8 +9,8 @@ use rustc_middle::ty::{self, ImplTraitInTraitData, IsSuggestable, Ty, TyCtxt, Ty
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, DUMMY_SP};
 
+use super::bad_placeholder;
 use super::ItemCtxt;
-use super::{bad_placeholder, is_suggestable_infer_ty};
 pub use opaque::test_opaque_hidden_types;
 
 mod opaque;
@@ -368,7 +368,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
             }
             TraitItemKind::Const(ty, body_id) => body_id
                 .and_then(|body_id| {
-                    is_suggestable_infer_ty(ty).then(|| {
+                    ty.is_suggestable_infer_ty().then(|| {
                         infer_placeholder_type(
                             tcx,
                             def_id,
@@ -392,7 +392,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
                 Ty::new_fn_def(tcx, def_id.to_def_id(), args)
             }
             ImplItemKind::Const(ty, body_id) => {
-                if is_suggestable_infer_ty(ty) {
+                if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         tcx,
                         def_id,
@@ -416,7 +416,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
 
         Node::Item(item) => match item.kind {
             ItemKind::Static(ty, .., body_id) => {
-                if is_suggestable_infer_ty(ty) {
+                if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
                         tcx,
                         def_id,
@@ -430,7 +430,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
                 }
             }
             ItemKind::Const(ty, _, body_id) => {
-                if is_suggestable_infer_ty(ty) {
+                if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(tcx, def_id, body_id, ty.span, item.ident, "constant")
                 } else {
                     icx.to_ty(ty)
