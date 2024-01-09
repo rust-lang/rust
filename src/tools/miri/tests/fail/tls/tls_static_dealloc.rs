@@ -1,6 +1,8 @@
 //! Ensure that thread-local statics get deallocated when the thread dies.
 
 #![feature(thread_local)]
+// FIXME: Use `SyncUnsafeCell` instead of allowing `static_mut_ref` lint
+#![allow(static_mut_ref)]
 
 #[thread_local]
 static mut TLS: u8 = 0;
