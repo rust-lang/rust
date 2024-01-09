@@ -420,6 +420,7 @@ pub struct DiagCtxt {
 /// as well as inconsistent state observation.
 struct DiagCtxtInner {
     flags: DiagCtxtFlags,
+
     /// The number of lint errors that have been emitted.
     lint_err_count: usize,
     /// The number of errors that have been emitted, including duplicates.
@@ -429,6 +430,9 @@ struct DiagCtxtInner {
     err_count: usize,
     warn_count: usize,
     deduplicated_err_count: usize,
+    /// The warning count, used for a recap upon finishing
+    deduplicated_warn_count: usize,
+
     emitter: Box<DynEmitter>,
     span_delayed_bugs: Vec<DelayedDiagnostic>,
     good_path_delayed_bugs: Vec<DelayedDiagnostic>,
@@ -454,9 +458,6 @@ struct DiagCtxtInner {
     /// The stashed diagnostics count towards the total error count.
     /// When `.abort_if_errors()` is called, these are also emitted.
     stashed_diagnostics: FxIndexMap<(Span, StashKey), Diagnostic>,
-
-    /// The warning count, used for a recap upon finishing
-    deduplicated_warn_count: usize,
 
     future_breakage_diagnostics: Vec<Diagnostic>,
 
