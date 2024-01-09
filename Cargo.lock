@@ -3738,6 +3738,7 @@ dependencies = [
  "rustc_trait_selection",
  "rustc_ty_utils",
  "serde_json",
+ "shlex",
  "time",
  "tracing",
  "windows",
