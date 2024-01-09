@@ -116,8 +116,7 @@ pub enum TypeRef {
     Path(Path),
     RawPtr(Box<TypeRef>, Mutability),
     Reference(Box<TypeRef>, Option<LifetimeRef>, Mutability),
-    // FIXME: for full const generics, the latter element (length) here is going to have to be an
-    // expression that is further lowered later in hir_ty.
+    // FIXME: This should be Array(Box<TypeRef>, Ast<ConstArg>),
     Array(Box<TypeRef>, ConstRef),
     Slice(Box<TypeRef>),
     /// A fn pointer. Last element of the vector is the return type.
