@@ -262,7 +262,7 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(builder: &Builder<'a, 'gcc
             },
             // NOTE: the LLVM intrinsic receives 3 floats, but the GCC builtin requires 3 vectors.
             // FIXME: the intrinsics like _mm_mask_fmadd_sd should probably directly call the GCC
-            // instrinsic to avoid this.
+            // intrinsic to avoid this.
             "__builtin_ia32_vfmaddss3_round" => {
                 let new_args = args.to_vec();
                 let arg1_type = gcc_func.get_param_type(0);

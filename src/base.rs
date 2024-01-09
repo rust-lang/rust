@@ -164,7 +164,7 @@ pub fn compile_codegen_unit(tcx: TyCtxt<'_>, cgu_name: Symbol, target_info: Lock
             context.add_driver_option("-v");
         }
 
-        // NOTE: The codegen generates unrechable blocks.
+        // NOTE: The codegen generates unreachable blocks.
         context.set_allow_unreachable_blocks(true);
 
         {
