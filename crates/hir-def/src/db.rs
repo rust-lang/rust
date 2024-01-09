@@ -210,6 +210,7 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     #[salsa::invoke(AttrsWithOwner::attrs_query)]
     fn attrs(&self, def: AttrDefId) -> Attrs;
 
+    #[salsa::transparent]
     #[salsa::invoke(lang_item::lang_attr_query)]
     fn lang_attr(&self, def: AttrDefId) -> Option<LangItem>;
 

@@ -172,7 +172,6 @@ impl RootDatabase {
             hir::db::CrateSupportsNoStdQuery
             hir::db::BlockItemTreeQueryQuery
             hir::db::ExternCrateDeclDataQuery
-            hir::db::LangAttrQuery
             hir::db::InternAnonymousConstQuery
             hir::db::InternExternCrateQuery
             hir::db::InternInTypeConstQuery
