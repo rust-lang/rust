@@ -162,12 +162,19 @@ impl Process {
 }
 
 fn mk_child(path: &AbsPath, null_stderr: bool) -> io::Result<Child> {
-    Command::new(path.as_os_str())
-        .env("RUST_ANALYZER_INTERNALS_DO_NOT_USE", "this is unstable")
+    let mut cmd = Command::new(path.as_os_str());
+    cmd.env("RUST_ANALYZER_INTERNALS_DO_NOT_USE", "this is unstable")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(if null_stderr { Stdio::null() } else { Stdio::inherit() })
-        .spawn()
+        .stderr(if null_stderr { Stdio::null() } else { Stdio::inherit() });
+    if cfg!(windows) {
+        let mut path_var = std::ffi::OsString::new();
+        path_var.push(path.parent().unwrap().parent().unwrap().as_os_str());
+        path_var.push("\\bin;");
+        path_var.push(std::env::var_os("PATH").unwrap_or_default());
+        cmd.env("PATH", path_var);
+    }
+    cmd.spawn()
 }
 
 fn send_request(
