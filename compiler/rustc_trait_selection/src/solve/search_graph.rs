@@ -61,10 +61,11 @@ struct DetachedEntry<'tcx> {
     ///
     /// Given the following rules, when proving `A` the head for
     /// the provisional entry of `C` would be `B`.
-    ///
-    ///     A :- B
-    ///     B :- C
-    ///     C :- A + B + C
+    /// ```plain
+    /// A :- B
+    /// B :- C
+    /// C :- A + B + C
+    /// ```
     head: StackDepth,
     result: QueryResult<'tcx>,
 }
