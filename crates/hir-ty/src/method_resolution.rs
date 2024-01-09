@@ -132,34 +132,33 @@ pub(crate) const ALL_FLOAT_FPS: [TyFingerprint; 2] = [
     TyFingerprint::Scalar(Scalar::Float(FloatTy::F64)),
 ];
 
+type TraitFpMap = FxHashMap<TraitId, FxHashMap<Option<TyFingerprint>, Box<[ImplId]>>>;
+type TraitFpMapCollector = FxHashMap<TraitId, FxHashMap<Option<TyFingerprint>, Vec<ImplId>>>;
+
 /// Trait impls defined or available in some crate.
 #[derive(Debug, Eq, PartialEq)]
 pub struct TraitImpls {
     // If the `Option<TyFingerprint>` is `None`, the impl may apply to any self type.
-    map: FxHashMap<TraitId, FxHashMap<Option<TyFingerprint>, Vec<ImplId>>>,
+    map: TraitFpMap,
 }
 
 impl TraitImpls {
     pub(crate) fn trait_impls_in_crate_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
         let _p = profile::span("trait_impls_in_crate_query").detail(|| format!("{krate:?}"));
-        let mut impls = Self { map: FxHashMap::default() };
+        let mut impls = FxHashMap::default();
 
-        let crate_def_map = db.crate_def_map(krate);
-        impls.collect_def_map(db, &crate_def_map);
-        impls.shrink_to_fit();
+        Self::collect_def_map(db, &mut impls, &db.crate_def_map(krate));
 
-        Arc::new(impls)
+        Arc::new(Self::finish(impls))
     }
 
     pub(crate) fn trait_impls_in_block_query(db: &dyn HirDatabase, block: BlockId) -> Arc<Self> {
         let _p = profile::span("trait_impls_in_block_query");
-        let mut impls = Self { map: FxHashMap::default() };
+        let mut impls = FxHashMap::default();
 
-        let block_def_map = db.block_def_map(block);
-        impls.collect_def_map(db, &block_def_map);
-        impls.shrink_to_fit();
+        Self::collect_def_map(db, &mut impls, &db.block_def_map(block));
 
-        Arc::new(impls)
+        Arc::new(Self::finish(impls))
     }
 
     pub(crate) fn trait_impls_in_deps_query(
@@ -174,15 +173,16 @@ impl TraitImpls {
         )
     }
 
-    fn shrink_to_fit(&mut self) {
-        self.map.shrink_to_fit();
-        self.map.values_mut().for_each(|map| {
-            map.shrink_to_fit();
-            map.values_mut().for_each(Vec::shrink_to_fit);
-        });
+    fn finish(map: TraitFpMapCollector) -> TraitImpls {
+        TraitImpls {
+            map: map
+                .into_iter()
+                .map(|(k, v)| (k, v.into_iter().map(|(k, v)| (k, v.into_boxed_slice())).collect()))
+                .collect(),
+        }
     }
 
-    fn collect_def_map(&mut self, db: &dyn HirDatabase, def_map: &DefMap) {
+    fn collect_def_map(db: &dyn HirDatabase, map: &mut TraitFpMapCollector, def_map: &DefMap) {
         for (_module_id, module_data) in def_map.modules() {
             for impl_id in module_data.scope.impls() {
                 // Reservation impls should be ignored during trait resolution, so we never need
@@ -200,12 +200,7 @@ impl TraitImpls {
                 };
                 let self_ty = db.impl_self_ty(impl_id);
                 let self_ty_fp = TyFingerprint::for_trait_impl(self_ty.skip_binders());
-                self.map
-                    .entry(target_trait)
-                    .or_default()
-                    .entry(self_ty_fp)
-                    .or_default()
-                    .push(impl_id);
+                map.entry(target_trait).or_default().entry(self_ty_fp).or_default().push(impl_id);
             }
 
             // To better support custom derives, collect impls in all unnamed const items.
@@ -213,7 +208,7 @@ impl TraitImpls {
             for konst in collect_unnamed_consts(db, &module_data.scope) {
                 let body = db.body(konst.into());
                 for (_, block_def_map) in body.blocks(db.upcast()) {
-                    self.collect_def_map(db, &block_def_map);
+                    Self::collect_def_map(db, map, &block_def_map);
                 }
             }
         }

@@ -171,7 +171,7 @@ impl AnalysisHost {
     }
 
     pub fn update_lru_capacity(&mut self, lru_capacity: Option<usize>) {
-        self.db.update_parse_query_lru_capacity(lru_capacity);
+        self.db.update_base_query_lru_capacities(lru_capacity);
     }
 
     pub fn update_lru_capacities(&mut self, lru_capacities: &FxHashMap<Box<str>, usize>) {
