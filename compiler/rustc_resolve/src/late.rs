@@ -2136,8 +2136,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     // We found `self` elision.
                     Set1::One(lifetime) => Elision::Self_(lifetime),
                     // `self` itself had ambiguous lifetimes, e.g.
-                    // &Box<&Self>
-                    Set1::Many => Elision::None,
+                    // &Box<&Self>. In this case we won't consider
+                    // taking an alternative parameter lifetime; just avoid elision
+                    // entirely.
+                    Set1::Many => Elision::Err,
                     // We do not have `self` elision: disregard the `Elision::Param` that we may
                     // have found.
                     Set1::Empty => Elision::None,
