@@ -6,7 +6,6 @@ use clippy_utils::ty::is_type_lang_item;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, LangItem, Path, QPath};
 use rustc_lint::LateContext;
-use rustc_middle::query::Key;
 use rustc_middle::ty;
 use rustc_middle::ty::Ty;
 use rustc_span::{sym, Symbol};
@@ -18,10 +17,10 @@ use rustc_span::{sym, Symbol};
 /// `vec![1,2].drain(..).collect::<HashSet<_>>()`
 ///  ^^^^^^^^^                     ^^^^^^^^^^  false
 fn types_match_diagnostic_item(cx: &LateContext<'_>, expr: Ty<'_>, recv: Ty<'_>, sym: Symbol) -> bool {
-    if let Some(expr_adt_did) = expr.ty_adt_id()
-        && let Some(recv_adt_did) = recv.ty_adt_id()
+    if let Some(expr_adt) = expr.ty_adt_def()
+        && let Some(recv_adt) = recv.ty_adt_def()
     {
-        cx.tcx.is_diagnostic_item(sym, expr_adt_did) && cx.tcx.is_diagnostic_item(sym, recv_adt_did)
+        cx.tcx.is_diagnostic_item(sym, expr_adt.did()) && cx.tcx.is_diagnostic_item(sym, recv_adt.did())
     } else {
         false
     }

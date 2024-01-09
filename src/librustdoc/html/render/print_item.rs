@@ -4,7 +4,6 @@ use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
-use rustc_middle::query::Key;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
@@ -1259,7 +1258,7 @@ fn item_type_alias(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, t: &c
             clean::TypeAliasInnerType::Enum { variants, is_non_exhaustive } => {
                 let variants_iter = || variants.iter().filter(|i| !i.is_stripped());
                 let ty = cx.tcx().type_of(it.def_id().unwrap()).instantiate_identity();
-                let enum_def_id = ty.ty_adt_id().unwrap();
+                let enum_def_id = ty.ty_adt_def().unwrap().did();
 
                 wrap_item(w, |w| {
                     let variants_len = variants.len();

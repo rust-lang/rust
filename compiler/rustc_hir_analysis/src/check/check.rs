@@ -17,7 +17,7 @@ use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::traits::{DefiningAnchor, ObligationCauseCode};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
-use rustc_middle::ty::util::{Discr, IntTypeExt};
+use rustc_middle::ty::util::{Discr, InspectCoroutineFields, IntTypeExt};
 use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::{
     AdtDef, ParamEnv, RegionKind, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
@@ -213,13 +213,12 @@ fn check_opaque(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         return;
     }
 
-    let args = GenericArgs::identity_for_item(tcx, item.owner_id);
     let span = tcx.def_span(item.owner_id.def_id);
 
     if tcx.type_of(item.owner_id.def_id).instantiate_identity().references_error() {
         return;
     }
-    if check_opaque_for_cycles(tcx, item.owner_id.def_id, args, span, origin).is_err() {
+    if check_opaque_for_cycles(tcx, item.owner_id.def_id, span).is_err() {
         return;
     }
 
@@ -230,19 +229,36 @@ fn check_opaque(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 pub(super) fn check_opaque_for_cycles<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-    args: GenericArgsRef<'tcx>,
     span: Span,
-    origin: &hir::OpaqueTyOrigin,
 ) -> Result<(), ErrorGuaranteed> {
-    if tcx.try_expand_impl_trait_type(def_id.to_def_id(), args).is_err() {
-        let reported = match origin {
-            hir::OpaqueTyOrigin::AsyncFn(..) => async_opaque_type_cycle_error(tcx, span),
-            _ => opaque_type_cycle_error(tcx, def_id, span),
-        };
-        Err(reported)
-    } else {
-        Ok(())
+    let args = GenericArgs::identity_for_item(tcx, def_id);
+
+    // First, try to look at any opaque expansion cycles, considering coroutine fields
+    // (even though these aren't necessarily true errors).
+    if tcx
+        .try_expand_impl_trait_type(def_id.to_def_id(), args, InspectCoroutineFields::Yes)
+        .is_err()
+    {
+        // Look for true opaque expansion cycles, but ignore coroutines.
+        // This will give us any true errors. Coroutines are only problematic
+        // if they cause layout computation errors.
+        if tcx
+            .try_expand_impl_trait_type(def_id.to_def_id(), args, InspectCoroutineFields::No)
+            .is_err()
+        {
+            let reported = opaque_type_cycle_error(tcx, def_id, span);
+            return Err(reported);
+        }
+
+        // And also look for cycle errors in the layout of coroutines.
+        if let Err(&LayoutError::Cycle(guar)) =
+            tcx.layout_of(tcx.param_env(def_id).and(Ty::new_opaque(tcx, def_id.to_def_id(), args)))
+        {
+            return Err(guar);
+        }
     }
+
+    Ok(())
 }
 
 /// Check that the concrete type behind `impl Trait` actually implements `Trait`.
@@ -1298,16 +1314,6 @@ pub(super) fn check_type_params_are_used<'tcx>(
                 .emit();
         }
     }
-}
-
-fn async_opaque_type_cycle_error(tcx: TyCtxt<'_>, span: Span) -> ErrorGuaranteed {
-    struct_span_err!(tcx.dcx(), span, E0733, "recursion in an `async fn` requires boxing")
-        .span_label_mv(span, "recursive `async fn`")
-        .note_mv("a recursive `async fn` must be rewritten to return a boxed `dyn Future`")
-        .note_mv(
-            "consider using the `async_recursion` crate: https://crates.io/crates/async_recursion",
-        )
-        .emit()
 }
 
 /// Emit an error for recursive opaque types.
