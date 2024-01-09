@@ -3083,7 +3083,8 @@ pub fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> DefIdMap<Symbol> {
     let mut map: DefIdMap<Symbol> = Default::default();
 
     if let TrimmedDefPaths::GoodPath = tcx.sess.opts.trimmed_def_paths {
-        // Trimming paths is expensive and not optimized, since we expect it to only be used for error reporting.
+        // Trimming paths is expensive and not optimized, since we expect it to only be used for
+        // error reporting.
         //
         // For good paths causing this bug, the `rustc_middle::ty::print::with_no_trimmed_paths`
         // wrapper can be used to suppress this query, in exchange for full paths being formatted.
@@ -3092,6 +3093,8 @@ pub fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> DefIdMap<Symbol> {
         );
     }
 
+    // Once constructed, unique namespace+symbol pairs will have a `Some(_)` entry, while
+    // non-unique pairs will have a `None` entry.
     let unique_symbols_rev: &mut FxHashMap<(Namespace, Symbol), Option<DefId>> =
         &mut FxHashMap::default();
 
@@ -3121,6 +3124,7 @@ pub fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> DefIdMap<Symbol> {
         }
     });
 
+    // Put the symbol from all the unique namespace+symbol pairs into `map`.
     for ((_, symbol), opt_def_id) in unique_symbols_rev.drain() {
         use std::collections::hash_map::Entry::{Occupied, Vacant};
 
