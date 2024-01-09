@@ -2135,6 +2135,10 @@ impl<'a> Builder<'a> {
             cargo.env("RUSTFLAGS", &rustc_args.join(" "));
         }
 
+        if matches!(self.config.rust_panic_strategy, crate::PanicStrategy::Abort) {
+            rustflags.arg("-Cpanic=abort");
+        }
+
         Cargo { command: cargo, rustflags, rustdocflags, hostflags, allow_features }
     }
 

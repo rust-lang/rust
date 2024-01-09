@@ -504,6 +504,9 @@
 # Defaults to rust.overflow-checks value
 #overflow-checks-std = rust.overflow-checks (boolean)
 
+# The panic strategy used for all compiler invocations
+#panic-strategy = "unwind"
+
 # Debuginfo level for most of Rust code, corresponds to the `-C debuginfo=N` option of `rustc`.
 # `0` - no debug info
 # `1` - line tables only - sufficient to generate backtraces that include line

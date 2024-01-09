@@ -105,6 +105,14 @@ impl Display for DebuginfoLevel {
     }
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PanicStrategy {
+    #[default]
+    Unwind,
+    Abort,
+}
+
 /// LLD in bootstrap works like this:
 /// - Self-contained lld: use `rust-lld` from the compiler's sysroot
 /// - External: use an external `lld` binary
@@ -272,6 +280,7 @@ pub struct Config {
     pub rust_profile_generate: Option<String>,
     pub rust_lto: RustcLto,
     pub rust_validate_mir_opts: Option<u32>,
+    pub rust_panic_strategy: PanicStrategy,
     pub llvm_profile_use: Option<String>,
     pub llvm_profile_generate: bool,
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
@@ -1111,6 +1120,7 @@ define_config! {
         download_rustc: Option<StringOrBool> = "download-rustc",
         lto: Option<String> = "lto",
         validate_mir_opts: Option<u32> = "validate-mir-opts",
+        panic_strategy: Option<PanicStrategy> = "panic-strategy",
     }
 }
 
@@ -1562,6 +1572,7 @@ impl Config {
                 stack_protector,
                 strip,
                 lld_mode,
+                panic_strategy,
             } = rust;
 
             set(&mut config.channel, channel);
@@ -1594,6 +1605,7 @@ impl Config {
             debuginfo_level_std = debuginfo_level_std_toml;
             debuginfo_level_tools = debuginfo_level_tools_toml;
             debuginfo_level_tests = debuginfo_level_tests_toml;
+            set(&mut config.rust_panic_strategy, panic_strategy);
 
             config.rust_split_debuginfo = split_debuginfo
                 .as_deref()

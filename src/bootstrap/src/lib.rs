@@ -16,6 +16,7 @@
 //! More documentation can be found in each respective module below, and you can
 //! also check out the `src/bootstrap/README.md` file for more information.
 
+use core::config::PanicStrategy;
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::env;
@@ -708,13 +709,19 @@ impl Build {
     /// Gets the space-separated set of activated features for the standard
     /// library.
     fn std_features(&self, target: TargetSelection) -> String {
-        let mut features = " panic-unwind".to_string();
+        let mut features = match self.config.rust_panic_strategy {
+            PanicStrategy::Abort => String::new(),
+            _ => {
+                let mut features = " panic-unwind".to_string();
+                match self.config.llvm_libunwind(target) {
+                    LlvmLibunwind::InTree => features.push_str(" llvm-libunwind"),
+                    LlvmLibunwind::System => features.push_str(" system-llvm-libunwind"),
+                    LlvmLibunwind::No => {}
+                }
+                features
+            }
+        };
 
-        match self.config.llvm_libunwind(target) {
-            LlvmLibunwind::InTree => features.push_str(" llvm-libunwind"),
-            LlvmLibunwind::System => features.push_str(" system-llvm-libunwind"),
-            LlvmLibunwind::No => {}
-        }
         if self.config.backtrace {
             features.push_str(" backtrace");
         }
