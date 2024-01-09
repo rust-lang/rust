@@ -430,9 +430,12 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         }
 
         let scrut_ty = scrut.ty;
-        let Ok(report) = analyze_match(&cx, &tarms, scrut_ty).map_err(|err| self.error = Err(err))
-        else {
-            return;
+        let report = match analyze_match(&cx, &tarms, scrut_ty) {
+            Ok(report) => report,
+            Err(err) => {
+                self.error = Err(err);
+                return;
+            }
         };
 
         match source {
