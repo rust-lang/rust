@@ -9,7 +9,7 @@
 //@ignore-target-wasm32
 //@compile-flags: -C target-feature=+aes,+vaes,+avx512f
 
-#![feature(avx512_target_feature, stdsimd)]
+#![feature(avx512_target_feature, stdarch_x86_avx512)]
 
 use core::mem::transmute;
 #[cfg(target_arch = "x86")]
