@@ -603,6 +603,8 @@ fn infer_placeholder_type<'a>(
             }
 
             err.emit();
+            // diagnostic stashing loses the information of whether something is a hard error.
+            Ty::new_error_with_message(tcx, span, "ItemNoType is a hard error")
         }
         None => {
             let mut diag = bad_placeholder(tcx, vec![span], kind);
@@ -623,15 +625,9 @@ fn infer_placeholder_type<'a>(
                 }
             }
 
-            diag.emit();
+            Ty::new_error(tcx, diag.emit())
         }
     }
-
-    // Typeck doesn't expect erased regions to be returned from `type_of`.
-    tcx.fold_regions(ty, |r, _| match *r {
-        ty::ReErased => tcx.lifetimes.re_static,
-        _ => r,
-    })
 }
 
 fn check_feature_inherent_assoc_ty(tcx: TyCtxt<'_>, span: Span) {
