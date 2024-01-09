@@ -144,9 +144,9 @@ pub enum WherePredicateTypeTarget {
 
 #[derive(Clone, Default)]
 pub(crate) struct GenericParamsCollector {
-    pub type_or_consts: Arena<TypeOrConstParamData>,
-    pub lifetimes: Arena<LifetimeParamData>,
-    pub where_predicates: Vec<WherePredicate>,
+    pub(crate) type_or_consts: Arena<TypeOrConstParamData>,
+    lifetimes: Arena<LifetimeParamData>,
+    where_predicates: Vec<WherePredicate>,
 }
 
 impl GenericParamsCollector {
