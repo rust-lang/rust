@@ -5,6 +5,7 @@ use clippy_utils::ty::{is_copy, is_type_diagnostic_item};
 use clippy_utils::{is_diag_trait_item, match_def_path, paths, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty;
@@ -14,12 +15,22 @@ use rustc_span::{sym, Span};
 
 use super::MAP_CLONE;
 
+fn should_run_lint(cx: &LateContext<'_>, method_id: DefId) -> bool {
+    if is_diag_trait_item(cx, method_id, sym::Iterator) {
+        return true;
+    }
+    if !cx.tcx.impl_of_method(method_id).map_or(false, |id| {
+        is_type_diagnostic_item(cx, cx.tcx.type_of(id).instantiate_identity(), sym::Option)
+            || is_type_diagnostic_item(cx, cx.tcx.type_of(id).instantiate_identity(), sym::Result)
+    }) {
+        return false;
+    }
+    return true;
+}
+
 pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>, msrv: &Msrv) {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
-        && (cx.tcx.impl_of_method(method_id).map_or(false, |id| {
-            is_type_diagnostic_item(cx, cx.tcx.type_of(id).instantiate_identity(), sym::Option)
-                || is_type_diagnostic_item(cx, cx.tcx.type_of(id).instantiate_identity(), sym::Result)
-        }) || is_diag_trait_item(cx, method_id, sym::Iterator))
+        && should_run_lint(cx, method_id)
     {
         match arg.kind {
             hir::ExprKind::Closure(&hir::Closure { body, .. }) => {

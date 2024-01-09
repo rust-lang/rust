@@ -91,67 +91,56 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, call_name: &str,
             // And that it only has one argument.
             && let [arg] = args
         {
-            match arg.kind {
-                hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
-                    // If it's a closure, we need to check what is called.
-                    let closure_body = cx.tcx.hir().body(body);
-                    let closure_expr = peel_blocks(closure_body.value);
-                    match closure_expr.kind {
-                        hir::ExprKind::MethodCall(method, obj, [], _) => {
-                            if method.ident.name == sym::clone
-                                && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id)
-                                && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
-                                // We check it's the `Clone` trait.
-                                && cx.tcx.lang_items().clone_trait().map_or(false, |id| id == trait_id)
-                                // no autoderefs
-                                && !cx.typeck_results().expr_adjustments(obj).iter()
-                                    .any(|a| matches!(a.kind, Adjust::Deref(Some(..))))
-                            {
-                                lint_as_ref_clone(cx, expr.span.with_hi(parent.span.hi()), recvr, call_name);
-                            }
-                        },
-                        hir::ExprKind::Call(call, [_]) => {
-                            if let hir::ExprKind::Path(qpath) = call.kind {
-                                check_qpath(
-                                    cx,
-                                    expr.span.with_hi(parent.span.hi()),
-                                    recvr,
-                                    call_name,
-                                    qpath,
-                                    call.hir_id,
-                                );
-                            }
-                        },
-                        _ => {},
-                    }
-                },
-                hir::ExprKind::Path(qpath) => check_qpath(
-                    cx,
-                    expr.span.with_hi(parent.span.hi()),
-                    recvr,
-                    call_name,
-                    qpath,
-                    arg.hir_id,
-                ),
-                _ => {},
+            if is_calling_clone(cx, arg) {
+                lint_as_ref_clone(cx, expr.span.with_hi(parent.span.hi()), recvr, call_name);
             }
         }
     }
 }
 
-fn check_qpath(
-    cx: &LateContext<'_>,
-    span: Span,
-    recvr: &hir::Expr<'_>,
-    call_name: &str,
-    qpath: hir::QPath<'_>,
-    hir_id: hir::HirId,
-) {
+fn check_qpath(cx: &LateContext<'_>, qpath: hir::QPath<'_>, hir_id: hir::HirId) -> bool {
     // We check it's calling the `clone` method of the `Clone` trait.
-    if let Some(path_def_id) = cx.qpath_res(&qpath, hir_id).opt_def_id()
-        && match_def_path(cx, path_def_id, &paths::CLONE_TRAIT_METHOD)
-    {
-        lint_as_ref_clone(cx, span, recvr, call_name);
+    if let Some(path_def_id) = cx.qpath_res(&qpath, hir_id).opt_def_id() {
+        match_def_path(cx, path_def_id, &paths::CLONE_TRAIT_METHOD)
+    } else {
+        false
+    }
+}
+
+fn is_calling_clone(cx: &LateContext<'_>, arg: &hir::Expr<'_>) -> bool {
+    match arg.kind {
+        hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
+            // If it's a closure, we need to check what is called.
+            let closure_body = cx.tcx.hir().body(body);
+            let closure_expr = peel_blocks(closure_body.value);
+            match closure_expr.kind {
+                hir::ExprKind::MethodCall(method, obj, [], _) => {
+                    if method.ident.name == sym::clone
+                        && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id)
+                        && let Some(trait_id) = cx.tcx.trait_of_item(fn_id)
+                        // We check it's the `Clone` trait.
+                        && cx.tcx.lang_items().clone_trait().map_or(false, |id| id == trait_id)
+                        // no autoderefs
+                        && !cx.typeck_results().expr_adjustments(obj).iter()
+                            .any(|a| matches!(a.kind, Adjust::Deref(Some(..))))
+                    {
+                        true
+                    } else {
+                        false
+                    }
+                },
+                hir::ExprKind::Call(call, [_]) => {
+                    if let hir::ExprKind::Path(qpath) = call.kind {
+                        check_qpath(cx, qpath, call.hir_id)
+                    } else {
+                        false
+                    }
+                },
+                _ => false,
+            }
+        },
+        hir::ExprKind::Path(qpath) => check_qpath(cx, qpath, arg.hir_id),
+        _ => false,
     }
 }
 
