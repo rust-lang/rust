@@ -272,10 +272,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                 let data = data.try_fold_with(self)?;
 
                 let mut orig_values = OriginalQueryValues::default();
-                // HACK(matthewjasper) `'static` is special-cased in selection,
-                // so we cannot canonicalize it.
-                let c_data = infcx
-                    .canonicalize_query_keep_static(self.param_env.and(data), &mut orig_values);
+                let c_data = infcx.canonicalize_query(self.param_env.and(data), &mut orig_values);
                 debug!("QueryNormalizer: c_data = {:#?}", c_data);
                 debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
                 let result = match kind {
