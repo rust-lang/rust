@@ -60,7 +60,17 @@ where
             return false;
         }
 
-        self.iter().zip(other.iter()).all(|(x, y)| x == y)
+        // Implemented as explicit indexing rather
+        // than zipped iterators for performance reasons.
+        // See PR https://github.com/rust-lang/rust/pull/116846
+        for idx in 0..self.len() {
+            // bound checks are optimized away
+            if self[idx] != other[idx] {
+                return false;
+            }
+        }
+
+        true
     }
 }
 
