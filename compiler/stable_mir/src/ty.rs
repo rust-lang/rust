@@ -714,7 +714,14 @@ crate_def! {
 }
 
 crate_def! {
+    /// A trait's definition.
     pub TraitDef;
+}
+
+impl TraitDef {
+    pub fn declaration(trait_def: &TraitDef) -> TraitDecl {
+        with(|cx| cx.trait_decl(trait_def))
+    }
 }
 
 crate_def! {
@@ -726,7 +733,15 @@ crate_def! {
 }
 
 crate_def! {
+    /// A trait impl definition.
     pub ImplDef;
+}
+
+impl ImplDef {
+    /// Retrieve information about this implementation.
+    pub fn trait_impl(&self) -> ImplTrait {
+        with(|cx| cx.trait_impl(self))
+    }
 }
 
 crate_def! {
