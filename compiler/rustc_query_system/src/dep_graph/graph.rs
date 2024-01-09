@@ -4,7 +4,7 @@ use rustc_data_structures::profiling::{EventId, QueryInvocationId, SelfProfilerR
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc, Ordering};
+use rustc_data_structures::sync::{AtomicU32, AtomicU64, Lock, Lrc};
 use rustc_data_structures::unord::UnordMap;
 use rustc_index::IndexVec;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
@@ -13,7 +13,7 @@ use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
-use std::sync::atomic::Ordering::Relaxed;
+use std::sync::atomic::Ordering;
 
 use super::query::DepGraphQuery;
 use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex};
@@ -476,7 +476,7 @@ impl<D: Deps> DepGraph<D> {
                 let task_deps = &mut *task_deps;
 
                 if cfg!(debug_assertions) {
-                    data.current.total_read_count.fetch_add(1, Relaxed);
+                    data.current.total_read_count.fetch_add(1, Ordering::Relaxed);
                 }
 
                 // As long as we only have a low number of reads we can avoid doing a hash
@@ -506,7 +506,7 @@ impl<D: Deps> DepGraph<D> {
                         }
                     }
                 } else if cfg!(debug_assertions) {
-                    data.current.total_duplicate_read_count.fetch_add(1, Relaxed);
+                    data.current.total_duplicate_read_count.fetch_add(1, Ordering::Relaxed);
                 }
             })
         }
@@ -976,8 +976,8 @@ impl<D: Deps> DepGraph<D> {
     pub fn print_incremental_info(&self) {
         if let Some(data) = &self.data {
             data.current.encoder.borrow().print_incremental_info(
-                data.current.total_read_count.load(Relaxed),
-                data.current.total_duplicate_read_count.load(Relaxed),
+                data.current.total_read_count.load(Ordering::Relaxed),
+                data.current.total_duplicate_read_count.load(Ordering::Relaxed),
             )
         }
     }
@@ -992,7 +992,7 @@ impl<D: Deps> DepGraph<D> {
 
     pub(crate) fn next_virtual_depnode_index(&self) -> DepNodeIndex {
         debug_assert!(self.data.is_none());
-        let index = self.virtual_dep_node_index.fetch_add(1, Relaxed);
+        let index = self.virtual_dep_node_index.fetch_add(1, Ordering::Relaxed);
         DepNodeIndex::from_u32(index)
     }
 }
