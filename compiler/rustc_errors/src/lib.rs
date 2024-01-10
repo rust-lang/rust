@@ -1256,7 +1256,7 @@ impl DiagCtxtInner {
     }
 
     fn emit_diagnostic(&mut self, mut diagnostic: Diagnostic) -> Option<ErrorGuaranteed> {
-        if matches!(diagnostic.level, Error | Fatal) && self.treat_err_as_bug() {
+        if matches!(diagnostic.level, Error | Fatal) && self.treat_next_err_as_bug() {
             diagnostic.level = Bug;
         }
 
