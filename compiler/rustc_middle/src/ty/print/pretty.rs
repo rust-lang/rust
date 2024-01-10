@@ -1293,6 +1293,19 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         // FIXME(eddyb) avoid printing twice (needed to ensure
         // that the auto traits are sorted *and* printed via cx).
         let mut auto_traits: Vec<_> = predicates.auto_traits().collect();
+        let principal_super_traits: FxHashSet<_> = predicates
+            .principal()
+            .into_iter()
+            .flat_map(|principal| {
+                supertraits_for_pretty_printing(
+                    self.tcx(),
+                    principal.with_self_ty(self.tcx(), self.tcx().types.trait_object_dummy_self),
+                )
+                .map(|trait_ref| trait_ref.def_id())
+            })
+            .collect();
+
+        auto_traits.retain(|def_id| !principal_super_traits.contains(def_id));
 
         // The auto traits come ordered by `DefPathHash`. While
         // `DefPathHash` is *stable* in the sense that it depends on

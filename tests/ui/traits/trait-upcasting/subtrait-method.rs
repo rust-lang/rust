@@ -51,17 +51,17 @@ fn main() {
 
     let bar: &dyn Bar = baz;
     bar.c();
-    //~^ ERROR no method named `c` found for reference `&dyn Bar + Send + Sync` in the current scope [E0599]
+    //~^ ERROR no method named `c` found for reference `&dyn Bar` in the current scope [E0599]
 
     let foo: &dyn Foo = baz;
     foo.b();
-    //~^ ERROR no method named `b` found for reference `&dyn Foo + Send + Sync` in the current scope [E0599]
+    //~^ ERROR no method named `b` found for reference `&dyn Foo` in the current scope [E0599]
     foo.c();
-    //~^ ERROR no method named `c` found for reference `&dyn Foo + Send + Sync` in the current scope [E0599]
+    //~^ ERROR no method named `c` found for reference `&dyn Foo` in the current scope [E0599]
 
     let foo: &dyn Foo = bar;
     foo.b();
-    //~^ ERROR no method named `b` found for reference `&dyn Foo + Send + Sync` in the current scope [E0599]
+    //~^ ERROR no method named `b` found for reference `&dyn Foo` in the current scope [E0599]
     foo.c();
-    //~^ ERROR no method named `c` found for reference `&dyn Foo + Send + Sync` in the current scope [E0599]
+    //~^ ERROR no method named `c` found for reference `&dyn Foo` in the current scope [E0599]
 }
