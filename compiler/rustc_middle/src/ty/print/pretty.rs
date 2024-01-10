@@ -365,26 +365,19 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
     /// Try to see if this path can be trimmed to a unique symbol name.
     fn try_print_trimmed_def_path(&mut self, def_id: DefId) -> Result<bool, PrintError> {
-        if with_forced_trimmed_paths() {
-            let trimmed = self.force_print_trimmed_def_path(def_id)?;
-            if trimmed {
-                return Ok(true);
-            }
+        if with_forced_trimmed_paths() && self.force_print_trimmed_def_path(def_id)? {
+            return Ok(true);
         }
-        if !self.tcx().sess.opts.unstable_opts.trim_diagnostic_paths
-            || matches!(self.tcx().sess.opts.trimmed_def_paths, TrimmedDefPaths::Never)
-            || with_no_trimmed_paths()
-            || with_crate_prefix()
+        if self.tcx().sess.opts.unstable_opts.trim_diagnostic_paths
+            && !matches!(self.tcx().sess.opts.trimmed_def_paths, TrimmedDefPaths::Never)
+            && !with_no_trimmed_paths()
+            && !with_crate_prefix()
+            && let Some(symbol) = self.tcx().trimmed_def_paths(()).get(&def_id)
         {
-            return Ok(false);
-        }
-
-        match self.tcx().trimmed_def_paths(()).get(&def_id) {
-            None => Ok(false),
-            Some(symbol) => {
-                write!(self, "{}", Ident::with_dummy_span(*symbol))?;
-                Ok(true)
-            }
+            write!(self, "{}", Ident::with_dummy_span(*symbol))?;
+            Ok(true)
+        } else {
+            Ok(false)
         }
     }
 
