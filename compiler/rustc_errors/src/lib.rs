@@ -1168,7 +1168,8 @@ impl DiagCtxt {
         let mut inner = self.inner.borrow_mut();
 
         if loud && lint_level.is_error() {
-            inner.bump_err_count();
+            inner.err_count += 1;
+            inner.panic_if_treat_err_as_bug();
         }
 
         inner.emitter.emit_unused_externs(lint_level, unused_externs)
@@ -1353,10 +1354,11 @@ impl DiagCtxtInner {
             }
             if diagnostic.is_error() {
                 if diagnostic.is_lint {
-                    self.bump_lint_err_count();
+                    self.lint_err_count += 1;
                 } else {
-                    self.bump_err_count();
+                    self.err_count += 1;
                 }
+                self.panic_if_treat_err_as_bug();
 
                 #[allow(deprecated)]
                 {
@@ -1445,16 +1447,6 @@ impl DiagCtxtInner {
 
         // Panic with `DelayedBugPanic` to avoid "unexpected panic" messages.
         panic::panic_any(DelayedBugPanic);
-    }
-
-    fn bump_lint_err_count(&mut self) {
-        self.lint_err_count += 1;
-        self.panic_if_treat_err_as_bug();
-    }
-
-    fn bump_err_count(&mut self) {
-        self.err_count += 1;
-        self.panic_if_treat_err_as_bug();
     }
 
     fn panic_if_treat_err_as_bug(&self) {
