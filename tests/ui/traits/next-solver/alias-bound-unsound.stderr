@@ -52,13 +52,14 @@ LL |     drop(<() as Foo>::copy_me(&x));
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`alias_bound_unsound`)
 
-error[E0275]: overflow evaluating the requirement `<() as Foo>::Item normalizes-to _`
+error[E0275]: overflow evaluating the requirement `<() as Foo>::Item == _`
   --> $DIR/alias-bound-unsound.rs:24:10
    |
 LL |     drop(<() as Foo>::copy_me(&x));
    |          ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "256"]` attribute to your crate (`alias_bound_unsound`)
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 7 previous errors
 
