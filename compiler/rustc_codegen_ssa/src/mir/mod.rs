@@ -27,6 +27,8 @@ use self::debuginfo::{FunctionDebugContext, PerLocalVarDebugInfo};
 use self::operand::{OperandRef, OperandValue};
 use self::place::PlaceRef;
 
+const MIN_DANGEROUS_SIZE: u64 = 1024 * 1024 * 1024 * 1; // 1 GB
+
 // Used for tracking the state of generated basic blocks.
 enum CachedLlbb<T> {
     /// Nothing created yet.
@@ -226,6 +228,16 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let layout = start_bx.layout_of(fx.monomorphize(decl.ty));
             assert!(!layout.ty.has_erasable_regions());
 
+            if layout.size.bytes() >= MIN_DANGEROUS_SIZE {
+                let size_str = || {
+                    let (size_quantity, size_unit) = human_readable_bytes(layout.size.bytes());
+                        format!("{:.2} {}", size_quantity, size_unit)
+                };
+                span_bug!(decl.source_info.span, "Dangerous stack allocation, size: {:?} of local: {:?} exceeds typical limits on most architectures",
+                    size_str(), local);
+
+            }
+
             if local == mir::RETURN_PLACE && fx.fn_abi.ret.is_indirect() {
                 debug!("alloc: {:?} (return place) -> place", local);
                 let llretptr = start_bx.get_param(0);
@@ -264,6 +276,18 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     for (bb, _) in traversal::reverse_postorder(mir) {
         fx.codegen_block(bb);
     }
+}
+
+/// Formats a number of bytes into a human readable SI-prefixed size.
+/// Returns a tuple of `(quantity, units)`.
+//
+// Taken from Cargo:
+// https://github.com/rust-lang/cargo/blob/2ce45605d9db521b5fd6c1211ce8de6055fdb24e/src/cargo/util/mod.rs#L88-L95
+pub fn human_readable_bytes(bytes: u64) -> (f32, &'static str) {
+    static UNITS: [&str; 7] = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"];
+    let bytes = bytes as f32;
+    let i = ((bytes.log2() / 10.0) as usize).min(UNITS.len() - 1);
+    (bytes / 1024_f32.powi(i as i32), UNITS[i])
 }
 
 /// Produces, for each argument, a `Value` pointing at the
