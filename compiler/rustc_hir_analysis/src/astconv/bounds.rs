@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{codes::*, struct_span_code_err};
 use rustc_hir as hir;
@@ -5,7 +7,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::{self as ty, IsSuggestable, Ty, TyCtxt};
 use rustc_span::symbol::Ident;
-use rustc_span::{ErrorGuaranteed, Span};
+use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use rustc_trait_selection::traits;
 use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use smallvec::SmallVec;
@@ -533,7 +535,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
     }
 }
 
-/// Detect and reject early-bound generic params in the type of associated const bindings.
+/// Detect and reject early-bound & escaping late-bound generic params in the type of assoc const bindings.
 ///
 /// FIXME(const_generics): This is a temporary and semi-artifical restriction until the
 /// arrival of *generic const generics*[^1].
@@ -552,17 +554,23 @@ fn check_assoc_const_binding_type<'tcx>(
 ) -> Ty<'tcx> {
     // We can't perform the checks for early-bound params during name resolution unlike E0770
     // because this information depends on *type* resolution.
+    // We can't perform these checks in `resolve_bound_vars` either for the same reason.
+    // Consider the trait ref `for<'a> Trait<'a, C = { &0 }>`. We need to know the fully
+    // resolved type of `Trait::C` in order to know if it references `'a` or not.
 
-    // FIXME(fmease): Reject escaping late-bound vars.
     let ty = ty.skip_binder();
-    if !ty.has_param() {
+    if !ty.has_param() && !ty.has_escaping_bound_vars() {
         return ty;
     }
 
-    let mut collector = GenericParamCollector { params: Default::default() };
-    ty.visit_with(&mut collector);
+    let mut collector = GenericParamAndBoundVarCollector {
+        tcx,
+        params: Default::default(),
+        vars: Default::default(),
+        depth: ty::INNERMOST,
+    };
+    let mut guar = ty.visit_with(&mut collector).break_value();
 
-    let mut guar = None;
     let ty_note = ty
         .make_suggestable(tcx, false)
         .map(|ty| crate::errors::TyOfAssocConstBindingNote { assoc_const, ty });
@@ -593,35 +601,100 @@ fn check_assoc_const_binding_type<'tcx>(
             ty_note,
         }));
     }
+    for (var_def_id, var_name) in collector.vars {
+        guar.get_or_insert(tcx.dcx().emit_err(
+            crate::errors::EscapingBoundVarInTyOfAssocConstBinding {
+                span: assoc_const.span,
+                assoc_const,
+                var_name,
+                var_def_kind: tcx.def_descr(var_def_id),
+                var_defined_here_label: tcx.def_ident_span(var_def_id).unwrap(),
+                ty_note,
+            },
+        ));
+    }
 
-    let guar = guar.unwrap_or_else(|| bug!("failed to find gen params in ty"));
+    let guar = guar.unwrap_or_else(|| bug!("failed to find gen params or bound vars in ty"));
     Ty::new_error(tcx, guar)
 }
 
-struct GenericParamCollector {
+struct GenericParamAndBoundVarCollector<'tcx> {
+    tcx: TyCtxt<'tcx>,
     params: FxIndexSet<u32>,
+    vars: FxIndexSet<(DefId, Symbol)>,
+    depth: ty::DebruijnIndex,
 }
 
-impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamCollector {
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for GenericParamAndBoundVarCollector<'tcx> {
+    type Result = ControlFlow<ErrorGuaranteed>;
+
+    fn visit_binder<T: TypeVisitable<TyCtxt<'tcx>>>(
+        &mut self,
+        binder: &ty::Binder<'tcx, T>,
+    ) -> Self::Result {
+        self.depth.shift_in(1);
+        let result = binder.super_visit_with(self);
+        self.depth.shift_out(1);
+        result
+    }
+
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
-        if let ty::Param(param) = ty.kind() {
-            self.params.insert(param.index);
-        } else if ty.has_param() {
-            ty.super_visit_with(self)
+        match ty.kind() {
+            ty::Param(param) => {
+                self.params.insert(param.index);
+            }
+            ty::Bound(db, bt) if *db >= self.depth => {
+                self.vars.insert(match bt.kind {
+                    ty::BoundTyKind::Param(def_id, name) => (def_id, name),
+                    ty::BoundTyKind::Anon => {
+                        let reported = self
+                            .tcx
+                            .dcx()
+                            .delayed_bug(format!("unexpected anon bound ty: {:?}", bt.var));
+                        return ControlFlow::Break(reported);
+                    }
+                });
+            }
+            _ if ty.has_param() || ty.has_bound_vars() => return ty.super_visit_with(self),
+            _ => {}
         }
+        ControlFlow::Continue(())
     }
 
     fn visit_region(&mut self, re: ty::Region<'tcx>) -> Self::Result {
-        if let ty::ReEarlyParam(param) = re.kind() {
-            self.params.insert(param.index);
+        match re.kind() {
+            ty::ReEarlyParam(param) => {
+                self.params.insert(param.index);
+            }
+            ty::ReBound(db, br) if db >= self.depth => {
+                self.vars.insert(match br.kind {
+                    ty::BrNamed(def_id, name) => (def_id, name),
+                    ty::BrAnon | ty::BrEnv => {
+                        let guar = self
+                            .tcx
+                            .dcx()
+                            .delayed_bug(format!("unexpected bound region kind: {:?}", br.kind));
+                        return ControlFlow::Break(guar);
+                    }
+                });
+            }
+            _ => {}
         }
+        ControlFlow::Continue(())
     }
 
     fn visit_const(&mut self, ct: ty::Const<'tcx>) -> Self::Result {
-        if let ty::ConstKind::Param(param) = ct.kind() {
-            self.params.insert(param.index);
-        } else if ct.has_param() {
-            ct.super_visit_with(self)
+        match ct.kind() {
+            ty::ConstKind::Param(param) => {
+                self.params.insert(param.index);
+            }
+            ty::ConstKind::Bound(db, ty::BoundVar { .. }) if db >= self.depth => {
+                let guar = self.tcx.dcx().delayed_bug("unexpected escaping late-bound const var");
+                return ControlFlow::Break(guar);
+            }
+            _ if ct.has_param() || ct.has_bound_vars() => return ct.super_visit_with(self),
+            _ => {}
         }
+        ControlFlow::Continue(())
     }
 }

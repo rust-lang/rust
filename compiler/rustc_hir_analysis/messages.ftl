@@ -118,6 +118,11 @@ hir_analysis_enum_discriminant_overflowed = enum discriminant overflowed
     .label = overflowed on value after {$discr}
     .note = explicitly set `{$item_name} = {$wrapped_discr}` if that is desired outcome
 
+hir_analysis_escaping_bound_var_in_ty_of_assoc_const_binding =
+    the type of the associated constant `{$assoc_const}` cannot capture late-bound generic parameters
+    .label = its type cannot capture the late-bound {$var_def_kind} `{$var_name}`
+    .var_defined_here_label = the late-bound {$var_def_kind} `{$var_name}` is defined here
+
 hir_analysis_field_already_declared =
     field `{$field_name}` is already declared
     .label = field already declared
