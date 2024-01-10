@@ -390,6 +390,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             infer_args,
         );
 
+        if let Err(err) = &arg_count.correct
+            && let Some(reported) = err.reported
+        {
+            self.set_tainted_by_errors(reported);
+        }
+
         // Skip processing if type has no generic parameters.
         // Traits always have `Self` as a generic parameter, which means they will not return early
         // here and so associated type bindings will be handled regardless of whether there are any
@@ -568,6 +574,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 span,
                 modifier: constness.as_str(),
             });
+            self.set_tainted_by_errors(e);
             arg_count.correct =
                 Err(GenericArgCountMismatch { reported: Some(e), invalid_args: vec![] });
         }

@@ -116,13 +116,7 @@ error[E0207]: the type parameter `S` is not constrained by the impl trait, self 
 LL | impl<T, S> Trait<T, S> for () {}
    |         ^ unconstrained type parameter
 
-error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/116464-invalid-assoc-type-suggestion-in-trait-impl.rs:40:35
-   |
-LL | impl<T: Trait<u32, Assoc=String>, U> YetAnotherTrait for Struct<T, U> {}
-   |                                   ^ unconstrained type parameter
-
-error: aborting due to 10 previous errors
+error: aborting due to 9 previous errors
 
 Some errors have detailed explanations: E0107, E0207.
 For more information about an error, try `rustc --explain E0107`.
