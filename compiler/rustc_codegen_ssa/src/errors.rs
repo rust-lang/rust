@@ -430,6 +430,14 @@ pub(crate) struct CheckInstalledVisualStudio;
 pub(crate) struct InsufficientVSCodeProduct;
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_dangerous_stack_allocation)]
+pub struct DangerousStackAllocation {
+    #[primary_span]
+    pub span: Span,
+    pub output: String,
+}
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_processing_dymutil_failed)]
 #[note]
 pub(crate) struct ProcessingDymutilFailed {
