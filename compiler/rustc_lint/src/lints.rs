@@ -1050,9 +1050,10 @@ pub enum UnknownLintSuggestion {
         #[primary_span]
         suggestion: Span,
         replace: Symbol,
+        from_rustc: bool,
     },
     #[help(lint_help)]
-    WithoutSpan { replace: Symbol },
+    WithoutSpan { replace: Symbol, from_rustc: bool },
 }
 
 #[derive(LintDiagnostic)]

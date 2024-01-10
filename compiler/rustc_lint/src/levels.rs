@@ -582,8 +582,9 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                 }
                 CheckLintNameResult::NoLint(suggestion) => {
                     let name = lint_name.clone();
-                    let suggestion =
-                        suggestion.map(|replace| UnknownLintSuggestion::WithoutSpan { replace });
+                    let suggestion = suggestion.map(|(replace, from_rustc)| {
+                        UnknownLintSuggestion::WithoutSpan { replace, from_rustc }
+                    });
                     let requested_level = RequestedLevel { level, lint_name };
                     let lint = UnknownLintFromCommandLine { name, suggestion, requested_level };
                     self.emit_lint(UNKNOWN_LINTS, lint);
@@ -990,8 +991,8 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                         } else {
                             name.to_string()
                         };
-                        let suggestion = suggestion.map(|replace| {
-                            UnknownLintSuggestion::WithSpan { suggestion: sp, replace }
+                        let suggestion = suggestion.map(|(replace, from_rustc)| {
+                            UnknownLintSuggestion::WithSpan { suggestion: sp, replace, from_rustc }
                         });
                         let lint = UnknownLint { name, suggestion };
                         self.emit_spanned_lint(UNKNOWN_LINTS, sp.into(), lint);
