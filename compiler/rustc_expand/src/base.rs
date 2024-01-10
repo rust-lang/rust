@@ -1150,7 +1150,7 @@ impl<'a> ExtCtxt<'a> {
 ///
 /// This unifies the logic used for resolving `include_X!`.
 pub fn resolve_path(
-    parse_sess: &ParseSess,
+    parse_sess: &Session,
     path: impl Into<PathBuf>,
     span: Span,
 ) -> PResult<'_, PathBuf> {
@@ -1166,7 +1166,7 @@ pub fn resolve_path(
                 .expect("attempting to resolve a file path in an external file"),
             FileName::DocTest(path, _) => path,
             other => {
-                return Err(parse_sess.dcx.create_err(errors::ResolveRelativePath {
+                return Err(parse_sess.dcx().create_err(errors::ResolveRelativePath {
                     span,
                     path: parse_sess.source_map().filename_for_diagnostics(&other).to_string(),
                 }));
@@ -1390,7 +1390,7 @@ pub fn parse_macro_name_and_helper_attrs(
 /// asserts in old versions of those crates and their wide use in the ecosystem.
 /// See issue #73345 for more details.
 /// FIXME(#73933): Remove this eventually.
-fn pretty_printing_compatibility_hack(item: &Item, sess: &ParseSess) -> bool {
+fn pretty_printing_compatibility_hack(item: &Item, sess: &Session) -> bool {
     let name = item.ident.name;
     if name == sym::ProceduralMasqueradeDummyType {
         if let ast::ItemKind::Enum(enum_def, _) = &item.kind {
@@ -1418,7 +1418,7 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &ParseSess) -> bool {
                             };
 
                             if crate_matches {
-                                sess.buffer_lint_with_diagnostic(
+                                sess.parse_sess.buffer_lint_with_diagnostic(
                                         PROC_MACRO_BACK_COMPAT,
                                         item.ident.span,
                                         ast::CRATE_NODE_ID,
@@ -1439,7 +1439,7 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &ParseSess) -> bool {
     false
 }
 
-pub(crate) fn ann_pretty_printing_compatibility_hack(ann: &Annotatable, sess: &ParseSess) -> bool {
+pub(crate) fn ann_pretty_printing_compatibility_hack(ann: &Annotatable, sess: &Session) -> bool {
     let item = match ann {
         Annotatable::Item(item) => item,
         Annotatable::Stmt(stmt) => match &stmt.kind {
@@ -1451,7 +1451,7 @@ pub(crate) fn ann_pretty_printing_compatibility_hack(ann: &Annotatable, sess: &P
     pretty_printing_compatibility_hack(item, sess)
 }
 
-pub(crate) fn nt_pretty_printing_compatibility_hack(nt: &Nonterminal, sess: &ParseSess) -> bool {
+pub(crate) fn nt_pretty_printing_compatibility_hack(nt: &Nonterminal, sess: &Session) -> bool {
     let item = match nt {
         Nonterminal::NtItem(item) => item,
         Nonterminal::NtStmt(stmt) => match &stmt.kind {

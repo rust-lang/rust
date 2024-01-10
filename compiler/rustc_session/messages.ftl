@@ -25,7 +25,7 @@ session_feature_diagnostic_help =
     add `#![feature({$feature})]` to the crate attributes to enable
 
 session_feature_suggest_upgrade_compiler =
-    this compiler is version {$version} built on {$date}, consider upgrading?
+    this compiler was built on {$date}; consider upgrading it if it is out of date
 
 session_file_is_not_writeable = output file {$file} is not writeable -- check its permissions
 

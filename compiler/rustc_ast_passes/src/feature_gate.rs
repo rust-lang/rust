@@ -17,14 +17,12 @@ use crate::errors;
 macro_rules! gate {
     ($visitor:expr, $feature:ident, $span:expr, $explain:expr) => {{
         if !$visitor.features.$feature && !$span.allows_unstable(sym::$feature) {
-            feature_err(&$visitor.sess.parse_sess, sym::$feature, $span, $explain).emit();
+            feature_err(&$visitor.sess, sym::$feature, $span, $explain).emit();
         }
     }};
     ($visitor:expr, $feature:ident, $span:expr, $explain:expr, $help:expr) => {{
         if !$visitor.features.$feature && !$span.allows_unstable(sym::$feature) {
-            feature_err(&$visitor.sess.parse_sess, sym::$feature, $span, $explain)
-                .with_help($help)
-                .emit();
+            feature_err(&$visitor.sess, sym::$feature, $span, $explain).with_help($help).emit();
         }
     }};
 }
@@ -33,7 +31,7 @@ macro_rules! gate {
 macro_rules! gate_alt {
     ($visitor:expr, $has_feature:expr, $name:expr, $span:expr, $explain:expr) => {{
         if !$has_feature && !$span.allows_unstable($name) {
-            feature_err(&$visitor.sess.parse_sess, $name, $span, $explain).emit();
+            feature_err(&$visitor.sess, $name, $span, $explain).emit();
         }
     }};
 }
@@ -45,7 +43,7 @@ macro_rules! gate_multi {
             let spans: Vec<_> =
                 $spans.filter(|span| !span.allows_unstable(sym::$feature)).collect();
             if !spans.is_empty() {
-                feature_err(&$visitor.sess.parse_sess, sym::$feature, spans, $explain).emit();
+                feature_err(&$visitor.sess, sym::$feature, spans, $explain).emit();
             }
         }
     }};
@@ -55,7 +53,7 @@ macro_rules! gate_multi {
 macro_rules! gate_legacy {
     ($visitor:expr, $feature:ident, $span:expr, $explain:expr) => {{
         if !$visitor.features.$feature && !$span.allows_unstable(sym::$feature) {
-            feature_warn(&$visitor.sess.parse_sess, sym::$feature, $span, $explain);
+            feature_warn(&$visitor.sess, sym::$feature, $span, $explain);
         }
     }};
 }
@@ -91,14 +89,7 @@ impl<'a> PostExpansionVisitor<'a> {
         match abi::is_enabled(self.features, span, symbol_unescaped.as_str()) {
             Ok(()) => (),
             Err(abi::AbiDisabled::Unstable { feature, explain }) => {
-                feature_err_issue(
-                    &self.sess.parse_sess,
-                    feature,
-                    span,
-                    GateIssue::Language,
-                    explain,
-                )
-                .emit();
+                feature_err_issue(&self.sess, feature, span, GateIssue::Language, explain).emit();
             }
             Err(abi::AbiDisabled::Unrecognized) => {
                 if self.sess.opts.pretty.map_or(true, |ppm| ppm.needs_hir()) {
@@ -570,13 +561,8 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
                 if let Ok(snippet) = sm.span_to_snippet(span)
                     && snippet == "!"
                 {
-                    feature_err(
-                        &sess.parse_sess,
-                        sym::never_patterns,
-                        span,
-                        "`!` patterns are experimental",
-                    )
-                    .emit();
+                    feature_err(sess, sym::never_patterns, span, "`!` patterns are experimental")
+                        .emit();
                 } else {
                     let suggestion = span.shrink_to_hi();
                     sess.dcx().emit_err(errors::MatchArmWithNoBody { span, suggestion });

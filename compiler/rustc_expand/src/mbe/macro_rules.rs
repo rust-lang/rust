@@ -477,14 +477,14 @@ pub fn compile_declarative_macro(
                     let tt = mbe::quoted::parse(
                         &TokenStream::new(vec![tt.clone()]),
                         true,
-                        &sess.parse_sess,
+                        sess,
                         def.id,
                         features,
                         edition,
                     )
                     .pop()
                     .unwrap();
-                    valid &= check_lhs_nt_follows(&sess.parse_sess, def, &tt);
+                    valid &= check_lhs_nt_follows(sess, def, &tt);
                     return tt;
                 }
                 sess.dcx().span_bug(def.span, "wrong-structured lhs")
@@ -501,7 +501,7 @@ pub fn compile_declarative_macro(
                     return mbe::quoted::parse(
                         &TokenStream::new(vec![tt.clone()]),
                         false,
-                        &sess.parse_sess,
+                        sess,
                         def.id,
                         features,
                         edition,
@@ -516,12 +516,12 @@ pub fn compile_declarative_macro(
     };
 
     for rhs in &rhses {
-        valid &= check_rhs(&sess.parse_sess, rhs);
+        valid &= check_rhs(sess, rhs);
     }
 
     // don't abort iteration early, so that errors for multiple lhses can be reported
     for lhs in &lhses {
-        valid &= check_lhs_no_empty_seq(&sess.parse_sess, slice::from_ref(lhs));
+        valid &= check_lhs_no_empty_seq(sess, slice::from_ref(lhs));
     }
 
     valid &= macro_check::check_meta_variables(&sess.parse_sess, def.id, def.span, &lhses, &rhses);
@@ -588,21 +588,21 @@ pub fn compile_declarative_macro(
     (mk_syn_ext(expander), rule_spans)
 }
 
-fn check_lhs_nt_follows(sess: &ParseSess, def: &ast::Item, lhs: &mbe::TokenTree) -> bool {
+fn check_lhs_nt_follows(sess: &Session, def: &ast::Item, lhs: &mbe::TokenTree) -> bool {
     // lhs is going to be like TokenTree::Delimited(...), where the
     // entire lhs is those tts. Or, it can be a "bare sequence", not wrapped in parens.
     if let mbe::TokenTree::Delimited(.., delimited) = lhs {
         check_matcher(sess, def, &delimited.tts)
     } else {
         let msg = "invalid macro matcher; matchers must be contained in balanced delimiters";
-        sess.dcx.span_err(lhs.span(), msg);
+        sess.dcx().span_err(lhs.span(), msg);
         false
     }
     // we don't abort on errors on rejection, the driver will do that for us
     // after parsing/expansion. we can report every error in every macro this way.
 }
 
-fn is_empty_token_tree(sess: &ParseSess, seq: &mbe::SequenceRepetition) -> bool {
+fn is_empty_token_tree(sess: &Session, seq: &mbe::SequenceRepetition) -> bool {
     if seq.separator.is_some() {
         false
     } else {
@@ -621,7 +621,7 @@ fn is_empty_token_tree(sess: &ParseSess, seq: &mbe::SequenceRepetition) -> bool 
                         iter.next();
                     }
                     let span = t.span.to(now.span);
-                    sess.dcx.span_note(span, "doc comments are ignored in matcher position");
+                    sess.dcx().span_note(span, "doc comments are ignored in matcher position");
                 }
                 mbe::TokenTree::Sequence(_, sub_seq)
                     if (sub_seq.kleene.op == mbe::KleeneOp::ZeroOrMore
@@ -635,7 +635,7 @@ fn is_empty_token_tree(sess: &ParseSess, seq: &mbe::SequenceRepetition) -> bool 
 
 /// Checks that the lhs contains no repetition which could match an empty token
 /// tree, because then the matcher would hang indefinitely.
-fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[mbe::TokenTree]) -> bool {
+fn check_lhs_no_empty_seq(sess: &Session, tts: &[mbe::TokenTree]) -> bool {
     use mbe::TokenTree;
     for tt in tts {
         match tt {
@@ -651,7 +651,7 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[mbe::TokenTree]) -> bool {
             TokenTree::Sequence(span, seq) => {
                 if is_empty_token_tree(sess, seq) {
                     let sp = span.entire();
-                    sess.dcx.span_err(sp, "repetition matches empty token tree");
+                    sess.dcx().span_err(sp, "repetition matches empty token tree");
                     return false;
                 }
                 if !check_lhs_no_empty_seq(sess, &seq.tts) {
@@ -664,22 +664,22 @@ fn check_lhs_no_empty_seq(sess: &ParseSess, tts: &[mbe::TokenTree]) -> bool {
     true
 }
 
-fn check_rhs(sess: &ParseSess, rhs: &mbe::TokenTree) -> bool {
+fn check_rhs(sess: &Session, rhs: &mbe::TokenTree) -> bool {
     match *rhs {
         mbe::TokenTree::Delimited(..) => return true,
         _ => {
-            sess.dcx.span_err(rhs.span(), "macro rhs must be delimited");
+            sess.dcx().span_err(rhs.span(), "macro rhs must be delimited");
         }
     }
     false
 }
 
-fn check_matcher(sess: &ParseSess, def: &ast::Item, matcher: &[mbe::TokenTree]) -> bool {
+fn check_matcher(sess: &Session, def: &ast::Item, matcher: &[mbe::TokenTree]) -> bool {
     let first_sets = FirstSets::new(matcher);
     let empty_suffix = TokenSet::empty();
-    let err = sess.dcx.err_count();
+    let err = sess.dcx().err_count();
     check_matcher_core(sess, def, &first_sets, matcher, &empty_suffix);
-    err == sess.dcx.err_count()
+    err == sess.dcx().err_count()
 }
 
 fn has_compile_error_macro(rhs: &mbe::TokenTree) -> bool {
@@ -1014,7 +1014,7 @@ impl<'tt> TokenSet<'tt> {
 // Requires that `first_sets` is pre-computed for `matcher`;
 // see `FirstSets::new`.
 fn check_matcher_core<'tt>(
-    sess: &ParseSess,
+    sess: &Session,
     def: &ast::Item,
     first_sets: &FirstSets<'tt>,
     matcher: &'tt [mbe::TokenTree],
@@ -1139,7 +1139,7 @@ fn check_matcher_core<'tt>(
                             name,
                             Some(NonterminalKind::PatParam { inferred: false }),
                         ));
-                        sess.buffer_lint_with_diagnostic(
+                        sess.parse_sess.buffer_lint_with_diagnostic(
                             RUST_2021_INCOMPATIBLE_OR_PATTERNS,
                             span,
                             ast::CRATE_NODE_ID,
@@ -1158,7 +1158,7 @@ fn check_matcher_core<'tt>(
                             };
 
                             let sp = next_token.span();
-                            let mut err = sess.dcx.struct_span_err(
+                            let mut err = sess.dcx().struct_span_err(
                                 sp,
                                 format!(
                                     "`${name}:{frag}` {may_be} followed by `{next}`, which \
@@ -1172,7 +1172,7 @@ fn check_matcher_core<'tt>(
                             err.span_label(sp, format!("not allowed after `{kind}` fragments"));
 
                             if kind == NonterminalKind::PatWithOr
-                                && sess.edition.at_least_rust_2021()
+                                && sess.parse_sess.edition.at_least_rust_2021()
                                 && next_token.is_token(&BinOp(token::BinOpToken::Or))
                             {
                                 let suggestion = quoted_tt_to_string(&TokenTree::MetaVarDecl(

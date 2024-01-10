@@ -59,7 +59,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             if trait_segment.args().parenthesized == hir::GenericArgsParentheses::ParenSugar {
                 // For now, require that parenthetical notation be used only with `Fn()` etc.
                 feature_err(
-                    &self.tcx().sess.parse_sess,
+                    &self.tcx().sess,
                     sym::unboxed_closures,
                     span,
                     "parenthetical notation is only stable when used with `Fn`-family traits",
@@ -75,7 +75,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if trait_segment.args().parenthesized != hir::GenericArgsParentheses::ParenSugar {
             // For now, require that parenthetical notation be used only with `Fn()` etc.
             let mut err = feature_err(
-                &sess.parse_sess,
+                sess,
                 sym::unboxed_closures,
                 span,
                 "the precise format of `Fn`-family traits' type parameters is subject to change",

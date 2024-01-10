@@ -9,7 +9,7 @@ use rustc_macros::HashStable_Generic;
 use rustc_session::config::ExpectedValues;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
 use rustc_session::lint::BuiltinLintDiagnostics;
-use rustc_session::parse::{feature_err, ParseSess};
+use rustc_session::parse::feature_err;
 use rustc_session::{RustcVersion, Session};
 use rustc_span::hygiene::Transparency;
 use rustc_span::{symbol::sym, symbol::Symbol, Span};
@@ -518,15 +518,15 @@ pub struct Condition {
 /// Tests if a cfg-pattern matches the cfg set
 pub fn cfg_matches(
     cfg: &ast::MetaItem,
-    sess: &ParseSess,
+    sess: &Session,
     lint_node_id: NodeId,
     features: Option<&Features>,
 ) -> bool {
     eval_condition(cfg, sess, features, &mut |cfg| {
         try_gate_cfg(cfg.name, cfg.span, sess, features);
-        match sess.check_config.expecteds.get(&cfg.name) {
+        match sess.parse_sess.check_config.expecteds.get(&cfg.name) {
             Some(ExpectedValues::Some(values)) if !values.contains(&cfg.value) => {
-                sess.buffer_lint_with_diagnostic(
+                sess.parse_sess.buffer_lint_with_diagnostic(
                     UNEXPECTED_CFGS,
                     cfg.span,
                     lint_node_id,
@@ -541,8 +541,8 @@ pub fn cfg_matches(
                     ),
                 );
             }
-            None if sess.check_config.exhaustive_names => {
-                sess.buffer_lint_with_diagnostic(
+            None if sess.parse_sess.check_config.exhaustive_names => {
+                sess.parse_sess.buffer_lint_with_diagnostic(
                     UNEXPECTED_CFGS,
                     cfg.span,
                     lint_node_id,
@@ -555,18 +555,18 @@ pub fn cfg_matches(
             }
             _ => { /* not unexpected */ }
         }
-        sess.config.contains(&(cfg.name, cfg.value))
+        sess.parse_sess.config.contains(&(cfg.name, cfg.value))
     })
 }
 
-fn try_gate_cfg(name: Symbol, span: Span, sess: &ParseSess, features: Option<&Features>) {
+fn try_gate_cfg(name: Symbol, span: Span, sess: &Session, features: Option<&Features>) {
     let gate = find_gated_cfg(|sym| sym == name);
     if let (Some(feats), Some(gated_cfg)) = (features, gate) {
         gate_cfg(gated_cfg, span, sess, feats);
     }
 }
 
-fn gate_cfg(gated_cfg: &GatedCfg, cfg_span: Span, sess: &ParseSess, features: &Features) {
+fn gate_cfg(gated_cfg: &GatedCfg, cfg_span: Span, sess: &Session, features: &Features) {
     let (cfg, feature, has_feature) = gated_cfg;
     if !has_feature(features) && !cfg_span.allows_unstable(*feature) {
         let explain = format!("`cfg({cfg})` is experimental and subject to change");
@@ -594,11 +594,11 @@ fn parse_version(s: Symbol) -> Option<RustcVersion> {
 /// evaluate individual items.
 pub fn eval_condition(
     cfg: &ast::MetaItem,
-    sess: &ParseSess,
+    sess: &Session,
     features: Option<&Features>,
     eval: &mut impl FnMut(Condition) -> bool,
 ) -> bool {
-    let dcx = &sess.dcx;
+    let dcx = &sess.parse_sess.dcx;
     match &cfg.kind {
         ast::MetaItemKind::List(mis) if cfg.name_or_empty() == sym::version => {
             try_gate_cfg(sym::version, cfg.span, sess, features);
@@ -626,7 +626,7 @@ pub fn eval_condition(
             };
 
             // See https://github.com/rust-lang/rust/issues/64796#issuecomment-640851454 for details
-            if sess.assume_incomplete_release {
+            if sess.parse_sess.assume_incomplete_release {
                 RustcVersion::CURRENT > min_version
             } else {
                 RustcVersion::CURRENT >= min_version

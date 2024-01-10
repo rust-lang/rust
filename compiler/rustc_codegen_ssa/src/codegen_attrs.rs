@@ -155,7 +155,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     Some([item]) if item.has_name(sym::linker) => {
                         if !tcx.features().used_with_arg {
                             feature_err(
-                                &tcx.sess.parse_sess,
+                                &tcx.sess,
                                 sym::used_with_arg,
                                 attr.span,
                                 "`#[used(linker)]` is currently unstable",
@@ -167,7 +167,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     Some([item]) if item.has_name(sym::compiler) => {
                         if !tcx.features().used_with_arg {
                             feature_err(
-                                &tcx.sess.parse_sess,
+                                &tcx.sess,
                                 sym::used_with_arg,
                                 attr.span,
                                 "`#[used(compiler)]` is currently unstable",
@@ -251,7 +251,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     && !attr.span.allows_unstable(sym::closure_track_caller)
                 {
                     feature_err(
-                        &tcx.sess.parse_sess,
+                        &tcx.sess,
                         sym::closure_track_caller,
                         attr.span,
                         "`#[track_caller]` on closures is currently unstable",
@@ -304,7 +304,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         // `#[target_feature]` on `main` and `start`.
                     } else if !tcx.features().target_feature_11 {
                         feature_err(
-                            &tcx.sess.parse_sess,
+                            &tcx.sess,
                             sym::target_feature_11,
                             attr.span,
                             "`#[target_feature(..)]` can only be applied to `unsafe` functions",
