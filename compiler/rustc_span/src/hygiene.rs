@@ -464,12 +464,15 @@ impl HygieneData {
         &self,
         mut span: Span,
         to: Span,
-        collapse_debuginfo_enabled: bool,
+        collapse_debuginfo_feature_enabled: bool,
     ) -> Span {
         let orig_span = span;
         let mut ret_span = span;
 
-        debug!("walk_chain_collapsed({:?}, {:?})", span, to);
+        debug!(
+            "walk_chain_collapsed({:?}, {:?}), feature_enable={}",
+            span, to, collapse_debuginfo_feature_enabled,
+        );
         debug!("walk_chain_collapsed: span ctxt = {:?}", span.ctxt());
         while !span.eq_ctxt(to) && span.from_expansion() {
             let outer_expn = self.outer_expn(span.ctxt());
@@ -477,7 +480,7 @@ impl HygieneData {
             let expn_data = self.expn_data(outer_expn);
             debug!("walk_chain_collapsed({:?}): expn_data={:?}", span, expn_data);
             span = expn_data.call_site;
-            if !collapse_debuginfo_enabled || expn_data.collapse_debuginfo {
+            if !collapse_debuginfo_feature_enabled || expn_data.collapse_debuginfo {
                 ret_span = span;
             }
         }
@@ -601,8 +604,14 @@ pub fn walk_chain(span: Span, to: SyntaxContext) -> Span {
     HygieneData::with(|data| data.walk_chain(span, to))
 }
 
-pub fn walk_chain_collapsed(span: Span, to: Span, collapse_debuginfo_enabled: bool) -> Span {
-    HygieneData::with(|hdata| hdata.walk_chain_collapsed(span, to, collapse_debuginfo_enabled))
+pub fn walk_chain_collapsed(
+    span: Span,
+    to: Span,
+    collapse_debuginfo_feature_enabled: bool,
+) -> Span {
+    HygieneData::with(|hdata| {
+        hdata.walk_chain_collapsed(span, to, collapse_debuginfo_feature_enabled)
+    })
 }
 
 pub fn update_dollar_crate_names(mut get_name: impl FnMut(SyntaxContext) -> Symbol) {

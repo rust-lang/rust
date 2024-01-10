@@ -367,6 +367,7 @@ pub fn compile_declarative_macro(
             edition,
             def.ident.name,
             &def.attrs,
+            def.id != DUMMY_NODE_ID,
         )
     };
     let dummy_syn_ext = || (mk_syn_ext(Box::new(macro_rules_dummy_expander)), Vec::new());

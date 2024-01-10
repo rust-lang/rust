@@ -469,7 +469,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
 
     // `#[collapse_debuginfo]`
     gated!(
-        collapse_debuginfo, Normal, template!(Word), WarnFollowing,
+        collapse_debuginfo, Normal, template!(Word, List: "no|external|yes"), ErrorFollowing,
         experimental!(collapse_debuginfo)
     ),
 
