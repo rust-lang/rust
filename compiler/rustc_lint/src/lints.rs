@@ -13,7 +13,7 @@ use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::{
     inhabitedness::InhabitedPredicate, Clause, PolyExistentialTraitRef, Ty, TyCtxt,
 };
-use rustc_session::parse::ParseSess;
+use rustc_session::Session;
 use rustc_span::{edition::Edition, sym, symbol::Ident, Span, Symbol};
 
 use crate::{
@@ -235,7 +235,7 @@ pub struct BuiltinUnstableFeatures;
 // lint_ungated_async_fn_track_caller
 pub struct BuiltinUngatedAsyncFnTrackCaller<'a> {
     pub label: Span,
-    pub parse_sess: &'a ParseSess,
+    pub session: &'a Session,
 }
 
 impl<'a> DecorateLint<'a, ()> for BuiltinUngatedAsyncFnTrackCaller<'_> {
@@ -243,7 +243,7 @@ impl<'a> DecorateLint<'a, ()> for BuiltinUngatedAsyncFnTrackCaller<'_> {
         diag.span_label(self.label, fluent::lint_label);
         rustc_session::parse::add_feature_diagnostics(
             diag,
-            self.parse_sess,
+            self.session,
             sym::async_fn_track_caller,
         );
     }

@@ -1,6 +1,5 @@
 use std::num::NonZeroU32;
 
-use crate::parse::ParseSess;
 use rustc_ast::token;
 use rustc_ast::util::literal::LitError;
 use rustc_errors::{
@@ -9,6 +8,8 @@ use rustc_errors::{
 use rustc_macros::Diagnostic;
 use rustc_span::{BytePos, Span, Symbol};
 use rustc_target::spec::{SplitDebuginfo, StackProtector, TargetTriple};
+
+use crate::parse::ParseSess;
 
 pub struct FeatureGateError {
     pub span: MultiSpan,
@@ -33,16 +34,18 @@ pub struct FeatureDiagnosticForIssue {
 #[derive(Subdiagnostic)]
 #[note(session_feature_suggest_upgrade_compiler)]
 pub struct SuggestUpgradeCompiler {
-    version: &'static str,
     date: &'static str,
 }
 
 impl SuggestUpgradeCompiler {
-    pub fn new() -> Self {
-        let version = option_env!("CFG_VERSION").unwrap_or("unknown");
-        let date = option_env!("CFG_VER_DATE").unwrap_or("unknown");
+    pub fn ui_testing() -> Self {
+        Self { date: "YYYY-MM-DD" }
+    }
 
-        Self { version, date }
+    pub fn new() -> Option<Self> {
+        let date = option_env!("CFG_VER_DATE")?;
+
+        Some(Self { date })
     }
 }
 

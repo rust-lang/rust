@@ -1591,7 +1591,7 @@ fn check_method_receiver<'tcx>(
             return Err(if receiver_is_valid(wfcx, span, receiver_ty, self_ty, true) {
                 // Report error; would have worked with `arbitrary_self_types`.
                 feature_err(
-                    &tcx.sess.parse_sess,
+                    &tcx.sess,
                     sym::arbitrary_self_types,
                     span,
                     format!(

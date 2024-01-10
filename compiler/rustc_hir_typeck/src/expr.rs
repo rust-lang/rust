@@ -1865,7 +1865,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         (ty::Adt(adt, _), ty::Adt(base_adt, _)) if adt == base_adt);
                     if self.tcx.sess.is_nightly_build() && same_adt {
                         feature_err(
-                            &self.tcx.sess.parse_sess,
+                            &self.tcx.sess,
                             sym::type_changing_struct_update,
                             base_expr.span,
                             "type changing struct updating is experimental",
@@ -3262,7 +3262,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     if !self.tcx.features().offset_of_enum {
                         rustc_session::parse::feature_err(
-                            &self.tcx.sess.parse_sess,
+                            &self.tcx.sess,
                             sym::offset_of_enum,
                             ident.span,
                             "using enums in offset_of is experimental",
