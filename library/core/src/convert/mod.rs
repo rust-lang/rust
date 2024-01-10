@@ -753,6 +753,7 @@ where
     /// That is, this conversion is whatever the implementation of
     /// <code>[From]&lt;T&gt; for U</code> chooses to do.
     #[inline]
+    #[track_caller]
     fn into(self) -> U {
         U::from(self)
     }
