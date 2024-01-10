@@ -13,6 +13,7 @@ error[E0207]: the const parameter `N` is not constrained by the impl trait, self
 LL | impl <const N: usize> Collatz<{Some(N)}> {}
    |       ^^^^^^^^^^^^^^ unconstrained const parameter
    |
+   = note: consider using const parameter `N` in the impl on `Collatz<{Some(N)}>` or otherwise constrain `N`
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
 
@@ -22,6 +23,7 @@ error[E0207]: the const parameter `N` is not constrained by the impl trait, self
 LL | impl<const N: usize> Foo {}
    |      ^^^^^^^^^^^^^^ unconstrained const parameter
    |
+   = note: consider using const parameter `N` in the impl on `Foo` or otherwise constrain `N`
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
 

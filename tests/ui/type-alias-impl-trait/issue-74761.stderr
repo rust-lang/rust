@@ -3,12 +3,16 @@ error[E0207]: the lifetime parameter `'a` is not constrained by the impl trait, 
    |
 LL | impl<'a, 'b> A for () {
    |      ^^ unconstrained lifetime parameter
+   |
+   = note: consider using lifetime parameter `'a` in the impl on `()` or otherwise constrain `'a`
 
 error[E0207]: the lifetime parameter `'b` is not constrained by the impl trait, self type, or predicates
   --> $DIR/issue-74761.rs:7:10
    |
 LL | impl<'a, 'b> A for () {
    |          ^^ unconstrained lifetime parameter
+   |
+   = note: consider using lifetime parameter `'b` in the impl on `()` or otherwise constrain `'b`
 
 error: aborting due to 2 previous errors
 
