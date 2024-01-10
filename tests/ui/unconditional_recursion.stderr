@@ -23,7 +23,7 @@ LL |         self.eq(other)
    = help: a `loop` may express intention better if this is on purpose
 
 error: function cannot return without recursing
-  --> $DIR/unconditional_recursion.rs:210:5
+  --> $DIR/unconditional_recursion.rs:211:5
    |
 LL |     fn to_string(&self) -> String {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
@@ -34,7 +34,7 @@ LL |         self.to_string()
    = help: a `loop` may express intention better if this is on purpose
 
 error: function cannot return without recursing
-  --> $DIR/unconditional_recursion.rs:219:5
+  --> $DIR/unconditional_recursion.rs:221:5
    |
 LL |     fn to_string(&self) -> String {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
@@ -45,7 +45,7 @@ LL |         x.to_string()
    = help: a `loop` may express intention better if this is on purpose
 
 error: function cannot return without recursing
-  --> $DIR/unconditional_recursion.rs:229:5
+  --> $DIR/unconditional_recursion.rs:232:5
    |
 LL |     fn to_string(&self) -> String {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot return without recursing
@@ -326,7 +326,7 @@ LL |         mine == theirs
    |         ^^^^^^^^^^^^^^
 
 error: function cannot return without recursing
-  --> $DIR/unconditional_recursion.rs:244:5
+  --> $DIR/unconditional_recursion.rs:247:5
    |
 LL | /     fn new() -> Self {
 LL | |
@@ -335,13 +335,13 @@ LL | |     }
    | |_____^
    |
 note: recursive call site
-  --> $DIR/unconditional_recursion.rs:246:9
+  --> $DIR/unconditional_recursion.rs:249:9
    |
 LL |         Self::default()
    |         ^^^^^^^^^^^^^^^
 
 error: function cannot return without recursing
-  --> $DIR/unconditional_recursion.rs:283:5
+  --> $DIR/unconditional_recursion.rs:286:5
    |
 LL | /     fn eq(&self, other: &Self) -> bool {
 LL | |
@@ -352,7 +352,7 @@ LL | |     }
    | |_____^
    |
 note: recursive call site
-  --> $DIR/unconditional_recursion.rs:287:9
+  --> $DIR/unconditional_recursion.rs:290:9
    |
 LL |         mine.eq(theirs)
    |         ^^^^^^^^^^^^^^^

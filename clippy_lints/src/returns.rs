@@ -18,6 +18,7 @@ use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{BytePos, Pos, Span};
 use std::borrow::Cow;
+use std::fmt::Display;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -146,14 +147,14 @@ impl<'tcx> RetReplacement<'tcx> {
     }
 }
 
-impl<'tcx> ToString for RetReplacement<'tcx> {
-    fn to_string(&self) -> String {
+impl<'tcx> Display for RetReplacement<'tcx> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Empty => String::new(),
-            Self::Block => "{}".to_string(),
-            Self::Unit => "()".to_string(),
-            Self::IfSequence(inner, _) => format!("({inner})"),
-            Self::Expr(inner, _) => inner.to_string(),
+            Self::Empty => write!(f, ""),
+            Self::Block => write!(f, "{{}}"),
+            Self::Unit => write!(f, "()"),
+            Self::IfSequence(inner, _) => write!(f, "({inner})"),
+            Self::Expr(inner, _) => write!(f, "{inner}"),
         }
     }
 }

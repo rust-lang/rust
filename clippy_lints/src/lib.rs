@@ -327,6 +327,7 @@ mod temporary_assignment;
 mod tests_outside_test_module;
 mod thread_local_initializer_can_be_made_const;
 mod to_digit_is_some;
+mod to_string_trait_impl;
 mod trailing_empty_array;
 mod trait_bounds;
 mod transmute;
@@ -1097,6 +1098,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
         Box::new(thread_local_initializer_can_be_made_const::ThreadLocalInitializerCanBeMadeConst::new(msrv()))
     });
     store.register_late_pass(move |_| Box::new(incompatible_msrv::IncompatibleMsrv::new(msrv())));
+    store.register_late_pass(|_| Box::new(to_string_trait_impl::ToStringTraitImpl));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

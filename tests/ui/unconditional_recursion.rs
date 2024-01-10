@@ -206,6 +206,7 @@ impl PartialEq for S8 {
 
 struct S9;
 
+#[allow(clippy::to_string_trait_impl)]
 impl std::string::ToString for S9 {
     fn to_string(&self) -> String {
         //~^ ERROR: function cannot return without recursing
@@ -215,6 +216,7 @@ impl std::string::ToString for S9 {
 
 struct S10;
 
+#[allow(clippy::to_string_trait_impl)]
 impl std::string::ToString for S10 {
     fn to_string(&self) -> String {
         //~^ ERROR: function cannot return without recursing
@@ -225,6 +227,7 @@ impl std::string::ToString for S10 {
 
 struct S11;
 
+#[allow(clippy::to_string_trait_impl)]
 impl std::string::ToString for S11 {
     fn to_string(&self) -> String {
         //~^ ERROR: function cannot return without recursing
