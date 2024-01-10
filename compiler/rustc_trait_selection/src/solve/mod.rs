@@ -317,7 +317,10 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             return Some(ty);
         };
 
-        // We do no always define opaque types eagerly to allow non-defining uses in the defining scope.
+        // We do no always define opaque types eagerly to allow non-defining uses
+        // in the defining scope. However, if we can unify this opaque to an existing
+        // opaque, then we should attempt to eagerly reveal the opaque, and we fall
+        // through.
         if let DefineOpaqueTypes::No = define_opaque_types
             && let Reveal::UserFacing = param_env.reveal()
             && let ty::Opaque = kind
