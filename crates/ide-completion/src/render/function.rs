@@ -74,15 +74,13 @@ fn render(
     );
 
     let ret_type = func.ret_type(db);
-    let is_op_method = func
-        .as_assoc_item(ctx.db())
-        .and_then(|trait_| trait_.containing_trait_or_trait_impl(ctx.db()))
-        .map_or(false, |trait_| completion.is_ops_trait(trait_));
+    let assoc_item = func.as_assoc_item(db);
 
-    let is_item_from_notable_trait = func
-        .as_assoc_item(ctx.db())
-        .and_then(|trait_| trait_.containing_trait(ctx.db()))
-        .map_or(false, |trait_| completion.is_doc_notable_trait(trait_));
+    let trait_ = assoc_item.and_then(|trait_| trait_.containing_trait_or_trait_impl(db));
+    let is_op_method = trait_.map_or(false, |trait_| completion.is_ops_trait(trait_));
+
+    let is_item_from_notable_trait =
+        trait_.map_or(false, |trait_| completion.is_doc_notable_trait(trait_));
 
     let (has_dot_receiver, has_call_parens, cap) = match func_kind {
         FuncKind::Function(&PathCompletionCtx {
@@ -147,7 +145,7 @@ fn render(
             item.add_import(import_to_add);
         }
         None => {
-            if let Some(actm) = func.as_assoc_item(db) {
+            if let Some(actm) = assoc_item {
                 if let Some(trt) = actm.containing_trait_or_trait_impl(db) {
                     item.trait_name(trt.name(db).to_smol_str());
                 }
