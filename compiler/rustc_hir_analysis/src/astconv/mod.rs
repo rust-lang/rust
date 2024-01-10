@@ -973,7 +973,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
             }
         }
-        err.emit()
+        let reported = err.emit();
+        self.set_tainted_by_errors(reported);
+        reported
     }
 
     // Search for a bound on a type parameter which includes the associated item
@@ -1050,6 +1052,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 span,
                 binding,
             );
+            self.set_tainted_by_errors(reported);
             return Err(reported);
         };
         debug!(?bound);
@@ -1127,6 +1130,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 ));
             }
             let reported = err.emit();
+            self.set_tainted_by_errors(reported);
             if !where_bounds.is_empty() {
                 return Err(reported);
             }
@@ -1381,6 +1385,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         assoc_ident.name,
                     )
                 };
+                self.set_tainted_by_errors(reported);
                 return Err(reported);
             }
         };
@@ -1623,12 +1628,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let kind = tcx.def_kind_descr(kind, item);
             let msg = format!("{kind} `{name}` is private");
             let def_span = tcx.def_span(item);
-            tcx.dcx()
+            let reported = tcx
+                .dcx()
                 .struct_span_err(span, msg)
                 .with_code(rustc_errors::error_code!(E0624))
                 .with_span_label(span, format!("private {kind}"))
                 .with_span_label(def_span, format!("{kind} defined here"))
                 .emit();
+            self.set_tainted_by_errors(reported);
         }
         tcx.check_stability(item, Some(block), span, None);
     }
@@ -1869,7 +1876,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 err.span_label(span, format!("not allowed on {what}"));
             }
             extend(&mut err);
-            err.emit();
+            self.set_tainted_by_errors(err.emit());
             emitted = true;
         }
 
@@ -2191,7 +2198,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     {
                         err.span_note(impl_.self_ty.span, "not a concrete type");
                     }
-                    Ty::new_error(tcx, err.emit())
+                    let reported = err.emit();
+                    self.set_tainted_by_errors(reported);
+                    Ty::new_error(tcx, reported)
                 } else {
                     ty
                 }
@@ -2593,7 +2602,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 );
             }
 
-            diag.emit();
+            self.set_tainted_by_errors(diag.emit());
         }
 
         // Find any late-bound regions declared in return type that do
@@ -2693,7 +2702,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 err.note("consider introducing a named lifetime parameter");
             }
 
-            err.emit();
+            self.set_tainted_by_errors(err.emit());
         }
     }
 
@@ -2732,7 +2741,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // error.
         let r = derived_region_bounds[0];
         if derived_region_bounds[1..].iter().any(|r1| r != *r1) {
-            tcx.dcx().emit_err(AmbiguousLifetimeBound { span });
+            self.set_tainted_by_errors(tcx.dcx().emit_err(AmbiguousLifetimeBound { span }));
         }
         Some(r)
     }

@@ -4,24 +4,6 @@ error[E0227]: ambiguous lifetime bound, explicit lifetime bound required
 LL |     baz: dyn FooBar<'foo, 'bar>,
    |          ^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0478]: lifetime bound not satisfied
-  --> $DIR/E0227.rs:7:10
-   |
-LL |     baz: dyn FooBar<'foo, 'bar>,
-   |          ^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: lifetime parameter instantiated with the lifetime `'bar` as defined here
-  --> $DIR/E0227.rs:6:18
-   |
-LL | struct Baz<'foo, 'bar> {
-   |                  ^^^^
-note: but lifetime parameter must outlive the lifetime `'foo` as defined here
-  --> $DIR/E0227.rs:6:12
-   |
-LL | struct Baz<'foo, 'bar> {
-   |            ^^^^
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0227, E0478.
-For more information about an error, try `rustc --explain E0227`.
+For more information about this error, try `rustc --explain E0227`.
