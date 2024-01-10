@@ -737,15 +737,13 @@ pub(crate) struct PlaceCtxt<'a, Cx: TypeCx> {
     pub(crate) mcx: MatchCtxt<'a, Cx>,
     /// Type of the place under investigation.
     pub(crate) ty: Cx::Ty,
-    /// Whether the place is the original scrutinee place, as opposed to a subplace of it.
-    pub(crate) is_scrutinee: bool,
 }
 
 impl<'a, Cx: TypeCx> PlaceCtxt<'a, Cx> {
     /// A `PlaceCtxt` when code other than `is_useful` needs one.
     #[cfg_attr(not(feature = "rustc"), allow(dead_code))]
     pub(crate) fn new_dummy(mcx: MatchCtxt<'a, Cx>, ty: Cx::Ty) -> Self {
-        PlaceCtxt { mcx, ty, is_scrutinee: false }
+        PlaceCtxt { mcx, ty }
     }
 
     pub(crate) fn ctor_arity(&self, ctor: &Constructor<Cx>) -> usize {
@@ -1442,7 +1440,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
     };
 
     debug!("ty: {ty:?}");
-    let pcx = &PlaceCtxt { mcx, ty, is_scrutinee: is_top_level };
+    let pcx = &PlaceCtxt { mcx, ty };
 
     // Whether the place/column we are inspecting is known to contain valid data.
     let place_validity = matrix.place_validity[0];
@@ -1451,7 +1449,17 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
     let ctors = matrix.heads().map(|p| p.ctor());
     let ctors_for_ty = pcx.ctors_for_ty()?;
     let is_integers = matches!(ctors_for_ty, ConstructorSet::Integers { .. }); // For diagnostics.
-    let split_set = ctors_for_ty.split(pcx, ctors);
+    let mut split_set = ctors_for_ty.split(ctors);
+    // We have now grouped all the constructors into 3 buckets: present, missing, missing_empty.
+    // In the absence of the `exhaustive_patterns` feature however, we don't count nested empty
+    // types as empty. Only non-nested `!` or `enum Foo {}` are considered empty.
+    if !pcx.mcx.tycx.is_exhaustive_patterns_feature_on()
+        && !(is_top_level && matches!(ctors_for_ty, ConstructorSet::NoConstructors))
+    {
+        // Treat all missing constructors as nonempty.
+        // This clears `missing_empty`.
+        split_set.missing.append(&mut split_set.missing_empty);
+    }
     let all_missing = split_set.present.is_empty();
 
     // Build the set of constructors we will specialize with. It must cover the whole type.

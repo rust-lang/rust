@@ -59,7 +59,7 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
     ) -> Result<SplitConstructorSet<'p, 'tcx>, ErrorGuaranteed> {
         let column_ctors = self.patterns.iter().map(|p| p.ctor());
         let ctors_for_ty = &pcx.ctors_for_ty()?;
-        Ok(ctors_for_ty.split(pcx, column_ctors))
+        Ok(ctors_for_ty.split(column_ctors))
     }
 
     /// Does specialization: given a constructor, this takes the patterns from the column that match

@@ -858,12 +858,14 @@ impl<Cx: TypeCx> ConstructorSet<Cx> {
     /// any) are missing; 2/ split constructors to handle non-trivial intersections e.g. on ranges
     /// or slices. This can get subtle; see [`SplitConstructorSet`] for details of this operation
     /// and its invariants.
-    #[instrument(level = "debug", skip(self, pcx, ctors), ret)]
+    #[instrument(level = "debug", skip(self, ctors), ret)]
     pub(crate) fn split<'a>(
         &self,
-        pcx: &PlaceCtxt<'a, Cx>,
         ctors: impl Iterator<Item = &'a Constructor<Cx>> + Clone,
-    ) -> SplitConstructorSet<Cx> {
+    ) -> SplitConstructorSet<Cx>
+    where
+        Cx: 'a,
+    {
         let mut present: SmallVec<[_; 1]> = SmallVec::new();
         // Empty constructors found missing.
         let mut missing_empty = Vec::new();
@@ -1001,17 +1003,6 @@ impl<Cx: TypeCx> ConstructorSet<Cx> {
                 // `ValidOnly`.
                 missing_empty.push(NonExhaustive);
             }
-        }
-
-        // We have now grouped all the constructors into 3 buckets: present, missing, missing_empty.
-        // In the absence of the `exhaustive_patterns` feature however, we don't count nested empty
-        // types as empty. Only non-nested `!` or `enum Foo {}` are considered empty.
-        if !pcx.mcx.tycx.is_exhaustive_patterns_feature_on()
-            && !(pcx.is_scrutinee && matches!(self, Self::NoConstructors))
-        {
-            // Treat all missing constructors as nonempty.
-            // This clears `missing_empty`.
-            missing.append(&mut missing_empty);
         }
 
         SplitConstructorSet { present, missing, missing_empty }
