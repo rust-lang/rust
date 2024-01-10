@@ -17,27 +17,15 @@ use crate::{Idx, IndexSlice};
 /// While it's possible to use `u32` or `usize` directly for `I`,
 /// you almost certainly want to use a [`newtype_index!`]-generated type instead.
 ///
-/// This allows to index the IndexVec with the new index type:
+/// This allows to index the IndexVec with the new index type
 ///
-/// ```
-/// use crate as rustc_index;
-/// use rustc_index::{IndexVec, newtype_index};
-///
-/// newtype_index! {
-///   pub struct MyIdx {}
-/// }
-///
-/// let my_index_vec: IndexVec<MyIdx, u32> = IndexVec::from_raw(vec![0,1,2,3]);
-/// let idx: MyIdx = MyIdx::from_u32(2);
-/// assert_eq!(my_index_vec[idx], 2);
-/// ```
 ///
 /// [`newtype_index!`]: ../macro.newtype_index.html
 #[derive(Clone, PartialEq, Eq, Hash)]
 #[repr(transparent)]
 pub struct IndexVec<I: Idx, T> {
     pub raw: Vec<T>,
-    _marker: PhantomData<fn(&I)>,
+    _marker: PhantomData<I>,
 }
 
 impl<I: Idx, T> IndexVec<I, T> {
@@ -77,7 +65,7 @@ impl<I: Idx, T> IndexVec<I, T> {
         IndexVec::from_raw(vec![elem; universe.len()])
     }
 
-    /// Creates a new `IndexVec` with n copies of `elem`
+    /// Creates a new IndexVec
     #[inline]
     pub fn from_elem_n(elem: T, n: usize) -> Self
     where
