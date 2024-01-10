@@ -17,10 +17,6 @@ mod tme;
 #[unstable(feature = "stdarch_aarch64_tme", issue = "117216")]
 pub use self::tme::*;
 
-mod crc;
-#[unstable(feature = "stdarch_arm_crc32", issue = "117215")]
-pub use self::crc::*;
-
 mod prefetch;
 #[unstable(feature = "stdarch_aarch64_prefetch", issue = "117217")]
 pub use self::prefetch::*;

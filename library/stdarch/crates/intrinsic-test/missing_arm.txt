@@ -14,8 +14,6 @@ vbfmlaltq_laneq_f32
 vbfmmlaq_f32
 
 # Implemented in Clang and stdarch for A64 only even though CSV claims A32 support
-__crc32d
-__crc32cd
 vaddq_p64
 vbsl_p64
 vbslq_p64
