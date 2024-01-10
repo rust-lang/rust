@@ -2479,9 +2479,9 @@ fn slice_rsplit_array_mut_out_of_bounds() {
 fn slice_split_once() {
     let v = &[1, 2, 3, 2, 4][..];
 
-    assert_eq!(v.split_once(|&x| x == 2), Some((&[1][..], &[3, 2, 4][..])));
-    assert_eq!(v.split_once(|&x| x == 1), Some((&[][..], &[2, 3, 2, 4][..])));
-    assert_eq!(v.split_once(|&x| x == 4), Some((&[1, 2, 3, 2][..], &[][..])));
+    assert_eq!(v.split_once(|&x| x == 2), Some((&[1][..], &2, &[3, 2, 4][..])));
+    assert_eq!(v.split_once(|&x| x == 1), Some((&[][..], &1, &[2, 3, 2, 4][..])));
+    assert_eq!(v.split_once(|&x| x == 4), Some((&[1, 2, 3, 2][..], &4, &[][..])));
     assert_eq!(v.split_once(|&x| x == 0), None);
 }
 
@@ -2489,9 +2489,9 @@ fn slice_split_once() {
 fn slice_rsplit_once() {
     let v = &[1, 2, 3, 2, 4][..];
 
-    assert_eq!(v.rsplit_once(|&x| x == 2), Some((&[1, 2, 3][..], &[4][..])));
-    assert_eq!(v.rsplit_once(|&x| x == 1), Some((&[][..], &[2, 3, 2, 4][..])));
-    assert_eq!(v.rsplit_once(|&x| x == 4), Some((&[1, 2, 3, 2][..], &[][..])));
+    assert_eq!(v.rsplit_once(|&x| x == 2), Some((&[1, 2, 3][..], &2, &[4][..])));
+    assert_eq!(v.rsplit_once(|&x| x == 1), Some((&[][..], &1, &[2, 3, 2, 4][..])));
+    assert_eq!(v.rsplit_once(|&x| x == 4), Some((&[1, 2, 3, 2][..], &4, &[][..])));
     assert_eq!(v.rsplit_once(|&x| x == 0), None);
 }
 

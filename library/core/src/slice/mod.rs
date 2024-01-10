@@ -2484,8 +2484,8 @@ impl<T> [T] {
     /// predicate.
     ///
     /// If any matching elements are present in the slice, returns the prefix
-    /// before the match and suffix after. The matching element itself is not
-    /// included. If no elements match, returns `None`.
+    /// before the match, the matching element, and the suffix after the match.
+    /// If no elements match, returns `None`.
     ///
     /// # Examples
     ///
@@ -2494,26 +2494,27 @@ impl<T> [T] {
     /// let s = [1, 2, 3, 2, 4];
     /// assert_eq!(s.split_once(|&x| x == 2), Some((
     ///     &[1][..],
+    ///     &2,
     ///     &[3, 2, 4][..]
     /// )));
     /// assert_eq!(s.split_once(|&x| x == 0), None);
     /// ```
     #[unstable(feature = "slice_split_once", reason = "newly added", issue = "112811")]
     #[inline]
-    pub fn split_once<F>(&self, pred: F) -> Option<(&[T], &[T])>
+    pub fn split_once<F>(&self, pred: F) -> Option<(&[T], &T, &[T])>
     where
         F: FnMut(&T) -> bool,
     {
         let index = self.iter().position(pred)?;
-        Some((&self[..index], &self[index + 1..]))
+        Some((&self[..index], &self[index], &self[index + 1..]))
     }
 
     /// Splits the slice on the last element that matches the specified
     /// predicate.
     ///
     /// If any matching elements are present in the slice, returns the prefix
-    /// before the match and suffix after. The matching element itself is not
-    /// included. If no elements match, returns `None`.
+    /// before the match, the matching element, and the suffix after the match.
+    /// If no elements match, returns `None`.
     ///
     /// # Examples
     ///
@@ -2522,18 +2523,19 @@ impl<T> [T] {
     /// let s = [1, 2, 3, 2, 4];
     /// assert_eq!(s.rsplit_once(|&x| x == 2), Some((
     ///     &[1, 2, 3][..],
+    ///     &2,
     ///     &[4][..]
     /// )));
     /// assert_eq!(s.rsplit_once(|&x| x == 0), None);
     /// ```
     #[unstable(feature = "slice_split_once", reason = "newly added", issue = "112811")]
     #[inline]
-    pub fn rsplit_once<F>(&self, pred: F) -> Option<(&[T], &[T])>
+    pub fn rsplit_once<F>(&self, pred: F) -> Option<(&[T], &T, &[T])>
     where
         F: FnMut(&T) -> bool,
     {
         let index = self.iter().rposition(pred)?;
-        Some((&self[..index], &self[index + 1..]))
+        Some((&self[..index], &self[index], &self[index + 1..]))
     }
 
     /// Returns `true` if the slice contains an element with the given value.
