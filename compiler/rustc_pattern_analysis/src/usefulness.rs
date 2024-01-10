@@ -1441,21 +1441,20 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
 
     debug!("ty: {ty:?}");
     let pcx = &PlaceCtxt { mcx, ty };
+    let ctors_for_ty = pcx.ctors_for_ty()?;
 
     // Whether the place/column we are inspecting is known to contain valid data.
     let place_validity = matrix.place_validity[0];
+    // We treat match scrutinees of type `!` or `EmptyEnum` differently.
+    let is_toplevel_exception =
+        is_top_level && matches!(ctors_for_ty, ConstructorSet::NoConstructors);
+    // Whether empty patterns can be omitted for exhaustiveness.
+    let can_omit_empty_arms = is_toplevel_exception || mcx.tycx.is_exhaustive_patterns_feature_on();
 
     // Analyze the constructors present in this column.
     let ctors = matrix.heads().map(|p| p.ctor());
-    let ctors_for_ty = pcx.ctors_for_ty()?;
-    let is_integers = matches!(ctors_for_ty, ConstructorSet::Integers { .. }); // For diagnostics.
     let mut split_set = ctors_for_ty.split(ctors);
-    // We have now grouped all the constructors into 3 buckets: present, missing, missing_empty.
-    // In the absence of the `exhaustive_patterns` feature however, we don't count nested empty
-    // types as empty. Only non-nested `!` or `enum Foo {}` are considered empty.
-    if !pcx.mcx.tycx.is_exhaustive_patterns_feature_on()
-        && !(is_top_level && matches!(ctors_for_ty, ConstructorSet::NoConstructors))
-    {
+    if !can_omit_empty_arms {
         // Treat all missing constructors as nonempty.
         // This clears `missing_empty`.
         split_set.missing.append(&mut split_set.missing_empty);
@@ -1463,17 +1462,17 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
     let all_missing = split_set.present.is_empty();
 
     // Build the set of constructors we will specialize with. It must cover the whole type.
+    // We need to iterate over a full set of constructors, so we add `Missing` to represent the
+    // missing ones. This is explained under "Constructor Splitting" at the top of this file.
     let mut split_ctors = split_set.present;
-    if !split_set.missing.is_empty() {
-        // We need to iterate over a full set of constructors, so we add `Missing` to represent the
-        // missing ones. This is explained under "Constructor Splitting" at the top of this file.
-        split_ctors.push(Constructor::Missing);
-    } else if !split_set.missing_empty.is_empty() && !place_validity.is_known_valid() {
-        // The missing empty constructors are reachable if the place can contain invalid data.
+    if !(split_set.missing.is_empty()
+        && (split_set.missing_empty.is_empty() || place_validity.is_known_valid()))
+    {
         split_ctors.push(Constructor::Missing);
     }
 
     // Decide what constructors to report.
+    let is_integers = matches!(ctors_for_ty, ConstructorSet::Integers { .. });
     let always_report_all = is_top_level && !is_integers;
     // Whether we should report "Enum::A and Enum::C are missing" or "_ is missing".
     let report_individual_missing_ctors = always_report_all || !all_missing;
