@@ -1233,7 +1233,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 );
             } else {
                 if ns == TypeNS {
-                    let mut err = if crate_private_reexport {
+                    let err = if crate_private_reexport {
                         self.dcx().create_err(CannotBeReexportedCratePublicNS {
                             span: import.span,
                             ident,

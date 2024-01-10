@@ -17,7 +17,7 @@ use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::traits::{DefiningAnchor, ObligationCauseCode};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
-use rustc_middle::ty::util::{Discr, IntTypeExt};
+use rustc_middle::ty::util::{Discr, InspectCoroutineFields, IntTypeExt};
 use rustc_middle::ty::GenericArgKind;
 use rustc_middle::ty::{
     AdtDef, ParamEnv, RegionKind, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
@@ -213,13 +213,12 @@ fn check_opaque(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         return;
     }
 
-    let args = GenericArgs::identity_for_item(tcx, item.owner_id);
     let span = tcx.def_span(item.owner_id.def_id);
 
     if tcx.type_of(item.owner_id.def_id).instantiate_identity().references_error() {
         return;
     }
-    if check_opaque_for_cycles(tcx, item.owner_id.def_id, args, span, origin).is_err() {
+    if check_opaque_for_cycles(tcx, item.owner_id.def_id, span).is_err() {
         return;
     }
 
@@ -230,19 +229,36 @@ fn check_opaque(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 pub(super) fn check_opaque_for_cycles<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
-    args: GenericArgsRef<'tcx>,
     span: Span,
-    origin: &hir::OpaqueTyOrigin,
 ) -> Result<(), ErrorGuaranteed> {
-    if tcx.try_expand_impl_trait_type(def_id.to_def_id(), args).is_err() {
-        let reported = match origin {
-            hir::OpaqueTyOrigin::AsyncFn(..) => async_opaque_type_cycle_error(tcx, span),
-            _ => opaque_type_cycle_error(tcx, def_id, span),
-        };
-        Err(reported)
-    } else {
-        Ok(())
+    let args = GenericArgs::identity_for_item(tcx, def_id);
+
+    // First, try to look at any opaque expansion cycles, considering coroutine fields
+    // (even though these aren't necessarily true errors).
+    if tcx
+        .try_expand_impl_trait_type(def_id.to_def_id(), args, InspectCoroutineFields::Yes)
+        .is_err()
+    {
+        // Look for true opaque expansion cycles, but ignore coroutines.
+        // This will give us any true errors. Coroutines are only problematic
+        // if they cause layout computation errors.
+        if tcx
+            .try_expand_impl_trait_type(def_id.to_def_id(), args, InspectCoroutineFields::No)
+            .is_err()
+        {
+            let reported = opaque_type_cycle_error(tcx, def_id, span);
+            return Err(reported);
+        }
+
+        // And also look for cycle errors in the layout of coroutines.
+        if let Err(&LayoutError::Cycle(guar)) =
+            tcx.layout_of(tcx.param_env(def_id).and(Ty::new_opaque(tcx, def_id.to_def_id(), args)))
+        {
+            return Err(guar);
+        }
     }
+
+    Ok(())
 }
 
 /// Check that the concrete type behind `impl Trait` actually implements `Trait`.
@@ -550,8 +566,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                                 E0044,
                                 "foreign items may not have {kinds} parameters",
                             )
-                            .span_label(item.span, format!("can't have {kinds} parameters"))
-                            .help(
+                            .span_label_mv(item.span, format!("can't have {kinds} parameters"))
+                            .help_mv(
                                 // FIXME: once we start storing spans for type arguments, turn this
                                 // into a suggestion.
                                 format!(
@@ -788,7 +804,7 @@ fn check_impl_items_against_trait<'tcx>(
                 };
                 tcx.dcx()
                     .struct_span_err(tcx.def_span(def_id), msg)
-                    .note(format!(
+                    .note_mv(format!(
                         "specialization behaves in inconsistent and \
                         surprising ways with {feature}, \
                         and for now is disallowed"
@@ -830,7 +846,7 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: LocalDefId) {
         let e = fields[FieldIdx::from_u32(0)].ty(tcx, args);
         if !fields.iter().all(|f| f.ty(tcx, args) == e) {
             struct_span_err!(tcx.dcx(), sp, E0076, "SIMD vector should be homogeneous")
-                .span_label(sp, "SIMD elements must have the same type")
+                .span_label_mv(sp, "SIMD elements must have the same type")
                 .emit();
             return;
         }
@@ -1107,7 +1123,7 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                 E0084,
                 "unsupported representation for zero-variant enum"
             )
-            .span_label(tcx.def_span(def_id), "zero-variant enum")
+            .span_label_mv(tcx.def_span(def_id), "zero-variant enum")
             .emit();
         }
     }
@@ -1140,13 +1156,13 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
         let disr_non_unit = def.variants().iter().any(|var| !is_unit(var) && has_disr(var));
 
         if disr_non_unit || (disr_units && has_non_units) {
-            let mut err = struct_span_err!(
+            struct_span_err!(
                 tcx.dcx(),
                 tcx.def_span(def_id),
                 E0732,
                 "`#[repr(inttype)]` must be specified"
-            );
-            err.emit();
+            )
+            .emit();
         }
     }
 
@@ -1249,7 +1265,7 @@ fn detect_discriminant_duplicate<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>)
             }
         }
 
-        if let Some(mut e) = error {
+        if let Some(e) = error {
             e.emit();
         }
 
@@ -1294,20 +1310,10 @@ pub(super) fn check_type_params_are_used<'tcx>(
         {
             let span = tcx.def_span(param.def_id);
             struct_span_err!(tcx.dcx(), span, E0091, "type parameter `{}` is unused", param.name,)
-                .span_label(span, "unused type parameter")
+                .span_label_mv(span, "unused type parameter")
                 .emit();
         }
     }
-}
-
-fn async_opaque_type_cycle_error(tcx: TyCtxt<'_>, span: Span) -> ErrorGuaranteed {
-    struct_span_err!(tcx.dcx(), span, E0733, "recursion in an `async fn` requires boxing")
-        .span_label(span, "recursive `async fn`")
-        .note("a recursive `async fn` must be rewritten to return a boxed `dyn Future`")
-        .note(
-            "consider using the `async_recursion` crate: https://crates.io/crates/async_recursion",
-        )
-        .emit()
 }
 
 /// Emit an error for recursive opaque types.

@@ -81,21 +81,18 @@ Number of file 0 mappings: 1
 - Code(Zero) at (prev + 171, 13) to (start + 2, 14)
 
 Function name: closure::main::{closure#14}
-Raw bytes (36): 0x[01, 01, 03, 05, 0a, 01, 05, 01, 05, 05, 03, b2, 01, 0d, 00, 15, 01, 01, 11, 01, 1b, 05, 01, 1e, 00, 25, 0a, 00, 2f, 00, 33, 03, 01, 0d, 00, 0e]
+Raw bytes (29): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, b2, 01, 0d, 02, 1b, 05, 02, 1e, 00, 25, 02, 00, 2f, 00, 33, 07, 01, 0d, 00, 0e]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 3
-- expression 0 operands: lhs = Counter(1), rhs = Expression(2, Sub)
-- expression 1 operands: lhs = Counter(0), rhs = Counter(1)
-- expression 2 operands: lhs = Counter(0), rhs = Counter(1)
-Number of file 0 mappings: 5
-- Code(Expression(0, Add)) at (prev + 178, 13) to (start + 0, 21)
-    = (c1 + (c0 - c1))
-- Code(Counter(0)) at (prev + 1, 17) to (start + 1, 27)
-- Code(Counter(1)) at (prev + 1, 30) to (start + 0, 37)
-- Code(Expression(2, Sub)) at (prev + 0, 47) to (start + 0, 51)
+Number of expressions: 2
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 178, 13) to (start + 2, 27)
+- Code(Counter(1)) at (prev + 2, 30) to (start + 0, 37)
+- Code(Expression(0, Sub)) at (prev + 0, 47) to (start + 0, 51)
     = (c0 - c1)
-- Code(Expression(0, Add)) at (prev + 1, 13) to (start + 0, 14)
+- Code(Expression(1, Add)) at (prev + 1, 13) to (start + 0, 14)
     = (c1 + (c0 - c1))
 
 Function name: closure::main::{closure#15}
@@ -118,21 +115,18 @@ Number of file 0 mappings: 6
     = (c1 + (c0 - c1))
 
 Function name: closure::main::{closure#16}
-Raw bytes (36): 0x[01, 01, 03, 05, 0a, 01, 05, 01, 05, 05, 03, c4, 01, 0d, 00, 15, 01, 01, 11, 01, 1b, 05, 01, 1e, 00, 25, 0a, 00, 2f, 00, 33, 03, 01, 0d, 00, 0e]
+Raw bytes (29): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, c4, 01, 0d, 02, 1b, 05, 02, 1e, 00, 25, 02, 00, 2f, 00, 33, 07, 01, 0d, 00, 0e]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 3
-- expression 0 operands: lhs = Counter(1), rhs = Expression(2, Sub)
-- expression 1 operands: lhs = Counter(0), rhs = Counter(1)
-- expression 2 operands: lhs = Counter(0), rhs = Counter(1)
-Number of file 0 mappings: 5
-- Code(Expression(0, Add)) at (prev + 196, 13) to (start + 0, 21)
-    = (c1 + (c0 - c1))
-- Code(Counter(0)) at (prev + 1, 17) to (start + 1, 27)
-- Code(Counter(1)) at (prev + 1, 30) to (start + 0, 37)
-- Code(Expression(2, Sub)) at (prev + 0, 47) to (start + 0, 51)
+Number of expressions: 2
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
+Number of file 0 mappings: 4
+- Code(Counter(0)) at (prev + 196, 13) to (start + 2, 27)
+- Code(Counter(1)) at (prev + 2, 30) to (start + 0, 37)
+- Code(Expression(0, Sub)) at (prev + 0, 47) to (start + 0, 51)
     = (c0 - c1)
-- Code(Expression(0, Add)) at (prev + 1, 13) to (start + 0, 14)
+- Code(Expression(1, Add)) at (prev + 1, 13) to (start + 0, 14)
     = (c1 + (c0 - c1))
 
 Function name: closure::main::{closure#17}

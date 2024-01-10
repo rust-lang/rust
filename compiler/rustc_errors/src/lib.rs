@@ -7,9 +7,11 @@
 #![feature(rustdoc_internals)]
 #![feature(array_windows)]
 #![feature(associated_type_defaults)]
+#![feature(box_into_inner)]
 #![feature(extract_if)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
+#![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
 #![feature(yeet_expr)]
@@ -507,11 +509,11 @@ pub enum StashKey {
     Cycle,
 }
 
-fn default_track_diagnostic(d: &mut Diagnostic, f: &mut dyn FnMut(&mut Diagnostic)) {
-    (*f)(d)
+fn default_track_diagnostic(diag: Diagnostic, f: &mut dyn FnMut(Diagnostic)) {
+    (*f)(diag)
 }
 
-pub static TRACK_DIAGNOSTICS: AtomicRef<fn(&mut Diagnostic, &mut dyn FnMut(&mut Diagnostic))> =
+pub static TRACK_DIAGNOSTICS: AtomicRef<fn(Diagnostic, &mut dyn FnMut(Diagnostic))> =
     AtomicRef::new(&(default_track_diagnostic as _));
 
 #[derive(Copy, Clone, Default)]
@@ -522,9 +524,6 @@ pub struct DiagCtxtFlags {
     /// If Some, the Nth error-level diagnostic is upgraded to bug-level.
     /// (rustc: see `-Z treat-err-as-bug`)
     pub treat_err_as_bug: Option<NonZeroUsize>,
-    /// If true, immediately emit diagnostics that would otherwise be buffered.
-    /// (rustc: see `-Z dont-buffer-diagnostics` and `-Z treat-err-as-bug`)
-    pub dont_buffer_diagnostics: bool,
     /// Show macro backtraces.
     /// (rustc: see `-Z macro-backtrace`)
     pub macro_backtrace: bool,
@@ -728,24 +727,7 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
-        let mut result = self.struct_warn(msg);
-        result.span(span);
-        result
-    }
-
-    /// Construct a builder at the `Warning` level at the given `span` and with the `msg`.
-    /// Also include a code.
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn struct_span_warn_with_code(
-        &self,
-        span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
-        code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_, ()> {
-        let mut result = self.struct_span_warn(span, msg);
-        result.code(code);
-        result
+        self.struct_warn(msg).span_mv(span)
     }
 
     /// Construct a builder at the `Warning` level with the `msg`.
@@ -785,23 +767,7 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_> {
-        let mut result = self.struct_err(msg);
-        result.span(span);
-        result
-    }
-
-    /// Construct a builder at the `Error` level at the given `span`, with the `msg`, and `code`.
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn struct_span_err_with_code(
-        &self,
-        span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
-        code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_> {
-        let mut result = self.struct_span_err(span, msg);
-        result.code(code);
-        result
+        self.struct_err(msg).span_mv(span)
     }
 
     /// Construct a builder at the `Error` level with the `msg`.
@@ -812,32 +778,6 @@ impl DiagCtxt {
         DiagnosticBuilder::new(self, Error, msg)
     }
 
-    /// Construct a builder at the `Error` level with the `msg` and the `code`.
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn struct_err_with_code(
-        &self,
-        msg: impl Into<DiagnosticMessage>,
-        code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_> {
-        let mut result = self.struct_err(msg);
-        result.code(code);
-        result
-    }
-
-    /// Construct a builder at the `Warn` level with the `msg` and the `code`.
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn struct_warn_with_code(
-        &self,
-        msg: impl Into<DiagnosticMessage>,
-        code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_, ()> {
-        let mut result = self.struct_warn(msg);
-        result.code(code);
-        result
-    }
-
     /// Construct a builder at the `Fatal` level at the given `span` and with the `msg`.
     #[rustc_lint_diagnostics]
     #[track_caller]
@@ -846,23 +786,7 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, FatalAbort> {
-        let mut result = self.struct_fatal(msg);
-        result.span(span);
-        result
-    }
-
-    /// Construct a builder at the `Fatal` level at the given `span`, with the `msg`, and `code`.
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn struct_span_fatal_with_code(
-        &self,
-        span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
-        code: DiagnosticId,
-    ) -> DiagnosticBuilder<'_, FatalAbort> {
-        let mut result = self.struct_span_fatal(span, msg);
-        result.code(code);
-        result
+        self.struct_fatal(msg).span_mv(span)
     }
 
     /// Construct a builder at the `Fatal` level with the `msg`.
@@ -903,26 +827,13 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, BugAbort> {
-        let mut result = self.struct_bug(msg);
-        result.span(span);
-        result
+        self.struct_bug(msg).span_mv(span)
     }
 
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn span_fatal(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
         self.struct_span_fatal(span, msg).emit()
-    }
-
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn span_fatal_with_code(
-        &self,
-        span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
-        code: DiagnosticId,
-    ) -> ! {
-        self.struct_span_fatal_with_code(span, msg, code).emit()
     }
 
     #[rustc_lint_diagnostics]
@@ -937,30 +848,8 @@ impl DiagCtxt {
 
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn span_err_with_code(
-        &self,
-        span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
-        code: DiagnosticId,
-    ) -> ErrorGuaranteed {
-        self.struct_span_err_with_code(span, msg, code).emit()
-    }
-
-    #[rustc_lint_diagnostics]
-    #[track_caller]
     pub fn span_warn(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) {
         self.struct_span_warn(span, msg).emit()
-    }
-
-    #[rustc_lint_diagnostics]
-    #[track_caller]
-    pub fn span_warn_with_code(
-        &self,
-        span: impl Into<MultiSpan>,
-        msg: impl Into<DiagnosticMessage>,
-        code: DiagnosticId,
-    ) {
-        self.struct_span_warn_with_code(span, msg, code).emit()
     }
 
     pub fn span_bug(&self, span: impl Into<MultiSpan>, msg: impl Into<DiagnosticMessage>) -> ! {
@@ -1020,9 +909,7 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
-        let mut db = DiagnosticBuilder::new(self, Note, msg);
-        db.span(span);
-        db
+        DiagnosticBuilder::new(self, Note, msg).span_mv(span)
     }
 
     #[rustc_lint_diagnostics]
@@ -1184,17 +1071,8 @@ impl DiagCtxt {
         self.inner.borrow_mut().emitter.emit_diagnostic(&db);
     }
 
-    pub fn emit_diagnostic(&self, mut diagnostic: Diagnostic) -> Option<ErrorGuaranteed> {
-        self.emit_diagnostic_without_consuming(&mut diagnostic)
-    }
-
-    // It's unfortunate this exists. `emit_diagnostic` is preferred, because it
-    // consumes the diagnostic, thus ensuring it is emitted just once.
-    pub(crate) fn emit_diagnostic_without_consuming(
-        &self,
-        diagnostic: &mut Diagnostic,
-    ) -> Option<ErrorGuaranteed> {
-        self.inner.borrow_mut().emit_diagnostic_without_consuming(diagnostic)
+    pub fn emit_diagnostic(&self, diagnostic: Diagnostic) -> Option<ErrorGuaranteed> {
+        self.inner.borrow_mut().emit_diagnostic(diagnostic)
     }
 
     #[track_caller]
@@ -1383,13 +1261,6 @@ impl DiagCtxtInner {
     }
 
     fn emit_diagnostic(&mut self, mut diagnostic: Diagnostic) -> Option<ErrorGuaranteed> {
-        self.emit_diagnostic_without_consuming(&mut diagnostic)
-    }
-
-    fn emit_diagnostic_without_consuming(
-        &mut self,
-        diagnostic: &mut Diagnostic,
-    ) -> Option<ErrorGuaranteed> {
         if matches!(diagnostic.level, Error | Fatal) && self.treat_err_as_bug() {
             diagnostic.level = Bug;
         }
@@ -1445,7 +1316,7 @@ impl DiagCtxtInner {
         }
 
         let mut guaranteed = None;
-        (*TRACK_DIAGNOSTICS)(diagnostic, &mut |diagnostic| {
+        (*TRACK_DIAGNOSTICS)(diagnostic, &mut |mut diagnostic| {
             if let Some(ref code) = diagnostic.code {
                 self.emitted_diagnostic_codes.insert(code.clone());
             }
@@ -1481,7 +1352,7 @@ impl DiagCtxtInner {
                     );
                 }
 
-                self.emitter.emit_diagnostic(diagnostic);
+                self.emitter.emit_diagnostic(&diagnostic);
                 if diagnostic.is_error() {
                     self.deduplicated_err_count += 1;
                 } else if let Warning(_) = diagnostic.level {

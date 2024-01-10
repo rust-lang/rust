@@ -23,9 +23,15 @@ mod tests;
 /// otherwise return the call site span up to the `enclosing_sp` by
 /// following the `expn_data` chain.
 pub fn original_sp(sp: Span, enclosing_sp: Span) -> Span {
-    let expn_data1 = sp.ctxt().outer_expn_data();
-    let expn_data2 = enclosing_sp.ctxt().outer_expn_data();
-    if expn_data1.is_root() || !expn_data2.is_root() && expn_data1.call_site == expn_data2.call_site
+    let ctxt = sp.ctxt();
+    if ctxt.is_root() {
+        return sp;
+    }
+
+    let enclosing_ctxt = enclosing_sp.ctxt();
+    let expn_data1 = ctxt.outer_expn_data();
+    if !enclosing_ctxt.is_root()
+        && expn_data1.call_site == enclosing_ctxt.outer_expn_data().call_site
     {
         sp
     } else {

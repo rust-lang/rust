@@ -281,7 +281,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         };
         if sub.is_error() || sup.is_error() {
-            err.delay_as_bug();
+            err.downgrade_to_delayed_bug();
         }
         err
     }
@@ -367,9 +367,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     &trace.cause.code().peel_derives()
                 {
                     let span = *span;
-                    let mut err = self.report_concrete_failure(placeholder_origin, sub, sup);
-                    err.span_note(span, "the lifetime requirement is introduced here");
-                    err
+                    self.report_concrete_failure(placeholder_origin, sub, sup)
+                        .span_note_mv(span, "the lifetime requirement is introduced here")
                 } else {
                     unreachable!(
                         "control flow ensures we have a `BindingObligation` or `ExprBindingObligation` here..."

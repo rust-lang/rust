@@ -64,17 +64,7 @@ mod imp {
 
     #[cfg(any(target_os = "espidf", target_os = "horizon", target_os = "freebsd"))]
     fn getrandom(buf: &mut [u8]) -> libc::ssize_t {
-        #[cfg(not(target_os = "freebsd"))]
-        use libc::getrandom;
-        #[cfg(target_os = "freebsd")]
-        extern "C" {
-            fn getrandom(
-                buf: *mut libc::c_void,
-                buflen: libc::size_t,
-                flags: libc::c_uint,
-            ) -> libc::ssize_t;
-        }
-        unsafe { getrandom(buf.as_mut_ptr().cast(), buf.len(), 0) }
+        unsafe { libc::getrandom(buf.as_mut_ptr().cast(), buf.len(), 0) }
     }
 
     #[cfg(not(any(

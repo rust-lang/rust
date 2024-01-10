@@ -269,7 +269,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             }
             CastError::NeedViaInt => {
                 make_invalid_casting_error(self.span, self.expr_ty, self.cast_ty, fcx)
-                    .help("cast through an integer first")
+                    .help_mv("cast through an integer first")
                     .emit();
             }
             CastError::IllegalCast => {
@@ -277,7 +277,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             }
             CastError::DifferingKinds => {
                 make_invalid_casting_error(self.span, self.expr_ty, self.cast_ty, fcx)
-                    .note("vtable kinds may not match")
+                    .note_mv("vtable kinds may not match")
                     .emit();
             }
             CastError::CastToBool => {
@@ -512,7 +512,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     self.cast_ty,
                     fcx,
                 )
-                .note("cannot cast an enum with a non-exhaustive variant when it's defined in another crate")
+                .note_mv("cannot cast an enum with a non-exhaustive variant when it's defined in another crate")
                 .emit();
             }
         }

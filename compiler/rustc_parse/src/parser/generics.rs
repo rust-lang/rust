@@ -77,7 +77,6 @@ impl<'a> Parser<'a> {
                                     Applicability::MachineApplicable,
                                 );
                             }
-                            err.emit();
                             return Err(err);
                         }
                     }
@@ -141,17 +140,18 @@ impl<'a> Parser<'a> {
         // Parse optional const generics default value.
         let default = if self.eat(&token::Eq) { Some(self.parse_const_arg()?) } else { None };
 
-        let mut err = self.dcx().struct_span_err(
-            mistyped_const_ident.span,
-            format!("`const` keyword was mistyped as `{}`", mistyped_const_ident.as_str()),
-        );
-        err.span_suggestion_verbose(
-            mistyped_const_ident.span,
-            "use the `const` keyword",
-            kw::Const.as_str(),
-            Applicability::MachineApplicable,
-        );
-        err.emit();
+        self.dcx()
+            .struct_span_err(
+                mistyped_const_ident.span,
+                format!("`const` keyword was mistyped as `{}`", mistyped_const_ident.as_str()),
+            )
+            .span_suggestion_verbose_mv(
+                mistyped_const_ident.span,
+                "use the `const` keyword",
+                kw::Const.as_str(),
+                Applicability::MachineApplicable,
+            )
+            .emit();
 
         Ok(GenericParam {
             ident,

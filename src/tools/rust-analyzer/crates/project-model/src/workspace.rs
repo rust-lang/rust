@@ -1277,7 +1277,7 @@ fn add_target_crate_root(
     inject_cargo_env(pkg, &mut env);
     if let Ok(cname) = String::from_str(cargo_name) {
         // CARGO_CRATE_NAME is the name of the Cargo target with - converted to _, such as the name of the library, binary, example, integration test, or benchmark.
-        env.set("CARGO_CRATE_NAME", cname.replace("-", "_"));
+        env.set("CARGO_CRATE_NAME", cname.replace('-', "_"));
     }
 
     if let Some(envs) = build_data.map(|it| &it.envs) {

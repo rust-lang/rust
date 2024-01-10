@@ -706,7 +706,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // If we are emitting a `drop` statement, we need to have the cached
         // diverge cleanup pads ready in case that drop panics.
         let needs_cleanup = self.scopes.scopes.last().is_some_and(|scope| scope.needs_cleanup());
-        let is_coroutine = self.coroutine_kind.is_some();
+        let is_coroutine = self.coroutine.is_some();
         let unwind_to = if needs_cleanup { self.diverge_cleanup() } else { DropIdx::MAX };
 
         let scope = self.scopes.scopes.last().expect("leave_top_scope called with no scopes");
@@ -960,7 +960,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // path, we only need to invalidate the cache for drops that happen on
         // the unwind or coroutine drop paths. This means that for
         // non-coroutines we don't need to invalidate caches for `DropKind::Storage`.
-        let invalidate_caches = needs_drop || self.coroutine_kind.is_some();
+        let invalidate_caches = needs_drop || self.coroutine.is_some();
         for scope in self.scopes.scopes.iter_mut().rev() {
             if invalidate_caches {
                 scope.invalidate_cache();
@@ -1073,7 +1073,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             return cached_drop;
         }
 
-        let is_coroutine = self.coroutine_kind.is_some();
+        let is_coroutine = self.coroutine.is_some();
         for scope in &mut self.scopes.scopes[uncached_scope..=target] {
             for drop in &scope.drops {
                 if is_coroutine || drop.kind == DropKind::Value {
@@ -1318,7 +1318,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         blocks[ROOT_NODE] = continue_block;
 
         drops.build_mir::<ExitScopes>(&mut self.cfg, &mut blocks);
-        let is_coroutine = self.coroutine_kind.is_some();
+        let is_coroutine = self.coroutine.is_some();
 
         // Link the exit drop tree to unwind drop tree.
         if drops.drops.iter().any(|(drop, _)| drop.kind == DropKind::Value) {
@@ -1355,7 +1355,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
 
     /// Build the unwind and coroutine drop trees.
     pub(crate) fn build_drop_trees(&mut self) {
-        if self.coroutine_kind.is_some() {
+        if self.coroutine.is_some() {
             self.build_coroutine_drop_trees();
         } else {
             Self::build_unwind_tree(

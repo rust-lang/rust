@@ -75,7 +75,7 @@ macro marker_impls {
 /// [ub]: ../../reference/behavior-considered-undefined.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Send")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "`{Self}` cannot be sent between threads safely",
     label = "`{Self}` cannot be sent between threads safely"
 )]
@@ -134,7 +134,7 @@ unsafe impl<T: Sync + ?Sized> Send for &T {}
 #[doc(alias = "?", alias = "?Sized")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sized"]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "the size for values of type `{Self}` cannot be known at compilation time",
     label = "doesn't have a size known at compile-time"
 )]
@@ -205,7 +205,7 @@ pub trait Unsize<T: ?Sized> {
 /// [RFC1445]: https://github.com/rust-lang/rfcs/blob/master/text/1445-restrict-constants-in-patterns.md
 /// [issue 63438]: https://github.com/rust-lang/rust/issues/63438
 #[unstable(feature = "structural_match", issue = "31434")]
-#[rustc_on_unimplemented(message = "the type `{Self}` does not `#[derive(PartialEq)]`")]
+#[diagnostic::on_unimplemented(message = "the type `{Self}` does not `#[derive(PartialEq)]`")]
 #[lang = "structural_peq"]
 pub trait StructuralPartialEq {
     // Empty.
@@ -273,7 +273,7 @@ marker_impls! {
 /// of the two derives (`#[derive(PartialEq)]` and `#[derive(Eq)]`) and check
 /// that both of them are present as part of structural-match checking.
 #[unstable(feature = "structural_match", issue = "31434")]
-#[rustc_on_unimplemented(message = "the type `{Self}` does not `#[derive(Eq)]`")]
+#[diagnostic::on_unimplemented(message = "the type `{Self}` does not `#[derive(Eq)]`")]
 #[lang = "structural_teq"]
 pub trait StructuralEq {
     // Empty.
@@ -899,25 +899,37 @@ marker_impls! {
         {T: ?Sized} &mut T,
 }
 
-/// Types that can be safely moved after being pinned.
+/// Types that do not require any pinning guarantees.
 ///
-/// Rust itself has no notion of immovable types, and considers moves (e.g.,
-/// through assignment or [`mem::replace`]) to always be safe.
+/// For information on what "pinning" is, see the [`pin` module] documentation.
 ///
-/// The [`Pin`][Pin] type is used instead to prevent moves through the type
-/// system. Pointers `P<T>` wrapped in the [`Pin<P<T>>`][Pin] wrapper can't be
-/// moved out of. See the [`pin` module] documentation for more information on
-/// pinning.
+/// Implementing the `Unpin` trait for `T` expresses the fact that `T` is pinning-agnostic:
+/// it shall not expose nor rely on any pinning guarantees. This, in turn, means that a
+/// `Pin`-wrapped pointer to such a type can feature a *fully unrestricted* API.
+/// In other words, if `T: Unpin`, a value of type `T` will *not* be bound by the invariants
+/// which pinning otherwise offers, even when "pinned" by a [`Pin<Ptr>`] pointing at it.
+/// When a value of type `T` is pointed at by a [`Pin<Ptr>`], [`Pin`] will not restrict access
+/// to the pointee value like it normally would, thus allowing the user to do anything that they
+/// normally could with a non-[`Pin`]-wrapped `Ptr` to that value.
 ///
-/// Implementing the `Unpin` trait for `T` lifts the restrictions of pinning off
-/// the type, which then allows moving `T` out of [`Pin<P<T>>`][Pin] with
-/// functions such as [`mem::replace`].
+/// The idea of this trait is to alleviate the reduced ergonomics of APIs that require the use
+/// of [`Pin`] for soundness for some types, but which also want to be used by other types that
+/// don't care about pinning. The prime example of such an API is [`Future::poll`]. There are many
+/// [`Future`] types that don't care about pinning. These futures can implement `Unpin` and
+/// therefore get around the pinning related restrictions in the API, while still allowing the
+/// subset of [`Future`]s which *do* require pinning to be implemented soundly.
 ///
-/// `Unpin` has no consequence at all for non-pinned data. In particular,
-/// [`mem::replace`] happily moves `!Unpin` data (it works for any `&mut T`, not
-/// just when `T: Unpin`). However, you cannot use [`mem::replace`] on data
-/// wrapped inside a [`Pin<P<T>>`][Pin] because you cannot get the `&mut T` you
-/// need for that, and *that* is what makes this system work.
+/// For more discussion on the consequences of [`Unpin`] within the wider scope of the pinning
+/// system, see the [section about `Unpin`] in the [`pin` module].
+///
+/// `Unpin` has no consequence at all for non-pinned data. In particular, [`mem::replace`] happily
+/// moves `!Unpin` data, which would be immovable when pinned ([`mem::replace`] works for any
+/// `&mut T`, not just when `T: Unpin`).
+///
+/// *However*, you cannot use [`mem::replace`] on `!Unpin` data which is *pinned* by being wrapped
+/// inside a [`Pin<Ptr>`] pointing at it. This is because you cannot (safely) use a
+/// [`Pin<Ptr>`] to get an `&mut T` to its pointee value, which you would need to call
+/// [`mem::replace`], and *that* is what makes this system work.
 ///
 /// So this, for example, can only be done on types implementing `Unpin`:
 ///
@@ -935,13 +947,24 @@ marker_impls! {
 /// mem::replace(&mut *pinned_string, "other".to_string());
 /// ```
 ///
-/// This trait is automatically implemented for almost every type.
+/// This trait is automatically implemented for almost every type. The compiler is free
+/// to take the conservative stance of marking types as [`Unpin`] so long as all of the types that
+/// compose its fields are also [`Unpin`]. This is because if a type implements [`Unpin`], then it
+/// is unsound for that type's implementation to rely on pinning-related guarantees for soundness,
+/// *even* when viewed through a "pinning" pointer! It is the responsibility of the implementor of
+/// a type that relies upon pinning for soundness to ensure that type is *not* marked as [`Unpin`]
+/// by adding [`PhantomPinned`] field. For more details, see the [`pin` module] docs.
 ///
-/// [`mem::replace`]: crate::mem::replace
-/// [Pin]: crate::pin::Pin
-/// [`pin` module]: crate::pin
+/// [`mem::replace`]: crate::mem::replace "mem replace"
+/// [`Future`]: crate::future::Future "Future"
+/// [`Future::poll`]: crate::future::Future::poll "Future poll"
+/// [`Pin`]: crate::pin::Pin "Pin"
+/// [`Pin<Ptr>`]: crate::pin::Pin "Pin"
+/// [`pin` module]: crate::pin "pin module"
+/// [section about `Unpin`]: crate::pin#unpin "pin module docs about unpin"
+/// [`unsafe`]: ../../std/keyword.unsafe.html "keyword unsafe"
 #[stable(feature = "pin", since = "1.33.0")]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     note = "consider using the `pin!` macro\nconsider using `Box::pin` if you need to access the pinned value outside of the current scope",
     message = "`{Self}` cannot be unpinned"
 )]
@@ -989,7 +1012,7 @@ pub trait Destruct {}
 /// for any user type.
 #[unstable(feature = "tuple_trait", issue = "none")]
 #[lang = "tuple_trait"]
-#[rustc_on_unimplemented(message = "`{Self}` is not a tuple")]
+#[diagnostic::on_unimplemented(message = "`{Self}` is not a tuple")]
 #[rustc_deny_explicit_impl(implement_via_object = false)]
 pub trait Tuple {}
 
@@ -999,7 +1022,7 @@ pub trait Tuple {}
 /// `*const ()` automatically implement this trait.
 #[unstable(feature = "pointer_like_trait", issue = "none")]
 #[lang = "pointer_like"]
-#[rustc_on_unimplemented(
+#[diagnostic::on_unimplemented(
     message = "`{Self}` needs to have the same ABI as a pointer",
     label = "`{Self}` needs to be a pointer-like type"
 )]
@@ -1013,7 +1036,7 @@ pub trait PointerLike {}
 /// are `StructuralPartialEq`.
 #[lang = "const_param_ty"]
 #[unstable(feature = "adt_const_params", issue = "95174")]
-#[rustc_on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
+#[diagnostic::on_unimplemented(message = "`{Self}` can't be used as a const parameter type")]
 #[allow(multiple_supertrait_upcastable)]
 pub trait ConstParamTy: StructuralEq + StructuralPartialEq + Eq {}
 

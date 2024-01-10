@@ -31,9 +31,9 @@ fn eval_main(db: &TestDB, file_id: FileId) -> Result<(String, String), MirEvalEr
             db.trait_environment(func_id.into()),
         )
         .map_err(|e| MirEvalError::MirLowerError(func_id.into(), e))?;
-    let (result, stdout, stderr) = interpret_mir(db, body, false, None);
+    let (result, output) = interpret_mir(db, body, false, None);
     result?;
-    Ok((stdout, stderr))
+    Ok((output.stdout().into_owned(), output.stderr().into_owned()))
 }
 
 fn check_pass(ra_fixture: &str) {

@@ -14,9 +14,7 @@ use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_data_structures::jobserver::{self, Client};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
-use rustc_data_structures::sync::{
-    AtomicU64, DynSend, DynSync, Lock, Lrc, OneThread, Ordering::SeqCst,
-};
+use rustc_data_structures::sync::{AtomicU64, DynSend, DynSync, Lock, Lrc, OneThread};
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::emitter::{DynEmitter, HumanEmitter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
@@ -44,7 +42,7 @@ use std::fmt;
 use std::ops::{Div, Mul};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::{atomic::AtomicBool, Arc};
+use std::sync::{atomic::AtomicBool, atomic::Ordering::SeqCst, Arc};
 
 struct OptimizationFuel {
     /// If `-zfuel=crate=n` is specified, initially set to `n`, otherwise `0`.
@@ -1491,7 +1489,10 @@ impl EarlyDiagCtxt {
         jobserver::initialize_checked(|err| {
             #[allow(rustc::untranslatable_diagnostic)]
             #[allow(rustc::diagnostic_outside_of_impl)]
-            self.dcx.struct_warn(err).note("the build environment is likely misconfigured").emit()
+            self.dcx
+                .struct_warn(err)
+                .note_mv("the build environment is likely misconfigured")
+                .emit()
         });
     }
 }

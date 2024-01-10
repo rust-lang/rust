@@ -1596,8 +1596,13 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         // NOTE: Only stage 1 is special cased because we need the rustc_private artifacts to match the
         // running compiler in stage 2 when plugins run.
         let stage_id = if suite == "ui-fulldeps" && compiler.stage == 1 {
-            compiler = builder.compiler(compiler.stage - 1, target);
-            format!("stage{}-{}", compiler.stage + 1, target)
+            // At stage 0 (stage - 1) we are using the beta compiler. Using `self.target` can lead finding
+            // an incorrect compiler path on cross-targets, as the stage 0 beta compiler is always equal
+            // to `build.build` in the configuration.
+            let build = builder.build.build;
+
+            compiler = builder.compiler(compiler.stage - 1, build);
+            format!("stage{}-{}", compiler.stage + 1, build)
         } else {
             format!("stage{}-{}", compiler.stage, target)
         };
@@ -1611,7 +1616,12 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 .ensure(dist::DebuggerScripts { sysroot: builder.sysroot(compiler), host: target });
         }
 
-        builder.ensure(compile::Std::new(compiler, target));
+        if suite == "mir-opt" {
+            builder.ensure(compile::Std::new_for_mir_opt_tests(compiler, target));
+        } else {
+            builder.ensure(compile::Std::new(compiler, target));
+        }
+
         // ensure that `libproc_macro` is available on the host.
         builder.ensure(compile::Std::new(compiler, compiler.host));
 
@@ -1619,7 +1629,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
         builder.ensure(TestHelpers { target: compiler.host });
 
         // As well as the target, except for plain wasm32, which can't build it
-        if !target.contains("wasm") || target.contains("emscripten") {
+        if suite != "mir-opt" && !target.contains("wasm") && !target.contains("emscripten") {
             builder.ensure(TestHelpers { target });
         }
 
@@ -1845,6 +1855,8 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 llvm_components_passed = true;
             }
             if !builder.is_rust_llvm(target) {
+                // FIXME: missing Rust patches is not the same as being system llvm; we should rename the flag at some point.
+                // Inspecting the tests with `// no-system-llvm` in src/test *looks* like this is doing the right thing, though.
                 cmd.arg("--system-llvm");
             }
 

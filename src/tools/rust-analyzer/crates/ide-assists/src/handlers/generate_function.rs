@@ -432,7 +432,7 @@ fn get_fn_target(
         }
         None => next_space_for_fn_after_call_site(ast::CallableExpr::Call(call))?,
     };
-    Some((target.clone(), file))
+    Some((target, file))
 }
 
 fn get_method_target(

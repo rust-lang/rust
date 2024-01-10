@@ -31,17 +31,15 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         borrow_span: Span,
         borrow_desc: &str,
     ) -> DiagnosticBuilder<'tcx> {
-        let mut err = struct_span_err!(
+        struct_span_err!(
             self.dcx(),
             span,
             E0503,
             "cannot use {} because it was mutably borrowed",
             desc,
-        );
-
-        err.span_label(borrow_span, format!("{borrow_desc} is borrowed here"));
-        err.span_label(span, format!("use of borrowed {borrow_desc}"));
-        err
+        )
+        .span_label_mv(borrow_span, format!("{borrow_desc} is borrowed here"))
+        .span_label_mv(span, format!("use of borrowed {borrow_desc}"))
     }
 
     pub(crate) fn cannot_mutably_borrow_multiply(
@@ -238,17 +236,15 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         borrow_span: Span,
         desc: &str,
     ) -> DiagnosticBuilder<'cx> {
-        let mut err = struct_span_err!(
+        struct_span_err!(
             self.dcx(),
             span,
             E0506,
             "cannot assign to {} because it is borrowed",
             desc,
-        );
-
-        err.span_label(borrow_span, format!("{desc} is borrowed here"));
-        err.span_label(span, format!("{desc} is assigned to here but it was already borrowed"));
-        err
+        )
+        .span_label_mv(borrow_span, format!("{desc} is borrowed here"))
+        .span_label_mv(span, format!("{desc} is assigned to here but it was already borrowed"))
     }
 
     pub(crate) fn cannot_reassign_immutable(
@@ -287,16 +283,15 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
             (&ty::Slice(_), _) => "slice",
             _ => span_bug!(move_from_span, "this path should not cause illegal move"),
         };
-        let mut err = struct_span_err!(
+        struct_span_err!(
             self.dcx(),
             move_from_span,
             E0508,
             "cannot move out of type `{}`, a non-copy {}",
             ty,
             type_name,
-        );
-        err.span_label(move_from_span, "cannot move out of here");
-        err
+        )
+        .span_label_mv(move_from_span, "cannot move out of here")
     }
 
     pub(crate) fn cannot_move_out_of_interior_of_drop(
@@ -304,15 +299,14 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         move_from_span: Span,
         container_ty: Ty<'_>,
     ) -> DiagnosticBuilder<'cx> {
-        let mut err = struct_span_err!(
+        struct_span_err!(
             self.dcx(),
             move_from_span,
             E0509,
             "cannot move out of type `{}`, which implements the `Drop` trait",
             container_ty,
-        );
-        err.span_label(move_from_span, "cannot move out of here");
-        err
+        )
+        .span_label_mv(move_from_span, "cannot move out of here")
     }
 
     pub(crate) fn cannot_act_on_moved_value(
@@ -352,7 +346,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         immutable_section: &str,
         action: &str,
     ) -> DiagnosticBuilder<'tcx> {
-        let mut err = struct_span_err!(
+        struct_span_err!(
             self.dcx(),
             mutate_span,
             E0510,
@@ -360,10 +354,9 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
             action,
             immutable_place,
             immutable_section,
-        );
-        err.span_label(mutate_span, format!("cannot {action}"));
-        err.span_label(immutable_span, format!("value is immutable in {immutable_section}"));
-        err
+        )
+        .span_label_mv(mutate_span, format!("cannot {action}"))
+        .span_label_mv(immutable_span, format!("value is immutable in {immutable_section}"))
     }
 
     pub(crate) fn cannot_borrow_across_coroutine_yield(
@@ -372,14 +365,13 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         yield_span: Span,
     ) -> DiagnosticBuilder<'tcx> {
         let coroutine_kind = self.body.coroutine.as_ref().unwrap().coroutine_kind;
-        let mut err = struct_span_err!(
+        struct_span_err!(
             self.dcx(),
             span,
             E0626,
             "borrow may still be in use when {coroutine_kind:#} yields",
-        );
-        err.span_label(yield_span, "possible yield occurs here");
-        err
+        )
+        .span_label_mv(yield_span, "possible yield occurs here")
     }
 
     pub(crate) fn cannot_borrow_across_destructor(
@@ -409,7 +401,7 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         reference_desc: &str,
         path_desc: &str,
     ) -> DiagnosticBuilder<'tcx> {
-        let mut err = struct_span_err!(
+        struct_span_err!(
             self.dcx(),
             span,
             E0515,
@@ -417,14 +409,11 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
             RETURN = return_kind,
             REFERENCE = reference_desc,
             LOCAL = path_desc,
-        );
-
-        err.span_label(
+        )
+        .span_label_mv(
             span,
             format!("{return_kind}s a {reference_desc} data owned by the current function"),
-        );
-
-        err
+        )
     }
 
     pub(crate) fn cannot_capture_in_long_lived_closure(
@@ -435,16 +424,15 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         capture_span: Span,
         scope: &str,
     ) -> DiagnosticBuilder<'tcx> {
-        let mut err = struct_span_err!(
+        struct_span_err!(
             self.dcx(),
             closure_span,
             E0373,
             "{closure_kind} may outlive the current {scope}, but it borrows {borrowed_path}, \
              which is owned by the current {scope}",
-        );
-        err.span_label(capture_span, format!("{borrowed_path} is borrowed here"))
-            .span_label(closure_span, format!("may outlive borrowed value {borrowed_path}"));
-        err
+        )
+        .span_label_mv(capture_span, format!("{borrowed_path} is borrowed here"))
+        .span_label_mv(closure_span, format!("may outlive borrowed value {borrowed_path}"))
     }
 
     pub(crate) fn thread_local_value_does_not_live_long_enough(

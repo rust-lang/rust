@@ -9,7 +9,7 @@ trait Foo {
 }
 
 const fn foo<T: ~const Foo>() {
-    <T as Foo>::Assoc::foo();
+    <T as /* FIXME: ~const */ Foo>::Assoc::foo();
 }
 
 fn main() {}

@@ -458,7 +458,6 @@ pub(crate) fn handle_workspace_symbol(
 
     let config = snap.config.workspace_symbol();
     let (all_symbols, libs) = decide_search_scope_and_kind(&params, &config);
-    let limit = config.search_limit;
 
     let query = {
         let query: String = params.query.chars().filter(|&c| c != '#' && c != '*').collect();
@@ -469,14 +468,11 @@ pub(crate) fn handle_workspace_symbol(
         if libs {
             q.libs();
         }
-        q.limit(limit);
         q
     };
-    let mut res = exec_query(&snap, query)?;
+    let mut res = exec_query(&snap, query, config.search_limit)?;
     if res.is_empty() && !all_symbols {
-        let mut query = Query::new(params.query);
-        query.limit(limit);
-        res = exec_query(&snap, query)?;
+        res = exec_query(&snap, Query::new(params.query), config.search_limit)?;
     }
 
     return Ok(Some(lsp_types::WorkspaceSymbolResponse::Nested(res)));
@@ -519,9 +515,10 @@ pub(crate) fn handle_workspace_symbol(
     fn exec_query(
         snap: &GlobalStateSnapshot,
         query: Query,
+        limit: usize,
     ) -> anyhow::Result<Vec<lsp_types::WorkspaceSymbol>> {
         let mut res = Vec::new();
-        for nav in snap.analysis.symbol_search(query)? {
+        for nav in snap.analysis.symbol_search(query, limit)? {
             let container_name = nav.container_name.as_ref().map(|v| v.to_string());
 
             let info = lsp_types::WorkspaceSymbol {

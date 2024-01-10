@@ -104,6 +104,14 @@ gimli.debug = 0
 miniz_oxide.debug = 0
 object.debug = 0
 
+# These are very thin wrappers around executing lld with the right binary name.
+# Basically nothing within them can go wrong without having been explicitly logged anyway.
+# We ship these in every rustc tarball and even after compression they add up
+# to around 0.6MB of data every user needs to download (and 15MB on disk).
+[profile.release.package.lld-wrapper]
+debug = 0
+strip = true
+
 [patch.crates-io]
 # See comments in `library/rustc-std-workspace-core/README.md` for what's going on
 # here

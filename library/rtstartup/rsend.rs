@@ -5,6 +5,7 @@
 #![feature(auto_traits)]
 #![crate_type = "rlib"]
 #![no_core]
+#![allow(internal_features)]
 
 #[lang = "sized"]
 trait Sized {}

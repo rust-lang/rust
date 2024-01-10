@@ -402,7 +402,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 callee_expr.span,
                                 format!("evaluate({predicate:?}) = {result:?}"),
                             )
-                            .span_label(predicate_span, "predicate")
+                            .span_label_mv(predicate_span, "predicate")
                             .emit();
                     }
                 }
@@ -490,11 +490,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.tcx.require_lang_item(hir::LangItem::FnOnce, Some(span));
                     let fn_once_output_def_id =
                         self.tcx.require_lang_item(hir::LangItem::FnOnceOutput, Some(span));
-                    if self.tcx.generics_of(fn_once_def_id).host_effect_index.is_none() {
-                        if idx == 0 && !self.tcx.is_const_fn_raw(def_id) {
-                            self.dcx().emit_err(errors::ConstSelectMustBeConst { span });
-                        }
-                    } else {
+                    if self.tcx.has_host_param(fn_once_def_id) {
                         let const_param: ty::GenericArg<'tcx> =
                             ([self.tcx.consts.false_, self.tcx.consts.true_])[idx].into();
                         self.register_predicate(traits::Obligation::new(
@@ -523,6 +519,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ));
 
                         self.select_obligations_where_possible(|_| {});
+                    } else if idx == 0 && !self.tcx.is_const_fn_raw(def_id) {
+                        self.dcx().emit_err(errors::ConstSelectMustBeConst { span });
                     }
                 } else {
                     self.dcx().emit_err(errors::ConstSelectMustBeFn { span, ty: arg_ty });

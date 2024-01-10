@@ -83,8 +83,9 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
             (0..arity).map(|_| Self { patterns: Vec::new() }).collect();
         let relevant_patterns =
             self.patterns.iter().filter(|pat| ctor.is_covered_by(pcx, pat.ctor()));
+        let ctor_sub_tys = pcx.ctor_sub_tys(ctor);
         for pat in relevant_patterns {
-            let specialized = pat.specialize(pcx, ctor);
+            let specialized = pat.specialize(pcx, ctor, ctor_sub_tys);
             for (subpat, column) in specialized.iter().zip(&mut specialized_columns) {
                 if subpat.is_or_pat() {
                     column.patterns.extend(subpat.flatten_or_pat())

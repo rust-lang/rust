@@ -5,6 +5,7 @@ import * as vscode from "vscode";
 import type { Env } from "./client";
 import { log } from "./util";
 import { expectNotUndefined, unwrapUndefinable } from "./undefinable";
+import type { JsonProject } from "./rust_project";
 
 export type RunnableEnvCfgItem = {
     mask?: string;

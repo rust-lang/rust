@@ -90,6 +90,7 @@ pub enum AssocTyParenthesesSub {
 
 #[derive(Diagnostic)]
 #[diag(ast_lowering_misplaced_impl_trait, code = "E0562")]
+#[note]
 pub struct MisplacedImplTrait<'a> {
     #[primary_span]
     pub span: Span,
@@ -113,10 +114,10 @@ pub struct UnderscoreExprLhsAssign {
 }
 
 #[derive(Diagnostic, Clone, Copy)]
-#[diag(ast_lowering_base_expression_double_dot)]
+#[diag(ast_lowering_base_expression_double_dot, code = "E0797")]
 pub struct BaseExpressionDoubleDot {
     #[primary_span]
-    #[label]
+    #[suggestion(code = "/* expr */", applicability = "has-placeholders", style = "verbose")]
     pub span: Span,
 }
 

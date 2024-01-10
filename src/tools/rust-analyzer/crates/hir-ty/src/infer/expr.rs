@@ -6,6 +6,7 @@ use std::{
 };
 
 use chalk_ir::{cast::Cast, fold::Shift, DebruijnIndex, Mutability, TyVariableKind};
+use either::Either;
 use hir_def::{
     generics::TypeOrConstParamData,
     hir::{
@@ -13,7 +14,7 @@ use hir_def::{
     },
     lang_item::{LangItem, LangItemTarget},
     path::{GenericArg, GenericArgs},
-    BlockId, ConstParamId, FieldId, ItemContainerId, Lookup,
+    BlockId, ConstParamId, FieldId, ItemContainerId, Lookup, TupleFieldId, TupleId,
 };
 use hir_expand::name::{name, Name};
 use stdx::always;
@@ -744,7 +745,7 @@ impl InferenceContext<'_> {
                     (RangeOp::Inclusive, _, None) => self.err_ty(),
                 }
             }
-            Expr::Index { base, index } => {
+            Expr::Index { base, index, is_assignee_expr } => {
                 let base_ty = self.infer_expr_inner(*base, &Expectation::none());
                 let index_ty = self.infer_expr(*index, &Expectation::none());
 
@@ -772,11 +773,24 @@ impl InferenceContext<'_> {
                             .build();
                         self.write_method_resolution(tgt_expr, func, substs);
                     }
-                    self.resolve_associated_type_with_params(
-                        self_ty,
-                        self.resolve_ops_index_output(),
-                        &[index_ty.cast(Interner)],
-                    )
+                    let assoc = self.resolve_ops_index_output();
+                    let res = self.resolve_associated_type_with_params(
+                        self_ty.clone(),
+                        assoc,
+                        &[index_ty.clone().cast(Interner)],
+                    );
+
+                    if *is_assignee_expr {
+                        if let Some(index_trait) = self.resolve_lang_trait(LangItem::IndexMut) {
+                            let trait_ref = TyBuilder::trait_ref(self.db, index_trait)
+                                .push(self_ty)
+                                .fill(|_| index_ty.clone().cast(Interner))
+                                .build();
+                            self.push_obligation(trait_ref.cast(Interner));
+                        }
+                    }
+
+                    res
                 } else {
                     self.err_ty()
                 }
@@ -964,7 +978,7 @@ impl InferenceContext<'_> {
                 .push(callee_ty.clone())
                 .push(TyBuilder::tuple_with(params.iter().cloned()))
                 .build();
-            self.write_method_resolution(tgt_expr, func, subst.clone());
+            self.write_method_resolution(tgt_expr, func, subst);
         }
     }
 
@@ -1393,7 +1407,7 @@ impl InferenceContext<'_> {
         &mut self,
         receiver_ty: &Ty,
         name: &Name,
-    ) -> Option<(Ty, Option<FieldId>, Vec<Adjustment>, bool)> {
+    ) -> Option<(Ty, Either<FieldId, TupleFieldId>, Vec<Adjustment>, bool)> {
         let mut autoderef = Autoderef::new(&mut self.table, receiver_ty.clone(), false);
         let mut private_field = None;
         let res = autoderef.by_ref().find_map(|(derefed_ty, _)| {
@@ -1405,7 +1419,20 @@ impl InferenceContext<'_> {
                             .get(idx)
                             .map(|a| a.assert_ty_ref(Interner))
                             .cloned()
-                            .map(|ty| (None, ty))
+                            .map(|ty| {
+                                (
+                                    Either::Right(TupleFieldId {
+                                        tuple: TupleId(
+                                            self.tuple_field_accesses_rev
+                                                .insert_full(substs.clone())
+                                                .0
+                                                as u32,
+                                        ),
+                                        index: idx as u32,
+                                    }),
+                                    ty,
+                                )
+                            })
                     });
                 }
                 TyKind::Adt(AdtId(hir_def::AdtId::StructId(s)), parameters) => {
@@ -1431,7 +1458,7 @@ impl InferenceContext<'_> {
             let ty = self.db.field_types(field_id.parent)[field_id.local_id]
                 .clone()
                 .substitute(Interner, &parameters);
-            Some((Some(field_id), ty))
+            Some((Either::Left(field_id), ty))
         });
 
         Some(match res {
@@ -1451,7 +1478,7 @@ impl InferenceContext<'_> {
                 let ty = self.insert_type_vars(ty);
                 let ty = self.normalize_associated_types_in(ty);
 
-                (ty, Some(field_id), adjustments, false)
+                (ty, Either::Left(field_id), adjustments, false)
             }
         })
     }
@@ -1474,11 +1501,9 @@ impl InferenceContext<'_> {
         match self.lookup_field(&receiver_ty, name) {
             Some((ty, field_id, adjustments, is_public)) => {
                 self.write_expr_adj(receiver, adjustments);
-                if let Some(field_id) = field_id {
-                    self.result.field_resolutions.insert(tgt_expr, field_id);
-                }
+                self.result.field_resolutions.insert(tgt_expr, field_id);
                 if !is_public {
-                    if let Some(field) = field_id {
+                    if let Either::Left(field) = field_id {
                         // FIXME: Merge this diagnostic into UnresolvedField?
                         self.result
                             .diagnostics
@@ -1568,9 +1593,7 @@ impl InferenceContext<'_> {
                 {
                     Some((ty, field_id, adjustments, _public)) => {
                         self.write_expr_adj(receiver, adjustments);
-                        if let Some(field_id) = field_id {
-                            self.result.field_resolutions.insert(tgt_expr, field_id);
-                        }
+                        self.result.field_resolutions.insert(tgt_expr, field_id);
                         Some(ty)
                     }
                     None => None,

@@ -41,9 +41,10 @@ use hir_def::{
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
     type_ref::TypeRef,
     AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, ItemContainerId, Lookup,
-    TraitId, TypeAliasId, VariantId,
+    TraitId, TupleFieldId, TupleId, TypeAliasId, VariantId,
 };
 use hir_expand::name::{name, Name};
+use indexmap::IndexSet;
 use la_arena::{ArenaMap, Entry};
 use rustc_hash::{FxHashMap, FxHashSet};
 use stdx::{always, never};
@@ -403,11 +404,15 @@ pub struct InferenceResult {
     /// For each method call expr, records the function it resolves to.
     method_resolutions: FxHashMap<ExprId, (FunctionId, Substitution)>,
     /// For each field access expr, records the field it resolves to.
-    field_resolutions: FxHashMap<ExprId, FieldId>,
+    field_resolutions: FxHashMap<ExprId, Either<FieldId, TupleFieldId>>,
     /// For each struct literal or pattern, records the variant it resolves to.
     variant_resolutions: FxHashMap<ExprOrPatId, VariantId>,
     /// For each associated item record what it resolves to
     assoc_resolutions: FxHashMap<ExprOrPatId, (AssocItemId, Substitution)>,
+    /// Whenever a tuple field expression access a tuple field, we allocate a tuple id in
+    /// [`InferenceContext`] and store the tuples substitution there. This map is the reverse of
+    /// that which allows us to resolve a [`TupleFieldId`]s type.
+    pub tuple_field_access_types: FxHashMap<TupleId, Substitution>,
     pub diagnostics: Vec<InferenceDiagnostic>,
     pub type_of_expr: ArenaMap<ExprId, Ty>,
     /// For each pattern record the type it resolves to.
@@ -447,7 +452,7 @@ impl InferenceResult {
     pub fn method_resolution(&self, expr: ExprId) -> Option<(FunctionId, Substitution)> {
         self.method_resolutions.get(&expr).cloned()
     }
-    pub fn field_resolution(&self, expr: ExprId) -> Option<FieldId> {
+    pub fn field_resolution(&self, expr: ExprId) -> Option<Either<FieldId, TupleFieldId>> {
         self.field_resolutions.get(&expr).copied()
     }
     pub fn variant_resolution_for_expr(&self, id: ExprId) -> Option<VariantId> {
@@ -517,6 +522,8 @@ pub(crate) struct InferenceContext<'a> {
     /// The traits in scope, disregarding block modules. This is used for caching purposes.
     traits_in_scope: FxHashSet<TraitId>,
     pub(crate) result: InferenceResult,
+    tuple_field_accesses_rev:
+        IndexSet<Substitution, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>,
     /// The return type of the function being inferred, the closure or async block if we're
     /// currently within one.
     ///
@@ -598,6 +605,7 @@ impl<'a> InferenceContext<'a> {
         InferenceContext {
             result: InferenceResult::default(),
             table: unify::InferenceTable::new(db, trait_env),
+            tuple_field_accesses_rev: Default::default(),
             return_ty: TyKind::Error.intern(Interner), // set in collect_* calls
             resume_yield_tys: None,
             return_coercion: None,
@@ -621,7 +629,13 @@ impl<'a> InferenceContext<'a> {
     // used this function for another workaround, mention it here. If you really need this function and believe that
     // there is no problem in it being `pub(crate)`, remove this comment.
     pub(crate) fn resolve_all(self) -> InferenceResult {
-        let InferenceContext { mut table, mut result, deferred_cast_checks, .. } = self;
+        let InferenceContext {
+            mut table,
+            mut result,
+            deferred_cast_checks,
+            tuple_field_accesses_rev,
+            ..
+        } = self;
         // Destructure every single field so whenever new fields are added to `InferenceResult` we
         // don't forget to handle them here.
         let InferenceResult {
@@ -645,6 +659,7 @@ impl<'a> InferenceContext<'a> {
             // to resolve them here.
             closure_info: _,
             mutated_bindings_in_closure: _,
+            tuple_field_access_types: _,
         } = &mut result;
 
         table.fallback_if_possible();
@@ -720,6 +735,11 @@ impl<'a> InferenceContext<'a> {
         for adjustment in pat_adjustments.values_mut().flatten() {
             *adjustment = table.resolve_completely(adjustment.clone());
         }
+        result.tuple_field_access_types = tuple_field_accesses_rev
+            .into_iter()
+            .enumerate()
+            .map(|(idx, subst)| (TupleId(idx as u32), table.resolve_completely(subst)))
+            .collect();
         result
     }
 

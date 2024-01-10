@@ -940,12 +940,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        // FIXME: Make this use Diagnostic once error codes can be dynamically set.
-        let mut err = self.dcx().struct_span_err_with_code(
-            op_span,
-            "invalid left-hand side of assignment",
-            DiagnosticId::Error(err_code.into()),
-        );
+        let mut err = self.dcx().struct_span_err(op_span, "invalid left-hand side of assignment");
+        err.code(DiagnosticId::Error(err_code.into()));
         err.span_label(lhs.span, "cannot assign to this expression");
 
         self.comes_from_while_condition(lhs.hir_id, |expr| {
@@ -1338,7 +1334,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Err(error) => {
                 if segment.ident.name != kw::Empty {
-                    if let Some(mut err) = self.report_method_error(
+                    if let Some(err) = self.report_method_error(
                         span,
                         rcvr_t,
                         segment.ident,
@@ -2011,7 +2007,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 != range_def_id
         {
             // Suppress any range expr type mismatches
-            if let Some(mut diag) =
+            if let Some(diag) =
                 self.dcx().steal_diagnostic(last_expr_field.span, StashKey::MaybeFruTypo)
             {
                 diag.delay_as_bug();
@@ -2836,15 +2832,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn private_field_err(&self, field: Ident, base_did: DefId) -> DiagnosticBuilder<'_> {
         let struct_path = self.tcx().def_path_str(base_did);
         let kind_name = self.tcx().def_descr(base_did);
-        let mut err = struct_span_err!(
+        struct_span_err!(
             self.dcx(),
             field.span,
             E0616,
             "field `{field}` of {kind_name} `{struct_path}` is private",
-        );
-        err.span_label(field.span, "private field");
-
-        err
+        )
+        .span_label_mv(field.span, "private field")
     }
 
     pub(crate) fn get_field_candidates_considering_privacy(
@@ -3185,9 +3179,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.require_type_is_sized(ty, expr.span, traits::InlineAsmSized);
 
         if !is_input && !expr.is_syntactic_place_expr() {
-            let mut err = self.dcx().struct_span_err(expr.span, "invalid asm output");
-            err.span_label(expr.span, "cannot assign to this expression");
-            err.emit();
+            self.dcx()
+                .struct_span_err(expr.span, "invalid asm output")
+                .span_label_mv(expr.span, "cannot assign to this expression")
+                .emit();
         }
 
         // If this is an input value, we require its type to be fully resolved
@@ -3280,27 +3275,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .iter_enumerated()
                         .find(|(_, v)| v.ident(self.tcx).normalize_to_macros_2_0() == ident)
                     else {
-                        let mut err = type_error_struct!(
+                        type_error_struct!(
                             self.dcx(),
                             ident.span,
                             container,
                             E0599,
                             "no variant named `{ident}` found for enum `{container}`",
-                        );
-                        err.span_label(field.span, "variant not found");
-                        err.emit();
+                        )
+                        .span_label_mv(field.span, "variant not found")
+                        .emit();
                         break;
                     };
                     let Some(&subfield) = fields.next() else {
-                        let mut err = type_error_struct!(
+                        type_error_struct!(
                             self.dcx(),
                             ident.span,
                             container,
                             E0795,
                             "`{ident}` is an enum variant; expected field at end of `offset_of`",
-                        );
-                        err.span_label(field.span, "enum variant");
-                        err.emit();
+                        )
+                        .span_label_mv(field.span, "enum variant")
+                        .emit();
                         break;
                     };
                     let (subident, sub_def_scope) =
@@ -3311,16 +3306,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .iter_enumerated()
                         .find(|(_, f)| f.ident(self.tcx).normalize_to_macros_2_0() == subident)
                     else {
-                        let mut err = type_error_struct!(
+                        type_error_struct!(
                             self.dcx(),
                             ident.span,
                             container,
                             E0609,
                             "no field named `{subfield}` on enum variant `{container}::{ident}`",
-                        );
-                        err.span_label(field.span, "this enum variant...");
-                        err.span_label(subident.span, "...does not have this field");
-                        err.emit();
+                        )
+                        .span_label_mv(field.span, "this enum variant...")
+                        .span_label_mv(subident.span, "...does not have this field")
+                        .emit();
                         break;
                     };
 

@@ -118,7 +118,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitHasher {
                 vis.visit_ty(impl_.self_ty);
 
                 for target in &vis.found {
-                    if item.span.ctxt() != target.span().ctxt() {
+                    if !item.span.eq_ctxt(target.span()) {
                         return;
                     }
 

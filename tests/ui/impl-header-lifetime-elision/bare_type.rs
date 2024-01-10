@@ -33,12 +33,11 @@ type TypeI<T,> = T;
 static STATIC: () = ();
 
 fn main() {
-
     // ensure token `>=` works fine
-    let _: TypeA<'static>= &STATIC;
-    let _: TypeA<'static,>= &STATIC;
+    let _: TypeA<'static> = &STATIC;
+    let _: TypeA<'static,> = &STATIC;
 
     // ensure token `>>=` works fine
-    let _: Box<TypeA<'static>>= Box::new(&STATIC);
-    let _: Box<TypeA<'static,>>= Box::new(&STATIC);
+    let _: Box<TypeA<'static>> = Box::new(&STATIC);
+    let _: Box<TypeA<'static,>> = Box::new(&STATIC);
 }

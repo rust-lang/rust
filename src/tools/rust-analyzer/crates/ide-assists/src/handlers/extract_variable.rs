@@ -112,7 +112,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
                     let insert_place = edit.make_syntax_mut(place);
 
                     // Adjust ws to insert depending on if this is all inline or on separate lines
-                    let trailing_ws = if prev_ws.is_some_and(|it| it.text().starts_with("\n")) {
+                    let trailing_ws = if prev_ws.is_some_and(|it| it.text().starts_with('\n')) {
                         format!("\n{indent_to}")
                     } else {
                         format!(" ")

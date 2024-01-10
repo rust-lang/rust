@@ -1,18 +1,19 @@
 //! Inference of closure parameter types based on the closure's expected type.
 
-use std::{cmp, collections::HashMap, convert::Infallible, mem};
+use std::{cmp, convert::Infallible, mem};
 
 use chalk_ir::{
     cast::Cast,
     fold::{FallibleTypeFolder, TypeFoldable},
     AliasEq, AliasTy, BoundVar, DebruijnIndex, FnSubst, Mutability, TyKind, WhereClause,
 };
+use either::Either;
 use hir_def::{
     data::adt::VariantData,
     hir::{Array, BinaryOp, BindingId, CaptureBy, Expr, ExprId, Pat, PatId, Statement, UnaryOp},
     lang_item::LangItem,
     resolver::{resolver_for_expr, ResolveValueResult, ValueNs},
-    DefWithBodyId, FieldId, HasModule, VariantId,
+    DefWithBodyId, FieldId, HasModule, TupleFieldId, TupleId, VariantId,
 };
 use hir_expand::name;
 use rustc_hash::FxHashMap;
@@ -129,7 +130,7 @@ impl HirPlace {
                 ctx.owner.module(ctx.db.upcast()).krate(),
             );
         }
-        ty.clone()
+        ty
     }
 
     fn capture_kind_of_truncated_place(
@@ -186,7 +187,7 @@ impl CapturedItem {
                     result = format!("*{result}");
                     field_need_paren = true;
                 }
-                ProjectionElem::Field(f) => {
+                ProjectionElem::Field(Either::Left(f)) => {
                     if field_need_paren {
                         result = format!("({result})");
                     }
@@ -207,7 +208,15 @@ impl CapturedItem {
                     result = format!("{result}.{field}");
                     field_need_paren = false;
                 }
-                &ProjectionElem::TupleOrClosureField(field) => {
+                ProjectionElem::Field(Either::Right(f)) => {
+                    let field = f.index;
+                    if field_need_paren {
+                        result = format!("({result})");
+                    }
+                    result = format!("{result}.{field}");
+                    field_need_paren = false;
+                }
+                &ProjectionElem::ClosureField(field) => {
                     if field_need_paren {
                         result = format!("({result})");
                     }
@@ -236,7 +245,7 @@ pub(crate) struct CapturedItemWithoutTy {
 
 impl CapturedItemWithoutTy {
     fn with_ty(self, ctx: &mut InferenceContext<'_>) -> CapturedItem {
-        let ty = self.place.ty(ctx).clone();
+        let ty = self.place.ty(ctx);
         let ty = match &self.kind {
             CaptureKind::ByValue => ty,
             CaptureKind::ByRef(bk) => {
@@ -329,15 +338,10 @@ impl InferenceContext<'_> {
                     }
                 }
             }
-            Expr::Field { expr, name } => {
+            Expr::Field { expr, name: _ } => {
                 let mut place = self.place_of_expr(*expr)?;
-                if let TyKind::Tuple(..) = self.expr_ty(*expr).kind(Interner) {
-                    let index = name.as_tuple_index()?;
-                    place.projections.push(ProjectionElem::TupleOrClosureField(index))
-                } else {
-                    let field = self.result.field_resolution(tgt_expr)?;
-                    place.projections.push(ProjectionElem::Field(field));
-                }
+                let field = self.result.field_resolution(tgt_expr)?;
+                place.projections.push(ProjectionElem::Field(field));
                 return Some(place);
             }
             Expr::UnaryOp { expr, op: UnaryOp::Deref } => {
@@ -392,7 +396,7 @@ impl InferenceContext<'_> {
 
     fn consume_place(&mut self, place: HirPlace, span: MirSpan) {
         if self.is_upvar(&place) {
-            let ty = place.ty(self).clone();
+            let ty = place.ty(self);
             let kind = if self.is_ty_copy(ty) {
                 CaptureKind::ByRef(BorrowKind::Shared)
             } else {
@@ -598,7 +602,7 @@ impl InferenceContext<'_> {
                     self.consume_expr(expr);
                 }
             }
-            Expr::Index { base, index } => {
+            Expr::Index { base, index, is_assignee_expr: _ } => {
                 self.select_from_expr(*base);
                 self.consume_expr(*index);
             }
@@ -774,7 +778,7 @@ impl InferenceContext<'_> {
 
     fn minimize_captures(&mut self) {
         self.current_captures.sort_by_key(|it| it.place.projections.len());
-        let mut hash_map = HashMap::<HirPlace, usize>::new();
+        let mut hash_map = FxHashMap::<HirPlace, usize>::default();
         let result = mem::take(&mut self.current_captures);
         for item in result {
             let mut lookup_place = HirPlace { local: item.place.local, projections: vec![] };
@@ -825,7 +829,10 @@ impl InferenceContext<'_> {
                 let it = al.iter().zip(fields.clone()).chain(ar.iter().rev().zip(fields.rev()));
                 for (arg, i) in it {
                     let mut p = place.clone();
-                    p.projections.push(ProjectionElem::TupleOrClosureField(i));
+                    p.projections.push(ProjectionElem::Field(Either::Right(TupleFieldId {
+                        tuple: TupleId(!0), // dummy this, as its unused anyways
+                        index: i as u32,
+                    })));
                     self.consume_with_pat(p, *arg);
                 }
             }
@@ -850,10 +857,10 @@ impl InferenceContext<'_> {
                                 continue;
                             };
                             let mut p = place.clone();
-                            p.projections.push(ProjectionElem::Field(FieldId {
+                            p.projections.push(ProjectionElem::Field(Either::Left(FieldId {
                                 parent: variant.into(),
                                 local_id,
-                            }));
+                            })));
                             self.consume_with_pat(p, arg);
                         }
                     }
@@ -894,10 +901,10 @@ impl InferenceContext<'_> {
                             al.iter().zip(fields.clone()).chain(ar.iter().rev().zip(fields.rev()));
                         for (arg, (i, _)) in it {
                             let mut p = place.clone();
-                            p.projections.push(ProjectionElem::Field(FieldId {
+                            p.projections.push(ProjectionElem::Field(Either::Left(FieldId {
                                 parent: variant.into(),
                                 local_id: i,
-                            }));
+                            })));
                             self.consume_with_pat(p, *arg);
                         }
                     }

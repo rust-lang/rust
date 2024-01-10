@@ -362,7 +362,7 @@ impl<'a> StripUnconfigured<'a> {
     pub(crate) fn cfg_true(&self, attr: &Attribute) -> (bool, Option<MetaItem>) {
         let meta_item = match validate_attr::parse_meta(&self.sess.parse_sess, attr) {
             Ok(meta_item) => meta_item,
-            Err(mut err) => {
+            Err(err) => {
                 err.emit();
                 return (true, None);
             }

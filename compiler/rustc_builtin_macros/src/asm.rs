@@ -458,7 +458,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
             match expr_to_spanned_string(ecx, template_expr, msg) {
                 Ok(template_part) => template_part,
                 Err(err) => {
-                    if let Some((mut err, _)) = err {
+                    if let Some((err, _)) = err {
                         err.emit();
                     }
                     return None;
@@ -693,13 +693,14 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
         0 => {}
         1 => {
             let (sp, msg) = unused_operands.into_iter().next().unwrap();
-            let mut err = ecx.dcx().struct_span_err(sp, msg);
-            err.span_label(sp, msg);
-            err.help(format!(
-                "if this argument is intentionally unused, \
-                 consider using it in an asm comment: `\"/*{help_str} */\"`"
-            ));
-            err.emit();
+            ecx.dcx()
+                .struct_span_err(sp, msg)
+                .span_label_mv(sp, msg)
+                .help_mv(format!(
+                    "if this argument is intentionally unused, \
+                     consider using it in an asm comment: `\"/*{help_str} */\"`"
+                ))
+                .emit();
         }
         _ => {
             let mut err = ecx.dcx().struct_span_err(
@@ -747,7 +748,7 @@ pub(super) fn expand_asm<'cx>(
             };
             MacEager::expr(expr)
         }
-        Err(mut err) => {
+        Err(err) => {
             err.emit();
             DummyResult::any(sp)
         }
@@ -779,7 +780,7 @@ pub(super) fn expand_global_asm<'cx>(
                 DummyResult::any(sp)
             }
         }
-        Err(mut err) => {
+        Err(err) => {
             err.emit();
             DummyResult::any(sp)
         }

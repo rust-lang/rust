@@ -304,8 +304,6 @@ enum ImplTraitPosition {
     ClosureParam,
     PointerParam,
     FnTraitParam,
-    TraitParam,
-    ImplParam,
     ExternFnReturn,
     ClosureReturn,
     PointerReturn,
@@ -324,29 +322,27 @@ impl std::fmt::Display for ImplTraitPosition {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let name = match self {
             ImplTraitPosition::Path => "paths",
-            ImplTraitPosition::Variable => "variable bindings",
+            ImplTraitPosition::Variable => "the type of variable bindings",
             ImplTraitPosition::Trait => "traits",
             ImplTraitPosition::AsyncBlock => "async blocks",
             ImplTraitPosition::Bound => "bounds",
             ImplTraitPosition::Generic => "generics",
-            ImplTraitPosition::ExternFnParam => "`extern fn` params",
-            ImplTraitPosition::ClosureParam => "closure params",
-            ImplTraitPosition::PointerParam => "`fn` pointer params",
-            ImplTraitPosition::FnTraitParam => "`Fn` trait params",
-            ImplTraitPosition::TraitParam => "trait method params",
-            ImplTraitPosition::ImplParam => "`impl` method params",
+            ImplTraitPosition::ExternFnParam => "`extern fn` parameters",
+            ImplTraitPosition::ClosureParam => "closure parameters",
+            ImplTraitPosition::PointerParam => "`fn` pointer parameters",
+            ImplTraitPosition::FnTraitParam => "the parameters of `Fn` trait bounds",
             ImplTraitPosition::ExternFnReturn => "`extern fn` return types",
             ImplTraitPosition::ClosureReturn => "closure return types",
             ImplTraitPosition::PointerReturn => "`fn` pointer return types",
-            ImplTraitPosition::FnTraitReturn => "`Fn` trait return types",
+            ImplTraitPosition::FnTraitReturn => "the return type of `Fn` trait bounds",
             ImplTraitPosition::GenericDefault => "generic parameter defaults",
             ImplTraitPosition::ConstTy => "const types",
             ImplTraitPosition::StaticTy => "static types",
             ImplTraitPosition::AssocTy => "associated types",
             ImplTraitPosition::FieldTy => "field types",
-            ImplTraitPosition::Cast => "cast types",
+            ImplTraitPosition::Cast => "cast expression types",
             ImplTraitPosition::ImplSelf => "impl headers",
-            ImplTraitPosition::OffsetOf => "`offset_of!` params",
+            ImplTraitPosition::OffsetOf => "`offset_of!` parameters",
         };
 
         write!(f, "{name}")
@@ -362,19 +358,6 @@ enum FnDeclKind {
     Pointer,
     Trait,
     Impl,
-}
-
-impl FnDeclKind {
-    fn param_impl_trait_allowed(&self) -> bool {
-        matches!(self, FnDeclKind::Fn | FnDeclKind::Inherent | FnDeclKind::Impl | FnDeclKind::Trait)
-    }
-
-    fn return_impl_trait_allowed(&self) -> bool {
-        match self {
-            FnDeclKind::Fn | FnDeclKind::Inherent | FnDeclKind::Impl | FnDeclKind::Trait => true,
-            _ => false,
-        }
-    }
 }
 
 #[derive(Copy, Clone)]
@@ -1842,19 +1825,19 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             inputs = &inputs[..inputs.len() - 1];
         }
         let inputs = self.arena.alloc_from_iter(inputs.iter().map(|param| {
-            let itctx = if kind.param_impl_trait_allowed() {
-                ImplTraitContext::Universal
-            } else {
-                ImplTraitContext::Disallowed(match kind {
-                    FnDeclKind::Fn | FnDeclKind::Inherent => {
-                        unreachable!("fn should allow APIT")
-                    }
-                    FnDeclKind::ExternFn => ImplTraitPosition::ExternFnParam,
-                    FnDeclKind::Closure => ImplTraitPosition::ClosureParam,
-                    FnDeclKind::Pointer => ImplTraitPosition::PointerParam,
-                    FnDeclKind::Trait => ImplTraitPosition::TraitParam,
-                    FnDeclKind::Impl => ImplTraitPosition::ImplParam,
-                })
+            let itctx = match kind {
+                FnDeclKind::Fn | FnDeclKind::Inherent | FnDeclKind::Impl | FnDeclKind::Trait => {
+                    ImplTraitContext::Universal
+                }
+                FnDeclKind::ExternFn => {
+                    ImplTraitContext::Disallowed(ImplTraitPosition::ExternFnParam)
+                }
+                FnDeclKind::Closure => {
+                    ImplTraitContext::Disallowed(ImplTraitPosition::ClosureParam)
+                }
+                FnDeclKind::Pointer => {
+                    ImplTraitContext::Disallowed(ImplTraitPosition::PointerParam)
+                }
             };
             self.lower_ty_direct(&param.ty, &itctx)
         }));
@@ -1866,26 +1849,25 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
             None => match &decl.output {
                 FnRetTy::Ty(ty) => {
-                    let context = if kind.return_impl_trait_allowed() {
-                        let fn_def_id = self.local_def_id(fn_node_id);
-                        ImplTraitContext::ReturnPositionOpaqueTy {
-                            origin: hir::OpaqueTyOrigin::FnReturn(fn_def_id),
+                    let itctx = match kind {
+                        FnDeclKind::Fn
+                        | FnDeclKind::Inherent
+                        | FnDeclKind::Trait
+                        | FnDeclKind::Impl => ImplTraitContext::ReturnPositionOpaqueTy {
+                            origin: hir::OpaqueTyOrigin::FnReturn(self.local_def_id(fn_node_id)),
                             fn_kind: kind,
+                        },
+                        FnDeclKind::ExternFn => {
+                            ImplTraitContext::Disallowed(ImplTraitPosition::ExternFnReturn)
                         }
-                    } else {
-                        ImplTraitContext::Disallowed(match kind {
-                            FnDeclKind::Fn
-                            | FnDeclKind::Inherent
-                            | FnDeclKind::Trait
-                            | FnDeclKind::Impl => {
-                                unreachable!("fn should allow return-position impl trait in traits")
-                            }
-                            FnDeclKind::ExternFn => ImplTraitPosition::ExternFnReturn,
-                            FnDeclKind::Closure => ImplTraitPosition::ClosureReturn,
-                            FnDeclKind::Pointer => ImplTraitPosition::PointerReturn,
-                        })
+                        FnDeclKind::Closure => {
+                            ImplTraitContext::Disallowed(ImplTraitPosition::ClosureReturn)
+                        }
+                        FnDeclKind::Pointer => {
+                            ImplTraitContext::Disallowed(ImplTraitPosition::PointerReturn)
+                        }
                     };
-                    hir::FnRetTy::Return(self.lower_ty(ty, &context))
+                    hir::FnRetTy::Return(self.lower_ty(ty, &itctx))
                 }
                 FnRetTy::Default(span) => hir::FnRetTy::DefaultReturn(self.lower_span(*span)),
             },

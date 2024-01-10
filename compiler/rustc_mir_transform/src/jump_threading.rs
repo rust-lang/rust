@@ -43,6 +43,7 @@ use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{Map, PlaceIndex, State, TrackElem};
+use rustc_target::abi::{TagEncoding, Variants};
 
 use crate::cost_checker::CostChecker;
 
@@ -391,8 +392,25 @@ impl<'tcx, 'a> TOFinder<'tcx, 'a> {
             StatementKind::SetDiscriminant { box place, variant_index } => {
                 let discr_target = self.map.find_discr(place.as_ref())?;
                 let enum_ty = place.ty(self.body, self.tcx).ty;
-                let discr = discriminant_for_variant(enum_ty, *variant_index)?;
-                self.process_operand(bb, discr_target, &discr, state)?;
+                // `SetDiscriminant` may be a no-op if the assigned variant is the untagged variant
+                // of a niche encoding. If we cannot ensure that we write to the discriminant, do
+                // nothing.
+                let enum_layout = self.tcx.layout_of(self.param_env.and(enum_ty)).ok()?;
+                let writes_discriminant = match enum_layout.variants {
+                    Variants::Single { index } => {
+                        assert_eq!(index, *variant_index);
+                        true
+                    }
+                    Variants::Multiple { tag_encoding: TagEncoding::Direct, .. } => true,
+                    Variants::Multiple {
+                        tag_encoding: TagEncoding::Niche { untagged_variant, .. },
+                        ..
+                    } => *variant_index != untagged_variant,
+                };
+                if writes_discriminant {
+                    let discr = discriminant_for_variant(enum_ty, *variant_index)?;
+                    self.process_operand(bb, discr_target, &discr, state)?;
+                }
             }
             // If we expect `lhs ?= true`, we have an opportunity if we assume `lhs == true`.
             StatementKind::Intrinsic(box NonDivergingIntrinsic::Assume(

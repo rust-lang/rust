@@ -166,13 +166,12 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
 
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
-    // FIXME(matthewjasper) We shouldn't need to use `track_errors`.
-    tcx.sess.track_errors(|| {
-        tcx.sess.time("type_collecting", || {
-            tcx.hir().for_each_module(|module| tcx.ensure().collect_mod_item_types(module))
-        });
-    })?;
+    tcx.sess.time("type_collecting", || {
+        tcx.hir().for_each_module(|module| tcx.ensure().collect_mod_item_types(module))
+    });
 
+    // FIXME(matthewjasper) We shouldn't need to use `track_errors` anywhere in this function
+    // or the compiler in general.
     if tcx.features().rustc_attrs {
         tcx.sess.track_errors(|| {
             tcx.sess.time("outlives_testing", || outlives::test::test_inferred_outlives(tcx));

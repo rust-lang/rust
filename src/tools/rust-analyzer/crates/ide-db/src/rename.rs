@@ -198,6 +198,7 @@ impl Definition {
             Definition::SelfType(_) => return None,
             Definition::BuiltinAttr(_) => return None,
             Definition::ToolModule(_) => return None,
+            Definition::TupleField(_) => return None,
             // FIXME: This should be doable in theory
             Definition::DeriveHelper(_) => return None,
         };
