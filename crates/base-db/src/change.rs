@@ -7,7 +7,7 @@ use salsa::Durability;
 use triomphe::Arc;
 use vfs::FileId;
 
-use crate::{CrateGraph, SourceDatabaseExt, SourceRoot, SourceRootId};
+use crate::{CrateGraph, SourceDatabaseExt, SourceDatabaseExt2, SourceRoot, SourceRootId};
 
 /// Encapsulate a bunch of raw `.set` calls on the database.
 #[derive(Default)]

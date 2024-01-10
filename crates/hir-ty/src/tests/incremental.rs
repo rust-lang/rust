@@ -1,4 +1,4 @@
-use base_db::SourceDatabaseExt;
+use base_db::SourceDatabaseExt2 as _;
 use test_fixture::WithFixture;
 use triomphe::Arc;
 

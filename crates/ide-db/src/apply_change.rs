@@ -205,6 +205,7 @@ impl RootDatabase {
 
             // SourceDatabaseExt
             base_db::FileTextQuery
+            base_db::CompressedFileTextQuery
             base_db::FileSourceRootQuery
             base_db::SourceRootQuery
             base_db::SourceRootCratesQuery
