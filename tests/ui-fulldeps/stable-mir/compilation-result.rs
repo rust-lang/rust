@@ -10,14 +10,12 @@
 #![feature(rustc_private)]
 #![feature(assert_matches)]
 
-extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_smir;
 extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
-use rustc_middle::ty::TyCtxt;
 use rustc_smir::rustc_internal;
 use std::io::Write;
 
@@ -32,7 +30,8 @@ fn main() {
     test_continue(args.clone());
     test_break(args.clone());
     test_failed(args.clone());
-    test_skipped(args);
+    test_skipped(args.clone());
+    test_captured(args)
 }
 
 fn test_continue(args: Vec<String>) {
@@ -57,6 +56,13 @@ fn test_failed(mut args: Vec<String>) {
     args.push("--cfg=broken".to_string());
     let result = run!(args, unreachable!() as ControlFlow<()>);
     assert_eq!(result, Err(stable_mir::CompilerError::CompilationFailed));
+}
+
+/// Test that we are able to pass a closure and set the return according to the captured value.
+fn test_captured(args: Vec<String>) {
+    let captured = "10".to_string();
+    let result = run!(args, ControlFlow::Continue::<(), usize>(captured.len()));
+    assert_eq!(result, Ok(captured.len()));
 }
 
 fn generate_input(path: &str) -> std::io::Result<()> {

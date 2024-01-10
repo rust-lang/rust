@@ -24,12 +24,47 @@ use std::ops::Index;
 mod internal;
 pub mod pretty;
 
+/// Convert an internal Rust compiler item into its stable counterpart, if one exists.
+///
+/// # Warning
+///
+/// This function is unstable, and it's behavior may change at any point.
+/// E.g.: Items that were previously supported, may no longer be supported, or its translation may
+/// change.
+///
+/// # Panics
+///
+/// This function will panic if StableMIR has not been properly initialized.
 pub fn stable<'tcx, S: Stable<'tcx>>(item: S) -> S::T {
     with_tables(|tables| item.stable(tables))
 }
 
+/// Convert a stable item into its internal Rust compiler counterpart, if one exists.
+///
+/// # Warning
+///
+/// This function is unstable, and it's behavior may change at any point.
+/// Not every stable item can be converted to an internal one.
+/// Furthermore, items that were previously supported, may no longer be supported in newer versions.
+///
+/// # Panics
+///
+/// This function will panic if StableMIR has not been properly initialized.
 pub fn internal<'tcx, S: RustcInternal<'tcx>>(item: S) -> S::T {
     with_tables(|tables| item.internal(tables))
+}
+
+/// Retrieve the internal Rust compiler type context.
+///
+/// # Warning
+///
+/// This function is unstable, and it's behavior may change at any point.
+///
+/// # Panics
+///
+/// This function will panic if StableMIR has not been properly initialized.
+pub fn tcx<'tcx>() -> TyCtxt<'tcx> {
+    with_tables(|tables| tables.tcx)
 }
 
 impl<'tcx> Index<stable_mir::DefId> for Tables<'tcx> {
@@ -190,35 +225,83 @@ where
     stable_mir::compiler_interface::run(&tables, || init(&tables, f))
 }
 
+/// Instantiate and run the compiler with the provided arguments and callback.
+///
+/// The callback will be invoked after the compiler ran all its analysis, but before code generation.
+/// Note that this macro accepts two different formats for the callback:
+/// 1. An ident that resolves to a function that accepts no argument and returns `ControlFlow<B, C>`
+/// ```ignore(needs-extern-crate)
+/// # extern crate rustc_driver;
+/// # extern crate rustc_interface;
+/// # #[macro_use]
+/// # extern crate rustc_smir;
+/// # extern crate stable_mir;
+/// #
+/// # fn main() {
+/// #   use std::ops::ControlFlow;
+/// #   use stable_mir::CompilerError;
+///     fn analyze_code() -> ControlFlow<(), ()> {
+///         // Your code goes in here.
+/// #       ControlFlow::Continue(())
+///     }
+/// #   let args = vec!["--verbose".to_string()];
+///     let result = run!(args, analyze_code);
+/// #   assert_eq!(result, Err(CompilerError::Skipped))
+/// # }
+/// ```
+/// 2. An expression that represents the body of a closure:
+/// ```ignore(needs-extern-crate)
+/// # extern crate rustc_driver;
+/// # extern crate rustc_interface;
+/// # #[macro_use]
+/// # extern crate rustc_smir;
+/// # extern crate stable_mir;
+/// #
+/// # fn main() {
+/// #   use std::ops::ControlFlow;
+/// #   use stable_mir::CompilerError;
+///     fn analyze_code(extra_args: Vec<String>) -> ControlFlow<(), ()> {
+/// #       let _ = extra_args;
+///         // Your code goes in here.
+/// #       ControlFlow::Continue(())
+///     }
+/// #   let args = vec!["--verbose".to_string()];
+/// #   let extra_args = vec![];
+///     let result = run!(args, analyze_code(extra_args));
+/// #   assert_eq!(result, Err(CompilerError::Skipped))
+/// # }
+/// ```
 #[macro_export]
 macro_rules! run {
-    ($args:expr, $callback:expr) => {
-        run!($args, tcx, $callback)
+    ($args:expr, $callback_fn:ident) => {
+        run!($args, $callback_fn())
     };
-    ($args:expr, $tcx:ident, $callback:expr) => {{
+    ($args:expr, $callback:expr) => {{
         use rustc_driver::{Callbacks, Compilation, RunCompiler};
         use rustc_interface::{interface, Queries};
         use stable_mir::CompilerError;
         use std::ops::ControlFlow;
 
-        pub struct StableMir<B = (), C = ()>
+        pub struct StableMir<B = (), C = (), F = fn() -> ControlFlow<B, C>>
         where
             B: Send,
             C: Send,
+            F: FnOnce() -> ControlFlow<B, C> + Send,
         {
             args: Vec<String>,
-            callback: fn(TyCtxt<'_>) -> ControlFlow<B, C>,
+            callback: Option<F>,
             result: Option<ControlFlow<B, C>>,
         }
 
-        impl<B, C> StableMir<B, C>
+        impl<B, C, F> StableMir<B, C, F>
         where
             B: Send,
             C: Send,
+            F: FnOnce() -> ControlFlow<B, C> + Send,
         {
             /// Creates a new `StableMir` instance, with given test_function and arguments.
-            pub fn new(args: Vec<String>, callback: fn(TyCtxt<'_>) -> ControlFlow<B, C>) -> Self {
-                StableMir { args, callback, result: None }
+            pub fn new(args: Vec<String>, callback: F) -> Self {
+                StableMir { args, callback: Some(callback), result: None }
             }
 
             /// Runs the compiler against given target and tests it with `test_function`
@@ -238,10 +321,11 @@ macro_rules! run {
             }
         }
 
-        impl<B, C> Callbacks for StableMir<B, C>
+        impl<B, C, F> Callbacks for StableMir<B, C, F>
         where
             B: Send,
             C: Send,
+            F: FnOnce() -> ControlFlow<B, C> + Send,
         {
             /// Called after analysis. Return value instructs the compiler whether to
             /// continue the compilation afterwards (defaults to `Compilation::Continue`)
@@ -251,20 +335,24 @@ macro_rules! run {
                 queries: &'tcx Queries<'tcx>,
             ) -> Compilation {
                 queries.global_ctxt().unwrap().enter(|tcx| {
-                    rustc_internal::run(tcx, || {
-                        self.result = Some((self.callback)(tcx));
-                    })
-                    .unwrap();
-                    if self.result.as_ref().is_some_and(|val| val.is_continue()) {
-                        Compilation::Continue
+                    if let Some(callback) = self.callback.take() {
+                        rustc_internal::run(tcx, || {
+                            self.result = Some((callback)());
+                        })
+                        .unwrap();
+                        if self.result.as_ref().is_some_and(|val| val.is_continue()) {
+                            Compilation::Continue
+                        } else {
+                            Compilation::Stop
+                        }
                     } else {
-                        Compilation::Stop
+                        Compilation::Continue
                     }
                 })
             }
         }
 
-        StableMir::new($args, |$tcx| $callback).run()
+        StableMir::new($args, || $callback).run()
     }};
 }
 
