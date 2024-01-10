@@ -1450,23 +1450,19 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
         is_top_level && matches!(ctors_for_ty, ConstructorSet::NoConstructors);
     // Whether empty patterns can be omitted for exhaustiveness.
     let can_omit_empty_arms = is_toplevel_exception || mcx.tycx.is_exhaustive_patterns_feature_on();
+    // Whether empty patterns are counted as useful or not.
+    let empty_arms_are_unreachable = place_validity.is_known_valid() && can_omit_empty_arms;
 
     // Analyze the constructors present in this column.
     let ctors = matrix.heads().map(|p| p.ctor());
     let mut split_set = ctors_for_ty.split(ctors);
-    if !can_omit_empty_arms {
-        // Treat all missing constructors as nonempty.
-        // This clears `missing_empty`.
-        split_set.missing.append(&mut split_set.missing_empty);
-    }
     let all_missing = split_set.present.is_empty();
-
     // Build the set of constructors we will specialize with. It must cover the whole type.
     // We need to iterate over a full set of constructors, so we add `Missing` to represent the
     // missing ones. This is explained under "Constructor Splitting" at the top of this file.
     let mut split_ctors = split_set.present;
     if !(split_set.missing.is_empty()
-        && (split_set.missing_empty.is_empty() || place_validity.is_known_valid()))
+        && (split_set.missing_empty.is_empty() || empty_arms_are_unreachable))
     {
         split_ctors.push(Constructor::Missing);
     }
@@ -1479,7 +1475,10 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
     // Which constructors are considered missing. We ensure that `!missing_ctors.is_empty() =>
     // split_ctors.contains(Missing)`. The converse usually holds except when
     // `!place_validity.is_known_valid()`.
-    let missing_ctors = split_set.missing;
+    let mut missing_ctors = split_set.missing;
+    if !can_omit_empty_arms {
+        missing_ctors.append(&mut split_set.missing_empty);
+    }
 
     let mut ret = WitnessMatrix::empty();
     for ctor in split_ctors {
