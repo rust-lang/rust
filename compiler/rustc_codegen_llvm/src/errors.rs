@@ -105,10 +105,8 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for ParseTargetMachineConfig<'_
         let (message, _) = diag.messages().first().expect("`LlvmError` with no message");
         let message = dcx.eagerly_translate_to_string(message.clone(), diag.args());
 
-        let mut diag =
-            DiagnosticBuilder::new(dcx, level, fluent::codegen_llvm_parse_target_machine_config);
-        diag.arg("error", message);
-        diag
+        DiagnosticBuilder::new(dcx, level, fluent::codegen_llvm_parse_target_machine_config)
+            .arg_mv("error", message)
     }
 }
 
@@ -204,10 +202,10 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for WithLlvmError<'_> {
             PrepareThinLtoModule => fluent::codegen_llvm_prepare_thin_lto_module_with_llvm_err,
             ParseBitcode => fluent::codegen_llvm_parse_bitcode_with_llvm_err,
         };
-        let mut diag = self.0.into_diagnostic(dcx, level);
-        diag.primary_message(msg_with_llvm_err);
-        diag.arg("llvm_err", self.1);
-        diag
+        self.0
+            .into_diagnostic(dcx, level)
+            .primary_message_mv(msg_with_llvm_err)
+            .arg_mv("llvm_err", self.1)
     }
 }
 

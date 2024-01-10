@@ -153,12 +153,14 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         };
         let Some(asm_ty) = asm_ty else {
             let msg = format!("cannot use value of type `{ty}` for inline assembly");
-            let mut err = self.tcx.dcx().struct_span_err(expr.span, msg);
-            err.note(
-                "only integers, floats, SIMD vectors, pointers and function pointers \
-                 can be used as arguments for inline assembly",
-            );
-            err.emit();
+            self.tcx
+                .dcx()
+                .struct_span_err(expr.span, msg)
+                .note_mv(
+                    "only integers, floats, SIMD vectors, pointers and function pointers \
+                     can be used as arguments for inline assembly",
+                )
+                .emit();
             return None;
         };
 
@@ -166,9 +168,11 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         // possibly fail is for SIMD types which don't #[derive(Copy)].
         if !ty.is_copy_modulo_regions(self.tcx, self.param_env) {
             let msg = "arguments for inline assembly must be copyable";
-            let mut err = self.tcx.dcx().struct_span_err(expr.span, msg);
-            err.note(format!("`{ty}` does not implement the Copy trait"));
-            err.emit();
+            self.tcx
+                .dcx()
+                .struct_span_err(expr.span, msg)
+                .note_mv(format!("`{ty}` does not implement the Copy trait"))
+                .emit();
         }
 
         // Ideally we wouldn't need to do this, but LLVM's register allocator
@@ -183,16 +187,17 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         if let Some((in_expr, Some(in_asm_ty))) = tied_input {
             if in_asm_ty != asm_ty {
                 let msg = "incompatible types for asm inout argument";
-                let mut err = self.tcx.dcx().struct_span_err(vec![in_expr.span, expr.span], msg);
-
                 let in_expr_ty = (self.get_operand_ty)(in_expr);
-                err.span_label(in_expr.span, format!("type `{in_expr_ty}`"));
-                err.span_label(expr.span, format!("type `{ty}`"));
-                err.note(
-                    "asm inout arguments must have the same type, \
+                self.tcx
+                    .dcx()
+                    .struct_span_err(vec![in_expr.span, expr.span], msg)
+                    .span_label_mv(in_expr.span, format!("type `{in_expr_ty}`"))
+                    .span_label_mv(expr.span, format!("type `{ty}`"))
+                    .note_mv(
+                        "asm inout arguments must have the same type, \
                     unless they are both pointers or integers of the same size",
-                );
-                err.emit();
+                    )
+                    .emit();
             }
 
             // All of the later checks have already been done on the input, so
@@ -234,13 +239,15 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         if let Some(feature) = feature {
             if !target_features.contains(feature) {
                 let msg = format!("`{feature}` target feature is not enabled");
-                let mut err = self.tcx.dcx().struct_span_err(expr.span, msg);
-                err.note(format!(
-                    "this is required to use type `{}` with register class `{}`",
-                    ty,
-                    reg_class.name(),
-                ));
-                err.emit();
+                self.tcx
+                    .dcx()
+                    .struct_span_err(expr.span, msg)
+                    .note_mv(format!(
+                        "this is required to use type `{}` with register class `{}`",
+                        ty,
+                        reg_class.name(),
+                    ))
+                    .emit();
                 return Some(asm_ty);
             }
         }
@@ -449,14 +456,17 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         ty::Never | ty::Error(_) => {}
                         ty::FnDef(..) => {}
                         _ => {
-                            let mut err =
-                                self.tcx.dcx().struct_span_err(*op_sp, "invalid `sym` operand");
-                            err.span_label(
-                                self.tcx.def_span(anon_const.def_id),
-                                format!("is {} `{}`", ty.kind().article(), ty),
-                            );
-                            err.help("`sym` operands must refer to either a function or a static");
-                            err.emit();
+                            self.tcx
+                                .dcx()
+                                .struct_span_err(*op_sp, "invalid `sym` operand")
+                                .span_label_mv(
+                                    self.tcx.def_span(anon_const.def_id),
+                                    format!("is {} `{}`", ty.kind().article(), ty),
+                                )
+                                .help_mv(
+                                    "`sym` operands must refer to either a function or a static",
+                                )
+                                .emit();
                         }
                     };
                 }

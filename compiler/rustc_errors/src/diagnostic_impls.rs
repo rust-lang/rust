@@ -249,60 +249,43 @@ impl<Id> IntoDiagnosticArg for hir::def::Res<Id> {
 
 impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for TargetDataLayoutErrors<'_> {
     fn into_diagnostic(self, dcx: &DiagCtxt, level: Level) -> DiagnosticBuilder<'_, G> {
-        let mut diag;
         match self {
             TargetDataLayoutErrors::InvalidAddressSpace { addr_space, err, cause } => {
-                diag =
-                    DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_address_space);
-                diag.arg("addr_space", addr_space);
-                diag.arg("cause", cause);
-                diag.arg("err", err);
-                diag
+                DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_address_space)
+                    .arg_mv("addr_space", addr_space)
+                    .arg_mv("cause", cause)
+                    .arg_mv("err", err)
             }
             TargetDataLayoutErrors::InvalidBits { kind, bit, cause, err } => {
-                diag = DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_bits);
-                diag.arg("kind", kind);
-                diag.arg("bit", bit);
-                diag.arg("cause", cause);
-                diag.arg("err", err);
-                diag
+                DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_bits)
+                    .arg_mv("kind", kind)
+                    .arg_mv("bit", bit)
+                    .arg_mv("cause", cause)
+                    .arg_mv("err", err)
             }
             TargetDataLayoutErrors::MissingAlignment { cause } => {
-                diag = DiagnosticBuilder::new(dcx, level, fluent::errors_target_missing_alignment);
-                diag.arg("cause", cause);
-                diag
+                DiagnosticBuilder::new(dcx, level, fluent::errors_target_missing_alignment)
+                    .arg_mv("cause", cause)
             }
             TargetDataLayoutErrors::InvalidAlignment { cause, err } => {
-                diag = DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_alignment);
-                diag.arg("cause", cause);
-                diag.arg("err_kind", err.diag_ident());
-                diag.arg("align", err.align());
-                diag
+                DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_alignment)
+                    .arg_mv("cause", cause)
+                    .arg_mv("err_kind", err.diag_ident())
+                    .arg_mv("align", err.align())
             }
             TargetDataLayoutErrors::InconsistentTargetArchitecture { dl, target } => {
-                diag = DiagnosticBuilder::new(
-                    dcx,
-                    level,
-                    fluent::errors_target_inconsistent_architecture,
-                );
-                diag.arg("dl", dl);
-                diag.arg("target", target);
-                diag
+                DiagnosticBuilder::new(dcx, level, fluent::errors_target_inconsistent_architecture)
+                    .arg_mv("dl", dl)
+                    .arg_mv("target", target)
             }
             TargetDataLayoutErrors::InconsistentTargetPointerWidth { pointer_size, target } => {
-                diag = DiagnosticBuilder::new(
-                    dcx,
-                    level,
-                    fluent::errors_target_inconsistent_pointer_width,
-                );
-                diag.arg("pointer_size", pointer_size);
-                diag.arg("target", target);
-                diag
+                DiagnosticBuilder::new(dcx, level, fluent::errors_target_inconsistent_pointer_width)
+                    .arg_mv("pointer_size", pointer_size)
+                    .arg_mv("target", target)
             }
             TargetDataLayoutErrors::InvalidBitsSize { err } => {
-                diag = DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_bits_size);
-                diag.arg("err", err);
-                diag
+                DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_bits_size)
+                    .arg_mv("err", err)
             }
         }
     }

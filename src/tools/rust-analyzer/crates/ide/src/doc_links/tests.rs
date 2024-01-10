@@ -462,14 +462,15 @@ mod module {}
 fn doc_links_inherent_impl_items() {
     check_doc_links(
         r#"
-// /// [`Struct::CONST`]
-// /// [`Struct::function`]
-/// FIXME #9694
+/// [`Struct::CONST`]
+/// [`Struct::function`]
 struct Struct$0;
 
 impl Struct {
     const CONST: () = ();
+       // ^^^^^ Struct::CONST
     fn function() {}
+    // ^^^^^^^^ Struct::function
 }
 "#,
     )
@@ -482,12 +483,13 @@ fn doc_links_trait_impl_items() {
 trait Trait {
     type Type;
     const CONST: usize;
+       // ^^^^^ Struct::CONST
     fn function();
+    // ^^^^^^^^ Struct::function
 }
-// /// [`Struct::Type`]
-// /// [`Struct::CONST`]
-// /// [`Struct::function`]
-/// FIXME #9694
+// FIXME #9694: [`Struct::Type`]
+/// [`Struct::CONST`]
+/// [`Struct::function`]
 struct Struct$0;
 
 impl Trait for Struct {

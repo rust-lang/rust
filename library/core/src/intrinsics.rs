@@ -1783,27 +1783,37 @@ extern "rust-intrinsic" {
     #[rustc_nounwind]
     pub fn truncf64(x: f64) -> f64;
 
-    /// Returns the nearest integer to an `f32`. May raise an inexact floating-point exception
-    /// if the argument is not an integer.
+    /// Returns the nearest integer to an `f32`. Changing the rounding mode is not possible in Rust,
+    /// so this rounds half-way cases to the number with an even least significant digit.
+    ///
+    /// May raise an inexact floating-point exception if the argument is not an integer.
+    /// However, Rust assumes floating-point exceptions cannot be observed, so this is not something that
+    /// can actually be used from Rust code.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::round_ties_even`](../../std/primitive.f32.html#method.round_ties_even)
     #[rustc_nounwind]
     pub fn rintf32(x: f32) -> f32;
-    /// Returns the nearest integer to an `f64`. May raise an inexact floating-point exception
-    /// if the argument is not an integer.
+    /// Returns the nearest integer to an `f64`. Changing the rounding mode is not possible in Rust,
+    /// so this rounds half-way cases to the number with an even least significant digit.
+    ///
+    /// May raise an inexact floating-point exception if the argument is not an integer.
+    /// However, Rust assumes floating-point exceptions cannot be observed, so this is not something that
+    /// can actually be used from Rust code.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::round_ties_even`](../../std/primitive.f64.html#method.round_ties_even)
     #[rustc_nounwind]
     pub fn rintf64(x: f64) -> f64;
 
-    /// Returns the nearest integer to an `f32`.
+    /// Returns the nearest integer to an `f32`. Changing the rounding mode is not possible in Rust,
+    /// so this rounds half-way cases to the number with an even least significant digit.
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_nounwind]
     pub fn nearbyintf32(x: f32) -> f32;
-    /// Returns the nearest integer to an `f64`.
+    /// Returns the nearest integer to an `f64`. Changing the rounding mode is not possible in Rust,
+    /// so this rounds half-way cases to the number with an even least significant digit.
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_nounwind]

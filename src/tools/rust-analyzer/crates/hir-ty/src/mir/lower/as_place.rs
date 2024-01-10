@@ -218,7 +218,7 @@ impl MirLowerCtx<'_> {
                 self.push_field_projection(&mut r, expr_id)?;
                 Ok(Some((r, current)))
             }
-            Expr::Index { base, index } => {
+            Expr::Index { base, index, is_assignee_expr: _ } => {
                 let base_ty = self.expr_ty_after_adjustments(*base);
                 let index_ty = self.expr_ty_after_adjustments(*index);
                 if index_ty != TyBuilder::usize()

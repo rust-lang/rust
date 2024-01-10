@@ -1,15 +1,12 @@
 //! Logic for rendering the different hover messages
-use std::fmt::Display;
-
 use either::Either;
 use hir::{
-    Adt, AsAssocItem, AttributeTemplate, CaptureKind, HasSource, HirDisplay, Layout, LayoutError,
-    Semantics, TypeInfo,
+    Adt, AsAssocItem, CaptureKind, HasSource, HirDisplay, Layout, LayoutError, Semantics, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase,
     defs::Definition,
-    documentation::{Documentation, HasDocs},
+    documentation::HasDocs,
     famous_defs::FamousDefs,
     generated::lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES},
     syntax_helpers::insert_whitespace_into_node,
@@ -20,9 +17,7 @@ use stdx::format_to;
 use syntax::{
     algo,
     ast::{self, RecordPat},
-    match_ast, AstNode, Direction,
-    SyntaxKind::{LET_EXPR, LET_STMT},
-    SyntaxToken, T,
+    match_ast, AstNode, Direction, SyntaxToken, T,
 };
 
 use crate::{
@@ -393,48 +388,23 @@ pub(super) fn definition(
     config: &HoverConfig,
 ) -> Option<Markup> {
     let mod_path = definition_mod_path(db, &def);
-    let (label, docs) = match def {
-        Definition::Macro(it) => label_and_docs(db, it),
-        Definition::Field(it) => label_and_layout_info_and_docs(
-            db,
-            it,
-            config,
-            |&it| it.layout(db),
-            |_| {
-                let var_def = it.parent_def(db);
-                match var_def {
-                    hir::VariantDef::Struct(s) => {
-                        Adt::from(s).layout(db).ok().and_then(|layout| layout.field_offset(it))
+    let label = def.label(db)?;
+    let docs = def.docs(db, famous_defs);
+
+    let value = match def {
+        Definition::Variant(it) => {
+            if !it.parent_enum(db).is_data_carrying(db) {
+                match it.eval(db) {
+                    Ok(it) => {
+                        Some(if it >= 10 { format!("{it} ({it:#X})") } else { format!("{it}") })
                     }
-                    _ => None,
+                    Err(_) => it.value(db).map(|it| format!("{it:?}")),
                 }
-            },
-        ),
-        Definition::Module(it) => label_and_docs(db, it),
-        Definition::Function(it) => label_and_docs(db, it),
-        Definition::Adt(it) => {
-            label_and_layout_info_and_docs(db, it, config, |&it| it.layout(db), |_| None)
+            } else {
+                None
+            }
         }
-        Definition::Variant(it) => label_value_and_layout_info_and_docs(
-            db,
-            it,
-            config,
-            |&it| {
-                if !it.parent_enum(db).is_data_carrying(db) {
-                    match it.eval(db) {
-                        Ok(it) => {
-                            Some(if it >= 10 { format!("{it} ({it:#X})") } else { format!("{it}") })
-                        }
-                        Err(_) => it.value(db).map(|it| format!("{it:?}")),
-                    }
-                } else {
-                    None
-                }
-            },
-            |it| it.layout(db),
-            |layout| layout.enum_tag_size(),
-        ),
-        Definition::Const(it) => label_value_and_docs(db, it, |it| {
+        Definition::Const(it) => {
             let body = it.render_eval(db);
             match body {
                 Ok(it) => Some(it),
@@ -447,53 +417,59 @@ pub(super) fn definition(
                     Some(body.to_string())
                 }
             }
-        }),
-        Definition::Static(it) => label_value_and_docs(db, it, |it| {
+        }
+        Definition::Static(it) => {
             let source = it.source(db)?;
             let mut body = source.value.body()?.syntax().clone();
             if source.file_id.is_macro() {
                 body = insert_whitespace_into_node::insert_ws_into(body);
             }
             Some(body.to_string())
-        }),
-        Definition::Trait(it) => label_and_docs(db, it),
-        Definition::TraitAlias(it) => label_and_docs(db, it),
-        Definition::TypeAlias(it) => {
-            label_and_layout_info_and_docs(db, it, config, |&it| it.ty(db).layout(db), |_| None)
         }
-        Definition::BuiltinType(it) => {
-            return famous_defs
-                .and_then(|fd| builtin(fd, it))
-                .or_else(|| Some(Markup::fenced_block(&it.name().display(db))))
-        }
-        Definition::Local(it) => return local(db, it, config),
-        Definition::SelfType(impl_def) => {
-            impl_def.self_ty(db).as_adt().map(|adt| label_and_docs(db, adt))?
-        }
-        Definition::GenericParam(it) => (it.display(db).to_string(), None),
-        Definition::Label(it) => return Some(Markup::fenced_block(&it.name(db).display(db))),
-        Definition::ExternCrateDecl(it) => label_and_docs(db, it),
-        // FIXME: We should be able to show more info about these
-        Definition::BuiltinAttr(it) => return render_builtin_attr(db, it),
-        Definition::ToolModule(it) => return Some(Markup::fenced_block(&it.name(db))),
-        Definition::DeriveHelper(it) => {
-            (format!("derive_helper {}", it.name(db).display(db)), None)
-        }
+        _ => None,
     };
 
-    let docs = docs
-        .filter(|_| config.documentation)
-        .or_else(|| {
-            // docs are missing, for assoc items of trait impls try to fall back to the docs of the
-            // original item of the trait
-            let assoc = def.as_assoc_item(db)?;
-            let trait_ = assoc.containing_trait_impl(db)?;
-            let name = Some(assoc.name(db)?);
-            let item = trait_.items(db).into_iter().find(|it| it.name(db) == name)?;
-            item.docs(db)
-        })
-        .map(Into::into);
-    markup(docs, label, mod_path)
+    let layout_info = match def {
+        Definition::Field(it) => render_memory_layout(
+            config.memory_layout,
+            || it.layout(db),
+            |_| {
+                let var_def = it.parent_def(db);
+                match var_def {
+                    hir::VariantDef::Struct(s) => {
+                        Adt::from(s).layout(db).ok().and_then(|layout| layout.field_offset(it))
+                    }
+                    _ => None,
+                }
+            },
+            |_| None,
+        ),
+        Definition::Adt(it) => {
+            render_memory_layout(config.memory_layout, || it.layout(db), |_| None, |_| None)
+        }
+        Definition::Variant(it) => render_memory_layout(
+            config.memory_layout,
+            || it.layout(db),
+            |_| None,
+            |layout| layout.enum_tag_size(),
+        ),
+        Definition::TypeAlias(it) => {
+            render_memory_layout(config.memory_layout, || it.ty(db).layout(db), |_| None, |_| None)
+        }
+        Definition::Local(it) => {
+            render_memory_layout(config.memory_layout, || it.ty(db).layout(db), |_| None, |_| None)
+        }
+        _ => None,
+    };
+
+    let label = match (value, layout_info) {
+        (Some(value), Some(layout_info)) => format!("{label} = {value}{layout_info}"),
+        (Some(value), None) => format!("{label} = {value}"),
+        (None, Some(layout_info)) => format!("{label}{layout_info}"),
+        (None, None) => label,
+    };
+
+    markup(docs.map(Into::into), label, mod_path)
 }
 
 fn type_info(
@@ -595,114 +571,16 @@ fn closure_ty(
     Some(res)
 }
 
-fn render_builtin_attr(db: &RootDatabase, attr: hir::BuiltinAttr) -> Option<Markup> {
-    let name = attr.name(db);
-    let desc = format!("#[{name}]");
-
-    let AttributeTemplate { word, list, name_value_str } = match attr.template(db) {
-        Some(template) => template,
-        None => return Some(Markup::fenced_block(&attr.name(db))),
-    };
-    let mut docs = "Valid forms are:".to_owned();
-    if word {
-        format_to!(docs, "\n - #\\[{}]", name);
-    }
-    if let Some(list) = list {
-        format_to!(docs, "\n - #\\[{}({})]", name, list);
-    }
-    if let Some(name_value_str) = name_value_str {
-        format_to!(docs, "\n - #\\[{} = {}]", name, name_value_str);
-    }
-    markup(Some(docs.replace('*', "\\*")), desc, None)
-}
-
-fn label_and_docs<D>(db: &RootDatabase, def: D) -> (String, Option<Documentation>)
-where
-    D: HasDocs + HirDisplay,
-{
-    let label = def.display(db).to_string();
-    let docs = def.docs(db);
-    (label, docs)
-}
-
-fn label_and_layout_info_and_docs<D, E, E2>(
-    db: &RootDatabase,
-    def: D,
-    config: &HoverConfig,
-    layout_extractor: E,
-    layout_offset_extractor: E2,
-) -> (String, Option<Documentation>)
-where
-    D: HasDocs + HirDisplay,
-    E: Fn(&D) -> Result<Layout, LayoutError>,
-    E2: Fn(&Layout) -> Option<u64>,
-{
-    let mut label = def.display(db).to_string();
-    if let Some(layout) = render_memory_layout(
-        config.memory_layout,
-        || layout_extractor(&def),
-        layout_offset_extractor,
-        |_| None,
-    ) {
-        format_to!(label, "{layout}");
-    }
-    let docs = def.docs(db);
-    (label, docs)
-}
-
-fn label_value_and_layout_info_and_docs<D, E, E2, E3, V>(
-    db: &RootDatabase,
-    def: D,
-    config: &HoverConfig,
-    value_extractor: E,
-    layout_extractor: E2,
-    layout_tag_extractor: E3,
-) -> (String, Option<Documentation>)
-where
-    D: HasDocs + HirDisplay,
-    E: Fn(&D) -> Option<V>,
-    E2: Fn(&D) -> Result<Layout, LayoutError>,
-    E3: Fn(&Layout) -> Option<usize>,
-    V: Display,
-{
-    let value = value_extractor(&def);
-    let mut label = match value {
-        Some(value) => format!("{} = {value}", def.display(db)),
-        None => def.display(db).to_string(),
-    };
-    if let Some(layout) = render_memory_layout(
-        config.memory_layout,
-        || layout_extractor(&def),
-        |_| None,
-        layout_tag_extractor,
-    ) {
-        format_to!(label, "{layout}");
-    }
-    let docs = def.docs(db);
-    (label, docs)
-}
-
-fn label_value_and_docs<D, E, V>(
-    db: &RootDatabase,
-    def: D,
-    value_extractor: E,
-) -> (String, Option<Documentation>)
-where
-    D: HasDocs + HirDisplay,
-    E: Fn(&D) -> Option<V>,
-    V: Display,
-{
-    let label = if let Some(value) = value_extractor(&def) {
-        format!("{} = {value}", def.display(db))
-    } else {
-        def.display(db).to_string()
-    };
-    let docs = def.docs(db);
-    (label, docs)
-}
-
 fn definition_mod_path(db: &RootDatabase, def: &Definition) -> Option<String> {
-    if let Definition::GenericParam(_) = def {
+    if matches!(
+        def,
+        Definition::GenericParam(_)
+            | Definition::BuiltinType(_)
+            | Definition::Local(_)
+            | Definition::Label(_)
+            | Definition::BuiltinAttr(_)
+            | Definition::ToolModule(_)
+    ) {
         return None;
     }
     def.module(db).map(|module| path(db, module, definition_owner_name(db, def)))
@@ -724,14 +602,6 @@ fn markup(docs: Option<String>, desc: String, mod_path: Option<String>) -> Optio
     Some(buf.into())
 }
 
-fn builtin(famous_defs: &FamousDefs<'_, '_>, builtin: hir::BuiltinType) -> Option<Markup> {
-    // std exposes prim_{} modules with docstrings on the root to document the builtins
-    let primitive_mod = format!("prim_{}", builtin.name().display(famous_defs.0.db));
-    let doc_owner = find_std_module(famous_defs, &primitive_mod)?;
-    let docs = doc_owner.docs(famous_defs.0.db)?;
-    markup(Some(docs.into()), builtin.name().display(famous_defs.0.db).to_string(), None)
-}
-
 fn find_std_module(famous_defs: &FamousDefs<'_, '_>, name: &str) -> Option<hir::Module> {
     let db = famous_defs.0.db;
     let std_crate = famous_defs.std()?;
@@ -739,34 +609,6 @@ fn find_std_module(famous_defs: &FamousDefs<'_, '_>, name: &str) -> Option<hir::
     std_root_module.children(db).find(|module| {
         module.name(db).map_or(false, |module| module.display(db).to_string() == name)
     })
-}
-
-fn local(db: &RootDatabase, it: hir::Local, config: &HoverConfig) -> Option<Markup> {
-    let ty = it.ty(db);
-    let ty = ty.display_truncated(db, None);
-    let is_mut = if it.is_mut(db) { "mut " } else { "" };
-    let mut desc = match it.primary_source(db).into_ident_pat() {
-        Some(ident) => {
-            let name = it.name(db);
-            let let_kw = if ident
-                .syntax()
-                .parent()
-                .map_or(false, |p| p.kind() == LET_STMT || p.kind() == LET_EXPR)
-            {
-                "let "
-            } else {
-                ""
-            };
-            format!("{let_kw}{is_mut}{}: {ty}", name.display(db))
-        }
-        None => format!("{is_mut}self: {ty}"),
-    };
-    if let Some(layout) =
-        render_memory_layout(config.memory_layout, || it.ty(db).layout(db), |_| None, |_| None)
-    {
-        format_to!(desc, "{layout}");
-    }
-    markup(None, desc, None)
 }
 
 fn render_memory_layout(

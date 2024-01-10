@@ -5,7 +5,7 @@ pub fn target() -> Target {
     base.cpu = "pentiumpro".into();
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m32"]);
-    base.stack_probes = StackProbeType::InlineOrCall { min_llvm_version_for_inline: (11, 0, 1) };
+    base.stack_probes = StackProbeType::Inline;
 
     Target {
         llvm_target: "i686-unknown-hurd-gnu".into(),

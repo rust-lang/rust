@@ -32,6 +32,14 @@ pub fn meta_decodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2:
 
 pub fn decodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     let decoder_ty = quote! { __D };
+    s.add_impl_generic(parse_quote! {#decoder_ty: ::rustc_span::SpanDecoder});
+    s.add_bounds(synstructure::AddBounds::Generics);
+
+    decodable_body(s, decoder_ty)
+}
+
+pub fn decodable_generic_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
+    let decoder_ty = quote! { __D };
     s.add_impl_generic(parse_quote! {#decoder_ty: ::rustc_serialize::Decoder});
     s.add_bounds(synstructure::AddBounds::Generics);
 
@@ -129,6 +137,14 @@ pub fn meta_encodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2:
 }
 
 pub fn encodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
+    let encoder_ty = quote! { __E };
+    s.add_impl_generic(parse_quote! { #encoder_ty: ::rustc_span::SpanEncoder});
+    s.add_bounds(synstructure::AddBounds::Generics);
+
+    encodable_body(s, encoder_ty, false)
+}
+
+pub fn encodable_generic_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     let encoder_ty = quote! { __E };
     s.add_impl_generic(parse_quote! { #encoder_ty: ::rustc_serialize::Encoder});
     s.add_bounds(synstructure::AddBounds::Generics);

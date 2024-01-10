@@ -35,6 +35,8 @@
 #![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 
+extern crate self as rustc_span;
+
 #[macro_use]
 extern crate rustc_macros;
 
@@ -43,6 +45,7 @@ extern crate tracing;
 
 use rustc_data_structures::{outline, AtomicRef};
 use rustc_macros::HashStable_Generic;
+use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 mod caching_source_map_view;
@@ -58,7 +61,7 @@ pub use hygiene::{DesugaringKind, ExpnKind, MacroKind};
 pub use hygiene::{ExpnData, ExpnHash, ExpnId, LocalExpnId, SyntaxContext};
 use rustc_data_structures::stable_hasher::HashingControls;
 pub mod def_id;
-use def_id::{CrateNum, DefId, DefPathHash, LocalDefId, StableCrateId, LOCAL_CRATE};
+use def_id::{CrateNum, DefId, DefIndex, DefPathHash, LocalDefId, StableCrateId, LOCAL_CRATE};
 pub mod edit_distance;
 mod span_encoding;
 pub use span_encoding::{Span, DUMMY_SP};
@@ -541,10 +544,6 @@ impl Span {
         self.data().with_hi(hi)
     }
     #[inline]
-    pub fn eq_ctxt(self, other: Span) -> bool {
-        self.data_untracked().ctxt == other.data_untracked().ctxt
-    }
-    #[inline]
     pub fn with_ctxt(self, ctxt: SyntaxContext) -> Span {
         self.data_untracked().with_ctxt(ctxt)
     }
@@ -565,14 +564,7 @@ impl Span {
     /// Returns `true` if this span comes from any kind of macro, desugaring or inlining.
     #[inline]
     pub fn from_expansion(self) -> bool {
-        self.ctxt() != SyntaxContext::root()
-    }
-
-    /// Returns `true` if `span` originates in a macro's expansion where debuginfo should be
-    /// collapsed.
-    pub fn in_macro_expansion_with_collapse_debuginfo(self) -> bool {
-        let outer_expn = self.ctxt().outer_expn_data();
-        matches!(outer_expn.kind, ExpnKind::Macro(..)) && outer_expn.collapse_debuginfo
+        !self.ctxt().is_root()
     }
 
     /// Returns `true` if `span` originates in a derive-macro's expansion.
@@ -654,15 +646,15 @@ impl Span {
     /// Returns the source span -- this is either the supplied span, or the span for
     /// the macro callsite that expanded to it.
     pub fn source_callsite(self) -> Span {
-        let expn_data = self.ctxt().outer_expn_data();
-        if !expn_data.is_root() { expn_data.call_site.source_callsite() } else { self }
+        let ctxt = self.ctxt();
+        if !ctxt.is_root() { ctxt.outer_expn_data().call_site.source_callsite() } else { self }
     }
 
     /// The `Span` for the tokens in the previous macro expansion from which `self` was generated,
     /// if any.
     pub fn parent_callsite(self) -> Option<Span> {
-        let expn_data = self.ctxt().outer_expn_data();
-        if !expn_data.is_root() { Some(expn_data.call_site) } else { None }
+        let ctxt = self.ctxt();
+        (!ctxt.is_root()).then(|| ctxt.outer_expn_data().call_site)
     }
 
     /// Walk down the expansion ancestors to find a span that's contained within `outer`.
@@ -747,15 +739,14 @@ impl Span {
     /// else returns the `ExpnData` for the macro definition
     /// corresponding to the source callsite.
     pub fn source_callee(self) -> Option<ExpnData> {
-        let expn_data = self.ctxt().outer_expn_data();
-
-        // Create an iterator of call site expansions
-        iter::successors(Some(expn_data), |expn_data| {
-            Some(expn_data.call_site.ctxt().outer_expn_data())
-        })
-        // Find the last expansion which is not root
-        .take_while(|expn_data| !expn_data.is_root())
-        .last()
+        let mut ctxt = self.ctxt();
+        let mut opt_expn_data = None;
+        while !ctxt.is_root() {
+            let expn_data = ctxt.outer_expn_data();
+            ctxt = expn_data.call_site.ctxt();
+            opt_expn_data = Some(expn_data);
+        }
+        opt_expn_data
     }
 
     /// Checks if a span is "internal" to a macro in which `#[unstable]`
@@ -796,11 +787,12 @@ impl Span {
         let mut prev_span = DUMMY_SP;
         iter::from_fn(move || {
             loop {
-                let expn_data = self.ctxt().outer_expn_data();
-                if expn_data.is_root() {
+                let ctxt = self.ctxt();
+                if ctxt.is_root() {
                     return None;
                 }
 
+                let expn_data = ctxt.outer_expn_data();
                 let is_recursive = expn_data.call_site.source_equal(prev_span);
 
                 prev_span = self;
@@ -826,6 +818,39 @@ impl Span {
         )
     }
 
+    /// Prepare two spans to a combine operation like `to` or `between`.
+    /// FIXME: consider using declarative macro metavariable spans for the given spans if they are
+    /// better suitable for combining (#119412).
+    fn prepare_to_combine(
+        a_orig: Span,
+        b_orig: Span,
+    ) -> Result<(SpanData, SpanData, Option<LocalDefId>), Span> {
+        let (a, b) = (a_orig.data(), b_orig.data());
+
+        if a.ctxt != b.ctxt {
+            // Context mismatches usually happen when procedural macros combine spans copied from
+            // the macro input with spans produced by the macro (`Span::*_site`).
+            // In that case we consider the combined span to be produced by the macro and return
+            // the original macro-produced span as the result.
+            // Otherwise we just fall back to returning the first span.
+            // Combining locations typically doesn't make sense in case of context mismatches.
+            // `is_root` here is a fast path optimization.
+            let a_is_callsite = a.ctxt.is_root() || a.ctxt == b.span().source_callsite().ctxt();
+            return Err(if a_is_callsite { b_orig } else { a_orig });
+        }
+
+        let parent = if a.parent == b.parent { a.parent } else { None };
+        Ok((a, b, parent))
+    }
+
+    /// This span, but in a larger context, may switch to the metavariable span if suitable.
+    pub fn with_neighbor(self, neighbor: Span) -> Span {
+        match Span::prepare_to_combine(self, neighbor) {
+            Ok((this, ..)) => Span::new(this.lo, this.hi, this.ctxt, this.parent),
+            Err(_) => self,
+        }
+    }
+
     /// Returns a `Span` that would enclose both `self` and `end`.
     ///
     /// Note that this can also be used to extend the span "backwards":
@@ -837,26 +862,12 @@ impl Span {
     ///     ^^^^^^^^^^^^^^^^^^^^
     /// ```
     pub fn to(self, end: Span) -> Span {
-        let span_data = self.data();
-        let end_data = end.data();
-        // FIXME(jseyfried): `self.ctxt` should always equal `end.ctxt` here (cf. issue #23480).
-        // Return the macro span on its own to avoid weird diagnostic output. It is preferable to
-        // have an incomplete span than a completely nonsensical one.
-        if span_data.ctxt != end_data.ctxt {
-            if span_data.ctxt.is_root() {
-                return end;
-            } else if end_data.ctxt.is_root() {
-                return self;
+        match Span::prepare_to_combine(self, end) {
+            Ok((from, to, parent)) => {
+                Span::new(cmp::min(from.lo, to.lo), cmp::max(from.hi, to.hi), from.ctxt, parent)
             }
-            // Both spans fall within a macro.
-            // FIXME(estebank): check if it is the *same* macro.
+            Err(fallback) => fallback,
         }
-        Span::new(
-            cmp::min(span_data.lo, end_data.lo),
-            cmp::max(span_data.hi, end_data.hi),
-            if span_data.ctxt.is_root() { end_data.ctxt } else { span_data.ctxt },
-            if span_data.parent == end_data.parent { span_data.parent } else { None },
-        )
     }
 
     /// Returns a `Span` between the end of `self` to the beginning of `end`.
@@ -867,14 +878,12 @@ impl Span {
     ///         ^^^^^^^^^^^^^
     /// ```
     pub fn between(self, end: Span) -> Span {
-        let span = self.data();
-        let end = end.data();
-        Span::new(
-            span.hi,
-            end.lo,
-            if end.ctxt.is_root() { end.ctxt } else { span.ctxt },
-            if span.parent == end.parent { span.parent } else { None },
-        )
+        match Span::prepare_to_combine(self, end) {
+            Ok((from, to, parent)) => {
+                Span::new(cmp::min(from.hi, to.hi), cmp::max(from.lo, to.lo), from.ctxt, parent)
+            }
+            Err(fallback) => fallback,
+        }
     }
 
     /// Returns a `Span` from the beginning of `self` until the beginning of `end`.
@@ -885,31 +894,12 @@ impl Span {
     ///     ^^^^^^^^^^^^^^^^^
     /// ```
     pub fn until(self, end: Span) -> Span {
-        // Most of this function's body is copied from `to`.
-        // We can't just do `self.to(end.shrink_to_lo())`,
-        // because to also does some magic where it uses min/max so
-        // it can handle overlapping spans. Some advanced mis-use of
-        // `until` with different ctxts makes this visible.
-        let span_data = self.data();
-        let end_data = end.data();
-        // FIXME(jseyfried): `self.ctxt` should always equal `end.ctxt` here (cf. issue #23480).
-        // Return the macro span on its own to avoid weird diagnostic output. It is preferable to
-        // have an incomplete span than a completely nonsensical one.
-        if span_data.ctxt != end_data.ctxt {
-            if span_data.ctxt.is_root() {
-                return end;
-            } else if end_data.ctxt.is_root() {
-                return self;
+        match Span::prepare_to_combine(self, end) {
+            Ok((from, to, parent)) => {
+                Span::new(cmp::min(from.lo, to.lo), cmp::max(from.lo, to.lo), from.ctxt, parent)
             }
-            // Both spans fall within a macro.
-            // FIXME(estebank): check if it is the *same* macro.
+            Err(fallback) => fallback,
         }
-        Span::new(
-            span_data.lo,
-            end_data.lo,
-            if end_data.ctxt.is_root() { end_data.ctxt } else { span_data.ctxt },
-            if span_data.parent == end_data.parent { span_data.parent } else { None },
-        )
     }
 
     pub fn from_inner(self, inner: InnerSpan) -> Span {
@@ -1016,19 +1006,202 @@ impl Default for Span {
     }
 }
 
-impl<E: Encoder> Encodable<E> for Span {
-    default fn encode(&self, s: &mut E) {
-        let span = self.data();
-        span.lo.encode(s);
-        span.hi.encode(s);
+rustc_index::newtype_index! {
+    #[orderable]
+    #[debug_format = "AttrId({})"]
+    pub struct AttrId {}
+}
+
+/// This trait is used to allow encoder specific encodings of certain types.
+/// It is similar to rustc_type_ir's TyEncoder.
+pub trait SpanEncoder: Encoder {
+    fn encode_span(&mut self, span: Span);
+    fn encode_symbol(&mut self, symbol: Symbol);
+    fn encode_expn_id(&mut self, expn_id: ExpnId);
+    fn encode_syntax_context(&mut self, syntax_context: SyntaxContext);
+    /// As a local identifier, a `CrateNum` is only meaningful within its context, e.g. within a tcx.
+    /// Therefore, make sure to include the context when encode a `CrateNum`.
+    fn encode_crate_num(&mut self, crate_num: CrateNum);
+    fn encode_def_index(&mut self, def_index: DefIndex);
+    fn encode_def_id(&mut self, def_id: DefId);
+}
+
+impl SpanEncoder for FileEncoder {
+    fn encode_span(&mut self, span: Span) {
+        let span = span.data();
+        span.lo.encode(self);
+        span.hi.encode(self);
+    }
+
+    fn encode_symbol(&mut self, symbol: Symbol) {
+        self.emit_str(symbol.as_str());
+    }
+
+    fn encode_expn_id(&mut self, _expn_id: ExpnId) {
+        panic!("cannot encode `ExpnId` with `FileEncoder`");
+    }
+
+    fn encode_syntax_context(&mut self, _syntax_context: SyntaxContext) {
+        panic!("cannot encode `SyntaxContext` with `FileEncoder`");
+    }
+
+    fn encode_crate_num(&mut self, crate_num: CrateNum) {
+        self.emit_u32(crate_num.as_u32());
+    }
+
+    fn encode_def_index(&mut self, _def_index: DefIndex) {
+        panic!("cannot encode `DefIndex` with `FileEncoder`");
+    }
+
+    fn encode_def_id(&mut self, def_id: DefId) {
+        def_id.krate.encode(self);
+        def_id.index.encode(self);
     }
 }
-impl<D: Decoder> Decodable<D> for Span {
-    default fn decode(s: &mut D) -> Span {
-        let lo = Decodable::decode(s);
-        let hi = Decodable::decode(s);
+
+impl<E: SpanEncoder> Encodable<E> for Span {
+    fn encode(&self, s: &mut E) {
+        s.encode_span(*self);
+    }
+}
+
+impl<E: SpanEncoder> Encodable<E> for Symbol {
+    fn encode(&self, s: &mut E) {
+        s.encode_symbol(*self);
+    }
+}
+
+impl<E: SpanEncoder> Encodable<E> for ExpnId {
+    fn encode(&self, s: &mut E) {
+        s.encode_expn_id(*self)
+    }
+}
+
+impl<E: SpanEncoder> Encodable<E> for SyntaxContext {
+    fn encode(&self, s: &mut E) {
+        s.encode_syntax_context(*self)
+    }
+}
+
+impl<E: SpanEncoder> Encodable<E> for CrateNum {
+    fn encode(&self, s: &mut E) {
+        s.encode_crate_num(*self)
+    }
+}
+
+impl<E: SpanEncoder> Encodable<E> for DefIndex {
+    fn encode(&self, s: &mut E) {
+        s.encode_def_index(*self)
+    }
+}
+
+impl<E: SpanEncoder> Encodable<E> for DefId {
+    fn encode(&self, s: &mut E) {
+        s.encode_def_id(*self)
+    }
+}
+
+impl<E: SpanEncoder> Encodable<E> for AttrId {
+    fn encode(&self, _s: &mut E) {
+        // A fresh id will be generated when decoding
+    }
+}
+
+/// This trait is used to allow decoder specific encodings of certain types.
+/// It is similar to rustc_type_ir's TyDecoder.
+pub trait SpanDecoder: Decoder {
+    fn decode_span(&mut self) -> Span;
+    fn decode_symbol(&mut self) -> Symbol;
+    fn decode_expn_id(&mut self) -> ExpnId;
+    fn decode_syntax_context(&mut self) -> SyntaxContext;
+    fn decode_crate_num(&mut self) -> CrateNum;
+    fn decode_def_index(&mut self) -> DefIndex;
+    fn decode_def_id(&mut self) -> DefId;
+    fn decode_attr_id(&mut self) -> AttrId;
+}
+
+impl SpanDecoder for MemDecoder<'_> {
+    fn decode_span(&mut self) -> Span {
+        let lo = Decodable::decode(self);
+        let hi = Decodable::decode(self);
 
         Span::new(lo, hi, SyntaxContext::root(), None)
+    }
+
+    fn decode_symbol(&mut self) -> Symbol {
+        Symbol::intern(self.read_str())
+    }
+
+    fn decode_expn_id(&mut self) -> ExpnId {
+        panic!("cannot decode `ExpnId` with `MemDecoder`");
+    }
+
+    fn decode_syntax_context(&mut self) -> SyntaxContext {
+        panic!("cannot decode `SyntaxContext` with `MemDecoder`");
+    }
+
+    fn decode_crate_num(&mut self) -> CrateNum {
+        CrateNum::from_u32(self.read_u32())
+    }
+
+    fn decode_def_index(&mut self) -> DefIndex {
+        panic!("cannot decode `DefIndex` with `MemDecoder`");
+    }
+
+    fn decode_def_id(&mut self) -> DefId {
+        DefId { krate: Decodable::decode(self), index: Decodable::decode(self) }
+    }
+
+    fn decode_attr_id(&mut self) -> AttrId {
+        panic!("cannot decode `AttrId` with `MemDecoder`");
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for Span {
+    fn decode(s: &mut D) -> Span {
+        s.decode_span()
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for Symbol {
+    fn decode(s: &mut D) -> Symbol {
+        s.decode_symbol()
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for ExpnId {
+    fn decode(s: &mut D) -> ExpnId {
+        s.decode_expn_id()
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for SyntaxContext {
+    fn decode(s: &mut D) -> SyntaxContext {
+        s.decode_syntax_context()
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for CrateNum {
+    fn decode(s: &mut D) -> CrateNum {
+        s.decode_crate_num()
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for DefIndex {
+    fn decode(s: &mut D) -> DefIndex {
+        s.decode_def_index()
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for DefId {
+    fn decode(s: &mut D) -> DefId {
+        s.decode_def_id()
+    }
+}
+
+impl<D: SpanDecoder> Decodable<D> for AttrId {
+    fn decode(s: &mut D) -> AttrId {
+        s.decode_attr_id()
     }
 }
 
@@ -1360,7 +1533,7 @@ impl Clone for SourceFile {
     }
 }
 
-impl<S: Encoder> Encodable<S> for SourceFile {
+impl<S: SpanEncoder> Encodable<S> for SourceFile {
     fn encode(&self, s: &mut S) {
         self.name.encode(s);
         self.src_hash.encode(s);
@@ -1434,7 +1607,7 @@ impl<S: Encoder> Encodable<S> for SourceFile {
     }
 }
 
-impl<D: Decoder> Decodable<D> for SourceFile {
+impl<D: SpanDecoder> Decodable<D> for SourceFile {
     fn decode(d: &mut D) -> SourceFile {
         let name: FileName = Decodable::decode(d);
         let src_hash: SourceFileHash = Decodable::decode(d);

@@ -239,16 +239,13 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                         }
 
                         let generic_ty = self.interner().type_of(data.def_id);
-                        let concrete_ty = generic_ty.instantiate(self.interner(), args);
+                        let mut concrete_ty = generic_ty.instantiate(self.interner(), args);
                         self.anon_depth += 1;
                         if concrete_ty == ty {
-                            bug!(
-                                "infinite recursion generic_ty: {:#?}, args: {:#?}, \
-                                 concrete_ty: {:#?}, ty: {:#?}",
-                                generic_ty,
-                                args,
-                                concrete_ty,
-                                ty
+                            concrete_ty = Ty::new_error_with_message(
+                                self.interner(),
+                                DUMMY_SP,
+                                "recursive opaque type",
                             );
                         }
                         let folded_ty = ensure_sufficient_stack(|| self.try_fold_ty(concrete_ty));
@@ -275,10 +272,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for QueryNormalizer<'cx, 'tcx> 
                 let data = data.try_fold_with(self)?;
 
                 let mut orig_values = OriginalQueryValues::default();
-                // HACK(matthewjasper) `'static` is special-cased in selection,
-                // so we cannot canonicalize it.
-                let c_data = infcx
-                    .canonicalize_query_keep_static(self.param_env.and(data), &mut orig_values);
+                let c_data = infcx.canonicalize_query(self.param_env.and(data), &mut orig_values);
                 debug!("QueryNormalizer: c_data = {:#?}", c_data);
                 debug!("QueryNormalizer: orig_values = {:#?}", orig_values);
                 let result = match kind {

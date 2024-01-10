@@ -4,7 +4,9 @@ pub use self::plumbing::*;
 mod job;
 #[cfg(parallel_compiler)]
 pub use self::job::deadlock;
-pub use self::job::{print_query_stack, QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryMap};
+pub use self::job::{
+    print_query_stack, report_cycle, QueryInfo, QueryJob, QueryJobId, QueryJobInfo, QueryMap,
+};
 
 mod caches;
 pub use self::caches::{
@@ -33,7 +35,8 @@ pub struct QueryStackFrame {
     span: Option<Span>,
     pub def_id: Option<DefId>,
     pub def_kind: Option<DefKind>,
-    pub ty_adt_id: Option<DefId>,
+    /// A def-id that is extracted from a `Ty` in a query key
+    pub ty_def_id: Option<DefId>,
     pub dep_kind: DepKind,
     /// This hash is used to deterministically pick
     /// a query to remove cycles in the parallel compiler.
@@ -49,7 +52,7 @@ impl QueryStackFrame {
         def_id: Option<DefId>,
         def_kind: Option<DefKind>,
         dep_kind: DepKind,
-        ty_adt_id: Option<DefId>,
+        ty_def_id: Option<DefId>,
         _hash: impl FnOnce() -> Hash64,
     ) -> Self {
         Self {
@@ -57,7 +60,7 @@ impl QueryStackFrame {
             span,
             def_id,
             def_kind,
-            ty_adt_id,
+            ty_def_id,
             dep_kind,
             #[cfg(parallel_compiler)]
             hash: _hash(),

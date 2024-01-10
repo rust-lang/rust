@@ -122,8 +122,8 @@ pub fn is_const_evaluatable<'tcx>(
                         if span == rustc_span::DUMMY_SP { tcx.def_span(uv.def) } else { span },
                         "failed to evaluate generic const expression",
                     )
-                    .note("the crate this constant originates from uses `#![feature(generic_const_exprs)]`")
-                    .span_suggestion_verbose(
+                    .note_mv("the crate this constant originates from uses `#![feature(generic_const_exprs)]`")
+                    .span_suggestion_verbose_mv(
                         rustc_span::DUMMY_SP,
                         "consider enabling this feature",
                         "#![feature(generic_const_exprs)]\n",

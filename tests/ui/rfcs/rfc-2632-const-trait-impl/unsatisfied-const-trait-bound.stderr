@@ -7,16 +7,14 @@ LL | fn accept0<T: Trait>(_: Container<{ T::make() }>) {}
    = note: expected constant `false`
               found constant `true`
 
-error[E0277]: the trait bound `T: const Trait` is not satisfied
+error[E0308]: mismatched types
   --> $DIR/unsatisfied-const-trait-bound.rs:32:50
    |
 LL | const fn accept1<T: ~const Trait>(_: Container<{ T::make() }>) {}
-   |                                                  ^ the trait `const Trait` is not implemented for `T`
+   |                                                  ^^^^^^^^^ expected `false`, found `host`
    |
-help: consider further restricting this bound
-   |
-LL | const fn accept1<T: ~const Trait + const Trait>(_: Container<{ T::make() }>) {}
-   |                                  +++++++++++++
+   = note: expected constant `false`
+              found constant `host`
 
 error[E0277]: the trait bound `Ty: const Trait` is not satisfied
   --> $DIR/unsatisfied-const-trait-bound.rs:20:15

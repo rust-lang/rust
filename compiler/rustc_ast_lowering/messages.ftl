@@ -35,7 +35,7 @@ ast_lowering_bad_return_type_notation_output =
 
 ast_lowering_base_expression_double_dot =
     base expression required after `..`
-    .label = add a base expression here
+    .suggestion = add a base expression here
 
 ast_lowering_clobber_abi_not_supported =
     `clobber_abi` is not supported on this target
@@ -106,7 +106,8 @@ ast_lowering_misplaced_double_dot =
     .note = only allowed in tuple, tuple struct, and slice patterns
 
 ast_lowering_misplaced_impl_trait =
-    `impl Trait` only allowed in function and inherent method argument and return types, not in {$position}
+    `impl Trait` is not allowed in {$position}
+    .note = `impl Trait` is only allowed in arguments and return types of functions and methods
 
 ast_lowering_misplaced_relax_trait_bound =
     `?Trait` bounds are only permitted at the point where a type parameter is declared

@@ -62,8 +62,14 @@ impl Finder {
 }
 
 pub fn check(build: &mut Build) {
-    let skip_target_sanity =
+    let mut skip_target_sanity =
         env::var_os("BOOTSTRAP_SKIP_TARGET_SANITY").is_some_and(|s| s == "1" || s == "true");
+
+    // Skip target sanity checks when we are doing anything with mir-opt tests or Miri
+    let skipped_paths = [OsStr::new("mir-opt"), OsStr::new("miri")];
+    skip_target_sanity |= build.config.paths.iter().any(|path| {
+        path.components().any(|component| skipped_paths.contains(&component.as_os_str()))
+    });
 
     let path = env::var_os("PATH").unwrap_or_default();
     // On Windows, quotes are invalid characters for filename paths, and if

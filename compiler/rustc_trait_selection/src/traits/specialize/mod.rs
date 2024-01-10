@@ -345,7 +345,7 @@ fn report_negative_positive_conflict<'tcx>(
     positive_impl_def_id: DefId,
     sg: &mut specialization_graph::Graph,
 ) {
-    let mut err = tcx.dcx().create_err(NegativePositiveConflict {
+    let err = tcx.dcx().create_err(NegativePositiveConflict {
         impl_span: tcx.def_span(local_impl_def_id),
         trait_desc: overlap.trait_ref,
         self_ty: overlap.self_ty,

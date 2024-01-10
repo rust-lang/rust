@@ -136,7 +136,7 @@ pub fn get_unique_attr<'a>(
         if let Some(duplicate) = unique_attr {
             sess.dcx()
                 .struct_span_err(attr.span, format!("`{name}` is defined multiple times"))
-                .span_note(duplicate.span, "first definition found here")
+                .span_note_mv(duplicate.span, "first definition found here")
                 .emit();
         } else {
             unique_attr = Some(attr);

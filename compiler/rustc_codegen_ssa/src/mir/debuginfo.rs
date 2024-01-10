@@ -228,21 +228,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// In order to have a good line stepping behavior in debugger, we overwrite debug
     /// locations of macro expansions with that of the outermost expansion site (when the macro is
     /// annotated with `#[collapse_debuginfo]` or when `-Zdebug-macros` is provided).
-    fn adjust_span_for_debugging(&self, mut span: Span) -> Span {
+    fn adjust_span_for_debugging(&self, span: Span) -> Span {
         // Bail out if debug info emission is not enabled.
         if self.debug_context.is_none() {
             return span;
         }
-
-        if self.cx.tcx().should_collapse_debuginfo(span) {
-            // Walk up the macro expansion chain until we reach a non-expanded span.
-            // We also stop at the function body level because no line stepping can occur
-            // at the level above that.
-            // Use span of the outermost expansion site, while keeping the original lexical scope.
-            span = rustc_span::hygiene::walk_chain(span, self.mir.span.ctxt());
-        }
-
-        span
+        // Walk up the macro expansion chain until we reach a non-expanded span.
+        // We also stop at the function body level because no line stepping can occur
+        // at the level above that.
+        // Use span of the outermost expansion site, while keeping the original lexical scope.
+        self.cx.tcx().collapsed_debuginfo(span, self.mir.span)
     }
 
     fn spill_operand_to_stack(

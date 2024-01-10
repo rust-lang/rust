@@ -421,7 +421,7 @@ fn check_opaque_type_parameter_valid(
             return Err(tcx
                 .dcx()
                 .struct_span_err(span, "non-defining opaque type use in defining scope")
-                .span_note(spans, format!("{descr} used multiple times"))
+                .span_note_mv(spans, format!("{descr} used multiple times"))
                 .emit());
         }
     }

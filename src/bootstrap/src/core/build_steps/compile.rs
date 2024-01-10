@@ -46,6 +46,7 @@ pub struct Std {
     /// but we need to use the downloaded copy of std for linking to rustdoc. Allow this to be overriden by `builder.ensure` from other steps.
     force_recompile: bool,
     extra_rust_args: &'static [&'static str],
+    is_for_mir_opt_tests: bool,
 }
 
 impl Std {
@@ -56,6 +57,7 @@ impl Std {
             crates: Default::default(),
             force_recompile: false,
             extra_rust_args: &[],
+            is_for_mir_opt_tests: false,
         }
     }
 
@@ -66,6 +68,18 @@ impl Std {
             crates: Default::default(),
             force_recompile: true,
             extra_rust_args: &[],
+            is_for_mir_opt_tests: false,
+        }
+    }
+
+    pub fn new_for_mir_opt_tests(compiler: Compiler, target: TargetSelection) -> Self {
+        Self {
+            target,
+            compiler,
+            crates: Default::default(),
+            force_recompile: false,
+            extra_rust_args: &[],
+            is_for_mir_opt_tests: true,
         }
     }
 
@@ -80,6 +94,7 @@ impl Std {
             crates: Default::default(),
             force_recompile: false,
             extra_rust_args,
+            is_for_mir_opt_tests: false,
         }
     }
 }
@@ -109,6 +124,7 @@ impl Step for Std {
             crates,
             force_recompile: false,
             extra_rust_args: &[],
+            is_for_mir_opt_tests: false,
         });
     }
 
@@ -206,11 +222,19 @@ impl Step for Std {
             }
         }
 
-        let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "build");
-        std_cargo(builder, target, compiler.stage, &mut cargo);
-        for krate in &*self.crates {
-            cargo.arg("-p").arg(krate);
-        }
+        let mut cargo = if self.is_for_mir_opt_tests {
+            let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "rustc");
+            cargo.arg("-p").arg("std").arg("--crate-type=lib");
+            std_cargo(builder, target, compiler.stage, &mut cargo);
+            cargo
+        } else {
+            let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "build");
+            std_cargo(builder, target, compiler.stage, &mut cargo);
+            for krate in &*self.crates {
+                cargo.arg("-p").arg(krate);
+            }
+            cargo
+        };
 
         // See src/bootstrap/synthetic_targets.rs
         if target.is_synthetic() {
@@ -382,9 +406,7 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
 
     // Determine if we're going to compile in optimized C intrinsics to
     // the `compiler-builtins` crate. These intrinsics live in LLVM's
-    // `compiler-rt` repository, but our `src/llvm-project` submodule isn't
-    // always checked out, so we need to conditionally look for this. (e.g. if
-    // an external LLVM is used we skip the LLVM submodule checkout).
+    // `compiler-rt` repository.
     //
     // Note that this shouldn't affect the correctness of `compiler-builtins`,
     // but only its speed. Some intrinsics in C haven't been translated to Rust
@@ -395,8 +417,21 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
     // If `compiler-rt` is available ensure that the `c` feature of the
     // `compiler-builtins` crate is enabled and it's configured to learn where
     // `compiler-rt` is located.
-    let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
-    let compiler_builtins_c_feature = if compiler_builtins_root.exists() {
+    let compiler_builtins_c_feature = if builder.config.optimized_compiler_builtins {
+        // NOTE: this interacts strangely with `llvm-has-rust-patches`. In that case, we enforce `submodules = false`, so this is a no-op.
+        // But, the user could still decide to manually use an in-tree submodule.
+        //
+        // NOTE: if we're using system llvm, we'll end up building a version of `compiler-rt` that doesn't match the LLVM we're linking to.
+        // That's probably ok? At least, the difference wasn't enforced before. There's a comment in
+        // the compiler_builtins build script that makes me nervous, though:
+        // https://github.com/rust-lang/compiler-builtins/blob/31ee4544dbe47903ce771270d6e3bea8654e9e50/build.rs#L575-L579
+        builder.update_submodule(&Path::new("src").join("llvm-project"));
+        let compiler_builtins_root = builder.src.join("src/llvm-project/compiler-rt");
+        if !compiler_builtins_root.exists() {
+            panic!(
+                "need LLVM sources available to build `compiler-rt`, but they weren't present; consider enabling `build.submodules = true` or disabling `optimized-compiler-builtins`"
+            );
+        }
         // Note that `libprofiler_builtins/build.rs` also computes this so if
         // you're changing something here please also change that.
         cargo.env("RUST_COMPILER_RT_ROOT", &compiler_builtins_root);
@@ -905,34 +940,6 @@ impl Step for Rustc {
             ));
         }
 
-        // We currently don't support cross-crate LTO in stage0. This also isn't hugely necessary
-        // and may just be a time sink.
-        if compiler.stage != 0 {
-            match builder.config.rust_lto {
-                RustcLto::Thin | RustcLto::Fat => {
-                    // Since using LTO for optimizing dylibs is currently experimental,
-                    // we need to pass -Zdylib-lto.
-                    cargo.rustflag("-Zdylib-lto");
-                    // Cargo by default passes `-Cembed-bitcode=no` and doesn't pass `-Clto` when
-                    // compiling dylibs (and their dependencies), even when LTO is enabled for the
-                    // crate. Therefore, we need to override `-Clto` and `-Cembed-bitcode` here.
-                    let lto_type = match builder.config.rust_lto {
-                        RustcLto::Thin => "thin",
-                        RustcLto::Fat => "fat",
-                        _ => unreachable!(),
-                    };
-                    cargo.rustflag(&format!("-Clto={lto_type}"));
-                    cargo.rustflag("-Cembed-bitcode=yes");
-                }
-                RustcLto::ThinLocal => { /* Do nothing, this is the default */ }
-                RustcLto::Off => {
-                    cargo.rustflag("-Clto=off");
-                }
-            }
-        } else if builder.config.rust_lto == RustcLto::Off {
-            cargo.rustflag("-Clto=off");
-        }
-
         for krate in &*self.crates {
             cargo.arg("-p").arg(krate);
         }
@@ -988,6 +995,34 @@ pub fn rustc_cargo(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelec
         .arg(builder.src.join("compiler/rustc/Cargo.toml"));
 
     cargo.rustdocflag("-Zcrate-attr=warn(rust_2018_idioms)");
+
+    // We currently don't support cross-crate LTO in stage0. This also isn't hugely necessary
+    // and may just be a time sink.
+    if stage != 0 {
+        match builder.config.rust_lto {
+            RustcLto::Thin | RustcLto::Fat => {
+                // Since using LTO for optimizing dylibs is currently experimental,
+                // we need to pass -Zdylib-lto.
+                cargo.rustflag("-Zdylib-lto");
+                // Cargo by default passes `-Cembed-bitcode=no` and doesn't pass `-Clto` when
+                // compiling dylibs (and their dependencies), even when LTO is enabled for the
+                // crate. Therefore, we need to override `-Clto` and `-Cembed-bitcode` here.
+                let lto_type = match builder.config.rust_lto {
+                    RustcLto::Thin => "thin",
+                    RustcLto::Fat => "fat",
+                    _ => unreachable!(),
+                };
+                cargo.rustflag(&format!("-Clto={lto_type}"));
+                cargo.rustflag("-Cembed-bitcode=yes");
+            }
+            RustcLto::ThinLocal => { /* Do nothing, this is the default */ }
+            RustcLto::Off => {
+                cargo.rustflag("-Clto=off");
+            }
+        }
+    } else if builder.config.rust_lto == RustcLto::Off {
+        cargo.rustflag("-Clto=off");
+    }
 
     rustc_cargo_env(builder, cargo, target, stage);
 }

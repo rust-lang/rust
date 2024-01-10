@@ -338,7 +338,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             return;
         }
 
-        let mut err = op.build_error(self.ccx, span);
+        let err = op.build_error(self.ccx, span);
         assert!(err.is_error());
 
         match op.importance() {

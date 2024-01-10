@@ -17,7 +17,7 @@ use smallvec::SmallVec;
 use syntax::{
     ast::{
         self, ArrayExprKind, AstChildren, BlockExpr, HasArgList, HasAttrs, HasLoopBody, HasName,
-        SlicePatComponents,
+        RangeItem, SlicePatComponents,
     },
     AstNode, AstPtr, SyntaxNodePtr,
 };
@@ -622,7 +622,8 @@ impl ExprCollector<'_> {
             ast::Expr::IndexExpr(e) => {
                 let base = self.collect_expr_opt(e.base());
                 let index = self.collect_expr_opt(e.index());
-                self.alloc_expr(Expr::Index { base, index }, syntax_ptr)
+                let is_assignee_expr = self.is_lowering_assignee_expr;
+                self.alloc_expr(Expr::Index { base, index, is_assignee_expr }, syntax_ptr)
             }
             ast::Expr::RangeExpr(e) => {
                 let lhs = e.start().map(|lhs| self.collect_expr(lhs));
@@ -1609,7 +1610,7 @@ impl ExprCollector<'_> {
                 |name| self.alloc_expr_desugared(Expr::Path(Path::from(name))),
                 |name, span| {
                     if let Some(span) = span {
-                        mappings.push((span, name.clone()))
+                        mappings.push((span, name))
                     }
                 },
             ),

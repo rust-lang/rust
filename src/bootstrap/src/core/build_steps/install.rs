@@ -204,15 +204,13 @@ install!((self, builder, _config),
         install_sh(builder, "docs", self.compiler.stage, Some(self.target), &tarball);
     };
     Std, path = "library/std", true, only_hosts: false, {
-        for target in &builder.targets {
-            // `expect` should be safe, only None when host != build, but this
-            // only runs when host == build
-            let tarball = builder.ensure(dist::Std {
-                compiler: self.compiler,
-                target: *target
-            }).expect("missing std");
-            install_sh(builder, "std", self.compiler.stage, Some(*target), &tarball);
-        }
+        // `expect` should be safe, only None when host != build, but this
+        // only runs when host == build
+        let tarball = builder.ensure(dist::Std {
+            compiler: self.compiler,
+            target: self.target
+        }).expect("missing std");
+        install_sh(builder, "std", self.compiler.stage, Some(self.target), &tarball);
     };
     Cargo, alias = "cargo", Self::should_build(_config), only_hosts: true, {
         let tarball = builder

@@ -818,7 +818,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             self.r
                 .dcx()
                 .struct_span_err(item.span, "`extern crate self;` requires renaming")
-                .span_suggestion(
+                .span_suggestion_mv(
                     item.span,
                     "rename the `self` crate to be able to import it",
                     "extern crate self as name;",
@@ -999,7 +999,7 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
             let msg = format!("`{name}` is already in scope");
             let note =
                 "macro-expanded `#[macro_use]`s may not shadow existing macros (see RFC 1560)";
-            self.r.dcx().struct_span_err(span, msg).note(note).emit();
+            self.r.dcx().struct_span_err(span, msg).note_mv(note).emit();
         }
     }
 
@@ -1110,10 +1110,9 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
                 let msg = "`#[macro_escape]` is a deprecated synonym for `#[macro_use]`";
                 let mut err = self.r.dcx().struct_span_warn(attr.span, msg);
                 if let ast::AttrStyle::Inner = attr.style {
-                    err.help("try an outer attribute: `#[macro_use]`").emit();
-                } else {
-                    err.emit();
+                    err.help("try an outer attribute: `#[macro_use]`");
                 }
+                err.emit();
             } else if !attr.has_name(sym::macro_use) {
                 continue;
             }

@@ -515,7 +515,7 @@ fn render_const_scalar(
             TyKind::Dyn(_) => {
                 let addr = usize::from_le_bytes(b[0..b.len() / 2].try_into().unwrap());
                 let ty_id = usize::from_le_bytes(b[b.len() / 2..].try_into().unwrap());
-                let Ok(t) = memory_map.vtable.ty(ty_id) else {
+                let Ok(t) = memory_map.vtable_ty(ty_id) else {
                     return f.write_str("<ty-missing-in-vtable-map>");
                 };
                 let Ok(layout) = f.db.layout_of_ty(t.clone(), trait_env) else {
@@ -609,7 +609,7 @@ fn render_const_scalar(
                 }
                 hir_def::AdtId::EnumId(e) => {
                     let Some((var_id, var_layout)) =
-                        detect_variant_from_bytes(&layout, f.db, trait_env.clone(), b, e)
+                        detect_variant_from_bytes(&layout, f.db, trait_env, b, e)
                     else {
                         return f.write_str("<failed-to-detect-variant>");
                     };

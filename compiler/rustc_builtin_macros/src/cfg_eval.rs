@@ -200,7 +200,7 @@ impl CfgEval<'_, '_> {
         parser.capture_cfg = true;
         match parse_annotatable_with(&mut parser) {
             Ok(a) => annotatable = a,
-            Err(mut err) => {
+            Err(err) => {
                 err.emit();
                 return Some(annotatable);
             }

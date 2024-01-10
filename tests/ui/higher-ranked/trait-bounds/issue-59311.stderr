@@ -12,7 +12,7 @@ error: higher-ranked lifetime error
 LL |     v.t(|| {});
    |         ^^^^^
    |
-   = note: could not prove `for<'a> &'a V: 'static`
+   = note: could not prove `for<'a> &'a V: 'b`
 
 error: aborting due to 2 previous errors
 

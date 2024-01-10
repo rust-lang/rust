@@ -357,7 +357,6 @@ pub fn struct_lint_level(
         if let Level::Expect(_) = level {
             let name = lint.name_lower();
             err.code(DiagnosticId::Lint { name, has_future_breakage, is_force_warn: false });
-
             decorate(&mut err);
             err.emit();
             return;

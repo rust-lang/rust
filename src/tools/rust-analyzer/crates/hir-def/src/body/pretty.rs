@@ -376,7 +376,7 @@ impl Printer<'_> {
                     w!(self, ") ");
                 }
             }
-            Expr::Index { base, index } => {
+            Expr::Index { base, index, is_assignee_expr: _ } => {
                 self.print_expr(*base);
                 w!(self, "[");
                 self.print_expr(*index);

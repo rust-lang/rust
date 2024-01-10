@@ -1,5 +1,5 @@
 use std::collections::hash_map::Entry;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, VecDeque};
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_middle::ty::TyCtxt;
@@ -409,8 +409,10 @@ pub(crate) fn build_index<'tcx>(
             let mut full_paths = Vec::with_capacity(self.items.len());
             let mut descriptions = Vec::with_capacity(self.items.len());
             let mut parents = Vec::with_capacity(self.items.len());
-            let mut functions = Vec::with_capacity(self.items.len());
+            let mut functions = String::with_capacity(self.items.len());
             let mut deprecated = Vec::with_capacity(self.items.len());
+
+            let mut backref_queue = VecDeque::new();
 
             for (index, item) in self.items.iter().enumerate() {
                 let n = item.ty as u8;
@@ -434,27 +436,10 @@ pub(crate) fn build_index<'tcx>(
                     full_paths.push((index, &item.path));
                 }
 
-                // Fake option to get `0` out as a sentinel instead of `null`.
-                // We want to use `0` because it's three less bytes.
-                enum FunctionOption<'a> {
-                    Function(&'a IndexItemFunctionType),
-                    None,
+                match &item.search_type {
+                    Some(ty) => ty.write_to_string(&mut functions, &mut backref_queue),
+                    None => functions.push('`'),
                 }
-                impl<'a> Serialize for FunctionOption<'a> {
-                    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-                    where
-                        S: Serializer,
-                    {
-                        match self {
-                            FunctionOption::None => 0.serialize(serializer),
-                            FunctionOption::Function(ty) => ty.serialize(serializer),
-                        }
-                    }
-                }
-                functions.push(match &item.search_type {
-                    Some(ty) => FunctionOption::Function(ty),
-                    None => FunctionOption::None,
-                });
 
                 if item.deprecation.is_some() {
                     deprecated.push(index);
@@ -581,6 +566,9 @@ fn get_index_type_id(
         // The type parameters are converted to generics in `simplify_fn_type`
         clean::Slice(_) => Some(RenderTypeId::Primitive(clean::PrimitiveType::Slice)),
         clean::Array(_, _) => Some(RenderTypeId::Primitive(clean::PrimitiveType::Array)),
+        clean::Tuple(ref n) if n.is_empty() => {
+            Some(RenderTypeId::Primitive(clean::PrimitiveType::Unit))
+        }
         clean::Tuple(_) => Some(RenderTypeId::Primitive(clean::PrimitiveType::Tuple)),
         clean::QPath(ref data) => {
             if data.self_type.is_self_type()

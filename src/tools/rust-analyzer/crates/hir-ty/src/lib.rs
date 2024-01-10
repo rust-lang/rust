@@ -37,22 +37,22 @@ mod tests;
 mod test_db;
 
 use std::{
-    collections::{hash_map::Entry, HashMap},
-    hash::Hash,
+    collections::hash_map::Entry,
+    hash::{BuildHasherDefault, Hash},
 };
 
 use chalk_ir::{
     fold::{Shift, TypeFoldable},
     interner::HasInterner,
     visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
-    NoSolution, TyData,
+    NoSolution,
 };
 use either::Either;
 use hir_def::{hir::ExprId, type_ref::Rawness, GeneralConstId, TypeOrConstParamId};
 use hir_expand::name;
 use la_arena::{Arena, Idx};
 use mir::{MirEvalError, VTableMap};
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::ast::{make, ConstArg};
 use traits::FnTrait;
 use triomphe::Arc;
@@ -152,31 +152,63 @@ pub type DomainGoal = chalk_ir::DomainGoal<Interner>;
 pub type Goal = chalk_ir::Goal<Interner>;
 pub type AliasEq = chalk_ir::AliasEq<Interner>;
 pub type Solution = chalk_solve::Solution<Interner>;
+pub type Constraint = chalk_ir::Constraint<Interner>;
+pub type Constraints = chalk_ir::Constraints<Interner>;
 pub type ConstrainedSubst = chalk_ir::ConstrainedSubst<Interner>;
 pub type Guidance = chalk_solve::Guidance<Interner>;
 pub type WhereClause = chalk_ir::WhereClause<Interner>;
+
+pub type CanonicalVarKind = chalk_ir::CanonicalVarKind<Interner>;
+pub type GoalData = chalk_ir::GoalData<Interner>;
+pub type Goals = chalk_ir::Goals<Interner>;
+pub type ProgramClauseData = chalk_ir::ProgramClauseData<Interner>;
+pub type ProgramClause = chalk_ir::ProgramClause<Interner>;
+pub type ProgramClauses = chalk_ir::ProgramClauses<Interner>;
+pub type TyData = chalk_ir::TyData<Interner>;
+pub type Variances = chalk_ir::Variances<Interner>;
 
 /// A constant can have reference to other things. Memory map job is holding
 /// the necessary bits of memory of the const eval session to keep the constant
 /// meaningful.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub struct MemoryMap {
-    pub memory: HashMap<usize, Vec<u8>>,
-    pub vtable: VTableMap,
+pub enum MemoryMap {
+    #[default]
+    Empty,
+    Simple(Box<[u8]>),
+    Complex(Box<ComplexMemoryMap>),
 }
 
-impl MemoryMap {
-    fn insert(&mut self, addr: usize, x: Vec<u8>) {
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct ComplexMemoryMap {
+    memory: FxHashMap<usize, Box<[u8]>>,
+    vtable: VTableMap,
+}
+
+impl ComplexMemoryMap {
+    fn insert(&mut self, addr: usize, val: Box<[u8]>) {
         match self.memory.entry(addr) {
             Entry::Occupied(mut e) => {
-                if e.get().len() < x.len() {
-                    e.insert(x);
+                if e.get().len() < val.len() {
+                    e.insert(val);
                 }
             }
             Entry::Vacant(e) => {
-                e.insert(x);
+                e.insert(val);
             }
         }
+    }
+}
+
+impl MemoryMap {
+    pub fn vtable_ty(&self, id: usize) -> Result<&Ty, MirEvalError> {
+        match self {
+            MemoryMap::Empty | MemoryMap::Simple(_) => Err(MirEvalError::InvalidVTableId(id)),
+            MemoryMap::Complex(cm) => cm.vtable.ty(id),
+        }
+    }
+
+    fn simple(v: Box<[u8]>) -> Self {
+        MemoryMap::Simple(v)
     }
 
     /// This functions convert each address by a function `f` which gets the byte intervals and assign an address
@@ -185,22 +217,33 @@ impl MemoryMap {
     fn transform_addresses(
         &self,
         mut f: impl FnMut(&[u8], usize) -> Result<usize, MirEvalError>,
-    ) -> Result<HashMap<usize, usize>, MirEvalError> {
-        self.memory
-            .iter()
-            .map(|x| {
-                let addr = *x.0;
-                let align = if addr == 0 { 64 } else { (addr - (addr & (addr - 1))).min(64) };
-                Ok((addr, f(x.1, align)?))
-            })
-            .collect()
+    ) -> Result<FxHashMap<usize, usize>, MirEvalError> {
+        let mut transform = |(addr, val): (&usize, &Box<[u8]>)| {
+            let addr = *addr;
+            let align = if addr == 0 { 64 } else { (addr - (addr & (addr - 1))).min(64) };
+            f(val, align).and_then(|it| Ok((addr, it)))
+        };
+        match self {
+            MemoryMap::Empty => Ok(Default::default()),
+            MemoryMap::Simple(m) => transform((&0, m)).map(|(addr, val)| {
+                let mut map = FxHashMap::with_capacity_and_hasher(1, BuildHasherDefault::default());
+                map.insert(addr, val);
+                map
+            }),
+            MemoryMap::Complex(cm) => cm.memory.iter().map(transform).collect(),
+        }
     }
 
-    fn get<'a>(&'a self, addr: usize, size: usize) -> Option<&'a [u8]> {
+    fn get(&self, addr: usize, size: usize) -> Option<&[u8]> {
         if size == 0 {
             Some(&[])
         } else {
-            self.memory.get(&addr)?.get(0..size)
+            match self {
+                MemoryMap::Empty => Some(&[]),
+                MemoryMap::Simple(m) if addr == 0 => m.get(0..size),
+                MemoryMap::Simple(_) => None,
+                MemoryMap::Complex(cm) => cm.memory.get(&addr)?.get(0..size),
+            }
         }
     }
 }
@@ -208,7 +251,7 @@ impl MemoryMap {
 /// A concrete constant value
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ConstScalar {
-    Bytes(Vec<u8>, MemoryMap),
+    Bytes(Box<[u8]>, MemoryMap),
     // FIXME: this is a hack to get around chalk not being able to represent unevaluatable
     // constants
     UnevaluatedConst(GeneralConstId, Substitution),

@@ -2,7 +2,7 @@
     "extends": "@tsconfig/strictest/tsconfig.json",
     "compilerOptions": {
         "esModuleInterop": false,
-        "module": "CommonJS",
+        "module": "Node16",
         "moduleResolution": "Node16",
         "target": "ES2021",
         "outDir": "out",

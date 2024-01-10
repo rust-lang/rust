@@ -15,7 +15,7 @@ use hir_def::{
     path::Path,
     resolver::{resolver_for_expr, HasResolver, ResolveValueResult, ValueNs},
     AdtId, DefWithBodyId, EnumVariantId, GeneralConstId, HasModule, ItemContainerId, LocalFieldId,
-    Lookup, TraitId, TypeOrConstParamId,
+    Lookup, TraitId, TupleId, TypeOrConstParamId,
 };
 use hir_expand::name::Name;
 use la_arena::ArenaMap;
@@ -177,7 +177,7 @@ impl MirLowerError {
                 )?;
                 writeln!(f, "Provided args: [")?;
                 for g in subst.iter(Interner) {
-                    write!(f, "    {},", g.display(db).to_string())?;
+                    write!(f, "    {},", g.display(db))?;
                 }
                 writeln!(f, "]")?;
             }
@@ -540,7 +540,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 self.write_bytes_to_place(
                     then_target,
                     place.clone(),
-                    vec![1],
+                    Box::new([1]),
                     TyBuilder::bool(),
                     MirSpan::Unknown,
                 )?;
@@ -548,7 +548,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                     self.write_bytes_to_place(
                         else_target,
                         place,
-                        vec![0],
+                        Box::new([0]),
                         TyBuilder::bool(),
                         MirSpan::Unknown,
                     )?;
@@ -602,7 +602,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         generic_args,
                     )
                     .intern(Interner);
-                    let func = Operand::from_bytes(vec![], ty);
+                    let func = Operand::from_bytes(Box::default(), ty);
                     return self.lower_call_and_args(
                         func,
                         iter::once(*callee).chain(args.iter().copied()),
@@ -615,7 +615,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 let callee_ty = self.expr_ty_after_adjustments(*callee);
                 match &callee_ty.kind(Interner) {
                     chalk_ir::TyKind::FnDef(..) => {
-                        let func = Operand::from_bytes(vec![], callee_ty.clone());
+                        let func = Operand::from_bytes(Box::default(), callee_ty.clone());
                         self.lower_call_and_args(
                             func,
                             args.iter().copied(),
@@ -828,12 +828,12 @@ impl<'ctx> MirLowerCtx<'ctx> {
                                         Some(it) => it,
                                         None => {
                                             let p = sp.project(
-                                                ProjectionElem::Field(FieldId {
+                                                ProjectionElem::Field(Either::Left(FieldId {
                                                     parent: variant_id,
                                                     local_id: LocalFieldId::from_raw(RawIdx::from(
                                                         i as u32,
                                                     )),
-                                                }),
+                                                })),
                                                 &mut self.result.projection_store,
                                             );
                                             Operand::Copy(p)
@@ -855,7 +855,10 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         let local_id =
                             variant_data.field(name).ok_or(MirLowerError::UnresolvedField)?;
                         let place = place.project(
-                            PlaceElem::Field(FieldId { parent: union_id.into(), local_id }),
+                            PlaceElem::Field(Either::Left(FieldId {
+                                parent: union_id.into(),
+                                local_id,
+                            })),
                             &mut self.result.projection_store,
                         );
                         self.lower_expr_to_place(*expr, place, current)
@@ -1110,7 +1113,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                                     Some("start") => lp.take(),
                                     Some("end") => rp.take(),
                                     Some("exhausted") => {
-                                        Some(Operand::from_bytes(vec![0], TyBuilder::bool()))
+                                        Some(Operand::from_bytes(Box::new([0]), TyBuilder::bool()))
                                     }
                                     _ => None,
                                 };
@@ -1142,8 +1145,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
                                 .map(|it| match it {
                                     ProjectionElem::Deref => ProjectionElem::Deref,
                                     ProjectionElem::Field(it) => ProjectionElem::Field(it),
-                                    ProjectionElem::TupleOrClosureField(it) => {
-                                        ProjectionElem::TupleOrClosureField(it)
+                                    ProjectionElem::ClosureField(it) => {
+                                        ProjectionElem::ClosureField(it)
                                     }
                                     ProjectionElem::ConstantIndex { offset, from_end } => {
                                         ProjectionElem::ConstantIndex { offset, from_end }
@@ -1273,7 +1276,10 @@ impl<'ctx> MirLowerCtx<'ctx> {
             Expr::Tuple { exprs, is_assignee_expr: _ } => {
                 for (i, expr) in exprs.iter().enumerate() {
                     let rhs = rhs.project(
-                        ProjectionElem::TupleOrClosureField(i),
+                        ProjectionElem::Field(Either::Right(TupleFieldId {
+                            tuple: TupleId(!0), // Dummy this as its unused
+                            index: i as u32,
+                        })),
                         &mut self.result.projection_store,
                     );
                     let Some(c) = self.lower_destructing_assignment(current, *expr, rhs, span)?
@@ -1337,11 +1343,14 @@ impl<'ctx> MirLowerCtx<'ctx> {
     fn push_field_projection(&mut self, place: &mut Place, expr_id: ExprId) -> Result<()> {
         if let Expr::Field { expr, name } = &self.body[expr_id] {
             if let TyKind::Tuple(..) = self.expr_ty_after_adjustments(*expr).kind(Interner) {
-                let index = name
-                    .as_tuple_index()
-                    .ok_or(MirLowerError::TypeError("named field on tuple"))?;
+                let index =
+                    name.as_tuple_index().ok_or(MirLowerError::TypeError("named field on tuple"))?
+                        as u32;
                 *place = place.project(
-                    ProjectionElem::TupleOrClosureField(index),
+                    ProjectionElem::Field(Either::Right(TupleFieldId {
+                        tuple: TupleId(!0), // dummy as its unused
+                        index,
+                    })),
                     &mut self.result.projection_store,
                 )
             } else {
@@ -1386,46 +1395,43 @@ impl<'ctx> MirLowerCtx<'ctx> {
     }
 
     fn lower_literal_to_operand(&mut self, ty: Ty, l: &Literal) -> Result<Operand> {
-        let size = self
-            .db
-            .layout_of_ty(ty.clone(), self.db.trait_environment_for_body(self.owner))?
-            .size
-            .bytes_usize();
-        let bytes = match l {
+        let size = || {
+            self.db
+                .layout_of_ty(ty.clone(), self.db.trait_environment_for_body(self.owner))
+                .map(|it| it.size.bytes_usize())
+        };
+        const USIZE_SIZE: usize = mem::size_of::<usize>();
+        let bytes: Box<[_]> = match l {
             hir_def::hir::Literal::String(b) => {
-                let b = b.as_bytes();
-                let mut data = Vec::with_capacity(mem::size_of::<usize>() * 2);
-                data.extend(0usize.to_le_bytes());
-                data.extend(b.len().to_le_bytes());
-                let mut mm = MemoryMap::default();
-                mm.insert(0, b.to_vec());
-                return Ok(Operand::from_concrete_const(data, mm, ty));
+                let mut data = [0; { 2 * USIZE_SIZE }];
+                data[..USIZE_SIZE].copy_from_slice(&0usize.to_le_bytes());
+                data[USIZE_SIZE..].copy_from_slice(&b.len().to_le_bytes());
+                let mm = MemoryMap::simple(b.as_bytes().into());
+                return Ok(Operand::from_concrete_const(Box::new(data), mm, ty));
             }
             hir_def::hir::Literal::CString(b) => {
-                let bytes = b.iter().copied().chain(iter::once(0)).collect::<Vec<_>>();
+                let bytes = b.iter().copied().chain(iter::once(0)).collect::<Box<_>>();
 
-                let mut data = Vec::with_capacity(mem::size_of::<usize>() * 2);
-                data.extend(0usize.to_le_bytes());
-                data.extend(bytes.len().to_le_bytes());
-                let mut mm = MemoryMap::default();
-                mm.insert(0, bytes);
-                return Ok(Operand::from_concrete_const(data, mm, ty));
+                let mut data = [0; { 2 * USIZE_SIZE }];
+                data[..USIZE_SIZE].copy_from_slice(&0usize.to_le_bytes());
+                data[USIZE_SIZE..].copy_from_slice(&bytes.len().to_le_bytes());
+                let mm = MemoryMap::simple(bytes);
+                return Ok(Operand::from_concrete_const(Box::new(data), mm, ty));
             }
             hir_def::hir::Literal::ByteString(b) => {
-                let mut data = Vec::with_capacity(mem::size_of::<usize>() * 2);
-                data.extend(0usize.to_le_bytes());
-                data.extend(b.len().to_le_bytes());
-                let mut mm = MemoryMap::default();
-                mm.insert(0, b.to_vec());
-                return Ok(Operand::from_concrete_const(data, mm, ty));
+                let mut data = [0; { 2 * USIZE_SIZE }];
+                data[..USIZE_SIZE].copy_from_slice(&0usize.to_le_bytes());
+                data[USIZE_SIZE..].copy_from_slice(&b.len().to_le_bytes());
+                let mm = MemoryMap::simple(b.clone());
+                return Ok(Operand::from_concrete_const(Box::new(data), mm, ty));
             }
-            hir_def::hir::Literal::Char(c) => u32::from(*c).to_le_bytes().into(),
-            hir_def::hir::Literal::Bool(b) => vec![*b as u8],
-            hir_def::hir::Literal::Int(it, _) => it.to_le_bytes()[0..size].into(),
-            hir_def::hir::Literal::Uint(it, _) => it.to_le_bytes()[0..size].into(),
-            hir_def::hir::Literal::Float(f, _) => match size {
-                8 => f.into_f64().to_le_bytes().into(),
-                4 => f.into_f32().to_le_bytes().into(),
+            hir_def::hir::Literal::Char(c) => Box::new(u32::from(*c).to_le_bytes()),
+            hir_def::hir::Literal::Bool(b) => Box::new([*b as u8]),
+            hir_def::hir::Literal::Int(it, _) => Box::from(&it.to_le_bytes()[0..size()?]),
+            hir_def::hir::Literal::Uint(it, _) => Box::from(&it.to_le_bytes()[0..size()?]),
+            hir_def::hir::Literal::Float(f, _) => match size()? {
+                8 => Box::new(f.into_f64().to_le_bytes()),
+                4 => Box::new(f.into_f32().to_le_bytes()),
                 _ => {
                     return Err(MirLowerError::TypeError("float with size other than 4 or 8 bytes"))
                 }
@@ -1474,7 +1480,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
         &mut self,
         prev_block: BasicBlockId,
         place: Place,
-        cv: Vec<u8>,
+        cv: Box<[u8]>,
         ty: Ty,
         span: MirSpan,
     ) -> Result<()> {
@@ -2041,10 +2047,11 @@ pub fn mir_body_for_closure_query(
                     match (it, y) {
                         (ProjectionElem::Deref, ProjectionElem::Deref) => (),
                         (ProjectionElem::Field(it), ProjectionElem::Field(y)) if it == y => (),
-                        (
-                            ProjectionElem::TupleOrClosureField(it),
-                            ProjectionElem::TupleOrClosureField(y),
-                        ) if it == y => (),
+                        (ProjectionElem::ClosureField(it), ProjectionElem::ClosureField(y))
+                            if it == y =>
+                        {
+                            ()
+                        }
                         _ => return false,
                     }
                 }
@@ -2054,7 +2061,7 @@ pub fn mir_body_for_closure_query(
                 Some(it) => {
                     p.local = closure_local;
                     let mut next_projs = closure_projection.clone();
-                    next_projs.push(PlaceElem::TupleOrClosureField(it.1));
+                    next_projs.push(PlaceElem::ClosureField(it.1));
                     let prev_projs = p.projection;
                     if it.0.kind != CaptureKind::ByValue {
                         next_projs.push(ProjectionElem::Deref);
@@ -2063,8 +2070,8 @@ pub fn mir_body_for_closure_query(
                         prev_projs
                             .lookup(&store)
                             .iter()
-                            .cloned()
-                            .skip(it.0.place.projections.len()),
+                            .skip(it.0.place.projections.len())
+                            .cloned(),
                     );
                     p.projection = store.intern(next_projs.into());
                 }

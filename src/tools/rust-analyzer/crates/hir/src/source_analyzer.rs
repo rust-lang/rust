@@ -50,7 +50,7 @@ use triomphe::Arc;
 use crate::{
     db::HirDatabase, semantics::PathResolution, Adt, AssocItem, BindingMode, BuiltinAttr,
     BuiltinType, Callable, Const, DeriveHelper, Field, Function, Local, Macro, ModuleDef, Static,
-    Struct, ToolModule, Trait, TraitAlias, Type, TypeAlias, Variant,
+    Struct, ToolModule, Trait, TraitAlias, TupleField, Type, TypeAlias, Variant,
 };
 
 /// `SourceAnalyzer` is a convenience wrapper which exposes HIR API in terms of
@@ -297,7 +297,11 @@ impl SourceAnalyzer {
             Some((f_in_trait, substs)) => Some(Either::Left(
                 self.resolve_impl_method_or_trait_def(db, f_in_trait, substs).into(),
             )),
-            None => inference_result.field_resolution(expr_id).map(Into::into).map(Either::Right),
+            None => inference_result
+                .field_resolution(expr_id)
+                .and_then(Either::left)
+                .map(Into::into)
+                .map(Either::Right),
         }
     }
 
@@ -305,20 +309,28 @@ impl SourceAnalyzer {
         &self,
         db: &dyn HirDatabase,
         field: &ast::FieldExpr,
-    ) -> Option<Field> {
+    ) -> Option<Either<Field, TupleField>> {
+        let &(def, ..) = self.def.as_ref()?;
         let expr_id = self.expr_id(db, &field.clone().into())?;
-        self.infer.as_ref()?.field_resolution(expr_id).map(|it| it.into())
+        self.infer.as_ref()?.field_resolution(expr_id).map(|it| {
+            it.map_either(Into::into, |f| TupleField { owner: def, tuple: f.tuple, index: f.index })
+        })
     }
 
     pub(crate) fn resolve_field_fallback(
         &self,
         db: &dyn HirDatabase,
         field: &ast::FieldExpr,
-    ) -> Option<Either<Field, Function>> {
+    ) -> Option<Either<Either<Field, TupleField>, Function>> {
+        let &(def, ..) = self.def.as_ref()?;
         let expr_id = self.expr_id(db, &field.clone().into())?;
         let inference_result = self.infer.as_ref()?;
         match inference_result.field_resolution(expr_id) {
-            Some(field) => Some(Either::Left(field.into())),
+            Some(field) => Some(Either::Left(field.map_either(Into::into, |f| TupleField {
+                owner: def,
+                tuple: f.tuple,
+                index: f.index,
+            }))),
             None => inference_result.method_resolution(expr_id).map(|(f, substs)| {
                 Either::Right(self.resolve_impl_method_or_trait_def(db, f, substs).into())
             }),

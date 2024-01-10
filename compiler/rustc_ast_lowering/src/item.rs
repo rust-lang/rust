@@ -12,6 +12,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{LocalDefId, CRATE_DEF_ID};
 use rustc_hir::PredicateOrigin;
 use rustc_index::{Idx, IndexSlice, IndexVec};
+use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, sym, Ident};
@@ -182,7 +183,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 self.lower_use_tree(use_tree, &prefix, id, vis_span, ident, attrs)
             }
             ItemKind::Static(box ast::StaticItem { ty: t, mutability: m, expr: e }) => {
-                let (ty, body_id) = self.lower_const_item(t, span, e.as_deref());
+                let (ty, body_id) =
+                    self.lower_const_item(t, span, e.as_deref(), ImplTraitPosition::StaticTy);
                 hir::ItemKind::Static(ty, *m, body_id)
             }
             ItemKind::Const(box ast::ConstItem { generics, ty, expr, .. }) => {
@@ -191,7 +193,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     Const::No,
                     id,
                     &ImplTraitContext::Disallowed(ImplTraitPosition::Generic),
-                    |this| this.lower_const_item(ty, span, expr.as_deref()),
+                    |this| {
+                        this.lower_const_item(ty, span, expr.as_deref(), ImplTraitPosition::ConstTy)
+                    },
                 );
                 hir::ItemKind::Const(ty, generics, body_id)
             }
@@ -448,8 +452,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         ty: &Ty,
         span: Span,
         body: Option<&Expr>,
+        impl_trait_position: ImplTraitPosition,
     ) -> (&'hir hir::Ty<'hir>, hir::BodyId) {
-        let ty = self.lower_ty(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::ConstTy));
+        let ty = self.lower_ty(ty, &ImplTraitContext::Disallowed(impl_trait_position));
         (ty, self.lower_const_body(span, body))
     }
 
@@ -572,23 +577,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // This is used to track which lifetimes have already been defined,
         // and which need to be replicated when lowering an async fn.
 
-        match parent_hir.node().expect_item().kind {
+        let generics = match parent_hir.node().expect_item().kind {
             hir::ItemKind::Impl(impl_) => {
                 self.is_in_trait_impl = impl_.of_trait.is_some();
+                &impl_.generics
             }
-            hir::ItemKind::Trait(_, _, generics, _, _) if self.tcx.features().effects => {
-                self.host_param_id = generics
-                    .params
-                    .iter()
-                    .find(|param| {
-                        matches!(
-                            param.kind,
-                            hir::GenericParamKind::Const { is_host_effect: true, .. }
-                        )
-                    })
-                    .map(|param| param.def_id);
+            hir::ItemKind::Trait(_, _, generics, _, _) => generics,
+            kind => {
+                span_bug!(item.span, "assoc item has unexpected kind of parent: {}", kind.descr())
             }
-            _ => {}
+        };
+
+        if self.tcx.features().effects {
+            self.host_param_id = generics
+                .params
+                .iter()
+                .find(|param| {
+                    matches!(param.kind, hir::GenericParamKind::Const { is_host_effect: true, .. })
+                })
+                .map(|param| param.def_id);
         }
 
         match ctxt {
