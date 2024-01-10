@@ -131,6 +131,7 @@ LL |     fn f(_: impl Iterator<Item = &()>) {}
    |                                   ^ expected named lifetime parameter
    |
    = help: add `#![feature(anonymous_lifetime_in_impl_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider introducing a named lifetime parameter
    |
 LL |     fn f<'a>(_: impl Iterator<Item = &'a ()>) {}
@@ -143,6 +144,7 @@ LL |     fn g(mut x: impl Iterator<Item = &()>) -> Option<&()> { x.next() }
    |                                       ^ expected named lifetime parameter
    |
    = help: add `#![feature(anonymous_lifetime_in_impl_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider introducing a named lifetime parameter
    |
 LL |     fn g<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&()> { x.next() }
@@ -155,6 +157,7 @@ LL |     fn f(_: impl Iterator<Item = &'_ ()>) {}
    |                                   ^^ expected named lifetime parameter
    |
    = help: add `#![feature(anonymous_lifetime_in_impl_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider introducing a named lifetime parameter
    |
 LL |     fn f<'a>(_: impl Iterator<Item = &'a ()>) {}
@@ -167,6 +170,7 @@ LL |     fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() 
    |                                       ^^ expected named lifetime parameter
    |
    = help: add `#![feature(anonymous_lifetime_in_impl_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider introducing a named lifetime parameter
    |
 LL |     fn g<'a>(mut x: impl Iterator<Item = &'a ()>) -> Option<&'_ ()> { x.next() }
@@ -179,6 +183,7 @@ LL |     fn f(_: impl Foo) {}
    |                  ^^^ expected named lifetime parameter
    |
    = help: add `#![feature(anonymous_lifetime_in_impl_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider introducing a named lifetime parameter
    |
 LL |     fn f<'a>(_: impl Foo<'a>) {}
@@ -191,6 +196,7 @@ LL |     fn g(mut x: impl Foo) -> Option<&()> { x.next() }
    |                      ^^^ expected named lifetime parameter
    |
    = help: add `#![feature(anonymous_lifetime_in_impl_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider introducing a named lifetime parameter
    |
 LL |     fn g<'a>(mut x: impl Foo<'a>) -> Option<&()> { x.next() }
@@ -203,6 +209,7 @@ LL |     fn f(_: impl Foo<()>) {}
    |                      ^ expected named lifetime parameter
    |
    = help: add `#![feature(anonymous_lifetime_in_impl_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider introducing a named lifetime parameter
    |
 LL |     fn f<'a>(_: impl Foo<'a, ()>) {}
@@ -215,6 +222,7 @@ LL |     fn g(mut x: impl Foo<()>) -> Option<&()> { x.next() }
    |                          ^ expected named lifetime parameter
    |
    = help: add `#![feature(anonymous_lifetime_in_impl_trait)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 help: consider introducing a named lifetime parameter
    |
 LL |     fn g<'a>(mut x: impl Foo<'a, ()>) -> Option<&()> { x.next() }

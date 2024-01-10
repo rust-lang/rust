@@ -5,6 +5,7 @@ LL | #[lang = "foo"]
    | ^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(lang_items)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0522]: definition of an unknown language item: `foo`
   --> $DIR/feature-gate-lang-items.rs:1:1

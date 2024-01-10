@@ -29,6 +29,7 @@ LL |     let (Ok(_x) | Err(&!)) = res.as_ref();
    |
    = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
    = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `!` patterns are experimental
   --> $DIR/feature-gate-never_patterns.rs:15:13
@@ -38,6 +39,7 @@ LL |             !
    |
    = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
    = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `!` patterns are experimental
   --> $DIR/feature-gate-never_patterns.rs:21:13
@@ -47,6 +49,7 @@ LL |             !
    |
    = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
    = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `!` patterns are experimental
   --> $DIR/feature-gate-never_patterns.rs:26:13
@@ -56,6 +59,7 @@ LL |             ! => {}
    |
    = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
    = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: `match` arm with no body
   --> $DIR/feature-gate-never_patterns.rs:39:9
@@ -83,6 +87,7 @@ LL |         Err(!),
    |
    = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
    = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: `!` patterns are experimental
   --> $DIR/feature-gate-never_patterns.rs:55:13
@@ -92,6 +97,7 @@ LL |         Err(!) if false,
    |
    = note: see issue #118155 <https://github.com/rust-lang/rust/issues/118155> for more information
    = help: add `#![feature(never_patterns)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: `match` arm with no body
   --> $DIR/feature-gate-never_patterns.rs:65:9
