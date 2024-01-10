@@ -981,6 +981,10 @@ impl DiagCtxt {
 
         inner.emit_stashed_diagnostics();
 
+        if inner.treat_err_as_bug() {
+            return;
+        }
+
         let warnings = match inner.deduplicated_warn_count {
             0 => Cow::from(""),
             1 => Cow::from("1 warning emitted"),
@@ -991,9 +995,6 @@ impl DiagCtxt {
             1 => Cow::from("aborting due to 1 previous error"),
             count => Cow::from(format!("aborting due to {count} previous errors")),
         };
-        if inner.treat_err_as_bug() {
-            return;
-        }
 
         match (errors.len(), warnings.len()) {
             (0, 0) => return,
