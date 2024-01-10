@@ -22,6 +22,7 @@ use rustc_middle::traits::solve::{
     CanonicalResponse, Certainty, ExternalConstraintsData, Goal, GoalSource, IsNormalizesToHack,
     QueryResult, Response,
 };
+use rustc_middle::traits::Reveal;
 use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt, UniverseIndex};
 use rustc_middle::ty::{
     CoercePredicate, RegionOutlivesPredicate, SubtypePredicate, TypeOutlivesPredicate,
@@ -317,18 +318,21 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
         };
 
         // We do no always define opaque types eagerly to allow non-defining uses in the defining scope.
-        if let (DefineOpaqueTypes::No, ty::AliasKind::Opaque) = (define_opaque_types, kind) {
-            if let Some(def_id) = alias.def_id.as_local() {
-                if self
-                    .unify_existing_opaque_tys(
-                        param_env,
-                        OpaqueTypeKey { def_id, args: alias.args },
-                        self.next_ty_infer(),
-                    )
-                    .is_empty()
-                {
-                    return Some(ty);
-                }
+        if let DefineOpaqueTypes::No = define_opaque_types
+            && let Reveal::UserFacing = param_env.reveal()
+            && let ty::Opaque = kind
+            && let Some(def_id) = alias.def_id.as_local()
+            && self.can_define_opaque_ty(def_id)
+        {
+            if self
+                .unify_existing_opaque_tys(
+                    param_env,
+                    OpaqueTypeKey { def_id, args: alias.args },
+                    self.next_ty_infer(),
+                )
+                .is_empty()
+            {
+                return Some(ty);
             }
         }
 
