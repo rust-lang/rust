@@ -145,7 +145,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> EvalToConstValueResult<'tcx> {
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
-        let inputs = self.erase_regions(param_env.and(cid));
+        let inputs = self.erase_regions(param_env.with_reveal_all_normalized(self).and(cid));
         if let Some(span) = span {
             // The query doesn't know where it is being invoked, so we need to fix the span.
             self.at(span).eval_to_const_value_raw(inputs).map_err(|e| e.with_span(span))
@@ -164,7 +164,7 @@ impl<'tcx> TyCtxt<'tcx> {
     ) -> EvalToValTreeResult<'tcx> {
         // Const-eval shouldn't depend on lifetimes at all, so we can erase them, which should
         // improve caching of queries.
-        let inputs = self.erase_regions(param_env.and(cid));
+        let inputs = self.erase_regions(param_env.with_reveal_all_normalized(self).and(cid));
         debug!(?inputs);
         if let Some(span) = span {
             // The query doesn't know where it is being invoked, so we need to fix the span.
