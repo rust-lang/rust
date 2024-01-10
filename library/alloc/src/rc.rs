@@ -1924,7 +1924,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
 
             // Free the allocation without dropping its contents
             let (bptr, alloc) = Box::into_raw_with_allocator(src);
-            let src = Box::from_raw(bptr as *mut mem::ManuallyDrop<T>);
+            let src = Box::from_raw_in(bptr as *mut mem::ManuallyDrop<T>, &alloc);
             drop(src);
 
             Self::from_ptr_in(ptr, alloc)
