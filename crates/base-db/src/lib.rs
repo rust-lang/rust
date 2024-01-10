@@ -50,7 +50,7 @@ pub trait FileLoader {
     /// Text of the file.
     fn file_text(&self, file_id: FileId) -> Arc<str>;
     fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId>;
-    fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>>;
+    fn relevant_crates(&self, file_id: FileId) -> Arc<[CrateId]>;
 }
 
 /// Database which stores all significant input facts: source code and project
@@ -85,19 +85,20 @@ pub trait SourceDatabaseExt: SourceDatabase {
     #[salsa::input]
     fn source_root(&self, id: SourceRootId) -> Arc<SourceRoot>;
 
-    fn source_root_crates(&self, id: SourceRootId) -> Arc<FxHashSet<CrateId>>;
+    fn source_root_crates(&self, id: SourceRootId) -> Arc<[CrateId]>;
 }
 
-fn source_root_crates(db: &dyn SourceDatabaseExt, id: SourceRootId) -> Arc<FxHashSet<CrateId>> {
+fn source_root_crates(db: &dyn SourceDatabaseExt, id: SourceRootId) -> Arc<[CrateId]> {
     let graph = db.crate_graph();
-    let res = graph
+    graph
         .iter()
         .filter(|&krate| {
             let root_file = graph[krate].root_file_id;
             db.file_source_root(root_file) == id
         })
-        .collect();
-    Arc::new(res)
+        .collect::<FxHashSet<_>>()
+        .into_iter()
+        .collect()
 }
 
 /// Silly workaround for cyclic deps between the traits
@@ -114,7 +115,7 @@ impl<T: SourceDatabaseExt> FileLoader for FileLoaderDelegate<&'_ T> {
         source_root.resolve_path(path)
     }
 
-    fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
+    fn relevant_crates(&self, file_id: FileId) -> Arc<[CrateId]> {
         let _p = profile::span("relevant_crates");
         let source_root = self.0.file_source_root(file_id);
         self.0.source_root_crates(source_root)
