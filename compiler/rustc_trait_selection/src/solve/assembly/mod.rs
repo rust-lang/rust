@@ -853,6 +853,8 @@ impl<'tcx> EvalCtxt<'_, 'tcx> {
             let principal_trait_ref = principal.with_self_ty(tcx, self_ty);
             self.walk_vtable(principal_trait_ref, |ecx, assumption, vtable_base, _| {
                 match G::consider_object_bound_candidate(ecx, goal, assumption.to_predicate(tcx)) {
+                    // FIXME: We could skip auto traits here, since they're eagerly elaborated in
+                    // <https://github.com/rust-lang/rust/pull/119825>.
                     Ok(result) => candidates.push(Candidate {
                         source: CandidateSource::BuiltinImpl(BuiltinImplSource::Object {
                             vtable_base,

@@ -12,8 +12,10 @@ auto trait Marker2 {}
 trait Object: Marker1 {}
 
 // A supertrait marker is illegal...
-impl Marker1 for dyn Object + Marker2 {} //~ ERROR E0371
-                                         //~^ ERROR E0321
+impl Marker1 for dyn Object + Marker2 {}
+//~^ ERROR E0371
+//~| ERROR E0321
+//~| ERROR E0371
 // ...and also a direct component.
 impl Marker2 for dyn Object + Marker2 {} //~ ERROR E0371
                                          //~^ ERROR E0321

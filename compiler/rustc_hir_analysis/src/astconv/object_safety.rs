@@ -1,7 +1,7 @@
 use crate::astconv::{GenericArgCountMismatch, GenericArgCountResult, OnlySelfBounds};
 use crate::bounds::Bounds;
 use crate::errors::TraitObjectDeclaredWithNoTraits;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
@@ -83,7 +83,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let expanded_traits =
             traits::expand_trait_aliases(tcx, trait_bounds.iter().map(|&(a, b)| (a, b)));
 
-        let (mut auto_traits, regular_traits): (Vec<_>, Vec<_>) = expanded_traits
+        let (auto_traits, regular_traits): (Vec<_>, Vec<_>) = expanded_traits
             .filter(|i| i.trait_ref().self_ty().skip_binder() == dummy_self)
             .partition(|i| tcx.trait_is_auto(i.trait_ref().def_id()));
         if regular_traits.len() > 1 {
@@ -238,14 +238,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             hir_trait_bounds,
         );
 
-        // De-duplicate auto traits so that, e.g., `dyn Trait + Send + Send` is the same as
-        // `dyn Trait + Send`.
-        // We remove duplicates by inserting into a `FxHashSet` to avoid re-ordering
-        // the bounds
-        let mut duplicates = FxHashSet::default();
-        auto_traits.retain(|i| duplicates.insert(i.trait_ref().def_id()));
-        debug!("regular_traits: {:?}", regular_traits);
-        debug!("auto_traits: {:?}", auto_traits);
+        let auto_traits: FxIndexSet<DefId> = auto_traits
+            .into_iter()
+            .map(|info| info.trait_ref().def_id())
+            .chain(regular_traits.iter().flat_map(|info| {
+                traits::supertrait_def_ids(tcx, info.trait_ref().def_id())
+                    .filter(|def_id| tcx.trait_is_auto(*def_id))
+            }))
+            .collect();
 
         // Erase the `dummy_self` (`trait_object_dummy_self`) used above.
         let existential_trait_refs = regular_traits.iter().map(|i| {
@@ -351,9 +351,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let regular_trait_predicates = existential_trait_refs
             .map(|trait_ref| trait_ref.map_bound(ty::ExistentialPredicate::Trait));
-        let auto_trait_predicates = auto_traits.into_iter().map(|trait_ref| {
-            ty::Binder::dummy(ty::ExistentialPredicate::AutoTrait(trait_ref.trait_ref().def_id()))
-        });
+        let auto_trait_predicates = auto_traits
+            .into_iter()
+            .map(|def_id| ty::Binder::dummy(ty::ExistentialPredicate::AutoTrait(def_id)));
         // N.b. principal, projections, auto traits
         // FIXME: This is actually wrong with multiple principals in regards to symbol mangling
         let mut v = regular_trait_predicates
