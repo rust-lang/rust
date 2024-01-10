@@ -7,8 +7,6 @@ fn func() {
     println!("{}", x[2]);
 }
 
-
-
 fn main() {
     std::thread::Builder::new()
         .stack_size(5 * 1024 * 1024 * 1024)
@@ -17,4 +15,3 @@ fn main() {
         .join()
         .unwrap();
 }
-
