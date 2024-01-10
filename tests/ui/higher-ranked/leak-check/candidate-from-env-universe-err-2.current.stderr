@@ -1,0 +1,26 @@
+error: lifetime may not live long enough
+  --> $DIR/candidate-from-env-universe-err-2.rs:14:5
+   |
+LL | fn not_hr<'a, T: for<'b> Trait<'a, 'b> + OtherTrait<'static>>() {
+   |           -- lifetime `'a` defined here
+LL |     impl_hr::<T>();
+   |     ^^^^^^^^^^^^ requires that `'a` must outlive `'static`
+   |
+note: due to current limitations in the borrow checker, this implies a `'static` lifetime
+  --> $DIR/candidate-from-env-universe-err-2.rs:11:19
+   |
+LL | fn impl_hr<'b, T: for<'a> Trait<'a, 'b>>() {}
+   |                   ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/candidate-from-env-universe-err-2.rs:14:5
+   |
+LL |     impl_hr::<T>();
+   |     ^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected trait `for<'a> Trait<'a, '_>`
+              found trait `for<'b> Trait<'_, 'b>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
