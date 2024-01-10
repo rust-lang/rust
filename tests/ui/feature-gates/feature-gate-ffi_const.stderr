@@ -6,6 +6,7 @@ LL |     #[ffi_const]
    |
    = note: see issue #58328 <https://github.com/rust-lang/rust/issues/58328> for more information
    = help: add `#![feature(ffi_const)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 1 previous error
 

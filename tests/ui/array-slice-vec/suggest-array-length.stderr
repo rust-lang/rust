@@ -48,6 +48,7 @@ LL |     const Foo: [i32; _] = [1, 2, 3];
    |
    = note: see issue #85077 <https://github.com/rust-lang/rust/issues/85077> for more information
    = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: using `_` for array lengths is unstable
   --> $DIR/suggest-array-length.rs:8:26
@@ -57,6 +58,7 @@ LL |     const REF_FOO: &[u8; _] = &[1];
    |
    = note: see issue #85077 <https://github.com/rust-lang/rust/issues/85077> for more information
    = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: using `_` for array lengths is unstable
   --> $DIR/suggest-array-length.rs:11:20
@@ -66,6 +68,7 @@ LL |     let foo: [i32; _] = [1, 2, 3];
    |
    = note: see issue #85077 <https://github.com/rust-lang/rust/issues/85077> for more information
    = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: using `_` for array lengths is unstable
   --> $DIR/suggest-array-length.rs:14:20
@@ -75,6 +78,7 @@ LL |     let bar: [i32; _] = [0; 3];
    |
    = note: see issue #85077 <https://github.com/rust-lang/rust/issues/85077> for more information
    = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: using `_` for array lengths is unstable
   --> $DIR/suggest-array-length.rs:17:25
@@ -84,6 +88,7 @@ LL |     let ref_foo: &[i32; _] = &[1, 2, 3];
    |
    = note: see issue #85077 <https://github.com/rust-lang/rust/issues/85077> for more information
    = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: using `_` for array lengths is unstable
   --> $DIR/suggest-array-length.rs:20:25
@@ -93,6 +98,7 @@ LL |     let ref_bar: &[i32; _] = &[0; 3];
    |
    = note: see issue #85077 <https://github.com/rust-lang/rust/issues/85077> for more information
    = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: using `_` for array lengths is unstable
   --> $DIR/suggest-array-length.rs:23:35
@@ -102,6 +108,7 @@ LL |     let multiple_ref_foo: &&[i32; _] = &&[1, 2, 3];
    |
    = note: see issue #85077 <https://github.com/rust-lang/rust/issues/85077> for more information
    = help: add `#![feature(generic_arg_infer)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 14 previous errors
 

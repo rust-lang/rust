@@ -12,6 +12,7 @@ LL | |     }
    |
    = note: see issue #87575 <https://github.com/rust-lang/rust/issues/87575> for more information
    = help: add `#![feature(const_for)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0015]: cannot convert `std::ops::Range<usize>` into an iterator in constant functions
   --> $DIR/const-fn-error.rs:5:14
@@ -32,6 +33,7 @@ LL |     for i in 0..x {
    |
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0015]: cannot call non-const fn `<std::ops::Range<usize> as Iterator>::next` in constant functions
   --> $DIR/const-fn-error.rs:5:14
