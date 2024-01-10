@@ -5977,6 +5977,37 @@ fn $0fun_name() -> ControlFlow<()> {
     }
 
     #[test]
+    fn comments_in_block_expr() {
+        check_assist(
+            extract_function,
+            r#"
+fn f() {
+    let c = $0{
+        // comment 1
+        let a = 2 + 3;
+        // comment 2
+        let b = 5;
+        a + b
+    }$0;
+}
+"#,
+            r#"
+fn f() {
+    let c = fun_name();
+}
+
+fn $0fun_name() -> i32 {
+    // comment 1
+    let a = 2 + 3;
+    // comment 2
+    let b = 5;
+    a + b
+}
+"#,
+        );
+    }
+
+    #[test]
     fn in_left_curly_is_not_applicable() {
         cov_mark::check!(extract_function_in_braces_is_not_applicable);
         check_assist_not_applicable(extract_function, r"fn foo() { $0}$0");
