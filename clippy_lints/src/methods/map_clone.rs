@@ -5,6 +5,7 @@ use clippy_utils::ty::{is_copy, is_type_diagnostic_item};
 use clippy_utils::{is_diag_trait_item, match_def_path, paths, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty;
@@ -14,11 +15,35 @@ use rustc_span::{sym, Span};
 
 use super::MAP_CLONE;
 
+// If this `map` is called on an `Option` or a `Result` and the previous call is `as_ref`, we don't
+// run this lint because it would overlap with `useless_asref` which provides a better suggestion
+// in this case.
+fn should_run_lint(cx: &LateContext<'_>, e: &hir::Expr<'_>, method_id: DefId) -> bool {
+    if is_diag_trait_item(cx, method_id, sym::Iterator) {
+        return true;
+    }
+    // We check if it's an `Option` or a `Result`.
+    if let Some(id) = cx.tcx.impl_of_method(method_id) {
+        let identity = cx.tcx.type_of(id).instantiate_identity();
+        if !is_type_diagnostic_item(cx, identity, sym::Option) && !is_type_diagnostic_item(cx, identity, sym::Result) {
+            return false;
+        }
+    } else {
+        return false;
+    }
+    // We check if the previous method call is `as_ref`.
+    if let hir::ExprKind::MethodCall(path1, receiver, _, _) = &e.kind
+        && let hir::ExprKind::MethodCall(path2, _, _, _) = &receiver.kind
+    {
+        return path2.ident.name != sym::as_ref || path1.ident.name != sym::map;
+    }
+
+    true
+}
+
 pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>, msrv: &Msrv) {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
-        && (cx.tcx.impl_of_method(method_id).map_or(false, |id| {
-            is_type_diagnostic_item(cx, cx.tcx.type_of(id).instantiate_identity(), sym::Option)
-        }) || is_diag_trait_item(cx, method_id, sym::Iterator))
+        && should_run_lint(cx, e, method_id)
     {
         match arg.kind {
             hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
