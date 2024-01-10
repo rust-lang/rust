@@ -23,3 +23,24 @@ fn main() {
         //~| ERROR: never patterns cannot contain variable bindings
     }
 }
+
+fn void(void: Void) {
+    let (_a | !) = void;
+    let (! | _a) = void;
+    let ((_a, _) | (_a, _ | !)) = (true, void);
+    let (_a | (! | !,)) = (void,);
+    let ((_a,) | (!,)) = (void,);
+
+    let (_a, (! | !)) = (true, void);
+    //~^ ERROR: never patterns cannot contain variable bindings
+    let (_a, (_b | !)) = (true, void);
+
+    let _a @ ! = void;
+    //~^ ERROR: never patterns cannot contain variable bindings
+    let _a @ (_b | !) = void;
+    let (_a @ (), !) = ((), void);
+    //~^ ERROR: never patterns cannot contain variable bindings
+    let (_a |
+            (_b @ (_, !))) = (true, void);
+    //~^ ERROR: never patterns cannot contain variable bindings
+}
