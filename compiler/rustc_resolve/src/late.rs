@@ -3196,6 +3196,21 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     /// consistent when encountering or-patterns and never patterns.
     /// This is done hygienically: this could arise for a macro that expands into an or-pattern
     /// where one 'x' was from the user and one 'x' came from the macro.
+    ///
+    /// A never pattern by definition indicates an unreachable case. For example, matching on
+    /// `Result<T, &!>` could look like:
+    /// ```rust
+    /// # #![feature(never_type)]
+    /// # #![feature(never_patterns)]
+    /// # fn bar(_x: u32) {}
+    /// let foo: Result<u32, &!> = Ok(0);
+    /// match foo {
+    ///     Ok(x) => bar(x),
+    ///     Err(&!),
+    /// }
+    /// ```
+    /// This extends to product types: `(x, !)` is likewise unreachable. So it doesn't make sense to
+    /// have a binding here, and we tell the user to use `_` instead.
     fn compute_and_check_binding_map(
         &mut self,
         pat: &Pat,
@@ -3247,6 +3262,21 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     /// have exactly the same set of bindings, with the same binding modes for each.
     /// Returns the computed binding map and a boolean indicating whether the pattern is a never
     /// pattern.
+    ///
+    /// A never pattern by definition indicates an unreachable case. For example, destructuring a
+    /// `Result<T, &!>` could look like:
+    /// ```rust
+    /// # #![feature(never_type)]
+    /// # #![feature(never_patterns)]
+    /// # fn foo() -> Result<bool, &'static !> { Ok(true) }
+    /// let (Ok(x) | Err(&!)) = foo();
+    /// # let _ = x;
+    /// ```
+    /// Because the `Err(&!)` branch is never reached, it does not need to have the same bindings as
+    /// the other branches of the or-pattern. So we must ignore never pattern when checking the
+    /// bindings of an or-pattern.
+    /// Moreover, if all the subpatterns are never patterns (e.g. `Ok(!) | Err(!)`), then the
+    /// pattern as a whole counts as a never pattern (since it's definitionallly unreachable).
     fn compute_and_check_or_pat_binding_map(
         &mut self,
         pats: &[P<Pat>],
@@ -3254,7 +3284,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         let mut missing_vars = FxIndexMap::default();
         let mut inconsistent_vars = FxIndexMap::default();
 
-        // 1) Compute the binding maps of all arms; never patterns don't participate in this.
+        // 1) Compute the binding maps of all arms; we must ignore never patterns here.
         let not_never_pats = pats
             .iter()
             .filter_map(|pat| {
