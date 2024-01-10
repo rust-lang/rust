@@ -768,9 +768,6 @@ impl<'a, Cx: TypeCx> PlaceCtxt<'a, Cx> {
 pub enum ValidityConstraint {
     ValidOnly,
     MaybeInvalid,
-    /// Option for backwards compatibility: the place is not known to be valid but we allow omitting
-    /// `useful && !reachable` arms anyway.
-    MaybeInvalidButAllowOmittingArms,
 }
 
 impl ValidityConstraint {
@@ -778,19 +775,8 @@ impl ValidityConstraint {
         if is_valid_only { ValidOnly } else { MaybeInvalid }
     }
 
-    fn allow_omitting_side_effecting_arms(self) -> Self {
-        match self {
-            MaybeInvalid | MaybeInvalidButAllowOmittingArms => MaybeInvalidButAllowOmittingArms,
-            // There are no side-effecting empty arms here, nothing to do.
-            ValidOnly => ValidOnly,
-        }
-    }
-
     fn is_known_valid(self) -> bool {
         matches!(self, ValidOnly)
-    }
-    fn allows_omitting_empty_arms(self) -> bool {
-        matches!(self, ValidOnly | MaybeInvalidButAllowOmittingArms)
     }
 
     /// If the place has validity given by `self` and we read that the value at the place has
@@ -814,7 +800,7 @@ impl fmt::Display for ValidityConstraint {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
             ValidOnly => "✓",
-            MaybeInvalid | MaybeInvalidButAllowOmittingArms => "?",
+            MaybeInvalid => "?",
         };
         write!(f, "{s}")
     }
@@ -1460,8 +1446,6 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
 
     // Whether the place/column we are inspecting is known to contain valid data.
     let place_validity = matrix.place_validity[0];
-    // For backwards compability we allow omitting some empty arms that we ideally shouldn't.
-    let place_validity = place_validity.allow_omitting_side_effecting_arms();
 
     // Analyze the constructors present in this column.
     let ctors = matrix.heads().map(|p| p.ctor());
@@ -1486,12 +1470,9 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
     // Whether we should report "Enum::A and Enum::C are missing" or "_ is missing".
     let report_individual_missing_ctors = always_report_all || !all_missing;
     // Which constructors are considered missing. We ensure that `!missing_ctors.is_empty() =>
-    // split_ctors.contains(Missing)`. The converse usually holds except in the
-    // `MaybeInvalidButAllowOmittingArms` backwards-compatibility case.
-    let mut missing_ctors = split_set.missing;
-    if !place_validity.allows_omitting_empty_arms() {
-        missing_ctors.extend(split_set.missing_empty);
-    }
+    // split_ctors.contains(Missing)`. The converse usually holds except when
+    // `!place_validity.is_known_valid()`.
+    let missing_ctors = split_set.missing;
 
     let mut ret = WitnessMatrix::empty();
     for ctor in split_ctors {
