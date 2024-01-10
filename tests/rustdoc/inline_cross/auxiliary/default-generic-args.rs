@@ -40,6 +40,11 @@ pub struct Multi<A = u64, B = u64>(A, B);
 
 pub type M0 = Multi<u64, ()>;
 
-pub trait Trait<'a, T = &'a ()> {}
+pub trait Trait0<'a, T = &'a ()> {}
+pub type D0 = dyn for<'a> Trait0<'a>;
 
-pub type F = dyn for<'a> Trait<'a>;
+// Regression test for issue #119529.
+pub trait Trait1<T = (), const K: u32 = 0> {}
+pub type D1<T> = dyn Trait1<T>;
+pub type D2<const K: u32> = dyn Trait1<(), K>;
+pub type D3 = dyn Trait1;
