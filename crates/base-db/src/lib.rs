@@ -115,14 +115,14 @@ fn file_text(db: &dyn SourceDatabaseExt, file_id: FileId) -> Arc<str> {
 }
 
 pub trait SourceDatabaseExt2 {
-    fn set_file_text(&mut self, file_id: FileId, text: Arc<str>) {
+    fn set_file_text(&mut self, file_id: FileId, text: &str) {
         self.set_file_text_with_durability(file_id, text, Durability::LOW);
     }
 
     fn set_file_text_with_durability(
         &mut self,
         file_id: FileId,
-        text: Arc<str>,
+        text: &str,
         durability: Durability,
     );
 }
@@ -131,7 +131,7 @@ impl<Db: ?Sized + SourceDatabaseExt> SourceDatabaseExt2 for Db {
     fn set_file_text_with_durability(
         &mut self,
         file_id: FileId,
-        text: Arc<str>,
+        text: &str,
         durability: Durability,
     ) {
         let bytes = text.as_bytes();
