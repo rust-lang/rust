@@ -203,18 +203,19 @@ impl Hash for RealFileName {
 impl<S: Encoder> Encodable<S> for RealFileName {
     fn encode(&self, encoder: &mut S) {
         match *self {
-            RealFileName::LocalPath(ref local_path) => encoder.emit_enum_variant(0, |encoder| {
+            RealFileName::LocalPath(ref local_path) => {
+                encoder.emit_u8(0);
                 local_path.encode(encoder);
-            }),
+            }
 
-            RealFileName::Remapped { ref local_path, ref virtual_name } => encoder
-                .emit_enum_variant(1, |encoder| {
-                    // For privacy and build reproducibility, we must not embed host-dependant path
-                    // in artifacts if they have been remapped by --remap-path-prefix
-                    assert!(local_path.is_none());
-                    local_path.encode(encoder);
-                    virtual_name.encode(encoder);
-                }),
+            RealFileName::Remapped { ref local_path, ref virtual_name } => {
+                encoder.emit_u8(1);
+                // For privacy and build reproducibility, we must not embed host-dependant path
+                // in artifacts if they have been remapped by --remap-path-prefix
+                assert!(local_path.is_none());
+                local_path.encode(encoder);
+                virtual_name.encode(encoder);
+            }
         }
     }
 }

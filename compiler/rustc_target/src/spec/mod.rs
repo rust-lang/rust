@@ -3396,19 +3396,22 @@ impl Hash for TargetTriple {
 impl<S: Encoder> Encodable<S> for TargetTriple {
     fn encode(&self, s: &mut S) {
         match self {
-            TargetTriple::TargetTriple(triple) => s.emit_enum_variant(0, |s| s.emit_str(triple)),
-            TargetTriple::TargetJson { path_for_rustdoc: _, triple, contents } => s
-                .emit_enum_variant(1, |s| {
-                    s.emit_str(triple);
-                    s.emit_str(contents)
-                }),
+            TargetTriple::TargetTriple(triple) => {
+                s.emit_u8(0);
+                s.emit_str(triple);
+            }
+            TargetTriple::TargetJson { path_for_rustdoc: _, triple, contents } => {
+                s.emit_u8(1);
+                s.emit_str(triple);
+                s.emit_str(contents);
+            }
         }
     }
 }
 
 impl<D: Decoder> Decodable<D> for TargetTriple {
     fn decode(d: &mut D) -> Self {
-        match d.read_usize() {
+        match d.read_u8() {
             0 => TargetTriple::TargetTriple(d.read_str().to_owned()),
             1 => TargetTriple::TargetJson {
                 path_for_rustdoc: PathBuf::new(),
