@@ -8,7 +8,7 @@ use crate::errors::{
 };
 
 use hir::def_id::DefId;
-use rustc_errors::{struct_span_err, DiagnosticMessage};
+use rustc_errors::{struct_span_code_err, DiagnosticMessage};
 use rustc_hir as hir;
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::{self, Ty, TyCtxt};
@@ -29,8 +29,8 @@ fn equate_intrinsic_type<'tcx>(
             (own_counts, generics.span)
         }
         _ => {
-            struct_span_err!(tcx.dcx(), it.span, E0622, "intrinsic must be a function")
-                .span_label_mv(it.span, "expected a function")
+            struct_span_code_err!(tcx.dcx(), it.span, E0622, "intrinsic must be a function")
+                .with_span_label(it.span, "expected a function")
                 .emit();
             return;
         }
@@ -552,7 +552,7 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
         sym::simd_shuffle_generic => (2, 1, vec![param(0), param(0)], param(1)),
         _ => {
             let msg = format!("unrecognized platform-specific intrinsic function: `{name}`");
-            tcx.dcx().struct_span_err(it.span, msg).emit();
+            tcx.dcx().span_err(it.span, msg);
             return;
         }
     };

@@ -60,8 +60,8 @@ use crate::traits::{
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_errors::{
-    error_code, pluralize, struct_span_err, Applicability, DiagCtxt, Diagnostic, DiagnosticBuilder,
-    DiagnosticStyledString, ErrorGuaranteed, IntoDiagnosticArg,
+    error_code, pluralize, struct_span_code_err, Applicability, DiagCtxt, Diagnostic,
+    DiagnosticBuilder, DiagnosticStyledString, ErrorGuaranteed, IntoDiagnosticArg,
 };
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -2780,7 +2780,7 @@ impl<'tcx> InferCtxt<'tcx> {
             infer::Nll(..) => bug!("NLL variable found in lexical phase"),
         };
 
-        struct_span_err!(
+        struct_span_code_err!(
             self.tcx.dcx(),
             var_origin.span(),
             E0495,

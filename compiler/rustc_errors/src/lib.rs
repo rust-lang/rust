@@ -727,7 +727,7 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
-        self.struct_warn(msg).span_mv(span)
+        self.struct_warn(msg).with_span(span)
     }
 
     /// Construct a builder at the `Warning` level with the `msg`.
@@ -767,7 +767,7 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_> {
-        self.struct_err(msg).span_mv(span)
+        self.struct_err(msg).with_span(span)
     }
 
     /// Construct a builder at the `Error` level with the `msg`.
@@ -786,7 +786,7 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, FatalAbort> {
-        self.struct_fatal(msg).span_mv(span)
+        self.struct_fatal(msg).with_span(span)
     }
 
     /// Construct a builder at the `Fatal` level with the `msg`.
@@ -827,7 +827,7 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, BugAbort> {
-        self.struct_bug(msg).span_mv(span)
+        self.struct_bug(msg).with_span(span)
     }
 
     #[rustc_lint_diagnostics]
@@ -865,10 +865,16 @@ impl DiagCtxt {
     /// For example, it can be used to create an [`ErrorGuaranteed`]
     /// (but you should prefer threading through the [`ErrorGuaranteed`] from an error emission
     /// directly).
-    ///
-    /// If no span is available, use [`DUMMY_SP`].
-    ///
-    /// [`DUMMY_SP`]: rustc_span::DUMMY_SP
+    #[track_caller]
+    pub fn delayed_bug(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
+        let treat_next_err_as_bug = self.inner.borrow().treat_next_err_as_bug();
+        if treat_next_err_as_bug {
+            self.bug(msg);
+        }
+        DiagnosticBuilder::<ErrorGuaranteed>::new(self, DelayedBug, msg).emit()
+    }
+
+    /// Like `delayed_bug`, but takes an additional span.
     ///
     /// Note: this function used to be called `delay_span_bug`. It was renamed
     /// to match similar functions like `span_err`, `span_warn`, etc.
@@ -882,9 +888,7 @@ impl DiagCtxt {
         if treat_next_err_as_bug {
             self.span_bug(sp, msg);
         }
-        let mut diagnostic = Diagnostic::new(DelayedBug, msg);
-        diagnostic.span(sp);
-        self.emit_diagnostic(diagnostic).unwrap()
+        DiagnosticBuilder::<ErrorGuaranteed>::new(self, DelayedBug, msg).with_span(sp).emit()
     }
 
     // FIXME(eddyb) note the comment inside `impl Drop for DiagCtxtInner`, that's
@@ -909,7 +913,7 @@ impl DiagCtxt {
         span: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> DiagnosticBuilder<'_, ()> {
-        DiagnosticBuilder::new(self, Note, msg).span_mv(span)
+        DiagnosticBuilder::new(self, Note, msg).with_span(span)
     }
 
     #[rustc_lint_diagnostics]
@@ -1086,7 +1090,7 @@ impl DiagCtxt {
     }
 
     #[track_caller]
-    pub fn create_warning<'a>(
+    pub fn create_warn<'a>(
         &'a self,
         warning: impl IntoDiagnostic<'a, ()>,
     ) -> DiagnosticBuilder<'a, ()> {
@@ -1094,8 +1098,8 @@ impl DiagCtxt {
     }
 
     #[track_caller]
-    pub fn emit_warning<'a>(&'a self, warning: impl IntoDiagnostic<'a, ()>) {
-        self.create_warning(warning).emit()
+    pub fn emit_warn<'a>(&'a self, warning: impl IntoDiagnostic<'a, ()>) {
+        self.create_warn(warning).emit()
     }
 
     #[track_caller]
@@ -1227,7 +1231,7 @@ impl DiagCtxt {
 // Note: we prefer implementing operations on `DiagCtxt`, rather than
 // `DiagCtxtInner`, whenever possible. This minimizes functions where
 // `DiagCtxt::foo()` just borrows `inner` and forwards a call to
-// `HanderInner::foo`.
+// `DiagCtxtInner::foo`.
 impl DiagCtxtInner {
     /// Emit all stashed diagnostics.
     fn emit_stashed_diagnostics(&mut self) -> Option<ErrorGuaranteed> {

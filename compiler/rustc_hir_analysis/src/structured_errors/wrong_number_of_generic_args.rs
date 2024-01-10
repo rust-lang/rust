@@ -523,7 +523,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
     fn start_diagnostics(&self) -> DiagnosticBuilder<'tcx> {
         let span = self.path_segment.ident.span;
         let msg = self.create_error_message();
-        self.tcx.dcx().struct_span_err(span, msg).code_mv(self.code())
+        self.tcx.dcx().struct_span_err(span, msg).with_code(self.code())
     }
 
     /// Builds the `expected 1 type argument / supplied 2 type arguments` message.

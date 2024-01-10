@@ -1,7 +1,7 @@
 use crate::dep_graph::dep_kinds;
 use crate::query::plumbing::CyclePlaceholder;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::{pluralize, struct_span_err, Applicability, MultiSpan};
+use rustc_errors::{pluralize, struct_span_code_err, Applicability, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_middle::ty::Representability;
@@ -175,7 +175,7 @@ impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>>
                     } else {
                         tcx.def_span(def_id)
                     };
-                    let mut diag = struct_span_err!(
+                    let mut diag = struct_span_code_err!(
                         tcx.sess.dcx(),
                         span,
                         E0733,
@@ -309,7 +309,7 @@ pub fn recursive_type_error(
         }
         s
     };
-    struct_span_err!(
+    struct_span_code_err!(
         tcx.dcx(),
         err_span,
         E0072,
@@ -318,7 +318,7 @@ pub fn recursive_type_error(
         items_list,
         pluralize!("has", cycle_len),
     )
-    .multipart_suggestion_mv(
+    .with_multipart_suggestion(
         "insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle",
         suggestion,
         Applicability::HasPlaceholders,

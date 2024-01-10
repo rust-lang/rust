@@ -244,7 +244,7 @@ pub(crate) fn test_theme_against<P: AsRef<Path>>(
     {
         Ok(c) => c,
         Err(e) => {
-            dcx.struct_err(e).emit();
+            dcx.err(e);
             return (false, vec![]);
         }
     };

@@ -263,7 +263,7 @@ impl Session {
         if !unleashed_features.is_empty() {
             let mut must_err = false;
             // Create a diagnostic pointing at where things got unleashed.
-            self.dcx().emit_warning(errors::SkippingConstChecks {
+            self.dcx().emit_warn(errors::SkippingConstChecks {
                 unleashed_features: unleashed_features
                     .iter()
                     .map(|(span, gate)| {
@@ -341,10 +341,7 @@ impl Session {
         if self.dcx().err_count() == old_count {
             Ok(result)
         } else {
-            Err(self.dcx().span_delayed_bug(
-                rustc_span::DUMMY_SP,
-                "`self.err_count()` changed but an error was not emitted",
-            ))
+            Err(self.dcx().delayed_bug("`self.err_count()` changed but an error was not emitted"))
         }
     }
 
@@ -574,7 +571,7 @@ impl Session {
                         // We only call `msg` in case we can actually emit warnings.
                         // Otherwise, this could cause a `good_path_delayed_bug` to
                         // trigger (issue #79546).
-                        self.dcx().emit_warning(errors::OptimisationFuelExhausted { msg: msg() });
+                        self.dcx().emit_warn(errors::OptimisationFuelExhausted { msg: msg() });
                     }
                     fuel.out_of_fuel = true;
                 } else if fuel.remaining > 0 {
@@ -1129,7 +1126,7 @@ pub fn build_session(
         match profiler {
             Ok(profiler) => Some(Arc::new(profiler)),
             Err(e) => {
-                dcx.emit_warning(errors::FailedToCreateProfiler { err: e.to_string() });
+                dcx.emit_warn(errors::FailedToCreateProfiler { err: e.to_string() });
                 None
             }
         }
@@ -1341,7 +1338,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
 
     if sess.opts.unstable_opts.stack_protector != StackProtector::None {
         if !sess.target.options.supports_stack_protector {
-            sess.dcx().emit_warning(errors::StackProtectorNotSupportedForTarget {
+            sess.dcx().emit_warn(errors::StackProtectorNotSupportedForTarget {
                 stack_protector: sess.opts.unstable_opts.stack_protector,
                 target_triple: &sess.opts.target_triple,
             });
@@ -1447,7 +1444,7 @@ impl EarlyDiagCtxt {
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_note(&self, msg: impl Into<DiagnosticMessage>) {
-        self.dcx.struct_note(msg).emit()
+        self.dcx.note(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
@@ -1460,13 +1457,13 @@ impl EarlyDiagCtxt {
     #[allow(rustc::diagnostic_outside_of_impl)]
     #[must_use = "ErrorGuaranteed must be returned from `run_compiler` in order to exit with a non-zero status code"]
     pub fn early_err(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
-        self.dcx.struct_err(msg).emit()
+        self.dcx.err(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_fatal(&self, msg: impl Into<DiagnosticMessage>) -> ! {
-        self.dcx.struct_fatal(msg).emit()
+        self.dcx.fatal(msg)
     }
 
     #[allow(rustc::untranslatable_diagnostic)]
@@ -1481,7 +1478,7 @@ impl EarlyDiagCtxt {
     #[allow(rustc::untranslatable_diagnostic)]
     #[allow(rustc::diagnostic_outside_of_impl)]
     pub fn early_warn(&self, msg: impl Into<DiagnosticMessage>) {
-        self.dcx.struct_warn(msg).emit()
+        self.dcx.warn(msg)
     }
 
     pub fn initialize_checked_jobserver(&self) {
@@ -1491,7 +1488,7 @@ impl EarlyDiagCtxt {
             #[allow(rustc::diagnostic_outside_of_impl)]
             self.dcx
                 .struct_warn(err)
-                .note_mv("the build environment is likely misconfigured")
+                .with_note("the build environment is likely misconfigured")
                 .emit()
         });
     }

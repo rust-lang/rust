@@ -252,40 +252,40 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for TargetDataLayoutErrors<'_> 
         match self {
             TargetDataLayoutErrors::InvalidAddressSpace { addr_space, err, cause } => {
                 DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_address_space)
-                    .arg_mv("addr_space", addr_space)
-                    .arg_mv("cause", cause)
-                    .arg_mv("err", err)
+                    .with_arg("addr_space", addr_space)
+                    .with_arg("cause", cause)
+                    .with_arg("err", err)
             }
             TargetDataLayoutErrors::InvalidBits { kind, bit, cause, err } => {
                 DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_bits)
-                    .arg_mv("kind", kind)
-                    .arg_mv("bit", bit)
-                    .arg_mv("cause", cause)
-                    .arg_mv("err", err)
+                    .with_arg("kind", kind)
+                    .with_arg("bit", bit)
+                    .with_arg("cause", cause)
+                    .with_arg("err", err)
             }
             TargetDataLayoutErrors::MissingAlignment { cause } => {
                 DiagnosticBuilder::new(dcx, level, fluent::errors_target_missing_alignment)
-                    .arg_mv("cause", cause)
+                    .with_arg("cause", cause)
             }
             TargetDataLayoutErrors::InvalidAlignment { cause, err } => {
                 DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_alignment)
-                    .arg_mv("cause", cause)
-                    .arg_mv("err_kind", err.diag_ident())
-                    .arg_mv("align", err.align())
+                    .with_arg("cause", cause)
+                    .with_arg("err_kind", err.diag_ident())
+                    .with_arg("align", err.align())
             }
             TargetDataLayoutErrors::InconsistentTargetArchitecture { dl, target } => {
                 DiagnosticBuilder::new(dcx, level, fluent::errors_target_inconsistent_architecture)
-                    .arg_mv("dl", dl)
-                    .arg_mv("target", target)
+                    .with_arg("dl", dl)
+                    .with_arg("target", target)
             }
             TargetDataLayoutErrors::InconsistentTargetPointerWidth { pointer_size, target } => {
                 DiagnosticBuilder::new(dcx, level, fluent::errors_target_inconsistent_pointer_width)
-                    .arg_mv("pointer_size", pointer_size)
-                    .arg_mv("target", target)
+                    .with_arg("pointer_size", pointer_size)
+                    .with_arg("target", target)
             }
             TargetDataLayoutErrors::InvalidBitsSize { err } => {
                 DiagnosticBuilder::new(dcx, level, fluent::errors_target_invalid_bits_size)
-                    .arg_mv("err", err)
+                    .with_arg("err", err)
             }
         }
     }

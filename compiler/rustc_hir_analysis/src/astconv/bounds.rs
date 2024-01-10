@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::struct_span_err;
+use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -305,7 +305,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                     binding.span,
                     format!("{} `{}` is private", assoc_item.kind, binding.item_name),
                 )
-                .span_label_mv(binding.span, format!("private {}", assoc_item.kind))
+                .with_span_label(binding.span, format!("private {}", assoc_item.kind))
                 .emit();
         }
         tcx.check_stability(assoc_item.def_id, Some(hir_ref_id), binding.span, None);
@@ -462,7 +462,7 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
                     late_bound_in_trait_ref,
                     late_bound_in_ty,
                     |br_name| {
-                        struct_span_err!(
+                        struct_span_code_err!(
                             tcx.dcx(),
                             binding.span,
                             E0582,

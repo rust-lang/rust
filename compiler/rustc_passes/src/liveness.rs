@@ -98,7 +98,6 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, RootVariableMinCaptureList, Ty, TyCtxt};
 use rustc_session::lint;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::DUMMY_SP;
 use rustc_span::{BytePos, Span};
 
 use std::io;
@@ -560,7 +559,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         match self.successors[ln] {
             Some(successor) => self.assigned_on_entry(successor, var),
             None => {
-                self.ir.tcx.dcx().span_delayed_bug(DUMMY_SP, "no successor");
+                self.ir.tcx.dcx().delayed_bug("no successor");
                 true
             }
         }

@@ -19,8 +19,8 @@ impl<'a> IntoDiagnostic<'a> for FeatureGateError {
     #[track_caller]
     fn into_diagnostic(self, dcx: &'a DiagCtxt, level: Level) -> DiagnosticBuilder<'a> {
         DiagnosticBuilder::new(dcx, level, self.explain)
-            .span_mv(self.span)
-            .code_mv(error_code!(E0658))
+            .with_span(self.span)
+            .with_code(error_code!(E0658))
     }
 }
 

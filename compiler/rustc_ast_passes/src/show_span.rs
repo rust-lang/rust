@@ -38,21 +38,21 @@ struct ShowSpanVisitor<'a> {
 impl<'a> Visitor<'a> for ShowSpanVisitor<'a> {
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         if let Mode::Expression = self.mode {
-            self.dcx.emit_warning(errors::ShowSpan { span: e.span, msg: "expression" });
+            self.dcx.emit_warn(errors::ShowSpan { span: e.span, msg: "expression" });
         }
         visit::walk_expr(self, e);
     }
 
     fn visit_pat(&mut self, p: &'a ast::Pat) {
         if let Mode::Pattern = self.mode {
-            self.dcx.emit_warning(errors::ShowSpan { span: p.span, msg: "pattern" });
+            self.dcx.emit_warn(errors::ShowSpan { span: p.span, msg: "pattern" });
         }
         visit::walk_pat(self, p);
     }
 
     fn visit_ty(&mut self, t: &'a ast::Ty) {
         if let Mode::Type = self.mode {
-            self.dcx.emit_warning(errors::ShowSpan { span: t.span, msg: "type" });
+            self.dcx.emit_warn(errors::ShowSpan { span: t.span, msg: "type" });
         }
         visit::walk_ty(self, t);
     }

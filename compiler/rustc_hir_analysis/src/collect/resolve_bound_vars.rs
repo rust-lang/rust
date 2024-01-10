@@ -8,7 +8,7 @@
 
 use rustc_ast::walk_list;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_errors::struct_span_err;
+use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
@@ -22,7 +22,7 @@ use rustc_middle::ty::{self, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_session::lint;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::{sym, Ident};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 use std::fmt;
 
 use crate::errors;
@@ -335,13 +335,10 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     // though this may happen when we call `poly_trait_ref_binder_info` with
                     // an (erroneous, #113423) associated return type bound in an impl header.
                     if !supertrait_bound_vars.is_empty() {
-                        self.tcx.dcx().span_delayed_bug(
-                            DUMMY_SP,
-                            format!(
-                                "found supertrait lifetimes without a binder to append \
+                        self.tcx.dcx().delayed_bug(format!(
+                            "found supertrait lifetimes without a binder to append \
                                 them to: {supertrait_bound_vars:?}"
-                            ),
-                        );
+                        ));
                     }
                     break (vec![], BinderScopeType::Normal);
                 }
@@ -737,7 +734,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                     // Ensure that the parent of the def is an item, not HRTB
                     let parent_id = self.tcx.hir().parent_id(hir_id);
                     if !parent_id.is_owner() {
-                        struct_span_err!(
+                        struct_span_code_err!(
                             self.tcx.dcx(),
                             lifetime.ident.span,
                             E0657,
@@ -754,7 +751,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                             lifetime.ident.span,
                             "higher kinded lifetime bounds on nested opaque types are not supported yet",
                         )
-                        .span_note_mv(self.tcx.def_span(def_id), "lifetime declared here")
+                        .with_span_note(self.tcx.def_span(def_id), "lifetime declared here")
                         .emit();
                         self.uninsert_lifetime_on_error(lifetime, def.unwrap());
                     }

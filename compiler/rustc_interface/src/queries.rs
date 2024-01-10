@@ -213,9 +213,8 @@ impl<'tcx> Queries<'tcx> {
 
                 // Some other attribute.
                 Some(_) => {
-                    tcx.dcx().emit_warning(RustcErrorUnexpectedAnnotation {
-                        span: tcx.def_span(def_id),
-                    });
+                    tcx.dcx()
+                        .emit_warn(RustcErrorUnexpectedAnnotation { span: tcx.def_span(def_id) });
                 }
             }
         }
