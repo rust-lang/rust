@@ -1,1 +1,4 @@
-WARN rustc_codegen_ssa::mir Dangerous stack allocation, size: "2.00 GiB" of local: _1 exceeds typical limits on most architectures
+error: Dangerous stack allocation of size: 2.00 GiB exceeds limits on most architectures
+
+error: aborting due to 1 previous error
+

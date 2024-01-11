@@ -231,14 +231,9 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             if layout.size.bytes() >= MIN_DANGEROUS_SIZE {
                 let size_str = || {
                     let (size_quantity, size_unit) = human_readable_bytes(layout.size.bytes());
-                    format!("{:.2} {}", size_quantity, size_unit)
+                    format!("Dangerous stack allocation of size: {:.2} {} exceeds limits on most architectures", size_quantity, size_unit)
                 };
-                span_bug!(
-                    decl.source_info.span,
-                    "Dangerous stack allocation, size: {:?} of local: {:?} exceeds typical limits on most architectures",
-                    size_str(),
-                    local
-                );
+                cx.tcx().dcx().fatal(size_str());
             }
 
             if local == mir::RETURN_PLACE && fx.fn_abi.ret.is_indirect() {
