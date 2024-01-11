@@ -1,4 +1,4 @@
-// compile-flags: -Ztreat-err-as-bug
+// compile-flags: -Ztreat-err-as-bug -Zeagerly-emit-delayed-bugs
 // failure-status: 101
 // error-pattern: aborting due to `-Z treat-err-as-bug=1`
 // error-pattern: [trigger_span_delayed_bug] triggering a span delayed bug for testing incremental
