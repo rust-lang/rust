@@ -30,7 +30,7 @@ LL |     type Item = &[T];
    = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
 
 error[E0223]: ambiguous associated type
-  --> $DIR/issue-109071.rs:16:22
+  --> $DIR/issue-109071.rs:15:22
    |
 LL |     fn T() -> Option<Self::Item> {}
    |                      ^^^^^^^^^^

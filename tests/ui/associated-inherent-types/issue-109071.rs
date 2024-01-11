@@ -9,13 +9,11 @@ impl<T> Windows { //~ ERROR: missing generics for struct `Windows`
     //[no_gate]~^ ERROR: inherent associated types are unstable
 
     fn next() -> Option<Self::Item> {}
-    //[with_gate]~^ ERROR type annotations needed
 }
 
 impl<T> Windows<T> {
     fn T() -> Option<Self::Item> {}
-    //[no_gate]~^ ERROR: ambiguous associated type
-    //[with_gate]~^^ ERROR type annotations needed
+    //~^ ERROR: ambiguous associated type
 }
 
 fn main() {}
