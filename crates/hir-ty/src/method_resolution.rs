@@ -8,10 +8,9 @@ use base_db::{CrateId, Edition};
 use chalk_ir::{cast::Cast, Mutability, TyKind, UniverseIndex, WhereClause};
 use hir_def::{
     data::{adt::StructFlags, ImplData},
-    item_scope::ItemScope,
     nameres::DefMap,
     AssocItemId, BlockId, ConstId, FunctionId, HasModule, ImplId, ItemContainerId, Lookup,
-    ModuleDefId, ModuleId, TraitId,
+    ModuleId, TraitId,
 };
 use hir_expand::name::Name;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -212,7 +211,7 @@ impl TraitImpls {
 
             // To better support custom derives, collect impls in all unnamed const items.
             // const _: () = { ... };
-            for konst in collect_unnamed_consts(db, &module_data.scope) {
+            for konst in module_data.scope.unnamed_consts(db.upcast()) {
                 let body = db.body(konst.into());
                 for (_, block_def_map) in body.blocks(db.upcast()) {
                     Self::collect_def_map(db, map, &block_def_map);
@@ -330,7 +329,7 @@ impl InherentImpls {
 
             // To better support custom derives, collect impls in all unnamed const items.
             // const _: () = { ... };
-            for konst in collect_unnamed_consts(db, &module_data.scope) {
+            for konst in module_data.scope.unnamed_consts(db.upcast()) {
                 let body = db.body(konst.into());
                 for (_, block_def_map) in body.blocks(db.upcast()) {
                     self.collect_def_map(db, &block_def_map);
@@ -374,34 +373,6 @@ pub(crate) fn incoherent_inherent_impl_crates(
     }
 
     res
-}
-
-fn collect_unnamed_consts<'a>(
-    db: &'a dyn HirDatabase,
-    scope: &'a ItemScope,
-) -> impl Iterator<Item = ConstId> + 'a {
-    let unnamed_consts = scope.unnamed_consts();
-
-    // FIXME: Also treat consts named `_DERIVE_*` as unnamed, since synstructure generates those.
-    // Should be removed once synstructure stops doing that.
-    let synstructure_hack_consts = scope.values().filter_map(|(item, _)| match item {
-        ModuleDefId::ConstId(id) => {
-            let loc = id.lookup(db.upcast());
-            let item_tree = loc.id.item_tree(db.upcast());
-            if item_tree[loc.id.value]
-                .name
-                .as_ref()
-                .map_or(false, |n| n.to_smol_str().starts_with("_DERIVE_"))
-            {
-                Some(id)
-            } else {
-                None
-            }
-        }
-        _ => None,
-    });
-
-    unnamed_consts.chain(synstructure_hack_consts)
 }
 
 pub fn def_crates(

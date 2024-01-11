@@ -21,7 +21,7 @@ use crate::{
     nameres::{sub_namespace_match, BlockInfo, BuiltinShadowMode, DefMap, MacroSubNs},
     path::{ModPath, PathKind},
     per_ns::PerNs,
-    visibility::{RawVisibility, Visibility, VisibilityExplicity},
+    visibility::{RawVisibility, Visibility},
     AdtId, CrateId, EnumVariantId, LocalModuleId, ModuleDefId,
 };
 
@@ -87,20 +87,15 @@ impl DefMap {
         within_impl: bool,
     ) -> Option<Visibility> {
         let mut vis = match visibility {
-            RawVisibility::Module(path) => {
+            RawVisibility::Module(path, explicity) => {
                 let (result, remaining) =
                     self.resolve_path(db, original_module, path, BuiltinShadowMode::Module, None);
                 if remaining.is_some() {
                     return None;
                 }
                 let types = result.take_types()?;
-                let mv = if path.is_pub_crate() {
-                    VisibilityExplicity::Explicit
-                } else {
-                    VisibilityExplicity::Implicit
-                };
                 match types {
-                    ModuleDefId::ModuleId(m) => Visibility::Module(m, mv),
+                    ModuleDefId::ModuleId(m) => Visibility::Module(m, *explicity),
                     // error: visibility needs to refer to module
                     _ => {
                         return None;

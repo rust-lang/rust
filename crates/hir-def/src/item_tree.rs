@@ -69,7 +69,7 @@ use crate::{
     generics::{GenericParams, LifetimeParamData, TypeOrConstParamData},
     path::{path, AssociatedTypeBinding, GenericArgs, ImportAlias, ModPath, Path, PathKind},
     type_ref::{Mutability, TraitRef, TypeBound, TypeRef},
-    visibility::RawVisibility,
+    visibility::{RawVisibility, VisibilityExplicity},
     BlockId, Lookup,
 };
 
@@ -78,8 +78,9 @@ pub struct RawVisibilityId(u32);
 
 impl RawVisibilityId {
     pub const PUB: Self = RawVisibilityId(u32::max_value());
-    pub const PRIV: Self = RawVisibilityId(u32::max_value() - 1);
-    pub const PUB_CRATE: Self = RawVisibilityId(u32::max_value() - 2);
+    pub const PRIV_IMPLICIT: Self = RawVisibilityId(u32::max_value() - 1);
+    pub const PRIV_EXPLICIT: Self = RawVisibilityId(u32::max_value() - 2);
+    pub const PUB_CRATE: Self = RawVisibilityId(u32::max_value() - 3);
 }
 
 impl fmt::Debug for RawVisibilityId {
@@ -87,7 +88,7 @@ impl fmt::Debug for RawVisibilityId {
         let mut f = f.debug_tuple("RawVisibilityId");
         match *self {
             Self::PUB => f.field(&"pub"),
-            Self::PRIV => f.field(&"pub(self)"),
+            Self::PRIV_IMPLICIT | Self::PRIV_EXPLICIT => f.field(&"pub(self)"),
             Self::PUB_CRATE => f.field(&"pub(crate)"),
             _ => f.field(&self.0),
         };
@@ -249,19 +250,30 @@ impl ItemVisibilities {
     fn alloc(&mut self, vis: RawVisibility) -> RawVisibilityId {
         match &vis {
             RawVisibility::Public => RawVisibilityId::PUB,
-            RawVisibility::Module(path) if path.segments().is_empty() => match &path.kind {
-                PathKind::Super(0) => RawVisibilityId::PRIV,
-                PathKind::Crate => RawVisibilityId::PUB_CRATE,
-                _ => RawVisibilityId(self.arena.alloc(vis).into_raw().into()),
-            },
+            RawVisibility::Module(path, explicitiy) if path.segments().is_empty() => {
+                match (&path.kind, explicitiy) {
+                    (PathKind::Super(0), VisibilityExplicity::Explicit) => {
+                        RawVisibilityId::PRIV_EXPLICIT
+                    }
+                    (PathKind::Super(0), VisibilityExplicity::Implicit) => {
+                        RawVisibilityId::PRIV_IMPLICIT
+                    }
+                    (PathKind::Crate, _) => RawVisibilityId::PUB_CRATE,
+                    _ => RawVisibilityId(self.arena.alloc(vis).into_raw().into()),
+                }
+            }
             _ => RawVisibilityId(self.arena.alloc(vis).into_raw().into()),
         }
     }
 }
 
 static VIS_PUB: RawVisibility = RawVisibility::Public;
-static VIS_PRIV: RawVisibility = RawVisibility::Module(ModPath::from_kind(PathKind::Super(0)));
-static VIS_PUB_CRATE: RawVisibility = RawVisibility::Module(ModPath::from_kind(PathKind::Crate));
+static VIS_PRIV_IMPLICIT: RawVisibility =
+    RawVisibility::Module(ModPath::from_kind(PathKind::Super(0)), VisibilityExplicity::Implicit);
+static VIS_PRIV_EXPLICIT: RawVisibility =
+    RawVisibility::Module(ModPath::from_kind(PathKind::Super(0)), VisibilityExplicity::Explicit);
+static VIS_PUB_CRATE: RawVisibility =
+    RawVisibility::Module(ModPath::from_kind(PathKind::Crate), VisibilityExplicity::Explicit);
 
 #[derive(Default, Debug, Eq, PartialEq)]
 struct ItemTreeData {
@@ -540,7 +552,8 @@ impl Index<RawVisibilityId> for ItemTree {
     type Output = RawVisibility;
     fn index(&self, index: RawVisibilityId) -> &Self::Output {
         match index {
-            RawVisibilityId::PRIV => &VIS_PRIV,
+            RawVisibilityId::PRIV_IMPLICIT => &VIS_PRIV_IMPLICIT,
+            RawVisibilityId::PRIV_EXPLICIT => &VIS_PRIV_EXPLICIT,
             RawVisibilityId::PUB => &VIS_PUB,
             RawVisibilityId::PUB_CRATE => &VIS_PUB_CRATE,
             _ => &self.data().vis.arena[Idx::from_raw(index.0.into())],
