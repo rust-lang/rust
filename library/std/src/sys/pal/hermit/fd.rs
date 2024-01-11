@@ -1,9 +1,9 @@
 #![unstable(reason = "not public", issue = "none", feature = "fd")]
 
+use super::abi;
 use crate::io::{self, Read};
 use crate::os::hermit::io::{FromRawFd, OwnedFd, RawFd};
 use crate::sys::cvt;
-use crate::sys::hermit::abi;
 use crate::sys::unsupported;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 

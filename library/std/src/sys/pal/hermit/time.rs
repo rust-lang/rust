@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 
+use super::abi;
+use super::abi::timespec;
+use super::abi::{CLOCK_MONOTONIC, CLOCK_REALTIME, NSEC_PER_SEC};
 use crate::cmp::Ordering;
 use crate::ops::{Add, AddAssign, Sub, SubAssign};
-use crate::sys::hermit::abi;
-use crate::sys::hermit::abi::timespec;
-use crate::sys::hermit::abi::{CLOCK_MONOTONIC, CLOCK_REALTIME, NSEC_PER_SEC};
 use crate::time::Duration;
 use core::hash::{Hash, Hasher};
 

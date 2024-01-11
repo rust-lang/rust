@@ -1,12 +1,12 @@
 #![allow(dead_code)]
 
+use super::abi;
+use super::thread_local_dtor::run_dtors;
 use crate::ffi::CStr;
 use crate::io;
 use crate::mem;
 use crate::num::NonZeroUsize;
 use crate::ptr;
-use crate::sys::hermit::abi;
-use crate::sys::hermit::thread_local_dtor::run_dtors;
 use crate::time::Duration;
 
 pub type Tid = abi::Tid;

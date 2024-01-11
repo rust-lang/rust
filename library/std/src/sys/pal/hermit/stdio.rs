@@ -1,6 +1,6 @@
+use super::abi;
 use crate::io;
 use crate::io::{IoSlice, IoSliceMut};
-use crate::sys::hermit::abi;
 
 pub struct Stdin;
 pub struct Stdout;

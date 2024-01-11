@@ -1,3 +1,4 @@
+use super::abi;
 use crate::collections::HashMap;
 use crate::error::Error as StdError;
 use crate::ffi::{CStr, OsStr, OsString};
@@ -8,7 +9,6 @@ use crate::os::hermit::ffi::OsStringExt;
 use crate::path::{self, PathBuf};
 use crate::str;
 use crate::sync::Mutex;
-use crate::sys::hermit::abi;
 use crate::sys::memchr;
 use crate::sys::unsupported;
 use crate::vec;

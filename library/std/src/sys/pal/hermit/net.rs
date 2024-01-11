@@ -1,11 +1,11 @@
 #![allow(dead_code)]
 
+use super::fd::FileDesc;
 use crate::cmp;
 use crate::io::{self, BorrowedBuf, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::net::{Shutdown, SocketAddr};
 use crate::os::hermit::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, RawFd};
-use crate::sys::hermit::fd::FileDesc;
 use crate::sys::time::Instant;
 use crate::sys_common::net::{getsockopt, setsockopt, sockaddr_to_addr};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
