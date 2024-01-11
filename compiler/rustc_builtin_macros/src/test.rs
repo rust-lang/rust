@@ -394,7 +394,7 @@ fn not_testable_error(cx: &ExtCtxt<'_>, attr_sp: Span, item: Option<&ast::Item>)
     let level = match item.map(|i| &i.kind) {
         // These were a warning before #92959 and need to continue being that to avoid breaking
         // stable user code (#94508).
-        Some(ast::ItemKind::MacCall(_)) => Level::Warning(None),
+        Some(ast::ItemKind::MacCall(_)) => Level::Warning,
         _ => Level::Error,
     };
     let mut err = DiagnosticBuilder::<()>::new(dcx, level, msg);

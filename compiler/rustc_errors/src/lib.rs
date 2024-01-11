@@ -420,6 +420,7 @@ pub struct DiagCtxt {
 /// as well as inconsistent state observation.
 struct DiagCtxtInner {
     flags: DiagCtxtFlags,
+
     /// The number of lint errors that have been emitted.
     lint_err_count: usize,
     /// The number of errors that have been emitted, including duplicates.
@@ -427,8 +428,13 @@ struct DiagCtxtInner {
     /// This is not necessarily the count that's reported to the user once
     /// compilation ends.
     err_count: usize,
-    warn_count: usize,
     deduplicated_err_count: usize,
+    /// The warning count, used for a recap upon finishing
+    deduplicated_warn_count: usize,
+    /// Has this diagnostic context printed any diagnostics? (I.e. has
+    /// `self.emitter.emit_diagnostic()` been called?
+    has_printed: bool,
+
     emitter: Box<DynEmitter>,
     span_delayed_bugs: Vec<DelayedDiagnostic>,
     good_path_delayed_bugs: Vec<DelayedDiagnostic>,
@@ -454,9 +460,6 @@ struct DiagCtxtInner {
     /// The stashed diagnostics count towards the total error count.
     /// When `.abort_if_errors()` is called, these are also emitted.
     stashed_diagnostics: FxIndexMap<(Span, StashKey), Diagnostic>,
-
-    /// The warning count, used for a recap upon finishing
-    deduplicated_warn_count: usize,
 
     future_breakage_diagnostics: Vec<Diagnostic>,
 
@@ -513,7 +516,7 @@ fn default_track_diagnostic(diag: Diagnostic, f: &mut dyn FnMut(Diagnostic)) {
     (*f)(diag)
 }
 
-pub static TRACK_DIAGNOSTICS: AtomicRef<fn(Diagnostic, &mut dyn FnMut(Diagnostic))> =
+pub static TRACK_DIAGNOSTIC: AtomicRef<fn(Diagnostic, &mut dyn FnMut(Diagnostic))> =
     AtomicRef::new(&(default_track_diagnostic as _));
 
 #[derive(Copy, Clone, Default)]
@@ -547,8 +550,7 @@ impl Drop for DiagCtxtInner {
         // instead of "require some error happened". Sadly that isn't ideal, as
         // lints can be `#[allow]`'d, potentially leading to this triggering.
         // Also, "good path" should be replaced with a better naming.
-        let has_any_message = self.err_count > 0 || self.lint_err_count > 0 || self.warn_count > 0;
-        if !has_any_message && !self.suppressed_expected_diag && !std::thread::panicking() {
+        if !self.has_printed && !self.suppressed_expected_diag && !std::thread::panicking() {
             let bugs = std::mem::replace(&mut self.good_path_delayed_bugs, Vec::new());
             self.flush_delayed(
                 bugs,
@@ -594,9 +596,9 @@ impl DiagCtxt {
                 flags: DiagCtxtFlags { can_emit_warnings: true, ..Default::default() },
                 lint_err_count: 0,
                 err_count: 0,
-                warn_count: 0,
                 deduplicated_err_count: 0,
                 deduplicated_warn_count: 0,
+                has_printed: false,
                 emitter,
                 span_delayed_bugs: Vec::new(),
                 good_path_delayed_bugs: Vec::new(),
@@ -647,10 +649,11 @@ impl DiagCtxt {
     /// the overall count of emitted error diagnostics.
     pub fn reset_err_count(&self) {
         let mut inner = self.inner.borrow_mut();
+        inner.lint_err_count = 0;
         inner.err_count = 0;
-        inner.warn_count = 0;
         inner.deduplicated_err_count = 0;
         inner.deduplicated_warn_count = 0;
+        inner.has_printed = false;
 
         // actually free the underlying memory (which `clear` would not do)
         inner.span_delayed_bugs = Default::default();
@@ -669,15 +672,10 @@ impl DiagCtxt {
         let key = (span.with_parent(None), key);
 
         if diag.is_error() {
-            if diag.level == Error && diag.is_lint {
+            if diag.is_lint {
                 inner.lint_err_count += 1;
             } else {
                 inner.err_count += 1;
-            }
-        } else {
-            // Warnings are only automatically flushed if they're forced.
-            if diag.is_force_warn() {
-                inner.warn_count += 1;
             }
         }
 
@@ -693,14 +691,10 @@ impl DiagCtxt {
         let key = (span.with_parent(None), key);
         let diag = inner.stashed_diagnostics.remove(&key)?;
         if diag.is_error() {
-            if diag.level == Error && diag.is_lint {
+            if diag.is_lint {
                 inner.lint_err_count -= 1;
             } else {
                 inner.err_count -= 1;
-            }
-        } else {
-            if diag.is_force_warn() {
-                inner.warn_count -= 1;
             }
         }
         Some(DiagnosticBuilder::new_diagnostic(self, diag))
@@ -738,7 +732,7 @@ impl DiagCtxt {
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn struct_warn(&self, msg: impl Into<DiagnosticMessage>) -> DiagnosticBuilder<'_, ()> {
-        DiagnosticBuilder::new(self, Warning(None), msg)
+        DiagnosticBuilder::new(self, Warning, msg)
     }
 
     /// Construct a builder at the `Allow` level with the `msg`.
@@ -1005,7 +999,7 @@ impl DiagCtxt {
             (0, 0) => return,
             (0, _) => inner
                 .emitter
-                .emit_diagnostic(&Diagnostic::new(Warning(None), DiagnosticMessage::Str(warnings))),
+                .emit_diagnostic(&Diagnostic::new(Warning, DiagnosticMessage::Str(warnings))),
             (_, 0) => {
                 inner.emit_diagnostic(Diagnostic::new(Fatal, errors));
             }
@@ -1094,7 +1088,7 @@ impl DiagCtxt {
         &'a self,
         warning: impl IntoDiagnostic<'a, ()>,
     ) -> DiagnosticBuilder<'a, ()> {
-        warning.into_diagnostic(self, Warning(None))
+        warning.into_diagnostic(self, Warning)
     }
 
     #[track_caller]
@@ -1241,21 +1235,17 @@ impl DiagCtxtInner {
         for diag in diags {
             // Decrement the count tracking the stash; emitting will increment it.
             if diag.is_error() {
-                if diag.level == Error && diag.is_lint {
+                if diag.is_lint {
                     self.lint_err_count -= 1;
                 } else {
                     self.err_count -= 1;
                 }
             } else {
-                if diag.is_force_warn() {
-                    self.warn_count -= 1;
-                } else {
-                    // Unless they're forced, don't flush stashed warnings when
-                    // there are errors, to avoid causing warning overload. The
-                    // stash would've been stolen already if it were important.
-                    if has_errors {
-                        continue;
-                    }
+                // Unless they're forced, don't flush stashed warnings when
+                // there are errors, to avoid causing warning overload. The
+                // stash would've been stolen already if it were important.
+                if !diag.is_force_warn() && has_errors {
+                    continue;
                 }
             }
             let reported_this = self.emit_diagnostic(diag);
@@ -1304,23 +1294,20 @@ impl DiagCtxtInner {
             self.fulfilled_expectations.insert(expectation_id.normalize());
         }
 
-        if matches!(diagnostic.level, Warning(_))
-            && !self.flags.can_emit_warnings
-            && !diagnostic.is_force_warn()
-        {
+        if diagnostic.level == Warning && !self.flags.can_emit_warnings {
             if diagnostic.has_future_breakage() {
-                (*TRACK_DIAGNOSTICS)(diagnostic, &mut |_| {});
+                (*TRACK_DIAGNOSTIC)(diagnostic, &mut |_| {});
             }
             return None;
         }
 
         if matches!(diagnostic.level, Expect(_) | Allow) {
-            (*TRACK_DIAGNOSTICS)(diagnostic, &mut |_| {});
+            (*TRACK_DIAGNOSTIC)(diagnostic, &mut |_| {});
             return None;
         }
 
         let mut guaranteed = None;
-        (*TRACK_DIAGNOSTICS)(diagnostic, &mut |mut diagnostic| {
+        (*TRACK_DIAGNOSTIC)(diagnostic, &mut |mut diagnostic| {
             if let Some(ref code) = diagnostic.code {
                 self.emitted_diagnostic_codes.insert(code.clone());
             }
@@ -1359,12 +1346,13 @@ impl DiagCtxtInner {
                 self.emitter.emit_diagnostic(&diagnostic);
                 if diagnostic.is_error() {
                     self.deduplicated_err_count += 1;
-                } else if let Warning(_) = diagnostic.level {
+                } else if matches!(diagnostic.level, ForceWarning(_) | Warning) {
                     self.deduplicated_warn_count += 1;
                 }
+                self.has_printed = true;
             }
             if diagnostic.is_error() {
-                if diagnostic.level == Error && diagnostic.is_lint {
+                if diagnostic.is_lint {
                     self.bump_lint_err_count();
                 } else {
                     self.bump_err_count();
@@ -1374,8 +1362,6 @@ impl DiagCtxtInner {
                 {
                     guaranteed = Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
                 }
-            } else {
-                self.bump_warn_count();
             }
         });
 
@@ -1471,10 +1457,6 @@ impl DiagCtxtInner {
         self.panic_if_treat_err_as_bug();
     }
 
-    fn bump_warn_count(&mut self) {
-        self.warn_count += 1;
-    }
-
     fn panic_if_treat_err_as_bug(&self) {
         if self.treat_err_as_bug() {
             match (
@@ -1562,14 +1544,17 @@ pub enum Level {
     /// Its `EmissionGuarantee` is `ErrorGuaranteed`.
     Error,
 
+    /// A `force-warn` lint warning about the code being compiled. Does not prevent compilation
+    /// from finishing.
+    ///
+    /// The [`LintExpectationId`] is used for expected lint diagnostics. In all other cases this
+    /// should be `None`.
+    ForceWarning(Option<LintExpectationId>),
+
     /// A warning about the code being compiled. Does not prevent compilation from finishing.
     ///
-    /// This [`LintExpectationId`] is used for expected lint diagnostics, which should
-    /// also emit a warning due to the `force-warn` flag. In all other cases this should
-    /// be `None`.
-    ///
     /// Its `EmissionGuarantee` is `()`.
-    Warning(Option<LintExpectationId>),
+    Warning,
 
     /// A message giving additional context. Rare, because notes are more commonly attached to other
     /// diagnostics such as errors.
@@ -1622,7 +1607,7 @@ impl Level {
             Bug | DelayedBug | Fatal | Error => {
                 spec.set_fg(Some(Color::Red)).set_intense(true);
             }
-            Warning(_) => {
+            ForceWarning(_) | Warning => {
                 spec.set_fg(Some(Color::Yellow)).set_intense(cfg!(windows));
             }
             Note | OnceNote => {
@@ -1641,7 +1626,7 @@ impl Level {
         match self {
             Bug | DelayedBug => "error: internal compiler error",
             Fatal | Error => "error",
-            Warning(_) => "warning",
+            ForceWarning(_) | Warning => "warning",
             Note | OnceNote => "note",
             Help | OnceHelp => "help",
             FailureNote => "failure-note",
@@ -1655,7 +1640,7 @@ impl Level {
 
     pub fn get_expectation_id(&self) -> Option<LintExpectationId> {
         match self {
-            Expect(id) | Warning(Some(id)) => Some(*id),
+            Expect(id) | ForceWarning(Some(id)) => Some(*id),
             _ => None,
         }
     }

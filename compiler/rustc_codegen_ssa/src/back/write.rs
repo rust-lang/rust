@@ -1847,14 +1847,9 @@ impl SharedEmitterMain {
                     dcx.emit_diagnostic(d);
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)) => {
-                    let err_level = match level {
-                        Level::Error => Level::Error,
-                        Level::Warning(_) => Level::Warning(None),
-                        Level::Note => Level::Note,
-                        _ => bug!("Invalid inline asm diagnostic level"),
-                    };
+                    assert!(matches!(level, Level::Error | Level::Warning | Level::Note));
                     let msg = msg.strip_prefix("error: ").unwrap_or(&msg).to_string();
-                    let mut err = DiagnosticBuilder::<()>::new(sess.dcx(), err_level, msg);
+                    let mut err = DiagnosticBuilder::<()>::new(sess.dcx(), level, msg);
 
                     // If the cookie is 0 then we don't have span information.
                     if cookie != 0 {

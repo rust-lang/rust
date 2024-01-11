@@ -455,7 +455,7 @@ pub fn report_msg<'tcx>(
     let sess = machine.tcx.sess;
     let level = match diag_level {
         DiagLevel::Error => Level::Error,
-        DiagLevel::Warning => Level::Warning(None),
+        DiagLevel::Warning => Level::Warning,
         DiagLevel::Note => Level::Note,
     };
     let mut err = DiagnosticBuilder::<()>::new(sess.dcx(), level, title);
