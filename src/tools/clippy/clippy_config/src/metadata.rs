@@ -96,6 +96,9 @@ fn parse_config_field_doc(doc_comment: &str) -> Option<(Vec<String>, String)> {
         doc_comment.make_ascii_lowercase();
         let lints: Vec<String> = doc_comment
             .split_off(DOC_START.len())
+            .lines()
+            .next()
+            .unwrap()
             .split(", ")
             .map(str::to_string)
             .collect();

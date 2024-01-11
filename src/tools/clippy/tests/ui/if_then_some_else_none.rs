@@ -130,3 +130,8 @@ fn issue11394(b: bool, v: Result<(), ()>) -> Result<(), ()> {
 
     Ok(())
 }
+
+const fn issue12103(x: u32) -> Option<u32> {
+    // Should not issue an error in `const` context
+    if x > 42 { Some(150) } else { None }
+}

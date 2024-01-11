@@ -365,3 +365,52 @@ fn avoid_subtract_overflow(q: u32) {
 fn issue11426() {
     (&42u8 >> 0xa9008fb6c9d81e42_0e25730562a601c8_u128) as usize;
 }
+
+fn issue11642() {
+    fn square(x: i16) -> u32 {
+        let x = x as i32;
+        (x * x) as u32;
+        x.pow(2) as u32;
+        (-2_i32).pow(2) as u32
+    }
+
+    let _a = |x: i32| -> u32 { (x * x * x * x) as u32 };
+
+    (-2_i32).pow(3) as u32;
+    //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+
+    let x: i32 = 10;
+    (x * x) as u32;
+    (x * x * x) as u32;
+    //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+
+    let y: i16 = -2;
+    (y * y * y * y * -2) as u16;
+    //~^ ERROR: casting `i16` to `u16` may lose the sign of the value
+    (y * y * y * y * 2) as u16;
+    (y * y * y * 2) as u16;
+    //~^ ERROR: casting `i16` to `u16` may lose the sign of the value
+    (y * y * y * -2) as u16;
+    //~^ ERROR: casting `i16` to `u16` may lose the sign of the value
+
+    fn foo(a: i32, b: i32, c: i32) -> u32 {
+        (a * a * b * b * c * c) as u32;
+        (a * b * c) as u32;
+        //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+        (a * -b * c) as u32;
+        //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+        (a * b * c * c) as u32;
+        (a * -2) as u32;
+        //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+        (a * b * c * -2) as u32;
+        //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+        (a / b) as u32;
+        (a / b * c) as u32;
+        //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+        (a / b + b * c) as u32;
+        //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+        a.pow(3) as u32;
+        //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
+        (a.abs() * b.pow(2) / c.abs()) as u32
+    }
+}

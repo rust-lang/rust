@@ -40,7 +40,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Lints subtraction between an [`Instant`] and a [`Duration`].
+    /// Lints subtraction between an `Instant` and a `Duration`.
     ///
     /// ### Why is this bad?
     /// Unchecked subtraction could cause underflow on certain platforms, leading to
@@ -57,9 +57,6 @@ declare_clippy_lint! {
     /// # use std::time::{Instant, Duration};
     /// let time_passed = Instant::now().checked_sub(Duration::from_secs(5));
     /// ```
-    ///
-    /// [`Duration`]: std::time::Duration
-    /// [`Instant::now()`]: std::time::Instant::now;
     #[clippy::version = "1.67.0"]
     pub UNCHECKED_DURATION_SUBTRACTION,
     pedantic,

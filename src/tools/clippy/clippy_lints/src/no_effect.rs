@@ -165,7 +165,7 @@ fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
 }
 
 fn is_operator_overridden(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    // It's very hard or impossable to check whether overridden operator have side-effect this lint.
+    // It's very hard or impossible to check whether overridden operator have side-effect this lint.
     // So, this function assume user-defined operator is overridden with an side-effect.
     // The definition of user-defined structure here is ADT-type,
     // Althrough this will weaken the ability of this lint, less error lint-fix happen.

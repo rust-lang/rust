@@ -805,3 +805,13 @@ for _ in &mut *rmvec {}
 * [`missing_errors_doc`](https://rust-lang.github.io/rust-clippy/master/index.html#missing_errors_doc)
 
 
+## `pub-underscore-fields-behavior`
+
+
+**Default Value:** `"PublicallyExported"`
+
+---
+**Affected lints:**
+* [`pub_underscore_fields`](https://rust-lang.github.io/rust-clippy/master/index.html#pub_underscore_fields)
+
+
