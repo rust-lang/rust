@@ -9,7 +9,9 @@ use rustc_middle::middle::lang_items::required;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
 
-use crate::errors::{MissingLangItem, MissingPanicHandler, UnknownExternLangItem};
+use crate::errors::{
+    MissingLangItem, MissingPanicHandler, PanicUnwindWithoutStd, UnknownExternLangItem,
+};
 
 /// Checks the crate for usage of weak lang items, returning a vector of all the
 /// language items required by this crate, but not defined yet.
@@ -76,6 +78,8 @@ fn verify(tcx: TyCtxt<'_>, items: &lang_items::LanguageItems) {
         if missing.contains(&item) && required(tcx, item) && items.get(item).is_none() {
             if item == LangItem::PanicImpl {
                 tcx.dcx().emit_err(MissingPanicHandler);
+            } else if item == LangItem::EhPersonality {
+                tcx.dcx().emit_err(PanicUnwindWithoutStd);
             } else {
                 tcx.dcx().emit_err(MissingLangItem { name: item.name() });
             }
