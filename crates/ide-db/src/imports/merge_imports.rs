@@ -3,8 +3,8 @@ use std::cmp::Ordering;
 
 use itertools::{EitherOrBoth, Itertools};
 use syntax::{
-    ast::{self, AstNode, HasAttrs, HasVisibility, PathSegmentKind},
-    ted,
+    ast::{self, AstNode, HasAttrs, HasName, HasVisibility, PathSegmentKind},
+    ted, TokenText,
 };
 
 use crate::syntax_helpers::node_ext::vis_eq;
@@ -97,7 +97,7 @@ fn recursive_merge(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior)
         // same as a `filter` op).
         .map(|tree| merge.is_tree_allowed(&tree).then_some(tree))
         .collect::<Option<_>>()?;
-    use_trees.sort_unstable_by(|a, b| path_cmp_for_sort(a.path(), b.path()));
+    use_trees.sort_unstable_by(|a, b| use_tree_cmp(a, b));
     for rhs_t in rhs.use_tree_list().into_iter().flat_map(|list| list.use_trees()) {
         if !merge.is_tree_allowed(&rhs_t) {
             return None;
@@ -190,25 +190,6 @@ pub fn common_prefix(lhs: &ast::Path, rhs: &ast::Path) -> Option<(ast::Path, ast
     }
 }
 
-/// Orders paths in the following way:
-/// the sole self token comes first, after that come uppercase identifiers, then lowercase identifiers
-// FIXME: rustfmt sorts lowercase idents before uppercase, in general we want to have the same ordering rustfmt has
-// which is `self` and `super` first, then identifier imports with lowercase ones first, then glob imports and at last list imports.
-// Example foo::{self, foo, baz, Baz, Qux, *, {Bar}}
-fn path_cmp_for_sort(a: Option<ast::Path>, b: Option<ast::Path>) -> Ordering {
-    match (a, b) {
-        (None, None) => Ordering::Equal,
-        (None, Some(_)) => Ordering::Less,
-        (Some(_), None) => Ordering::Greater,
-        (Some(ref a), Some(ref b)) => match (path_is_self(a), path_is_self(b)) {
-            (true, true) => Ordering::Equal,
-            (true, false) => Ordering::Less,
-            (false, true) => Ordering::Greater,
-            (false, false) => path_cmp_short(a, b),
-        },
-    }
-}
-
 /// Path comparison func for binary searching for merging.
 fn path_cmp_bin_search(lhs: Option<ast::Path>, rhs: Option<&ast::Path>) -> Ordering {
     match (lhs.as_ref().and_then(ast::Path::first_segment), rhs.and_then(ast::Path::first_segment))
@@ -220,59 +201,141 @@ fn path_cmp_bin_search(lhs: Option<ast::Path>, rhs: Option<&ast::Path>) -> Order
     }
 }
 
-/// Short circuiting comparison, if both paths are equal until one of them ends they are considered
-/// equal
-fn path_cmp_short(a: &ast::Path, b: &ast::Path) -> Ordering {
-    let a = a.segments();
-    let b = b.segments();
-    // cmp_by would be useful for us here but that is currently unstable
-    // cmp doesn't work due the lifetimes on text's return type
-    a.zip(b)
-        .find_map(|(a, b)| match path_segment_cmp(&a, &b) {
-            Ordering::Equal => None,
-            ord => Some(ord),
-        })
-        .unwrap_or(Ordering::Equal)
-}
-
-/// Compares two paths, if one ends earlier than the other the has_tl parameters decide which is
-/// greater as a path that has a tree list should be greater, while one that just ends without
-/// a tree list should be considered less.
-pub(super) fn use_tree_path_cmp(
-    a: &ast::Path,
-    a_has_tl: bool,
-    b: &ast::Path,
-    b_has_tl: bool,
-) -> Ordering {
-    let a_segments = a.segments();
-    let b_segments = b.segments();
-    // cmp_by would be useful for us here but that is currently unstable
-    // cmp doesn't work due the lifetimes on text's return type
-    a_segments
-        .zip_longest(b_segments)
-        .find_map(|zipped| match zipped {
-            EitherOrBoth::Both(ref a, ref b) => match path_segment_cmp(a, b) {
-                Ordering::Equal => None,
-                ord => Some(ord),
-            },
-            EitherOrBoth::Left(_) if !b_has_tl => Some(Ordering::Greater),
-            EitherOrBoth::Left(_) => Some(Ordering::Less),
-            EitherOrBoth::Right(_) if !a_has_tl => Some(Ordering::Less),
-            EitherOrBoth::Right(_) => Some(Ordering::Greater),
-        })
-        .unwrap_or(Ordering::Equal)
+/// Orders use trees following `rustfmt`'s algorithm for ordering imports, which is `self`, `super` and `crate` first,
+/// then identifier imports with lowercase ones first and upper snake case (e.g. UPPER_SNAKE_CASE) ones last,
+/// then glob imports, and at last list imports.
+///
+/// Example foo::{self, foo, baz, Baz, Qux, FOO_BAZ, *, {Bar}}
+/// Ref: <https://github.com/rust-lang/rustfmt/blob/6356fca675bd756d71f5c123cd053d17b16c573e/src/imports.rs#L83-L86>.
+pub(super) fn use_tree_cmp(a: &ast::UseTree, b: &ast::UseTree) -> Ordering {
+    let tiebreak_by_glob_or_alias = || match (a.star_token().is_some(), b.star_token().is_some()) {
+        (true, false) => Ordering::Greater,
+        (false, true) => Ordering::Less,
+        _ => match (a.rename(), b.rename()) {
+            (None, None) => Ordering::Equal,
+            (Some(_), None) => Ordering::Greater,
+            (None, Some(_)) => Ordering::Less,
+            (Some(a_rename), Some(b_rename)) => a_rename
+                .name()
+                .as_ref()
+                .map(ast::Name::text)
+                .as_ref()
+                .map_or("_", TokenText::as_str)
+                .cmp(
+                    b_rename
+                        .name()
+                        .as_ref()
+                        .map(ast::Name::text)
+                        .as_ref()
+                        .map_or("_", TokenText::as_str),
+                ),
+        },
+    };
+    let tiebreak_by_tree_list_glob_or_alias = || match (a.use_tree_list(), b.use_tree_list()) {
+        (None, None) => tiebreak_by_glob_or_alias(),
+        (Some(_), None) => Ordering::Greater,
+        (None, Some(_)) => Ordering::Less,
+        (Some(a_list), Some(b_list)) => a_list
+            .use_trees()
+            .zip_longest(b_list.use_trees())
+            .find_map(|zipped| match zipped {
+                EitherOrBoth::Both(ref a_tree, ref b_tree) => match use_tree_cmp(a_tree, b_tree) {
+                    Ordering::Equal => None,
+                    ord => Some(ord),
+                },
+                EitherOrBoth::Left(_) => Some(Ordering::Greater),
+                EitherOrBoth::Right(_) => Some(Ordering::Less),
+            })
+            .unwrap_or_else(tiebreak_by_glob_or_alias),
+    };
+    match (a.path(), b.path()) {
+        (None, None) => match (a.is_simple_path(), b.is_simple_path()) {
+            (true, true) => Ordering::Equal,
+            (true, false) => Ordering::Less,
+            (false, true) => Ordering::Greater,
+            (false, false) => tiebreak_by_tree_list_glob_or_alias(),
+        },
+        (Some(_), None) if !b.is_simple_path() => Ordering::Less,
+        (Some(_), None) => Ordering::Greater,
+        (None, Some(_)) if !a.is_simple_path() => Ordering::Greater,
+        (None, Some(_)) => Ordering::Less,
+        (Some(ref a_path), Some(ref b_path)) => {
+            // cmp_by would be useful for us here but that is currently unstable
+            // cmp doesn't work due the lifetimes on text's return type
+            a_path
+                .segments()
+                .zip_longest(b_path.segments())
+                .find_map(|zipped| match zipped {
+                    EitherOrBoth::Both(ref a_segment, ref b_segment) => {
+                        match path_segment_cmp(a_segment, b_segment) {
+                            Ordering::Equal => None,
+                            ord => Some(ord),
+                        }
+                    }
+                    EitherOrBoth::Left(_) if b.is_simple_path() => Some(Ordering::Greater),
+                    EitherOrBoth::Left(_) => Some(Ordering::Less),
+                    EitherOrBoth::Right(_) if a.is_simple_path() => Some(Ordering::Less),
+                    EitherOrBoth::Right(_) => Some(Ordering::Greater),
+                })
+                .unwrap_or_else(tiebreak_by_tree_list_glob_or_alias)
+        }
+    }
 }
 
 fn path_segment_cmp(a: &ast::PathSegment, b: &ast::PathSegment) -> Ordering {
-    let a = a.kind().and_then(|kind| match kind {
-        PathSegmentKind::Name(name_ref) => Some(name_ref),
-        _ => None,
-    });
-    let b = b.kind().and_then(|kind| match kind {
-        PathSegmentKind::Name(name_ref) => Some(name_ref),
-        _ => None,
-    });
-    a.as_ref().map(ast::NameRef::text).cmp(&b.as_ref().map(ast::NameRef::text))
+    match (a.kind(), b.kind()) {
+        (None, None) => Ordering::Equal,
+        (Some(_), None) => Ordering::Greater,
+        (None, Some(_)) => Ordering::Less,
+        // self
+        (Some(PathSegmentKind::SelfKw), Some(PathSegmentKind::SelfKw)) => Ordering::Equal,
+        (Some(PathSegmentKind::SelfKw), _) => Ordering::Less,
+        (_, Some(PathSegmentKind::SelfKw)) => Ordering::Greater,
+        // super
+        (Some(PathSegmentKind::SuperKw), Some(PathSegmentKind::SuperKw)) => Ordering::Equal,
+        (Some(PathSegmentKind::SuperKw), _) => Ordering::Less,
+        (_, Some(PathSegmentKind::SuperKw)) => Ordering::Greater,
+        // crate
+        (Some(PathSegmentKind::CrateKw), Some(PathSegmentKind::CrateKw)) => Ordering::Equal,
+        (Some(PathSegmentKind::CrateKw), _) => Ordering::Less,
+        (_, Some(PathSegmentKind::CrateKw)) => Ordering::Greater,
+        // identifiers (everything else is treated as an identifier).
+        _ => {
+            match (
+                a.name_ref().as_ref().map(ast::NameRef::text),
+                b.name_ref().as_ref().map(ast::NameRef::text),
+            ) {
+                (None, None) => Ordering::Equal,
+                (Some(_), None) => Ordering::Greater,
+                (None, Some(_)) => Ordering::Less,
+                (Some(a_name), Some(b_name)) => {
+                    // snake_case < CamelCase < UPPER_SNAKE_CASE
+                    let a_text = a_name.as_str();
+                    let b_text = b_name.as_str();
+                    fn is_upper_snake_case(s: &str) -> bool {
+                        s.chars().all(|c| c.is_uppercase() || c == '_' || c.is_numeric())
+                    }
+                    if a_text.starts_with(char::is_lowercase)
+                        && b_text.starts_with(char::is_uppercase)
+                    {
+                        return Ordering::Less;
+                    }
+                    if a_text.starts_with(char::is_uppercase)
+                        && b_text.starts_with(char::is_lowercase)
+                    {
+                        return Ordering::Greater;
+                    }
+                    if !is_upper_snake_case(a_text) && is_upper_snake_case(b_text) {
+                        return Ordering::Less;
+                    }
+                    if is_upper_snake_case(a_text) && !is_upper_snake_case(b_text) {
+                        return Ordering::Greater;
+                    }
+                    a_text.cmp(&b_text)
+                }
+            }
+        }
+    }
 }
 
 pub fn eq_visibility(vis0: Option<ast::Visibility>, vis1: Option<ast::Visibility>) -> bool {
