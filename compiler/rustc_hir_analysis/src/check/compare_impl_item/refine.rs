@@ -7,7 +7,7 @@ use rustc_middle::traits::{ObligationCause, Reveal};
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 use rustc_trait_selection::traits::{
     elaborate, normalize_param_env_or_error, outlives_bounds::InferCtxtExt, ObligationCtxt,
 };
@@ -153,10 +153,7 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         trait_m_sig.inputs_and_output,
     ));
     if !ocx.select_all_or_error().is_empty() {
-        tcx.dcx().span_delayed_bug(
-            DUMMY_SP,
-            "encountered errors when checking RPITIT refinement (selection)",
-        );
+        tcx.dcx().delayed_bug("encountered errors when checking RPITIT refinement (selection)");
         return;
     }
     let outlives_env = OutlivesEnvironment::with_bounds(
@@ -165,18 +162,12 @@ pub(super) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
     );
     let errors = infcx.resolve_regions(&outlives_env);
     if !errors.is_empty() {
-        tcx.dcx().span_delayed_bug(
-            DUMMY_SP,
-            "encountered errors when checking RPITIT refinement (regions)",
-        );
+        tcx.dcx().delayed_bug("encountered errors when checking RPITIT refinement (regions)");
         return;
     }
     // Resolve any lifetime variables that may have been introduced during normalization.
     let Ok((trait_bounds, impl_bounds)) = infcx.fully_resolve((trait_bounds, impl_bounds)) else {
-        tcx.dcx().span_delayed_bug(
-            DUMMY_SP,
-            "encountered errors when checking RPITIT refinement (resolution)",
-        );
+        tcx.dcx().delayed_bug("encountered errors when checking RPITIT refinement (resolution)");
         return;
     };
 

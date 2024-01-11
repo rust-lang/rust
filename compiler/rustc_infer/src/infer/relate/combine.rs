@@ -180,10 +180,9 @@ impl<'tcx> InferCtxt<'tcx> {
                 &mut OriginalQueryValues::default(),
             );
             self.tcx.check_tys_might_be_eq(canonical).map_err(|_| {
-                self.tcx.dcx().span_delayed_bug(
-                    DUMMY_SP,
-                    format!("cannot relate consts of different types (a={a:?}, b={b:?})",),
-                )
+                self.tcx.dcx().delayed_bug(format!(
+                    "cannot relate consts of different types (a={a:?}, b={b:?})",
+                ))
             })
         });
 
@@ -511,7 +510,7 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
                 ));
             } else {
                 match a_ty.kind() {
-                    &ty::Alias(ty::AliasKind::Projection, data) => {
+                    &ty::Alias(ty::Projection, data) => {
                         // FIXME: This does not handle subtyping correctly, we could
                         // instead create a new inference variable for `a_ty`, emitting
                         // `Projection(a_ty, a_infer)` and `a_infer <: b_ty`.
@@ -523,10 +522,9 @@ impl<'infcx, 'tcx> CombineFields<'infcx, 'tcx> {
                         ))
                     }
                     // The old solver only accepts projection predicates for associated types.
-                    ty::Alias(
-                        ty::AliasKind::Inherent | ty::AliasKind::Weak | ty::AliasKind::Opaque,
-                        _,
-                    ) => return Err(TypeError::CyclicTy(a_ty)),
+                    ty::Alias(ty::Inherent | ty::Weak | ty::Opaque, _) => {
+                        return Err(TypeError::CyclicTy(a_ty));
+                    }
                     _ => bug!("generalizated `{a_ty:?} to infer, not an alias"),
                 }
             }

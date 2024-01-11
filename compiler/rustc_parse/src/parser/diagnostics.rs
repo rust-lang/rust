@@ -2847,8 +2847,8 @@ impl<'a> Parser<'a> {
         let span = label.ident.span.to(self.prev_token.span);
         self.dcx()
             .struct_span_err(span, "block label not supported here")
-            .span_label_mv(span, "not supported here")
-            .tool_only_span_suggestion_mv(
+            .with_span_label(span, "not supported here")
+            .with_tool_only_span_suggestion(
                 label.ident.span.until(self.token.span),
                 "remove this block label",
                 "",

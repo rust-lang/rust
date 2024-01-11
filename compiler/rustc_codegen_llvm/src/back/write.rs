@@ -245,12 +245,12 @@ pub fn target_machine_factory(
     match sess.opts.debuginfo_compression {
         rustc_session::config::DebugInfoCompression::Zlib => {
             if !unsafe { LLVMRustLLVMHasZlibCompressionForDebugSymbols() } {
-                sess.dcx().emit_warning(UnknownCompression { algorithm: "zlib" });
+                sess.dcx().emit_warn(UnknownCompression { algorithm: "zlib" });
             }
         }
         rustc_session::config::DebugInfoCompression::Zstd => {
             if !unsafe { LLVMRustLLVMHasZstdCompressionForDebugSymbols() } {
-                sess.dcx().emit_warning(UnknownCompression { algorithm: "zstd" });
+                sess.dcx().emit_warn(UnknownCompression { algorithm: "zstd" });
             }
         }
         rustc_session::config::DebugInfoCompression::None => {}
@@ -417,7 +417,7 @@ fn report_inline_asm(
     }
     let level = match level {
         llvm::DiagnosticLevel::Error => Level::Error,
-        llvm::DiagnosticLevel::Warning => Level::Warning(None),
+        llvm::DiagnosticLevel::Warning => Level::Warning,
         llvm::DiagnosticLevel::Note | llvm::DiagnosticLevel::Remark => Level::Note,
     };
     cgcx.diag_emitter.inline_asm_error(cookie as u32, msg, level, source);
@@ -457,7 +457,7 @@ unsafe extern "C" fn diagnostic_handler(info: &DiagnosticInfo, user: *mut c_void
                 llvm::LLVMRustWriteDiagnosticInfoToString(diagnostic_ref, s)
             })
             .expect("non-UTF8 diagnostic");
-            dcx.emit_warning(FromLlvmDiag { message });
+            dcx.emit_warn(FromLlvmDiag { message });
         }
         llvm::diagnostic::Unsupported(diagnostic_ref) => {
             let message = llvm::build_string(|s| {

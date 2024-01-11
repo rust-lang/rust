@@ -254,7 +254,7 @@ fn configure_and_expand(
     }
 
     if is_proc_macro_crate && sess.panic_strategy() == PanicStrategy::Abort {
-        sess.dcx().emit_warning(errors::ProcMacroCratePanicAbort);
+        sess.dcx().emit_warn(errors::ProcMacroCratePanicAbort);
     }
 
     sess.time("maybe_create_a_macro_crate", || {

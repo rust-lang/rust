@@ -1429,7 +1429,7 @@ fn report_ice(
             }
             Err(err) => {
                 // The path ICE couldn't be written to disk, provide feedback to the user as to why.
-                dcx.emit_warning(session_diagnostics::IcePathError {
+                dcx.emit_warn(session_diagnostics::IcePathError {
                     path: path.clone(),
                     error: err.to_string(),
                     env_var: std::env::var_os("RUSTC_ICE")

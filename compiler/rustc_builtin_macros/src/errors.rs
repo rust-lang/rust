@@ -817,9 +817,9 @@ impl<'a, G: EmissionGuarantee> IntoDiagnostic<'a, G> for AsmClobberNoReg {
             level,
             crate::fluent_generated::builtin_macros_asm_clobber_no_reg,
         )
-        .span_mv(self.spans.clone())
-        .span_labels_mv(self.clobbers, &lbl1)
-        .span_labels_mv(self.spans, &lbl2)
+        .with_span(self.spans.clone())
+        .with_span_labels(self.clobbers, &lbl1)
+        .with_span_labels(self.spans, &lbl2)
     }
 }
 

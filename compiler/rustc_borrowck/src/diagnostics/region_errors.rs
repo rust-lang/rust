@@ -27,7 +27,7 @@ use rustc_middle::ty::TypeVisitor;
 use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_middle::ty::{Region, TyCtxt};
 use rustc_span::symbol::{kw, Ident};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 
 use crate::borrowck_errors;
 use crate::session_diagnostics::{
@@ -84,7 +84,7 @@ impl<'tcx> RegionErrors<'tcx> {
     #[track_caller]
     pub fn push(&mut self, val: impl Into<RegionErrorKind<'tcx>>) {
         let val = val.into();
-        self.1.sess.dcx().span_delayed_bug(DUMMY_SP, format!("{val:?}"));
+        self.1.sess.dcx().delayed_bug(format!("{val:?}"));
         self.0.push(val);
     }
     pub fn is_empty(&self) -> bool {

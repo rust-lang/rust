@@ -2,7 +2,7 @@ use crate::astconv::{GenericArgCountMismatch, GenericArgCountResult, OnlySelfBou
 use crate::bounds::Bounds;
 use crate::errors::TraitObjectDeclaredWithNoTraits;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
-use rustc_errors::struct_span_err;
+use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -89,7 +89,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if regular_traits.len() > 1 {
             let first_trait = &regular_traits[0];
             let additional_trait = &regular_traits[1];
-            let mut err = struct_span_err!(
+            let mut err = struct_span_code_err!(
                 tcx.dcx(),
                 additional_trait.bottom().1,
                 E0225,
@@ -290,7 +290,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
                 if references_self {
                     let def_id = i.bottom().0.def_id();
-                    struct_span_err!(
+                    struct_span_code_err!(
                         tcx.dcx(),
                         i.bottom().1,
                         E0038,
@@ -298,7 +298,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         tcx.def_descr(def_id),
                         tcx.item_name(def_id),
                     )
-                    .note_mv(
+                    .with_note(
                         rustc_middle::traits::ObjectSafetyViolation::SupertraitSelf(smallvec![])
                             .error_msg(),
                     )
@@ -375,7 +375,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     self.ast_region_to_region(lifetime, None)
                 } else {
                     self.re_infer(None, span).unwrap_or_else(|| {
-                        let err = struct_span_err!(
+                        let err = struct_span_code_err!(
                             tcx.dcx(),
                             span,
                             E0228,

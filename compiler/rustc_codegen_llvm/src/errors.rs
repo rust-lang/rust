@@ -106,7 +106,7 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for ParseTargetMachineConfig<'_
         let message = dcx.eagerly_translate_to_string(message.clone(), diag.args());
 
         DiagnosticBuilder::new(dcx, level, fluent::codegen_llvm_parse_target_machine_config)
-            .arg_mv("error", message)
+            .with_arg("error", message)
     }
 }
 
@@ -204,8 +204,8 @@ impl<G: EmissionGuarantee> IntoDiagnostic<'_, G> for WithLlvmError<'_> {
         };
         self.0
             .into_diagnostic(dcx, level)
-            .primary_message_mv(msg_with_llvm_err)
-            .arg_mv("llvm_err", self.1)
+            .with_primary_message(msg_with_llvm_err)
+            .with_arg("llvm_err", self.1)
     }
 }
 

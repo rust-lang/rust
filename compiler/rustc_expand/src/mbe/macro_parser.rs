@@ -680,7 +680,7 @@ impl TtParser {
                         // edition-specific matching behavior for non-terminals.
                         let nt = match parser.to_mut().parse_nonterminal(kind) {
                             Err(err) => {
-                                let guarantee = err.span_label_mv(
+                                let guarantee = err.with_span_label(
                                     span,
                                     format!(
                                         "while parsing argument for this `{kind}` macro fragment"

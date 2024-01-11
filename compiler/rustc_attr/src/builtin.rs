@@ -621,7 +621,7 @@ pub fn eval_condition(
                 }
             };
             let Some(min_version) = parse_version(*min_version) else {
-                dcx.emit_warning(session_diagnostics::UnknownVersionLiteral { span: *span });
+                dcx.emit_warn(session_diagnostics::UnknownVersionLiteral { span: *span });
                 return false;
             };
 

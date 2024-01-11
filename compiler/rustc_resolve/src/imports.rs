@@ -17,7 +17,7 @@ use crate::{NameBinding, NameBindingData, NameBindingKind, PathResult};
 use rustc_ast::NodeId;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
-use rustc_errors::{pluralize, struct_span_err, Applicability, MultiSpan};
+use rustc_errors::{pluralize, struct_span_code_err, Applicability, MultiSpan};
 use rustc_hir::def::{self, DefKind, PartialRes};
 use rustc_middle::metadata::ModChild;
 use rustc_middle::metadata::Reexport;
@@ -686,7 +686,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             .collect::<Vec<_>>();
         let msg = format!("unresolved import{} {}", pluralize!(paths.len()), paths.join(", "),);
 
-        let mut diag = struct_span_err!(self.dcx(), span, E0432, "{}", &msg);
+        let mut diag = struct_span_code_err!(self.dcx(), span, E0432, "{}", &msg);
 
         if let Some((_, UnresolvedImportError { note: Some(note), .. })) = errors.iter().last() {
             diag.note(note.clone());
@@ -1371,12 +1371,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let ImportKind::Glob { id, is_prelude, .. } = import.kind else { unreachable!() };
 
         let ModuleOrUniformRoot::Module(module) = import.imported_module.get().unwrap() else {
-            self.dcx().create_err(CannotGlobImportAllCrates { span: import.span }).emit();
+            self.dcx().emit_err(CannotGlobImportAllCrates { span: import.span });
             return;
         };
 
         if module.is_trait() {
-            self.dcx().create_err(ItemsInTraitsAreNotImportable { span: import.span }).emit();
+            self.dcx().emit_err(ItemsInTraitsAreNotImportable { span: import.span });
             return;
         } else if module == import.parent_scope.module {
             return;

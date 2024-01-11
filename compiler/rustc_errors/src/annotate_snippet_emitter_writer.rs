@@ -87,7 +87,7 @@ fn source_string(file: Lrc<SourceFile>, line: &Line) -> String {
 fn annotation_type_for_level(level: Level) -> AnnotationType {
     match level {
         Level::Bug | Level::DelayedBug | Level::Fatal | Level::Error => AnnotationType::Error,
-        Level::Warning(_) => AnnotationType::Warning,
+        Level::ForceWarning(_) | Level::Warning => AnnotationType::Warning,
         Level::Note | Level::OnceNote => AnnotationType::Note,
         Level::Help | Level::OnceHelp => AnnotationType::Help,
         // FIXME(#59346): Not sure how to map this level

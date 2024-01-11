@@ -461,6 +461,10 @@ fn ipv4_properties() {
     check!("198.18.54.2", benchmarking);
     check!("198.19.255.255", benchmarking);
     check!("192.0.0.0");
+    check!("192.0.0.8");
+    check!("192.0.0.9", global);
+    check!("192.0.0.10", global);
+    check!("192.0.0.11");
     check!("192.0.0.255");
     check!("192.0.0.100");
     check!("240.0.0.0", reserved);
@@ -480,6 +484,10 @@ fn ipv6_properties() {
     }
 
     macro_rules! check {
+        ($s:expr, &[$($octet:expr),*]) => {
+            check!($s, &[$($octet),*], 0);
+        };
+
         ($s:expr, &[$($octet:expr),*], $mask:expr) => {
             assert_eq!($s, ip!($s).to_string());
             let octets = &[$($octet),*];
@@ -656,14 +664,16 @@ fn ipv6_properties() {
         &[0x20, 1, 0, 0x20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         global | unicast_global
     );
-
-    check!("2001:30::", &[0x20, 1, 0, 0x30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unicast_global);
+    check!("2001:30::", &[0x20, 1, 0, 0x30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], global | unicast_global);
+    check!("2001:40::", &[0x20, 1, 0, 0x40, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unicast_global);
 
     check!(
         "2001:200::",
         &[0x20, 1, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         global | unicast_global
     );
+
+    check!("2002::", &[0x20, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unicast_global);
 
     check!("fc00::", &[0xfc, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unique_local);
 

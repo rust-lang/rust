@@ -969,7 +969,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     self.tcx().def_span(impl_def_id),
                                     "multiple drop impls found",
                                 )
-                                .span_note_mv(
+                                .with_span_note(
                                     self.tcx().def_span(old_impl_def_id),
                                     "other impl here",
                                 )

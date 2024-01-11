@@ -1116,7 +1116,7 @@ impl<'a> Parser<'a> {
         let before_fn_path = fn_path.span.shrink_to_lo();
         self.dcx()
             .struct_span_err(generic_args_span, "`Fn` traits cannot take lifetime parameters")
-            .multipart_suggestion_mv(
+            .with_multipart_suggestion(
                 "consider using a higher-ranked trait bound instead",
                 vec![(generic_args_span, "".to_owned()), (before_fn_path, snippet)],
                 Applicability::MaybeIncorrect,

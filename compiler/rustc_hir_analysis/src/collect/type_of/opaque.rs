@@ -134,6 +134,21 @@ impl TaitConstraintLocator<'_> {
             debug!("no constraint: no typeck results");
             return;
         }
+
+        if let Some(hir_sig) = self.tcx.hir_node_by_def_id(item_def_id).fn_decl() {
+            if hir_sig.output.get_infer_ret_ty().is_some() {
+                let guar = self.tcx.dcx().span_delayed_bug(
+                    hir_sig.output.span(),
+                    "inferring return types and opaque types do not mix well",
+                );
+                self.found = Some(ty::OpaqueHiddenType {
+                    span: DUMMY_SP,
+                    ty: Ty::new_error(self.tcx, guar),
+                });
+                return;
+            }
+        }
+
         // Calling `mir_borrowck` can lead to cycle errors through
         // const-checking, avoid calling it if we don't have to.
         // ```rust

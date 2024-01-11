@@ -52,7 +52,7 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
                 Some(c @ ('+' | '-')) => c,
                 Some(_) => {
                     if diagnostics {
-                        sess.dcx().emit_warning(UnknownCTargetFeaturePrefix { feature: s });
+                        sess.dcx().emit_warn(UnknownCTargetFeaturePrefix { feature: s });
                     }
                     return None;
                 }
@@ -79,7 +79,7 @@ pub(crate) fn global_gcc_features(sess: &Session, diagnostics: bool) -> Vec<Stri
                     else {
                         UnknownCTargetFeature { feature, rust_feature: PossibleFeature::None }
                     };
-                sess.dcx().emit_warning(unknown_feature);
+                sess.dcx().emit_warn(unknown_feature);
             }
 
             if diagnostics {

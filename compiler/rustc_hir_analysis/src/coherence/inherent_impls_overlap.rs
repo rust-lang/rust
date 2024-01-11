@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_errors::struct_span_err;
+use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
@@ -70,15 +70,15 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
             match seen_items.entry(norm_ident) {
                 Entry::Occupied(entry) => {
                     let former = entry.get();
-                    struct_span_err!(
+                    struct_span_code_err!(
                         self.tcx.dcx(),
                         span,
                         E0592,
                         "duplicate definitions with name `{}`",
                         ident,
                     )
-                    .span_label_mv(span, format!("duplicate definitions for `{ident}`"))
-                    .span_label_mv(*former, format!("other definition for `{ident}`"))
+                    .with_span_label(span, format!("duplicate definitions for `{ident}`"))
+                    .with_span_label(*former, format!("other definition for `{ident}`"))
                     .emit();
                 }
                 Entry::Vacant(entry) => {
@@ -104,7 +104,7 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
 
             if let Some(item2) = collision {
                 let name = item1.ident(self.tcx).normalize_to_macros_2_0();
-                let mut err = struct_span_err!(
+                let mut err = struct_span_code_err!(
                     self.tcx.dcx(),
                     self.tcx.def_span(item1.def_id),
                     E0592,

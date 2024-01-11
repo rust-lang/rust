@@ -1016,7 +1016,7 @@ fn link_natively<'a>(
                     if !prog.status.success() {
                         let mut output = prog.stderr.clone();
                         output.extend_from_slice(&prog.stdout);
-                        sess.dcx().emit_warning(errors::ProcessingDymutilFailed {
+                        sess.dcx().emit_warn(errors::ProcessingDymutilFailed {
                             status: prog.status,
                             output: escape_string(&output),
                         });
@@ -1091,7 +1091,7 @@ fn strip_symbols_with_external_utility<'a>(
             if !prog.status.success() {
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
-                sess.dcx().emit_warning(errors::StrippingDebugInfoFailed {
+                sess.dcx().emit_warn(errors::StrippingDebugInfoFailed {
                     util,
                     status: prog.status,
                     output: escape_string(&output),
@@ -2406,7 +2406,7 @@ fn collect_natvis_visualizers(
                 visualizer_paths.push(visualizer_out_file);
             }
             Err(error) => {
-                sess.dcx().emit_warning(errors::UnableToWriteDebuggerVisualizer {
+                sess.dcx().emit_warn(errors::UnableToWriteDebuggerVisualizer {
                     path: visualizer_out_file,
                     error,
                 });

@@ -13,7 +13,7 @@ use hir::def::CtorOf;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
-    error_code, pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder,
+    error_code, pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder,
     MultiSpan, Style, SuggestionStyle,
 };
 use rustc_hir as hir;
@@ -2145,7 +2145,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             ty::Coroutine(..) => "coroutine",
             _ => "function",
         };
-        let mut err = struct_span_err!(
+        let mut err = struct_span_code_err!(
             self.dcx(),
             span,
             E0631,

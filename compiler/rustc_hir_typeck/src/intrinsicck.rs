@@ -1,5 +1,5 @@
 use hir::HirId;
-use rustc_errors::struct_span_err;
+use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
 use rustc_index::Idx;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
@@ -73,10 +73,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (from.kind(), sk_to)
                 && size_to == Pointer(dl.instruction_address_space).size(&tcx)
             {
-                struct_span_err!(tcx.dcx(), span, E0591, "can't transmute zero-sized type")
-                    .note_mv(format!("source type: {from}"))
-                    .note_mv(format!("target type: {to}"))
-                    .help_mv("cast with `as` to a pointer instead")
+                struct_span_code_err!(tcx.dcx(), span, E0591, "can't transmute zero-sized type")
+                    .with_note(format!("source type: {from}"))
+                    .with_note(format!("target type: {to}"))
+                    .with_help("cast with `as` to a pointer instead")
                     .emit();
                 return;
             }
@@ -112,7 +112,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(err) => err.to_string(),
         };
 
-        let mut err = struct_span_err!(
+        let mut err = struct_span_code_err!(
             tcx.dcx(),
             span,
             E0512,

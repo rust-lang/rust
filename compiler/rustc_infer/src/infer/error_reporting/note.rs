@@ -368,7 +368,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 {
                     let span = *span;
                     self.report_concrete_failure(placeholder_origin, sub, sup)
-                        .span_note_mv(span, "the lifetime requirement is introduced here")
+                        .with_span_note(span, "the lifetime requirement is introduced here")
                 } else {
                     unreachable!(
                         "control flow ensures we have a `BindingObligation` or `ExprBindingObligation` here..."

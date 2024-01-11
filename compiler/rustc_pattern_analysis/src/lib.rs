@@ -24,6 +24,8 @@ use std::fmt;
 use rustc_index::Idx;
 #[cfg(feature = "rustc")]
 use rustc_middle::ty::Ty;
+#[cfg(feature = "rustc")]
+use rustc_span::ErrorGuaranteed;
 
 use crate::constructor::{Constructor, ConstructorSet};
 #[cfg(feature = "rustc")]
@@ -52,6 +54,8 @@ impl<'a, T: ?Sized> Captures<'a> for T {}
 pub trait TypeCx: Sized + fmt::Debug {
     /// The type of a pattern.
     type Ty: Copy + Clone + fmt::Debug; // FIXME: remove Copy
+    /// Errors that can abort analysis.
+    type Error: fmt::Debug;
     /// The index of an enum variant.
     type VariantIdx: Clone + Idx;
     /// A string literal
@@ -73,7 +77,7 @@ pub trait TypeCx: Sized + fmt::Debug {
     /// The set of all the constructors for `ty`.
     ///
     /// This must follow the invariants of `ConstructorSet`
-    fn ctors_for_ty(&self, ty: Self::Ty) -> ConstructorSet<Self>;
+    fn ctors_for_ty(&self, ty: Self::Ty) -> Result<ConstructorSet<Self>, Self::Error>;
 
     /// Best-effort `Debug` implementation.
     fn debug_pat(f: &mut fmt::Formatter<'_>, pat: &DeconstructedPat<'_, Self>) -> fmt::Result;
@@ -109,25 +113,25 @@ pub fn analyze_match<'p, 'tcx>(
     tycx: &RustcMatchCheckCtxt<'p, 'tcx>,
     arms: &[rustc::MatchArm<'p, 'tcx>],
     scrut_ty: Ty<'tcx>,
-) -> rustc::UsefulnessReport<'p, 'tcx> {
+) -> Result<rustc::UsefulnessReport<'p, 'tcx>, ErrorGuaranteed> {
     // Arena to store the extra wildcards we construct during analysis.
     let wildcard_arena = tycx.pattern_arena;
     let scrut_ty = tycx.reveal_opaque_ty(scrut_ty);
     let scrut_validity = ValidityConstraint::from_bool(tycx.known_valid_scrutinee);
     let cx = MatchCtxt { tycx, wildcard_arena };
 
-    let report = compute_match_usefulness(cx, arms, scrut_ty, scrut_validity);
+    let report = compute_match_usefulness(cx, arms, scrut_ty, scrut_validity)?;
 
     let pat_column = PatternColumn::new(arms);
 
     // Lint on ranges that overlap on their endpoints, which is likely a mistake.
-    lint_overlapping_range_endpoints(cx, &pat_column);
+    lint_overlapping_range_endpoints(cx, &pat_column)?;
 
     // Run the non_exhaustive_omitted_patterns lint. Only run on refutable patterns to avoid hitting
     // `if let`s. Only run if the match is exhaustive otherwise the error is redundant.
     if tycx.refutable && report.non_exhaustiveness_witnesses.is_empty() {
-        lint_nonexhaustive_missing_variants(cx, arms, &pat_column, scrut_ty)
+        lint_nonexhaustive_missing_variants(cx, arms, &pat_column, scrut_ty)?;
     }
 
-    report
+    Ok(report)
 }

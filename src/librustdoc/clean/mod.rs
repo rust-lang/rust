@@ -2995,13 +2995,13 @@ fn clean_use_statement_inner<'tcx>(
         visibility.is_accessible_from(parent_mod, cx.tcx) && !current_mod.is_top_level_module();
 
     if pub_underscore && let Some(ref inline) = inline_attr {
-        rustc_errors::struct_span_err!(
+        rustc_errors::struct_span_code_err!(
             cx.tcx.dcx(),
             inline.span(),
             E0780,
             "anonymous imports cannot be inlined"
         )
-        .span_label_mv(import.span, "anonymous import")
+        .with_span_label(import.span, "anonymous import")
         .emit();
     }
 
