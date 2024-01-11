@@ -19,7 +19,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrItem, Attribute, MetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Diagnostic, FatalError, Level, PResult};
+use rustc_errors::{Diagnostic, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::{FileName, SourceFile, Span};
 
@@ -118,12 +118,11 @@ pub fn maybe_new_parser_from_source_str(
 pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path, sp: Option<Span>) -> Parser<'a> {
     let source_file = sess.source_map().load_file(path).unwrap_or_else(|e| {
         let msg = format!("couldn't read {}: {}", path.display(), e);
-        let mut diag = Diagnostic::new(Level::Fatal, msg);
+        let mut err = sess.dcx.struct_fatal(msg);
         if let Some(sp) = sp {
-            diag.span(sp);
+            err.span(sp);
         }
-        sess.dcx.emit_diagnostic(diag);
-        FatalError.raise();
+        err.emit();
     });
 
     panictry_buffer!(&sess.dcx, maybe_source_file_to_parser(sess, source_file))
