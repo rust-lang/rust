@@ -86,6 +86,11 @@ pub(crate) fn use_tree_list(p: &mut Parser<'_>) {
     assert!(p.at(T!['{']));
     let m = p.start();
 
+    // test_err use_tree_list_err_recovery
+    // use {a;
+    // use b;
+    // struct T;
+    // fn test() {}
     delimited(p, T!['{'], T!['}'], T![,], USE_TREE_LIST_RECOVERY_SET, |p: &mut Parser<'_>| {
         use_tree(p, false) || p.at_ts(USE_TREE_LIST_RECOVERY_SET)
     });
