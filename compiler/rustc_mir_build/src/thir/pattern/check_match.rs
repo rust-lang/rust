@@ -11,7 +11,9 @@ use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{
+    struct_span_code_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
+};
 use rustc_hir as hir;
 use rustc_hir::def::*;
 use rustc_hir::def_id::LocalDefId;
@@ -55,7 +57,7 @@ pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(), Err
 }
 
 fn create_e0004(sess: &Session, sp: Span, error_message: String) -> DiagnosticBuilder<'_> {
-    struct_span_err!(sess.dcx(), sp, E0004, "{}", &error_message)
+    struct_span_code_err!(sess.dcx(), sp, E0004, "{}", &error_message)
 }
 
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -430,7 +432,13 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         }
 
         let scrut_ty = scrut.ty;
-        let report = analyze_match(&cx, &tarms, scrut_ty);
+        let report = match analyze_match(&cx, &tarms, scrut_ty) {
+            Ok(report) => report,
+            Err(err) => {
+                self.error = Err(err);
+                return;
+            }
+        };
 
         match source {
             // Don't report arm reachability of desugared `match $iter.into_iter() { iter => .. }`
@@ -544,7 +552,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         let cx = self.new_cx(refutability, None, scrut, pat.span);
         let pat = self.lower_pattern(&cx, pat)?;
         let arms = [MatchArm { pat, arm_data: self.lint_level, has_guard: false }];
-        let report = analyze_match(&cx, &arms, pat.ty().inner());
+        let report = analyze_match(&cx, &arms, pat.ty().inner())?;
         Ok((cx, report))
     }
 

@@ -52,7 +52,7 @@ use crate::expectation::Expectation;
 use crate::fn_ctxt::RawTy;
 use crate::gather_locals::GatherLocalsVisitor;
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{struct_span_err, DiagnosticId, ErrorGuaranteed};
+use rustc_errors::{struct_span_code_err, DiagnosticId, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::Visitor;
@@ -72,7 +72,7 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 #[macro_export]
 macro_rules! type_error_struct {
     ($dcx:expr, $span:expr, $typ:expr, $code:ident, $($message:tt)*) => ({
-        let mut err = rustc_errors::struct_span_err!($dcx, $span, $code, $($message)*);
+        let mut err = rustc_errors::struct_span_code_err!($dcx, $span, $code, $($message)*);
 
         if $typ.references_error() {
             err.downgrade_to_delayed_bug();
@@ -181,7 +181,7 @@ fn typeck_with_fallback<'tcx>(
     let mut fcx = FnCtxt::new(&inh, param_env, def_id);
 
     if let Some(hir::FnSig { header, decl, .. }) = fn_sig {
-        let fn_sig = if rustc_hir_analysis::collect::get_infer_ret_ty(&decl.output).is_some() {
+        let fn_sig = if decl.output.get_infer_ret_ty().is_some() {
             fcx.astconv().ty_of_fn(id, header.unsafety, header.abi, decl, None, None)
         } else {
             tcx.fn_sig(def_id).instantiate_identity()
@@ -369,14 +369,14 @@ fn report_unexpected_variant_res(
     let err = tcx
         .dcx()
         .struct_span_err(span, format!("expected {expected}, found {res_descr} `{path_str}`"))
-        .code_mv(DiagnosticId::Error(err_code.into()));
+        .with_code(DiagnosticId::Error(err_code.into()));
     match res {
         Res::Def(DefKind::Fn | DefKind::AssocFn, _) if err_code == "E0164" => {
             let patterns_url = "https://doc.rust-lang.org/book/ch18-00-patterns.html";
-            err.span_label_mv(span, "`fn` calls are not allowed in patterns")
-                .help_mv(format!("for more information, visit {patterns_url}"))
+            err.with_span_label(span, "`fn` calls are not allowed in patterns")
+                .with_help(format!("for more information, visit {patterns_url}"))
         }
-        _ => err.span_label_mv(span, format!("not a {expected}")),
+        _ => err.with_span_label(span, format!("not a {expected}")),
     }
     .emit()
 }

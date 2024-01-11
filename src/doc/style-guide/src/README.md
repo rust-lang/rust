@@ -112,6 +112,90 @@ fn bar() {}
 fn baz() {}
 ```
 
+### Sorting
+
+In various cases, the default Rust style specifies to sort things. If not
+otherwise specified, such sorting should be "version sorting", which ensures
+that (for instance) `x8` comes before `x16` even though the character `1` comes
+before the character `8`. (If not otherwise specified, version-sorting is
+lexicographical.)
+
+For the purposes of the Rust style, to compare two strings for version-sorting:
+
+- Process both strings from beginning to end as two sequences of maximal-length
+  chunks, where each chunk consists either of a sequence of characters other
+  than ASCII digits, or a sequence of ASCII digits (a numeric chunk), and
+  compare corresponding chunks from the strings.
+- To compare two numeric chunks, compare them by numeric value, ignoring
+  leading zeroes. If the two chunks have equal numeric value, but different
+  numbers of leading digits, and this is the first time this has happened for
+  these strings, treat the chunks as equal (moving on to the next chunk) but
+  remember which string had more leading zeroes.
+- To compare two chunks if both are not numeric, compare them by Unicode
+  character lexicographically, except that `_` (underscore) sorts immediately
+  after ` ` (space) but before any other character. (This treats underscore as
+  a word separator, as commonly used in identifiers.)
+  - If the use of version sorting specifies further modifiers, such as sorting
+    non-lowercase before lowercase, apply those modifiers to the lexicographic
+    sort in this step.
+- If the comparison reaches the end of the string and considers each pair of
+  chunks equal:
+  - If one of the numeric comparisons noted the earliest point at which one
+    string had more leading zeroes than the other, sort the string with more
+    leading zeroes first.
+  - Otherwise, the strings are equal.
+
+Note that there exist various algorithms called "version sorting", which
+generally try to solve the same problem, but which differ in various ways (such
+as in their handling of numbers with leading zeroes). This algorithm
+does not purport to precisely match the behavior of any particular other
+algorithm, only to produce a simple and satisfying result for Rust formatting.
+In particular, this algorithm aims to produce a satisfying result for a set of
+symbols that have the same number of leading zeroes, and an acceptable and
+easily understandable result for a set of symbols that has varying numbers of
+leading zeroes.
+
+As an example, version-sorting will sort the following strings in the order
+given:
+- `_ZYWX`
+- `u_zzz`
+- `u8`
+- `u16`
+- `u32`
+- `u64`
+- `u128`
+- `u256`
+- `ua`
+- `usize`
+- `uz`
+- `v000`
+- `v00`
+- `v0`
+- `v0s`
+- `v00t`
+- `v0u`
+- `v001`
+- `v01`
+- `v1`
+- `v009`
+- `v09`
+- `v9`
+- `v010`
+- `v10`
+- `w005s09t`
+- `w5s009t`
+- `x64`
+- `x86`
+- `x86_32`
+- `x86_64`
+- `x86_128`
+- `x87`
+- `Z_YWX`
+- `ZY_WX`
+- `ZYW_X`
+- `ZYWX`
+- `ZYWX_`
+
 ### [Module-level items](items.md)
 
 ### [Statements](statements.md)

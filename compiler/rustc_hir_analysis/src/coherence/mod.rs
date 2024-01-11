@@ -6,7 +6,7 @@
 // mappings. That mapping code resides here.
 
 use crate::errors;
-use rustc_errors::{error_code, struct_span_err};
+use rustc_errors::{error_code, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
@@ -45,7 +45,7 @@ fn enforce_trait_manually_implementable(
     // Disallow *all* explicit impls of traits marked `#[rustc_deny_explicit_impl]`
     if tcx.trait_def(trait_def_id).deny_explicit_impl {
         let trait_name = tcx.item_name(trait_def_id);
-        let mut err = struct_span_err!(
+        let mut err = struct_span_code_err!(
             tcx.dcx(),
             impl_header_span,
             E0322,
@@ -88,7 +88,7 @@ fn enforce_empty_impls_for_marker_traits(
         return;
     }
 
-    struct_span_err!(
+    struct_span_code_err!(
         tcx.dcx(),
         tcx.def_span(impl_def_id),
         E0715,
@@ -173,7 +173,7 @@ fn check_object_overlap<'tcx>(
                 let mut supertrait_def_ids = traits::supertrait_def_ids(tcx, component_def_id);
                 if supertrait_def_ids.any(|d| d == trait_def_id) {
                     let span = tcx.def_span(impl_def_id);
-                    struct_span_err!(
+                    struct_span_code_err!(
                         tcx.dcx(),
                         span,
                         E0371,
@@ -181,7 +181,7 @@ fn check_object_overlap<'tcx>(
                         trait_ref.self_ty(),
                         tcx.def_path_str(trait_def_id)
                     )
-                    .span_label_mv(
+                    .with_span_label(
                         span,
                         format!(
                             "`{}` automatically implements trait `{}`",

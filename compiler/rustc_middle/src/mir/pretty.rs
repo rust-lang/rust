@@ -493,8 +493,8 @@ fn write_function_coverage_info(
     for (id, expression) in expressions.iter_enumerated() {
         writeln!(w, "{INDENT}coverage {id:?} => {expression:?};")?;
     }
-    for coverage::Mapping { term, code_region } in mappings {
-        writeln!(w, "{INDENT}coverage {term:?} => {code_region:?};")?;
+    for coverage::Mapping { kind, code_region } in mappings {
+        writeln!(w, "{INDENT}coverage {kind:?} => {code_region:?};")?;
     }
     writeln!(w)?;
 

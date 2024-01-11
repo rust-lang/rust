@@ -336,10 +336,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 expr.span,
                                 "not automatically applying `DerefMut` on `ManuallyDrop` union field",
                             )
-                            .help_mv(
+                            .with_help(
                                 "writing to this reference calls the destructor for the old value",
                             )
-                            .help_mv("add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor")
+                            .with_help("add an explicit `*` if that is desired, or call `ptr::write` to not run the destructor")
                             .emit();
                         }
                     }

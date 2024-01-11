@@ -1753,7 +1753,7 @@ impl<'a> Parser<'a> {
         err: impl FnOnce(&Self) -> DiagnosticBuilder<'a>,
     ) -> L {
         if let Some(diag) = self.dcx().steal_diagnostic(lifetime.span, StashKey::LifetimeIsChar) {
-            diag.span_suggestion_verbose_mv(
+            diag.with_span_suggestion_verbose(
                 lifetime.span.shrink_to_hi(),
                 "add `'` to close the char literal",
                 "'",
@@ -1762,7 +1762,7 @@ impl<'a> Parser<'a> {
             .emit();
         } else {
             err(self)
-                .span_suggestion_verbose_mv(
+                .with_span_suggestion_verbose(
                     lifetime.span.shrink_to_hi(),
                     "add `'` to close the char literal",
                     "'",
@@ -2150,7 +2150,7 @@ impl<'a> Parser<'a> {
         if [sym::i32, sym::u32, sym::isize, sym::usize].contains(&suffix) {
             // #59553: warn instead of reject out of hand to allow the fix to percolate
             // through the ecosystem when people fix their macros
-            self.dcx().emit_warning(errors::InvalidLiteralSuffixOnTupleIndex {
+            self.dcx().emit_warn(errors::InvalidLiteralSuffixOnTupleIndex {
                 span,
                 suffix,
                 exception: Some(()),

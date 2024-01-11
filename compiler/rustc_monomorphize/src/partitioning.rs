@@ -1093,7 +1093,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
                 MonoItemCollectionMode::Eager
             } else {
                 if mode != "lazy" {
-                    tcx.dcx().emit_warning(UnknownCguCollectionMode { mode });
+                    tcx.dcx().emit_warn(UnknownCguCollectionMode { mode });
                 }
 
                 MonoItemCollectionMode::Lazy

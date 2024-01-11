@@ -6,7 +6,7 @@ use rustc_ast::AttrKind;
 use rustc_ast::{Attribute, MetaItem, NestedMetaItem};
 use rustc_attr as attr;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::{struct_span_err, ErrorGuaranteed};
+use rustc_errors::{struct_span_code_err, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::GenericArgsRef;
@@ -14,7 +14,7 @@ use rustc_middle::ty::{self, GenericParamDefKind, TyCtxt};
 use rustc_parse_format::{ParseMode, Parser, Piece, Position};
 use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::{Span, DUMMY_SP};
+use rustc_span::Span;
 use std::iter;
 
 use crate::errors::{
@@ -657,9 +657,7 @@ impl<'tcx> OnUnimplementedDirective {
 
             Ok(None)
         } else {
-            let reported = tcx
-                .dcx()
-                .span_delayed_bug(DUMMY_SP, "of_item: neither meta_item_list nor value_str");
+            let reported = tcx.dcx().delayed_bug("of_item: neither meta_item_list nor value_str");
             return Err(reported);
         };
         debug!("of_item({:?}) = {:?}", item_def_id, result);
@@ -797,7 +795,7 @@ impl<'tcx> OnUnimplementedFormatString {
                                         },
                                     );
                                 } else {
-                                    result = Err(struct_span_err!(
+                                    result = Err(struct_span_code_err!(
                                         tcx.dcx(),
                                         self.span,
                                         E0230,
@@ -816,7 +814,7 @@ impl<'tcx> OnUnimplementedFormatString {
                     }
                     // `{:1}` and `{}` are not to be used
                     Position::ArgumentIs(..) | Position::ArgumentImplicitlyIs(_) => {
-                        let reported = struct_span_err!(
+                        let reported = struct_span_code_err!(
                             tcx.dcx(),
                             self.span,
                             E0231,

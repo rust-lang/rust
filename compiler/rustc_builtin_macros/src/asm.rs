@@ -695,8 +695,8 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
             let (sp, msg) = unused_operands.into_iter().next().unwrap();
             ecx.dcx()
                 .struct_span_err(sp, msg)
-                .span_label_mv(sp, msg)
-                .help_mv(format!(
+                .with_span_label(sp, msg)
+                .with_help(format!(
                     "if this argument is intentionally unused, \
                      consider using it in an asm comment: `\"/*{help_str} */\"`"
                 ))

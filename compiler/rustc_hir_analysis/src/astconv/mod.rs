@@ -18,8 +18,8 @@ use crate::require_c_abi_if_c_variadic;
 use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{
-    error_code, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
-    FatalError, MultiSpan,
+    error_code, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder,
+    ErrorGuaranteed, FatalError, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
@@ -866,7 +866,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         traits: &[String],
         name: Symbol,
     ) -> ErrorGuaranteed {
-        let mut err = struct_span_err!(self.tcx().dcx(), span, E0223, "ambiguous associated type");
+        let mut err =
+            struct_span_code_err!(self.tcx().dcx(), span, E0223, "ambiguous associated type");
         if self
             .tcx()
             .resolutions(())
@@ -1313,7 +1314,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     let msg = format!("expected type, found variant `{assoc_ident}`");
                     tcx.dcx().span_err(span, msg)
                 } else if qself_ty.is_enum() {
-                    let mut err = struct_span_err!(
+                    let mut err = struct_span_code_err!(
                         tcx.dcx(),
                         assoc_ident.span,
                         E0599,
@@ -1354,7 +1355,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     reported
                 } else if let ty::Alias(ty::Opaque, alias_ty) = qself_ty.kind() {
                     // `<impl Trait as OtherTrait>::Assoc` makes no sense.
-                    struct_span_err!(
+                    struct_span_code_err!(
                         tcx.dcx(),
                         tcx.def_span(alias_ty.def_id),
                         E0667,
@@ -1617,9 +1618,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let def_span = tcx.def_span(item);
             tcx.dcx()
                 .struct_span_err(span, msg)
-                .code_mv(rustc_errors::error_code!(E0624))
-                .span_label_mv(span, format!("private {kind}"))
-                .span_label_mv(def_span, format!("{kind} defined here"))
+                .with_code(rustc_errors::error_code!(E0624))
+                .with_span_label(span, format!("private {kind}"))
+                .with_span_label(def_span, format!("{kind} defined here"))
                 .emit();
         }
         tcx.check_stability(item, Some(block), span, None);
@@ -1850,7 +1851,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             };
             let last_span = *arg_spans.last().unwrap();
             let span: MultiSpan = arg_spans.into();
-            let mut err = struct_span_err!(
+            let mut err = struct_span_code_err!(
                 self.tcx().dcx(),
                 span,
                 E0109,
@@ -2601,7 +2602,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let late_bound_in_ret = tcx.collect_referenced_late_bound_regions(&output);
 
         self.validate_late_bound_regions(late_bound_in_args, late_bound_in_ret, |br_name| {
-            struct_span_err!(
+            struct_span_code_err!(
                 tcx.dcx(),
                 decl.output.span(),
                 E0581,

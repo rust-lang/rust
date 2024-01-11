@@ -143,11 +143,7 @@ pub fn feature_warn_issue(
     // Decorate this as a future-incompatibility lint as in rustc_middle::lint::struct_lint_level
     let lint = UNSTABLE_SYNTAX_PRE_EXPANSION;
     let future_incompatible = lint.future_incompatible.as_ref().unwrap();
-    err.code(DiagnosticId::Lint {
-        name: lint.name_lower(),
-        has_future_breakage: false,
-        is_force_warn: false,
-    });
+    err.code(DiagnosticId::Lint { name: lint.name_lower(), has_future_breakage: false });
     err.warn(lint.desc);
     err.note(format!("for more information, see {}", future_incompatible.reference));
 

@@ -3,7 +3,9 @@ use crate::constrained_generic_params::{identify_constrained_generic_params, Par
 
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_errors::{pluralize, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
+use rustc_errors::{
+    pluralize, struct_span_code_err, Applicability, DiagnosticBuilder, ErrorGuaranteed,
+};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::lang_items::LangItem;
@@ -200,8 +202,8 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
                 res = Err(tcx
                     .dcx()
                     .struct_span_err(sp, "impls of auto traits cannot be default")
-                    .span_labels_mv(impl_.defaultness_span, "default because of this")
-                    .span_label_mv(sp, "auto trait")
+                    .with_span_labels(impl_.defaultness_span, "default because of this")
+                    .with_span_label(sp, "auto trait")
                     .emit());
             }
             // We match on both `ty::ImplPolarity` and `ast::ImplPolarity` just to get the `!` span.
@@ -217,7 +219,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
                     if let hir::Defaultness::Default { .. } = impl_.defaultness {
                         let mut spans = vec![span];
                         spans.extend(impl_.defaultness_span);
-                        res = Err(struct_span_err!(
+                        res = Err(struct_span_code_err!(
                             tcx.dcx(),
                             spans,
                             E0750,
@@ -502,19 +504,18 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId) {
                     gat_item_hir.span,
                     format!("missing required bound{} on `{}`", plural, gat_item_hir.ident),
                 )
-                .span_suggestion_mv(
+                .with_span_suggestion(
                     gat_item_hir.generics.tail_span_for_predicate_suggestion(),
                     format!("add the required where clause{plural}"),
                     suggestion,
                     Applicability::MachineApplicable,
                 )
-                .note_mv(format!(
+                .with_note(format!(
                     "{bound} currently required to ensure that impls have maximum flexibility"
                 ))
-                .note_mv(
+                .with_note(
                     "we are soliciting feedback, see issue #87479 \
-                 <https://github.com/rust-lang/rust/issues/87479> \
-                 for more information",
+                     <https://github.com/rust-lang/rust/issues/87479> for more information",
                 )
                 .emit();
         }
@@ -837,8 +838,8 @@ fn check_object_unsafe_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem
                 trait_should_be_self,
                 "associated item referring to unboxed trait object for its own trait",
             )
-            .span_label_mv(trait_name.span, "in this trait")
-            .multipart_suggestion_mv(
+            .with_span_label(trait_name.span, "in this trait")
+            .with_multipart_suggestion(
                 "you might have meant to use `Self` to refer to the implementing type",
                 sugg,
                 Applicability::MachineApplicable,
@@ -1116,7 +1117,7 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) -> Result<(), ErrorGuarant
         || matches!(trait_def.specialization_kind, TraitSpecializationKind::Marker)
     {
         for associated_def_id in &*tcx.associated_item_def_ids(def_id) {
-            struct_span_err!(
+            struct_span_code_err!(
                 tcx.dcx(),
                 tcx.def_span(*associated_def_id),
                 E0714,
@@ -1598,7 +1599,7 @@ fn check_method_receiver<'tcx>(
                          the `arbitrary_self_types` feature",
                     ),
                 )
-                .help_mv(HELP_FOR_SELF_TYPE)
+                .with_help(HELP_FOR_SELF_TYPE)
                 .emit()
             } else {
                 // Report error; would not have worked with `arbitrary_self_types`.
@@ -1610,9 +1611,9 @@ fn check_method_receiver<'tcx>(
 }
 
 fn e0307(tcx: TyCtxt<'_>, span: Span, receiver_ty: Ty<'_>) -> ErrorGuaranteed {
-    struct_span_err!(tcx.dcx(), span, E0307, "invalid `self` parameter type: {receiver_ty}")
-        .note_mv("type of `self` must be `Self` or a type that dereferences to it")
-        .help_mv(HELP_FOR_SELF_TYPE)
+    struct_span_code_err!(tcx.dcx(), span, E0307, "invalid `self` parameter type: {receiver_ty}")
+        .with_note("type of `self` must be `Self` or a type that dereferences to it")
+        .with_help(HELP_FOR_SELF_TYPE)
         .emit()
 }
 
@@ -1920,8 +1921,8 @@ fn check_mod_type_wf(tcx: TyCtxt<'_>, module: LocalModDefId) -> Result<(), Error
 }
 
 fn error_392(tcx: TyCtxt<'_>, span: Span, param_name: Symbol) -> DiagnosticBuilder<'_> {
-    struct_span_err!(tcx.dcx(), span, E0392, "parameter `{param_name}` is never used")
-        .span_label_mv(span, "unused parameter")
+    struct_span_code_err!(tcx.dcx(), span, E0392, "parameter `{param_name}` is never used")
+        .with_span_label(span, "unused parameter")
 }
 
 pub fn provide(providers: &mut Providers) {

@@ -208,7 +208,7 @@ fn emit_malformed_attribute(
     } else {
         sess.dcx
             .struct_span_err(span, error_msg)
-            .span_suggestions_mv(
+            .with_span_suggestions(
                 span,
                 if suggestions.len() == 1 {
                     "must be of the form"

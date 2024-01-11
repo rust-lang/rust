@@ -458,7 +458,7 @@ pub fn compile_declarative_macro(
                 return dummy_syn_ext();
             }
             Error(sp, msg) => {
-                sess.dcx().struct_span_err(sp.substitute_dummy(def.span), msg).emit();
+                sess.dcx().span_err(sp.substitute_dummy(def.span), msg);
                 return dummy_syn_ext();
             }
             ErrorReported(_) => {

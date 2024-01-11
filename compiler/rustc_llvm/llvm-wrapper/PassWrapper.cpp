@@ -787,7 +787,9 @@ LLVMRustOptimize(
     for (auto PluginPath: Plugins) {
       auto Plugin = PassPlugin::Load(PluginPath.str());
       if (!Plugin) {
-        LLVMRustSetLastError(("Failed to load pass plugin" + PluginPath.str()).c_str());
+        auto Err = Plugin.takeError();
+        auto ErrMsg = llvm::toString(std::move(Err));
+        LLVMRustSetLastError(ErrMsg.c_str());
         return LLVMRustResult::Failure;
       }
       Plugin->registerPassBuilderCallbacks(PB);

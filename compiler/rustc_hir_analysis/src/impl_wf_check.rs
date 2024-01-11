@@ -12,7 +12,7 @@ use crate::constrained_generic_params as cgp;
 use min_specialization::check_min_specialization;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::struct_span_err;
+use rustc_errors::struct_span_code_err;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_middle::query::Providers;
@@ -170,7 +170,7 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
 }
 
 fn report_unused_parameter(tcx: TyCtxt<'_>, span: Span, kind: &str, name: Symbol) {
-    let mut err = struct_span_err!(
+    let mut err = struct_span_code_err!(
         tcx.dcx(),
         span,
         E0207,

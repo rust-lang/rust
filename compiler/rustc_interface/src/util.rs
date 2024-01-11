@@ -431,7 +431,7 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<C
 
     base.retain(|crate_type| {
         if output::invalid_output_for_target(session, *crate_type) {
-            session.dcx().emit_warning(errors::UnsupportedCrateTypeForTarget {
+            session.dcx().emit_warn(errors::UnsupportedCrateTypeForTarget {
                 crate_type: *crate_type,
                 target_triple: &session.opts.target_triple,
             });
@@ -507,16 +507,16 @@ pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> Outpu
             let unnamed_output_types =
                 sess.opts.output_types.values().filter(|a| a.is_none()).count();
             let ofile = if unnamed_output_types > 1 {
-                sess.dcx().emit_warning(errors::MultipleOutputTypesAdaption);
+                sess.dcx().emit_warn(errors::MultipleOutputTypesAdaption);
                 None
             } else {
                 if !sess.opts.cg.extra_filename.is_empty() {
-                    sess.dcx().emit_warning(errors::IgnoringExtraFilename);
+                    sess.dcx().emit_warn(errors::IgnoringExtraFilename);
                 }
                 Some(out_file.clone())
             };
             if sess.io.output_dir != None {
-                sess.dcx().emit_warning(errors::IgnoringOutDir);
+                sess.dcx().emit_warn(errors::IgnoringOutDir);
             }
 
             let out_filestem =
