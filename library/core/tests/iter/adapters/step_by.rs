@@ -245,7 +245,6 @@ fn test_step_by_skip() {
     assert_eq!((200..=255u8).step_by(10).nth(3), Some(230));
 }
 
-
 struct DeOpt<I: Iterator>(I);
 
 impl<I: Iterator> Iterator for DeOpt<I> {
@@ -265,17 +264,15 @@ impl<I: DoubleEndedIterator> DoubleEndedIterator for DeOpt<I> {
 #[test]
 fn test_step_by_fold_range_specialization() {
     macro_rules! t {
-        ($range:expr, $var: ident, $body:tt) => {
-            {
-                // run the same tests for the non-optimized version
-                let mut $var = DeOpt($range);
-                $body
-            }
-            {
-                let mut $var = $range;
-                $body
-            }
+        ($range:expr, $var: ident, $body:tt) => {{
+            // run the same tests for the non-optimized version
+            let mut $var = DeOpt($range);
+            $body
         }
+        {
+            let mut $var = $range;
+            $body
+        }};
     }
 
     t!((1usize..5).step_by(1), r, {
@@ -288,13 +285,12 @@ fn test_step_by_fold_range_specialization() {
         assert_eq!(r.sum::<usize>(), 2);
     });
 
-
     t!((0usize..5).step_by(2), r, {
         assert_eq!(r.next(), Some(0));
         assert_eq!(r.sum::<usize>(), 6);
     });
 
-    t!((usize::MAX - 6 .. usize::MAX).step_by(5), r, {
+    t!((usize::MAX - 6..usize::MAX).step_by(5), r, {
         assert_eq!(r.next(), Some(usize::MAX - 6));
         assert_eq!(r.sum::<usize>(), usize::MAX - 1);
     });
