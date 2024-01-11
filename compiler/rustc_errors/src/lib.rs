@@ -519,6 +519,11 @@ fn default_track_diagnostic(diag: Diagnostic, f: &mut dyn FnMut(Diagnostic)) {
 pub static TRACK_DIAGNOSTIC: AtomicRef<fn(Diagnostic, &mut dyn FnMut(Diagnostic))> =
     AtomicRef::new(&(default_track_diagnostic as _));
 
+enum DelayedBugKind {
+    Normal,
+    GoodPath,
+}
+
 #[derive(Copy, Clone, Default)]
 pub struct DiagCtxtFlags {
     /// If false, warning-level lints are suppressed.
@@ -541,8 +546,7 @@ impl Drop for DiagCtxtInner {
         self.emit_stashed_diagnostics();
 
         if !self.has_errors() {
-            let bugs = std::mem::replace(&mut self.span_delayed_bugs, Vec::new());
-            self.flush_delayed(bugs, "no errors encountered even though `span_delayed_bug` issued");
+            self.flush_delayed(DelayedBugKind::Normal)
         }
 
         // FIXME(eddyb) this explains what `good_path_delayed_bugs` are!
@@ -551,11 +555,7 @@ impl Drop for DiagCtxtInner {
         // lints can be `#[allow]`'d, potentially leading to this triggering.
         // Also, "good path" should be replaced with a better naming.
         if !self.has_printed && !self.suppressed_expected_diag && !std::thread::panicking() {
-            let bugs = std::mem::replace(&mut self.good_path_delayed_bugs, Vec::new());
-            self.flush_delayed(
-                bugs,
-                "no warnings or errors encountered even though `good_path_delayed_bugs` issued",
-            );
+            self.flush_delayed(DelayedBugKind::GoodPath);
         }
 
         if self.check_unstable_expect_diagnostics {
@@ -1218,9 +1218,7 @@ impl DiagCtxt {
     }
 
     pub fn flush_delayed(&self) {
-        let mut inner = self.inner.borrow_mut();
-        let bugs = std::mem::replace(&mut inner.span_delayed_bugs, Vec::new());
-        inner.flush_delayed(bugs, "no errors encountered even though `span_delayed_bug` issued");
+        self.inner.borrow_mut().flush_delayed(DelayedBugKind::Normal);
     }
 }
 
@@ -1396,11 +1394,18 @@ impl DiagCtxtInner {
         self.emit_diagnostic(Diagnostic::new(FailureNote, msg));
     }
 
-    fn flush_delayed(
-        &mut self,
-        bugs: Vec<DelayedDiagnostic>,
-        explanation: impl Into<DiagnosticMessage> + Copy,
-    ) {
+    fn flush_delayed(&mut self, kind: DelayedBugKind) {
+        let (bugs, explanation) = match kind {
+            DelayedBugKind::Normal => (
+                std::mem::take(&mut self.span_delayed_bugs),
+                "no errors encountered even though `span_delayed_bug` issued",
+            ),
+            DelayedBugKind::GoodPath => (
+                std::mem::take(&mut self.good_path_delayed_bugs),
+                "no warnings or errors encountered even though `good_path_delayed_bugs` issued",
+            ),
+        };
+
         if bugs.is_empty() {
             return;
         }
