@@ -1,5 +1,5 @@
 error: `IntoIterator` implemented for a reference type without an `iter` method
-  --> $DIR/into_iter_without_iter.rs:7:1
+  --> $DIR/into_iter_without_iter.rs:9:1
    |
 LL | / impl<'a> IntoIterator for &'a S1 {
 LL | |
@@ -23,7 +23,7 @@ LL + }
    |
 
 error: `IntoIterator` implemented for a reference type without an `iter_mut` method
-  --> $DIR/into_iter_without_iter.rs:15:1
+  --> $DIR/into_iter_without_iter.rs:17:1
    |
 LL | / impl<'a> IntoIterator for &'a mut S1 {
 LL | |
@@ -45,7 +45,7 @@ LL + }
    |
 
 error: `IntoIterator` implemented for a reference type without an `iter` method
-  --> $DIR/into_iter_without_iter.rs:25:1
+  --> $DIR/into_iter_without_iter.rs:27:1
    |
 LL | / impl<'a, T> IntoIterator for &'a S2<T> {
 LL | |
@@ -67,7 +67,7 @@ LL + }
    |
 
 error: `IntoIterator` implemented for a reference type without an `iter_mut` method
-  --> $DIR/into_iter_without_iter.rs:33:1
+  --> $DIR/into_iter_without_iter.rs:35:1
    |
 LL | / impl<'a, T> IntoIterator for &'a mut S2<T> {
 LL | |
@@ -89,7 +89,7 @@ LL + }
    |
 
 error: `IntoIterator` implemented for a reference type without an `iter_mut` method
-  --> $DIR/into_iter_without_iter.rs:84:1
+  --> $DIR/into_iter_without_iter.rs:86:1
    |
 LL | / impl<'a, T> IntoIterator for &mut S4<'a, T> {
 LL | |
@@ -110,5 +110,31 @@ LL +     }
 LL + }
    |
 
-error: aborting due to 5 previous errors
+error: `IntoIterator` implemented for a reference type without an `iter` method
+  --> $DIR/into_iter_without_iter.rs:120:9
+   |
+LL | /         impl<'a> IntoIterator for &'a Issue12037 {
+LL | |             type IntoIter = std::slice::Iter<'a, u8>;
+LL | |             type Item = &'a u8;
+LL | |             fn into_iter(self) -> Self::IntoIter {
+LL | |                 todo!()
+LL | |             }
+LL | |         }
+   | |_________^
+...
+LL |   generate_impl!();
+   |   ---------------- in this macro invocation
+   |
+   = note: this error originates in the macro `generate_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider implementing `iter`
+   |
+LL ~         
+LL + impl Issue12037 {
+LL +     fn iter(&self) -> std::slice::Iter<'a, u8> {
+LL +         <&Self as IntoIterator>::into_iter(self)
+LL +     }
+LL + }
+   |
+
+error: aborting due to 6 previous errors
 
