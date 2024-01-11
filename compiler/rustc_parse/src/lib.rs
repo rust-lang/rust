@@ -113,19 +113,24 @@ pub fn maybe_new_parser_from_source_str(
     maybe_source_file_to_parser(sess, sess.source_map().new_source_file(name, source))
 }
 
-/// Creates a new parser, handling errors as appropriate if the file doesn't exist.
-/// If a span is given, that is used on an error as the source of the problem.
+/// Creates a new parser, aborting if the file doesn't exist. If a span is given, that is used on
+/// an error as the source of the problem.
 pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path, sp: Option<Span>) -> Parser<'a> {
-    source_file_to_parser(sess, file_to_source_file(sess, path, sp))
-}
+    let source_file = sess.source_map().load_file(path).unwrap_or_else(|e| {
+        let msg = format!("couldn't read {}: {}", path.display(), e);
+        let mut diag = Diagnostic::new(Level::Fatal, msg);
+        if let Some(sp) = sp {
+            diag.span(sp);
+        }
+        sess.dcx.emit_diagnostic(diag);
+        FatalError.raise();
+    });
 
-/// Given a session and a `source_file`, returns a parser.
-fn source_file_to_parser(sess: &ParseSess, source_file: Lrc<SourceFile>) -> Parser<'_> {
     panictry_buffer!(&sess.dcx, maybe_source_file_to_parser(sess, source_file))
 }
 
-/// Given a session and a `source_file`, return a parser. Returns any buffered errors from lexing the
-/// initial token stream.
+/// Given a session and a `source_file`, return a parser. Returns any buffered errors from lexing
+/// the initial token stream.
 fn maybe_source_file_to_parser(
     sess: &ParseSess,
     source_file: Lrc<SourceFile>,
@@ -142,36 +147,6 @@ fn maybe_source_file_to_parser(
 
 // Base abstractions
 
-/// Given a session and a path and an optional span (for error reporting),
-/// add the path to the session's source_map and return the new source_file or
-/// error when a file can't be read.
-fn try_file_to_source_file(
-    sess: &ParseSess,
-    path: &Path,
-    spanopt: Option<Span>,
-) -> Result<Lrc<SourceFile>, Diagnostic> {
-    sess.source_map().load_file(path).map_err(|e| {
-        let msg = format!("couldn't read {}: {}", path.display(), e);
-        let mut diag = Diagnostic::new(Level::Fatal, msg);
-        if let Some(sp) = spanopt {
-            diag.span(sp);
-        }
-        diag
-    })
-}
-
-/// Given a session and a path and an optional span (for error reporting),
-/// adds the path to the session's `source_map` and returns the new `source_file`.
-fn file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>) -> Lrc<SourceFile> {
-    match try_file_to_source_file(sess, path, spanopt) {
-        Ok(source_file) => source_file,
-        Err(d) => {
-            sess.dcx.emit_diagnostic(d);
-            FatalError.raise();
-        }
-    }
-}
-
 /// Given a `source_file`, produces a sequence of token trees.
 pub fn source_file_to_stream(
     sess: &ParseSess,
@@ -183,7 +158,7 @@ pub fn source_file_to_stream(
 
 /// Given a source file, produces a sequence of token trees. Returns any buffered errors from
 /// parsing the token stream.
-pub fn maybe_file_to_stream(
+fn maybe_file_to_stream(
     sess: &ParseSess,
     source_file: Lrc<SourceFile>,
     override_span: Option<Span>,
