@@ -165,11 +165,11 @@ pub fn build_sysroot(env: &HashMap<String, String>, config: &ConfigInfo) -> Resu
     )?;
 
     // Copy the source files to the sysroot (Rust for Linux needs this).
-    let sysroot_src_path = "sysroot/lib/rustlib/src/rust";
+    let sysroot_src_path = start_dir.join("sysroot/lib/rustlib/src/rust");
     fs::create_dir_all(&sysroot_src_path).map_err(|error| {
         format!(
             "Failed to create directory `{}`: {:?}",
-            sysroot_src_path, error
+            sysroot_src_path.display(), error
         )
     })?;
     run_command(
