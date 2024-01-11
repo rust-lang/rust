@@ -308,6 +308,10 @@ impl<T, A: Allocator> RawVec<T, A> {
         if self.needs_to_grow(len, additional) {
             do_reserve_and_handle(self, len, additional);
         }
+        unsafe {
+            // Inform the optimizer that the reservation has succeeded or wasn't needed
+            intrinsics::assume(!self.needs_to_grow(len, additional));
+        }
     }
 
     /// A specialized version of `reserve()` used only by the hot and
@@ -325,7 +329,7 @@ impl<T, A: Allocator> RawVec<T, A> {
         }
         unsafe {
             // Inform the optimizer that the reservation has succeeded or wasn't needed
-            core::intrinsics::assume(!self.needs_to_grow(len, additional));
+            intrinsics::assume(!self.needs_to_grow(len, additional));
         }
         Ok(())
     }
@@ -363,7 +367,7 @@ impl<T, A: Allocator> RawVec<T, A> {
         }
         unsafe {
             // Inform the optimizer that the reservation has succeeded or wasn't needed
-            core::intrinsics::assume(!self.needs_to_grow(len, additional));
+            intrinsics::assume(!self.needs_to_grow(len, additional));
         }
         Ok(())
     }
@@ -387,7 +391,7 @@ impl<T, A: Allocator> RawVec<T, A> {
 impl<T, A: Allocator> RawVec<T, A> {
     /// Returns if the buffer needs to grow to fulfill the needed extra capacity.
     /// Mainly used to make inlining reserve-calls possible without inlining `grow`.
-    fn needs_to_grow(&self, len: usize, additional: usize) -> bool {
+    pub(crate) fn needs_to_grow(&self, len: usize, additional: usize) -> bool {
         additional > self.capacity().wrapping_sub(len)
     }
 

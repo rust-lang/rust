@@ -43,7 +43,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::error::Error;
-use core::fmt;
 use core::hash;
 #[cfg(not(no_global_oom_handling))]
 use core::iter::from_fn;
@@ -60,6 +59,7 @@ use core::slice;
 use core::str::pattern::Pattern;
 #[cfg(not(no_global_oom_handling))]
 use core::str::Utf8Chunks;
+use core::{fmt, intrinsics};
 
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::{Cow, ToOwned};
@@ -1149,7 +1149,11 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: usize) {
-        self.vec.reserve(additional)
+        self.vec.reserve(additional);
+        unsafe {
+            // Inform the optimizer that the reservation has succeeded or wasn't needed
+            intrinsics::assume(additional <= self.capacity().wrapping_sub(self.len()));
+        }
     }
 
     /// Reserves the minimum capacity for at least `additional` bytes more than
@@ -1199,7 +1203,11 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_exact(&mut self, additional: usize) {
-        self.vec.reserve_exact(additional)
+        self.vec.reserve_exact(additional);
+        unsafe {
+            // Inform the optimizer that the reservation has succeeded or wasn't needed
+            intrinsics::assume(additional <= self.capacity().wrapping_sub(self.len()));
+        }
     }
 
     /// Tries to reserve capacity for at least `additional` bytes more than the
@@ -1233,8 +1241,14 @@ impl String {
     /// # process_data("rust").expect("why is the test harness OOMing on 4 bytes?");
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
+    #[inline]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
-        self.vec.try_reserve(additional)
+        self.vec.try_reserve(additional)?;
+        unsafe {
+            // Inform the optimizer that the reservation has succeeded or wasn't needed
+            intrinsics::assume(additional <= self.capacity().wrapping_sub(self.len()));
+        }
+        Ok(())
     }
 
     /// Tries to reserve the minimum capacity for at least `additional` bytes
@@ -1274,8 +1288,14 @@ impl String {
     /// # process_data("rust").expect("why is the test harness OOMing on 4 bytes?");
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
+    #[inline]
     pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
-        self.vec.try_reserve_exact(additional)
+        self.vec.try_reserve_exact(additional)?;
+        unsafe {
+            // Inform the optimizer that the reservation has succeeded or wasn't needed
+            intrinsics::assume(additional <= self.capacity().wrapping_sub(self.len()));
+        }
+        Ok(())
     }
 
     /// Shrinks the capacity of this `String` to match its length.
