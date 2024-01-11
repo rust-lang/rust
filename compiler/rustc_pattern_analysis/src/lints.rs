@@ -11,6 +11,7 @@ use crate::errors::{
     NonExhaustiveOmittedPattern, NonExhaustiveOmittedPatternLintOnArm, Overlap,
     OverlappingRangeEndpoints, Uncovered,
 };
+use crate::pat::PatOrWild;
 use crate::rustc::{
     Constructor, DeconstructedPat, MatchArm, MatchCtxt, PlaceCtxt, RevealedTy, RustcMatchCheckCtxt,
     SplitConstructorSet, WitnessPat,
@@ -23,9 +24,9 @@ use crate::rustc::{
 /// the depth of patterns, whereas `compute_exhaustiveness_and_usefulness` is worst-case exponential
 /// (exhaustiveness is NP-complete). The core difference is that we treat sub-columns separately.
 ///
-/// This must not contain an or-pattern. `specialize` takes care to expand them.
+/// This must not contain an or-pattern. `expand_and_push` takes care to expand them.
 ///
-/// This is not used in the main algorithm; only in lints.
+/// This is not used in the usefulness algorithm; only in lints.
 #[derive(Debug)]
 pub(crate) struct PatternColumn<'p, 'tcx> {
     patterns: Vec<&'p DeconstructedPat<'p, 'tcx>>,
@@ -33,20 +34,26 @@ pub(crate) struct PatternColumn<'p, 'tcx> {
 
 impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
     pub(crate) fn new(arms: &[MatchArm<'p, 'tcx>]) -> Self {
-        let mut patterns = Vec::with_capacity(arms.len());
+        let patterns = Vec::with_capacity(arms.len());
+        let mut column = PatternColumn { patterns };
         for arm in arms {
-            if arm.pat.is_or_pat() {
-                patterns.extend(arm.pat.flatten_or_pat())
-            } else {
-                patterns.push(arm.pat)
-            }
+            column.expand_and_push(PatOrWild::Pat(arm.pat));
         }
-        Self { patterns }
+        column
+    }
+    /// Pushes a pattern onto the column, expanding any or-patterns into its subpatterns.
+    /// Internal method, prefer [`PatternColumn::new`].
+    fn expand_and_push(&mut self, pat: PatOrWild<'p, RustcMatchCheckCtxt<'p, 'tcx>>) {
+        // We flatten or-patterns and skip algorithm-generated wildcards.
+        if pat.is_or_pat() {
+            self.patterns.extend(
+                pat.flatten_or_pat().into_iter().filter_map(|pat_or_wild| pat_or_wild.as_pat()),
+            )
+        } else if let Some(pat) = pat.as_pat() {
+            self.patterns.push(pat)
+        }
     }
 
-    fn is_empty(&self) -> bool {
-        self.patterns.is_empty()
-    }
     fn head_ty(&self) -> Option<RevealedTy<'tcx>> {
         self.patterns.first().map(|pat| pat.ty())
     }
@@ -83,23 +90,12 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
             (0..arity).map(|_| Self { patterns: Vec::new() }).collect();
         let relevant_patterns =
             self.patterns.iter().filter(|pat| ctor.is_covered_by(pcx, pat.ctor()));
-        let ctor_sub_tys = pcx.ctor_sub_tys(ctor);
         for pat in relevant_patterns {
-            let specialized = pat.specialize(pcx, ctor, ctor_sub_tys);
-            for (subpat, column) in specialized.iter().zip(&mut specialized_columns) {
-                if subpat.is_or_pat() {
-                    column.patterns.extend(subpat.flatten_or_pat())
-                } else {
-                    column.patterns.push(subpat)
-                }
+            let specialized = pat.specialize(ctor, arity);
+            for (subpat, column) in specialized.into_iter().zip(&mut specialized_columns) {
+                column.expand_and_push(subpat);
             }
         }
-
-        assert!(
-            !specialized_columns[0].is_empty(),
-            "ctor {ctor:?} was listed as present but isn't;
-            there is an inconsistency between `Constructor::is_covered_by` and `ConstructorSet::split`"
-        );
         specialized_columns
     }
 }

@@ -716,7 +716,7 @@ use smallvec::{smallvec, SmallVec};
 use std::fmt;
 
 use crate::constructor::{Constructor, ConstructorSet};
-use crate::pat::{DeconstructedPat, WitnessPat};
+use crate::pat::{DeconstructedPat, PatOrWild, WitnessPat};
 use crate::{Captures, MatchArm, MatchCtxt, TypeCx};
 
 use self::ValidityConstraint::*;
@@ -827,7 +827,7 @@ impl fmt::Display for ValidityConstraint {
 #[derivative(Clone(bound = ""))]
 struct PatStack<'p, Cx: TypeCx> {
     // Rows of len 1 are very common, which is why `SmallVec[_; 2]` works well.
-    pats: SmallVec<[&'p DeconstructedPat<'p, Cx>; 2]>,
+    pats: SmallVec<[PatOrWild<'p, Cx>; 2]>,
     /// Sometimes we know that as far as this row is concerned, the current case is already handled
     /// by a different, more general, case. When the case is irrelevant for all rows this allows us
     /// to skip a case entirely. This is purely an optimization. See at the top for details.
@@ -836,7 +836,7 @@ struct PatStack<'p, Cx: TypeCx> {
 
 impl<'p, Cx: TypeCx> PatStack<'p, Cx> {
     fn from_pattern(pat: &'p DeconstructedPat<'p, Cx>) -> Self {
-        PatStack { pats: smallvec![pat], relevant: true }
+        PatStack { pats: smallvec![PatOrWild::Pat(pat)], relevant: true }
     }
 
     fn is_empty(&self) -> bool {
@@ -847,14 +847,11 @@ impl<'p, Cx: TypeCx> PatStack<'p, Cx> {
         self.pats.len()
     }
 
-    fn head_opt(&self) -> Option<&'p DeconstructedPat<'p, Cx>> {
-        self.pats.first().copied()
-    }
-    fn head(&self) -> &'p DeconstructedPat<'p, Cx> {
-        self.head_opt().unwrap()
+    fn head(&self) -> PatOrWild<'p, Cx> {
+        self.pats[0]
     }
 
-    fn iter(&self) -> impl Iterator<Item = &'p DeconstructedPat<'p, Cx>> + Captures<'_> {
+    fn iter(&self) -> impl Iterator<Item = PatOrWild<'p, Cx>> + Captures<'_> {
         self.pats.iter().copied()
     }
 
@@ -872,14 +869,13 @@ impl<'p, Cx: TypeCx> PatStack<'p, Cx> {
     /// Only call if `ctor.is_covered_by(self.head().ctor())` is true.
     fn pop_head_constructor(
         &self,
-        pcx: &PlaceCtxt<'_, 'p, Cx>,
         ctor: &Constructor<Cx>,
-        ctor_sub_tys: &[Cx::Ty],
+        ctor_arity: usize,
         ctor_is_relevant: bool,
     ) -> PatStack<'p, Cx> {
         // We pop the head pattern and push the new fields extracted from the arguments of
         // `self.head()`.
-        let mut new_pats = self.head().specialize(pcx, ctor, ctor_sub_tys);
+        let mut new_pats = self.head().specialize(ctor, ctor_arity);
         new_pats.extend_from_slice(&self.pats[1..]);
         // `ctor` is relevant for this row if it is the actual constructor of this row, or if the
         // row has a wildcard and `ctor` is relevant for wildcards.
@@ -926,11 +922,11 @@ impl<'p, Cx: TypeCx> MatrixRow<'p, Cx> {
         self.pats.len()
     }
 
-    fn head(&self) -> &'p DeconstructedPat<'p, Cx> {
+    fn head(&self) -> PatOrWild<'p, Cx> {
         self.pats.head()
     }
 
-    fn iter(&self) -> impl Iterator<Item = &'p DeconstructedPat<'p, Cx>> + Captures<'_> {
+    fn iter(&self) -> impl Iterator<Item = PatOrWild<'p, Cx>> + Captures<'_> {
         self.pats.iter()
     }
 
@@ -949,14 +945,13 @@ impl<'p, Cx: TypeCx> MatrixRow<'p, Cx> {
     /// Only call if `ctor.is_covered_by(self.head().ctor())` is true.
     fn pop_head_constructor(
         &self,
-        pcx: &PlaceCtxt<'_, 'p, Cx>,
         ctor: &Constructor<Cx>,
-        ctor_sub_tys: &[Cx::Ty],
+        ctor_arity: usize,
         ctor_is_relevant: bool,
         parent_row: usize,
     ) -> MatrixRow<'p, Cx> {
         MatrixRow {
-            pats: self.pats.pop_head_constructor(pcx, ctor, ctor_sub_tys, ctor_is_relevant),
+            pats: self.pats.pop_head_constructor(ctor, ctor_arity, ctor_is_relevant),
             parent_row,
             is_under_guard: self.is_under_guard,
             useful: false,
@@ -1054,7 +1049,7 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
     }
 
     /// Iterate over the first pattern of each row.
-    fn heads(&self) -> impl Iterator<Item = &'p DeconstructedPat<'p, Cx>> + Clone + Captures<'_> {
+    fn heads(&self) -> impl Iterator<Item = PatOrWild<'p, Cx>> + Clone + Captures<'_> {
         self.rows().map(|r| r.head())
     }
 
@@ -1066,11 +1061,12 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
         ctor_is_relevant: bool,
     ) -> Matrix<'p, Cx> {
         let ctor_sub_tys = pcx.ctor_sub_tys(ctor);
+        let arity = ctor_sub_tys.len();
         let specialized_place_ty =
             ctor_sub_tys.iter().chain(self.place_ty[1..].iter()).copied().collect();
         let ctor_sub_validity = self.place_validity[0].specialize(ctor);
         let specialized_place_validity = std::iter::repeat(ctor_sub_validity)
-            .take(ctor.arity(pcx))
+            .take(arity)
             .chain(self.place_validity[1..].iter().copied())
             .collect();
         let mut matrix = Matrix {
@@ -1081,8 +1077,7 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
         };
         for (i, row) in self.rows().enumerate() {
             if ctor.is_covered_by(pcx, row.head().ctor()) {
-                let new_row =
-                    row.pop_head_constructor(pcx, ctor, ctor_sub_tys, ctor_is_relevant, i);
+                let new_row = row.pop_head_constructor(ctor, arity, ctor_is_relevant, i);
                 matrix.expand_and_push(new_row);
             }
         }
