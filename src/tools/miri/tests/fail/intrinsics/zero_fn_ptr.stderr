@@ -3,12 +3,12 @@ aborted execution: attempted to zero-initialize type `fn()`, which is invalid
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 thread caused non-unwinding panic. aborting.
 error: abnormal termination: the program aborted execution
-  --> RUSTLIB/std/src/sys/PLATFORM/mod.rs:LL:CC
+  --> RUSTLIB/std/src/sys/pal/PLATFORM/mod.rs:LL:CC
    |
 LL |     ABORT();
    | ^ the program aborted execution
    |
-   = note: inside `std::sys::PLATFORM::abort_internal` at RUSTLIB/std/src/sys/PLATFORM/mod.rs:LL:CC
+   = note: inside `std::sys::pal::PLATFORM::abort_internal` at RUSTLIB/std/src/sys/pal/PLATFORM/mod.rs:LL:CC
    = note: inside `std::panicking::rust_panic_with_hook` at RUSTLIB/std/src/panicking.rs:LL:CC
    = note: inside closure at RUSTLIB/std/src/panicking.rs:LL:CC
    = note: inside `std::sys_common::backtrace::__rust_end_short_backtrace::<{closure@std::panicking::begin_panic_handler::{closure#0}}, !>` at RUSTLIB/std/src/sys_common/backtrace.rs:LL:CC

@@ -192,13 +192,13 @@ regexes! {
     // erase thread caller ids
     r"call [0-9]+"                  => "call ID",
     // erase platform module paths
-    "sys::[a-z]+::"                  => "sys::PLATFORM::",
+    "sys::pal::[a-z]+::"                  => "sys::pal::PLATFORM::",
     // Windows file paths
     r"\\"                           => "/",
     // erase Rust stdlib path
     "[^ \n`]*/(rust[^/]*|checkout)/library/" => "RUSTLIB/",
     // erase platform file paths
-    "sys/[a-z]+/"                    => "sys/PLATFORM/",
+    "sys/pal/[a-z]+/"                    => "sys/pal/PLATFORM/",
     // erase paths into the crate registry
     r"[^ ]*/\.?cargo/registry/.*/(.*\.rs)"  => "CARGO_REGISTRY/.../$1",
 }
