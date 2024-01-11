@@ -264,11 +264,6 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
         self.take_diag()
     }
 
-    /// Buffers the diagnostic for later emission.
-    pub fn buffer(self, buffered_diagnostics: &mut Vec<Diagnostic>) {
-        buffered_diagnostics.push(self.into_diagnostic());
-    }
-
     /// Delay emission of this diagnostic as a bug.
     ///
     /// This can be useful in contexts where an error indicates a bug but
