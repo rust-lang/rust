@@ -166,17 +166,18 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
         tcx.hir().for_each_module(|module| tcx.ensure().collect_mod_item_types(module))
     });
 
-    // FIXME(matthewjasper) We shouldn't need to use `track_errors` anywhere in this function
-    // or the compiler in general.
     if tcx.features().rustc_attrs {
         tcx.sess.time("outlives_testing", || outlives::test::test_inferred_outlives(tcx))?;
     }
 
-    tcx.sess.track_errors(|| {
-        tcx.sess.time("coherence_checking", || {
-            // Check impls constrain their parameters
-            tcx.hir().for_each_module(|module| tcx.ensure().check_mod_impl_wf(module));
+    tcx.sess.time("coherence_checking", || {
+        // Check impls constrain their parameters
+        let res =
+            tcx.hir().try_par_for_each_module(|module| tcx.ensure().check_mod_impl_wf(module));
 
+        // FIXME(matthewjasper) We shouldn't need to use `track_errors` anywhere in this function
+        // or the compiler in general.
+        res.and(tcx.sess.track_errors(|| {
             for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
                 tcx.ensure().coherent_trait(trait_def_id);
             }
@@ -184,7 +185,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
             // these queries are executed for side-effects (error reporting):
             tcx.ensure().crate_inherent_impls(());
             tcx.ensure().crate_inherent_impls_overlap_check(());
-        });
+        }))
     })?;
 
     if tcx.features().rustc_attrs {
