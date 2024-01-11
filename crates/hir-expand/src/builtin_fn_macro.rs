@@ -15,7 +15,7 @@ use crate::{
     quote,
     quote::dollar_crate,
     tt::{self, DelimSpan},
-    ExpandError, ExpandResult, HirFileIdExt, MacroCallId,
+    ExpandError, ExpandResult, HirFileIdExt, MacroCallId, MacroFileIdExt,
 };
 
 macro_rules! register_builtin {
@@ -609,7 +609,7 @@ fn relative_file(
     path_str: &str,
     allow_recursion: bool,
 ) -> Result<FileId, ExpandError> {
-    let call_site = call_id.as_file().original_file(db);
+    let call_site = call_id.as_macro_file().parent(db).original_file_respecting_includes(db);
     let path = AnchoredPath { anchor: call_site, path: path_str };
     let res = db
         .resolve_path(path)
