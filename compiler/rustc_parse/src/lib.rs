@@ -19,7 +19,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::{AttrItem, Attribute, MetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Diagnostic, PResult};
+use rustc_errors::{DiagnosticBuilder, FatalError, PResult};
 use rustc_session::parse::ParseSess;
 use rustc_span::{FileName, SourceFile, Span};
 
@@ -45,14 +45,13 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 /// A variant of 'panictry!' that works on a `Vec<Diagnostic>` instead of a single
 /// `DiagnosticBuilder`.
 macro_rules! panictry_buffer {
-    ($handler:expr, $e:expr) => {{
-        use rustc_errors::FatalError;
+    ($e:expr) => {{
         use std::result::Result::{Err, Ok};
         match $e {
             Ok(e) => e,
             Err(errs) => {
                 for e in errs {
-                    $handler.emit_diagnostic(e);
+                    e.emit();
                 }
                 FatalError.raise()
             }
@@ -100,16 +99,17 @@ pub fn parse_stream_from_source_str(
 
 /// Creates a new parser from a source string.
 pub fn new_parser_from_source_str(sess: &ParseSess, name: FileName, source: String) -> Parser<'_> {
-    panictry_buffer!(&sess.dcx, maybe_new_parser_from_source_str(sess, name, source))
+    panictry_buffer!(maybe_new_parser_from_source_str(sess, name, source))
 }
 
 /// Creates a new parser from a source string. Returns any buffered errors from lexing the initial
-/// token stream.
+/// token stream; these must be consumed via `emit`, `cancel`, etc., otherwise a panic will occur
+/// when they are dropped.
 pub fn maybe_new_parser_from_source_str(
     sess: &ParseSess,
     name: FileName,
     source: String,
-) -> Result<Parser<'_>, Vec<Diagnostic>> {
+) -> Result<Parser<'_>, Vec<DiagnosticBuilder<'_>>> {
     maybe_source_file_to_parser(sess, sess.source_map().new_source_file(name, source))
 }
 
@@ -125,7 +125,7 @@ pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path, sp: Option<Spa
         err.emit();
     });
 
-    panictry_buffer!(&sess.dcx, maybe_source_file_to_parser(sess, source_file))
+    panictry_buffer!(maybe_source_file_to_parser(sess, source_file))
 }
 
 /// Given a session and a `source_file`, return a parser. Returns any buffered errors from lexing
@@ -133,7 +133,7 @@ pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path, sp: Option<Spa
 fn maybe_source_file_to_parser(
     sess: &ParseSess,
     source_file: Lrc<SourceFile>,
-) -> Result<Parser<'_>, Vec<Diagnostic>> {
+) -> Result<Parser<'_>, Vec<DiagnosticBuilder<'_>>> {
     let end_pos = source_file.end_position();
     let stream = maybe_file_to_stream(sess, source_file, None)?;
     let mut parser = stream_to_parser(sess, stream, None);
@@ -152,16 +152,16 @@ pub fn source_file_to_stream(
     source_file: Lrc<SourceFile>,
     override_span: Option<Span>,
 ) -> TokenStream {
-    panictry_buffer!(&sess.dcx, maybe_file_to_stream(sess, source_file, override_span))
+    panictry_buffer!(maybe_file_to_stream(sess, source_file, override_span))
 }
 
 /// Given a source file, produces a sequence of token trees. Returns any buffered errors from
 /// parsing the token stream.
-fn maybe_file_to_stream(
-    sess: &ParseSess,
+fn maybe_file_to_stream<'sess>(
+    sess: &'sess ParseSess,
     source_file: Lrc<SourceFile>,
     override_span: Option<Span>,
-) -> Result<TokenStream, Vec<Diagnostic>> {
+) -> Result<TokenStream, Vec<DiagnosticBuilder<'sess>>> {
     let src = source_file.src.as_ref().unwrap_or_else(|| {
         sess.dcx.bug(format!(
             "cannot lex `source_file` without source: {}",

@@ -7,7 +7,7 @@ use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
-use rustc_errors::{error_code, Applicability, DiagCtxt, Diagnostic, StashKey};
+use rustc_errors::{error_code, Applicability, DiagCtxt, DiagnosticBuilder, StashKey};
 use rustc_lexer::unescape::{self, EscapeError, Mode};
 use rustc_lexer::{Base, DocStyle, RawStrError};
 use rustc_lexer::{Cursor, LiteralKind};
@@ -47,7 +47,7 @@ pub(crate) fn parse_token_trees<'sess, 'src>(
     mut src: &'src str,
     mut start_pos: BytePos,
     override_span: Option<Span>,
-) -> Result<TokenStream, Vec<Diagnostic>> {
+) -> Result<TokenStream, Vec<DiagnosticBuilder<'sess>>> {
     // Skip `#!`, if present.
     if let Some(shebang_len) = rustc_lexer::strip_shebang(src) {
         src = &src[shebang_len..];
@@ -76,13 +76,13 @@ pub(crate) fn parse_token_trees<'sess, 'src>(
             let mut buffer = Vec::with_capacity(1);
             for unmatched in unmatched_delims {
                 if let Some(err) = make_unclosed_delims_error(unmatched, sess) {
-                    err.buffer(&mut buffer);
+                    buffer.push(err);
                 }
             }
             if let Err(errs) = res {
                 // Add unclosing delimiter or diff marker errors
                 for err in errs {
-                    err.buffer(&mut buffer);
+                    buffer.push(err);
                 }
             }
             Err(buffer)

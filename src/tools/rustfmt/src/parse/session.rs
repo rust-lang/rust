@@ -4,7 +4,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use rustc_data_structures::sync::{IntoDynSyncSend, Lrc};
 use rustc_errors::emitter::{DynEmitter, Emitter, HumanEmitter};
 use rustc_errors::translation::Translate;
-use rustc_errors::{ColorConfig, DiagCtxt, Diagnostic, Level as DiagnosticLevel};
+use rustc_errors::{
+    ColorConfig, DiagCtxt, Diagnostic, DiagnosticBuilder, Level as DiagnosticLevel,
+};
 use rustc_session::parse::ParseSess as RawParseSess;
 use rustc_span::{
     source_map::{FilePathMapping, SourceMap},
@@ -283,9 +285,9 @@ impl ParseSess {
 
 // Methods that should be restricted within the parse module.
 impl ParseSess {
-    pub(super) fn emit_diagnostics(&self, diagnostics: Vec<Diagnostic>) {
+    pub(super) fn emit_diagnostics(&self, diagnostics: Vec<DiagnosticBuilder<'_>>) {
         for diagnostic in diagnostics {
-            self.parse_sess.dcx.emit_diagnostic(diagnostic);
+            diagnostic.emit();
         }
     }
 
