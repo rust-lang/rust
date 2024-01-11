@@ -4,7 +4,7 @@ error: unconstrained opaque type
 LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-error[E0792]: expected generic lifetime parameter, found `'_`
+error: internal compiler error[E0792]: expected generic lifetime parameter, found `'_`
   --> $DIR/issue-86800.rs:39:5
    |
 LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;

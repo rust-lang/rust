@@ -53,7 +53,7 @@ pub fn check(
                 let mut parser = match maybe_new_parser_from_source_str(&sess, filename, code) {
                     Ok(p) => p,
                     Err(errs) => {
-                        drop(errs);
+                        errs.into_iter().for_each(|err| err.cancel());
                         return (false, test_attr_spans);
                     },
                 };

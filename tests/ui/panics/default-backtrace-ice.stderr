@@ -1,4 +1,4 @@
-error[E0425]: cannot find value `missing_ident` in this scope
+error: internal compiler error[E0425]: cannot find value `missing_ident` in this scope
   --> $DIR/default-backtrace-ice.rs:21:13
    |
 LL | fn main() { missing_ident; }

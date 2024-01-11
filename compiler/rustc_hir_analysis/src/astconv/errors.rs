@@ -354,7 +354,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         );
         err.span_label(name.span, format!("multiple `{name}` found"));
         self.note_ambiguous_inherent_assoc_type(&mut err, candidates, span);
-        err.emit()
+        let reported = err.emit();
+        self.set_tainted_by_errors(reported);
+        reported
     }
 
     // FIXME(fmease): Heavily adapted from `rustc_hir_typeck::method::suggest`. Deduplicate.
@@ -843,7 +845,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        err.emit();
+        self.set_tainted_by_errors(err.emit());
     }
 }
 

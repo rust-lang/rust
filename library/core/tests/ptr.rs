@@ -478,7 +478,11 @@ fn align_offset_various_strides() {
                 x |= test_stride::<A9>(ptr::invalid::<A9>(ptr), align);
 
                 #[repr(packed)]
-                struct A10(#[allow(dead_code)] u32, #[allow(dead_code)] u32, #[allow(dead_code)] u16);
+                struct A10(
+                    #[allow(dead_code)] u32,
+                    #[allow(dead_code)] u32,
+                    #[allow(dead_code)] u16,
+                );
                 x |= test_stride::<A10>(ptr::invalid::<A10>(ptr), align);
 
                 x |= test_stride::<u32>(ptr::invalid::<u32>(ptr), align);
@@ -532,7 +536,11 @@ fn align_offset_various_strides_const() {
                     test_stride::<A6>(ptr::invalid::<A6>(ptr), ptr, align);
 
                     #[repr(packed)]
-                    struct A7(#[allow(dead_code)] u32, #[allow(dead_code)] u16, #[allow(dead_code)] u8);
+                    struct A7(
+                        #[allow(dead_code)] u32,
+                        #[allow(dead_code)] u16,
+                        #[allow(dead_code)] u8,
+                    );
                     test_stride::<A7>(ptr::invalid::<A7>(ptr), ptr, align);
 
                     #[repr(packed)]
@@ -540,11 +548,19 @@ fn align_offset_various_strides_const() {
                     test_stride::<A8>(ptr::invalid::<A8>(ptr), ptr, align);
 
                     #[repr(packed)]
-                    struct A9(#[allow(dead_code)] u32, #[allow(dead_code)] u32, #[allow(dead_code)] u8);
+                    struct A9(
+                        #[allow(dead_code)] u32,
+                        #[allow(dead_code)] u32,
+                        #[allow(dead_code)] u8,
+                    );
                     test_stride::<A9>(ptr::invalid::<A9>(ptr), ptr, align);
 
                     #[repr(packed)]
-                    struct A10(#[allow(dead_code)] u32, #[allow(dead_code)] u32, #[allow(dead_code)] u16);
+                    struct A10(
+                        #[allow(dead_code)] u32,
+                        #[allow(dead_code)] u32,
+                        #[allow(dead_code)] u16,
+                    );
                     test_stride::<A10>(ptr::invalid::<A10>(ptr), ptr, align);
 
                     test_stride::<u32>(ptr::invalid::<u32>(ptr), ptr, align);

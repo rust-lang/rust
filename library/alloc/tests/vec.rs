@@ -1,7 +1,7 @@
 use core::alloc::{Allocator, Layout};
-use core::{assert_eq, assert_ne};
 use core::num::NonZeroUsize;
 use core::ptr::NonNull;
+use core::{assert_eq, assert_ne};
 use std::alloc::System;
 use std::assert_matches::assert_matches;
 use std::borrow::Cow;
@@ -1212,7 +1212,7 @@ fn test_in_place_specialization_step_up_down() {
     assert_eq!(sink.len(), 2);
 
     let mut src: Vec<[u8; 3]> = Vec::with_capacity(17);
-    src.resize( 8, [0; 3]);
+    src.resize(8, [0; 3]);
     let iter = src.into_iter().map(|[a, b, _]| [a, b]);
     assert_in_place_trait(&iter);
     let sink: Vec<[u8; 2]> = iter.collect();
@@ -1221,11 +1221,7 @@ fn test_in_place_specialization_step_up_down() {
 
     let src = vec![[0u8; 4]; 256];
     let srcptr = src.as_ptr();
-    let iter = src
-        .into_iter()
-        .flat_map(|a| {
-            a.into_iter().map(|b| b.wrapping_add(1))
-        });
+    let iter = src.into_iter().flat_map(|a| a.into_iter().map(|b| b.wrapping_add(1)));
     assert_in_place_trait(&iter);
     let sink = iter.collect::<Vec<_>>();
     assert_eq!(srcptr as *const u8, sink.as_ptr());

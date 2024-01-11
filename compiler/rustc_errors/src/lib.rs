@@ -981,6 +981,10 @@ impl DiagCtxt {
 
         inner.emit_stashed_diagnostics();
 
+        if inner.treat_err_as_bug() {
+            return;
+        }
+
         let warnings = match inner.deduplicated_warn_count {
             0 => Cow::from(""),
             1 => Cow::from("1 warning emitted"),
@@ -991,9 +995,6 @@ impl DiagCtxt {
             1 => Cow::from("aborting due to 1 previous error"),
             count => Cow::from(format!("aborting due to {count} previous errors")),
         };
-        if inner.treat_err_as_bug() {
-            return;
-        }
 
         match (errors.len(), warnings.len()) {
             (0, 0) => return,
@@ -1168,7 +1169,8 @@ impl DiagCtxt {
         let mut inner = self.inner.borrow_mut();
 
         if loud && lint_level.is_error() {
-            inner.bump_err_count();
+            inner.err_count += 1;
+            inner.panic_if_treat_err_as_bug();
         }
 
         inner.emitter.emit_unused_externs(lint_level, unused_externs)
@@ -1255,7 +1257,7 @@ impl DiagCtxtInner {
     }
 
     fn emit_diagnostic(&mut self, mut diagnostic: Diagnostic) -> Option<ErrorGuaranteed> {
-        if matches!(diagnostic.level, Error | Fatal) && self.treat_err_as_bug() {
+        if matches!(diagnostic.level, Error | Fatal) && self.treat_next_err_as_bug() {
             diagnostic.level = Bug;
         }
 
@@ -1353,10 +1355,11 @@ impl DiagCtxtInner {
             }
             if diagnostic.is_error() {
                 if diagnostic.is_lint {
-                    self.bump_lint_err_count();
+                    self.lint_err_count += 1;
                 } else {
-                    self.bump_err_count();
+                    self.err_count += 1;
                 }
+                self.panic_if_treat_err_as_bug();
 
                 #[allow(deprecated)]
                 {
@@ -1445,16 +1448,6 @@ impl DiagCtxtInner {
 
         // Panic with `DelayedBugPanic` to avoid "unexpected panic" messages.
         panic::panic_any(DelayedBugPanic);
-    }
-
-    fn bump_lint_err_count(&mut self) {
-        self.lint_err_count += 1;
-        self.panic_if_treat_err_as_bug();
-    }
-
-    fn bump_err_count(&mut self) {
-        self.err_count += 1;
-        self.panic_if_treat_err_as_bug();
     }
 
     fn panic_if_treat_err_as_bug(&self) {

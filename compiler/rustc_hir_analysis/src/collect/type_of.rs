@@ -513,7 +513,11 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<Ty
             bug!("unexpected sort of node in type_of(): {:?}", x);
         }
     };
-    ty::EarlyBinder::bind(output)
+    if let Err(e) = icx.check_tainted_by_errors() {
+        ty::EarlyBinder::bind(Ty::new_error(tcx, e))
+    } else {
+        ty::EarlyBinder::bind(output)
+    }
 }
 
 pub(super) fn type_of_opaque(

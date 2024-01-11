@@ -300,13 +300,15 @@ impl<'tcx> dyn AstConv<'tcx> + '_ {
             .expect("missing associated item");
 
         if !assoc_item.visibility(tcx).is_accessible_from(def_scope, tcx) {
-            tcx.dcx()
+            let reported = tcx
+                .dcx()
                 .struct_span_err(
                     binding.span,
                     format!("{} `{}` is private", assoc_item.kind, binding.item_name),
                 )
                 .with_span_label(binding.span, format!("private {}", assoc_item.kind))
                 .emit();
+            self.set_tainted_by_errors(reported);
         }
         tcx.check_stability(assoc_item.def_id, Some(hir_ref_id), binding.span, None);
 
