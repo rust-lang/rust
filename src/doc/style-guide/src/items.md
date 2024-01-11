@@ -347,7 +347,7 @@ where
 ```
 
 If a `where` clause is very short, prefer using an inline bound on the type
-parameter.
+parameter if possible.
 
 If a component of a `where` clause does not fit and contains `+`, break it
 before each `+` and block-indent the continuation lines. Put each bound on its
