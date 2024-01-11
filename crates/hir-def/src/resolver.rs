@@ -242,7 +242,7 @@ impl Resolver {
         let within_impl =
             self.scopes().find(|scope| matches!(scope, Scope::ImplDefScope(_))).is_some();
         match visibility {
-            RawVisibility::Module(_) => {
+            RawVisibility::Module(_, _) => {
                 let (item_map, module) = self.item_scope();
                 item_map.resolve_visibility(db, module, visibility, within_impl)
             }

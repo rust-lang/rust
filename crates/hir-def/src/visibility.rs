@@ -20,14 +20,14 @@ use crate::{
 pub enum RawVisibility {
     /// `pub(in module)`, `pub(crate)` or `pub(super)`. Also private, which is
     /// equivalent to `pub(self)`.
-    Module(ModPath),
+    Module(ModPath, VisibilityExplicity),
     /// `pub`.
     Public,
 }
 
 impl RawVisibility {
     pub(crate) const fn private() -> RawVisibility {
-        RawVisibility::Module(ModPath::from_kind(PathKind::Super(0)))
+        RawVisibility::Module(ModPath::from_kind(PathKind::Super(0)), VisibilityExplicity::Implicit)
     }
 
     pub(crate) fn from_ast(
@@ -42,17 +42,8 @@ impl RawVisibility {
         node: Option<ast::Visibility>,
         span_map: SpanMapRef<'_>,
     ) -> RawVisibility {
-        Self::from_ast_with_span_map_and_default(db, node, RawVisibility::private(), span_map)
-    }
-
-    pub(crate) fn from_ast_with_span_map_and_default(
-        db: &dyn DefDatabase,
-        node: Option<ast::Visibility>,
-        default: RawVisibility,
-        span_map: SpanMapRef<'_>,
-    ) -> RawVisibility {
         let node = match node {
-            None => return default,
+            None => return RawVisibility::private(),
             Some(node) => node,
         };
         match node.kind() {
@@ -62,19 +53,19 @@ impl RawVisibility {
                     None => return RawVisibility::private(),
                     Some(path) => path,
                 };
-                RawVisibility::Module(path)
+                RawVisibility::Module(path, VisibilityExplicity::Explicit)
             }
             ast::VisibilityKind::PubCrate => {
                 let path = ModPath::from_kind(PathKind::Crate);
-                RawVisibility::Module(path)
+                RawVisibility::Module(path, VisibilityExplicity::Explicit)
             }
             ast::VisibilityKind::PubSuper => {
                 let path = ModPath::from_kind(PathKind::Super(1));
-                RawVisibility::Module(path)
+                RawVisibility::Module(path, VisibilityExplicity::Explicit)
             }
             ast::VisibilityKind::PubSelf => {
                 let path = ModPath::from_kind(PathKind::Super(0));
-                RawVisibility::Module(path)
+                RawVisibility::Module(path, VisibilityExplicity::Explicit)
             }
             ast::VisibilityKind::Pub => RawVisibility::Public,
         }
@@ -214,10 +205,9 @@ impl Visibility {
 }
 
 /// Whether the item was imported through `pub(crate) use` or just `use`.
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum VisibilityExplicity {
     Explicit,
-    #[default]
     Implicit,
 }
 

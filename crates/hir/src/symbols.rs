@@ -196,7 +196,7 @@ impl<'a> SymbolCollector<'a> {
             });
         }
 
-        for const_id in scope.unnamed_consts() {
+        for const_id in scope.unnamed_consts(self.db.upcast()) {
             self.collect_from_body(const_id);
         }
 

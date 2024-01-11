@@ -7,7 +7,6 @@ mod change;
 
 use std::panic;
 
-use rustc_hash::FxHashSet;
 use syntax::{ast, Parse, SourceFile};
 use triomphe::Arc;
 
@@ -90,15 +89,16 @@ pub trait SourceDatabaseExt: SourceDatabase {
 
 fn source_root_crates(db: &dyn SourceDatabaseExt, id: SourceRootId) -> Arc<[CrateId]> {
     let graph = db.crate_graph();
-    graph
+    let mut crates = graph
         .iter()
         .filter(|&krate| {
             let root_file = graph[krate].root_file_id;
             db.file_source_root(root_file) == id
         })
-        .collect::<FxHashSet<_>>()
-        .into_iter()
-        .collect()
+        .collect::<Vec<_>>();
+    crates.sort();
+    crates.dedup();
+    crates.into_iter().collect()
 }
 
 /// Silly workaround for cyclic deps between the traits
