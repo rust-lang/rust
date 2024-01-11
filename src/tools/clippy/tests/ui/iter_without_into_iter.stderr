@@ -1,5 +1,5 @@
 error: `iter` method without an `IntoIterator` impl for `&S1`
-  --> $DIR/iter_without_into_iter.rs:6:5
+  --> $DIR/iter_without_into_iter.rs:8:5
    |
 LL | /     pub fn iter(&self) -> std::slice::Iter<'_, u8> {
 LL | |
@@ -22,7 +22,7 @@ LL + }
    |
 
 error: `iter_mut` method without an `IntoIterator` impl for `&mut S1`
-  --> $DIR/iter_without_into_iter.rs:10:5
+  --> $DIR/iter_without_into_iter.rs:12:5
    |
 LL | /     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, u8> {
 LL | |
@@ -43,7 +43,7 @@ LL + }
    |
 
 error: `iter` method without an `IntoIterator` impl for `&S3<'a>`
-  --> $DIR/iter_without_into_iter.rs:26:5
+  --> $DIR/iter_without_into_iter.rs:28:5
    |
 LL | /     pub fn iter(&self) -> std::slice::Iter<'_, u8> {
 LL | |
@@ -64,7 +64,7 @@ LL + }
    |
 
 error: `iter_mut` method without an `IntoIterator` impl for `&mut S3<'a>`
-  --> $DIR/iter_without_into_iter.rs:30:5
+  --> $DIR/iter_without_into_iter.rs:32:5
    |
 LL | /     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, u8> {
 LL | |
@@ -85,7 +85,7 @@ LL + }
    |
 
 error: `iter` method without an `IntoIterator` impl for `&S8<T>`
-  --> $DIR/iter_without_into_iter.rs:67:5
+  --> $DIR/iter_without_into_iter.rs:69:5
    |
 LL | /     pub fn iter(&self) -> std::slice::Iter<'static, T> {
 LL | |         todo!()
@@ -105,7 +105,7 @@ LL + }
    |
 
 error: `iter` method without an `IntoIterator` impl for `&S9<T>`
-  --> $DIR/iter_without_into_iter.rs:75:5
+  --> $DIR/iter_without_into_iter.rs:77:5
    |
 LL | /     pub fn iter(&self) -> std::slice::Iter<'_, T> {
 LL | |
@@ -126,7 +126,7 @@ LL + }
    |
 
 error: `iter_mut` method without an `IntoIterator` impl for `&mut S9<T>`
-  --> $DIR/iter_without_into_iter.rs:79:5
+  --> $DIR/iter_without_into_iter.rs:81:5
    |
 LL | /     pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, T> {
 LL | |
@@ -146,5 +146,29 @@ LL +     }
 LL + }
    |
 
-error: aborting due to 7 previous errors
+error: `iter` method without an `IntoIterator` impl for `&Issue12037`
+  --> $DIR/iter_without_into_iter.rs:130:13
+   |
+LL | /             fn iter(&self) -> std::slice::Iter<'_, u8> {
+LL | |                 todo!()
+LL | |             }
+   | |_____________^
+...
+LL |   generate_impl!();
+   |   ---------------- in this macro invocation
+   |
+   = note: this error originates in the macro `generate_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: consider implementing `IntoIterator` for `&Issue12037`
+   |
+LL ~         
+LL + impl IntoIterator for &Issue12037 {
+LL +     type IntoIter = std::slice::Iter<'_, u8>;
+LL +     type Item = &u8;
+LL +     fn into_iter(self) -> Self::IntoIter {
+LL +         self.iter()
+LL +     }
+LL + }
+   |
+
+error: aborting due to 8 previous errors
 

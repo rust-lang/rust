@@ -5,6 +5,4 @@ static FN: fn() = f;
 
 fn main() {
     let _: () = FN();
-    //~^ ERROR: this let-binding has unit value
-    //~| NOTE: `-D clippy::let-unit-value` implied by `-D warnings`
 }

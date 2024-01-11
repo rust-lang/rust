@@ -13,7 +13,11 @@ pub(super) fn check(
     as_str_span: Span,
     other_method_span: Span,
 ) {
-    if cx.typeck_results().expr_ty(recv).ty_adt_def().is_some_and(|adt| Some(adt.did()) == cx.tcx.lang_items().string())
+    if cx
+        .typeck_results()
+        .expr_ty(recv)
+        .ty_adt_def()
+        .is_some_and(|adt| Some(adt.did()) == cx.tcx.lang_items().string())
     {
         let mut applicability = Applicability::MachineApplicable;
         span_lint_and_sugg(

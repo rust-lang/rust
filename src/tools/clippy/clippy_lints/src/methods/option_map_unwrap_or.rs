@@ -72,7 +72,7 @@ pub(super) fn check<'tcx>(
         }
 
         // is_some_and is stabilised && `unwrap_or` argument is false; suggest `is_some_and` instead
-        let suggest_is_some_and = msrv.meets(msrvs::OPTION_IS_SOME_AND)
+        let suggest_is_some_and = msrv.meets(msrvs::OPTION_RESULT_IS_VARIANT_AND)
             && matches!(&unwrap_arg.kind, ExprKind::Lit(lit)
             if matches!(lit.node, rustc_ast::LitKind::Bool(false)));
 
