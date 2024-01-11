@@ -2348,11 +2348,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             GenericKind::Param(ref p) => format!("the parameter type `{p}`"),
             GenericKind::Placeholder(ref p) => format!("the placeholder type `{p:?}`"),
             GenericKind::Alias(ref p) => match p.kind(self.tcx) {
-                ty::AliasKind::Projection | ty::AliasKind::Inherent => {
+                ty::Projection | ty::Inherent => {
                     format!("the associated type `{p}`")
                 }
-                ty::AliasKind::Weak => format!("the type alias `{p}`"),
-                ty::AliasKind::Opaque => format!("the opaque type `{p}`"),
+                ty::Weak => format!("the type alias `{p}`"),
+                ty::Opaque => format!("the opaque type `{p}`"),
             },
         };
 
