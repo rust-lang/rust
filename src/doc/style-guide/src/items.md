@@ -430,6 +430,7 @@ line if it fits:
 
 ```rust
 type Item<'a> where Self: 'a;
+type Item<'a>: PartialEq + Send where Self: 'a;
 ```
 
 If the associated type has a `=`, or if the `where` clause contains multiple
