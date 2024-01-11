@@ -1,4 +1,4 @@
-error[E0080]: could not evaluate static initializer
+error: internal compiler error[E0080]: could not evaluate static initializer
   --> $DIR/err.rs:11:21
    |
 LL | pub static C: u32 = 0 - 1;

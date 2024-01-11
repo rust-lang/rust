@@ -589,7 +589,7 @@ pub(crate) fn make_test(
             let mut parser = match maybe_new_parser_from_source_str(&sess, filename, source) {
                 Ok(p) => p,
                 Err(errs) => {
-                    drop(errs);
+                    errs.into_iter().for_each(|err| err.cancel());
                     return (found_main, found_extern_crate, found_macro);
                 }
             };
@@ -759,8 +759,10 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
             let mut parser =
                 match maybe_new_parser_from_source_str(&sess, filename, source.to_owned()) {
                     Ok(p) => p,
-                    Err(_) => {
-                        // If there is an unclosed delimiter, an error will be returned by the tokentrees.
+                    Err(errs) => {
+                        errs.into_iter().for_each(|err| err.cancel());
+                        // If there is an unclosed delimiter, an error will be returned by the
+                        // tokentrees.
                         return false;
                     }
                 };
