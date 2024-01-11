@@ -37,6 +37,7 @@ history of the style guide. Notable changes in the Rust 2024 style edition
 include:
 
 - Miscellaneous `rustfmt` bugfixes.
+- Format single associated type `where` clauses on the same line if they fit.
 
 ## Rust 2015/2018/2021 style edition
 
