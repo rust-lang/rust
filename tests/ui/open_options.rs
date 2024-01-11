@@ -29,5 +29,6 @@ fn main() {
     let mut options = std::fs::OpenOptions::new();
     options.read(true);
     options.read(false);
-    //~^ ERROR: the method `read` is called more than once
+    //#~^ ERROR: the method `read` is called more than once
+    options.open("foo.txt");
 }

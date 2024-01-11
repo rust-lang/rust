@@ -1,8 +1,8 @@
 use rustc_data_structures::fx::FxHashMap;
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::paths;
 use clippy_utils::ty::{is_type_diagnostic_item, match_type};
+use clippy_utils::{match_any_def_paths, paths};
 use rustc_ast::ast::LitKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -19,7 +19,7 @@ fn is_open_options(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, recv: &'tcx Expr<'_>) {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_method(method_id)
-        && is_open_options(cx, cx.tcx.type_of(impl_id).instantiate_identity())
+    //&& is_open_options(cx, cx.tcx.type_of(impl_id).instantiate_identity())
     {
         let mut options = Vec::new();
         get_open_options(cx, recv, &mut options);
@@ -27,7 +27,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, recv: &'tcx
     }
 }
 
-#[derive(Eq, PartialEq, Clone)]
+#[derive(Eq, PartialEq, Clone, Debug)]
 enum Argument {
     Set(bool),
     Unknown,
@@ -55,7 +55,11 @@ impl std::fmt::Display for OpenOption {
     }
 }
 
-fn get_open_options(cx: &LateContext<'_>, argument: &Expr<'_>, options: &mut Vec<(OpenOption, Argument, Span)>) {
+fn get_open_options(
+    cx: &LateContext<'_>,
+    argument: &Expr<'_>,
+    options: &mut Vec<(OpenOption, Argument, Span)>,
+) -> bool {
     if let ExprKind::MethodCall(path, receiver, arguments, span) = argument.kind {
         let obj_ty = cx.typeck_results().expr_ty(receiver).peel_refs();
 
@@ -72,7 +76,8 @@ fn get_open_options(cx: &LateContext<'_>, argument: &Expr<'_>, options: &mut Vec
                     } else {
                         // The function is called with a literal which is not a boolean literal.
                         // This is theoretically possible, but not very likely.
-                        return;
+                        // We'll ignore it for now
+                        return get_open_options(cx, receiver, options);
                     }
                 },
                 _ => Argument::Unknown,
@@ -100,8 +105,19 @@ fn get_open_options(cx: &LateContext<'_>, argument: &Expr<'_>, options: &mut Vec
                 _ => (),
             }
 
-            get_open_options(cx, receiver, options);
+            get_open_options(cx, receiver, options)
+        } else {
+            false
         }
+    } else if let ExprKind::Call(callee, _) = argument.kind
+        && let ExprKind::Path(path) = callee.kind
+        && let Some(did) = cx.qpath_res(&path, callee.hir_id).opt_def_id()
+    {
+        match_any_def_paths(cx, did, &[&paths::TOKIO_IO_OPEN_OPTIONS]).is_some()
+        //is_type_diagnostic_item(cx, ty, sym::FsOpenOptions) || match_type(cx, ty,
+        // &paths::TOKIO_IO_OPEN_OPTIONS)
+    } else {
+        false
     }
 }
 
@@ -144,6 +160,7 @@ fn check_open_options(cx: &LateContext<'_>, settings: &[(OpenOption, Argument, S
 
     if let Some((Argument::Set(true), create_span)) = options.get(&OpenOption::Create)
         && let None = options.get(&OpenOption::Truncate)
+        && let None | Some((Argument::Set(false), _)) = options.get(&OpenOption::Append)
     {
         span_lint_and_then(
             cx,
@@ -153,7 +170,7 @@ fn check_open_options(cx: &LateContext<'_>, settings: &[(OpenOption, Argument, S
             |diag| {
                 diag
                     .span_suggestion(create_span.shrink_to_hi(), "add", ".truncate(true)".to_string(), rustc_errors::Applicability::MaybeIncorrect)
-                    .help("if you intend to overwrite an existing file entirely, call `.truncate(true)`. if you instead know that you may want to keep some parts of the old file, call `.truncate(false)`");
+                    .help("if you intend to overwrite an existing file entirely, call `.truncate(true)`. if you instead know that you may want to keep some parts of the old file, call `.truncate(false)`. Alternatively, use `.append` to append to the file instead of overwriting it.");
             },
         );
     }
