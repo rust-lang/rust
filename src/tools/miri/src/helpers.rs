@@ -25,7 +25,7 @@ use rand::RngCore;
 use crate::*;
 
 // This mapping should match `decode_error_kind` in
-// <https://github.com/rust-lang/rust/blob/master/library/std/src/sys/unix/mod.rs>.
+// <https://github.com/rust-lang/rust/blob/master/library/std/src/sys/pal/unix/mod.rs>.
 const UNIX_IO_ERROR_TABLE: &[(&str, std::io::ErrorKind)] = {
     use std::io::ErrorKind::*;
     &[

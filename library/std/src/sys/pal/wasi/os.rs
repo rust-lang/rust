@@ -209,7 +209,7 @@ pub fn env() -> Env {
         return Env { iter: result.into_iter() };
     }
 
-    // See src/libstd/sys/unix/os.rs, same as that
+    // See src/libstd/sys/pal/unix/os.rs, same as that
     fn parse(input: &[u8]) -> Option<(OsString, OsString)> {
         if input.is_empty() {
             return None;

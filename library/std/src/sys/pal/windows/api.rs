@@ -27,7 +27,7 @@
 //! This module must only depend on core and not on std types as the eventual
 //! hope is to have std depend on sys and not the other way around.
 //! However, some amount of glue code may currently be necessary so such code
-//! should go in sys/windows/mod.rs rather than here. See `IoResult` as an example.
+//! should go in sys/pal/windows/mod.rs rather than here. See `IoResult` as an example.
 
 use core::ffi::c_void;
 use core::ptr::addr_of;

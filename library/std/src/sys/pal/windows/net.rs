@@ -90,7 +90,7 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
     if err == 0 { Ok(()) } else { Err(last_error()) }
 }
 
-/// Just to provide the same interface as sys/unix/net.rs
+/// Just to provide the same interface as sys/pal/unix/net.rs
 pub fn cvt_r<T, F>(mut f: F) -> io::Result<T>
 where
     T: IsMinusOne,
