@@ -25,8 +25,9 @@ use stable_mir::ty::{
     AdtDef, AdtKind, Allocation, ClosureDef, ClosureKind, Const, FieldDef, FnDef, GenericArgs,
     LineInfo, PolyFnSig, RigidTy, Span, Ty, TyKind, VariantDef,
 };
-use stable_mir::{Crate, CrateItem, DefId, Error, Filename, ItemKind, Symbol};
+use stable_mir::{Crate, CrateItem, CrateNum, DefId, Error, Filename, ItemKind, Symbol};
 use std::cell::RefCell;
+use std::iter;
 
 use crate::rustc_internal::{internal, RustcInternal};
 use crate::rustc_smir::builder::BodyBuilder;
@@ -68,9 +69,14 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
 
     fn all_trait_decls(&self) -> stable_mir::TraitDecls {
         let mut tables = self.0.borrow_mut();
+        tables.tcx.all_traits().map(|trait_def_id| tables.trait_def(trait_def_id)).collect()
+    }
+
+    fn trait_decls(&self, crate_num: CrateNum) -> stable_mir::TraitDecls {
+        let mut tables = self.0.borrow_mut();
         tables
             .tcx
-            .traits(LOCAL_CRATE)
+            .traits(crate_num.internal(&mut *tables))
             .iter()
             .map(|trait_def_id| tables.trait_def(*trait_def_id))
             .collect()
@@ -85,9 +91,19 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
 
     fn all_trait_impls(&self) -> stable_mir::ImplTraitDecls {
         let mut tables = self.0.borrow_mut();
+        let tcx = tables.tcx;
+        iter::once(LOCAL_CRATE)
+            .chain(tables.tcx.crates(()).iter().copied())
+            .flat_map(|cnum| tcx.trait_impls_in_crate(cnum).iter())
+            .map(|impl_def_id| tables.impl_def(*impl_def_id))
+            .collect()
+    }
+
+    fn trait_impls(&self, crate_num: CrateNum) -> stable_mir::ImplTraitDecls {
+        let mut tables = self.0.borrow_mut();
         tables
             .tcx
-            .trait_impls_in_crate(LOCAL_CRATE)
+            .trait_impls_in_crate(crate_num.internal(&mut *tables))
             .iter()
             .map(|impl_def_id| tables.impl_def(*impl_def_id))
             .collect()
