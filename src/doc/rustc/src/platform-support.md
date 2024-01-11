@@ -52,17 +52,6 @@ target | notes
 [77071]: https://github.com/rust-lang/rust/issues/77071
 [x86-32-float-issue]: https://github.com/rust-lang/rust/issues/114479
 
-## Tier 1
-
-Tier 1 targets can be thought of as "guaranteed to work". The Rust project
-builds official binary releases for each tier 1 target, and automated testing
-ensures that each tier 1 target builds and passes tests after each change. For
-the full requirements, see [Tier 1 target
-policy](target-tier-policy.md#tier-1-target-policy) in the Target Tier Policy.
-
-At this time, all Tier 1 targets are [Tier 1 with Host
-Tools](#tier-1-with-host-tools).
-
 ## Tier 2 with Host Tools
 
 Tier 2 targets can be thought of as "guaranteed to build". The Rust project
