@@ -42,9 +42,9 @@ pub struct UnmatchedDelim {
     pub candidate_span: Option<Span>,
 }
 
-pub(crate) fn parse_token_trees<'a>(
-    sess: &'a ParseSess,
-    mut src: &'a str,
+pub(crate) fn parse_token_trees<'sess, 'src>(
+    sess: &'sess ParseSess,
+    mut src: &'src str,
     mut start_pos: BytePos,
     override_span: Option<Span>,
 ) -> Result<TokenStream, Vec<Diagnostic>> {
@@ -90,16 +90,16 @@ pub(crate) fn parse_token_trees<'a>(
     }
 }
 
-struct StringReader<'a> {
-    sess: &'a ParseSess,
+struct StringReader<'sess, 'src> {
+    sess: &'sess ParseSess,
     /// Initial position, read-only.
     start_pos: BytePos,
     /// The absolute offset within the source_map of the current character.
     pos: BytePos,
     /// Source text to tokenize.
-    src: &'a str,
+    src: &'src str,
     /// Cursor for getting lexer tokens.
-    cursor: Cursor<'a>,
+    cursor: Cursor<'src>,
     override_span: Option<Span>,
     /// When a "unknown start of token: \u{a0}" has already been emitted earlier
     /// in this file, it's safe to treat further occurrences of the non-breaking
@@ -107,8 +107,8 @@ struct StringReader<'a> {
     nbsp_is_whitespace: bool,
 }
 
-impl<'a> StringReader<'a> {
-    pub fn dcx(&self) -> &'a DiagCtxt {
+impl<'sess, 'src> StringReader<'sess, 'src> {
+    pub fn dcx(&self) -> &'sess DiagCtxt {
         &self.sess.dcx
     }
 
@@ -526,7 +526,7 @@ impl<'a> StringReader<'a> {
 
     /// Slice of the source text from `start` up to but excluding `self.pos`,
     /// meaning the slice does not include the character `self.ch`.
-    fn str_from(&self, start: BytePos) -> &'a str {
+    fn str_from(&self, start: BytePos) -> &'src str {
         self.str_from_to(start, self.pos)
     }
 
@@ -537,12 +537,12 @@ impl<'a> StringReader<'a> {
     }
 
     /// Slice of the source text spanning from `start` up to but excluding `end`.
-    fn str_from_to(&self, start: BytePos, end: BytePos) -> &'a str {
+    fn str_from_to(&self, start: BytePos, end: BytePos) -> &'src str {
         &self.src[self.src_index(start)..self.src_index(end)]
     }
 
     /// Slice of the source text spanning from `start` until the end
-    fn str_from_to_end(&self, start: BytePos) -> &'a str {
+    fn str_from_to_end(&self, start: BytePos) -> &'src str {
         &self.src[self.src_index(start)..]
     }
 
