@@ -260,7 +260,7 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     }
 
     /// Converts the builder to a `Diagnostic` for later emission.
-    fn into_diagnostic(mut self) -> Diagnostic {
+    pub fn into_diagnostic(mut self) -> Diagnostic {
         self.take_diag()
     }
 
