@@ -24,7 +24,7 @@ LL |     a.iter().map(|_: &(u16, u16)| 45);
    |              expected due to this
    |
    = note: expected closure signature `fn(&(u32, u32)) -> _`
-              found closure signature `for<'a> fn(&'a (u16, u16)) -> _`
+              found closure signature `fn(&(u16, u16)) -> _`
 note: required by a bound in `map`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 
@@ -63,19 +63,14 @@ note: due to current limitations in the borrow checker, this implies a `'static`
 LL | fn baz<F: Fn(*mut &u32)>(_: F) {}
    |           ^^^^^^^^^^^^^
 
-error[E0308]: mismatched types
+error: implementation of `Fn` is not general enough
   --> $DIR/closure-arg-type-mismatch.rs:10:5
    |
 LL |     baz(f);
-   |     ^^^^^^ one type is more general than the other
+   |     ^^^^^^ implementation of `Fn` is not general enough
    |
-   = note: expected trait `for<'a> Fn(*mut &'a u32)`
-              found trait `Fn(*mut &u32)`
-note: the lifetime requirement is introduced here
-  --> $DIR/closure-arg-type-mismatch.rs:8:11
-   |
-LL | fn baz<F: Fn(*mut &u32)>(_: F) {}
-   |           ^^^^^^^^^^^^^
+   = note: `fn(*mut &'2 u32)` must implement `Fn<(*mut &'1 u32,)>`, for any lifetime `'1`...
+   = note: ...but it actually implements `Fn<(*mut &'2 u32,)>`, for some specific lifetime `'2`
 
 error: implementation of `FnOnce` is not general enough
   --> $DIR/closure-arg-type-mismatch.rs:10:5
@@ -88,5 +83,5 @@ LL |     baz(f);
 
 error: aborting due to 6 previous errors
 
-Some errors have detailed explanations: E0308, E0521, E0631.
-For more information about an error, try `rustc --explain E0308`.
+Some errors have detailed explanations: E0521, E0631.
+For more information about an error, try `rustc --explain E0521`.

@@ -31,8 +31,8 @@ fn accept<C: FnOnce(&())>(_: C) -> Handshake<HandshakeCallback<C>> {
 fn main() {
     let callback = |_| {};
     accept(callback);
-    //~^ ERROR mismatched types
-    //~| ERROR mismatched types
+    //~^ ERROR implementation of `FnOnce` is not general enough
+    //~| ERROR implementation of `FnOnce` is not general enough
     //~| ERROR implementation of `FnOnce` is not general enough
     //~| ERROR implementation of `FnOnce` is not general enough
     //~| ERROR higher-ranked subtype error
