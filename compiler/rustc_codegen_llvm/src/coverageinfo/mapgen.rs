@@ -12,7 +12,6 @@ use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::mir;
-use rustc_middle::mir::coverage::CodeRegion;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::DefIdSet;
 use rustc_span::Symbol;
@@ -237,7 +236,7 @@ fn encode_mappings_for_function(
     // Prepare file IDs for each filename, and prepare the mapping data so that
     // we can pass it through FFI to LLVM.
     for (file_name, counter_regions_for_file) in
-        &counter_regions.group_by(|(_counter, region)| region.file_name)
+        &counter_regions.group_by(|(_, region)| region.file_name)
     {
         // Look up the global file ID for this filename.
         let global_file_id = global_file_table.global_file_id_for_file_name(file_name);
@@ -248,17 +247,12 @@ fn encode_mappings_for_function(
 
         // For each counter/region pair in this function+file, convert it to a
         // form suitable for FFI.
-        for (counter, region) in counter_regions_for_file {
-            let CodeRegion { file_name: _, start_line, start_col, end_line, end_col } = *region;
-
-            debug!("Adding counter {counter:?} to map for {region:?}");
-            mapping_regions.push(CounterMappingRegion::code_region(
-                counter,
+        for (mapping_kind, region) in counter_regions_for_file {
+            debug!("Adding counter {mapping_kind:?} to map for {region:?}");
+            mapping_regions.push(CounterMappingRegion::from_mapping(
+                &mapping_kind,
                 local_file_id.as_u32(),
-                start_line,
-                start_col,
-                end_line,
-                end_col,
+                region,
             ));
         }
     }
