@@ -813,6 +813,12 @@ pub struct UnknownExternLangItem {
 pub struct MissingPanicHandler;
 
 #[derive(Diagnostic)]
+#[diag(passes_panic_unwind_without_std)]
+#[help]
+#[note]
+pub struct PanicUnwindWithoutStd;
+
+#[derive(Diagnostic)]
 #[diag(passes_missing_lang_item)]
 #[note]
 #[help]

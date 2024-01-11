@@ -194,7 +194,7 @@ use rustc_target::abi::Size;
 use std::path::PathBuf;
 
 use crate::errors::{
-    EncounteredErrorWhileInstantiating, LargeAssignmentsLint, NoOptimizedMir, RecursionLimit,
+    self, EncounteredErrorWhileInstantiating, LargeAssignmentsLint, NoOptimizedMir, RecursionLimit,
     TypeLengthLimit,
 };
 
@@ -1272,7 +1272,9 @@ impl<'v> RootCollector<'_, 'v> {
             return;
         };
 
-        let start_def_id = self.tcx.require_lang_item(LangItem::Start, None);
+        let Some(start_def_id) = self.tcx.lang_items().start_fn() else {
+            self.tcx.dcx().emit_fatal(errors::StartNotFound);
+        };
         let main_ret_ty = self.tcx.fn_sig(main_def_id).no_bound_vars().unwrap().output();
 
         // Given that `main()` has no arguments,
