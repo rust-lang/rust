@@ -551,7 +551,18 @@ fn find_local_import_locations(
         if let Some((name, vis)) = data.scope.name_of(item) {
             if vis.is_visible_from(db, from) {
                 let is_private = match vis {
-                    Visibility::Module(private_to) => private_to.local_id == module.local_id,
+                    Visibility::Module(private_mod, private_vis) => {
+                        if private_mod == def_map.module_id(DefMap::ROOT)
+                            && private_vis.is_explicit()
+                        {
+                            // Treat `pub(crate)` imports as non-private, so
+                            // that we suggest adding `use crate::Foo;` instead
+                            // of `use crate::foo::Foo;` etc.
+                            false
+                        } else {
+                            private_mod.local_id == module.local_id
+                        }
+                    }
                     Visibility::Public => false,
                 };
                 let is_original_def = match item.as_module_def_id() {
@@ -1018,6 +1029,24 @@ $0
             "crate::bar::S",
             "crate::bar::S",
             "crate::bar::S",
+        );
+    }
+
+    #[test]
+    fn promote_pub_crate_imports() {
+        check_found_path(
+            r#"
+//- /main.rs
+mod foo;
+pub mod bar { pub struct S; }
+pub(crate) use bar::S;
+//- /foo.rs
+$0
+        "#,
+            "crate::S",
+            "crate::S",
+            "crate::S",
+            "crate::S",
         );
     }
 

@@ -628,14 +628,14 @@ impl ItemScope {
             .chain(self.values.values_mut().map(|(def, vis, _)| (def, vis)))
             .map(|(_, v)| v)
             .chain(self.unnamed_trait_imports.values_mut().map(|(vis, _)| vis))
-            .for_each(|vis| *vis = Visibility::Module(this_module));
+            .for_each(|vis| *vis = Visibility::Module(this_module, Default::default()));
 
         for (mac, vis, import) in self.macros.values_mut() {
             if matches!(mac, MacroId::ProcMacroId(_) if import.is_none()) {
                 continue;
             }
 
-            *vis = Visibility::Module(this_module);
+            *vis = Visibility::Module(this_module, Default::default());
         }
     }
 

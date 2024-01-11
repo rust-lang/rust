@@ -332,7 +332,8 @@ impl DefMap {
         // NB: we use `None` as block here, which would be wrong for implicit
         // modules declared by blocks with items. At the moment, we don't use
         // this visibility for anything outside IDE, so that's probably OK.
-        let visibility = Visibility::Module(ModuleId { krate, local_id, block: None });
+        let visibility =
+            Visibility::Module(ModuleId { krate, local_id, block: None }, Default::default());
         let module_data = ModuleData::new(
             ModuleOrigin::BlockExpr { block: block.ast_id, id: block_id },
             visibility,
