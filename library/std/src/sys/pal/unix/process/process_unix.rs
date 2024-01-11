@@ -362,7 +362,7 @@ impl Command {
             // If #[unix_sigpipe] is not specified, reset SIGPIPE to SIG_DFL for backward compatibility.
             //
             // #[unix_sigpipe] is an opportunity to change the default here.
-            if !crate::sys::unix_sigpipe_attr_specified() {
+            if !crate::sys::pal::unix_sigpipe_attr_specified() {
                 #[cfg(target_os = "android")] // see issue #88585
                 {
                     let mut action: libc::sigaction = mem::zeroed();

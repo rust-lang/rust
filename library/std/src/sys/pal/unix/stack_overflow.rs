@@ -55,7 +55,7 @@ mod imp {
     use libc::{MAP_ANON, MAP_PRIVATE, PROT_NONE, PROT_READ, PROT_WRITE, SIGSEGV};
 
     use crate::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
-    use crate::sys::unix::os::page_size;
+    use crate::sys::pal::unix::os::page_size;
     use crate::sys_common::thread_info;
 
     // Signal handler for the SIGSEGV and SIGBUS handlers. We've got guard pages

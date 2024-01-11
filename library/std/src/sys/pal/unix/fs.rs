@@ -2008,7 +2008,7 @@ mod remove_dir_impl {
 
         pub unsafe fn openat(dirfd: c_int, pathname: *const c_char, flags: c_int) -> c_int {
             get_openat_fn().map(|openat| openat(dirfd, pathname, flags)).unwrap_or_else(|| {
-                crate::sys::unix::os::set_errno(libc::ENOSYS);
+                crate::sys::pal::unix::os::set_errno(libc::ENOSYS);
                 -1
             })
         }
@@ -2019,7 +2019,7 @@ mod remove_dir_impl {
             #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
             weak!(fn fdopendir(c_int) -> *mut DIR, "fdopendir$INODE64");
             fdopendir.get().map(|fdopendir| fdopendir(fd)).unwrap_or_else(|| {
-                crate::sys::unix::os::set_errno(libc::ENOSYS);
+                crate::sys::pal::unix::os::set_errno(libc::ENOSYS);
                 crate::ptr::null_mut()
             })
         }
@@ -2027,7 +2027,7 @@ mod remove_dir_impl {
         pub unsafe fn unlinkat(dirfd: c_int, pathname: *const c_char, flags: c_int) -> c_int {
             weak!(fn unlinkat(c_int, *const c_char, c_int) -> c_int);
             unlinkat.get().map(|unlinkat| unlinkat(dirfd, pathname, flags)).unwrap_or_else(|| {
-                crate::sys::unix::os::set_errno(libc::ENOSYS);
+                crate::sys::pal::unix::os::set_errno(libc::ENOSYS);
                 -1
             })
         }
