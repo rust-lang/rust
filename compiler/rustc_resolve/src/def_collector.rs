@@ -111,7 +111,7 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
             ItemKind::TyAlias(..) => DefKind::TyAlias,
             ItemKind::Static(s) => DefKind::Static(s.mutability),
             ItemKind::Const(..) => DefKind::Const,
-            ItemKind::Fn(..) => DefKind::Fn,
+            ItemKind::Fn(..) | ItemKind::Delegation(..) => DefKind::Fn,
             ItemKind::MacroDef(..) => {
                 let macro_data = self.resolver.compile_macro(i, self.resolver.tcx.sess.edition());
                 let macro_kind = macro_data.ext.macro_kind();
@@ -259,7 +259,7 @@ impl<'a, 'b, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'b, 'tcx> {
 
     fn visit_assoc_item(&mut self, i: &'a AssocItem, ctxt: visit::AssocCtxt) {
         let def_kind = match &i.kind {
-            AssocItemKind::Fn(..) => DefKind::AssocFn,
+            AssocItemKind::Fn(..) | AssocItemKind::Delegation(..) => DefKind::AssocFn,
             AssocItemKind::Const(..) => DefKind::AssocConst,
             AssocItemKind::Type(..) => DefKind::AssocTy,
             AssocItemKind::MacCall(..) => return self.visit_macro_invoc(i.id),

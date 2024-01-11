@@ -376,6 +376,9 @@ impl<'a> State<'a> {
                     state.print_visibility(&item.vis)
                 });
             }
+            ast::ItemKind::Delegation(box delegation) => {
+                self.print_delegation(delegation, &item.vis, &item.attrs)
+            }
         }
         self.ann.post(self, AnnNode::Item(item))
     }
@@ -554,8 +557,36 @@ impl<'a> State<'a> {
                     self.word(";");
                 }
             }
+            ast::AssocItemKind::Delegation(box delegation) => {
+                self.print_delegation(delegation, vis, &item.attrs)
+            }
         }
         self.ann.post(self, AnnNode::SubItem(id))
+    }
+
+    pub(crate) fn print_delegation(
+        &mut self,
+        delegation: &ast::Delegation,
+        vis: &ast::Visibility,
+        attrs: &[ast::Attribute],
+    ) {
+        if delegation.body.is_some() {
+            self.head("");
+        }
+        self.print_visibility(vis);
+        self.word_space("reuse");
+
+        if let Some(qself) = &delegation.qself {
+            self.print_qpath(&delegation.path, qself, false);
+        } else {
+            self.print_path(&delegation.path, false, 0);
+        }
+        if let Some(body) = &delegation.body {
+            self.nbsp();
+            self.print_block_with_attrs(body, attrs);
+        } else {
+            self.word(";");
+        }
     }
 
     fn print_fn_full(

@@ -29,10 +29,9 @@ use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::middle::stability::AllowUnstable;
-use rustc_middle::ty::GenericParamDefKind;
 use rustc_middle::ty::{
-    self, Const, GenericArgKind, GenericArgsRef, IsSuggestable, ParamEnv, Ty, TyCtxt,
-    TypeVisitableExt,
+    self, Const, GenericArgKind, GenericArgsRef, GenericParamDefKind, IsSuggestable, ParamEnv, Ty,
+    TyCtxt, TypeVisitableExt,
 };
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -2306,6 +2305,114 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         self.ast_ty_to_ty_inner(ast_ty, false, true)
     }
 
+    fn check_delegation_constraints(&self, sig_id: DefId, span: Span, emit: bool) -> bool {
+        let mut error_occured = false;
+        let sig_span = self.tcx().def_span(sig_id);
+        let mut try_emit = |descr| {
+            if emit {
+                self.tcx().dcx().emit_err(crate::errors::NotSupportedDelegation {
+                    span,
+                    descr,
+                    callee_span: sig_span,
+                });
+            }
+            error_occured = true;
+        };
+
+        if let Some(node) = self.tcx().hir().get_if_local(sig_id)
+            && let Some(decl) = node.fn_decl()
+            && let hir::FnRetTy::Return(ty) = decl.output
+            && let hir::TyKind::InferDelegation(_, _) = ty.kind
+        {
+            try_emit("recursive delegation");
+        }
+
+        let sig = self.tcx().fn_sig(sig_id).instantiate_identity();
+        if sig.output().has_opaque_types() {
+            try_emit("delegation to a function with opaque type");
+        }
+
+        let sig_generics = self.tcx().generics_of(sig_id);
+        let parent = self.tcx().parent(self.item_def_id());
+        let parent_generics = self.tcx().generics_of(parent);
+
+        let parent_is_trait = (self.tcx().def_kind(parent) == DefKind::Trait) as usize;
+        let sig_has_self = sig_generics.has_self as usize;
+
+        if sig_generics.count() > sig_has_self || parent_generics.count() > parent_is_trait {
+            try_emit("delegation with early bound generics");
+        }
+
+        if self.tcx().asyncness(sig_id) == ty::Asyncness::Yes {
+            try_emit("delegation to async functions");
+        }
+
+        if self.tcx().constness(sig_id) == hir::Constness::Const {
+            try_emit("delegation to const functions");
+        }
+
+        if sig.c_variadic() {
+            try_emit("delegation to variadic functions");
+            // variadic functions are also `unsafe` and `extern "C"`.
+            // Do not emit same error multiple times.
+            return error_occured;
+        }
+
+        if let hir::Unsafety::Unsafe = sig.unsafety() {
+            try_emit("delegation to unsafe functions");
+        }
+
+        if abi::Abi::Rust != sig.abi() {
+            try_emit("delegation to non Rust ABI functions");
+        }
+
+        error_occured
+    }
+
+    fn ty_from_delegation(
+        &self,
+        sig_id: DefId,
+        idx: hir::InferDelegationKind,
+        span: Span,
+    ) -> Ty<'tcx> {
+        if self.check_delegation_constraints(sig_id, span, idx == hir::InferDelegationKind::Output)
+        {
+            let e = self.tcx().dcx().span_delayed_bug(span, "not supported delegation case");
+            self.set_tainted_by_errors(e);
+            return Ty::new_error(self.tcx(), e);
+        };
+        let sig = self.tcx().fn_sig(sig_id);
+        let sig_generics = self.tcx().generics_of(sig_id);
+
+        let parent = self.tcx().parent(self.item_def_id());
+        let parent_def_kind = self.tcx().def_kind(parent);
+
+        let sig = if let DefKind::Impl { .. } = parent_def_kind
+            && sig_generics.has_self
+        {
+            // Generic params can't be here except the trait self type.
+            // They are not supported yet.
+            assert_eq!(sig_generics.count(), 1);
+            assert_eq!(self.tcx().generics_of(parent).count(), 0);
+
+            let self_ty = self.tcx().type_of(parent).instantiate_identity();
+            let generic_self_ty = ty::GenericArg::from(self_ty);
+            let substs = self.tcx().mk_args_from_iter(std::iter::once(generic_self_ty));
+            sig.instantiate(self.tcx(), substs)
+        } else {
+            sig.instantiate_identity()
+        };
+
+        // Bound vars are also inherited from `sig_id`. They will be
+        // rebinded later in `ty_of_fn`.
+        let sig = sig.skip_binder();
+
+        match idx {
+            hir::InferDelegationKind::Input(id) => sig.inputs()[id],
+            hir::InferDelegationKind::Output => sig.output(),
+        }
+    }
+
     /// Turns a `hir::Ty` into a `Ty`. For diagnostics' purposes we keep track of whether trait
     /// objects are borrowed like `&dyn Trait` to avoid emitting redundant errors.
     #[instrument(level = "debug", skip(self), ret)]
@@ -2313,6 +2420,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let tcx = self.tcx();
 
         let result_ty = match &ast_ty.kind {
+            hir::TyKind::InferDelegation(sig_id, idx) => {
+                self.ty_from_delegation(*sig_id, *idx, ast_ty.span)
+            }
             hir::TyKind::Slice(ty) => Ty::new_slice(tcx, self.ast_ty_to_ty(ty)),
             hir::TyKind::Ptr(mt) => {
                 Ty::new_ptr(tcx, ty::TypeAndMut { ty: self.ast_ty_to_ty(mt.ty), mutbl: mt.mutbl })
@@ -2504,7 +2614,13 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         hir_ty: Option<&hir::Ty<'_>>,
     ) -> ty::PolyFnSig<'tcx> {
         let tcx = self.tcx();
-        let bound_vars = tcx.late_bound_vars(hir_id);
+        let bound_vars = if let hir::FnRetTy::Return(ret_ty) = decl.output
+            && let hir::TyKind::InferDelegation(sig_id, _) = ret_ty.kind
+        {
+            tcx.fn_sig(sig_id).skip_binder().bound_vars()
+        } else {
+            tcx.late_bound_vars(hir_id)
+        };
         debug!(?bound_vars);
 
         // We proactively collect all the inferred type params to emit a single error per fn def.
