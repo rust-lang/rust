@@ -17,7 +17,8 @@ if isWindows; then
     echo "MAJAHA 1: $(cygpath -w $(which git))"
     msys2Path="c:/msys64"
     mkdir -p "${msys2Path}/home/${USERNAME}"
-    #ciCommandAddPath "${msys2Path}/usr/bin" # This is what rotates the CI shell from Git bash to msys bash i think
+    #ciCommandAddPath "${msys2Path}/usr/bin"
+    #^ This is what rotates the CI shell from Git bash to msys bash i think
     echo "MAJAHA 2: $(cygpath -w $(which git))"
     echo "GITHUB_PATH: $GITHUB_PATH"
     cat "$GITHUB_PATH"
