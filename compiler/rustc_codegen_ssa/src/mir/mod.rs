@@ -284,11 +284,10 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 //
 // Taken from Cargo:
 // https://github.com/rust-lang/cargo/blob/2ce45605d9db521b5fd6c1211ce8de6055fdb24e/src/cargo/util/mod.rs#L88-L95
-pub fn human_readable_bytes(bytes: u64) -> (f32, &'static str) {
+pub fn human_readable_bytes(bytes: u64) -> (u64, &'static str) {
     static UNITS: [&str; 7] = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"];
-    let bytes = bytes as f32;
-    let i = ((bytes.log2() / 10.0) as usize).min(UNITS.len() - 1);
-    (bytes / 1024_f32.powi(i as i32), UNITS[i])
+    let i = ((bytes.ilog2() / 10) as usize).min(UNITS.len() - 1);
+    (bytes >> (10 * i), UNITS[i])
 }
 
 /// Produces, for each argument, a `Value` pointing at the
