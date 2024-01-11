@@ -1155,6 +1155,19 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 );
             }
 
+            if path_segment.ident.name == sym::ok_or && is_diagnostic_item(sym::Option, next_ty) {
+                err.span_suggestion(
+                    path_segment.ident.span,
+                    format!(
+                        "`?` expected `{}` for `Err` variant but found `{:?}`. Use the `ok_or_else` method to pass a closure",
+                        self_ty,
+                        get_e_type(prev_ty).unwrap().to_string(),
+                    ),
+                    "ok_or_else",
+                    Applicability::MachineApplicable,
+                );
+            }
+
             prev_ty = next_ty;
 
             if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
