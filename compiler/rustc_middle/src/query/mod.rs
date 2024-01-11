@@ -1294,8 +1294,7 @@ rustc_queries! {
         desc { |tcx| "finding trait impls of `{}`", tcx.def_path_str(trait_id) }
     }
 
-    query specialization_graph_of(trait_id: DefId) -> &'tcx specialization_graph::Graph {
-        arena_cache
+    query specialization_graph_of(trait_id: DefId) -> Result<&'tcx specialization_graph::Graph, ErrorGuaranteed> {
         desc { |tcx| "building specialization graph of trait `{}`", tcx.def_path_str(trait_id) }
         cache_on_disk_if { true }
     }
