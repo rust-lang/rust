@@ -231,7 +231,10 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             if layout.size.bytes() >= MIN_DANGEROUS_SIZE {
                 let size_str = || {
                     let (size_quantity, size_unit) = human_readable_bytes(layout.size.bytes());
-                    format!("Dangerous stack allocation of size: {:.2} {} exceeds limits on most architectures", size_quantity, size_unit)
+                    format!(
+                        "Dangerous stack allocation of size: {:.2} {} exceeds limits on most architectures",
+                        size_quantity, size_unit
+                    )
                 };
                 cx.tcx().dcx().fatal(size_str());
             }
@@ -281,7 +284,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 //
 // Taken from Cargo:
 // https://github.com/rust-lang/cargo/blob/2ce45605d9db521b5fd6c1211ce8de6055fdb24e/src/cargo/util/mod.rs#L88-L95
-pub fn human_readable_bytes(bytes: u64) -> (f32, &'static str) {
+pub fn human_readable_bytes(bytes: u64) -> (u32, &'static str) {
     static UNITS: [&str; 7] = ["B", "KiB", "MiB", "GiB", "TiB", "PiB", "EiB"];
     let bytes = bytes as f32;
     let i = ((bytes.log2() / 10.0) as usize).min(UNITS.len() - 1);
