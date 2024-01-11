@@ -1787,8 +1787,9 @@ extern "rust-intrinsic" {
     /// so this rounds half-way cases to the number with an even least significant digit.
     ///
     /// May raise an inexact floating-point exception if the argument is not an integer.
-    /// However, Rust assumes floating-point exceptions cannot be observed, so this is not something that
-    /// can actually be used from Rust code.
+    /// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
+    /// cannot actually be utilized from Rust code.
+    /// In other words, this intrinsic is equivalent in behavior to `nearbyintf32` and `roundevenf32`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f32::round_ties_even`](../../std/primitive.f32.html#method.round_ties_even)
@@ -1798,8 +1799,9 @@ extern "rust-intrinsic" {
     /// so this rounds half-way cases to the number with an even least significant digit.
     ///
     /// May raise an inexact floating-point exception if the argument is not an integer.
-    /// However, Rust assumes floating-point exceptions cannot be observed, so this is not something that
-    /// can actually be used from Rust code.
+    /// However, Rust assumes floating-point exceptions cannot be observed, so these exceptions
+    /// cannot actually be utilized from Rust code.
+    /// In other words, this intrinsic is equivalent in behavior to `nearbyintf64` and `roundevenf64`.
     ///
     /// The stabilized version of this intrinsic is
     /// [`f64::round_ties_even`](../../std/primitive.f64.html#method.round_ties_even)
