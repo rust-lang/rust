@@ -17,7 +17,7 @@ use stable_mir::ty::{
     GenericArgKind, GenericArgs, IndexedVal, IntTy, Movability, Region, RigidTy, Span, TermKind,
     TraitRef, Ty, UintTy, VariantDef, VariantIdx,
 };
-use stable_mir::{CrateItem, DefId};
+use stable_mir::{CrateItem, CrateNum, DefId};
 
 use super::RustcInternal;
 
@@ -25,6 +25,13 @@ impl<'tcx> RustcInternal<'tcx> for CrateItem {
     type T = rustc_span::def_id::DefId;
     fn internal(&self, tables: &mut Tables<'tcx>) -> Self::T {
         self.0.internal(tables)
+    }
+}
+
+impl<'tcx> RustcInternal<'tcx> for CrateNum {
+    type T = rustc_span::def_id::CrateNum;
+    fn internal(&self, _tables: &mut Tables<'tcx>) -> Self::T {
+        rustc_span::def_id::CrateNum::from_usize(*self)
     }
 }
 

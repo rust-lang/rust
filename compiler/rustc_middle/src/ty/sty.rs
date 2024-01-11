@@ -1225,7 +1225,7 @@ impl<'tcx> AliasTy<'tcx> {
 
     /// Whether this alias type is an opaque.
     pub fn is_opaque(self, tcx: TyCtxt<'tcx>) -> bool {
-        matches!(self.opt_kind(tcx), Some(ty::AliasKind::Opaque))
+        matches!(self.opt_kind(tcx), Some(ty::Opaque))
     }
 
     /// FIXME: rename `AliasTy` to `AliasTerm` and always handle
@@ -2745,7 +2745,7 @@ impl<'tcx> Ty<'tcx> {
             // Extern types have metadata = ().
             | ty::Foreign(..)
             // `dyn*` has no metadata
-            | ty::Dynamic(_, _, DynKind::DynStar)
+            | ty::Dynamic(_, _, ty::DynStar)
             // If returned by `struct_tail_without_normalization` this is a unit struct
             // without any fields, or not a struct, and therefore is Sized.
             | ty::Adt(..)
@@ -2754,7 +2754,7 @@ impl<'tcx> Ty<'tcx> {
             | ty::Tuple(..) => (tcx.types.unit, false),
 
             ty::Str | ty::Slice(_) => (tcx.types.usize, false),
-            ty::Dynamic(_, _, DynKind::Dyn) => {
+            ty::Dynamic(_, _, ty::Dyn) => {
                 let dyn_metadata = tcx.require_lang_item(LangItem::DynMetadata, None);
                 (tcx.type_of(dyn_metadata).instantiate(tcx, &[tail.into()]), false)
             },

@@ -2405,6 +2405,39 @@ impl<'hir> Ty<'hir> {
         my_visitor.visit_ty(self);
         my_visitor.0
     }
+
+    /// Whether `ty` is a type with `_` placeholders that can be inferred. Used in diagnostics only to
+    /// use inference to provide suggestions for the appropriate type if possible.
+    pub fn is_suggestable_infer_ty(&self) -> bool {
+        fn are_suggestable_generic_args(generic_args: &[GenericArg<'_>]) -> bool {
+            generic_args.iter().any(|arg| match arg {
+                GenericArg::Type(ty) => ty.is_suggestable_infer_ty(),
+                GenericArg::Infer(_) => true,
+                _ => false,
+            })
+        }
+        debug!(?self);
+        match &self.kind {
+            TyKind::Infer => true,
+            TyKind::Slice(ty) => ty.is_suggestable_infer_ty(),
+            TyKind::Array(ty, length) => {
+                ty.is_suggestable_infer_ty() || matches!(length, ArrayLen::Infer(_, _))
+            }
+            TyKind::Tup(tys) => tys.iter().any(Self::is_suggestable_infer_ty),
+            TyKind::Ptr(mut_ty) | TyKind::Ref(_, mut_ty) => mut_ty.ty.is_suggestable_infer_ty(),
+            TyKind::OpaqueDef(_, generic_args, _) => are_suggestable_generic_args(generic_args),
+            TyKind::Path(QPath::TypeRelative(ty, segment)) => {
+                ty.is_suggestable_infer_ty() || are_suggestable_generic_args(segment.args().args)
+            }
+            TyKind::Path(QPath::Resolved(ty_opt, Path { segments, .. })) => {
+                ty_opt.is_some_and(Self::is_suggestable_infer_ty)
+                    || segments
+                        .iter()
+                        .any(|segment| are_suggestable_generic_args(segment.args().args))
+            }
+            _ => false,
+        }
+    }
 }
 
 /// Not represented directly in the AST; referred to by name through a `ty_path`.
@@ -2735,13 +2768,22 @@ pub enum FnRetTy<'hir> {
     Return(&'hir Ty<'hir>),
 }
 
-impl FnRetTy<'_> {
+impl<'hir> FnRetTy<'hir> {
     #[inline]
     pub fn span(&self) -> Span {
         match *self {
             Self::DefaultReturn(span) => span,
             Self::Return(ref ty) => ty.span,
         }
+    }
+
+    pub fn get_infer_ret_ty(&self) -> Option<&'hir Ty<'hir>> {
+        if let Self::Return(ty) = self {
+            if ty.is_suggestable_infer_ty() {
+                return Some(*ty);
+            }
+        }
+        None
     }
 }
 

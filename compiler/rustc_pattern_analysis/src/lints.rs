@@ -4,7 +4,7 @@ use rustc_data_structures::captures::Captures;
 use rustc_middle::ty;
 use rustc_session::lint;
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
-use rustc_span::Span;
+use rustc_span::{ErrorGuaranteed, Span};
 
 use crate::constructor::{IntRange, MaybeInfiniteInt};
 use crate::errors::{
@@ -59,9 +59,13 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
     }
 
     /// Do constructor splitting on the constructors of the column.
-    fn analyze_ctors(&self, pcx: &PlaceCtxt<'_, 'p, 'tcx>) -> SplitConstructorSet<'p, 'tcx> {
+    fn analyze_ctors(
+        &self,
+        pcx: &PlaceCtxt<'_, 'p, 'tcx>,
+    ) -> Result<SplitConstructorSet<'p, 'tcx>, ErrorGuaranteed> {
         let column_ctors = self.patterns.iter().map(|p| p.ctor());
-        pcx.ctors_for_ty().split(pcx, column_ctors)
+        let ctors_for_ty = &pcx.ctors_for_ty()?;
+        Ok(ctors_for_ty.split(pcx, column_ctors))
     }
 
     fn iter(&self) -> impl Iterator<Item = &'p DeconstructedPat<'p, 'tcx>> + Captures<'_> {
@@ -106,18 +110,18 @@ impl<'p, 'tcx> PatternColumn<'p, 'tcx> {
 fn collect_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
     cx: MatchCtxt<'a, 'p, 'tcx>,
     column: &PatternColumn<'p, 'tcx>,
-) -> Vec<WitnessPat<'p, 'tcx>> {
+) -> Result<Vec<WitnessPat<'p, 'tcx>>, ErrorGuaranteed> {
     let Some(ty) = column.head_ty() else {
-        return Vec::new();
+        return Ok(Vec::new());
     };
     let pcx = &PlaceCtxt::new_dummy(cx, ty);
 
-    let set = column.analyze_ctors(pcx);
+    let set = column.analyze_ctors(pcx)?;
     if set.present.is_empty() {
         // We can't consistently handle the case where no constructors are present (since this would
         // require digging deep through any type in case there's a non_exhaustive enum somewhere),
         // so for consistency we refuse to handle the top-level case, where we could handle it.
-        return vec![];
+        return Ok(Vec::new());
     }
 
     let mut witnesses = Vec::new();
@@ -137,7 +141,7 @@ fn collect_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
         let wild_pat = WitnessPat::wild_from_ctor(pcx, ctor);
         for (i, col_i) in specialized_columns.iter().enumerate() {
             // Compute witnesses for each column.
-            let wits_for_col_i = collect_nonexhaustive_missing_variants(cx, col_i);
+            let wits_for_col_i = collect_nonexhaustive_missing_variants(cx, col_i)?;
             // For each witness, we build a new pattern in the shape of `ctor(_, _, wit, _, _)`,
             // adding enough wildcards to match `arity`.
             for wit in wits_for_col_i {
@@ -147,7 +151,7 @@ fn collect_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
             }
         }
     }
-    witnesses
+    Ok(witnesses)
 }
 
 pub(crate) fn lint_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
@@ -155,13 +159,13 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
     arms: &[MatchArm<'p, 'tcx>],
     pat_column: &PatternColumn<'p, 'tcx>,
     scrut_ty: RevealedTy<'tcx>,
-) {
+) -> Result<(), ErrorGuaranteed> {
     let rcx: &RustcMatchCheckCtxt<'_, '_> = cx.tycx;
     if !matches!(
         rcx.tcx.lint_level_at_node(NON_EXHAUSTIVE_OMITTED_PATTERNS, rcx.match_lint_level).0,
         rustc_session::lint::Level::Allow
     ) {
-        let witnesses = collect_nonexhaustive_missing_variants(cx, pat_column);
+        let witnesses = collect_nonexhaustive_missing_variants(cx, pat_column)?;
         if !witnesses.is_empty() {
             // Report that a match of a `non_exhaustive` enum marked with `non_exhaustive_omitted_patterns`
             // is not exhaustive enough.
@@ -200,6 +204,7 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
             }
         }
     }
+    Ok(())
 }
 
 /// Traverse the patterns to warn the user about ranges that overlap on their endpoints.
@@ -207,14 +212,14 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
 pub(crate) fn lint_overlapping_range_endpoints<'a, 'p, 'tcx>(
     cx: MatchCtxt<'a, 'p, 'tcx>,
     column: &PatternColumn<'p, 'tcx>,
-) {
+) -> Result<(), ErrorGuaranteed> {
     let Some(ty) = column.head_ty() else {
-        return;
+        return Ok(());
     };
     let pcx = &PlaceCtxt::new_dummy(cx, ty);
     let rcx: &RustcMatchCheckCtxt<'_, '_> = cx.tycx;
 
-    let set = column.analyze_ctors(pcx);
+    let set = column.analyze_ctors(pcx)?;
 
     if matches!(ty.kind(), ty::Char | ty::Int(_) | ty::Uint(_)) {
         let emit_lint = |overlap: &IntRange, this_span: Span, overlapped_spans: &[Span]| {
@@ -271,8 +276,9 @@ pub(crate) fn lint_overlapping_range_endpoints<'a, 'p, 'tcx>(
         // Recurse into the fields.
         for ctor in set.present {
             for col in column.specialize(pcx, &ctor) {
-                lint_overlapping_range_endpoints(cx, &col);
+                lint_overlapping_range_endpoints(cx, &col)?;
             }
         }
     }
+    Ok(())
 }

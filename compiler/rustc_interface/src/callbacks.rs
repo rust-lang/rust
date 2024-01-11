@@ -9,7 +9,7 @@
 //! The functions in this file should fall back to the default set in their
 //! origin crate when the `TyCtxt` is not present in TLS.
 
-use rustc_errors::{Diagnostic, TRACK_DIAGNOSTICS};
+use rustc_errors::{Diagnostic, TRACK_DIAGNOSTIC};
 use rustc_middle::dep_graph::{DepNodeExt, TaskDepsRef};
 use rustc_middle::ty::tls;
 use rustc_query_system::dep_graph::dep_node::default_dep_kind_debug;
@@ -103,5 +103,5 @@ pub fn setup_callbacks() {
         .swap(&(dep_kind_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
     rustc_query_system::dep_graph::dep_node::DEP_NODE_DEBUG
         .swap(&(dep_node_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
-    TRACK_DIAGNOSTICS.swap(&(track_diagnostic as _));
+    TRACK_DIAGNOSTIC.swap(&(track_diagnostic as _));
 }

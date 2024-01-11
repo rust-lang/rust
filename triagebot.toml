@@ -744,6 +744,12 @@ style-team = [
     "@yaahc",
 ]
 
+project-const-traits = [
+    "@compiler-errors",
+    "@fee1-dead",
+    "@fmease",
+    "@oli-obk",
+]
 project-stable-mir = [
     "@celinval",
     "@oli-obk",
