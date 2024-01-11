@@ -295,8 +295,18 @@ Prefer to use single-letter names for generic parameters.
 
 These rules apply for `where` clauses on any item.
 
-If immediately following a closing bracket of any kind, write the keyword
-`where` on the same line, with a space before it.
+If a where clause is short, and appears on a short one-line function
+declaration with no body or a short associated type with no `=`, format it on
+the same line as the declaration:
+
+```rust
+fn new(&self) -> Self where Self: Sized;
+
+type Item<'a>: SomeTrait where Self: 'a;
+```
+
+Otherwise, if immediately following a closing bracket of any kind, write the
+keyword `where` on the same line, with a space before it.
 
 Otherwise, put `where` on a new line at the same indentation level. Put each
 component of a `where` clause on its own line, block-indented. Use a trailing
@@ -424,9 +434,9 @@ bound, put a space after the colon but not before:
 type Foo: Bar;
 ```
 
-If an associated type has no `=`, and has a `where` clause with only one entry,
-format the entire type declaration including the `where` clause on the same
-line if it fits:
+If an associated type is short, has no `=`, and has a `where` clause with only
+one entry, format the entire type declaration including the `where` clause on
+the same line if it fits:
 
 ```rust
 type Item<'a> where Self: 'a;
