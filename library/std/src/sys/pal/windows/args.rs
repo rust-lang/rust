@@ -6,6 +6,7 @@
 #[cfg(test)]
 mod tests;
 
+use super::os::current_exe;
 use crate::ffi::OsString;
 use crate::fmt;
 use crate::io;
@@ -14,7 +15,6 @@ use crate::os::windows::prelude::*;
 use crate::path::{Path, PathBuf};
 use crate::sys::path::get_long_path;
 use crate::sys::process::ensure_no_nuls;
-use crate::sys::windows::os::current_exe;
 use crate::sys::{c, to_u16s};
 use crate::sys_common::wstr::WStrUnits;
 use crate::vec;
@@ -318,8 +318,8 @@ pub(crate) fn to_user_path(path: &Path) -> io::Result<Vec<u16>> {
     from_wide_to_user_path(to_u16s(path)?)
 }
 pub(crate) fn from_wide_to_user_path(mut path: Vec<u16>) -> io::Result<Vec<u16>> {
+    use super::fill_utf16_buf;
     use crate::ptr;
-    use crate::sys::windows::fill_utf16_buf;
 
     // UTF-16 encoded code points, used in parsing and building UTF-16 paths.
     // All of these are in the ASCII range so they can be cast directly to `u16`.

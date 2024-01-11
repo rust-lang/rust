@@ -1,5 +1,5 @@
+use super::*;
 use crate::ffi::OsString;
-use crate::sys::windows::args::*;
 
 fn chk(string: &str, parts: &[&str]) {
     let mut wide: Vec<u16> = OsString::from(string).encode_wide().collect();
