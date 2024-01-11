@@ -4,6 +4,8 @@
     clippy::iter_cloned_collect,
     clippy::many_single_char_names,
     clippy::redundant_clone,
+    clippy::redundant_closure,
+    clippy::useless_asref,
     clippy::useless_vec
 )]
 
@@ -60,4 +62,26 @@ fn main() {
 
         let _ = Some(RefCell::new(String::new()).borrow()).map(|s| s.clone());
     }
+
+    let x = Some(String::new());
+    let x = x.as_ref(); // We do this to prevent triggering the `useless_asref` lint.
+    let y = x.map(|x| String::clone(x));
+    //~^ ERROR: you are explicitly cloning with `.map()`
+    let y = x.map(Clone::clone);
+    //~^ ERROR: you are explicitly cloning with `.map()`
+    let y = x.map(String::clone);
+    //~^ ERROR: you are explicitly cloning with `.map()`
+
+    // Testing with `Result` now.
+    let x: Result<String, ()> = Ok(String::new());
+    let x = x.as_ref(); // We do this to prevent triggering the `useless_asref` lint.
+    let y = x.map(|x| String::clone(x));
+    //~^ ERROR: you are explicitly cloning with `.map()`
+    let y = x.map(|x| String::clone(x));
+
+    // We ensure that no warning is emitted here because `useless_asref` is taking over.
+    let x = Some(String::new());
+    let y = x.as_ref().map(|x| String::clone(x));
+    let x: Result<String, ()> = Ok(String::new());
+    let y = x.as_ref().map(|x| String::clone(x));
 }

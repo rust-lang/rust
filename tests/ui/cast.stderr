@@ -444,5 +444,77 @@ help: ... or use `try_from` and handle the error accordingly
 LL |     let c = u8::try_from(q / 1000);
    |             ~~~~~~~~~~~~~~~~~~~~~~
 
-error: aborting due to 51 previous errors
+error: casting `i32` to `u32` may lose the sign of the value
+  --> $DIR/cast.rs:379:5
+   |
+LL |     (-2_i32).pow(3) as u32;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> $DIR/cast.rs:384:5
+   |
+LL |     (x * x * x) as u32;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: casting `i16` to `u16` may lose the sign of the value
+  --> $DIR/cast.rs:388:5
+   |
+LL |     (y * y * y * y * -2) as u16;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i16` to `u16` may lose the sign of the value
+  --> $DIR/cast.rs:391:5
+   |
+LL |     (y * y * y * 2) as u16;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i16` to `u16` may lose the sign of the value
+  --> $DIR/cast.rs:393:5
+   |
+LL |     (y * y * y * -2) as u16;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> $DIR/cast.rs:398:9
+   |
+LL |         (a * b * c) as u32;
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> $DIR/cast.rs:400:9
+   |
+LL |         (a * -b * c) as u32;
+   |         ^^^^^^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> $DIR/cast.rs:403:9
+   |
+LL |         (a * -2) as u32;
+   |         ^^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> $DIR/cast.rs:405:9
+   |
+LL |         (a * b * c * -2) as u32;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> $DIR/cast.rs:408:9
+   |
+LL |         (a / b * c) as u32;
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> $DIR/cast.rs:410:9
+   |
+LL |         (a / b + b * c) as u32;
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> $DIR/cast.rs:412:9
+   |
+LL |         a.pow(3) as u32;
+   |         ^^^^^^^^^^^^^^^
+
+error: aborting due to 63 previous errors
 
