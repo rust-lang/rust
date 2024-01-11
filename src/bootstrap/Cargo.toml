@@ -33,30 +33,34 @@ path = "src/bin/sccache-plus-cl.rs"
 test = false
 
 [dependencies]
+# Most of the time updating these dependencies requires modifications
+# to the bootstrap codebase; otherwise, some targets will fail. That's
+# why these dependencies are explicitly pinned.
+cc = "=1.0.73"
+cmake = "=0.1.48"
+
 build_helper = { path = "../tools/build_helper" }
-cc = "1.0.69"
-clap = { version = "4.4.7", default-features = false, features = ["std", "usage", "help", "derive", "error-context"] }
-clap_complete = "4.4.3"
-cmake = "0.1.38"
+clap = { version = "4.4", default-features = false, features = ["std", "usage", "help", "derive", "error-context"] }
+clap_complete = "4.4"
 fd-lock = "4.0"
 filetime = "0.2"
-home = "0.5.4"
-ignore = "0.4.10"
-libc = "0.2.150"
-object = { version = "0.32.0", default-features = false, features = ["archive", "coff", "read_core", "unaligned"] }
-once_cell = "1.7.2"
+home = "0.5"
+ignore = "0.4"
+libc = "0.2"
+object = { version = "0.32", default-features = false, features = ["archive", "coff", "read_core", "unaligned"] }
+once_cell = "1.19"
 opener = "0.5"
-semver = "1.0.17"
-serde = "1.0.137"
+semver = "1.0"
+serde = "1.0"
 # Directly use serde_derive rather than through the derive feature of serde to allow building both
 # in parallel and to allow serde_json and toml to start building as soon as serde has been built.
-serde_derive = "1.0.137"
-serde_json = "1.0.2"
+serde_derive = "1.0"
+serde_json = "1.0"
 sha2 = "0.10"
 tar = "0.4"
-termcolor = "1.2.0"
+termcolor = "1.4"
 toml = "0.5"
-walkdir = "2"
+walkdir = "2.4"
 xz2 = "0.1"
 
 # Dependencies needed by the build-metrics feature
