@@ -1,7 +1,8 @@
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::symbol::sym;
+use rustc_span::{symbol::sym, ErrorGuaranteed};
 
-pub fn test_inferred_outlives(tcx: TyCtxt<'_>) {
+pub fn test_inferred_outlives(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
+    let mut res = Ok(());
     for id in tcx.hir().items() {
         // For unit testing: check for a special "rustc_outlives"
         // attribute and report an error with various results if found.
@@ -22,7 +23,8 @@ pub fn test_inferred_outlives(tcx: TyCtxt<'_>) {
             for p in pred {
                 err.note(p);
             }
-            err.emit();
+            res = Err(err.emit());
         }
     }
+    res
 }

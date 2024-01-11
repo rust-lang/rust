@@ -169,9 +169,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     // FIXME(matthewjasper) We shouldn't need to use `track_errors` anywhere in this function
     // or the compiler in general.
     if tcx.features().rustc_attrs {
-        tcx.sess.track_errors(|| {
-            tcx.sess.time("outlives_testing", || outlives::test::test_inferred_outlives(tcx));
-        })?;
+        tcx.sess.time("outlives_testing", || outlives::test::test_inferred_outlives(tcx))?;
     }
 
     tcx.sess.track_errors(|| {
@@ -190,9 +188,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     })?;
 
     if tcx.features().rustc_attrs {
-        tcx.sess.track_errors(|| {
-            tcx.sess.time("variance_testing", || variance::test::test_variance(tcx));
-        })?;
+        tcx.sess.time("variance_testing", || variance::test::test_variance(tcx))?;
     }
 
     tcx.sess.time("wf_checking", || {
@@ -200,7 +196,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
     })?;
 
     if tcx.features().rustc_attrs {
-        tcx.sess.track_errors(|| collect::test_opaque_hidden_types(tcx))?;
+        collect::test_opaque_hidden_types(tcx)?;
     }
 
     // Freeze definitions as we don't add new ones at this point. This improves performance by
