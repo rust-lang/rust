@@ -387,8 +387,6 @@ impl<T: ?Sized> RwLock<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(mutex_unpoison)]
-    ///
     /// use std::sync::{Arc, RwLock};
     /// use std::thread;
     ///
@@ -410,7 +408,7 @@ impl<T: ?Sized> RwLock<T> {
     /// assert_eq!(*guard, 1);
     /// ```
     #[inline]
-    #[unstable(feature = "mutex_unpoison", issue = "96469")]
+    #[stable(feature = "mutex_unpoison", since = "CURRENT_RUSTC_VERSION")]
     pub fn clear_poison(&self) {
         self.poison.clear();
     }
