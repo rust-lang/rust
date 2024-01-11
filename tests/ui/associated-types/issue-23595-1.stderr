@@ -1,27 +1,13 @@
 error[E0191]: the value of the associated types `Value`, `ChildKey` and `Children` in `Hierarchy` must be specified
-  --> $DIR/issue-23595-1.rs:8:58
+  --> $DIR/issue-23595-1.rs:8:60
    |
 LL |     type Value;
    |     ---------- `Value` defined here
 LL |     type ChildKey;
    |     ------------- `ChildKey` defined here
-LL |     type Children = dyn Index<Self::ChildKey, Output=dyn Hierarchy>;
-   |     ------------- `Children` defined here                ^^^^^^^^^ help: specify the associated types: `Hierarchy<Value = Type, ChildKey = Type, Children = Type>`
+LL |     type Children = dyn Index<Self::ChildKey, Output = dyn Hierarchy>;
+   |     ------------- `Children` defined here                  ^^^^^^^^^ help: specify the associated types: `Hierarchy<Value = Type, ChildKey = Type, Children = Type>`
 
-error[E0277]: the size for values of type `(dyn Index<<Self as Hierarchy>::ChildKey, Output = (dyn Hierarchy + 'static)> + 'static)` cannot be known at compilation time
-  --> $DIR/issue-23595-1.rs:8:21
-   |
-LL |     type Children = dyn Index<Self::ChildKey, Output=dyn Hierarchy>;
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
-   |
-   = help: the trait `Sized` is not implemented for `(dyn Index<<Self as Hierarchy>::ChildKey, Output = (dyn Hierarchy + 'static)> + 'static)`
-note: required by a bound in `Hierarchy::Children`
-  --> $DIR/issue-23595-1.rs:8:5
-   |
-LL |     type Children = dyn Index<Self::ChildKey, Output=dyn Hierarchy>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Hierarchy::Children`
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0191, E0277.
-For more information about an error, try `rustc --explain E0191`.
+For more information about this error, try `rustc --explain E0191`.

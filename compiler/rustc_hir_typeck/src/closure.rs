@@ -802,7 +802,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 .explicit_item_bounds(def_id)
                 .iter_instantiated_copied(self.tcx, args)
                 .find_map(|(p, s)| get_future_output(p.as_predicate(), s))?,
-            ty::Error(_) => return None,
+            ty::Error(_) => return Some(ret_ty),
             _ => span_bug!(
                 closure_span,
                 "async fn coroutine return type not an inference variable: {ret_ty}"

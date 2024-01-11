@@ -5,7 +5,6 @@ fn foo<T>() {
 
     impl<T> Drop for Foo<T> {
         //~^ ERROR struct takes 0 generic arguments but 1 generic argument
-        //~| ERROR `T` is not constrained
         fn drop(&mut self) {}
     }
 }
