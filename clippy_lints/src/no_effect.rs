@@ -155,7 +155,7 @@ fn check_no_effect(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
                 cx,
                 NO_EFFECT_UNDERSCORE_BINDING,
                 init.hir_id,
-                stmt.span,
+                ident.span,
                 "binding to `_` prefixed variable with no side-effect",
             );
             return true;
