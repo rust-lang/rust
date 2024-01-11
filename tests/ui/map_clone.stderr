@@ -50,22 +50,46 @@ LL |     let y = x.map(Clone::clone);
    |             ^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
 
 error: you are explicitly cloning with `.map()`
-  --> $DIR/map_clone.rs:72:13
+  --> $DIR/map_clone.rs:73:13
    |
 LL |     let y = x.map(String::clone);
    |             ^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
 
 error: you are explicitly cloning with `.map()`
-  --> $DIR/map_clone.rs:78:13
+  --> $DIR/map_clone.rs:79:13
+   |
+LL |     let y = x.map(|x| u32::clone(x));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `x.copied()`
+
+error: you are explicitly cloning with `.map()`
+  --> $DIR/map_clone.rs:82:13
+   |
+LL |     let y = x.map(|x| Clone::clone(x));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `x.copied()`
+
+error: you are explicitly cloning with `.map()`
+  --> $DIR/map_clone.rs:94:13
    |
 LL |     let y = x.map(|x| String::clone(x));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
 
 error: you are explicitly cloning with `.map()`
-  --> $DIR/map_clone.rs:80:13
+  --> $DIR/map_clone.rs:97:13
    |
-LL |     let y = x.map(|x| String::clone(x));
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
+LL |     let y = x.map(|x| Clone::clone(x));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `cloned` method: `x.cloned()`
 
-error: aborting due to 11 previous errors
+error: you are explicitly cloning with `.map()`
+  --> $DIR/map_clone.rs:103:13
+   |
+LL |     let y = x.map(|x| u32::clone(x));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `x.copied()`
+
+error: you are explicitly cloning with `.map()`
+  --> $DIR/map_clone.rs:106:13
+   |
+LL |     let y = x.map(|x| Clone::clone(x));
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider calling the dedicated `copied` method: `x.copied()`
+
+error: aborting due to 15 previous errors
 
