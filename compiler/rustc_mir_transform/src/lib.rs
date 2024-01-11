@@ -566,17 +566,28 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         body,
         &[
             &check_alignment::CheckAlignment,
-            &lower_slice_len::LowerSliceLenCalls, // has to be done before inlining, otherwise actual call will be almost always inlined. Also simple, so can just do first
+            // Before inlining: trim down MIR with passes to reduce inlining work.
+
+            // Has to be done before inlining, otherwise actual call will be almost always inlined.
+            // Also simple, so can just do first
+            &lower_slice_len::LowerSliceLenCalls,
+            // Perform inlining, which may add a lot of code.
             &inline::Inline,
-            // Substitutions during inlining may introduce switch on enums with uninhabited branches.
+            // Code from other crates may have storage markers, so this needs to happen after inlining.
+            &remove_storage_markers::RemoveStorageMarkers,
+            // Inlining and substitution may introduce ZST and useless drops.
+            &remove_zsts::RemoveZsts,
+            &remove_unneeded_drops::RemoveUnneededDrops,
+            // Type substitution may create uninhabited enums.
             &uninhabited_enum_branching::UninhabitedEnumBranching,
             &unreachable_prop::UnreachablePropagation,
             &o1(simplify::SimplifyCfg::AfterUninhabitedEnumBranching),
-            &remove_storage_markers::RemoveStorageMarkers,
-            &remove_zsts::RemoveZsts,
-            &normalize_array_len::NormalizeArrayLen, // has to run after `slice::len` lowering
+            // Inlining may have introduced a lot of redundant code and a large move pattern.
+            // Now, we need to shrink the generated MIR.
+
+            // Has to run after `slice::len` lowering
+            &normalize_array_len::NormalizeArrayLen,
             &const_goto::ConstGoto,
-            &remove_unneeded_drops::RemoveUnneededDrops,
             &ref_prop::ReferencePropagation,
             &sroa::ScalarReplacementOfAggregates,
             &match_branches::MatchBranchSimplification,
