@@ -73,6 +73,7 @@ pub struct CanonicalGoalEvaluation<'tcx> {
 pub enum CanonicalGoalEvaluationKind<'tcx> {
     Overflow,
     CycleInStack,
+    ProvisionalCacheHit,
     Evaluation { revisions: &'tcx [GoalEvaluationStep<'tcx>] },
 }
 impl Debug for GoalEvaluation<'_> {
