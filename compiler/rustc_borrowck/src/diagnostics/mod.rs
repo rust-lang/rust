@@ -23,6 +23,7 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::util::{call_kind, CallDesugaringKind};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult};
 use rustc_span::def_id::LocalDefId;
+use rustc_span::source_map::Spanned;
 use rustc_span::{symbol::sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, VariantIdx};
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -111,9 +112,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 debug!("add_moved_or_invoked_closure_note: id={:?}", id);
                 if Some(self.infcx.tcx.parent(id)) == self.infcx.tcx.lang_items().fn_once_trait() {
                     let closure = match args.first() {
-                        Some(Operand::Copy(place) | Operand::Move(place))
-                            if target == place.local_or_deref_local() =>
-                        {
+                        Some(Spanned {
+                            node: Operand::Copy(place) | Operand::Move(place), ..
+                        }) if target == place.local_or_deref_local() => {
                             place.local_or_deref_local().unwrap()
                         }
                         _ => return false,

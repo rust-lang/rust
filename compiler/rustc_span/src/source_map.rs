@@ -70,7 +70,7 @@ mod monotonic {
     impl<T> !DerefMut for MonotonicVec<T> {}
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, Copy, HashStable_Generic)]
+#[derive(Clone, Encodable, Decodable, Debug, Copy, PartialEq, Hash, HashStable_Generic)]
 pub struct Spanned<T> {
     pub node: T,
     pub span: Span,

@@ -703,7 +703,7 @@ impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R> for MirBorro
             } => {
                 self.consume_operand(loc, (func, span), flow_state);
                 for arg in args {
-                    self.consume_operand(loc, (arg, span), flow_state);
+                    self.consume_operand(loc, (&arg.node, arg.span), flow_state);
                 }
                 self.mutate_place(loc, (*destination, span), Deep, flow_state);
             }

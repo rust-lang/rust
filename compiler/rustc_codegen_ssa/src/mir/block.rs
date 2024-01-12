@@ -17,7 +17,7 @@ use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_session::config::OptLevel;
-use rustc_span::{sym, Span, Symbol};
+use rustc_span::{source_map::Spanned, sym, Span, Symbol};
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode, Reg};
 use rustc_target::abi::{self, HasDataLayout, WrappingRange};
 use rustc_target::spec::abi::Abi;
@@ -742,7 +742,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &mut Bx,
         terminator: &mir::Terminator<'tcx>,
         func: &mir::Operand<'tcx>,
-        args: &[mir::Operand<'tcx>],
+        args: &[Spanned<mir::Operand<'tcx>>],
         destination: mir::Place<'tcx>,
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
@@ -793,7 +793,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let extra_args = &args[sig.inputs().skip_binder().len()..];
         let extra_args = bx.tcx().mk_type_list_from_iter(extra_args.iter().map(|op_arg| {
-            let op_ty = op_arg.ty(self.mir, bx.tcx());
+            let op_ty = op_arg.node.ty(self.mir, bx.tcx());
             self.monomorphize(op_ty)
         }));
 
@@ -863,7 +863,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // checked by const-qualification, which also
                         // promotes any complex rvalues to constants.
                         if i == 2 && intrinsic == sym::simd_shuffle {
-                            if let mir::Operand::Constant(constant) = arg {
+                            if let mir::Operand::Constant(constant) = &arg.node {
                                 let (llval, ty) = self.simd_shuffle_indices(bx, constant);
                                 return OperandRef {
                                     val: Immediate(llval),
@@ -874,7 +874,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             }
                         }
 
-                        self.codegen_operand(bx, arg)
+                        self.codegen_operand(bx, &arg.node)
                     })
                     .collect();
 
@@ -910,7 +910,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let mut copied_constant_arguments = vec![];
         'make_args: for (i, arg) in first_args.iter().enumerate() {
-            let mut op = self.codegen_operand(bx, arg);
+            let mut op = self.codegen_operand(bx, &arg.node);
 
             if let (0, Some(ty::InstanceDef::Virtual(_, idx))) = (i, def) {
                 match op.val {
@@ -988,7 +988,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             // The callee needs to own the argument memory if we pass it
             // by-ref, so make a local copy of non-immediate constants.
-            match (arg, op.val) {
+            match (&arg.node, op.val) {
                 (&mir::Operand::Copy(_), Ref(_, None, _))
                 | (&mir::Operand::Constant(_), Ref(_, None, _)) => {
                     let tmp = PlaceRef::alloca(bx, op.layout);
@@ -1003,7 +1003,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             self.codegen_argument(bx, op, &mut llargs, &fn_abi.args[i]);
         }
         let num_untupled = untuple.map(|tup| {
-            self.codegen_arguments_untupled(bx, tup, &mut llargs, &fn_abi.args[first_args.len()..])
+            self.codegen_arguments_untupled(
+                bx,
+                &tup.node,
+                &mut llargs,
+                &fn_abi.args[first_args.len()..],
+            )
         });
 
         let needs_location =

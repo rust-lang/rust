@@ -36,6 +36,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::ty::{GenericArgsRef, UserArgs};
 use rustc_span::def_id::CRATE_DEF_ID;
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
 use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, FIRST_VARIANT};
@@ -1359,7 +1360,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             TerminatorKind::Call { func, args, destination, call_source, target, .. } => {
                 self.check_operand(func, term_location);
                 for arg in args {
-                    self.check_operand(arg, term_location);
+                    self.check_operand(&arg.node, term_location);
                 }
 
                 let func_ty = func.ty(body, tcx);
@@ -1580,7 +1581,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         term: &Terminator<'tcx>,
         func: &Operand<'tcx>,
         sig: &ty::FnSig<'tcx>,
-        args: &[Operand<'tcx>],
+        args: &[Spanned<Operand<'tcx>>],
         term_location: Location,
         call_source: CallSource,
     ) {
@@ -1593,7 +1594,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             if self.tcx().is_intrinsic(def_id) {
                 match self.tcx().item_name(def_id) {
                     sym::simd_shuffle => {
-                        if !matches!(args[2], Operand::Constant(_)) {
+                        if !matches!(args[2], Spanned { node: Operand::Constant(_), .. }) {
                             self.tcx()
                                 .dcx()
                                 .emit_err(SimdShuffleLastConst { span: term.source_info.span });
@@ -1606,7 +1607,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         debug!(?func_ty);
 
         for (n, (fn_arg, op_arg)) in iter::zip(sig.inputs(), args).enumerate() {
-            let op_arg_ty = op_arg.ty(body, self.tcx());
+            let op_arg_ty = op_arg.node.ty(body, self.tcx());
 
             let op_arg_ty = self.normalize(op_arg_ty, term_location);
             let category = if call_source.from_hir_call() {

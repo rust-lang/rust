@@ -668,7 +668,7 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
     fn check_fn_args_move_size(
         &mut self,
         callee_ty: Ty<'tcx>,
-        args: &[mir::Operand<'tcx>],
+        args: &[Spanned<mir::Operand<'tcx>>],
         location: Location,
     ) {
         let limit = self.tcx.move_size_limit();
@@ -693,7 +693,7 @@ impl<'a, 'tcx> MirUsedCollector<'a, 'tcx> {
         }
 
         for arg in args {
-            self.check_operand_move_size(arg, location);
+            self.check_operand_move_size(&arg.node, location);
         }
     }
 }

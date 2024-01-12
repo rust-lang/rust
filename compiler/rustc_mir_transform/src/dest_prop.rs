@@ -609,7 +609,7 @@ impl WriteInfo {
                 self.add_place(*destination);
                 self.add_operand(func);
                 for arg in args {
-                    self.add_operand(arg);
+                    self.add_operand(&arg.node);
                 }
             }
             TerminatorKind::InlineAsm { operands, .. } => {
