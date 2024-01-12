@@ -144,6 +144,9 @@ pub enum LinkerFlavorCli {
     Bpf,
     Ptx,
 
+    // Generic (unstable) flavors.
+    Any(Cc, Lld),
+
     // Legacy stable values
     Gcc,
     Ld,
@@ -162,7 +165,8 @@ impl LinkerFlavorCli {
             | LinkerFlavorCli::Msvc(Lld::Yes)
             | LinkerFlavorCli::EmCc
             | LinkerFlavorCli::Bpf
-            | LinkerFlavorCli::Ptx => true,
+            | LinkerFlavorCli::Ptx
+            | LinkerFlavorCli::Any(..) => true,
             LinkerFlavorCli::Gcc
             | LinkerFlavorCli::Ld
             | LinkerFlavorCli::Lld(..)
@@ -222,6 +226,15 @@ impl LinkerFlavor {
             LinkerFlavorCli::EmCc => LinkerFlavor::EmCc,
             LinkerFlavorCli::Bpf => LinkerFlavor::Bpf,
             LinkerFlavorCli::Ptx => LinkerFlavor::Ptx,
+
+            // Generic flavors
+            LinkerFlavorCli::Any(cc, lld) => match lld_flavor {
+                LldFlavor::Ld if is_gnu => LinkerFlavor::Gnu(cc, lld),
+                LldFlavor::Ld64 => LinkerFlavor::Darwin(cc, lld),
+                LldFlavor::Wasm => LinkerFlavor::WasmLld(cc),
+                LldFlavor::Ld => LinkerFlavor::Unix(cc),
+                LldFlavor::Link => LinkerFlavor::Msvc(lld),
+            },
 
             // Below: legacy stable values
             LinkerFlavorCli::Gcc => match lld_flavor {
@@ -288,6 +301,9 @@ impl LinkerFlavor {
             LinkerFlavorCli::Msvc(lld) => (Some(Cc::No), Some(lld)),
             LinkerFlavorCli::EmCc => (Some(Cc::Yes), Some(Lld::Yes)),
             LinkerFlavorCli::Bpf | LinkerFlavorCli::Ptx => (None, None),
+
+            // Generic flavors
+            LinkerFlavorCli::Any(cc, lld) => (Some(cc), Some(lld)),
 
             // Below: legacy stable values
             LinkerFlavorCli::Gcc => (Some(Cc::Yes), None),
@@ -502,6 +518,14 @@ linker_flavor_cli_impls! {
     (LinkerFlavorCli::EmCc) "em-cc"
     (LinkerFlavorCli::Bpf) "bpf"
     (LinkerFlavorCli::Ptx) "ptx"
+
+    // Generic flavors
+    (LinkerFlavorCli::Any(Cc::No, Lld::No)) "*"
+    (LinkerFlavorCli::Any(Cc::No, Lld::Yes)) "*-lld"
+    (LinkerFlavorCli::Any(Cc::Yes, Lld::No)) "*-cc"
+    (LinkerFlavorCli::Any(Cc::Yes, Lld::Yes)) "*-lld-cc"
+    (LinkerFlavorCli::Any(Cc::Clang, Lld::No)) "*-clang"
+    (LinkerFlavorCli::Any(Cc::Clang, Lld::Yes)) "*-lld-clang"
 
     // Legacy stable flavors
     (LinkerFlavorCli::Gcc) "gcc"
