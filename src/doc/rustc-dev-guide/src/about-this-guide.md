@@ -91,7 +91,7 @@ You might also find the following sites useful:
 [gsearchdocs]: https://www.google.com/search?q=site:doc.rust-lang.org+your+query+here
 [stddocs]: https://doc.rust-lang.org/std
 [rif]: http://internals.rust-lang.org
-[rr]: https://doc.rust-lang.org/book/README.html
+[rr]: https://doc.rust-lang.org/book/
 [rustforge]: https://forge.rust-lang.org/
 [tlgba]: https://tomlee.co/2014/04/a-more-detailed-tour-of-the-rust-compiler/
 [ro]: https://www.rustaceans.org/
