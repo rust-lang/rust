@@ -49,7 +49,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_span: Span,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
-        trace!("decl = {:#?}", closure.fn_decl);
+        let tcx = self.tcx;
+        let body = tcx.hir().body(closure.body);
+        let expr_def_id = closure.def_id;
 
         // It's always helpful for inference if we know the kind of
         // closure sooner rather than later, so first examine the expected
@@ -60,24 +62,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             None => (None, None),
         };
-
-        self.check_closure(closure, expr_span, expected_kind, expected_sig)
-    }
-
-    #[instrument(skip(self, closure), level = "debug", ret)]
-    fn check_closure(
-        &self,
-        closure: &hir::Closure<'tcx>,
-        expr_span: Span,
-        opt_kind: Option<ty::ClosureKind>,
-        expected_sig: Option<ExpectedSig<'tcx>>,
-    ) -> Ty<'tcx> {
-        let tcx = self.tcx;
-        let body = tcx.hir().body(closure.body);
-
-        trace!("decl = {:#?}", closure.fn_decl);
-        let expr_def_id = closure.def_id;
-        debug!(?expr_def_id);
 
         let ClosureSignatures { bound_sig, liberated_sig } =
             self.sig_of_closure(expr_def_id, closure.fn_decl, closure.kind, expected_sig);
@@ -139,9 +123,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        let mut fcx = FnCtxt::new(self, self.param_env, closure.def_id);
         check_fn(
-            &mut fcx,
+            &mut FnCtxt::new(self, self.param_env, closure.def_id),
             liberated_sig,
             coroutine_types,
             closure.fn_decl,
@@ -174,9 +157,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     )
                 });
 
-                debug!(?sig, ?opt_kind);
+                debug!(?sig, ?expected_kind);
 
-                let closure_kind_ty = match opt_kind {
+                let closure_kind_ty = match expected_kind {
                     Some(kind) => Ty::from_closure_kind(tcx, kind),
 
                     // Create a type variable (for now) to represent the closure kind.
@@ -204,11 +187,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let Some(CoroutineTypes { resume_ty, yield_ty }) = coroutine_types else {
                     bug!("expected coroutine to have yield/resume types");
                 };
-                let interior = fcx.next_ty_var(TypeVariableOrigin {
+                let interior = self.next_ty_var(TypeVariableOrigin {
                     kind: TypeVariableOriginKind::MiscVariable,
                     span: body.value.span,
                 });
-                fcx.deferred_coroutine_interiors.borrow_mut().push((
+                self.deferred_coroutine_interiors.borrow_mut().push((
                     expr_def_id,
                     body.id(),
                     interior,
