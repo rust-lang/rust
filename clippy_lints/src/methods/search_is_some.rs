@@ -63,7 +63,7 @@ pub(super) fn check<'tcx>(
                     SEARCH_IS_SOME,
                     method_span.with_hi(expr.span.hi()),
                     &msg,
-                    "use `any()` instead",
+                    "consider using",
                     format!(
                         "any({})",
                         any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
@@ -77,7 +77,7 @@ pub(super) fn check<'tcx>(
                     SEARCH_IS_SOME,
                     expr.span,
                     &msg,
-                    "use `!_.any()` instead",
+                    "consider using",
                     format!(
                         "!{iter}.any({})",
                         any_search_snippet.as_ref().map_or(&*search_snippet, String::as_str)
@@ -118,7 +118,7 @@ pub(super) fn check<'tcx>(
                         SEARCH_IS_SOME,
                         method_span.with_hi(expr.span.hi()),
                         &msg,
-                        "use `contains()` instead",
+                        "consider using",
                         format!("contains({find_arg})"),
                         applicability,
                     );
@@ -132,7 +132,7 @@ pub(super) fn check<'tcx>(
                         SEARCH_IS_SOME,
                         expr.span,
                         &msg,
-                        "use `!_.contains()` instead",
+                        "consider using",
                         format!("!{string}.contains({find_arg})"),
                         applicability,
                     );
