@@ -35,15 +35,7 @@ pub fn target() -> Target {
             "--no-entry",
         ],
     );
-    options.add_pre_link_args(
-        LinkerFlavor::WasmLld(Cc::Yes),
-        &[
-            // Make sure clang uses LLD as its linker and is configured appropriately
-            // otherwise
-            "--target=wasm32-unknown-unknown",
-            "-Wl,--no-entry",
-        ],
-    );
+    options.add_pre_link_args(LinkerFlavor::WasmLld(Cc::Yes), &["-Wl,--no-entry"]);
 
     Target {
         llvm_target: "wasm32-unknown-unknown".into(),

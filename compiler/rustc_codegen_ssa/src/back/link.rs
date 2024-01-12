@@ -2284,6 +2284,10 @@ fn add_order_independent_options(
     out_filename: &Path,
     tmpdir: &Path,
 ) {
+    if flavor.uses_clang() && sess.target.linker_flavor != sess.host.linker_flavor {
+        cmd.arg(format!("--target={}", sess.target.llvm_target));
+    }
+
     // Take care of the flavors and CLI options requesting the `lld` linker.
     add_lld_args(cmd, sess, flavor, self_contained_components);
 
@@ -3053,29 +3057,4 @@ fn add_lld_args(
     // 2. Implement the "linker flavor" part of this feature by asking `cc` to use some kind of
     // `lld` as the linker.
     cmd.arg("-fuse-ld=lld");
-
-    if !flavor.is_gnu() {
-        // Tell clang to use a non-default LLD flavor.
-        // Gcc doesn't understand the target option, but we currently assume
-        // that gcc is not used for Apple and Wasm targets (#97402).
-        //
-        // Note that we don't want to do that by default on macOS: e.g. passing a
-        // 10.7 target to LLVM works, but not to recent versions of clang/macOS, as
-        // shown in issue #101653 and the discussion in PR #101792.
-        //
-        // It could be required in some cases of cross-compiling with
-        // LLD, but this is generally unspecified, and we don't know
-        // which specific versions of clang, macOS SDK, host and target OS
-        // combinations impact us here.
-        //
-        // So we do a simple first-approximation until we know more of what the
-        // Apple targets require (and which would be handled prior to hitting this
-        // LLD codepath anyway), but the expectation is that until then
-        // this should be manually passed if needed. We specify the target when
-        // targeting a different linker flavor on macOS, and that's also always
-        // the case when targeting WASM.
-        if sess.target.linker_flavor != sess.host.linker_flavor {
-            cmd.arg(format!("--target={}", sess.target.llvm_target));
-        }
-    }
 }

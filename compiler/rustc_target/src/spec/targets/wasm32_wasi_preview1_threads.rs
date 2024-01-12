@@ -85,12 +85,7 @@ pub fn target() -> Target {
     );
     options.add_pre_link_args(
         LinkerFlavor::WasmLld(Cc::Yes),
-        &[
-            "--target=wasm32-wasi-threads",
-            "-Wl,--import-memory",
-            "-Wl,--export-memory,",
-            "-Wl,--shared-memory",
-        ],
+        &["-Wl,--import-memory", "-Wl,--export-memory,", "-Wl,--shared-memory"],
     );
 
     options.pre_link_objects_self_contained = crt_objects::pre_wasi_self_contained();

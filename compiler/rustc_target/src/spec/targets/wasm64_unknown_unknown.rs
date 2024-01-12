@@ -22,15 +22,7 @@ pub fn target() -> Target {
             "-mwasm64",
         ],
     );
-    options.add_pre_link_args(
-        LinkerFlavor::WasmLld(Cc::Yes),
-        &[
-            // Make sure clang uses LLD as its linker and is configured appropriately
-            // otherwise
-            "--target=wasm64-unknown-unknown",
-            "-Wl,--no-entry",
-        ],
-    );
+    options.add_pre_link_args(LinkerFlavor::WasmLld(Cc::Yes), &["-Wl,--no-entry"]);
 
     // Any engine that implements wasm64 will surely implement the rest of these
     // features since they were all merged into the official spec by the time

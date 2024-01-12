@@ -43,6 +43,7 @@ use rustc_fs_util::try_canonicalize;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_span::symbol::{kw, sym, Symbol};
 use serde_json::Value;
+use std::assert_matches::assert_matches;
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::hash::{Hash, Hasher};
@@ -435,6 +436,17 @@ impl LinkerFlavor {
             | LinkerFlavor::Unix(_)
             | LinkerFlavor::Bpf
             | LinkerFlavor::Ptx => false,
+        }
+    }
+
+    pub fn uses_clang(self) -> bool {
+        match self {
+            LinkerFlavor::Gnu(Cc::Clang, _)
+            | LinkerFlavor::Darwin(Cc::Clang, _)
+            | LinkerFlavor::WasmLld(Cc::Clang)
+            | LinkerFlavor::Unix(Cc::Clang)
+            | LinkerFlavor::EmCc => true,
+            _ => false,
         }
     }
 }
@@ -2185,21 +2197,34 @@ fn add_link_args_iter(
     match flavor {
         LinkerFlavor::Gnu(cc, lld) => {
             assert_eq!(lld, Lld::No);
+            assert_matches!(cc, Cc::No | Cc::Yes);
             insert(LinkerFlavor::Gnu(cc, Lld::Yes));
+            if cc == Cc::Yes {
+                insert(LinkerFlavor::Gnu(Cc::Clang, Lld::No));
+                insert(LinkerFlavor::Gnu(Cc::Clang, Lld::Yes));
+            }
         }
         LinkerFlavor::Darwin(cc, lld) => {
             assert_eq!(lld, Lld::No);
+            assert_matches!(cc, Cc::No | Cc::Yes);
             insert(LinkerFlavor::Darwin(cc, Lld::Yes));
+            if cc == Cc::Yes {
+                insert(LinkerFlavor::Darwin(Cc::Clang, Lld::No));
+                insert(LinkerFlavor::Darwin(Cc::Clang, Lld::Yes));
+            }
         }
         LinkerFlavor::Msvc(lld) => {
             assert_eq!(lld, Lld::No);
             insert(LinkerFlavor::Msvc(Lld::Yes));
         }
-        LinkerFlavor::WasmLld(..)
-        | LinkerFlavor::Unix(..)
-        | LinkerFlavor::EmCc
-        | LinkerFlavor::Bpf
-        | LinkerFlavor::Ptx => {}
+        LinkerFlavor::WasmLld(cc) | LinkerFlavor::Unix(cc) => {
+            assert_matches!(cc, Cc::No | Cc::Yes);
+            if cc == Cc::Yes {
+                insert(LinkerFlavor::Gnu(Cc::Clang, Lld::No));
+                insert(LinkerFlavor::Gnu(Cc::Clang, Lld::Yes));
+            }
+        }
+        LinkerFlavor::EmCc | LinkerFlavor::Bpf | LinkerFlavor::Ptx => {}
     }
 }
 
