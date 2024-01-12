@@ -407,6 +407,7 @@ impl ProjectWorkspace {
         workspaces: &[ProjectWorkspace],
         config: &CargoConfig,
         progress: &dyn Fn(String),
+        workspace_root: &AbsPathBuf,
     ) -> Vec<anyhow::Result<WorkspaceBuildScripts>> {
         if matches!(config.invocation_strategy, InvocationStrategy::PerWorkspace)
             || config.run_build_script_command.is_none()
@@ -421,11 +422,13 @@ impl ProjectWorkspace {
                 _ => None,
             })
             .collect();
-        let outputs = &mut match WorkspaceBuildScripts::run_once(config, &cargo_ws, progress) {
-            Ok(it) => Ok(it.into_iter()),
-            // io::Error is not Clone?
-            Err(e) => Err(sync::Arc::new(e)),
-        };
+        let outputs =
+            &mut match WorkspaceBuildScripts::run_once(config, &cargo_ws, progress, workspace_root)
+            {
+                Ok(it) => Ok(it.into_iter()),
+                // io::Error is not Clone?
+                Err(e) => Err(sync::Arc::new(e)),
+            };
 
         workspaces
             .iter()
