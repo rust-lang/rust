@@ -450,7 +450,7 @@ declare_features! (
     (unstable, doc_masked, "1.21.0", Some(44027)),
     /// Allows `dyn* Trait` objects.
     (incomplete, dyn_star, "1.65.0", Some(102425)),
-    // Uses generic effect parameters for ~const bounds
+    /// Uses generic effect parameters for ~const bounds
     (unstable, effects, "1.72.0", Some(102090)),
     /// Allows `X..Y` patterns.
     (unstable, exclusive_range_pattern, "1.11.0", Some(37854)),
