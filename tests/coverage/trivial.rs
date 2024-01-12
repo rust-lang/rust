@@ -1,3 +1,3 @@
-// compile-flags: --edition=2021
+// edition: 2021
 
 fn main() {}
