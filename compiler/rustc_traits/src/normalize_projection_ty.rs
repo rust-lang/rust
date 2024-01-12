@@ -54,7 +54,7 @@ fn normalize_projection_ty<'tcx>(
                     // that impl vars are constrained by the signature, for example).
                     if !tcx.sess.opts.actually_rustdoc {
                         for error in &errors {
-                            if let FulfillmentErrorCode::CodeCycle(cycle) = &error.code {
+                            if let FulfillmentErrorCode::Cycle(cycle) = &error.code {
                                 ocx.infcx.err_ctxt().report_overflow_obligation_cycle(cycle);
                             }
                         }

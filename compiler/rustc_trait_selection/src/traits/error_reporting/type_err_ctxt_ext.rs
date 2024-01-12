@@ -785,14 +785,14 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                     ty::PredicateKind::Subtype(predicate) => {
                         // Errors for Subtype predicates show up as
-                        // `FulfillmentErrorCode::CodeSubtypeError`,
+                        // `FulfillmentErrorCode::SubtypeError`,
                         // not selection error.
                         span_bug!(span, "subtype requirement gave wrong error: `{:?}`", predicate)
                     }
 
                     ty::PredicateKind::Coerce(predicate) => {
                         // Errors for Coerce predicates show up as
-                        // `FulfillmentErrorCode::CodeSubtypeError`,
+                        // `FulfillmentErrorCode::SubtypeError`,
                         // not selection error.
                         span_bug!(span, "coerce requirement gave wrong error: `{:?}`", predicate)
                     }
@@ -1575,23 +1575,23 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
 
         match error.code {
-            FulfillmentErrorCode::CodeSelectionError(ref selection_error) => {
+            FulfillmentErrorCode::SelectionError(ref selection_error) => {
                 self.report_selection_error(
                     error.obligation.clone(),
                     &error.root_obligation,
                     selection_error,
                 );
             }
-            FulfillmentErrorCode::CodeProjectionError(ref e) => {
+            FulfillmentErrorCode::ProjectionError(ref e) => {
                 self.report_projection_error(&error.obligation, e);
             }
-            FulfillmentErrorCode::CodeAmbiguity { overflow: false } => {
+            FulfillmentErrorCode::Ambiguity { overflow: false } => {
                 self.maybe_report_ambiguity(&error.obligation);
             }
-            FulfillmentErrorCode::CodeAmbiguity { overflow: true } => {
+            FulfillmentErrorCode::Ambiguity { overflow: true } => {
                 self.report_overflow_no_abort(error.obligation.clone());
             }
-            FulfillmentErrorCode::CodeSubtypeError(ref expected_found, ref err) => {
+            FulfillmentErrorCode::SubtypeError(ref expected_found, ref err) => {
                 self.report_mismatched_types(
                     &error.obligation.cause,
                     expected_found.expected,
@@ -1600,7 +1600,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 )
                 .emit();
             }
-            FulfillmentErrorCode::CodeConstEquateError(ref expected_found, ref err) => {
+            FulfillmentErrorCode::ConstEquateError(ref expected_found, ref err) => {
                 let mut diag = self.report_mismatched_consts(
                     &error.obligation.cause,
                     expected_found.expected,
@@ -1625,7 +1625,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
                 diag.emit();
             }
-            FulfillmentErrorCode::CodeCycle(ref cycle) => {
+            FulfillmentErrorCode::Cycle(ref cycle) => {
                 self.report_overflow_obligation_cycle(cycle);
             }
         }

@@ -86,7 +86,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Finally, for ambiguity-related errors, we actually want to look
         // for a parameter that is the source of the inference type left
         // over in this predicate.
-        if let traits::FulfillmentErrorCode::CodeAmbiguity { .. } = error.code {
+        if let traits::FulfillmentErrorCode::Ambiguity { .. } = error.code {
             fallback_param_to_point_at = None;
             self_param_to_point_at = None;
             param_to_point_at =
@@ -361,7 +361,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error: &traits::FulfillmentError<'tcx>,
         span: Span,
     ) -> bool {
-        if let traits::FulfillmentErrorCode::CodeSelectionError(
+        if let traits::FulfillmentErrorCode::SelectionError(
             traits::SelectionError::OutputTypeParameterMismatch(
                 box traits::SelectionOutputTypeParameterMismatch { expected_trait_ref, .. },
             ),

@@ -1213,7 +1213,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                     Applicability::MaybeIncorrect,
                                 );
                                 for error in errors {
-                                    if let FulfillmentErrorCode::CodeSelectionError(
+                                    if let FulfillmentErrorCode::SelectionError(
                                         SelectionError::Unimplemented,
                                     ) = error.code
                                         && let ty::PredicateKind::Clause(ty::ClauseKind::Trait(

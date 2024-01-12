@@ -63,7 +63,7 @@ pub fn codegen_select_candidate<'tcx>(
         // Cycle errors are the only post-monomorphization errors possible; emit them now so
         // `rustc_ty_utils::resolve_associated_item` doesn't return `None` post-monomorphization.
         for err in errors {
-            if let FulfillmentErrorCode::CodeCycle(cycle) = err.code {
+            if let FulfillmentErrorCode::Cycle(cycle) = err.code {
                 infcx.err_ctxt().report_overflow_obligation_cycle(&cycle);
             }
         }
