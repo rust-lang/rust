@@ -4,7 +4,7 @@
 // @hasraw - '<span class="attr">#[outer]'
 // @!hasraw - '<span class="attr">#[outer]</span>'
 // @hasraw - '#![inner]</span>'
-// @!hasraw - '<span class="attr">#![inner]</span>'
+// @hasraw - '#<span class="attr">#![inner]</span>'
 // @snapshot 'codeblock' - '//*[@class="toggle top-doc"]/*[@class="docblock"]//pre/code'
 
 /// ```no_run
