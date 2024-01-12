@@ -3,12 +3,12 @@
 
 // EMIT_MIR tuple.main.DataflowConstProp.diff
 
-// CHECK-LABEL: fn main
+// CHECK-LABEL: fn main(
 fn main() {
-    // CHECK: debug a => [[a:_[0-9]+]];
-    // CHECK: debug b => [[b:_[0-9]+]];
-    // CHECK: debug c => [[c:_[0-9]+]];
-    // CHECK: debug d => [[d:_[0-9]+]];
+    // CHECK: debug a => [[a:_.*]];
+    // CHECK: debug b => [[b:_.*]];
+    // CHECK: debug c => [[c:_.*]];
+    // CHECK: debug d => [[d:_.*]];
 
     // CHECK: [[a]] = const (1_i32, 2_i32);
     let mut a = (1, 2);

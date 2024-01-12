@@ -10,16 +10,14 @@ fn main() {
 
     let a = 1;
 
-    // CHECK: switchInt(const true) -> [0: {{bb[0-9]+}}, otherwise: [[bb_first_true:bb[0-9]+]]];
-    // CHECK: [[bb_first_true]]: {
+    // CHECK: switchInt(const true) -> [0: {{bb.*}}, otherwise: {{bb.*}}];
     // CHECK: [[b]] = const 2_i32;
     let b = if a == 1 { 2 } else { 3 };
 
     // CHECK: [[c]] = const 3_i32;
     let c = b + 1;
 
-    // CHECK: switchInt(const true) -> [0: {{bb[0-9]+}}, otherwise: [[bb_second_true:bb[0-9]+]]];
-    // CHECK: [[bb_second_true]]: {
+    // CHECK: switchInt(const true) -> [0: {{bb.*}}, otherwise: {{bb.*}}];
     // CHECK: [[d]] = const 1_i32;
     let d = if a == 1 { a } else { a + 1 };
 

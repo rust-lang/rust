@@ -4,7 +4,7 @@
 
 // EMIT_MIR large_array_index.main.DataflowConstProp.diff
 
-// CHECK-LABEL: fn main
+// CHECK-LABEL: fn main(
 fn main() {
     // check that we don't propagate this, because it's too large
 

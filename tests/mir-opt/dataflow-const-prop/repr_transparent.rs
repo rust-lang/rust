@@ -7,7 +7,7 @@ struct I32(i32);
 
 // EMIT_MIR repr_transparent.main.DataflowConstProp.diff
 
-// CHECK-LABEL: fn main
+// CHECK-LABEL: fn main(
 fn main() {
     // CHECK: debug x => [[x:_.*]];
     // CHECK: debug y => [[y:_.*]];

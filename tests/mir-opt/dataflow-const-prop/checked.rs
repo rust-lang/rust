@@ -19,12 +19,14 @@ fn main() {
     // CHECK: [[b]] = const 2_i32;
     let b = 2;
 
+    // CHECK-LABEL: assert(!const false,
     // CHECK: [[c]] = const 3_i32;
     let c = a + b;
 
     // CHECK: [[d]] = const _;
     let d = i32::MAX;
 
+    // CHECK-LABEL: assert(!const true,
     // CHECK: [[e]] = const i32::MIN;
     let e = d + 1;
 }

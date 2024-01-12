@@ -2,7 +2,7 @@
 
 // EMIT_MIR self_assign_add.main.DataflowConstProp.diff
 
-// CHECK-LABEL: fn main
+// CHECK-LABEL: fn main(
 fn main() {
     // CHECK: debug a => [[a:_.*]];
     let mut a = 0;

@@ -17,13 +17,10 @@ fn main() {
     // Verify that `DataflowConstProp` does not ICE trying to dereference it directly.
 
     // CHECK: debug a => [[a:_.*]];
-    // CHECK: scope {{[0-9]+}} (inlined <Box<[bool]> as Default>::default) {
-    // CHECK: scope {{[0-9]+}} (inlined Unique::<[bool; 0]>::dangling) {
-    // CHECK: scope {{[0-9]+}} (inlined NonNull::<[bool; 0]>::dangling) {
     // We may check other inlined functions as well...
 
-    // CHECK: bb{{[0-9]+}}: {
     // CHECK: [[box_obj:_.*]] = Box::<[bool]>(_3, const std::alloc::Global);
     // CHECK: [[a]] = A { foo: move [[box_obj]] };
+    // FIXME: we do not have `const Box::<[bool]>` after constprop right now.
     let a: A = A { foo: Box::default() };
 }

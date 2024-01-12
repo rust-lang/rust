@@ -10,9 +10,9 @@
 
 // EMIT_MIR sibling_ptr.main.DataflowConstProp.diff
 
-// CHECK-LABEL: fn main
+// CHECK-LABEL: fn main(
 fn main() {
-    // CHECK: debug x1 => [[x1:_[0-9]+]];
+    // CHECK: debug x1 => [[x1:_.*]];
 
     let mut x: (u8, u8) = (0, 0);
     unsafe {
@@ -20,6 +20,6 @@ fn main() {
         *p.add(1) = 1;
     }
 
-    // CHECK: [[x1]] = ({{_[0-9]+}}.1: u8);
+    // CHECK: [[x1]] = ({{_.*}}.1: u8);
     let x1 = x.1; // should not be propagated
 }
