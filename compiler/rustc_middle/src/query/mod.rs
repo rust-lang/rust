@@ -859,13 +859,13 @@ rustc_queries! {
     /// Maps a `DefId` of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
     /// Methods in these implementations don't need to be exported.
-    query inherent_impls(key: DefId) -> &'tcx [DefId] {
+    query inherent_impls(key: DefId) -> Result<&'tcx [DefId], ErrorGuaranteed> {
         desc { |tcx| "collecting inherent impls for `{}`", tcx.def_path_str(key) }
         cache_on_disk_if { key.is_local() }
         separate_provide_extern
     }
 
-    query incoherent_impls(key: SimplifiedType) -> &'tcx [DefId] {
+    query incoherent_impls(key: SimplifiedType) -> Result<&'tcx [DefId], ErrorGuaranteed> {
         desc { |tcx| "collecting all inherent impls for `{:?}`", key }
     }
 
@@ -1012,9 +1012,9 @@ rustc_queries! {
 
     /// Gets a complete map from all types to their inherent impls.
     /// Not meant to be used directly outside of coherence.
-    query crate_inherent_impls(k: ()) -> &'tcx CrateInherentImpls {
-        arena_cache
+    query crate_inherent_impls(k: ()) -> Result<&'tcx CrateInherentImpls, ErrorGuaranteed> {
         desc { "finding all inherent impls defined in crate" }
+        ensure_forwards_result_if_red
     }
 
     /// Checks all types in the crate for overlap in their inherent impls. Reports errors.
@@ -1647,7 +1647,7 @@ rustc_queries! {
     ///
     /// Do not call this directly, but instead use the `incoherent_impls` query.
     /// This query is only used to get the data necessary for that query.
-    query crate_incoherent_impls(key: (CrateNum, SimplifiedType)) -> &'tcx [DefId] {
+    query crate_incoherent_impls(key: (CrateNum, SimplifiedType)) -> Result<&'tcx [DefId], ErrorGuaranteed> {
         desc { |tcx| "collecting all impls for a type in a crate" }
         separate_provide_extern
     }

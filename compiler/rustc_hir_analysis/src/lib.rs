@@ -181,10 +181,9 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
             for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
                 tcx.ensure().coherent_trait(trait_def_id);
             }
-
-            // these queries are executed for side-effects (error reporting):
-            tcx.ensure().crate_inherent_impls(());
         }))
+        // these queries are executed for side-effects (error reporting):
+        .and(tcx.ensure().crate_inherent_impls(()))
         .and(tcx.ensure().crate_inherent_impls_overlap_check(()))
     })?;
 

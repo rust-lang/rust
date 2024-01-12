@@ -78,6 +78,10 @@ impl<T> EraseType for Result<&'_ T, rustc_errors::ErrorGuaranteed> {
     type Result = [u8; size_of::<Result<&'static (), rustc_errors::ErrorGuaranteed>>()];
 }
 
+impl<T> EraseType for Result<&'_ [T], rustc_errors::ErrorGuaranteed> {
+    type Result = [u8; size_of::<Result<&'static [()], rustc_errors::ErrorGuaranteed>>()];
+}
+
 impl<T> EraseType for Result<&'_ T, traits::CodegenObligationError> {
     type Result = [u8; size_of::<Result<&'static (), traits::CodegenObligationError>>()];
 }

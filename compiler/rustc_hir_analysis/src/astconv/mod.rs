@@ -1446,7 +1446,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         let candidates: Vec<_> = tcx
-            .inherent_impls(adt_did)
+            .inherent_impls(adt_did)?
             .iter()
             .filter_map(|&impl_| Some((impl_, self.lookup_assoc_ty_unchecked(name, block, impl_)?)))
             .collect();

@@ -624,7 +624,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 // Checks if item_name belongs to `impl SomeItem`
                 let mut assoc_items: Vec<_> = tcx
                     .inherent_impls(did)
-                    .iter()
+                    .into_iter()
+                    .flatten()
                     .flat_map(|&imp| {
                         filter_assoc_items_by_name_and_namespace(
                             tcx,
