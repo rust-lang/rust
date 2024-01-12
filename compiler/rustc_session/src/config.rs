@@ -1146,6 +1146,7 @@ impl UnstableOptions {
         DiagCtxtFlags {
             can_emit_warnings,
             treat_err_as_bug: self.treat_err_as_bug,
+            eagerly_emit_delayed_bugs: self.eagerly_emit_delayed_bugs,
             macro_backtrace: self.macro_backtrace,
             deduplicate_diagnostics: self.deduplicate_diagnostics,
             track_diagnostics: self.track_diagnostics,
@@ -1823,7 +1824,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "Remap source names in all output (compiler messages and output files)",
             "FROM=TO",
         ),
-        opt::multi("", "env", "Inject an environment variable", "VAR=VALUE"),
+        opt::multi("", "env-set", "Inject an environment variable", "VAR=VALUE"),
     ]);
     opts
 }
@@ -2599,11 +2600,11 @@ fn parse_logical_env(
 ) -> FxIndexMap<String, String> {
     let mut vars = FxIndexMap::default();
 
-    for arg in matches.opt_strs("env") {
+    for arg in matches.opt_strs("env-set") {
         if let Some((name, val)) = arg.split_once('=') {
             vars.insert(name.to_string(), val.to_string());
         } else {
-            early_dcx.early_fatal(format!("`--env`: specify value for variable `{arg}`"));
+            early_dcx.early_fatal(format!("`--env-set`: specify value for variable `{arg}`"));
         }
     }
 

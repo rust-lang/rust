@@ -1,3 +1,3 @@
-// compile-flags: --env A=B
+// compile-flags: --env-set A=B
 
 fn main() {}

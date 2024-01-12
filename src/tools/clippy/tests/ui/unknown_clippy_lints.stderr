@@ -35,7 +35,12 @@ error: unknown lint: `clippy::dead_cod`
   --> $DIR/unknown_clippy_lints.rs:11:8
    |
 LL | #[warn(clippy::dead_cod)]
-   |        ^^^^^^^^^^^^^^^^ help: did you mean: `clippy::eq_op`
+   |        ^^^^^^^^^^^^^^^^
+   |
+help: a lint with a similar name exists in `rustc` lints
+   |
+LL | #[warn(dead_code)]
+   |        ~~~~~~~~~
 
 error: unknown lint: `clippy::unused_colle`
   --> $DIR/unknown_clippy_lints.rs:13:8
@@ -49,5 +54,16 @@ error: unknown lint: `clippy::const_static_lifetim`
 LL | #[warn(clippy::const_static_lifetim)]
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: did you mean: `clippy::redundant_static_lifetimes`
 
-error: aborting due to 8 previous errors
+error: unknown lint: `clippy::missing_docs`
+  --> $DIR/unknown_clippy_lints.rs:17:8
+   |
+LL | #[warn(clippy::missing_docs)]
+   |        ^^^^^^^^^^^^^^^^^^^^
+   |
+help: a lint with a similar name exists in `rustc` lints
+   |
+LL | #[warn(missing_docs)]
+   |        ~~~~~~~~~~~~
+
+error: aborting due to 9 previous errors
 
