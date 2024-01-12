@@ -142,7 +142,6 @@ pub fn set_session_globals_then<R>(session_globals: &SessionGlobals, f: impl FnO
     SESSION_GLOBALS.set(session_globals, f)
 }
 
-
 pub fn create_session_if_not_set_then<R>(
     edition: Edition,
     f: impl FnOnce(&SessionGlobals) -> R,
