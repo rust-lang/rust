@@ -1,5 +1,5 @@
 // build-fail
-
+// only-64bit
 fn func() {
     const CAP: usize = std::u32::MAX as usize;
     let mut x: [u8; CAP>>1] = [0; CAP>>1];
