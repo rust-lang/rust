@@ -519,6 +519,12 @@ fn default_track_diagnostic(diag: Diagnostic, f: &mut dyn FnMut(Diagnostic)) {
 pub static TRACK_DIAGNOSTIC: AtomicRef<fn(Diagnostic, &mut dyn FnMut(Diagnostic))> =
     AtomicRef::new(&(default_track_diagnostic as _));
 
+#[derive(Copy, PartialEq, Eq, Clone, Hash, Debug, Encodable, Decodable)]
+pub enum DelayedBugKind {
+    Normal,
+    GoodPath,
+}
+
 #[derive(Copy, Clone, Default)]
 pub struct DiagCtxtFlags {
     /// If false, warning-level lints are suppressed.
@@ -527,6 +533,9 @@ pub struct DiagCtxtFlags {
     /// If Some, the Nth error-level diagnostic is upgraded to bug-level.
     /// (rustc: see `-Z treat-err-as-bug`)
     pub treat_err_as_bug: Option<NonZeroUsize>,
+    /// Eagerly emit delayed bugs as errors, so that the compiler debugger may
+    /// see all of the errors being emitted at once.
+    pub eagerly_emit_delayed_bugs: bool,
     /// Show macro backtraces.
     /// (rustc: see `-Z macro-backtrace`)
     pub macro_backtrace: bool,
@@ -541,8 +550,7 @@ impl Drop for DiagCtxtInner {
         self.emit_stashed_diagnostics();
 
         if !self.has_errors() {
-            let bugs = std::mem::replace(&mut self.span_delayed_bugs, Vec::new());
-            self.flush_delayed(bugs, "no errors encountered even though `span_delayed_bug` issued");
+            self.flush_delayed(DelayedBugKind::Normal)
         }
 
         // FIXME(eddyb) this explains what `good_path_delayed_bugs` are!
@@ -551,11 +559,7 @@ impl Drop for DiagCtxtInner {
         // lints can be `#[allow]`'d, potentially leading to this triggering.
         // Also, "good path" should be replaced with a better naming.
         if !self.has_printed && !self.suppressed_expected_diag && !std::thread::panicking() {
-            let bugs = std::mem::replace(&mut self.good_path_delayed_bugs, Vec::new());
-            self.flush_delayed(
-                bugs,
-                "no warnings or errors encountered even though `good_path_delayed_bugs` issued",
-            );
+            self.flush_delayed(DelayedBugKind::GoodPath);
         }
 
         if self.check_unstable_expect_diagnostics {
@@ -865,7 +869,8 @@ impl DiagCtxt {
         if treat_next_err_as_bug {
             self.bug(msg);
         }
-        DiagnosticBuilder::<ErrorGuaranteed>::new(self, DelayedBug, msg).emit()
+        DiagnosticBuilder::<ErrorGuaranteed>::new(self, DelayedBug(DelayedBugKind::Normal), msg)
+            .emit()
     }
 
     /// Like `delayed_bug`, but takes an additional span.
@@ -882,16 +887,15 @@ impl DiagCtxt {
         if treat_next_err_as_bug {
             self.span_bug(sp, msg);
         }
-        DiagnosticBuilder::<ErrorGuaranteed>::new(self, DelayedBug, msg).with_span(sp).emit()
+        DiagnosticBuilder::<ErrorGuaranteed>::new(self, DelayedBug(DelayedBugKind::Normal), msg)
+            .with_span(sp)
+            .emit()
     }
 
     // FIXME(eddyb) note the comment inside `impl Drop for DiagCtxtInner`, that's
     // where the explanation of what "good path" is (also, it should be renamed).
     pub fn good_path_delayed_bug(&self, msg: impl Into<DiagnosticMessage>) {
-        let mut inner = self.inner.borrow_mut();
-        let diagnostic = Diagnostic::new(DelayedBug, msg);
-        let backtrace = std::backtrace::Backtrace::capture();
-        inner.good_path_delayed_bugs.push(DelayedDiagnostic::with_backtrace(diagnostic, backtrace));
+        DiagnosticBuilder::<()>::new(self, DelayedBug(DelayedBugKind::GoodPath), msg).emit()
     }
 
     #[track_caller]
@@ -1218,9 +1222,7 @@ impl DiagCtxt {
     }
 
     pub fn flush_delayed(&self) {
-        let mut inner = self.inner.borrow_mut();
-        let bugs = std::mem::replace(&mut inner.span_delayed_bugs, Vec::new());
-        inner.flush_delayed(bugs, "no errors encountered even though `span_delayed_bug` issued");
+        self.inner.borrow_mut().flush_delayed(DelayedBugKind::Normal);
     }
 }
 
@@ -1270,17 +1272,30 @@ impl DiagCtxtInner {
             return None;
         }
 
-        if diagnostic.level == DelayedBug {
-            // FIXME(eddyb) this should check for `has_errors` and stop pushing
-            // once *any* errors were emitted (and truncate `span_delayed_bugs`
-            // when an error is first emitted, also), but maybe there's a case
-            // in which that's not sound? otherwise this is really inefficient.
-            let backtrace = std::backtrace::Backtrace::capture();
-            self.span_delayed_bugs
-                .push(DelayedDiagnostic::with_backtrace(diagnostic.clone(), backtrace));
+        // FIXME(eddyb) this should check for `has_errors` and stop pushing
+        // once *any* errors were emitted (and truncate `span_delayed_bugs`
+        // when an error is first emitted, also), but maybe there's a case
+        // in which that's not sound? otherwise this is really inefficient.
+        match diagnostic.level {
+            DelayedBug(_) if self.flags.eagerly_emit_delayed_bugs => {
+                diagnostic.level = Error;
+            }
+            DelayedBug(DelayedBugKind::Normal) => {
+                let backtrace = std::backtrace::Backtrace::capture();
+                self.span_delayed_bugs
+                    .push(DelayedDiagnostic::with_backtrace(diagnostic.clone(), backtrace));
 
-            #[allow(deprecated)]
-            return Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
+                #[allow(deprecated)]
+                return Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
+            }
+            DelayedBug(DelayedBugKind::GoodPath) => {
+                let backtrace = std::backtrace::Backtrace::capture();
+                self.good_path_delayed_bugs
+                    .push(DelayedDiagnostic::with_backtrace(diagnostic.clone(), backtrace));
+
+                return None;
+            }
+            _ => {}
         }
 
         if diagnostic.has_future_breakage() {
@@ -1396,11 +1411,18 @@ impl DiagCtxtInner {
         self.emit_diagnostic(Diagnostic::new(FailureNote, msg));
     }
 
-    fn flush_delayed(
-        &mut self,
-        bugs: Vec<DelayedDiagnostic>,
-        explanation: impl Into<DiagnosticMessage> + Copy,
-    ) {
+    fn flush_delayed(&mut self, kind: DelayedBugKind) {
+        let (bugs, explanation) = match kind {
+            DelayedBugKind::Normal => (
+                std::mem::take(&mut self.span_delayed_bugs),
+                "no errors encountered even though `span_delayed_bug` issued",
+            ),
+            DelayedBugKind::GoodPath => (
+                std::mem::take(&mut self.good_path_delayed_bugs),
+                "no warnings or errors encountered even though `good_path_delayed_bugs` issued",
+            ),
+        };
+
         if bugs.is_empty() {
             return;
         }
@@ -1433,7 +1455,7 @@ impl DiagCtxtInner {
                 if backtrace || self.ice_file.is_none() { bug.decorate() } else { bug.inner };
 
             // "Undelay" the `DelayedBug`s (into plain `Bug`s).
-            if bug.level != DelayedBug {
+            if !matches!(bug.level, DelayedBug(_)) {
                 // NOTE(eddyb) not panicking here because we're already producing
                 // an ICE, and the more information the merrier.
                 bug.subdiagnostic(InvalidFlushedDelayedDiagnosticLevel {
@@ -1521,8 +1543,9 @@ pub enum Level {
     /// silently dropped. I.e. "expect other errors are emitted" semantics. Useful on code paths
     /// that should only be reached when compiling erroneous code.
     ///
-    /// Its `EmissionGuarantee` is `ErrorGuaranteed`.
-    DelayedBug,
+    /// Its `EmissionGuarantee` is `ErrorGuaranteed` for `Normal` delayed bugs, and `()` for
+    /// `GoodPath` delayed bugs.
+    DelayedBug(DelayedBugKind),
 
     /// An error that causes an immediate abort. Used for things like configuration errors,
     /// internal overflows, some file operation errors.
@@ -1597,7 +1620,7 @@ impl Level {
     fn color(self) -> ColorSpec {
         let mut spec = ColorSpec::new();
         match self {
-            Bug | DelayedBug | Fatal | Error => {
+            Bug | DelayedBug(_) | Fatal | Error => {
                 spec.set_fg(Some(Color::Red)).set_intense(true);
             }
             ForceWarning(_) | Warning => {
@@ -1617,7 +1640,7 @@ impl Level {
 
     pub fn to_str(self) -> &'static str {
         match self {
-            Bug | DelayedBug => "error: internal compiler error",
+            Bug | DelayedBug(_) => "error: internal compiler error",
             Fatal | Error => "error",
             ForceWarning(_) | Warning => "warning",
             Note | OnceNote => "note",
