@@ -111,7 +111,7 @@ impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
 
         if let TerminatorKind::Call { ref args, .. } = terminator.kind {
             for arg in args {
-                if let Operand::Move(place) = *arg {
+                if let Operand::Move(place) = arg.node {
                     let local = place.local;
                     if place.is_indirect()
                         || local == RETURN_PLACE

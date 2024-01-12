@@ -16,6 +16,7 @@ use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self, CoroutineKind};
 use rustc_index::IndexVec;
+use rustc_span::source_map::Spanned;
 use rustc_target::abi::{FieldIdx, VariantIdx};
 
 use rustc_ast::Mutability;
@@ -673,7 +674,9 @@ pub enum TerminatorKind<'tcx> {
         /// These are owned by the callee, which is free to modify them.
         /// This allows the memory occupied by "by-value" arguments to be
         /// reused across function calls without duplicating the contents.
-        args: Vec<Operand<'tcx>>,
+        /// The span for each arg is also included
+        /// (e.g. `a` and `b` in `x.foo(a, b)`).
+        args: Vec<Spanned<Operand<'tcx>>>,
         /// Where the returned value will be written
         destination: Place<'tcx>,
         /// Where to go after this call returns. If none, the call necessarily diverges.

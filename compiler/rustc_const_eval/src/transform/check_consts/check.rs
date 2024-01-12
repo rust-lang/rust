@@ -804,7 +804,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // const-eval of the `begin_panic` fn assumes the argument is `&str`
                 if Some(callee) == tcx.lang_items().begin_panic_fn() {
-                    match args[0].ty(&self.ccx.body.local_decls, tcx).kind() {
+                    match args[0].node.ty(&self.ccx.body.local_decls, tcx).kind() {
                         ty::Ref(_, ty, _) if ty.is_str() => return,
                         _ => self.check_op(ops::PanicNonStr),
                     }
@@ -812,7 +812,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                 // const-eval of `#[rustc_const_panic_str]` functions assumes the argument is `&&str`
                 if tcx.has_attr(callee, sym::rustc_const_panic_str) {
-                    match args[0].ty(&self.ccx.body.local_decls, tcx).kind() {
+                    match args[0].node.ty(&self.ccx.body.local_decls, tcx).kind() {
                         ty::Ref(_, ty, _) if matches!(ty.kind(), ty::Ref(_, ty, _) if ty.is_str()) =>
                         {
                             return;
