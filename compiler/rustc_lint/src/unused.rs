@@ -1071,17 +1071,31 @@ impl UnusedParens {
             self.emit_unused_delims(cx, value.span, spans, "pattern", keep_space, false);
         }
     }
+
+    fn cast_followed_by_lt(&self, expr: &ast::Expr) -> Option<ast::NodeId> {
+        if let ExprKind::Binary(op, lhs, _rhs) = &expr.kind
+            && (op.node == ast::BinOpKind::Lt || op.node == ast::BinOpKind::Shl)
+        {
+            let mut cur = lhs;
+            while let ExprKind::Binary(_, _, rhs) = &cur.kind {
+                cur = rhs;
+            }
+
+            if let ExprKind::Cast(_, ty) = &cur.kind
+                && let ast::TyKind::Paren(_) = &ty.kind
+            {
+                return Some(ty.id);
+            }
+        }
+        None
+    }
 }
 
 impl EarlyLintPass for UnusedParens {
     #[inline]
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
-        if let ExprKind::Binary(op, lhs, _rhs) = &e.kind
-            && (op.node == ast::BinOpKind::Lt || op.node == ast::BinOpKind::Shl)
-            && let ExprKind::Cast(_expr, ty) = &lhs.kind
-            && let ast::TyKind::Paren(_) = &ty.kind
-        {
-            self.parens_in_cast_in_lt.push(ty.id);
+        if let Some(ty_id) = self.cast_followed_by_lt(e) {
+            self.parens_in_cast_in_lt.push(ty_id);
         }
 
         match e.kind {
@@ -1133,17 +1147,13 @@ impl EarlyLintPass for UnusedParens {
     }
 
     fn check_expr_post(&mut self, _cx: &EarlyContext<'_>, e: &ast::Expr) {
-        if let ExprKind::Binary(op, lhs, _rhs) = &e.kind
-            && (op.node == ast::BinOpKind::Lt || op.node == ast::BinOpKind::Shl)
-            && let ExprKind::Cast(_expr, ty) = &lhs.kind
-            && let ast::TyKind::Paren(_) = &ty.kind
-        {
+        if let Some(ty_id) = self.cast_followed_by_lt(e) {
             let id = self
                 .parens_in_cast_in_lt
                 .pop()
                 .expect("check_expr and check_expr_post must balance");
             assert_eq!(
-                id, ty.id,
+                id, ty_id,
                 "check_expr, check_ty, and check_expr_post are called, in that order, by the visitor"
             );
         }
