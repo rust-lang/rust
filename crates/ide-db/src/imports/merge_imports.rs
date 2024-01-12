@@ -264,19 +264,21 @@ pub fn common_prefix(lhs: &ast::Path, rhs: &ast::Path) -> Option<(ast::Path, ast
 
 /// Use tree comparison func for binary searching for merging.
 fn use_tree_cmp_bin_search(lhs: &ast::UseTree, rhs: &ast::UseTree) -> Ordering {
+    let lhs_is_simple_path = lhs.is_simple_path() && lhs.rename().is_none();
+    let rhs_is_simple_path = rhs.is_simple_path() && rhs.rename().is_none();
     match (
         lhs.path().as_ref().and_then(ast::Path::first_segment),
         rhs.path().as_ref().and_then(ast::Path::first_segment),
     ) {
-        (None, None) => match (lhs.is_simple_path(), lhs.is_simple_path()) {
+        (None, None) => match (lhs_is_simple_path, rhs_is_simple_path) {
             (true, true) => Ordering::Equal,
             (true, false) => Ordering::Less,
             (false, true) => Ordering::Greater,
             (false, false) => use_tree_cmp_by_tree_list_glob_or_alias(lhs, rhs, false),
         },
-        (Some(_), None) if !rhs.is_simple_path() => Ordering::Less,
+        (Some(_), None) if !rhs_is_simple_path => Ordering::Less,
         (Some(_), None) => Ordering::Greater,
-        (None, Some(_)) if !lhs.is_simple_path() => Ordering::Greater,
+        (None, Some(_)) if !lhs_is_simple_path => Ordering::Greater,
         (None, Some(_)) => Ordering::Less,
         (Some(ref a), Some(ref b)) => path_segment_cmp(a, b),
     }
@@ -289,16 +291,18 @@ fn use_tree_cmp_bin_search(lhs: &ast::UseTree, rhs: &ast::UseTree) -> Ordering {
 /// Example foo::{self, foo, baz, Baz, Qux, FOO_BAZ, *, {Bar}}
 /// Ref: <https://github.com/rust-lang/rustfmt/blob/6356fca675bd756d71f5c123cd053d17b16c573e/src/imports.rs#L83-L86>.
 pub(super) fn use_tree_cmp(a: &ast::UseTree, b: &ast::UseTree) -> Ordering {
+    let a_is_simple_path = a.is_simple_path() && a.rename().is_none();
+    let b_is_simple_path = b.is_simple_path() && b.rename().is_none();
     match (a.path(), b.path()) {
-        (None, None) => match (a.is_simple_path(), b.is_simple_path()) {
+        (None, None) => match (a_is_simple_path, b_is_simple_path) {
             (true, true) => Ordering::Equal,
             (true, false) => Ordering::Less,
             (false, true) => Ordering::Greater,
             (false, false) => use_tree_cmp_by_tree_list_glob_or_alias(a, b, true),
         },
-        (Some(_), None) if !b.is_simple_path() => Ordering::Less,
+        (Some(_), None) if !b_is_simple_path => Ordering::Less,
         (Some(_), None) => Ordering::Greater,
-        (None, Some(_)) if !a.is_simple_path() => Ordering::Greater,
+        (None, Some(_)) if !a_is_simple_path => Ordering::Greater,
         (None, Some(_)) => Ordering::Less,
         (Some(ref a_path), Some(ref b_path)) => {
             // cmp_by would be useful for us here but that is currently unstable
@@ -313,9 +317,9 @@ pub(super) fn use_tree_cmp(a: &ast::UseTree, b: &ast::UseTree) -> Ordering {
                             ord => Some(ord),
                         }
                     }
-                    EitherOrBoth::Left(_) if b.is_simple_path() => Some(Ordering::Greater),
+                    EitherOrBoth::Left(_) if b_is_simple_path => Some(Ordering::Greater),
                     EitherOrBoth::Left(_) => Some(Ordering::Less),
-                    EitherOrBoth::Right(_) if a.is_simple_path() => Some(Ordering::Less),
+                    EitherOrBoth::Right(_) if a_is_simple_path => Some(Ordering::Less),
                     EitherOrBoth::Right(_) => Some(Ordering::Greater),
                 })
                 .unwrap_or_else(|| use_tree_cmp_by_tree_list_glob_or_alias(a, b, true))
