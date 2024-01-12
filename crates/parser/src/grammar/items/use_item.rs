@@ -78,7 +78,9 @@ fn use_tree(p: &mut Parser<'_>, top_level: bool) -> bool {
 }
 
 pub(super) const USE_TREE_LIST_RECOVERY_SET: TokenSet =
-    TokenSet::new(&[T![;], T![,], T![.], T![ident]]);
+    TokenSet::new(&[T![;], T![,], T![.], T![ident]]).union(ITEM_RECOVERY_SET);
+
+pub(super) const USE_TREE_LIST_FIRST_SET: TokenSet = TokenSet::new(&[T!['{'], T![ident]]);
 
 // test use_tree_list
 // use {a, b, c};
@@ -91,7 +93,7 @@ pub(crate) fn use_tree_list(p: &mut Parser<'_>) {
     // use b;
     // struct T;
     // fn test() {}
-    delimited(p, T!['{'], T!['}'], T![,], USE_TREE_LIST_RECOVERY_SET, |p: &mut Parser<'_>| {
+    delimited(p, T!['{'], T!['}'], T![,], USE_TREE_LIST_FIRST_SET, |p: &mut Parser<'_>| {
         use_tree(p, false) || p.at_ts(USE_TREE_LIST_RECOVERY_SET)
     });
 
