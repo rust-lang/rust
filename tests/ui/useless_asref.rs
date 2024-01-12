@@ -144,6 +144,37 @@ fn foo() {
     //~^ ERROR: this call to `as_ref.map(...)` does nothing
 }
 
+mod issue12135 {
+    pub struct Struct {
+        field: Option<InnerStruct>,
+    }
+
+    #[derive(Clone)]
+    pub struct Foo;
+
+    #[derive(Clone)]
+    struct InnerStruct {
+        x: Foo,
+    }
+
+    impl InnerStruct {
+        fn method(&self) -> &Foo {
+            &self.x
+        }
+    }
+
+    pub fn f(x: &Struct) -> Option<Foo> {
+        x.field.as_ref().map(|v| v.clone());
+        //~^ ERROR: this call to `as_ref.map(...)` does nothing
+        x.field.as_ref().map(Clone::clone);
+        //~^ ERROR: this call to `as_ref.map(...)` does nothing
+        x.field.as_ref().map(|v| Clone::clone(v));
+        //~^ ERROR: this call to `as_ref.map(...)` does nothing
+
+        x.field.as_ref().map(|v| v.method().clone())
+    }
+}
+
 fn main() {
     not_ok();
     ok();
