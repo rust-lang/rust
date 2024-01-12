@@ -340,6 +340,7 @@ unsafe fn analyze_source_file_sse2(
 
 #[target_feature(enable = "neon")]
 #[cfg(any(target_arch = "aarch64"))]
+#[inline]
 // See https://community.arm.com/arm-community-blogs/b/infrastructure-solutions-blog/posts/porting-x86-vector-bitmask-optimizations-to-arm-neon
 //
 // The mask is a 64-bit integer, where each 4-bit corresponds to a u8 in the
@@ -393,7 +394,7 @@ unsafe fn analyze_source_file_neon(
             let newlines_test = vceqq_s8(chunk, newline);
             let mut newlines_mask = move_mask(newlines_test);
 
-            // If the bit mask is all zero, there are no newlines in this chunk.
+            // If the bit mask is not all zero, there are newlines in this chunk.
             if newlines_mask != 0 {
                 let output_offset = TextSize::from((chunk_index * CHUNK_SIZE + 1) as u32);
 
