@@ -73,7 +73,8 @@ pub(super) fn check<'tcx>(
         let has_suggested_method = receiver_ty.ty_adt_def().is_some_and(|adt_def| {
             cx.tcx
                 .inherent_impls(adt_def.did())
-                .iter()
+                .into_iter()
+                .flatten()
                 .flat_map(|impl_id| cx.tcx.associated_items(impl_id).filter_by_name_unhygienic(sugg))
                 .any(|assoc| {
                     assoc.fn_has_self_parameter
