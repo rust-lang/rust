@@ -228,6 +228,22 @@ pub struct ConstParamTyImplOnNonAdt {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_const_param_ty_impl_on_infringing_referee)]
+pub struct ConstParamTyImplOnInfringingReferee {
+    #[primary_span]
+    pub span: Span,
+    #[label]
+    pub def_span: Span,
+    pub def_descr: &'static str,
+    #[suggestion(
+        applicability = "maybe-incorrect",
+        style = "verbose",
+        code = "#[derive(ConstParamTy)]\n"
+    )]
+    pub sugg: Option<Span>,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_trait_object_declared_with_no_traits, code = "E0224")]
 pub struct TraitObjectDeclaredWithNoTraits {
     #[primary_span]

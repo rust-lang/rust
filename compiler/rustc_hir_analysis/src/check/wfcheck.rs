@@ -987,6 +987,10 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
 
                         ty_is_local(ty)
                     }
+                    // Same as above.
+                    Err(ConstParamTyImplementationError::InfringingReferee(def_id)) => {
+                        def_id.is_local()
+                    }
                     // Implments `ConstParamTy`, suggest adding the feature to enable.
                     Ok(..) => true,
                 };

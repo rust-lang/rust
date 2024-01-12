@@ -135,6 +135,15 @@ fn visit_implementation_of_const_param_ty(
         Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed) => {
             Err(tcx.dcx().emit_err(errors::ConstParamTyImplOnNonAdt { span }))
         }
+        Err(ConstParamTyImplementationError::InfringingReferee(def_id)) => {
+            let def_span = tcx.def_span(def_id);
+            tcx.dcx().emit_err(errors::ConstParamTyImplOnInfringingReferee {
+                span,
+                def_span,
+                def_descr: tcx.def_descr(def_id),
+                sugg: def_id.is_local().then_some(def_span.shrink_to_lo()),
+            });
+        }
     }
 }
 

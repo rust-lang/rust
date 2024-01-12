@@ -1,0 +1,27 @@
+error: the trait `ConstParamTy` cannot be implemented for this type
+  --> $DIR/const_param_ty_impl_bad_referee.rs:10:23
+   |
+LL | struct Foo;
+   | ---------- the trait `ConstParamTy` is not implemented for this struct
+LL |
+LL | impl ConstParamTy for &Foo {}
+   |                       ^^^^
+   |
+help: consider annotating this struct with `#[derive(ConstParamTy)]`
+   |
+LL + #[derive(ConstParamTy)]
+LL | struct Foo;
+   |
+
+error[E0204]: the trait `ConstParamTy` cannot be implemented for this type
+  --> $DIR/const_param_ty_impl_bad_referee.rs:18:23
+   |
+LL | struct Wrapper(*const i32, usize);
+   |                ---------- this field does not implement `ConstParamTy`
+LL |
+LL | impl ConstParamTy for &Wrapper {}
+   |                       ^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0204`.

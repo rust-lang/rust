@@ -5,6 +5,7 @@ use crate::traits::{self, ObligationCause, ObligationCtxt};
 use hir::LangItem;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
 use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::{RegionResolutionError, TyCtxtInferExt};
 use rustc_infer::traits::query::NoSolution;
@@ -22,6 +23,7 @@ pub enum CopyImplementationError<'tcx> {
 
 pub enum ConstParamTyImplementationError<'tcx> {
     InfrigingFields(Vec<(&'tcx ty::FieldDef, Ty<'tcx>, InfringingFieldsReason<'tcx>)>),
+    InfringingReferee(DefId),
     NotAnAdtOrBuiltinAllowed,
 }
 
@@ -92,6 +94,49 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
     parent_cause: ObligationCause<'tcx>,
 ) -> Result<(), ConstParamTyImplementationError<'tcx>> {
     let (adt, args) = match self_type.kind() {
+        // Special case for impls like `impl ConstParamTy for &Foo`, where
+        // Foo doesn't `impl ConstParamTy`. These kinds of impls aren't caught
+        // by coherence checking since `core`'s impl is restricted to &T where
+        // T: ConstParamTy.
+        // `has_concrete_skeleton()` avoids reporting `core`'s blanket impl.
+        &ty::Ref(.., ty, hir::Mutability::Not) if ty.peel_refs().has_concrete_skeleton() => {
+            let ty = ty.peel_refs();
+            type_allowed_to_implement_const_param_ty(tcx, param_env, ty, parent_cause)?;
+            // Check the ty behind the ref impls `ConstParamTy` itself. This additional
+            // logic is needed when checking refs because we need to check not only if
+            // all fields implement ConstParamTy, but also that the type itself implements
+            // ConstParamTy. Simply recursing into the ref only checks the former.
+            if !ty.references_error()
+                && let &ty::Adt(adt, _) = ty.kind()
+            {
+                let adt_did = adt.did();
+                let adt_span = tcx.def_span(adt_did);
+                let trait_did = tcx.require_lang_item(hir::LangItem::ConstParamTy, Some(adt_span));
+
+                let infcx = tcx.infer_ctxt().build();
+                let ocx = traits::ObligationCtxt::new(&infcx);
+
+                let ty = ocx.normalize(&ObligationCause::dummy_with_span(adt_span), param_env, ty);
+                let norm_errs = ocx.select_where_possible();
+                if !norm_errs.is_empty() || ty.references_error() {
+                    return Ok(());
+                }
+
+                ocx.register_bound(
+                    ObligationCause::dummy_with_span(adt_span),
+                    param_env,
+                    ty,
+                    trait_did,
+                );
+                let errs = ocx.select_all_or_error();
+                if !errs.is_empty() {
+                    return Err(ConstParamTyImplementationError::InfringingReferee(adt_did));
+                }
+            }
+
+            return Ok(());
+        }
+
         // `core` provides these impls.
         ty::Uint(_)
         | ty::Int(_)
