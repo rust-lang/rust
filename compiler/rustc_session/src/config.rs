@@ -1823,7 +1823,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "Remap source names in all output (compiler messages and output files)",
             "FROM=TO",
         ),
-        opt::multi("", "env", "Inject an environment variable", "VAR=VALUE"),
+        opt::multi("", "env-set", "Inject an environment variable", "VAR=VALUE"),
     ]);
     opts
 }
@@ -2599,11 +2599,11 @@ fn parse_logical_env(
 ) -> FxIndexMap<String, String> {
     let mut vars = FxIndexMap::default();
 
-    for arg in matches.opt_strs("env") {
+    for arg in matches.opt_strs("env-set") {
         if let Some((name, val)) = arg.split_once('=') {
             vars.insert(name.to_string(), val.to_string());
         } else {
-            early_dcx.early_fatal(format!("`--env`: specify value for variable `{arg}`"));
+            early_dcx.early_fatal(format!("`--env-set`: specify value for variable `{arg}`"));
         }
     }
 
