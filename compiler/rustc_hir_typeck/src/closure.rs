@@ -14,7 +14,7 @@ use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::GenericArgs;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{sym, Span};
+use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::error_reporting::ArgKind;
@@ -347,36 +347,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
 
         let trait_def_id = projection.trait_def_id(tcx);
-
-        let is_fn = tcx.is_fn_trait(trait_def_id);
-
-        let coroutine_trait = tcx.lang_items().coroutine_trait();
-        let is_gen = coroutine_trait == Some(trait_def_id);
-
-        if !is_fn && !is_gen {
-            debug!("not fn or coroutine");
+        // For now, we only do signature deduction based off of the `Fn` traits.
+        if !tcx.is_fn_trait(trait_def_id) {
             return None;
         }
 
-        // Check that we deduce the signature from the `<_ as std::ops::Coroutine>::Return`
-        // associated item and not yield.
-        if is_gen && self.tcx.associated_item(projection.projection_def_id()).name != sym::Return {
-            debug!("not `Return` assoc item of `Coroutine`");
-            return None;
-        }
+        let arg_param_ty = projection.skip_binder().projection_ty.args.type_at(1);
+        let arg_param_ty = self.resolve_vars_if_possible(arg_param_ty);
+        debug!(?arg_param_ty);
 
-        let input_tys = if is_fn {
-            let arg_param_ty = projection.skip_binder().projection_ty.args.type_at(1);
-            let arg_param_ty = self.resolve_vars_if_possible(arg_param_ty);
-            debug!(?arg_param_ty);
-
-            match arg_param_ty.kind() {
-                &ty::Tuple(tys) => tys,
-                _ => return None,
-            }
-        } else {
-            // Coroutines with a `()` resume type may be defined with 0 or 1 explicit arguments,
-            // else they must have exactly 1 argument. For now though, just give up in this case.
+        let ty::Tuple(input_tys) = *arg_param_ty.kind() else {
             return None;
         };
 
