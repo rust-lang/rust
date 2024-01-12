@@ -533,6 +533,9 @@ pub struct DiagCtxtFlags {
     /// If Some, the Nth error-level diagnostic is upgraded to bug-level.
     /// (rustc: see `-Z treat-err-as-bug`)
     pub treat_err_as_bug: Option<NonZeroUsize>,
+    /// Eagerly emit delayed bugs as errors, so that the compiler debugger may
+    /// see all of the errors being emitted at once.
+    pub eagerly_emit_delayed_bugs: bool,
     /// Show macro backtraces.
     /// (rustc: see `-Z macro-backtrace`)
     pub macro_backtrace: bool,
@@ -1274,6 +1277,9 @@ impl DiagCtxtInner {
         // when an error is first emitted, also), but maybe there's a case
         // in which that's not sound? otherwise this is really inefficient.
         match diagnostic.level {
+            DelayedBug(_) if self.flags.eagerly_emit_delayed_bugs => {
+                diagnostic.level = Error;
+            }
             DelayedBug(DelayedBugKind::Normal) => {
                 let backtrace = std::backtrace::Backtrace::capture();
                 self.span_delayed_bugs
