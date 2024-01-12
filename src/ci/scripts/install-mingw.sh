@@ -72,6 +72,7 @@ if isWindows; then
     # echo "MAJAHA 4: $(cygpath -w $(which git))"
     # echo "MAJAHA 4: $(cygpath -w $(which python))"
     # echo "MAJAHA 4: $(cygpath -w $(which gcc))"
+    echo "MAJAHA cmake: $(cygpath -w $(which cmake))"
     # echo "LS: $(ls)"
     # echo "GITHUB_PATH: $GITHUB_PATH"
     # cat "$GITHUB_PATH"
