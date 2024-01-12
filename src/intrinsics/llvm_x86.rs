@@ -11,7 +11,7 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     intrinsic: &str,
     _args: GenericArgsRef<'tcx>,
-    args: &[mir::Operand<'tcx>],
+    args: &[Spanned<mir::Operand<'tcx>>],
     ret: CPlace<'tcx>,
     target: Option<BasicBlock>,
     span: Span,
@@ -175,9 +175,9 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 [x, y, kind] => (x, y, kind),
                 _ => bug!("wrong number of args for intrinsic {intrinsic}"),
             };
-            let x = codegen_operand(fx, x);
-            let y = codegen_operand(fx, y);
-            let kind = match kind {
+            let x = codegen_operand(fx, &x.node);
+            let y = codegen_operand(fx, &y.node);
+            let kind = match &kind.node {
                 Operand::Constant(const_) => crate::constant::eval_mir_constant(fx, const_).0,
                 Operand::Copy(_) | Operand::Move(_) => unreachable!("{kind:?}"),
             };
@@ -287,8 +287,8 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 [a, b] => (a, b),
                 _ => bug!("wrong number of args for intrinsic {intrinsic}"),
             };
-            let a = codegen_operand(fx, a);
-            let b = codegen_operand(fx, b);
+            let a = codegen_operand(fx, &a.node);
+            let b = codegen_operand(fx, &b.node);
 
             // Based on the pseudocode at https://github.com/rust-lang/stdarch/blob/1cfbca8b38fd9b4282b2f054f61c6ca69fc7ce29/crates/core_arch/src/x86/avx2.rs#L2319-L2332
             let zero = fx.bcx.ins().iconst(types::I8, 0);
@@ -325,9 +325,9 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
                 [a, b, imm8] => (a, b, imm8),
                 _ => bug!("wrong number of args for intrinsic {intrinsic}"),
             };
-            let a = codegen_operand(fx, a);
-            let b = codegen_operand(fx, b);
-            let imm8 = codegen_operand(fx, imm8).load_scalar(fx);
+            let a = codegen_operand(fx, &a.node);
+            let b = codegen_operand(fx, &b.node);
+            let imm8 = codegen_operand(fx, &imm8.node).load_scalar(fx);
 
             let a_low = a.value_typed_lane(fx, fx.tcx.types.u128, 0).load_scalar(fx);
             let a_high = a.value_typed_lane(fx, fx.tcx.types.u128, 1).load_scalar(fx);
@@ -956,14 +956,14 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             let b = b.load_scalar(fx);
             let lb = lb.load_scalar(fx);
 
-            let imm8 = if let Some(imm8) = crate::constant::mir_operand_get_const_val(fx, &args[4])
-            {
-                imm8
-            } else {
-                fx.tcx
-                    .dcx()
-                    .span_fatal(span, "Index argument for `_mm_cmpestri` is not a constant");
-            };
+            let imm8 =
+                if let Some(imm8) = crate::constant::mir_operand_get_const_val(fx, &args[4].node) {
+                    imm8
+                } else {
+                    fx.tcx
+                        .dcx()
+                        .span_fatal(span, "Index argument for `_mm_cmpestri` is not a constant");
+                };
 
             let imm8 = imm8.try_to_u8().unwrap_or_else(|_| panic!("kind not scalar: {:?}", imm8));
 
@@ -1009,14 +1009,14 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             let b = b.load_scalar(fx);
             let lb = lb.load_scalar(fx);
 
-            let imm8 = if let Some(imm8) = crate::constant::mir_operand_get_const_val(fx, &args[4])
-            {
-                imm8
-            } else {
-                fx.tcx
-                    .dcx()
-                    .span_fatal(span, "Index argument for `_mm_cmpestrm` is not a constant");
-            };
+            let imm8 =
+                if let Some(imm8) = crate::constant::mir_operand_get_const_val(fx, &args[4].node) {
+                    imm8
+                } else {
+                    fx.tcx
+                        .dcx()
+                        .span_fatal(span, "Index argument for `_mm_cmpestrm` is not a constant");
+                };
 
             let imm8 = imm8.try_to_u8().unwrap_or_else(|_| panic!("kind not scalar: {:?}", imm8));
 
@@ -1056,15 +1056,15 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
             let a = a.load_scalar(fx);
             let b = b.load_scalar(fx);
 
-            let imm8 = if let Some(imm8) = crate::constant::mir_operand_get_const_val(fx, &args[2])
-            {
-                imm8
-            } else {
-                fx.tcx.dcx().span_fatal(
-                    span,
-                    "Index argument for `_mm_clmulepi64_si128` is not a constant",
-                );
-            };
+            let imm8 =
+                if let Some(imm8) = crate::constant::mir_operand_get_const_val(fx, &args[2].node) {
+                    imm8
+                } else {
+                    fx.tcx.dcx().span_fatal(
+                        span,
+                        "Index argument for `_mm_clmulepi64_si128` is not a constant",
+                    );
+                };
 
             let imm8 = imm8.try_to_u8().unwrap_or_else(|_| panic!("kind not scalar: {:?}", imm8));
 
@@ -1093,15 +1093,15 @@ pub(crate) fn codegen_x86_llvm_intrinsic_call<'tcx>(
 
             let a = a.load_scalar(fx);
 
-            let imm8 = if let Some(imm8) = crate::constant::mir_operand_get_const_val(fx, &args[1])
-            {
-                imm8
-            } else {
-                fx.tcx.dcx().span_fatal(
-                    span,
-                    "Index argument for `_mm_aeskeygenassist_si128` is not a constant",
-                );
-            };
+            let imm8 =
+                if let Some(imm8) = crate::constant::mir_operand_get_const_val(fx, &args[1].node) {
+                    imm8
+                } else {
+                    fx.tcx.dcx().span_fatal(
+                        span,
+                        "Index argument for `_mm_aeskeygenassist_si128` is not a constant",
+                    );
+                };
 
             let imm8 = imm8.try_to_u8().unwrap_or_else(|_| panic!("kind not scalar: {:?}", imm8));
 
