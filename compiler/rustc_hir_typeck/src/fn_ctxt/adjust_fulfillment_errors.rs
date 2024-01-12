@@ -362,9 +362,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
     ) -> bool {
         if let traits::FulfillmentErrorCode::SelectionError(
-            traits::SelectionError::OutputTypeParameterMismatch(
-                box traits::SelectionOutputTypeParameterMismatch { expected_trait_ref, .. },
-            ),
+            traits::SelectionError::SignatureMismatch(box traits::SignatureMismatchData {
+                expected_trait_ref,
+                ..
+            }),
         ) = error.code
             && let ty::Closure(def_id, _) | ty::Coroutine(def_id, ..) =
                 expected_trait_ref.skip_binder().self_ty().kind()

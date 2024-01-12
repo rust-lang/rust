@@ -14,8 +14,8 @@ use crate::traits::specialize::to_pretty_impl_header;
 use crate::traits::NormalizeExt;
 use crate::traits::{
     elaborate, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes, Obligation,
-    ObligationCause, ObligationCauseCode, ObligationCtxt, OutputTypeParameterMismatch, Overflow,
-    PredicateObligation, SelectionError, TraitNotObjectSafe,
+    ObligationCause, ObligationCauseCode, ObligationCtxt, Overflow, PredicateObligation,
+    SelectionError, SignatureMismatch, TraitNotObjectSafe,
 };
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{
@@ -30,7 +30,7 @@ use rustc_hir::{GenericParam, Item, Node};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_middle::traits::select::OverflowError;
-use rustc_middle::traits::{DefiningAnchor, SelectionOutputTypeParameterMismatch};
+use rustc_middle::traits::{DefiningAnchor, SignatureMismatchData};
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{BottomUpFolder, TypeFolder, TypeSuperFoldable};
@@ -891,22 +891,22 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
             }
 
-            OutputTypeParameterMismatch(box SelectionOutputTypeParameterMismatch {
+            SignatureMismatch(box SignatureMismatchData {
                 found_trait_ref,
                 expected_trait_ref,
                 terr: terr @ TypeError::CyclicTy(_),
-            }) => self.report_type_parameter_mismatch_cyclic_type_error(
+            }) => self.report_cyclic_signature_error(
                 &obligation,
                 found_trait_ref,
                 expected_trait_ref,
                 terr,
             ),
-            OutputTypeParameterMismatch(box SelectionOutputTypeParameterMismatch {
+            SignatureMismatch(box SignatureMismatchData {
                 found_trait_ref,
                 expected_trait_ref,
                 terr: _,
             }) => {
-                match self.report_type_parameter_mismatch_error(
+                match self.report_signature_mismatch_error(
                     &obligation,
                     span,
                     found_trait_ref,
@@ -1495,7 +1495,7 @@ pub(super) trait InferCtxtPrivExt<'tcx> {
         kind: ty::ClosureKind,
     ) -> DiagnosticBuilder<'tcx>;
 
-    fn report_type_parameter_mismatch_cyclic_type_error(
+    fn report_cyclic_signature_error(
         &self,
         obligation: &PredicateObligation<'tcx>,
         found_trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
@@ -1509,7 +1509,7 @@ pub(super) trait InferCtxtPrivExt<'tcx> {
         def_id: DefId,
     ) -> DiagnosticBuilder<'tcx>;
 
-    fn report_type_parameter_mismatch_error(
+    fn report_signature_mismatch_error(
         &self,
         obligation: &PredicateObligation<'tcx>,
         span: Span,
@@ -3369,7 +3369,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         self.dcx().create_err(err)
     }
 
-    fn report_type_parameter_mismatch_cyclic_type_error(
+    fn report_cyclic_signature_error(
         &self,
         obligation: &PredicateObligation<'tcx>,
         found_trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
@@ -3430,7 +3430,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         err
     }
 
-    fn report_type_parameter_mismatch_error(
+    fn report_signature_mismatch_error(
         &self,
         obligation: &PredicateObligation<'tcx>,
         span: Span,
@@ -3449,10 +3449,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         };
 
         let found_did = match *found_trait_ty.kind() {
-            ty::Closure(did, _) | ty::Foreign(did) | ty::FnDef(did, _) | ty::Coroutine(did, ..) => {
-                Some(did)
-            }
-            ty::Adt(def, _) => Some(def.did()),
+            ty::Closure(did, _) | ty::FnDef(did, _) | ty::Coroutine(did, ..) => Some(did),
             _ => None,
         };
 
