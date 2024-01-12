@@ -1,0 +1,17 @@
+error[E0277]: the size for values of type `[f32]` cannot be known at compilation time
+  --> $DIR/disallow-array.rs:9:12
+   |
+LL |     let x: [ScalableSimdFloat; 2];
+   |            ^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: within `ScalableSimdFloat`, the trait `Sized` is not implemented for `[f32]`, which is required by `ScalableSimdFloat: Sized`
+note: required because it appears within the type `ScalableSimdFloat`
+  --> $DIR/disallow-array.rs:4:12
+   |
+LL | pub struct ScalableSimdFloat {
+   |            ^^^^^^^^^^^^^^^^^
+   = note: slice and array elements must have `Sized` type
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

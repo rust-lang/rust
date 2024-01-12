@@ -1,0 +1,15 @@
+error[E0800]: Scalable simd types cannot exist within a struct
+  --> $DIR/disallow-struct.rs:9:8
+   |
+LL |     x: ScalableSimdFloat,
+   |        ^^^^^^^^^^^^^^^^^
+
+error[E0800]: Scalable simd types cannot exist within a struct
+  --> $DIR/disallow-struct.rs:14:13
+   |
+LL | struct Wrap(ScalableSimdFloat);
+   |             ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0800`.

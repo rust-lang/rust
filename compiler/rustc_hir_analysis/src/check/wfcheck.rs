@@ -1128,10 +1128,9 @@ fn check_type_defn<'tcx>(
             };
             // All fields (except for possibly the last) should be sized.
             let all_sized = all_sized || variant.fields.is_empty() || needs_drop_copy();
-            let unsized_len = if all_sized { 0 } else { 1 };
-            for (idx, field) in
-                variant.fields.raw[..variant.fields.len() - unsized_len].iter().enumerate()
-            {
+            let unsized_len =
+                if all_sized { variant.fields.len() } else { variant.fields.len() - 1 };
+            for (idx, field) in variant.fields.raw.iter().enumerate() {
                 let last = idx == variant.fields.len() - 1;
                 let field_id = field.did.expect_local();
                 let hir::FieldDef { ty: hir_ty, .. } =
@@ -1141,28 +1140,45 @@ fn check_type_defn<'tcx>(
                     None,
                     tcx.type_of(field.did).instantiate_identity(),
                 );
-                wfcx.register_bound(
-                    traits::ObligationCause::new(
+                if matches!(ty.kind(), ty::Adt(def, _) if def.repr().scalable()) {
+                    struct_span_code_err!(
+                        tcx.dcx(),
                         hir_ty.span,
-                        wfcx.body_def_id,
-                        ObligationCauseCode::FieldSized {
-                            adt_kind: match &item.kind {
-                                ItemKind::Struct(..) => AdtKind::Struct,
-                                ItemKind::Union(..) => AdtKind::Union,
-                                ItemKind::Enum(..) => AdtKind::Enum,
-                                kind => span_bug!(
-                                    item.span,
-                                    "should be wfchecking an ADT, got {kind:?}"
-                                ),
+                        E0800,
+                        "Scalable simd types cannot exist within {}",
+                        match &item.kind {
+                            ItemKind::Struct(..) => "a struct",
+                            ItemKind::Union(..) => "a union",
+                            ItemKind::Enum(..) => "enum variants",
+                            kind =>
+                                span_bug!(item.span, "should be wfchecking an ADT, got {kind:?}"),
+                        }
+                    )
+                    .emit();
+                } else if idx < unsized_len {
+                    wfcx.register_bound(
+                        traits::ObligationCause::new(
+                            hir_ty.span,
+                            wfcx.body_def_id,
+                            ObligationCauseCode::FieldSized {
+                                adt_kind: match &item.kind {
+                                    ItemKind::Struct(..) => AdtKind::Struct,
+                                    ItemKind::Union(..) => AdtKind::Union,
+                                    ItemKind::Enum(..) => AdtKind::Enum,
+                                    kind => span_bug!(
+                                        item.span,
+                                        "should be wfchecking an ADT, got {kind:?}"
+                                    ),
+                                },
+                                span: hir_ty.span,
+                                last,
                             },
-                            span: hir_ty.span,
-                            last,
-                        },
-                    ),
-                    wfcx.param_env,
-                    ty,
-                    tcx.require_lang_item(LangItem::Sized, None),
-                );
+                        ),
+                        wfcx.param_env,
+                        ty,
+                        tcx.require_lang_item(LangItem::Sized, None),
+                    );
+                }
             }
 
             // Explicit `enum` discriminant values must const-evaluate successfully.

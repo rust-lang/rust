@@ -1,0 +1,9 @@
+error[E0800]: Scalable simd types cannot exist within a union
+  --> $DIR/disallow-union.rs:9:8
+   |
+LL |     x: ScalableSimdFloat,
+   |        ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0800`.

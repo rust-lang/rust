@@ -1,0 +1,9 @@
+error[E0800]: Scalable simd types cannot exist within enum variants
+  --> $DIR/disallow-enum.rs:9:14
+   |
+LL |     Scalable(ScalableSimdFloat),
+   |              ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0800`.
