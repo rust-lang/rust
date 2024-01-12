@@ -36,12 +36,19 @@ jobs:
         ]
 
     steps:
+    - uses: actions/checkout@v3
+
+    # `rustup show` installs from rust-toolchain.toml
+    - name: Setup rust toolchain
+      run: rustup show
+
+    - name: Setup rust cache
+      uses: Swatinem/rust-cache@v2
+
     - name: Install packages
       run: |
         sudo apt-get update
         sudo apt-get install qemu qemu-user-static
-
-    - uses: actions/checkout@v3
 
     - name: Download GCC artifact
       uses: dawidd6/action-download-artifact@v2
@@ -72,30 +79,6 @@ jobs:
         echo "LD_LIBRARY_PATH=$(cat gcc_path)" >> $GITHUB_ENV
         echo "workspace="$GITHUB_WORKSPACE >> $GITHUB_ENV
 
-    - name: Cache cargo installed crates
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/bin
-        key: cargo-installed-crates2-ubuntu-latest
-
-    #- name: Cache cargo registry
-      #uses: actions/cache@v3
-      #with:
-        #path: ~/.cargo/registry
-        #key: ${{ runner.os }}-cargo-registry2-${{ hashFiles('**/Cargo.lock') }}
-
-    #- name: Cache cargo index
-      #uses: actions/cache@v3
-      #with:
-        #path: ~/.cargo/git
-        #key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
-
-    - name: Cache cargo target dir
-      uses: actions/cache@v3
-      with:
-        path: target
-        key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('rust-toolchain') }}
-
     #- name: Cache rust repository
       ## We only clone the rust repository for rustc tests
       #if: ${{ contains(matrix.commands, 'rustc') }}
@@ -125,13 +108,6 @@ jobs:
         git config --global user.email "user@example.com"
         git config --global user.name "User"
         ./y.sh prepare --cross
-
-    # Compile is a separate step, as the actions-rs/cargo action supports error annotations
-    - name: Compile
-      uses: actions-rs/cargo@v1.0.3
-      with:
-        command: build
-        args: --release
 
     - name: Add more failing tests because the sysroot is not compiled with LTO
       run: cat failing-non-lto-tests.txt >> failing-ui-tests.txt
