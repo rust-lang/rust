@@ -1019,8 +1019,9 @@ rustc_queries! {
 
     /// Checks all types in the crate for overlap in their inherent impls. Reports errors.
     /// Not meant to be used directly outside of coherence.
-    query crate_inherent_impls_overlap_check(_: ()) -> () {
+    query crate_inherent_impls_overlap_check(_: ()) -> Result<(), ErrorGuaranteed> {
         desc { "check for overlap between inherent impls defined in this crate" }
+        ensure_forwards_result_if_red
     }
 
     /// Checks whether all impls in the crate pass the overlap check, returning
