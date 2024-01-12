@@ -1,6 +1,7 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, OutlivesPredicate, TyCtxt};
+use rustc_trait_selection::traits::elaborate;
 
 use super::utils::*;
 
@@ -18,46 +19,54 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
         &mut self,
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-    ) -> &ty::EarlyBinder<RequiredPredicates<'tcx>> {
-        self.map.entry(def_id).or_insert_with(|| {
-            let predicates = if def_id.is_local() {
-                tcx.explicit_predicates_of(def_id)
-            } else {
-                tcx.predicates_of(def_id)
-            };
-            let mut required_predicates = RequiredPredicates::default();
+    ) -> ty::EarlyBinder<&RequiredPredicates<'tcx>> {
+        self.map
+            .entry(def_id)
+            .or_insert_with(|| {
+                let predicates = if def_id.is_local() {
+                    tcx.explicit_predicates_of(def_id)
+                } else {
+                    tcx.predicates_of(def_id)
+                };
 
-            // process predicates and convert to `RequiredPredicates` entry, see below
-            for &(predicate, span) in predicates.predicates {
-                match predicate.kind().skip_binder() {
-                    ty::ClauseKind::TypeOutlives(OutlivesPredicate(ty, reg)) => {
-                        insert_outlives_predicate(
-                            tcx,
-                            ty.into(),
-                            reg,
-                            span,
-                            &mut required_predicates,
-                        )
-                    }
+                let mut required_predicates = RequiredPredicates::default();
 
-                    ty::ClauseKind::RegionOutlives(OutlivesPredicate(reg1, reg2)) => {
-                        insert_outlives_predicate(
-                            tcx,
-                            reg1.into(),
-                            reg2,
-                            span,
-                            &mut required_predicates,
-                        )
+                // process predicates and convert to `RequiredPredicates` entry, see below
+                let predicates = predicates
+                    .predicates
+                    .into_iter()
+                    .flat_map(|&(p, span)| elaborate(tcx, [p]).map(move |p| (p, span)));
+                for (predicate, span) in predicates {
+                    match predicate.kind().skip_binder() {
+                        ty::ClauseKind::TypeOutlives(OutlivesPredicate(ty, reg)) => {
+                            insert_outlives_predicate(
+                                tcx,
+                                ty.into(),
+                                reg,
+                                span,
+                                &mut required_predicates,
+                            )
+                        }
+
+                        ty::ClauseKind::RegionOutlives(OutlivesPredicate(reg1, reg2)) => {
+                            insert_outlives_predicate(
+                                tcx,
+                                reg1.into(),
+                                reg2,
+                                span,
+                                &mut required_predicates,
+                            )
+                        }
+                        ty::ClauseKind::Trait(_)
+                        | ty::ClauseKind::Projection(_)
+                        | ty::ClauseKind::ConstArgHasType(_, _)
+                        | ty::ClauseKind::WellFormed(_)
+                        | ty::ClauseKind::ConstEvaluatable(_) => {}
                     }
-                    ty::ClauseKind::Trait(_)
-                    | ty::ClauseKind::Projection(_)
-                    | ty::ClauseKind::ConstArgHasType(_, _)
-                    | ty::ClauseKind::WellFormed(_)
-                    | ty::ClauseKind::ConstEvaluatable(_) => {}
                 }
-            }
 
-            ty::EarlyBinder::bind(required_predicates)
-        })
+                ty::EarlyBinder::bind(required_predicates)
+            })
+            .as_ref()
     }
 }

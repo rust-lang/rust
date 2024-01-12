@@ -3,20 +3,17 @@
 
 #![allow(dead_code)]
 
-
-struct MustBeCopy<T:Copy> {
-    t: T
-}
-
 struct Foo<T> {
-    // needs T: 'static
-    x: fn() -> &'static T //~ ERROR E0310
+    x: fn() -> &'static T,
 }
 
 struct Bar<T> {
-    // needs T: Copy
-    x: fn(&'static T) //~ ERROR E0310
+    x: fn(&'static T),
 }
 
+fn not_static<T>() {
+    let _: Foo<T>; //~ ERROR E0310
+    let _: Bar<T>; //~ ERROR E0310
+}
 
 fn main() { }

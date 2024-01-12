@@ -15,11 +15,6 @@ impl<'a, T: ListItem<'a>> Collection for List<'a, T> {
     }
 }
 
-struct Foo<T> {
-    foo: &'static T
-    //~^ ERROR may not live long enough
-}
-
 trait X<K>: Sized {
     fn foo<'a, L: X<&'a Nested<K>>>();
     //~^ ERROR may not live long enough

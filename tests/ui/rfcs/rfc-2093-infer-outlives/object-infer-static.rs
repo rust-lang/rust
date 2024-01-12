@@ -1,5 +1,6 @@
 // Check that we enforce WF conditions also for types in fns.
-
+//
+// check-pass
 
 #![allow(dead_code)]
 
@@ -10,8 +11,7 @@ struct MustBeCopy<T:Copy> {
 }
 
 struct Foo<T> {
-    // needs T: 'static
-    x: dyn Object<&'static T> //~ ERROR E0310
+    x: dyn Object<&'static T>
 }
 
 

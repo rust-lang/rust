@@ -1,9 +1,9 @@
-/*
- * We don't infer `T: 'static` outlives relationships.
- */
+// We don't infer `T: 'static` outlives relationships.
+
+// check-pass
 
 struct Foo<U> {
-    bar: Bar<U> //~ ERROR the parameter type `U` may not live long enough [E0310]
+    bar: Bar<U>,
 }
 struct Bar<T: 'static> {
     x: T,

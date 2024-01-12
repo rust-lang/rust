@@ -21,7 +21,8 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
 ) {
     // If the `'a` region is bound within the field type itself, we
     // don't want to propagate this constraint to the header.
-    if !is_free_region(outlived_region) {
+    let valid_outlived_region = is_free_region(outlived_region) || outlived_region.is_static();
+    if !valid_outlived_region {
         return;
     }
 

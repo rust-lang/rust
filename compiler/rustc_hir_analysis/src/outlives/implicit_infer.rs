@@ -253,7 +253,7 @@ fn check_explicit_predicates<'tcx>(
     );
     let explicit_predicates = explicit_map.explicit_predicates_of(tcx, def_id);
 
-    for (outlives_predicate, &span) in explicit_predicates.as_ref().skip_binder() {
+    for (outlives_predicate, &span) in explicit_predicates.skip_binder() {
         debug!("outlives_predicate = {:?}", &outlives_predicate);
 
         // Careful: If we are inferring the effects of a `dyn Trait<..>`
