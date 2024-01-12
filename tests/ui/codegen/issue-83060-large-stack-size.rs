@@ -1,5 +1,4 @@
 // build-fail
-// only-64bit
 fn func() {
     const CAP: usize = std::u32::MAX as usize;
     let mut x: [u8; CAP>>1] = [0; CAP>>1];
@@ -8,8 +7,12 @@ fn func() {
 }
 
 fn main() {
+    let mut n = 5;
+    if cfg!(target_pointer_width = "32") {
+        n = 3;
+    }
     std::thread::Builder::new()
-        .stack_size(5 * 1024 * 1024 * 1024)
+        .stack_size(n * 1024 * 1024 * 1024)
         .spawn(func)
         .unwrap()
         .join()
