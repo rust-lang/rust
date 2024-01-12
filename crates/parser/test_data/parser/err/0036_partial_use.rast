@@ -20,8 +20,7 @@ SOURCE_FILE
             PATH_SEGMENT
               NAME_REF
                 IDENT "Error"
-        ERROR
-          SEMICOLON ";"
+    SEMICOLON ";"
   WHITESPACE "\n"
   USE
     USE_KW "use"
@@ -38,7 +37,4 @@ SOURCE_FILE
             IDENT "io"
     SEMICOLON ";"
   WHITESPACE "\n"
-error 22: expected COMMA
-error 22: expected one of `*`, `::`, `{`, `self`, `super` or an identifier
-error 23: expected R_CURLY
-error 23: expected SEMICOLON
+error 22: expected R_CURLY
