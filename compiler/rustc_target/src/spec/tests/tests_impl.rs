@@ -73,15 +73,21 @@ impl Target {
                 };
 
                 match self.linker_flavor {
-                    LinkerFlavor::Gnu(Cc::Yes, lld) => check_noncc(LinkerFlavor::Gnu(Cc::No, lld)),
-                    LinkerFlavor::WasmLld(Cc::Yes) => check_noncc(LinkerFlavor::WasmLld(Cc::No)),
-                    LinkerFlavor::Unix(Cc::Yes) => check_noncc(LinkerFlavor::Unix(Cc::No)),
+                    LinkerFlavor::Gnu(Cc::Yes | Cc::Clang, lld) => {
+                        check_noncc(LinkerFlavor::Gnu(Cc::No, lld))
+                    }
+                    LinkerFlavor::WasmLld(Cc::Yes | Cc::Clang) => {
+                        check_noncc(LinkerFlavor::WasmLld(Cc::No))
+                    }
+                    LinkerFlavor::Unix(Cc::Yes | Cc::Clang) => {
+                        check_noncc(LinkerFlavor::Unix(Cc::No))
+                    }
                     _ => {}
                 }
             }
 
             // Check that link args for lld and non-lld versions of flavors are consistent.
-            for cc in [Cc::No, Cc::Yes] {
+            for cc in [Cc::No, Cc::Yes, Cc::Clang] {
                 assert_eq!(
                     args.get(&LinkerFlavor::Gnu(cc, Lld::No)),
                     args.get(&LinkerFlavor::Gnu(cc, Lld::Yes)),

@@ -65,6 +65,7 @@ pub use base::avr_gnu::ef_avr_arch;
 /// Linker is called through a C/C++ compiler.
 #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub enum Cc {
+    Clang,
     Yes,
     No,
 }
@@ -244,10 +245,10 @@ impl LinkerFlavor {
     /// Returns the corresponding backwards-compatible CLI flavor.
     fn to_cli(self) -> LinkerFlavorCli {
         match self {
-            LinkerFlavor::Gnu(Cc::Yes, _)
-            | LinkerFlavor::Darwin(Cc::Yes, _)
-            | LinkerFlavor::WasmLld(Cc::Yes)
-            | LinkerFlavor::Unix(Cc::Yes) => LinkerFlavorCli::Gcc,
+            LinkerFlavor::Gnu(Cc::Yes | Cc::Clang, _)
+            | LinkerFlavor::Darwin(Cc::Yes | Cc::Clang, _)
+            | LinkerFlavor::WasmLld(Cc::Yes | Cc::Clang)
+            | LinkerFlavor::Unix(Cc::Yes | Cc::Clang) => LinkerFlavorCli::Gcc,
             LinkerFlavor::Gnu(_, Lld::Yes) => LinkerFlavorCli::Lld(LldFlavor::Ld),
             LinkerFlavor::Darwin(_, Lld::Yes) => LinkerFlavorCli::Lld(LldFlavor::Ld64),
             LinkerFlavor::WasmLld(..) => LinkerFlavorCli::Lld(LldFlavor::Wasm),
@@ -308,12 +309,14 @@ impl LinkerFlavor {
             || stem.ends_with("-gcc")
             || stem == "g++"
             || stem.ends_with("-g++")
-            || stem == "clang"
+        {
+            (Some(Cc::Yes), Some(Lld::No))
+        } else if stem == "clang"
             || stem.ends_with("-clang")
             || stem == "clang++"
             || stem.ends_with("-clang++")
         {
-            (Some(Cc::Yes), Some(Lld::No))
+            (Some(Cc::Clang), Some(Lld::No))
         } else if stem == "wasm-ld"
             || stem.ends_with("-wasm-ld")
             || stem == "ld.lld"
@@ -420,10 +423,10 @@ impl LinkerFlavor {
     pub fn uses_cc(self) -> bool {
         // Exhaustive match in case new flavors are added in the future.
         match self {
-            LinkerFlavor::Gnu(Cc::Yes, _)
-            | LinkerFlavor::Darwin(Cc::Yes, _)
-            | LinkerFlavor::WasmLld(Cc::Yes)
-            | LinkerFlavor::Unix(Cc::Yes)
+            LinkerFlavor::Gnu(Cc::Yes | Cc::Clang, _)
+            | LinkerFlavor::Darwin(Cc::Yes | Cc::Clang, _)
+            | LinkerFlavor::WasmLld(Cc::Yes | Cc::Clang)
+            | LinkerFlavor::Unix(Cc::Yes | Cc::Clang)
             | LinkerFlavor::EmCc => true,
             LinkerFlavor::Gnu(..)
             | LinkerFlavor::Darwin(..)
@@ -468,14 +471,20 @@ linker_flavor_cli_impls! {
     (LinkerFlavorCli::Gnu(Cc::No, Lld::Yes)) "gnu-lld"
     (LinkerFlavorCli::Gnu(Cc::Yes, Lld::No)) "gnu-cc"
     (LinkerFlavorCli::Gnu(Cc::Yes, Lld::Yes)) "gnu-lld-cc"
+    (LinkerFlavorCli::Gnu(Cc::Clang, Lld::No)) "gnu-clang"
+    (LinkerFlavorCli::Gnu(Cc::Clang, Lld::Yes)) "gnu-lld-clang"
     (LinkerFlavorCli::Darwin(Cc::No, Lld::No)) "darwin"
     (LinkerFlavorCli::Darwin(Cc::No, Lld::Yes)) "darwin-lld"
     (LinkerFlavorCli::Darwin(Cc::Yes, Lld::No)) "darwin-cc"
     (LinkerFlavorCli::Darwin(Cc::Yes, Lld::Yes)) "darwin-lld-cc"
+    (LinkerFlavorCli::Darwin(Cc::Clang, Lld::No)) "darwin-clang"
+    (LinkerFlavorCli::Darwin(Cc::Clang, Lld::Yes)) "darwin-lld-clang"
     (LinkerFlavorCli::WasmLld(Cc::No)) "wasm-lld"
     (LinkerFlavorCli::WasmLld(Cc::Yes)) "wasm-lld-cc"
+    (LinkerFlavorCli::WasmLld(Cc::Clang)) "wasm-lld-clang"
     (LinkerFlavorCli::Unix(Cc::No)) "unix"
     (LinkerFlavorCli::Unix(Cc::Yes)) "unix-cc"
+    (LinkerFlavorCli::Unix(Cc::Clang)) "unix-clang"
     (LinkerFlavorCli::Msvc(Lld::Yes)) "msvc-lld"
     (LinkerFlavorCli::Msvc(Lld::No)) "msvc"
     (LinkerFlavorCli::EmCc) "em-cc"
