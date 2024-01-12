@@ -94,12 +94,12 @@ jobs:
       - if: "contains(matrix.os, 'windows')"
         uses: msys2/setup-msys2@76b1bed68bac51ebe46cb431077217d4b98e2b7b
         with:
-          msystem: "${{ contains(matrix.name, 'x86_64') && 'mingw64' || 'mingw32' }}"
+          msystem: "${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}"
           update: false
           release: true
           path-type: inherit
           install: "make git\n"
-          pacboy: "cmake:p\n"
+          pacboy: "cmake:p gcc:p\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -485,12 +485,12 @@ jobs:
       - if: "contains(matrix.os, 'windows')"
         uses: msys2/setup-msys2@76b1bed68bac51ebe46cb431077217d4b98e2b7b
         with:
-          msystem: "${{ contains(matrix.name, 'x86_64') && 'mingw64' || 'mingw32' }}"
+          msystem: "${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}"
           update: false
           release: true
           path-type: inherit
           install: "make git\n"
-          pacboy: "cmake:p\n"
+          pacboy: "cmake:p gcc:p\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -622,12 +622,12 @@ jobs:
       - if: "contains(matrix.os, 'windows')"
         uses: msys2/setup-msys2@76b1bed68bac51ebe46cb431077217d4b98e2b7b
         with:
-          msystem: "${{ contains(matrix.name, 'x86_64') && 'mingw64' || 'mingw32' }}"
+          msystem: "${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}"
           update: false
           release: true
           path-type: inherit
           install: "make git\n"
-          pacboy: "cmake:p\n"
+          pacboy: "cmake:p gcc:p\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:

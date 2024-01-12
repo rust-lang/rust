@@ -121,7 +121,8 @@ x--expand-yaml-anchors--remove:
       - if: contains(matrix.os, 'windows')
         uses: msys2/setup-msys2@76b1bed68bac51ebe46cb431077217d4b98e2b7b #git SHA for v2.21.0
         with:
-          msystem: ${{ contains(matrix.name, 'x86_64') && 'mingw64' || 'mingw32' }}
+          # i686 jobs use mingw32. x86_64 and cross-compile jobs use mingw64.
+          msystem: ${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}
           # don't try to download package updates from the network
           update: false
           # don't try to use the msys that comes built-in to the github runner,
@@ -135,8 +136,8 @@ x--expand-yaml-anchors--remove:
             git
           pacboy: >
             cmake:p
+            gcc:p
           #   toolchain:p
-          #   gcc:p
           #python:p
           #   mingw-w64-x86_64-python
           #   mingw-w64-x86_64-jq
