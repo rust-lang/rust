@@ -179,7 +179,7 @@ use std::fmt::Debug;
 use std::fmt$0::Display;
 ",
             r"
-use std::fmt::{Display, Debug};
+use std::fmt::{Debug, Display};
 ",
         );
     }
@@ -206,7 +206,7 @@ use std::fmt::{self, Display};
 use std::{fmt, $0fmt::Display};
 ",
             r"
-use std::{fmt::{Display, self}};
+use std::{fmt::{self, Display}};
 ",
         );
     }
@@ -318,7 +318,7 @@ use std::{fmt::{Debug, Display}};
 use std::{fmt::Debug, fmt$0::Display};
 ",
             r"
-use std::{fmt::{Display, Debug}};
+use std::{fmt::{Debug, Display}};
 ",
         );
     }
@@ -332,7 +332,7 @@ use std$0::{fmt::{Write, Display}};
 use std::{fmt::{self, Debug}};
 ",
             r"
-use std::{fmt::{Write, Display, self, Debug}};
+use std::{fmt::{self, Debug, Display, Write}};
 ",
         );
     }
@@ -346,7 +346,7 @@ use std$0::{fmt::{self, Debug}};
 use std::{fmt::{Write, Display}};
 ",
             r"
-use std::{fmt::{self, Debug, Write, Display}};
+use std::{fmt::{self, Debug, Display, Write}};
 ",
         );
     }
@@ -359,7 +359,7 @@ use std::{fmt::{self, Debug, Write, Display}};
 use std::{fmt$0::{self, Debug}, fmt::{Write, Display}};
 ",
             r"
-use std::{fmt::{self, Debug, Write, Display}};
+use std::{fmt::{self, Debug, Display, Write}};
 ",
         );
     }
@@ -401,7 +401,7 @@ use std$0::{fmt::*};
 use std::{fmt::{self, Display}};
 ",
             r"
-use std::{fmt::{*, self, Display}};
+use std::{fmt::{self, Display, *}};
 ",
         )
     }
@@ -496,7 +496,7 @@ use foo::$0{
 ",
             r"
 use foo::{
-    FooBar, bar::baz,
+    bar::baz, FooBar
 };
 ",
         )
@@ -521,7 +521,7 @@ use foo::$0*;
 use foo::bar::Baz;
 ",
             r"
-use foo::{*, bar::Baz};
+use foo::{bar::Baz, *};
 ",
         );
     }
@@ -539,7 +539,7 @@ $0use std::fmt::Result;
 ",
             r"
 use std::fmt::Error;
-use std::fmt::{Display, Debug, Write};
+use std::fmt::{Debug, Display, Write};
 use std::fmt::Result;
 ",
         );
@@ -560,7 +560,7 @@ use std::{
             r"
 use std::{
     fmt::Error,
-    fmt::{Display, Debug, Write},
+    fmt::{Debug, Display, Write},
     fmt::Result,
 };",
         );
@@ -568,7 +568,7 @@ use std::{
         check_assist(
             merge_imports,
             r"use std::$0{fmt::Display, fmt::Debug}$0;",
-            r"use std::{fmt::{Display, Debug}};",
+            r"use std::{fmt::{Debug, Display}};",
         );
     }
 }

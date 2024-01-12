@@ -1,10 +1,14 @@
 //! Handle syntactic aspects of merging UseTrees.
 use std::cmp::Ordering;
+use std::iter::{empty, successors};
 
 use itertools::{EitherOrBoth, Itertools};
+use parser::{SyntaxKind, T};
+use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
-    ast::{self, AstNode, HasAttrs, HasName, HasVisibility, PathSegmentKind},
-    ted, TokenText,
+    ast::{self, make, AstNode, HasAttrs, HasName, HasVisibility, PathSegmentKind},
+    ted::{self, Position},
+    SyntaxElement, TokenText,
 };
 
 use crate::syntax_helpers::node_ext::vis_eq;
@@ -97,20 +101,35 @@ fn recursive_merge(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior)
         // same as a `filter` op).
         .map(|tree| merge.is_tree_allowed(&tree).then_some(tree))
         .collect::<Option<_>>()?;
+    // Preserves some positional formatting info before sorting.
+    let positional_formatting_map: FxHashMap<_, _> = use_trees
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, tree)| {
+            formatting_whitespace(&SyntaxElement::from(tree.syntax().clone()))
+                .map(|trivia| (idx, trivia))
+        })
+        .collect();
+    let closing_formatting_trivia = if use_trees.len() > 0 {
+        lhs.use_tree_list()
+            .and_then(|list| list.r_curly_token())
+            .and_then(|token| formatting_whitespace(&SyntaxElement::from(token)))
+    } else {
+        None
+    };
+    // Sorts the use trees similar to rustfmt's algorithm for ordering imports
+    // (see `use_tree_cmp` doc).
     use_trees.sort_unstable_by(|a, b| use_tree_cmp(a, b));
     for rhs_t in rhs.use_tree_list().into_iter().flat_map(|list| list.use_trees()) {
         if !merge.is_tree_allowed(&rhs_t) {
             return None;
         }
-        let rhs_path = rhs_t.path();
 
-        match use_trees
-            .binary_search_by(|lhs_t| path_cmp_bin_search(lhs_t.path(), rhs_path.as_ref()))
-        {
+        match use_trees.binary_search_by(|lhs_t| use_tree_cmp_bin_search(lhs_t, &rhs_t)) {
             Ok(idx) => {
                 let lhs_t = &mut use_trees[idx];
                 let lhs_path = lhs_t.path()?;
-                let rhs_path = rhs_path?;
+                let rhs_path = rhs_t.path()?;
                 let (lhs_prefix, rhs_prefix) = common_prefix(&lhs_path, &rhs_path)?;
                 if lhs_prefix == lhs_path && rhs_prefix == rhs_path {
                     let tree_is_self = |tree: &ast::UseTree| {
@@ -159,13 +178,66 @@ fn recursive_merge(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior)
             {
                 return None
             }
-            Err(idx) => {
-                use_trees.insert(idx, rhs_t.clone());
-                lhs.get_or_create_use_tree_list().add_use_tree(rhs_t);
+            Err(insert_idx) => {
+                use_trees.insert(insert_idx, rhs_t.clone());
+                match lhs.use_tree_list() {
+                    // Creates a new use tree list with the item.
+                    None => lhs.get_or_create_use_tree_list().add_use_tree(rhs_t),
+                    // Recreates the use tree list with sorted items (see `use_tree_cmp` doc).
+                    // Also attempts to preserve formatting (but only in terms of index-based
+                    // "positions" of new lines and indents).
+                    Some(old_list) => {
+                        ted::remove(old_list.syntax());
+
+                        let new_list = make::use_tree_list(empty()).clone_for_update();
+                        let mut elements = Vec::new();
+                        for (idx, tree) in use_trees.iter().enumerate() {
+                            if idx > 0 {
+                                elements.push(make::token(T![,]).into());
+                            }
+                            match positional_formatting_map.get(&idx) {
+                                None if idx > 0 => {
+                                    elements.push(make::tokens::single_space().into())
+                                }
+                                Some(prev_trivia) => {
+                                    elements.extend(prev_trivia.clone().into_iter())
+                                }
+                                _ => (),
+                            }
+                            elements.push(tree.syntax().clone().into());
+                        }
+                        if let Some(ref trivia) = closing_formatting_trivia {
+                            elements.extend(trivia.clone().into_iter())
+                        }
+
+                        let trees_pos = match new_list.l_curly_token() {
+                            Some(l_curly) => Position::after(l_curly),
+                            None => Position::last_child_of(new_list.syntax()),
+                        };
+                        ted::insert_all_raw(trees_pos, elements);
+
+                        let list_pos = Position::last_child_of(lhs.syntax());
+                        ted::insert_raw(list_pos, new_list.syntax());
+                    }
+                }
             }
         }
     }
-    Some(())
+    return Some(());
+
+    // Returns all trivia preceding a syntax element if it may be relevant to formatting
+    // (i.e. includes at least one new line character).
+    fn formatting_whitespace(elem: &SyntaxElement) -> Option<FxHashSet<SyntaxElement>> {
+        let succ =
+            |item: &SyntaxElement| item.prev_sibling_or_token().filter(|it| it.kind().is_trivia());
+        let first = succ(elem);
+        let trivia_set: FxHashSet<_> = successors(first, succ).collect();
+        let contains_formatting_whitespace = trivia_set.iter().any(|it| {
+            it.kind() == SyntaxKind::WHITESPACE
+                && it.as_token().is_some_and(|token| token.text().contains('\n'))
+        });
+        contains_formatting_whitespace.then_some(trivia_set)
+    }
 }
 
 /// Traverses both paths until they differ, returning the common prefix of both.
@@ -190,70 +262,39 @@ pub fn common_prefix(lhs: &ast::Path, rhs: &ast::Path) -> Option<(ast::Path, ast
     }
 }
 
-/// Path comparison func for binary searching for merging.
-fn path_cmp_bin_search(lhs: Option<ast::Path>, rhs: Option<&ast::Path>) -> Ordering {
-    match (lhs.as_ref().and_then(ast::Path::first_segment), rhs.and_then(ast::Path::first_segment))
-    {
-        (None, None) => Ordering::Equal,
-        (None, Some(_)) => Ordering::Less,
+/// Use tree comparison func for binary searching for merging.
+fn use_tree_cmp_bin_search(lhs: &ast::UseTree, rhs: &ast::UseTree) -> Ordering {
+    match (
+        lhs.path().as_ref().and_then(ast::Path::first_segment),
+        rhs.path().as_ref().and_then(ast::Path::first_segment),
+    ) {
+        (None, None) => match (lhs.is_simple_path(), lhs.is_simple_path()) {
+            (true, true) => Ordering::Equal,
+            (true, false) => Ordering::Less,
+            (false, true) => Ordering::Greater,
+            (false, false) => use_tree_cmp_by_tree_list_glob_or_alias(lhs, rhs, false),
+        },
+        (Some(_), None) if !rhs.is_simple_path() => Ordering::Less,
         (Some(_), None) => Ordering::Greater,
+        (None, Some(_)) if !lhs.is_simple_path() => Ordering::Greater,
+        (None, Some(_)) => Ordering::Less,
         (Some(ref a), Some(ref b)) => path_segment_cmp(a, b),
     }
 }
 
-/// Orders use trees following `rustfmt`'s algorithm for ordering imports, which is `self`, `super` and `crate` first,
-/// then identifier imports with lowercase ones first and upper snake case (e.g. UPPER_SNAKE_CASE) ones last,
-/// then glob imports, and at last list imports.
+/// Orders use trees following `rustfmt`'s algorithm for ordering imports, which is `self`, `super`
+/// and `crate` first, then identifier imports with lowercase ones first and upper snake case
+/// (e.g. UPPER_SNAKE_CASE) ones last, then glob imports, and at last list imports.
 ///
 /// Example foo::{self, foo, baz, Baz, Qux, FOO_BAZ, *, {Bar}}
 /// Ref: <https://github.com/rust-lang/rustfmt/blob/6356fca675bd756d71f5c123cd053d17b16c573e/src/imports.rs#L83-L86>.
 pub(super) fn use_tree_cmp(a: &ast::UseTree, b: &ast::UseTree) -> Ordering {
-    let tiebreak_by_glob_or_alias = || match (a.star_token().is_some(), b.star_token().is_some()) {
-        (true, false) => Ordering::Greater,
-        (false, true) => Ordering::Less,
-        _ => match (a.rename(), b.rename()) {
-            (None, None) => Ordering::Equal,
-            (Some(_), None) => Ordering::Greater,
-            (None, Some(_)) => Ordering::Less,
-            (Some(a_rename), Some(b_rename)) => a_rename
-                .name()
-                .as_ref()
-                .map(ast::Name::text)
-                .as_ref()
-                .map_or("_", TokenText::as_str)
-                .cmp(
-                    b_rename
-                        .name()
-                        .as_ref()
-                        .map(ast::Name::text)
-                        .as_ref()
-                        .map_or("_", TokenText::as_str),
-                ),
-        },
-    };
-    let tiebreak_by_tree_list_glob_or_alias = || match (a.use_tree_list(), b.use_tree_list()) {
-        (None, None) => tiebreak_by_glob_or_alias(),
-        (Some(_), None) => Ordering::Greater,
-        (None, Some(_)) => Ordering::Less,
-        (Some(a_list), Some(b_list)) => a_list
-            .use_trees()
-            .zip_longest(b_list.use_trees())
-            .find_map(|zipped| match zipped {
-                EitherOrBoth::Both(ref a_tree, ref b_tree) => match use_tree_cmp(a_tree, b_tree) {
-                    Ordering::Equal => None,
-                    ord => Some(ord),
-                },
-                EitherOrBoth::Left(_) => Some(Ordering::Greater),
-                EitherOrBoth::Right(_) => Some(Ordering::Less),
-            })
-            .unwrap_or_else(tiebreak_by_glob_or_alias),
-    };
     match (a.path(), b.path()) {
         (None, None) => match (a.is_simple_path(), b.is_simple_path()) {
             (true, true) => Ordering::Equal,
             (true, false) => Ordering::Less,
             (false, true) => Ordering::Greater,
-            (false, false) => tiebreak_by_tree_list_glob_or_alias(),
+            (false, false) => use_tree_cmp_by_tree_list_glob_or_alias(a, b, true),
         },
         (Some(_), None) if !b.is_simple_path() => Ordering::Less,
         (Some(_), None) => Ordering::Greater,
@@ -277,7 +318,7 @@ pub(super) fn use_tree_cmp(a: &ast::UseTree, b: &ast::UseTree) -> Ordering {
                     EitherOrBoth::Right(_) if a.is_simple_path() => Some(Ordering::Less),
                     EitherOrBoth::Right(_) => Some(Ordering::Greater),
                 })
-                .unwrap_or_else(tiebreak_by_tree_list_glob_or_alias)
+                .unwrap_or_else(|| use_tree_cmp_by_tree_list_glob_or_alias(a, b, true))
         }
     }
 }
@@ -335,6 +376,61 @@ fn path_segment_cmp(a: &ast::PathSegment, b: &ast::PathSegment) -> Ordering {
                 }
             }
         }
+    }
+}
+
+// Orders for use trees with equal paths (see `use_tree_cmp` for details about use tree ordering).
+//
+// If the `strict` parameter is set to true and both trees have tree lists, the tree lists are
+// ordered by calling `use_tree_cmp` on their "sub-tree" pairs until either the tie is broken
+// or tree list equality is confirmed, otherwise (i.e. if either `strict` is false or at least
+// one of the trees does *not* have tree list), this potentially recursive step is skipped,
+// and only the presence of a glob pattern or an alias is used to determine the ordering.
+fn use_tree_cmp_by_tree_list_glob_or_alias(
+    a: &ast::UseTree,
+    b: &ast::UseTree,
+    strict: bool,
+) -> Ordering {
+    let cmp_by_glob_or_alias = || match (a.star_token().is_some(), b.star_token().is_some()) {
+        (true, false) => Ordering::Greater,
+        (false, true) => Ordering::Less,
+        _ => match (a.rename(), b.rename()) {
+            (None, None) => Ordering::Equal,
+            (Some(_), None) => Ordering::Greater,
+            (None, Some(_)) => Ordering::Less,
+            (Some(a_rename), Some(b_rename)) => a_rename
+                .name()
+                .as_ref()
+                .map(ast::Name::text)
+                .as_ref()
+                .map_or("_", TokenText::as_str)
+                .cmp(
+                    b_rename
+                        .name()
+                        .as_ref()
+                        .map(ast::Name::text)
+                        .as_ref()
+                        .map_or("_", TokenText::as_str),
+                ),
+        },
+    };
+
+    match (a.use_tree_list(), b.use_tree_list()) {
+        (Some(_), None) => Ordering::Greater,
+        (None, Some(_)) => Ordering::Less,
+        (Some(a_list), Some(b_list)) if strict => a_list
+            .use_trees()
+            .zip_longest(b_list.use_trees())
+            .find_map(|zipped| match zipped {
+                EitherOrBoth::Both(ref a_tree, ref b_tree) => match use_tree_cmp(a_tree, b_tree) {
+                    Ordering::Equal => None,
+                    ord => Some(ord),
+                },
+                EitherOrBoth::Left(_) => Some(Ordering::Greater),
+                EitherOrBoth::Right(_) => Some(Ordering::Less),
+            })
+            .unwrap_or_else(cmp_by_glob_or_alias),
+        _ => cmp_by_glob_or_alias(),
     }
 }
 
