@@ -532,8 +532,14 @@ lint_unknown_gated_lint =
 
 lint_unknown_lint =
     unknown lint: `{$name}`
-    .suggestion = did you mean
-    .help = did you mean: `{$replace}`
+    .suggestion = {$from_rustc ->
+        [true] a lint with a similar name exists in `rustc` lints
+        *[false] did you mean
+    }
+    .help = {$from_rustc ->
+        [true] a lint with a similar name exists in `rustc` lints: `{$replace}`
+        *[false] did you mean: `{$replace}`
+    }
 
 lint_unknown_tool_in_scoped_lint = unknown tool name `{$tool_name}` found in scoped lint: `{$tool_name}::{$lint_name}`
     .help = add `#![register_tool({$tool_name})]` to the crate root
