@@ -135,6 +135,13 @@ config_data! {
         ///
         /// This option does not take effect until rust-analyzer is restarted.
         cargo_sysroot: Option<String>    = "\"discover\"",
+        /// Whether to run cargo metadata on the sysroot library allowing rust-analyzer to analyze
+        /// third-party dependencies of the standard libraries.
+        ///
+        /// This will cause `cargo` to create a lockfile in your sysroot directory. rust-analyzer
+        /// will attempt to clean up afterwards, but nevertheless requires the location to be
+        /// writable to.
+        cargo_sysrootQueryMetadata: bool     = "false",
         /// Relative path to the sysroot library sources. If left unset, this will default to
         /// `{cargo.sysroot}/lib/rustlib/src/rust/library`.
         ///
@@ -1233,6 +1240,7 @@ impl Config {
         });
         let sysroot_src =
             self.data.cargo_sysrootSrc.as_ref().map(|sysroot| self.root_path.join(sysroot));
+        let sysroot_query_metadata = self.data.cargo_sysrootQueryMetadata;
 
         CargoConfig {
             features: match &self.data.cargo_features {
@@ -1244,6 +1252,7 @@ impl Config {
             },
             target: self.data.cargo_target.clone(),
             sysroot,
+            sysroot_query_metadata,
             sysroot_src,
             rustc_source,
             cfg_overrides: project_model::CfgOverrides {

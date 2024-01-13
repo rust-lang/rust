@@ -61,9 +61,12 @@ impl Tester {
         cargo_config.sysroot = Some(RustLibSource::Discover);
         let workspace = ProjectWorkspace::DetachedFiles {
             files: vec![tmp_file.clone()],
-            sysroot: Ok(
-                Sysroot::discover(tmp_file.parent().unwrap(), &cargo_config.extra_env).unwrap()
-            ),
+            sysroot: Ok(Sysroot::discover(
+                tmp_file.parent().unwrap(),
+                &cargo_config.extra_env,
+                false,
+            )
+            .unwrap()),
             rustc_cfg: vec![],
         };
         let load_cargo_config = LoadCargoConfig {

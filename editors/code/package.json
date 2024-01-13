@@ -648,6 +648,11 @@
                         "string"
                     ]
                 },
+                "rust-analyzer.cargo.sysrootQueryMetadata": {
+                    "markdownDescription": "Whether to run cargo metadata on the sysroot library allowing rust-analyzer to analyze\nthird-party dependencies of the standard libraries.\n\nThis will cause `cargo` to create a lockfile in your sysroot directory. rust-analyzer\nwill attempt to clean up afterwards, but nevertheless requires the location to be\nwritable to.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.cargo.sysrootSrc": {
                     "markdownDescription": "Relative path to the sysroot library sources. If left unset, this will default to\n`{cargo.sysroot}/lib/rustlib/src/rust/library`.\n\nThis option does not take effect until rust-analyzer is restarted.",
                     "default": null,
