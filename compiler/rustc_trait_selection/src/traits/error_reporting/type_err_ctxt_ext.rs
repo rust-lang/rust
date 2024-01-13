@@ -947,9 +947,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             Overflow(_) => {
                 bug!("overflow should be handled before the `report_selection_error` path");
             }
-            SelectionError::ErrorReporting => {
-                bug!("ErrorReporting Overflow should not reach `report_selection_err` call")
-            }
         };
 
         self.note_obligation_cause(&mut err, &obligation);
@@ -3459,13 +3456,11 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let found_node = found_did.and_then(|did| self.tcx.hir().get_if_local(did));
         let found_span = found_did.and_then(|did| self.tcx.hir().span_if_local(did));
 
-        if self.reported_closure_mismatch.borrow().contains(&(span, found_span)) {
+        if !self.reported_signature_mismatch.borrow_mut().insert((span, found_span)) {
             // We check closures twice, with obligations flowing in different directions,
             // but we want to complain about them only once.
             return None;
         }
-
-        self.reported_closure_mismatch.borrow_mut().insert((span, found_span));
 
         let mut not_tupled = false;
 

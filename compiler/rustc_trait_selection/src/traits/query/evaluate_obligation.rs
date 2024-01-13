@@ -116,11 +116,9 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
                             r,
                         )
                     }
-                    OverflowError::ErrorReporting => EvaluationResult::EvaluatedToErr,
                     OverflowError::Error(_) => EvaluationResult::EvaluatedToErr,
                 })
             }
-            Err(OverflowError::ErrorReporting) => EvaluationResult::EvaluatedToErr,
             Err(OverflowError::Error(_)) => EvaluationResult::EvaluatedToErr,
         }
     }
