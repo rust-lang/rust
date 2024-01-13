@@ -142,9 +142,10 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn lint_mod(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
-    if !tcx.sess.opts.lint_cap.is_some_and(|cap| cap == Level::Allow) {
-        late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
+    if let Some(lint_cap) = tcx.sess.opts.lint_cap && lint_cap == Level::Allow {
+        return;
     }
+    late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
 }
 
 early_lint_methods!(
