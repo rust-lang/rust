@@ -36,6 +36,11 @@ pub struct FulfillmentCtxt<'tcx> {
 
 impl<'tcx> FulfillmentCtxt<'tcx> {
     pub fn new(infcx: &InferCtxt<'tcx>) -> FulfillmentCtxt<'tcx> {
+        assert!(
+            infcx.next_trait_solver(),
+            "new trait solver fulfillment context created when \
+            infcx is set up for old trait solver"
+        );
         FulfillmentCtxt { obligations: Vec::new(), usable_in_snapshot: infcx.num_open_snapshots() }
     }
 }
