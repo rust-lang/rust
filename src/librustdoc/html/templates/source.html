@@ -11,6 +11,11 @@
         {% endfor %}
     </pre></div> {# #}
     <pre class="rust"> {# #}
+        <button class="copy-code" title="Copy to clipboard"> {# #}
+            <img src="{{static_root_path|safe}}{{files.clipboard_svg}}" {#+ #}
+                width="15" height="15" {#+ #}
+                alt="Copy to clipboard"> {# #}
+        </button> {# #}
         <code>
             {% if needs_expansion %}
                 <button class="expand">&varr;</button>
