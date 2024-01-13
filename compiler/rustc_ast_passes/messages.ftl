@@ -232,6 +232,9 @@ ast_passes_tilde_const_disallowed = `~const` is not allowed here
     .trait = this trait is not a `#[const_trait]`, so it cannot have `~const` trait bounds
     .trait_impl = this impl is not `const`, so it cannot have `~const` trait bounds
     .impl = inherent impls cannot have `~const` trait bounds
+    .trait_assoc_ty = associated types in non-`#[const_trait]` traits cannot have `~const` trait bounds
+    .trait_impl_assoc_ty = associated types in non-const impls cannot have `~const` trait bounds
+    .inherent_assoc_ty = inherent associated types cannot have `~const` trait bounds
     .object = trait objects cannot have `~const` trait bounds
     .item = this item cannot have `~const` trait bounds
 

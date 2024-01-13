@@ -72,7 +72,11 @@ error: `~const` is not allowed here
 LL |     type Type<T: ~const Trait>: ~const Trait;
    |                  ^^^^^^
    |
-   = note: this item cannot have `~const` trait bounds
+note: associated types in non-`#[const_trait]` traits cannot have `~const` trait bounds
+  --> $DIR/tilde-const-invalid-places.rs:25:5
+   |
+LL |     type Type<T: ~const Trait>: ~const Trait;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:25:33
@@ -80,7 +84,11 @@ error: `~const` is not allowed here
 LL |     type Type<T: ~const Trait>: ~const Trait;
    |                                 ^^^^^^
    |
-   = note: this item cannot have `~const` trait bounds
+note: associated types in non-`#[const_trait]` traits cannot have `~const` trait bounds
+  --> $DIR/tilde-const-invalid-places.rs:25:5
+   |
+LL |     type Type<T: ~const Trait>: ~const Trait;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:28:30
@@ -108,7 +116,11 @@ error: `~const` is not allowed here
 LL |     type Type<T: ~const Trait> = ();
    |                  ^^^^^^
    |
-   = note: this item cannot have `~const` trait bounds
+note: associated types in non-const impls cannot have `~const` trait bounds
+  --> $DIR/tilde-const-invalid-places.rs:34:5
+   |
+LL |     type Type<T: ~const Trait> = ();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:36:30
@@ -136,7 +148,11 @@ error: `~const` is not allowed here
 LL |     type Type<T: ~const Trait> = ();
    |                  ^^^^^^
    |
-   = note: this item cannot have `~const` trait bounds
+note: inherent associated types cannot have `~const` trait bounds
+  --> $DIR/tilde-const-invalid-places.rs:44:5
+   |
+LL |     type Type<T: ~const Trait> = ();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `~const` is not allowed here
   --> $DIR/tilde-const-invalid-places.rs:46:30
