@@ -1,4 +1,4 @@
-// compile-flags: -Zlint-mir -Ztreat-err-as-bug
+// compile-flags: -Zlint-mir -Ztreat-err-as-bug -Zeagerly-emit-delayed-bugs
 // failure-status: 101
 // dont-check-compiler-stderr
 // error-pattern: has storage when returning
