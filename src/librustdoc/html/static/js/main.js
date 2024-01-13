@@ -1734,6 +1734,39 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
     resizer.addEventListener("pointerdown", initResize, false);
 }());
 
+// This section handles the copy buttons that appears in top right corner of the code blocks
+(function() {
+    let preElements = document.querySelectorAll("pre:has(code)");
+    preElements.forEach(function(pre, index) {
+        let resetTimeout = null;
+        let copyBtn = pre.querySelector("button[class='copy-code']");
+        let icon = copyBtn.innerHTML;
+        console.log(copyBtn);
+        pre.style.background = "red"; 
+        pre.addEventListener("mouseenter", function() {
+            copyBtn.style.opacity = "1";
+            copyBtn.addEventListener("click", function() {
+                let code = pre.querySelector("code");
+                let summary = code.querySelector("summary");
+                let content = code.textContent;
+                content = content.replace(summary.textContent, "");
+                navigator.clipboard.writeText(content).then(function() {
+                    copyBtn.textContent = "✓";
+                    if (resetTimeout !== null) {
+                        clearTimeout(resetTimeout);
+                    }
+                    resetTimeout = setTimeout(function() {
+                        copyBtn.innerHTML = icon;
+                    }, 1000);
+                });
+            });
+        });
+        pre.addEventListener("mouseleave", function() {
+            copyBtn.style.opacity = "0";
+        });
+    });
+}());
+
 // This section handles the copy button that appears next to the path breadcrumbs
 (function() {
     let reset_button_timeout = null;
