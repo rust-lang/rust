@@ -82,6 +82,22 @@ rustup target add x86_64-unknown-uefi
 cargo build --target x86_64-unknown-uefi
 ```
 
+### Building a driver
+
+There are three types of UEFI executables: application, boot service
+driver, and runtime driver. All of Rust's UEFI targets default to
+producing applications. To build a driver instead, pass a
+[`subsystem`][linker-subsystem] linker flag with a value of
+`efi_boot_service_driver` or `efi_runtime_driver`.
+
+Example:
+
+```toml
+# In .cargo/config.toml:
+[build]
+rustflags = ["-C", "link-args=/subsystem:efi_runtime_driver"]
+```
+
 ## Testing
 
 UEFI applications can be copied into the ESP on any UEFI system and executed
@@ -313,6 +329,7 @@ The current implementation of std makes `BootServices` unavailable once `ExitBoo
 Note: It should be noted that it is up to the user to drop all allocated memory before `ExitBootServices` is called.
 
 [efi-crate]: https://github.com/gurry/efi
+[linker-subsystem]: https://learn.microsoft.com/en-us/cpp/build/reference/subsystem
 [r-efi]: https://github.com/r-efi/r-efi
 [uefi-rs]: https://github.com/rust-osdev/uefi-rs
 [uefi-run]: https://github.com/Richard-W/uefi-run
