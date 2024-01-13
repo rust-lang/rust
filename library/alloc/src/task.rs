@@ -173,14 +173,16 @@ fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
 ///
 /// This is a simplified example of a `spawn` and a `block_on` function. The `spawn` function
 /// is used to push new tasks onto the run queue, while the block on function will remove them
-/// and poll them. When a task is woken, it will put itself back on the run queue to be polled by the executor.
+/// and poll them. When a task is woken, it will put itself back on the run queue to be polled
+/// by the executor.
 ///
-/// **Note:** A real world example would interleave poll calls with calls to an io reactor to wait for events instead
-/// of spinning on a loop.
+/// **Note:** This example trades correctness for simplicity. A real world example would interleave
+/// poll calls with calls to an io reactor to wait for events instead of spinning on a loop.
 ///
 /// ```rust
 /// #![feature(local_waker)]
-/// use std::task::{LocalWake, ContextBuilder, LocalWaker};
+/// #![feature(noop_waker)]
+/// use std::task::{LocalWake, ContextBuilder, LocalWaker, Waker};
 /// use std::future::Future;
 /// use std::pin::Pin;
 /// use std::rc::Rc;
@@ -225,10 +227,12 @@ fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
 ///             // we exit, since there are no more tasks remaining on the queue
 ///             return;
 ///         };
+///         let waker = Waker::noop();
 ///         // cast the Rc<Task> into a `LocalWaker`
-///         let waker: LocalWaker = task.clone().into();
+///         let local_waker: LocalWaker = task.clone().into();
 ///         // Build the context using `ContextBuilder`
-///         let mut cx = ContextBuilder::from_local_waker(&waker)
+///         let mut cx = ContextBuilder::from_waker(&waker)
+///             .local_waker(&local_waker)
 ///             .build();
 ///
 ///         // Poll the task
