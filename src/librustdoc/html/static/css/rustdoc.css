@@ -1596,6 +1596,24 @@ a.tooltip:hover::after {
 	height: 22px;
 }
 
+.copy-code {
+	width: 32px;
+	height: 30px;
+	float: right;
+	opacity: 0;
+	transition: opacity ease 0.3s;
+	background: var(--code-block-background-color);
+	outline: 1px solid var(--main-color);
+	border-radius: 5px;
+	padding: 5px 7px 4px 8px;
+	z-index: 1;
+	position: sticky;
+}
+
+.copy-code > img {
+	filter: var(--copy-code-img-filter);
+}
+
 #copy-path {
 	color: var(--copy-path-button-color);
 	background: var(--main-background-color);
@@ -2329,6 +2347,7 @@ in src-script.js and main.js
 	--copy-path-button-color: #999;
 	--copy-path-img-filter: invert(50%);
 	--copy-path-img-hover-filter: invert(35%);
+	--copy-code-img-filter: invert(20%);
 	--codeblock-error-hover-color: rgb(255, 0, 0);
 	--codeblock-error-color: rgba(255, 0, 0, .5);
 	--codeblock-ignore-hover-color: rgb(255, 142, 0);
@@ -2434,6 +2453,7 @@ in src-script.js and main.js
 	--copy-path-button-color: #999;
 	--copy-path-img-filter: invert(50%);
 	--copy-path-img-hover-filter: invert(65%);
+	--copy-code-img-filter: invert(50%);
 	--codeblock-error-hover-color: rgb(255, 0, 0);
 	--codeblock-error-color: rgba(255, 0, 0, .5);
 	--codeblock-ignore-hover-color: rgb(255, 142, 0);
@@ -2546,6 +2566,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--copy-path-button-color: #fff;
 	--copy-path-img-filter: invert(70%);
 	--copy-path-img-hover-filter: invert(100%);
+	--copy-code-img-filter: invert(50%);
 	--codeblock-error-hover-color: rgb(255, 0, 0);
 	--codeblock-error-color: rgba(255, 0, 0, .5);
 	--codeblock-ignore-hover-color: rgb(255, 142, 0);
