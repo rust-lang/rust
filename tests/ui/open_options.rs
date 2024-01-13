@@ -1,6 +1,18 @@
+#![allow(unused_must_use)]
+#![warn(clippy::nonsensical_open_options)]
+
 use std::fs::OpenOptions;
-#[allow(unused_must_use)]
-#[warn(clippy::nonsensical_open_options)]
+
+trait OpenOptionsExt {
+    fn truncate_write(&mut self, opt: bool) -> &mut Self;
+}
+
+impl OpenOptionsExt for OpenOptions {
+    fn truncate_write(&mut self, opt: bool) -> &mut Self {
+        self.truncate(opt).write(opt)
+    }
+}
+
 fn main() {
     OpenOptions::new().read(true).truncate(true).open("foo.txt");
     //~^ ERROR: file opened with `truncate` and `read`
@@ -29,6 +41,12 @@ fn main() {
     let mut options = std::fs::OpenOptions::new();
     options.read(true);
     options.read(false);
-    //#~^ ERROR: the method `read` is called more than once
+    // Possible future improvement: recognize open options method call chains across statements.
     options.open("foo.txt");
+
+    let mut options = std::fs::OpenOptions::new();
+    options.truncate(true);
+    options.create(true).open("foo.txt");
+
+    OpenOptions::new().create(true).truncate_write(true).open("foo.txt");
 }

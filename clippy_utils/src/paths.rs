@@ -26,6 +26,7 @@ pub const EARLY_CONTEXT: [&str; 2] = ["rustc_lint", "EarlyContext"];
 pub const EARLY_LINT_PASS: [&str; 3] = ["rustc_lint", "passes", "EarlyLintPass"];
 pub const F32_EPSILON: [&str; 4] = ["core", "f32", "<impl f32>", "EPSILON"];
 pub const F64_EPSILON: [&str; 4] = ["core", "f64", "<impl f64>", "EPSILON"];
+pub const FILE_OPTIONS: [&str; 4] = ["std", "fs", "File", "options"];
 #[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const FUTURES_IO_ASYNCREADEXT: [&str; 3] = ["futures_util", "io", "AsyncReadExt"];
 #[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
@@ -50,8 +51,7 @@ pub const LATE_CONTEXT: [&str; 2] = ["rustc_lint", "LateContext"];
 pub const LATE_LINT_PASS: [&str; 3] = ["rustc_lint", "passes", "LateLintPass"];
 pub const LINT: [&str; 2] = ["rustc_lint_defs", "Lint"];
 pub const MSRV: [&str; 3] = ["clippy_config", "msrvs", "Msrv"];
-#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
-pub const TOKIO_IO_OPEN_OPTIONS: [&str; 3] = ["tokio", "fs", "OpenOptions"];
+pub const OPEN_OPTIONS_NEW: [&str; 4] = ["std", "fs", "OpenOptions", "new"];
 pub const OS_STRING_AS_OS_STR: [&str; 5] = ["std", "ffi", "os_str", "OsString", "as_os_str"];
 pub const OS_STR_TO_OS_STRING: [&str; 5] = ["std", "ffi", "os_str", "OsStr", "to_os_string"];
 pub const PARKING_LOT_MUTEX_GUARD: [&str; 3] = ["lock_api", "mutex", "MutexGuard"];
@@ -91,9 +91,15 @@ pub const SYMBOL_TO_IDENT_STRING: [&str; 4] = ["rustc_span", "symbol", "Symbol",
 pub const SYM_MODULE: [&str; 3] = ["rustc_span", "symbol", "sym"];
 pub const SYNTAX_CONTEXT: [&str; 3] = ["rustc_span", "hygiene", "SyntaxContext"];
 #[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
+pub const TOKIO_FILE_OPTIONS: [&str; 5] = ["tokio", "fs", "file", "File", "options"];
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const TOKIO_IO_ASYNCREADEXT: [&str; 5] = ["tokio", "io", "util", "async_read_ext", "AsyncReadExt"];
 #[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
 pub const TOKIO_IO_ASYNCWRITEEXT: [&str; 5] = ["tokio", "io", "util", "async_write_ext", "AsyncWriteExt"];
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
+pub const TOKIO_IO_OPEN_OPTIONS: [&str; 4] = ["tokio", "fs", "open_options", "OpenOptions"];
+#[expect(clippy::invalid_paths)] // internal lints do not know about all external crates
+pub const TOKIO_IO_OPEN_OPTIONS_NEW: [&str; 5] = ["tokio", "fs", "open_options", "OpenOptions", "new"];
 pub const VEC_AS_MUT_SLICE: [&str; 4] = ["alloc", "vec", "Vec", "as_mut_slice"];
 pub const VEC_AS_SLICE: [&str; 4] = ["alloc", "vec", "Vec", "as_slice"];
 pub const VEC_DEQUE_ITER: [&str; 5] = ["alloc", "collections", "vec_deque", "VecDeque", "iter"];

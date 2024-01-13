@@ -19,11 +19,12 @@ fn is_open_options(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>, recv: &'tcx Expr<'_>) {
     if let Some(method_id) = cx.typeck_results().type_dependent_def_id(e.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_method(method_id)
-    //&& is_open_options(cx, cx.tcx.type_of(impl_id).instantiate_identity())
+        && is_open_options(cx, cx.tcx.type_of(impl_id).instantiate_identity())
     {
         let mut options = Vec::new();
-        get_open_options(cx, recv, &mut options);
-        check_open_options(cx, &options, e.span);
+        if get_open_options(cx, recv, &mut options) {
+            check_open_options(cx, &options, e.span);
+        }
     }
 }
 
@@ -55,6 +56,9 @@ impl std::fmt::Display for OpenOption {
     }
 }
 
+/// Collects information about a method call chain on `OpenOptions`.
+/// Returns false if an unexpected expression kind was found "on the way",
+/// and linting should then be avoided.
 fn get_open_options(
     cx: &LateContext<'_>,
     argument: &Expr<'_>,
@@ -102,7 +106,16 @@ fn get_open_options(
                 "write" => {
                     options.push((OpenOption::Write, argument_option, span));
                 },
-                _ => (),
+                _ => {
+                    // Avoid linting altogether if this method is from a trait.
+                    // This might be a user defined extension trait with a method like `truncate_write`
+                    // which would be a false positive
+                    if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(argument.hir_id)
+                        && cx.tcx.trait_of_item(method_def_id).is_some()
+                    {
+                        return false;
+                    }
+                },
             }
 
             get_open_options(cx, receiver, options)
@@ -113,9 +126,17 @@ fn get_open_options(
         && let ExprKind::Path(path) = callee.kind
         && let Some(did) = cx.qpath_res(&path, callee.hir_id).opt_def_id()
     {
-        match_any_def_paths(cx, did, &[&paths::TOKIO_IO_OPEN_OPTIONS]).is_some()
-        //is_type_diagnostic_item(cx, ty, sym::FsOpenOptions) || match_type(cx, ty,
-        // &paths::TOKIO_IO_OPEN_OPTIONS)
+        match_any_def_paths(
+            cx,
+            did,
+            &[
+                &paths::TOKIO_IO_OPEN_OPTIONS_NEW,
+                &paths::OPEN_OPTIONS_NEW,
+                &paths::FILE_OPTIONS,
+                &paths::TOKIO_FILE_OPTIONS,
+            ],
+        )
+        .is_some()
     } else {
         false
     }
@@ -168,9 +189,17 @@ fn check_open_options(cx: &LateContext<'_>, settings: &[(OpenOption, Argument, S
             *create_span,
             "file opened with `create`, but `truncate` behavior not defined",
             |diag| {
-                diag
-                    .span_suggestion(create_span.shrink_to_hi(), "add", ".truncate(true)".to_string(), rustc_errors::Applicability::MaybeIncorrect)
-                    .help("if you intend to overwrite an existing file entirely, call `.truncate(true)`. if you instead know that you may want to keep some parts of the old file, call `.truncate(false)`. Alternatively, use `.append` to append to the file instead of overwriting it.");
+                diag.span_suggestion(
+                    create_span.shrink_to_hi(),
+                    "add",
+                    ".truncate(true)".to_string(),
+                    rustc_errors::Applicability::MaybeIncorrect,
+                )
+                .help("if you intend to overwrite an existing file entirely, call `.truncate(true)`")
+                .help(
+                    "if you instead know that you may want to keep some parts of the old file, call `.truncate(false)`",
+                )
+                .help("alternatively, use `.append(true)` to append to the file instead of overwriting it");
             },
         );
     }

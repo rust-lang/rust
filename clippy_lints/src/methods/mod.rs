@@ -2833,10 +2833,11 @@ declare_clippy_lint! {
     /// without an explicit `OpenOptions::truncate()`.
     ///
     /// ### Why is this bad?
-    /// create() alone will either create a new file or open an
+    /// `create()` alone will either create a new file or open an
     /// existing file. If the file already exists, it will be
     /// overwritten when written to, but the file will not be
-    /// truncated by default. If less data is written to the file
+    /// truncated by default.
+    /// If less data is written to the file
     /// than it already contains, the remainder of the file will
     /// remain unchanged, and the end of the file will contain old
     /// data.
@@ -2847,10 +2848,14 @@ declare_clippy_lint! {
     /// `truncate(false)` will explicitely keep the default behavior.
     ///
     /// ### Example
-    /// ```rust
+    /// ```rust,no_run
     /// use std::fs::OpenOptions;
     ///
     /// OpenOptions::new().create(true);
+    /// ```
+    /// Use instead:
+    /// ```rust,no_run
+    /// use std::fs::OpenOptions;
     ///
     /// OpenOptions::new().create(true).truncate(true);
     /// ```
