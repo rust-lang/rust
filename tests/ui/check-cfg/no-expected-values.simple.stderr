@@ -20,7 +20,6 @@ LL | #[cfg(test = "foo")]
    |           help: remove the value
    |
    = note: no expected value for `test`
-   = help: to expect this configuration use `--check-cfg=cfg(test, values("foo"))`
    = note: see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration
 
 warning: 2 warnings emitted
