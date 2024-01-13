@@ -1827,7 +1827,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "Remap source names in all output (compiler messages and output files)",
             "FROM=TO",
         ),
-        opt::multi("", "env-set", "Inject an environment variable", "VAR=VALUE"),
+        opt::multi_s("", "env-set", "Inject an environment variable", "VAR=VALUE"),
     ]);
     opts
 }
