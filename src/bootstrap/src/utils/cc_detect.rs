@@ -111,10 +111,14 @@ pub fn find_target(build: &Build, target: TargetSelection) {
         .and_then(|c| c.cc.clone())
         .or_else(|| default_compiler(&mut cfg, Language::C, target, build))
     {
+        println!("MAJAHA FIND_TARGET 1");
         cfg.compiler(cc);
+    } else {
+        println!("MAJAHA FIND_TARGET 2");
     }
 
     let compiler = cfg.get_compiler();
+    dbg!(compiler.path());
     let ar = if let ar @ Some(..) = config.and_then(|c| c.ar.clone()) {
         ar
     } else {
