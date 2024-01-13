@@ -1,7 +1,7 @@
 //! This tests the `Integer::{ilog,log2,log10}` methods. These tests are in a
 //! separate file because there's both a large number of them, and not all tests
 //! can be run on Android. This is because in Android `ilog2` uses an imprecise
-//! approximation:https://github.com/rust-lang/rust/blob/4825e12fc9c79954aa0fe18f5521efa6c19c7539/src/libstd/sys/pal/unix/android.rs#L27-L53
+//! approximation:https://github.com/rust-lang/rust/blob/4825e12fc9c79954aa0fe18f5521efa6c19c7539/src/libstd/sys/unix/android.rs#L27-L53
 
 #[test]
 fn checked_ilog() {
