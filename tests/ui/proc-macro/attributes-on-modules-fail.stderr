@@ -14,6 +14,7 @@ LL | mod module;
    |
    = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: non-inline modules in proc macro input are unstable
   --> $DIR/attributes-on-modules-fail.rs:24:5
@@ -23,6 +24,7 @@ LL |     mod inner;
    |
    = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: non-inline modules in proc macro input are unstable
   --> $DIR/attributes-on-modules-fail.rs:33:9
@@ -32,6 +34,7 @@ LL |         mod inner;
    |
    = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: non-inline modules in proc macro input are unstable
   --> $DIR/attributes-on-modules-fail.rs:42:5
@@ -41,6 +44,7 @@ LL |     mod inner;
    |
    = note: see issue #54727 <https://github.com/rust-lang/rust/issues/54727> for more information
    = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0412]: cannot find type `Y` in this scope
   --> $DIR/attributes-on-modules-fail.rs:10:14

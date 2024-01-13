@@ -293,7 +293,7 @@ fn default_body_is_unstable(
 
     rustc_session::parse::add_feature_diagnostics_for_issue(
         &mut err,
-        &tcx.sess.parse_sess,
+        &tcx.sess,
         feature,
         rustc_feature::GateIssue::Library(issue),
         false,

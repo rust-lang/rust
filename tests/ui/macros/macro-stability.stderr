@@ -5,6 +5,7 @@ LL |     local_unstable!();
    |     ^^^^^^^^^^^^^^
    |
    = help: add `#![feature(local_unstable)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature 'local_unstable'
   --> $DIR/macro-stability.rs:23:5
@@ -13,6 +14,7 @@ LL |     local_unstable_modern!();
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(local_unstable)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: use of unstable library feature 'unstable_macros'
   --> $DIR/macro-stability.rs:24:5
@@ -21,6 +23,7 @@ LL |     unstable_macro!();
    |     ^^^^^^^^^^^^^^
    |
    = help: add `#![feature(unstable_macros)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 warning: use of deprecated macro `deprecated_macro`: deprecation note
   --> $DIR/macro-stability.rs:27:5

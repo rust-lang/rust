@@ -119,7 +119,7 @@ impl MultiItemModifier for DeriveProcMacro {
         // We need special handling for statement items
         // (e.g. `fn foo() { #[derive(Debug)] struct Bar; }`)
         let is_stmt = matches!(item, Annotatable::Stmt(..));
-        let hack = crate::base::ann_pretty_printing_compatibility_hack(&item, &ecx.sess.parse_sess);
+        let hack = crate::base::ann_pretty_printing_compatibility_hack(&item, &ecx.sess);
         let input = if hack {
             let nt = match item {
                 Annotatable::Item(item) => token::NtItem(item),

@@ -594,13 +594,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             if soft_custom_inner_attributes_gate {
                 self.tcx.sess.parse_sess.buffer_lint(SOFT_UNSTABLE, path.span, node_id, msg);
             } else {
-                feature_err(
-                    &self.tcx.sess.parse_sess,
-                    sym::custom_inner_attributes,
-                    path.span,
-                    msg,
-                )
-                .emit();
+                feature_err(&self.tcx.sess, sym::custom_inner_attributes, path.span, msg).emit();
             }
         }
 
