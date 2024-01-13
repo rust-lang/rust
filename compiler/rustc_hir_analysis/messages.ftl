@@ -263,6 +263,10 @@ hir_analysis_must_implement_not_function_span_note = required by this annotation
 
 hir_analysis_must_implement_one_of_attribute = the `#[rustc_must_implement_one_of]` attribute must be used with at least 2 args
 
+hir_analysis_not_supported_delegation =
+    {$descr} is not supported yet
+    .label = callee defined here
+
 hir_analysis_only_current_traits_arbitrary = only traits defined in the current crate can be implemented for arbitrary types
 
 hir_analysis_only_current_traits_foreign = this is not defined in the current crate because this is a foreign trait
