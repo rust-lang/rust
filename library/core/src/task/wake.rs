@@ -710,6 +710,19 @@ impl LocalWaker {
         self.waker == other.waker
     }
 
+    /// Creates a new `LocalWaker` from [`RawWaker`].
+    ///
+    /// The behavior of the returned `LocalWaker` is undefined if the contract defined
+    /// in [`RawWaker`]'s and [`RawWakerVTable`]'s documentation is not upheld.
+    /// Therefore this method is unsafe.
+    #[inline]
+    #[must_use]
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
+    pub const unsafe fn from_raw(waker: RawWaker) -> LocalWaker {
+        Self { waker }
+    }
+
     /// Creates a new `LocalWaker` that does nothing when `wake` is called.
     ///
     /// This is mostly useful for writing tests that need a [`Context`] to poll
@@ -738,19 +751,6 @@ impl LocalWaker {
     pub const fn noop() -> &'static LocalWaker {
         const WAKER: &LocalWaker = &LocalWaker { waker: RawWaker::NOOP };
         WAKER
-    }
-
-    /// Creates a new `LocalWaker` from [`RawWaker`].
-    ///
-    /// The behavior of the returned `LocalWaker` is undefined if the contract defined
-    /// in [`RawWaker`]'s and [`RawWakerVTable`]'s documentation is not upheld.
-    /// Therefore this method is unsafe.
-    #[inline]
-    #[must_use]
-    #[stable(feature = "futures_api", since = "1.36.0")]
-    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
-    pub const unsafe fn from_raw(waker: RawWaker) -> LocalWaker {
-        Self { waker }
     }
 
     /// Get a reference to the underlying [`RawWaker`].
