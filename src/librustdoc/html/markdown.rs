@@ -51,6 +51,8 @@ use crate::html::highlight;
 use crate::html::length_limit::HtmlWithLimit;
 use crate::html::render::small_url_encode;
 use crate::html::toc::TocBuilder;
+use crate::html::static_files;
+use crate::html::layout::Page;
 
 use pulldown_cmark::{
     html, BrokenLink, CodeBlockKind, CowStr, Event, LinkType, OffsetIter, Options, Parser, Tag,
@@ -270,9 +272,15 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                             format!(
                                 "<div class=\"example-wrap\">\
                                  <pre class=\"{lang_string}{whitespace}{added_classes}\">\
+                                     <button class=\"copy-code\">
+                                         <img src=\"{static_root_path}{clipboard_svg}\" width=\"15\" height=\"15\"\
+                                             alt=\"Copy to clipboard\">\
+                                     </button>\
                                      <code>{text}</code>\
                                  </pre>\
                              </div>",
+                                static_root_path = &page.get_static_root_path(),
+                                clipboard_svg = &static_files::STATIC_FILES.clipboard_svg,
                                 added_classes = added_classes.join(" "),
                                 text = Escape(&original_text),
                             )
