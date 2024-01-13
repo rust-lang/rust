@@ -8,54 +8,64 @@ extern crate external_unsafe_macro;
 
 unsafe fn unsf() {}
 
-pub unsafe fn foo() { unsafe {
+pub unsafe fn foo() {
     //~^ NOTE an unsafe function restricts its caller, but its body is safe by default
     unsf(); //~ ERROR call to unsafe function `unsf` is unsafe
-    //~^ NOTE
-    //~| NOTE
+    //~^ NOTE call to unsafe function
+    //~| NOTE for more information, see issue #71668
+    //~| NOTE consult the function's documentation
     unsf(); //~ ERROR call to unsafe function `unsf` is unsafe
-    //~^ NOTE
-    //~| NOTE
-}}
+    //~^ NOTE call to unsafe function
+    //~| NOTE for more information, see issue #71668
+    //~| NOTE consult the function's documentation
+}
 
-pub unsafe fn bar(x: *const i32) -> i32 { unsafe {
+pub unsafe fn bar(x: *const i32) -> i32 {
     //~^ NOTE an unsafe function restricts its caller, but its body is safe by default
     let y = *x; //~ ERROR dereference of raw pointer is unsafe and requires unsafe block
-    //~^ NOTE
-    //~| NOTE
+    //~^ NOTE dereference of raw pointer
+    //~| NOTE for more information, see issue #71668
+    //~| NOTE raw pointers may be null
     y + *x //~ ERROR dereference of raw pointer is unsafe and requires unsafe block
-    //~^ NOTE
-    //~| NOTE
-}}
+    //~^ NOTE dereference of raw pointer
+    //~| NOTE for more information, see issue #71668
+    //~| NOTE raw pointers may be null
+}
 
 static mut BAZ: i32 = 0;
-pub unsafe fn baz() -> i32 { unsafe {
+pub unsafe fn baz() -> i32 {
     //~^ NOTE an unsafe function restricts its caller, but its body is safe by default
     let y = BAZ; //~ ERROR use of mutable static is unsafe and requires unsafe block
-    //~^ NOTE
-    //~| NOTE
+    //~^ NOTE use of mutable static
+    //~| NOTE for more information, see issue #71668
+    //~| NOTE mutable statics can be mutated by multiple threads
     y + BAZ //~ ERROR use of mutable static is unsafe and requires unsafe block
-    //~^ NOTE
-    //~| NOTE
-}}
+    //~^ NOTE use of mutable static
+    //~| NOTE for more information, see issue #71668
+    //~| NOTE mutable statics can be mutated by multiple threads
+}
 
 macro_rules! unsafe_macro { () => (unsf()) }
 //~^ ERROR call to unsafe function `unsf` is unsafe
-//~| NOTE
-//~| NOTE
+//~| NOTE call to unsafe function
+//~| NOTE for more information, see issue #71668
+//~| NOTE consult the function's documentation
 //~| ERROR call to unsafe function `unsf` is unsafe
-//~| NOTE
-//~| NOTE
+//~| NOTE call to unsafe function
+//~| NOTE for more information, see issue #71668
+//~| NOTE consult the function's documentation
 
-pub unsafe fn unsafe_in_macro() { unsafe {
+pub unsafe fn unsafe_in_macro() {
     //~^ NOTE an unsafe function restricts its caller, but its body is safe by default
     unsafe_macro!();
-    //~^ NOTE
-    //~| NOTE
+    //~^ NOTE in this expansion
+    //~| NOTE in this expansion
+    //~| NOTE in this expansion
     unsafe_macro!();
-    //~^ NOTE
-    //~| NOTE
-}}
+    //~^ NOTE in this expansion
+    //~| NOTE in this expansion
+    //~| NOTE in this expansion
+}
 
 pub unsafe fn unsafe_in_external_macro() {
     // FIXME: https://github.com/rust-lang/rust/issues/112504

@@ -2755,6 +2755,11 @@ declare_lint! {
     pub UNSAFE_OP_IN_UNSAFE_FN,
     Allow,
     "unsafe operations in unsafe functions without an explicit unsafe block are deprecated",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
+        reference: "issue #71668 <https://github.com/rust-lang/rust/issues/71668>",
+        explain_reason: false
+    };
     @edition Edition2024 => Warn;
 }
 
