@@ -1268,7 +1268,6 @@ name = "error_index_generator"
 version = "0.0.0"
 dependencies = [
  "mdbook",
- "rustc_error_codes",
 ]
 
 [[package]]
@@ -3701,7 +3700,6 @@ dependencies = [
  "rustc_codegen_ssa",
  "rustc_const_eval",
  "rustc_data_structures",
- "rustc_error_codes",
  "rustc_errors",
  "rustc_expand",
  "rustc_feature",
@@ -3774,9 +3772,11 @@ dependencies = [
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_data_structures",
+ "rustc_error_codes",
  "rustc_error_messages",
  "rustc_fluent_macro",
  "rustc_hir",
+ "rustc_index",
  "rustc_lint_defs",
  "rustc_macros",
  "rustc_serialize",

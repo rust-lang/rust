@@ -7,7 +7,7 @@ use rustc_ast::ast::{self, AttrStyle};
 use rustc_ast::token::{self, CommentKind, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::util::unicode::contains_text_flow_control_chars;
-use rustc_errors::{error_code, Applicability, DiagCtxt, DiagnosticBuilder, StashKey};
+use rustc_errors::{codes::*, Applicability, DiagCtxt, DiagnosticBuilder, StashKey};
 use rustc_lexer::unescape::{self, EscapeError, Mode};
 use rustc_lexer::{Base, DocStyle, RawStrError};
 use rustc_lexer::{Cursor, LiteralKind};
@@ -397,7 +397,7 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                 if !terminated {
                     self.dcx()
                         .struct_span_fatal(self.mk_sp(start, end), "unterminated character literal")
-                        .with_code(error_code!(E0762))
+                        .with_code(E0762)
                         .emit()
                 }
                 self.cook_unicode(token::Char, Mode::Char, start, end, 1, 1) // ' '
@@ -409,7 +409,7 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                             self.mk_sp(start + BytePos(1), end),
                             "unterminated byte constant",
                         )
-                        .with_code(error_code!(E0763))
+                        .with_code(E0763)
                         .emit()
                 }
                 self.cook_unicode(token::Byte, Mode::Byte, start, end, 2, 1) // b' '
@@ -421,7 +421,7 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                             self.mk_sp(start, end),
                             "unterminated double quote string",
                         )
-                        .with_code(error_code!(E0765))
+                        .with_code(E0765)
                         .emit()
                 }
                 self.cook_unicode(token::Str, Mode::Str, start, end, 1, 1) // " "
@@ -433,7 +433,7 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                             self.mk_sp(start + BytePos(1), end),
                             "unterminated double quote byte string",
                         )
-                        .with_code(error_code!(E0766))
+                        .with_code(E0766)
                         .emit()
                 }
                 self.cook_unicode(token::ByteStr, Mode::ByteStr, start, end, 2, 1) // b" "
@@ -445,7 +445,7 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
                             self.mk_sp(start + BytePos(1), end),
                             "unterminated C string",
                         )
-                        .with_code(error_code!(E0767))
+                        .with_code(E0767)
                         .emit()
                 }
                 self.cook_mixed(token::CStr, Mode::CStr, start, end, 2, 1) // c" "
@@ -582,7 +582,7 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
     ) -> ! {
         let mut err =
             self.dcx().struct_span_fatal(self.mk_sp(start, start), "unterminated raw string");
-        err.code(error_code!(E0748));
+        err.code(E0748);
         err.span_label(self.mk_sp(start, start), "unterminated raw string");
 
         if n_hashes > 0 {
@@ -614,7 +614,7 @@ impl<'sess, 'src> StringReader<'sess, 'src> {
         };
         let last_bpos = self.pos;
         let mut err = self.dcx().struct_span_fatal(self.mk_sp(start, last_bpos), msg);
-        err.code(error_code!(E0758));
+        err.code(E0758);
         let mut nested_block_comment_open_idxs = vec![];
         let mut last_nested_block_comment_idxs = None;
         let mut content_chars = self.str_from(start).char_indices().peekable();

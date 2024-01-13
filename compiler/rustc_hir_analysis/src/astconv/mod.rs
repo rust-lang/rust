@@ -18,8 +18,8 @@ use crate::require_c_abi_if_c_variadic;
 use rustc_ast::TraitObjectSyntax;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{
-    error_code, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder,
-    ErrorGuaranteed, FatalError, MultiSpan,
+    codes::*, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+    FatalError, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
@@ -1072,9 +1072,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 if let Some(binding) = binding
                     && let ConvertedBindingKind::Equality(_) = binding.kind
                 {
-                    error_code!(E0222)
+                    E0222
                 } else {
-                    error_code!(E0221)
+                    E0221
                 },
             );
 
@@ -1630,7 +1630,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let reported = tcx
                 .dcx()
                 .struct_span_err(span, msg)
-                .with_code(rustc_errors::error_code!(E0624))
+                .with_code(E0624)
                 .with_span_label(span, format!("private {kind}"))
                 .with_span_label(def_span, format!("{kind} defined here"))
                 .emit();

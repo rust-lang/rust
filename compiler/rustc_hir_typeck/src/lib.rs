@@ -51,7 +51,7 @@ use crate::expectation::Expectation;
 use crate::fn_ctxt::LoweredTy;
 use crate::gather_locals::GatherLocalsVisitor;
 use rustc_data_structures::unord::UnordSet;
-use rustc_errors::{struct_span_code_err, ErrorGuaranteed};
+use rustc_errors::{codes::*, struct_span_code_err, ErrCode, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::Visitor;
@@ -71,7 +71,7 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 #[macro_export]
 macro_rules! type_error_struct {
-    ($dcx:expr, $span:expr, $typ:expr, $code:ident, $($message:tt)*) => ({
+    ($dcx:expr, $span:expr, $typ:expr, $code:expr, $($message:tt)*) => ({
         let mut err = rustc_errors::struct_span_code_err!($dcx, $span, $code, $($message)*);
 
         if $typ.references_error() {
@@ -375,7 +375,7 @@ fn report_unexpected_variant_res(
     res: Res,
     qpath: &hir::QPath<'_>,
     span: Span,
-    err_code: &str,
+    err_code: ErrCode,
     expected: &str,
 ) -> ErrorGuaranteed {
     let res_descr = match res {
@@ -386,9 +386,9 @@ fn report_unexpected_variant_res(
     let err = tcx
         .dcx()
         .struct_span_err(span, format!("expected {expected}, found {res_descr} `{path_str}`"))
-        .with_code(err_code.into());
+        .with_code(err_code);
     match res {
-        Res::Def(DefKind::Fn | DefKind::AssocFn, _) if err_code == "E0164" => {
+        Res::Def(DefKind::Fn | DefKind::AssocFn, _) if err_code == E0164 => {
             let patterns_url = "https://doc.rust-lang.org/book/ch18-00-patterns.html";
             err.with_span_label(span, "`fn` calls are not allowed in patterns")
                 .with_help(format!("for more information, visit {patterns_url}"))

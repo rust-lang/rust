@@ -1,6 +1,6 @@
 use rustc_errors::{
-    AddToDiagnostic, DiagCtxt, DiagnosticBuilder, EmissionGuarantee, IntoDiagnostic, Level,
-    MultiSpan, SingleLabelManySpans,
+    codes::*, AddToDiagnostic, DiagCtxt, DiagnosticBuilder, EmissionGuarantee, IntoDiagnostic,
+    Level, MultiSpan, SingleLabelManySpans,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{symbol::Ident, Span, Symbol};
@@ -269,7 +269,7 @@ pub(crate) struct ConcatIdentsIdentArgs {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_bad_derive_target, code = "E0774")]
+#[diag(builtin_macros_bad_derive_target, code = E0774)]
 pub(crate) struct BadDeriveTarget {
     #[primary_span]
     #[label]
@@ -283,7 +283,7 @@ pub(crate) struct BadDeriveTarget {
 pub(crate) struct TestsNotSupport {}
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_unexpected_lit, code = "E0777")]
+#[diag(builtin_macros_unexpected_lit, code = E0777)]
 pub(crate) struct BadDeriveLit {
     #[primary_span]
     #[label]

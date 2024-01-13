@@ -3,8 +3,8 @@ use crate::{errors, FnCtxt, LoweredTy};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{
-    pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
-    MultiSpan,
+    codes::*, pluralize, struct_span_code_err, Applicability, Diagnostic, DiagnosticBuilder,
+    ErrorGuaranteed, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
@@ -576,7 +576,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if (lhs, rhs).references_error() {
             err.downgrade_to_delayed_bug();
         }
-        if self.tcx.sess.teach(&err.get_code().unwrap()) {
+        if self.tcx.sess.teach(err.get_code().unwrap()) {
             err.note(
                 "In a match expression, only numbers and characters can be matched \
                     against a range. This is because the compiler checks that the range \
@@ -847,7 +847,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 type_str
             );
             err.span_label(span, format!("type `{type_str}` cannot be dereferenced"));
-            if self.tcx.sess.teach(&err.get_code().unwrap()) {
+            if self.tcx.sess.teach(err.get_code().unwrap()) {
                 err.note(CANNOT_IMPLICITLY_DEREF_POINTER_TRAIT_OBJ);
             }
             return Err(err.emit());
@@ -907,7 +907,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Res::Def(DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::Variant, _) => {
                 let expected = "unit struct, unit variant or constant";
-                let e = report_unexpected_variant_res(tcx, res, qpath, pat.span, "E0533", expected);
+                let e = report_unexpected_variant_res(tcx, res, qpath, pat.span, E0533, expected);
                 return Ty::new_error(tcx, e);
             }
             Res::SelfCtor(..)
@@ -1061,7 +1061,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         let report_unexpected_res = |res: Res| {
             let expected = "tuple struct or tuple variant";
-            let e = report_unexpected_variant_res(tcx, res, qpath, pat.span, "E0164", expected);
+            let e = report_unexpected_variant_res(tcx, res, qpath, pat.span, E0164, expected);
             on_error(e);
             e
         };
@@ -1669,7 +1669,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
-        if tcx.sess.teach(&err.get_code().unwrap()) {
+        if tcx.sess.teach(err.get_code().unwrap()) {
             err.note(
                 "This error indicates that a struct pattern attempted to \
                  extract a nonexistent field from a struct. Struct fields \

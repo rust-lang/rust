@@ -19,7 +19,7 @@ use rustc_ast::{self as ast, AssocItem, AssocItemKind, MetaItemKind, StmtKind};
 use rustc_ast::{Block, ForeignItem, ForeignItemKind, Impl, Item, ItemKind, NodeId};
 use rustc_attr as attr;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{struct_span_code_err, Applicability};
+use rustc_errors::{codes::*, struct_span_code_err, Applicability};
 use rustc_expand::expand::AstFragment;
 use rustc_hir::def::{self, *};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID};
