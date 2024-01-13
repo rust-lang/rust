@@ -947,9 +947,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             Overflow(_) => {
                 bug!("overflow should be handled before the `report_selection_error` path");
             }
-            SelectionError::ErrorReporting => {
-                bug!("ErrorReporting Overflow should not reach `report_selection_err` call")
-            }
         };
 
         self.note_obligation_cause(&mut err, &obligation);
