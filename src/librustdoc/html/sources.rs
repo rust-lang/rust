@@ -5,6 +5,7 @@ use crate::error::Error;
 use crate::html::format;
 use crate::html::highlight;
 use crate::html::layout;
+use crate::html::Page;
 use crate::html::render::Context;
 use crate::visit::DocVisitor;
 
@@ -315,6 +316,7 @@ pub(crate) fn print_src(
         needs_expansion: bool,
         lines: RangeInclusive<usize>,
         code_html: Code,
+        static_root_path: &'a str,
     }
     let lines = s.lines().count();
     let (embedded, needs_expansion, lines) = match source_context {
@@ -335,5 +337,6 @@ pub(crate) fn print_src(
         );
         Ok(())
     });
-    Source { embedded, needs_expansion, lines, code_html: code }.render_into(&mut writer).unwrap();
+    let static_root_path = get_static_root_path();
+    Source { embedded, needs_expansion, lines, code_html: code, static_root_path }.render_into(&mut writer).unwrap();
 }
