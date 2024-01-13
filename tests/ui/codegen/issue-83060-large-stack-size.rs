@@ -1,4 +1,3 @@
-// stderr-per-bitwidth
 // build-pass
 fn func() {
     const CAP: usize = std::u32::MAX as usize;
@@ -8,12 +7,8 @@ fn func() {
 }
 
 fn main() {
-    let mut n = 5;
-    if cfg!(target_pointer_width = "32") {
-        n = 3;
-    }
     std::thread::Builder::new()
-        .stack_size(n * 1024 * 1024 * 1024)
+        .stack_size(3 * 1024 * 1024 * 1024)
         .spawn(func)
         .unwrap()
         .join()
