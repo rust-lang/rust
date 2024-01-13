@@ -279,7 +279,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                                      <code>{text}</code>\
                                  </pre>\
                              </div>",
-                                static_root_path = &page.get_static_root_path(),
+                                static_root_path = &get_static_root_path(),
                                 clipboard_svg = &static_files::STATIC_FILES.clipboard_svg,
                                 added_classes = added_classes.join(" "),
                                 text = Escape(&original_text),
