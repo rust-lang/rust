@@ -886,6 +886,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             PathResult::Failed {
                 is_error_from_last_segment: false,
                 span,
+                segment_name,
                 label,
                 suggestion,
                 module,
@@ -895,7 +896,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     self.report_error(
                         span,
                         ResolutionError::FailedToResolve {
-                            last_segment: None,
+                            segment: Some(segment_name),
                             label,
                             suggestion,
                             module,

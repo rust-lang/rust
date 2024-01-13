@@ -1381,13 +1381,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             continue;
                         }
                     }
-                    return PathResult::failed(
-                        ident.span,
-                        false,
-                        finalize.is_some(),
-                        module,
-                        || ("there are too many leading `super` keywords".to_string(), None),
-                    );
+                    return PathResult::failed(ident, false, finalize.is_some(), module, || {
+                        ("there are too many leading `super` keywords".to_string(), None)
+                    });
                 }
                 if segment_idx == 0 {
                     if name == kw::SelfLower {
@@ -1419,7 +1415,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             // Report special messages for path segment keywords in wrong positions.
             if ident.is_path_segment_keyword() && segment_idx != 0 {
-                return PathResult::failed(ident.span, false, finalize.is_some(), module, || {
+                return PathResult::failed(ident, false, finalize.is_some(), module, || {
                     let name_str = if name == kw::PathRoot {
                         "crate root".to_string()
                     } else {
@@ -1515,7 +1511,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         ));
                     } else {
                         return PathResult::failed(
-                            ident.span,
+                            ident,
                             is_last,
                             finalize.is_some(),
                             module,
@@ -1541,24 +1537,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                     }
 
-                    return PathResult::failed(
-                        ident.span,
-                        is_last,
-                        finalize.is_some(),
-                        module,
-                        || {
-                            self.report_path_resolution_error(
-                                path,
-                                opt_ns,
-                                parent_scope,
-                                ribs,
-                                ignore_binding,
-                                module,
-                                segment_idx,
-                                ident,
-                            )
-                        },
-                    );
+                    return PathResult::failed(ident, is_last, finalize.is_some(), module, || {
+                        self.report_path_resolution_error(
+                            path,
+                            opt_ns,
+                            parent_scope,
+                            ribs,
+                            ignore_binding,
+                            module,
+                            segment_idx,
+                            ident,
+                        )
+                    });
                 }
             }
         }

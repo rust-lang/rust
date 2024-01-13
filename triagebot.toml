@@ -22,6 +22,7 @@ allow-unauthenticated = [
     "perf-*",
     "AsyncAwait-OnDeck",
     "needs-triage",
+    "has-merge-commits",
 ]
 
 [review-submitted]
