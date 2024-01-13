@@ -2,24 +2,26 @@
 //!
 //! This module contains the code for creating and emitting diagnostics.
 
+// tidy-alphabetical-start
+#![allow(incomplete_features)]
+#![allow(internal_features)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
-#![feature(rustdoc_internals)]
 #![feature(array_windows)]
 #![feature(associated_type_defaults)]
 #![feature(box_into_inner)]
+#![feature(box_patterns)]
+#![feature(error_reporter)]
 #![feature(extract_if)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(rustc_attrs)]
-#![feature(yeet_expr)]
+#![feature(rustdoc_internals)]
 #![feature(try_blocks)]
-#![feature(box_patterns)]
-#![feature(error_reporter)]
-#![allow(incomplete_features)]
-#![allow(internal_features)]
+#![feature(yeet_expr)]
+// tidy-alphabetical-end
 
 #[macro_use]
 extern crate rustc_macros;
