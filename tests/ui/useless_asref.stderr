@@ -106,5 +106,11 @@ error: this call to `as_ref.map(...)` does nothing
 LL |         x.field.as_ref().map(|v| Clone::clone(v));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `x.field.clone()`
 
-error: aborting due to 17 previous errors
+error: this call to `as_ref.map(...)` does nothing
+  --> $DIR/useless_asref.rs:176:9
+   |
+LL |         Some(1).as_ref().map(|&x| x.clone());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Some(1).clone()`
+
+error: aborting due to 18 previous errors
 

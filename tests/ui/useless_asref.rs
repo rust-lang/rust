@@ -171,6 +171,11 @@ mod issue12135 {
         x.field.as_ref().map(|v| Clone::clone(v));
         //~^ ERROR: this call to `as_ref.map(...)` does nothing
 
+        // https://github.com/rust-lang/rust-clippy/pull/12136#discussion_r1451565223
+        #[allow(clippy::clone_on_copy)]
+        Some(1).as_ref().map(|&x| x.clone());
+        //~^ ERROR: this call to `as_ref.map(...)` does nothing
+
         x.field.as_ref().map(|v| v.method().clone())
     }
 }
