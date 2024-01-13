@@ -1,10 +1,10 @@
-error[E0401]: can't use generic parameters from outer item
+error[E0401]: can't use `Self` from outer item
   --> $DIR/issue-12796.rs:3:22
    |
 LL |         fn inner(_: &Self) {
    |                      ^^^^
    |                      |
-   |                      use of generic parameter from outer item
+   |                      use of `Self` from outer item
    |                      can't use `Self` here
 
 error: aborting due to 1 previous error

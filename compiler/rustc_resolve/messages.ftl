@@ -114,8 +114,14 @@ resolve_forward_declared_generic_param =
     .label = defaulted generic parameters cannot be forward declared
 
 resolve_generic_params_from_outer_item =
-    can't use generic parameters from outer item
-    .label = use of generic parameter from outer item
+    can't use {$is_self ->
+        [true] `Self`
+        *[false] generic parameters
+    } from outer item
+    .label = use of {$is_self ->
+        [true] `Self`
+        *[false] generic parameter
+    } from outer item
     .refer_to_type_directly = refer to the type directly here instead
     .suggestion = try introducing a local generic parameter here
 

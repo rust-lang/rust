@@ -46,6 +46,7 @@ pub(crate) struct GenericParamsFromOuterItem {
     pub(crate) sugg: Option<GenericParamsFromOuterItemSugg>,
     #[subdiagnostic]
     pub(crate) static_or_const: Option<GenericParamsFromOuterItemStaticOrConst>,
+    pub(crate) is_self: bool,
 }
 
 #[derive(Subdiagnostic)]

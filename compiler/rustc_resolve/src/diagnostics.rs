@@ -568,12 +568,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     DefKind::Const => Some(errs::GenericParamsFromOuterItemStaticOrConst::Const),
                     _ => None,
                 };
+                let is_self = matches!(outer_res, Res::SelfTyParam { .. } | Res::SelfTyAlias { .. });
                 let mut err = errs::GenericParamsFromOuterItem {
                     span,
                     label: None,
                     refer_to_type_directly: None,
                     sugg: None,
                     static_or_const,
+                    is_self,
                 };
 
                 let sm = self.tcx.sess.source_map();
