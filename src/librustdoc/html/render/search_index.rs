@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 pub(crate) mod encode;
 
 use std::collections::hash_map::Entry;
