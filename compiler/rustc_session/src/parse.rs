@@ -15,8 +15,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::{AppendOnlyVec, Lock, Lrc};
 use rustc_errors::{emitter::SilentEmitter, DiagCtxt};
 use rustc_errors::{
-    fallback_fluent_bundle, Diagnostic, DiagnosticBuilder, DiagnosticId, DiagnosticMessage,
-    MultiSpan, StashKey,
+    fallback_fluent_bundle, Diagnostic, DiagnosticBuilder, DiagnosticMessage, MultiSpan, StashKey,
 };
 use rustc_feature::{find_feature_issue, GateIssue, UnstableFeatures};
 use rustc_span::edition::Edition;
@@ -148,7 +147,7 @@ pub fn feature_warn_issue(
     // Decorate this as a future-incompatibility lint as in rustc_middle::lint::struct_lint_level
     let lint = UNSTABLE_SYNTAX_PRE_EXPANSION;
     let future_incompatible = lint.future_incompatible.as_ref().unwrap();
-    err.code(DiagnosticId::Lint { name: lint.name_lower(), has_future_breakage: false });
+    err.is_lint(lint.name_lower(), /* has_future_breakage */ false);
     err.warn(lint.desc);
     err.note(format!("for more information, see {}", future_incompatible.reference));
 

@@ -1,5 +1,5 @@
 use crate::{errors, structured_errors::StructuredDiagnostic};
-use rustc_errors::{DiagnosticBuilder, DiagnosticId};
+use rustc_errors::DiagnosticBuilder;
 use rustc_middle::ty::{Ty, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::Span;
@@ -16,7 +16,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for SizedUnsizedCast<'tcx> {
         self.sess
     }
 
-    fn code(&self) -> DiagnosticId {
+    fn code(&self) -> String {
         rustc_errors::error_code!(E0607)
     }
 

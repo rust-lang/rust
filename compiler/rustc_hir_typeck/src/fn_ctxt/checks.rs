@@ -11,9 +11,7 @@ use crate::{
 };
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{
-    pluralize, Applicability, Diagnostic, DiagnosticId, ErrorGuaranteed, MultiSpan, StashKey,
-};
+use rustc_errors::{pluralize, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -678,7 +676,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 pluralize!("was", provided_args.len())
                             ),
                         );
-                        err.code(DiagnosticId::Error(err_code.to_owned()));
+                        err.code(err_code.to_owned());
                         err.multipart_suggestion_verbose(
                             "wrap these arguments in parentheses to construct a tuple",
                             vec![
@@ -828,7 +826,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         pluralize!("was", provided_args.len())
                     ),
                 )
-                .with_code(DiagnosticId::Error(err_code.to_owned()))
+                .with_code(err_code.to_owned())
         };
 
         // As we encounter issues, keep track of what we want to provide for the suggestion
