@@ -498,14 +498,14 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     // order when emitting them.
                     let err =
                         self.tcx().dcx().struct_span_err(span, format!("user args: {user_args:?}"));
-                    err.buffer(&mut errors_buffer);
+                    errors_buffer.push(err);
                 }
             }
 
             if !errors_buffer.is_empty() {
                 errors_buffer.sort_by_key(|diag| diag.span.primary_span());
-                for diag in errors_buffer {
-                    self.tcx().dcx().emit_diagnostic(diag);
+                for err in errors_buffer {
+                    err.emit();
                 }
             }
         }

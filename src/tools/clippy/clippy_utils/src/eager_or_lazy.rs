@@ -99,7 +99,10 @@ fn fn_eagerness(cx: &LateContext<'_>, fn_id: DefId, name: Symbol, have_one_arg: 
 }
 
 fn res_has_significant_drop(res: Res, cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    if let Res::Def(DefKind::Ctor(..) | DefKind::Variant, _) | Res::SelfCtor(_) = res {
+    if let Res::Def(DefKind::Ctor(..) | DefKind::Variant | DefKind::Enum | DefKind::Struct, _)
+    | Res::SelfCtor(_)
+    | Res::SelfTyAlias { .. } = res
+    {
         cx.typeck_results()
             .expr_ty(e)
             .has_significant_drop(cx.tcx, cx.param_env)
@@ -172,6 +175,13 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 ExprKind::MethodCall(..) if is_const_evaluatable(self.cx, e) => {
                     self.eagerness |= NoChange;
                     return;
+                },
+                #[expect(clippy::match_same_arms)] // arm pattern can't be merged due to `ref`, see rust#105778
+                ExprKind::Struct(path, ..) => {
+                    if res_has_significant_drop(self.cx.qpath_res(path, e.hir_id), self.cx, e) {
+                        self.eagerness = ForceNoChange;
+                        return;
+                    }
                 },
                 ExprKind::Path(ref path) => {
                     if res_has_significant_drop(self.cx.qpath_res(path, e.hir_id), self.cx, e) {
@@ -291,7 +301,6 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 | ExprKind::Closure { .. }
                 | ExprKind::Field(..)
                 | ExprKind::AddrOf(..)
-                | ExprKind::Struct(..)
                 | ExprKind::Repeat(..)
                 | ExprKind::Block(Block { stmts: [], .. }, _)
                 | ExprKind::OffsetOf(..) => (),

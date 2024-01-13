@@ -44,18 +44,25 @@ fn main() {
     match (0u8, true) {
         (0..=10, true) => {}
         (10..20, true) => {} //~ ERROR multiple patterns overlap on their endpoints
-        (10..20, false) => {} //~ ERROR multiple patterns overlap on their endpoints
+        (10..20, false) => {}
         _ => {}
     }
     match (true, 0u8) {
         (true, 0..=10) => {}
         (true, 10..20) => {} //~ ERROR multiple patterns overlap on their endpoints
-        (false, 10..20) => {} //~ ERROR multiple patterns overlap on their endpoints
+        (false, 10..20) => {}
         _ => {}
     }
     match Some(0u8) {
         Some(0..=10) => {}
         Some(10..20) => {} //~ ERROR multiple patterns overlap on their endpoints
+        _ => {}
+    }
+
+    // The lint has false negatives when we skip some cases because of relevancy.
+    match (true, true, 0u8) {
+        (true, _, 0..=10) => {}
+        (_, true, 10..20) => {}
         _ => {}
     }
 }

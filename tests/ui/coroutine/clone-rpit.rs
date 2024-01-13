@@ -1,6 +1,7 @@
 // revisions: current next
 //[next] compile-flags: -Znext-solver
-// check-pass
+//[current] check-pass
+//[next] known-bug: trait-system-refactor-initiative#82
 
 #![feature(coroutines, coroutine_trait, coroutine_clone)]
 

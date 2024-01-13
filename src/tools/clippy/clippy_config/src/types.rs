@@ -126,3 +126,9 @@ unimplemented_serialize! {
     Rename,
     MacroMatcher,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+pub enum PubUnderscoreFieldsBehaviour {
+    PublicallyExported,
+    AllPubFields,
+}

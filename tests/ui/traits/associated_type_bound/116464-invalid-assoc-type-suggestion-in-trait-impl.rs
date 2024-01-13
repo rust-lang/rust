@@ -39,7 +39,6 @@ impl<T: Trait<u32, String>> Struct<T> {}
 trait YetAnotherTrait {}
 impl<T: Trait<u32, Assoc=String>, U> YetAnotherTrait for Struct<T, U> {}
 //~^ ERROR struct takes 1 generic argument but 2 generic arguments were supplied
-//~| ERROR `U` is not constrained
 
 
 fn main() {

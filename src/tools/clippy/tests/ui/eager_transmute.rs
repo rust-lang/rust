@@ -12,16 +12,49 @@ enum Opcode {
     Div = 3,
 }
 
+struct Data {
+    foo: &'static [u8],
+    bar: &'static [u8],
+}
+
 fn int_to_opcode(op: u8) -> Option<Opcode> {
     (op < 4).then_some(unsafe { std::mem::transmute(op) })
 }
 
-fn f(op: u8, unrelated: u8) {
+fn f(op: u8, op2: Data, unrelated: u8) {
     true.then_some(unsafe { std::mem::transmute::<_, Opcode>(op) });
     (unrelated < 4).then_some(unsafe { std::mem::transmute::<_, Opcode>(op) });
     (op < 4).then_some(unsafe { std::mem::transmute::<_, Opcode>(op) });
     (op > 4).then_some(unsafe { std::mem::transmute::<_, Opcode>(op) });
     (op == 0).then_some(unsafe { std::mem::transmute::<_, Opcode>(op) });
+
+    let _: Option<Opcode> = (op > 0 && op < 10).then_some(unsafe { std::mem::transmute(op) });
+    let _: Option<Opcode> = (op > 0 && op < 10 && unrelated == 0).then_some(unsafe { std::mem::transmute(op) });
+
+    // lint even when the transmutable goes through field/array accesses
+    let _: Option<Opcode> = (op2.foo[0] > 0 && op2.foo[0] < 10).then_some(unsafe { std::mem::transmute(op2.foo[0]) });
+
+    // don't lint: wrong index used in the transmute
+    let _: Option<Opcode> = (op2.foo[0] > 0 && op2.foo[0] < 10).then_some(unsafe { std::mem::transmute(op2.foo[1]) });
+
+    // don't lint: no check for the transmutable in the condition
+    let _: Option<Opcode> = (op2.foo[0] > 0 && op2.bar[1] < 10).then_some(unsafe { std::mem::transmute(op2.bar[0]) });
+
+    // don't lint: wrong variable
+    let _: Option<Opcode> = (op2.foo[0] > 0 && op2.bar[1] < 10).then_some(unsafe { std::mem::transmute(op) });
+
+    // range contains checks
+    let _: Option<Opcode> = (1..=3).contains(&op).then_some(unsafe { std::mem::transmute(op) });
+    let _: Option<Opcode> = ((1..=3).contains(&op) || op == 4).then_some(unsafe { std::mem::transmute(op) });
+    let _: Option<Opcode> = (1..3).contains(&op).then_some(unsafe { std::mem::transmute(op) });
+    let _: Option<Opcode> = (1..).contains(&op).then_some(unsafe { std::mem::transmute(op) });
+    let _: Option<Opcode> = (..3).contains(&op).then_some(unsafe { std::mem::transmute(op) });
+    let _: Option<Opcode> = (..=3).contains(&op).then_some(unsafe { std::mem::transmute(op) });
+
+    // unrelated binding in contains
+    let _: Option<Opcode> = (1..=3)
+        .contains(&unrelated)
+        .then_some(unsafe { std::mem::transmute(op) });
 }
 
 unsafe fn f2(op: u8) {

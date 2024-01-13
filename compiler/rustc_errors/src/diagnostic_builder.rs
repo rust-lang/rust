@@ -255,35 +255,13 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     /// Stashes diagnostic for possible later improvement in a different,
     /// later stage of the compiler. The diagnostic can be accessed with
     /// the provided `span` and `key` through [`DiagCtxt::steal_diagnostic()`].
-    ///
-    /// As with `buffer`, this is unless the dcx has disabled such buffering.
     pub fn stash(self, span: Span, key: StashKey) {
-        if let Some((diag, dcx)) = self.into_diagnostic() {
-            dcx.stash_diagnostic(span, key, diag);
-        }
+        self.dcx.stash_diagnostic(span, key, self.into_diagnostic());
     }
 
-    /// Converts the builder to a `Diagnostic` for later emission,
-    /// unless dcx has disabled such buffering.
-    fn into_diagnostic(mut self) -> Option<(Diagnostic, &'a DiagCtxt)> {
-        if self.dcx.inner.lock().flags.treat_err_as_bug.is_some() {
-            self.emit();
-            return None;
-        }
-
-        let diag = self.take_diag();
-
-        // Logging here is useful to help track down where in logs an error was
-        // actually emitted.
-        debug!("buffer: diag={:?}", diag);
-
-        Some((diag, self.dcx))
-    }
-
-    /// Buffers the diagnostic for later emission,
-    /// unless dcx has disabled such buffering.
-    pub fn buffer(self, buffered_diagnostics: &mut Vec<Diagnostic>) {
-        buffered_diagnostics.extend(self.into_diagnostic().map(|(diag, _)| diag));
+    /// Converts the builder to a `Diagnostic` for later emission.
+    pub fn into_diagnostic(mut self) -> Diagnostic {
+        self.take_diag()
     }
 
     /// Delay emission of this diagnostic as a bug.

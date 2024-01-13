@@ -664,7 +664,11 @@ fn ipv6_properties() {
         &[0x20, 1, 0, 0x20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         global | unicast_global
     );
-    check!("2001:30::", &[0x20, 1, 0, 0x30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], global | unicast_global);
+    check!(
+        "2001:30::",
+        &[0x20, 1, 0, 0x30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        global | unicast_global
+    );
     check!("2001:40::", &[0x20, 1, 0, 0x40, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], unicast_global);
 
     check!(

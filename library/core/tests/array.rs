@@ -1,6 +1,6 @@
-use core::{array, assert_eq};
 use core::num::NonZeroUsize;
 use core::sync::atomic::{AtomicUsize, Ordering};
+use core::{array, assert_eq};
 
 #[test]
 fn array_from_ref() {

@@ -58,16 +58,7 @@ LL | fn d<const C: S>() {}
    = note: the only supported types are integers, `bool` and `char`
    = help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
 
-error: `&dyn for<'a> Foo<'a>` is forbidden as the type of a const generic parameter
-  --> $DIR/unusual-rib-combinations.rs:29:21
-   |
-LL | struct Bar<const N: &'a (dyn for<'a> Foo<'a>)>;
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: the only supported types are integers, `bool` and `char`
-   = help: add `#![feature(adt_const_params)]` to the crate attributes to enable more complex and user defined types
-
-error: aborting due to 9 previous errors
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0106, E0214, E0308, E0770.
 For more information about an error, try `rustc --explain E0106`.

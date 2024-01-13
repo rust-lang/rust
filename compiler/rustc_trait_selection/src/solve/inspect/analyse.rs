@@ -171,7 +171,8 @@ impl<'a, 'tcx> InspectGoal<'a, 'tcx> {
         let mut candidates = vec![];
         let last_eval_step = match self.evaluation.evaluation.kind {
             inspect::CanonicalGoalEvaluationKind::Overflow
-            | inspect::CanonicalGoalEvaluationKind::CycleInStack => {
+            | inspect::CanonicalGoalEvaluationKind::CycleInStack
+            | inspect::CanonicalGoalEvaluationKind::ProvisionalCacheHit => {
                 warn!("unexpected root evaluation: {:?}", self.evaluation);
                 return vec![];
             }

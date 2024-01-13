@@ -1,6 +1,5 @@
 use crate::traits::specialization_graph;
 use crate::ty::fast_reject::{self, SimplifiedType, TreatParams, TreatProjections};
-use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{Ident, Ty, TyCtxt};
 use hir::def_id::LOCAL_CRATE;
 use rustc_hir as hir;
@@ -241,9 +240,6 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
         let impl_def_id = impl_def_id.to_def_id();
 
         let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity();
-        if impl_self_ty.references_error() {
-            continue;
-        }
 
         if let Some(simplified_self_ty) =
             fast_reject::simplify_type(tcx, impl_self_ty, TreatParams::AsCandidateKey)

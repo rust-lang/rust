@@ -1,6 +1,7 @@
 //! lint on enum variants that are prefixed or suffixed by the same characters
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_hir};
+use clippy_utils::is_bool;
 use clippy_utils::macros::span_is_local;
 use clippy_utils::source::is_present_in_source;
 use clippy_utils::str_utils::{camel_case_split, count_match_end, count_match_start, to_camel_case, to_snake_case};
@@ -231,6 +232,10 @@ fn check_fields(cx: &LateContext<'_>, threshold: u64, item: &Item<'_>, fields: &
             (false, _) => ("pre", prefix),
             (true, false) => ("post", postfix),
         };
+        if fields.iter().all(|field| is_bool(field.ty)) {
+            // If all fields are booleans, we don't want to emit this lint.
+            return;
+        }
         span_lint_and_help(
             cx,
             STRUCT_FIELD_NAMES,

@@ -1583,6 +1583,9 @@ options! {
         "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
     dylib_lto: bool = (false, parse_bool, [UNTRACKED],
         "enables LTO for dylib crate type"),
+    eagerly_emit_delayed_bugs: bool = (false, parse_bool, [UNTRACKED],
+        "emit delayed bugs eagerly as errors instead of stashing them and emitting \
+        them only if an error has not been emitted"),
     ehcont_guard: bool = (false, parse_bool, [TRACKED],
         "generate Windows EHCont Guard tables"),
     emit_stack_sizes: bool = (false, parse_bool, [UNTRACKED],
