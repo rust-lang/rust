@@ -119,11 +119,15 @@ resolve_generic_params_from_outer_item =
     .refer_to_type_directly = refer to the type directly here instead
     .suggestion = try introducing a local generic parameter here
 
+resolve_generic_params_from_outer_item_const = a `const` is a separate item from the item that contains it
+
 resolve_generic_params_from_outer_item_const_param = const parameter from outer item
 
 resolve_generic_params_from_outer_item_self_ty_alias = `Self` type implicitly declared here, by this `impl`
 
 resolve_generic_params_from_outer_item_self_ty_param = can't use `Self` here
+
+resolve_generic_params_from_outer_item_static = a `static` is a separate item from the item that contains it
 
 resolve_generic_params_from_outer_item_ty_param = type parameter from outer item
 
