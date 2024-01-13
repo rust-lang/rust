@@ -1741,8 +1741,6 @@ href="https://doc.rust-lang.org/${channel}/rustdoc/read-documentation/search.htm
         let resetTimeout = null;
         let copyBtn = pre.querySelector("button[class='copy-code']");
         let icon = copyBtn.innerHTML;
-        console.log(copyBtn);
-        pre.style.background = "red"; 
         pre.addEventListener("mouseenter", function() {
             copyBtn.style.opacity = "1";
             copyBtn.addEventListener("click", function() {
