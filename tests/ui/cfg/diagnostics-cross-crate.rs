@@ -14,9 +14,9 @@ fn main() {
 
     // The module isn't found - we would like to get a diagnostic, but currently don't due to
     // the awkward way the resolver diagnostics are currently implemented.
-    // FIXME(Nilstrieb): Also add a note to the cfg diagnostic here
     cfged_out::inner::doesnt_exist::hello(); //~ ERROR failed to resolve
     //~^ NOTE could not find `doesnt_exist` in `inner`
+    //~| NOTE found an item that was configured out
 
     // It should find the one in the right module, not the wrong one.
     cfged_out::inner::right::meow(); //~ ERROR cannot find function
