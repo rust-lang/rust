@@ -3,6 +3,8 @@
 /// descriptors.
 mod pal;
 
+mod personality;
+
 // FIXME(117276): remove this, move feature implementations into individual
 //                submodules.
 pub use pal::*;
