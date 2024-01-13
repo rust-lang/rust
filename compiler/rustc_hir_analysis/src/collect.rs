@@ -35,6 +35,7 @@ use rustc_target::spec::abi;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
 use rustc_trait_selection::traits::ObligationCtxt;
+use std::cell::Cell;
 use std::iter;
 use std::ops::Bound;
 
@@ -119,6 +120,7 @@ pub fn provide(providers: &mut Providers) {
 pub struct ItemCtxt<'tcx> {
     tcx: TyCtxt<'tcx>,
     item_def_id: LocalDefId,
+    tainted_by_errors: Cell<Option<ErrorGuaranteed>>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -343,7 +345,7 @@ fn bad_placeholder<'tcx>(
 
 impl<'tcx> ItemCtxt<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, item_def_id: LocalDefId) -> ItemCtxt<'tcx> {
-        ItemCtxt { tcx, item_def_id }
+        ItemCtxt { tcx, item_def_id, tainted_by_errors: Cell::new(None) }
     }
 
     pub fn to_ty(&self, ast_ty: &hir::Ty<'_>) -> Ty<'tcx> {
@@ -356,6 +358,13 @@ impl<'tcx> ItemCtxt<'tcx> {
 
     pub fn node(&self) -> hir::Node<'tcx> {
         self.tcx.hir_node(self.hir_id())
+    }
+
+    fn check_tainted_by_errors(&self) -> Result<(), ErrorGuaranteed> {
+        match self.tainted_by_errors.get() {
+            Some(err) => Err(err),
+            None => Ok(()),
+        }
     }
 }
 
@@ -492,8 +501,8 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
         ty.ty_adt_def()
     }
 
-    fn set_tainted_by_errors(&self, _: ErrorGuaranteed) {
-        // There's no obvious place to track this, so just let it go.
+    fn set_tainted_by_errors(&self, err: ErrorGuaranteed) {
+        self.tainted_by_errors.set(Some(err));
     }
 
     fn record_ty(&self, _hir_id: hir::HirId, _ty: Ty<'tcx>, _span: Span) {

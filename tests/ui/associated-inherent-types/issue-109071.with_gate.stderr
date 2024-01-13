@@ -20,19 +20,20 @@ help: add missing generic argument
 LL | impl<T> Windows<T> {
    |                +++
 
-error[E0282]: type annotations needed
-  --> $DIR/issue-109071.rs:11:18
-   |
-LL |     fn next() -> Option<Self::Item> {}
-   |                  ^^^^^^^^^^^^^^^^^^ cannot infer type for type parameter `T`
-
-error[E0282]: type annotations needed
-  --> $DIR/issue-109071.rs:16:15
+error[E0223]: ambiguous associated type
+  --> $DIR/issue-109071.rs:15:22
    |
 LL |     fn T() -> Option<Self::Item> {}
-   |               ^^^^^^^^^^^^^^^^^^ cannot infer type for type parameter `T`
+   |                      ^^^^^^^^^^
+   |
+help: use fully-qualified syntax
+   |
+LL |     fn T() -> Option<<Windows<T> as IntoAsyncIterator>::Item> {}
+   |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     fn T() -> Option<<Windows<T> as IntoIterator>::Item> {}
+   |                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0107, E0282, E0637.
+Some errors have detailed explanations: E0107, E0223, E0637.
 For more information about an error, try `rustc --explain E0107`.

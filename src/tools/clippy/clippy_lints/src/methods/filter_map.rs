@@ -26,13 +26,14 @@ fn is_method(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_name: Symbol) ->
         hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
             let body = cx.tcx.hir().body(body);
             let closure_expr = peel_blocks(body.value);
-            let arg_id = body.params[0].pat.hir_id;
             match closure_expr.kind {
                 hir::ExprKind::MethodCall(hir::PathSegment { ident, .. }, receiver, ..) => {
                     if ident.name == method_name
                         && let hir::ExprKind::Path(path) = &receiver.kind
                         && let Res::Local(ref local) = cx.qpath_res(path, receiver.hir_id)
+                        && !body.params.is_empty()
                     {
+                        let arg_id = body.params[0].pat.hir_id;
                         return arg_id == *local;
                     }
                     false

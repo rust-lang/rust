@@ -9,9 +9,6 @@
 #[cfg(test)]
 mod tests;
 
-#[cfg(test)]
-mod benches;
-
 #[stable(feature = "saturating_int_impl", since = "1.74.0")]
 pub use core::num::Saturating;
 #[stable(feature = "rust1", since = "1.0.0")]

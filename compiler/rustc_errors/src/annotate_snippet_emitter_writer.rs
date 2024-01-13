@@ -12,8 +12,7 @@ use crate::{
     CodeSuggestion, Diagnostic, DiagnosticId, DiagnosticMessage, Emitter, FluentBundle,
     LazyFallbackBundle, Level, MultiSpan, Style, SubDiagnostic,
 };
-use annotate_snippets::display_list::{DisplayList, FormatOptions};
-use annotate_snippets::snippet::*;
+use annotate_snippets::{Annotation, AnnotationType, Renderer, Slice, Snippet, SourceAnnotation};
 use rustc_data_structures::sync::Lrc;
 use rustc_error_messages::FluentArgs;
 use rustc_span::source_map::SourceMap;
@@ -86,7 +85,7 @@ fn source_string(file: Lrc<SourceFile>, line: &Line) -> String {
 /// Maps `Diagnostic::Level` to `snippet::AnnotationType`
 fn annotation_type_for_level(level: Level) -> AnnotationType {
     match level {
-        Level::Bug | Level::DelayedBug | Level::Fatal | Level::Error => AnnotationType::Error,
+        Level::Bug | Level::DelayedBug(_) | Level::Fatal | Level::Error => AnnotationType::Error,
         Level::ForceWarning(_) | Level::Warning => AnnotationType::Warning,
         Level::Note | Level::OnceNote => AnnotationType::Note,
         Level::Help | Level::OnceHelp => AnnotationType::Help,
@@ -190,11 +189,6 @@ impl AnnotateSnippetEmitter {
                     annotation_type: annotation_type_for_level(*level),
                 }),
                 footer: vec![],
-                opt: FormatOptions {
-                    color: true,
-                    anonymized_line_numbers: self.ui_testing,
-                    margin: None,
-                },
                 slices: annotated_files
                     .iter()
                     .map(|(file_name, source, line_index, annotations)| {
@@ -222,7 +216,8 @@ impl AnnotateSnippetEmitter {
             // FIXME(#59346): Figure out if we can _always_ print to stderr or not.
             // `emitter.rs` has the `Destination` enum that lists various possible output
             // destinations.
-            eprintln!("{}", DisplayList::from(snippet))
+            let renderer = Renderer::plain().anonymized_line_numbers(self.ui_testing);
+            eprintln!("{}", renderer.render(snippet))
         }
         // FIXME(#59346): Is it ok to return None if there's no source_map?
     }

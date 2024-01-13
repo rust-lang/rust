@@ -11,19 +11,15 @@
   
       bb0: {
           _2 = const false;
--         switchInt(_2) -> [0: bb1, otherwise: bb2];
-+         switchInt(const false) -> [0: bb1, otherwise: bb2];
+-         switchInt(_2) -> [0: bb2, otherwise: bb1];
++         switchInt(const false) -> [0: bb2, otherwise: bb1];
       }
   
       bb1: {
-          goto -> bb3;
+          _0 = noop() -> [return: bb2, unwind continue];
       }
   
       bb2: {
-          _0 = noop() -> [return: bb3, unwind continue];
-      }
-  
-      bb3: {
           return;
       }
   }

@@ -1,4 +1,4 @@
-# `env`
+# `env-set`
 
 The tracking issue for this feature is: [#118372](https://github.com/rust-lang/rust/issues/118372).
 
@@ -11,11 +11,11 @@ from the `proc_macro` crate.
 This information will be stored in the dep-info files. For more information about
 dep-info files, take a look [here](https://doc.rust-lang.org/cargo/guide/build-cache.html#dep-info-files).
 
-When retrieving an environment variable value, the one specified by `--env` will take
+When retrieving an environment variable value, the one specified by `--env-set` will take
 precedence. For example, if you want have `PATH=a` in your environment and pass:
 
 ```bash
-rustc --env PATH=env
+rustc --env-set PATH=env
 ```
 
 Then you will have:
@@ -24,17 +24,17 @@ Then you will have:
 assert_eq!(env!("PATH"), "env");
 ```
 
-It will trigger a new compilation if any of the `--env` argument value is different.
+It will trigger a new compilation if any of the `--env-set` argument value is different.
 So if you first passed:
 
 ```bash
---env A=B --env X=12
+--env-set A=B --env X=12
 ```
 
 and then on next compilation:
 
 ```bash
---env A=B
+--env-set A=B
 ```
 
 `X` value is different (not set) so the code will be re-compiled.
@@ -42,4 +42,4 @@ and then on next compilation:
 Please note that on Windows, environment variables are case insensitive but case
 preserving whereas `rustc`'s environment variables are case sensitive. For example,
 having `Path` in your environment (case insensitive) is different than using
-`rustc --env Path=...` (case sensitive).
+`rustc --env-set Path=...` (case sensitive).

@@ -116,7 +116,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
              for more information on them, visit \
              <https://doc.rust-lang.org/reference/special-types-and-traits.html#auto-traits>",
             );
-            err.emit();
+            self.set_tainted_by_errors(err.emit());
         }
 
         if regular_traits.is_empty() && auto_traits.is_empty() {
@@ -127,6 +127,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .map(|trait_ref| tcx.def_span(trait_ref));
             let reported =
                 tcx.dcx().emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span });
+            self.set_tainted_by_errors(reported);
             return Ty::new_error(tcx, reported);
         }
 
@@ -290,7 +291,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
                 if references_self {
                     let def_id = i.bottom().0.def_id();
-                    struct_span_code_err!(
+                    let reported = struct_span_code_err!(
                         tcx.dcx(),
                         i.bottom().1,
                         E0038,
@@ -303,6 +304,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             .error_msg(),
                     )
                     .emit();
+                    self.set_tainted_by_errors(reported);
                 }
 
                 ty::ExistentialTraitRef { def_id: trait_ref.def_id, args }
@@ -389,6 +391,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         } else {
                             err.emit()
                         };
+                        self.set_tainted_by_errors(e);
                         ty::Region::new_error(tcx, e)
                     })
                 }

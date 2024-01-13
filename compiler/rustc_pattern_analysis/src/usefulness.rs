@@ -712,10 +712,11 @@
 //! I (Nadrieril) prefer to put new tests in `ui/pattern/usefulness` unless there's a specific
 //! reason not to, for example if they crucially depend on a particular feature like `or_patterns`.
 
+use rustc_index::bit_set::BitSet;
 use smallvec::{smallvec, SmallVec};
 use std::fmt;
 
-use crate::constructor::{Constructor, ConstructorSet};
+use crate::constructor::{Constructor, ConstructorSet, IntRange};
 use crate::pat::{DeconstructedPat, PatOrWild, WitnessPat};
 use crate::{Captures, MatchArm, MatchCtxt, TypeCx};
 
@@ -911,6 +912,11 @@ struct MatrixRow<'p, Cx: TypeCx> {
     /// [`compute_exhaustiveness_and_usefulness`] if the arm is found to be useful.
     /// This is reset to `false` when specializing.
     useful: bool,
+    /// Tracks which rows above this one have an intersection with this one, i.e. such that there is
+    /// a value that matches both rows.
+    /// Note: Because of relevancy we may miss some intersections. The intersections we do find are
+    /// correct.
+    intersects: BitSet<usize>,
 }
 
 impl<'p, Cx: TypeCx> MatrixRow<'p, Cx> {
@@ -938,6 +944,7 @@ impl<'p, Cx: TypeCx> MatrixRow<'p, Cx> {
             parent_row: self.parent_row,
             is_under_guard: self.is_under_guard,
             useful: false,
+            intersects: BitSet::new_empty(0), // Initialized in `Matrix::expand_and_push`.
         })
     }
 
@@ -955,6 +962,7 @@ impl<'p, Cx: TypeCx> MatrixRow<'p, Cx> {
             parent_row,
             is_under_guard: self.is_under_guard,
             useful: false,
+            intersects: BitSet::new_empty(0), // Initialized in `Matrix::expand_and_push`.
         }
     }
 }
@@ -993,13 +1001,15 @@ struct Matrix<'p, Cx: TypeCx> {
 impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
     /// Pushes a new row to the matrix. If the row starts with an or-pattern, this recursively
     /// expands it. Internal method, prefer [`Matrix::new`].
-    fn expand_and_push(&mut self, row: MatrixRow<'p, Cx>) {
+    fn expand_and_push(&mut self, mut row: MatrixRow<'p, Cx>) {
         if !row.is_empty() && row.head().is_or_pat() {
             // Expand nested or-patterns.
-            for new_row in row.expand_or_pat() {
+            for mut new_row in row.expand_or_pat() {
+                new_row.intersects = BitSet::new_empty(self.rows.len());
                 self.rows.push(new_row);
             }
         } else {
+            row.intersects = BitSet::new_empty(self.rows.len());
             self.rows.push(row);
         }
     }
@@ -1019,9 +1029,10 @@ impl<'p, Cx: TypeCx> Matrix<'p, Cx> {
         for (row_id, arm) in arms.iter().enumerate() {
             let v = MatrixRow {
                 pats: PatStack::from_pattern(arm.pat),
-                parent_row: row_id, // dummy, we won't read it
+                parent_row: row_id, // dummy, we don't read it
                 is_under_guard: arm.has_guard,
                 useful: false,
+                intersects: BitSet::new_empty(0), // Initialized in `Matrix::expand_and_push`.
             };
             matrix.expand_and_push(v);
         }
@@ -1317,6 +1328,83 @@ impl<Cx: TypeCx> WitnessMatrix<Cx> {
     }
 }
 
+/// Collect ranges that overlap like `lo..=overlap`/`overlap..=hi`. Must be called during
+/// exhaustiveness checking, if we find a singleton range after constructor splitting. This reuses
+/// row intersection information to only detect ranges that truly overlap.
+///
+/// If two ranges overlapped, the split set will contain their intersection as a singleton.
+/// Specialization will then select rows that match the overlap, and exhaustiveness will compute
+/// which rows have an intersection that includes the overlap. That gives us all the info we need to
+/// compute overlapping ranges without false positives.
+///
+/// We can however get false negatives because exhaustiveness does not explore all cases. See the
+/// section on relevancy at the top of the file.
+fn collect_overlapping_range_endpoints<'p, Cx: TypeCx>(
+    overlap_range: IntRange,
+    matrix: &Matrix<'p, Cx>,
+    specialized_matrix: &Matrix<'p, Cx>,
+    overlapping_range_endpoints: &mut Vec<OverlappingRanges<'p, Cx>>,
+) {
+    let overlap = overlap_range.lo;
+    // Ranges that look like `lo..=overlap`.
+    let mut prefixes: SmallVec<[_; 1]> = Default::default();
+    // Ranges that look like `overlap..=hi`.
+    let mut suffixes: SmallVec<[_; 1]> = Default::default();
+    // Iterate on patterns that contained `overlap`. We iterate on `specialized_matrix` which
+    // contains only rows that matched the current `ctor` as well as accurate intersection
+    // information. It doesn't contain the column that contains the range; that can be found in
+    // `matrix`.
+    for (child_row_id, child_row) in specialized_matrix.rows().enumerate() {
+        let PatOrWild::Pat(pat) = matrix.rows[child_row.parent_row].head() else { continue };
+        let Constructor::IntRange(this_range) = pat.ctor() else { continue };
+        // Don't lint when one of the ranges is a singleton.
+        if this_range.is_singleton() {
+            continue;
+        }
+        if this_range.lo == overlap {
+            // `this_range` looks like `overlap..=this_range.hi`; it overlaps with any
+            // ranges that look like `lo..=overlap`.
+            if !prefixes.is_empty() {
+                let overlaps_with: Vec<_> = prefixes
+                    .iter()
+                    .filter(|&&(other_child_row_id, _)| {
+                        child_row.intersects.contains(other_child_row_id)
+                    })
+                    .map(|&(_, pat)| pat)
+                    .collect();
+                if !overlaps_with.is_empty() {
+                    overlapping_range_endpoints.push(OverlappingRanges {
+                        pat,
+                        overlaps_on: overlap_range,
+                        overlaps_with,
+                    });
+                }
+            }
+            suffixes.push((child_row_id, pat))
+        } else if this_range.hi == overlap.plus_one() {
+            // `this_range` looks like `this_range.lo..=overlap`; it overlaps with any
+            // ranges that look like `overlap..=hi`.
+            if !suffixes.is_empty() {
+                let overlaps_with: Vec<_> = suffixes
+                    .iter()
+                    .filter(|&&(other_child_row_id, _)| {
+                        child_row.intersects.contains(other_child_row_id)
+                    })
+                    .map(|&(_, pat)| pat)
+                    .collect();
+                if !overlaps_with.is_empty() {
+                    overlapping_range_endpoints.push(OverlappingRanges {
+                        pat,
+                        overlaps_on: overlap_range,
+                        overlaps_with,
+                    });
+                }
+            }
+            prefixes.push((child_row_id, pat))
+        }
+    }
+}
+
 /// The core of the algorithm.
 ///
 /// This recursively computes witnesses of the non-exhaustiveness of `matrix` (if any). Also tracks
@@ -1335,6 +1423,7 @@ impl<Cx: TypeCx> WitnessMatrix<Cx> {
 fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
     mcx: MatchCtxt<'a, 'p, Cx>,
     matrix: &mut Matrix<'p, Cx>,
+    overlapping_range_endpoints: &mut Vec<OverlappingRanges<'p, Cx>>,
     is_top_level: bool,
 ) -> Result<WitnessMatrix<Cx>, Cx::Error> {
     debug_assert!(matrix.rows().all(|r| r.len() == matrix.column_count()));
@@ -1349,21 +1438,19 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
     let Some(ty) = matrix.head_ty() else {
         // The base case: there are no columns in the matrix. We are morally pattern-matching on ().
         // A row is useful iff it has no (unguarded) rows above it.
-        for row in matrix.rows_mut() {
-            // All rows are useful until they're not.
-            row.useful = true;
-            // When there's an unguarded row, the match is exhaustive and any subsequent row is not
-            // useful.
-            if !row.is_under_guard {
-                return Ok(WitnessMatrix::empty());
-            }
+        let mut useful = true; // Whether the next row is useful.
+        for (i, row) in matrix.rows_mut().enumerate() {
+            row.useful = useful;
+            row.intersects.insert_range(0..i);
+            // The next rows stays useful if this one is under a guard.
+            useful &= row.is_under_guard;
         }
-        // No (unguarded) rows, so the match is not exhaustive. We return a new witness unless
-        // irrelevant.
-        return if matrix.wildcard_row_is_relevant {
+        return if useful && matrix.wildcard_row_is_relevant {
+            // The wildcard row is useful; the match is non-exhaustive.
             Ok(WitnessMatrix::unit_witness())
         } else {
-            // We choose to not report anything here; see at the top for details.
+            // Either the match is exhaustive, or we choose not to report anything because of
+            // relevancy. See at the top for details.
             Ok(WitnessMatrix::empty())
         };
     };
@@ -1416,7 +1503,12 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
         let ctor_is_relevant = matches!(ctor, Constructor::Missing) || missing_ctors.is_empty();
         let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor, ctor_is_relevant);
         let mut witnesses = ensure_sufficient_stack(|| {
-            compute_exhaustiveness_and_usefulness(mcx, &mut spec_matrix, false)
+            compute_exhaustiveness_and_usefulness(
+                mcx,
+                &mut spec_matrix,
+                overlapping_range_endpoints,
+                false,
+            )
         })?;
 
         // Transform witnesses for `spec_matrix` into witnesses for `matrix`.
@@ -1424,10 +1516,34 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
         // Accumulate the found witnesses.
         ret.extend(witnesses);
 
-        // A parent row is useful if any of its children is.
         for child_row in spec_matrix.rows() {
-            let parent_row = &mut matrix.rows[child_row.parent_row];
-            parent_row.useful = parent_row.useful || child_row.useful;
+            let parent_row_id = child_row.parent_row;
+            let parent_row = &mut matrix.rows[parent_row_id];
+            // A parent row is useful if any of its children is.
+            parent_row.useful |= child_row.useful;
+            for child_intersection in child_row.intersects.iter() {
+                // Convert the intersecting ids into ids for the parent matrix.
+                let parent_intersection = spec_matrix.rows[child_intersection].parent_row;
+                // Note: self-intersection can happen with or-patterns.
+                if parent_intersection != parent_row_id {
+                    parent_row.intersects.insert(parent_intersection);
+                }
+            }
+        }
+
+        // Detect ranges that overlap on their endpoints.
+        if let Constructor::IntRange(overlap_range) = ctor {
+            if overlap_range.is_singleton()
+                && spec_matrix.rows.len() >= 2
+                && spec_matrix.rows.iter().any(|row| !row.intersects.is_empty())
+            {
+                collect_overlapping_range_endpoints(
+                    overlap_range,
+                    matrix,
+                    &spec_matrix,
+                    overlapping_range_endpoints,
+                );
+            }
         }
     }
 
@@ -1453,6 +1569,15 @@ pub enum Usefulness<'p, Cx: TypeCx> {
     Redundant,
 }
 
+/// Indicates that the range `pat` overlapped with all the ranges in `overlaps_with`, where the
+/// range they overlapped over is `overlaps_on`. We only detect singleton overlaps.
+#[derive(Clone, Debug)]
+pub struct OverlappingRanges<'p, Cx: TypeCx> {
+    pub pat: &'p DeconstructedPat<'p, Cx>,
+    pub overlaps_on: IntRange,
+    pub overlaps_with: Vec<&'p DeconstructedPat<'p, Cx>>,
+}
+
 /// The output of checking a match for exhaustiveness and arm usefulness.
 pub struct UsefulnessReport<'p, Cx: TypeCx> {
     /// For each arm of the input, whether that arm is useful after the arms above it.
@@ -1460,6 +1585,7 @@ pub struct UsefulnessReport<'p, Cx: TypeCx> {
     /// If the match is exhaustive, this is empty. If not, this contains witnesses for the lack of
     /// exhaustiveness.
     pub non_exhaustiveness_witnesses: Vec<WitnessPat<Cx>>,
+    pub overlapping_range_endpoints: Vec<OverlappingRanges<'p, Cx>>,
 }
 
 /// Computes whether a match is exhaustive and which of its arms are useful.
@@ -1470,9 +1596,14 @@ pub fn compute_match_usefulness<'p, Cx: TypeCx>(
     scrut_ty: Cx::Ty,
     scrut_validity: ValidityConstraint,
 ) -> Result<UsefulnessReport<'p, Cx>, Cx::Error> {
+    let mut overlapping_range_endpoints = Vec::new();
     let mut matrix = Matrix::new(arms, scrut_ty, scrut_validity);
-    let non_exhaustiveness_witnesses =
-        compute_exhaustiveness_and_usefulness(cx, &mut matrix, true)?;
+    let non_exhaustiveness_witnesses = compute_exhaustiveness_and_usefulness(
+        cx,
+        &mut matrix,
+        &mut overlapping_range_endpoints,
+        true,
+    )?;
 
     let non_exhaustiveness_witnesses: Vec<_> = non_exhaustiveness_witnesses.single_column();
     let arm_usefulness: Vec<_> = arms
@@ -1489,5 +1620,10 @@ pub fn compute_match_usefulness<'p, Cx: TypeCx>(
             (arm, usefulness)
         })
         .collect();
-    Ok(UsefulnessReport { arm_usefulness, non_exhaustiveness_witnesses })
+
+    Ok(UsefulnessReport {
+        arm_usefulness,
+        non_exhaustiveness_witnesses,
+        overlapping_range_endpoints,
+    })
 }

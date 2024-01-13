@@ -356,6 +356,12 @@ pub(super) fn builtin(
                 }
             }
 
+            // We don't want to suggest adding values to well known names
+            // since those are defined by rustc it-self. Users can still
+            // do it if they want, but should not encourage them.
+            let is_cfg_a_well_know_name =
+                sess.parse_sess.check_config.well_known_names.contains(&name);
+
             let inst = if let Some((value, _value_span)) = value {
                 let pre = if is_from_cargo { "\\" } else { "" };
                 format!("cfg({name}, values({pre}\"{value}{pre}\"))")
@@ -368,12 +374,14 @@ pub(super) fn builtin(
                     if let Some((value, _value_span)) = value {
                         db.help(format!("consider adding `{value}` as a feature in `Cargo.toml`"));
                     }
-                } else {
+                } else if !is_cfg_a_well_know_name {
                     db.help(format!("consider using a Cargo feature instead or adding `println!(\"cargo:rustc-check-cfg={inst}\");` to the top of a `build.rs`"));
                 }
                 db.note("see <https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#check-cfg> for more information about checking conditional configuration");
             } else {
-                db.help(format!("to expect this configuration use `--check-cfg={inst}`"));
+                if !is_cfg_a_well_know_name {
+                    db.help(format!("to expect this configuration use `--check-cfg={inst}`"));
+                }
                 db.note("see <https://doc.rust-lang.org/nightly/unstable-book/compiler-flags/check-cfg.html> for more information about checking conditional configuration");
             }
         }

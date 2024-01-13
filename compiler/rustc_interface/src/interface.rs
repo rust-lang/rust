@@ -82,7 +82,7 @@ pub(crate) fn parse_cfg(dcx: &DiagCtxt, cfgs: Vec<String>) -> Cfg {
                     Ok(..) => {}
                     Err(err) => err.cancel(),
                 },
-                Err(errs) => drop(errs),
+                Err(errs) => errs.into_iter().for_each(|err| err.cancel()),
             }
 
             // If the user tried to use a key="value" flag, but is missing the quotes, provide
@@ -129,9 +129,12 @@ pub(crate) fn parse_check_cfg(dcx: &DiagCtxt, specs: Vec<String>) -> CheckCfg {
             error!("expected `cfg(name, values(\"value1\", \"value2\", ... \"valueN\"))`")
         };
 
-        let Ok(mut parser) = maybe_new_parser_from_source_str(&sess, filename, s.to_string())
-        else {
-            expected_error();
+        let mut parser = match maybe_new_parser_from_source_str(&sess, filename, s.to_string()) {
+            Ok(parser) => parser,
+            Err(errs) => {
+                errs.into_iter().for_each(|err| err.cancel());
+                expected_error();
+            }
         };
 
         let meta_item = match parser.parse_meta_item() {
