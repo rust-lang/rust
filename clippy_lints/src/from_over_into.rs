@@ -6,8 +6,8 @@ use clippy_utils::source::snippet_opt;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_path, Visitor};
 use rustc_hir::{
-    GenericArg, GenericArgs, HirId, Impl, ImplItemKind, ImplItemRef, Item, ItemKind, PatKind, Path, PathSegment, Ty,
-    TyKind,
+    FnRetTy, GenericArg, GenericArgs, HirId, Impl, ImplItemKind, ImplItemRef, Item, ItemKind, PatKind, Path,
+    PathSegment, Ty, TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter::OnlyBodies;
@@ -181,6 +181,9 @@ fn convert_to_from(
     let from = snippet_opt(cx, self_ty.span)?;
     let into = snippet_opt(cx, target_ty.span)?;
 
+    let return_type = matches!(sig.decl.output, FnRetTy::Return(_))
+        .then_some(String::from("Self"))
+        .unwrap_or_default();
     let mut suggestions = vec![
         // impl Into<T> for U  ->  impl From<T> for U
         //      ~~~~                    ~~~~
@@ -199,7 +202,7 @@ fn convert_to_from(
         (self_ident.span, format!("val: {from}")),
         // fn into(self) -> T  ->  fn into(self) -> Self
         //                  ~                       ~~~~
-        (sig.decl.output.span(), String::from("Self")),
+        (sig.decl.output.span(), return_type),
     ];
 
     let mut finder = SelfFinder {
