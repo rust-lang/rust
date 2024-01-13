@@ -1,4 +1,5 @@
 use crate::base;
+use crate::errors;
 use crate::traits::*;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
@@ -231,12 +232,9 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             if layout.size.bytes() >= MIN_DANGEROUS_SIZE {
                 let size_str = || {
                     let (size_quantity, size_unit) = human_readable_bytes(layout.size.bytes());
-                    format!(
-                        "Dangerous stack allocation of size: {:.2} {} exceeds limits on most architectures",
-                        size_quantity, size_unit
-                    )
+                    format!("{:.2} {}", size_quantity, size_unit)
                 };
-                cx.tcx().dcx().fatal(size_str());
+                cx.tcx().dcx().emit_warn(errors::DangerousStackAllocation { output: size_str() });
             }
 
             if local == mir::RETURN_PLACE && fx.fn_abi.ret.is_indirect() {

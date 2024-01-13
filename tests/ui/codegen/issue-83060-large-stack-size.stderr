@@ -1,4 +1,4 @@
-error: Dangerous stack allocation of size: 1 GiB exceeds limits on most architectures
+warning: Dangerous stack allocation of size: 1 GiB exceeds most architecture limits
 
-error: aborting due to 1 previous error
+warning: 1 warning emitted
 
