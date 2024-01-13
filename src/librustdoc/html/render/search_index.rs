@@ -1,4 +1,4 @@
-ƒ√use std::collections::hash_map::Entry;
+use std::collections::hash_map::Entry;
 use std::collections::{BTreeMap, VecDeque};
 
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
