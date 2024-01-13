@@ -2659,7 +2659,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         self.suggest_trait_fn_ty_for_impl_fn_infer(hir_id, Some(i))
                     {
                         infer_replacements.push((a.span, suggested_ty.to_string()));
-                        return suggested_ty;
+                        return Ty::new_error_with_message(
+                            self.tcx(),
+                            a.span,
+                            suggested_ty.to_string(),
+                        );
                     }
                 }
 
@@ -2677,7 +2681,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         self.suggest_trait_fn_ty_for_impl_fn_infer(hir_id, None)
                 {
                     infer_replacements.push((output.span, suggested_ty.to_string()));
-                    suggested_ty
+                    Ty::new_error_with_message(self.tcx(), output.span, suggested_ty.to_string())
                 } else {
                     visitor.visit_ty(output);
                     self.ast_ty_to_ty(output)
