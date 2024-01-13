@@ -662,9 +662,12 @@ fn configure_cmake(
         Some(ref cl) => (cl.into(), cl.into()),
         None => (builder.cc(target), builder.cxx(target).unwrap()),
     };
+    dbg!(builder.config.llvm_clang_cl);
+    dbg!(cc);
 
     // Handle msvc + ninja + ccache specially (this is what the bots use)
     if target.is_msvc() && builder.ninja() && builder.config.ccache.is_some() {
+        println!("Path A");
         let mut wrap_cc = env::current_exe().expect("failed to get cwd");
         wrap_cc.set_file_name("sccache-plus-cl.exe");
 
@@ -702,6 +705,7 @@ fn configure_cmake(
             cfg.env("SCCACHE_EXTRA_ARGS", "-m32");
         }
     } else {
+        println!("Path B");
         // If ccache is configured we inform the build a little differently how
         // to invoke ccache while also invoking our compilers.
         if use_compiler_launcher {
