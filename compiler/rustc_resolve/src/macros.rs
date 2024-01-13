@@ -773,7 +773,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     self.report_error(
                         span,
                         ResolutionError::FailedToResolve {
-                            last_segment: path.last().map(|segment| segment.ident.name),
+                            segment: path.last().map(|segment| segment.ident.name),
                             label,
                             suggestion,
                             module,
