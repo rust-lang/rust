@@ -1,5 +1,5 @@
 use crate::{errors, structured_errors::StructuredDiagnostic};
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::{codes::*, DiagnosticBuilder, ErrCode};
 use rustc_middle::ty::{Ty, TypeVisitableExt};
 use rustc_session::Session;
 use rustc_span::Span;
@@ -16,8 +16,8 @@ impl<'tcx> StructuredDiagnostic<'tcx> for MissingCastForVariadicArg<'tcx, '_> {
         self.sess
     }
 
-    fn code(&self) -> String {
-        rustc_errors::error_code!(E0617)
+    fn code(&self) -> ErrCode {
+        E0617
     }
 
     fn diagnostic_common(&self) -> DiagnosticBuilder<'tcx> {

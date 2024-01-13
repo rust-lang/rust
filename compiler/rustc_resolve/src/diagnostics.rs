@@ -6,8 +6,8 @@ use rustc_ast::{MetaItemKind, NestedMetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    pluralize, report_ambiguity_error, struct_span_code_err, Applicability, DiagCtxt, Diagnostic,
-    DiagnosticBuilder, ErrorGuaranteed, MultiSpan, SuggestionStyle,
+    codes::*, pluralize, report_ambiguity_error, struct_span_code_err, Applicability, DiagCtxt,
+    Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan, SuggestionStyle,
 };
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use rustc_hir::def::Namespace::{self, *};

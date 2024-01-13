@@ -1,7 +1,7 @@
 use hir::GenericParamKind;
 use rustc_errors::{
-    AddToDiagnostic, Applicability, Diagnostic, DiagnosticMessage, DiagnosticStyledString,
-    IntoDiagnosticArg, MultiSpan, SubdiagnosticMessage,
+    codes::*, AddToDiagnostic, Applicability, Diagnostic, DiagnosticMessage,
+    DiagnosticStyledString, IntoDiagnosticArg, MultiSpan, SubdiagnosticMessage,
 };
 use rustc_hir as hir;
 use rustc_hir::FnRetTy;
@@ -33,7 +33,7 @@ pub struct OpaqueHiddenTypeDiag {
 }
 
 #[derive(Diagnostic)]
-#[diag(infer_type_annotations_needed, code = "E0282")]
+#[diag(infer_type_annotations_needed, code = E0282)]
 pub struct AnnotationRequired<'a> {
     #[primary_span]
     pub span: Span,
@@ -51,7 +51,7 @@ pub struct AnnotationRequired<'a> {
 
 // Copy of `AnnotationRequired` for E0283
 #[derive(Diagnostic)]
-#[diag(infer_type_annotations_needed, code = "E0283")]
+#[diag(infer_type_annotations_needed, code = E0283)]
 pub struct AmbiguousImpl<'a> {
     #[primary_span]
     pub span: Span,
@@ -69,7 +69,7 @@ pub struct AmbiguousImpl<'a> {
 
 // Copy of `AnnotationRequired` for E0284
 #[derive(Diagnostic)]
-#[diag(infer_type_annotations_needed, code = "E0284")]
+#[diag(infer_type_annotations_needed, code = E0284)]
 pub struct AmbiguousReturn<'a> {
     #[primary_span]
     pub span: Span,
@@ -421,7 +421,7 @@ impl AddToDiagnostic for AddLifetimeParamsSuggestion<'_> {
 }
 
 #[derive(Diagnostic)]
-#[diag(infer_lifetime_mismatch, code = "E0623")]
+#[diag(infer_lifetime_mismatch, code = E0623)]
 pub struct LifetimeMismatch<'a> {
     #[primary_span]
     pub span: Span,
@@ -495,7 +495,7 @@ pub struct MismatchedStaticLifetime<'a> {
 
 #[derive(Diagnostic)]
 pub enum ExplicitLifetimeRequired<'a> {
-    #[diag(infer_explicit_lifetime_required_with_ident, code = "E0621")]
+    #[diag(infer_explicit_lifetime_required_with_ident, code = E0621)]
     WithIdent {
         #[primary_span]
         #[label]
@@ -511,7 +511,7 @@ pub enum ExplicitLifetimeRequired<'a> {
         #[skip_arg]
         new_ty: Ty<'a>,
     },
-    #[diag(infer_explicit_lifetime_required_with_param_type, code = "E0621")]
+    #[diag(infer_explicit_lifetime_required_with_param_type, code = E0621)]
     WithParamType {
         #[primary_span]
         #[label]
@@ -819,7 +819,7 @@ impl AddToDiagnostic for DynTraitConstraintSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag(infer_but_calling_introduces, code = "E0772")]
+#[diag(infer_but_calling_introduces, code = E0772)]
 pub struct ButCallingIntroduces {
     #[label(infer_label1)]
     pub param_ty_span: Span,
@@ -871,14 +871,14 @@ impl AddToDiagnostic for MoreTargeted {
     where
         F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
     {
-        diag.code(rustc_errors::error_code!(E0772));
+        diag.code(E0772);
         diag.primary_message(fluent::infer_more_targeted);
         diag.arg("ident", self.ident);
     }
 }
 
 #[derive(Diagnostic)]
-#[diag(infer_but_needs_to_satisfy, code = "E0759")]
+#[diag(infer_but_needs_to_satisfy, code = E0759)]
 pub struct ButNeedsToSatisfy {
     #[primary_span]
     pub sp: Span,
@@ -904,7 +904,7 @@ pub struct ButNeedsToSatisfy {
 }
 
 #[derive(Diagnostic)]
-#[diag(infer_outlives_content, code = "E0312")]
+#[diag(infer_outlives_content, code = E0312)]
 pub struct OutlivesContent<'a> {
     #[primary_span]
     pub span: Span,
@@ -913,7 +913,7 @@ pub struct OutlivesContent<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(infer_outlives_bound, code = "E0476")]
+#[diag(infer_outlives_bound, code = E0476)]
 pub struct OutlivesBound<'a> {
     #[primary_span]
     pub span: Span,
@@ -922,7 +922,7 @@ pub struct OutlivesBound<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(infer_fulfill_req_lifetime, code = "E0477")]
+#[diag(infer_fulfill_req_lifetime, code = E0477)]
 pub struct FulfillReqLifetime<'a> {
     #[primary_span]
     pub span: Span,
@@ -932,7 +932,7 @@ pub struct FulfillReqLifetime<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(infer_lf_bound_not_satisfied, code = "E0478")]
+#[diag(infer_lf_bound_not_satisfied, code = E0478)]
 pub struct LfBoundNotSatisfied<'a> {
     #[primary_span]
     pub span: Span,
@@ -941,7 +941,7 @@ pub struct LfBoundNotSatisfied<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(infer_ref_longer_than_data, code = "E0491")]
+#[diag(infer_ref_longer_than_data, code = E0491)]
 pub struct RefLongerThanData<'a> {
     #[primary_span]
     pub span: Span,
@@ -1117,7 +1117,7 @@ pub enum PlaceholderRelationLfNotSatisfied {
 }
 
 #[derive(Diagnostic)]
-#[diag(infer_opaque_captures_lifetime, code = "E0700")]
+#[diag(infer_opaque_captures_lifetime, code = E0700)]
 pub struct OpaqueCapturesLifetime<'tcx> {
     #[primary_span]
     pub span: Span,
@@ -1378,73 +1378,73 @@ pub enum TypeErrorAdditionalDiags {
 
 #[derive(Diagnostic)]
 pub enum ObligationCauseFailureCode {
-    #[diag(infer_oc_method_compat, code = "E0308")]
+    #[diag(infer_oc_method_compat, code = E0308)]
     MethodCompat {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
-    #[diag(infer_oc_type_compat, code = "E0308")]
+    #[diag(infer_oc_type_compat, code = E0308)]
     TypeCompat {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
-    #[diag(infer_oc_const_compat, code = "E0308")]
+    #[diag(infer_oc_const_compat, code = E0308)]
     ConstCompat {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
-    #[diag(infer_oc_try_compat, code = "E0308")]
+    #[diag(infer_oc_try_compat, code = E0308)]
     TryCompat {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
-    #[diag(infer_oc_match_compat, code = "E0308")]
+    #[diag(infer_oc_match_compat, code = E0308)]
     MatchCompat {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
-    #[diag(infer_oc_if_else_different, code = "E0308")]
+    #[diag(infer_oc_if_else_different, code = E0308)]
     IfElseDifferent {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
-    #[diag(infer_oc_no_else, code = "E0317")]
+    #[diag(infer_oc_no_else, code = E0317)]
     NoElse {
         #[primary_span]
         span: Span,
     },
-    #[diag(infer_oc_no_diverge, code = "E0308")]
+    #[diag(infer_oc_no_diverge, code = E0308)]
     NoDiverge {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
-    #[diag(infer_oc_fn_main_correct_type, code = "E0580")]
+    #[diag(infer_oc_fn_main_correct_type, code = E0580)]
     FnMainCorrectType {
         #[primary_span]
         span: Span,
     },
-    #[diag(infer_oc_fn_start_correct_type, code = "E0308")]
+    #[diag(infer_oc_fn_start_correct_type, code = E0308)]
     FnStartCorrectType {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
-    #[diag(infer_oc_fn_lang_correct_type, code = "E0308")]
+    #[diag(infer_oc_fn_lang_correct_type, code = E0308)]
     FnLangCorrectType {
         #[primary_span]
         span: Span,
@@ -1452,33 +1452,33 @@ pub enum ObligationCauseFailureCode {
         subdiags: Vec<TypeErrorAdditionalDiags>,
         lang_item_name: Symbol,
     },
-    #[diag(infer_oc_intrinsic_correct_type, code = "E0308")]
+    #[diag(infer_oc_intrinsic_correct_type, code = E0308)]
     IntrinsicCorrectType {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
-    #[diag(infer_oc_method_correct_type, code = "E0308")]
+    #[diag(infer_oc_method_correct_type, code = E0308)]
     MethodCorrectType {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
-    #[diag(infer_oc_closure_selfref, code = "E0644")]
+    #[diag(infer_oc_closure_selfref, code = E0644)]
     ClosureSelfref {
         #[primary_span]
         span: Span,
     },
-    #[diag(infer_oc_cant_coerce, code = "E0308")]
+    #[diag(infer_oc_cant_coerce, code = E0308)]
     CantCoerce {
         #[primary_span]
         span: Span,
         #[subdiagnostic]
         subdiags: Vec<TypeErrorAdditionalDiags>,
     },
-    #[diag(infer_oc_generic, code = "E0308")]
+    #[diag(infer_oc_generic, code = E0308)]
     Generic {
         #[primary_span]
         span: Span,

@@ -20,7 +20,7 @@ use crate::traits::{
     self, coherence, FutureCompatOverlapErrorKind, ObligationCause, ObligationCtxt,
 };
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{error_code, DelayDm, Diagnostic};
+use rustc_errors::{codes::*, DelayDm, Diagnostic};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{GenericArgs, GenericArgsRef};
@@ -449,7 +449,7 @@ fn report_conflicting_impls<'tcx>(
                 || tcx.orphan_check_impl(impl_def_id).is_ok()
             {
                 let mut err = tcx.dcx().struct_span_err(impl_span, msg);
-                err.code(error_code!(E0119));
+                err.code(E0119);
                 decorate(tcx, &overlap, impl_span, &mut err);
                 err.emit()
             } else {
