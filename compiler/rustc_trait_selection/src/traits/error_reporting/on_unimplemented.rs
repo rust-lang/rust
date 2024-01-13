@@ -408,7 +408,7 @@ impl<'tcx> OnUnimplementedDirective {
                 .ok_or_else(|| tcx.dcx().emit_err(EmptyOnClauseInOnUnimplemented { span }))?
                 .meta_item()
                 .ok_or_else(|| tcx.dcx().emit_err(InvalidOnClauseInOnUnimplemented { span }))?;
-            attr::eval_condition(cond, &tcx.sess.parse_sess, Some(tcx.features()), &mut |cfg| {
+            attr::eval_condition(cond, &tcx.sess, Some(tcx.features()), &mut |cfg| {
                 if let Some(value) = cfg.value
                     && let Err(guar) = parse_value(value, cfg.span)
                 {
@@ -682,31 +682,22 @@ impl<'tcx> OnUnimplementedDirective {
 
         for command in self.subcommands.iter().chain(Some(self)).rev() {
             if let Some(ref condition) = command.condition
-                && !attr::eval_condition(
-                    condition,
-                    &tcx.sess.parse_sess,
-                    Some(tcx.features()),
-                    &mut |cfg| {
-                        let value = cfg.value.map(|v| {
-                            // `with_no_visible_paths` is also used when generating the options,
-                            // so we need to match it here.
-                            ty::print::with_no_visible_paths!(
-                                OnUnimplementedFormatString {
-                                    symbol: v,
-                                    span: cfg.span,
-                                    is_diagnostic_namespace_variant: false
-                                }
-                                .format(
-                                    tcx,
-                                    trait_ref,
-                                    &options_map
-                                )
-                            )
-                        });
+                && !attr::eval_condition(condition, &tcx.sess, Some(tcx.features()), &mut |cfg| {
+                    let value = cfg.value.map(|v| {
+                        // `with_no_visible_paths` is also used when generating the options,
+                        // so we need to match it here.
+                        ty::print::with_no_visible_paths!(
+                            OnUnimplementedFormatString {
+                                symbol: v,
+                                span: cfg.span,
+                                is_diagnostic_namespace_variant: false
+                            }
+                            .format(tcx, trait_ref, &options_map)
+                        )
+                    });
 
-                        options.contains(&(cfg.name, value))
-                    },
-                )
+                    options.contains(&(cfg.name, value))
+                })
             {
                 debug!("evaluate: skipping {:?} due to condition", command);
                 continue;

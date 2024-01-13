@@ -6,6 +6,7 @@ LL |     extern "rust-call" fn call(self, args: ()) -> () {}
    |
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: rust-call ABI is subject to change
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:22:12
@@ -15,6 +16,7 @@ LL |     extern "rust-call" fn call_once(self, args: ()) -> () {}
    |
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: rust-call ABI is subject to change
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:30:12
@@ -24,6 +26,7 @@ LL |     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
    |
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: rust-call ABI is subject to change
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:39:12
@@ -33,6 +36,7 @@ LL |     extern "rust-call" fn call_once(&self, args: ()) -> () {}
    |
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the precise format of `Fn`-family traits' type parameters is subject to change
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:9:6
@@ -42,6 +46,7 @@ LL | impl Fn<()> for Foo {
    |
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0183]: manual implementations of `Fn` are experimental
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:9:6
@@ -79,6 +84,7 @@ LL | impl FnMut<()> for Bar {
    |
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0183]: manual implementations of `FnMut` are experimental
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:26:6
@@ -96,6 +102,7 @@ LL | impl FnOnce<()> for Baz {
    |
    = note: see issue #29625 <https://github.com/rust-lang/rust/issues/29625> for more information
    = help: add `#![feature(unboxed_closures)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0183]: manual implementations of `FnOnce` are experimental
   --> $DIR/feature-gate-unboxed-closures-manual-impls.rs:35:6

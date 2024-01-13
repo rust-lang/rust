@@ -135,7 +135,7 @@ fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) -> Option<(DefId,
             if main_def.is_import && !tcx.features().imported_main {
                 let span = main_def.span;
                 feature_err(
-                    &tcx.sess.parse_sess,
+                    &tcx.sess,
                     sym::imported_main,
                     span,
                     "using an imported function as entry point `main` is experimental",

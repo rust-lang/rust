@@ -45,14 +45,13 @@ impl DebuggerVisualizerCollector<'_> {
                     }
                 };
 
-            let file =
-                match resolve_path(&self.sess.parse_sess, visualizer_path.as_str(), attr.span) {
-                    Ok(file) => file,
-                    Err(err) => {
-                        err.emit();
-                        return;
-                    }
-                };
+            let file = match resolve_path(&self.sess, visualizer_path.as_str(), attr.span) {
+                Ok(file) => file,
+                Err(err) => {
+                    err.emit();
+                    return;
+                }
+            };
 
             match std::fs::read(&file) {
                 Ok(contents) => {

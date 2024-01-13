@@ -1306,10 +1306,7 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
             cx.emit_spanned_lint(
                 UNGATED_ASYNC_FN_TRACK_CALLER,
                 attr.span,
-                BuiltinUngatedAsyncFnTrackCaller {
-                    label: span,
-                    parse_sess: &cx.tcx.sess.parse_sess,
-                },
+                BuiltinUngatedAsyncFnTrackCaller { label: span, session: &cx.tcx.sess },
             );
         }
     }

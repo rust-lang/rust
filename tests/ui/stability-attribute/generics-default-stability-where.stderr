@@ -5,6 +5,7 @@ LL | impl<T> Trait3<usize> for T where T: Trait2<usize> {
    |                                             ^^^^^
    |
    = help: add `#![feature(unstable_default)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0210]: type parameter `T` must be used as the type parameter for some local type (e.g., `MyStruct<T>`)
   --> $DIR/generics-default-stability-where.rs:7:6
