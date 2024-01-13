@@ -118,6 +118,7 @@ fn multiple(x: bool, i: u8) {
     // CHECK: debug x => [[x:_.*]];
     // CHECK: debug e => [[e:_.*]];
     // CHECK: debug x2 => [[x2:_.*]];
+    // CHECK: debug y => [[y:_.*]];
     let e = if x {
         // CHECK: [[e]] = Option::<u8>::Some(move {{_.*}});
         Some(i)
@@ -128,10 +129,18 @@ fn multiple(x: bool, i: u8) {
     // The dataflow state must have:
     //   discriminant(e) => Top
     //   (e as Some).0 => Top
+    // CHECK-NOT: [[x2]] = const 5
     // CHECK: [[x2]] = const 0_u8;
-    // CHECK: [[x2]] = {{_.*}};
+    // CHECK-NOT: [[x2]] = const 5
+    // CHECK: [[some:_.*]] = (({{_.*}} as Some
+    // CHECK: [[x2]] = [[some]];
     let x2 = match e { Some(i) => i, None => 0 };
+
     // Therefore, `x2` should be `Top` here, and no replacement shall happen.
+
+    // CHECK-NOT: [[y]] = const
+    // CHECK: [[y]] = [[x2]];
+    // CHECK-NOT: [[y]] = const
     let y = x2;
 }
 
