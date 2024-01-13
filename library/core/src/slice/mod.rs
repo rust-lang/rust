@@ -8,6 +8,7 @@
 
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
 use crate::fmt;
+use crate::hint;
 use crate::intrinsics::exact_div;
 use crate::mem::{self, SizedTypeProperties};
 use crate::num::NonZeroUsize;
@@ -2850,7 +2851,7 @@ impl<T> [T] {
             right = if cmp == Greater { mid } else { right };
             if cmp == Equal {
                 // SAFETY: same as the `get_unchecked` above
-                unsafe { crate::intrinsics::assume(mid < self.len()) };
+                unsafe { hint::assert_unchecked(mid < self.len()) };
                 return Ok(mid);
             }
 
@@ -2859,7 +2860,7 @@ impl<T> [T] {
 
         // SAFETY: directly true from the overall invariant.
         // Note that this is `<=`, unlike the assume in the `Ok` path.
-        unsafe { crate::intrinsics::assume(left <= self.len()) };
+        unsafe { hint::assert_unchecked(left <= self.len()) };
         Err(left)
     }
 

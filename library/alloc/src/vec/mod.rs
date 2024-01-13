@@ -1993,7 +1993,7 @@ impl<T, A: Allocator> Vec<T, A> {
         } else {
             unsafe {
                 self.len -= 1;
-                core::intrinsics::assume(self.len < self.capacity());
+                core::hint::assert_unchecked(self.len < self.capacity());
                 Some(ptr::read(self.as_ptr().add(self.len())))
             }
         }

@@ -2036,8 +2036,8 @@ macro_rules! uint_impl {
             // SAFETY: the result is positive and fits in an integer with half as many bits.
             // Inform the optimizer about it.
             unsafe {
-                intrinsics::assume(0 < res);
-                intrinsics::assume(res < 1 << (Self::BITS / 2));
+                hint::assert_unchecked(0 < res);
+                hint::assert_unchecked(res < 1 << (Self::BITS / 2));
             }
 
             res

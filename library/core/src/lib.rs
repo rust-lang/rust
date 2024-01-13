@@ -131,6 +131,7 @@
 #![feature(const_fmt_arguments_new)]
 #![feature(const_hash)]
 #![feature(const_heap)]
+#![feature(const_hint_assert_unchecked)]
 #![feature(const_index_range_slice_index)]
 #![feature(const_int_unchecked_arith)]
 #![feature(const_intrinsic_forget)]

@@ -252,6 +252,7 @@ use core::cell::Cell;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
+use core::hint;
 use core::intrinsics::abort;
 #[cfg(not(no_global_oom_handling))]
 use core::iter;
@@ -3268,7 +3269,7 @@ trait RcInnerPtr {
         // SAFETY: The reference count will never be zero when this is
         // called.
         unsafe {
-            core::intrinsics::assume(strong != 0);
+            hint::assert_unchecked(strong != 0);
         }
 
         let strong = strong.wrapping_add(1);
@@ -3301,7 +3302,7 @@ trait RcInnerPtr {
         // SAFETY: The reference count will never be zero when this is
         // called.
         unsafe {
-            core::intrinsics::assume(weak != 0);
+            hint::assert_unchecked(weak != 0);
         }
 
         let weak = weak.wrapping_add(1);

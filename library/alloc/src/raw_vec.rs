@@ -2,7 +2,7 @@
 
 use core::alloc::LayoutError;
 use core::cmp;
-use core::intrinsics;
+use core::hint;
 use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use core::ptr::{self, NonNull, Unique};
 use core::slice;
@@ -325,7 +325,7 @@ impl<T, A: Allocator> RawVec<T, A> {
         }
         unsafe {
             // Inform the optimizer that the reservation has succeeded or wasn't needed
-            core::intrinsics::assume(!self.needs_to_grow(len, additional));
+            hint::assert_unchecked(!self.needs_to_grow(len, additional));
         }
         Ok(())
     }
@@ -363,7 +363,7 @@ impl<T, A: Allocator> RawVec<T, A> {
         }
         unsafe {
             // Inform the optimizer that the reservation has succeeded or wasn't needed
-            core::intrinsics::assume(!self.needs_to_grow(len, additional));
+            hint::assert_unchecked(!self.needs_to_grow(len, additional));
         }
         Ok(())
     }
@@ -514,7 +514,7 @@ where
         debug_assert_eq!(old_layout.align(), new_layout.align());
         unsafe {
             // The allocator checks for alignment equality
-            intrinsics::assume(old_layout.align() == new_layout.align());
+            hint::assert_unchecked(old_layout.align() == new_layout.align());
             alloc.grow(ptr, old_layout, new_layout)
         }
     } else {

@@ -6,7 +6,7 @@ mod macros;
 use crate::cmp;
 use crate::cmp::Ordering;
 use crate::fmt;
-use crate::intrinsics::assume;
+use crate::hint::assert_unchecked;
 use crate::iter::{
     FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce, UncheckedIterator,
 };
