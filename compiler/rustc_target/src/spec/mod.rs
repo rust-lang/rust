@@ -2399,10 +2399,14 @@ impl DerefMut for Target {
 
 impl Target {
     /// Given a function ABI, turn it into the correct ABI for this target.
-    pub fn adjust_abi(&self, abi: Abi) -> Abi {
+    pub fn adjust_abi(&self, abi: Abi, c_variadic: bool) -> Abi {
         match abi {
             Abi::C { .. } => self.default_adjusted_cabi.unwrap_or(abi),
-            Abi::System { unwind } if self.is_like_windows && self.arch == "x86" => {
+
+            // On Windows, `extern "system"` behaves like msvc's `__stdcall`.
+            // `__stdcall` only applies on x86 and on non-variadic functions:
+            // https://learn.microsoft.com/en-us/cpp/cpp/stdcall?view=msvc-170
+            Abi::System { unwind } if self.is_like_windows && self.arch == "x86" && !c_variadic => {
                 Abi::Stdcall { unwind }
             }
             Abi::System { unwind } => Abi::C { unwind },
