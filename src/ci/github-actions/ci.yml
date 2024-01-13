@@ -134,6 +134,7 @@ x--expand-yaml-anchors--remove:
           install: >
             make
             git
+            dos2unix
           pacboy: >
             cmake:p
             gcc:p
@@ -142,7 +143,6 @@ x--expand-yaml-anchors--remove:
           #   mingw-w64-x86_64-python
           #   mingw-w64-x86_64-jq
           #   mingw-w64-x86_64-7zip
-          #   dos2unix
           #   mingw-w64-x86_64-toolchain
           #   mingw-w64-i686-toolchain
           #   mingw-w64-x86_64-cmake
