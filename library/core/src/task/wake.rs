@@ -332,7 +332,6 @@ impl<'a> ContextBuilder<'a> {
     }
 
     /// This field is used to set the value of the waker on `Context`.
-
     #[inline]
     #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
     #[unstable(feature = "local_waker", issue = "118959")]
@@ -598,6 +597,7 @@ impl fmt::Debug for Waker {
 }
 
 /// A `LocalWaker` is analogous to a [`Waker`], but it does not implement [`Send`] or [`Sync`].
+///
 /// This handle encapsulates a [`RawWaker`] instance, which defines the
 /// executor-specific wakeup behavior.
 ///
@@ -646,9 +646,8 @@ impl fmt::Debug for Waker {
 /// [`Future::poll()`]: core::future::Future::poll
 /// [`Poll::Pending`]: core::task::Poll::Pending
 /// [`local_waker`]: core::task::Context::local_waker
-
 #[unstable(feature = "local_waker", issue = "118959")]
-#[repr(transparent)]
+#[cfg_attr(not(doc), repr(transparent))] // work around https://github.com/rust-lang/rust/issues/66401
 pub struct LocalWaker {
     waker: RawWaker,
 }

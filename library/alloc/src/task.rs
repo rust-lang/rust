@@ -168,14 +168,14 @@ fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
 /// to hold data that does not implement `Send` and `Sync`. Additionally, it saves calls
 /// to `Arc::clone`, which requires atomic synchronization.
 ///
-
+///
 /// # Examples
 ///
 /// This is a simplified example of a `spawn` and a `block_on` function. The `spawn` function
 /// is used to push new tasks onto the run queue, while the block on function will remove them
 /// and poll them. When a task is woken, it will put itself back on the run queue to be polled by the executor.
 ///
-/// **Note:** A real world example would interlieve poll calls with calls to an io reactor to wait for events instead
+/// **Note:** A real world example would interleave poll calls with calls to an io reactor to wait for events instead
 /// of spinning on a loop.
 ///
 /// ```rust
@@ -221,7 +221,7 @@ fn raw_waker<W: Wake + Send + Sync + 'static>(waker: Arc<W>) -> RawWaker {
 /// {
 ///     spawn(future);
 ///     loop {
-///         let Some(task) = RUN_QUEUE.with_borrow_mut(|queue|queue.pop_front()) else {
+///         let Some(task) = RUN_QUEUE.with_borrow_mut(|queue| queue.pop_front()) else {
 ///             // we exit, since there are no more tasks remaining on the queue
 ///             return;
 ///         };
