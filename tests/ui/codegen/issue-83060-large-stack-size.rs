@@ -1,3 +1,4 @@
+// stderr-per-bitwidth
 // build-pass
 fn func() {
     const CAP: usize = std::u32::MAX as usize;
