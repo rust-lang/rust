@@ -520,11 +520,23 @@ impl<'tcx> Collector<'tcx> {
     ) -> DllImport {
         let span = self.tcx.def_span(item);
 
+        // this logic is similar to `Target::adjust_abi` (in rustc_target/src/spec/mod.rs) but errors on unsupported inputs
         let calling_convention = if self.tcx.sess.target.arch == "x86" {
             match abi {
                 Abi::C { .. } | Abi::Cdecl { .. } => DllCallingConvention::C,
-                Abi::Stdcall { .. } | Abi::System { .. } => {
-                    DllCallingConvention::Stdcall(self.i686_arg_list_size(item))
+                Abi::Stdcall { .. } => DllCallingConvention::Stdcall(self.i686_arg_list_size(item)),
+                // On Windows, `extern "system"` behaves like msvc's `__stdcall`.
+                // `__stdcall` only applies on x86 and on non-variadic functions:
+                // https://learn.microsoft.com/en-us/cpp/cpp/stdcall?view=msvc-170
+                Abi::System { .. } => {
+                    let c_variadic =
+                        self.tcx.type_of(item).instantiate_identity().fn_sig(self.tcx).c_variadic();
+
+                    if c_variadic {
+                        DllCallingConvention::C
+                    } else {
+                        DllCallingConvention::Stdcall(self.i686_arg_list_size(item))
+                    }
                 }
                 Abi::Fastcall { .. } => {
                     DllCallingConvention::Fastcall(self.i686_arg_list_size(item))
