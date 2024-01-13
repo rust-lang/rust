@@ -662,8 +662,8 @@ fn configure_cmake(
         Some(ref cl) => (cl.into(), cl.into()),
         None => (builder.cc(target), builder.cxx(target).unwrap()),
     };
-    dbg!(builder.config.llvm_clang_cl);
-    dbg!(cc);
+    dbg!(&builder.config.llvm_clang_cl);
+    dbg!(&cc);
 
     // Handle msvc + ninja + ccache specially (this is what the bots use)
     if target.is_msvc() && builder.ninja() && builder.config.ccache.is_some() {
