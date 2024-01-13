@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 pub(crate) mod encode;
 
 use std::collections::hash_map::Entry;
@@ -170,10 +171,12 @@ pub(crate) fn build_index<'tcx>(
                         let exact_fqp = exact_paths
                             .get(&defid)
                             .or_else(|| external_paths.get(&defid).map(|&(ref fqp, _)| fqp))
-                            // re-exports only count if the name is exactly the same
-                            // this is a size optimization, as well as a DWIM attempt
-                            // since if the names are not the same, the intent probably
-                            // isn't, either
+                            // Re-exports only count if the name is exactly the same.
+                            // This is a size optimization, since it means we only need
+                            // to store the name once (and the path is re-used for everything
+                            // exported from this same module). It's also likely to Do
+                            // What I Mean, since if a re-export changes the name, it might
+                            // also be a change in semantic meaning.
                             .filter(|fqp| fqp.last() == fqp.last());
                         Some(insert_into_map(
                             itemid_to_pathid,
@@ -356,10 +359,12 @@ pub(crate) fn build_index<'tcx>(
                     .get(&defid)
                     .or_else(|| external_paths.get(&defid).map(|&(ref fqp, _)| fqp));
                 item.exact_path = exact_fqp.and_then(|fqp| {
-                    // re-exports only count if the name is exactly the same
-                    // this is a size optimization, as well as a DWIM attempt
-                    // since if the names are not the same, the intent probably
-                    // isn't, either
+                    // Re-exports only count if the name is exactly the same.
+                    // This is a size optimization, since it means we only need
+                    // to store the name once (and the path is re-used for everything
+                    // exported from this same module). It's also likely to Do
+                    // What I Mean, since if a re-export changes the name, it might
+                    // also be a change in semantic meaning.
                     if fqp.last() != Some(&item.name) {
                         return None;
                     }
