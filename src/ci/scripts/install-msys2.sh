@@ -12,6 +12,10 @@ source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 if isWindows; then
     echo "Path of / : $(cygpath -w /)"
     echo "PATH: $PATH"
+    echo "##### /mingw64/bin"
+    ls /mingw64/bin
+    echo "##### /bin"
+    ls /bin
     echo "MAJAHA PWD: $(pwd) | $(cygpath -w $(pwd))"
     echo "MSYSTEM: ${MSYSTEM-unset}"
     echo "MAJAHA 1: $(cygpath -w $(which git))"
