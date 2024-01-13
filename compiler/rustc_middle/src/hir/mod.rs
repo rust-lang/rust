@@ -14,7 +14,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::*;
 use rustc_query_system::ich::StableHashingContext;
-use rustc_span::{ErrorGuaranteed, ExpnId, DUMMY_SP};
+use rustc_span::{ErrorGuaranteed, ExpnId};
 
 /// Top-level HIR node for current owner. This only contains the node for which
 /// `HirId::local_id == 0`, and excludes bodies.
@@ -174,10 +174,6 @@ pub fn provide(providers: &mut Providers) {
     };
     providers.hir_attrs = |tcx, id| {
         tcx.hir_crate(()).owners[id.def_id].as_owner().map_or(AttributeMap::EMPTY, |o| &o.attrs)
-    };
-    providers.def_span = |tcx, def_id| {
-        let hir_id = tcx.local_def_id_to_hir_id(def_id);
-        tcx.hir().opt_span(hir_id).unwrap_or(DUMMY_SP)
     };
     providers.def_ident_span = |tcx, def_id| {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);

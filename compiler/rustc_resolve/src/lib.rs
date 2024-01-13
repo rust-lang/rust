@@ -1212,6 +1212,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
         node_id: ast::NodeId,
         name: Symbol,
         def_kind: DefKind,
+        def_span: Span,
         expn_id: ExpnId,
         span: Span,
     ) -> LocalDefId {
@@ -1227,15 +1228,18 @@ impl<'tcx> Resolver<'_, 'tcx> {
         // FIXME: remove `def_span` body, pass in the right spans here and call `tcx.at().create_def()`
         let def_id = self.tcx.create_def(parent, name, def_kind);
 
-        // Create the definition.
-        if expn_id != ExpnId::root() {
-            self.expn_that_defined.insert(def_id, expn_id);
-        }
-
         // A relative span's parent must be an absolute span.
         debug_assert_eq!(span.data_untracked().parent, None);
         let _id = self.tcx.untracked().source_span.push(span);
         debug_assert_eq!(_id, def_id);
+
+        let feed = self.tcx.feed_local_def_id(def_id);
+        feed.def_span(rustc_middle::util::lower_span(self.tcx, def_span, def_id));
+
+        // Create the definition.
+        if expn_id != ExpnId::root() {
+            self.expn_that_defined.insert(def_id, expn_id);
+        }
 
         // Some things for which we allocate `LocalDefId`s don't correspond to
         // anything in the AST, so they don't have a `NodeId`. For these cases
