@@ -1,0 +1,16 @@
+error[E0659]: `max` is ambiguous
+  --> $DIR/issue-114682-2.rs:6:28
+   |
+LL | use issue_114682_2_extern::max;
+   |                            ^^^ ambiguous name
+   |
+   = note: ambiguous because of multiple glob imports of a name in the same module
+note: `max` could refer to the type alias defined here
+  --> $DIR/auxiliary/issue-114682-2-extern.rs:17:9
+   |
+LL | pub use self::e::*;
+   |         ^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0659`.

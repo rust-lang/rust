@@ -1568,6 +1568,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             record_defaulted_array!(self.tables.module_children_reexports[def_id] <-
                 module_children.iter().filter(|child| !child.reexport_chain.is_empty()));
+
+            record_defaulted_array!(self.tables.ambiguity_module_children[def_id] <- tcx.ambiguity_module_children_local(local_def_id));
         }
     }
 

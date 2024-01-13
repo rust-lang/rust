@@ -553,6 +553,8 @@ impl StableCompare for LintId {
 
 #[derive(Debug)]
 pub struct AmbiguityErrorDiag {
+    /// Does this ambiguity binding come from a different crate?
+    pub extern_crate: bool,
     pub msg: String,
     pub span: Span,
     pub label_span: Span,

@@ -48,7 +48,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{PrimTy, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
-use rustc_middle::metadata::ModChild;
+use rustc_middle::metadata::{AmbiguityModChild, ModChild};
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
@@ -729,6 +729,7 @@ enum AmbiguityKind {
     GlobVsGlob,
     GlobVsExpanded,
     MoreExpandedVsOuter,
+    External,
 }
 
 impl AmbiguityKind {
@@ -749,6 +750,7 @@ impl AmbiguityKind {
             AmbiguityKind::MoreExpandedVsOuter => {
                 "a conflict between a macro-expanded name and a less macro-expanded name from outer scope during import or macro resolution"
             }
+            AmbiguityKind::External => "multiple glob imports of a name in the same module", // reuse from `GlobVsGlob`
         }
     }
 }
@@ -803,6 +805,18 @@ impl<'a> NameBindingData<'a> {
                 NameBindingKind::Import { binding, .. } => binding.is_warn_ambiguity(),
                 _ => false,
             }
+    }
+
+    fn is_ambiguity_in_extern_crate(&self) -> bool {
+        if self.ambiguity.is_some_and(|(_, kind)| kind == AmbiguityKind::External) {
+            true
+        } else if let NameBindingKind::Import { binding, import, .. } = &self.kind
+            && import.is_glob()
+        {
+            binding.is_ambiguity_in_extern_crate()
+        } else {
+            false
+        }
     }
 
     fn is_possibly_imported_variant(&self) -> bool {
@@ -979,6 +993,8 @@ pub struct Resolver<'a, 'tcx> {
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
     module_children: LocalDefIdMap<Vec<ModChild>>,
+    ambiguity_module_children: LocalDefIdMap<Vec<AmbiguityModChild>>,
+
     trait_map: NodeMap<Vec<TraitCandidate>>,
 
     /// A map from nodes to anonymous modules.
@@ -1156,7 +1172,8 @@ impl<'a> ResolverArenas<'a> {
         if let Some(def_id) = def_id {
             module_map.insert(def_id, module);
             let vis = ty::Visibility::<DefId>::Public;
-            let binding = (module, vis, module.span, LocalExpnId::ROOT).to_name_binding(self);
+            let binding =
+                (module, vis, module.span, LocalExpnId::ROOT, false).to_name_binding(self);
             module_self_bindings.insert(module, binding);
         }
         module
@@ -1347,6 +1364,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             extra_lifetime_params_map: Default::default(),
             extern_crate_map: Default::default(),
             module_children: Default::default(),
+            ambiguity_module_children: Default::default(),
             trait_map: NodeMap::default(),
             underscore_disambiguator: 0,
             empty_module,
@@ -1366,12 +1384,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             macro_expanded_macro_export_errors: BTreeSet::new(),
 
             arenas,
-            dummy_binding: (Res::Err, pub_vis, DUMMY_SP, LocalExpnId::ROOT).to_name_binding(arenas),
+            dummy_binding: (Res::Err, pub_vis, DUMMY_SP, LocalExpnId::ROOT, false)
+                .to_name_binding(arenas),
             builtin_types_bindings: PrimTy::ALL
                 .iter()
                 .map(|prim_ty| {
-                    let binding = (Res::PrimTy(*prim_ty), pub_vis, DUMMY_SP, LocalExpnId::ROOT)
-                        .to_name_binding(arenas);
+                    let binding =
+                        (Res::PrimTy(*prim_ty), pub_vis, DUMMY_SP, LocalExpnId::ROOT, false)
+                            .to_name_binding(arenas);
                     (prim_ty.name(), binding)
                 })
                 .collect(),
@@ -1380,14 +1400,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 .map(|builtin_attr| {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::Builtin(builtin_attr.name));
                     let binding =
-                        (res, pub_vis, DUMMY_SP, LocalExpnId::ROOT).to_name_binding(arenas);
+                        (res, pub_vis, DUMMY_SP, LocalExpnId::ROOT, false).to_name_binding(arenas);
                     (builtin_attr.name, binding)
                 })
                 .collect(),
             registered_tool_bindings: registered_tools
                 .iter()
                 .map(|ident| {
-                    let binding = (Res::ToolMod, pub_vis, ident.span, LocalExpnId::ROOT)
+                    let binding = (Res::ToolMod, pub_vis, ident.span, LocalExpnId::ROOT, false)
                         .to_name_binding(arenas);
                     (*ident, binding)
                 })
@@ -1519,6 +1539,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             effective_visibilities,
             extern_crate_map,
             module_children: self.module_children,
+            ambiguity_module_children: self.ambiguity_module_children,
             glob_map,
             maybe_unused_trait_imports,
             main_def,
@@ -1970,7 +1991,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 };
                 let crate_root = self.expect_module(crate_id.as_def_id());
                 let vis = ty::Visibility::<DefId>::Public;
-                (crate_root, vis, DUMMY_SP, LocalExpnId::ROOT).to_name_binding(self.arenas)
+                (crate_root, vis, DUMMY_SP, LocalExpnId::ROOT, false).to_name_binding(self.arenas)
             })
         });
 

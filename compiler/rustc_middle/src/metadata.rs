@@ -44,3 +44,6 @@ pub struct ModChild {
     /// Empty if the module child is a proper item.
     pub reexport_chain: SmallVec<[Reexport; 2]>,
 }
+
+/// Same as `ModChild`, however, it includes ambiguity error.
+pub type AmbiguityModChild = ModChild;

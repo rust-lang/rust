@@ -17,7 +17,7 @@ use rustc_hir::definitions::DefKey;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
-use rustc_middle::metadata::ModChild;
+use rustc_middle::metadata::{AmbiguityModChild, ModChild};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::middle::exported_symbols::{ExportedSymbol, SymbolExportInfo};
 use rustc_middle::middle::resolve_bound_vars::ObjectLifetimeDefault;
@@ -398,6 +398,7 @@ define_tables! {
     // individually instead of `DefId`s.
     module_children_reexports: Table<DefIndex, LazyArray<ModChild>>,
     cross_crate_inlinable: Table<DefIndex, bool>,
+    ambiguity_module_children: Table<DefIndex, LazyArray<AmbiguityModChild>>,
 
 - optional:
     attributes: Table<DefIndex, LazyArray<ast::Attribute>>,

@@ -8,7 +8,7 @@ use crate::arena::Arena;
 use crate::dep_graph::{DepGraph, DepKindStruct};
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarInfo, CanonicalVarInfos};
 use crate::lint::struct_lint_level;
-use crate::metadata::ModChild;
+use crate::metadata::{AmbiguityModChild, ModChild};
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::resolve_bound_vars;
 use crate::middle::stability;
@@ -2285,6 +2285,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// (probably due to hashing spans in `ModChild`ren).
     pub fn module_children_local(self, def_id: LocalDefId) -> &'tcx [ModChild] {
         self.resolutions(()).module_children.get(&def_id).map_or(&[], |v| &v[..])
+    }
+
+    pub fn ambiguity_module_children_local(self, def_id: LocalDefId) -> &'tcx [AmbiguityModChild] {
+        self.resolutions(()).ambiguity_module_children.get(&def_id).map_or(&[], |v| &v[..])
     }
 }
 

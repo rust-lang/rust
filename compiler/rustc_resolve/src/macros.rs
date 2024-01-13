@@ -404,7 +404,7 @@ impl<'a, 'tcx> ResolverExpand for Resolver<'a, 'tcx> {
             .iter()
             .map(|(_, ident)| {
                 let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
-                let binding = (res, Visibility::<DefId>::Public, ident.span, expn_id)
+                let binding = (res, Visibility::<DefId>::Public, ident.span, expn_id, false)
                     .to_name_binding(self.arenas);
                 (*ident, binding)
             })

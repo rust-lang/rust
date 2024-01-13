@@ -1250,6 +1250,21 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
         })
     }
 
+    fn get_ambiguity_module_children(
+        self,
+        id: DefIndex,
+        sess: &'a Session,
+    ) -> impl Iterator<Item = AmbiguityModChild> + 'a {
+        iter::from_coroutine(move || {
+            let children = self.root.tables.ambiguity_module_children.get(self, id);
+            if !children.is_default() {
+                for child in children.decode((self, sess)) {
+                    yield child;
+                }
+            }
+        })
+    }
+
     fn is_ctfe_mir_available(self, id: DefIndex) -> bool {
         self.root.tables.mir_for_ctfe.get(self, id).is_some()
     }

@@ -455,6 +455,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                             Visibility::Public,
                                             derive.span,
                                             LocalExpnId::ROOT,
+                                            false,
                                         )
                                             .to_name_binding(this.arenas);
                                         result = Ok((binding, Flags::empty()));

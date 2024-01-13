@@ -142,12 +142,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         for ambiguity_error in &self.ambiguity_errors {
             let diag = self.ambiguity_diagnostics(ambiguity_error);
             if ambiguity_error.warning {
-                let NameBindingKind::Import { import, .. } = ambiguity_error.b1.0.kind else {
-                    unreachable!()
-                };
+                let root_id =
+                    if let NameBindingKind::Import { import, .. } = ambiguity_error.b1.0.kind {
+                        import.root_id
+                    } else {
+                        assert_eq!(ambiguity_error.kind, AmbiguityKind::External);
+                        CRATE_NODE_ID
+                    };
                 self.lint_buffer.buffer_lint_with_diagnostic(
                     AMBIGUOUS_GLOB_IMPORTS,
-                    import.root_id,
+                    root_id,
                     ambiguity_error.ident.span,
                     diag.msg.to_string(),
                     BuiltinLintDiagnostics::AmbiguousGlobImports { diag },
@@ -1655,6 +1659,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let (b2_span, b2_note_msg, b2_help_msgs) = could_refer_to(b2, misc2, " also");
 
         AmbiguityErrorDiag {
+            extern_crate: kind == AmbiguityKind::External,
             msg: format!("`{ident}` is ambiguous"),
             span: ident.span,
             label_span: ident.span,
