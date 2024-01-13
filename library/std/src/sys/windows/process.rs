@@ -26,7 +26,7 @@ use crate::sys::handle::Handle;
 use crate::sys::path;
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::stdio;
-use crate::sys_common::process::{CommandEnv, CommandEnvs};
+use crate::sys_common::process::{CapturedEnvs, CommandEnv, CommandEnvs};
 use crate::sys_common::IntoInner;
 
 use core::ffi::c_void;
@@ -242,6 +242,10 @@ impl Command {
 
     pub fn get_envs(&self) -> CommandEnvs<'_> {
         self.env.iter()
+    }
+
+    pub fn capture_envs(&self) -> CapturedEnvs {
+        self.env.capture_iter()
     }
 
     pub fn get_current_dir(&self) -> Option<&Path> {

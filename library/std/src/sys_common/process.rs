@@ -98,9 +98,46 @@ impl CommandEnv {
         let iter = self.vars.iter();
         CommandEnvs { iter }
     }
+
+    pub fn capture_iter(&self) -> CapturedEnvs {
+        let iter = self.capture().into_iter();
+
+        CapturedEnvs { iter }
+    }
 }
 
-/// An iterator over the command environment variables.
+/// An iterator over captured [`Command`][crate::process::Command] environment variables.
+///
+/// This struct is created by
+/// [`Command::capture_envs`][crate::process::Command::capture_envs]. It includes inherited and
+/// explicitly set environment variables.
+///
+/// See [`Command::capture_envs`][crate::process::Command::capture_envs] documentation for more.
+pub struct CapturedEnvs {
+    iter: crate::collections::btree_map::IntoIter<EnvKey, OsString>,
+}
+
+impl Iterator for CapturedEnvs {
+    type Item = (OsString, OsString);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next().into()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+/// An iterator over the explicitly set [`Command`][crate::process::Command] environment variables.
+///
+/// Each element is a tuple key/value pair `(&OsStr, Option<&OsStr>)`. A [`None`] value
+/// indicates its key was explicitly removed. The associated key for the [`None`] value will no
+/// longer inherit from its parent process.
+///
+/// Note that this output does not include environment variables inherited from the parent process.
+/// To get the variables that will be set when the child spawns use
+/// [`Command::captured_envs`][crate::process::Command::captured_envs].
 ///
 /// This struct is created by
 /// [`Command::get_envs`][crate::process::Command::get_envs]. See its
