@@ -13,6 +13,7 @@
 //~^ ERROR: `macro_export` attribute cannot be used at crate level
 #![rustc_main] //~ ERROR: the `#[rustc_main]` attribute is used internally to specify
 //~^ ERROR: `rustc_main` attribute cannot be used at crate level
+//~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 #![start]
 //~^ ERROR: `start` attribute cannot be used at crate level
 #![repr()]

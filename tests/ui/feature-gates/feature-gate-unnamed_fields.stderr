@@ -6,6 +6,7 @@ LL |     _: union {
    |
    = note: see issue #49804 <https://github.com/rust-lang/rust/issues/49804> for more information
    = help: add `#![feature(unnamed_fields)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: unnamed fields are not yet fully implemented
   --> $DIR/feature-gate-unnamed_fields.rs:3:8
@@ -21,6 +22,7 @@ LL | |     }
    |
    = note: see issue #49804 <https://github.com/rust-lang/rust/issues/49804> for more information
    = help: add `#![feature(unnamed_fields)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: unnamed fields are not yet fully implemented
   --> $DIR/feature-gate-unnamed_fields.rs:13:5
@@ -30,6 +32,7 @@ LL |     _: struct {
    |
    = note: see issue #49804 <https://github.com/rust-lang/rust/issues/49804> for more information
    = help: add `#![feature(unnamed_fields)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: unnamed fields are not yet fully implemented
   --> $DIR/feature-gate-unnamed_fields.rs:13:8
@@ -45,6 +48,7 @@ LL | |     }
    |
    = note: see issue #49804 <https://github.com/rust-lang/rust/issues/49804> for more information
    = help: add `#![feature(unnamed_fields)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: unnamed fields are not yet fully implemented
   --> $DIR/feature-gate-unnamed_fields.rs:23:5
@@ -54,6 +58,7 @@ LL |     _: S
    |
    = note: see issue #49804 <https://github.com/rust-lang/rust/issues/49804> for more information
    = help: add `#![feature(unnamed_fields)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: anonymous unions are unimplemented
   --> $DIR/feature-gate-unnamed_fields.rs:3:8

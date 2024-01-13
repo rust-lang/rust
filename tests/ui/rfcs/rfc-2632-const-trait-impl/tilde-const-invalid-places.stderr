@@ -214,6 +214,7 @@ LL | const CONSTANT<T: ~const Trait>: () = ();
    |
    = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: generic const items are experimental
   --> $DIR/tilde-const-invalid-places.rs:29:19
@@ -223,6 +224,7 @@ LL |     const CONSTANT<T: ~const Trait>: ();
    |
    = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: generic const items are experimental
   --> $DIR/tilde-const-invalid-places.rs:37:19
@@ -232,6 +234,7 @@ LL |     const CONSTANT<T: ~const Trait>: () = ();
    |
    = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: generic const items are experimental
   --> $DIR/tilde-const-invalid-places.rs:47:19
@@ -241,6 +244,7 @@ LL |     const CONSTANT<T: ~const Trait>: () = ();
    |
    = note: see issue #113521 <https://github.com/rust-lang/rust/issues/113521> for more information
    = help: add `#![feature(generic_const_items)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: inherent associated types are unstable
   --> $DIR/tilde-const-invalid-places.rs:44:5
@@ -250,6 +254,7 @@ LL |     type Type<T: ~const Trait> = ();
    |
    = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
    = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0392]: parameter `T` is never used
   --> $DIR/tilde-const-invalid-places.rs:11:19

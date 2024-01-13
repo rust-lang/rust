@@ -27,6 +27,7 @@ LL | static STATIC_REF: &'static mut i32 = &mut X;
    |
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0764]: mutable references are not allowed in the final value of statics
   --> $DIR/E0388.rs:6:39
