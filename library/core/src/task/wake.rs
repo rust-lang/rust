@@ -39,7 +39,7 @@ impl RawWaker {
     /// thread safe type such as an `[Arc]<T: Send + Sync>`
     /// when used to construct a [`Waker`]. This restriction is lifted when
     /// constructing a [`LocalWaker`], which allows using types that do not implement
-    /// <code>[Send] + [Sync]</code> like `[Rc]<T: !Send + !Sync>`.
+    /// <code>[Send] + [Sync]</code> like `[Rc]<T>`.
     ///
     /// The `vtable` customizes the behavior of a `Waker` which gets created
     /// from a `RawWaker`. For each operation on the `Waker`, the associated
@@ -240,16 +240,6 @@ impl<'a> Context<'a> {
     }
 
     /// Returns a reference to the [`Waker`] for the current task.
-    ///
-    /// Note that if the waker does not need to be sent across threads, it
-    /// is preferable to call `local_waker`, which is more portable and
-    /// potentially more efficient.
-    ///
-    /// # Panics
-    /// This function will panic if no `Waker` was set on the context. This happens if
-    /// the executor does not support working with thread safe wakers. An alternative
-    /// may be to call [`.local_waker()`](Context::local_waker) instead. For a fallible
-    /// version of this function see [`.try_waker()`](Context::try_waker).
     #[inline]
     #[must_use]
     #[stable(feature = "futures_api", since = "1.36.0")]
@@ -396,7 +386,7 @@ impl<'a> ContextBuilder<'a> {
 impl<'a> From<&mut Context<'a>> for ContextBuilder<'a> {
     #[inline]
     fn from(value: &mut Context<'a>) -> Self {
-        let Context { waker, local_waker, .. } = *value;
+        let Context { waker, local_waker, _marker, _marker2 } = *value;
         ContextBuilder { waker, local_waker }
     }
 }
@@ -415,8 +405,7 @@ impl<'a> From<&mut Context<'a>> for ContextBuilder<'a> {
 /// Implements [`Clone`], [`Send`], and [`Sync`]; therefore, a waker may be invoked
 /// from any thread, including ones not in any way managed by the executor. For example,
 /// this might be done to wake a future when a blocking function call completes on another
-/// thread. If the waker does not need to be moved across threads, it is better to use
-/// [`LocalWaker`], which the executor may use to skip unnecessary memory synchronization.
+/// thread.
 ///
 /// Note that it is preferable to use `waker.clone_from(&new_waker)` instead
 /// of `*waker = new_waker.clone()`, as the former will avoid cloning the waker
@@ -656,19 +645,6 @@ pub struct LocalWaker {
 impl Unpin for LocalWaker {}
 
 impl LocalWaker {
-    /// Creates a new `LocalWaker` from [`RawWaker`].
-    ///
-    /// The behavior of the returned `LocalWaker` is undefined if the contract defined
-    /// in [`RawWaker`]'s and [`RawWakerVTable`]'s documentation is not upheld.
-    /// Therefore this method is unsafe.
-    #[inline]
-    #[must_use]
-    #[stable(feature = "futures_api", since = "1.36.0")]
-    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
-    pub const unsafe fn from_raw(waker: RawWaker) -> LocalWaker {
-        Self { waker }
-    }
-
     /// Wake up the task associated with this `LocalWaker`.
     ///
     /// As long as the executor keeps running and the task is not finished, it is
@@ -703,6 +679,37 @@ impl LocalWaker {
         unsafe { (wake)(data) };
     }
 
+    /// Wake up the task associated with this `LocalWaker` without consuming the `LocalWaker`.
+    ///
+    /// This is similar to [`wake()`](Self::wake), but may be slightly less efficient in
+    /// the case where an owned `Waker` is available. This method should be preferred to
+    /// calling `waker.clone().wake()`.
+    #[inline]
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    pub fn wake_by_ref(&self) {
+        // The actual wakeup call is delegated through a virtual function call
+        // to the implementation which is defined by the executor.
+
+        // SAFETY: see `wake`
+        unsafe { (self.waker.vtable.wake_by_ref)(self.waker.data) }
+    }
+
+    /// Returns `true` if this `LocalWaker` and another `LocalWaker` would awake the same task.
+    ///
+    /// This function works on a best-effort basis, and may return false even
+    /// when the `Waker`s would awaken the same task. However, if this function
+    /// returns `true`, it is guaranteed that the `Waker`s will awaken the same task.
+    ///
+    /// This function is primarily used for optimization purposes — for example,
+    /// this type's [`clone_from`](Self::clone_from) implementation uses it to
+    /// avoid cloning the waker when they would wake the same task anyway.
+    #[inline]
+    #[must_use]
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    pub fn will_wake(&self, other: &LocalWaker) -> bool {
+        self.waker == other.waker
+    }
+
     /// Creates a new `LocalWaker` that does nothing when `wake` is called.
     ///
     /// This is mostly useful for writing tests that need a [`Context`] to poll
@@ -733,43 +740,25 @@ impl LocalWaker {
         WAKER
     }
 
+    /// Creates a new `LocalWaker` from [`RawWaker`].
+    ///
+    /// The behavior of the returned `LocalWaker` is undefined if the contract defined
+    /// in [`RawWaker`]'s and [`RawWakerVTable`]'s documentation is not upheld.
+    /// Therefore this method is unsafe.
+    #[inline]
+    #[must_use]
+    #[stable(feature = "futures_api", since = "1.36.0")]
+    #[rustc_const_unstable(feature = "const_waker", issue = "102012")]
+    pub const unsafe fn from_raw(waker: RawWaker) -> LocalWaker {
+        Self { waker }
+    }
+
     /// Get a reference to the underlying [`RawWaker`].
     #[inline]
     #[must_use]
     #[unstable(feature = "waker_getters", issue = "96992")]
     pub fn as_raw(&self) -> &RawWaker {
         &self.waker
-    }
-
-    /// Returns `true` if this `LocalWaker` and another `LocalWaker` would awake the same task.
-    ///
-    /// This function works on a best-effort basis, and may return false even
-    /// when the `Waker`s would awaken the same task. However, if this function
-    /// returns `true`, it is guaranteed that the `Waker`s will awaken the same task.
-    ///
-    /// This function is primarily used for optimization purposes — for example,
-    /// this type's [`clone_from`](Self::clone_from) implementation uses it to
-    /// avoid cloning the waker when they would wake the same task anyway.
-    #[inline]
-    #[must_use]
-    #[stable(feature = "futures_api", since = "1.36.0")]
-    pub fn will_wake(&self, other: &LocalWaker) -> bool {
-        self.waker == other.waker
-    }
-
-    /// Wake up the task associated with this `LocalWaker` without consuming the `LocalWaker`.
-    ///
-    /// This is similar to [`wake()`](Self::wake), but may be slightly less efficient in
-    /// the case where an owned `Waker` is available. This method should be preferred to
-    /// calling `waker.clone().wake()`.
-    #[inline]
-    #[stable(feature = "futures_api", since = "1.36.0")]
-    pub fn wake_by_ref(&self) {
-        // The actual wakeup call is delegated through a virtual function call
-        // to the implementation which is defined by the executor.
-
-        // SAFETY: see `wake`
-        unsafe { (self.waker.vtable.wake_by_ref)(self.waker.data) }
     }
 }
 #[unstable(feature = "local_waker", issue = "118959")]
