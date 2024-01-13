@@ -286,19 +286,19 @@ error: called `is_none()` after searching an `Iterator` with `find`
   --> $DIR/search_is_some_fixable_none.rs:235:9
    |
 LL |         v.iter().find(|x| **x == 42).is_none().then(computations);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `(!v.iter().any(|x| *x == 42))`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(!v.iter().any(|x| *x == 42))`
 
 error: called `is_none()` after searching an `Iterator` with `find`
   --> $DIR/search_is_some_fixable_none.rs:240:9
    |
 LL |         v.iter().find(|x| **x == 42).is_none().then_some(0);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `(!v.iter().any(|x| *x == 42))`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(!v.iter().any(|x| *x == 42))`
 
 error: called `is_none()` after searching an `Iterator` with `find`
   --> $DIR/search_is_some_fixable_none.rs:242:17
    |
 LL |         Foo.bar(v.iter().find(|x| **x == 42).is_none());
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use `!_.any()` instead: `!v.iter().any(|x| *x == 42)`
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `!v.iter().any(|x| *x == 42)`
 
 error: aborting due to 46 previous errors
 
