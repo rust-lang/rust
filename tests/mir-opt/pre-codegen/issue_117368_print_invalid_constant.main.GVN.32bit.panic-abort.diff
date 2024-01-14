@@ -38,7 +38,30 @@
           }
           scope 9 (inlined NonNull::<[u8]>::as_ptr) {
               debug self => _5;
-              let mut _18: *const [u8];
+              let mut _18: bool;
+              let mut _19: bool;
+              let mut _20: *const [u8];
+              scope 10 {
+                  scope 11 (inlined std::ptr::const_ptr::<impl *const [u8]>::is_null) {
+                      debug self => _20;
+                      let mut _21: *const u8;
+                      scope 12 {
+                          scope 13 (inlined std::ptr::const_ptr::<impl *const T>::is_null::runtime_impl) {
+                              debug ptr => _21;
+                              let mut _22: usize;
+                              scope 14 (inlined std::ptr::const_ptr::<impl *const u8>::addr) {
+                                  debug self => _21;
+                                  let mut _23: *const ();
+                                  scope 15 {
+                                      scope 16 (inlined std::ptr::const_ptr::<impl *const u8>::cast::<()>) {
+                                          debug self => _21;
+                                      }
+                                  }
+                              }
+                          }
+                      }
+                  }
+              }
           }
       }
       scope 3 (inlined #[track_caller] Option::<Layout>::unwrap) {
@@ -101,10 +124,26 @@
           StorageDead(_15);
           StorageDead(_12);
           StorageDead(_6);
+          StorageLive(_20);
           StorageLive(_18);
-          _18 = (_5.0: *const [u8]);
-          _4 = move _18 as *mut [u8] (PtrToPtr);
+          StorageLive(_19);
+          _20 = (_5.0: *const [u8]);
+          StorageLive(_21);
+          _21 = _20 as *const u8 (PtrToPtr);
+          StorageLive(_22);
+          StorageLive(_23);
+          _23 = _21 as *const () (PtrToPtr);
+          _22 = move _23 as usize (Transmute);
+          StorageDead(_23);
+          _19 = Eq(move _22, const 0_usize);
+          StorageDead(_22);
+          StorageDead(_21);
+          _18 = Not(move _19);
+          StorageDead(_19);
+          assume(move _18);
           StorageDead(_18);
+          _4 = _20 as *mut [u8] (PtrToPtr);
+          StorageDead(_20);
           StorageDead(_5);
           _3 = move _4 as *mut u8 (PtrToPtr);
           StorageDead(_4);

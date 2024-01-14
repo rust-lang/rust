@@ -14,6 +14,35 @@ fn mem_replace(_1: &mut u32, _2: u32) -> u32 {
                     debug dst => _1;
                     debug src => _2;
                     scope 17 {
+                        scope 18 (inlined std::ptr::write::runtime::<u32>) {
+                            debug dst => _1;
+                            let mut _4: *const u32;
+                            scope 19 (inlined intrinsics::is_aligned_and_not_null::<u32>) {
+                                debug ptr => _4;
+                                scope 20 (inlined std::ptr::const_ptr::<impl *const u32>::is_null) {
+                                    debug self => _4;
+                                    let mut _5: *const u8;
+                                    scope 21 {
+                                        scope 22 (inlined std::ptr::const_ptr::<impl *const T>::is_null::runtime_impl) {
+                                            debug ptr => _5;
+                                            scope 23 (inlined std::ptr::const_ptr::<impl *const u8>::addr) {
+                                                debug self => _5;
+                                                scope 24 {
+                                                    scope 25 (inlined std::ptr::const_ptr::<impl *const u8>::cast::<()>) {
+                                                        debug self => _5;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                scope 26 (inlined std::ptr::const_ptr::<impl *const u32>::is_aligned) {
+                                    debug self => _4;
+                                    scope 27 (inlined align_of::<u32>) {
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -57,7 +86,11 @@ fn mem_replace(_1: &mut u32, _2: u32) -> u32 {
         StorageLive(_3);
         _0 = (*_1);
         StorageDead(_3);
+        StorageLive(_4);
+        StorageLive(_5);
         (*_1) = _2;
+        StorageDead(_5);
+        StorageDead(_4);
         return;
     }
 }
