@@ -1587,23 +1587,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.ty_to_value_string(rcvr_ty.peel_refs())
         };
         if let SelfSource::MethodCall(_) = source {
-            let first_arg = if let Some(CandidateSource::Impl(impl_did)) = static_candidates.get(0)
-                && let Some(assoc) = self.associated_value(*impl_did, item_name)
-                && assoc.kind == ty::AssocKind::Fn
-            {
+            let first_arg = static_candidates.get(0).and_then(|candidate_source| {
+                let (assoc_did, impl_ty) = match candidate_source {
+                    CandidateSource::Impl(impl_did) => {
+                        (*impl_did, self.tcx.type_of(*impl_did).instantiate_identity())
+                    }
+                    CandidateSource::Trait(trait_did) => (*trait_did, rcvr_ty),
+                };
+
+                let assoc = self.associated_value(assoc_did, item_name)?;
+                if assoc.kind != ty::AssocKind::Fn {
+                    return None;
+                }
+
+                // for CandidateSource::Impl, `Self` will be instantiated to a concrete type
+                // but for CandidateSource::Trait, `Self` is still `Self`
                 let sig = self.tcx.fn_sig(assoc.def_id).instantiate_identity();
                 sig.inputs().skip_binder().get(0).and_then(|first| {
-                    let impl_ty = self.tcx.type_of(*impl_did).instantiate_identity();
                     // if the type of first arg is the same as the current impl type, we should take the first arg into assoc function
-                    if first.peel_refs() == impl_ty {
+                    let first_ty = first.peel_refs();
+                    if first_ty == impl_ty || first_ty == self.tcx.types.self_param {
                         Some(first.ref_mutability().map_or("", |mutbl| mutbl.ref_prefix_str()))
                     } else {
                         None
                     }
                 })
-            } else {
-                None
-            };
+            });
+
             let mut applicability = Applicability::MachineApplicable;
             let args = if let SelfSource::MethodCall(receiver) = source
                 && let Some(args) = args
