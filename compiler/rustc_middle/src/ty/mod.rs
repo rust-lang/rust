@@ -37,6 +37,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
+use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_data_structures::tagged_ptr::CopyTaggedPtr;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed, StashKey};
@@ -63,6 +64,7 @@ use std::marker::PhantomData;
 use std::mem;
 use std::num::NonZeroUsize;
 use std::ops::ControlFlow;
+use std::ptr::NonNull;
 use std::{fmt, str};
 
 pub use crate::ty::diagnostics::*;
@@ -848,9 +850,16 @@ pub type PolyCoercePredicate<'tcx> = ty::Binder<'tcx, CoercePredicate<'tcx>>;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Term<'tcx> {
-    ptr: NonZeroUsize,
+    ptr: NonNull<()>,
     marker: PhantomData<(Ty<'tcx>, Const<'tcx>)>,
 }
+
+#[cfg(parallel_compiler)]
+unsafe impl<'tcx> DynSend for Term<'tcx> where &'tcx (Ty<'tcx>, Const<'tcx>): DynSend {}
+#[cfg(parallel_compiler)]
+unsafe impl<'tcx> DynSync for Term<'tcx> where &'tcx (Ty<'tcx>, Const<'tcx>): DynSync {}
+unsafe impl<'tcx> Send for Term<'tcx> where &'tcx (Ty<'tcx>, Const<'tcx>): Send {}
+unsafe impl<'tcx> Sync for Term<'tcx> where &'tcx (Ty<'tcx>, Const<'tcx>): Sync {}
 
 impl Debug for Term<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -914,17 +923,19 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for Term<'tcx> {
 impl<'tcx> Term<'tcx> {
     #[inline]
     pub fn unpack(self) -> TermKind<'tcx> {
-        let ptr = self.ptr.get();
+        let ptr = unsafe {
+            self.ptr.map_addr(|addr| NonZeroUsize::new_unchecked(addr.get() & !TAG_MASK))
+        };
         // SAFETY: use of `Interned::new_unchecked` here is ok because these
         // pointers were originally created from `Interned` types in `pack()`,
         // and this is just going in the other direction.
         unsafe {
-            match ptr & TAG_MASK {
+            match self.ptr.addr().get() & TAG_MASK {
                 TYPE_TAG => TermKind::Ty(Ty(Interned::new_unchecked(
-                    &*((ptr & !TAG_MASK) as *const WithCachedTypeInfo<ty::TyKind<'tcx>>),
+                    ptr.cast::<WithCachedTypeInfo<ty::TyKind<'tcx>>>().as_ref(),
                 ))),
                 CONST_TAG => TermKind::Const(ty::Const(Interned::new_unchecked(
-                    &*((ptr & !TAG_MASK) as *const WithCachedTypeInfo<ty::ConstData<'tcx>>),
+                    ptr.cast::<WithCachedTypeInfo<ty::ConstData<'tcx>>>().as_ref(),
                 ))),
                 _ => core::intrinsics::unreachable(),
             }
@@ -986,16 +997,16 @@ impl<'tcx> TermKind<'tcx> {
             TermKind::Ty(ty) => {
                 // Ensure we can use the tag bits.
                 assert_eq!(mem::align_of_val(&*ty.0.0) & TAG_MASK, 0);
-                (TYPE_TAG, ty.0.0 as *const WithCachedTypeInfo<ty::TyKind<'tcx>> as usize)
+                (TYPE_TAG, NonNull::from(ty.0.0).cast())
             }
             TermKind::Const(ct) => {
                 // Ensure we can use the tag bits.
                 assert_eq!(mem::align_of_val(&*ct.0.0) & TAG_MASK, 0);
-                (CONST_TAG, ct.0.0 as *const WithCachedTypeInfo<ty::ConstData<'tcx>> as usize)
+                (CONST_TAG, NonNull::from(ct.0.0).cast())
             }
         };
 
-        Term { ptr: unsafe { NonZeroUsize::new_unchecked(ptr | tag) }, marker: PhantomData }
+        Term { ptr: ptr.map_addr(|addr| addr | tag), marker: PhantomData }
     }
 }
 
