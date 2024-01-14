@@ -1791,7 +1791,10 @@ impl<'a> Parser<'a> {
         });
 
         let path_span = ty_span.shrink_to_hi(); // Use an empty path since `position == 0`.
-        Ok(P(T::recovered(Some(P(QSelf { ty, path_span, position: 0 })), path)))
+        Ok(P(T::recovered(
+            Some(P(QSelf { ty, constness: ast::BoundConstness::Never, path_span, position: 0 })),
+            path,
+        )))
     }
 
     pub fn maybe_consume_incorrect_semicolon(&mut self, items: &[P<Item>]) -> bool {

@@ -1377,6 +1377,9 @@ impl<'a> State<'a> {
         if qself.position > 0 {
             self.space();
             self.word_space("as");
+            if qself.constness != ast::BoundConstness::Never {
+                self.word_space(qself.constness.as_str());
+            }
             let depth = path.segments.len() - qself.position;
             self.print_path(path, false, depth);
         }

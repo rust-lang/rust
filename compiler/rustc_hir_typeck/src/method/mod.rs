@@ -329,6 +329,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if param.index == 0 {
                         return self_ty.into();
                     } else if let Some(input_types) = opt_input_types {
+                        // FIXME(fmease): IOOB when trying to build std...☠️
                         return input_types[param.index as usize - 1].into();
                     }
                 }

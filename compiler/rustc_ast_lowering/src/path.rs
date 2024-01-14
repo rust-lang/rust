@@ -27,6 +27,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // constness of the impl/bound if this is a trait path
         constness: Option<ast::BoundConstness>,
     ) -> hir::QPath<'hir> {
+        // FIXME(effects): The name isn't great.
+        let trait_constness = qself.as_ref().map(|q| q.constness);
         let qself_position = qself.as_ref().map(|q| q.position);
         let qself = qself.as_ref().map(|q| self.lower_ty(&q.ty, itctx));
 
@@ -76,8 +78,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         param_mode,
                         parenthesized_generic_args,
                         itctx,
-                        // if this is the last segment, add constness to the trait path
-                        if i == proj_start - 1 { constness } else { None },
+                        // If this is the last segment, add constness to the trait path.
+                        // FIXME(effects): Is it possible that both constnesses are Some?
+                        if i == proj_start - 1 { constness } else { trait_constness },
                     )
                 },
             )),

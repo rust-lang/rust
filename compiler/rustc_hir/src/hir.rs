@@ -507,6 +507,14 @@ pub struct GenericParam<'hir> {
 }
 
 impl<'hir> GenericParam<'hir> {
+    pub fn has_default(&self) -> bool {
+        matches!(
+            self.kind,
+            GenericParamKind::Type { default: Some(_), .. }
+                | GenericParamKind::Const { default: Some(_), .. }
+        )
+    }
+
     /// Synthetic type-parameters are inserted after normal ones.
     /// In order for normal parameters to be able to refer to synthetic ones,
     /// scans them first.

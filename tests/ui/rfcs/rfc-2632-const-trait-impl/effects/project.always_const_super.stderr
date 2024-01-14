@@ -1,0 +1,63 @@
+error[E0277]: the trait bound `Self: const Uwu` is not satisfied
+  --> $DIR/project.rs:22:1
+   |
+LL | pub trait Uwu: const Owo { type T; }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^ the trait `const Uwu` is not implemented for `Self`
+   |
+help: consider further restricting `Self`
+   |
+LL | pub trait Uwu: const Owo + const Uwu { type T; }
+   |                          +++++++++++
+
+error[E0277]: the trait bound `Self: const Uwu` is not satisfied
+  --> $DIR/project.rs:22:1
+   |
+LL | pub trait Uwu: const Owo { type T; }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `const Uwu` is not implemented for `Self`
+   |
+help: consider further restricting `Self`
+   |
+LL | pub trait Uwu: const Owo + const Uwu { type T; }
+   |                          +++++++++++
+
+error[E0277]: the trait bound `Self: const Uwu` is not satisfied
+  --> $DIR/project.rs:22:16
+   |
+LL | pub trait Uwu: const Owo { type T; }
+   |                ^^^^^^^^^ the trait `const Uwu` is not implemented for `Self`
+   |
+note: required by a bound in `Owo`
+  --> $DIR/project.rs:7:15
+   |
+LL | pub trait Owo<X = <Self as ~const Uwu>::T> {}
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Owo`
+help: consider further restricting `Self`
+   |
+LL | pub trait Uwu: const Owo + const Uwu { type T; }
+   |                          +++++++++++
+
+error[E0277]: the trait bound `Self: const Uwu` is not satisfied
+  --> $DIR/project.rs:22:28
+   |
+LL | pub trait Uwu: const Owo { type T; }
+   |                            ^^^^^^ the trait `const Uwu` is not implemented for `Self`
+   |
+help: consider further restricting `Self`
+   |
+LL | pub trait Uwu: const Owo + const Uwu { type T; }
+   |                          +++++++++++
+
+error[E0277]: the trait bound `Self: const Uwu` is not satisfied
+  --> $DIR/project.rs:22:28
+   |
+LL | pub trait Uwu: const Owo { type T; }
+   |                            ^^^^^^^ the trait `const Uwu` is not implemented for `Self`
+   |
+help: consider further restricting `Self`
+   |
+LL | pub trait Uwu: const Owo + const Uwu { type T; }
+   |                          +++++++++++
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

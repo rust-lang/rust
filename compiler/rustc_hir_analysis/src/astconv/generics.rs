@@ -235,6 +235,22 @@ pub fn create_args_for_parent_generic_args<'tcx, 'a>(
                 (Some(&arg), Some(&param)) => {
                     match (arg, &param.kind, arg_count.explicit_late_bound) {
                         (
+                            GenericArg::Type(_)
+                            | GenericArg::Lifetime(_)
+                            | GenericArg::Const(hir::ConstArg {
+                                is_desugared_from_effects: false,
+                                ..
+                            })
+                            | GenericArg::Infer(_),
+                            GenericParamDefKind::Const { is_host_effect: true, .. },
+                            _,
+                        ) => {
+                            // FIXME(fmease): Add explainer.
+                            args.push(ctx.inferred_kind(Some(&args), param, infer_args));
+                            params.next();
+                        }
+                        // FIXME(fmease): This might no longer be necessary.
+                        (
                             GenericArg::Const(hir::ConstArg {
                                 is_desugared_from_effects: true,
                                 ..
@@ -244,6 +260,7 @@ pub fn create_args_for_parent_generic_args<'tcx, 'a>(
                             | GenericParamDefKind::Lifetime,
                             _,
                         ) => {
+                            // FIXME(fmease): This explainer is outdated.
                             // SPECIAL CASE FOR DESUGARED EFFECT PARAMS
                             // This comes from the following example:
                             //

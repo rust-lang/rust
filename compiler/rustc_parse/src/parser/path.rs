@@ -58,16 +58,18 @@ impl PathStyle {
 }
 
 impl<'a> Parser<'a> {
-    /// Parses a qualified path.
-    /// Assumes that the leading `<` has been parsed already.
+    /// Parses a qualified path. Assumes that the leading `<` has been parsed already.
     ///
-    /// `qualified_path = <type [as trait_ref]>::path`
+    /// ```ebnf
+    /// QualifiedPath = "<" Type BoundConstness Path_type)? ">" "::" Path_$style
+    /// ```
     ///
     /// # Examples
-    /// `<T>::default`
-    /// `<T as U>::a`
-    /// `<T as U>::F::a<S>` (without disambiguator)
-    /// `<T as U>::F::a::<S>` (with disambiguator)
+    ///
+    /// * `<T>::default`
+    /// * `<T as U>::a`
+    /// * `<T as U>::F::a<S>` (without disambiguator)
+    /// * `<T as U>::F::a::<S>` (with disambiguator)
     pub(super) fn parse_qpath(&mut self, style: PathStyle) -> PResult<'a, (P<QSelf>, Path)> {
         let lo = self.prev_token.span;
         let ty = self.parse_ty()?;
@@ -76,12 +78,14 @@ impl<'a> Parser<'a> {
         // if any (e.g., `U` in the `<T as U>::*` examples
         // above). `path_span` has the span of that path, or an empty
         // span in the case of something like `<T>::Bar`.
-        let (mut path, path_span);
+        let (constness, mut path, path_span);
         if self.eat_keyword(kw::As) {
+            constness = self.parse_bound_constness()?;
             let path_lo = self.token.span;
             path = self.parse_path(PathStyle::Type)?;
             path_span = path_lo.to(self.prev_token.span);
         } else {
+            constness = ast::BoundConstness::Never;
             path_span = self.token.span.to(self.token.span);
             path = ast::Path { segments: ThinVec::new(), span: path_span, tokens: None };
         }
@@ -97,7 +101,7 @@ impl<'a> Parser<'a> {
             self.expect(&token::ModSep)?;
         }
 
-        let qself = P(QSelf { ty, path_span, position: path.segments.len() });
+        let qself = P(QSelf { ty, constness, path_span, position: path.segments.len() });
         self.parse_path_segments(&mut path.segments, style, None)?;
 
         Ok((

@@ -864,21 +864,11 @@ impl<'a> Parser<'a> {
     /// If no modifiers are present, this does not consume any tokens.
     ///
     /// ```ebnf
-    /// TRAIT_BOUND_MODIFIERS = [["~"] "const"] ["?" | "!"]
+    /// TRAIT_BOUND_MODIFIERS = BOUND_CONSTNESS BOUND_POLARITY
+    /// BOUND_POLARITY = ["?" | "!"]
     /// ```
     fn parse_trait_bound_modifiers(&mut self) -> PResult<'a, TraitBoundModifiers> {
-        let constness = if self.eat(&token::Tilde) {
-            let tilde = self.prev_token.span;
-            self.expect_keyword(kw::Const)?;
-            let span = tilde.to(self.prev_token.span);
-            self.sess.gated_spans.gate(sym::const_trait_impl, span);
-            BoundConstness::Maybe(span)
-        } else if self.eat_keyword(kw::Const) {
-            self.sess.gated_spans.gate(sym::const_trait_impl, self.prev_token.span);
-            BoundConstness::Always(self.prev_token.span)
-        } else {
-            BoundConstness::Never
-        };
+        let constness = self.parse_bound_constness()?;
 
         let polarity = if self.eat(&token::Question) {
             BoundPolarity::Maybe(self.prev_token.span)
@@ -890,6 +880,28 @@ impl<'a> Parser<'a> {
         };
 
         Ok(TraitBoundModifiers { constness, polarity })
+    }
+
+    /// Parses the const modifiers that may precede a trait in a bound.
+    ///
+    /// If no modifiers are present, this doesn't consume any tokens.
+    ///
+    /// ```ebnf
+    /// BOUND_CONSTNESS = [["~"] "const"]
+    /// ```
+    pub(crate) fn parse_bound_constness(&mut self) -> PResult<'a, BoundConstness> {
+        Ok(if self.eat(&token::Tilde) {
+            let tilde = self.prev_token.span;
+            self.expect_keyword(kw::Const)?;
+            let span = tilde.to(self.prev_token.span);
+            self.sess.gated_spans.gate(sym::const_trait_impl, span);
+            BoundConstness::Maybe(span)
+        } else if self.eat_keyword(kw::Const) {
+            self.sess.gated_spans.gate(sym::const_trait_impl, self.prev_token.span);
+            BoundConstness::Always(self.prev_token.span)
+        } else {
+            BoundConstness::Never
+        })
     }
 
     /// Parses a type bound according to:

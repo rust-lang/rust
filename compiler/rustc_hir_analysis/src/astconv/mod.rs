@@ -539,7 +539,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         if let Err(guar) = ty.error_reported() {
                             return ty::Const::new_error(tcx, guar, ty).into();
                         }
-                        // FIXME(effects) see if we should special case effect params here
                         if !infer_args && has_default {
                             tcx.const_param_default(param.def_id)
                                 .instantiate(tcx, args.unwrap())

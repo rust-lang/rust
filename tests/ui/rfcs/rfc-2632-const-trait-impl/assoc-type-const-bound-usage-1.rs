@@ -1,7 +1,4 @@
-// FIXME(effects): Collapse the revisions into one once we support `<Ty as const Trait>::Proj`.
-// revisions: unqualified qualified
-//[unqualified] check-pass
-//[qualified] known-bug: unknown
+// check-pass
 
 #![feature(const_trait_impl, effects, generic_const_exprs)]
 #![allow(incomplete_features)]
@@ -14,13 +11,11 @@ trait Trait {
 
 struct Type<const N: i32>;
 
-#[cfg(unqualified)]
 fn unqualified<T: const Trait>() -> Type<{ T::Assoc::func() }> {
     Type
 }
 
-#[cfg(qualified)]
-fn qualified<T: const Trait>() -> Type<{ <T as /* FIXME: const */ Trait>::Assoc::func() }> {
+fn qualified<T: const Trait>() -> Type<{ <T as const Trait>::Assoc::func() }> {
     Type
 }
 

@@ -200,36 +200,35 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::ItemKind::Const(ty, generics, body_id)
             }
             ItemKind::Fn(box Fn {
-                sig: FnSig { decl, header, span: fn_sig_span },
+                sig: FnSig { decl: ast_decl, header, span: fn_sig_span },
                 generics,
                 body,
                 ..
             }) => {
                 self.with_new_scopes(ident.span, |this| {
-                    // Note: we don't need to change the return type from `T` to
-                    // `impl Future<Output = T>` here because lower_body
-                    // only cares about the input argument patterns in the function
-                    // declaration (decl), not the return types.
-                    let coroutine_kind = header.coroutine_kind;
-                    let body_id = this.lower_maybe_coroutine_body(
-                        span,
-                        hir_id,
-                        decl,
-                        coroutine_kind,
-                        body.as_deref(),
-                    );
-
+                    // We lower the generics before we lower the body since the body can bind the host
+                    // effect param via qualified paths of the form `<Type as ~const Trait>::AssocType`.
                     let itctx = ImplTraitContext::Universal;
                     let (generics, decl) =
                         this.lower_generics(generics, header.constness, id, &itctx, |this| {
                             this.lower_fn_decl(
-                                decl,
+                                ast_decl,
                                 id,
                                 *fn_sig_span,
                                 FnDeclKind::Fn,
-                                coroutine_kind,
+                                header.coroutine_kind,
                             )
                         });
+                    // Note: We don't need to change the return type from `T` to `impl Future<Output = T>`
+                    // here because `lower_body` only cares about the input argument patterns in the function
+                    // declaration `decl`, not the return types.
+                    let body_id = this.lower_maybe_coroutine_body(
+                        span,
+                        hir_id,
+                        ast_decl,
+                        header.coroutine_kind,
+                        body.as_deref(),
+                    );
                     let sig = hir::FnSig {
                         decl,
                         header: this.lower_fn_header(*header),
@@ -1460,9 +1459,26 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 .map(|predicate| self.lower_where_predicate(predicate)),
         );
 
-        let mut params: SmallVec<[hir::GenericParam<'hir>; 4]> = self
-            .lower_generic_params_mut(&generics.params, hir::GenericParamSource::Generics)
-            .collect();
+        let mut params = SmallVec::<[hir::GenericParam<'hir>; 4]>::new();
+
+        let mut encountered_defaulted_param = false;
+        for param in &generics.params {
+            let param = self.lower_generic_param(param, hir::GenericParamSource::Generics);
+
+            // FIXME(fmease): Add explainer.
+            if !encountered_defaulted_param && param.has_default() {
+                if let Some((span, hir_id, def_id)) = host_param_parts {
+                    params.push(self.make_host_effect_param(span, hir_id, def_id));
+                }
+                encountered_defaulted_param = true;
+            }
+
+            params.push(param);
+        }
+
+        if !encountered_defaulted_param && let Some((span, hir_id, def_id)) = host_param_parts {
+            params.push(self.make_host_effect_param(span, hir_id, def_id));
+        }
 
         // Introduce extra lifetimes if late resolution tells us to.
         let extra_lifetimes = self.resolver.take_extra_lifetime_params(parent_node_id);
@@ -1485,69 +1501,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let impl_trait_bounds = std::mem::take(&mut self.impl_trait_bounds);
         predicates.extend(impl_trait_bounds.into_iter());
-
-        if let Some((span, hir_id, def_id)) = host_param_parts {
-            let const_node_id = self.next_node_id();
-            let anon_const =
-                self.create_def(def_id, const_node_id, kw::Empty, DefKind::AnonConst, span);
-
-            let const_id = self.next_id();
-            let const_expr_id = self.next_id();
-            let bool_id = self.next_id();
-
-            self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
-            self.children.push((anon_const, hir::MaybeOwner::NonOwner(const_id)));
-
-            let const_body = self.lower_body(|this| {
-                (
-                    &[],
-                    hir::Expr {
-                        hir_id: const_expr_id,
-                        kind: hir::ExprKind::Lit(
-                            this.arena.alloc(hir::Lit { node: LitKind::Bool(true), span }),
-                        ),
-                        span,
-                    },
-                )
-            });
-
-            let param = hir::GenericParam {
-                def_id,
-                hir_id,
-                name: hir::ParamName::Plain(Ident { name: sym::host, span }),
-                span,
-                kind: hir::GenericParamKind::Const {
-                    ty: self.arena.alloc(self.ty(
-                        span,
-                        hir::TyKind::Path(hir::QPath::Resolved(
-                            None,
-                            self.arena.alloc(hir::Path {
-                                res: Res::PrimTy(hir::PrimTy::Bool),
-                                span,
-                                segments: self.arena.alloc_from_iter([hir::PathSegment {
-                                    ident: Ident { name: sym::bool, span },
-                                    hir_id: bool_id,
-                                    res: Res::PrimTy(hir::PrimTy::Bool),
-                                    args: None,
-                                    infer_args: false,
-                                }]),
-                            }),
-                        )),
-                    )),
-                    default: Some(hir::AnonConst {
-                        def_id: anon_const,
-                        hir_id: const_id,
-                        body: const_body,
-                    }),
-                    is_host_effect: true,
-                },
-                colon_span: None,
-                pure_wrt_drop: false,
-                source: hir::GenericParamSource::Generics,
-            };
-
-            params.push(param);
-        }
 
         let lowered_generics = self.arena.alloc(hir::Generics {
             params: self.arena.alloc_from_iter(params),
@@ -1670,6 +1623,72 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     span: self.lower_span(*span),
                 })
             }
+        }
+    }
+
+    fn make_host_effect_param(
+        &mut self,
+        span: Span,
+        hir_id: hir::HirId,
+        def_id: LocalDefId,
+    ) -> hir::GenericParam<'hir> {
+        let const_node_id = self.next_node_id();
+        let anon_const =
+            self.create_def(def_id, const_node_id, kw::Empty, DefKind::AnonConst, span);
+
+        let const_id = self.next_id();
+        let const_expr_id = self.next_id();
+        let bool_id = self.next_id();
+
+        self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
+        self.children.push((anon_const, hir::MaybeOwner::NonOwner(const_id)));
+
+        let const_body = self.lower_body(|this| {
+            (
+                &[],
+                hir::Expr {
+                    hir_id: const_expr_id,
+                    kind: hir::ExprKind::Lit(
+                        this.arena.alloc(hir::Lit { node: LitKind::Bool(true), span }),
+                    ),
+                    span,
+                },
+            )
+        });
+
+        hir::GenericParam {
+            def_id,
+            hir_id,
+            name: hir::ParamName::Plain(Ident { name: sym::host, span }),
+            span,
+            kind: hir::GenericParamKind::Const {
+                ty: self.arena.alloc(self.ty(
+                    span,
+                    hir::TyKind::Path(hir::QPath::Resolved(
+                        None,
+                        self.arena.alloc(hir::Path {
+                            res: Res::PrimTy(hir::PrimTy::Bool),
+                            span,
+                            segments: self.arena.alloc_from_iter([hir::PathSegment {
+                                ident: Ident { name: sym::bool, span },
+                                hir_id: bool_id,
+                                res: Res::PrimTy(hir::PrimTy::Bool),
+                                args: None,
+                                infer_args: false,
+                            }]),
+                        }),
+                    )),
+                )),
+                default: Some(hir::AnonConst {
+                    def_id: anon_const,
+                    hir_id: const_id,
+                    body: const_body,
+                }),
+                is_host_effect: true,
+            },
+            colon_span: None,
+            pure_wrt_drop: false,
+            source: hir::GenericParamSource::Generics,
         }
     }
 }
