@@ -449,6 +449,7 @@ pub(crate) fn run_global_ctxt(
 
     tcx.sess.time("check_lint_expectations", || tcx.check_expectations(Some(sym::rustdoc)));
 
+    // We must include lint errors here.
     if tcx.dcx().has_errors_or_lint_errors().is_some() {
         rustc_errors::FatalError.raise();
     }
