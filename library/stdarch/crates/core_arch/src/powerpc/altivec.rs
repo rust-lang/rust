@@ -335,6 +335,9 @@ extern "C" {
 
     #[link_name = "llvm.ppc.altivec.vlogefp"]
     fn vlogefp(a: vector_float) -> vector_float;
+
+    #[link_name = "llvm.ppc.altivec.sll"]
+    fn vsl(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
 }
 
 macro_rules! s_t_l {
@@ -2822,6 +2825,25 @@ mod sealed {
     impl_vec_sld! { vector_bool_short, vector_signed_short, vector_unsigned_short }
     impl_vec_sld! { vector_bool_int, vector_signed_int, vector_unsigned_int }
     impl_vec_sld! { vector_float }
+
+    macro_rules! impl_vec_sll {
+        ([$Trait:ident $m:ident] ($f:ident)) => {
+            impl_vec_trait!{ [$Trait $m]+ $f (vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_char }
+            impl_vec_trait!{ [$Trait $m]+ $f (vector_signed_char, vector_unsigned_char) -> vector_signed_char }
+            impl_vec_trait!{ [$Trait $m]+ $f (vector_unsigned_short, vector_unsigned_char) -> vector_unsigned_short }
+            impl_vec_trait!{ [$Trait $m]+ $f (vector_signed_short, vector_unsigned_char) -> vector_signed_short }
+            impl_vec_trait!{ [$Trait $m]+ $f (vector_unsigned_int, vector_unsigned_char) -> vector_unsigned_int }
+            impl_vec_trait!{ [$Trait $m]+ $f (vector_signed_int, vector_unsigned_char) -> vector_signed_int }
+        };
+    }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorSll<Other> {
+        type Result;
+        unsafe fn vec_sll(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_sll! { [VectorSll vec_sll] (vsl) }
 }
 
 /// Vector Merge Low
@@ -2952,6 +2974,21 @@ where
     T: sealed::VectorSld,
 {
     a.vec_sldw::<UIMM2>(b)
+}
+
+/// Vector Shift Left Long
+///
+/// ## Endian considerations
+/// This intrinsic is not endian-neutral, so uses of vec_sll in big-endian
+/// code must be rewritten for little-endian targets.
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_sll<T, U>(a: T, b: U) -> <T as sealed::VectorSll<U>>::Result
+where
+    T: sealed::VectorSll<U>,
+{
+    a.vec_sll(b)
 }
 
 /// Vector Load Indexed.
