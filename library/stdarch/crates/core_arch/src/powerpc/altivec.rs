@@ -389,6 +389,32 @@ macro_rules! t_t_l {
     };
 }
 
+macro_rules! t_t_s {
+    (i32) => {
+        i32x4
+    };
+    (i16) => {
+        i16x8
+    };
+    (i8) => {
+        i8x16
+    };
+
+    (u32) => {
+        u32x4
+    };
+    (u16) => {
+        u16x8
+    };
+    (u8) => {
+        u8x16
+    };
+
+    (f32) => {
+        f32x4
+    };
+}
+
 macro_rules! impl_from {
     ($s: ident) => {
         #[unstable(feature = "stdarch_powerpc", issue = "111145")]
@@ -2620,6 +2646,46 @@ mod sealed {
     impl_vec_trait! { [VectorUnpackl vec_unpackl]+ vec_vupklsb (vector_bool_char) -> vector_bool_short }
     impl_vec_trait! { [VectorUnpackl vec_unpackl] vec_vupklsh (vector_signed_short) -> vector_signed_int }
     impl_vec_trait! { [VectorUnpackl vec_unpackl]+ vec_vupklsh (vector_bool_short) -> vector_bool_int }
+
+    macro_rules! impl_vec_shift {
+        ([$Trait:ident $m:ident] ($b:ident, $h:ident, $w:ident)) => {
+            impl_vec_trait!{ [$Trait $m]+ $b (vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_char }
+            impl_vec_trait!{ [$Trait $m]+ $b (vector_signed_char, vector_unsigned_char) -> vector_signed_char }
+            impl_vec_trait!{ [$Trait $m]+ $h (vector_unsigned_short, vector_unsigned_short) -> vector_unsigned_short }
+            impl_vec_trait!{ [$Trait $m]+ $h (vector_signed_short, vector_unsigned_short) -> vector_signed_short }
+            impl_vec_trait!{ [$Trait $m]+ $w (vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_int }
+            impl_vec_trait!{ [$Trait $m]+ $w (vector_signed_int, vector_unsigned_int) -> vector_signed_int }
+        };
+    }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorSl<Other> {
+        type Result;
+        unsafe fn vec_sl(self, b: Other) -> Self::Result;
+    }
+
+    macro_rules! impl_sl {
+        ($fun:ident $ty:ident) => {
+            #[inline]
+            #[target_feature(enable = "altivec")]
+            #[cfg_attr(test, assert_instr($fun))]
+            unsafe fn $fun(a: t_t_l!($ty), b: t_t_l!($ty)) -> t_t_l!($ty) {
+                let a = transmute(a);
+                let b = simd_rem(
+                    transmute(b),
+                    <t_t_s!($ty)>::splat(mem::size_of::<$ty>() as $ty * $ty::BITS as $ty),
+                );
+
+                transmute(simd_shl(a, b))
+            }
+        };
+    }
+
+    impl_sl! { vslb u8 }
+    impl_sl! { vslh u16 }
+    impl_sl! { vslw u32 }
+
+    impl_vec_shift! { [VectorSl vec_sl] (vslb, vslh, vslw) }
 }
 
 /// Vector Merge Low
@@ -2699,6 +2765,16 @@ where
     a.vec_unpackl()
 }
 
+/// Vector Shift Left
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_sl<T, U>(a: T, b: U) -> <T as sealed::VectorSl<U>>::Result
+where
+    T: sealed::VectorSl<U>,
+{
+    a.vec_sl(b)
+}
 /// Vector Load Indexed.
 #[inline]
 #[target_feature(enable = "altivec")]
