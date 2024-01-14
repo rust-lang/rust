@@ -57,7 +57,8 @@ impl BodyValidationDiagnostic {
         let _p =
             tracing::span!(tracing::Level::INFO, "BodyValidationDiagnostic::collect").entered();
         let infer = db.infer(owner);
-        let mut validator = ExprValidator::new(owner, infer);
+        let body = db.body(owner);
+        let mut validator = ExprValidator { owner, body, infer, diagnostics: Vec::new() };
         validator.validate_body(db);
         validator.diagnostics
     }
@@ -65,18 +66,16 @@ impl BodyValidationDiagnostic {
 
 struct ExprValidator {
     owner: DefWithBodyId,
+    body: Arc<Body>,
     infer: Arc<InferenceResult>,
     pub(super) diagnostics: Vec<BodyValidationDiagnostic>,
 }
 
 impl ExprValidator {
-    fn new(owner: DefWithBodyId, infer: Arc<InferenceResult>) -> ExprValidator {
-        ExprValidator { owner, infer, diagnostics: Vec::new() }
-    }
-
     fn validate_body(&mut self, db: &dyn HirDatabase) {
-        let body = db.body(self.owner);
         let mut filter_map_next_checker = None;
+        // we'll pass &mut self while iterating over body.exprs, so they need to be disjoint
+        let body = Arc::clone(&self.body);
 
         if matches!(self.owner, DefWithBodyId::FunctionId(_)) {
             self.check_for_trailing_return(body.body_expr, &body);
@@ -162,8 +161,6 @@ impl ExprValidator {
         arms: &[MatchArm],
         db: &dyn HirDatabase,
     ) {
-        let body = db.body(self.owner);
-
         let scrut_ty = &self.infer[scrutinee_expr];
         if scrut_ty.is_unknown() {
             return;
@@ -191,12 +188,12 @@ impl ExprValidator {
                         .as_reference()
                         .map(|(match_expr_ty, ..)| match_expr_ty == pat_ty)
                         .unwrap_or(false))
-                    && types_of_subpatterns_do_match(arm.pat, &body, &self.infer)
+                    && types_of_subpatterns_do_match(arm.pat, &self.body, &self.infer)
                 {
                     // If we had a NotUsefulMatchArm diagnostic, we could
                     // check the usefulness of each pattern as we added it
                     // to the matrix here.
-                    let pat = self.lower_pattern(&cx, arm.pat, db, &body, &mut has_lowering_errors);
+                    let pat = self.lower_pattern(&cx, arm.pat, db, &mut has_lowering_errors);
                     let m_arm = pat_analysis::MatchArm {
                         pat: pattern_arena.alloc(pat),
                         has_guard: arm.guard.is_some(),
@@ -244,10 +241,9 @@ impl ExprValidator {
         cx: &MatchCheckCtx<'p>,
         pat: PatId,
         db: &dyn HirDatabase,
-        body: &Body,
         have_errors: &mut bool,
     ) -> DeconstructedPat<'p> {
-        let mut patcx = match_check::PatCtxt::new(db, &self.infer, body);
+        let mut patcx = match_check::PatCtxt::new(db, &self.infer, &self.body);
         let pattern = patcx.lower_pattern(pat);
         let pattern = cx.lower_pat(&pattern);
         if !patcx.errors.is_empty() {
