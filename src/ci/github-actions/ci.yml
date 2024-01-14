@@ -138,6 +138,7 @@ x--expand-yaml-anchors--remove:
           pacboy: >
             cmake:p
             gcc:p
+            diffutils:p
           #   toolchain:p
           #python:p
           #   mingw-w64-x86_64-python
