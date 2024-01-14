@@ -2963,11 +2963,11 @@ where
 }
 
 splat! { vec_splat_u8, u8, u8x16 [vspltisb, "Vector Splat to Unsigned Byte"] }
-splat! { vec_splat_i8, i8, i8x16 [vspltisb, "Vector Splat to Signed Byte"] }
+splat! { vec_splat_s8, i8, i8x16 [vspltisb, "Vector Splat to Signed Byte"] }
 splat! { vec_splat_u16, u16, u16x8 [vspltish, "Vector Splat to Unsigned Halfword"] }
-splat! { vec_splat_i16, i16, i16x8 [vspltish, "Vector Splat to Signed Halfword"] }
+splat! { vec_splat_s16, i16, i16x8 [vspltish, "Vector Splat to Signed Halfword"] }
 splat! { vec_splat_u32, u32, u32x4 [vspltisw, "Vector Splat to Unsigned Word"] }
-splat! { vec_splat_i32, i32, i32x4 [vspltisw, "Vector Splat to Signed Word"] }
+splat! { vec_splat_s32, i32, i32x4 [vspltisw, "Vector Splat to Signed Word"] }
 
 /// Vector splats.
 #[inline]
@@ -4846,9 +4846,9 @@ mod tests {
     test_vec_splat! { test_vec_splat_u8, vec_splat_u8, u8x16, -1, u8::MAX }
     test_vec_splat! { test_vec_splat_u16, vec_splat_u16, u16x8, -1, u16::MAX }
     test_vec_splat! { test_vec_splat_u32, vec_splat_u32, u32x4, -1, u32::MAX }
-    test_vec_splat! { test_vec_splat_i8, vec_splat_i8, i8x16, -1, -1 }
-    test_vec_splat! { test_vec_splat_i16, vec_splat_i16, i16x8, -1, -1 }
-    test_vec_splat! { test_vec_splat_i32, vec_splat_i32, i32x4, -1, -1 }
+    test_vec_splat! { test_vec_splat_s8, vec_splat_s8, i8x16, -1, -1 }
+    test_vec_splat! { test_vec_splat_s16, vec_splat_s16, i16x8, -1, -1 }
+    test_vec_splat! { test_vec_splat_s32, vec_splat_s32, i32x4, -1, -1 }
 
     macro_rules! test_vec_sub {
         { $name: ident, $ty: ident, [$($a:expr),+], [$($b:expr),+], [$($d:expr),+] } => {
