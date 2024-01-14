@@ -825,11 +825,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "auto trait is invoked with no method error, but no error reported?",
                         );
                     }
-                    Some(Node::Item(hir::Item {
-                        ident,
-                        kind: hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..),
-                        ..
-                    })) => {
+                    Some(
+                        Node::Item(hir::Item {
+                            ident,
+                            kind: hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..),
+                            ..
+                        })
+                        // We may also encounter unsatisfied GAT or method bounds
+                        | Node::TraitItem(hir::TraitItem { ident, .. })
+                        | Node::ImplItem(hir::ImplItem { ident, .. }),
+                    ) => {
                         skip_list.insert(p);
                         let entry = spanned_predicates.entry(ident.span);
                         let entry = entry.or_insert_with(|| {
@@ -840,7 +845,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         entry.1.insert((cause_span, "unsatisfied trait bound introduced here"));
                         entry.2.push(p);
                     }
-                    Some(node) => unreachable!("encountered `{node:?}`"),
+                    Some(node) => unreachable!("encountered `{node:?}` due to `{cause:#?}`"),
                     None => (),
                 }
             }

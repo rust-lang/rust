@@ -31,6 +31,9 @@ mod newtype;
 /// - `#[max = 0xFFFF_FFFD]`: specifies the max value, which allows niche
 ///   optimizations. The default max value is 0xFFFF_FF00.
 /// - `#[gate_rustc_only]`: makes parts of the generated code nightly-only.
+///
+/// `SpecOptionPartialEq` is specialized by this macro, so using it requires enabling
+/// `#![feature(min_specialization)]` for the crate.
 #[proc_macro]
 #[cfg_attr(
     feature = "nightly",
