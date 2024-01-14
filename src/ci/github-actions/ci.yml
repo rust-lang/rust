@@ -135,10 +135,10 @@ x--expand-yaml-anchors--remove:
             make
             git
             dos2unix
+            diffutils
           pacboy: >
             cmake:p
             gcc:p
-            diffutils:p
           #   toolchain:p
           #python:p
           #   mingw-w64-x86_64-python
