@@ -2,6 +2,7 @@
 //! Protocol. This module specifically handles requests.
 
 use std::{
+    collections::HashSet,
     fs,
     io::Write as _,
     path::PathBuf,
@@ -13,7 +14,8 @@ use anyhow::Context;
 use ide::{
     AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, FilePosition, FileRange,
     HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query, RangeInfo, RangeLimit,
-    ReferenceCategory, Runnable, RunnableKind, SingleResolve, SourceChange, TextEdit,
+    ReferenceCategory, ReferenceSearchResult, Runnable, RunnableKind, SingleResolve, SourceChange,
+    TextEdit,
 };
 use ide_db::SymbolKind;
 use lsp_server::ErrorCode;
@@ -28,6 +30,8 @@ use lsp_types::{
 };
 use project_model::{ManifestPath, ProjectWorkspace, TargetKind};
 use serde_json::json;
+#[allow(unused_imports)]
+use stdx::IsNoneOr;
 use stdx::{format_to, never};
 use syntax::{algo, ast, AstNode, TextRange, TextSize};
 use triomphe::Arc;
@@ -1055,10 +1059,10 @@ pub(crate) fn handle_references(
     let exclude_imports = snap.config.find_all_refs_exclude_imports();
     let exclude_tests = snap.config.find_all_refs_exclude_tests();
 
-    let refs = match snap.analysis.find_all_refs(position, None)? {
-        None => return Ok(None),
-        Some(refs) => refs,
+    let Some(mut refs) = snap.analysis.find_all_refs(position, None)? else {
+        return Ok(None);
     };
+    deduplicate_declarations(&mut refs);
 
     let include_declaration = params.context.include_declaration;
     let locations = refs
@@ -1088,6 +1092,17 @@ pub(crate) fn handle_references(
         .collect();
 
     Ok(Some(locations))
+}
+
+fn deduplicate_declarations(refs: &mut Vec<ReferenceSearchResult>) {
+    if refs.iter().filter(|decl| decl.declaration.is_some()).take(2).count() > 1 {
+        let mut seen_navigation_targets = HashSet::new();
+        refs.retain(|res| {
+            res.declaration
+                .as_ref()
+                .is_none_or(|decl| seen_navigation_targets.insert(decl.nav.clone()))
+        });
+    }
 }
 
 pub(crate) fn handle_formatting(
@@ -1794,7 +1809,10 @@ fn show_ref_command_link(
     position: &FilePosition,
 ) -> Option<lsp_ext::CommandLinkGroup> {
     if snap.config.hover_actions().references && snap.config.client_commands().show_reference {
-        if let Some(ref_search_res) = snap.analysis.find_all_refs(*position, None).unwrap_or(None) {
+        if let Some(mut ref_search_res) =
+            snap.analysis.find_all_refs(*position, None).unwrap_or(None)
+        {
+            deduplicate_declarations(&mut ref_search_res);
             let uri = to_proto::url(snap, position.file_id);
             let line_index = snap.file_line_index(position.file_id).ok()?;
             let position = to_proto::position(&line_index, position.offset);
