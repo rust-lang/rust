@@ -65,6 +65,8 @@ if isWindows; then
     rm -r "/c/Program Files/Git/"
     # Delete pre-installed version of MSYS2
     rm -r "/c/msys64/"
+    # Delete Strawberry Perl, which contains a version of mingw
+    rm -r "/c/Strawberry/"
     # wtf why is this even here??
     rm -r "/c/mingw64/"
     rm -r "/c/mingw32/"
