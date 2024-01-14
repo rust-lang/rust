@@ -855,10 +855,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             {
                 let feature = stability.feature;
 
-                let is_allowed = |feature| {
-                    self.declared_features.contains(&feature) || span.allows_unstable(feature)
+                let is_allowed = |feature: Symbol| {
+                    self.declared_features.contains(feature.into())
+                        || span.allows_unstable(feature.into())
                 };
-                let allowed_by_implication = implied_by.is_some_and(|feature| is_allowed(feature));
+                let allowed_by_implication =
+                    implied_by.is_some_and(|feature| is_allowed(feature.into()));
                 if !is_allowed(feature) && !allowed_by_implication {
                     let lint_buffer = &mut self.lint_buffer;
                     let soft_handler =

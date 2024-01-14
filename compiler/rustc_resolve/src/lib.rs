@@ -39,13 +39,14 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{FreezeReadGuard, Lrc};
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use rustc_expand::base::{DeriveResolutions, SyntaxExtension, SyntaxExtensionKind};
-use rustc_feature::BUILTIN_ATTRIBUTES;
+use rustc_feature::{FeatureIndex, BUILTIN_ATTRIBUTES};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::NonMacroAttrKind;
 use rustc_hir::def::{self, CtorOf, DefKind, DocLinkResMap, LifetimeRes, PartialRes, PerNS};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, LocalDefIdMap, LocalDefIdSet};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::{PrimTy, TraitCandidate};
+use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::IndexVec;
 use rustc_metadata::creader::{CStore, CrateLoader};
 use rustc_middle::metadata::ModChild;
@@ -1087,7 +1088,7 @@ pub struct Resolver<'a, 'tcx> {
     struct_constructors: LocalDefIdMap<(Res, ty::Visibility<DefId>, Vec<ty::Visibility<DefId>>)>,
 
     /// Features declared for this crate.
-    declared_features: FxHashSet<Symbol>,
+    declared_features: GrowableBitSet<FeatureIndex>,
 
     lint_buffer: LintBuffer,
 

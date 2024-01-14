@@ -15,6 +15,7 @@
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
 #![feature(lazy_cell)]
+#![feature(min_specialization)]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 
@@ -130,4 +131,4 @@ pub use builtin_attrs::{
     GatedCfg, BUILTIN_ATTRIBUTES, BUILTIN_ATTRIBUTE_MAP,
 };
 pub use removed::REMOVED_FEATURES;
-pub use unstable::{Features, INCOMPATIBLE_FEATURES, UNSTABLE_FEATURES};
+pub use unstable::{FeatureIndex, Features, INCOMPATIBLE_FEATURES, UNSTABLE_FEATURES};

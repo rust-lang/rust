@@ -2,7 +2,7 @@
 
 use super::{to_nonzero, Feature};
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_index::bit_set::GrowableBitSet;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 
@@ -30,6 +30,17 @@ macro_rules! status_to_enum {
     };
 }
 
+rustc_index::newtype_index! {
+    #[orderable]
+    pub struct FeatureIndex {}
+}
+
+impl From<Symbol> for FeatureIndex {
+    fn from(value: Symbol) -> Self {
+        value.as_u32().into()
+    }
+}
+
 macro_rules! declare_features {
     ($(
         $(#[doc = $doc:tt])* ($status:ident, $feature:ident, $ver:expr, $issue:expr),
@@ -51,7 +62,7 @@ macro_rules! declare_features {
         const NUM_FEATURES: usize = UNSTABLE_FEATURES.len();
 
         /// A set of features to be used by later passes.
-        #[derive(Clone, Default, Debug)]
+        #[derive(Clone, Debug, Default)]
         pub struct Features {
             /// `#![feature]` attrs for language features, for error reporting.
             /// "declared" here means that the feature is actually enabled in the current crate.
@@ -60,7 +71,7 @@ macro_rules! declare_features {
             /// "declared" here means that the feature is actually enabled in the current crate.
             pub declared_lib_features: Vec<(Symbol, Span)>,
             /// `declared_lang_features` + `declared_lib_features`.
-            pub declared_features: FxHashSet<Symbol>,
+            pub declared_features: GrowableBitSet<FeatureIndex>,
             /// Active state of individual features (unstable only).
             $(
                 $(#[doc = $doc])*
@@ -76,12 +87,12 @@ macro_rules! declare_features {
                 since: Option<Symbol>
             ) {
                 self.declared_lang_features.push((symbol, span, since));
-                self.declared_features.insert(symbol);
+                self.declared_features.insert(symbol.into());
             }
 
             pub fn set_declared_lib_feature(&mut self, symbol: Symbol, span: Span) {
                 self.declared_lib_features.push((symbol, span));
-                self.declared_features.insert(symbol);
+                self.declared_features.insert(symbol.into());
             }
 
             /// This is intended for hashing the set of active features.
@@ -97,7 +108,7 @@ macro_rules! declare_features {
             /// Is the given feature explicitly declared, i.e. named in a
             /// `#![feature(...)]` within the code?
             pub fn declared(&self, feature: Symbol) -> bool {
-                self.declared_features.contains(&feature)
+                self.declared_features.contains(feature.into())
             }
 
             /// Is the given feature active (enabled by the user)?
@@ -120,7 +131,7 @@ macro_rules! declare_features {
                         sym::$feature => status_to_enum!($status) == FeatureStatus::Incomplete,
                     )*
                     // Accepted/removed features aren't in this file but are never incomplete.
-                    _ if self.declared_features.contains(&feature) => false,
+                    _ if self.declared_features.contains(feature.into()) => false,
                     _ => panic!("`{}` was not listed in `declare_features`", feature),
                 }
             }
@@ -132,7 +143,7 @@ macro_rules! declare_features {
                     $(
                         sym::$feature => status_to_enum!($status) == FeatureStatus::Internal,
                     )*
-                    _ if self.declared_features.contains(&feature) => {
+                    _ if self.declared_features.contains(feature.into()) => {
                         // This could be accepted/removed, or a libs feature.
                         // Accepted/removed features aren't in this file but are never internal
                         // (a removed feature might have been internal, but that's now irrelevant).
