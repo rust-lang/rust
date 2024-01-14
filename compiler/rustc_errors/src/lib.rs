@@ -865,10 +865,6 @@ impl DiagCtxt {
     /// directly).
     #[track_caller]
     pub fn delayed_bug(&self, msg: impl Into<DiagnosticMessage>) -> ErrorGuaranteed {
-        let treat_next_err_as_bug = self.inner.borrow().treat_next_err_as_bug();
-        if treat_next_err_as_bug {
-            self.bug(msg);
-        }
         DiagnosticBuilder::<ErrorGuaranteed>::new(self, DelayedBug(DelayedBugKind::Normal), msg)
             .emit()
     }
@@ -883,10 +879,6 @@ impl DiagCtxt {
         sp: impl Into<MultiSpan>,
         msg: impl Into<DiagnosticMessage>,
     ) -> ErrorGuaranteed {
-        let treat_next_err_as_bug = self.inner.borrow().treat_next_err_as_bug();
-        if treat_next_err_as_bug {
-            self.span_bug(sp, msg);
-        }
         DiagnosticBuilder::<ErrorGuaranteed>::new(self, DelayedBug(DelayedBugKind::Normal), msg)
             .with_span(sp)
             .emit()
@@ -1259,10 +1251,6 @@ impl DiagCtxtInner {
     }
 
     fn emit_diagnostic(&mut self, mut diagnostic: Diagnostic) -> Option<ErrorGuaranteed> {
-        if matches!(diagnostic.level, Error | Fatal) && self.treat_next_err_as_bug() {
-            diagnostic.level = Bug;
-        }
-
         // The `LintExpectationId` can be stable or unstable depending on when it was created.
         // Diagnostics created before the definition of `HirId`s are unstable and can not yet
         // be stored. Instead, they are buffered until the `LintExpectationId` is replaced by
@@ -1296,6 +1284,12 @@ impl DiagCtxtInner {
                 return None;
             }
             _ => {}
+        }
+
+        // This must come after the possible promotion of `DelayedBug` to
+        // `Error` above.
+        if matches!(diagnostic.level, Error | Fatal) && self.treat_next_err_as_bug() {
+            diagnostic.level = Bug;
         }
 
         if diagnostic.has_future_breakage() {
@@ -1387,20 +1381,14 @@ impl DiagCtxtInner {
     }
 
     fn treat_err_as_bug(&self) -> bool {
-        self.flags.treat_err_as_bug.is_some_and(|c| {
-            self.err_count + self.lint_err_count + self.delayed_bug_count() >= c.get()
-        })
+        self.flags.treat_err_as_bug.is_some_and(|c| self.err_count + self.lint_err_count >= c.get())
     }
 
     // Use this one before incrementing `err_count`.
     fn treat_next_err_as_bug(&self) -> bool {
-        self.flags.treat_err_as_bug.is_some_and(|c| {
-            self.err_count + self.lint_err_count + self.delayed_bug_count() + 1 >= c.get()
-        })
-    }
-
-    fn delayed_bug_count(&self) -> usize {
-        self.span_delayed_bugs.len() + self.good_path_delayed_bugs.len()
+        self.flags
+            .treat_err_as_bug
+            .is_some_and(|c| self.err_count + self.lint_err_count + 1 >= c.get())
     }
 
     fn has_errors(&self) -> bool {
@@ -1412,7 +1400,7 @@ impl DiagCtxtInner {
     }
 
     fn flush_delayed(&mut self, kind: DelayedBugKind) {
-        let (bugs, explanation) = match kind {
+        let (bugs, note1) = match kind {
             DelayedBugKind::Normal => (
                 std::mem::take(&mut self.span_delayed_bugs),
                 "no errors encountered even though `span_delayed_bug` issued",
@@ -1422,6 +1410,7 @@ impl DiagCtxtInner {
                 "no warnings or errors encountered even though `good_path_delayed_bugs` issued",
             ),
         };
+        let note2 = "those delayed bugs will now be shown as internal compiler errors";
 
         if bugs.is_empty() {
             return;
@@ -1447,8 +1436,11 @@ impl DiagCtxtInner {
 
             if i == 0 {
                 // Put the overall explanation before the `DelayedBug`s, to
-                // frame them better (e.g. separate warnings from them).
-                self.emit_diagnostic(Diagnostic::new(Bug, explanation));
+                // frame them better (e.g. separate warnings from them). Also,
+                // make it a note so it doesn't count as an error, because that
+                // could trigger `-Ztreat-err-as-bug`, which we don't want.
+                self.emit_diagnostic(Diagnostic::new(Note, note1));
+                self.emit_diagnostic(Diagnostic::new(Note, note2));
             }
 
             let mut bug =
@@ -1474,22 +1466,12 @@ impl DiagCtxtInner {
 
     fn panic_if_treat_err_as_bug(&self) {
         if self.treat_err_as_bug() {
-            match (
-                self.err_count + self.lint_err_count,
-                self.delayed_bug_count(),
-                self.flags.treat_err_as_bug.map(|c| c.get()).unwrap(),
-            ) {
-                (1, 0, 1) => panic!("aborting due to `-Z treat-err-as-bug=1`"),
-                (0, 1, 1) => panic!("aborting due delayed bug with `-Z treat-err-as-bug=1`"),
-                (count, delayed_count, val) => {
-                    if delayed_count > 0 {
-                        panic!(
-                            "aborting after {count} errors and {delayed_count} delayed bugs due to `-Z treat-err-as-bug={val}`",
-                        )
-                    } else {
-                        panic!("aborting after {count} errors due to `-Z treat-err-as-bug={val}`")
-                    }
-                }
+            let n = self.flags.treat_err_as_bug.map(|c| c.get()).unwrap();
+            assert_eq!(n, self.err_count + self.lint_err_count);
+            if n == 1 {
+                panic!("aborting due to `-Z treat-err-as-bug=1`");
+            } else {
+                panic!("aborting after {n} errors due to `-Z treat-err-as-bug={n}`");
             }
         }
     }

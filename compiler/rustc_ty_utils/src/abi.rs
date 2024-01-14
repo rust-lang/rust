@@ -228,9 +228,9 @@ fn fn_sig_for_fn_abi<'tcx>(
 }
 
 #[inline]
-fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi) -> Conv {
+fn conv_from_spec_abi(tcx: TyCtxt<'_>, abi: SpecAbi, c_variadic: bool) -> Conv {
     use rustc_target::spec::abi::Abi::*;
-    match tcx.sess.target.adjust_abi(abi) {
+    match tcx.sess.target.adjust_abi(abi, c_variadic) {
         RustIntrinsic | PlatformIntrinsic | Rust | RustCall => Conv::Rust,
 
         // This is intentionally not using `Conv::Cold`, as that has to preserve
@@ -488,7 +488,7 @@ fn fn_abi_new_uncached<'tcx>(
 ) -> Result<&'tcx FnAbi<'tcx, Ty<'tcx>>, &'tcx FnAbiError<'tcx>> {
     let sig = cx.tcx.normalize_erasing_late_bound_regions(cx.param_env, sig);
 
-    let conv = conv_from_spec_abi(cx.tcx(), sig.abi);
+    let conv = conv_from_spec_abi(cx.tcx(), sig.abi, sig.c_variadic);
 
     let mut inputs = sig.inputs();
     let extra_args = if sig.abi == RustCall {

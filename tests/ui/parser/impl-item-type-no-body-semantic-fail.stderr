@@ -50,6 +50,7 @@ LL |     type Y;
    |
    = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
    = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: inherent associated types are unstable
   --> $DIR/impl-item-type-no-body-semantic-fail.rs:9:5
@@ -59,6 +60,7 @@ LL |     type Z: Ord;
    |
    = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
    = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: inherent associated types are unstable
   --> $DIR/impl-item-type-no-body-semantic-fail.rs:13:5
@@ -68,6 +70,7 @@ LL |     type W: Ord where Self: Eq;
    |
    = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
    = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: inherent associated types are unstable
   --> $DIR/impl-item-type-no-body-semantic-fail.rs:17:5
@@ -77,6 +80,7 @@ LL |     type W where Self: Eq;
    |
    = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
    = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0592]: duplicate definitions with name `W`
   --> $DIR/impl-item-type-no-body-semantic-fail.rs:17:5

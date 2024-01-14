@@ -102,6 +102,7 @@ symbols! {
         Gen:                "gen",
         MacroRules:         "macro_rules",
         Raw:                "raw",
+        Reuse:              "reuse",
         Union:              "union",
         Yeet:               "yeet",
     }

@@ -37,12 +37,17 @@ enum SelfSemantic {
 }
 
 /// What is the context that prevents using `~const`?
+// FIXME(effects): Consider getting rid of this in favor of `errors::TildeConstReason`, they're
+// almost identical. This gets rid of an abstraction layer which might be considered bad.
 enum DisallowTildeConstContext<'a> {
     TraitObject,
     Fn(FnKind<'a>),
     Trait(Span),
     TraitImpl(Span),
     Impl(Span),
+    TraitAssocTy(Span),
+    TraitImplAssocTy(Span),
+    InherentAssocTy(Span),
     Item,
 }
 
@@ -316,6 +321,7 @@ impl<'a> AstValidator<'a> {
                 constness: Const::No,
                 polarity: ImplPolarity::Positive,
                 trait_ref,
+                ..
             } = parent
         {
             Some(trait_ref.path.span.shrink_to_lo())
@@ -1286,6 +1292,15 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             // suggestion for moving such bounds to the assoc const fns if available.
                             errors::TildeConstReason::Impl { span }
                         }
+                        &DisallowTildeConstContext::TraitAssocTy(span) => {
+                            errors::TildeConstReason::TraitAssocTy { span }
+                        }
+                        &DisallowTildeConstContext::TraitImplAssocTy(span) => {
+                            errors::TildeConstReason::TraitImplAssocTy { span }
+                        }
+                        &DisallowTildeConstContext::InherentAssocTy(span) => {
+                            errors::TildeConstReason::InherentAssocTy { span }
+                        }
                         DisallowTildeConstContext::TraitObject => {
                             errors::TildeConstReason::TraitObject
                         }
@@ -1483,13 +1498,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             self.check_item_named(item.ident, "const");
         }
 
+        let parent_is_const =
+            self.outer_trait_or_trait_impl.as_ref().and_then(TraitOrTraitImpl::constness).is_some();
+
         match &item.kind {
             AssocItemKind::Fn(box Fn { sig, generics, body, .. })
-                if self
-                    .outer_trait_or_trait_impl
-                    .as_ref()
-                    .and_then(TraitOrTraitImpl::constness)
-                    .is_some()
+                if parent_is_const
                     || ctxt == AssocCtxt::Trait
                     || matches!(sig.header.constness, Const::Yes(_)) =>
             {
@@ -1504,6 +1518,20 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     body.as_deref(),
                 );
                 self.visit_fn(kind, item.span, item.id);
+            }
+            AssocItemKind::Type(_) => {
+                let disallowed = (!parent_is_const).then(|| match self.outer_trait_or_trait_impl {
+                    Some(TraitOrTraitImpl::Trait { .. }) => {
+                        DisallowTildeConstContext::TraitAssocTy(item.span)
+                    }
+                    Some(TraitOrTraitImpl::TraitImpl { .. }) => {
+                        DisallowTildeConstContext::TraitImplAssocTy(item.span)
+                    }
+                    None => DisallowTildeConstContext::InherentAssocTy(item.span),
+                });
+                self.with_tilde_const(disallowed, |this| {
+                    this.with_in_trait_impl(None, |this| visit::walk_assoc_item(this, item, ctxt))
+                })
             }
             _ => self.with_in_trait_impl(None, |this| visit::walk_assoc_item(this, item, ctxt)),
         }

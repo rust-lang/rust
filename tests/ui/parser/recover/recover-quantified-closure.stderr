@@ -12,6 +12,7 @@ LL |     for<'a> |x: &'a u8| *x + 1;
    |
    = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
    = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = help: consider removing `for<...>`
 
 error[E0658]: `for<...>` binders for closures are experimental
@@ -22,6 +23,7 @@ LL |     for <Foo>::Bar in x {}
    |
    = note: see issue #97362 <https://github.com/rust-lang/rust/issues/97362> for more information
    = help: add `#![feature(closure_lifetime_binder)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = help: consider removing `for<...>`
 
 error: implicit types in closure signatures are forbidden when `for<...>` is present

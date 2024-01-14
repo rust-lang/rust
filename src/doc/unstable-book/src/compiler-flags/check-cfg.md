@@ -36,12 +36,16 @@ present in the list of expected values. If `"value"` is not in it, then `rustc` 
 *The command line `--cfg` arguments are currently *NOT* checked but may very well be checked in
 the future.*
 
+To check for the _none_ value (ie `#[cfg(foo)]`) one can use the `none()` predicate inside
+`values()`: `values(none())`. It can be followed or precessed by any number of `"value"`.
+
 To enable checking of values, but to provide an *none*/empty set of expected values
 (ie. expect `#[cfg(name)]`), use these forms:
 
 ```bash
 rustc --check-cfg 'cfg(name)'
 rustc --check-cfg 'cfg(name, values())'
+rustc --check-cfg 'cfg(name, values(none()))'
 ```
 
 To enable checking of name but not values (i.e. unknown expected values), use this form:
@@ -112,7 +116,7 @@ This table describe the equivalence of a `--cfg` argument to a `--check-cfg` arg
 | `--cfg`                       | `--check-cfg`                                              |
 |-----------------------------|----------------------------------------------------------|
 | *nothing*                     | *nothing* or `--check-cfg=cfg()` (to enable the checking)  |
-| `--cfg foo`                   | `--check-cfg=cfg(foo) or --check-cfg=cfg(foo, values())`   |
+| `--cfg foo`                   | `--check-cfg=cfg(foo), --check-cfg=cfg(foo, values())` or `--check-cfg=cfg(foo, values(none()))`   |
 | `--cfg foo=""`                | `--check-cfg=cfg(foo, values(""))`                         |
 | `--cfg foo="bar"`             | `--check-cfg=cfg(foo, values("bar"))`                      |
 | `--cfg foo="1" --cfg foo="2"` | `--check-cfg=cfg(foo, values("1", "2"))`                   |

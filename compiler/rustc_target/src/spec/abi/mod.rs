@@ -70,15 +70,16 @@ impl Abi {
         // * C and Cdecl obviously support varargs.
         // * C can be based on Aapcs, SysV64 or Win64, so they must support varargs.
         // * EfiApi is based on Win64 or C, so it also supports it.
+        // * System falls back to C for functions with varargs.
         //
         // * Stdcall does not, because it would be impossible for the callee to clean
         //   up the arguments. (callee doesn't know how many arguments are there)
         // * Same for Fastcall, Vectorcall and Thiscall.
-        // * System can become Stdcall, so is also a no-no.
         // * Other calling conventions are related to hardware or the compiler itself.
         match self {
             Self::C { .. }
             | Self::Cdecl { .. }
+            | Self::System { .. }
             | Self::Aapcs { .. }
             | Self::Win64 { .. }
             | Self::SysV64 { .. }

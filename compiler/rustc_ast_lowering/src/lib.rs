@@ -77,6 +77,7 @@ macro_rules! arena_vec {
 
 mod asm;
 mod block;
+mod delegation;
 mod errors;
 mod expr;
 mod format;
@@ -1042,7 +1043,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         {
                             add_feature_diagnostics(
                                 &mut err,
-                                &self.tcx.sess.parse_sess,
+                                &self.tcx.sess,
                                 sym::return_type_notation,
                             );
                         }
@@ -2309,7 +2310,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     hir::ArrayLen::Infer(self.lower_node_id(c.id), self.lower_span(c.value.span))
                 } else {
                     feature_err(
-                        &self.tcx.sess.parse_sess,
+                        &self.tcx.sess,
                         sym::generic_arg_infer,
                         c.value.span,
                         "using `_` for array lengths is unstable",

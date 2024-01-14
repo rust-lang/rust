@@ -318,7 +318,7 @@ impl Session {
         if err.code.is_none() {
             err.code(error_code!(E0658));
         }
-        add_feature_diagnostics(&mut err, &self.parse_sess, feature);
+        add_feature_diagnostics(&mut err, self, feature);
         err
     }
 

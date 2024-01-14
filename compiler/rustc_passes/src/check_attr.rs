@@ -1170,7 +1170,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         sym::rust_logo => {
                             if !self.tcx.features().rustdoc_internals {
                                 feature_err(
-                                    &self.tcx.sess.parse_sess,
+                                    &self.tcx.sess,
                                     sym::rustdoc_internals,
                                     meta.span(),
                                     "the `#[doc(rust_logo)]` attribute is used for Rust branding",
@@ -1815,7 +1815,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         (target, self.tcx.features().fn_align)
                     {
                         feature_err(
-                            &self.tcx.sess.parse_sess,
+                            &self.tcx.sess,
                             sym::fn_align,
                             hint.span(),
                             "`repr(align)` attributes on functions are unstable",
