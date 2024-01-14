@@ -8,7 +8,6 @@
 #![doc(rust_logo)]
 #![allow(internal_features)]
 #![feature(rustdoc_internals)]
-#![feature(allocator_api)]
 #![feature(associated_type_bounds)]
 #![feature(const_option)]
 #![feature(core_intrinsics)]

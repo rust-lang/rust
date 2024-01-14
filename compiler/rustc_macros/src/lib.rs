@@ -9,7 +9,6 @@
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 #![allow(internal_features)]
-#![recursion_limit = "128"]
 
 use synstructure::decl_derive;
 
