@@ -26,7 +26,7 @@ use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{GenericArgs, GenericArgsRef};
 use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
 use rustc_session::lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS;
-use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
+use rustc_span::{sym, ErrorGuaranteed, Span, DUMMY_SP};
 
 use super::util;
 use super::SelectionContext;
@@ -144,8 +144,22 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
     // taking advantage of upstream ones.
     let features = tcx.features();
     let specialization_enabled = features.specialization || features.min_specialization;
-    if !specialization_enabled && (impl1_def_id.is_local() || impl2_def_id.is_local()) {
-        return false;
+    if !specialization_enabled && impl1_def_id.is_local() {
+        let span = tcx.def_span(impl1_def_id);
+        if !span.allows_unstable(sym::specialization)
+            && !span.allows_unstable(sym::min_specialization)
+        {
+            return false;
+        }
+    }
+
+    if !specialization_enabled && impl2_def_id.is_local() {
+        let span = tcx.def_span(impl2_def_id);
+        if !span.allows_unstable(sym::specialization)
+            && !span.allows_unstable(sym::min_specialization)
+        {
+            return false;
+        }
     }
 
     // We determine whether there's a subset relationship by:
