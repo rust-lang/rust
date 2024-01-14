@@ -1,10 +1,8 @@
 use crate::ich;
 
 use rustc_ast as ast;
-use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHasher};
 use rustc_data_structures::sync::Lrc;
-use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::definitions::DefPathHash;
 use rustc_session::cstore::Untracked;
@@ -23,7 +21,7 @@ pub struct StableHashingContext<'a> {
     // The value of `-Z incremental-ignore-spans`.
     // This field should only be used by `unstable_opts_incremental_ignore_span`
     incremental_ignore_spans: bool,
-    pub(super) body_resolver: BodyResolver<'a>,
+    pub(super) body_resolver: BodyResolver,
     // Very often, we are hashing something that does not need the
     // `CachingSourceMapView`, so we initialize it lazily.
     raw_source_map: &'a SourceMap,
@@ -35,13 +33,9 @@ pub struct StableHashingContext<'a> {
 /// We could also just store a plain reference to the `hir::Crate` but we want
 /// to avoid that the crate is used to get untracked access to all of the HIR.
 #[derive(Clone, Copy)]
-pub(super) enum BodyResolver<'tcx> {
+pub(super) enum BodyResolver {
     Forbidden,
     Ignore,
-    Traverse {
-        owner: hir::OwnerId,
-        bodies: &'tcx SortedMap<hir::ItemLocalId, &'tcx hir::Body<'tcx>>,
-    },
 }
 
 impl<'a> StableHashingContext<'a> {
@@ -62,19 +56,6 @@ impl<'a> StableHashingContext<'a> {
     #[inline]
     pub fn without_hir_bodies(&mut self, f: impl FnOnce(&mut StableHashingContext<'_>)) {
         f(&mut StableHashingContext { body_resolver: BodyResolver::Ignore, ..self.clone() });
-    }
-
-    #[inline]
-    pub fn with_hir_bodies(
-        &mut self,
-        owner: hir::OwnerId,
-        bodies: &SortedMap<hir::ItemLocalId, &hir::Body<'_>>,
-        f: impl FnOnce(&mut StableHashingContext<'_>),
-    ) {
-        f(&mut StableHashingContext {
-            body_resolver: BodyResolver::Traverse { owner, bodies },
-            ..self.clone()
-        });
     }
 
     #[inline]

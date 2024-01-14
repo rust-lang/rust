@@ -830,7 +830,11 @@ impl<'tcx> AttributeMap<'tcx> {
 pub struct OwnerNodes<'tcx> {
     /// Pre-computed hash of the full HIR. Used in the crate hash. Only present
     /// when incr. comp. is enabled.
-    pub opt_hash_including_bodies: Option<Fingerprint>,
+    pub opt_bodies_hash: Option<Fingerprint>,
+    /// Perform a shallow hash instead using the deep hash saved in `OwnerNodes`. This lets us
+    /// differentiate queries that depend on the full HIR tree from those that only depend on
+    /// the item signature.
+    pub opt_hash_without_bodies: Option<Fingerprint>,
     /// Full HIR for the current owner.
     // The zeroth node's parent should never be accessed: the owner's parent is computed by the
     // hir_owner_parent query. It is set to `ItemLocalId::INVALID` to force an ICE if accidentally
@@ -867,7 +871,8 @@ impl fmt::Debug for OwnerNodes<'_> {
                     .collect::<Vec<_>>(),
             )
             .field("bodies", &self.bodies)
-            .field("opt_hash_including_bodies", &self.opt_hash_including_bodies)
+            .field("opt_hash_without_bodies", &self.opt_hash_without_bodies)
+            .field("opt_bodies_hash", &self.opt_bodies_hash)
             .finish()
     }
 }

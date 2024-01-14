@@ -659,25 +659,28 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let bodies = SortedMap::from_presorted_elements(bodies);
 
         // Don't hash unless necessary, because it's expensive.
-        let (opt_hash_including_bodies, attrs_hash) = if self.tcx.needs_crate_hash() {
+        let (opt_hash_without_bodies, opt_bodies_hash, attrs_hash) = if self.tcx.needs_crate_hash()
+        {
             self.tcx.with_stable_hashing_context(|mut hcx| {
                 let mut stable_hasher = StableHasher::new();
-                hcx.with_hir_bodies(node.def_id(), &bodies, |hcx| {
-                    node.hash_stable(hcx, &mut stable_hasher)
-                });
+                hcx.without_hir_bodies(|hcx| node.hash_stable(hcx, &mut stable_hasher));
                 let h1 = stable_hasher.finish();
 
                 let mut stable_hasher = StableHasher::new();
-                attrs.hash_stable(&mut hcx, &mut stable_hasher);
+                hcx.without_hir_bodies(|hcx| bodies.hash_stable(hcx, &mut stable_hasher));
                 let h2 = stable_hasher.finish();
 
-                (Some(h1), Some(h2))
+                let mut stable_hasher = StableHasher::new();
+                attrs.hash_stable(&mut hcx, &mut stable_hasher);
+                let h3 = stable_hasher.finish();
+
+                (Some(h1), Some(h2), Some(h3))
             })
         } else {
-            (None, None)
+            (None, None, None)
         };
         let (nodes, parenting) = index::index_hir(self.tcx, node, &bodies);
-        let nodes = hir::OwnerNodes { opt_hash_including_bodies, nodes, bodies };
+        let nodes = hir::OwnerNodes { opt_hash_without_bodies, opt_bodies_hash, nodes, bodies };
         let attrs = hir::AttributeMap { map: attrs, opt_hash: attrs_hash };
 
         self.arena.alloc(hir::OwnerInfo { nodes, parenting, attrs, trait_map })

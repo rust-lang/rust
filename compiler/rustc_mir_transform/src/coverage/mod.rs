@@ -13,6 +13,7 @@ use self::spans::{BcbMapping, BcbMappingKind, CoverageSpans};
 
 use crate::MirPass;
 
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_middle::hir;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::*;
@@ -419,12 +420,9 @@ fn get_body_span<'tcx>(
 }
 
 fn hash_mir_source<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &'tcx rustc_hir::Body<'tcx>) -> u64 {
-    // FIXME(cjgillot) Stop hashing HIR manually here.
     let owner = hir_body.id().hir_id.owner;
-    tcx.hir_owner_nodes(owner)
-        .unwrap()
-        .opt_hash_including_bodies
-        .unwrap()
+    let owner = tcx.hir_owner_nodes(owner).unwrap();
+    Fingerprint::combine(owner.opt_hash_without_bodies.unwrap(), owner.opt_bodies_hash.unwrap())
         .to_smaller_hash()
         .as_u64()
 }
