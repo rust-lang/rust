@@ -16,6 +16,9 @@ pub(super) fn check(cx: &LateContext<'_>, metadata: &Metadata) {
 
     if let Some(resolve) = &metadata.resolve
         && let Some(local_id) = packages.iter().find_map(|p| {
+            // p.name contains the original crate names with dashes intact
+            // local_name contains the crate name as a namespace, with the dashes converted to underscores
+            // the code below temporarily rectifies this discrepancy
             if p.name
                 .chars()
                 .into_iter()
