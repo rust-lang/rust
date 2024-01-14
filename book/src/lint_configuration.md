@@ -769,6 +769,8 @@ Additional dotfiles (files or directories starting with a dot) to allow
 
 
 ## `enforce-iter-loop-reborrow`
+Whether to recommend using implicit into iter for reborrowed values.
+
 #### Example
 ```no_run
 let mut vec = vec![1, 2, 3];
@@ -793,7 +795,7 @@ for _ in &mut *rmvec {}
 
 
 ## `check-private-items`
-
+Whether to also run the listed lints on private items.
 
 **Default Value:** `false`
 
@@ -806,7 +808,8 @@ for _ in &mut *rmvec {}
 
 
 ## `pub-underscore-fields-behavior`
-
+Meow "public" fields in a struct that are prefixed with an underscore based on their
+exported visibility, or whether they are marked as "pub".
 
 **Default Value:** `"PublicallyExported"`
 

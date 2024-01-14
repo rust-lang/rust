@@ -523,7 +523,7 @@ define_Conf! {
     ///
     /// Additional dotfiles (files or directories starting with a dot) to allow
     (allowed_dotfiles: FxHashSet<String> = FxHashSet::default()),
-    /// Lint: EXPLICIT_ITER_LOOP
+    /// Lint: EXPLICIT_ITER_LOOP.
     ///
     /// Whether to recommend using implicit into iter for reborrowed values.
     ///
@@ -543,11 +543,11 @@ define_Conf! {
     /// for _ in &mut *rmvec {}
     /// ```
     (enforce_iter_loop_reborrow: bool = false),
-    /// Lint: MISSING_SAFETY_DOC, UNNECESSARY_SAFETY_DOC, MISSING_PANICS_DOC, MISSING_ERRORS_DOC
+    /// Lint: MISSING_SAFETY_DOC, UNNECESSARY_SAFETY_DOC, MISSING_PANICS_DOC, MISSING_ERRORS_DOC.
     ///
     /// Whether to also run the listed lints on private items.
     (check_private_items: bool = false),
-    /// Lint: PUB_UNDERSCORE_FIELDS
+    /// Lint: PUB_UNDERSCORE_FIELDS.
     ///
     /// Lint "public" fields in a struct that are prefixed with an underscore based on their
     /// exported visibility, or whether they are marked as "pub".
