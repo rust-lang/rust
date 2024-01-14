@@ -263,6 +263,7 @@ impl Parse for Newtype {
             impl std::ops::Add<usize> for #name {
                 type Output = Self;
 
+                #[inline]
                 fn add(self, other: usize) -> Self {
                     Self::from_usize(self.index() + other)
                 }
