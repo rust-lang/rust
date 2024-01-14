@@ -21,7 +21,6 @@ pub(super) fn check(cx: &LateContext<'_>, metadata: &Metadata) {
             // the code below temporarily rectifies this discrepancy
             if p.name
                 .chars()
-                .into_iter()
                 .map(|c| if c == '-' { '_' } else { c })
                 .eq(local_name.as_str().chars())
             {
