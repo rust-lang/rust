@@ -8,12 +8,9 @@
 #![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(never_type)]
-#![feature(lazy_cell)]
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
-#![feature(trusted_step)]
 #![feature(try_blocks)]
-#![recursion_limit = "256"]
 
 #[macro_use]
 extern crate rustc_middle;
