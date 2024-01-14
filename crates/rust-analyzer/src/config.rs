@@ -1493,6 +1493,7 @@ impl Config {
                 ImportGranularityDef::Item => ImportGranularity::Item,
                 ImportGranularityDef::Crate => ImportGranularity::Crate,
                 ImportGranularityDef::Module => ImportGranularity::Module,
+                ImportGranularityDef::One => ImportGranularity::One,
             },
             enforce_granularity: self.data.imports_granularity_enforce,
             prefix_kind: match self.data.imports_prefix {
@@ -1933,6 +1934,7 @@ enum ImportGranularityDef {
     Item,
     Crate,
     Module,
+    One,
 }
 
 #[derive(Deserialize, Debug, Copy, Clone)]
@@ -2274,12 +2276,13 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
         },
         "ImportGranularityDef" => set! {
             "type": "string",
-            "enum": ["preserve", "crate", "module", "item"],
+            "enum": ["preserve", "crate", "module", "item", "one"],
             "enumDescriptions": [
                 "Do not change the granularity of any imports and preserve the original structure written by the developer.",
                 "Merge imports from the same crate into a single use statement. Conversely, imports from different crates are split into separate statements.",
                 "Merge imports from the same module into a single use statement. Conversely, imports from different modules are split into separate statements.",
-                "Flatten imports so that each has its own use statement."
+                "Flatten imports so that each has its own use statement.",
+                "Merge all imports into a single use statement as long as they have the same visibility and attributes."
             ],
         },
         "ImportPrefixDef" => set! {
