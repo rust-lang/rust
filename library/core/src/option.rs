@@ -921,14 +921,14 @@ impl<T> Option<T> {
     /// let x: Option<&str> = None;
     /// assert_eq!(x.unwrap(), "air"); // fails
     /// ```
-    #[inline]
+    #[inline(always)]
     #[track_caller]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_unstable(feature = "const_option", issue = "67441")]
     pub const fn unwrap(self) -> T {
         match self {
             Some(val) => val,
-            None => panic("called `Option::unwrap()` on a `None` value"),
+            None => unwrap_failed(),
         }
     }
 
@@ -1968,6 +1968,14 @@ impl<T, E> Option<Result<T, E>> {
             None => Ok(None),
         }
     }
+}
+
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cold]
+#[track_caller]
+const fn unwrap_failed() -> ! {
+    panic("called `Option::unwrap()` on a `None` value")
 }
 
 // This is a separate function to reduce the code size of .expect() itself.
