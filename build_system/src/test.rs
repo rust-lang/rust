@@ -556,7 +556,7 @@ verbose-tests = true
 [build]
 cargo = "{cargo}"
 local-rebuild = true
-rustc = "{home}/.rustup/toolchains/{toolchain}-{host_triple}/bin/rustc"
+rustc = "{rustup_home}/toolchains/{toolchain}-{host_triple}/bin/rustc"
 
 [target.x86_64-unknown-linux-gnu]
 llvm-filecheck = "{llvm_filecheck}"
@@ -565,7 +565,10 @@ llvm-filecheck = "{llvm_filecheck}"
 download-ci-llvm = false
 "#,
             cargo = cargo.trim(),
-            home = env.get("HOME").unwrap(),
+            rustup_home = match env.get("RUSTUP_HOME") {
+                Some(rustup_dir) => rustup_dir.clone(),
+                None => env.get("HOME").unwrap().to_owned() + "/.rustup",
+            },
             toolchain = toolchain,
             host_triple = args.config_info.host_triple,
             llvm_filecheck = llvm_filecheck.trim(),
