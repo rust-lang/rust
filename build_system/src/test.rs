@@ -488,8 +488,10 @@ fn std_tests(env: &Env, args: &TestArg) -> Result<(), String> {
 }
 
 fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<(), String> {
-    let toolchain = get_toolchain()?;
-
+    let toolchain = format!("+{channel}-{host}",
+        channel = get_toolchain()?, // May also include date
+        host = args.config_info.host_triple
+    );
     let rust_dir = Some(Path::new("rust"));
     // If the repository was already cloned, command will fail, so doesn't matter.
     let _ = run_command_with_output_and_env(
@@ -524,6 +526,18 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<(), String> {
             Ok(cargo)
         }
     })?;
+    let rustc = String::from_utf8(
+        run_command_with_env(&[&"rustup", &OsStr::new(&*toolchain), &"which", &"rustc"], rust_dir, Some(env))?.stdout,
+    )
+    .map_err(|error| format!("Failed to retrieve rustc path: {:?}", error))
+    .and_then(|rustc| {
+        let rustc = rustc.trim().to_owned();
+        if rustc.is_empty() {
+            Err(format!("`rustc` path is empty"))
+        } else {
+            Ok(rustc)
+        }
+    })?;
     let llvm_filecheck = match run_command_with_env(
         &[
             &"bash",
@@ -556,7 +570,7 @@ verbose-tests = true
 [build]
 cargo = "{cargo}"
 local-rebuild = true
-rustc = "{rustup_home}/toolchains/{toolchain}-{host_triple}/bin/rustc"
+rustc = "{rustc}"
 
 [target.x86_64-unknown-linux-gnu]
 llvm-filecheck = "{llvm_filecheck}"
@@ -564,13 +578,8 @@ llvm-filecheck = "{llvm_filecheck}"
 [llvm]
 download-ci-llvm = false
 "#,
-            cargo = cargo.trim(),
-            rustup_home = match env.get("RUSTUP_HOME") {
-                Some(rustup_dir) => rustup_dir.clone(),
-                None => env.get("HOME").unwrap().to_owned() + "/.rustup",
-            },
-            toolchain = toolchain,
-            host_triple = args.config_info.host_triple,
+            cargo = cargo,
+            rustc = rustc,
             llvm_filecheck = llvm_filecheck.trim(),
         ),
     )
