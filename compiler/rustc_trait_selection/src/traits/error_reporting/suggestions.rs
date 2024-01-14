@@ -859,6 +859,14 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             && let hir::Node::Expr(lhs) = self.tcx.hir_node(*lhs_hir_id)
             && let hir::Node::Expr(rhs) = self.tcx.hir_node(*rhs_hir_id)
             && let Some(rhs_ty) = typeck_results.expr_ty_opt(rhs)
+            && let trait_pred = predicate.unwrap_or(trait_pred)
+            // Only run this code on binary operators
+            && hir::lang_items::BINARY_OPERATORS
+                .iter()
+                .filter_map(|&op| self.tcx.lang_items().get(op))
+                .any(|op| {
+                    op == trait_pred.skip_binder().trait_ref.def_id
+                })
         {
             // Suggest dereferencing the LHS, RHS, or both terms of a binop if possible
 
