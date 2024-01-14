@@ -836,7 +836,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.upvars = tcx
             .closure_captures(self.def_id)
             .iter()
-            .zip(capture_tys)
+            .zip_eq(capture_tys)
             .enumerate()
             .map(|(i, (captured_place, ty))| {
                 let name = captured_place.to_symbol();

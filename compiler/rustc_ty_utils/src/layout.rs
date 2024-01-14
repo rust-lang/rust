@@ -1057,6 +1057,8 @@ fn variant_info_for_coroutine<'tcx>(
     def_id: DefId,
     args: ty::GenericArgsRef<'tcx>,
 ) -> (Vec<VariantInfo>, Option<Size>) {
+    use itertools::Itertools;
+
     let Variants::Multiple { tag, ref tag_encoding, tag_field, .. } = layout.variants else {
         return (vec![], None);
     };
@@ -1069,7 +1071,7 @@ fn variant_info_for_coroutine<'tcx>(
         .as_coroutine()
         .upvar_tys()
         .iter()
-        .zip(upvar_names)
+        .zip_eq(upvar_names)
         .enumerate()
         .map(|(field_idx, (_, name))| {
             let field_layout = layout.field(cx, field_idx);
