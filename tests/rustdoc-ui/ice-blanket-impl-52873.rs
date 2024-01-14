@@ -1,3 +1,7 @@
+// check-pass
+// https://github.com/rust-lang/rust/issues/52873
+#![crate_name="foo"]
+
 // Regression test for #52873. We used to ICE due to unexpected
 // overflows when checking for "blanket impl inclusion".
 

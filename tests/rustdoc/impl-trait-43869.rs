@@ -1,3 +1,6 @@
+// https://github.com/rust-lang/rust/issues/43869
+#![crate_name="foo"]
+
 pub fn g() -> impl Iterator<Item=u8> {
     Some(1u8).into_iter()
 }
@@ -58,15 +61,15 @@ pub fn test_44731_4() -> Box<Iterator<Item=impl Clone>> {
     Box::new(g())
 }
 
-// @has issue_43869/fn.g.html
-// @has issue_43869/fn.h.html
-// @has issue_43869/fn.i.html
-// @has issue_43869/fn.j.html
-// @has issue_43869/fn.k.html
-// @has issue_43869/fn.l.html
-// @has issue_43869/fn.m.html
-// @has issue_43869/fn.n.html
-// @has issue_43869/fn.o.html
-// @has issue_43869/fn.test_44731_0.html
-// @has issue_43869/fn.test_44731_1.html
-// @has issue_43869/fn.test_44731_4.html
+// @has foo/fn.g.html
+// @has foo/fn.h.html
+// @has foo/fn.i.html
+// @has foo/fn.j.html
+// @has foo/fn.k.html
+// @has foo/fn.l.html
+// @has foo/fn.m.html
+// @has foo/fn.n.html
+// @has foo/fn.o.html
+// @has foo/fn.test_44731_0.html
+// @has foo/fn.test_44731_1.html
+// @has foo/fn.test_44731_4.html

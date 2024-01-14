@@ -1,3 +1,6 @@
+// https://github.com/rust-lang/rust/issues/54478
+#![crate_name="foo"]
+
 // Issue #54478: regression test showing that we can demonstrate
 // `#[global_allocator]` in code blocks built by `rustdoc`.
 //
