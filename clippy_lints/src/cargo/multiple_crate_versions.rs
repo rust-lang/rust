@@ -16,7 +16,7 @@ pub(super) fn check(cx: &LateContext<'_>, metadata: &Metadata) {
 
     if let Some(resolve) = &metadata.resolve
         && let Some(local_id) = packages.iter().find_map(|p| {
-            if p.name == local_name.as_str() {
+            if p.name.replace('-', "_") == local_name.as_str() {
                 Some(&p.id)
             } else {
                 None

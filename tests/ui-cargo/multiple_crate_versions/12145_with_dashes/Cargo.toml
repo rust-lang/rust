@@ -1,7 +1,8 @@
 # Should not lint for dev or build dependencies. See issue 5041.
 
 [package]
-name = "multiple-crate-versions-with-dashes"
+# purposefully separated by - instead of _
+name = "multiple-crate-versions"
 version = "0.1.0"
 publish = false
 
