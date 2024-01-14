@@ -338,6 +338,8 @@ extern "C" {
 
     #[link_name = "llvm.ppc.altivec.sll"]
     fn vsl(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
+    #[link_name = "llvm.ppc.altivec.slo"]
+    fn vslo(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
 }
 
 macro_rules! s_t_l {
@@ -2844,6 +2846,33 @@ mod sealed {
     }
 
     impl_vec_sll! { [VectorSll vec_sll] (vsl) }
+
+    macro_rules! impl_vec_slo {
+        ([$Trait:ident $m:ident] ($f:ident)) => {
+            impl_vec_trait!{ [$Trait $m]+ $f (vector_unsigned_char, vector_signed_char) -> vector_unsigned_char }
+            impl_vec_trait!{ [$Trait $m]+ $f (vector_signed_char, vector_signed_char) -> vector_signed_char }
+            impl_vec_trait!{ [$Trait $m]+ $f (vector_unsigned_short, vector_signed_char) -> vector_unsigned_short }
+            impl_vec_trait!{ [$Trait $m]+ $f (vector_signed_short, vector_signed_char) -> vector_signed_short }
+            impl_vec_trait!{ [$Trait $m]+ $f (vector_unsigned_int, vector_signed_char) -> vector_unsigned_int }
+            impl_vec_trait!{ [$Trait $m]+ $f (vector_signed_int, vector_signed_char) -> vector_signed_int }
+            impl_vec_trait!{ [$Trait $m]+ $f (vector_float, vector_signed_char) -> vector_float }
+            impl_vec_trait!{ [$Trait $m]+ $f (vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_char }
+            impl_vec_trait!{ [$Trait $m]+ $f (vector_signed_char, vector_unsigned_char) -> vector_signed_char }
+            impl_vec_trait!{ [$Trait $m]+ $f (vector_unsigned_short, vector_unsigned_char) -> vector_unsigned_short }
+            impl_vec_trait!{ [$Trait $m]+ $f (vector_signed_short, vector_unsigned_char) -> vector_signed_short }
+            impl_vec_trait!{ [$Trait $m]+ $f (vector_unsigned_int, vector_unsigned_char) -> vector_unsigned_int }
+            impl_vec_trait!{ [$Trait $m]+ $f (vector_signed_int, vector_unsigned_char) -> vector_signed_int }
+            impl_vec_trait!{ [$Trait $m]+ $f (vector_float, vector_unsigned_char) -> vector_float }
+        };
+    }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorSlo<Other> {
+        type Result;
+        unsafe fn vec_slo(self, b: Other) -> Self::Result;
+    }
+
+    impl_vec_slo! { [VectorSlo vec_slo] (vslo) }
 }
 
 /// Vector Merge Low
@@ -2989,6 +3018,22 @@ where
     T: sealed::VectorSll<U>,
 {
     a.vec_sll(b)
+}
+
+/// Vector Shift Left by Octets
+///
+/// ## Endian considerations
+/// This intrinsic is not endian-neutral, so uses of vec_slo in big-endian code must be rewritten
+/// for little-endian targets. The shift count is in element 15 of b for big-endian, but in element
+/// 0 of b for little-endian.
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_slo<T, U>(a: T, b: U) -> <T as sealed::VectorSlo<U>>::Result
+where
+    T: sealed::VectorSlo<U>,
+{
+    a.vec_slo(b)
 }
 
 /// Vector Load Indexed.
