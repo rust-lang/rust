@@ -456,7 +456,7 @@ pub(crate) struct UnreachableLabelSubLabelUnreachable {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_trait_impl_mismatch, code = "{code}")]
+#[diag(resolve_trait_impl_mismatch)]
 pub(crate) struct TraitImplMismatch {
     #[primary_span]
     #[label]
@@ -466,7 +466,6 @@ pub(crate) struct TraitImplMismatch {
     #[label(resolve_label_trait_item)]
     pub(crate) trait_item_span: Span,
     pub(crate) trait_path: String,
-    pub(crate) code: String,
 }
 
 #[derive(Diagnostic)]
