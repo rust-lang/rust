@@ -718,12 +718,12 @@ impl<'p, 'tcx: 'p> RustcMatchCheckCtxt<'p, 'tcx> {
                 let value = mir::Const::from_ty_const(c, cx.tcx);
                 lo = PatRangeBoundary::Finite(value);
             }
-            let hi = if matches!(range.hi, Finite(0)) {
+            let hi = if let Some(hi) = range.hi.minus_one() {
+                hi
+            } else {
                 // The range encodes `..ty::MIN`, so we can't convert it to an inclusive range.
                 end = rustc_hir::RangeEnd::Excluded;
                 range.hi
-            } else {
-                range.hi.minus_one()
             };
             let hi = cx.hoist_pat_range_bdy(hi, ty);
             PatKind::Range(Box::new(PatRange { lo, hi, end, ty: ty.inner() }))

@@ -1526,7 +1526,7 @@ fn collect_overlapping_range_endpoints<'p, Cx: TypeCx>(
                 }
             }
             suffixes.push((child_row_id, pat))
-        } else if this_range.hi == overlap.plus_one() {
+        } else if Some(this_range.hi) == overlap.plus_one() {
             // `this_range` looks like `this_range.lo..=overlap`; it overlaps with any
             // ranges that look like `overlap..=hi`.
             if !suffixes.is_empty() {

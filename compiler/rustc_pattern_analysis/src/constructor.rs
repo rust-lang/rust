@@ -192,7 +192,7 @@ impl fmt::Display for RangeEnd {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MaybeInfiniteInt {
     NegInfinity,
-    /// Encoded value. DO NOT CONSTRUCT BY HAND; use `new_finite`.
+    /// Encoded value. DO NOT CONSTRUCT BY HAND; use `new_finite_{int,uint}`.
     #[non_exhaustive]
     Finite(u128),
     /// The integer after `u128::MAX`. We need it to represent `x..=u128::MAX` as an exclusive range.
@@ -229,25 +229,22 @@ impl MaybeInfiniteInt {
     }
 
     /// Note: this will not turn a finite value into an infinite one or vice-versa.
-    pub fn minus_one(self) -> Self {
+    pub fn minus_one(self) -> Option<Self> {
         match self {
-            Finite(n) => match n.checked_sub(1) {
-                Some(m) => Finite(m),
-                None => panic!("Called `MaybeInfiniteInt::minus_one` on 0"),
-            },
-            JustAfterMax => Finite(u128::MAX),
-            x => x,
+            Finite(n) => n.checked_sub(1).map(Finite),
+            JustAfterMax => Some(Finite(u128::MAX)),
+            x => Some(x),
         }
     }
     /// Note: this will not turn a finite value into an infinite one or vice-versa.
-    pub fn plus_one(self) -> Self {
+    pub fn plus_one(self) -> Option<Self> {
         match self {
             Finite(n) => match n.checked_add(1) {
-                Some(m) => Finite(m),
-                None => JustAfterMax,
+                Some(m) => Some(Finite(m)),
+                None => Some(JustAfterMax),
             },
-            JustAfterMax => panic!("Called `MaybeInfiniteInt::plus_one` on u128::MAX+1"),
-            x => x,
+            JustAfterMax => None,
+            x => Some(x),
         }
     }
 }
@@ -268,18 +265,24 @@ impl IntRange {
     pub fn is_singleton(&self) -> bool {
         // Since `lo` and `hi` can't be the same `Infinity` and `plus_one` never changes from finite
         // to infinite, this correctly only detects ranges that contain exacly one `Finite(x)`.
-        self.lo.plus_one() == self.hi
+        self.lo.plus_one() == Some(self.hi)
     }
 
+    /// Construct a singleton range.
+    /// `x` must be a `Finite(_)` value.
     #[inline]
     pub fn from_singleton(x: MaybeInfiniteInt) -> IntRange {
-        IntRange { lo: x, hi: x.plus_one() }
+        // `unwrap()` is ok on a finite value
+        IntRange { lo: x, hi: x.plus_one().unwrap() }
     }
 
+    /// Construct a range with these boundaries.
+    /// `lo` must not be `PosInfinity` or `JustAfterMax`. `hi` must not be `NegInfinity`.
+    /// If `end` is `Included`, `hi` must also not be `JustAfterMax`.
     #[inline]
     pub fn from_range(lo: MaybeInfiniteInt, mut hi: MaybeInfiniteInt, end: RangeEnd) -> IntRange {
         if end == RangeEnd::Included {
-            hi = hi.plus_one();
+            hi = hi.plus_one().unwrap();
         }
         if lo >= hi {
             // This should have been caught earlier by E0030.
