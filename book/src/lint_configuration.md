@@ -808,10 +808,10 @@ Whether to also run the listed lints on private items.
 
 
 ## `pub-underscore-fields-behavior`
-Meow "public" fields in a struct that are prefixed with an underscore based on their
+Lint "public" fields in a struct that are prefixed with an underscore based on their
 exported visibility, or whether they are marked as "pub".
 
-**Default Value:** `"PublicallyExported"`
+**Default Value:** `"PubliclyExported"`
 
 ---
 **Affected lints:**
