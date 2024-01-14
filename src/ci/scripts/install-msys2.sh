@@ -53,18 +53,19 @@ if isWindows; then
     echo "#### LS OF C DRIVE: ####"
     ls /c/
 
-    echo "#### LS OF /c/msys64/bin DRIVE: ####"
-    ls /c/msys64/bin
+    echo "#### LS OF /c/msys64/bin: ####"
+    ls /c/msys64/
 
-    echo "#### LS OF /c/mingw64/bin DRIVE: ####"
-    ls /c/mingw64/bin
+    echo "#### LS OF /c/mingw64/bin: ####"
+    ls /c/mingw64/bin/
 
     # Delete these pre-installed tools because we are using the MSYS2 setup action versions
     # instead, so we can't accidentally use them.
     # Delete Windows-Git
     rm -r "/c/Program Files/Git/"
     # Delete pre-installed version of MSYS2
-    rm -r "/c/msys64"
+    rm -r "/c/msys64/"
     # wtf why is this even here??
-    rm -r "/c/mingw64"
+    rm -r "/c/mingw64/"
+    rm -r "/c/mingw32/"
 fi
