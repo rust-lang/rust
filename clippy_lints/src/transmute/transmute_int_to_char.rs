@@ -1,6 +1,6 @@
 use super::TRANSMUTE_INT_TO_CHAR;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::sugg;
+use clippy_utils::{is_no_std_crate, sugg};
 use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
@@ -34,7 +34,10 @@ pub(super) fn check<'tcx>(
                     diag.span_suggestion(
                         e.span,
                         "consider using",
-                        format!("std::char::from_u32({arg}).unwrap()"),
+                        format!(
+                            "{}::char::from_u32({arg}).unwrap()",
+                            if is_no_std_crate(cx) { "core" } else { "std" }
+                        ),
                         Applicability::Unspecified,
                     );
                 },

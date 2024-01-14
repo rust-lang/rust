@@ -58,10 +58,10 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: &str, re
         return;
     }
 
+    let top_crate = if is_no_std_crate(cx) { "core" } else { "std" };
     if let Some(i) = item {
         let sugg = format!(
-            "{}::iter::once({}{})",
-            if is_no_std_crate(cx) { "core" } else { "std" },
+            "{top_crate}::iter::once({}{})",
             iter_type.ref_prefix(),
             snippet(cx, i.span, "...")
         );
@@ -81,11 +81,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, method_name: &str, re
             expr.span,
             &format!("`{method_name}` call on an empty collection"),
             "try",
-            if is_no_std_crate(cx) {
-                "core::iter::empty()".to_string()
-            } else {
-                "std::iter::empty()".to_string()
-            },
+            format!("{top_crate}::iter::empty()"),
             Applicability::MaybeIncorrect,
         );
     }

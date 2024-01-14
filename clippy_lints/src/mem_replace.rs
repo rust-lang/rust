@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lin
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_non_aggregate_primitive_type;
-use clippy_utils::{is_default_equivalent, is_res_lang_ctor, path_res, peel_ref_operators};
+use clippy_utils::{is_default_equivalent, is_no_std_crate, is_res_lang_ctor, path_res, peel_ref_operators};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionNone;
 use rustc_hir::{Expr, ExprKind};
@@ -123,6 +123,10 @@ fn check_replace_option_with_none(cx: &LateContext<'_>, dest: &Expr<'_>, expr_sp
     );
 }
 
+fn get_top_crate(cx: &LateContext<'_>) -> &'static str {
+    if is_no_std_crate(cx) { "core" } else { "std" }
+}
+
 fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
     if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(src.hir_id)
         // check if replacement is mem::MaybeUninit::uninit().assume_init()
@@ -136,7 +140,8 @@ fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'
             "replacing with `mem::MaybeUninit::uninit().assume_init()`",
             "consider using",
             format!(
-                "std::ptr::read({})",
+                "{}::ptr::read({})",
+                get_top_crate(cx),
                 snippet_with_applicability(cx, dest.span, "", &mut applicability)
             ),
             applicability,
@@ -157,7 +162,8 @@ fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'
                 "replacing with `mem::uninitialized()`",
                 "consider using",
                 format!(
-                    "std::ptr::read({})",
+                    "{}::ptr::read({})",
+                    get_top_crate(cx),
                     snippet_with_applicability(cx, dest.span, "", &mut applicability)
                 ),
                 applicability,
@@ -184,14 +190,17 @@ fn check_replace_with_default(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<
         return;
     }
     if is_default_equivalent(cx, src) && !in_external_macro(cx.tcx.sess, expr_span) {
+        let top_crate = get_top_crate(cx);
         span_lint_and_then(
             cx,
             MEM_REPLACE_WITH_DEFAULT,
             expr_span,
-            "replacing a value of type `T` with `T::default()` is better expressed using `std::mem::take`",
+            &format!(
+                "replacing a value of type `T` with `T::default()` is better expressed using `{top_crate}::mem::take`"
+            ),
             |diag| {
                 if !expr_span.from_expansion() {
-                    let suggestion = format!("std::mem::take({})", snippet(cx, dest.span, ""));
+                    let suggestion = format!("{top_crate}::mem::take({})", snippet(cx, dest.span, ""));
 
                     diag.span_suggestion(
                         expr_span,

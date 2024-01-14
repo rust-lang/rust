@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::last_path_segment;
 use clippy_utils::source::snippet_with_context;
+use clippy_utils::{is_no_std_crate, last_path_segment};
 use rustc_errors::Applicability;
 use rustc_hir::{def, Expr, ExprKind, GenericArg, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -42,12 +42,17 @@ impl<'tcx> LateLintPass<'tcx> for DefaultIterEmpty {
             && ty.span.ctxt() == ctxt
         {
             let mut applicability = Applicability::MachineApplicable;
-            let sugg = make_sugg(cx, ty_path, ctxt, &mut applicability);
+            let path = if is_no_std_crate(cx) {
+                "core::iter::empty"
+            } else {
+                "std::iter::empty"
+            };
+            let sugg = make_sugg(cx, ty_path, ctxt, &mut applicability, path);
             span_lint_and_sugg(
                 cx,
                 DEFAULT_INSTEAD_OF_ITER_EMPTY,
                 expr.span,
-                "`std::iter::empty()` is the more idiomatic way",
+                &format!("`{path}()` is the more idiomatic way"),
                 "try",
                 sugg,
                 applicability,
@@ -61,6 +66,7 @@ fn make_sugg(
     ty_path: &rustc_hir::QPath<'_>,
     ctxt: SyntaxContext,
     applicability: &mut Applicability,
+    path: &str,
 ) -> String {
     if let Some(last) = last_path_segment(ty_path).args
         && let Some(iter_ty) = last.args.iter().find_map(|arg| match arg {
@@ -69,10 +75,10 @@ fn make_sugg(
         })
     {
         format!(
-            "std::iter::empty::<{}>()",
+            "{path}::<{}>()",
             snippet_with_context(cx, iter_ty.span, ctxt, "..", applicability).0
         )
     } else {
-        "std::iter::empty()".to_owned()
+        format!("{path}()")
     }
 }

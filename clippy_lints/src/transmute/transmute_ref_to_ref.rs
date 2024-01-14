@@ -1,7 +1,7 @@
 use super::{TRANSMUTE_BYTES_TO_STR, TRANSMUTE_PTR_TO_PTR};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet;
-use clippy_utils::sugg;
+use clippy_utils::{is_no_std_crate, sugg};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Mutability};
 use rustc_lint::LateContext;
@@ -29,6 +29,8 @@ pub(super) fn check<'tcx>(
 
             let snippet = snippet(cx, arg.span, "..");
 
+            let top_crate = if is_no_std_crate(cx) { "core" } else { "std" };
+
             span_lint_and_sugg(
                 cx,
                 TRANSMUTE_BYTES_TO_STR,
@@ -36,9 +38,9 @@ pub(super) fn check<'tcx>(
                 &format!("transmute from a `{from_ty}` to a `{to_ty}`"),
                 "consider using",
                 if const_context {
-                    format!("std::str::from_utf8_unchecked{postfix}({snippet})")
+                    format!("{top_crate}::str::from_utf8_unchecked{postfix}({snippet})")
                 } else {
-                    format!("std::str::from_utf8{postfix}({snippet}).unwrap()")
+                    format!("{top_crate}::str::from_utf8{postfix}({snippet}).unwrap()")
                 },
                 Applicability::MaybeIncorrect,
             );

@@ -1,12 +1,11 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::is_no_std_crate;
 use clippy_utils::source::snippet_opt;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
 
 use super::PTR_EQ;
-
-static LINT_MSG: &str = "use `std::ptr::eq` when comparing raw pointers";
 
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
@@ -26,13 +25,14 @@ pub(super) fn check<'tcx>(
             && let Some(left_snip) = snippet_opt(cx, left_var.span)
             && let Some(right_snip) = snippet_opt(cx, right_var.span)
         {
+            let top_crate = if is_no_std_crate(cx) { "core" } else { "std" };
             span_lint_and_sugg(
                 cx,
                 PTR_EQ,
                 expr.span,
-                LINT_MSG,
+                &format!("use `{top_crate}::ptr::eq` when comparing raw pointers"),
                 "try",
-                format!("std::ptr::eq({left_snip}, {right_snip})"),
+                format!("{top_crate}::ptr::eq({left_snip}, {right_snip})"),
                 Applicability::MachineApplicable,
             );
         }

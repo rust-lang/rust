@@ -204,7 +204,7 @@ pub(super) fn check<'tcx>(
             cx,
             UNNECESSARY_SORT_BY,
             expr.span,
-            "use Vec::sort_by_key here instead",
+            "consider using `sort_by_key`",
             "try",
             format!(
                 "{}.sort{}_by_key(|{}| {})",
@@ -227,7 +227,7 @@ pub(super) fn check<'tcx>(
             cx,
             UNNECESSARY_SORT_BY,
             expr.span,
-            "use Vec::sort here instead",
+            "consider using `sort`",
             "try",
             format!(
                 "{}.sort{}()",
