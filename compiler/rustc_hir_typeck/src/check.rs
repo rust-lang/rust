@@ -73,7 +73,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     let inputs_fn = fn_sig.inputs().iter().copied();
     for (idx, (param_ty, param)) in inputs_fn.chain(maybe_va_list).zip(body.params).enumerate() {
         // Check the pattern.
-        let ty: Option<&hir::Ty<'_>> = try { inputs_hir?.get(idx)? };
+        let ty: Option<&hir::Ty<'_>> = inputs_hir.and_then(|h| h.get(idx));
         let ty_span = ty.map(|ty| ty.span);
         fcx.check_pat_top(param.pat, param_ty, ty_span, None, None);
 

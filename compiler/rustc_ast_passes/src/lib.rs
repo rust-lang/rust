@@ -11,7 +11,6 @@
 #![feature(if_let_guard)]
 #![feature(iter_is_partitioned)]
 #![feature(let_chains)]
-#![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 

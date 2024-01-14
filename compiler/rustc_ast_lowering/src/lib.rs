@@ -33,10 +33,8 @@
 #![allow(internal_features)]
 #![feature(rustdoc_internals)]
 #![doc(rust_logo)]
-#![feature(if_let_guard)]
 #![feature(box_patterns)]
 #![feature(let_chains)]
-#![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 
