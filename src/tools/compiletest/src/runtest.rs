@@ -2266,6 +2266,7 @@ impl<'test> TestCx<'test> {
         let cmdline = {
             let cmdline = self.make_cmdline(&command, lib_path);
             logv(self.config, format!("executing {}", cmdline));
+            println!("executing {}", cmdline);
             cmdline
         };
 
