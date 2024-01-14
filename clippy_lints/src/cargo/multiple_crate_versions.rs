@@ -20,9 +20,10 @@ pub(super) fn check(cx: &LateContext<'_>, metadata: &Metadata) {
             // local_name contains the crate name as a namespace, with the dashes converted to underscores
             // the code below temporarily rectifies this discrepancy
             if p.name
-                .chars()
-                .map(|c| if c == '-' { '_' } else { c })
-                .eq(local_name.as_str().chars())
+                .as_bytes()
+                .iter()
+                .map(|b| if b == &b'-' { &b'_' } else { b })
+                .eq(local_name.as_str().as_bytes())
             {
                 Some(&p.id)
             } else {
