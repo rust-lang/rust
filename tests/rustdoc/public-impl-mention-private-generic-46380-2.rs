@@ -1,6 +1,9 @@
+// https://github.com/rust-lang/rust/issues/46380
+#![crate_name="foo"]
+
 pub trait PublicTrait<T> {}
 
-// @has issue_46380_2/struct.PublicStruct.html
+// @has foo/struct.PublicStruct.html
 pub struct PublicStruct;
 
 // @!has - '//*[@class="impl"]' 'impl PublicTrait<PrivateStruct> for PublicStruct'

@@ -1,3 +1,6 @@
+// https://github.com/rust-lang/rust/issues/35169
+#![crate_name="foo"]
+
 use std::ops::Deref;
 
 pub struct Foo;
@@ -18,7 +21,7 @@ impl Deref for Bar {
     fn deref(&self) -> &Foo { loop {} }
 }
 
-// @has issue_35169/struct.Bar.html
+// @has foo/struct.Bar.html
 // @has - '//*[@id="method.by_ref"]//h4[@class="code-header"]' 'fn by_ref(&self)'
 // @has - '//*[@id="method.by_ref"]' 'fn by_ref(&self)'
 // @has - '//*[@id="method.by_explicit_ref"]//h4[@class="code-header"]' 'fn by_explicit_ref(self: &Foo)'

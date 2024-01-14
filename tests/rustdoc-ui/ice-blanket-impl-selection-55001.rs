@@ -1,3 +1,7 @@
+// check-pass
+// https://github.com/rust-lang/rust/issues/55001
+#![crate_name="foo"]
+
 // Regression test for issue #55001. Previously, we would incorrectly
 // cache certain trait selection results when checking for blanket impls,
 // resulting in an ICE when we tried to confirm the cached ParamCandidate

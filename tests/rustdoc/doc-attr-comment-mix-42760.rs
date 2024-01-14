@@ -1,6 +1,9 @@
+// https://github.com/rust-lang/rust/issues/42760
+#![crate_name="foo"]
+
 #![allow(rustdoc::invalid_rust_codeblocks)]
 
-// @has issue_42760/struct.NonGen.html
+// @has foo/struct.NonGen.html
 // @has - '//h2' 'Example'
 
 /// Item docs.
