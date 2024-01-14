@@ -243,15 +243,19 @@ The CI will also run tidy and will fail if tidy fails.
 Rust follows a _no merge-commit policy_, meaning, when you encounter merge
 conflicts you are expected to always rebase instead of merging.  E.g. always use
 rebase when bringing the latest changes from the master branch to your feature
-branch.
+branch. If your PR contains merge commits, it will get marked as `has-merge-commits`.
+Once you have removed the merge commits, e.g., through an interactive rebase, you
+should remove the label again:
+
+    @rustbot label -has-merge-commits
+
+See [this chapter][labeling] for more details.
 
 If you encounter merge conflicts or when a reviewer asks you to perform some
 changes, your PR will get marked as `S-waiting-on-author`. When you resolve
 them, you should use `@rustbot` to mark it as `S-waiting-on-review`:
 
     @rustbot label -S-waiting-on-author +S-waiting-on-review
-
-See [this chapter][labeling] for more details.
 
 GitHub allows [closing issues using keywords][closing-keywords]. This feature
 should be used to keep the issue tracker tidy. However, it is generally preferred
