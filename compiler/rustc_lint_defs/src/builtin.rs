@@ -38,6 +38,7 @@ declare_lint_pass! {
         DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
         DEPRECATED_IN_FUTURE,
         DEPRECATED_WHERE_CLAUSE_LOCATION,
+        DEREFERENCING_MUT_BINDING,
         DUPLICATE_MACRO_ATTRIBUTES,
         ELIDED_LIFETIMES_IN_ASSOCIATED_CONSTANT,
         ELIDED_LIFETIMES_IN_PATHS,
@@ -1624,6 +1625,40 @@ declare_lint! {
     pub UNUSED_MUT,
     Warn,
     "detect mut variables which don't need to be mutable"
+}
+
+declare_lint! {
+    /// The `dereferencing_mut_binding` lint detects a `mut x` pattern that resets the binding mode,
+    /// as this behavior will change in rust 2024.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// # #![warn(dereferencing_mut_binding)]
+    /// let x = Some(123u32);
+    /// let _y = match &x {
+    ///     Some(mut x) => {
+    ///         x += 1;
+    ///         x
+    ///     }
+    ///     None => 0,
+    /// };
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Without the `mut`, `x` would have type `&u32`. Pre-2024, adding `mut` makes `x` have type
+    /// `u32`, which was deeped surprising. After edition 2024, adding `mut` will not change the
+    /// type of `x`. This lint warns users of editions before 2024 to update their code.
+    pub DEREFERENCING_MUT_BINDING,
+    Allow,
+    "detects `mut x` bindings that change the type of `x`",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionSemanticsChange(Edition::Edition2024),
+        reference: "FIXME none yet",
+    };
 }
 
 declare_lint! {

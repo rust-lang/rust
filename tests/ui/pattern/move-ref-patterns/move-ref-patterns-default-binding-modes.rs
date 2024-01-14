@@ -1,3 +1,4 @@
+#![warn(dereferencing_mut_binding)]
 fn main() {
     struct U;
 
@@ -7,4 +8,6 @@ fn main() {
     let p = (U, U);
     let (a, mut b) = &p;
     //~^ ERROR cannot move out of a shared reference
+    //~| WARN dereferencing `mut`
+    //~| WARN this changes meaning in Rust 2024
 }

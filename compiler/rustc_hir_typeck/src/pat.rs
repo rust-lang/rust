@@ -13,7 +13,7 @@ use rustc_infer::infer;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::ty::{self, Adt, BindingMode, Ty, TypeVisitableExt};
-use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
+use rustc_session::lint;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::source_map::Spanned;
@@ -610,8 +610,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Determine the binding mode...
         let bm = match ba {
-            hir::BindingAnnotation::NONE => def_bm,
-            _ => BindingMode::convert(ba),
+            hir::BindingAnnotation(ast::ByRef::No, hir::Mutability::Not) => def_bm,
+            hir::BindingAnnotation(ast::ByRef::No, mutbl @ hir::Mutability::Mut) => {
+                if let BindingMode::BindByReference(_) = def_bm {
+                    // `mut x` resets the binding mode.
+                    self.tcx.emit_node_span_lint(
+                        lint::builtin::DEREFERENCING_MUT_BINDING,
+                        pat.hir_id,
+                        pat.span,
+                        errors::DereferencingMutBinding { span: pat.span },
+                    );
+                }
+                BindingMode::BindByValue(mutbl)
+            }
+            hir::BindingAnnotation(ast::ByRef::Yes, mutbl) => BindingMode::BindByReference(mutbl),
         };
         // ...and store it in a side table:
         self.inh.typeck_results.borrow_mut().pat_binding_modes_mut().insert(pat.hir_id, bm);
@@ -1847,7 +1859,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             &unmentioned_fields.iter().map(|(_, i)| i).collect::<Vec<_>>(),
         );
 
-        self.tcx.node_span_lint(NON_EXHAUSTIVE_OMITTED_PATTERNS, pat.hir_id, pat.span, "some fields are not explicitly listed", |lint| {
+        self.tcx.node_span_lint(lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS, pat.hir_id, pat.span, "some fields are not explicitly listed", |lint| {
         lint.span_label(pat.span, format!("field{} {} not listed", rustc_errors::pluralize!(unmentioned_fields.len()), joined_patterns));
         lint.help(
             "ensure that all fields are mentioned explicitly by adding the suggested fields",

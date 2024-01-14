@@ -1,5 +1,24 @@
+warning: dereferencing `mut` binding
+  --> $DIR/move-ref-patterns-default-binding-modes-fixable.rs:11:13
+   |
+LL |     let (a, mut b) = &mut p;
+   |             ^^^^^ `mut` dereferences the type of this binding
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see FIXME none yet
+help: this will change in edition 2024
+  --> $DIR/move-ref-patterns-default-binding-modes-fixable.rs:11:13
+   |
+LL |     let (a, mut b) = &mut p;
+   |             ^^^^^
+note: the lint level is defined here
+  --> $DIR/move-ref-patterns-default-binding-modes-fixable.rs:3:9
+   |
+LL | #![warn(dereferencing_mut_binding)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0507]: cannot move out of a mutable reference
-  --> $DIR/move-ref-patterns-default-binding-modes-fixable.rs:10:22
+  --> $DIR/move-ref-patterns-default-binding-modes-fixable.rs:11:22
    |
 LL |     let (a, mut b) = &mut p;
    |             -----    ^^^^^^
@@ -12,6 +31,6 @@ help: consider borrowing the pattern binding
 LL |     let (a, ref mut b) = &mut p;
    |             +++
 
-error: aborting due to 1 previous error
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0507`.

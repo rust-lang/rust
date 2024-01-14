@@ -1,0 +1,49 @@
+error: dereferencing `mut` binding
+  --> $DIR/resetting-mut.rs:5:13
+   |
+LL |     let (x, mut y) = &(0, 0);
+   |             ^^^^^ `mut` dereferences the type of this binding
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see FIXME none yet
+help: this will change in edition 2024
+  --> $DIR/resetting-mut.rs:5:13
+   |
+LL |     let (x, mut y) = &(0, 0);
+   |             ^^^^^
+note: the lint level is defined here
+  --> $DIR/resetting-mut.rs:2:9
+   |
+LL | #![deny(dereferencing_mut_binding)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: dereferencing `mut` binding
+  --> $DIR/resetting-mut.rs:12:14
+   |
+LL |         Some(mut n) => {
+   |              ^^^^^ `mut` dereferences the type of this binding
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see FIXME none yet
+help: this will change in edition 2024
+  --> $DIR/resetting-mut.rs:12:14
+   |
+LL |         Some(mut n) => {
+   |              ^^^^^
+
+error: dereferencing `mut` binding
+  --> $DIR/resetting-mut.rs:20:17
+   |
+LL |     if let Some(mut n) = &Some(5i32) {
+   |                 ^^^^^ `mut` dereferences the type of this binding
+   |
+   = warning: this changes meaning in Rust 2024
+   = note: for more information, see FIXME none yet
+help: this will change in edition 2024
+  --> $DIR/resetting-mut.rs:20:17
+   |
+LL |     if let Some(mut n) = &Some(5i32) {
+   |                 ^^^^^
+
+error: aborting due to 3 previous errors
+

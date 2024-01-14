@@ -1,5 +1,6 @@
 //@ run-pass
 #![allow(unused_variables)]
+#![allow(dereferencing_mut_binding)]
 fn some_or_wildcard(r: &Option<i32>, b: &i32) {
     let _: &i32 = match r {
         Some(a) => a,
