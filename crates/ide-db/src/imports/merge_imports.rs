@@ -1,14 +1,14 @@
 //! Handle syntactic aspects of merging UseTrees.
 use std::cmp::Ordering;
-use std::iter::{empty, successors};
+use std::iter::empty;
 
 use itertools::{EitherOrBoth, Itertools};
-use parser::{SyntaxKind, T};
-use rustc_hash::{FxHashMap, FxHashSet};
+use parser::T;
 use syntax::{
+    algo,
     ast::{self, make, AstNode, HasAttrs, HasName, HasVisibility, PathSegmentKind},
     ted::{self, Position},
-    SyntaxElement, TokenText,
+    Direction, TokenText,
 };
 
 use crate::syntax_helpers::node_ext::vis_eq;
@@ -101,22 +101,6 @@ fn recursive_merge(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior)
         // same as a `filter` op).
         .map(|tree| merge.is_tree_allowed(&tree).then_some(tree))
         .collect::<Option<_>>()?;
-    // Preserves some positional formatting info before sorting.
-    let positional_formatting_map: FxHashMap<_, _> = use_trees
-        .iter()
-        .enumerate()
-        .filter_map(|(idx, tree)| {
-            formatting_whitespace(&SyntaxElement::from(tree.syntax().clone()))
-                .map(|trivia| (idx, trivia))
-        })
-        .collect();
-    let closing_formatting_trivia = if use_trees.len() > 0 {
-        lhs.use_tree_list()
-            .and_then(|list| list.r_curly_token())
-            .and_then(|token| formatting_whitespace(&SyntaxElement::from(token)))
-    } else {
-        None
-    };
     // Sorts the use trees similar to rustfmt's algorithm for ordering imports
     // (see `use_tree_cmp` doc).
     use_trees.sort_unstable_by(|a, b| use_tree_cmp(a, b));
@@ -184,60 +168,59 @@ fn recursive_merge(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior)
                     // Creates a new use tree list with the item.
                     None => lhs.get_or_create_use_tree_list().add_use_tree(rhs_t),
                     // Recreates the use tree list with sorted items (see `use_tree_cmp` doc).
-                    // Also attempts to preserve formatting (but only in terms of index-based
-                    // "positions" of new lines and indents).
-                    Some(old_list) => {
-                        ted::remove(old_list.syntax());
+                    Some(use_tree_list) => {
+                        if use_tree_list.l_curly_token().is_none() {
+                            ted::insert_raw(
+                                Position::first_child_of(use_tree_list.syntax()),
+                                make::token(T!['{']),
+                            );
+                        }
+                        if use_tree_list.r_curly_token().is_none() {
+                            ted::insert_raw(
+                                Position::last_child_of(use_tree_list.syntax()),
+                                make::token(T!['}']),
+                            );
+                        }
 
-                        let new_list = make::use_tree_list(empty()).clone_for_update();
                         let mut elements = Vec::new();
                         for (idx, tree) in use_trees.iter().enumerate() {
                             if idx > 0 {
                                 elements.push(make::token(T![,]).into());
-                            }
-                            match positional_formatting_map.get(&idx) {
-                                None if idx > 0 => {
-                                    elements.push(make::tokens::single_space().into())
-                                }
-                                Some(prev_trivia) => {
-                                    elements.extend(prev_trivia.clone().into_iter())
-                                }
-                                _ => (),
+                                elements.push(make::tokens::single_space().into());
                             }
                             elements.push(tree.syntax().clone().into());
                         }
-                        if let Some(ref trivia) = closing_formatting_trivia {
-                            elements.extend(trivia.clone().into_iter())
+
+                        let start = use_tree_list
+                            .l_curly_token()
+                            .and_then(|l_curly| {
+                                algo::non_trivia_sibling(l_curly.into(), Direction::Next)
+                            })
+                            .filter(|it| it.kind() != T!['}']);
+                        let end = use_tree_list
+                            .r_curly_token()
+                            .and_then(|r_curly| {
+                                algo::non_trivia_sibling(r_curly.into(), Direction::Prev)
+                            })
+                            .filter(|it| it.kind() != T!['{']);
+                        if let Some((start, end)) = start.zip(end) {
+                            // Attempt to insert elements while preserving preceding and trailing trivia.
+                            ted::replace_all(start..=end, elements);
+                        } else {
+                            let new_use_tree_list = make::use_tree_list(empty()).clone_for_update();
+                            let trees_pos = match new_use_tree_list.l_curly_token() {
+                                Some(l_curly) => Position::after(l_curly),
+                                None => Position::last_child_of(new_use_tree_list.syntax()),
+                            };
+                            ted::insert_all_raw(trees_pos, elements);
+                            ted::replace(use_tree_list.syntax(), new_use_tree_list.syntax());
                         }
-
-                        let trees_pos = match new_list.l_curly_token() {
-                            Some(l_curly) => Position::after(l_curly),
-                            None => Position::last_child_of(new_list.syntax()),
-                        };
-                        ted::insert_all_raw(trees_pos, elements);
-
-                        let list_pos = Position::last_child_of(lhs.syntax());
-                        ted::insert_raw(list_pos, new_list.syntax());
                     }
                 }
             }
         }
     }
-    return Some(());
-
-    // Returns all trivia preceding a syntax element if it may be relevant to formatting
-    // (i.e. includes at least one new line character).
-    fn formatting_whitespace(elem: &SyntaxElement) -> Option<FxHashSet<SyntaxElement>> {
-        let succ =
-            |item: &SyntaxElement| item.prev_sibling_or_token().filter(|it| it.kind().is_trivia());
-        let first = succ(elem);
-        let trivia_set: FxHashSet<_> = successors(first, succ).collect();
-        let contains_formatting_whitespace = trivia_set.iter().any(|it| {
-            it.kind() == SyntaxKind::WHITESPACE
-                && it.as_token().is_some_and(|token| token.text().contains('\n'))
-        });
-        contains_formatting_whitespace.then_some(trivia_set)
-    }
+    Some(())
 }
 
 /// Traverses both paths until they differ, returning the common prefix of both.
@@ -383,13 +366,13 @@ fn path_segment_cmp(a: &ast::PathSegment, b: &ast::PathSegment) -> Ordering {
     }
 }
 
-// Orders for use trees with equal paths (see `use_tree_cmp` for details about use tree ordering).
-//
-// If the `strict` parameter is set to true and both trees have tree lists, the tree lists are
-// ordered by calling `use_tree_cmp` on their "sub-tree" pairs until either the tie is broken
-// or tree list equality is confirmed, otherwise (i.e. if either `strict` is false or at least
-// one of the trees does *not* have tree list), this potentially recursive step is skipped,
-// and only the presence of a glob pattern or an alias is used to determine the ordering.
+/// Orders for use trees with equal paths (see `use_tree_cmp` for details about use tree ordering).
+///
+/// If the `strict` parameter is set to true and both trees have tree lists, the tree lists are
+/// ordered by calling `use_tree_cmp` on their "sub-tree" pairs until either the tie is broken
+/// or tree list equality is confirmed, otherwise (i.e. if either `strict` is false or at least
+/// one of the trees does *not* have tree list), this potentially recursive step is skipped,
+/// and only the presence of a glob pattern or an alias is used to determine the ordering.
 fn use_tree_cmp_by_tree_list_glob_or_alias(
     a: &ast::UseTree,
     b: &ast::UseTree,
