@@ -41,6 +41,7 @@ LL | #[rustc_dummy]
    | ^^^^^^^^^^^^^^
    |
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 7 previous errors
 

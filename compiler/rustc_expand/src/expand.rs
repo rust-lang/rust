@@ -30,8 +30,8 @@ use rustc_parse::parser::{
 use rustc_parse::validate_attr;
 use rustc_session::lint::builtin::{UNUSED_ATTRIBUTES, UNUSED_DOC_COMMENTS};
 use rustc_session::lint::BuiltinLintDiagnostics;
-use rustc_session::parse::{feature_err, ParseSess};
-use rustc_session::Limit;
+use rustc_session::parse::feature_err;
+use rustc_session::{Limit, Session};
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{FileName, LocalExpnId, Span};
 
@@ -800,7 +800,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             return;
         }
         feature_err(
-            &self.cx.sess.parse_sess,
+            &self.cx.sess,
             sym::proc_macro_hygiene,
             span,
             format!("custom attributes cannot be applied to {kind}"),
@@ -810,7 +810,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
     fn gate_proc_macro_input(&self, annotatable: &Annotatable) {
         struct GateProcMacroInput<'a> {
-            parse_sess: &'a ParseSess,
+            sess: &'a Session,
         }
 
         impl<'ast, 'a> Visitor<'ast> for GateProcMacroInput<'a> {
@@ -820,7 +820,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         if !matches!(mod_kind, ModKind::Loaded(_, Inline::Yes, _)) =>
                     {
                         feature_err(
-                            self.parse_sess,
+                            self.sess,
                             sym::proc_macro_hygiene,
                             item.span,
                             "non-inline modules in proc macro input are unstable",
@@ -835,8 +835,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
 
         if !self.cx.ecfg.features.proc_macro_hygiene {
-            annotatable
-                .visit_with(&mut GateProcMacroInput { parse_sess: &self.cx.sess.parse_sess });
+            annotatable.visit_with(&mut GateProcMacroInput { sess: &self.cx.sess });
         }
     }
 

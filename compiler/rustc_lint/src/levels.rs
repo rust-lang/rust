@@ -786,7 +786,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                             if let ast::LitKind::Str(rationale, _) = name_value.kind {
                                 if !self.features.lint_reasons {
                                     feature_err(
-                                        &self.sess.parse_sess,
+                                        &self.sess,
                                         sym::lint_reasons,
                                         item.span,
                                         "lint reasons are experimental",
@@ -1074,7 +1074,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                             lint.note(fluent::lint_note);
                             rustc_session::parse::add_feature_diagnostics_for_issue(
                                 lint,
-                                &self.sess.parse_sess,
+                                &self.sess,
                                 feature,
                                 GateIssue::Language,
                                 lint_from_cli,

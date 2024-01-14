@@ -116,8 +116,7 @@ pub fn report_unstable(
     if is_soft {
         soft_handler(SOFT_UNSTABLE, span, msg)
     } else {
-        let mut err =
-            feature_err_issue(&sess.parse_sess, feature, span, GateIssue::Library(issue), msg);
+        let mut err = feature_err_issue(sess, feature, span, GateIssue::Library(issue), msg);
         if let Some((inner_types, msg, sugg, applicability)) = suggestion {
             err.span_suggestion(inner_types, msg, sugg, applicability);
         }

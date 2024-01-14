@@ -973,6 +973,25 @@ pub(crate) struct InvalidMetaItem {
     pub token: Token,
 }
 
+#[derive(Diagnostic)]
+#[diag(parse_invalid_meta_item_unquoted_ident)]
+pub(crate) struct InvalidMetaItemUnquotedIdent {
+    #[primary_span]
+    pub span: Span,
+    pub token: Token,
+    #[subdiagnostic]
+    pub sugg: InvalidMetaItemSuggQuoteIdent,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(parse_suggestion, applicability = "machine-applicable")]
+pub(crate) struct InvalidMetaItemSuggQuoteIdent {
+    #[suggestion_part(code = "\"")]
+    pub before: Span,
+    #[suggestion_part(code = "\"")]
+    pub after: Span,
+}
+
 #[derive(Subdiagnostic)]
 #[suggestion(
     parse_sugg_escape_identifier,

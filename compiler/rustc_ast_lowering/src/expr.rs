@@ -1512,7 +1512,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             Some(hir::CoroutineKind::Coroutine(_)) => {
                 if !self.tcx.features().coroutines {
                     rustc_session::parse::feature_err(
-                        &self.tcx.sess.parse_sess,
+                        &self.tcx.sess,
                         sym::coroutines,
                         span,
                         "yield syntax is experimental",
@@ -1524,7 +1524,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             None => {
                 if !self.tcx.features().coroutines {
                     rustc_session::parse::feature_err(
-                        &self.tcx.sess.parse_sess,
+                        &self.tcx.sess,
                         sym::coroutines,
                         span,
                         "yield syntax is experimental",

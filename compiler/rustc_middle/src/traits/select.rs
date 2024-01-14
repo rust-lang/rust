@@ -302,7 +302,6 @@ impl EvaluationResult {
 pub enum OverflowError {
     Error(ErrorGuaranteed),
     Canonical,
-    ErrorReporting,
 }
 
 impl From<ErrorGuaranteed> for OverflowError {
@@ -318,7 +317,6 @@ impl<'tcx> From<OverflowError> for SelectionError<'tcx> {
         match overflow_error {
             OverflowError::Error(e) => SelectionError::Overflow(OverflowError::Error(e)),
             OverflowError::Canonical => SelectionError::Overflow(OverflowError::Canonical),
-            OverflowError::ErrorReporting => SelectionError::ErrorReporting,
         }
     }
 }

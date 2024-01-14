@@ -1605,9 +1605,9 @@ mod prim_ref {}
 /// type in the function pointer to the type at the function declaration, and the return value is
 /// [`transmute`d][mem::transmute] from the type in the declaration to the type in the
 /// pointer. All the usual caveats and concerns around transmutation apply; for instance, if the
-/// function expects a `NonNullI32` and the function pointer uses the ABI-compatible type
-/// `Option<NonNullI32>`, and the value used for the argument is `None`, then this call is Undefined
-/// Behavior since transmuting `None::<NonNullI32>` to `NonNullI32` violates the non-null
+/// function expects a `NonZeroI32` and the function pointer uses the ABI-compatible type
+/// `Option<NonZeroI32>`, and the value used for the argument is `None`, then this call is Undefined
+/// Behavior since transmuting `None::<NonZeroI32>` to `NonZeroI32` violates the non-zero
 /// requirement.
 ///
 /// #### Requirements concerning target features

@@ -31,6 +31,7 @@ unsafe fn foo() {}
 #[target_feature(enable = "sse2")]
 //~^ ERROR `#[target_feature(..)]` can only be applied to `unsafe` functions
 //~| NOTE see issue #69098
+//~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 fn bar() {}
 //~^ NOTE not an `unsafe` function
 
@@ -102,6 +103,7 @@ impl Quux for Foo {
     #[target_feature(enable = "sse2")]
     //~^ ERROR `#[target_feature(..)]` can only be applied to `unsafe` functions
     //~| NOTE see issue #69098
+    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     fn foo() {}
     //~^ NOTE not an `unsafe` function
 }

@@ -1623,7 +1623,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
             } else {
                 if let Some(errors) =
-                    self.could_impl_trait(clone_trait_did, expected_ty, self.param_env)
+                    self.type_implements_trait_shallow(clone_trait_did, expected_ty, self.param_env)
                 {
                     match &errors[..] {
                         [] => {}

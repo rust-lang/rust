@@ -80,6 +80,11 @@ static_assert_size!(PendingPredicateObligation<'_>, 72);
 impl<'tcx> FulfillmentContext<'tcx> {
     /// Creates a new fulfillment context.
     pub(super) fn new(infcx: &InferCtxt<'tcx>) -> FulfillmentContext<'tcx> {
+        assert!(
+            !infcx.next_trait_solver(),
+            "old trait solver fulfillment context created when \
+            infcx is set up for new trait solver"
+        );
         FulfillmentContext {
             predicates: ObligationForest::new(),
             usable_in_snapshot: infcx.num_open_snapshots(),

@@ -22,6 +22,7 @@ allow-unauthenticated = [
     "perf-*",
     "AsyncAwait-OnDeck",
     "needs-triage",
+    "has-merge-commits",
 ]
 
 [review-submitted]
@@ -202,7 +203,7 @@ trigger_files = [
 
 [autolabel."O-hermit"]
 trigger_files = [
-    "library/std/src/sys/hermit",
+    "library/std/src/sys/pal/hermit",
     "library/std/src/os/hermit"
 ]
 
@@ -213,7 +214,7 @@ trigger_files = [
 
 [autolabel."O-itron"]
 trigger_files = [
-    "library/std/src/sys/itron"
+    "library/std/src/sys/pal/itron"
 ]
 
 [autolabel."O-linux"]
@@ -238,7 +239,7 @@ trigger_files = [
 
 [autolabel."O-SGX"]
 trigger_files = [
-    "library/std/src/sys/sgx",
+    "library/std/src/sys/pal/sgx",
     "library/std/src/os/fortanix_sgx"
 ]
 
@@ -249,25 +250,25 @@ trigger_files = [
 
 [autolabel."O-solid"]
 trigger_files = [
-    "library/std/src/sys/solid",
+    "library/std/src/sys/pal/solid",
     "library/std/src/os/solid"
 ]
 
 [autolabel."O-unix"]
 trigger_files = [
-    "library/std/src/sys/unix",
+    "library/std/src/sys/pal/unix",
     "library/std/src/os/unix"
 ]
 
 [autolabel."O-wasi"]
 trigger_files = [
-    "library/std/src/sys/wasi",
+    "library/std/src/sys/pal/wasi",
     "library/std/src/os/wasi"
 ]
 
 [autolabel."O-wasm"]
 trigger_files = [
-    "library/std/src/sys/wasm",
+    "library/std/src/sys/pal/wasm",
     "library/std/src/os/wasm"
 ]
 
@@ -278,7 +279,7 @@ trigger_files = [
 
 [autolabel."O-windows"]
 trigger_files = [
-    "library/std/src/sys/windows",
+    "library/std/src/sys/pal/windows",
     "library/std/src/os/windows"
 ]
 
@@ -387,15 +388,6 @@ message_on_add = """\
 message_on_remove = "Issue #{number}'s prioritization request has been removed."
 message_on_close = "Issue #{number} has been closed while requested for prioritization."
 message_on_reopen = "Issue #{number} has been reopened."
-
-[notify-zulip."T-rustdoc"]
-required_labels = ["I-nominated"]
-zulip_stream = 266220 # #rustdoc
-topic = "nominated: #{number}"
-message_on_add = """\
-@*T-rustdoc* issue #{number} "{title}" has been nominated for `T-rustdoc` discussion.
-"""
-message_on_remove = "Issue #{number}'s nomination request has been removed."
 
 [notify-zulip."I-types-nominated"]
 zulip_stream = 326866 # #T-types/nominated
@@ -788,7 +780,7 @@ project-stable-mir = [
 "/library/panic_unwind" =                    ["libs"]
 "/library/proc_macro" =                      ["@petrochenkov"]
 "/library/std" =                             ["libs"]
-"/library/std/src/sys/windows" =             ["@ChrisDenton", "@thomcc"]
+"/library/std/src/sys/pal/windows" =             ["@ChrisDenton", "@thomcc"]
 "/library/stdarch" =                         ["libs"]
 "/library/test" =                            ["libs"]
 "/src/bootstrap" =                           ["bootstrap"]

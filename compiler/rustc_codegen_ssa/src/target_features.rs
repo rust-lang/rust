@@ -82,7 +82,7 @@ pub fn from_target_feature(
             };
             if !allowed {
                 feature_err(
-                    &tcx.sess.parse_sess,
+                    &tcx.sess,
                     feature_gate.unwrap(),
                     item.span(),
                     format!("the target feature `{feature}` is currently unstable"),

@@ -6,6 +6,7 @@ LL |     let c = #[rustc_capture_analysis] || drop(&m.a.0);
    |
    = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: First Pass analysis includes:
   --> $DIR/edge_case.rs:20:39
