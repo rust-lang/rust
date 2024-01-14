@@ -21,12 +21,15 @@ pub enum MergeBehavior {
     Crate,
     /// Merge imports from the same module into a single use statement.
     Module,
+    /// Merge all imports into a single use statement as long as they have the same visibility
+    /// and attributes.
+    One,
 }
 
 impl MergeBehavior {
     fn is_tree_allowed(&self, tree: &ast::UseTree) -> bool {
         match self {
-            MergeBehavior::Crate => true,
+            MergeBehavior::Crate | MergeBehavior::One => true,
             // only simple single segment paths are allowed
             MergeBehavior::Module => {
                 tree.use_tree_list().is_none() && tree.path().map(path_len) <= Some(1)
@@ -72,21 +75,26 @@ pub fn try_merge_trees(
 }
 
 fn try_merge_trees_mut(lhs: &ast::UseTree, rhs: &ast::UseTree, merge: MergeBehavior) -> Option<()> {
-    let lhs_path = lhs.path()?;
-    let rhs_path = rhs.path()?;
-
-    let (lhs_prefix, rhs_prefix) = common_prefix(&lhs_path, &rhs_path)?;
-    if !(lhs.is_simple_path()
-        && rhs.is_simple_path()
-        && lhs_path == lhs_prefix
-        && rhs_path == rhs_prefix)
-    {
-        lhs.split_prefix(&lhs_prefix);
-        rhs.split_prefix(&rhs_prefix);
+    if merge == MergeBehavior::One {
+        lhs.wrap_in_tree_list();
+        rhs.wrap_in_tree_list();
     } else {
-        ted::replace(lhs.syntax(), rhs.syntax());
-        // we can safely return here, in this case `recursive_merge` doesn't do anything
-        return Some(());
+        let lhs_path = lhs.path()?;
+        let rhs_path = rhs.path()?;
+
+        let (lhs_prefix, rhs_prefix) = common_prefix(&lhs_path, &rhs_path)?;
+        if !(lhs.is_simple_path()
+            && rhs.is_simple_path()
+            && lhs_path == lhs_prefix
+            && rhs_path == rhs_prefix)
+        {
+            lhs.split_prefix(&lhs_prefix);
+            rhs.split_prefix(&rhs_prefix);
+        } else {
+            ted::replace(lhs.syntax(), rhs.syntax());
+            // we can safely return here, in this case `recursive_merge` doesn't do anything
+            return Some(());
+        }
     }
     recursive_merge(lhs, rhs, merge)
 }
