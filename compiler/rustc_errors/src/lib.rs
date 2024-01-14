@@ -421,16 +421,16 @@ pub struct DiagCtxt {
 struct DiagCtxtInner {
     flags: DiagCtxtFlags,
 
-    /// The number of lint errors that have been emitted.
+    /// The number of lint errors that have been emitted, including duplicates.
     lint_err_count: usize,
-    /// The number of errors that have been emitted, including duplicates.
-    ///
-    /// This is not necessarily the count that's reported to the user once
-    /// compilation ends.
+    /// The number of non-lint errors that have been emitted, including duplicates.
     err_count: usize,
+
+    /// The error count shown to the user at the end.
     deduplicated_err_count: usize,
-    /// The warning count, used for a recap upon finishing
+    /// The warning count shown to the user at the end.
     deduplicated_warn_count: usize,
+
     /// Has this diagnostic context printed any diagnostics? (I.e. has
     /// `self.emitter.emit_diagnostic()` been called?
     has_printed: bool,
