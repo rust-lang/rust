@@ -263,6 +263,19 @@ to put the "closes #123" text in the PR description rather than the issue commit
 particularly during rebasing, citing the issue number in the commit can "spam"
 the issue in question.
 
+However, if your PR fixes a stable-to-beta or stable-to-stable regression and has
+been accepted for a beta and/or stable backport (i.e., it is marked `beta-accepted`
+and/or `stable-accepted`), please do *not* use any such keywords since we don't
+want the corresponding issue to get auto-closed once the fix lands on master.
+Please update the PR description while still mentioning the issue somewhere.
+For example, you could write `Fixes (after beta backport) #NNN.`.
+
+As for further actions, please keep a sharp look-out for a PR whose title begins with
+`[beta]` or `[stable]` and which backports the PR in question. When that one gets
+merged, the relevant issue can be closed. The closing comment should mention all
+PRs that were involved. If you don't have the permissions to close the issue, please
+leave a comment on the original PR asking the reviewer to close it for you.
+
 [labeling]: ./rustbot.md#issue-relabeling
 [closing-keywords]: https://docs.github.com/en/issues/tracking-your-work-with-issues/linking-a-pull-request-to-an-issue
 
