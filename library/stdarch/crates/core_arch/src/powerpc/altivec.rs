@@ -2686,6 +2686,142 @@ mod sealed {
     impl_sl! { vslw u32 }
 
     impl_vec_shift! { [VectorSl vec_sl] (vslb, vslh, vslw) }
+
+    #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+    pub trait VectorSld {
+        unsafe fn vec_sld<const UIMM4: i32>(self, b: Self) -> Self;
+        unsafe fn vec_sldw<const UIMM2: i32>(self, b: Self) -> Self;
+    }
+
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(vsldoi, UIMM4 = 1))]
+    unsafe fn vsldoi<const UIMM4: i32>(
+        a: vector_unsigned_char,
+        b: vector_unsigned_char,
+    ) -> vector_unsigned_char {
+        static_assert_uimm_bits!(UIMM4, 4);
+        let d = UIMM4 as u8;
+        if cfg!(target_endian = "little") {
+            let perm = u8x16::new(
+                16 - d,
+                17 - d,
+                18 - d,
+                19 - d,
+                20 - d,
+                21 - d,
+                22 - d,
+                23 - d,
+                24 - d,
+                25 - d,
+                26 - d,
+                27 - d,
+                28 - d,
+                29 - d,
+                30 - d,
+                31 - d,
+            );
+
+            vec_perm(b, a, transmute(perm))
+        } else {
+            let perm = u8x16::new(
+                d,
+                d + 1,
+                d + 2,
+                d + 3,
+                d + 4,
+                d + 5,
+                d + 6,
+                d + 7,
+                d + 8,
+                d + 9,
+                d + 10,
+                d + 11,
+                d + 12,
+                d + 13,
+                d + 14,
+                d + 15,
+            );
+            vec_perm(a, b, transmute(perm))
+        }
+    }
+
+    // TODO: collapse the two once generic_const_exprs are usable.
+    #[inline]
+    #[target_feature(enable = "altivec")]
+    #[cfg_attr(test, assert_instr(xxsldwi, UIMM2 = 1))]
+    unsafe fn xxsldwi<const UIMM2: i32>(
+        a: vector_unsigned_char,
+        b: vector_unsigned_char,
+    ) -> vector_unsigned_char {
+        static_assert_uimm_bits!(UIMM2, 2);
+        let d = (UIMM2 << 2) as u8;
+        if cfg!(target_endian = "little") {
+            let perm = u8x16::new(
+                16 - d,
+                17 - d,
+                18 - d,
+                19 - d,
+                20 - d,
+                21 - d,
+                22 - d,
+                23 - d,
+                24 - d,
+                25 - d,
+                26 - d,
+                27 - d,
+                28 - d,
+                29 - d,
+                30 - d,
+                31 - d,
+            );
+
+            vec_perm(b, a, transmute(perm))
+        } else {
+            let perm = u8x16::new(
+                d,
+                d + 1,
+                d + 2,
+                d + 3,
+                d + 4,
+                d + 5,
+                d + 6,
+                d + 7,
+                d + 8,
+                d + 9,
+                d + 10,
+                d + 11,
+                d + 12,
+                d + 13,
+                d + 14,
+                d + 15,
+            );
+            vec_perm(a, b, transmute(perm))
+        }
+    }
+
+    macro_rules! impl_vec_sld {
+        ($($ty:ident),+) => { $(
+            #[unstable(feature = "stdarch_powerpc", issue = "111145")]
+            impl VectorSld for $ty {
+                #[inline]
+                #[target_feature(enable = "altivec")]
+                unsafe fn vec_sld<const UIMM4: i32>(self, b: Self) -> Self {
+                    transmute(vsldoi::<UIMM4>(transmute(self), transmute(b)))
+                }
+                #[inline]
+                #[target_feature(enable = "altivec")]
+                unsafe fn vec_sldw<const UIMM2: i32>(self, b: Self) -> Self {
+                    transmute(xxsldwi::<UIMM2>(transmute(self), transmute(b)))
+                }
+           }
+        )+ };
+    }
+
+    impl_vec_sld! { vector_bool_char, vector_signed_char, vector_unsigned_char }
+    impl_vec_sld! { vector_bool_short, vector_signed_short, vector_unsigned_short }
+    impl_vec_sld! { vector_bool_int, vector_signed_int, vector_unsigned_int }
+    impl_vec_sld! { vector_float }
 }
 
 /// Vector Merge Low
@@ -2775,6 +2911,49 @@ where
 {
     a.vec_sl(b)
 }
+
+/// Vector Shift Left Double
+///
+/// ## Endian considerations
+///
+/// This intrinsic is not endian-neutral, so uses of vec_sld in
+/// big-endian code must be rewritten for little-endian targets.
+///
+/// Historically, vec_sld could be used to shift by amounts not a multiple of the element size
+/// for most types, in which case the purpose of the shift is difficult to determine and difficult
+/// to automatically rewrite efficiently for little endian.
+///
+/// So the concatenation of a and b is done in big-endian fashion (left to right), and the shift is
+/// always to the left. This will generally produce surprising results for little-endian targets.
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_sld<T, const UIMM4: i32>(a: T, b: T) -> T
+where
+    T: sealed::VectorSld,
+{
+    a.vec_sld::<UIMM4>(b)
+}
+
+/// Vector Shift Left Double by Words
+///
+/// ## Endian considerations
+///
+/// This intrinsic is not endian-neutral, so uses of vec_sldw in
+/// big-endian code must be rewritten for little-endian targets.
+///
+/// The concatenation of a and b is done in big-endian fashion (left to right), and the shift is
+/// always to the left. This will generally produce surprising results for little- endian targets.
+#[inline]
+#[target_feature(enable = "altivec")]
+#[unstable(feature = "stdarch_powerpc", issue = "111145")]
+pub unsafe fn vec_sldw<T, const UIMM2: i32>(a: T, b: T) -> T
+where
+    T: sealed::VectorSld,
+{
+    a.vec_sldw::<UIMM2>(b)
+}
+
 /// Vector Load Indexed.
 #[inline]
 #[target_feature(enable = "altivec")]
