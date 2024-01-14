@@ -217,7 +217,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
     /// Helper function to get a `windows` constant as a `Scalar`.
     fn eval_windows(&self, module: &str, name: &str) -> Scalar<Provenance> {
-        self.eval_context_ref().eval_path_scalar(&["std", "sys", "pal","windows", module, name])
+        self.eval_context_ref().eval_path_scalar(&["std", "sys", "pal", "windows", module, name])
     }
 
     /// Helper function to get a `windows` constant as a `u32`.
@@ -249,7 +249,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn windows_ty_layout(&self, name: &str) -> TyAndLayout<'tcx> {
         let this = self.eval_context_ref();
         let ty = this
-            .resolve_path(&["std", "sys", "pal","windows", "c", name], Namespace::TypeNS)
+            .resolve_path(&["std", "sys", "pal", "windows", "c", name], Namespace::TypeNS)
             .ty(*this.tcx, ty::ParamEnv::reveal_all());
         this.layout_of(ty).unwrap()
     }
