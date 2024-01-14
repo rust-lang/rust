@@ -1178,9 +1178,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             } else {
                                 vec![(move_span.shrink_to_hi(), ".clone()".to_string())]
                             };
-                            if let Some(errors) =
-                                self.infcx.could_impl_trait(clone_trait, ty, self.param_env)
-                                && !has_sugg
+                            if let Some(errors) = self.infcx.type_implements_trait_shallow(
+                                clone_trait,
+                                ty,
+                                self.param_env,
+                            ) && !has_sugg
                             {
                                 let msg = match &errors[..] {
                                     [] => "you can `clone` the value and consume it, but this \

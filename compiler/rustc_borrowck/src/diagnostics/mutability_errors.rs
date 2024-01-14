@@ -1217,19 +1217,22 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     {
                         match self
                             .infcx
-                            .could_impl_trait(clone_trait, ty.peel_refs(), self.param_env)
+                            .type_implements_trait_shallow(
+                                clone_trait,
+                                ty.peel_refs(),
+                                self.param_env,
+                            )
                             .as_deref()
                         {
                             Some([]) => {
-                                // The type implements Clone.
-                                err.span_help(
-                                    expr.span,
-                                    format!(
-                                        "you can `clone` the `{}` value and consume it, but this \
-                                         might not be your desired behavior",
-                                        ty.peel_refs(),
-                                    ),
-                                );
+                                // FIXME: This error message isn't useful, since we're just
+                                // vaguely suggesting to clone a value that already
+                                // implements `Clone`.
+                                //
+                                // A correct suggestion here would take into account the fact
+                                // that inference may be affected by missing types on bindings,
+                                // etc., to improve "tests/ui/borrowck/issue-91206.stderr", for
+                                // example.
                             }
                             None => {
                                 if let hir::ExprKind::MethodCall(segment, _rcvr, [], span) =
