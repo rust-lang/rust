@@ -146,14 +146,6 @@ pub struct ClosureCannotBeStatic {
 }
 
 #[derive(Diagnostic, Clone, Copy)]
-#[help]
-#[diag(ast_lowering_async_non_move_closure_not_supported, code = "E0708")]
-pub struct AsyncNonMoveClosureNotSupported {
-    #[primary_span]
-    pub fn_decl_span: Span,
-}
-
-#[derive(Diagnostic, Clone, Copy)]
 #[diag(ast_lowering_functional_record_update_destructuring_assignment)]
 pub struct FunctionalRecordUpdateDestructuringAssignment {
     #[primary_span]

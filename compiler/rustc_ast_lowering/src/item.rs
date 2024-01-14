@@ -1085,9 +1085,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.lower_body(|this| {
             let (parameters, expr) = this.lower_coroutine_body_with_moved_arguments(
                 decl,
-                body,
+                |this| this.lower_block_expr(body),
+                body.span,
                 coroutine_kind,
-                CaptureBy::Value { move_kw: rustc_span::DUMMY_SP },
+                hir::CoroutineSource::Fn,
+                None,
             );
 
             // FIXME(async_fn_track_caller): Can this be moved above?
@@ -1102,12 +1104,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// into the body. This is to make sure that the future actually owns the
     /// arguments that are passed to the function, and to ensure things like
     /// drop order are stable.
-    fn lower_coroutine_body_with_moved_arguments(
+    pub fn lower_coroutine_body_with_moved_arguments(
         &mut self,
         decl: &FnDecl,
-        body: &Block,
+        lower_body: impl FnOnce(&mut LoweringContext<'_, 'hir>) -> hir::Expr<'hir>,
+        body_span: Span,
         coroutine_kind: CoroutineKind,
-        capture_clause: CaptureBy,
+        coroutine_source: hir::CoroutineSource,
+        return_type_hint: Option<hir::FnRetTy<'hir>>,
     ) -> (&'hir [hir::Param<'hir>], hir::Expr<'hir>) {
         let mut parameters: Vec<hir::Param<'_>> = Vec::new();
         let mut statements: Vec<hir::Stmt<'_>> = Vec::new();
@@ -1246,7 +1250,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let mkbody = |this: &mut LoweringContext<'_, 'hir>| {
             // Create a block from the user's function body:
-            let user_body = this.lower_block_expr(body);
+            let user_body = lower_body(this);
 
             // Transform into `drop-temps { <user-body> }`, an expression:
             let desugared_span =
@@ -1277,19 +1281,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
         let closure_id = coroutine_kind.closure_id();
         let coroutine_expr = self.make_desugared_coroutine_expr(
-            capture_clause,
+            // FIXME(async_closures): This should only move locals,
+            // and not upvars. Capturing closure upvars by ref doesn't
+            // work right now anyways, so whatever.
+            CaptureBy::Value { move_kw: rustc_span::DUMMY_SP },
             closure_id,
-            None,
-            body.span,
+            return_type_hint,
+            body_span,
             desugaring_kind,
-            hir::CoroutineSource::Fn,
+            coroutine_source,
             mkbody,
         );
 
         let expr = hir::Expr {
             hir_id: self.lower_node_id(closure_id),
             kind: coroutine_expr,
-            span: self.lower_span(body.span),
+            span: self.lower_span(body_span),
         };
 
         (self.arena.alloc_from_iter(parameters), expr)
