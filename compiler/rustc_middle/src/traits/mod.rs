@@ -611,9 +611,6 @@ pub enum SelectionError<'tcx> {
     NotConstEvaluatable(NotConstEvaluatable),
     /// Exceeded the recursion depth during type projection.
     Overflow(OverflowError),
-    /// Signaling that an error has already been emitted, to avoid
-    /// multiple errors being shown.
-    ErrorReporting,
     /// Computing an opaque type's hidden type caused an error (e.g. a cycle error).
     /// We can thus not know whether the hidden type implements an auto trait, so
     /// we should not presume anything about it.

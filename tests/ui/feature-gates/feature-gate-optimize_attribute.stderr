@@ -6,6 +6,7 @@ LL | #[optimize(size)]
    |
    = note: see issue #54882 <https://github.com/rust-lang/rust/issues/54882> for more information
    = help: add `#![feature(optimize_attribute)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the `#[optimize]` attribute is an experimental feature
   --> $DIR/feature-gate-optimize_attribute.rs:10:1
@@ -15,6 +16,7 @@ LL | #[optimize(speed)]
    |
    = note: see issue #54882 <https://github.com/rust-lang/rust/issues/54882> for more information
    = help: add `#![feature(optimize_attribute)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the `#[optimize]` attribute is an experimental feature
   --> $DIR/feature-gate-optimize_attribute.rs:13:1
@@ -24,6 +26,7 @@ LL | #[optimize(banana)]
    |
    = note: see issue #54882 <https://github.com/rust-lang/rust/issues/54882> for more information
    = help: add `#![feature(optimize_attribute)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the `#[optimize]` attribute is an experimental feature
   --> $DIR/feature-gate-optimize_attribute.rs:4:1
@@ -33,6 +36,7 @@ LL | #[optimize(size)]
    |
    = note: see issue #54882 <https://github.com/rust-lang/rust/issues/54882> for more information
    = help: add `#![feature(optimize_attribute)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: the `#[optimize]` attribute is an experimental feature
   --> $DIR/feature-gate-optimize_attribute.rs:2:1
@@ -42,6 +46,7 @@ LL | #![optimize(speed)]
    |
    = note: see issue #54882 <https://github.com/rust-lang/rust/issues/54882> for more information
    = help: add `#![feature(optimize_attribute)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0722]: invalid argument
   --> $DIR/feature-gate-optimize_attribute.rs:13:12

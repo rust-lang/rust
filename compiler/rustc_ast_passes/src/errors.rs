@@ -565,6 +565,8 @@ pub struct ConstBoundTraitObject {
     pub span: Span,
 }
 
+// FIXME(effects): Consider making the note/reason the message of the diagnostic.
+// FIXME(effects): Provide structured suggestions (e.g., add `const` / `#[const_trait]` here).
 #[derive(Diagnostic)]
 #[diag(ast_passes_tilde_const_disallowed)]
 pub struct TildeConstDisallowed {
@@ -595,6 +597,21 @@ pub enum TildeConstReason {
     },
     #[note(ast_passes_impl)]
     Impl {
+        #[primary_span]
+        span: Span,
+    },
+    #[note(ast_passes_trait_assoc_ty)]
+    TraitAssocTy {
+        #[primary_span]
+        span: Span,
+    },
+    #[note(ast_passes_trait_impl_assoc_ty)]
+    TraitImplAssocTy {
+        #[primary_span]
+        span: Span,
+    },
+    #[note(ast_passes_inherent_assoc_ty)]
+    InherentAssocTy {
         #[primary_span]
         span: Span,
     },

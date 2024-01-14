@@ -639,7 +639,7 @@ fn check_feature_inherent_assoc_ty(tcx: TyCtxt<'_>, span: Span) {
         use rustc_session::parse::feature_err;
         use rustc_span::symbol::sym;
         feature_err(
-            &tcx.sess.parse_sess,
+            &tcx.sess,
             sym::inherent_associated_types,
             span,
             "inherent associated types are unstable",

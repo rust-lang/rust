@@ -116,7 +116,8 @@ use rustc_hir::def::DefKind;
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi, span: Span) {
-    const CONVENTIONS_UNSTABLE: &str = "`C`, `cdecl`, `aapcs`, `win64`, `sysv64` or `efiapi`";
+    const CONVENTIONS_UNSTABLE: &str =
+        "`C`, `cdecl`, `system`, `aapcs`, `win64`, `sysv64` or `efiapi`";
     const CONVENTIONS_STABLE: &str = "`C` or `cdecl`";
     const UNSTABLE_EXPLAIN: &str =
         "using calling conventions other than `C` or `cdecl` for varargs functions is unstable";
@@ -133,13 +134,8 @@ fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi
         // Using this ABI would be ok, if the feature for additional ABI support was enabled.
         // Return CONVENTIONS_STABLE, because we want the other error to look the same.
         (false, true) => {
-            feature_err(
-                &tcx.sess.parse_sess,
-                sym::extended_varargs_abi_support,
-                span,
-                UNSTABLE_EXPLAIN,
-            )
-            .emit();
+            feature_err(&tcx.sess, sym::extended_varargs_abi_support, span, UNSTABLE_EXPLAIN)
+                .emit();
             CONVENTIONS_STABLE
         }
 

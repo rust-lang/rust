@@ -46,8 +46,8 @@ const EXCEPTION_PATHS: &[&str] = &[
     // we must use `#[cfg(windows)]` to conditionally compile the
     // correct `VaList` structure for windows.
     "library/core/src/ffi/mod.rs",
-    "library/std/src/sys/", // Platform-specific code for std lives here.
-    "library/std/src/os",   // Platform-specific public interfaces
+    "library/std/src/sys", // Platform-specific code for std lives here.
+    "library/std/src/os",  // Platform-specific public interfaces
     // Temporary `std` exceptions
     // FIXME: platform-specific code should be moved to `sys`
     "library/std/src/io/copy.rs",

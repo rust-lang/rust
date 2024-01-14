@@ -17,6 +17,7 @@ LL | impl S { type P = (); }
    |
    = note: see issue #8995 <https://github.com/rust-lang/rust/issues/8995> for more information
    = help: add `#![feature(inherent_associated_types)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 2 previous errors
 

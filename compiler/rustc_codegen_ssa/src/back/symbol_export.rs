@@ -319,6 +319,8 @@ fn exported_symbols_provider_local(
 
         let (_, cgus) = tcx.collect_and_partition_mono_items(());
 
+        // The symbols created in this loop are sorted below it
+        #[allow(rustc::potential_query_instability)]
         for (mono_item, data) in cgus.iter().flat_map(|cgu| cgu.items().iter()) {
             if data.linkage != Linkage::External {
                 // We can only re-use things with external linkage, otherwise

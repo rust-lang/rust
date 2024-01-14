@@ -39,7 +39,7 @@ pub fn opts() -> TargetOptions {
         // While we support ELF TLS, rust requires a way to register
         // cleanup handlers (in C, this would be something along the lines of:
         // void register_callback(void (*fn)(void *), void *arg);
-        // (see src/libstd/sys/unix/fast_thread_local.rs) that is currently
+        // (see src/libstd/sys/pal/unix/fast_thread_local.rs) that is currently
         // missing in illumos. For now at least, we must fallback to using
         // pthread_{get,set}specific.
         //has_thread_local: true,

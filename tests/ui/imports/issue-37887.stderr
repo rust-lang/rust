@@ -14,6 +14,7 @@ LL |     extern crate libc;
    |
    = note: see issue #27812 <https://github.com/rust-lang/rust/issues/27812> for more information
    = help: add `#![feature(rustc_private)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: aborting due to 2 previous errors
 

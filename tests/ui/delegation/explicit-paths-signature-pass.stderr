@@ -1,0 +1,11 @@
+warning: the feature `fn_delegation` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/explicit-paths-signature-pass.rs:3:12
+   |
+LL | #![feature(fn_delegation)]
+   |            ^^^^^^^^^^^^^
+   |
+   = note: see issue #118212 <https://github.com/rust-lang/rust/issues/118212> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: 1 warning emitted
+

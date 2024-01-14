@@ -394,13 +394,18 @@ pub(crate) enum PathSource<'a> {
     TupleStruct(Span, &'a [Span]),
     // `m::A::B` in `<T as m::A>::B::C`.
     TraitItem(Namespace),
+    // Paths in delegation item
+    Delegation,
 }
 
 impl<'a> PathSource<'a> {
     fn namespace(self) -> Namespace {
         match self {
             PathSource::Type | PathSource::Trait(_) | PathSource::Struct => TypeNS,
-            PathSource::Expr(..) | PathSource::Pat | PathSource::TupleStruct(..) => ValueNS,
+            PathSource::Expr(..)
+            | PathSource::Pat
+            | PathSource::TupleStruct(..)
+            | PathSource::Delegation => ValueNS,
             PathSource::TraitItem(ns) => ns,
         }
     }
@@ -412,7 +417,7 @@ impl<'a> PathSource<'a> {
             | PathSource::Pat
             | PathSource::Struct
             | PathSource::TupleStruct(..) => true,
-            PathSource::Trait(_) | PathSource::TraitItem(..) => false,
+            PathSource::Trait(_) | PathSource::TraitItem(..) | PathSource::Delegation => false,
         }
     }
 
@@ -454,6 +459,7 @@ impl<'a> PathSource<'a> {
                 },
                 _ => "value",
             },
+            PathSource::Delegation => "function",
         }
     }
 
@@ -521,6 +527,7 @@ impl<'a> PathSource<'a> {
                 Res::Def(DefKind::AssocTy, _) if ns == TypeNS => true,
                 _ => false,
             },
+            PathSource::Delegation => matches!(res, Res::Def(DefKind::Fn | DefKind::AssocFn, _)),
         }
     }
 
@@ -533,8 +540,8 @@ impl<'a> PathSource<'a> {
             (PathSource::Type, false) => error_code!(E0412),
             (PathSource::Struct, true) => error_code!(E0574),
             (PathSource::Struct, false) => error_code!(E0422),
-            (PathSource::Expr(..), true) => error_code!(E0423),
-            (PathSource::Expr(..), false) => error_code!(E0425),
+            (PathSource::Expr(..), true) | (PathSource::Delegation, true) => error_code!(E0423),
+            (PathSource::Expr(..), false) | (PathSource::Delegation, false) => error_code!(E0425),
             (PathSource::Pat | PathSource::TupleStruct(..), true) => error_code!(E0532),
             (PathSource::Pat | PathSource::TupleStruct(..), false) => error_code!(E0531),
             (PathSource::TraitItem(..), true) => error_code!(E0575),
@@ -1805,7 +1812,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 PathSource::Expr(..)
                 | PathSource::Pat
                 | PathSource::Struct
-                | PathSource::TupleStruct(..) => true,
+                | PathSource::TupleStruct(..)
+                | PathSource::Delegation => true,
             };
             if inferred {
                 // Do not create a parameter for patterns and expressions: type checking can infer
@@ -2514,6 +2522,10 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 visit::walk_item(self, item);
             }
 
+            ItemKind::Delegation(ref delegation) => {
+                self.resolve_delegation(delegation);
+            }
+
             ItemKind::ExternCrate(..) => {}
 
             ItemKind::MacCall(_) => panic!("unexpanded macro in resolve!"),
@@ -2790,6 +2802,9 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 AssocItemKind::Fn(box Fn { generics, .. }) => {
                     walk_assoc_item(self, generics, LifetimeBinderKind::Function, item);
                 }
+                AssocItemKind::Delegation(delegation) => {
+                    self.resolve_delegation(delegation);
+                }
                 AssocItemKind::Type(box TyAlias { generics, .. }) => self
                     .with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
                         walk_assoc_item(this, generics, LifetimeBinderKind::Item, item)
@@ -3036,6 +3051,19 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                     },
                 );
             }
+            AssocItemKind::Delegation(box delegation) => {
+                debug!("resolve_implementation AssocItemKind::Delegation");
+                self.check_trait_item(
+                    item.id,
+                    item.ident,
+                    &item.kind,
+                    ValueNS,
+                    item.span,
+                    seen_trait_items,
+                    |i, s, c| MethodNotMemberOfTrait(i, s, c),
+                );
+                self.resolve_delegation(delegation);
+            }
             AssocItemKind::MacCall(_) => {
                 panic!("unexpanded macro in resolve!")
             }
@@ -3123,7 +3151,8 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
         match (def_kind, kind) {
             (DefKind::AssocTy, AssocItemKind::Type(..))
             | (DefKind::AssocFn, AssocItemKind::Fn(..))
-            | (DefKind::AssocConst, AssocItemKind::Const(..)) => {
+            | (DefKind::AssocConst, AssocItemKind::Const(..))
+            | (DefKind::AssocFn, AssocItemKind::Delegation(..)) => {
                 self.r.record_partial_res(id, PartialRes::new(res));
                 return;
             }
@@ -3136,6 +3165,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             AssocItemKind::Const(..) => (rustc_errors::error_code!(E0323), "const"),
             AssocItemKind::Fn(..) => (rustc_errors::error_code!(E0324), "method"),
             AssocItemKind::Type(..) => (rustc_errors::error_code!(E0325), "type"),
+            AssocItemKind::Delegation(..) => (rustc_errors::error_code!(E0324), "method"),
             AssocItemKind::MacCall(..) => span_bug!(span, "unexpanded macro"),
         };
         let trait_path = path_names_to_string(path);
@@ -3157,6 +3187,32 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 this.visit_expr(expr)
             });
         })
+    }
+
+    fn resolve_delegation(&mut self, delegation: &'ast Delegation) {
+        self.smart_resolve_path(
+            delegation.id,
+            &delegation.qself,
+            &delegation.path,
+            PathSource::Delegation,
+        );
+        if let Some(qself) = &delegation.qself {
+            self.visit_ty(&qself.ty);
+        }
+        self.visit_path(&delegation.path, delegation.id);
+        if let Some(body) = &delegation.body {
+            // `PatBoundCtx` is not necessary in this context
+            let mut bindings = smallvec![(PatBoundCtx::Product, Default::default())];
+
+            let span = delegation.path.segments.last().unwrap().ident.span;
+            self.fresh_binding(
+                Ident::new(kw::SelfLower, span),
+                delegation.id,
+                PatternSource::FnParam,
+                &mut bindings,
+            );
+            self.visit_block(body);
+        }
     }
 
     fn resolve_params(&mut self, params: &'ast [Param]) {
@@ -3998,11 +4054,12 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
                 label,
                 suggestion,
                 module,
+                segment_name,
             } => {
                 return Err(respan(
                     span,
                     ResolutionError::FailedToResolve {
-                        last_segment: None,
+                        segment: Some(segment_name),
                         label,
                         suggestion,
                         module,
@@ -4551,13 +4608,24 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
     }
 }
 
-struct LifetimeCountVisitor<'a, 'b, 'tcx> {
+/// Walks the whole crate in DFS order, visiting each item, counting the declared number of
+/// lifetime generic parameters and function parameters.
+struct ItemInfoCollector<'a, 'b, 'tcx> {
     r: &'b mut Resolver<'a, 'tcx>,
 }
 
-/// Walks the whole crate in DFS order, visiting each item, counting the declared number of
-/// lifetime generic parameters.
-impl<'ast> Visitor<'ast> for LifetimeCountVisitor<'_, '_, '_> {
+impl ItemInfoCollector<'_, '_, '_> {
+    fn collect_fn_info(&mut self, sig: &FnSig, id: NodeId) {
+        let def_id = self.r.local_def_id(id);
+        self.r.fn_parameter_counts.insert(def_id, sig.decl.inputs.len());
+
+        if sig.decl.has_self() {
+            self.r.has_self.insert(def_id);
+        }
+    }
+}
+
+impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, '_, '_> {
     fn visit_item(&mut self, item: &'ast Item) {
         match &item.kind {
             ItemKind::TyAlias(box TyAlias { ref generics, .. })
@@ -4569,6 +4637,10 @@ impl<'ast> Visitor<'ast> for LifetimeCountVisitor<'_, '_, '_> {
             | ItemKind::Impl(box Impl { ref generics, .. })
             | ItemKind::Trait(box Trait { ref generics, .. })
             | ItemKind::TraitAlias(ref generics, _) => {
+                if let ItemKind::Fn(box Fn { ref sig, .. }) = &item.kind {
+                    self.collect_fn_info(sig, item.id);
+                }
+
                 let def_id = self.r.local_def_id(item.id);
                 let count = generics
                     .params
@@ -4586,14 +4658,27 @@ impl<'ast> Visitor<'ast> for LifetimeCountVisitor<'_, '_, '_> {
             | ItemKind::MacroDef(..)
             | ItemKind::GlobalAsm(..)
             | ItemKind::MacCall(..) => {}
+            ItemKind::Delegation(..) => {
+                // Delegated functions have lifetimes, their count is not necessarily zero.
+                // But skipping the delegation items here doesn't mean that the count will be considered zero,
+                // it means there will be a panic when retrieving the count,
+                // but for delegation items we are never actually retrieving that count in practice.
+            }
         }
         visit::walk_item(self, item)
+    }
+
+    fn visit_assoc_item(&mut self, item: &'ast AssocItem, ctxt: AssocCtxt) {
+        if let AssocItemKind::Fn(box Fn { ref sig, .. }) = &item.kind {
+            self.collect_fn_info(sig, item.id);
+        }
+        visit::walk_assoc_item(self, item, ctxt);
     }
 }
 
 impl<'a, 'tcx> Resolver<'a, 'tcx> {
     pub(crate) fn late_resolve_crate(&mut self, krate: &Crate) {
-        visit::walk_crate(&mut LifetimeCountVisitor { r: self }, krate);
+        visit::walk_crate(&mut ItemInfoCollector { r: self }, krate);
         let mut late_resolution_visitor = LateResolutionVisitor::new(self);
         late_resolution_visitor.resolve_doc_links(&krate.attrs, MaybeExported::Ok(CRATE_NODE_ID));
         visit::walk_crate(&mut late_resolution_visitor, krate);
