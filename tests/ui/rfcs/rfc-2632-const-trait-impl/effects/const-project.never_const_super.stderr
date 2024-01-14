@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `Self: ~const Uwu` is not satisfied
+  --> $DIR/const-project.rs:11:33
+   |
+LL | pub trait Owo<const X: u32 = { <Self as ~const Uwu>::K }> {}
+   |                                 ^^^^ the trait `~const Uwu` is not implemented for `Self`
+   |
+help: consider further restricting `Self`
+   |
+LL | pub trait Owo<const X: u32 = { <Self as ~const Uwu>::K }>: ~const Uwu {}
+   |                                                          ++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

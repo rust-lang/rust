@@ -51,9 +51,8 @@ trait Try: FromResidual<Self::Residual> {
     fn branch(self) -> ControlFlow<Self::Residual, Self::Output>;
 }
 
-// FIXME
-// #[const_trait]
-trait FromResidual<R = <Self as /* FIXME: ~const */ Try>::Residual> {
+#[const_trait]
+trait FromResidual<R = <Self as ~const Try>::Residual> {
     #[lang = "from_residual"]
     fn from_residual(residual: R) -> Self;
 }

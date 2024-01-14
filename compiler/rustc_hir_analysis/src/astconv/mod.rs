@@ -9,6 +9,7 @@ mod lint;
 mod object_safety;
 
 use crate::astconv::errors::prohibit_assoc_ty_binding;
+use crate::astconv::generics::EarlyBinderExt;
 use crate::astconv::generics::{check_generic_arg_count, create_args_for_parent_generic_args};
 use crate::bounds::Bounds;
 use crate::collect::HirPlaceholderCollector;
@@ -226,6 +227,7 @@ pub trait CreateSubstsForGenericArgsCtxt<'a, 'tcx> {
     fn inferred_kind(
         &mut self,
         args: Option<&[ty::GenericArg<'tcx>]>,
+        host_effect: Option<(usize, ty::Const<'tcx>)>,
         param: &ty::GenericParamDef,
         infer_args: bool,
     ) -> ty::GenericArg<'tcx>;
@@ -464,9 +466,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     (&GenericParamDefKind::Type { has_default, .. }, GenericArg::Infer(inf)) => {
                         handle_ty_args(has_default, &inf.to_ty())
                     }
-                    (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => {
+                    (GenericParamDefKind::Const { is_host_effect, .. }, GenericArg::Const(ct)) => {
                         let did = ct.value.def_id;
-                        tcx.feed_anon_const_type(did, tcx.type_of(param.def_id));
+                        // FIXME(fmease): We add comment why.
+                        if !is_host_effect {
+                            tcx.feed_anon_const_type(did, tcx.type_of(param.def_id));
+                        }
                         ty::Const::from_anon_const(tcx, did).into()
                     }
                     (&GenericParamDefKind::Const { .. }, hir::GenericArg::Infer(inf)) => {
@@ -492,6 +497,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             fn inferred_kind(
                 &mut self,
                 args: Option<&[ty::GenericArg<'tcx>]>,
+                host_effect: Option<(usize, ty::Const<'tcx>)>,
                 param: &ty::GenericParamDef,
                 infer_args: bool,
             ) -> ty::GenericArg<'tcx> {
@@ -522,7 +528,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 // Avoid ICE #86756 when type error recovery goes awry.
                                 return Ty::new_misc_error(tcx).into();
                             }
-                            tcx.at(self.span).type_of(param.def_id).instantiate(tcx, args).into()
+                            tcx.at(self.span)
+                                .type_of(param.def_id)
+                                .instantiate_with_host_effect(tcx, args, host_effect)
+                                .into()
                         } else if infer_args {
                             self.astconv.ty_infer(Some(param), self.span).into()
                         } else {
@@ -539,10 +548,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         if let Err(guar) = ty.error_reported() {
                             return ty::Const::new_error(tcx, guar, ty).into();
                         }
-                        // FIXME(effects) see if we should special case effect params here
                         if !infer_args && has_default {
                             tcx.const_param_default(param.def_id)
-                                .instantiate(tcx, args.unwrap())
+                                .instantiate_with_host_effect(tcx, args.unwrap(), host_effect)
                                 .into()
                         } else {
                             if infer_args {

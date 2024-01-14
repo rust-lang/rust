@@ -559,7 +559,7 @@ pub fn noop_visit_path<T: MutVisitor>(Path { segments, span, tokens }: &mut Path
 
 pub fn noop_visit_qself<T: MutVisitor>(qself: &mut Option<P<QSelf>>, vis: &mut T) {
     visit_opt(qself, |qself| {
-        let QSelf { ty, path_span, position: _ } = &mut **qself;
+        let QSelf { ty, constness: _, path_span, position: _ } = &mut **qself;
         vis.visit_ty(ty);
         vis.visit_span(path_span);
     })

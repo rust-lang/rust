@@ -12,7 +12,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, GenericArg, Node, QPath};
 use rustc_hir_analysis::astconv::generics::{
-    check_generic_arg_count_for_call, create_args_for_parent_generic_args,
+    check_generic_arg_count_for_call, create_args_for_parent_generic_args, EarlyBinderExt,
 };
 use rustc_hir_analysis::astconv::{
     AstConv, CreateSubstsForGenericArgsCtxt, ExplicitLateBound, GenericArgCountMismatch,
@@ -1329,6 +1329,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fn inferred_kind(
                 &mut self,
                 args: Option<&[ty::GenericArg<'tcx>]>,
+                host_effect: Option<(usize, ty::Const<'tcx>)>,
                 param: &ty::GenericParamDef,
                 infer_args: bool,
             ) -> ty::GenericArg<'tcx> {
@@ -1342,7 +1343,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // If we have a default, then it doesn't matter that we're not
                             // inferring the type arguments: we provide the default where any
                             // is missing.
-                            tcx.type_of(param.def_id).instantiate(tcx, args.unwrap()).into()
+                            tcx.type_of(param.def_id)
+                                .instantiate_with_host_effect(tcx, args.unwrap(), host_effect)
+                                .into()
                         } else {
                             // If no type arguments were provided, we have to infer them.
                             // This case also occurs as a result of some malformed input, e.g.
@@ -1367,7 +1370,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             } else if !infer_args {
                                 return tcx
                                     .const_param_default(param.def_id)
-                                    .instantiate(tcx, args.unwrap())
+                                    .instantiate_with_host_effect(tcx, args.unwrap(), host_effect)
                                     .into();
                             }
                         }

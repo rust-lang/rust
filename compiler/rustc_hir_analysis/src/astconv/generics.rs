@@ -12,9 +12,11 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::GenericArg;
 use rustc_middle::ty::{
     self, GenericArgsRef, GenericParamDef, GenericParamDefKind, IsSuggestable, Ty, TyCtxt,
+    TypeVisitableExt,
 };
 use rustc_session::lint::builtin::LATE_BOUND_LIFETIME_ARGUMENTS;
 use rustc_span::{symbol::kw, Span};
+use rustc_type_ir::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
 use smallvec::SmallVec;
 
 /// Report an error that a generic argument did not match the generic parameter that was
@@ -211,14 +213,39 @@ pub fn create_args_for_parent_generic_args<'tcx, 'a>(
             && let GenericParamDefKind::Type { .. } = param.kind
         {
             args.push(
-                self_ty.map(|ty| ty.into()).unwrap_or_else(|| ctx.inferred_kind(None, param, true)),
+                self_ty
+                    .map(|ty| ty.into())
+                    .unwrap_or_else(|| ctx.inferred_kind(None, None, param, true)),
             );
             params.next();
         }
 
         // Check whether this segment takes generic arguments and the user has provided any.
         let (hir_args, infer_args) = ctx.args_for_def_id(def_id);
-        let mut hir_args = hir_args.iter().flat_map(|args| args.args.iter()).peekable();
+        let hir_args = hir_args.iter().flat_map(|args| args.args.iter());
+
+        let host_effect = defs.host_effect_index.map(|index| {
+            let arg = hir_args
+                .clone()
+                .rev()
+                .find_map(|arg| match arg {
+                    hir::GenericArg::Const(arg) if arg.is_desugared_from_effects => {
+                        let did = arg.value.def_id;
+                        let param = defs.param_at(index, tcx);
+                        // FIXME(fmease): Add comment why.
+                        tcx.feed_anon_const_type(did, tcx.type_of(param.def_id));
+                        Some(ty::Const::from_anon_const(tcx, did))
+                    }
+                    _ => None,
+                })
+                // FIXME(effects): Don't hard-code the default of host effect params here. I guess
+                // we could `tcx.const_param_default(tcx, param.def_id).no_bound_vars().unwrap()`
+                // instead which isn't perfect either due to the assumption of “no bound vars”.
+                .unwrap_or(tcx.consts.true_);
+            (index, arg)
+        });
+
+        let mut hir_args = hir_args.peekable();
 
         // If we encounter a type or const when we expect a lifetime, we infer the lifetimes.
         // If we later encounter a lifetime, we know that the arguments were provided in the
@@ -256,7 +283,12 @@ pub fn create_args_for_parent_generic_args<'tcx, 'a>(
                             // Since this is a const impl, we need to insert a host arg at the end of
                             // `PartialEq`'s generics, but this errors since `Rhs` isn't specified.
                             // To work around this, we infer all arguments until we reach the host param.
-                            args.push(ctx.inferred_kind(Some(&args), param, infer_args));
+                            args.push(ctx.inferred_kind(
+                                Some(&args),
+                                host_effect,
+                                param,
+                                infer_args,
+                            ));
                             params.next();
                         }
                         (GenericArg::Lifetime(_), GenericParamDefKind::Lifetime, _)
@@ -281,7 +313,7 @@ pub fn create_args_for_parent_generic_args<'tcx, 'a>(
                         ) => {
                             // We expected a lifetime argument, but got a type or const
                             // argument. That means we're inferring the lifetimes.
-                            args.push(ctx.inferred_kind(None, param, infer_args));
+                            args.push(ctx.inferred_kind(None, None, param, infer_args));
                             force_infer_lt = Some((arg, param));
                             params.next();
                         }
@@ -377,7 +409,7 @@ pub fn create_args_for_parent_generic_args<'tcx, 'a>(
                 (None, Some(&param)) => {
                     // If there are fewer arguments than parameters, it means
                     // we're inferring the remaining arguments.
-                    args.push(ctx.inferred_kind(Some(&args), param, infer_args));
+                    args.push(ctx.inferred_kind(Some(&args), host_effect, param, infer_args));
                     params.next();
                 }
 
@@ -654,5 +686,96 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
         ExplicitLateBound::Yes
     } else {
         ExplicitLateBound::No
+    }
+}
+
+pub trait EarlyBinderExt<'tcx, T> {
+    fn instantiate_with_host_effect(
+        self,
+        tcx: TyCtxt<'tcx>,
+        args: &[ty::GenericArg<'tcx>],
+        host_effect: Option<(usize, ty::Const<'tcx>)>,
+    ) -> T;
+}
+
+impl<'tcx, T: TypeFoldable<TyCtxt<'tcx>>> EarlyBinderExt<'tcx, T> for ty::EarlyBinder<T> {
+    fn instantiate_with_host_effect(
+        self,
+        tcx: TyCtxt<'tcx>,
+        args: &[ty::GenericArg<'tcx>],
+        host_effect: Option<(usize, ty::Const<'tcx>)>,
+    ) -> T {
+        let Some(host_effect) = host_effect else {
+            return self.instantiate(tcx, args);
+        };
+        let mut folder = ArgFolder { tcx, args, host_effect, depth: ty::INNERMOST };
+        self.skip_binder().fold_with(&mut folder)
+    }
+}
+
+struct ArgFolder<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    args: &'a [ty::GenericArg<'tcx>],
+    host_effect: (usize, ty::Const<'tcx>),
+    depth: ty::DebruijnIndex,
+}
+
+// FIXME: Proper panic messages.
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ArgFolder<'_, 'tcx> {
+    #[inline]
+    fn interner(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_binder<T: TypeFoldable<TyCtxt<'tcx>>>(
+        &mut self,
+        t: ty::Binder<'tcx, T>,
+    ) -> ty::Binder<'tcx, T> {
+        self.depth.shift_in(1);
+        let t = t.super_fold_with(self);
+        self.depth.shift_out(1);
+        t
+    }
+
+    fn fold_region(&mut self, re: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        if let ty::ReEarlyParam(param) = *re {
+            let arg = self.args.get(param.index as usize).map(|arg| arg.unpack());
+            let Some(ty::GenericArgKind::Lifetime(re)) = arg else { bug!() };
+            ty::fold::shift_vars(self.tcx, re, self.depth.as_u32())
+        } else {
+            re
+        }
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if !ty.has_param() {
+            return ty;
+        }
+        if let ty::Param(param) = *ty.kind() {
+            let arg = self.args.get(param.index as usize).map(|arg| arg.unpack());
+            let Some(ty::GenericArgKind::Type(ty)) = arg else { bug!() };
+            ty::fold::shift_vars(self.tcx, ty, self.depth.as_u32())
+        } else {
+            ty.super_fold_with(self)
+        }
+    }
+
+    fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+        if !ct.has_param() {
+            return ct;
+        }
+        if let ty::ConstKind::Param(param) = ct.kind() {
+            let (host_effect_index, host_effect_arg) = self.host_effect;
+            if param.index as usize == host_effect_index {
+                assert!(self.depth == ty::INNERMOST || !host_effect_arg.has_escaping_bound_vars());
+                host_effect_arg
+            } else {
+                let arg = self.args.get(param.index as usize).map(|arg| arg.unpack());
+                let Some(ty::GenericArgKind::Const(ct)) = arg else { bug!() };
+                ty::fold::shift_vars(self.tcx, ct, self.depth.as_u32())
+            }
+        } else {
+            ct.super_fold_with(self)
+        }
     }
 }

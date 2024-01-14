@@ -1574,6 +1574,16 @@ impl GenBlockKind {
 pub struct QSelf {
     pub ty: P<Ty>,
 
+    /// The constness of the trait (under feature `const_trait_impl`).
+    ///
+    /// * `<Type as Trait>::AssocTy`: `BoundConstness::Never`
+    /// * `<Type as const Trait>::AssocTy`: `BoundConstness::Always`
+    /// * `<Type as ~const Trait>::AssocTy`: `BoundConstness::Maybe`
+    // FIXME(effects): This is the most convenient place to put this information but
+    // it doesn't make much sense from a conceptual viewpoint since it doesn't have
+    // much to do with the self type.
+    pub constness: BoundConstness,
+
     /// The span of `a::b::Trait` in a path like `<Vec<T> as
     /// a::b::Trait>::AssociatedItem`; in the case where `position ==
     /// 0`, this is an empty span.

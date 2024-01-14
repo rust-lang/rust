@@ -200,36 +200,35 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::ItemKind::Const(ty, generics, body_id)
             }
             ItemKind::Fn(box Fn {
-                sig: FnSig { decl, header, span: fn_sig_span },
+                sig: FnSig { decl: ast_decl, header, span: fn_sig_span },
                 generics,
                 body,
                 ..
             }) => {
                 self.with_new_scopes(ident.span, |this| {
-                    // Note: we don't need to change the return type from `T` to
-                    // `impl Future<Output = T>` here because lower_body
-                    // only cares about the input argument patterns in the function
-                    // declaration (decl), not the return types.
-                    let coroutine_kind = header.coroutine_kind;
-                    let body_id = this.lower_maybe_coroutine_body(
-                        span,
-                        hir_id,
-                        decl,
-                        coroutine_kind,
-                        body.as_deref(),
-                    );
-
+                    // We lower the generics before we lower the body since the body can bind the host
+                    // effect param via qualified paths of the form `<Type as ~const Trait>::AssocType`.
                     let itctx = ImplTraitContext::Universal;
                     let (generics, decl) =
                         this.lower_generics(generics, header.constness, id, &itctx, |this| {
                             this.lower_fn_decl(
-                                decl,
+                                ast_decl,
                                 id,
                                 *fn_sig_span,
                                 FnDeclKind::Fn,
-                                coroutine_kind,
+                                header.coroutine_kind,
                             )
                         });
+                    // Note: We don't need to change the return type from `T` to `impl Future<Output = T>`
+                    // here because `lower_body` only cares about the input argument patterns in the function
+                    // declaration `decl`, not the return types.
+                    let body_id = this.lower_maybe_coroutine_body(
+                        span,
+                        hir_id,
+                        ast_decl,
+                        header.coroutine_kind,
+                        body.as_deref(),
+                    );
                     let sig = hir::FnSig {
                         decl,
                         header: this.lower_fn_header(*header),
