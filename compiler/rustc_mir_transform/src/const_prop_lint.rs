@@ -252,11 +252,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     /// Returns the value, if any, of evaluating `c`.
-    fn eval_constant(
-        &mut self,
-        c: &ConstOperand<'tcx>,
-        layout: Option<TyAndLayout<'tcx>>,
-    ) -> Option<OpTy<'tcx>> {
+    fn eval_constant(&mut self, c: &ConstOperand<'tcx>) -> Option<OpTy<'tcx>> {
         // FIXME we need to revisit this for #67176
         if c.has_param() {
             return None;
@@ -270,16 +266,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // manually normalized.
         let val = self.tcx.try_normalize_erasing_regions(self.param_env, c.const_).ok()?;
 
-        self.use_ecx(|this| this.ecx.eval_mir_constant(&val, Some(c.span), layout))
+        self.use_ecx(|this| this.ecx.eval_mir_constant(&val, Some(c.span), None))
     }
 
     /// Returns the value, if any, of evaluating `place`.
     #[instrument(level = "trace", skip(self), ret)]
-    fn eval_place(
-        &mut self,
-        place: Place<'tcx>,
-        layout: Option<TyAndLayout<'tcx>>,
-    ) -> Option<OpTy<'tcx>> {
+    fn eval_place(&mut self, place: Place<'tcx>) -> Option<OpTy<'tcx>> {
         match self.get_const(place)? {
             Value::Immediate(op) => Some(op.clone()),
             Value::Aggregate { .. } => None,
@@ -289,14 +281,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     /// Returns the value, if any, of evaluating `op`. Calls upon `eval_constant`
     /// or `eval_place`, depending on the variant of `Operand` used.
-    fn eval_operand(
-        &mut self,
-        op: &Operand<'tcx>,
-        layout: Option<TyAndLayout<'tcx>>,
-    ) -> Option<OpTy<'tcx>> {
+    fn eval_operand(&mut self, op: &Operand<'tcx>) -> Option<OpTy<'tcx>> {
         match *op {
-            Operand::Constant(ref c) => self.eval_constant(c, layout),
-            Operand::Move(place) | Operand::Copy(place) => self.eval_place(place, layout),
+            Operand::Constant(ref c) => self.eval_constant(c),
+            Operand::Move(place) | Operand::Copy(place) => self.eval_place(place),
         }
     }
 
@@ -319,7 +307,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     fn check_unary_op(&mut self, op: UnOp, arg: &Operand<'tcx>, location: Location) -> Option<()> {
-        let arg = self.eval_operand(arg, None)?;
+        let arg = self.eval_operand(arg)?;
         if let (val, true) = self.use_ecx(|this| {
             let val = this.ecx.read_immediate(&arg)?;
             let (_res, overflow) = this.ecx.overflowing_unary_op(op, &val)?;
@@ -346,12 +334,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         right: &Operand<'tcx>,
         location: Location,
     ) -> Option<()> {
-        let r = self
-            .eval_operand(right, None)
-            .and_then(|r| self.use_ecx(|this| this.ecx.read_immediate(&r)));
-        let l = self
-            .eval_operand(left, None)
-            .and_then(|l| self.use_ecx(|this| this.ecx.read_immediate(&l)));
+        let r =
+            self.eval_operand(right).and_then(|r| self.use_ecx(|this| this.ecx.read_immediate(&r)));
+        let l =
+            self.eval_operand(left).and_then(|l| self.use_ecx(|this| this.ecx.read_immediate(&l)));
         // Check for exceeding shifts *even if* we cannot evaluate the LHS.
         if matches!(op, BinOp::Shr | BinOp::Shl) {
             let r = r.clone()?;
@@ -481,7 +467,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         cond: &Operand<'tcx>,
         location: Location,
     ) -> Option<!> {
-        let value = &self.eval_operand(cond, None)?;
+        let value = &self.eval_operand(cond)?;
         trace!("assertion on {:?} should be {:?}", value, expected);
 
         let expected = Scalar::from_bool(expected);
@@ -509,7 +495,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             let mut eval_to_int = |op| {
                 // This can be `None` if the lhs wasn't const propagated and we just
                 // triggered the assert on the value of the rhs.
-                self.eval_operand(op, None)
+                self.eval_operand(op)
                     .and_then(|op| self.ecx.read_immediate(&op).ok())
                     .map_or(DbgVal::Underscore, |op| DbgVal::Val(op.to_const_int()))
             };
@@ -567,19 +553,15 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let val: Value<'_> = match *rvalue {
             ThreadLocalRef(_) => return None,
 
-            Use(ref operand) => self.eval_operand(operand, Some(layout))?.into(),
+            Use(ref operand) => self.eval_operand(operand)?.into(),
 
-            CopyForDeref(place) => self.eval_place(place, Some(layout))?.into(),
+            CopyForDeref(place) => self.eval_place(place)?.into(),
 
             BinaryOp(bin_op, box (ref left, ref right)) => {
-                let layout =
-                    rustc_const_eval::util::binop_left_homogeneous(bin_op).then_some(layout);
-                let left = self.eval_operand(left, layout)?;
+                let left = self.eval_operand(left)?;
                 let left = self.use_ecx(|this| this.ecx.read_immediate(&left))?;
 
-                let layout =
-                    rustc_const_eval::util::binop_right_homogeneous(bin_op).then_some(left.layout);
-                let right = self.eval_operand(right, layout)?;
+                let right = self.eval_operand(right)?;
                 let right = self.use_ecx(|this| this.ecx.read_immediate(&right))?;
 
                 let val =
@@ -588,12 +570,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
 
             CheckedBinaryOp(bin_op, box (ref left, ref right)) => {
-                let left = self.eval_operand(left, None)?;
+                let left = self.eval_operand(left)?;
                 let left = self.use_ecx(|this| this.ecx.read_immediate(&left))?;
 
-                let layout =
-                    rustc_const_eval::util::binop_right_homogeneous(bin_op).then_some(left.layout);
-                let right = self.eval_operand(right, layout)?;
+                let right = self.eval_operand(right)?;
                 let right = self.use_ecx(|this| this.ecx.read_immediate(&right))?;
 
                 let (val, overflowed) =
@@ -606,7 +586,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             }
 
             UnaryOp(un_op, ref operand) => {
-                let operand = self.eval_operand(operand, Some(layout))?;
+                let operand = self.eval_operand(operand)?;
                 let val = self.use_ecx(|this| this.ecx.read_immediate(&operand))?;
 
                 let val = self.use_ecx(|this| this.ecx.wrapping_unary_op(un_op, &val))?;
@@ -616,9 +596,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             Aggregate(ref kind, ref fields) => Value::Aggregate {
                 fields: fields
                     .iter()
-                    .map(|field| {
-                        self.eval_operand(field, None).map_or(Value::Uninit, Value::Immediate)
-                    })
+                    .map(|field| self.eval_operand(field).map_or(Value::Uninit, Value::Immediate))
                     .collect(),
                 variant: match **kind {
                     AggregateKind::Adt(_, variant, _, _, _) => variant,
@@ -664,21 +642,21 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
             Cast(ref kind, ref value, to) => match kind {
                 CastKind::IntToInt | CastKind::IntToFloat => {
-                    let value = self.eval_operand(value, None)?;
+                    let value = self.eval_operand(value)?;
                     let value = self.ecx.read_immediate(&value).ok()?;
                     let to = self.ecx.layout_of(to).ok()?;
                     let res = self.ecx.int_to_int_or_float(&value, to).ok()?;
                     res.into()
                 }
                 CastKind::FloatToFloat | CastKind::FloatToInt => {
-                    let value = self.eval_operand(value, None)?;
+                    let value = self.eval_operand(value)?;
                     let value = self.ecx.read_immediate(&value).ok()?;
                     let to = self.ecx.layout_of(to).ok()?;
                     let res = self.ecx.float_to_float_or_int(&value, to).ok()?;
                     res.into()
                 }
                 CastKind::Transmute => {
-                    let value = self.eval_operand(value, None)?;
+                    let value = self.eval_operand(value)?;
                     let to = self.ecx.layout_of(to).ok()?;
                     // `offset` for immediates only supports scalar/scalar-pair ABIs,
                     // so bail out if the target is not one.
@@ -754,7 +732,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
     fn visit_constant(&mut self, constant: &ConstOperand<'tcx>, location: Location) {
         trace!("visit_constant: {:?}", constant);
         self.super_constant(constant, location);
-        self.eval_constant(constant, None);
+        self.eval_constant(constant);
     }
 
     fn visit_assign(&mut self, place: &Place<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
@@ -827,7 +805,7 @@ impl<'tcx> Visitor<'tcx> for ConstPropagator<'_, 'tcx> {
                 self.check_assertion(*expected, msg, cond, location);
             }
             TerminatorKind::SwitchInt { ref discr, ref targets } => {
-                if let Some(ref value) = self.eval_operand(discr, None)
+                if let Some(ref value) = self.eval_operand(discr)
                     && let Some(value_const) = self.use_ecx(|this| this.ecx.read_scalar(value))
                     && let Ok(constant) = value_const.try_to_int()
                     && let Ok(constant) = constant.to_bits(constant.size())
