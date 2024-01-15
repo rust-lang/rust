@@ -9,6 +9,7 @@ use crate::{
     struct_span_code_err, BreakableCtxt, Diverges, Expectation, FnCtxt, Needs, RawTy,
     TupleArgumentsFlag,
 };
+use itertools::Itertools;
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{
@@ -421,7 +422,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 formal_input_tys
                     .iter()
                     .copied()
-                    .zip(expected_input_tys.iter().copied())
+                    .zip_eq(expected_input_tys.iter().copied())
                     .map(|vars| self.resolve_vars_if_possible(vars)),
             );
 
