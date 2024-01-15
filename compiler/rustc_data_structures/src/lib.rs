@@ -18,7 +18,6 @@
 #![feature(allocator_api)]
 #![feature(array_windows)]
 #![feature(auto_traits)]
-#![feature(cell_leak)]
 #![feature(cfg_match)]
 #![feature(core_intrinsics)]
 #![feature(extend_one)]
