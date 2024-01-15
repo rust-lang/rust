@@ -1340,10 +1340,11 @@ impl<Cx: TypeCx> WitnessMatrix<Cx> {
 /// We can however get false negatives because exhaustiveness does not explore all cases. See the
 /// section on relevancy at the top of the file.
 fn collect_overlapping_range_endpoints<'p, Cx: TypeCx>(
+    mcx: MatchCtxt<'_, Cx>,
     overlap_range: IntRange,
     matrix: &Matrix<'p, Cx>,
     specialized_matrix: &Matrix<'p, Cx>,
-    overlapping_range_endpoints: &mut Vec<OverlappingRanges<'p, Cx>>,
+    _overlapping_range_endpoints: &mut Vec<OverlappingRanges<'p, Cx>>,
 ) {
     let overlap = overlap_range.lo;
     // Ranges that look like `lo..=overlap`.
@@ -1373,11 +1374,7 @@ fn collect_overlapping_range_endpoints<'p, Cx: TypeCx>(
                     .map(|&(_, pat)| pat)
                     .collect();
                 if !overlaps_with.is_empty() {
-                    overlapping_range_endpoints.push(OverlappingRanges {
-                        pat,
-                        overlaps_on: overlap_range,
-                        overlaps_with,
-                    });
+                    mcx.tycx.lint_overlapping_range_endpoints(pat, overlap_range, &overlaps_with);
                 }
             }
             suffixes.push((child_row_id, pat))
@@ -1393,11 +1390,7 @@ fn collect_overlapping_range_endpoints<'p, Cx: TypeCx>(
                     .map(|&(_, pat)| pat)
                     .collect();
                 if !overlaps_with.is_empty() {
-                    overlapping_range_endpoints.push(OverlappingRanges {
-                        pat,
-                        overlaps_on: overlap_range,
-                        overlaps_with,
-                    });
+                    mcx.tycx.lint_overlapping_range_endpoints(pat, overlap_range, &overlaps_with);
                 }
             }
             prefixes.push((child_row_id, pat))
@@ -1538,6 +1531,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
                 && spec_matrix.rows.iter().any(|row| !row.intersects.is_empty())
             {
                 collect_overlapping_range_endpoints(
+                    mcx,
                     overlap_range,
                     matrix,
                     &spec_matrix,
