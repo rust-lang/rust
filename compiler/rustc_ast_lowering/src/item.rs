@@ -600,9 +600,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.host_param_id = generics
                 .params
                 .iter()
-                .find(|param| {
-                    matches!(param.kind, hir::GenericParamKind::Const { is_host_effect: true, .. })
-                })
+                .rev()
+                .find(|param| param.is_host_effect())
                 .map(|param| param.def_id);
         }
 

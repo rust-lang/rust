@@ -343,7 +343,7 @@ impl<'tcx> Generics {
                     default.instantiate(tcx, args) == args[param.index as usize]
                 })
                 // filter out trailing effect params, if we're not in `-Zverbose-internals`.
-                || (!verbose && matches!(param.kind, GenericParamDefKind::Const { is_host_effect: true, .. }))
+                || (!verbose && param.is_host_effect())
             })
             .count();
 

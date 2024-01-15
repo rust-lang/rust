@@ -1350,7 +1350,7 @@ fn impl_trait_ref(
                 let last_segment = path_segments.len() - 1;
                 let mut args = *path_segments[last_segment].args();
                 let last_arg = args.args.len() - 1;
-                assert!(matches!(args.args[last_arg], hir::GenericArg::Const(anon_const) if anon_const.is_desugared_from_effects));
+                assert!(args.args[last_arg].is_desugared_from_effects());
                 args.args = &args.args[..args.args.len() - 1];
                 path_segments[last_segment].args = Some(&args);
                 let path = hir::Path {

@@ -454,13 +454,8 @@ pub(crate) fn check_generic_arg_count(
         .filter(|param| matches!(param.kind, ty::GenericParamDefKind::Type { synthetic: true, .. }))
         .count();
     let named_type_param_count = param_counts.types - has_self as usize - synth_type_param_count;
-    let synth_const_param_count = gen_params
-        .params
-        .iter()
-        .filter(|param| {
-            matches!(param.kind, ty::GenericParamDefKind::Const { is_host_effect: true, .. })
-        })
-        .count();
+    let synth_const_param_count =
+        gen_params.params.iter().filter(|param| param.is_host_effect()).count();
     let named_const_param_count = param_counts.consts - synth_const_param_count;
     let infer_lifetimes =
         (gen_pos != GenericArgPosition::Type || infer_args) && !gen_args.has_lifetime_params();

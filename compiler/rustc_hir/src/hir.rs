@@ -304,6 +304,10 @@ impl GenericArg<'_> {
             GenericArg::Type(_) | GenericArg::Const(_) | GenericArg::Infer(_) => true,
         }
     }
+
+    pub fn is_desugared_from_effects(&self) -> bool {
+        matches!(self, GenericArg::Const(ConstArg { is_desugared_from_effects: true, .. }))
+    }
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
@@ -381,10 +385,8 @@ impl<'hir> GenericArgs<'hir> {
     pub fn num_generic_params(&self) -> usize {
         self.args
             .iter()
-            .filter(|arg| match arg {
-                GenericArg::Lifetime(_)
-                | GenericArg::Const(ConstArg { is_desugared_from_effects: true, .. }) => false,
-                _ => true,
+            .filter(|arg| {
+                !matches!(arg, GenericArg::Lifetime(_)) && !arg.is_desugared_from_effects()
             })
             .count()
     }
@@ -517,6 +519,10 @@ impl<'hir> GenericParam<'hir> {
     /// See `lifetime_to_generic_param` in `rustc_ast_lowering` for more information.
     pub fn is_elided_lifetime(&self) -> bool {
         matches!(self.kind, GenericParamKind::Lifetime { kind: LifetimeParamKind::Elided })
+    }
+
+    pub fn is_host_effect(&self) -> bool {
+        matches!(self.kind, GenericParamKind::Const { is_host_effect: true, .. })
     }
 }
 
