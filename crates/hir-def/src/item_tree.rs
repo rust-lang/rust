@@ -41,7 +41,7 @@ mod tests;
 use std::{
     fmt::{self, Debug},
     hash::{Hash, Hasher},
-    ops::Index,
+    ops::{Index, Range},
 };
 
 use ast::{AstNode, HasName, StructKind};
@@ -308,7 +308,7 @@ pub enum AttrOwner {
     /// Inner attributes of the source file.
     TopLevel,
 
-    Variant(Idx<Variant>),
+    Variant(FileItemTreeId<Variant>),
     Field(Idx<Field>),
     Param(Idx<Param>),
     TypeOrConstParamData(Idx<TypeOrConstParamData>),
@@ -329,7 +329,7 @@ macro_rules! from_attrs {
 
 from_attrs!(
     ModItem(ModItem),
-    Variant(Idx<Variant>),
+    Variant(FileItemTreeId<Variant>),
     Field(Idx<Field>),
     Param(Idx<Param>),
     TypeOrConstParamData(Idx<TypeOrConstParamData>),
@@ -352,35 +352,44 @@ pub trait ItemTreeNode: Clone {
     fn id_to_mod_item(id: FileItemTreeId<Self>) -> ModItem;
 }
 
-pub struct FileItemTreeId<N: ItemTreeNode>(Idx<N>);
+pub struct FileItemTreeId<N>(Idx<N>);
 
-impl<N: ItemTreeNode> FileItemTreeId<N> {
+impl<N> FileItemTreeId<N> {
+    pub fn range_iter(range: Range<Self>) -> impl Iterator<Item = Self> {
+        (range.start.index().into_raw().into_u32()..range.end.index().into_raw().into_u32())
+            .map(RawIdx::from_u32)
+            .map(Idx::from_raw)
+            .map(Self)
+    }
+}
+
+impl<N> FileItemTreeId<N> {
     pub fn index(&self) -> Idx<N> {
         self.0
     }
 }
 
-impl<N: ItemTreeNode> Clone for FileItemTreeId<N> {
+impl<N> Clone for FileItemTreeId<N> {
     fn clone(&self) -> Self {
         Self(self.0)
     }
 }
-impl<N: ItemTreeNode> Copy for FileItemTreeId<N> {}
+impl<N> Copy for FileItemTreeId<N> {}
 
-impl<N: ItemTreeNode> PartialEq for FileItemTreeId<N> {
+impl<N> PartialEq for FileItemTreeId<N> {
     fn eq(&self, other: &FileItemTreeId<N>) -> bool {
         self.0 == other.0
     }
 }
-impl<N: ItemTreeNode> Eq for FileItemTreeId<N> {}
+impl<N> Eq for FileItemTreeId<N> {}
 
-impl<N: ItemTreeNode> Hash for FileItemTreeId<N> {
+impl<N> Hash for FileItemTreeId<N> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.0.hash(state)
     }
 }
 
-impl<N: ItemTreeNode> fmt::Debug for FileItemTreeId<N> {
+impl<N> fmt::Debug for FileItemTreeId<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
@@ -415,12 +424,12 @@ impl TreeId {
 }
 
 #[derive(Debug)]
-pub struct ItemTreeId<N: ItemTreeNode> {
+pub struct ItemTreeId<N> {
     tree: TreeId,
     pub value: FileItemTreeId<N>,
 }
 
-impl<N: ItemTreeNode> ItemTreeId<N> {
+impl<N> ItemTreeId<N> {
     pub fn new(tree: TreeId, idx: FileItemTreeId<N>) -> Self {
         Self { tree, value: idx }
     }
@@ -438,22 +447,22 @@ impl<N: ItemTreeNode> ItemTreeId<N> {
     }
 }
 
-impl<N: ItemTreeNode> Copy for ItemTreeId<N> {}
-impl<N: ItemTreeNode> Clone for ItemTreeId<N> {
+impl<N> Copy for ItemTreeId<N> {}
+impl<N> Clone for ItemTreeId<N> {
     fn clone(&self) -> Self {
         *self
     }
 }
 
-impl<N: ItemTreeNode> PartialEq for ItemTreeId<N> {
+impl<N> PartialEq for ItemTreeId<N> {
     fn eq(&self, other: &Self) -> bool {
         self.tree == other.tree && self.value == other.value
     }
 }
 
-impl<N: ItemTreeNode> Eq for ItemTreeId<N> {}
+impl<N> Eq for ItemTreeId<N> {}
 
-impl<N: ItemTreeNode> Hash for ItemTreeId<N> {
+impl<N> Hash for ItemTreeId<N> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.tree.hash(state);
         self.value.hash(state);
@@ -568,6 +577,13 @@ impl<N: ItemTreeNode> Index<FileItemTreeId<N>> for ItemTree {
     }
 }
 
+impl Index<FileItemTreeId<Variant>> for ItemTree {
+    type Output = Variant;
+    fn index(&self, id: FileItemTreeId<Variant>) -> &Variant {
+        &self[id.index()]
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Use {
     pub visibility: RawVisibilityId,
@@ -678,7 +694,7 @@ pub struct Enum {
     pub name: Name,
     pub visibility: RawVisibilityId,
     pub generic_params: Interned<GenericParams>,
-    pub variants: IdxRange<Variant>,
+    pub variants: Range<FileItemTreeId<Variant>>,
     pub ast_id: FileAstId<ast::Enum>,
 }
 

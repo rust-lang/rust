@@ -20,8 +20,7 @@ use hir_def::{
     path::{Path, PathKind},
     type_ref::{TraitBoundModifier, TypeBound, TypeRef},
     visibility::Visibility,
-    EnumVariantId, HasModule, ItemContainerId, LocalFieldId, Lookup, ModuleDefId, ModuleId,
-    TraitId,
+    HasModule, ItemContainerId, LocalFieldId, Lookup, ModuleDefId, ModuleId, TraitId,
 };
 use hir_expand::name::Name;
 use intern::{Internable, Interned};
@@ -613,10 +612,9 @@ fn render_const_scalar(
                     else {
                         return f.write_str("<failed-to-detect-variant>");
                     };
-                    let data = &f.db.enum_data(e).variants[var_id];
+                    let data = f.db.enum_variant_data(var_id);
                     write!(f, "{}", data.name.display(f.db.upcast()))?;
-                    let field_types =
-                        f.db.field_types(EnumVariantId { parent: e, local_id: var_id }.into());
+                    let field_types = f.db.field_types(var_id.into());
                     render_variant_after_name(
                         &data.variant_data,
                         f,
@@ -892,11 +890,9 @@ impl HirDisplay for Ty {
                     CallableDefId::StructId(s) => {
                         write!(f, "{}", db.struct_data(s).name.display(f.db.upcast()))?
                     }
-                    CallableDefId::EnumVariantId(e) => write!(
-                        f,
-                        "{}",
-                        db.enum_data(e.parent).variants[e.local_id].name.display(f.db.upcast())
-                    )?,
+                    CallableDefId::EnumVariantId(e) => {
+                        write!(f, "{}", db.enum_variant_data(e).name.display(f.db.upcast()))?
+                    }
                 };
                 f.end_location_link();
                 if parameters.len(Interner) > 0 {

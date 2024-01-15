@@ -456,9 +456,8 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         Ok(Some(current))
                     }
                     ValueNs::EnumVariantId(variant_id) => {
-                        let variant_data =
-                            &self.db.enum_data(variant_id.parent).variants[variant_id.local_id];
-                        if variant_data.variant_data.kind() == StructKind::Unit {
+                        let variant_data = &self.db.enum_variant_data(variant_id).variant_data;
+                        if variant_data.kind() == StructKind::Unit {
                             let ty = self.infer.type_of_expr[expr_id].clone();
                             current = self.lower_enum_variant(
                                 variant_id,
@@ -1874,11 +1873,13 @@ impl<'ctx> MirLowerCtx<'ctx> {
         match r {
             Ok(r) => Ok(r),
             Err(e) => {
-                let data = self.db.enum_data(variant.parent);
+                let db = self.db.upcast();
+                let loc = variant.lookup(db);
+                let enum_loc = loc.parent.lookup(db);
                 let name = format!(
                     "{}::{}",
-                    data.name.display(self.db.upcast()),
-                    data.variants[variant.local_id].name.display(self.db.upcast())
+                    enum_loc.id.item_tree(db)[enum_loc.id.value].name.display(db.upcast()),
+                    loc.id.item_tree(db)[loc.id.value].name.display(db.upcast()),
                 );
                 Err(MirLowerError::ConstEvalError(name.into(), Box::new(e)))
             }
@@ -2104,7 +2105,7 @@ pub fn mir_body_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Result<Arc<Mi
             .display(db.upcast())
             .to_string(),
         DefWithBodyId::VariantId(it) => {
-            db.enum_data(it.parent).variants[it.local_id].name.display(db.upcast()).to_string()
+            db.enum_variant_data(it).name.display(db.upcast()).to_string()
         }
         DefWithBodyId::InTypeConstId(it) => format!("in type const {it:?}"),
     });

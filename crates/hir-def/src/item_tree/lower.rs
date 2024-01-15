@@ -253,25 +253,27 @@ impl<'a> Ctx<'a> {
         let generic_params = self.lower_generic_params(HasImplicitSelf::No, enum_);
         let variants = match &enum_.variant_list() {
             Some(variant_list) => self.lower_variants(variant_list),
-            None => IdxRange::new(self.next_variant_idx()..self.next_variant_idx()),
+            None => {
+                FileItemTreeId(self.next_variant_idx())..FileItemTreeId(self.next_variant_idx())
+            }
         };
         let res = Enum { name, visibility, generic_params, variants, ast_id };
         Some(id(self.data().enums.alloc(res)))
     }
 
-    fn lower_variants(&mut self, variants: &ast::VariantList) -> IdxRange<Variant> {
+    fn lower_variants(&mut self, variants: &ast::VariantList) -> Range<FileItemTreeId<Variant>> {
         let start = self.next_variant_idx();
         for variant in variants.variants() {
             if let Some(data) = self.lower_variant(&variant) {
                 let idx = self.data().variants.alloc(data);
                 self.add_attrs(
-                    idx.into(),
+                    FileItemTreeId(idx).into(),
                     RawAttrs::new(self.db.upcast(), &variant, self.span_map()),
                 );
             }
         }
         let end = self.next_variant_idx();
-        IdxRange::new(start..end)
+        FileItemTreeId(start)..FileItemTreeId(end)
     }
 
     fn lower_variant(&mut self, variant: &ast::Variant) -> Option<Variant> {

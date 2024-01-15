@@ -762,7 +762,7 @@ impl<'a> TyLoweringContext<'a> {
                     Some(segment) if segment.args_and_bindings.is_some() => Some(segment),
                     _ => last,
                 };
-                (segment, Some(var.parent.into()))
+                (segment, Some(var.lookup(self.db.upcast()).parent.into()))
             }
         };
         if let Some(segment) = segment {
@@ -1375,11 +1375,13 @@ pub(crate) fn field_types_query(
     let (resolver, def): (_, GenericDefId) = match variant_id {
         VariantId::StructId(it) => (it.resolver(db.upcast()), it.into()),
         VariantId::UnionId(it) => (it.resolver(db.upcast()), it.into()),
-        VariantId::EnumVariantId(it) => (it.parent.resolver(db.upcast()), it.parent.into()),
+        VariantId::EnumVariantId(it) => {
+            (it.resolver(db.upcast()), it.lookup(db.upcast()).parent.into())
+        }
     };
     let generics = generics(db.upcast(), def);
     let mut res = ArenaMap::default();
-    let ctx = TyLoweringContext::new(db, &resolver, GenericDefId::from(variant_id.adt_id()).into())
+    let ctx = TyLoweringContext::new(db, &resolver, def.into())
         .with_type_param_mode(ParamLoweringMode::Variable);
     for (field_id, field_data) in var_data.fields().iter() {
         res.insert(field_id, make_binders(db, &generics, ctx.lower_ty(&field_data.type_ref)));
@@ -1740,25 +1742,24 @@ fn type_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> Binders<T
 }
 
 fn fn_sig_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -> PolyFnSig {
-    let enum_data = db.enum_data(def.parent);
-    let var_data = &enum_data.variants[def.local_id];
+    let var_data = db.enum_variant_data(def);
     let fields = var_data.variant_data.fields();
-    let resolver = def.parent.resolver(db.upcast());
+    let resolver = def.resolver(db.upcast());
     let ctx = TyLoweringContext::new(db, &resolver, DefWithBodyId::VariantId(def).into())
         .with_type_param_mode(ParamLoweringMode::Variable);
     let params = fields.iter().map(|(_, field)| ctx.lower_ty(&field.type_ref)).collect::<Vec<_>>();
-    let (ret, binders) = type_for_adt(db, def.parent.into()).into_value_and_skipped_binders();
+    let (ret, binders) =
+        type_for_adt(db, def.lookup(db.upcast()).parent.into()).into_value_and_skipped_binders();
     Binders::new(binders, CallableSig::from_params_and_return(params, ret, false, Safety::Safe))
 }
 
 /// Build the type of a tuple enum variant constructor.
 fn type_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -> Binders<Ty> {
-    let enum_data = db.enum_data(def.parent);
-    let var_data = &enum_data.variants[def.local_id].variant_data;
-    if let StructKind::Unit = var_data.kind() {
-        return type_for_adt(db, def.parent.into());
+    let e = def.lookup(db.upcast()).parent;
+    if let StructKind::Unit = db.enum_variant_data(def).variant_data.kind() {
+        return type_for_adt(db, e.into());
     }
-    let generics = generics(db.upcast(), def.parent.into());
+    let generics = generics(db.upcast(), e.into());
     let substs = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
     make_binders(
         db,
@@ -1812,7 +1813,7 @@ impl CallableDefId {
         match self {
             CallableDefId::FunctionId(f) => f.lookup(db).module(db),
             CallableDefId::StructId(s) => s.lookup(db).container,
-            CallableDefId::EnumVariantId(e) => e.parent.lookup(db).container,
+            CallableDefId::EnumVariantId(e) => e.lookup(db).container,
         }
         .krate()
     }

@@ -3,7 +3,6 @@
 use std::fmt::{self, Write};
 
 use itertools::Itertools;
-use syntax::ast::HasName;
 
 use crate::{
     hir::{
@@ -42,12 +41,13 @@ pub(super) fn print_body_hir(db: &dyn DefDatabase, body: &Body, owner: DefWithBo
         }
         DefWithBodyId::InTypeConstId(_) => format!("In type const = "),
         DefWithBodyId::VariantId(it) => {
-            let src = it.parent.child_source(db);
-            let variant = &src.value[it.local_id];
-            match &variant.name() {
-                Some(name) => name.to_string(),
-                None => "_".to_string(),
-            }
+            let loc = it.lookup(db);
+            let enum_loc = loc.parent.lookup(db);
+            format!(
+                "enum {}::{}",
+                enum_loc.id.item_tree(db)[enum_loc.id.value].name.display(db.upcast()),
+                loc.id.item_tree(db)[loc.id.value].name.display(db.upcast()),
+            )
         }
     };
 

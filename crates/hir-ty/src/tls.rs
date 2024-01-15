@@ -107,10 +107,7 @@ impl DebugContext<'_> {
         let name = match def {
             CallableDefId::FunctionId(ff) => self.0.function_data(ff).name.clone(),
             CallableDefId::StructId(s) => self.0.struct_data(s).name.clone(),
-            CallableDefId::EnumVariantId(e) => {
-                let enum_data = self.0.enum_data(e.parent);
-                enum_data.variants[e.local_id].name.clone()
-            }
+            CallableDefId::EnumVariantId(e) => self.0.enum_variant_data(e).name.clone(),
         };
         match def {
             CallableDefId::FunctionId(_) => write!(fmt, "{{fn {}}}", name.display(self.0.upcast())),

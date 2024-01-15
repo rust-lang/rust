@@ -751,9 +751,19 @@ impl Evaluator<'_> {
                         Variants::Single { .. } => &layout,
                         Variants::Multiple { variants, .. } => {
                             &variants[match f.parent {
-                                hir_def::VariantId::EnumVariantId(it) => {
-                                    RustcEnumVariantIdx(it.local_id)
-                                }
+                                hir_def::VariantId::EnumVariantId(it) => RustcEnumVariantIdx({
+                                    let lookup = it.lookup(self.db.upcast());
+                                    let rustc_enum_variant_idx =
+                                        lookup.id.value.index().into_raw().into_u32()
+                                            - lookup.id.item_tree(self.db.upcast())
+                                                [lookup.parent.lookup(self.db.upcast()).id.value]
+                                                .variants
+                                                .start
+                                                .index()
+                                                .into_raw()
+                                                .into_u32();
+                                    rustc_enum_variant_idx as usize
+                                }),
                                 _ => {
                                     return Err(MirEvalError::TypeError(
                                         "Multivariant layout only happens for enums",
@@ -1412,22 +1422,12 @@ impl Evaluator<'_> {
 
     fn compute_discriminant(&self, ty: Ty, bytes: &[u8]) -> Result<i128> {
         let layout = self.layout(&ty)?;
-        let enum_id = 'b: {
-            match ty.kind(Interner) {
-                TyKind::Adt(e, _) => match e.0 {
-                    AdtId::EnumId(e) => break 'b e,
-                    _ => (),
-                },
-                _ => (),
-            }
+        let &TyKind::Adt(chalk_ir::AdtId(AdtId::EnumId(e)), _) = ty.kind(Interner) else {
             return Ok(0);
         };
         match &layout.variants {
             Variants::Single { index } => {
-                let r = self.const_eval_discriminant(EnumVariantId {
-                    parent: enum_id,
-                    local_id: index.0,
-                })?;
+                let r = self.const_eval_discriminant(self.db.enum_data(e).variants[index.0].0)?;
                 Ok(r)
             }
             Variants::Multiple { tag, tag_encoding, variants, .. } => {
@@ -1446,17 +1446,15 @@ impl Evaluator<'_> {
                         let candidate_tag = i128::from_le_bytes(pad16(tag, false))
                             .wrapping_sub(*niche_start as i128)
                             as usize;
-                        let variant = variants
+                        let idx = variants
                             .iter_enumerated()
                             .map(|(it, _)| it)
                             .filter(|it| it != untagged_variant)
                             .nth(candidate_tag)
                             .unwrap_or(*untagged_variant)
                             .0;
-                        let result = self.const_eval_discriminant(EnumVariantId {
-                            parent: enum_id,
-                            local_id: variant,
-                        })?;
+                        let result =
+                            self.const_eval_discriminant(self.db.enum_data(e).variants[idx].0)?;
                         Ok(result)
                     }
                 }
@@ -1579,14 +1577,16 @@ impl Evaluator<'_> {
         subst: Substitution,
         locals: &Locals,
     ) -> Result<(usize, Arc<Layout>, Option<(usize, usize, i128)>)> {
-        let adt = it.adt_id();
+        let adt = it.adt_id(self.db.upcast());
         if let DefWithBodyId::VariantId(f) = locals.body.owner {
             if let VariantId::EnumVariantId(it) = it {
-                if AdtId::from(f.parent) == adt {
-                    // Computing the exact size of enums require resolving the enum discriminants. In order to prevent loops (and
-                    // infinite sized type errors) we use a dummy layout
-                    let i = self.const_eval_discriminant(it)?;
-                    return Ok((16, self.layout(&TyBuilder::unit())?, Some((0, 16, i))));
+                if let AdtId::EnumId(e) = adt {
+                    if f.lookup(self.db.upcast()).parent == e {
+                        // Computing the exact size of enums require resolving the enum discriminants. In order to prevent loops (and
+                        // infinite sized type errors) we use a dummy layout
+                        let i = self.const_eval_discriminant(it)?;
+                        return Ok((16, self.layout(&TyBuilder::unit())?, Some((0, 16, i))));
+                    }
                 }
             }
         }
@@ -1602,8 +1602,17 @@ impl Evaluator<'_> {
                     VariantId::EnumVariantId(it) => it,
                     _ => not_supported!("multi variant layout for non-enums"),
                 };
-                let rustc_enum_variant_idx = RustcEnumVariantIdx(enum_variant_id.local_id);
                 let mut discriminant = self.const_eval_discriminant(enum_variant_id)?;
+                let lookup = enum_variant_id.lookup(self.db.upcast());
+                let rustc_enum_variant_idx = lookup.id.value.index().into_raw().into_u32()
+                    - lookup.id.item_tree(self.db.upcast())
+                        [lookup.parent.lookup(self.db.upcast()).id.value]
+                        .variants
+                        .start
+                        .index()
+                        .into_raw()
+                        .into_u32();
+                let rustc_enum_variant_idx = RustcEnumVariantIdx(rustc_enum_variant_idx as usize);
                 let variant_layout = variants[rustc_enum_variant_idx].clone();
                 let have_tag = match tag_encoding {
                     TagEncoding::Direct => true,
@@ -1847,8 +1856,8 @@ impl Evaluator<'_> {
                 .then(|| (layout.size.bytes_usize(), layout.align.abi.bytes() as usize)));
         }
         if let DefWithBodyId::VariantId(f) = locals.body.owner {
-            if let Some((adt, _)) = ty.as_adt() {
-                if AdtId::from(f.parent) == adt {
+            if let Some((AdtId::EnumId(e), _)) = ty.as_adt() {
+                if f.lookup(self.db.upcast()).parent == e {
                     // Computing the exact size of enums require resolving the enum discriminants. In order to prevent loops (and
                     // infinite sized type errors) we use a dummy size
                     return Ok(Some((16, 16)));
@@ -2019,10 +2028,8 @@ impl Evaluator<'_> {
                             bytes,
                             e,
                         ) {
-                            let data = &this.db.enum_data(e).variants[v].variant_data;
-                            let field_types = this
-                                .db
-                                .field_types(EnumVariantId { parent: e, local_id: v }.into());
+                            let data = &this.db.enum_variant_data(v).variant_data;
+                            let field_types = this.db.field_types(v.into());
                             for (f, _) in data.fields().iter() {
                                 let offset =
                                     l.fields.offset(u32::from(f.into_raw()) as usize).bytes_usize();
@@ -2093,14 +2100,13 @@ impl Evaluator<'_> {
                 }
                 AdtId::UnionId(_) => (),
                 AdtId::EnumId(e) => {
-                    if let Some((variant, layout)) = detect_variant_from_bytes(
+                    if let Some((ev, layout)) = detect_variant_from_bytes(
                         &layout,
                         self.db,
                         self.trait_env.clone(),
                         self.read_memory(addr, layout.size.bytes_usize())?,
                         e,
                     ) {
-                        let ev = EnumVariantId { parent: e, local_id: variant };
                         for (i, (_, ty)) in self.db.field_types(ev.into()).iter().enumerate() {
                             let offset = layout.fields.offset(i).bytes_usize();
                             let ty = ty.clone().substitute(Interner, subst);
@@ -2540,11 +2546,13 @@ impl Evaluator<'_> {
         match r {
             Ok(r) => Ok(r),
             Err(e) => {
-                let data = self.db.enum_data(variant.parent);
+                let db = self.db.upcast();
+                let loc = variant.lookup(db);
+                let enum_loc = loc.parent.lookup(db);
                 let name = format!(
                     "{}::{}",
-                    data.name.display(self.db.upcast()),
-                    data.variants[variant.local_id].name.display(self.db.upcast())
+                    enum_loc.id.item_tree(db)[enum_loc.id.value].name.display(db.upcast()),
+                    loc.id.item_tree(db)[loc.id.value].name.display(db.upcast()),
                 );
                 Err(MirEvalError::ConstEvalError(name, Box::new(e)))
             }

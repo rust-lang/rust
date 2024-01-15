@@ -524,10 +524,9 @@ impl MirLowerCtx<'_> {
                     );
                     current = next;
                 }
-                let enum_data = self.db.enum_data(v.parent);
                 self.pattern_matching_variant_fields(
                     shape,
-                    &enum_data.variants[v.local_id].variant_data,
+                    &self.db.enum_variant_data(v).variant_data,
                     variant,
                     current,
                     current_else,
@@ -535,18 +534,15 @@ impl MirLowerCtx<'_> {
                     mode,
                 )?
             }
-            VariantId::StructId(s) => {
-                let struct_data = self.db.struct_data(s);
-                self.pattern_matching_variant_fields(
-                    shape,
-                    &struct_data.variant_data,
-                    variant,
-                    current,
-                    current_else,
-                    &cond_place,
-                    mode,
-                )?
-            }
+            VariantId::StructId(s) => self.pattern_matching_variant_fields(
+                shape,
+                &self.db.struct_data(s).variant_data,
+                variant,
+                current,
+                current_else,
+                &cond_place,
+                mode,
+            )?,
             VariantId::UnionId(_) => {
                 return Err(MirLowerError::TypeError("pattern matching on union"))
             }

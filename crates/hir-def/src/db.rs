@@ -11,7 +11,7 @@ use crate::{
     attr::{Attrs, AttrsWithOwner},
     body::{scope::ExprScopes, Body, BodySourceMap},
     data::{
-        adt::{EnumData, StructData},
+        adt::{EnumData, EnumVariantData, StructData},
         ConstData, ExternCrateDeclData, FunctionData, ImplData, Macro2Data, MacroRulesData,
         ProcMacroData, StaticData, TraitAliasData, TraitData, TypeAliasData,
     },
@@ -22,12 +22,12 @@ use crate::{
     nameres::{diagnostics::DefDiagnostic, DefMap},
     visibility::{self, Visibility},
     AttrDefId, BlockId, BlockLoc, ConstBlockId, ConstBlockLoc, ConstId, ConstLoc, DefWithBodyId,
-    EnumId, EnumLoc, ExternBlockId, ExternBlockLoc, ExternCrateId, ExternCrateLoc, FunctionId,
-    FunctionLoc, GenericDefId, ImplId, ImplLoc, InTypeConstId, InTypeConstLoc, LocalEnumVariantId,
-    LocalFieldId, Macro2Id, Macro2Loc, MacroId, MacroRulesId, MacroRulesLoc, MacroRulesLocFlags,
-    ProcMacroId, ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc, TraitAliasId,
-    TraitAliasLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc, UseId, UseLoc,
-    VariantId,
+    EnumId, EnumLoc, EnumVariantId, EnumVariantLoc, ExternBlockId, ExternBlockLoc, ExternCrateId,
+    ExternCrateLoc, FunctionId, FunctionLoc, GenericDefId, ImplId, ImplLoc, InTypeConstId,
+    InTypeConstLoc, LocalFieldId, Macro2Id, Macro2Loc, MacroId, MacroRulesId, MacroRulesLoc,
+    MacroRulesLocFlags, ProcMacroId, ProcMacroLoc, StaticId, StaticLoc, StructId, StructLoc,
+    TraitAliasId, TraitAliasLoc, TraitId, TraitLoc, TypeAliasId, TypeAliasLoc, UnionId, UnionLoc,
+    UseId, UseLoc, VariantId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
@@ -45,6 +45,8 @@ pub trait InternDatabase: SourceDatabase {
     fn intern_union(&self, loc: UnionLoc) -> UnionId;
     #[salsa::interned]
     fn intern_enum(&self, loc: EnumLoc) -> EnumId;
+    #[salsa::interned]
+    fn intern_enum_variant(&self, loc: EnumVariantLoc) -> EnumVariantId;
     #[salsa::interned]
     fn intern_const(&self, loc: ConstLoc) -> ConstId;
     #[salsa::interned]
@@ -131,8 +133,14 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     #[salsa::invoke(EnumData::enum_data_query)]
     fn enum_data(&self, e: EnumId) -> Arc<EnumData>;
 
-    #[salsa::invoke(EnumData::enum_data_with_diagnostics_query)]
-    fn enum_data_with_diagnostics(&self, e: EnumId) -> (Arc<EnumData>, Arc<[DefDiagnostic]>);
+    #[salsa::invoke(EnumVariantData::enum_variant_data_query)]
+    fn enum_variant_data(&self, id: EnumVariantId) -> Arc<EnumVariantData>;
+
+    #[salsa::invoke(EnumVariantData::enum_variant_data_with_diagnostics_query)]
+    fn enum_variant_data_with_diagnostics(
+        &self,
+        id: EnumVariantId,
+    ) -> (Arc<EnumVariantData>, Arc<[DefDiagnostic]>);
 
     #[salsa::invoke(ImplData::impl_data_query)]
     fn impl_data(&self, e: ImplId) -> Arc<ImplData>;
@@ -189,17 +197,8 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
 
     // region:attrs
 
-    #[salsa::invoke(Attrs::variants_attrs_query)]
-    fn variants_attrs(&self, def: EnumId) -> Arc<ArenaMap<LocalEnumVariantId, Attrs>>;
-
     #[salsa::invoke(Attrs::fields_attrs_query)]
     fn fields_attrs(&self, def: VariantId) -> Arc<ArenaMap<LocalFieldId, Attrs>>;
-
-    #[salsa::invoke(crate::attr::variants_attrs_source_map)]
-    fn variants_attrs_source_map(
-        &self,
-        def: EnumId,
-    ) -> Arc<ArenaMap<LocalEnumVariantId, AstPtr<ast::Variant>>>;
 
     #[salsa::invoke(crate::attr::fields_attrs_source_map)]
     fn fields_attrs_source_map(

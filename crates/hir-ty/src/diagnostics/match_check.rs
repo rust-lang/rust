@@ -318,8 +318,7 @@ impl HirDisplay for Pat {
                 if let Some(variant) = variant {
                     match variant {
                         VariantId::EnumVariantId(v) => {
-                            let data = f.db.enum_data(v.parent);
-                            write!(f, "{}", data.variants[v.local_id].name.display(f.db.upcast()))?;
+                            write!(f, "{}", f.db.enum_variant_data(v).name.display(f.db.upcast()))?;
                         }
                         VariantId::StructId(s) => {
                             write!(f, "{}", f.db.struct_data(s).name.display(f.db.upcast()))?

@@ -1111,7 +1111,7 @@ impl HasResolver for DefWithBodyId {
             DefWithBodyId::ConstId(c) => c.resolver(db),
             DefWithBodyId::FunctionId(f) => f.resolver(db),
             DefWithBodyId::StaticId(s) => s.resolver(db),
-            DefWithBodyId::VariantId(v) => v.parent.resolver(db),
+            DefWithBodyId::VariantId(v) => v.resolver(db),
             DefWithBodyId::InTypeConstId(c) => c.lookup(db).owner.resolver(db),
         }
     }
@@ -1137,7 +1137,7 @@ impl HasResolver for GenericDefId {
             GenericDefId::TraitAliasId(inner) => inner.resolver(db),
             GenericDefId::TypeAliasId(inner) => inner.resolver(db),
             GenericDefId::ImplId(inner) => inner.resolver(db),
-            GenericDefId::EnumVariantId(inner) => inner.parent.resolver(db),
+            GenericDefId::EnumVariantId(inner) => inner.resolver(db),
             GenericDefId::ConstId(inner) => inner.resolver(db),
         }
     }
@@ -1145,14 +1145,14 @@ impl HasResolver for GenericDefId {
 
 impl HasResolver for EnumVariantId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        self.parent.resolver(db)
+        self.lookup(db).parent.resolver(db)
     }
 }
 
 impl HasResolver for VariantId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
         match self {
-            VariantId::EnumVariantId(it) => it.parent.resolver(db),
+            VariantId::EnumVariantId(it) => it.resolver(db),
             VariantId::StructId(it) => it.resolver(db),
             VariantId::UnionId(it) => it.resolver(db),
         }

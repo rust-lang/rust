@@ -10,7 +10,7 @@ use hir_def::{
     type_ref::LiteralConstRef,
     ConstBlockLoc, EnumVariantId, GeneralConstId, StaticId,
 };
-use la_arena::{Idx, RawIdx};
+use hir_expand::Lookup;
 use stdx::never;
 use triomphe::Arc;
 
@@ -256,12 +256,21 @@ pub(crate) fn const_eval_discriminant_variant(
     let def = variant_id.into();
     let body = db.body(def);
     if body.exprs[body.body_expr] == Expr::Missing {
-        let prev_idx: u32 = variant_id.local_id.into_raw().into();
-        let prev_idx = prev_idx.checked_sub(1).map(RawIdx::from).map(Idx::from_raw);
+        let loc = variant_id.lookup(db.upcast());
+        let parent_id = loc.parent.lookup(db.upcast()).id;
+        let index = loc.id.value.index().into_raw().into_u32()
+            - parent_id.item_tree(db.upcast())[parent_id.value]
+                .variants
+                .start
+                .index()
+                .into_raw()
+                .into_u32();
+        let prev_idx = index.checked_sub(1);
         let value = match prev_idx {
-            Some(local_id) => {
-                let prev_variant = EnumVariantId { local_id, parent: variant_id.parent };
-                1 + db.const_eval_discriminant(prev_variant)?
+            Some(prev_idx) => {
+                1 + db.const_eval_discriminant(
+                    db.enum_data(loc.parent).variants[prev_idx as usize].0,
+                )?
             }
             _ => 0,
         };

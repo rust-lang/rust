@@ -225,9 +225,7 @@ pub(crate) fn field_visibilities_query(
     let var_data = match variant_id {
         VariantId::StructId(it) => db.struct_data(it).variant_data.clone(),
         VariantId::UnionId(it) => db.union_data(it).variant_data.clone(),
-        VariantId::EnumVariantId(it) => {
-            db.enum_data(it.parent).variants[it.local_id].variant_data.clone()
-        }
+        VariantId::EnumVariantId(it) => db.enum_variant_data(it).variant_data.clone(),
     };
     let resolver = variant_id.module(db).resolver(db);
     let mut res = ArenaMap::default();

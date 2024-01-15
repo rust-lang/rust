@@ -13,8 +13,8 @@ use crate::{
     item_scope::ItemScope,
     nameres::DefMap,
     src::{HasChildSource, HasSource},
-    AdtId, AssocItemId, DefWithBodyId, EnumId, EnumVariantId, ExternCrateId, FieldId, ImplId,
-    Lookup, MacroId, ModuleDefId, ModuleId, TraitId, UseId, VariantId,
+    AdtId, AssocItemId, DefWithBodyId, EnumId, ExternCrateId, FieldId, ImplId, Lookup, MacroId,
+    ModuleDefId, ModuleId, TraitId, UseId, VariantId,
 };
 
 pub trait ChildBySource {
@@ -205,12 +205,18 @@ impl ChildBySource for VariantId {
 
 impl ChildBySource for EnumId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, _: HirFileId) {
-        let arena_map = self.child_source(db);
-        let arena_map = arena_map.as_ref();
-        for (local_id, source) in arena_map.value.iter() {
-            let id = EnumVariantId { parent: *self, local_id };
-            res[keys::VARIANT].insert(source.clone(), id)
-        }
+        let loc = &self.lookup(db);
+
+        let tree = loc.id.item_tree(db);
+        let ast_id_map = db.ast_id_map(loc.id.file_id());
+        let root = db.parse_or_expand(loc.id.file_id());
+
+        db.enum_data(*self).variants.iter().for_each(|&(variant, _)| {
+            res[keys::VARIANT].insert(
+                ast_id_map.get(tree[variant.lookup(db).id.value].ast_id).to_node(&root),
+                variant,
+            );
+        });
     }
 }
 

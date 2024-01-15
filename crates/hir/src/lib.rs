@@ -54,9 +54,9 @@ use hir_def::{
     src::HasSource as _,
     AssocItemId, AssocItemLoc, AttrDefId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId,
     EnumId, EnumVariantId, ExternCrateId, FunctionId, GenericDefId, GenericParamId, HasModule,
-    ImplId, InTypeConstId, ItemContainerId, LifetimeParamId, LocalEnumVariantId, LocalFieldId,
-    Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId, TraitAliasId, TraitId, TupleId,
-    TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
+    ImplId, InTypeConstId, ItemContainerId, LifetimeParamId, LocalFieldId, Lookup, MacroExpander,
+    MacroId, ModuleId, StaticId, StructId, TraitAliasId, TraitId, TupleId, TypeAliasId,
+    TypeOrConstParamId, TypeParamId, UnionId,
 };
 use hir_expand::{attrs::collect_attrs, name::name, proc_macro::ProcMacroKind, MacroCallKind};
 use hir_ty::{
@@ -375,9 +375,7 @@ impl ModuleDef {
             ModuleDef::Module(it) => it.id.into(),
             ModuleDef::Const(it) => it.id.into(),
             ModuleDef::Static(it) => it.id.into(),
-            ModuleDef::Variant(it) => {
-                EnumVariantId { parent: it.parent.into(), local_id: it.id }.into()
-            }
+            ModuleDef::Variant(it) => it.id.into(),
             ModuleDef::BuiltinType(_) | ModuleDef::Macro(_) => return Vec::new(),
         };
 
@@ -586,10 +584,9 @@ impl Module {
                         Adt::Enum(e) => {
                             for v in e.variants(db) {
                                 acc.extend(ModuleDef::Variant(v).diagnostics(db));
-                            }
-
-                            for diag in db.enum_data_with_diagnostics(e.id).1.iter() {
-                                emit_def_diagnostic(db, acc, diag);
+                                for diag in db.enum_variant_data_with_diagnostics(v.id).1.iter() {
+                                    emit_def_diagnostic(db, acc, diag);
+                                }
                             }
                         }
                     }
@@ -1084,7 +1081,7 @@ impl Field {
         let generic_def_id: GenericDefId = match self.parent {
             VariantDef::Struct(it) => it.id.into(),
             VariantDef::Union(it) => it.id.into(),
-            VariantDef::Variant(it) => it.parent.id.into(),
+            VariantDef::Variant(it) => it.id.into(),
         };
         let substs = TyBuilder::placeholder_subst(db, generic_def_id);
         let ty = db.field_types(var_id)[self.id].clone().substitute(Interner, &substs);
@@ -1224,7 +1221,7 @@ impl Enum {
     }
 
     pub fn variants(self, db: &dyn HirDatabase) -> Vec<Variant> {
-        db.enum_data(self.id).variants.iter().map(|(id, _)| Variant { parent: self, id }).collect()
+        db.enum_data(self.id).variants.iter().map(|&(id, _)| Variant { id }).collect()
     }
 
     pub fn repr(self, db: &dyn HirDatabase) -> Option<ReprOptions> {
@@ -1292,25 +1289,24 @@ impl From<&Variant> for DefWithBodyId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Variant {
-    pub(crate) parent: Enum,
-    pub(crate) id: LocalEnumVariantId,
+    pub(crate) id: EnumVariantId,
 }
 
 impl Variant {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        self.parent.module(db)
+        Module { id: self.id.lookup(db.upcast()).container }
     }
 
-    pub fn parent_enum(self, _db: &dyn HirDatabase) -> Enum {
-        self.parent
+    pub fn parent_enum(self, db: &dyn HirDatabase) -> Enum {
+        self.id.lookup(db.upcast()).parent.into()
     }
 
     pub fn constructor_ty(self, db: &dyn HirDatabase) -> Type {
-        Type::from_value_def(db, EnumVariantId { parent: self.parent.id, local_id: self.id })
+        Type::from_value_def(db, self.id)
     }
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
-        db.enum_data(self.parent.id).variants[self.id].name.clone()
+        db.enum_variant_data(self.id).name.clone()
     }
 
     pub fn fields(self, db: &dyn HirDatabase) -> Vec<Field> {
@@ -1326,7 +1322,7 @@ impl Variant {
     }
 
     pub(crate) fn variant_data(self, db: &dyn HirDatabase) -> Arc<VariantData> {
-        db.enum_data(self.parent.id).variants[self.id].variant_data.clone()
+        db.enum_variant_data(self.id).variant_data.clone()
     }
 
     pub fn value(self, db: &dyn HirDatabase) -> Option<ast::Expr> {
@@ -1342,7 +1338,21 @@ impl Variant {
         let parent_layout = parent_enum.layout(db)?;
         Ok(match &parent_layout.0.variants {
             layout::Variants::Multiple { variants, .. } => Layout(
-                Arc::new(variants[RustcEnumVariantIdx(self.id)].clone()),
+                {
+                    let lookup = self.id.lookup(db.upcast());
+                    let rustc_enum_variant_idx = lookup.id.value.index().into_raw().into_u32()
+                        - lookup.id.item_tree(db.upcast())
+                            [lookup.parent.lookup(db.upcast()).id.value]
+                            .variants
+                            .start
+                            .index()
+                            .into_raw()
+                            .into_u32();
+                    let rustc_enum_variant_idx =
+                        RustcEnumVariantIdx(rustc_enum_variant_idx as usize);
+
+                    Arc::new(variants[rustc_enum_variant_idx].clone())
+                },
                 db.target_data_layout(parent_enum.krate(db).into()).unwrap(),
             ),
             _ => parent_layout,
@@ -1547,7 +1557,7 @@ impl DefWithBody {
             DefWithBody::Function(it) => it.ret_type(db),
             DefWithBody::Static(it) => it.ty(db),
             DefWithBody::Const(it) => it.ty(db),
-            DefWithBody::Variant(it) => it.parent.variant_body_ty(db),
+            DefWithBody::Variant(it) => it.parent_enum(db).variant_body_ty(db),
             DefWithBody::InTypeConst(it) => Type::new_with_resolver_inner(
                 db,
                 &DefWithBodyId::from(it.id).resolver(db.upcast()),

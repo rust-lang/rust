@@ -100,7 +100,7 @@ use crate::{
     db::DefDatabase,
     item_tree::{
         Const, Enum, ExternCrate, Function, Impl, ItemTreeId, ItemTreeNode, Macro2, MacroRules,
-        Static, Struct, Trait, TraitAlias, TypeAlias, Union, Use,
+        Static, Struct, Trait, TraitAlias, TypeAlias, Union, Use, Variant,
     },
 };
 
@@ -299,12 +299,15 @@ impl_intern!(EnumId, EnumLoc, intern_enum, lookup_intern_enum);
 
 // FIXME: rename to `VariantId`, only enums can ave variants
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct EnumVariantId {
-    pub parent: EnumId,
-    pub local_id: LocalEnumVariantId,
-}
+pub struct EnumVariantId(salsa::InternId);
 
-pub type LocalEnumVariantId = Idx<data::adt::EnumVariantData>;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct EnumVariantLoc {
+    pub container: ModuleId,
+    pub id: ItemTreeId<Variant>,
+    pub parent: EnumId,
+}
+impl_intern!(EnumVariantId, EnumVariantLoc, intern_enum_variant, lookup_intern_enum_variant);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FieldId {
@@ -953,23 +956,21 @@ impl VariantId {
         match self {
             VariantId::StructId(it) => db.struct_data(it).variant_data.clone(),
             VariantId::UnionId(it) => db.union_data(it).variant_data.clone(),
-            VariantId::EnumVariantId(it) => {
-                db.enum_data(it.parent).variants[it.local_id].variant_data.clone()
-            }
+            VariantId::EnumVariantId(it) => db.enum_variant_data(it).variant_data.clone(),
         }
     }
 
     pub fn file_id(self, db: &dyn DefDatabase) -> HirFileId {
         match self {
-            VariantId::EnumVariantId(it) => it.parent.lookup(db).id.file_id(),
+            VariantId::EnumVariantId(it) => it.lookup(db).id.file_id(),
             VariantId::StructId(it) => it.lookup(db).id.file_id(),
             VariantId::UnionId(it) => it.lookup(db).id.file_id(),
         }
     }
 
-    pub fn adt_id(self) -> AdtId {
+    pub fn adt_id(self, db: &dyn DefDatabase) -> AdtId {
         match self {
-            VariantId::EnumVariantId(it) => it.parent.into(),
+            VariantId::EnumVariantId(it) => it.lookup(db).parent.into(),
             VariantId::StructId(it) => it.into(),
             VariantId::UnionId(it) => it.into(),
         }
@@ -1016,7 +1017,7 @@ impl HasModule for ExternCrateId {
 impl HasModule for VariantId {
     fn module(&self, db: &dyn DefDatabase) -> ModuleId {
         match self {
-            VariantId::EnumVariantId(it) => it.parent.lookup(db).container,
+            VariantId::EnumVariantId(it) => it.lookup(db).container,
             VariantId::StructId(it) => it.lookup(db).container,
             VariantId::UnionId(it) => it.lookup(db).container,
         }
@@ -1045,7 +1046,7 @@ impl HasModule for TypeOwnerId {
             TypeOwnerId::TraitAliasId(it) => it.lookup(db).container,
             TypeOwnerId::TypeAliasId(it) => it.lookup(db).module(db),
             TypeOwnerId::ImplId(it) => it.lookup(db).container,
-            TypeOwnerId::EnumVariantId(it) => it.parent.lookup(db).container,
+            TypeOwnerId::EnumVariantId(it) => it.lookup(db).container,
         }
     }
 }
@@ -1056,7 +1057,7 @@ impl HasModule for DefWithBodyId {
             DefWithBodyId::FunctionId(it) => it.lookup(db).module(db),
             DefWithBodyId::StaticId(it) => it.lookup(db).module(db),
             DefWithBodyId::ConstId(it) => it.lookup(db).module(db),
-            DefWithBodyId::VariantId(it) => it.parent.lookup(db).container,
+            DefWithBodyId::VariantId(it) => it.lookup(db).container,
             DefWithBodyId::InTypeConstId(it) => it.lookup(db).owner.module(db),
         }
     }
@@ -1071,7 +1072,7 @@ impl HasModule for GenericDefId {
             GenericDefId::TraitAliasId(it) => it.lookup(db).container,
             GenericDefId::TypeAliasId(it) => it.lookup(db).module(db),
             GenericDefId::ImplId(it) => it.lookup(db).container,
-            GenericDefId::EnumVariantId(it) => it.parent.lookup(db).container,
+            GenericDefId::EnumVariantId(it) => it.lookup(db).container,
             GenericDefId::ConstId(it) => it.lookup(db).module(db),
         }
     }
@@ -1098,7 +1099,7 @@ impl ModuleDefId {
             ModuleDefId::ModuleId(id) => *id,
             ModuleDefId::FunctionId(id) => id.lookup(db).module(db),
             ModuleDefId::AdtId(id) => id.module(db),
-            ModuleDefId::EnumVariantId(id) => id.parent.lookup(db).container,
+            ModuleDefId::EnumVariantId(id) => id.lookup(db).container,
             ModuleDefId::ConstId(id) => id.lookup(db).container.module(db),
             ModuleDefId::StaticId(id) => id.lookup(db).module(db),
             ModuleDefId::TraitId(id) => id.lookup(db).container,
@@ -1117,7 +1118,7 @@ impl AttrDefId {
             AttrDefId::FieldId(it) => it.parent.module(db).krate,
             AttrDefId::AdtId(it) => it.module(db).krate,
             AttrDefId::FunctionId(it) => it.lookup(db).module(db).krate,
-            AttrDefId::EnumVariantId(it) => it.parent.lookup(db).container.krate,
+            AttrDefId::EnumVariantId(it) => it.lookup(db).container.krate,
             AttrDefId::StaticId(it) => it.lookup(db).module(db).krate,
             AttrDefId::ConstId(it) => it.lookup(db).module(db).krate,
             AttrDefId::TraitId(it) => it.lookup(db).container.krate,
