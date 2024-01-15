@@ -307,7 +307,7 @@ libraries to the emulator, and running the tests within the emulator, and
 reading the results.  The Docker image is set up to launch
 `remote-test-server` and the build tools use `remote-test-client` to
 communicate with the server to coordinate running tests (see
-[src/bootstrap/test.rs]).
+[src/bootstrap/src/core/build_steps/test.rs]).
 
 > TODO:
 > Is there any support for using an iOS emulator?
@@ -318,7 +318,7 @@ communicate with the server to coordinate running tests (see
 [QEMU]: https://www.qemu.org/
 [remote-test-client]: https://github.com/rust-lang/rust/tree/master/src/tools/remote-test-client
 [remote-test-server]: https://github.com/rust-lang/rust/tree/master/src/tools/remote-test-server
-[src/bootstrap/test.rs]: https://github.com/rust-lang/rust/tree/master/src/bootstrap/test.rs
+[src/bootstrap/src/core/build_steps/test.rs]: https://github.com/rust-lang/rust/blob/master/src/bootstrap/src/core/build_steps/test.rs
 
 ## Running rustc_codegen_gcc tests
 

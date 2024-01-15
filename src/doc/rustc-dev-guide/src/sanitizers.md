@@ -64,9 +64,9 @@ implementation:
    constructed by cargo `-Z build-std` or xargo.
 
 [compiler-rt]: https://github.com/llvm/llvm-project/tree/main/compiler-rt
-[sanitizer-build]: https://github.com/rust-lang/rust/blob/1.55.0/src/bootstrap/native.rs#L700-L765
-[sanitizer-targets]: https://github.com/rust-lang/rust/blob/1.55.0/src/bootstrap/native.rs#L806-L820
-[sanitizer-copy]: https://github.com/rust-lang/rust/blob/1.55.0/src/bootstrap/compile.rs#L376-L407
+[sanitizer-build]: https://github.com/rust-lang/rust/blob/1ead4761e9e2f056385768614c23ffa7acb6a19e/src/bootstrap/src/core/build_steps/llvm.rs#L958-L1031
+[sanitizer-targets]: https://github.com/rust-lang/rust/blob/1ead4761e9e2f056385768614c23ffa7acb6a19e/src/bootstrap/src/core/build_steps/llvm.rs#L1073-L1111
+[sanitizer-copy]: https://github.com/rust-lang/rust/blob/1ead4761e9e2f056385768614c23ffa7acb6a19e/src/bootstrap/src/core/build_steps/compile.rs#L637-L676
 [sanitizer-attribute]: https://github.com/rust-lang/rust/blob/1.55.0/compiler/rustc_codegen_llvm/src/attributes.rs#L42-L58
 [inline-mir]: https://github.com/rust-lang/rust/blob/1.55.0/compiler/rustc_mir/src/transform/inline.rs#L314-L316
 [inline-llvm]: https://github.com/rust-lang/llvm-project/blob/9330ec5a4c1df5fc1fa62f993ed6a04da68cb040/llvm/include/llvm/IR/Attributes.td#L225-L241

@@ -11,7 +11,7 @@ in scope, we are looking to expand this (contributions welcome!).
 
 The tool is defined in a separate crate ([`src/tools/suggest-tests`](https://github.com/rust-lang/rust/blob/master/src/tools/suggest-tests))
 which outputs suggestions which are parsed by a shim in bootstrap
-([`src/bootstrap/suggest.rs`](https://github.com/rust-lang/rust/blob/master/src/bootstrap/suggest.rs)).
+([`src/bootstrap/src/core/build_steps/suggest.rs`](https://github.com/rust-lang/rust/blob/master/src/bootstrap/src/core/build_steps/suggest.rs)).
 The only notable thing the bootstrap shim does is (when invoked with the
 `--run` flag) use bootstrap's internal mechanisms to create a new `Builder` and
 uses it to invoke the suggested commands. The `suggest-tests` crate is where the

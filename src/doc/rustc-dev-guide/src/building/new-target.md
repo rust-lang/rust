@@ -86,7 +86,7 @@ unexpected because stage0 doesn't know about the new target specification and
 we pass `--check-cfg` in order to tell it to check.
 
 To fix the errors you will need to manually add the unexpected value to the
-`EXTRA_CHECK_CFGS` list in `src/bootstrap/lib.rs`. Here is an example for
+`EXTRA_CHECK_CFGS` list in `src/bootstrap/src/lib.rs`. Here is an example for
 adding `NEW_TARGET_OS` as `target_os`:
 ```diff
 - (Some(Mode::Std), "target_os", Some(&["watchos"])),
