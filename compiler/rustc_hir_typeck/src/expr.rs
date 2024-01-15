@@ -1526,13 +1526,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.check_repeat_element_needs_copy_bound(element, count, element_ty);
 
-        self.register_wf_obligation(
-            Ty::new_array_with_const_len(tcx, t, count).into(),
-            expr.span,
-            traits::WellFormed(None),
-        );
+        let ty = Ty::new_array_with_const_len(tcx, t, count);
 
-        Ty::new_array_with_const_len(tcx, t, count)
+        self.register_wf_obligation(ty.into(), expr.span, traits::WellFormed(None));
+
+        ty
     }
 
     fn check_repeat_element_needs_copy_bound(
