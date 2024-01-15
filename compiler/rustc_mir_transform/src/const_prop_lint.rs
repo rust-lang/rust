@@ -20,7 +20,7 @@ use rustc_target::abi::{Abi, FieldIdx, HasDataLayout, Size, TargetDataLayout, Va
 use crate::const_prop::CanConstProp;
 use crate::const_prop::ConstPropMachine;
 use crate::const_prop::ConstPropMode;
-use crate::errors::AssertLint;
+use crate::errors::{AssertLint, AssertLintKind};
 use crate::MirLint;
 
 pub struct ConstPropLint;
@@ -300,9 +300,21 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
     }
 
-    fn report_assert_as_lint(&self, source_info: &SourceInfo, lint: AssertLint<impl Debug>) {
+    fn report_assert_as_lint(
+        &self,
+        location: Location,
+        lint_kind: AssertLintKind,
+        assert_kind: AssertKind<impl Debug>,
+    ) {
+        let source_info = self.body.source_info(location);
         if let Some(lint_root) = self.lint_root(*source_info) {
-            self.tcx.emit_node_span_lint(lint.lint(), lint_root, source_info.span, lint);
+            let span = source_info.span;
+            self.tcx.emit_node_span_lint(
+                lint_kind.lint(),
+                lint_root,
+                span,
+                AssertLint { span, assert_kind, lint_kind },
+            );
         }
     }
 
@@ -316,13 +328,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             // `AssertKind` only has an `OverflowNeg` variant, so make sure that is
             // appropriate to use.
             assert_eq!(op, UnOp::Neg, "Neg is the only UnOp that can overflow");
-            let source_info = self.body.source_info(location);
             self.report_assert_as_lint(
-                source_info,
-                AssertLint::ArithmeticOverflow(
-                    source_info.span,
-                    AssertKind::OverflowNeg(val.to_const_int()),
-                ),
+                location,
+                AssertLintKind::ArithmeticOverflow,
+                AssertKind::OverflowNeg(val.to_const_int()),
             );
             return None;
         }
@@ -354,7 +363,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             let r_bits = r.to_scalar().to_bits(right_size).ok();
             if r_bits.is_some_and(|b| b >= left_size.bits() as u128) {
                 debug!("check_binary_op: reporting assert for {:?}", location);
-                let source_info = self.body.source_info(location);
                 let panic = AssertKind::Overflow(
                     op,
                     match l {
@@ -368,10 +376,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     },
                     r.to_const_int(),
                 );
-                self.report_assert_as_lint(
-                    source_info,
-                    AssertLint::ArithmeticOverflow(source_info.span, panic),
-                );
+                self.report_assert_as_lint(location, AssertLintKind::ArithmeticOverflow, panic);
                 return None;
             }
         }
@@ -382,13 +387,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 let (_res, overflow) = this.ecx.overflowing_binary_op(op, &l, &r)?;
                 Ok(overflow)
             })? {
-                let source_info = self.body.source_info(location);
                 self.report_assert_as_lint(
-                    source_info,
-                    AssertLint::ArithmeticOverflow(
-                        source_info.span,
-                        AssertKind::Overflow(op, l.to_const_int(), r.to_const_int()),
-                    ),
+                    location,
+                    AssertLintKind::ArithmeticOverflow,
+                    AssertKind::Overflow(op, l.to_const_int(), r.to_const_int()),
                 );
                 return None;
             }
@@ -529,11 +531,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 // Need proper const propagator for these.
                 _ => return None,
             };
-            let source_info = self.body.source_info(location);
-            self.report_assert_as_lint(
-                source_info,
-                AssertLint::UnconditionalPanic(source_info.span, msg),
-            );
+            self.report_assert_as_lint(location, AssertLintKind::UnconditionalPanic, msg);
         }
 
         None
