@@ -199,35 +199,26 @@ pub fn create_args_for_parent_generic_args<'tcx, 'a>(
         // If we have already computed the generic arguments for parents,
         // we can use those directly.
         while let Some(&param) = params.peek() {
-            if let Some(&kind) = parent_args.get(param.index as usize) {
-                args.push(kind);
-                params.next();
-            } else {
-                break;
-            }
+            let Some(&kind) = parent_args.get(param.index as usize) else { break };
+            args.push(kind);
+            params.next();
         }
 
         // `Self` is handled first, unless it's been handled in `parent_args`.
-        if has_self {
-            if let Some(&param) = params.peek() {
-                if param.index == 0 {
-                    if let GenericParamDefKind::Type { .. } = param.kind {
-                        args.push(
-                            self_ty
-                                .map(|ty| ty.into())
-                                .unwrap_or_else(|| ctx.inferred_kind(None, param, true)),
-                        );
-                        params.next();
-                    }
-                }
-            }
+        if has_self
+            && let Some(&param) = params.peek()
+            && param.index == 0
+            && let GenericParamDefKind::Type { .. } = param.kind
+        {
+            args.push(
+                self_ty.map(|ty| ty.into()).unwrap_or_else(|| ctx.inferred_kind(None, param, true)),
+            );
+            params.next();
         }
 
         // Check whether this segment takes generic arguments and the user has provided any.
-        let (generic_args, infer_args) = ctx.args_for_def_id(def_id);
-
-        let args_iter = generic_args.iter().flat_map(|generic_args| generic_args.args.iter());
-        let mut args_iter = args_iter.clone().peekable();
+        let (hir_args, infer_args) = ctx.args_for_def_id(def_id);
+        let mut hir_args = hir_args.iter().flat_map(|args| args.args.iter()).peekable();
 
         // If we encounter a type or const when we expect a lifetime, we infer the lifetimes.
         // If we later encounter a lifetime, we know that the arguments were provided in the
@@ -240,7 +231,7 @@ pub fn create_args_for_parent_generic_args<'tcx, 'a>(
             // provided, matching them with the generic parameters we expect.
             // Mismatches can occur as a result of elided lifetimes, or for malformed
             // input. We try to handle both sensibly.
-            match (args_iter.peek(), params.peek()) {
+            match (hir_args.peek(), params.peek()) {
                 (Some(&arg), Some(&param)) => {
                     match (arg, &param.kind, arg_count.explicit_late_bound) {
                         (
@@ -280,7 +271,7 @@ pub fn create_args_for_parent_generic_args<'tcx, 'a>(
                             _,
                         ) => {
                             args.push(ctx.provided_kind(param, arg));
-                            args_iter.next();
+                            hir_args.next();
                             params.next();
                         }
                         (
@@ -299,7 +290,7 @@ pub fn create_args_for_parent_generic_args<'tcx, 'a>(
                             // the presence of explicit late bounds. This is most likely
                             // due to the presence of the explicit bound so we're just going to
                             // ignore it.
-                            args_iter.next();
+                            hir_args.next();
                         }
                         (_, _, _) => {
                             // We expected one kind of parameter, but the user provided
@@ -325,7 +316,7 @@ pub fn create_args_for_parent_generic_args<'tcx, 'a>(
                                     tcx,
                                     arg,
                                     param,
-                                    !args_iter.clone().is_sorted_by_key(|arg| arg.to_ord()),
+                                    !hir_args.clone().is_sorted_by_key(|arg| arg.to_ord()),
                                     Some(format!(
                                         "reorder the arguments: {}: `<{}>`",
                                         param_types_present
@@ -353,7 +344,7 @@ pub fn create_args_for_parent_generic_args<'tcx, 'a>(
                             // errors. In this case, we're simply going to ignore the argument
                             // and any following arguments. The rest of the parameters will be
                             // inferred.
-                            while args_iter.next().is_some() {}
+                            while hir_args.next().is_some() {}
                         }
                     }
                 }
