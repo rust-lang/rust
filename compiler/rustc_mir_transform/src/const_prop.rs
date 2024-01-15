@@ -1,20 +1,12 @@
 //! Propagates constants for early reporting of statically known
 //! assertion failures
 
-use rustc_const_eval::interpret::{
-    self, compile_time_machine, AllocId, ConstAllocation, FnArg, Frame, ImmTy, InterpCx,
-    InterpResult, OpTy, PlaceTy, Pointer,
-};
 use rustc_index::bit_set::BitSet;
 use rustc_index::IndexVec;
 use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::query::TyCtxtAt;
-use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::ty::{self, ParamEnv, TyCtxt};
-use rustc_span::def_id::DefId;
+use rustc_middle::ty::{ParamEnv, TyCtxt};
 use rustc_target::abi::Size;
-use rustc_target::spec::abi::Abi as CallAbi;
 
 /// The maximum number of bytes that we'll allocate space for a local or the return value.
 /// Needed for #66397, because otherwise we eval into large places and that can cause OOM or just
@@ -47,135 +39,6 @@ pub(crate) macro throw_machine_stop_str($($tt:tt)*) {{
     }
     throw_machine_stop!(Zst)
 }}
-
-pub(crate) struct ConstPropMachine;
-
-impl<'mir, 'tcx: 'mir> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
-    compile_time_machine!(<'mir, 'tcx>);
-
-    const PANIC_ON_ALLOC_FAIL: bool = true; // all allocations are small (see `MAX_ALLOC_LIMIT`)
-
-    const POST_MONO_CHECKS: bool = false; // this MIR is still generic!
-
-    type MemoryKind = !;
-
-    #[inline(always)]
-    fn enforce_alignment(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
-        false // no reason to enforce alignment
-    }
-
-    #[inline(always)]
-    fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>, _layout: TyAndLayout<'tcx>) -> bool {
-        false // for now, we don't enforce validity
-    }
-
-    fn load_mir(
-        _ecx: &InterpCx<'mir, 'tcx, Self>,
-        _instance: ty::InstanceDef<'tcx>,
-    ) -> InterpResult<'tcx, &'tcx Body<'tcx>> {
-        throw_machine_stop_str!("calling functions isn't supported in ConstProp")
-    }
-
-    fn panic_nounwind(_ecx: &mut InterpCx<'mir, 'tcx, Self>, _msg: &str) -> InterpResult<'tcx> {
-        throw_machine_stop_str!("panicking isn't supported in ConstProp")
-    }
-
-    fn find_mir_or_eval_fn(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _instance: ty::Instance<'tcx>,
-        _abi: CallAbi,
-        _args: &[FnArg<'tcx>],
-        _destination: &PlaceTy<'tcx>,
-        _target: Option<BasicBlock>,
-        _unwind: UnwindAction,
-    ) -> InterpResult<'tcx, Option<(&'mir Body<'tcx>, ty::Instance<'tcx>)>> {
-        Ok(None)
-    }
-
-    fn call_intrinsic(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _instance: ty::Instance<'tcx>,
-        _args: &[OpTy<'tcx>],
-        _destination: &PlaceTy<'tcx>,
-        _target: Option<BasicBlock>,
-        _unwind: UnwindAction,
-    ) -> InterpResult<'tcx> {
-        throw_machine_stop_str!("calling intrinsics isn't supported in ConstProp")
-    }
-
-    fn assert_panic(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        _msg: &rustc_middle::mir::AssertMessage<'tcx>,
-        _unwind: rustc_middle::mir::UnwindAction,
-    ) -> InterpResult<'tcx> {
-        bug!("panics terminators are not evaluated in ConstProp")
-    }
-
-    fn binary_ptr_op(
-        _ecx: &InterpCx<'mir, 'tcx, Self>,
-        _bin_op: BinOp,
-        _left: &ImmTy<'tcx>,
-        _right: &ImmTy<'tcx>,
-    ) -> InterpResult<'tcx, (ImmTy<'tcx>, bool)> {
-        // We can't do this because aliasing of memory can differ between const eval and llvm
-        throw_machine_stop_str!("pointer arithmetic or comparisons aren't supported in ConstProp")
-    }
-
-    fn before_access_local_mut<'a>(
-        _ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
-        _frame: usize,
-        _local: Local,
-    ) -> InterpResult<'tcx> {
-        unreachable!()
-    }
-
-    fn before_access_global(
-        _tcx: TyCtxtAt<'tcx>,
-        _machine: &Self,
-        _alloc_id: AllocId,
-        alloc: ConstAllocation<'tcx>,
-        _static_def_id: Option<DefId>,
-        is_write: bool,
-    ) -> InterpResult<'tcx> {
-        if is_write {
-            throw_machine_stop_str!("can't write to global");
-        }
-        // If the static allocation is mutable, then we can't const prop it as its content
-        // might be different at runtime.
-        if alloc.inner().mutability.is_mut() {
-            throw_machine_stop_str!("can't access mutable globals in ConstProp");
-        }
-
-        Ok(())
-    }
-
-    #[inline(always)]
-    fn expose_ptr(_ecx: &mut InterpCx<'mir, 'tcx, Self>, _ptr: Pointer) -> InterpResult<'tcx> {
-        throw_machine_stop_str!("exposing pointers isn't supported in ConstProp")
-    }
-
-    #[inline(always)]
-    fn init_frame_extra(
-        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        frame: Frame<'mir, 'tcx>,
-    ) -> InterpResult<'tcx, Frame<'mir, 'tcx>> {
-        Ok(frame)
-    }
-
-    #[inline(always)]
-    fn stack<'a>(
-        _ecx: &'a InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a [Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>] {
-        &[]
-    }
-
-    #[inline(always)]
-    fn stack_mut<'a>(
-        _ecx: &'a mut InterpCx<'mir, 'tcx, Self>,
-    ) -> &'a mut Vec<Frame<'mir, 'tcx, Self::Provenance, Self::FrameExtra>> {
-        unreachable!()
-    }
-}
 
 /// The mode that `ConstProp` is allowed to run in for a given `Local`.
 #[derive(Clone, Copy, Debug, PartialEq)]

@@ -18,8 +18,8 @@ use rustc_span::Span;
 use rustc_target::abi::{Abi, FieldIdx, HasDataLayout, Size, TargetDataLayout, VariantIdx};
 
 use crate::const_prop::CanConstProp;
-use crate::const_prop::ConstPropMachine;
 use crate::const_prop::ConstPropMode;
+use crate::dataflow_const_prop::DummyMachine;
 use crate::errors::{AssertLint, AssertLintKind};
 use crate::MirLint;
 
@@ -70,7 +70,7 @@ impl<'tcx> MirLint<'tcx> for ConstPropLint {
 
 /// Finds optimization opportunities on the MIR.
 struct ConstPropagator<'mir, 'tcx> {
-    ecx: InterpCx<'mir, 'tcx, ConstPropMachine>,
+    ecx: InterpCx<'mir, 'tcx, DummyMachine>,
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
     worklist: Vec<BasicBlock>,
@@ -184,7 +184,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
 
         let can_const_prop = CanConstProp::check(tcx, param_env, body);
-        let ecx = InterpCx::new(tcx, tcx.def_span(def_id), param_env, ConstPropMachine);
+        let ecx = InterpCx::new(tcx, tcx.def_span(def_id), param_env, DummyMachine);
 
         ConstPropagator {
             ecx,
