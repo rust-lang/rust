@@ -66,10 +66,10 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                         .0
                     {
                         Ok((_, Certainty::Maybe(MaybeCause::Ambiguity), _)) => {
-                            FulfillmentErrorCode::CodeAmbiguity { overflow: false }
+                            FulfillmentErrorCode::Ambiguity { overflow: false }
                         }
                         Ok((_, Certainty::Maybe(MaybeCause::Overflow), _)) => {
-                            FulfillmentErrorCode::CodeAmbiguity { overflow: true }
+                            FulfillmentErrorCode::Ambiguity { overflow: true }
                         }
                         Ok((_, Certainty::Yes, _)) => {
                             bug!("did not expect successful goal when collecting ambiguity errors")
@@ -108,18 +108,18 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                                 obligation: obligation.clone(),
                                 code: match goal.predicate.kind().skip_binder() {
                                     ty::PredicateKind::Clause(ty::ClauseKind::Projection(_)) => {
-                                        FulfillmentErrorCode::CodeProjectionError(
+                                        FulfillmentErrorCode::ProjectionError(
                                             // FIXME: This could be a `Sorts` if the term is a type
                                             MismatchedProjectionTypes { err: TypeError::Mismatch },
                                         )
                                     }
                                     ty::PredicateKind::NormalizesTo(..) => {
-                                        FulfillmentErrorCode::CodeProjectionError(
+                                        FulfillmentErrorCode::ProjectionError(
                                             MismatchedProjectionTypes { err: TypeError::Mismatch },
                                         )
                                     }
                                     ty::PredicateKind::AliasRelate(_, _, _) => {
-                                        FulfillmentErrorCode::CodeProjectionError(
+                                        FulfillmentErrorCode::ProjectionError(
                                             MismatchedProjectionTypes { err: TypeError::Mismatch },
                                         )
                                     }
@@ -128,7 +128,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                                             goal.predicate.kind().rebind((pred.a, pred.b)),
                                         );
                                         let expected_found = ExpectedFound::new(true, a, b);
-                                        FulfillmentErrorCode::CodeSubtypeError(
+                                        FulfillmentErrorCode::SubtypeError(
                                             expected_found,
                                             TypeError::Sorts(expected_found),
                                         )
@@ -138,7 +138,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                                             goal.predicate.kind().rebind((pred.a, pred.b)),
                                         );
                                         let expected_found = ExpectedFound::new(false, a, b);
-                                        FulfillmentErrorCode::CodeSubtypeError(
+                                        FulfillmentErrorCode::SubtypeError(
                                             expected_found,
                                             TypeError::Sorts(expected_found),
                                         )
@@ -146,7 +146,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentCtxt<'tcx> {
                                     ty::PredicateKind::Clause(_)
                                     | ty::PredicateKind::ObjectSafe(_)
                                     | ty::PredicateKind::Ambiguous => {
-                                        FulfillmentErrorCode::CodeSelectionError(
+                                        FulfillmentErrorCode::SelectionError(
                                             SelectionError::Unimplemented,
                                         )
                                     }

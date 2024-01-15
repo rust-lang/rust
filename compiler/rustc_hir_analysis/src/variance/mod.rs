@@ -3,6 +3,7 @@
 //!
 //! [rustc dev guide]: https://rustc-dev-guide.rust-lang.org/variance.html
 
+use itertools::Itertools;
 use rustc_arena::DroplessArena;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -91,7 +92,7 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
         fn visit_opaque(&mut self, def_id: DefId, args: GenericArgsRef<'tcx>) -> ControlFlow<!> {
             if def_id != self.root_def_id && self.tcx.is_descendant_of(def_id, self.root_def_id) {
                 let child_variances = self.tcx.variances_of(def_id);
-                for (a, v) in args.iter().zip(child_variances) {
+                for (a, v) in args.iter().zip_eq(child_variances) {
                     if *v != ty::Bivariant {
                         a.visit_with(self)?;
                     }

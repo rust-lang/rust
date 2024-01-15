@@ -1,5 +1,6 @@
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::scope::DropKind;
+use itertools::Itertools;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_ast::attr;
@@ -654,7 +655,7 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
                         ty::ClosureKind::FnOnce => closure_ty,
                     };
                     (
-                        [self_ty].into_iter().chain(sig.inputs().to_vec()).collect(),
+                        [self_ty].into_iter().chain(sig.inputs()[0].tuple_fields()).collect(),
                         sig.output(),
                         None,
                     )
@@ -835,7 +836,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.upvars = tcx
             .closure_captures(self.def_id)
             .iter()
-            .zip(capture_tys)
+            .zip_eq(capture_tys)
             .enumerate()
             .map(|(i, (captured_place, ty))| {
                 let name = captured_place.to_symbol();

@@ -14,8 +14,8 @@ use crate::traits::specialize::to_pretty_impl_header;
 use crate::traits::NormalizeExt;
 use crate::traits::{
     elaborate, FulfillmentError, FulfillmentErrorCode, MismatchedProjectionTypes, Obligation,
-    ObligationCause, ObligationCauseCode, ObligationCtxt, OutputTypeParameterMismatch, Overflow,
-    PredicateObligation, SelectionError, TraitNotObjectSafe,
+    ObligationCause, ObligationCauseCode, ObligationCtxt, Overflow, PredicateObligation,
+    SelectionError, SignatureMismatch, TraitNotObjectSafe,
 };
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_errors::{
@@ -30,7 +30,7 @@ use rustc_hir::{GenericParam, Item, Node};
 use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_middle::traits::select::OverflowError;
-use rustc_middle::traits::{DefiningAnchor, SelectionOutputTypeParameterMismatch};
+use rustc_middle::traits::{DefiningAnchor, SignatureMismatchData};
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{BottomUpFolder, TypeFolder, TypeSuperFoldable};
@@ -785,14 +785,14 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
                     ty::PredicateKind::Subtype(predicate) => {
                         // Errors for Subtype predicates show up as
-                        // `FulfillmentErrorCode::CodeSubtypeError`,
+                        // `FulfillmentErrorCode::SubtypeError`,
                         // not selection error.
                         span_bug!(span, "subtype requirement gave wrong error: `{:?}`", predicate)
                     }
 
                     ty::PredicateKind::Coerce(predicate) => {
                         // Errors for Coerce predicates show up as
-                        // `FulfillmentErrorCode::CodeSubtypeError`,
+                        // `FulfillmentErrorCode::SubtypeError`,
                         // not selection error.
                         span_bug!(span, "coerce requirement gave wrong error: `{:?}`", predicate)
                     }
@@ -891,22 +891,22 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
             }
 
-            OutputTypeParameterMismatch(box SelectionOutputTypeParameterMismatch {
+            SignatureMismatch(box SignatureMismatchData {
                 found_trait_ref,
                 expected_trait_ref,
                 terr: terr @ TypeError::CyclicTy(_),
-            }) => self.report_type_parameter_mismatch_cyclic_type_error(
+            }) => self.report_cyclic_signature_error(
                 &obligation,
                 found_trait_ref,
                 expected_trait_ref,
                 terr,
             ),
-            OutputTypeParameterMismatch(box SelectionOutputTypeParameterMismatch {
+            SignatureMismatch(box SignatureMismatchData {
                 found_trait_ref,
                 expected_trait_ref,
                 terr: _,
             }) => {
-                match self.report_type_parameter_mismatch_error(
+                match self.report_signature_mismatch_error(
                     &obligation,
                     span,
                     found_trait_ref,
@@ -1492,7 +1492,7 @@ pub(super) trait InferCtxtPrivExt<'tcx> {
         kind: ty::ClosureKind,
     ) -> DiagnosticBuilder<'tcx>;
 
-    fn report_type_parameter_mismatch_cyclic_type_error(
+    fn report_cyclic_signature_error(
         &self,
         obligation: &PredicateObligation<'tcx>,
         found_trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
@@ -1506,7 +1506,7 @@ pub(super) trait InferCtxtPrivExt<'tcx> {
         def_id: DefId,
     ) -> DiagnosticBuilder<'tcx>;
 
-    fn report_type_parameter_mismatch_error(
+    fn report_signature_mismatch_error(
         &self,
         obligation: &PredicateObligation<'tcx>,
         span: Span,
@@ -1572,23 +1572,23 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
 
         match error.code {
-            FulfillmentErrorCode::CodeSelectionError(ref selection_error) => {
+            FulfillmentErrorCode::SelectionError(ref selection_error) => {
                 self.report_selection_error(
                     error.obligation.clone(),
                     &error.root_obligation,
                     selection_error,
                 );
             }
-            FulfillmentErrorCode::CodeProjectionError(ref e) => {
+            FulfillmentErrorCode::ProjectionError(ref e) => {
                 self.report_projection_error(&error.obligation, e);
             }
-            FulfillmentErrorCode::CodeAmbiguity { overflow: false } => {
+            FulfillmentErrorCode::Ambiguity { overflow: false } => {
                 self.maybe_report_ambiguity(&error.obligation);
             }
-            FulfillmentErrorCode::CodeAmbiguity { overflow: true } => {
+            FulfillmentErrorCode::Ambiguity { overflow: true } => {
                 self.report_overflow_no_abort(error.obligation.clone());
             }
-            FulfillmentErrorCode::CodeSubtypeError(ref expected_found, ref err) => {
+            FulfillmentErrorCode::SubtypeError(ref expected_found, ref err) => {
                 self.report_mismatched_types(
                     &error.obligation.cause,
                     expected_found.expected,
@@ -1597,7 +1597,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 )
                 .emit();
             }
-            FulfillmentErrorCode::CodeConstEquateError(ref expected_found, ref err) => {
+            FulfillmentErrorCode::ConstEquateError(ref expected_found, ref err) => {
                 let mut diag = self.report_mismatched_consts(
                     &error.obligation.cause,
                     expected_found.expected,
@@ -1622,7 +1622,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
                 diag.emit();
             }
-            FulfillmentErrorCode::CodeCycle(ref cycle) => {
+            FulfillmentErrorCode::Cycle(ref cycle) => {
                 self.report_overflow_obligation_cycle(cycle);
             }
         }
@@ -3366,7 +3366,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         self.dcx().create_err(err)
     }
 
-    fn report_type_parameter_mismatch_cyclic_type_error(
+    fn report_cyclic_signature_error(
         &self,
         obligation: &PredicateObligation<'tcx>,
         found_trait_ref: ty::Binder<'tcx, ty::TraitRef<'tcx>>,
@@ -3427,7 +3427,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         err
     }
 
-    fn report_type_parameter_mismatch_error(
+    fn report_signature_mismatch_error(
         &self,
         obligation: &PredicateObligation<'tcx>,
         span: Span,
@@ -3446,10 +3446,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         };
 
         let found_did = match *found_trait_ty.kind() {
-            ty::Closure(did, _) | ty::Foreign(did) | ty::FnDef(did, _) | ty::Coroutine(did, ..) => {
-                Some(did)
-            }
-            ty::Adt(def, _) => Some(def.did()),
+            ty::Closure(did, _) | ty::FnDef(did, _) | ty::Coroutine(did, ..) => Some(did),
             _ => None,
         };
 

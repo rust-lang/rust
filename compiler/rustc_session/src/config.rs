@@ -533,21 +533,6 @@ impl Default for ErrorOutputType {
     }
 }
 
-/// Parameter to control path trimming.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub enum TrimmedDefPaths {
-    /// `try_print_trimmed_def_path` never prints a trimmed path and never calls the expensive
-    /// query.
-    #[default]
-    Never,
-    /// `try_print_trimmed_def_path` calls the expensive query, the query doesn't call
-    /// `good_path_delayed_bug`.
-    Always,
-    /// `try_print_trimmed_def_path` calls the expensive query, the query calls
-    /// `good_path_delayed_bug`.
-    GoodPath,
-}
-
 #[derive(Clone, Hash, Debug)]
 pub enum ResolveDocLinks {
     /// Do not resolve doc links.
@@ -1089,7 +1074,7 @@ impl Default for Options {
             debug_assertions: true,
             actually_rustdoc: false,
             resolve_doc_links: ResolveDocLinks::None,
-            trimmed_def_paths: TrimmedDefPaths::default(),
+            trimmed_def_paths: false,
             cli_forced_codegen_units: None,
             cli_forced_local_thinlto_off: false,
             remap_path_prefix: Vec::new(),
@@ -2926,7 +2911,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         debug_assertions,
         actually_rustdoc: false,
         resolve_doc_links: ResolveDocLinks::ExportedMetadata,
-        trimmed_def_paths: TrimmedDefPaths::default(),
+        trimmed_def_paths: false,
         cli_forced_codegen_units: codegen_units,
         cli_forced_local_thinlto_off: disable_local_thinlto,
         remap_path_prefix,
@@ -3210,7 +3195,7 @@ pub(crate) mod dep_tracking {
         LinkerPluginLto, LocationDetail, LtoCli, NextSolverConfig, OomStrategy, OptLevel,
         OutFileName, OutputType, OutputTypes, Polonius, RemapPathScopeComponents, ResolveDocLinks,
         SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath, SymbolManglingVersion,
-        TrimmedDefPaths, WasiExecModel,
+        WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3305,7 +3290,6 @@ pub(crate) mod dep_tracking {
         SymbolManglingVersion,
         RemapPathScopeComponents,
         SourceFileHashAlgorithm,
-        TrimmedDefPaths,
         OutFileName,
         OutputType,
         RealFileName,

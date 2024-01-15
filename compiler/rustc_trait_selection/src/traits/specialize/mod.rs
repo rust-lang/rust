@@ -26,7 +26,7 @@ use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{GenericArgs, GenericArgsRef};
 use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
 use rustc_session::lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS;
-use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
+use rustc_span::{sym, ErrorGuaranteed, Span, DUMMY_SP};
 
 use super::util;
 use super::SelectionContext;
@@ -142,10 +142,30 @@ pub fn translate_args_with_cause<'tcx>(
 pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId, DefId)) -> bool {
     // The feature gate should prevent introducing new specializations, but not
     // taking advantage of upstream ones.
+    // If specialization is enabled for this crate then no extra checks are needed.
+    // If it's not, and either of the `impl`s is local to this crate, then this definitely
+    // isn't specializing - unless specialization is enabled for the `impl` span,
+    // e.g. if it comes from an `allow_internal_unstable` macro
     let features = tcx.features();
     let specialization_enabled = features.specialization || features.min_specialization;
-    if !specialization_enabled && (impl1_def_id.is_local() || impl2_def_id.is_local()) {
-        return false;
+    if !specialization_enabled {
+        if impl1_def_id.is_local() {
+            let span = tcx.def_span(impl1_def_id);
+            if !span.allows_unstable(sym::specialization)
+                && !span.allows_unstable(sym::min_specialization)
+            {
+                return false;
+            }
+        }
+
+        if impl2_def_id.is_local() {
+            let span = tcx.def_span(impl2_def_id);
+            if !span.allows_unstable(sym::specialization)
+                && !span.allows_unstable(sym::min_specialization)
+            {
+                return false;
+            }
+        }
     }
 
     // We determine whether there's a subset relationship by:

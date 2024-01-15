@@ -1291,7 +1291,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                 }
                                 // The type doesn't implement Clone because of unmet obligations.
                                 for error in errors {
-                                    if let traits::FulfillmentErrorCode::CodeSelectionError(
+                                    if let traits::FulfillmentErrorCode::SelectionError(
                                         traits::SelectionError::Unimplemented,
                                     ) = error.code
                                         && let ty::PredicateKind::Clause(ty::ClauseKind::Trait(

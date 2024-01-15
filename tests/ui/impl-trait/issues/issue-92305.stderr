@@ -9,18 +9,6 @@ help: add missing generic argument
 LL | fn f<T>(data: &[T]) -> impl Iterator<Item = Vec<T>> {
    |                                                +++
 
-error[E0282]: type annotations needed
-  --> $DIR/issue-92305.rs:7:5
-   |
-LL |     iter::empty()
-   |     ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `empty`
-   |
-help: consider specifying the generic argument
-   |
-LL |     iter::empty::<T>()
-   |                +++++
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0107, E0282.
-For more information about an error, try `rustc --explain E0107`.
+For more information about this error, try `rustc --explain E0107`.
