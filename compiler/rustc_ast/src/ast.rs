@@ -2574,6 +2574,12 @@ impl FnRetTy {
             FnRetTy::Ty(ty) => ty.span,
         }
     }
+    pub fn has_ret(&self) -> bool {
+        match self {
+            FnRetTy::Default(_) => false,
+            FnRetTy::Ty(_) => true,
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable, Debug)]
