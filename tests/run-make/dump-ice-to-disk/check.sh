@@ -53,8 +53,8 @@ echo $should_be_empty_tmp
 if [ $short -eq $default_set ] &&
     #[ $default -eq $short ] &&
     [ $default_set -eq $full ] &&
-    [[ $content == *"thread 'rustc' panicked at "* ]] &&
-    [[ $content == *"stack backtrace:"* ]] &&
+    [ "${content%%*"thread 'rustc' panicked at "*} != "$content" ] &&
+    [ "${content%%*"stack backtrace:"*}" != "$content" ] &&
     #[ $default -gt 0 ] &&
     [ $should_be_empty_dot -eq 0 ] &&
     [ $should_be_empty_tmp -eq 0 ]; then
