@@ -15,6 +15,7 @@ If you wish to _contribute_ to the compiler, you should read
 <summary>Table of Contents</summary>
 
 - [Quick Start](#quick-start)
+- [Installing from Source](#installing-from-source)
 - [Getting Help](#getting-help)
 - [Contributing](#contributing)
 - [License](#license)
@@ -29,9 +30,10 @@ Read ["Installation"] from [The Book].
 ["Installation"]: https://doc.rust-lang.org/book/ch01-01-installation.html
 [The Book]: https://doc.rust-lang.org/book/index.html
 
-## Installing from source
+## Installing from Source
 
-If you really want to install from source (though this is not recommended), see [INSTALL.md](INSTALL.md).
+If you really want to install from source (though this is not recommended), see
+[INSTALL.md](INSTALL.md).
 
 ## Getting Help
 
