@@ -8,6 +8,69 @@ use super::from_str_radix;
 use super::{IntErrorKind, ParseIntError};
 use crate::intrinsics;
 
+mod private {
+    #[unstable(
+        feature = "nonzero_internals",
+        reason = "implementation detail which may disappear or be replaced at any time",
+        issue = "none"
+    )]
+    #[const_trait]
+    pub trait Sealed {}
+}
+
+/// A marker trait for primitive types which can be zero.
+///
+/// This is an implementation detail for [`NonZero<T>`](NonZero) which may disappear or be replaced at any time.
+#[unstable(
+    feature = "nonzero_internals",
+    reason = "implementation detail which may disappear or be replaced at any time",
+    issue = "none"
+)]
+#[const_trait]
+pub trait ZeroablePrimitive: Sized + Copy + private::Sealed {
+    type NonZero;
+}
+
+#[unstable(
+    feature = "nonzero_internals",
+    reason = "implementation detail which may disappear or be replaced at any time",
+    issue = "none"
+)]
+pub(crate) type NonZero<T> = <T as ZeroablePrimitive>::NonZero;
+
+macro_rules! impl_zeroable_primitive {
+    ($NonZero:ident ( $primitive:ty )) => {
+        #[unstable(
+            feature = "nonzero_internals",
+            reason = "implementation detail which may disappear or be replaced at any time",
+            issue = "none"
+        )]
+        impl const private::Sealed for $primitive {}
+
+        #[unstable(
+            feature = "nonzero_internals",
+            reason = "implementation detail which may disappear or be replaced at any time",
+            issue = "none"
+        )]
+        impl const ZeroablePrimitive for $primitive {
+            type NonZero = $NonZero;
+        }
+    };
+}
+
+impl_zeroable_primitive!(NonZeroU8(u8));
+impl_zeroable_primitive!(NonZeroU16(u16));
+impl_zeroable_primitive!(NonZeroU32(u32));
+impl_zeroable_primitive!(NonZeroU64(u64));
+impl_zeroable_primitive!(NonZeroU128(u128));
+impl_zeroable_primitive!(NonZeroUsize(usize));
+impl_zeroable_primitive!(NonZeroI8(i8));
+impl_zeroable_primitive!(NonZeroI16(i16));
+impl_zeroable_primitive!(NonZeroI32(i32));
+impl_zeroable_primitive!(NonZeroI64(i64));
+impl_zeroable_primitive!(NonZeroI128(i128));
+impl_zeroable_primitive!(NonZeroIsize(isize));
+
 macro_rules! impl_nonzero_fmt {
     ( #[$stability: meta] ( $( $Trait: ident ),+ ) for $Ty: ident ) => {
         $(
