@@ -71,5 +71,5 @@ if isWindows; then
     rm -r "/c/mingw64/"
     rm -r "/c/mingw32/"
 
-    echo "\nexport PATH=\"/c/hostedtoolcache/windows/Python/3.7.9/x64/:\$PATH\"\n" >> ~/.profile
+    echo "\nexport PATH=\"/c/hostedtoolcache/windows/Python/3.7.9/x64/:\$PATH\"\n" >> ~/.bashrc
 fi
