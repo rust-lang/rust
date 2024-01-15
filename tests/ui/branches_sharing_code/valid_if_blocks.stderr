@@ -3,12 +3,11 @@ error: this `if` has identical blocks
    |
 LL |       if false {
    |  ______________^
-LL | |
 LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/valid_if_blocks.rs:111:12
+  --> $DIR/valid_if_blocks.rs:110:12
    |
 LL |       } else {
    |  ____________^
@@ -25,7 +24,6 @@ error: this `if` has identical blocks
    |
 LL |       if x == 0 {
    |  _______________^
-LL | |
 LL | |         let u = 19;
 LL | |         println!("How are u today?");
 LL | |         let _ = "This is a string";
@@ -33,7 +31,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/valid_if_blocks.rs:126:12
+  --> $DIR/valid_if_blocks.rs:125:12
    |
 LL |       } else {
    |  ____________^
@@ -60,20 +58,17 @@ error: this `if` has identical blocks
    |
 LL |       } else if x == 68 {
    |  _______________________^
-LL | |
 LL | |         println!("I'm a doppelgänger");
-LL | |         // Don't listen to my clone below
 LL | |
 LL | |         if y == 90 { "=^.^=" } else { ":D" }
 LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/valid_if_blocks.rs:146:12
+  --> $DIR/valid_if_blocks.rs:144:12
    |
 LL |       } else {
    |  ____________^
-LL | |         // Don't listen to my clone above
 LL | |         println!("I'm a doppelgänger");
 LL | |
 LL | |         if y == 90 { "=^.^=" } else { ":D" }
@@ -81,22 +76,19 @@ LL | |     };
    | |_____^
 
 error: this `if` has identical blocks
-  --> $DIR/valid_if_blocks.rs:155:23
+  --> $DIR/valid_if_blocks.rs:153:23
    |
 LL |       } else if x == 68 {
    |  _______________________^
-LL | |
 LL | |         println!("I'm a doppelgänger");
-LL | |         // Don't listen to my clone below
 LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> $DIR/valid_if_blocks.rs:159:12
+  --> $DIR/valid_if_blocks.rs:155:12
    |
 LL |       } else {
    |  ____________^
-LL | |         // Don't listen to my clone above
 LL | |         println!("I'm a doppelgänger");
 LL | |     }
    | |_____^
