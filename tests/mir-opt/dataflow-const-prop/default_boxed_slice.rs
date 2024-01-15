@@ -4,6 +4,8 @@
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 // EMIT_MIR_FOR_EACH_PANIC_STRATEGY
 
+// This test is to check ICE in issue [#115789](https://github.com/rust-lang/rust/issues/115789).
+
 struct A {
     foo: Box<[bool]>,
 }
@@ -14,13 +16,14 @@ struct A {
 // CHECK-LABEL: fn main(
 fn main() {
     // ConstProp will create a constant of type `Box<[bool]>`.
+    // FIXME: it is not yet a constant.
+
     // Verify that `DataflowConstProp` does not ICE trying to dereference it directly.
 
     // CHECK: debug a => [[a:_.*]];
     // We may check other inlined functions as well...
 
-    // CHECK: [[box_obj:_.*]] = Box::<[bool]>(_3, const std::alloc::Global);
-    // CHECK: [[a]] = A { foo: move [[box_obj]] };
-    // FIXME: we do not have `const Box::<[bool]>` after constprop right now.
+    // CHECK-LABEL: _.* = Box::<[bool]>(
+    // FIXME: should be `_.* = const Box::<[bool]>`
     let a: A = A { foo: Box::default() };
 }
