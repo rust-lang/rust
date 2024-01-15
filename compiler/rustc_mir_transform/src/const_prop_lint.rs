@@ -101,19 +101,19 @@ impl<'tcx> From<ImmTy<'tcx>> for Value<'tcx> {
 }
 
 impl<'tcx> Value<'tcx> {
-    fn project(
-        &self,
-        proj: impl Iterator<Item = Option<ProjectionElem<FieldIdx, Ty<'tcx>>>>,
-    ) -> Option<&Value<'tcx>> {
+    fn project(&self, proj: impl Iterator<Item = Option<PlaceElem<'tcx>>>) -> Option<&Value<'tcx>> {
         let mut this = self;
         for proj in proj {
             this = match (proj?, this) {
                 (ProjectionElem::Field(idx, _), Value::Aggregate { fields, .. }) => {
                     fields.get(idx).unwrap_or(&Value::Uninit)
                 }
-                (ProjectionElem::Index(idx), Value::Aggregate { fields, .. }) => {
-                    fields.get(idx).unwrap_or(&Value::Uninit)
-                }
+                (
+                    ProjectionElem::ConstantIndex { offset, min_length: 1, from_end: false },
+                    Value::Aggregate { fields, .. },
+                ) => fields
+                    .get(FieldIdx::from_u32(offset.try_into().ok()?))
+                    .unwrap_or(&Value::Uninit),
                 _ => return None,
             };
         }
@@ -205,7 +205,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     fn get_const(&self, place: Place<'tcx>) -> Option<&Value<'tcx>> {
         self.locals[place.local]
-            .project(place.projection.iter().map(|proj| self.simple_projection(proj)))
+            .project(place.projection.iter().map(|proj| self.try_eval_index_offset(proj)))
     }
 
     /// Remove `local` from the pool of `Locals`. Allows writing to them,
@@ -719,29 +719,18 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         Some(())
     }
 
-    fn simple_projection(
-        &self,
-        proj: ProjectionElem<Local, Ty<'tcx>>,
-    ) -> Option<ProjectionElem<FieldIdx, Ty<'tcx>>> {
+    fn try_eval_index_offset(&self, proj: PlaceElem<'tcx>) -> Option<PlaceElem<'tcx>> {
         Some(match proj {
-            ProjectionElem::Deref => ProjectionElem::Deref,
-            ProjectionElem::Field(idx, ty) => ProjectionElem::Field(idx, ty),
             ProjectionElem::Index(local) => {
                 let val = self.get_const(local.into())?;
                 let op = val.immediate()?;
-                ProjectionElem::Index(FieldIdx::from_u32(
-                    self.ecx.read_target_usize(op).ok()?.try_into().ok()?,
-                ))
+                ProjectionElem::ConstantIndex {
+                    offset: self.ecx.read_target_usize(op).ok()?,
+                    min_length: 1,
+                    from_end: false,
+                }
             }
-            ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
-                ProjectionElem::ConstantIndex { offset, min_length, from_end }
-            }
-            ProjectionElem::Subslice { from, to, from_end } => {
-                ProjectionElem::Subslice { from, to, from_end }
-            }
-            ProjectionElem::Downcast(a, b) => ProjectionElem::Downcast(a, b),
-            ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(ty),
-            ProjectionElem::Subtype(ty) => ProjectionElem::Subtype(ty),
+            other => other,
         })
     }
 }
