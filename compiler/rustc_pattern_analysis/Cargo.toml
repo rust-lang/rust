@@ -20,13 +20,10 @@ rustc_span = { path = "../rustc_span", optional = true }
 rustc_target = { path = "../rustc_target", optional = true }
 smallvec = { version = "1.8.1", features = ["union"] }
 tracing = "0.1"
-typed-arena = { version = "2.0.2", optional = true }
 # tidy-alphabetical-end
 
 [features]
 default = ["rustc"]
-# It's not possible to only enable the `typed_arena` dependency when the `rustc` feature is off, so
-# we use another feature instead. The crate won't compile if one of these isn't enabled.
 rustc = [
     "dep:rustc_arena",
     "dep:rustc_data_structures",
@@ -40,7 +37,4 @@ rustc = [
     "dep:rustc_target",
     "smallvec/may_dangle",
     "rustc_index/nightly",
-]
-stable = [
-    "dep:typed-arena",
 ]
