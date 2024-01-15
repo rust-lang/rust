@@ -41,7 +41,6 @@ Syntax trees are a semi-transient data structure.
 In general, frontend does not keep syntax trees for all files in memory.
 Instead, it *lowers* syntax trees to more compact and rigid representation, which is not full-fidelity, but which can be mapped back to a syntax tree if so desired.
 
-
 ### GreenNode
 
 GreenNode is a purely-functional tree with arbitrary arity. Conceptually, it is equivalent to the following run of the mill struct:
@@ -500,7 +499,7 @@ Specifically, `TreeSink` constructs the tree in lockstep with draining the origi
 In the process, it records which tokens of the tree correspond to which tokens of the input, by using text ranges to identify syntax tokens.
 The end result is that parsing an expanded code yields a syntax tree and a mapping of text-ranges of the tree to original tokens.
 
-To deal with precedence in cases like `$expr * 1`, we use special invisible parenthesis, which are explicitly handled by the parser
+To deal with precedence in cases like `$expr * 1`, we use special invisible parenthesis, which are explicitly handled by the parser.
 
 ### Whitespace & Comments
 

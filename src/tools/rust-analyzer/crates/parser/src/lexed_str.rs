@@ -8,8 +8,6 @@
 //! Note that these tokens, unlike the tokens we feed into the parser, do
 //! include info about comments and whitespace.
 
-use rustc_dependencies::lexer as rustc_lexer;
-
 use std::ops;
 
 use rustc_lexer::unescape::{EscapeError, Mode};

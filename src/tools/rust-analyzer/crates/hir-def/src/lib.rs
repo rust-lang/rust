@@ -10,10 +10,17 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
-#[allow(unused)]
-macro_rules! eprintln {
-    ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
-}
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_parse_format;
+
+#[cfg(not(feature = "in-rust-tree"))]
+extern crate ra_ap_rustc_parse_format as rustc_parse_format;
+
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_abi;
+
+#[cfg(not(feature = "in-rust-tree"))]
+extern crate ra_ap_rustc_abi as rustc_abi;
 
 pub mod db;
 
@@ -49,7 +56,7 @@ pub mod visibility;
 pub mod find_path;
 pub mod import_map;
 
-pub use rustc_dependencies::abi as layout;
+pub use rustc_abi as layout;
 use triomphe::Arc;
 
 #[cfg(test)]

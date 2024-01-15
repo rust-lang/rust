@@ -3,10 +3,17 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
-#[allow(unused)]
-macro_rules! eprintln {
-    ($($tt:tt)*) => { stdx::eprintln!($($tt)*) };
-}
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_index;
+
+#[cfg(not(feature = "in-rust-tree"))]
+extern crate ra_ap_rustc_index as rustc_index;
+
+#[cfg(feature = "in-rust-tree")]
+extern crate rustc_abi;
+
+#[cfg(not(feature = "in-rust-tree"))]
+extern crate ra_ap_rustc_abi as rustc_abi;
 
 mod builder;
 mod chalk_db;
