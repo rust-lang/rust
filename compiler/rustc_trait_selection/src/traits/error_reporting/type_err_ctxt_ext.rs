@@ -63,6 +63,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         mut errors: Vec<FulfillmentError<'tcx>>,
     ) -> ErrorGuaranteed {
+        self.sub_relations
+            .borrow_mut()
+            .add_constraints(self, errors.iter().map(|e| e.obligation.predicate));
+
         #[derive(Debug)]
         struct ErrorDescriptor<'tcx> {
             predicate: ty::Predicate<'tcx>,

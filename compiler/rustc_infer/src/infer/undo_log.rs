@@ -20,7 +20,7 @@ pub struct Snapshot<'tcx> {
 #[derive(Clone)]
 pub(crate) enum UndoLog<'tcx> {
     OpaqueTypes(OpaqueTypeKey<'tcx>, Option<OpaqueHiddenType<'tcx>>),
-    TypeVariables(type_variable::UndoLog<'tcx>),
+    TypeVariables(sv::UndoLog<ut::Delegate<type_variable::TyVidEqKey<'tcx>>>),
     ConstUnificationTable(sv::UndoLog<ut::Delegate<ConstVidKey<'tcx>>>),
     IntUnificationTable(sv::UndoLog<ut::Delegate<ty::IntVid>>),
     FloatUnificationTable(sv::UndoLog<ut::Delegate<ty::FloatVid>>),
@@ -46,17 +46,13 @@ macro_rules! impl_from {
 // Upcast from a single kind of "undoable action" to the general enum
 impl_from! {
     RegionConstraintCollector(region_constraints::UndoLog<'tcx>),
-    TypeVariables(type_variable::UndoLog<'tcx>),
 
     TypeVariables(sv::UndoLog<ut::Delegate<type_variable::TyVidEqKey<'tcx>>>),
-    TypeVariables(sv::UndoLog<ut::Delegate<ty::TyVid>>),
-
     IntUnificationTable(sv::UndoLog<ut::Delegate<ty::IntVid>>),
-
     FloatUnificationTable(sv::UndoLog<ut::Delegate<ty::FloatVid>>),
-    EffectUnificationTable(sv::UndoLog<ut::Delegate<EffectVidKey<'tcx>>>),
 
     ConstUnificationTable(sv::UndoLog<ut::Delegate<ConstVidKey<'tcx>>>),
+    EffectUnificationTable(sv::UndoLog<ut::Delegate<EffectVidKey<'tcx>>>),
 
     RegionUnificationTable(sv::UndoLog<ut::Delegate<RegionVidKey<'tcx>>>),
     ProjectionCache(traits::UndoLog<'tcx>),
