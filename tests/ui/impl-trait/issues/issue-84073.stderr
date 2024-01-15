@@ -1,4 +1,4 @@
-error[E0275]: overflow evaluating the requirement `_ <: Option<_>`
+error[E0275]: overflow setting `_` to a subtype of `Option<_>`
   --> $DIR/issue-84073.rs:32:22
    |
 LL |     Race::new(|race| race.when());

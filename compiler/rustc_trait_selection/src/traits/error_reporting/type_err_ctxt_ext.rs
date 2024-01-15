@@ -239,13 +239,26 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
             OverflowCause::TraitSolver(predicate) => {
                 let predicate = self.resolve_vars_if_possible(predicate);
-                let pred_str = with_short_path(self.tcx, predicate);
-                struct_span_code_err!(
-                    self.dcx(),
-                    span,
-                    E0275,
-                    "overflow evaluating the requirement `{pred_str}`",
-                )
+                match predicate.kind().skip_binder() {
+                    ty::PredicateKind::Subtype(ty::SubtypePredicate { a, b, a_is_expected: _ })
+                    | ty::PredicateKind::Coerce(ty::CoercePredicate { a, b }) => {
+                        struct_span_code_err!(
+                            self.dcx(),
+                            span,
+                            E0275,
+                            "overflow setting `{a}` to a subtype of `{b}`",
+                        )
+                    }
+                    _ => {
+                        let pred_str = with_short_path(self.tcx, predicate);
+                        struct_span_code_err!(
+                            self.dcx(),
+                            span,
+                            E0275,
+                            "overflow evaluating the requirement `{pred_str}`",
+                        )
+                    }
+                }
             }
         };
 

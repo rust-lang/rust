@@ -29,5 +29,5 @@ where
 }
 
 fn main() {
-    Race::new(|race| race.when()); //~ ERROR overflow evaluating the requirement `_ <: Option<_>`
+    Race::new(|race| race.when()); //~ ERROR overflow setting `_` to a subtype of `Option<_>`
 }
