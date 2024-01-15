@@ -4,7 +4,6 @@ fn _alias_check() {
     WrongImpl::foo(0i32);
     //~^ ERROR the trait bound `RawImpl<_>: Raw<_>` is not satisfied
     //~| ERROR the trait bound `RawImpl<_>: Raw<_>` is not satisfied
-    //~| ERROR the trait bound `RawImpl<_>: Raw<_>` is not satisfied
     WrongImpl::<()>::foo(0i32);
     //~^ ERROR the trait bound `RawImpl<()>: Raw<()>` is not satisfied
     //~| ERROR trait bounds were not satisfied
