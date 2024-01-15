@@ -211,5 +211,27 @@ help: remove the invocation before committing it to a version control system
 LL |         1;
    |         ~
 
-error: aborting due to 19 previous errors
+error: the `dbg!` macro is intended as a debugging tool
+  --> $DIR/dbg_macro.rs:113:31
+   |
+LL |         println!("dbg: {:?}", dbg!(s));
+   |                               ^^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL |         println!("dbg: {:?}", s);
+   |                               ~
+
+error: the `dbg!` macro is intended as a debugging tool
+  --> $DIR/dbg_macro.rs:115:22
+   |
+LL |         print!("{}", dbg!(s));
+   |                      ^^^^^^^
+   |
+help: remove the invocation before committing it to a version control system
+   |
+LL |         print!("{}", s);
+   |                      ~
+
+error: aborting due to 21 previous errors
 

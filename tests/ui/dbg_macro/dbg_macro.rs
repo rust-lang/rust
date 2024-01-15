@@ -107,3 +107,12 @@ mod mod1 {
         //~^ ERROR: the `dbg!` macro is intended as a debugging tool
     }
 }
+
+mod issue12131 {
+    fn dbg_in_print(s: &str) {
+        println!("dbg: {:?}", dbg!(s));
+        //~^ ERROR: the `dbg!` macro is intended as a debugging tool
+        print!("{}", dbg!(s));
+        //~^ ERROR: the `dbg!` macro is intended as a debugging tool
+    }
+}
