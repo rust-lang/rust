@@ -1,7 +1,7 @@
 use super::{TRANSMUTE_BYTES_TO_STR, TRANSMUTE_PTR_TO_PTR};
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet;
-use clippy_utils::{is_no_std_crate, sugg};
+use clippy_utils::{std_or_core, sugg};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, Mutability};
 use rustc_lint::LateContext;
@@ -25,11 +25,11 @@ pub(super) fn check<'tcx>(
             && let ty::Uint(ty::UintTy::U8) = slice_ty.kind()
             && from_mutbl == to_mutbl
         {
+            let Some(top_crate) = std_or_core(cx) else { return true };
+
             let postfix = if *from_mutbl == Mutability::Mut { "_mut" } else { "" };
 
             let snippet = snippet(cx, arg.span, "..");
-
-            let top_crate = if is_no_std_crate(cx) { "core" } else { "std" };
 
             span_lint_and_sugg(
                 cx,

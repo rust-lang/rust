@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::{is_no_std_crate, last_path_segment};
+use clippy_utils::{last_path_segment, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::{def, Expr, ExprKind, GenericArg, QPath, TyKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -42,12 +42,9 @@ impl<'tcx> LateLintPass<'tcx> for DefaultIterEmpty {
             && ty.span.ctxt() == ctxt
         {
             let mut applicability = Applicability::MachineApplicable;
-            let path = if is_no_std_crate(cx) {
-                "core::iter::empty"
-            } else {
-                "std::iter::empty"
-            };
-            let sugg = make_sugg(cx, ty_path, ctxt, &mut applicability, path);
+            let Some(path) = std_or_core(cx) else { return };
+            let path = format!("{path}::iter::empty");
+            let sugg = make_sugg(cx, ty_path, ctxt, &mut applicability, &path);
             span_lint_and_sugg(
                 cx,
                 DEFAULT_INSTEAD_OF_ITER_EMPTY,

@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lin
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_non_aggregate_primitive_type;
-use clippy_utils::{is_default_equivalent, is_no_std_crate, is_res_lang_ctor, path_res, peel_ref_operators};
+use clippy_utils::{is_default_equivalent, is_res_lang_ctor, path_res, peel_ref_operators, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionNone;
 use rustc_hir::{Expr, ExprKind};
@@ -123,15 +123,12 @@ fn check_replace_option_with_none(cx: &LateContext<'_>, dest: &Expr<'_>, expr_sp
     );
 }
 
-fn get_top_crate(cx: &LateContext<'_>) -> &'static str {
-    if is_no_std_crate(cx) { "core" } else { "std" }
-}
-
 fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'_>, expr_span: Span) {
     if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(src.hir_id)
         // check if replacement is mem::MaybeUninit::uninit().assume_init()
         && cx.tcx.is_diagnostic_item(sym::assume_init, method_def_id)
     {
+        let Some(top_crate) = std_or_core(cx) else { return };
         let mut applicability = Applicability::MachineApplicable;
         span_lint_and_sugg(
             cx,
@@ -140,8 +137,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'
             "replacing with `mem::MaybeUninit::uninit().assume_init()`",
             "consider using",
             format!(
-                "{}::ptr::read({})",
-                get_top_crate(cx),
+                "{top_crate}::ptr::read({})",
                 snippet_with_applicability(cx, dest.span, "", &mut applicability)
             ),
             applicability,
@@ -154,6 +150,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'
         && let Some(repl_def_id) = cx.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id()
     {
         if cx.tcx.is_diagnostic_item(sym::mem_uninitialized, repl_def_id) {
+            let Some(top_crate) = std_or_core(cx) else { return };
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
                 cx,
@@ -162,8 +159,7 @@ fn check_replace_with_uninit(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<'
                 "replacing with `mem::uninitialized()`",
                 "consider using",
                 format!(
-                    "{}::ptr::read({})",
-                    get_top_crate(cx),
+                    "{top_crate}::ptr::read({})",
                     snippet_with_applicability(cx, dest.span, "", &mut applicability)
                 ),
                 applicability,
@@ -190,7 +186,7 @@ fn check_replace_with_default(cx: &LateContext<'_>, src: &Expr<'_>, dest: &Expr<
         return;
     }
     if is_default_equivalent(cx, src) && !in_external_macro(cx.tcx.sess, expr_span) {
-        let top_crate = get_top_crate(cx);
+        let Some(top_crate) = std_or_core(cx) else { return };
         span_lint_and_then(
             cx,
             MEM_REPLACE_WITH_DEFAULT,

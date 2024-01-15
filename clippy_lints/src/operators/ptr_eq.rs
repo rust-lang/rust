@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_no_std_crate;
 use clippy_utils::source::snippet_opt;
+use clippy_utils::std_or_core;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
@@ -25,7 +25,7 @@ pub(super) fn check<'tcx>(
             && let Some(left_snip) = snippet_opt(cx, left_var.span)
             && let Some(right_snip) = snippet_opt(cx, right_var.span)
         {
-            let top_crate = if is_no_std_crate(cx) { "core" } else { "std" };
+            let Some(top_crate) = std_or_core(cx) else { return };
             span_lint_and_sugg(
                 cx,
                 PTR_EQ,
