@@ -138,8 +138,10 @@ x--expand-yaml-anchors--remove:
             dos2unix
             diffutils
           pacboy: >
-            cmake:p
             gcc:p
+            cmake:p
+            jq:p
+          # should cmake and jq just always be x86_64?
           #   toolchain:p
           #python:p
           #   mingw-w64-x86_64-python
