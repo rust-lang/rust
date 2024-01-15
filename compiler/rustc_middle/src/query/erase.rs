@@ -160,10 +160,6 @@ impl<T> EraseType for Option<&'_ [T]> {
     type Result = [u8; size_of::<Option<&'static [()]>>()];
 }
 
-impl EraseType for Option<rustc_middle::hir::Owner<'_>> {
-    type Result = [u8; size_of::<Option<rustc_middle::hir::Owner<'static>>>()];
-}
-
 impl EraseType for Option<mir::DestructuredConstant<'_>> {
     type Result = [u8; size_of::<Option<mir::DestructuredConstant<'static>>>()];
 }
@@ -320,7 +316,6 @@ macro_rules! tcx_lifetime {
 }
 
 tcx_lifetime! {
-    rustc_middle::hir::Owner,
     rustc_middle::middle::exported_symbols::ExportedSymbol,
     rustc_middle::mir::Const,
     rustc_middle::mir::DestructuredConstant,

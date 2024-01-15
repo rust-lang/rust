@@ -57,8 +57,7 @@ const BASE_FN: &[&str] = &[
 
 /// DepNodes for Hir, which is pretty much everything
 const BASE_HIR: &[&str] = &[
-    // hir_owner and hir_owner_nodes should be computed for all nodes
-    label_strs::hir_owner,
+    // hir_owner_nodes should be computed for all nodes
     label_strs::hir_owner_nodes,
 ];
 

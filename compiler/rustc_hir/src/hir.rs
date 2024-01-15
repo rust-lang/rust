@@ -841,7 +841,7 @@ pub struct OwnerNodes<'tcx> {
 }
 
 impl<'tcx> OwnerNodes<'tcx> {
-    fn node(&self) -> OwnerNode<'tcx> {
+    pub fn node(&self) -> OwnerNode<'tcx> {
         use rustc_index::Idx;
         let node = self.nodes[ItemLocalId::new(0)].as_ref().unwrap().node;
         let node = node.as_owner().unwrap(); // Indexing must ensure it is an OwnerNode.
