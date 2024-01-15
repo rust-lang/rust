@@ -82,6 +82,8 @@ pub struct CargoConfig {
     pub target: Option<String>,
     /// Sysroot loading behavior
     pub sysroot: Option<RustLibSource>,
+    /// Whether to invoke `cargo metadata` on the sysroot crate.
+    pub sysroot_query_metadata: bool,
     pub sysroot_src: Option<AbsPathBuf>,
     /// rustc private crate source
     pub rustc_source: Option<RustLibSource>,

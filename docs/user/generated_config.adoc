@@ -121,6 +121,16 @@ Unsetting this disables sysroot loading.
 
 This option does not take effect until rust-analyzer is restarted.
 --
+[[rust-analyzer.cargo.sysrootQueryMetadata]]rust-analyzer.cargo.sysrootQueryMetadata (default: `false`)::
++
+--
+Whether to run cargo metadata on the sysroot library allowing rust-analyzer to analyze
+third-party dependencies of the standard libraries.
+
+This will cause `cargo` to create a lockfile in your sysroot directory. rust-analyzer
+will attempt to clean up afterwards, but nevertheless requires the location to be
+writable to.
+--
 [[rust-analyzer.cargo.sysrootSrc]]rust-analyzer.cargo.sysrootSrc (default: `null`)::
 +
 --
