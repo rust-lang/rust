@@ -71,6 +71,7 @@ fn parse(x: Void) {
 
     let ! = x;
     let y @ ! = x;
+    //~^ ERROR: never patterns cannot contain variable bindings
 }
 
 fn foo(!: Void) {}

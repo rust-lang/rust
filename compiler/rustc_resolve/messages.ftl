@@ -36,6 +36,10 @@ resolve_attempt_to_use_non_constant_value_in_constant_with_suggestion =
 resolve_attempt_to_use_non_constant_value_in_constant_without_suggestion =
     this would need to be a `{$suggestion}`
 
+resolve_binding_in_never_pattern =
+    never patterns cannot contain variable bindings
+    .suggestion = use a wildcard `_` instead
+
 resolve_binding_shadows_something_unacceptable =
     {$shadowing_binding}s cannot shadow {$shadowed_binding}s
     .label = cannot be named the same as {$article} {$shadowed_binding}

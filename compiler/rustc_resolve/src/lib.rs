@@ -265,6 +265,8 @@ enum ResolutionError<'a> {
     InvalidAsmSym,
     /// `self` used instead of `Self` in a generic parameter
     LowercaseSelf,
+    /// A never pattern has a binding.
+    BindingInNeverPattern,
 }
 
 enum VisResolutionError<'a> {
