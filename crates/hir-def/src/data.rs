@@ -19,7 +19,7 @@ use crate::{
     macro_call_as_call_id,
     nameres::{
         attr_resolution::ResolvedAttr,
-        diagnostics::DefDiagnostic,
+        diagnostics::{DefDiagnostic, DefDiagnostics},
         proc_macro::{parse_macro_name_and_helper_attrs, ProcMacroKind},
         DefMap, MacroSubNs,
     },
@@ -240,7 +240,7 @@ impl TraitData {
     pub(crate) fn trait_data_with_diagnostics_query(
         db: &dyn DefDatabase,
         tr: TraitId,
-    ) -> (Arc<TraitData>, Arc<[DefDiagnostic]>) {
+    ) -> (Arc<TraitData>, DefDiagnostics) {
         let tr_loc @ ItemLoc { container: module_id, id: tree_id } = tr.lookup(db);
         let item_tree = tree_id.item_tree(db);
         let tr_def = &item_tree[tree_id.value];
@@ -274,7 +274,7 @@ impl TraitData {
                 rustc_has_incoherent_inherent_impls,
                 fundamental,
             }),
-            diagnostics.into(),
+            DefDiagnostics::new(diagnostics),
         )
     }
 
@@ -340,7 +340,7 @@ impl ImplData {
     pub(crate) fn impl_data_with_diagnostics_query(
         db: &dyn DefDatabase,
         id: ImplId,
-    ) -> (Arc<ImplData>, Arc<[DefDiagnostic]>) {
+    ) -> (Arc<ImplData>, DefDiagnostics) {
         let _p = profile::span("impl_data_with_diagnostics_query");
         let ItemLoc { container: module_id, id: tree_id } = id.lookup(db);
 
@@ -367,7 +367,7 @@ impl ImplData {
                 is_unsafe,
                 attribute_calls,
             }),
-            diagnostics.into(),
+            DefDiagnostics::new(diagnostics),
         )
     }
 

@@ -584,11 +584,8 @@ impl Module {
                         Adt::Enum(e) => {
                             for v in e.variants(db) {
                                 acc.extend(ModuleDef::Variant(v).diagnostics(db));
-                                if let Some(diags) = &db.enum_variant_data_with_diagnostics(v.id).1
-                                {
-                                    for diag in &***diags {
-                                        emit_def_diagnostic(db, acc, diag);
-                                    }
+                                for diag in db.enum_variant_data_with_diagnostics(v.id).1.iter() {
+                                    emit_def_diagnostic(db, acc, diag);
                                 }
                             }
                         }

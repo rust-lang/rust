@@ -21,7 +21,7 @@ use crate::{
     item_tree::{AttrOwner, Field, FieldAstId, Fields, ItemTree, ModItem, RawVisibilityId},
     lang_item::LangItem,
     lower::LowerCtx,
-    nameres::diagnostics::DefDiagnostic,
+    nameres::diagnostics::{DefDiagnostic, DefDiagnostics},
     src::HasChildSource,
     src::HasSource,
     trace::Trace,
@@ -187,7 +187,7 @@ impl StructData {
     pub(crate) fn struct_data_with_diagnostics_query(
         db: &dyn DefDatabase,
         id: StructId,
-    ) -> (Arc<StructData>, Arc<[DefDiagnostic]>) {
+    ) -> (Arc<StructData>, DefDiagnostics) {
         let loc = id.lookup(db);
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
@@ -232,7 +232,7 @@ impl StructData {
                 visibility: item_tree[strukt.visibility].clone(),
                 flags,
             }),
-            diagnostics.into(),
+            DefDiagnostics::new(diagnostics),
         )
     }
 
@@ -243,7 +243,7 @@ impl StructData {
     pub(crate) fn union_data_with_diagnostics_query(
         db: &dyn DefDatabase,
         id: UnionId,
-    ) -> (Arc<StructData>, Arc<[DefDiagnostic]>) {
+    ) -> (Arc<StructData>, DefDiagnostics) {
         let loc = id.lookup(db);
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
@@ -278,7 +278,7 @@ impl StructData {
                 visibility: item_tree[union.visibility].clone(),
                 flags,
             }),
-            diagnostics.into(),
+            DefDiagnostics::new(diagnostics),
         )
     }
 }
@@ -332,14 +332,14 @@ impl EnumVariantData {
     pub(crate) fn enum_variant_data_with_diagnostics_query(
         db: &dyn DefDatabase,
         e: EnumVariantId,
-    ) -> (Arc<EnumVariantData>, Option<Arc<Box<[DefDiagnostic]>>>) {
+    ) -> (Arc<EnumVariantData>, DefDiagnostics) {
         let loc = e.lookup(db);
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
         let cfg_options = db.crate_graph()[krate].cfg_options.clone();
         let variant = &item_tree[loc.id.value];
 
-        let (var_data, field_diagnostics) = lower_fields(
+        let (var_data, diagnostics) = lower_fields(
             db,
             krate,
             loc.id.file_id(),
@@ -355,11 +355,7 @@ impl EnumVariantData {
                 name: variant.name.clone(),
                 variant_data: Arc::new(var_data),
             }),
-            if field_diagnostics.is_empty() {
-                None
-            } else {
-                Some(Arc::new(field_diagnostics.into_boxed_slice()))
-            },
+            DefDiagnostics::new(diagnostics),
         )
     }
 }

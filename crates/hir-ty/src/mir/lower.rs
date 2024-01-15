@@ -69,6 +69,7 @@ struct MirLowerCtx<'a> {
     drop_scopes: Vec<DropScope>,
 }
 
+// FIXME: Make this smaller, its stored in database queries
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MirLowerError {
     ConstEvalError(Box<str>, Box<ConstEvalError>),

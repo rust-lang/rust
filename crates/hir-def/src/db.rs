@@ -19,7 +19,7 @@ use crate::{
     import_map::ImportMap,
     item_tree::{AttrOwner, ItemTree},
     lang_item::{self, LangItem, LangItemTarget, LangItems},
-    nameres::{diagnostics::DefDiagnostic, DefMap},
+    nameres::{diagnostics::DefDiagnostics, DefMap},
     visibility::{self, Visibility},
     AttrDefId, BlockId, BlockLoc, ConstBlockId, ConstBlockLoc, ConstId, ConstLoc, DefWithBodyId,
     EnumId, EnumLoc, EnumVariantId, EnumVariantLoc, ExternBlockId, ExternBlockLoc, ExternCrateId,
@@ -121,14 +121,13 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     fn struct_data(&self, id: StructId) -> Arc<StructData>;
 
     #[salsa::invoke(StructData::struct_data_with_diagnostics_query)]
-    fn struct_data_with_diagnostics(&self, id: StructId)
-        -> (Arc<StructData>, Arc<[DefDiagnostic]>);
+    fn struct_data_with_diagnostics(&self, id: StructId) -> (Arc<StructData>, DefDiagnostics);
 
     #[salsa::invoke(StructData::union_data_query)]
     fn union_data(&self, id: UnionId) -> Arc<StructData>;
 
     #[salsa::invoke(StructData::union_data_with_diagnostics_query)]
-    fn union_data_with_diagnostics(&self, id: UnionId) -> (Arc<StructData>, Arc<[DefDiagnostic]>);
+    fn union_data_with_diagnostics(&self, id: UnionId) -> (Arc<StructData>, DefDiagnostics);
 
     #[salsa::invoke(EnumData::enum_data_query)]
     fn enum_data(&self, e: EnumId) -> Arc<EnumData>;
@@ -140,19 +139,19 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     fn enum_variant_data_with_diagnostics(
         &self,
         id: EnumVariantId,
-    ) -> (Arc<EnumVariantData>, Option<Arc<Box<[DefDiagnostic]>>>);
+    ) -> (Arc<EnumVariantData>, DefDiagnostics);
 
     #[salsa::invoke(ImplData::impl_data_query)]
     fn impl_data(&self, e: ImplId) -> Arc<ImplData>;
 
     #[salsa::invoke(ImplData::impl_data_with_diagnostics_query)]
-    fn impl_data_with_diagnostics(&self, e: ImplId) -> (Arc<ImplData>, Arc<[DefDiagnostic]>);
+    fn impl_data_with_diagnostics(&self, e: ImplId) -> (Arc<ImplData>, DefDiagnostics);
 
     #[salsa::invoke(TraitData::trait_data_query)]
     fn trait_data(&self, e: TraitId) -> Arc<TraitData>;
 
     #[salsa::invoke(TraitData::trait_data_with_diagnostics_query)]
-    fn trait_data_with_diagnostics(&self, tr: TraitId) -> (Arc<TraitData>, Arc<[DefDiagnostic]>);
+    fn trait_data_with_diagnostics(&self, tr: TraitId) -> (Arc<TraitData>, DefDiagnostics);
 
     #[salsa::invoke(TraitAliasData::trait_alias_query)]
     fn trait_alias_data(&self, e: TraitAliasId) -> Arc<TraitAliasData>;
