@@ -14,7 +14,6 @@ use crate::sys_common::{AsInner, IntoInner};
 use core::str::Utf8Chunks;
 
 #[cfg(test)]
-#[path = "../unix/os_str/tests.rs"]
 mod tests;
 
 #[derive(Hash)]

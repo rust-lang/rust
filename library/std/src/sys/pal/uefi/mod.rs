@@ -28,8 +28,6 @@ pub mod net;
 #[path = "../unsupported/once.rs"]
 pub mod once;
 pub mod os;
-#[path = "../windows/os_str.rs"]
-pub mod os_str;
 pub mod path;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
