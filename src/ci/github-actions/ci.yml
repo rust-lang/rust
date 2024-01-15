@@ -141,7 +141,7 @@ x--expand-yaml-anchors--remove:
             gcc:p
             cmake:p
             jq:p
-            7z:p
+            7zip:p
           # should cmake and jq just always be x86_64?
           #   toolchain:p
           #python:p

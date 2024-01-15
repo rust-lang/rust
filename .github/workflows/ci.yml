@@ -99,7 +99,7 @@ jobs:
           release: true
           path-type: strict
           install: "make git dos2unix diffutils\n"
-          pacboy: "gcc:p cmake:p jq:p 7z:p\n"
+          pacboy: "gcc:p cmake:p jq:p 7zip:p\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -490,7 +490,7 @@ jobs:
           release: true
           path-type: strict
           install: "make git dos2unix diffutils\n"
-          pacboy: "gcc:p cmake:p jq:p 7z:p\n"
+          pacboy: "gcc:p cmake:p jq:p 7zip:p\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -627,7 +627,7 @@ jobs:
           release: true
           path-type: strict
           install: "make git dos2unix diffutils\n"
-          pacboy: "gcc:p cmake:p jq:p 7z:p\n"
+          pacboy: "gcc:p cmake:p jq:p 7zip:p\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
