@@ -1162,7 +1162,7 @@ impl DiagCtxt {
         let mut inner = self.inner.borrow_mut();
 
         if loud && lint_level.is_error() {
-            inner.err_count += 1;
+            inner.lint_err_count += 1;
             inner.panic_if_treat_err_as_bug();
         }
 
