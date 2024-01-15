@@ -141,7 +141,7 @@ pub(crate) fn type_check<'mir, 'tcx>(
     let mut constraints = MirTypeckRegionConstraints {
         placeholder_indices: PlaceholderIndices::default(),
         placeholder_index_to_region: IndexVec::default(),
-        liveness_constraints: LivenessValues::new(elements.clone()),
+        liveness_constraints: LivenessValues::with_specific_points(elements.clone()),
         outlives_constraints: OutlivesConstraintSet::default(),
         member_constraints: MemberConstraintSet::default(),
         type_tests: Vec::default(),
@@ -555,7 +555,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         let all_facts = &mut None;
         let mut constraints = Default::default();
         let mut liveness_constraints =
-            LivenessValues::new(Rc::new(DenseLocationMap::new(promoted_body)));
+            LivenessValues::without_specific_points(Rc::new(DenseLocationMap::new(promoted_body)));
         // Don't try to add borrow_region facts for the promoted MIR
 
         let mut swap_constraints = |this: &mut Self| {
@@ -594,17 +594,19 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
             }
             self.cx.borrowck_context.constraints.outlives_constraints.push(constraint)
         }
-        for region in liveness_constraints.regions() {
-            // If the region is live at at least one location in the promoted MIR,
-            // then add a liveness constraint to the main MIR for this region
-            // at the location provided as an argument to this method
-            if liveness_constraints.is_live_anywhere(region) {
-                self.cx
-                    .borrowck_context
-                    .constraints
-                    .liveness_constraints
-                    .add_location(region, location);
-            }
+        // If the region is live at at least one location in the promoted MIR,
+        // then add a liveness constraint to the main MIR for this region
+        // at the location provided as an argument to this method
+        //
+        // add_location doesn't care about ordering so not a problem for the live regions to be
+        // unordered.
+        #[allow(rustc::potential_query_instability)]
+        for region in liveness_constraints.live_regions_unordered() {
+            self.cx
+                .borrowck_context
+                .constraints
+                .liveness_constraints
+                .add_location(region, location);
         }
     }
 
