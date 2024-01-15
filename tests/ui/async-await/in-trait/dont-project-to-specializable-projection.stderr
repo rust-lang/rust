@@ -21,7 +21,7 @@ LL |     default async fn foo(_: T) -> &'static str {
    = note: specialization behaves in inconsistent and surprising ways with async functions in traits, and for now is disallowed
 
 error[E0599]: no method named `poll` found for struct `Pin<&mut impl Future<Output = ()>>` in the current scope
-  --> $DIR/dont-project-to-specializable-projection.rs:50:28
+  --> $DIR/dont-project-to-specializable-projection.rs:49:28
    |
 LL |         match fut.as_mut().poll(ctx) {
    |                            ^^^^ method not found in `Pin<&mut impl Future<Output = ()>>`
