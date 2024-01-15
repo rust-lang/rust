@@ -50,6 +50,21 @@ pub(crate) const TEST_CONFIG_NO_SNIPPET_CAP: AssistConfig = AssistConfig {
     assist_emit_must_use: false,
 };
 
+pub(crate) const TEST_CONFIG_IMPORT_ONE: AssistConfig = AssistConfig {
+    snippet_cap: SnippetCap::new(true),
+    allowed: None,
+    insert_use: InsertUseConfig {
+        granularity: ImportGranularity::One,
+        prefix_kind: hir::PrefixKind::Plain,
+        enforce_granularity: true,
+        group: true,
+        skip_glob_imports: true,
+    },
+    prefer_no_std: false,
+    prefer_prelude: true,
+    assist_emit_must_use: false,
+};
+
 pub(crate) fn with_single_file(text: &str) -> (RootDatabase, FileId) {
     RootDatabase::with_single_file(text)
 }
@@ -69,6 +84,22 @@ pub(crate) fn check_assist_no_snippet_cap(
     let ra_fixture_after = trim_indent(ra_fixture_after);
     check_with_config(
         TEST_CONFIG_NO_SNIPPET_CAP,
+        assist,
+        ra_fixture_before,
+        ExpectedResult::After(&ra_fixture_after),
+        None,
+    );
+}
+
+#[track_caller]
+pub(crate) fn check_assist_import_one(
+    assist: Handler,
+    ra_fixture_before: &str,
+    ra_fixture_after: &str,
+) {
+    let ra_fixture_after = trim_indent(ra_fixture_after);
+    check_with_config(
+        TEST_CONFIG_IMPORT_ONE,
         assist,
         ra_fixture_before,
         ExpectedResult::After(&ra_fixture_after),
