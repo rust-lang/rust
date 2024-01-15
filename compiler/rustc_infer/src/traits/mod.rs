@@ -17,7 +17,6 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, Const, ToPredicate, Ty, TyCtxt};
 use rustc_span::Span;
 
-pub use self::FulfillmentErrorCode::*;
 pub use self::ImplSource::*;
 pub use self::SelectionError::*;
 
@@ -129,12 +128,12 @@ pub struct FulfillmentError<'tcx> {
 #[derive(Clone)]
 pub enum FulfillmentErrorCode<'tcx> {
     /// Inherently impossible to fulfill; this trait is implemented if and only if it is already implemented.
-    CodeCycle(Vec<PredicateObligation<'tcx>>),
-    CodeSelectionError(SelectionError<'tcx>),
-    CodeProjectionError(MismatchedProjectionTypes<'tcx>),
-    CodeSubtypeError(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
-    CodeConstEquateError(ExpectedFound<Const<'tcx>>, TypeError<'tcx>),
-    CodeAmbiguity {
+    Cycle(Vec<PredicateObligation<'tcx>>),
+    SelectionError(SelectionError<'tcx>),
+    ProjectionError(MismatchedProjectionTypes<'tcx>),
+    SubtypeError(ExpectedFound<Ty<'tcx>>, TypeError<'tcx>), // always comes from a SubtypePredicate
+    ConstEquateError(ExpectedFound<Const<'tcx>>, TypeError<'tcx>),
+    Ambiguity {
         /// Overflow reported from the new solver `-Znext-solver`, which will
         /// be reported as an regular error as opposed to a fatal error.
         overflow: bool,
