@@ -377,14 +377,14 @@ fn remove_lint_declaration(name: &str, path: &Path, lints: &mut Vec<Lint>) -> io
 
         // Some lints have their own directories, delete them
         if path.is_dir() {
-            fs::remove_dir_all(path).ok();
+            let _ = fs::remove_dir_all(path);
             return;
         }
 
         // Remove all related test files
-        fs::remove_file(path.with_extension("rs")).ok();
-        fs::remove_file(path.with_extension("stderr")).ok();
-        fs::remove_file(path.with_extension("fixed")).ok();
+        let _ = fs::remove_file(path.with_extension("rs"));
+        let _ = fs::remove_file(path.with_extension("stderr"));
+        let _ = fs::remove_file(path.with_extension("fixed"));
     }
 
     fn remove_impl_lint_pass(lint_name_upper: &str, content: &mut String) {
@@ -427,7 +427,7 @@ fn remove_lint_declaration(name: &str, path: &Path, lints: &mut Vec<Lint>) -> io
                     lint_mod_path.set_file_name(name);
                     lint_mod_path.set_extension("rs");
 
-                    fs::remove_file(lint_mod_path).ok();
+                    let _ = fs::remove_file(lint_mod_path);
                 }
 
                 let mut content =

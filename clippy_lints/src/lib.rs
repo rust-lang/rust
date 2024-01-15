@@ -371,6 +371,7 @@ mod unsafe_removed_from_name;
 mod unused_async;
 mod unused_io_amount;
 mod unused_peekable;
+mod unused_result_ok;
 mod unused_rounding;
 mod unused_self;
 mod unused_unit;
@@ -668,6 +669,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| Box::new(missing_doc::MissingDoc::new(conf)));
     store.register_late_pass(|_| Box::new(missing_inline::MissingInline));
     store.register_late_pass(move |_| Box::new(exhaustive_items::ExhaustiveItems));
+    store.register_late_pass(|_| Box::new(unused_result_ok::UnusedResultOk));
     store.register_late_pass(|_| Box::new(match_result_ok::MatchResultOk));
     store.register_late_pass(|_| Box::new(partialeq_ne_impl::PartialEqNeImpl));
     store.register_late_pass(|_| Box::new(unused_io_amount::UnusedIoAmount));
