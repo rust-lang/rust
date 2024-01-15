@@ -183,7 +183,7 @@ top_level_options!(
         resolve_doc_links: ResolveDocLinks [TRACKED],
 
         /// Control path trimming.
-        trimmed_def_paths: TrimmedDefPaths [TRACKED],
+        trimmed_def_paths: bool [TRACKED],
 
         /// Specifications of codegen units / ThinLTO which are forced as a
         /// result of parsing command line options. These are not necessarily
