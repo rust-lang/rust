@@ -793,7 +793,7 @@ impl u8 {
     #[rustc_const_stable(feature = "const_ascii_ctype_on_intrinsics", since = "1.47.0")]
     #[inline]
     pub const fn is_ascii_alphanumeric(&self) -> bool {
-        matches!(*self, b'0'..=b'9' | b'A'..=b'Z' | b'a'..=b'z')
+        matches!(*self, b'0'..=b'9') | matches!(*self, b'A'..=b'Z') | matches!(*self, b'a'..=b'z')
     }
 
     /// Checks if the value is an ASCII decimal digit:
@@ -1206,9 +1206,9 @@ impl u128 {
         swapped = "0x12907856341290785634129078563412",
         reversed = "0x48091e6a2c48091e6a2c48091e6a2c48",
         le_bytes = "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
-      0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+            0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
         be_bytes = "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, \
-      0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]",
+            0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]",
         to_xe_bytes_doc = "",
         from_xe_bytes_doc = "",
         bound_condition = "",
