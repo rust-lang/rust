@@ -337,7 +337,7 @@ from_attrs!(
 );
 
 /// Trait implemented by all item nodes in the item tree.
-pub trait ItemTreeNode: Clone {
+pub trait ItemTreeModItemNode: Clone {
     type Source: AstIdNode + Into<ast::Item>;
 
     fn ast_id(&self) -> FileAstId<Self::Source>;
@@ -494,7 +494,7 @@ macro_rules! mod_items {
         )+
 
         $(
-            impl ItemTreeNode for $typ {
+            impl ItemTreeModItemNode for $typ {
                 type Source = $ast;
 
                 fn ast_id(&self) -> FileAstId<Self::Source> {
@@ -577,7 +577,7 @@ impl Index<RawVisibilityId> for ItemTree {
     }
 }
 
-impl<N: ItemTreeNode> Index<FileItemTreeId<N>> for ItemTree {
+impl<N: ItemTreeModItemNode> Index<FileItemTreeId<N>> for ItemTree {
     type Output = N;
     fn index(&self, id: FileItemTreeId<N>) -> &N {
         N::lookup(self, id.index())

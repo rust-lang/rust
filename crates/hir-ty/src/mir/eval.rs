@@ -751,19 +751,9 @@ impl Evaluator<'_> {
                         Variants::Single { .. } => &layout,
                         Variants::Multiple { variants, .. } => {
                             &variants[match f.parent {
-                                hir_def::VariantId::EnumVariantId(it) => RustcEnumVariantIdx({
-                                    let lookup = it.lookup(self.db.upcast());
-                                    let rustc_enum_variant_idx =
-                                        lookup.id.value.index().into_raw().into_u32()
-                                            - lookup.id.item_tree(self.db.upcast())
-                                                [lookup.parent.lookup(self.db.upcast()).id.value]
-                                                .variants
-                                                .start
-                                                .index()
-                                                .into_raw()
-                                                .into_u32();
-                                    rustc_enum_variant_idx as usize
-                                }),
+                                hir_def::VariantId::EnumVariantId(it) => {
+                                    RustcEnumVariantIdx(it.lookup(self.db.upcast()).index as usize)
+                                }
                                 _ => {
                                     return Err(MirEvalError::TypeError(
                                         "Multivariant layout only happens for enums",
@@ -1604,15 +1594,7 @@ impl Evaluator<'_> {
                 };
                 let mut discriminant = self.const_eval_discriminant(enum_variant_id)?;
                 let lookup = enum_variant_id.lookup(self.db.upcast());
-                let rustc_enum_variant_idx = lookup.id.value.index().into_raw().into_u32()
-                    - lookup.id.item_tree(self.db.upcast())
-                        [lookup.parent.lookup(self.db.upcast()).id.value]
-                        .variants
-                        .start
-                        .index()
-                        .into_raw()
-                        .into_u32();
-                let rustc_enum_variant_idx = RustcEnumVariantIdx(rustc_enum_variant_idx as usize);
+                let rustc_enum_variant_idx = RustcEnumVariantIdx(lookup.index as usize);
                 let variant_layout = variants[rustc_enum_variant_idx].clone();
                 let have_tag = match tag_encoding {
                     TagEncoding::Direct => true,

@@ -44,7 +44,7 @@ use hir_def::{
     data::adt::VariantData,
     generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
     hir::{BindingAnnotation, BindingId, ExprOrPatId, LabelId, Pat},
-    item_tree::ItemTreeNode,
+    item_tree::ItemTreeModItemNode,
     lang_item::LangItemTarget,
     layout::{self, ReprOptions, TargetDataLayout},
     nameres::{self, diagnostics::DefDiagnostic},
@@ -1294,7 +1294,7 @@ pub struct Variant {
 
 impl Variant {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
-        Module { id: self.id.lookup(db.upcast()).container }
+        Module { id: self.id.module(db.upcast()) }
     }
 
     pub fn parent_enum(self, db: &dyn HirDatabase) -> Enum {
@@ -1340,17 +1340,7 @@ impl Variant {
             layout::Variants::Multiple { variants, .. } => Layout(
                 {
                     let lookup = self.id.lookup(db.upcast());
-                    let rustc_enum_variant_idx = lookup.id.value.index().into_raw().into_u32()
-                        - lookup.id.item_tree(db.upcast())
-                            [lookup.parent.lookup(db.upcast()).id.value]
-                            .variants
-                            .start
-                            .index()
-                            .into_raw()
-                            .into_u32();
-                    let rustc_enum_variant_idx =
-                        RustcEnumVariantIdx(rustc_enum_variant_idx as usize);
-
+                    let rustc_enum_variant_idx = RustcEnumVariantIdx(lookup.index as usize);
                     Arc::new(variants[rustc_enum_variant_idx].clone())
                 },
                 db.target_data_layout(parent_enum.krate(db).into()).unwrap(),
@@ -2838,7 +2828,7 @@ where
     ID: Lookup<Database<'db> = dyn DefDatabase + 'db, Data = AssocItemLoc<AST>>,
     DEF: From<ID>,
     CTOR: FnOnce(DEF) -> AssocItem,
-    AST: ItemTreeNode,
+    AST: ItemTreeModItemNode,
 {
     match id.lookup(db.upcast()).container {
         ItemContainerId::TraitId(_) | ItemContainerId::ImplId(_) => Some(ctor(DEF::from(id))),

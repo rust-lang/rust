@@ -257,15 +257,7 @@ pub(crate) fn const_eval_discriminant_variant(
     let body = db.body(def);
     if body.exprs[body.body_expr] == Expr::Missing {
         let loc = variant_id.lookup(db.upcast());
-        let parent_id = loc.parent.lookup(db.upcast()).id;
-        let index = loc.id.value.index().into_raw().into_u32()
-            - parent_id.item_tree(db.upcast())[parent_id.value]
-                .variants
-                .start
-                .index()
-                .into_raw()
-                .into_u32();
-        let prev_idx = index.checked_sub(1);
+        let prev_idx = loc.index.checked_sub(1);
         let value = match prev_idx {
             Some(prev_idx) => {
                 1 + db.const_eval_discriminant(

@@ -1729,16 +1729,19 @@ fn fn_sig_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> PolyFnS
 /// Build the type of a tuple struct constructor.
 fn type_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> Binders<Ty> {
     let struct_data = db.struct_data(def);
-    if let StructKind::Unit = struct_data.variant_data.kind() {
-        return type_for_adt(db, def.into());
+    match struct_data.variant_data.kind() {
+        StructKind::Record => unreachable!("callers check for valueness of variant"),
+        StructKind::Unit => return type_for_adt(db, def.into()),
+        StructKind::Tuple => {
+            let generics = generics(db.upcast(), AdtId::from(def).into());
+            let substs = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
+            make_binders(
+                db,
+                &generics,
+                TyKind::FnDef(CallableDefId::StructId(def).to_chalk(db), substs).intern(Interner),
+            )
+        }
     }
-    let generics = generics(db.upcast(), AdtId::from(def).into());
-    let substs = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
-    make_binders(
-        db,
-        &generics,
-        TyKind::FnDef(CallableDefId::StructId(def).to_chalk(db), substs).intern(Interner),
-    )
 }
 
 fn fn_sig_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -> PolyFnSig {
@@ -1756,16 +1759,20 @@ fn fn_sig_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId)
 /// Build the type of a tuple enum variant constructor.
 fn type_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -> Binders<Ty> {
     let e = def.lookup(db.upcast()).parent;
-    if let StructKind::Unit = db.enum_variant_data(def).variant_data.kind() {
-        return type_for_adt(db, e.into());
+    match db.enum_variant_data(def).variant_data.kind() {
+        StructKind::Record => unreachable!("callers check for valueness of variant"),
+        StructKind::Unit => return type_for_adt(db, e.into()),
+        StructKind::Tuple => {
+            let generics = generics(db.upcast(), e.into());
+            let substs = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
+            make_binders(
+                db,
+                &generics,
+                TyKind::FnDef(CallableDefId::EnumVariantId(def).to_chalk(db), substs)
+                    .intern(Interner),
+            )
+        }
     }
-    let generics = generics(db.upcast(), e.into());
-    let substs = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
-    make_binders(
-        db,
-        &generics,
-        TyKind::FnDef(CallableDefId::EnumVariantId(def).to_chalk(db), substs).intern(Interner),
-    )
 }
 
 fn type_for_adt(db: &dyn HirDatabase, adt: AdtId) -> Binders<Ty> {
@@ -1813,7 +1820,7 @@ impl CallableDefId {
         match self {
             CallableDefId::FunctionId(f) => f.lookup(db).module(db),
             CallableDefId::StructId(s) => s.lookup(db).container,
-            CallableDefId::EnumVariantId(e) => e.lookup(db).container,
+            CallableDefId::EnumVariantId(e) => e.module(db),
         }
         .krate()
     }
@@ -1894,12 +1901,8 @@ pub(crate) fn value_ty_query(db: &dyn HirDatabase, def: ValueTyDefId) -> Binders
 }
 
 pub(crate) fn impl_self_ty_query(db: &dyn HirDatabase, impl_id: ImplId) -> Binders<Ty> {
-    let impl_loc = impl_id.lookup(db.upcast());
     let impl_data = db.impl_data(impl_id);
     let resolver = impl_id.resolver(db.upcast());
-    let _cx = stdx::panic_context::enter(format!(
-        "impl_self_ty_query({impl_id:?} -> {impl_loc:?} -> {impl_data:?})"
-    ));
     let generics = generics(db.upcast(), impl_id.into());
     let ctx = TyLoweringContext::new(db, &resolver, impl_id.into())
         .with_type_param_mode(ParamLoweringMode::Variable);
@@ -1931,12 +1934,8 @@ pub(crate) fn impl_self_ty_recover(
 }
 
 pub(crate) fn impl_trait_query(db: &dyn HirDatabase, impl_id: ImplId) -> Option<Binders<TraitRef>> {
-    let impl_loc = impl_id.lookup(db.upcast());
     let impl_data = db.impl_data(impl_id);
     let resolver = impl_id.resolver(db.upcast());
-    let _cx = stdx::panic_context::enter(format!(
-        "impl_trait_query({impl_id:?} -> {impl_loc:?} -> {impl_data:?})"
-    ));
     let ctx = TyLoweringContext::new(db, &resolver, impl_id.into())
         .with_type_param_mode(ParamLoweringMode::Variable);
     let (self_ty, binders) = db.impl_self_ty(impl_id).into_value_and_skipped_binders();

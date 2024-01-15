@@ -24,7 +24,7 @@ use triomphe::Arc;
 
 use crate::{
     db::DefDatabase,
-    item_tree::{AttrOwner, Fields, ItemTreeId, ItemTreeNode},
+    item_tree::{AttrOwner, Fields, ItemTreeId, ItemTreeModItemNode},
     lang_item::LangItem,
     nameres::{ModuleOrigin, ModuleSource},
     src::{HasChildSource, HasSource},
@@ -82,7 +82,7 @@ impl Attrs {
         let (fields, item_tree, krate) = match v {
             VariantId::EnumVariantId(it) => {
                 let loc = it.lookup(db);
-                let krate = loc.container.krate;
+                let krate = loc.parent.lookup(db).container.krate;
                 let item_tree = loc.id.item_tree(db);
                 let variant = &item_tree[loc.id.value];
                 (variant.fields.clone(), item_tree, krate)
@@ -606,13 +606,16 @@ fn any_has_attrs<'db>(
     id.lookup(db).source(db).map(ast::AnyHasAttrs::new)
 }
 
-fn attrs_from_item_tree<N: ItemTreeNode>(db: &dyn DefDatabase, id: ItemTreeId<N>) -> RawAttrs {
+fn attrs_from_item_tree<N: ItemTreeModItemNode>(
+    db: &dyn DefDatabase,
+    id: ItemTreeId<N>,
+) -> RawAttrs {
     let tree = id.item_tree(db);
     let mod_item = N::id_to_mod_item(id.value);
     tree.raw_attrs(mod_item.into()).clone()
 }
 
-fn attrs_from_item_tree_loc<'db, N: ItemTreeNode>(
+fn attrs_from_item_tree_loc<'db, N: ItemTreeModItemNode>(
     db: &(dyn DefDatabase + 'db),
     lookup: impl Lookup<Database<'db> = dyn DefDatabase + 'db, Data = ItemLoc<N>>,
 ) -> RawAttrs {
@@ -620,7 +623,7 @@ fn attrs_from_item_tree_loc<'db, N: ItemTreeNode>(
     attrs_from_item_tree(db, id)
 }
 
-fn attrs_from_item_tree_assoc<'db, N: ItemTreeNode>(
+fn attrs_from_item_tree_assoc<'db, N: ItemTreeModItemNode>(
     db: &(dyn DefDatabase + 'db),
     lookup: impl Lookup<Database<'db> = dyn DefDatabase + 'db, Data = AssocItemLoc<N>>,
 ) -> RawAttrs {

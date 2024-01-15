@@ -13,7 +13,7 @@ use crate::{
 
 use super::*;
 
-fn id<N: ItemTreeNode>(index: Idx<N>) -> FileItemTreeId<N> {
+fn id<N: ItemTreeModItemNode>(index: Idx<N>) -> FileItemTreeId<N> {
     FileItemTreeId(index)
 }
 

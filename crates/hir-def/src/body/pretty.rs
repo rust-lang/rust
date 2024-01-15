@@ -18,7 +18,7 @@ use super::*;
 pub(super) fn print_body_hir(db: &dyn DefDatabase, body: &Body, owner: DefWithBodyId) -> String {
     let header = match owner {
         DefWithBodyId::FunctionId(it) => {
-            it.lookup(db).id.resolved(db, |it| format!("fn {} = ", it.name.display(db.upcast())))
+            it.lookup(db).id.resolved(db, |it| format!("fn {}", it.name.display(db.upcast())))
         }
         DefWithBodyId::StaticId(it) => it
             .lookup(db)

@@ -355,12 +355,12 @@ impl DefMap {
                 ModuleDefId::AdtId(AdtId::EnumId(e)) => {
                     // enum variant
                     cov_mark::hit!(can_import_enum_variant);
+                    let def_map;
 
                     let loc = e.lookup(db);
                     let tree = loc.id.item_tree(db);
                     let current_def_map =
                         self.krate == loc.container.krate && self.block_id() == loc.container.block;
-                    let def_map;
                     let res = if current_def_map {
                         &self.enum_definitions[&e]
                     } else {

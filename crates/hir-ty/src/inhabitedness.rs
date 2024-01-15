@@ -7,7 +7,7 @@ use chalk_ir::{
 };
 use hir_def::{
     attr::Attrs, data::adt::VariantData, visibility::Visibility, AdtId, EnumVariantId, HasModule,
-    Lookup, ModuleId, VariantId,
+    ModuleId, VariantId,
 };
 use rustc_hash::FxHashSet;
 
@@ -30,7 +30,7 @@ pub(crate) fn is_enum_variant_uninhabited_from(
     target_mod: ModuleId,
     db: &dyn HirDatabase,
 ) -> bool {
-    let is_local = variant.lookup(db.upcast()).container.krate() == target_mod.krate();
+    let is_local = variant.module(db.upcast()).krate() == target_mod.krate();
 
     let mut uninhabited_from =
         UninhabitedFrom { target_mod, db, max_depth: 500, recursive_ty: FxHashSet::default() };

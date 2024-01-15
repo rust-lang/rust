@@ -19,6 +19,10 @@ pub(crate) struct Trace<T, V> {
 
 impl<T, V> Trace<T, V> {
     #[allow(dead_code)]
+    pub(crate) fn new_for_arena() -> Trace<T, V> {
+        Trace { arena: Some(Arena::default()), map: None, len: 0 }
+    }
+
     pub(crate) fn new_for_map() -> Trace<T, V> {
         Trace { arena: None, map: Some(ArenaMap::default()), len: 0 }
     }

@@ -5,7 +5,7 @@ use la_arena::ArenaMap;
 use syntax::ast;
 
 use crate::{
-    db::DefDatabase, item_tree::ItemTreeNode, AssocItemLoc, EnumVariantLoc, ItemLoc, Lookup,
+    db::DefDatabase, item_tree::ItemTreeModItemNode, AssocItemLoc, EnumVariantLoc, ItemLoc, Lookup,
     Macro2Loc, MacroRulesLoc, ProcMacroLoc, UseId,
 };
 
@@ -14,7 +14,7 @@ pub trait HasSource {
     fn source(&self, db: &dyn DefDatabase) -> InFile<Self::Value>;
 }
 
-impl<N: ItemTreeNode> HasSource for AssocItemLoc<N> {
+impl<N: ItemTreeModItemNode> HasSource for AssocItemLoc<N> {
     type Value = N::Source;
 
     fn source(&self, db: &dyn DefDatabase) -> InFile<N::Source> {
@@ -27,7 +27,7 @@ impl<N: ItemTreeNode> HasSource for AssocItemLoc<N> {
     }
 }
 
-impl<N: ItemTreeNode> HasSource for ItemLoc<N> {
+impl<N: ItemTreeModItemNode> HasSource for ItemLoc<N> {
     type Value = N::Source;
 
     fn source(&self, db: &dyn DefDatabase) -> InFile<N::Source> {

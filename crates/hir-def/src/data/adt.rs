@@ -334,7 +334,8 @@ impl EnumVariantData {
         e: EnumVariantId,
     ) -> (Arc<EnumVariantData>, DefDiagnostics) {
         let loc = e.lookup(db);
-        let krate = loc.container.krate;
+        let container = loc.parent.lookup(db).container;
+        let krate = container.krate;
         let item_tree = loc.id.item_tree(db);
         let cfg_options = db.crate_graph()[krate].cfg_options.clone();
         let variant = &item_tree[loc.id.value];
@@ -343,7 +344,7 @@ impl EnumVariantData {
             db,
             krate,
             loc.id.file_id(),
-            loc.container.local_id,
+            container.local_id,
             &item_tree,
             &cfg_options,
             &variant.fields,
@@ -395,7 +396,7 @@ impl HasChildSource<LocalFieldId> for VariantId {
                 (
                     lookup.source(db).map(|it| it.kind()),
                     &item_tree[lookup.id.value].fields,
-                    lookup.container,
+                    lookup.parent.lookup(db).container,
                 )
             }
             VariantId::StructId(it) => {
@@ -411,11 +412,7 @@ impl HasChildSource<LocalFieldId> for VariantId {
                 let lookup = it.lookup(db);
                 item_tree = lookup.id.item_tree(db);
                 (
-                    lookup.source(db).map(|it| {
-                        it.record_field_list()
-                            .map(ast::StructKind::Record)
-                            .unwrap_or(ast::StructKind::Unit)
-                    }),
+                    lookup.source(db).map(|it| it.kind()),
                     &item_tree[lookup.id.value].fields,
                     lookup.container,
                 )
