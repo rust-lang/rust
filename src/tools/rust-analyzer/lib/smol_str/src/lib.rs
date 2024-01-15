@@ -527,6 +527,95 @@ impl Repr {
     }
 }
 
+/// Convert value to [`SmolStr`] using [`fmt::Display`], potentially without allocating.
+///
+/// Almost identical to [`ToString`], but converts to `SmolStr` instead.
+pub trait ToSmolStr {
+    fn to_smolstr(&self) -> SmolStr;
+}
+
+/// Formats arguments to a [`SmolStr`], potentially without allocating.
+///
+/// See [`alloc::format!`] or [`format_args!`] for syntax documentation.
+#[macro_export]
+macro_rules! format_smolstr {
+    ($($tt:tt)*) => {{
+        use ::core::fmt::Write;
+        let mut w = $crate::Writer::new();
+        w.write_fmt(format_args!($($tt)*)).expect("a formatting trait implementation returned an error");
+        $crate::SmolStr::from(w)
+    }};
+}
+
+#[doc(hidden)]
+pub struct Writer {
+    inline: [u8; INLINE_CAP],
+    heap: String,
+    len: usize,
+}
+
+impl Writer {
+    pub const fn new() -> Self {
+        Writer {
+            inline: [0; INLINE_CAP],
+            heap: String::new(),
+            len: 0,
+        }
+    }
+}
+
+impl fmt::Write for Writer {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        // if currently on the stack
+        if self.len <= INLINE_CAP {
+            let old_len = self.len;
+            self.len += s.len();
+
+            // if the new length will fit on the stack (even if it fills it entirely)
+            if self.len <= INLINE_CAP {
+                self.inline[old_len..self.len].copy_from_slice(s.as_bytes());
+
+                return Ok(()); // skip the heap push below
+            } else {
+                self.heap.reserve(self.len);
+
+                // copy existing inline bytes over to the heap
+                unsafe {
+                    self.heap
+                        .as_mut_vec()
+                        .extend_from_slice(&self.inline[..old_len]);
+                }
+            }
+        }
+
+        self.heap.push_str(s);
+
+        Ok(())
+    }
+}
+
+impl From<Writer> for SmolStr {
+    fn from(value: Writer) -> Self {
+        SmolStr(if value.len <= INLINE_CAP {
+            Repr::Inline {
+                len: unsafe { transmute(value.len as u8) },
+                buf: value.inline,
+            }
+        } else {
+            Repr::new(value.heap)
+        })
+    }
+}
+
+impl<T> ToSmolStr for T
+where
+    T: fmt::Display + ?Sized,
+{
+    fn to_smolstr(&self) -> SmolStr {
+        format_smolstr!("{}", self)
+    }
+}
+
 #[cfg(feature = "serde")]
 mod serde {
     use alloc::{string::String, vec::Vec};

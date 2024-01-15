@@ -258,3 +258,15 @@ fn test_bad_size_hint_char_iter() {
     assert!(!new.is_heap_allocated());
     assert_eq!(new, collected);
 }
+
+#[test]
+fn test_to_smolstr() {
+    use smol_str::ToSmolStr;
+
+    for i in 0..26 {
+        let a = &"abcdefghijklmnopqrstuvwxyz"[i..];
+
+        assert_eq!(a, a.to_smolstr());
+        assert_eq!(a, smol_str::format_smolstr!("{}", a));
+    }
+}
