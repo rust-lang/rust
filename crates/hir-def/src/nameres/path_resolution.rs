@@ -87,7 +87,7 @@ impl DefMap {
         within_impl: bool,
     ) -> Option<Visibility> {
         let mut vis = match visibility {
-            RawVisibility::Module(path) => {
+            RawVisibility::Module(path, explicity) => {
                 let (result, remaining) =
                     self.resolve_path(db, original_module, path, BuiltinShadowMode::Module, None);
                 if remaining.is_some() {
@@ -95,7 +95,7 @@ impl DefMap {
                 }
                 let types = result.take_types()?;
                 match types {
-                    ModuleDefId::ModuleId(m) => Visibility::Module(m),
+                    ModuleDefId::ModuleId(m) => Visibility::Module(m, *explicity),
                     // error: visibility needs to refer to module
                     _ => {
                         return None;
@@ -108,11 +108,11 @@ impl DefMap {
         // In block expressions, `self` normally refers to the containing non-block module, and
         // `super` to its parent (etc.). However, visibilities must only refer to a module in the
         // DefMap they're written in, so we restrict them when that happens.
-        if let Visibility::Module(m) = vis {
+        if let Visibility::Module(m, mv) = vis {
             // ...unless we're resolving visibility for an associated item in an impl.
             if self.block_id() != m.block && !within_impl {
                 cov_mark::hit!(adjust_vis_in_block_def_map);
-                vis = Visibility::Module(self.module_id(Self::ROOT));
+                vis = Visibility::Module(self.module_id(Self::ROOT), mv);
                 tracing::debug!("visibility {:?} points outside DefMap, adjusting to {:?}", m, vis);
             }
         }

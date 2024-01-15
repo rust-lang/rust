@@ -34,7 +34,9 @@ nohash-hasher.workspace = true
 typed-arena = "2.0.1"
 indexmap.workspace = true
 
-rustc-dependencies.workspace = true
+ra-ap-rustc_abi.workspace = true
+ra-ap-rustc_index.workspace = true
+
 
 # local deps
 stdx.workspace = true
@@ -58,7 +60,7 @@ test-utils.workspace = true
 test-fixture.workspace = true
 
 [features]
-in-rust-tree = ["rustc-dependencies/in-rust-tree"]
+in-rust-tree = []
 
 [lints]
 workspace = true

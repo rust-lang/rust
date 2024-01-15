@@ -124,7 +124,7 @@ impl FileLoader for RootDatabase {
     fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId> {
         FileLoaderDelegate(self).resolve_path(path)
     }
-    fn relevant_crates(&self, file_id: FileId) -> Arc<FxHashSet<CrateId>> {
+    fn relevant_crates(&self, file_id: FileId) -> Arc<[CrateId]> {
         FileLoaderDelegate(self).relevant_crates(file_id)
     }
 }
@@ -145,7 +145,7 @@ impl RootDatabase {
         db.set_local_roots_with_durability(Default::default(), Durability::HIGH);
         db.set_library_roots_with_durability(Default::default(), Durability::HIGH);
         db.set_expand_proc_attr_macros_with_durability(false, Durability::HIGH);
-        db.update_parse_query_lru_capacity(lru_capacity);
+        db.update_base_query_lru_capacities(lru_capacity);
         db.setup_syntax_context_root();
         db
     }
@@ -154,11 +154,12 @@ impl RootDatabase {
         self.set_expand_proc_attr_macros_with_durability(true, Durability::HIGH);
     }
 
-    pub fn update_parse_query_lru_capacity(&mut self, lru_capacity: Option<usize>) {
+    pub fn update_base_query_lru_capacities(&mut self, lru_capacity: Option<usize>) {
         let lru_capacity = lru_capacity.unwrap_or(base_db::DEFAULT_PARSE_LRU_CAP);
         base_db::ParseQuery.in_db_mut(self).set_lru_capacity(lru_capacity);
         // macro expansions are usually rather small, so we can afford to keep more of them alive
         hir::db::ParseMacroExpansionQuery.in_db_mut(self).set_lru_capacity(4 * lru_capacity);
+        hir::db::BorrowckQuery.in_db_mut(self).set_lru_capacity(base_db::DEFAULT_BORROWCK_LRU_CAP);
     }
 
     pub fn update_lru_capacities(&mut self, lru_capacities: &FxHashMap<Box<str>, usize>) {
@@ -175,6 +176,12 @@ impl RootDatabase {
                 .get(stringify!(ParseMacroExpansionQuery))
                 .copied()
                 .unwrap_or(4 * base_db::DEFAULT_PARSE_LRU_CAP),
+        );
+        hir_db::BorrowckQuery.in_db_mut(self).set_lru_capacity(
+            lru_capacities
+                .get(stringify!(BorrowckQuery))
+                .copied()
+                .unwrap_or(base_db::DEFAULT_BORROWCK_LRU_CAP),
         );
 
         macro_rules! update_lru_capacity_per_query {
