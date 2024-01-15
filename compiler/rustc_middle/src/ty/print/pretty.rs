@@ -15,7 +15,6 @@ use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefIdMap, DefIdSet, ModDefId, CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPathDataName};
 use rustc_hir::LangItem;
-use rustc_session::config::TrimmedDefPaths;
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_session::Limit;
 use rustc_span::symbol::{kw, Ident, Symbol};
@@ -365,26 +364,19 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
 
     /// Try to see if this path can be trimmed to a unique symbol name.
     fn try_print_trimmed_def_path(&mut self, def_id: DefId) -> Result<bool, PrintError> {
-        if with_forced_trimmed_paths() {
-            let trimmed = self.force_print_trimmed_def_path(def_id)?;
-            if trimmed {
-                return Ok(true);
-            }
+        if with_forced_trimmed_paths() && self.force_print_trimmed_def_path(def_id)? {
+            return Ok(true);
         }
-        if !self.tcx().sess.opts.unstable_opts.trim_diagnostic_paths
-            || matches!(self.tcx().sess.opts.trimmed_def_paths, TrimmedDefPaths::Never)
-            || with_no_trimmed_paths()
-            || with_crate_prefix()
+        if self.tcx().sess.opts.unstable_opts.trim_diagnostic_paths
+            && self.tcx().sess.opts.trimmed_def_paths
+            && !with_no_trimmed_paths()
+            && !with_crate_prefix()
+            && let Some(symbol) = self.tcx().trimmed_def_paths(()).get(&def_id)
         {
-            return Ok(false);
-        }
-
-        match self.tcx().trimmed_def_paths(()).get(&def_id) {
-            None => Ok(false),
-            Some(symbol) => {
-                write!(self, "{}", Ident::with_dummy_span(*symbol))?;
-                Ok(true)
-            }
+            write!(self, "{}", Ident::with_dummy_span(*symbol))?;
+            Ok(true)
+        } else {
+            Ok(false)
         }
     }
 
@@ -3080,18 +3072,19 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
 /// See also [`DelayDm`](rustc_error_messages::DelayDm) and [`with_no_trimmed_paths!`].
 // this is pub to be able to intra-doc-link it
 pub fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> DefIdMap<Symbol> {
-    let mut map: DefIdMap<Symbol> = Default::default();
+    assert!(tcx.sess.opts.trimmed_def_paths);
 
-    if let TrimmedDefPaths::GoodPath = tcx.sess.opts.trimmed_def_paths {
-        // Trimming paths is expensive and not optimized, since we expect it to only be used for error reporting.
-        //
-        // For good paths causing this bug, the `rustc_middle::ty::print::with_no_trimmed_paths`
-        // wrapper can be used to suppress this query, in exchange for full paths being formatted.
-        tcx.sess.good_path_delayed_bug(
-            "trimmed_def_paths constructed but no error emitted; use `DelayDm` for lints or `with_no_trimmed_paths` for debugging",
-        );
-    }
+    // Trimming paths is expensive and not optimized, since we expect it to only be used for error
+    // reporting.
+    //
+    // For good paths causing this bug, the `rustc_middle::ty::print::with_no_trimmed_paths`
+    // wrapper can be used to suppress this query, in exchange for full paths being formatted.
+    tcx.sess.good_path_delayed_bug(
+        "trimmed_def_paths constructed but no error emitted; use `DelayDm` for lints or `with_no_trimmed_paths` for debugging",
+    );
 
+    // Once constructed, unique namespace+symbol pairs will have a `Some(_)` entry, while
+    // non-unique pairs will have a `None` entry.
     let unique_symbols_rev: &mut FxHashMap<(Namespace, Symbol), Option<DefId>> =
         &mut FxHashMap::default();
 
@@ -3121,6 +3114,8 @@ pub fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> DefIdMap<Symbol> {
         }
     });
 
+    // Put the symbol from all the unique namespace+symbol pairs into `map`.
+    let mut map: DefIdMap<Symbol> = Default::default();
     for ((_, symbol), opt_def_id) in unique_symbols_rev.drain() {
         use std::collections::hash_map::Entry::{Occupied, Vacant};
 
