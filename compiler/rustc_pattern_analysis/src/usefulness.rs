@@ -1344,7 +1344,6 @@ fn collect_overlapping_range_endpoints<'p, Cx: TypeCx>(
     overlap_range: IntRange,
     matrix: &Matrix<'p, Cx>,
     specialized_matrix: &Matrix<'p, Cx>,
-    _overlapping_range_endpoints: &mut Vec<OverlappingRanges<'p, Cx>>,
 ) {
     let overlap = overlap_range.lo;
     // Ranges that look like `lo..=overlap`.
@@ -1416,7 +1415,6 @@ fn collect_overlapping_range_endpoints<'p, Cx: TypeCx>(
 fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
     mcx: MatchCtxt<'a, Cx>,
     matrix: &mut Matrix<'p, Cx>,
-    overlapping_range_endpoints: &mut Vec<OverlappingRanges<'p, Cx>>,
     is_top_level: bool,
 ) -> Result<WitnessMatrix<Cx>, Cx::Error> {
     debug_assert!(matrix.rows().all(|r| r.len() == matrix.column_count()));
@@ -1496,12 +1494,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
         let ctor_is_relevant = matches!(ctor, Constructor::Missing) || missing_ctors.is_empty();
         let mut spec_matrix = matrix.specialize_constructor(pcx, &ctor, ctor_is_relevant);
         let mut witnesses = ensure_sufficient_stack(|| {
-            compute_exhaustiveness_and_usefulness(
-                mcx,
-                &mut spec_matrix,
-                overlapping_range_endpoints,
-                false,
-            )
+            compute_exhaustiveness_and_usefulness(mcx, &mut spec_matrix, false)
         })?;
 
         // Transform witnesses for `spec_matrix` into witnesses for `matrix`.
@@ -1530,13 +1523,7 @@ fn compute_exhaustiveness_and_usefulness<'a, 'p, Cx: TypeCx>(
                 && spec_matrix.rows.len() >= 2
                 && spec_matrix.rows.iter().any(|row| !row.intersects.is_empty())
             {
-                collect_overlapping_range_endpoints(
-                    mcx,
-                    overlap_range,
-                    matrix,
-                    &spec_matrix,
-                    overlapping_range_endpoints,
-                );
+                collect_overlapping_range_endpoints(mcx, overlap_range, matrix, &spec_matrix);
             }
         }
     }
@@ -1563,15 +1550,6 @@ pub enum Usefulness<'p, Cx: TypeCx> {
     Redundant,
 }
 
-/// Indicates that the range `pat` overlapped with all the ranges in `overlaps_with`, where the
-/// range they overlapped over is `overlaps_on`. We only detect singleton overlaps.
-#[derive(Clone, Debug)]
-pub struct OverlappingRanges<'p, Cx: TypeCx> {
-    pub pat: &'p DeconstructedPat<'p, Cx>,
-    pub overlaps_on: IntRange,
-    pub overlaps_with: Vec<&'p DeconstructedPat<'p, Cx>>,
-}
-
 /// The output of checking a match for exhaustiveness and arm usefulness.
 pub struct UsefulnessReport<'p, Cx: TypeCx> {
     /// For each arm of the input, whether that arm is useful after the arms above it.
@@ -1579,7 +1557,6 @@ pub struct UsefulnessReport<'p, Cx: TypeCx> {
     /// If the match is exhaustive, this is empty. If not, this contains witnesses for the lack of
     /// exhaustiveness.
     pub non_exhaustiveness_witnesses: Vec<WitnessPat<Cx>>,
-    pub overlapping_range_endpoints: Vec<OverlappingRanges<'p, Cx>>,
 }
 
 /// Computes whether a match is exhaustive and which of its arms are useful.
@@ -1590,14 +1567,9 @@ pub fn compute_match_usefulness<'p, Cx: TypeCx>(
     scrut_ty: Cx::Ty,
     scrut_validity: ValidityConstraint,
 ) -> Result<UsefulnessReport<'p, Cx>, Cx::Error> {
-    let mut overlapping_range_endpoints = Vec::new();
     let mut matrix = Matrix::new(arms, scrut_ty, scrut_validity);
-    let non_exhaustiveness_witnesses = compute_exhaustiveness_and_usefulness(
-        cx,
-        &mut matrix,
-        &mut overlapping_range_endpoints,
-        true,
-    )?;
+    let non_exhaustiveness_witnesses =
+        compute_exhaustiveness_and_usefulness(cx, &mut matrix, true)?;
 
     let non_exhaustiveness_witnesses: Vec<_> = non_exhaustiveness_witnesses.single_column();
     let arm_usefulness: Vec<_> = arms
@@ -1615,9 +1587,5 @@ pub fn compute_match_usefulness<'p, Cx: TypeCx>(
         })
         .collect();
 
-    Ok(UsefulnessReport {
-        arm_usefulness,
-        non_exhaustiveness_witnesses,
-        overlapping_range_endpoints,
-    })
+    Ok(UsefulnessReport { arm_usefulness, non_exhaustiveness_witnesses })
 }
