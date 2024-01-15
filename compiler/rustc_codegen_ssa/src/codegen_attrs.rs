@@ -153,7 +153,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                 let inner = attr.meta_item_list();
                 match inner.as_deref() {
                     Some([item]) if item.has_name(sym::linker) => {
-                        if !tcx.features().used_with_arg {
+                        if !tcx.features().used_with_arg() {
                             feature_err(
                                 &tcx.sess,
                                 sym::used_with_arg,
@@ -165,7 +165,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         codegen_fn_attrs.flags |= CodegenFnAttrFlags::USED_LINKER;
                     }
                     Some([item]) if item.has_name(sym::compiler) => {
-                        if !tcx.features().used_with_arg {
+                        if !tcx.features().used_with_arg() {
                             feature_err(
                                 &tcx.sess,
                                 sym::used_with_arg,
@@ -247,7 +247,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                     .emit();
                 }
                 if is_closure
-                    && !tcx.features().closure_track_caller
+                    && !tcx.features().closure_track_caller()
                     && !attr.span.allows_unstable(sym::closure_track_caller)
                 {
                     feature_err(
@@ -302,7 +302,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
                         //
                         // This exception needs to be kept in sync with allowing
                         // `#[target_feature]` on `main` and `start`.
-                    } else if !tcx.features().target_feature_11 {
+                    } else if !tcx.features().target_feature_11() {
                         feature_err(
                             &tcx.sess,
                             sym::target_feature_11,
@@ -531,7 +531,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     // its parent function, which effectively inherits the features anyway. Boxing this closure
     // would result in this closure being compiled without the inherited target features, but this
     // is probably a poor usage of `#[inline(always)]` and easily avoided by not using the attribute.
-    if tcx.features().target_feature_11
+    if tcx.features().target_feature_11()
         && tcx.is_closure_or_coroutine(did.to_def_id())
         && codegen_fn_attrs.inline != InlineAttr::Always
     {

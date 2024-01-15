@@ -758,7 +758,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // obligations that don't refer to Self and
                     // checking those
 
-                    let defer_to_coercion = self.tcx().features().object_safe_for_dispatch;
+                    let defer_to_coercion = self.tcx().features().object_safe_for_dispatch();
 
                     if !defer_to_coercion {
                         if let Some(principal) = data.principal_def_id() {

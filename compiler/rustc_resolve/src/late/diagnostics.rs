@@ -2656,7 +2656,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     // Avoid suggesting placing lifetime parameters on constant items unless the relevant
                     // feature is enabled. Suggest the parent item as a possible location if applicable.
                     if let LifetimeBinderKind::ConstItem = kind
-                        && !self.r.tcx().features().generic_const_items
+                        && !self.r.tcx().features().generic_const_items()
                     {
                         continue;
                     }
@@ -2760,7 +2760,7 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
                     .emit();
             }
             NoConstantGenericsReason::NonTrivialConstArg => {
-                assert!(!self.r.tcx.features().generic_const_exprs);
+                assert!(!self.r.tcx.features().generic_const_exprs());
                 self.r
                     .dcx()
                     .create_err(errors::ParamInNonTrivialAnonConst {

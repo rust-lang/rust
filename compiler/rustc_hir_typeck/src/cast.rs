@@ -754,7 +754,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             (Int(_) | Float, Int(_) | Float) => Ok(CastKind::NumericCast),
 
             (_, DynStar) => {
-                if fcx.tcx.features().dyn_star {
+                if fcx.tcx.features().dyn_star() {
                     bug!("should be handled by `coerce`")
                 } else {
                     Err(CastError::IllegalCast)

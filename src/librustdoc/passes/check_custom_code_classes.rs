@@ -21,7 +21,7 @@ pub(crate) const CHECK_CUSTOM_CODE_CLASSES: Pass = Pass {
 };
 
 pub(crate) fn check_custom_code_classes(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
-    if cx.tcx.features().custom_code_classes_in_docs {
+    if cx.tcx.features().custom_code_classes_in_docs() {
         // Nothing to check here if the feature is enabled.
         return krate;
     }

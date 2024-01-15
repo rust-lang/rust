@@ -1242,7 +1242,7 @@ impl<'a, 'hir, 'tcx> HirCollector<'a, 'hir, 'tcx> {
                     def_id.to_def_id(),
                     span_of_fragments(&attrs.doc_strings).unwrap_or(sp),
                 )),
-                self.tcx.features().custom_code_classes_in_docs,
+                self.tcx.features().custom_code_classes_in_docs(),
             );
         }
 

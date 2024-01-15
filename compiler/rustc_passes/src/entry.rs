@@ -132,7 +132,7 @@ fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) -> Option<(DefId,
                 return None;
             }
 
-            if main_def.is_import && !tcx.features().imported_main {
+            if main_def.is_import && !tcx.features().imported_main() {
                 let span = main_def.span;
                 feature_err(
                     &tcx.sess,

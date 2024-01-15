@@ -3538,7 +3538,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
         span: Span,
     ) -> Option<DiagnosticBuilder<'tcx>> {
-        if !self.tcx.features().generic_const_exprs {
+        if !self.tcx.features().generic_const_exprs() {
             self.dcx()
                 .struct_span_err(span, "constant expression depends on a generic parameter")
                 // FIXME(const_generics): we should suggest to the user how they can resolve this

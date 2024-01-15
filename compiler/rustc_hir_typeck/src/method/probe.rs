@@ -433,7 +433,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if is_suggestion.0 {
                 // Ambiguity was encountered during a suggestion. Just keep going.
                 debug!("ProbeContext: encountered ambiguity in suggestion");
-            } else if bad_ty.reached_raw_pointer && !self.tcx.features().arbitrary_self_types {
+            } else if bad_ty.reached_raw_pointer && !self.tcx.features().arbitrary_self_types() {
                 // this case used to be allowed by the compiler,
                 // so we do a future-compat lint here for the 2015 edition
                 // (see https://github.com/rust-lang/rust/issues/46906)

@@ -635,7 +635,7 @@ fn infer_placeholder_type<'a>(
 }
 
 fn check_feature_inherent_assoc_ty(tcx: TyCtxt<'_>, span: Span) {
-    if !tcx.features().inherent_associated_types {
+    if !tcx.features().inherent_associated_types() {
         use rustc_session::parse::feature_err;
         use rustc_span::symbol::sym;
         feature_err(
@@ -650,7 +650,7 @@ fn check_feature_inherent_assoc_ty(tcx: TyCtxt<'_>, span: Span) {
 
 pub fn type_alias_is_lazy<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
     use hir::intravisit::Visitor;
-    if tcx.features().lazy_type_alias {
+    if tcx.features().lazy_type_alias() {
         return true;
     }
     struct HasTait {

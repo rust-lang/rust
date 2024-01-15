@@ -2471,7 +2471,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             ItemKind::Const(box ast::ConstItem { ref generics, ref ty, ref expr, .. }) => {
                 self.with_generic_param_rib(
                     &generics.params,
-                    RibKind::Item(if self.r.tcx.features().generic_const_items {
+                    RibKind::Item(if self.r.tcx.features().generic_const_items() {
                         HasGenericParams::Yes(generics.span)
                     } else {
                         HasGenericParams::No
@@ -2651,7 +2651,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             let res = match kind {
                 RibKind::Item(..) | RibKind::AssocItem => Res::Def(def_kind, def_id.to_def_id()),
                 RibKind::Normal => {
-                    if self.r.tcx.features().non_lifetime_binders {
+                    if self.r.tcx.features().non_lifetime_binders() {
                         Res::Def(def_kind, def_id.to_def_id())
                     } else {
                         Res::Err
@@ -4215,7 +4215,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             }
             AnonConstKind::InlineConst => ConstantHasGenerics::Yes,
             AnonConstKind::ConstArg(_) => {
-                if self.r.tcx.features().generic_const_exprs || is_trivial_const_arg {
+                if self.r.tcx.features().generic_const_exprs() || is_trivial_const_arg {
                     ConstantHasGenerics::Yes
                 } else {
                     ConstantHasGenerics::No(NoConstantGenericsReason::NonTrivialConstArg)

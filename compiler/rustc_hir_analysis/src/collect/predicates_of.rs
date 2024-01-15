@@ -289,7 +289,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
         }
     }
 
-    if tcx.features().generic_const_exprs {
+    if tcx.features().generic_const_exprs() {
         predicates.extend(const_evaluatable_predicates_of(tcx, def_id));
     }
 
@@ -481,7 +481,7 @@ pub(super) fn explicit_predicates_of<'tcx>(
             }
         }
     } else {
-        if matches!(def_kind, DefKind::AnonConst) && tcx.features().generic_const_exprs {
+        if matches!(def_kind, DefKind::AnonConst) && tcx.features().generic_const_exprs() {
             let hir_id = tcx.local_def_id_to_hir_id(def_id);
             let parent_def_id = tcx.hir().get_parent_item(hir_id);
 

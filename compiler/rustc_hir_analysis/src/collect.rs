@@ -914,7 +914,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     };
 
     let paren_sugar = tcx.has_attr(def_id, sym::rustc_paren_sugar);
-    if paren_sugar && !tcx.features().unboxed_closures {
+    if paren_sugar && !tcx.features().unboxed_closures() {
         tcx.dcx().emit_err(errors::ParenSugarAttribute { span: item.span });
     }
 
@@ -1494,7 +1494,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     // ABIs are handled at all correctly. -huonw
     if abi != abi::Abi::RustIntrinsic
         && abi != abi::Abi::PlatformIntrinsic
-        && !tcx.features().simd_ffi
+        && !tcx.features().simd_ffi()
     {
         let check = |ast_ty: &hir::Ty<'_>, ty: Ty<'_>| {
             if ty.is_simd() {

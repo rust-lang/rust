@@ -50,7 +50,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         trait_segment: &'_ hir::PathSegment<'_>,
         is_impl: bool,
     ) {
-        if self.tcx().features().unboxed_closures {
+        if self.tcx().features().unboxed_closures() {
             return;
         }
 
@@ -259,7 +259,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if let [candidate_name] = all_candidate_names.as_slice() {
             // this should still compile, except on `#![feature(associated_type_defaults)]`
             // where it could suggests `type A = Self::A`, thus recursing infinitely
-            let applicability = if tcx.features().associated_type_defaults {
+            let applicability = if tcx.features().associated_type_defaults() {
                 Applicability::Unspecified
             } else {
                 Applicability::MaybeIncorrect
@@ -308,7 +308,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             && let ConvertedBindingKind::Equality(term) = binding.kind
             && let ty::TermKind::Ty(ty) = term.node.unpack()
             && (ty.is_enum() || ty.references_error())
-            && tcx.features().associated_const_equality
+            && tcx.features().associated_const_equality()
         {
             Some(errors::AssocKindMismatchWrapInBracesSugg {
                 lo: term.span.shrink_to_lo(),

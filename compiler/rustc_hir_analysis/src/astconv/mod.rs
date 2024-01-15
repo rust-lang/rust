@@ -1441,7 +1441,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // However, due to current limitations of the implementation (caused by us performing
         // selection in AstConv), IATs can lead to cycle errors (#108491, #110106) which mask the
         // feature-gate error, needlessly confusing users that use IATs by accident (#113265).
-        if !tcx.features().inherent_associated_types {
+        if !tcx.features().inherent_associated_types() {
             return Ok(None);
         }
 

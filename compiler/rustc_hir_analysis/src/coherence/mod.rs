@@ -66,7 +66,7 @@ fn enforce_trait_manually_implementable(
     if let ty::trait_def::TraitSpecializationKind::AlwaysApplicable =
         tcx.trait_def(trait_def_id).specialization_kind
     {
-        if !tcx.features().specialization && !tcx.features().min_specialization {
+        if !tcx.features().specialization() && !tcx.features().min_specialization() {
             tcx.dcx().emit_err(errors::SpecializationTrait { span: impl_header_span });
             return;
         }

@@ -143,7 +143,7 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
     // The feature gate should prevent introducing new specializations, but not
     // taking advantage of upstream ones.
     let features = tcx.features();
-    let specialization_enabled = features.specialization || features.min_specialization;
+    let specialization_enabled = features.specialization() || features.min_specialization();
     if !specialization_enabled && (impl1_def_id.is_local() || impl2_def_id.is_local()) {
         return false;
     }

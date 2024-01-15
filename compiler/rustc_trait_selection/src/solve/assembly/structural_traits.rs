@@ -196,7 +196,7 @@ pub(in crate::solve) fn instantiate_constituent_tys_for_copy_clone_trait<'tcx>(
         ty::Coroutine(def_id, args) => match ecx.tcx().coroutine_movability(def_id) {
             Movability::Static => Err(NoSolution),
             Movability::Movable => {
-                if ecx.tcx().features().coroutine_clone {
+                if ecx.tcx().features().coroutine_clone() {
                     let coroutine = args.as_coroutine();
                     Ok(vec![coroutine.tupled_upvars_ty(), coroutine.witness()])
                 } else {

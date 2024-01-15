@@ -126,7 +126,7 @@ fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi
         return;
     }
 
-    let extended_abi_support = tcx.features().extended_varargs_abi_support;
+    let extended_abi_support = tcx.features().extended_varargs_abi_support();
     let conventions = match (extended_abi_support, abi.supports_varargs()) {
         // User enabled additional ABI support for varargs and function ABI matches those ones.
         (true, true) => return,
@@ -168,7 +168,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
 
     // FIXME(matthewjasper) We shouldn't need to use `track_errors` anywhere in this function
     // or the compiler in general.
-    if tcx.features().rustc_attrs {
+    if tcx.features().rustc_attrs() {
         tcx.sess.track_errors(|| {
             tcx.sess.time("outlives_testing", || outlives::test::test_inferred_outlives(tcx));
         })?;
@@ -189,7 +189,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
         });
     })?;
 
-    if tcx.features().rustc_attrs {
+    if tcx.features().rustc_attrs() {
         tcx.sess.track_errors(|| {
             tcx.sess.time("variance_testing", || variance::test::test_variance(tcx));
         })?;
@@ -199,7 +199,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorGuaranteed> {
         tcx.hir().try_par_for_each_module(|module| tcx.ensure().check_mod_type_wf(module))
     })?;
 
-    if tcx.features().rustc_attrs {
+    if tcx.features().rustc_attrs() {
         tcx.sess.track_errors(|| collect::test_opaque_hidden_types(tcx))?;
     }
 

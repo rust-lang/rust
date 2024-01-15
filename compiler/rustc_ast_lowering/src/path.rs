@@ -374,7 +374,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // //      disallowed --^^^^^^^^^^        allowed --^^^^^^^^^^
             // ```
             FnRetTy::Ty(ty) if matches!(itctx, ImplTraitContext::ReturnPositionOpaqueTy { .. }) => {
-                if self.tcx.features().impl_trait_in_fn_trait_return {
+                if self.tcx.features().impl_trait_in_fn_trait_return() {
                     self.lower_ty(ty, itctx)
                 } else {
                     self.lower_ty(

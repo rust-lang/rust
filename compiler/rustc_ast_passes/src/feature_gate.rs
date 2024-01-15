@@ -16,12 +16,12 @@ use crate::errors;
 /// The common case.
 macro_rules! gate {
     ($visitor:expr, $feature:ident, $span:expr, $explain:expr) => {{
-        if !$visitor.features.$feature && !$span.allows_unstable(sym::$feature) {
+        if !$visitor.features.$feature() && !$span.allows_unstable(sym::$feature) {
             feature_err(&$visitor.sess, sym::$feature, $span, $explain).emit();
         }
     }};
     ($visitor:expr, $feature:ident, $span:expr, $explain:expr, $help:expr) => {{
-        if !$visitor.features.$feature && !$span.allows_unstable(sym::$feature) {
+        if !$visitor.features.$feature() && !$span.allows_unstable(sym::$feature) {
             feature_err(&$visitor.sess, sym::$feature, $span, $explain).with_help($help).emit();
         }
     }};
@@ -39,7 +39,7 @@ macro_rules! gate_alt {
 /// The case involving a multispan.
 macro_rules! gate_multi {
     ($visitor:expr, $feature:ident, $spans:expr, $explain:expr) => {{
-        if !$visitor.features.$feature {
+        if !$visitor.features.$feature() {
             let spans: Vec<_> =
                 $spans.filter(|span| !span.allows_unstable(sym::$feature)).collect();
             if !spans.is_empty() {
@@ -52,7 +52,7 @@ macro_rules! gate_multi {
 /// The legacy case.
 macro_rules! gate_legacy {
     ($visitor:expr, $feature:ident, $span:expr, $explain:expr) => {{
-        if !$visitor.features.$feature && !$span.allows_unstable(sym::$feature) {
+        if !$visitor.features.$feature() && !$span.allows_unstable(sym::$feature) {
             feature_warn(&$visitor.sess, sym::$feature, $span, $explain);
         }
     }};
@@ -203,14 +203,14 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         if !attr.is_doc_comment()
             && let [seg, _] = attr.get_normal_item().path.segments.as_slice()
             && seg.ident.name == sym::diagnostic
-            && !self.features.diagnostic_namespace
+            && !self.features.diagnostic_namespace()
         {
             let msg = "`#[diagnostic]` attribute name space is experimental";
             gate!(self, diagnostic_namespace, seg.ident.span, msg);
         }
 
         // Emit errors for non-staged-api crates.
-        if !self.features.staged_api {
+        if !self.features.staged_api() {
             if attr.has_name(sym::unstable)
                 || attr.has_name(sym::stable)
                 || attr.has_name(sym::rustc_const_unstable)
@@ -475,7 +475,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             // Limit `min_specialization` to only specializing functions.
             gate_alt!(
                 &self,
-                self.features.specialization || (is_fn && self.features.min_specialization),
+                self.features.specialization() || (is_fn && self.features.min_specialization()),
                 sym::specialization,
                 i.span,
                 "specialization is unstable"
@@ -549,7 +549,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(unnamed_fields, "unnamed fields are not yet fully implemented");
     gate_all!(fn_delegation, "functions delegation is not yet fully implemented");
 
-    if !visitor.features.never_patterns {
+    if !visitor.features.never_patterns() {
         if let Some(spans) = spans.get(&sym::never_patterns) {
             for &span in spans {
                 if span.allows_unstable(sym::never_patterns) {
@@ -572,7 +572,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
         }
     }
 
-    if !visitor.features.negative_bounds {
+    if !visitor.features.negative_bounds() {
         for &span in spans.get(&sym::negative_bounds).iter().copied().flatten() {
             sess.dcx().emit_err(errors::NegativeBoundUnsupported { span });
         }

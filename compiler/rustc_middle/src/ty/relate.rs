@@ -567,7 +567,7 @@ pub fn structurally_relate_consts<'tcx, R: TypeRelation<'tcx>>(
     debug!("{}.structurally_relate_consts(a = {:?}, b = {:?})", relation.tag(), a, b);
     let tcx = relation.tcx();
 
-    if tcx.features().generic_const_exprs {
+    if tcx.features().generic_const_exprs() {
         a = tcx.expand_abstract_consts(a);
         b = tcx.expand_abstract_consts(b);
     }

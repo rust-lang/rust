@@ -250,7 +250,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for NormalizesTo<'tcx> {
             let term = match assoc_def.item.kind {
                 ty::AssocKind::Type => tcx.type_of(assoc_def.item.def_id).map_bound(|ty| ty.into()),
                 ty::AssocKind::Const => {
-                    if tcx.features().associated_const_equality {
+                    if tcx.features().associated_const_equality() {
                         bug!("associated const projection is not supported yet")
                     } else {
                         ty::EarlyBinder::bind(

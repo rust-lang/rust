@@ -672,7 +672,7 @@ pub fn eval_condition(
                 }
                 sym::target => {
                     if let Some(features) = features
-                        && !features.cfg_target_compact
+                        && !features.cfg_target_compact()
                     {
                         feature_err(
                             sess,
@@ -781,7 +781,7 @@ pub fn find_deprecation(
     attrs: &[Attribute],
 ) -> Option<(Deprecation, Span)> {
     let mut depr: Option<(Deprecation, Span)> = None;
-    let is_rustc = features.staged_api;
+    let is_rustc = features.staged_api();
 
     'outer: for attr in attrs {
         if !attr.has_name(sym::deprecated) {
@@ -841,7 +841,7 @@ pub fn find_deprecation(
                                 }
                             }
                             sym::suggestion => {
-                                if !features.deprecated_suggestion {
+                                if !features.deprecated_suggestion() {
                                     sess.dcx().emit_err(
                                         session_diagnostics::DeprecatedItemSuggestion {
                                             span: mi.span,
@@ -859,7 +859,7 @@ pub fn find_deprecation(
                                 sess.dcx().emit_err(session_diagnostics::UnknownMetaItem {
                                     span: meta.span(),
                                     item: pprust::path_to_string(&mi.path),
-                                    expected: if features.deprecated_suggestion {
+                                    expected: if features.deprecated_suggestion() {
                                         &["since", "note", "suggestion"]
                                     } else {
                                         &["since", "note"]

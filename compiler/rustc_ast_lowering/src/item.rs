@@ -596,7 +596,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
         };
 
-        if self.tcx.features().effects {
+        if self.tcx.features().effects() {
             self.host_param_id = generics
                 .params
                 .iter()
@@ -1422,7 +1422,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // if the effects feature is enabled. This needs to be done before we lower where
         // clauses since where clauses need to bind to the DefId of the host param
         let host_param_parts = if let Const::Yes(span) = constness
-            && self.tcx.features().effects
+            && self.tcx.features().effects()
         {
             let span = self.lower_span(span);
             let param_node_id = self.next_node_id();

@@ -585,7 +585,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         // We are trying to avoid reporting this error if other related errors were reported.
-        if res != Res::Err && inner_attr && !self.tcx.features().custom_inner_attributes {
+        if res != Res::Err && inner_attr && !self.tcx.features().custom_inner_attributes() {
             let msg = match res {
                 Res::Def(..) => "inner macro attributes are unstable",
                 Res::NonMacroAttr(..) => "custom inner attributes are unstable",

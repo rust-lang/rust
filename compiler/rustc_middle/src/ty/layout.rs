@@ -357,7 +357,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 }
             }
             ty::Array(inner, len)
-                if len.ty() == tcx.types.usize && tcx.features().transmute_generic_consts =>
+                if len.ty() == tcx.types.usize && tcx.features().transmute_generic_consts() =>
             {
                 match SizeSkeleton::compute(inner, tcx, param_env)? {
                     // This may succeed because the multiplication of two types may overflow
@@ -1242,7 +1242,8 @@ pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: SpecAbi) ->
         | Win64 { unwind }
         | SysV64 { unwind } => {
             unwind
-                || (!tcx.features().c_unwind && tcx.sess.panic_strategy() == PanicStrategy::Unwind)
+                || (!tcx.features().c_unwind()
+                    && tcx.sess.panic_strategy() == PanicStrategy::Unwind)
         }
         PtxKernel
         | Msp430Interrupt

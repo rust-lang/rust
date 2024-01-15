@@ -105,7 +105,7 @@ where
 
     let mut wfcx = WfCheckingCtxt { ocx, span, body_def_id, param_env };
 
-    if !tcx.features().trivial_bounds {
+    if !tcx.features().trivial_bounds() {
         wfcx.check_false_global_bounds()
     }
     f(&mut wfcx)?;
@@ -868,7 +868,7 @@ fn check_param_wf(tcx: TyCtxt<'_>, param: &hir::GenericParam<'_>) -> Result<(), 
         hir::GenericParamKind::Const { ty: hir_ty, default: _, is_host_effect: _ } => {
             let ty = tcx.type_of(param.def_id).instantiate_identity();
 
-            if tcx.features().adt_const_params {
+            if tcx.features().adt_const_params() {
                 enter_wf_checking_ctxt(tcx, hir_ty.span, param.def_id, |wfcx| {
                     let trait_def_id =
                         tcx.require_lang_item(LangItem::ConstParamTy, Some(hir_ty.span));
@@ -1581,7 +1581,7 @@ fn check_method_receiver<'tcx>(
     let receiver_ty = sig.inputs()[0];
     let receiver_ty = wfcx.normalize(span, None, receiver_ty);
 
-    if tcx.features().arbitrary_self_types {
+    if tcx.features().arbitrary_self_types() {
         if !receiver_is_valid(wfcx, span, receiver_ty, self_ty, true) {
             // Report error; `arbitrary_self_types` was enabled.
             return Err(e0307(tcx, span, receiver_ty));

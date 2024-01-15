@@ -3,6 +3,7 @@
 use super::{to_nonzero, Feature};
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_index::bit_set::BitSet;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
 
@@ -30,6 +31,17 @@ macro_rules! status_to_enum {
     };
 }
 
+rustc_index::newtype_index! {
+    #[orderable]
+    pub struct FeatureIndex {}
+}
+
+impl From<Symbol> for FeatureIndex {
+    fn from(value: Symbol) -> Self {
+        value.as_u32().into()
+    }
+}
+
 macro_rules! declare_features {
     ($(
         $(#[doc = $doc:tt])* ($status:ident, $feature:ident, $ver:expr, $issue:expr),
@@ -44,14 +56,16 @@ macro_rules! declare_features {
                     issue: to_nonzero($issue),
                 },
                 // Sets this feature's corresponding bool within `features`.
-                set_enabled: |features| features.$feature = true,
+                set_enabled: |features| {
+                    features.features.insert(sym::$feature.into());
+                },
             }),+
         ];
 
         const NUM_FEATURES: usize = UNSTABLE_FEATURES.len();
 
         /// A set of features to be used by later passes.
-        #[derive(Clone, Default, Debug)]
+        #[derive(Clone, Debug)]
         pub struct Features {
             /// `#![feature]` attrs for language features, for error reporting.
             /// "declared" here means that the feature is actually enabled in the current crate.
@@ -62,10 +76,7 @@ macro_rules! declare_features {
             /// `declared_lang_features` + `declared_lib_features`.
             pub declared_features: FxHashSet<Symbol>,
             /// Active state of individual features (unstable only).
-            $(
-                $(#[doc = $doc])*
-                pub $feature: bool
-            ),+
+            features: BitSet<FeatureIndex>,
         }
 
         impl Features {
@@ -76,12 +87,12 @@ macro_rules! declare_features {
                 since: Option<Symbol>
             ) {
                 self.declared_lang_features.push((symbol, span, since));
-                self.declared_features.insert(symbol);
+                self.declared_features.insert(symbol.into());
             }
 
             pub fn set_declared_lib_feature(&mut self, symbol: Symbol, span: Span) {
                 self.declared_lib_features.push((symbol, span));
-                self.declared_features.insert(symbol);
+                self.declared_features.insert(symbol.into());
             }
 
             /// This is intended for hashing the set of active features.
@@ -91,7 +102,7 @@ macro_rules! declare_features {
             /// Note that the total feature count is pretty small, so this is not a huge array.
             #[inline]
             pub fn all_features(&self) -> [u8; NUM_FEATURES] {
-                [$(self.$feature as u8),+]
+                [$(self.$feature() as u8),+]
             }
 
             /// Is the given feature explicitly declared, i.e. named in a
@@ -105,7 +116,7 @@ macro_rules! declare_features {
             /// Panics if the symbol doesn't correspond to a declared feature.
             pub fn active(&self, feature: Symbol) -> bool {
                 match feature {
-                    $( sym::$feature => self.$feature, )*
+                    $( sym::$feature => self.$feature(), )*
 
                     _ => panic!("`{}` was not listed in `declare_features`", feature),
                 }
@@ -145,6 +156,24 @@ macro_rules! declare_features {
                         name == "core_intrinsics" || name.ends_with("_internal") || name.ends_with("_internals")
                     }
                     _ => panic!("`{}` was not listed in `declare_features`", feature),
+                }
+            }
+
+            $(
+                $(#[doc = $doc])*
+                pub fn $feature(&self) -> bool {
+                    self.features.contains(sym::$feature.into())
+                }
+            )+
+        }
+
+        impl Default for Features {
+            fn default() -> Self {
+                Self {
+                    declared_lang_features: Default::default(),
+                    declared_lib_features: Default::default(),
+                    declared_features: Default::default(),
+                    features: BitSet::new_empty(rustc_span::symbol::PREINTERNED_SYMBOLS_COUNT.try_into().unwrap()),
                 }
             }
         }

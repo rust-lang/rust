@@ -214,7 +214,7 @@ impl<'a, 'b> DocVisitor for CoverageCalculator<'a, 'b> {
                     ErrorCodes::No,
                     false,
                     None,
-                    self.ctx.tcx.features().custom_code_classes_in_docs,
+                    self.ctx.tcx.features().custom_code_classes_in_docs(),
                 );
 
                 let has_doc_example = tests.found_tests != 0;

@@ -172,7 +172,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             impl_trait_defs: Vec::new(),
             impl_trait_bounds: Vec::new(),
             allow_try_trait: [sym::try_trait_v2, sym::yeet_desugar_details].into(),
-            allow_gen_future: if tcx.features().async_fn_track_caller {
+            allow_gen_future: if tcx.features().async_fn_track_caller() {
                 [sym::gen_future, sym::closure_track_caller].into()
             } else {
                 [sym::gen_future].into()
@@ -1012,7 +1012,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
                 GenericArgs::Parenthesized(data) => {
                     if data.inputs.is_empty() && matches!(data.output, FnRetTy::Default(..)) {
-                        let parenthesized = if self.tcx.features().return_type_notation {
+                        let parenthesized = if self.tcx.features().return_type_notation() {
                             hir::GenericArgsParentheses::ReturnTypeNotation
                         } else {
                             self.emit_bad_parenthesized_trait_in_assoc_ty(data);
@@ -1038,7 +1038,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         } else {
                             unreachable!("inputs are empty and return type is not provided")
                         };
-                        if !self.tcx.features().return_type_notation
+                        if !self.tcx.features().return_type_notation()
                             && self.tcx.sess.is_nightly_build()
                         {
                             add_feature_diagnostics(
@@ -1211,7 +1211,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ast::GenericArg::Lifetime(lt) => GenericArg::Lifetime(self.lower_lifetime(lt)),
             ast::GenericArg::Type(ty) => {
                 match &ty.kind {
-                    TyKind::Infer if self.tcx.features().generic_arg_infer => {
+                    TyKind::Infer if self.tcx.features().generic_arg_infer() => {
                         return GenericArg::Infer(hir::InferArg {
                             hir_id: self.lower_node_id(ty.id),
                             span: self.lower_span(ty.span),
@@ -1592,7 +1592,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 if matches!(
                     fn_kind.expect("expected RPITs to be lowered with a FnKind"),
                     FnDeclKind::Impl | FnDeclKind::Trait
-                ) || self.tcx.features().lifetime_capture_rules_2024
+                ) || self.tcx.features().lifetime_capture_rules_2024()
                     || span.at_least_rust_2024()
                 {
                     // return-position impl trait in trait was decided to capture all
@@ -2306,7 +2306,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_array_length(&mut self, c: &AnonConst) -> hir::ArrayLen {
         match c.value.kind {
             ExprKind::Underscore => {
-                if self.tcx.features().generic_arg_infer {
+                if self.tcx.features().generic_arg_infer() {
                     hir::ArrayLen::Infer(self.lower_node_id(c.id), self.lower_span(c.value.span))
                 } else {
                     feature_err(
@@ -2348,7 +2348,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             (BoundConstness::Never, BoundPolarity::Positive) => hir::TraitBoundModifier::None,
             (_, BoundPolarity::Maybe(_)) => hir::TraitBoundModifier::Maybe,
             (BoundConstness::Never, BoundPolarity::Negative(_)) => {
-                if self.tcx.features().negative_bounds {
+                if self.tcx.features().negative_bounds() {
                     hir::TraitBoundModifier::Negative
                 } else {
                     hir::TraitBoundModifier::None
@@ -2578,7 +2578,7 @@ impl<'hir> GenericArgsCtor<'hir> {
         lcx: &mut LoweringContext<'_, 'hir>,
         constness: ast::BoundConstness,
     ) {
-        if !lcx.tcx.features().effects {
+        if !lcx.tcx.features().effects() {
             return;
         }
 

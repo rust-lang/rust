@@ -16,7 +16,7 @@ pub fn checking_enabled(ccx: &ConstCx<'_, '_>) -> bool {
         return false;
     }
 
-    ccx.tcx.features().const_precise_live_drops
+    ccx.tcx.features().const_precise_live_drops()
 }
 
 /// Look for live drops in a const context.

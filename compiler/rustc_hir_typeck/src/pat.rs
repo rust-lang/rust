@@ -418,7 +418,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        if self.tcx.features().string_deref_patterns
+        if self.tcx.features().string_deref_patterns()
             && let hir::ExprKind::Lit(Spanned { node: ast::LitKind::Str(..), .. }) = lt.kind
         {
             let tcx = self.tcx;

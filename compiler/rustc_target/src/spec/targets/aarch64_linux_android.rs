@@ -11,7 +11,7 @@ pub fn target() -> Target {
         arch: "aarch64".into(),
         options: TargetOptions {
             max_atomic_width: Some(128),
-            // As documented in https://developer.android.com/ndk/guides/cpu-features.html
+            // As documented in https://developer.android.com/ndk/guides/cpu-features.html()
             // the neon (ASIMD) and FP must exist on all android aarch64 targets.
             features: "+v8a,+neon,+fp-armv8".into(),
             stack_probes: StackProbeType::Inline,

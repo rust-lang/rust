@@ -316,7 +316,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         self.locals[local] = Some(value);
 
         // Only register the value if its type is `Sized`, as we will emit copies of it.
-        let is_sized = !self.tcx.features().unsized_locals
+        let is_sized = !self.tcx.features().unsized_locals()
             || self.local_decls[local].ty.is_sized(self.tcx, self.param_env);
         if is_sized {
             self.rev_locals.entry(value).or_default().push(local);

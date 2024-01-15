@@ -52,7 +52,7 @@ mod min_specialization;
 /// //   ^ 'a is unused and appears in assoc type, error
 /// ```
 fn check_mod_impl_wf(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
-    let min_specialization = tcx.features().min_specialization;
+    let min_specialization = tcx.features().min_specialization();
     let module = tcx.hir_module_items(module_def_id);
     for id in module.items() {
         if matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. }) {

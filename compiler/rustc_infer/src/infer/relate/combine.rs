@@ -265,7 +265,7 @@ impl<'tcx> InferCtxt<'tcx> {
             }
 
             (ty::ConstKind::Unevaluated(..), _) | (_, ty::ConstKind::Unevaluated(..))
-                if self.tcx.features().generic_const_exprs || self.next_trait_solver() =>
+                if self.tcx.features().generic_const_exprs() || self.next_trait_solver() =>
             {
                 let (a, b) = if relation.a_is_expected() { (a, b) } else { (b, a) };
 

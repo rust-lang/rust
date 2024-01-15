@@ -244,7 +244,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 if let ty::Adt(def, _) = ty.kind()
                     && Some(def.did()) == tcx.lang_items().string()
                 {
-                    if !tcx.features().string_deref_patterns {
+                    if !tcx.features().string_deref_patterns() {
                         bug!(
                             "matching on `String` went through without enabling string_deref_patterns"
                         );

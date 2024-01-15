@@ -259,7 +259,7 @@ pub(super) fn poly_project_and_unify_type<'cx, 'tcx>(
             ProjectAndUnifyResult::MismatchedProjectionTypes(e) => Err(e),
             ProjectAndUnifyResult::Holds(obligations)
                 if old_universe != new_universe
-                    && selcx.tcx().features().generic_associated_types_extended =>
+                    && selcx.tcx().features().generic_associated_types_extended() =>
             {
                 // If the `generic_associated_types_extended` feature is active, then we ignore any
                 // obligations references lifetimes from any universe greater than or equal to the
@@ -752,7 +752,7 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
     #[instrument(skip(self), level = "debug")]
     fn fold_const(&mut self, constant: ty::Const<'tcx>) -> ty::Const<'tcx> {
         let tcx = self.selcx.tcx();
-        if tcx.features().generic_const_exprs
+        if tcx.features().generic_const_exprs()
             || !needs_normalization(&constant, self.param_env.reveal())
         {
             constant

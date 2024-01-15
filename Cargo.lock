@@ -3834,6 +3834,7 @@ name = "rustc_feature"
 version = "0.0.0"
 dependencies = [
  "rustc_data_structures",
+ "rustc_index",
  "rustc_span",
 ]
 

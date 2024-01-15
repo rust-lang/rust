@@ -15,7 +15,7 @@ type GateFn = fn(&Features) -> bool;
 
 macro_rules! cfg_fn {
     ($field: ident) => {
-        (|features| features.$field) as GateFn
+        (|features| features.$field()) as GateFn
     };
 }
 

@@ -540,7 +540,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // be known if explicitly specified via turbofish).
                 self.deferred_transmute_checks.borrow_mut().push((from, to, expr.hir_id));
             }
-            if !tcx.features().unsized_fn_params {
+            if !tcx.features().unsized_fn_params() {
                 // We want to remove some Sized bounds from std functions,
                 // but don't want to expose the removal to stable Rust.
                 // i.e., we don't want to allow
@@ -1783,7 +1783,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let Some(base_expr) = base_expr {
             // FIXME: We are currently creating two branches here in order to maintain
             // consistency. But they should be merged as much as possible.
-            let fru_tys = if self.tcx.features().type_changing_struct_update {
+            let fru_tys = if self.tcx.features().type_changing_struct_update() {
                 if adt.is_struct() {
                     // Make some fresh substitutions for our ADT type.
                     let fresh_args = self.fresh_args_for_item(base_expr.span, adt.did());
@@ -3260,7 +3260,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let (ident, _def_scope) =
                         self.tcx.adjust_ident_and_get_scope(field, container_def.did(), block);
 
-                    if !self.tcx.features().offset_of_enum {
+                    if !self.tcx.features().offset_of_enum() {
                         rustc_session::parse::feature_err(
                             &self.tcx.sess,
                             sym::offset_of_enum,

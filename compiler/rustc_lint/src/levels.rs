@@ -784,7 +784,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     ast::MetaItemKind::NameValue(ref name_value) => {
                         if item.path == sym::reason {
                             if let ast::LitKind::Str(rationale, _) = name_value.kind {
-                                if !self.features.lint_reasons {
+                                if !self.features.lint_reasons() {
                                     feature_err(
                                         &self.sess,
                                         sym::lint_reasons,

@@ -231,7 +231,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             ty::Ref(r_b, _, mutbl_b) => {
                 return self.coerce_borrowed_pointer(a, b, r_b, mutbl_b);
             }
-            ty::Dynamic(predicates, region, ty::DynStar) if self.tcx.features().dyn_star => {
+            ty::Dynamic(predicates, region, ty::DynStar) if self.tcx.features().dyn_star() => {
                 return self.coerce_dyn_star(a, b, predicates, region);
             }
             _ => {}
@@ -702,7 +702,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
         }
 
-        if has_unsized_tuple_coercion && !self.tcx.features().unsized_tuple_coercion {
+        if has_unsized_tuple_coercion && !self.tcx.features().unsized_tuple_coercion() {
             feature_err(
                 &self.tcx.sess,
                 sym::unsized_tuple_coercion,
@@ -722,7 +722,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
         b_region: ty::Region<'tcx>,
     ) -> CoerceResult<'tcx> {
-        if !self.tcx.features().dyn_star {
+        if !self.tcx.features().dyn_star() {
             return Err(TypeError::Mismatch);
         }
 
@@ -1591,7 +1591,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             expression,
                             Some(blk_id),
                         );
-                        if !fcx.tcx.features().unsized_locals {
+                        if !fcx.tcx.features().unsized_locals() {
                             unsized_return = self.is_return_ty_definitely_unsized(fcx);
                         }
                         if let Some(expression) = expression
@@ -1611,7 +1611,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             expression,
                             None,
                         );
-                        if !fcx.tcx.features().unsized_locals {
+                        if !fcx.tcx.features().unsized_locals() {
                             unsized_return = self.is_return_ty_definitely_unsized(fcx);
                         }
                     }

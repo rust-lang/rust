@@ -322,7 +322,7 @@ fn super_predicates_have_non_lifetime_binders(
     trait_def_id: DefId,
 ) -> SmallVec<[Span; 1]> {
     // If non_lifetime_binders is disabled, then exit early
-    if !tcx.features().non_lifetime_binders {
+    if !tcx.features().non_lifetime_binders() {
         return SmallVec::new();
     }
     tcx.super_predicates_of(trait_def_id)
@@ -396,7 +396,7 @@ pub fn object_safety_violations_for_assoc_item(
             .collect(),
         // Associated types can only be object safe if they have `Self: Sized` bounds.
         ty::AssocKind::Type => {
-            if !tcx.features().generic_associated_types_extended
+            if !tcx.features().generic_associated_types_extended()
                 && !tcx.generics_of(item.def_id).params.is_empty()
                 && !item.is_impl_trait_in_trait()
             {

@@ -1168,7 +1168,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         | sym::fake_variadic => {}
 
                         sym::rust_logo => {
-                            if !self.tcx.features().rustdoc_internals {
+                            if !self.tcx.features().rustdoc_internals() {
                                 feature_err(
                                     &self.tcx.sess,
                                     sym::rustdoc_internals,
@@ -1812,7 +1812,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
                 sym::align => {
                     if let (Target::Fn | Target::Method(MethodKind::Inherent), false) =
-                        (target, self.tcx.features().fn_align)
+                        (target, self.tcx.features().fn_align())
                     {
                         feature_err(
                             &self.tcx.sess,

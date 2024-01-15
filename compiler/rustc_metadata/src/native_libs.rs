@@ -161,7 +161,7 @@ impl<'tcx> Collector<'tcx> {
                                 NativeLibKind::RawDylib
                             }
                             "link-arg" => {
-                                if !features.link_arg_attribute {
+                                if !features.link_arg_attribute() {
                                     feature_err(
                                         sess,
                                         sym::link_arg_attribute,
@@ -205,7 +205,7 @@ impl<'tcx> Collector<'tcx> {
                                 .emit_err(errors::LinkCfgSinglePredicate { span: item.span() });
                             continue;
                         };
-                        if !features.link_cfg {
+                        if !features.link_cfg() {
                             feature_err(sess, sym::link_cfg, item.span(), "link cfg is unstable")
                                 .emit();
                         }
@@ -270,7 +270,7 @@ impl<'tcx> Collector<'tcx> {
                     };
 
                     macro report_unstable_modifier($feature: ident) {
-                        if !features.$feature {
+                        if !features.$feature() {
                             feature_err(
                                 sess,
                                 sym::$feature,

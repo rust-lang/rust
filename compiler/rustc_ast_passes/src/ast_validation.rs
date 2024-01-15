@@ -316,7 +316,7 @@ impl<'a> AstValidator<'a> {
             return;
         };
 
-        let make_impl_const_sugg = if self.features.const_trait_impl
+        let make_impl_const_sugg = if self.features.const_trait_impl()
             && let TraitOrTraitImpl::TraitImpl {
                 constness: Const::No,
                 polarity: ImplPolarity::Positive,
@@ -329,7 +329,7 @@ impl<'a> AstValidator<'a> {
             None
         };
 
-        let make_trait_const_sugg = if self.features.const_trait_impl
+        let make_trait_const_sugg = if self.features.const_trait_impl()
             && let TraitOrTraitImpl::Trait { span, constness: None } = parent
         {
             Some(span.shrink_to_lo())
@@ -1116,7 +1116,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 self.check_type_no_bounds(bounds, "this context");
 
-                if self.features.lazy_type_alias {
+                if self.features.lazy_type_alias() {
                     if let Err(err) = self.check_type_alias_where_clause_location(ty_alias) {
                         self.dcx().emit_err(err);
                     }

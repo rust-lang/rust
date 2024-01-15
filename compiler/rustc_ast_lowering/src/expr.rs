@@ -558,7 +558,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         } else {
             // Either `body.is_none()` or `is_never_pattern` here.
             if !is_never_pattern {
-                if self.tcx.features().never_patterns {
+                if self.tcx.features().never_patterns() {
                     // If the feature is off we already emitted the error after parsing.
                     let suggestion = span.shrink_to_hi();
                     self.dcx().emit_err(MatchArmWithNoBody { span, suggestion });
@@ -695,7 +695,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         outer_hir_id: hir::HirId,
         inner_hir_id: hir::HirId,
     ) {
-        if self.tcx.features().async_fn_track_caller
+        if self.tcx.features().async_fn_track_caller()
             && let Some(attrs) = self.attrs.get(&outer_hir_id.local_id)
             && attrs.into_iter().any(|attr| attr.has_name(sym::track_caller))
         {
@@ -1510,7 +1510,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
             }
             Some(hir::CoroutineKind::Coroutine(_)) => {
-                if !self.tcx.features().coroutines {
+                if !self.tcx.features().coroutines() {
                     rustc_session::parse::feature_err(
                         &self.tcx.sess,
                         sym::coroutines,
@@ -1522,7 +1522,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 false
             }
             None => {
-                if !self.tcx.features().coroutines {
+                if !self.tcx.features().coroutines() {
                     rustc_session::parse::feature_err(
                         &self.tcx.sess,
                         sym::coroutines,
