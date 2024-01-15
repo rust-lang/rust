@@ -14,8 +14,8 @@ declare_clippy_lint! {
     /// This lint warns when you use `Arc` with a type that does not implement `Send` or `Sync`.
     ///
     /// ### Why is this bad?
-    /// `Arc<T>` is an Atomic `RC<T>` and guarantees that updates to the reference counter are
-    /// Atomic. This is useful in multiprocessing scenarios. To send an `Arc<T>` across processes
+    /// `Arc<T>` is an Atomic `Rc<T>` and guarantees that updates to the reference counter are
+    /// Atomic. This is useful in multithreading scenarios. To send an `Arc<T>` across threads
     /// and make use of the atomic ref counter, `T` must be [both `Send` and `Sync`](https://doc.rust-lang.org/std/sync/struct.Arc.html#impl-Send-for-Arc%3CT%3E),
     /// either `T` should be made `Send + Sync` or an `Rc` should be used instead of an `Arc`
     ///
