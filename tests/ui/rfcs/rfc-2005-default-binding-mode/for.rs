@@ -5,5 +5,6 @@ pub fn main() {
     // The below desugars to &(ref n, mut m).
     for (n, mut m) in &tups {
         //~^ ERROR cannot move out of a shared reference
+        //~| WARN dereferencing `mut`
     }
 }

@@ -1,3 +1,16 @@
+warning: dereferencing `mut` binding
+  --> $DIR/for.rs:6:13
+   |
+LL |     for (n, mut m) in &tups {
+   |             ^^^^^ `mut` dereferences the type of this binding
+   |
+help: this will change in edition 2024
+  --> $DIR/for.rs:6:13
+   |
+LL |     for (n, mut m) in &tups {
+   |             ^^^^^
+   = note: `#[warn(dereferencing_mut_binding)]` on by default
+
 error[E0507]: cannot move out of a shared reference
   --> $DIR/for.rs:6:23
    |
@@ -12,6 +25,6 @@ help: consider borrowing the pattern binding
 LL |     for (n, ref mut m) in &tups {
    |             +++
 
-error: aborting due to 1 previous error
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0507`.

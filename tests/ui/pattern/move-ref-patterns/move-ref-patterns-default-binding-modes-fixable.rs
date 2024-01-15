@@ -9,4 +9,5 @@ fn main() {
     let mut p = (U, U);
     let (a, mut b) = &mut p;
     //~^ ERROR cannot move out of a mutable reference
+    //~| WARN dereferencing `mut`
 }

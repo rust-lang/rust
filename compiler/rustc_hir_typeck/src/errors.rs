@@ -630,3 +630,11 @@ pub struct SuggestConvertViaMethod<'tcx> {
     pub expected: Ty<'tcx>,
     pub found: Ty<'tcx>,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(hir_typeck_dereferencing_mut_binding)]
+pub struct DereferencingMutBinding {
+    #[label]
+    #[help]
+    pub span: Span,
+}
