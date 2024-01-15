@@ -3879,6 +3879,7 @@ dependencies = [
 name = "rustc_hir_analysis"
 version = "0.0.0"
 dependencies = [
+ "itertools",
  "rustc_arena",
  "rustc_ast",
  "rustc_attr",
@@ -3917,6 +3918,7 @@ dependencies = [
 name = "rustc_hir_typeck"
 version = "0.0.0"
 dependencies = [
+ "itertools",
  "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
@@ -4200,6 +4202,7 @@ name = "rustc_mir_build"
 version = "0.0.0"
 dependencies = [
  "either",
+ "itertools",
  "rustc_apfloat",
  "rustc_arena",
  "rustc_ast",
