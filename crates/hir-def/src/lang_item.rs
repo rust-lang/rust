@@ -125,7 +125,7 @@ impl LangItems {
                     }
                     ModuleDefId::AdtId(AdtId::EnumId(e)) => {
                         lang_items.collect_lang_item(db, e, LangItemTarget::EnumId);
-                        module_data.scope.enums[&e].iter().for_each(|&id| {
+                        crate_def_map.enum_definitions[&e].iter().for_each(|&id| {
                             lang_items.collect_lang_item(db, id, LangItemTarget::EnumVariant);
                         });
                     }

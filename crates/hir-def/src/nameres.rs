@@ -80,8 +80,8 @@ use crate::{
     path::ModPath,
     per_ns::PerNs,
     visibility::{Visibility, VisibilityExplicity},
-    AstId, BlockId, BlockLoc, CrateRootModuleId, ExternCrateId, FunctionId, LocalModuleId, Lookup,
-    MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
+    AstId, BlockId, BlockLoc, CrateRootModuleId, EnumId, EnumVariantId, ExternCrateId, FunctionId,
+    LocalModuleId, Lookup, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
 };
 
 /// Contains the results of (early) name resolution.
@@ -113,6 +113,7 @@ pub struct DefMap {
     /// this contains all kinds of macro, not just `macro_rules!` macro.
     /// ExternCrateId being None implies it being imported from the general prelude import.
     macro_use_prelude: FxHashMap<Name, (MacroId, Option<ExternCrateId>)>,
+    pub(crate) enum_definitions: FxHashMap<EnumId, Box<[EnumVariantId]>>,
 
     /// Tracks which custom derives are in scope for an item, to allow resolution of derive helper
     /// attributes.
@@ -370,6 +371,7 @@ impl DefMap {
             macro_use_prelude: FxHashMap::default(),
             derive_helpers_in_scope: FxHashMap::default(),
             diagnostics: Vec::new(),
+            enum_definitions: FxHashMap::default(),
             data: Arc::new(DefMapCrateData {
                 extern_prelude: FxHashMap::default(),
                 exported_derives: FxHashMap::default(),
@@ -612,12 +614,14 @@ impl DefMap {
             krate: _,
             prelude: _,
             data: _,
+            enum_definitions,
         } = self;
 
         macro_use_prelude.shrink_to_fit();
         diagnostics.shrink_to_fit();
         modules.shrink_to_fit();
         derive_helpers_in_scope.shrink_to_fit();
+        enum_definitions.shrink_to_fit();
         for (_, module) in modules.iter_mut() {
             module.children.shrink_to_fit();
             module.scope.shrink_to_fit();

@@ -204,15 +204,18 @@ impl ChildBySource for VariantId {
 }
 
 impl ChildBySource for EnumId {
-    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, _: HirFileId) {
+    fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
         let loc = &self.lookup(db);
+        if file_id != loc.id.file_id() {
+            return;
+        }
 
         let tree = loc.id.item_tree(db);
         let ast_id_map = db.ast_id_map(loc.id.file_id());
         let root = db.parse_or_expand(loc.id.file_id());
 
         db.enum_data(*self).variants.iter().for_each(|&(variant, _)| {
-            res[keys::VARIANT].insert(
+            res[keys::ENUM_VARIANT].insert(
                 ast_id_map.get(tree[variant.lookup(db).id.value].ast_id).to_node(&root),
                 variant,
             );

@@ -445,6 +445,13 @@ impl<N> ItemTreeId<N> {
     pub fn item_tree(self, db: &dyn DefDatabase) -> Arc<ItemTree> {
         self.tree.item_tree(db)
     }
+
+    pub fn resolved<R>(self, db: &dyn DefDatabase, cb: impl FnOnce(&N) -> R) -> R
+    where
+        ItemTree: Index<FileItemTreeId<N>, Output = N>,
+    {
+        cb(&self.tree.item_tree(db)[self.value])
+    }
 }
 
 impl<N> Copy for ItemTreeId<N> {}

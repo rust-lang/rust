@@ -980,35 +980,26 @@ impl DefCollector<'_> {
                         cov_mark::hit!(glob_enum);
                         // glob import from enum => just import all the variants
 
-                        // We need to check if the def map the enum is from is us, then we can't
+                        // We need to check if the def map the enum is from is us, if it is we can't
                         // call the def-map query since we are currently constructing it!
                         let loc = e.lookup(self.db);
                         let tree = loc.id.item_tree(self.db);
                         let current_def_map = self.def_map.krate == loc.container.krate
                             && self.def_map.block_id() == loc.container.block;
+                        let def_map;
                         let resolutions = if current_def_map {
-                            self.def_map.modules[loc.container.local_id].scope.enums[&e]
-                                .iter()
-                                .map(|&variant| {
-                                    let name = tree[variant.lookup(self.db).id.value].name.clone();
-                                    let res =
-                                        PerNs::both(variant.into(), variant.into(), vis, None);
-                                    (Some(name), res)
-                                })
-                                .collect::<Vec<_>>()
+                            &self.def_map.enum_definitions[&e]
                         } else {
-                            loc.container.def_map(self.db).modules[loc.container.local_id]
-                                .scope
-                                .enums[&e]
-                                .iter()
-                                .map(|&variant| {
-                                    let name = tree[variant.lookup(self.db).id.value].name.clone();
-                                    let res =
-                                        PerNs::both(variant.into(), variant.into(), vis, None);
-                                    (Some(name), res)
-                                })
-                                .collect::<Vec<_>>()
-                        };
+                            def_map = loc.container.def_map(self.db);
+                            &def_map.enum_definitions[&e]
+                        }
+                        .iter()
+                        .map(|&variant| {
+                            let name = tree[variant.lookup(self.db).id.value].name.clone();
+                            let res = PerNs::both(variant.into(), variant.into(), vis, None);
+                            (Some(name), res)
+                        })
+                        .collect::<Vec<_>>();
                         self.update(module_id, &resolutions, vis, Some(ImportType::Glob(id)));
                     }
                     Some(d) => {
@@ -1749,10 +1740,7 @@ impl ModCollector<'_, '_> {
                             )
                         })
                         .collect();
-                    self.def_collector.def_map.modules[module_id]
-                        .scope
-                        .enums
-                        .insert(enum_, variants);
+                    self.def_collector.def_map.enum_definitions.insert(enum_, variants);
                 }
                 ModItem::Const(id) => {
                     let it = &self.item_tree[id];

@@ -140,7 +140,7 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     fn enum_variant_data_with_diagnostics(
         &self,
         id: EnumVariantId,
-    ) -> (Arc<EnumVariantData>, Arc<[DefDiagnostic]>);
+    ) -> (Arc<EnumVariantData>, Option<Arc<Box<[DefDiagnostic]>>>);
 
     #[salsa::invoke(ImplData::impl_data_query)]
     fn impl_data(&self, e: ImplId) -> Arc<ImplData>;

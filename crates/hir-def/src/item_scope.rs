@@ -18,8 +18,8 @@ use crate::{
     db::DefDatabase,
     per_ns::PerNs,
     visibility::{Visibility, VisibilityExplicity},
-    AdtId, BuiltinType, ConstId, EnumId, EnumVariantId, ExternCrateId, HasModule, ImplId,
-    LocalModuleId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId, UseId,
+    AdtId, BuiltinType, ConstId, ExternCrateId, HasModule, ImplId, LocalModuleId, Lookup, MacroId,
+    ModuleDefId, ModuleId, TraitId, UseId,
 };
 
 #[derive(Debug, Default)]
@@ -79,7 +79,6 @@ pub struct ItemScope {
     /// declared.
     declarations: Vec<ModuleDefId>,
 
-    pub enums: FxHashMap<EnumId, Box<[EnumVariantId]>>,
     impls: Vec<ImplId>,
     unnamed_consts: Vec<ConstId>,
     /// Traits imported via `use Trait as _;`.
@@ -719,7 +718,6 @@ impl ItemScope {
             use_imports_types,
             use_imports_macros,
             macro_invocations,
-            enums,
         } = self;
         types.shrink_to_fit();
         values.shrink_to_fit();
@@ -738,7 +736,6 @@ impl ItemScope {
         extern_crate_decls.shrink_to_fit();
         use_decls.shrink_to_fit();
         macro_invocations.shrink_to_fit();
-        enums.shrink_to_fit();
     }
 }
 

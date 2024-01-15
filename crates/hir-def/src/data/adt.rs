@@ -298,7 +298,7 @@ impl EnumData {
 
         Arc::new(EnumData {
             name: enum_.name.clone(),
-            variants: loc.container.def_map(db)[loc.container.local_id].scope.enums[&e]
+            variants: loc.container.def_map(db).enum_definitions[&e]
                 .iter()
                 .map(|&id| (id, item_tree[id.lookup(db).id.value].name.clone()))
                 .collect(),
@@ -332,7 +332,7 @@ impl EnumVariantData {
     pub(crate) fn enum_variant_data_with_diagnostics_query(
         db: &dyn DefDatabase,
         e: EnumVariantId,
-    ) -> (Arc<EnumVariantData>, Arc<[DefDiagnostic]>) {
+    ) -> (Arc<EnumVariantData>, Option<Arc<Box<[DefDiagnostic]>>>) {
         let loc = e.lookup(db);
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
@@ -355,7 +355,11 @@ impl EnumVariantData {
                 name: variant.name.clone(),
                 variant_data: Arc::new(var_data),
             }),
-            field_diagnostics.into(),
+            if field_diagnostics.is_empty() {
+                None
+            } else {
+                Some(Arc::new(field_diagnostics.into_boxed_slice()))
+            },
         )
     }
 }

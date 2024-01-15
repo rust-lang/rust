@@ -360,41 +360,28 @@ impl DefMap {
                     let tree = loc.id.item_tree(db);
                     let current_def_map =
                         self.krate == loc.container.krate && self.block_id() == loc.container.block;
+                    let def_map;
                     let res = if current_def_map {
-                        self.modules[loc.container.local_id].scope.enums[&e].iter().find_map(
-                            |&variant| {
-                                let variant_data = &tree[variant.lookup(db).id.value];
-                                (variant_data.name == *segment).then(|| match variant_data.fields {
-                                    Fields::Record(_) => {
-                                        PerNs::types(variant.into(), Visibility::Public, None)
-                                    }
-                                    Fields::Tuple(_) | Fields::Unit => PerNs::both(
-                                        variant.into(),
-                                        variant.into(),
-                                        Visibility::Public,
-                                        None,
-                                    ),
-                                })
-                            },
-                        )
+                        &self.enum_definitions[&e]
                     } else {
-                        loc.container.def_map(db).modules[loc.container.local_id].scope.enums[&e]
-                            .iter()
-                            .find_map(|&variant| {
-                                let variant_data = &tree[variant.lookup(db).id.value];
-                                (variant_data.name == *segment).then(|| match variant_data.fields {
-                                    Fields::Record(_) => {
-                                        PerNs::types(variant.into(), Visibility::Public, None)
-                                    }
-                                    Fields::Tuple(_) | Fields::Unit => PerNs::both(
-                                        variant.into(),
-                                        variant.into(),
-                                        Visibility::Public,
-                                        None,
-                                    ),
-                                })
-                            })
-                    };
+                        def_map = loc.container.def_map(db);
+                        &def_map.enum_definitions[&e]
+                    }
+                    .iter()
+                    .find_map(|&variant| {
+                        let variant_data = &tree[variant.lookup(db).id.value];
+                        (variant_data.name == *segment).then(|| match variant_data.fields {
+                            Fields::Record(_) => {
+                                PerNs::types(variant.into(), Visibility::Public, None)
+                            }
+                            Fields::Tuple(_) | Fields::Unit => PerNs::both(
+                                variant.into(),
+                                variant.into(),
+                                Visibility::Public,
+                                None,
+                            ),
+                        })
+                    });
                     match res {
                         Some(res) => res,
                         None => {
