@@ -239,20 +239,27 @@ let FunctionType;
  * `doc` contains the description of the crate.
  *
  * `p` is a list of path/type pairs. It is used for parents and function parameters.
+ * The first item is the type, the second is the name, the third is the visible path (if any) and
+ * the fourth is the canonical path used for deduplication (if any).
+ *
+ * `r` is the canonical path used for deduplication of re-exported items.
+ * It is not used for associated items like methods (that's the fourth element
+ * of `p`) but is used for modules items like free functions.
  *
  * `c` is an array of item indices that are deprecated.
  * @typedef {{
  *   doc: string,
  *   a: Object,
  *   n: Array<string>,
- *   t: String,
+ *   t: string,
  *   d: Array<string>,
- *   q: Array<[Number, string]>,
- *   i: Array<Number>,
+ *   q: Array<[number, string]>,
+ *   i: Array<number>,
  *   f: string,
- *   p: Array<Object>,
- *   b: Array<[Number, String]>,
- *   c: Array<Number>
+ *   p: Array<[number, string] | [number, string, number] | [number, string, number, number]>,
+ *   b: Array<[number, String]>,
+ *   c: Array<number>,
+ *   r: Array<[number, number]>,
  * }}
  */
 let RawSearchIndexCrate;
