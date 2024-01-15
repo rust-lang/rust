@@ -1,6 +1,7 @@
 // edition:2021
 // run-rustfix
 
+#![allow(dead_code)]
 trait Trait {
     #[allow(async_fn_in_trait)]
     async fn foo();

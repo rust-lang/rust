@@ -1,4 +1,5 @@
 // run-rustfix
+#![allow(dead_code)]
 
 trait T {
     unsafe fn foo(a: &usize, b: &usize) -> usize;

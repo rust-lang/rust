@@ -1,5 +1,5 @@
 error[E0040]: explicit use of destructor method
-  --> $DIR/explicit-call-to-supertrait-dtor.rs:22:14
+  --> $DIR/explicit-call-to-supertrait-dtor.rs:23:14
    |
 LL |         self.drop();
    |              ^^^^ explicit destructor calls not allowed

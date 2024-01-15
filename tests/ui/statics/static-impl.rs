@@ -35,7 +35,7 @@ impl uint_utils for usize {
 
 trait vec_utils<T> {
     fn length_(&self, ) -> usize;
-    fn iter_<F>(&self, f: F) where F: FnMut(&T);
+    fn iter_<F>(&self, f: F) where F: FnMut(&T); //~ WARN method `iter_` is never used
     fn map_<U, F>(&self, f: F) -> Vec<U> where F: FnMut(&T) -> U;
 }
 

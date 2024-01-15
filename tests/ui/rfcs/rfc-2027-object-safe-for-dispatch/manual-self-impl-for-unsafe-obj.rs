@@ -19,7 +19,7 @@ trait Bad {
 }
 
 trait Good {
-    fn good_virt(&self) -> char {
+    fn good_virt(&self) -> char { //~ WARN methods `good_virt` and `good_indirect` are never used
         panic!()
     }
     fn good_indirect(&self) -> char {

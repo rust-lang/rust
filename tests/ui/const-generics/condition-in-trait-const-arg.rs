@@ -1,5 +1,5 @@
 // Checks that `impl Trait<{anon_const}> for Type` evaluates successfully.
-// run-pass
+// check-pass
 // revisions: full min
 
 #![cfg_attr(full, feature(generic_const_exprs))]

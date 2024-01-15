@@ -1,4 +1,4 @@
-// run-pass
+// check-pass
 
 #![feature(trait_alias)]
 

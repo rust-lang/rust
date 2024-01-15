@@ -3,7 +3,7 @@
 
 // pretty-expanded FIXME #23616
 
-trait TheTrait { fn dummy(&self) { } }
+trait TheTrait { fn dummy(&self) { } } //~ WARN method `dummy` is never used
 
 impl TheTrait for &'static isize { }
 

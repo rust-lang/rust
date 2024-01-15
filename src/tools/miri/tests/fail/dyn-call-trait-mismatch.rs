@@ -1,4 +1,5 @@
 trait T1 {
+    #[allow(dead_code)]
     fn method1(self: Box<Self>);
 }
 trait T2 {

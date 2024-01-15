@@ -1,4 +1,4 @@
-// run-pass
+// check-pass
 // pretty-expanded FIXME #23616
 
 trait A<X> {

@@ -1,4 +1,5 @@
 // run-rustfix
+#![allow(dead_code)]
 
 pub mod a {
     pub use self::b::Trait;

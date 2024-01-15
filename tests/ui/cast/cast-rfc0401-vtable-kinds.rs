@@ -8,7 +8,7 @@ trait Foo<T> {
     fn foo(&self, _: T) -> u32 { 42 }
 }
 
-trait Bar {
+trait Bar { //~ WARN trait `Bar` is never used
     fn bar(&self) { println!("Bar!"); }
 }
 

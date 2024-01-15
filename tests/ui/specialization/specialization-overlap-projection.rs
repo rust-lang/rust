@@ -1,4 +1,4 @@
-// run-pass
+// check-pass
 
 // Test that impls on projected self types can resolve overlap, even when the
 // projections involve specialization, so long as the associated type is

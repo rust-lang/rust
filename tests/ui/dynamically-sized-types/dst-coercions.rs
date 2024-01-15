@@ -5,7 +5,7 @@
 // pretty-expanded FIXME #23616
 
 struct S;
-trait T { fn dummy(&self) { } }
+trait T { fn dummy(&self) { } } //~ WARN method `dummy` is never used
 impl T for S {}
 
 pub fn main() {

@@ -1,4 +1,5 @@
 // run-rustfix
+#![allow(dead_code)]
 #![allow(unused_variables)]
 
 trait Get {

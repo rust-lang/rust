@@ -1,5 +1,5 @@
 error[E0637]: `&` without an explicit lifetime name cannot be used here
-  --> $DIR/where-clause-inherent-impl-ampersand-rust2015.rs:13:17
+  --> $DIR/where-clause-inherent-impl-ampersand-rust2015.rs:14:17
    |
 LL |     T: WithType<&u32>
    |                 ^ explicit lifetime name needed here

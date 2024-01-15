@@ -5,7 +5,7 @@ trait Foo: PartialEq<i32> + std::fmt::Debug + Send + Sync {
         10
     }
 
-    fn z(&self) -> i32 {
+    fn z(&self) -> i32 { //~ WARN methods `z` and `y` are never used
         11
     }
 
@@ -19,7 +19,7 @@ trait Bar: Foo {
         20
     }
 
-    fn w(&self) -> i32 {
+    fn w(&self) -> i32 { //~ WARN method `w` is never used
         21
     }
 }

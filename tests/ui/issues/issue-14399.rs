@@ -9,7 +9,7 @@
 #[derive(Clone)]
 struct B1;
 
-trait A { fn foo(&self) {} }
+trait A { fn foo(&self) {} } //~ WARN method `foo` is never used
 impl A for B1 {}
 
 fn main() {

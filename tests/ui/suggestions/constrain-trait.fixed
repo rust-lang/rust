@@ -1,5 +1,6 @@
 // run-rustfix
 // check-only
+#![allow(dead_code)]
 
 #[derive(Debug)]
 struct Demo {

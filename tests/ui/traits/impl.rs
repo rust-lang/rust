@@ -9,7 +9,7 @@ use traitimpl::Bar;
 static mut COUNT: usize = 1;
 
 trait T {
-    fn t(&self) {}
+    fn t(&self) {} //~ WARN method `t` is never used
 }
 
 impl<'a> dyn T+'a {
