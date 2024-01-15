@@ -354,6 +354,11 @@ impl Waker {
     #[must_use]
     #[unstable(feature = "noop_waker", issue = "98286")]
     pub const fn noop() -> &'static Waker {
+        // Ideally all this data would be explicitly `static` because it is used by reference and
+        // only ever needs one copy. But `const fn`s (and `const` items) cannot refer to statics,
+        // even though their values can be promoted to static. (That might change; see #119618.)
+        // An alternative would be a `pub static NOOP: &Waker`, but associated static items are not
+        // currently allowed either, and making it non-associated would be unergonomic.
         const VTABLE: RawWakerVTable = RawWakerVTable::new(
             // Cloning just returns a new no-op raw waker
             |_| RAW,
