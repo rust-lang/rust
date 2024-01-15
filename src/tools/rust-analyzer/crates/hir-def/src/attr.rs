@@ -207,6 +207,13 @@ impl Attrs {
         })
     }
 
+    pub fn has_doc_notable_trait(&self) -> bool {
+        self.by_key("doc").tt_values().any(|tt| {
+            tt.delimiter.kind == DelimiterKind::Parenthesis &&
+                matches!(&*tt.token_trees, [tt::TokenTree::Leaf(tt::Leaf::Ident(ident))] if ident.text == "notable_trait")
+        })
+    }
+
     pub fn doc_exprs(&self) -> impl Iterator<Item = DocExpr> + '_ {
         self.by_key("doc").tt_values().map(DocExpr::parse)
     }
@@ -355,7 +362,7 @@ fn parse_comma_sep<S>(subtree: &tt::Subtree<S>) -> Vec<SmolStr> {
 }
 
 impl AttrsWithOwner {
-    pub(crate) fn attrs_with_owner(db: &dyn DefDatabase, owner: AttrDefId) -> Self {
+    pub fn attrs_with_owner(db: &dyn DefDatabase, owner: AttrDefId) -> Self {
         Self { attrs: db.attrs(owner), owner }
     }
 

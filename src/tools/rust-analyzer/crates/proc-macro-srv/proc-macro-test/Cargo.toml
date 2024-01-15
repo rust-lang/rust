@@ -14,6 +14,3 @@ cargo_metadata = "0.18.1"
 
 # local deps
 toolchain.workspace = true
-
-[features]
-sysroot-abi = []

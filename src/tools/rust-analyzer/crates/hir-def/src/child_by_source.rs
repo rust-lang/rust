@@ -92,7 +92,7 @@ impl ChildBySource for ItemScope {
         self.impls().for_each(|imp| add_impl(db, res, file_id, imp));
         self.extern_crate_decls().for_each(|ext| add_extern_crate(db, res, file_id, ext));
         self.use_decls().for_each(|ext| add_use(db, res, file_id, ext));
-        self.unnamed_consts().for_each(|konst| {
+        self.unnamed_consts(db).for_each(|konst| {
             let loc = konst.lookup(db);
             if loc.id.file_id() == file_id {
                 res[keys::CONST].insert(loc.source(db).value, konst);

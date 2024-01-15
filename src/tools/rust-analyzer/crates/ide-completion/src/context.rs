@@ -529,6 +529,11 @@ impl CompletionContext<'_> {
         }
     }
 
+    /// Whether the given trait has `#[doc(notable_trait)]`
+    pub(crate) fn is_doc_notable_trait(&self, trait_: hir::Trait) -> bool {
+        trait_.attrs(self.db).has_doc_notable_trait()
+    }
+
     /// Returns the traits in scope, with the [`Drop`] trait removed.
     pub(crate) fn traits_in_scope(&self) -> hir::VisibleTraits {
         let mut traits_in_scope = self.scope.visible_traits();

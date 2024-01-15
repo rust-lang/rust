@@ -15,9 +15,11 @@ use stdx::format_to;
 use syntax::ast;
 
 use crate::{
-    db::DefDatabase, per_ns::PerNs, visibility::Visibility, AdtId, BuiltinType, ConstId,
-    ExternCrateId, HasModule, ImplId, LocalModuleId, Lookup, MacroId, ModuleDefId, ModuleId,
-    TraitId, UseId,
+    db::DefDatabase,
+    per_ns::PerNs,
+    visibility::{Visibility, VisibilityExplicity},
+    AdtId, BuiltinType, ConstId, ExternCrateId, HasModule, ImplId, LocalModuleId, Lookup, MacroId,
+    ModuleDefId, ModuleId, TraitId, UseId,
 };
 
 #[derive(Debug, Default)]
@@ -105,7 +107,7 @@ pub struct ItemScope {
     /// The attribute macro invocations in this scope.
     attr_macros: FxHashMap<AstId<ast::Item>, MacroCallId>,
     /// The macro invocations in this scope.
-    pub macro_invocations: FxHashMap<AstId<ast::MacroCall>, MacroCallId>,
+    macro_invocations: FxHashMap<AstId<ast::MacroCall>, MacroCallId>,
     /// The derive macro invocations in this scope, keyed by the owner item over the actual derive attributes
     /// paired with the derive macro invocations for the specific attribute.
     derive_macros: FxHashMap<AstId<ast::Adt>, SmallVec<[DeriveMacroInvocation; 1]>>,
@@ -145,8 +147,8 @@ impl ItemScope {
             .chain(self.values.keys())
             .chain(self.macros.keys())
             .chain(self.unresolved.iter())
-            .unique()
             .sorted()
+            .dedup()
             .map(move |name| (name, self.get(name)))
     }
 
@@ -157,8 +159,8 @@ impl ItemScope {
             .filter_map(ImportOrExternCrate::into_import)
             .chain(self.use_imports_values.keys().copied())
             .chain(self.use_imports_macros.keys().copied())
-            .unique()
             .sorted()
+            .dedup()
     }
 
     pub fn fully_resolve_import(&self, db: &dyn DefDatabase, mut import: ImportId) -> PerNs {
@@ -234,20 +236,37 @@ impl ItemScope {
         self.impls.iter().copied()
     }
 
-    pub fn values(
-        &self,
-    ) -> impl Iterator<Item = (ModuleDefId, Visibility)> + ExactSizeIterator + '_ {
-        self.values.values().copied().map(|(a, b, _)| (a, b))
+    pub(crate) fn modules_in_scope(&self) -> impl Iterator<Item = (ModuleId, Visibility)> + '_ {
+        self.types.values().copied().filter_map(|(def, vis, _)| match def {
+            ModuleDefId::ModuleId(module) => Some((module, vis)),
+            _ => None,
+        })
     }
 
-    pub(crate) fn types(
-        &self,
-    ) -> impl Iterator<Item = (ModuleDefId, Visibility)> + ExactSizeIterator + '_ {
-        self.types.values().copied().map(|(def, vis, _)| (def, vis))
-    }
+    pub fn unnamed_consts<'a>(
+        &'a self,
+        db: &'a dyn DefDatabase,
+    ) -> impl Iterator<Item = ConstId> + 'a {
+        // FIXME: Also treat consts named `_DERIVE_*` as unnamed, since synstructure generates those.
+        // Should be removed once synstructure stops doing that.
+        let synstructure_hack_consts = self.values.values().filter_map(|(item, _, _)| match item {
+            &ModuleDefId::ConstId(id) => {
+                let loc = id.lookup(db);
+                let item_tree = loc.id.item_tree(db);
+                if item_tree[loc.id.value]
+                    .name
+                    .as_ref()
+                    .map_or(false, |n| n.to_smol_str().starts_with("_DERIVE_"))
+                {
+                    Some(id)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        });
 
-    pub fn unnamed_consts(&self) -> impl Iterator<Item = ConstId> + '_ {
-        self.unnamed_consts.iter().copied()
+        self.unnamed_consts.iter().copied().chain(synstructure_hack_consts)
     }
 
     /// Iterate over all module scoped macros
@@ -274,21 +293,18 @@ impl ItemScope {
     }
 
     /// XXX: this is O(N) rather than O(1), try to not introduce new usages.
-    pub(crate) fn name_of(&self, item: ItemInNs) -> Option<(&Name, Visibility)> {
+    pub(crate) fn name_of(&self, item: ItemInNs) -> Option<(&Name, Visibility, /*declared*/ bool)> {
         match item {
-            ItemInNs::Macros(def) => self
-                .macros
-                .iter()
-                .find_map(|(name, &(other_def, vis, _))| (other_def == def).then_some((name, vis))),
-            ItemInNs::Types(def) => self
-                .types
-                .iter()
-                .find_map(|(name, &(other_def, vis, _))| (other_def == def).then_some((name, vis))),
+            ItemInNs::Macros(def) => self.macros.iter().find_map(|(name, &(other_def, vis, i))| {
+                (other_def == def).then_some((name, vis, i.is_none()))
+            }),
+            ItemInNs::Types(def) => self.types.iter().find_map(|(name, &(other_def, vis, i))| {
+                (other_def == def).then_some((name, vis, i.is_none()))
+            }),
 
-            ItemInNs::Values(def) => self
-                .values
-                .iter()
-                .find_map(|(name, &(other_def, vis, _))| (other_def == def).then_some((name, vis))),
+            ItemInNs::Values(def) => self.values.iter().find_map(|(name, &(other_def, vis, i))| {
+                (other_def == def).then_some((name, vis, i.is_none()))
+            }),
         }
     }
 
@@ -315,6 +331,10 @@ impl ItemScope {
                 )
             }),
         )
+    }
+
+    pub(crate) fn macro_invoc(&self, call: AstId<ast::MacroCall>) -> Option<MacroCallId> {
+        self.macro_invocations.get(&call).copied()
     }
 }
 
@@ -624,18 +644,17 @@ impl ItemScope {
     pub(crate) fn censor_non_proc_macros(&mut self, this_module: ModuleId) {
         self.types
             .values_mut()
-            .map(|(def, vis, _)| (def, vis))
-            .chain(self.values.values_mut().map(|(def, vis, _)| (def, vis)))
-            .map(|(_, v)| v)
+            .map(|(_, vis, _)| vis)
+            .chain(self.values.values_mut().map(|(_, vis, _)| vis))
             .chain(self.unnamed_trait_imports.values_mut().map(|(vis, _)| vis))
-            .for_each(|vis| *vis = Visibility::Module(this_module));
+            .for_each(|vis| *vis = Visibility::Module(this_module, VisibilityExplicity::Implicit));
 
         for (mac, vis, import) in self.macros.values_mut() {
             if matches!(mac, MacroId::ProcMacroId(_) if import.is_none()) {
                 continue;
             }
 
-            *vis = Visibility::Module(this_module);
+            *vis = Visibility::Module(this_module, VisibilityExplicity::Implicit);
         }
     }
 

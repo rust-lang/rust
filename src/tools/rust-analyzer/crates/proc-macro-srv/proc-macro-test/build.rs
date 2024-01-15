@@ -17,10 +17,23 @@ use cargo_metadata::Message;
 
 fn main() {
     println!("cargo:rerun-if-changed=imp");
-    println!("cargo:rerun-if-env-changed=PROC_MACRO_TEST_TOOLCHAIN");
+
+    let has_features = env::var_os("RUSTC_BOOTSTRAP").is_some()
+        || String::from_utf8(
+            Command::new(toolchain::cargo()).arg("--version").output().unwrap().stdout,
+        )
+        .unwrap()
+        .contains("nightly");
 
     let out_dir = env::var_os("OUT_DIR").unwrap();
     let out_dir = Path::new(&out_dir);
+
+    if !has_features {
+        println!("proc-macro-test testing only works on nightly toolchains");
+        let info_path = out_dir.join("proc_macro_test_location.txt");
+        fs::File::create(info_path).unwrap();
+        return;
+    }
 
     let name = "proc-macro-test-impl";
     let version = "0.0.0";
@@ -53,15 +66,7 @@ fn main() {
 
     let target_dir = out_dir.join("target");
 
-    let mut cmd = if let Ok(toolchain) = std::env::var("PROC_MACRO_TEST_TOOLCHAIN") {
-        // leverage rustup to find user-specific toolchain
-        let mut cmd = Command::new("cargo");
-        cmd.arg(format!("+{toolchain}"));
-        cmd
-    } else {
-        Command::new(toolchain::cargo())
-    };
-
+    let mut cmd = Command::new(toolchain::cargo());
     cmd.current_dir(&staging_dir)
         .args(["build", "-p", "proc-macro-test-impl", "--message-format", "json"])
         // Explicit override the target directory to avoid using the same one which the parent
@@ -70,9 +75,6 @@ fn main() {
         // instance to use the same target directory.
         .arg("--target-dir")
         .arg(&target_dir);
-    if cfg!(feature = "sysroot-abi") {
-        cmd.args(["--features", "sysroot-abi"]);
-    }
 
     if let Ok(target) = std::env::var("TARGET") {
         cmd.args(["--target", &target]);

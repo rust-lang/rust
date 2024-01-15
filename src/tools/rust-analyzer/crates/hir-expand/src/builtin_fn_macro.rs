@@ -6,18 +6,16 @@ use either::Either;
 use itertools::Itertools;
 use mbe::{parse_exprs_with_sep, parse_to_token_tree};
 use span::{Span, SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
-use syntax::{
-    ast::{self, AstToken},
-    SmolStr,
-};
+use syntax::ast::{self, AstToken};
 
 use crate::{
     db::ExpandDatabase,
     hygiene::{span_with_call_site_ctxt, span_with_def_site_ctxt},
     name::{self, known},
     quote,
+    quote::dollar_crate,
     tt::{self, DelimSpan},
-    ExpandError, ExpandResult, HirFileIdExt, MacroCallId,
+    ExpandError, ExpandResult, HirFileIdExt, MacroCallId, MacroFileIdExt,
 };
 
 macro_rules! register_builtin {
@@ -205,7 +203,7 @@ fn assert_expand(
 ) -> ExpandResult<tt::Subtree> {
     let call_site_span = span_with_call_site_ctxt(db, span, id);
     let args = parse_exprs_with_sep(tt, ',', call_site_span);
-    let dollar_crate = tt::Ident { text: SmolStr::new_inline("$crate"), span };
+    let dollar_crate = dollar_crate(span);
     let expanded = match &*args {
         [cond, panic_args @ ..] => {
             let comma = tt::Subtree {
@@ -300,7 +298,7 @@ fn asm_expand(
             [tt::TokenTree::Leaf(tt::Leaf::Literal(lit))]
             | [tt::TokenTree::Leaf(tt::Leaf::Literal(lit)), tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: ',', span: _, spacing: _ }))] =>
             {
-                let dollar_krate = tt::Ident { text: SmolStr::new_inline("$crate"), span };
+                let dollar_krate = dollar_crate(span);
                 literals.push(quote!(span=>#dollar_krate::format_args!(#lit);));
             }
             _ => break,
@@ -345,7 +343,7 @@ fn panic_expand(
     tt: &tt::Subtree,
     span: Span,
 ) -> ExpandResult<tt::Subtree> {
-    let dollar_crate = tt::Ident { text: SmolStr::new_inline("$crate"), span };
+    let dollar_crate = dollar_crate(span);
     let call_site_span = span_with_call_site_ctxt(db, span, id);
 
     let mac =
@@ -371,7 +369,7 @@ fn unreachable_expand(
     tt: &tt::Subtree,
     span: Span,
 ) -> ExpandResult<tt::Subtree> {
-    let dollar_crate = tt::Ident { text: SmolStr::new_inline("$crate"), span };
+    let dollar_crate = dollar_crate(span);
     let call_site_span = span_with_call_site_ctxt(db, span, id);
 
     let mac = if use_panic_2021(db, call_site_span) {
@@ -611,7 +609,7 @@ fn relative_file(
     path_str: &str,
     allow_recursion: bool,
 ) -> Result<FileId, ExpandError> {
-    let call_site = call_id.as_file().original_file(db);
+    let call_site = call_id.as_macro_file().parent(db).original_file_respecting_includes(db);
     let path = AnchoredPath { anchor: call_site, path: path_str };
     let res = db
         .resolve_path(path)
@@ -763,10 +761,10 @@ fn option_env_expand(
             return ExpandResult::new(tt::Subtree::empty(DelimSpan { open: span, close: span }), e)
         }
     };
-    // FIXME: Use `DOLLAR_CRATE` when that works in eager macros.
+    let dollar_crate = dollar_crate(span);
     let expanded = match get_env_inner(db, arg_id, &key) {
-        None => quote! {span => ::core::option::Option::None::<&str> },
-        Some(s) => quote! {span => ::core::option::Option::Some(#s) },
+        None => quote! {span => #dollar_crate::option::Option::None::<&str> },
+        Some(s) => quote! {span => #dollar_crate::option::Option::Some(#s) },
     };
 
     ExpandResult::ok(expanded)

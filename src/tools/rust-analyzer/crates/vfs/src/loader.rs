@@ -51,6 +51,8 @@ pub enum Message {
     Progress { n_total: usize, n_done: usize, config_version: u32 },
     /// The handle loaded the following files' content.
     Loaded { files: Vec<(AbsPathBuf, Option<Vec<u8>>)> },
+    /// The handle loaded the following files' content.
+    Changed { files: Vec<(AbsPathBuf, Option<Vec<u8>>)> },
 }
 
 /// Type that will receive [`Messages`](Message) from a [`Handle`].
@@ -198,6 +200,9 @@ impl fmt::Debug for Message {
         match self {
             Message::Loaded { files } => {
                 f.debug_struct("Loaded").field("n_files", &files.len()).finish()
+            }
+            Message::Changed { files } => {
+                f.debug_struct("Changed").field("n_files", &files.len()).finish()
             }
             Message::Progress { n_total, n_done, config_version } => f
                 .debug_struct("Progress")
