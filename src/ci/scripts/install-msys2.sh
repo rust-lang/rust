@@ -67,6 +67,8 @@ if isWindows; then
     rm -r "/c/msys64/"
     # Delete Strawberry Perl, which contains a version of mingw
     rm -r "/c/Strawberry/"
+    # Delete native CMake
+    rm -r "/c/Program Files/CMake/"
     # wtf why is this even here??
     rm -r "/c/mingw64/"
     rm -r "/c/mingw32/"

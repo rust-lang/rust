@@ -81,4 +81,8 @@ if isWindows; then
     # echo "\n"
     # echo "MAJAHA /etc/pacman.d/mirrorlist.mingw64"
     # cat /etc/pacman.d/mirrorlist.mingw64
+    echo WHICH GCC:
+    which gcc
+    echo WHICH clang:
+    which clang
 fi
