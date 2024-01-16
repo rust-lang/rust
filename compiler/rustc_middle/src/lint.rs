@@ -250,7 +250,7 @@ pub fn explain_lint_level_source(
 /// - [`TyCtxt::emit_spanned_lint`]
 /// - [`TyCtxt::struct_span_lint_hir`]
 /// - [`TyCtxt::emit_lint`]
-/// - [`TyCtxt::struct_lint_node`]
+/// - [`TyCtxt::node_lint`]
 /// - `LintContext::opt_span_lint`
 ///
 /// ## `decorate`
