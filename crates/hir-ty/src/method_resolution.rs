@@ -96,8 +96,8 @@ impl TyFingerprint {
             | TyKind::OpaqueType(_, _)
             | TyKind::FnDef(_, _)
             | TyKind::Closure(_, _)
-            | TyKind::Generator(..)
-            | TyKind::GeneratorWitness(..) => TyFingerprint::Unnameable,
+            | TyKind::Coroutine(..)
+            | TyKind::CoroutineWitness(..) => TyFingerprint::Unnameable,
             TyKind::Function(fn_ptr) => {
                 TyFingerprint::Function(fn_ptr.substitution.0.len(Interner) as u32)
             }

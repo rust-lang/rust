@@ -534,7 +534,7 @@ pub(crate) struct InferenceContext<'a> {
     /// expressions. If `None`, this is in a context where return is
     /// inappropriate, such as a const expression.
     return_coercion: Option<CoerceMany>,
-    /// The resume type and the yield type, respectively, of the generator being inferred.
+    /// The resume type and the yield type, respectively, of the coroutine being inferred.
     resume_yield_tys: Option<(Ty, Ty)>,
     diverges: Diverges,
     breakables: Vec<BreakableContext>,

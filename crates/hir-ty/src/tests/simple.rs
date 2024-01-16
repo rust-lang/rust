@@ -1949,11 +1949,11 @@ fn closure_return_inferred() {
 }
 
 #[test]
-fn generator_types_inferred() {
+fn coroutine_types_inferred() {
     check_infer(
         r#"
-//- minicore: generator, deref
-use core::ops::{Generator, GeneratorState};
+//- minicore: coroutine, deref
+use core::ops::{Coroutine, CoroutineState};
 use core::pin::Pin;
 
 fn f(v: i64) {}
@@ -1966,8 +1966,8 @@ fn test() {
     };
 
     match Pin::new(&mut g).resume(0usize) {
-        GeneratorState::Yielded(y) => { f(y); }
-        GeneratorState::Complete(r) => {}
+        CoroutineState::Yielded(y) => { f(y); }
+        CoroutineState::Complete(r) => {}
     }
 }
         "#,
@@ -1992,17 +1992,17 @@ fn test() {
             225..360 'match ...     }': ()
             231..239 'Pin::new': fn new<&mut |usize| yields i64 -> &str>(&mut |usize| yields i64 -> &str) -> Pin<&mut |usize| yields i64 -> &str>
             231..247 'Pin::n...mut g)': Pin<&mut |usize| yields i64 -> &str>
-            231..262 'Pin::n...usize)': GeneratorState<i64, &str>
+            231..262 'Pin::n...usize)': CoroutineState<i64, &str>
             240..246 '&mut g': &mut |usize| yields i64 -> &str
             245..246 'g': |usize| yields i64 -> &str
             255..261 '0usize': usize
-            273..299 'Genera...ded(y)': GeneratorState<i64, &str>
+            273..299 'Corout...ded(y)': CoroutineState<i64, &str>
             297..298 'y': i64
             303..312 '{ f(y); }': ()
             305..306 'f': fn f(i64)
             305..309 'f(y)': ()
             307..308 'y': i64
-            321..348 'Genera...ete(r)': GeneratorState<i64, &str>
+            321..348 'Corout...ete(r)': CoroutineState<i64, &str>
             346..347 'r': &str
             352..354 '{}': ()
         "#]],
@@ -2010,11 +2010,11 @@ fn test() {
 }
 
 #[test]
-fn generator_resume_yield_return_unit() {
+fn coroutine_resume_yield_return_unit() {
     check_no_mismatches(
         r#"
-//- minicore: generator, deref
-use core::ops::{Generator, GeneratorState};
+//- minicore: coroutine, deref
+use core::ops::{Coroutine, CoroutineState};
 use core::pin::Pin;
 fn test() {
     let mut g = || {
@@ -2022,8 +2022,8 @@ fn test() {
     };
 
     match Pin::new(&mut g).resume(()) {
-        GeneratorState::Yielded(()) => {}
-        GeneratorState::Complete(()) => {}
+        CoroutineState::Yielded(()) => {}
+        CoroutineState::Complete(()) => {}
     }
 }
         "#,

@@ -199,7 +199,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::interned]
     fn intern_closure(&self, id: (DefWithBodyId, ExprId)) -> InternedClosureId;
     #[salsa::interned]
-    fn intern_generator(&self, id: (DefWithBodyId, ExprId)) -> InternedGeneratorId;
+    fn intern_coroutine(&self, id: (DefWithBodyId, ExprId)) -> InternedCoroutineId;
 
     #[salsa::invoke(chalk_db::associated_ty_data_query)]
     fn associated_ty_data(
@@ -335,8 +335,8 @@ pub struct InternedClosureId(salsa::InternId);
 impl_intern_key!(InternedClosureId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct InternedGeneratorId(salsa::InternId);
-impl_intern_key!(InternedGeneratorId);
+pub struct InternedCoroutineId(salsa::InternId);
+impl_intern_key!(InternedCoroutineId);
 
 /// This exists just for Chalk, because Chalk just has a single `FnDefId` where
 /// we have different IDs for struct and enum variant constructors.

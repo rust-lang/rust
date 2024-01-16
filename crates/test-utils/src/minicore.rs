@@ -32,7 +32,7 @@
 //!     fn:
 //!     from: sized
 //!     future: pin
-//!     generator: pin
+//!     coroutine: pin
 //!     hash:
 //!     include:
 //!     index: sized
@@ -798,26 +798,26 @@ pub mod ops {
     // endregion:builtin_impls
     // endregion:add
 
-    // region:generator
-    mod generator {
+    // region:coroutine
+    mod coroutine {
         use crate::pin::Pin;
 
-        #[lang = "generator"]
-        pub trait Generator<R = ()> {
+        #[lang = "coroutine"]
+        pub trait Coroutine<R = ()> {
             type Yield;
-            #[lang = "generator_return"]
+            #[lang = "coroutine_return"]
             type Return;
-            fn resume(self: Pin<&mut Self>, arg: R) -> GeneratorState<Self::Yield, Self::Return>;
+            fn resume(self: Pin<&mut Self>, arg: R) -> CoroutineState<Self::Yield, Self::Return>;
         }
 
-        #[lang = "generator_state"]
-        pub enum GeneratorState<Y, R> {
+        #[lang = "coroutine_state"]
+        pub enum CoroutineState<Y, R> {
             Yielded(Y),
             Complete(R),
         }
     }
-    pub use self::generator::{Generator, GeneratorState};
-    // endregion:generator
+    pub use self::coroutine::{Coroutine, CoroutineState};
+    // endregion:coroutine
 }
 
 // region:eq

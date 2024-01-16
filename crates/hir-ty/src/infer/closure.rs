@@ -34,7 +34,7 @@ use crate::{
 use super::{Expectation, InferenceContext};
 
 impl InferenceContext<'_> {
-    // This function handles both closures and generators.
+    // This function handles both closures and coroutines.
     pub(super) fn deduce_closure_type_from_expectations(
         &mut self,
         closure_expr: ExprId,
@@ -50,8 +50,8 @@ impl InferenceContext<'_> {
         // Deduction from where-clauses in scope, as well as fn-pointer coercion are handled here.
         let _ = self.coerce(Some(closure_expr), closure_ty, &expected_ty);
 
-        // Generators are not Fn* so return early.
-        if matches!(closure_ty.kind(Interner), TyKind::Generator(..)) {
+        // Coroutines are not Fn* so return early.
+        if matches!(closure_ty.kind(Interner), TyKind::Coroutine(..)) {
             return;
         }
 

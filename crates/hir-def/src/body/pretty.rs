@@ -384,7 +384,7 @@ impl Printer<'_> {
             }
             Expr::Closure { args, arg_types, ret_type, body, closure_kind, capture_by } => {
                 match closure_kind {
-                    ClosureKind::Generator(Movability::Static) => {
+                    ClosureKind::Coroutine(Movability::Static) => {
                         w!(self, "static ");
                     }
                     ClosureKind::Async => {

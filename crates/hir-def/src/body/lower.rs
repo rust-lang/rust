@@ -81,7 +81,7 @@ pub(super) fn lower(
         expander,
         current_try_block_label: None,
         is_lowering_assignee_expr: false,
-        is_lowering_generator: false,
+        is_lowering_coroutine: false,
         label_ribs: Vec::new(),
         current_binding_owner: None,
     }
@@ -99,7 +99,7 @@ struct ExprCollector<'a> {
     source_map: BodySourceMap,
 
     is_lowering_assignee_expr: bool,
-    is_lowering_generator: bool,
+    is_lowering_coroutine: bool,
 
     current_try_block_label: Option<LabelId>,
     // points to the expression that a try expression will target (replaces current_try_block_label)
@@ -417,7 +417,7 @@ impl ExprCollector<'_> {
                 self.alloc_expr(Expr::Return { expr }, syntax_ptr)
             }
             ast::Expr::YieldExpr(e) => {
-                self.is_lowering_generator = true;
+                self.is_lowering_coroutine = true;
                 let expr = e.expr().map(|e| self.collect_expr(e));
                 self.alloc_expr(Expr::Yield { expr }, syntax_ptr)
             }
@@ -525,18 +525,18 @@ impl ExprCollector<'_> {
                     .and_then(|r| r.ty())
                     .map(|it| Interned::new(TypeRef::from_ast(&this.ctx(), it)));
 
-                let prev_is_lowering_generator = mem::take(&mut this.is_lowering_generator);
+                let prev_is_lowering_coroutine = mem::take(&mut this.is_lowering_coroutine);
                 let prev_try_block_label = this.current_try_block_label.take();
 
                 let body = this.collect_expr_opt(e.body());
 
-                let closure_kind = if this.is_lowering_generator {
+                let closure_kind = if this.is_lowering_coroutine {
                     let movability = if e.static_token().is_some() {
                         Movability::Static
                     } else {
                         Movability::Movable
                     };
-                    ClosureKind::Generator(movability)
+                    ClosureKind::Coroutine(movability)
                 } else if e.async_token().is_some() {
                     ClosureKind::Async
                 } else {
@@ -544,7 +544,7 @@ impl ExprCollector<'_> {
                 };
                 let capture_by =
                     if e.move_token().is_some() { CaptureBy::Value } else { CaptureBy::Ref };
-                this.is_lowering_generator = prev_is_lowering_generator;
+                this.is_lowering_coroutine = prev_is_lowering_coroutine;
                 this.current_binding_owner = prev_binding_owner;
                 this.current_try_block_label = prev_try_block_label;
                 this.body.exprs[result_expr_id] = Expr::Closure {
