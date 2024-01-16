@@ -2096,7 +2096,7 @@ impl<'tcx> TyCtxt<'tcx> {
         id: HirId,
         decorator: impl for<'a> DecorateLint<'a, ()>,
     ) {
-        self.struct_lint_node(lint, id, decorator.msg(), |diag| {
+        self.node_lint(lint, id, decorator.msg(), |diag| {
             decorator.decorate_lint(diag);
         })
     }
@@ -2106,7 +2106,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_lint_node(
+    pub fn node_lint(
         self,
         lint: &'static Lint,
         id: HirId,
