@@ -173,17 +173,18 @@ fn pow_call_result_sign(cx: &LateContext<'_>, base: &Expr<'_>, exponent: &Expr<'
 
     match (base_sign, exponent_is_even) {
         // Non-negative bases always return non-negative results, ignoring overflow.
-        (Sign::ZeroOrPositive, _) => Sign::ZeroOrPositive,
-
+        (Sign::ZeroOrPositive, _) |
         // Any base raised to an even exponent is non-negative.
-        // This is true even if we don't know the value of the base.
-        (_, Some(true)) => Sign::ZeroOrPositive,
+        // These both hold even if we don't know the value of the base.
+        (_, Some(true))
+            => Sign::ZeroOrPositive,
 
         // A negative base raised to an odd exponent is non-negative.
         (Sign::Negative, Some(false)) => Sign::Negative,
 
-        // Negative or unknown base to an unknown exponent, or an unknown base to an odd exponent.
-        (Sign::Negative | Sign::Uncertain, None) => Sign::Uncertain,
+        // Negative/unknown base to an unknown exponent, or unknown base to an odd exponent.
+        // Could be negative or positive depending on the actual values.
+        (Sign::Negative | Sign::Uncertain, None) |
         (Sign::Uncertain, Some(false)) => Sign::Uncertain,
     }
 }
