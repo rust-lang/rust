@@ -7,7 +7,7 @@ pub mod tls;
 use crate::arena::Arena;
 use crate::dep_graph::{DepGraph, DepKindStruct};
 use crate::infer::canonical::{CanonicalParamEnvCache, CanonicalVarInfo, CanonicalVarInfos};
-use crate::lint::struct_lint_level;
+use crate::lint::lint_level;
 use crate::metadata::ModChild;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrs;
 use crate::middle::resolve_bound_vars;
@@ -2065,14 +2065,14 @@ impl<'tcx> TyCtxt<'tcx> {
     ) {
         let msg = decorator.msg();
         let (level, src) = self.lint_level_at_node(lint, hir_id);
-        struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg, |diag| {
+        lint_level(self.sess, lint, level, src, Some(span.into()), msg, |diag| {
             decorator.decorate_lint(diag);
         })
     }
 
     /// Emit a lint at the appropriate level for a hir node, with an associated span.
     ///
-    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn node_span_lint(
@@ -2084,7 +2084,7 @@ impl<'tcx> TyCtxt<'tcx> {
         decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
         let (level, src) = self.lint_level_at_node(lint, hir_id);
-        struct_lint_level(self.sess, lint, level, src, Some(span.into()), msg, decorate);
+        lint_level(self.sess, lint, level, src, Some(span.into()), msg, decorate);
     }
 
     /// Emit a lint from a lint struct (some type that implements `DecorateLint`, typically
@@ -2103,7 +2103,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Emit a lint at the appropriate level for a hir node.
     ///
-    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub fn node_lint(
@@ -2114,7 +2114,7 @@ impl<'tcx> TyCtxt<'tcx> {
         decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
         let (level, src) = self.lint_level_at_node(lint, id);
-        struct_lint_level(self.sess, lint, level, src, None, msg, decorate);
+        lint_level(self.sess, lint, level, src, None, msg, decorate);
     }
 
     pub fn in_scope_traits(self, id: HirId) -> Option<&'tcx [TraitCandidate]> {
