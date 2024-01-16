@@ -1,6 +1,9 @@
 //! There are many AstNodes, but only a few tokens, so we hand-write them here.
 
-use std::borrow::Cow;
+use std::{
+    borrow::Cow,
+    num::{ParseFloatError, ParseIntError},
+};
 
 use rustc_lexer::unescape::{
     unescape_byte, unescape_c_string, unescape_char, unescape_literal, CStrUnit, Mode,
@@ -391,10 +394,9 @@ impl ast::IntNumber {
         (prefix, text, suffix)
     }
 
-    pub fn value(&self) -> Option<u128> {
+    pub fn value(&self) -> Result<u128, ParseIntError> {
         let (_, text, _) = self.split_into_parts();
-        let value = u128::from_str_radix(&text.replace('_', ""), self.radix() as u32).ok()?;
-        Some(value)
+        u128::from_str_radix(&text.replace('_', ""), self.radix() as u32)
     }
 
     pub fn suffix(&self) -> Option<&str> {
@@ -445,9 +447,14 @@ impl ast::FloatNumber {
         }
     }
 
-    pub fn value(&self) -> Option<f64> {
+    pub fn value(&self) -> Result<f64, ParseFloatError> {
         let (text, _) = self.split_into_parts();
-        text.replace('_', "").parse::<f64>().ok()
+        text.replace('_', "").parse::<f64>()
+    }
+
+    pub fn value_f32(&self) -> Result<f32, ParseFloatError> {
+        let (text, _) = self.split_into_parts();
+        text.replace('_', "").parse::<f32>()
     }
 }
 
@@ -484,12 +491,15 @@ mod tests {
     }
 
     fn check_float_value(lit: &str, expected: impl Into<Option<f64>> + Copy) {
-        assert_eq!(FloatNumber { syntax: make::tokens::literal(lit) }.value(), expected.into());
+        assert_eq!(
+            FloatNumber { syntax: make::tokens::literal(lit) }.value().ok(),
+            expected.into()
+        );
         assert_eq!(IntNumber { syntax: make::tokens::literal(lit) }.float_value(), expected.into());
     }
 
     fn check_int_value(lit: &str, expected: impl Into<Option<u128>>) {
-        assert_eq!(IntNumber { syntax: make::tokens::literal(lit) }.value(), expected.into());
+        assert_eq!(IntNumber { syntax: make::tokens::literal(lit) }.value().ok(), expected.into());
     }
 
     #[test]

@@ -1474,20 +1474,6 @@ fn foo(Foo { b$0ar }: &Foo) {}
 }
 
 #[test]
-fn test_hover_through_literal_string_in_builtin_macro() {
-    check_hover_no_result(
-        r#"
-            #[rustc_builtin_macro]
-            macro_rules! format {}
-
-            fn foo() {
-                format!("hel$0lo {}", 0);
-            }
-"#,
-    );
-}
-
-#[test]
 fn test_hover_non_ascii_space_doc() {
     check(
         "
@@ -6774,6 +6760,301 @@ fn main() {
 
             ```rust
             fn foo<T>(&self, t: T)
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn string_literal() {
+    check(
+        r#"
+fn main() {
+    $0"🦀\u{1f980}\\\x41";
+}
+"#,
+        expect![[r#"
+            *"🦀\u{1f980}\\\x41"*
+            ```text
+            🦀🦀\A
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $0r"🦀\u{1f980}\\\x41";
+}
+"#,
+        expect![[r#"
+            *r"🦀\u{1f980}\\\x41"*
+            ```text
+            🦀\u{1f980}\\\x41
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn cstring_literal() {
+    check(
+        r#"
+fn main() {
+    $0c"🦀\u{1f980}\\\x41";
+}
+"#,
+        expect![[r#"
+            *c"🦀\u{1f980}\\\x41"*
+            ```text
+            🦀🦀\A
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn byte_string_literal() {
+    check(
+        r#"
+fn main() {
+    $0b"\xF0\x9F\xA6\x80\\";
+}
+"#,
+        expect![[r#"
+            *b"\xF0\x9F\xA6\x80\\"*
+            ```text
+            [240, 159, 166, 128, 92]
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $0br"\xF0\x9F\xA6\x80\\";
+}
+"#,
+        expect![[r#"
+            *br"\xF0\x9F\xA6\x80\\"*
+            ```text
+            [92, 120, 70, 48, 92, 120, 57, 70, 92, 120, 65, 54, 92, 120, 56, 48, 92, 92]
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn byte_literal() {
+    check(
+        r#"
+fn main() {
+    $0b'\xF0';
+}
+"#,
+        expect![[r#"
+            *b'\xF0'*
+            ```text
+            0xF0
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $0b'\\';
+}
+"#,
+        expect![[r#"
+            *b'\\'*
+            ```text
+            0x5C
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn char_literal() {
+    check(
+        r#"
+fn main() {
+    $0'\x41';
+}
+"#,
+        expect![[r#"
+            *'\x41'*
+
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $0'\\';
+}
+"#,
+        expect![[r#"
+            *'\\'*
+
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $0'\u{1f980}';
+}
+"#,
+        expect![[r#"
+            *'\u{1f980}'*
+
+        "#]],
+    );
+}
+
+#[test]
+fn float_literal() {
+    check(
+        r#"
+fn main() {
+    $01.0;
+}
+"#,
+        expect![[r#"
+            *1.0*
+            ```text
+            1 (bits: 0x3FF0000000000000)
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $01.0f32;
+}
+"#,
+        expect![[r#"
+            *1.0f32*
+            ```text
+            1 (bits: 0x3F800000)
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $0134e12;
+}
+"#,
+        expect![[r#"
+            *134e12*
+            ```text
+            134000000000000 (bits: 0x42DE77D399980000)
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $01523527134274733643531312.0;
+}
+"#,
+        expect![[r#"
+            *1523527134274733643531312.0*
+            ```text
+            1523527134274733600000000 (bits: 0x44F429E9249F629B)
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $00.1ea123;
+}
+"#,
+        expect![[r#"
+            *0.1ea123*
+            ```text
+            invalid float literal
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn int_literal() {
+    check(
+        r#"
+fn main() {
+    $034325236457856836345234;
+}
+"#,
+        expect![[r#"
+            *34325236457856836345234*
+            ```text
+            34325236457856836345234 (0x744C659178614489D92|0x111010001001100011001011001000101111000011000010100010010001001110110010010)
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $0134_123424_21;
+}
+"#,
+        expect![[r#"
+            *134_123424_21*
+            ```text
+            13412342421 (0x31F701A95|0x1100011111011100000001101010010101)
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $00x12423423;
+}
+"#,
+        expect![[r#"
+            *0x12423423*
+            ```text
+            306328611 (0x12423423|0x10010010000100011010000100011)
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $00b1111_1111;
+}
+"#,
+        expect![[r#"
+            *0b1111_1111*
+            ```text
+            255 (0xFF|0x11111111)
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $00o12345;
+}
+"#,
+        expect![[r#"
+            *0o12345*
+            ```text
+            5349 (0x14E5|0x1010011100101)
+            ```
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $00xFFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_F;
+}
+"#,
+        expect![[r#"
+            *0xFFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_F*
+            ```text
+            number too large to fit in target type
             ```
         "#]],
     );
