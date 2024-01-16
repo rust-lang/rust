@@ -63,6 +63,7 @@ fn should_lint<'cx>(cx: &LateContext<'cx>, cast_op: &Expr<'_>, cast_from: Ty<'cx
                 return false;
             }
 
+            // We don't check for sums of all-positive or all-negative values, but we could.
             if let Sign::ZeroOrPositive = expr_muldiv_sign(cx, cast_op) {
                 return false;
             }
@@ -222,6 +223,7 @@ fn exprs_with_muldiv_binop_peeled<'e>(expr: &'e Expr<'_>) -> Vec<&'e Expr<'e>> {
     let mut res = vec![];
 
     for_each_expr(expr, |sub_expr| {
+        // We don't check for mul/div/rem methods here, but we could.
         if let ExprKind::Binary(op, lhs, _rhs) = sub_expr.kind {
             if matches!(op.node, BinOpKind::Mul | BinOpKind::Div) {
                 // For binary operators which both contribute to the sign of the result,
