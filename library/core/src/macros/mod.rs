@@ -1569,7 +1569,7 @@ pub(crate) mod builtin {
     /// // A single input returns itself.
     /// assert!(ifelse!(false), false);
     /// ```
-    #[rustc_builtin_macro]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[macro_export]
     macro_rules! ifelse {
         ($cond:expr , $true_expr:expr , $($arg:tt)*) => {
