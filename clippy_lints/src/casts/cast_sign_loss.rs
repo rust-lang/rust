@@ -222,32 +222,29 @@ fn exprs_with_muldiv_binop_peeled<'e>(expr: &'e Expr<'_>) -> Vec<&'e Expr<'e>> {
     let mut res = vec![];
 
     for_each_expr(expr, |sub_expr| {
-        match sub_expr.kind {
-            ExprKind::Binary(op, lhs, _rhs) => {
-                if matches!(op.node, BinOpKind::Mul | BinOpKind::Div) {
-                    // For binary operators which both contribute to the sign of the result,
-                    // collect all their operands, recursively. This ignores overflow.
-                    ControlFlow::Continue(Descend::Yes)
-                } else if matches!(op.node, BinOpKind::Rem) {
-                    // For binary operators where the left hand side determines the sign of the result,
-                    // only collect that side, recursively. Overflow panics, so this always holds.
-                    //
-                    // > Given remainder = dividend % divisor, the remainder will have the same sign as the dividend
-                    // https://doc.rust-lang.org/reference/expressions/operator-expr.html#arithmetic-and-logical-binary-operators
-                    res.push(lhs);
-                    ControlFlow::Break(())
-                } else {
-                    // The sign of the result of other binary operators depends on the values of the operands,
-                    // so try to evaluate the expression.
-                    res.push(expr);
-                    ControlFlow::Continue(Descend::No)
-                }
-            },
-            // For other expressions, including unary operators and constants, try to evaluate the expression.
-            _ => {
+        if let ExprKind::Binary(op, lhs, _rhs) = sub_expr.kind {
+            if matches!(op.node, BinOpKind::Mul | BinOpKind::Div) {
+                // For binary operators which both contribute to the sign of the result,
+                // collect all their operands, recursively. This ignores overflow.
+                ControlFlow::Continue(Descend::Yes)
+            } else if matches!(op.node, BinOpKind::Rem) {
+                // For binary operators where the left hand side determines the sign of the result,
+                // only collect that side, recursively. Overflow panics, so this always holds.
+                //
+                // > Given remainder = dividend % divisor, the remainder will have the same sign as the dividend
+                // https://doc.rust-lang.org/reference/expressions/operator-expr.html#arithmetic-and-logical-binary-operators
+                res.push(lhs);
+                ControlFlow::Break(())
+            } else {
+                // The sign of the result of other binary operators depends on the values of the operands,
+                // so try to evaluate the expression.
                 res.push(expr);
                 ControlFlow::Continue(Descend::No)
-            },
+            }
+        } else {
+            // For other expressions, including unary operators and constants, try to evaluate the expression.
+            res.push(expr);
+            ControlFlow::Continue(Descend::No)
         }
     });
 
