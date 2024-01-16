@@ -7,10 +7,10 @@ fn main() -> () {
 
     bb0: {
         StorageLive(_1);
-        nop;
+        StorageLive(_2);
         _2 = const {ALLOC2: &&Packed};
         _1 = (*_2);
-        nop;
+        StorageDead(_2);
         StorageDead(_1);
         _0 = const ();
         return;

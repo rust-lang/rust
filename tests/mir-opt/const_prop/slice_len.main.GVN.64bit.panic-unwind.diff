@@ -18,8 +18,7 @@
   
       bb0: {
           StorageLive(_1);
--         StorageLive(_2);
-+         nop;
+          StorageLive(_2);
           StorageLive(_3);
           StorageLive(_4);
           _9 = const _;
@@ -44,8 +43,7 @@
 +         _1 = (*_2)[1 of 2];
           StorageDead(_6);
           StorageDead(_4);
--         StorageDead(_2);
-+         nop;
+          StorageDead(_2);
           _0 = const ();
           StorageDead(_1);
           return;

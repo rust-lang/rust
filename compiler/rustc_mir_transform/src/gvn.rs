@@ -84,7 +84,7 @@
 
 use rustc_const_eval::interpret::{intern_const_alloc_for_constprop, MemoryKind};
 use rustc_const_eval::interpret::{ImmTy, InterpCx, OpTy, Projectable, Scalar};
-use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
@@ -99,6 +99,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TypeAndMut};
 use rustc_span::def_id::DefId;
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::{self, Abi, Size, VariantIdx, FIRST_VARIANT};
+use smallvec::SmallVec;
 use std::borrow::Cow;
 
 use crate::dataflow_const_prop::DummyMachine;
@@ -238,14 +239,18 @@ struct VnState<'body, 'tcx> {
     local_decls: &'body LocalDecls<'tcx>,
     /// Value stored in each local.
     locals: IndexVec<Local, Option<VnIndex>>,
-    /// First local to be assigned that value.
-    rev_locals: FxHashMap<VnIndex, Vec<Local>>,
+    /// Locals that are assigned that value.
+    // This vector does not hold all the values of `VnIndex` that we create.
+    // It stops at the largest value created in the first phase of collecting assignments.
+    rev_locals: IndexVec<VnIndex, SmallVec<[Local; 1]>>,
     values: FxIndexSet<Value<'tcx>>,
     /// Values evaluated as constants if possible.
     evaluated: IndexVec<VnIndex, Option<OpTy<'tcx>>>,
     /// Counter to generate different values.
     /// This is an option to stop creating opaques during replacement.
     next_opaque: Option<usize>,
+    /// Cache the value of the `unsized_locals` features, to avoid fetching it repeatedly in a loop.
+    feature_unsized_locals: bool,
     ssa: &'body SsaLocals,
     dominators: &'body Dominators<BasicBlock>,
     reused_locals: BitSet<Local>,
@@ -265,10 +270,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             param_env,
             local_decls,
             locals: IndexVec::from_elem(None, local_decls),
-            rev_locals: FxHashMap::default(),
+            rev_locals: IndexVec::default(),
             values: FxIndexSet::default(),
             evaluated: IndexVec::new(),
             next_opaque: Some(0),
+            feature_unsized_locals: tcx.features().unsized_locals,
             ssa,
             dominators,
             reused_locals: BitSet::new_empty(local_decls.len()),
@@ -316,10 +322,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         self.locals[local] = Some(value);
 
         // Only register the value if its type is `Sized`, as we will emit copies of it.
-        let is_sized = !self.tcx.features().unsized_locals
+        let is_sized = !self.feature_unsized_locals
             || self.local_decls[local].ty.is_sized(self.tcx, self.param_env);
         if is_sized {
-            self.rev_locals.entry(value).or_default().push(local);
+            self.rev_locals.ensure_contains_elem(value, SmallVec::new);
+            self.rev_locals[value].push(local);
         }
     }
 
@@ -630,6 +637,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         if place.is_indirect()
             && let Some(base) = self.locals[place.local]
             && let Some(new_local) = self.try_as_local(base, location)
+            && place.local != new_local
         {
             place.local = new_local;
             self.reused_locals.insert(new_local);
@@ -639,8 +647,8 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         for i in 0..projection.len() {
             let elem = projection[i];
-            if let ProjectionElem::Index(idx) = elem
-                && let Some(idx) = self.locals[idx]
+            if let ProjectionElem::Index(idx_local) = elem
+                && let Some(idx) = self.locals[idx_local]
             {
                 if let Some(offset) = self.evaluated[idx].as_ref()
                     && let Ok(offset) = self.ecx.read_target_usize(offset)
@@ -648,9 +656,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 {
                     projection.to_mut()[i] =
                         ProjectionElem::ConstantIndex { offset, min_length, from_end: false };
-                } else if let Some(new_idx) = self.try_as_local(idx, location) {
-                    projection.to_mut()[i] = ProjectionElem::Index(new_idx);
-                    self.reused_locals.insert(new_idx);
+                } else if let Some(new_idx_local) = self.try_as_local(idx, location)
+                    && idx_local != new_idx_local
+                {
+                    projection.to_mut()[i] = ProjectionElem::Index(new_idx_local);
+                    self.reused_locals.insert(new_idx_local);
                 }
             }
         }
@@ -986,11 +996,11 @@ impl<'tcx> VnState<'_, 'tcx> {
     /// If there is a local which is assigned `index`, and its assignment strictly dominates `loc`,
     /// return it.
     fn try_as_local(&mut self, index: VnIndex, loc: Location) -> Option<Local> {
-        let other = self.rev_locals.get(&index)?;
+        let other = self.rev_locals.get(index)?;
         other
             .iter()
+            .find(|&&other| self.ssa.assignment_dominates(self.dominators, other, loc))
             .copied()
-            .find(|&other| self.ssa.assignment_dominates(self.dominators, other, loc))
     }
 }
 
@@ -1008,23 +1018,32 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
     }
 
     fn visit_statement(&mut self, stmt: &mut Statement<'tcx>, location: Location) {
-        if let StatementKind::Assign(box (_, ref mut rvalue)) = stmt.kind
+        if let StatementKind::Assign(box (ref mut lhs, ref mut rvalue)) = stmt.kind {
+            self.simplify_place_projection(lhs, location);
+
             // Do not try to simplify a constant, it's already in canonical shape.
-            && !matches!(rvalue, Rvalue::Use(Operand::Constant(_)))
-        {
-            if let Some(value) = self.simplify_rvalue(rvalue, location) {
-                if let Some(const_) = self.try_as_constant(value) {
-                    *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
-                } else if let Some(local) = self.try_as_local(value, location)
-                    && *rvalue != Rvalue::Use(Operand::Move(local.into()))
-                {
-                    *rvalue = Rvalue::Use(Operand::Copy(local.into()));
-                    self.reused_locals.insert(local);
-                }
+            if matches!(rvalue, Rvalue::Use(Operand::Constant(_))) {
+                return;
             }
-        } else {
-            self.super_statement(stmt, location);
+
+            let value = lhs
+                .as_local()
+                .and_then(|local| self.locals[local])
+                .or_else(|| self.simplify_rvalue(rvalue, location));
+            let Some(value) = value else { return };
+
+            if let Some(const_) = self.try_as_constant(value) {
+                *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
+            } else if let Some(local) = self.try_as_local(value, location)
+                && *rvalue != Rvalue::Use(Operand::Move(local.into()))
+            {
+                *rvalue = Rvalue::Use(Operand::Copy(local.into()));
+                self.reused_locals.insert(local);
+            }
+
+            return;
         }
+        self.super_statement(stmt, location);
     }
 }
 

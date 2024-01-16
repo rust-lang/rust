@@ -34,9 +34,5 @@
 + 
 + ALLOC1 (size: 2, align: 1) {
 +     01 02                                           │ ..
-+ }
-+ 
-+ ALLOC2 (size: 2, align: 1) {
-+     01 02                                           │ ..
   }
   

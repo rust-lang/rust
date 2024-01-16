@@ -22,14 +22,12 @@
           _1 = const 42_u32;
           StorageLive(_2);
           StorageLive(_3);
--         StorageLive(_4);
-+         nop;
+          StorageLive(_4);
           _4 = const {ALLOC0: *mut u32};
           _3 = (*_4);
           _1 = move _3;
           StorageDead(_3);
--         StorageDead(_4);
-+         nop;
+          StorageDead(_4);
           _2 = const ();
           StorageDead(_2);
           StorageLive(_5);
