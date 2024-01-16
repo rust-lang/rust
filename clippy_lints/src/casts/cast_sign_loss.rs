@@ -59,12 +59,9 @@ fn should_lint(cx: &LateContext<'_>, cast_op: &Expr<'_>, cast_from: Ty<'_>, cast
 
             let (mut uncertain_count, mut negative_count) = (0, 0);
             // Peel off possible binary expressions, for example:
-            // x * x * y => [x, x, y]
+            // x * x / y => [x, x, y]
             // a % b => [a]
-            let Some(exprs) = exprs_with_selected_binop_peeled(cast_op) else {
-                // Assume cast sign lose if we cannot determine the sign of `cast_op`
-                return true;
-            };
+            let exprs = exprs_with_selected_binop_peeled(cast_op);
             for expr in exprs {
                 let ty = cx.typeck_results().expr_ty(expr);
                 match expr_sign(cx, expr, ty) {
@@ -141,23 +138,24 @@ fn expr_sign(cx: &LateContext<'_>, expr: &Expr<'_>, ty: Ty<'_>) -> Sign {
 /// otherwise if the exponent is an odd number, the result is always negative.
 ///
 /// If either value can't be evaluated, [`Sign::Uncertain`] will be returned.
-fn pow_call_result_sign(cx: &LateContext<'_>, caller: &Expr<'_>, power_of: &Expr<'_>) -> Sign {
-    let caller_ty = cx.typeck_results().expr_ty(caller);
-    let Some(caller_val) = get_const_int_eval(cx, caller, caller_ty) else {
+fn pow_call_result_sign(cx: &LateContext<'_>, base: &Expr<'_>, exponent: &Expr<'_>) -> Sign {
+    let base_ty = cx.typeck_results().expr_ty(base);
+    let Some(base_val) = get_const_int_eval(cx, base, base_ty) else {
         return Sign::Uncertain;
-    }
-    // Non-negative values raised to non-negative exponents are always non-negative, ignoring overflow.
+    };
+    // Non-negative bases raised to non-negative exponents are always non-negative, ignoring overflow.
     // (Rust's integer pow() function takes an unsigned exponent.)
-    if caller_val >= 0 {
+    if base_val >= 0 {
         return Sign::ZeroOrPositive;
     }
 
-    let Some(Constant::Int(n)) = constant(cx, cx.typeck_results(), power_of) else {
+    let Some(Constant::Int(n)) = constant(cx, cx.typeck_results(), exponent) else {
         return Sign::Uncertain;
-    }
+    };
+
     // A negative value raised to an even exponent is non-negative, and an odd exponent
     // is negative, ignoring overflow.
-    if clip(cx.tcx, n, UintTy::U32) % 2 == 0 0 {
+    if clip(cx.tcx, n, UintTy::U32) % 2 == 0 {
         return Sign::ZeroOrPositive;
     } else {
         return Sign::Negative;
