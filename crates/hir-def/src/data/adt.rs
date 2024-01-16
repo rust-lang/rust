@@ -180,6 +180,7 @@ fn parse_repr_tt(tt: &Subtree) -> Option<ReprOptions> {
 }
 
 impl StructData {
+    #[inline]
     pub(crate) fn struct_data_query(db: &dyn DefDatabase, id: StructId) -> Arc<StructData> {
         db.struct_data_with_diagnostics(id).0
     }
@@ -236,6 +237,7 @@ impl StructData {
         )
     }
 
+    #[inline]
     pub(crate) fn union_data_query(db: &dyn DefDatabase, id: UnionId) -> Arc<StructData> {
         db.union_data_with_diagnostics(id).0
     }
@@ -322,6 +324,7 @@ impl EnumData {
 }
 
 impl EnumVariantData {
+    #[inline]
     pub(crate) fn enum_variant_data_query(
         db: &dyn DefDatabase,
         e: EnumVariantId,

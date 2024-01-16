@@ -233,6 +233,7 @@ pub struct TraitData {
 }
 
 impl TraitData {
+    #[inline]
     pub(crate) fn trait_data_query(db: &dyn DefDatabase, tr: TraitId) -> Arc<TraitData> {
         db.trait_data_with_diagnostics(tr).0
     }
@@ -241,12 +242,9 @@ impl TraitData {
         db: &dyn DefDatabase,
         tr: TraitId,
     ) -> (Arc<TraitData>, DefDiagnostics) {
-        let tr_loc @ ItemLoc { container: module_id, id: tree_id } = tr.lookup(db);
+        let ItemLoc { container: module_id, id: tree_id } = tr.lookup(db);
         let item_tree = tree_id.item_tree(db);
         let tr_def = &item_tree[tree_id.value];
-        let _cx = stdx::panic_context::enter(format!(
-            "trait_data_query({tr:?} -> {tr_loc:?} -> {tr_def:?})"
-        ));
         let name = tr_def.name.clone();
         let is_auto = tr_def.is_auto;
         let is_unsafe = tr_def.is_unsafe;
@@ -333,6 +331,7 @@ pub struct ImplData {
 }
 
 impl ImplData {
+    #[inline]
     pub(crate) fn impl_data_query(db: &dyn DefDatabase, id: ImplId) -> Arc<ImplData> {
         db.impl_data_with_diagnostics(id).0
     }
