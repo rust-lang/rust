@@ -53,8 +53,8 @@ pub enum Message {
         n_total: usize,
         /// The files that have been loaded successfully.
         n_done: usize,
-        /// The file being loaded, if any.
-        file: Option<AbsPathBuf>,
+        /// The dir being loaded, `None` if its for a file.
+        dir: Option<AbsPathBuf>,
         /// The [`Config`] version.
         config_version: u32,
     },
@@ -213,11 +213,11 @@ impl fmt::Debug for Message {
             Message::Changed { files } => {
                 f.debug_struct("Changed").field("n_files", &files.len()).finish()
             }
-            Message::Progress { n_total, n_done, file, config_version } => f
+            Message::Progress { n_total, n_done, dir, config_version } => f
                 .debug_struct("Progress")
                 .field("n_total", n_total)
                 .field("n_done", n_done)
-                .field("file", file)
+                .field("dir", dir)
                 .field("config_version", config_version)
                 .finish(),
         }

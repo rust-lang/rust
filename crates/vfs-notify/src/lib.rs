@@ -107,18 +107,12 @@ impl NotifyActor {
                             n_total,
                             n_done: 0,
                             config_version,
-                            file: None,
+                            dir: None,
                         });
 
                         self.watched_entries.clear();
 
                         for (i, entry) in config.load.into_iter().enumerate() {
-                            self.send(loader::Message::Progress {
-                                n_total,
-                                n_done: i,
-                                config_version,
-                                file: None,
-                            });
                             let watch = config.watch.contains(&i);
                             if watch {
                                 self.watched_entries.push(entry.clone());
@@ -127,7 +121,7 @@ impl NotifyActor {
                                 self.load_entry(entry, watch, |file| loader::Message::Progress {
                                     n_total,
                                     n_done: i,
-                                    file: Some(file),
+                                    dir: Some(file),
                                     config_version,
                                 });
                             self.send(loader::Message::Loaded { files });
@@ -135,7 +129,7 @@ impl NotifyActor {
                                 n_total,
                                 n_done: i + 1,
                                 config_version,
-                                file: None,
+                                dir: None,
                             });
                         }
                     }

@@ -586,7 +586,7 @@ impl GlobalState {
                     }
                 }
             }
-            vfs::loader::Message::Progress { n_total, n_done, file, config_version } => {
+            vfs::loader::Message::Progress { n_total, n_done, dir, config_version } => {
                 always!(config_version <= self.vfs_config_version);
 
                 self.vfs_progress_config_version = config_version;
@@ -603,12 +603,12 @@ impl GlobalState {
                 };
 
                 let mut message = format!("{n_done}/{n_total}");
-                if let Some(file) = file {
+                if let Some(dir) = dir {
                     message += &format!(
                         ": {}",
-                        match file.strip_prefix(&self.config.root_path()) {
+                        match dir.strip_prefix(&self.config.root_path()) {
                             Some(relative_path) => relative_path.as_ref(),
-                            None => file.as_ref(),
+                            None => dir.as_ref(),
                         }
                         .display()
                     );
