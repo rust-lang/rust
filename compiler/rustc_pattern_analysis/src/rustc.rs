@@ -1,3 +1,4 @@
+use smallvec::SmallVec;
 use std::fmt;
 use std::iter::once;
 
@@ -5,24 +6,21 @@ use rustc_arena::{DroplessArena, TypedArena};
 use rustc_data_structures::captures::Captures;
 use rustc_hir::def_id::DefId;
 use rustc_hir::HirId;
-use rustc_index::Idx;
-use rustc_index::IndexVec;
+use rustc_index::{Idx, IndexVec};
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::{self, Const};
 use rustc_middle::thir::{FieldPat, Pat, PatKind, PatRange, PatRangeBoundary};
 use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::TypeVisitableExt;
-use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt, VariantDef};
-use rustc_span::ErrorGuaranteed;
-use rustc_span::{Span, DUMMY_SP};
+use rustc_middle::ty::{self, OpaqueTypeKey, Ty, TyCtxt, TypeVisitableExt, VariantDef};
+use rustc_session::lint;
+use rustc_span::{ErrorGuaranteed, Span, DUMMY_SP};
 use rustc_target::abi::{FieldIdx, Integer, VariantIdx, FIRST_VARIANT};
-use smallvec::SmallVec;
 
 use crate::constructor::{
     IntRange, MaybeInfiniteInt, OpaqueId, RangeEnd, Slice, SliceKind, VariantVisibility,
 };
-use crate::TypeCx;
+use crate::{errors, TypeCx};
 
 use crate::constructor::Constructor::*;
 
@@ -34,8 +32,6 @@ pub type DeconstructedPat<'p, 'tcx> =
     crate::pat::DeconstructedPat<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
 pub type MatchArm<'p, 'tcx> = crate::MatchArm<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
 pub type MatchCtxt<'a, 'p, 'tcx> = crate::MatchCtxt<'a, RustcMatchCheckCtxt<'p, 'tcx>>;
-pub type OverlappingRanges<'p, 'tcx> =
-    crate::usefulness::OverlappingRanges<'p, RustcMatchCheckCtxt<'p, 'tcx>>;
 pub(crate) type PlaceCtxt<'a, 'p, 'tcx> =
     crate::usefulness::PlaceCtxt<'a, RustcMatchCheckCtxt<'p, 'tcx>>;
 pub(crate) type SplitConstructorSet<'p, 'tcx> =
@@ -990,6 +986,27 @@ impl<'p, 'tcx> TypeCx for RustcMatchCheckCtxt<'p, 'tcx> {
     }
     fn bug(&self, fmt: fmt::Arguments<'_>) -> ! {
         span_bug!(self.scrut_span, "{}", fmt)
+    }
+
+    fn lint_overlapping_range_endpoints(
+        &self,
+        pat: &crate::pat::DeconstructedPat<'_, Self>,
+        overlaps_on: IntRange,
+        overlaps_with: &[&crate::pat::DeconstructedPat<'_, Self>],
+    ) {
+        let overlap_as_pat = self.hoist_pat_range(&overlaps_on, pat.ty());
+        let overlaps: Vec<_> = overlaps_with
+            .iter()
+            .map(|pat| pat.data().unwrap().span)
+            .map(|span| errors::Overlap { range: overlap_as_pat.clone(), span })
+            .collect();
+        let pat_span = pat.data().unwrap().span;
+        self.tcx.emit_spanned_lint(
+            lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
+            self.match_lint_level,
+            pat_span,
+            errors::OverlappingRangeEndpoints { overlap: overlaps, range: pat_span },
+        );
     }
 }
 

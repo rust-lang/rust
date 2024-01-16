@@ -12,7 +12,7 @@ use crate::iter::{
 };
 use crate::marker::PhantomData;
 use crate::mem::{self, SizedTypeProperties};
-use crate::num::NonZeroUsize;
+use crate::num::{NonZero, NonZeroUsize};
 use crate::ptr::{self, invalid, invalid_mut, NonNull};
 
 use super::{from_raw_parts, from_raw_parts_mut};
@@ -1305,12 +1305,12 @@ forward_iterator! { RSplitNMut: T, &'a mut [T] }
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct Windows<'a, T: 'a> {
     v: &'a [T],
-    size: NonZeroUsize,
+    size: NonZero<usize>,
 }
 
 impl<'a, T: 'a> Windows<'a, T> {
     #[inline]
-    pub(super) fn new(slice: &'a [T], size: NonZeroUsize) -> Self {
+    pub(super) fn new(slice: &'a [T], size: NonZero<usize>) -> Self {
         Self { v: slice, size }
     }
 }
