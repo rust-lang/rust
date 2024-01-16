@@ -16,7 +16,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
-use rustc_errors::{Applicability, DiagnosticArgValue, DiagnosticId, IntoDiagnosticArg};
+use rustc_errors::{Applicability, DiagnosticArgValue, IntoDiagnosticArg};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, NonMacroAttrKind, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
@@ -533,7 +533,7 @@ impl<'a> PathSource<'a> {
         }
     }
 
-    fn error_code(self, has_unexpected_resolution: bool) -> DiagnosticId {
+    fn error_code(self, has_unexpected_resolution: bool) -> String {
         use rustc_errors::error_code;
         match (self, has_unexpected_resolution) {
             (PathSource::Trait(_), true) => error_code!(E0404),
@@ -3821,7 +3821,7 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
             swap(&mut err.span, &mut parent_err.span);
             err.children = take(&mut parent_err.children);
             err.sort_span = parent_err.sort_span;
-            err.is_lint = parent_err.is_lint;
+            err.is_lint = parent_err.is_lint.clone();
 
             // merge the parent's suggestions with the typo suggestions
             fn append_result<T, E>(res1: &mut Result<Vec<T>, E>, res2: Result<Vec<T>, E>) {
