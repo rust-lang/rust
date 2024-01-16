@@ -1,9 +1,6 @@
 {
     "comments": {
-        "blockComment": [
-            "<!--",
-            "-->"
-        ]
+        "blockComment": ["<!--", "-->"]
     },
     "brackets": [
         ["{", "}"],
@@ -13,25 +10,10 @@
     "colorizedBracketPairs": [
     ],
     "autoClosingPairs": [
-        {
-            "open": "{",
-            "close": "}"
-        },
-        {
-            "open": "[",
-            "close": "]"
-        },
-        {
-            "open": "(",
-            "close": ")"
-        },
-        {
-            "open": "<",
-            "close": ">",
-            "notIn": [
-                "string"
-            ]
-        }
+        { "open": "{", "close": "}" },
+        { "open": "[", "close": "]" },
+        { "open": "(", "close": ")" },
+        { "open": "<", "close": ">", "notIn": [ "string" ] }
     ],
     "surroundingPairs": [
         ["(", ")"],
@@ -50,5 +32,5 @@
             "end": "^\\s*<!--\\s*#?endregion\\b.*-->"
         }
     },
-    "wordPattern": { "pattern": "(\\p{Alphabetic}|\\p{Number}|\\p{Nonspacing_Mark})(((\\p{Alphabetic}|\\p{Number}|\\p{Nonspacing_Mark})|[_])?(\\p{Alphabetic}|\\p{Number}|\\p{Nonspacing_Mark}))*", "flags": "ug" },
+    "wordPattern": { "pattern": "(\\p{Alphabetic}|\\p{Number}|\\p{Nonspacing_Mark})(((\\p{Alphabetic}|\\p{Number}|\\p{Nonspacing_Mark})|[_])?(\\p{Alphabetic}|\\p{Number}|\\p{Nonspacing_Mark}))*", "flags": "ug" }
 }

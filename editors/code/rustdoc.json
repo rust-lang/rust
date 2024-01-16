@@ -10,14 +10,14 @@
     ],
     "scopeName": "text.html.markdown.rustdoc",
     "repository": {
-        "markdown":{
+        "markdown": {
             "patterns": [
                 {
                     "include": "text.html.markdown"
                 }
             ]
         },
-        "fenced_code_block":{
+        "fenced_code_block": {
             "patterns": [
                 {
                     "include": "#fenced_code_block_rust"
