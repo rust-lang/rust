@@ -433,7 +433,7 @@ impl<'db> SemanticsImpl<'db> {
                     .find_map(|token| {
                         self.resolve_offset_in_format_args(
                             ast::String::cast(token)?,
-                            offset - quote.end(),
+                            offset.checked_sub(quote.end())?,
                         )
                     })
                     .map(|(range, res)| (range + quote.end(), res));
