@@ -91,6 +91,7 @@ use rustc_middle::middle::region;
 use rustc_middle::mir::*;
 use rustc_middle::thir::{ExprId, LintLevel};
 use rustc_session::lint::Level;
+use rustc_span::source_map::Spanned;
 use rustc_span::{Span, DUMMY_SP};
 
 #[derive(Debug)]
@@ -1020,14 +1021,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// spurious borrow-check errors -- the problem, ironically, is
     /// not the `DROP(_X)` itself, but the (spurious) unwind pathways
     /// that it creates. See #64391 for an example.
-    pub(crate) fn record_operands_moved(&mut self, operands: &[Operand<'tcx>]) {
+    pub(crate) fn record_operands_moved(&mut self, operands: &[Spanned<Operand<'tcx>>]) {
         let local_scope = self.local_scope();
         let scope = self.scopes.scopes.last_mut().unwrap();
 
         assert_eq!(scope.region_scope, local_scope, "local scope is not the topmost scope!",);
 
         // look for moves of a local variable, like `MOVE(_X)`
-        let locals_moved = operands.iter().flat_map(|operand| match operand {
+        let locals_moved = operands.iter().flat_map(|operand| match operand.node {
             Operand::Copy(_) | Operand::Constant(_) => None,
             Operand::Move(place) => place.as_local(),
         });

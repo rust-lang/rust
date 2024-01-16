@@ -209,7 +209,7 @@ impl PeekCall {
 
                 assert_eq!(fn_args.len(), 1);
                 let kind = PeekCallKind::from_arg_ty(fn_args.type_at(0));
-                let arg = match &args[0] {
+                let arg = match &args[0].node {
                     Operand::Copy(place) | Operand::Move(place) => {
                         if let Some(local) = place.as_local() {
                             local

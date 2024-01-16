@@ -17,8 +17,9 @@ use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::GenericArg;
 use rustc_middle::ty::{self, adjustment::PointerCoercion, Ty, TyCtxt};
 use rustc_span::def_id::DefId;
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
 
 use std::cmp::Ordering;
@@ -271,7 +272,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                 user_ty: None,
                                 const_: method,
                             })),
-                            args: vec![Operand::Move(ref_string)],
+                            args: vec![Spanned { node: Operand::Move(ref_string), span: DUMMY_SP }],
                             destination: ref_str,
                             target: Some(eq_block),
                             unwind: UnwindAction::Continue,
@@ -526,7 +527,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     const_: method,
                 })),
-                args: vec![Operand::Copy(val), expect],
+                args: vec![
+                    Spanned { node: Operand::Copy(val), span: DUMMY_SP },
+                    Spanned { node: expect, span: DUMMY_SP },
+                ],
                 destination: eq_result,
                 target: Some(eq_block),
                 unwind: UnwindAction::Continue,

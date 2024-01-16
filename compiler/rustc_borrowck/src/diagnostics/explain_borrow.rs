@@ -691,7 +691,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         );
                         // Check if one of the arguments to this function is the target place.
                         let found_target = args.iter().any(|arg| {
-                            if let Operand::Move(place) = arg {
+                            if let Operand::Move(place) = arg.node {
                                 if let Some(potential) = place.as_local() {
                                     potential == target
                                 } else {

@@ -785,7 +785,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             Call { func, args, destination, .. } => {
                 write!(fmt, "{destination:?} = ")?;
                 write!(fmt, "{func:?}(")?;
-                for (index, arg) in args.iter().enumerate() {
+                for (index, arg) in args.iter().map(|a| &a.node).enumerate() {
                     if index > 0 {
                         write!(fmt, ", ")?;
                     }

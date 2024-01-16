@@ -1257,7 +1257,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     return None;
                 };
                 debug!("checking call args for uses of inner_param: {:?}", args);
-                args.contains(&Operand::Move(inner_param)).then_some((loc, term))
+                args.iter()
+                    .map(|a| &a.node)
+                    .any(|a| a == &Operand::Move(inner_param))
+                    .then_some((loc, term))
             })
         else {
             debug!("no uses of inner_param found as a by-move call arg");
@@ -3242,7 +3245,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         assigned_to, args
                     );
                     for operand in args {
-                        let (Operand::Copy(assigned_from) | Operand::Move(assigned_from)) = operand
+                        let (Operand::Copy(assigned_from) | Operand::Move(assigned_from)) =
+                            &operand.node
                         else {
                             continue;
                         };

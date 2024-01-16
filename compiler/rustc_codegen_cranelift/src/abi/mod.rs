@@ -11,6 +11,7 @@ use cranelift_module::ModuleError;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_session::Session;
+use rustc_span::source_map::Spanned;
 use rustc_target::abi::call::{Conv, FnAbi};
 use rustc_target::spec::abi::Abi;
 
@@ -360,7 +361,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     source_info: mir::SourceInfo,
     func: &Operand<'tcx>,
-    args: &[Operand<'tcx>],
+    args: &[Spanned<Operand<'tcx>>],
     destination: Place<'tcx>,
     target: Option<BasicBlock>,
 ) {
@@ -415,7 +416,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
     let extra_args = &args[fn_sig.inputs().skip_binder().len()..];
     let extra_args = fx.tcx.mk_type_list_from_iter(
-        extra_args.iter().map(|op_arg| fx.monomorphize(op_arg.ty(fx.mir, fx.tcx))),
+        extra_args.iter().map(|op_arg| fx.monomorphize(op_arg.node.ty(fx.mir, fx.tcx))),
     );
     let fn_abi = if let Some(instance) = instance {
         RevealAllLayoutCx(fx.tcx).fn_abi_of_instance(instance, extra_args)
@@ -440,10 +441,10 @@ pub(crate) fn codegen_terminator_call<'tcx>(
     // Unpack arguments tuple for closures
     let mut args = if fn_sig.abi() == Abi::RustCall {
         let (self_arg, pack_arg) = match args {
-            [pack_arg] => (None, codegen_call_argument_operand(fx, pack_arg)),
+            [pack_arg] => (None, codegen_call_argument_operand(fx, &pack_arg.node)),
             [self_arg, pack_arg] => (
-                Some(codegen_call_argument_operand(fx, self_arg)),
-                codegen_call_argument_operand(fx, pack_arg),
+                Some(codegen_call_argument_operand(fx, &self_arg.node)),
+                codegen_call_argument_operand(fx, &pack_arg.node),
             ),
             _ => panic!("rust-call abi requires one or two arguments"),
         };
@@ -463,7 +464,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
         }
         args
     } else {
-        args.iter().map(|arg| codegen_call_argument_operand(fx, arg)).collect::<Vec<_>>()
+        args.iter().map(|arg| codegen_call_argument_operand(fx, &arg.node)).collect::<Vec<_>>()
     };
 
     // Pass the caller location for `#[track_caller]`.

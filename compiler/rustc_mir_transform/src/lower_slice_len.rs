@@ -50,7 +50,7 @@ fn lower_slice_len_call<'tcx>(
     } = &terminator.kind
         // some heuristics for fast rejection
         && let [arg] = &args[..]
-        && let Some(arg) = arg.place()
+        && let Some(arg) = arg.node.place()
         && let ty::FnDef(fn_def_id, _) = func.ty(local_decls, tcx).kind()
         && *fn_def_id == slice_len_fn_item_def_id
     {
