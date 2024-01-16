@@ -1558,6 +1558,8 @@ pub(crate) mod builtin {
     /// # Examples
     ///
     /// ```
+    /// use core::ifelse;
+    ///
     /// // A single if-else statement.
     /// ifelse!(1 < 0, true, false);
     ///
