@@ -142,13 +142,9 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     init.span,
                     "this binding will immediately drop the value assigned to it".to_string(),
                 );
-                cx.emit_spanned_lint(LET_UNDERSCORE_LOCK, span, NonBindingLet::SyncLock { sub });
+                cx.emit_span_lint(LET_UNDERSCORE_LOCK, span, NonBindingLet::SyncLock { sub });
             } else {
-                cx.emit_spanned_lint(
-                    LET_UNDERSCORE_DROP,
-                    local.span,
-                    NonBindingLet::DropType { sub },
-                );
+                cx.emit_span_lint(LET_UNDERSCORE_DROP, local.span, NonBindingLet::DropType { sub });
             }
         }
     }

@@ -47,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidReferenceCasting {
                 let orig_cast = if init.span != e.span { Some(init.span) } else { None };
                 let ty_has_interior_mutability = ty_has_interior_mutability.then_some(());
 
-                cx.emit_spanned_lint(
+                cx.emit_span_lint(
                     INVALID_REFERENCE_CASTING,
                     expr.span,
                     if pat == PatternKind::Assign {
