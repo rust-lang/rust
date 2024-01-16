@@ -130,8 +130,7 @@ x--expand-yaml-anchors--remove:
           release: true
           # Inherit the full path from the windows environment, with msys's */bin/
           # dirs placed in front. This lets us run Windows-native Python etc.
-          # path-type: inherit
-          path-type: strict
+          path-type: inherit
           install: >
             make
             git
@@ -140,9 +139,9 @@ x--expand-yaml-anchors--remove:
           pacboy: >
             gcc:p
             cmake:p
-            jq:p
-            7zip:p
           # should cmake and jq just always be x86_64?
+          # jq:p
+          # 7zip:p
           #   toolchain:p
           #python:p
           #   mingw-w64-x86_64-python

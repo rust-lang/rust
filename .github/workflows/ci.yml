@@ -97,9 +97,9 @@ jobs:
           msystem: "${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}"
           update: false
           release: true
-          path-type: strict
+          path-type: inherit
           install: "make git dos2unix diffutils\n"
-          pacboy: "gcc:p cmake:p jq:p 7zip:p\n"
+          pacboy: "gcc:p cmake:p\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -488,9 +488,9 @@ jobs:
           msystem: "${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}"
           update: false
           release: true
-          path-type: strict
+          path-type: inherit
           install: "make git dos2unix diffutils\n"
-          pacboy: "gcc:p cmake:p jq:p 7zip:p\n"
+          pacboy: "gcc:p cmake:p\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -625,9 +625,9 @@ jobs:
           msystem: "${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}"
           update: false
           release: true
-          path-type: strict
+          path-type: inherit
           install: "make git dos2unix diffutils\n"
-          pacboy: "gcc:p cmake:p jq:p 7zip:p\n"
+          pacboy: "gcc:p cmake:p\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:

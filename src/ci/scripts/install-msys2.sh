@@ -70,8 +70,4 @@ if isWindows; then
     # wtf why is this even here??
     rm -r "/c/mingw64/"
     rm -r "/c/mingw32/"
-
-    echo -e "\nexport PATH=\"/c/hostedtoolcache/windows/Python/3.7.9/x64/:\$PATH\"" >> ~/.profile
-    echo .profile
-    cat ~/.profile
 fi
