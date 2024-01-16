@@ -101,15 +101,24 @@ impl<'tcx> From<ImmTy<'tcx>> for Value<'tcx> {
 }
 
 impl<'tcx> Value<'tcx> {
-    fn project(&self, proj: impl Iterator<Item = Option<PlaceElem<'tcx>>>) -> Option<&Value<'tcx>> {
+    fn project(
+        &self,
+        proj: &[PlaceElem<'tcx>],
+        prop: &ConstPropagator<'_, 'tcx>,
+    ) -> Option<&Value<'tcx>> {
         let mut this = self;
         for proj in proj {
-            this = match (proj?, this) {
-                (ProjectionElem::Field(idx, _), Value::Aggregate { fields, .. }) => {
+            this = match (*proj, this) {
+                (PlaceElem::Field(idx, _), Value::Aggregate { fields, .. }) => {
                     fields.get(idx).unwrap_or(&Value::Uninit)
                 }
+                (PlaceElem::Index(idx), Value::Aggregate { fields, .. }) => {
+                    let idx = prop.get_const(idx.into())?.immediate()?;
+                    let idx = prop.ecx.read_target_usize(idx).ok()?;
+                    fields.get(FieldIdx::from_u32(idx.try_into().ok()?)).unwrap_or(&Value::Uninit)
+                }
                 (
-                    ProjectionElem::ConstantIndex { offset, min_length: 1, from_end: false },
+                    PlaceElem::ConstantIndex { offset, min_length: 1, from_end: false },
                     Value::Aggregate { fields, .. },
                 ) => fields
                     .get(FieldIdx::from_u32(offset.try_into().ok()?))
@@ -204,8 +213,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     fn get_const(&self, place: Place<'tcx>) -> Option<&Value<'tcx>> {
-        self.locals[place.local]
-            .project(place.projection.iter().map(|proj| self.try_eval_index_offset(proj)))
+        self.locals[place.local].project(&place.projection, self)
     }
 
     /// Remove `local` from the pool of `Locals`. Allows writing to them,
@@ -695,21 +703,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         *self.access_mut(dest)? = val;
 
         Some(())
-    }
-
-    fn try_eval_index_offset(&self, proj: PlaceElem<'tcx>) -> Option<PlaceElem<'tcx>> {
-        Some(match proj {
-            ProjectionElem::Index(local) => {
-                let val = self.get_const(local.into())?;
-                let op = val.immediate()?;
-                ProjectionElem::ConstantIndex {
-                    offset: self.ecx.read_target_usize(op).ok()?,
-                    min_length: 1,
-                    from_end: false,
-                }
-            }
-            other => other,
-        })
     }
 }
 
