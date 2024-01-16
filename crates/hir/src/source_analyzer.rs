@@ -268,7 +268,7 @@ impl SourceAnalyzer {
     ) -> Option<Callable> {
         let expr_id = self.expr_id(db, &call.clone().into())?;
         let (func, substs) = self.infer.as_ref()?.method_resolution(expr_id)?;
-        let ty = db.value_ty(func.into()).substitute(Interner, &substs);
+        let ty = db.value_ty(func.into())?.substitute(Interner, &substs);
         let ty = Type::new_with_resolver(db, &self.resolver, ty);
         let mut res = ty.as_callable(db)?;
         res.is_bound_method = true;

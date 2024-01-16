@@ -1727,19 +1727,19 @@ fn fn_sig_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> PolyFnS
 }
 
 /// Build the type of a tuple struct constructor.
-fn type_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> Binders<Ty> {
+fn type_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> Option<Binders<Ty>> {
     let struct_data = db.struct_data(def);
     match struct_data.variant_data.kind() {
-        StructKind::Record => unreachable!("callers check for valueness of variant"),
-        StructKind::Unit => return type_for_adt(db, def.into()),
+        StructKind::Record => None,
+        StructKind::Unit => Some(type_for_adt(db, def.into())),
         StructKind::Tuple => {
             let generics = generics(db.upcast(), AdtId::from(def).into());
             let substs = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
-            make_binders(
+            Some(make_binders(
                 db,
                 &generics,
                 TyKind::FnDef(CallableDefId::StructId(def).to_chalk(db), substs).intern(Interner),
-            )
+            ))
         }
     }
 }
@@ -1757,20 +1757,23 @@ fn fn_sig_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId)
 }
 
 /// Build the type of a tuple enum variant constructor.
-fn type_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -> Binders<Ty> {
+fn type_for_enum_variant_constructor(
+    db: &dyn HirDatabase,
+    def: EnumVariantId,
+) -> Option<Binders<Ty>> {
     let e = def.lookup(db.upcast()).parent;
     match db.enum_variant_data(def).variant_data.kind() {
-        StructKind::Record => unreachable!("callers check for valueness of variant"),
-        StructKind::Unit => return type_for_adt(db, e.into()),
+        StructKind::Record => None,
+        StructKind::Unit => Some(type_for_adt(db, e.into())),
         StructKind::Tuple => {
             let generics = generics(db.upcast(), e.into());
             let substs = generics.bound_vars_subst(db, DebruijnIndex::INNERMOST);
-            make_binders(
+            Some(make_binders(
                 db,
                 &generics,
                 TyKind::FnDef(CallableDefId::EnumVariantId(def).to_chalk(db), substs)
                     .intern(Interner),
-            )
+            ))
         }
     }
 }
@@ -1889,14 +1892,14 @@ pub(crate) fn ty_recover(db: &dyn HirDatabase, _cycle: &Cycle, def: &TyDefId) ->
     make_binders(db, &generics, TyKind::Error.intern(Interner))
 }
 
-pub(crate) fn value_ty_query(db: &dyn HirDatabase, def: ValueTyDefId) -> Binders<Ty> {
+pub(crate) fn value_ty_query(db: &dyn HirDatabase, def: ValueTyDefId) -> Option<Binders<Ty>> {
     match def {
-        ValueTyDefId::FunctionId(it) => type_for_fn(db, it),
+        ValueTyDefId::FunctionId(it) => Some(type_for_fn(db, it)),
         ValueTyDefId::StructId(it) => type_for_struct_constructor(db, it),
-        ValueTyDefId::UnionId(it) => type_for_adt(db, it.into()),
+        ValueTyDefId::UnionId(it) => Some(type_for_adt(db, it.into())),
         ValueTyDefId::EnumVariantId(it) => type_for_enum_variant_constructor(db, it),
-        ValueTyDefId::ConstId(it) => type_for_const(db, it),
-        ValueTyDefId::StaticId(it) => type_for_static(db, it),
+        ValueTyDefId::ConstId(it) => Some(type_for_const(db, it)),
+        ValueTyDefId::StaticId(it) => Some(type_for_static(db, it)),
     }
 }
 

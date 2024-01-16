@@ -1245,7 +1245,7 @@ impl InferenceContext<'_> {
             .build();
         self.write_method_resolution(tgt_expr, func, subst.clone());
 
-        let method_ty = self.db.value_ty(func.into()).substitute(Interner, &subst);
+        let method_ty = self.db.value_ty(func.into()).unwrap().substitute(Interner, &subst);
         self.register_obligations_for_call(&method_ty);
 
         self.infer_expr_coerce(rhs, &Expectation::has_type(rhs_ty.clone()));
@@ -1541,7 +1541,7 @@ impl InferenceContext<'_> {
                         self.check_method_call(
                             tgt_expr,
                             &[],
-                            self.db.value_ty(func.into()),
+                            self.db.value_ty(func.into()).unwrap(),
                             substs,
                             ty,
                             expected,
@@ -1586,7 +1586,7 @@ impl InferenceContext<'_> {
                         item: func.into(),
                     })
                 }
-                (ty, self.db.value_ty(func.into()), substs)
+                (ty, self.db.value_ty(func.into()).unwrap(), substs)
             }
             None => {
                 let field_with_same_name_exists = match self.lookup_field(&receiver_ty, method_name)

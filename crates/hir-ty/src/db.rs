@@ -86,8 +86,10 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::cycle(crate::lower::ty_recover)]
     fn ty(&self, def: TyDefId) -> Binders<Ty>;
 
+    /// Returns the type of the value of the given constant, or `None` if the the `ValueTyDefId` is
+    /// a `StructId` or `EnumVariantId` with a record constructor.
     #[salsa::invoke(crate::lower::value_ty_query)]
-    fn value_ty(&self, def: ValueTyDefId) -> Binders<Ty>;
+    fn value_ty(&self, def: ValueTyDefId) -> Option<Binders<Ty>>;
 
     #[salsa::invoke(crate::lower::impl_self_ty_query)]
     #[salsa::cycle(crate::lower::impl_self_ty_recover)]

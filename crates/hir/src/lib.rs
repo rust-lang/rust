@@ -3786,7 +3786,9 @@ impl Type {
     }
 
     fn from_value_def(db: &dyn HirDatabase, def: impl Into<ValueTyDefId> + HasResolver) -> Type {
-        let ty = db.value_ty(def.into());
+        let Some(ty) = db.value_ty(def.into()) else {
+            return Type::new(db, def, TyKind::Error.intern(Interner));
+        };
         let substs = TyBuilder::unknown_subst(
             db,
             match def.into() {
