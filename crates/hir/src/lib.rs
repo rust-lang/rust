@@ -2844,6 +2844,7 @@ impl AssocItem {
             AssocItem::TypeAlias(it) => Some(it.name(db)),
         }
     }
+
     pub fn module(self, db: &dyn HirDatabase) -> Module {
         match self {
             AssocItem::Function(f) => f.module(db),
@@ -2851,6 +2852,7 @@ impl AssocItem {
             AssocItem::TypeAlias(t) => t.module(db),
         }
     }
+
     pub fn container(self, db: &dyn HirDatabase) -> AssocItemContainer {
         let container = match self {
             AssocItem::Function(it) => it.id.lookup(db.upcast()).container,
@@ -2884,6 +2886,27 @@ impl AssocItem {
         match self.container(db) {
             AssocItemContainer::Trait(t) => Some(t),
             AssocItemContainer::Impl(i) => i.trait_(db),
+        }
+    }
+
+    pub fn as_function(self) -> Option<Function> {
+        match self {
+            Self::Function(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_const(self) -> Option<Const> {
+        match self {
+            Self::Const(v) => Some(v),
+            _ => None,
+        }
+    }
+
+    pub fn as_type_alias(self) -> Option<TypeAlias> {
+        match self {
+            Self::TypeAlias(v) => Some(v),
+            _ => None,
         }
     }
 }
@@ -3024,6 +3047,7 @@ impl LocalSource {
 
 impl Local {
     pub fn is_param(self, db: &dyn HirDatabase) -> bool {
+        // FIXME: This parses!
         let src = self.primary_source(db);
         match src.source.value {
             Either::Left(pat) => pat

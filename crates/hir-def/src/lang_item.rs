@@ -184,15 +184,51 @@ impl LangItems {
         T: Into<AttrDefId> + Copy,
     {
         let _p = profile::span("collect_lang_item");
-        if let Some(lang_item) = db.lang_attr(item.into()) {
+        if let Some(lang_item) = lang_attr(db, item.into()) {
             self.items.entry(lang_item).or_insert_with(|| constructor(item));
         }
     }
 }
 
-pub(crate) fn lang_attr_query(db: &dyn DefDatabase, item: AttrDefId) -> Option<LangItem> {
+pub(crate) fn lang_attr(db: &dyn DefDatabase, item: AttrDefId) -> Option<LangItem> {
     let attrs = db.attrs(item);
     attrs.by_key("lang").string_value().and_then(|it| LangItem::from_str(&it))
+}
+
+pub(crate) fn notable_traits_in_deps(
+    db: &dyn DefDatabase,
+    krate: CrateId,
+) -> Arc<[Arc<[TraitId]>]> {
+    let _p = profile::span("notable_traits_in_deps").detail(|| format!("{krate:?}"));
+    let crate_graph = db.crate_graph();
+
+    Arc::from_iter(
+        crate_graph.transitive_deps(krate).filter_map(|krate| db.crate_notable_traits(krate)),
+    )
+}
+
+pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: CrateId) -> Option<Arc<[TraitId]>> {
+    let _p = profile::span("crate_notable_traits").detail(|| format!("{krate:?}"));
+
+    let mut traits = Vec::new();
+
+    let crate_def_map = db.crate_def_map(krate);
+
+    for (_, module_data) in crate_def_map.modules() {
+        for def in module_data.scope.declarations() {
+            if let ModuleDefId::TraitId(trait_) = def {
+                if db.attrs(trait_.into()).has_doc_notable_trait() {
+                    traits.push(trait_);
+                }
+            }
+        }
+    }
+
+    if traits.is_empty() {
+        None
+    } else {
+        Some(traits.into_iter().collect())
+    }
 }
 
 pub enum GenericRequirement {

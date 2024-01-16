@@ -230,23 +230,15 @@ impl Definition {
             Definition::BuiltinType(it) => it.name().display(db).to_string(),
             Definition::Local(it) => {
                 let ty = it.ty(db);
-                let ty = ty.display_truncated(db, None);
+                let ty_display = ty.display_truncated(db, None);
                 let is_mut = if it.is_mut(db) { "mut " } else { "" };
-                let desc = match it.primary_source(db).into_ident_pat() {
-                    Some(ident) => {
-                        let name = it.name(db);
-                        let let_kw = if ident.syntax().parent().map_or(false, |p| {
-                            p.kind() == SyntaxKind::LET_STMT || p.kind() == SyntaxKind::LET_EXPR
-                        }) {
-                            "let "
-                        } else {
-                            ""
-                        };
-                        format!("{let_kw}{is_mut}{}: {ty}", name.display(db))
-                    }
-                    None => format!("{is_mut}self: {ty}"),
-                };
-                desc
+                if it.is_self(db) {
+                    format!("{is_mut}self: {ty_display}")
+                } else {
+                    let name = it.name(db);
+                    let let_kw = if it.is_param(db) { "" } else { "let " };
+                    format!("{let_kw}{is_mut}{}: {ty_display}", name.display(db))
+                }
             }
             Definition::SelfType(impl_def) => {
                 impl_def.self_ty(db).as_adt().and_then(|adt| Definition::Adt(adt).label(db))?

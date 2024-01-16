@@ -451,16 +451,16 @@ pub fn foo() -> u32 { 1 }
 fn main() { let foo_test = fo$0o(); }
 "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                pub fn foo() -> u32
-                ```
-            "#]],
+            ```rust
+            pub fn foo() -> u32
+            ```
+        "#]],
     );
 
     // Use literal `crate` in path
@@ -495,16 +495,16 @@ mod m { pub fn foo() -> super::X { super::X } }
 fn main() { m::f$0oo(); }
         "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test::m
-                ```
+            ```rust
+            test::m
+            ```
 
-                ```rust
-                pub fn foo() -> super::X
-                ```
-            "#]],
+            ```rust
+            pub fn foo() -> super::X
+            ```
+        "#]],
     );
 }
 
@@ -559,18 +559,18 @@ pub fn foo<'a, T: AsRef<str>>(b: &'a T) -> &'a str { }
 fn main() { let foo_test = fo$0o(); }
         "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                pub fn foo<'a, T>(b: &'a T) -> &'a str
-                where
-                    T: AsRef<str>,
-                ```
-            "#]],
+            ```rust
+            pub fn foo<'a, T>(b: &'a T) -> &'a str
+            where
+                T: AsRef<str>,
+            ```
+        "#]],
     );
 }
 
@@ -583,16 +583,16 @@ pub fn foo$0(a: u32, b: u32) -> u32 {}
 fn main() { }
 "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                pub fn foo(a: u32, b: u32) -> u32
-                ```
-            "#]],
+            ```rust
+            pub fn foo(a: u32, b: u32) -> u32
+            ```
+        "#]],
     );
 }
 
@@ -610,27 +610,27 @@ pub fn foo$0(_: &Path) {}
 
 fn main() { }
 "#,
-        expect![[r##"
-                *foo*
+        expect![[r#"
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                pub fn foo(_: &Path)
-                ```
+            ```rust
+            pub fn foo(_: &Path)
+            ```
 
-                ---
+            ---
 
-                # Example
+            # Example
 
-                ```
-                # use std::path::Path;
-                #
-                foo(Path::new("hello, world!"))
-                ```
-            "##]],
+            ```
+            # use std::path::Path;
+            #
+            foo(Path::new("hello, world!"))
+            ```
+        "#]],
     );
 }
 
@@ -643,21 +643,21 @@ pub fn foo$0(_: &Path) {}
 
 fn main() { }
 "##,
-        expect![[r##"
-                *foo*
+        expect![[r#"
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                pub fn foo(_: &Path)
-                ```
+            ```rust
+            pub fn foo(_: &Path)
+            ```
 
-                ---
+            ---
 
-                Raw string doc attr
-            "##]],
+            Raw string doc attr
+        "#]],
     );
 }
 
@@ -1040,12 +1040,12 @@ fn hover_for_param_with_multiple_traits() {
             }
             fn f(_x$0: impl Deref<Target=u8> + DerefMut<Target=u8>) {}"#,
         expect![[r#"
-                *_x*
+            *_x*
 
-                ```rust
-                _x: impl Deref<Target = u8> + DerefMut<Target = u8>
-                ```
-            "#]],
+            ```rust
+            _x: impl Deref<Target = u8> + DerefMut<Target = u8>
+            ```
+        "#]],
     )
 }
 
@@ -1087,15 +1087,15 @@ mod wrapper {
 fn main() { let foo_test = wrapper::Thing::new$0(); }
 "#,
         expect![[r#"
-                *new*
+            *new*
 
-                ```rust
-                test::wrapper::Thing
-                ```
+            ```rust
+            test::wrapper::Thing
+            ```
 
-                ```rust
-                pub fn new() -> Thing
-                ```
+            ```rust
+            pub fn new() -> Thing
+            ```
         "#]],
     )
 }
@@ -1299,12 +1299,12 @@ fn test_hover_tuple_field() {
     check(
         r#"struct TS(String, i32$0);"#,
         expect![[r#"
-                *i32*
+            *i32*
 
-                ```rust
-                i32
-                ```
-            "#]],
+            ```rust
+            i32
+            ```
+        "#]],
     )
 }
 
@@ -1319,16 +1319,16 @@ id! {
 }
 "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                fn foo()
-                ```
-            "#]],
+            ```rust
+            fn foo()
+            ```
+        "#]],
     );
 }
 
@@ -1341,16 +1341,16 @@ fn test_hover_through_attr() {
 fn foo$0() {}
 "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                fn foo()
-                ```
-            "#]],
+            ```rust
+            fn foo()
+            ```
+        "#]],
     );
 }
 
@@ -1427,16 +1427,16 @@ fn foo() {
 }
 "#,
         expect![[r#"
-                *bar*
+            *bar*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                fn bar() -> bool
-                ```
-            "#]],
+            ```rust
+            fn bar() -> bool
+            ```
+        "#]],
     );
 }
 
@@ -1483,20 +1483,20 @@ fn foo() { }
 fn bar() { fo$0o(); }
 ",
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                fn foo()
-                ```
+            ```rust
+            fn foo()
+            ```
 
-                ---
+            ---
 
-                \<- `　` here
-            "#]],
+            \<- `　` here
+        "#]],
     );
 }
 
@@ -1505,45 +1505,45 @@ fn test_hover_function_show_qualifiers() {
     check(
         r#"async fn foo$0() {}"#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                async fn foo()
-                ```
-            "#]],
+            ```rust
+            async fn foo()
+            ```
+        "#]],
     );
     check(
         r#"pub const unsafe fn foo$0() {}"#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                pub const unsafe fn foo()
-                ```
-            "#]],
+            ```rust
+            pub const unsafe fn foo()
+            ```
+        "#]],
     );
     // Top level `pub(crate)` will be displayed as no visibility.
     check(
         r#"mod m { pub(crate) async unsafe extern "C" fn foo$0() {} }"#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test::m
-                ```
+            ```rust
+            test::m
+            ```
 
-                ```rust
-                pub(crate) async unsafe extern "C" fn foo()
-                ```
-            "#]],
+            ```rust
+            pub(crate) async unsafe extern "C" fn foo()
+            ```
+        "#]],
     );
 }
 
@@ -1552,16 +1552,16 @@ fn test_hover_function_show_types() {
     check(
         r#"fn foo$0(a: i32, b:i32) -> i32 { 0 }"#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                fn foo(a: i32, b: i32) -> i32
-                ```
-            "#]],
+            ```rust
+            fn foo(a: i32, b: i32) -> i32
+            ```
+        "#]],
     );
 }
 
@@ -1949,39 +1949,39 @@ fn test_hover_no_links() {
 pub fn fo$0o() {}
 "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                pub fn foo()
-                ```
+            ```rust
+            pub fn foo()
+            ```
 
-                ---
+            ---
 
-                Test cases:
-                case 1.  bare URL: https://www.example.com/
-                case 2.  inline URL with title: [example](https://www.example.com/)
-                case 3.  code reference: `Result`
-                case 4.  code reference but miss footnote: `String`
-                case 5.  autolink: http://www.example.com/
-                case 6.  email address: test@example.com
-                case 7.  reference: example
-                case 8.  collapsed link: example
-                case 9.  shortcut link: example
-                case 10. inline without URL: example
-                case 11. reference: foo
-                case 12. reference: foo
-                case 13. collapsed link: foo
-                case 14. shortcut link: foo
-                case 15. inline without URL: foo
-                case 16. just escaped text: \[foo\]
-                case 17. inline link: Foo
+            Test cases:
+            case 1.  bare URL: https://www.example.com/
+            case 2.  inline URL with title: [example](https://www.example.com/)
+            case 3.  code reference: `Result`
+            case 4.  code reference but miss footnote: `String`
+            case 5.  autolink: http://www.example.com/
+            case 6.  email address: test@example.com
+            case 7.  reference: example
+            case 8.  collapsed link: example
+            case 9.  shortcut link: example
+            case 10. inline without URL: example
+            case 11. reference: foo
+            case 12. reference: foo
+            case 13. collapsed link: foo
+            case 14. shortcut link: foo
+            case 15. inline without URL: foo
+            case 16. just escaped text: \[foo\]
+            case 17. inline link: Foo
 
-                [^example]: https://www.example.com/
-            "#]],
+            [^example]: https://www.example.com/
+        "#]],
     );
 }
 
@@ -2091,20 +2091,20 @@ bar!();
 fn foo() { let bar = Bar; bar.fo$0o(); }
 "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test::Bar
-                ```
+            ```rust
+            test::Bar
+            ```
 
-                ```rust
-                fn foo(&self)
-                ```
+            ```rust
+            fn foo(&self)
+            ```
 
-                ---
+            ---
 
-                Do the foo
-            "#]],
+            Do the foo
+        "#]],
     );
 }
 
@@ -2129,20 +2129,20 @@ bar!();
 fn foo() { let bar = Bar; bar.fo$0o(); }
 "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test::Bar
-                ```
+            ```rust
+            test::Bar
+            ```
 
-                ```rust
-                fn foo(&self)
-                ```
+            ```rust
+            fn foo(&self)
+            ```
 
-                ---
+            ---
 
-                Do the foo
-            "#]],
+            Do the foo
+        "#]],
     );
 }
 
@@ -3305,7 +3305,7 @@ fn main() { let foo_test = name_with_dashes::wrapper::Thing::new$0(); }
             ```rust
             pub fn new() -> Thing
             ```
-            "#]],
+        "#]],
     )
 }
 
@@ -3327,7 +3327,7 @@ fn main() {
 
             ```rust
              // size = 8, align = 8, niches = 1
-            f: &i32
+            let f: &i32
             ```
             ---
 
@@ -3628,24 +3628,24 @@ fn hover_doc_block_style_indent_end() {
 fn foo$0() {}
 "#,
         expect![[r#"
-                *foo*
+            *foo*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                fn foo()
-                ```
+            ```rust
+            fn foo()
+            ```
 
-                ---
+            ---
 
-                foo
+            foo
 
-                ```rust
-                let x = 3;
-                ```
-            "#]],
+            ```rust
+            let x = 3;
+            ```
+        "#]],
     );
 }
 
@@ -3704,12 +3704,12 @@ trait TraitB {}
 impl<T: TraitA + TraitB> Foo<T$0> where T: Sized {}
 "#,
         expect![[r#"
-                *T*
+            *T*
 
-                ```rust
-                T: TraitA + TraitB
-                ```
-            "#]],
+            ```rust
+            T: TraitA + TraitB
+            ```
+        "#]],
     );
     check(
         r#"
@@ -3718,12 +3718,12 @@ struct Foo<T>(T);
 impl<T> Foo<T$0> {}
 "#,
         expect![[r#"
-                *T*
+            *T*
 
-                ```rust
-                T
-                ```
-                "#]],
+            ```rust
+            T
+            ```
+        "#]],
     );
     // lifetimes bounds arent being tracked yet
     check(
@@ -3733,12 +3733,12 @@ struct Foo<T>(T);
 impl<T: 'static> Foo<T$0> {}
 "#,
         expect![[r#"
-                *T*
+            *T*
 
-                ```rust
-                T
-                ```
-                "#]],
+            ```rust
+            T
+            ```
+        "#]],
     );
 }
 
@@ -3753,12 +3753,12 @@ struct Foo<T>(T);
 impl<T: Trait> Foo<T$0> {}
 "#,
         expect![[r#"
-                *T*
+            *T*
 
-                ```rust
-                T: Trait
-                ```
-            "#]],
+            ```rust
+            T: Trait
+            ```
+        "#]],
     );
     check(
         r#"
@@ -3768,12 +3768,12 @@ struct Foo<T>(T);
 impl<T: Trait + ?Sized> Foo<T$0> {}
 "#,
         expect![[r#"
-                *T*
+            *T*
 
-                ```rust
-                T: Trait + ?Sized
-                ```
-            "#]],
+            ```rust
+            T: Trait + ?Sized
+            ```
+        "#]],
     );
 }
 
@@ -3788,12 +3788,12 @@ mod type_param_sized_bounds {
 fn foo<T$0>() {}
 "#,
             expect![[r#"
-                    *T*
+                *T*
 
-                    ```rust
-                    T
-                    ```
-                "#]],
+                ```rust
+                T
+                ```
+            "#]],
         );
     }
 
@@ -3805,12 +3805,12 @@ fn foo<T$0>() {}
 fn foo<T$0: Sized>() {}
 "#,
             expect![[r#"
-                    *T*
+                *T*
 
-                    ```rust
-                    T
-                    ```
-                "#]],
+                ```rust
+                T
+                ```
+            "#]],
         );
     }
 
@@ -3822,12 +3822,12 @@ fn foo<T$0: Sized>() {}
 fn foo<T$0: ?Sized>() {}
 "#,
             expect![[r#"
-                    *T*
+                *T*
 
-                    ```rust
-                    T: ?Sized
-                    ```
-                "#]],
+                ```rust
+                T: ?Sized
+                ```
+            "#]],
         );
     }
 
@@ -3840,12 +3840,12 @@ trait Trait {}
 fn foo<T$0: Trait>() {}
 "#,
             expect![[r#"
-                    *T*
+                *T*
 
-                    ```rust
-                    T: Trait
-                    ```
-                "#]],
+                ```rust
+                T: Trait
+                ```
+            "#]],
         );
     }
 
@@ -3858,12 +3858,12 @@ trait Trait {}
 fn foo<T$0: Trait + Sized>() {}
 "#,
             expect![[r#"
-                    *T*
+                *T*
 
-                    ```rust
-                    T: Trait
-                    ```
-                "#]],
+                ```rust
+                T: Trait
+                ```
+            "#]],
         );
     }
 
@@ -3876,12 +3876,12 @@ trait Trait {}
 fn foo<T$0: Trait + ?Sized>() {}
 "#,
             expect![[r#"
-                    *T*
+                *T*
 
-                    ```rust
-                    T: Trait + ?Sized
-                    ```
-                "#]],
+                ```rust
+                T: Trait + ?Sized
+                ```
+            "#]],
         );
     }
 
@@ -3893,12 +3893,12 @@ fn foo<T$0: Trait + ?Sized>() {}
 fn foo<T$0: ?Sized + Sized + Sized>() {}
 "#,
             expect![[r#"
-                    *T*
+                *T*
 
-                    ```rust
-                    T
-                    ```
-                "#]],
+                ```rust
+                T
+                ```
+            "#]],
         );
         check(
             r#"
@@ -3907,12 +3907,12 @@ trait Trait {}
 fn foo<T$0: Sized + ?Sized + Sized + Trait>() {}
 "#,
             expect![[r#"
-                    *T*
+                *T*
 
-                    ```rust
-                    T: Trait
-                    ```
-                "#]],
+                ```rust
+                T: Trait
+                ```
+            "#]],
         );
     }
 }
@@ -3947,12 +3947,12 @@ struct Foo<const LEN: usize>;
 impl<const LEN: usize> Foo<LEN$0> {}
 "#,
         expect![[r#"
-                *LEN*
+            *LEN*
 
-                ```rust
-                const LEN: usize
-                ```
-            "#]],
+            ```rust
+            const LEN: usize
+            ```
+        "#]],
     );
 }
 
@@ -4082,20 +4082,20 @@ fn main() {
 }
 "#,
         expect![[r#"
-        *B*
+            *B*
 
-        ```rust
-        test
-        ```
+            ```rust
+            test
+            ```
 
-        ```rust
-        const B: bool = true
-        ```
+            ```rust
+            const B: bool = true
+            ```
 
-        ---
+            ---
 
-        true
-    "#]],
+            true
+        "#]],
     );
 
     check(
@@ -4119,16 +4119,16 @@ fn main() {
 }
 "#,
         expect![[r#"
-        *AA*
+            *AA*
 
-        ```rust
-        test
-        ```
+            ```rust
+            test
+            ```
 
-        ```rust
-        const AA: A = A { i: 5 }
-        ```
-    "#]],
+            ```rust
+            const AA: A = A { i: 5 }
+            ```
+        "#]],
     );
 
     check(
@@ -5045,17 +5045,17 @@ const _: &str$0 = ""; }
 mod prim_str {}
 "#,
         expect![[r#"
-                *str*
+            *str*
 
-                ```rust
-                str
-                ```
+            ```rust
+            str
+            ```
 
-                ---
+            ---
 
-                Docs for prim_str
-                [`foo`](https://doc.rust-lang.org/nightly/std/keyword.foo.html)
-            "#]],
+            Docs for prim_str
+            [`foo`](https://doc.rust-lang.org/nightly/std/keyword.foo.html)
+        "#]],
     );
 }
 
@@ -5081,20 +5081,20 @@ fn main() {
 }
 "#,
         expect![[r#"
-                *bar*
+            *bar*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                fn bar<'t, T>(s: &mut S<'t, T>, t: u32) -> *mut u32
-                where
-                    T: Clone + 't,
-                    't: 't + 't,
-                    for<'a> T: Clone + 'a,
-                ```
-            "#]],
+            ```rust
+            fn bar<'t, T>(s: &mut S<'t, T>, t: u32) -> *mut u32
+            where
+                T: Clone + 't,
+                't: 't + 't,
+                for<'a> T: Clone + 'a,
+            ```
+        "#]],
     )
 }
 
@@ -5164,16 +5164,16 @@ impl T1 for Foo {
 }
         "#,
         expect![[r#"
-*Bar*
+            *Bar*
 
-```rust
-test::t2
-```
+            ```rust
+            test::t2
+            ```
 
-```rust
-pub type Bar
-```
-"#]],
+            ```rust
+            pub type Bar
+            ```
+        "#]],
     );
 }
 #[test]
@@ -5186,16 +5186,16 @@ trait A {
     type Assoc;
 }"#,
         expect![[r#"
-                *Assoc*
+            *Assoc*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                type Assoc
-                ```
-            "#]],
+            ```rust
+            type Assoc
+            ```
+        "#]],
     );
     check(
         r#"
@@ -5207,16 +5207,16 @@ trait A {
     type Assoc;
 }"#,
         expect![[r#"
-                *Assoc*
+            *Assoc*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                type Assoc
-                ```
-            "#]],
+            ```rust
+            type Assoc
+            ```
+        "#]],
     );
     check(
         r#"
@@ -5226,16 +5226,16 @@ trait A where
     type Assoc;
 }"#,
         expect![[r#"
-                *Assoc*
+            *Assoc*
 
-                ```rust
-                test
-                ```
+            ```rust
+            test
+            ```
 
-                ```rust
-                type Assoc
-                ```
-            "#]],
+            ```rust
+            type Assoc
+            ```
+        "#]],
     );
 }
 
@@ -7055,6 +7055,66 @@ fn main() {
             *0xFFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_FFFF_F*
             ```text
             number too large to fit in target type
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn notable_local() {
+    check(
+        r#"
+#[doc(notable_trait)]
+trait Notable {
+    type Assoc;
+    type Assoc2;
+}
+
+impl Notable for u32 {
+    type Assoc = &str;
+    type Assoc2 = char;
+}
+fn main(notable$0: u32) {}
+"#,
+        expect![[r#"
+            *notable*
+
+            ```rust
+             // notable traits impls: Notable<Assoc = &str, Assoc2 = char>
+             // size = 4, align = 4
+            notable: u32
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn notable_foreign() {
+    check(
+        r#"
+//- minicore: future, iterator
+struct S;
+#[doc(notable_trait)]
+trait Notable {}
+impl Notable for S$0 {}
+impl core::future::Future for S {
+    type Output = u32;
+}
+impl Iterator for S {
+    type Item = S;
+}
+"#,
+        expect![[r#"
+            *S*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+             // notable traits impls: Notable, Future<Output = u32>, Iterator<Item = S>
+             // size = 0, align = 1
+            struct S
             ```
         "#]],
     );
