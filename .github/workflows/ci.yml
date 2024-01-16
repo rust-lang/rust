@@ -57,6 +57,7 @@ jobs:
               SCRIPT: make ci-mingw
               NO_DOWNLOAD_CI_LLVM: 1
               CC: clang
+              CXX: clang++
             os: windows-2019-8core-32gb
           - name: x86_64-mingw
             env:
@@ -64,6 +65,7 @@ jobs:
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-profiler"
               NO_DOWNLOAD_CI_LLVM: 1
               CC: clang
+              CXX: clang++
             os: windows-2019-8core-32gb
           - name: dist-i686-mingw
             env:
@@ -72,6 +74,7 @@ jobs:
               SCRIPT: python x.py dist bootstrap --include-default-paths
               DIST_REQUIRE_ALL_TOOLS: 1
               CC: clang
+              CXX: clang++
             os: windows-2019-8core-32gb
           - name: dist-x86_64-mingw
             env:
@@ -80,6 +83,7 @@ jobs:
               NO_DOWNLOAD_CI_LLVM: 1
               DIST_REQUIRE_ALL_TOOLS: 1
               CC: clang
+              CXX: clang++
             os: windows-2019-8core-32gb
           - name: x86_64-gnu
             os: ubuntu-20.04-4core-16gb
