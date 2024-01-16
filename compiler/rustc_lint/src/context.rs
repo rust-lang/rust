@@ -677,7 +677,7 @@ impl<'tcx> LintContext for LateContext<'tcx> {
 
         match span {
             Some(s) => self.tcx.struct_span_lint_hir(lint, hir_id, s, msg, decorate),
-            None => self.tcx.struct_lint_node(lint, hir_id, msg, decorate),
+            None => self.tcx.node_lint(lint, hir_id, msg, decorate),
         }
     }
 
