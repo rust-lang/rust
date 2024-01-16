@@ -171,6 +171,10 @@ pub fn char_has_case(c: char) -> bool {
     c.is_lowercase() || c.is_uppercase()
 }
 
+pub fn is_upper_snake_case(s: &str) -> bool {
+    s.chars().all(|c| c.is_uppercase() || c == '_' || c.is_numeric())
+}
+
 pub fn replace(buf: &mut String, from: char, to: &str) {
     if !buf.contains(from) {
         return;

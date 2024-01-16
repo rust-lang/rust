@@ -4,6 +4,7 @@ use std::iter::empty;
 
 use itertools::{EitherOrBoth, Itertools};
 use parser::T;
+use stdx::is_upper_snake_case;
 use syntax::{
     algo,
     ast::{self, make, AstNode, HasAttrs, HasName, HasVisibility, PathSegmentKind},
@@ -340,9 +341,6 @@ fn path_segment_cmp(a: &ast::PathSegment, b: &ast::PathSegment) -> Ordering {
                     // snake_case < CamelCase < UPPER_SNAKE_CASE
                     let a_text = a_name.as_str();
                     let b_text = b_name.as_str();
-                    fn is_upper_snake_case(s: &str) -> bool {
-                        s.chars().all(|c| c.is_uppercase() || c == '_' || c.is_numeric())
-                    }
                     if a_text.starts_with(char::is_lowercase)
                         && b_text.starts_with(char::is_uppercase)
                     {
