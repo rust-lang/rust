@@ -2849,7 +2849,7 @@ impl<'tcx> LateLintPass<'tcx> for NamedAsmLabels {
                     let target_spans: MultiSpan =
                         if spans.len() > 0 { spans.into() } else { (*template_span).into() };
 
-                    cx.lookup_with_diagnostics(
+                    cx.span_lint_with_diagnostics(
                             NAMED_ASM_LABELS,
                             Some(target_spans),
                             fluent::lint_builtin_asm_labels,
