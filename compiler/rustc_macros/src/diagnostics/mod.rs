@@ -90,7 +90,7 @@ pub fn session_diagnostic_derive(s: Structure<'_>) -> TokenStream {
 /// Then, later, to emit the error:
 ///
 /// ```ignore (rust)
-/// cx.struct_span_lint(INVALID_ATOMIC_ORDERING, fail_order_arg_span, AtomicOrderingInvalidLint {
+/// cx.span_lint(INVALID_ATOMIC_ORDERING, fail_order_arg_span, AtomicOrderingInvalidLint {
 ///     method,
 ///     success_ordering,
 ///     fail_ordering,
