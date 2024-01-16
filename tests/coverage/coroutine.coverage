@@ -9,8 +9,11 @@
    LL|       |// drop all `Counter` `Coverage` statements from a MIR. `simplify.rs` has logic
    LL|       |// to handle this condition, and still report dead block coverage.
    LL|      1|fn get_u32(val: bool) -> Result<u32, String> {
-   LL|      1|    if val { Ok(1) } else { Err(String::from("some error")) }
-                                          ^0
+   LL|      1|    if val {
+   LL|      1|        Ok(1)
+   LL|       |    } else {
+   LL|      0|        Err(String::from("some error"))
+   LL|       |    }
    LL|      1|}
    LL|       |
    LL|      1|fn main() {

@@ -22,7 +22,12 @@ fn main() {
     let version_3_2_1 = Version::new(3, 2, 1);
     let version_3_3_0 = Version::new(3, 3, 0);
 
-    println!("{:?} < {:?} = {}", version_3_2_1, version_3_3_0, version_3_2_1 < version_3_3_0);
+    println!(
+        "{:?} < {:?} = {}",
+        version_3_2_1,
+        version_3_3_0,
+        version_3_2_1 < version_3_3_0
+    );
 }
 
 /*

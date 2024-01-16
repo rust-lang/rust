@@ -5,9 +5,7 @@ fn main() {
     println!("{}", live::<false>());
 
     let f = |x: bool| {
-        debug_assert!(
-            x
-        );
+        debug_assert!(x);
     };
     f(false);
 }
