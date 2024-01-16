@@ -205,26 +205,6 @@ fn dump_path(tcx: TyCtxt<'_>, basename: &str, extension: &str) -> PathBuf {
     file_path
 }
 
-/// Attempts to open the MIR dump file with the given name and extension.
-fn create_dump_file_with_basename(
-    tcx: TyCtxt<'_>,
-    file_basename: &str,
-    extension: &str,
-) -> io::Result<io::BufWriter<fs::File>> {
-    let file_path = dump_path(tcx, file_basename, extension);
-    if let Some(parent) = file_path.parent() {
-        fs::create_dir_all(parent).map_err(|e| {
-            io::Error::new(
-                e.kind(),
-                format!("IO error creating MIR dump directory: {parent:?}; {e}"),
-            )
-        })?;
-    }
-    Ok(io::BufWriter::new(fs::File::create(&file_path).map_err(|e| {
-        io::Error::new(e.kind(), format!("IO error creating MIR dump file: {file_path:?}; {e}"))
-    })?))
-}
-
 /// Attempts to open a file where we should dump a given MIR or other
 /// bit of MIR-related data. Used by `mir-dump`, but also by other
 /// bits of code (e.g., NLL inference) that dump graphviz data or
@@ -237,11 +217,22 @@ pub fn create_dump_file<'tcx>(
     disambiguator: &dyn Display,
     body: &Body<'tcx>,
 ) -> io::Result<io::BufWriter<fs::File>> {
-    create_dump_file_with_basename(
+    let file_path = dump_path(
         tcx,
         &dump_file_basename(tcx, pass_num, pass_name, disambiguator, body),
         extension,
-    )
+    );
+    if let Some(parent) = file_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| {
+            io::Error::new(
+                e.kind(),
+                format!("IO error creating MIR dump directory: {parent:?}; {e}"),
+            )
+        })?;
+    }
+    Ok(io::BufWriter::new(fs::File::create(&file_path).map_err(|e| {
+        io::Error::new(e.kind(), format!("IO error creating MIR dump file: {file_path:?}; {e}"))
+    })?))
 }
 
 ///////////////////////////////////////////////////////////////////////////
