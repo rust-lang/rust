@@ -247,7 +247,7 @@ pub fn explain_lint_level_source(
 ///
 /// If you are looking to implement a lint, look for higher level functions,
 /// for example:
-/// - [`TyCtxt::emit_spanned_lint`]
+/// - [`TyCtxt::emit_node_span_lint`]
 /// - [`TyCtxt::node_span_lint`]
 /// - [`TyCtxt::emit_node_lint`]
 /// - [`TyCtxt::node_lint`]
