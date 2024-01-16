@@ -148,17 +148,9 @@ pub mod change_constructor_path_indirectly_struct_like {
     #[cfg(not(any(cfail1,cfail4)))]
     use super::Enum2 as TheEnum;
 
-    #[rustc_clean(
-        cfg="cfail2",
-        except="fn_sig,hir_owner,hir_owner_nodes,optimized_mir,\
-                typeck"
-    )]
+    #[rustc_clean(cfg="cfail2", except="fn_sig,hir_owner_nodes,optimized_mir,typeck")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(
-        cfg="cfail5",
-        except="fn_sig,hir_owner,hir_owner_nodes,optimized_mir,\
-                typeck"
-    )]
+    #[rustc_clean(cfg="cfail5", except="fn_sig,hir_owner_nodes,optimized_mir,typeck")]
     #[rustc_clean(cfg="cfail6")]
     pub fn function() -> TheEnum {
         TheEnum::Struct {
@@ -261,17 +253,9 @@ pub mod change_constructor_path_indirectly_tuple_like {
     #[cfg(not(any(cfail1,cfail4)))]
     use super::Enum2 as TheEnum;
 
-    #[rustc_clean(
-        cfg="cfail2",
-        except="fn_sig,hir_owner,hir_owner_nodes,optimized_mir,\
-                typeck"
-    )]
+    #[rustc_clean(cfg="cfail2", except="fn_sig,hir_owner_nodes,optimized_mir,typeck")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(
-        cfg="cfail5",
-        except="fn_sig,hir_owner,hir_owner_nodes,optimized_mir,\
-                typeck"
-    )]
+    #[rustc_clean(cfg="cfail5", except="fn_sig,hir_owner_nodes,optimized_mir,typeck")]
     #[rustc_clean(cfg="cfail6")]
     pub fn function() -> TheEnum {
         TheEnum::Tuple(0, 1, 2)
@@ -350,17 +334,9 @@ pub mod change_constructor_path_indirectly_c_like {
     #[cfg(not(any(cfail1,cfail4)))]
     use super::Clike2 as TheEnum;
 
-    #[rustc_clean(
-        cfg="cfail2",
-        except="fn_sig,hir_owner,hir_owner_nodes,optimized_mir,\
-                typeck"
-    )]
+    #[rustc_clean(cfg="cfail2", except="fn_sig,hir_owner_nodes,optimized_mir,typeck")]
     #[rustc_clean(cfg="cfail3")]
-    #[rustc_clean(
-        cfg="cfail5",
-        except="fn_sig,hir_owner,hir_owner_nodes,optimized_mir,\
-                typeck"
-    )]
+    #[rustc_clean(cfg="cfail5", except="fn_sig,hir_owner_nodes,optimized_mir,typeck")]
     #[rustc_clean(cfg="cfail6")]
     pub fn function() -> TheEnum {
         TheEnum::B
