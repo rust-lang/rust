@@ -382,9 +382,7 @@ fn insert_use_(
         // find the element that would come directly after our new import
         let post_insert: Option<(_, _, SyntaxNode)> = group_iter
             .inspect(|(.., node)| last = Some(node.clone()))
-            .find(|&(_, ref use_tree, _)| {
-                use_tree_cmp(&insert_use_tree, use_tree) != Ordering::Greater
-            });
+            .find(|(_, use_tree, _)| use_tree_cmp(&insert_use_tree, use_tree) != Ordering::Greater);
 
         if let Some((.., node)) = post_insert {
             cov_mark::hit!(insert_group);

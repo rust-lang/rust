@@ -263,7 +263,7 @@ fn use_tree_cmp_bin_search(lhs: &ast::UseTree, rhs: &ast::UseTree) -> Ordering {
         (Some(_), None) => Ordering::Greater,
         (None, Some(_)) if !lhs_is_simple_path => Ordering::Greater,
         (None, Some(_)) => Ordering::Less,
-        (Some(ref a), Some(ref b)) => path_segment_cmp(a, b),
+        (Some(a), Some(b)) => path_segment_cmp(&a, &b),
     }
 }
 
@@ -287,15 +287,15 @@ pub(super) fn use_tree_cmp(a: &ast::UseTree, b: &ast::UseTree) -> Ordering {
         (Some(_), None) => Ordering::Greater,
         (None, Some(_)) if !a_is_simple_path => Ordering::Greater,
         (None, Some(_)) => Ordering::Less,
-        (Some(ref a_path), Some(ref b_path)) => {
+        (Some(a_path), Some(b_path)) => {
             // cmp_by would be useful for us here but that is currently unstable
             // cmp doesn't work due the lifetimes on text's return type
             a_path
                 .segments()
                 .zip_longest(b_path.segments())
                 .find_map(|zipped| match zipped {
-                    EitherOrBoth::Both(ref a_segment, ref b_segment) => {
-                        match path_segment_cmp(a_segment, b_segment) {
+                    EitherOrBoth::Both(a_segment, b_segment) => {
+                        match path_segment_cmp(&a_segment, &b_segment) {
                             Ordering::Equal => None,
                             ord => Some(ord),
                         }
@@ -409,7 +409,7 @@ fn use_tree_cmp_by_tree_list_glob_or_alias(
             .use_trees()
             .zip_longest(b_list.use_trees())
             .find_map(|zipped| match zipped {
-                EitherOrBoth::Both(ref a_tree, ref b_tree) => match use_tree_cmp(a_tree, b_tree) {
+                EitherOrBoth::Both(a_tree, b_tree) => match use_tree_cmp(&a_tree, &b_tree) {
                     Ordering::Equal => None,
                     ord => Some(ord),
                 },
