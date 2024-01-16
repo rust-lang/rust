@@ -8,11 +8,6 @@ additional output formats, including:
 control-flow graph
 * `-Z dump-mir-dataflow` - dumps a `.dot` file showing the [dataflow state] at
   each point in the control-flow graph
-* `-Z dump-mir-spanview` - dumps an `.html` file that highlights the source
-spans associated with MIR elements (including mouse-over actions to reveal
-elements obscured by overlaps, and tooltips to view the MIR statements).
-This flag takes an optional value: `statement` (the default), `terminator`, or
-`block`, to generate span highlights with different levels of granularity.
 
 `-Z dump-mir=F` is a handy compiler option that will let you view the MIR for
 each function at each stage of compilation. `-Z dump-mir` takes a **filter** `F`

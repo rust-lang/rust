@@ -354,9 +354,9 @@ There are several forms the `EMIT_MIR` comment can take:
 
   This is useful if you want to see how an optimization changes the MIR.
 
-* `// EMIT_MIR $MIR_PATH.dot` or `$MIR_PATH.html` — These are special cases
-  for other MIR outputs (via `-Z dump-mir-graphviz` and `-Z dump-mir-spanview`)
-  that will check that the output matches the given file.
+* `// EMIT_MIR $MIR_PATH.dot` — When using specific flags that dump additional
+  MIR data (e.g. `-Z dump-mir-graphviz` to produce `.dot` files), this will
+  check that the output matches the given file.
 
 By default 32 bit and 64 bit targets use the same dump files, which can be
 problematic in the presence of pointers in constants or other bit width
