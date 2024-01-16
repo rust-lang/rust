@@ -17,7 +17,7 @@
               debug y => _3;
               let _8: u32;
               scope 3 {
-                  debug z => _9;
+                  debug z => _8;
               }
           }
       }
@@ -50,7 +50,13 @@
 +         _3 = const 3_i32;
           StorageDead(_5);
           StorageDead(_4);
+          StorageLive(_8);
+          StorageLive(_9);
           _9 = const 42_u32;
+-         _8 = _9;
++         _8 = const 42_u32;
+          StorageDead(_9);
+          StorageDead(_8);
           StorageDead(_3);
           StorageDead(_1);
           return;

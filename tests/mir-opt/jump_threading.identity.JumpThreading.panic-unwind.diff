@@ -110,7 +110,7 @@
       bb6: {
           _12 = move ((_4 as Err).0: i32);
           StorageLive(_13);
-          _13 = Result::<Infallible, i32>::Err(move _12);
+          _13 = Result::<Infallible, i32>::Err(_12);
           _3 = ControlFlow::<Result<Infallible, i32>, i32>::Break(move _13);
           StorageDead(_13);
 -         goto -> bb5;
@@ -119,7 +119,7 @@
   
       bb7: {
           _11 = move ((_4 as Ok).0: i32);
-          _3 = ControlFlow::<Result<Infallible, i32>, i32>::Continue(move _11);
+          _3 = ControlFlow::<Result<Infallible, i32>, i32>::Continue(_11);
           goto -> bb5;
 +     }
 + 

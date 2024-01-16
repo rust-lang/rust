@@ -123,13 +123,21 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let Operand::Copy(place) = *arg else { bug!() };
         *arg = Operand::Move(place);
     }
-
-    crate::simplify::simplify_locals(body, tcx)
 }
 
-pub struct DeadStoreElimination;
+pub enum DeadStoreElimination {
+    Initial,
+    Final,
+}
 
 impl<'tcx> MirPass<'tcx> for DeadStoreElimination {
+    fn name(&self) -> &'static str {
+        match self {
+            DeadStoreElimination::Initial => "DeadStoreElimination-initial",
+            DeadStoreElimination::Final => "DeadStoreElimination-final",
+        }
+    }
+
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
         sess.mir_opt_level() >= 2
     }

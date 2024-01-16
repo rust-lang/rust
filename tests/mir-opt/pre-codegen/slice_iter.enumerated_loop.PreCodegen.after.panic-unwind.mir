@@ -42,20 +42,21 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
                         scope 13 (inlined NonNull::<T>::new_unchecked) {
                             debug ptr => _9;
                             let mut _10: *const T;
+                            let mut _24: *mut T;
                             scope 14 {
                                 scope 15 (inlined NonNull::<T>::new_unchecked::runtime::<T>) {
-                                    debug ptr => _9;
+                                    debug ptr => _24;
                                     scope 16 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null) {
-                                        debug self => _9;
-                                        let mut _24: *mut u8;
+                                        debug self => _24;
+                                        let mut _25: *mut u8;
                                         scope 17 {
                                             scope 18 (inlined std::ptr::mut_ptr::<impl *mut T>::is_null::runtime_impl) {
-                                                debug ptr => _24;
+                                                debug ptr => _25;
                                                 scope 19 (inlined std::ptr::mut_ptr::<impl *mut u8>::addr) {
-                                                    debug self => _24;
+                                                    debug self => _25;
                                                     scope 20 {
                                                         scope 21 (inlined std::ptr::mut_ptr::<impl *mut u8>::cast::<()>) {
-                                                            debug self => _24;
+                                                            debug self => _25;
                                                         }
                                                     }
                                                 }
@@ -131,8 +132,10 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         _9 = _4 as *mut T (PtrToPtr);
         StorageLive(_10);
         StorageLive(_24);
+        StorageLive(_25);
         _10 = _9 as *const T (PointerCoercion(MutToConstPointer));
         _11 = NonNull::<T> { pointer: _10 };
+        StorageDead(_25);
         StorageDead(_24);
         StorageDead(_10);
         StorageDead(_9);
@@ -143,10 +146,10 @@ fn enumerated_loop(_1: &[T], _2: impl Fn(usize, &T)) -> () {
         StorageDead(_11);
         StorageDead(_7);
         StorageDead(_4);
-        _14 = Enumerate::<std::slice::Iter<'_, T>> { iter: move _13, count: const 0_usize };
+        _14 = Enumerate::<std::slice::Iter<'_, T>> { iter: _13, count: const 0_usize };
         StorageDead(_13);
         StorageLive(_15);
-        _15 = move _14;
+        _15 = _14;
         goto -> bb4;
     }
 

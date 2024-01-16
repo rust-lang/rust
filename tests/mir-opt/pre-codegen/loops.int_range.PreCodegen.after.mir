@@ -46,7 +46,7 @@ fn int_range(_1: usize, _2: usize) -> () {
     bb0: {
         _3 = std::ops::Range::<usize> { start: _1, end: _2 };
         StorageLive(_4);
-        _4 = move _3;
+        _4 = _3;
         goto -> bb1;
     }
 

@@ -1,5 +1,5 @@
-- // MIR for `move_packed` before DeadStoreElimination
-+ // MIR for `move_packed` after DeadStoreElimination
+- // MIR for `move_packed` before DeadStoreElimination-final
++ // MIR for `move_packed` after DeadStoreElimination-final
   
   fn move_packed(_1: Packed) -> () {
       let mut _0: ();
