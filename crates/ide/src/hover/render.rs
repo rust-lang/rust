@@ -1,7 +1,10 @@
 //! Logic for rendering the different hover messages
+use std::{mem, ops::Not};
+
 use either::Either;
 use hir::{
-    Adt, AsAssocItem, CaptureKind, HasSource, HirDisplay, Layout, LayoutError, Semantics, TypeInfo,
+    db::DefDatabase, Adt, AsAssocItem, AssocItem, CaptureKind, HasCrate, HasSource, HirDisplay,
+    Layout, LayoutError, Semantics, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase,
@@ -390,7 +393,6 @@ pub(super) fn definition(
     let mod_path = definition_mod_path(db, &def);
     let label = def.label(db)?;
     let docs = def.docs(db, famous_defs);
-
     let value = match def {
         Definition::Variant(it) => {
             if !it.parent_enum(db).is_data_carrying(db) {
@@ -462,14 +464,75 @@ pub(super) fn definition(
         _ => None,
     };
 
-    let label = match (value, layout_info) {
-        (Some(value), Some(layout_info)) => format!("{layout_info}\n{label} = {value}"),
-        (Some(value), None) => format!("{label} = {value}"),
-        (None, Some(layout_info)) => format!("{layout_info}\n{label}"),
-        (None, None) => label,
+    let def_ty = match def {
+        Definition::Local(it) => Some(it.ty(db)),
+        Definition::GenericParam(hir::GenericParam::ConstParam(it)) => Some(it.ty(db)),
+        Definition::GenericParam(hir::GenericParam::TypeParam(it)) => Some(it.ty(db)),
+        Definition::Field(field) => Some(field.ty(db)),
+        Definition::TupleField(it) => Some(it.ty(db)),
+        Definition::Function(it) => Some(it.ty(db)),
+        Definition::Adt(it) => Some(it.ty(db)),
+        Definition::Const(it) => Some(it.ty(db)),
+        Definition::Static(it) => Some(it.ty(db)),
+        Definition::TypeAlias(it) => Some(it.ty(db)),
+        Definition::BuiltinType(it) => Some(it.ty(db)),
+        _ => None,
     };
+    let notable_traits = def_ty.and_then(|ty| {
+        let mut desc = String::new();
+        let mut needs_impl_header = true;
+        for &trait_ in db.notable_traits_in_deps(ty.krate(db).into()).iter().flat_map(|it| &**it) {
+            let trait_ = trait_.into();
+            if ty.impls_trait(db, trait_, &[]) {
+                let aliases: Vec<_> = trait_
+                    .items(db)
+                    .into_iter()
+                    .filter_map(AssocItem::as_type_alias)
+                    .map(|alias| (ty.normalize_trait_assoc_type(db, &[], alias), alias.name(db)))
+                    .collect();
+                desc.push_str(if mem::take(&mut needs_impl_header) {
+                    " // notable traits impls: "
+                } else {
+                    ", "
+                });
+                format_to!(desc, "{}", trait_.name(db).display(db),);
+                if !aliases.is_empty() {
+                    desc.push('<');
+                    format_to!(
+                        desc,
+                        "{}",
+                        aliases.into_iter().format_with(", ", |(ty, name), f| {
+                            f(&name.display(db))?;
+                            f(&" = ")?;
+                            match ty {
+                                Some(ty) => f(&ty.display(db)),
+                                None => f(&"?"),
+                            }
+                        })
+                    );
+                    desc.push('>');
+                }
+            }
+        }
+        desc.is_empty().not().then(|| desc)
+    });
 
-    markup(docs.map(Into::into), label, mod_path)
+    let mut desc = String::new();
+    if let Some(notable_traits) = notable_traits {
+        desc.push_str(&notable_traits);
+        desc.push('\n');
+    }
+    if let Some(layout_info) = layout_info {
+        desc.push_str(&layout_info);
+        desc.push('\n');
+    }
+    desc.push_str(&label);
+    if let Some(value) = value {
+        desc.push_str(" = ");
+        desc.push_str(&value);
+    }
+
+    markup(docs.map(Into::into), desc, mod_path)
 }
 
 fn type_info(

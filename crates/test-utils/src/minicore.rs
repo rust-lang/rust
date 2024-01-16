@@ -1166,6 +1166,7 @@ pub mod future {
         task::{Context, Poll},
     };
 
+    #[doc(notable_trait)]
     #[lang = "future_trait"]
     pub trait Future {
         type Output;
@@ -1264,6 +1265,7 @@ pub mod iter {
 
     mod traits {
         mod iterator {
+            #[doc(notable_trait)]
             pub trait Iterator {
                 type Item;
                 #[lang = "next"]
