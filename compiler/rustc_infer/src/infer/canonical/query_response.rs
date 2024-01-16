@@ -483,7 +483,13 @@ impl<'tcx> InferCtxt<'tcx> {
         let result_subst = CanonicalVarValues {
             var_values: self.tcx.mk_args_from_iter(
                 query_response.variables.iter().enumerate().map(|(index, info)| {
-                    if info.is_existential() {
+                    if info.universe() != ty::UniverseIndex::ROOT {
+                        // A variable from inside a binder of the query. While ideally these shouldn't
+                        // exist at all, we have to deal with them for now.
+                        self.instantiate_canonical_var(cause.span, info, |u| {
+                            universe_map[u.as_usize()]
+                        })
+                    } else if info.is_existential() {
                         match opt_values[BoundVar::new(index)] {
                             Some(k) => k,
                             None => self.instantiate_canonical_var(cause.span, info, |u| {
@@ -491,9 +497,11 @@ impl<'tcx> InferCtxt<'tcx> {
                             }),
                         }
                     } else {
-                        self.instantiate_canonical_var(cause.span, info, |u| {
-                            universe_map[u.as_usize()]
-                        })
+                        // For placeholders which were already part of the input, we simply map this
+                        // universal bound variable back the placeholder of the input.
+                        opt_values[BoundVar::new(index)].expect(
+                            "expected placeholder to be unified with itself during response",
+                        )
                     }
                 }),
             ),
