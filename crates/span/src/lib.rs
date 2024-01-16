@@ -2,7 +2,7 @@
 // FIXME: This should be moved into its own crate to get rid of the dependency inversion, base-db
 // has business depending on tt, tt should depend on a span crate only (which unforunately will have
 // to depend on salsa)
-use std::fmt;
+use std::fmt::{self, Write};
 
 use salsa::InternId;
 
@@ -37,6 +37,8 @@ pub const FIXUP_ERASED_FILE_AST_ID_MARKER: ErasedFileAstId =
     // is required to be stable for the proc-macro-server
     la_arena::Idx::from_raw(la_arena::RawIdx::from_u32(!0 - 1));
 
+pub type Span = SpanData<SyntaxContextId>;
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct SpanData<Ctx> {
     /// The text range of this span, relative to the anchor.
@@ -47,6 +49,7 @@ pub struct SpanData<Ctx> {
     /// The syntax context of the span.
     pub ctx: Ctx,
 }
+
 impl Span {
     #[deprecated = "dummy spans will panic if surfaced incorrectly, as such they should be replaced appropriately"]
     pub const DUMMY: Self = SpanData {
@@ -56,7 +59,17 @@ impl Span {
     };
 }
 
-pub type Span = SpanData<SyntaxContextId>;
+impl fmt::Display for Span {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self.anchor.file_id.index(), f)?;
+        f.write_char(':')?;
+        fmt::Debug::fmt(&self.anchor.ast_id.into_raw(), f)?;
+        f.write_char('@')?;
+        fmt::Debug::fmt(&self.range, f)?;
+        f.write_char('#')?;
+        self.ctx.fmt(f)
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SyntaxContextId(InternId);
