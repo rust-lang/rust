@@ -247,13 +247,14 @@
 -         _45 = _39;
 -         _43 = Eq(move _44, move _45);
 +         _45 = const Indirect { alloc_id: ALLOC1, offset: Size(0 bytes) }: *const [u8];
-+         _43 = Eq(const Indirect { alloc_id: ALLOC0, offset: Size(0 bytes) }: *const [u8], const Indirect { alloc_id: ALLOC1, offset: Size(0 bytes) }: *const [u8]);
++         _43 = const false;
           StorageDead(_45);
           StorageDead(_44);
-          _42 = Not(move _43);
+-         _42 = Not(move _43);
++         _42 = const true;
           StorageDead(_43);
 -         _41 = opaque::<bool>(move _42) -> [return: bb1, unwind unreachable];
-+         _41 = opaque::<bool>(_42) -> [return: bb1, unwind unreachable];
++         _41 = opaque::<bool>(const true) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
@@ -269,11 +270,11 @@
 -         _49 = _39;
 -         _47 = Ne(move _48, move _49);
 +         _49 = const Indirect { alloc_id: ALLOC1, offset: Size(0 bytes) }: *const [u8];
-+         _47 = _42;
++         _47 = const true;
           StorageDead(_49);
           StorageDead(_48);
 -         _46 = opaque::<bool>(move _47) -> [return: bb2, unwind unreachable];
-+         _46 = opaque::<bool>(_42) -> [return: bb2, unwind unreachable];
++         _46 = opaque::<bool>(const true) -> [return: bb2, unwind unreachable];
       }
   
       bb2: {
@@ -288,10 +289,11 @@
 -         _53 = _39;
 -         _51 = Le(move _52, move _53);
 +         _53 = const Indirect { alloc_id: ALLOC1, offset: Size(0 bytes) }: *const [u8];
-+         _51 = Le(const Indirect { alloc_id: ALLOC0, offset: Size(0 bytes) }: *const [u8], const Indirect { alloc_id: ALLOC1, offset: Size(0 bytes) }: *const [u8]);
++         _51 = const true;
           StorageDead(_53);
           StorageDead(_52);
-          _50 = opaque::<bool>(move _51) -> [return: bb3, unwind unreachable];
+-         _50 = opaque::<bool>(move _51) -> [return: bb3, unwind unreachable];
++         _50 = opaque::<bool>(const true) -> [return: bb3, unwind unreachable];
       }
   
       bb3: {
@@ -306,10 +308,11 @@
 -         _57 = _39;
 -         _55 = Lt(move _56, move _57);
 +         _57 = const Indirect { alloc_id: ALLOC1, offset: Size(0 bytes) }: *const [u8];
-+         _55 = Lt(const Indirect { alloc_id: ALLOC0, offset: Size(0 bytes) }: *const [u8], const Indirect { alloc_id: ALLOC1, offset: Size(0 bytes) }: *const [u8]);
++         _55 = const true;
           StorageDead(_57);
           StorageDead(_56);
-          _54 = opaque::<bool>(move _55) -> [return: bb4, unwind unreachable];
+-         _54 = opaque::<bool>(move _55) -> [return: bb4, unwind unreachable];
++         _54 = opaque::<bool>(const true) -> [return: bb4, unwind unreachable];
       }
   
       bb4: {
@@ -325,12 +328,14 @@
 -         _62 = _39;
 -         _60 = Ge(move _61, move _62);
 +         _62 = const Indirect { alloc_id: ALLOC1, offset: Size(0 bytes) }: *const [u8];
-+         _60 = Ge(const Indirect { alloc_id: ALLOC0, offset: Size(0 bytes) }: *const [u8], const Indirect { alloc_id: ALLOC1, offset: Size(0 bytes) }: *const [u8]);
++         _60 = const false;
           StorageDead(_62);
           StorageDead(_61);
-          _59 = Not(move _60);
+-         _59 = Not(move _60);
++         _59 = const true;
           StorageDead(_60);
-          _58 = opaque::<bool>(move _59) -> [return: bb5, unwind unreachable];
+-         _58 = opaque::<bool>(move _59) -> [return: bb5, unwind unreachable];
++         _58 = opaque::<bool>(const true) -> [return: bb5, unwind unreachable];
       }
   
       bb5: {
@@ -346,12 +351,14 @@
 -         _67 = _39;
 -         _65 = Gt(move _66, move _67);
 +         _67 = const Indirect { alloc_id: ALLOC1, offset: Size(0 bytes) }: *const [u8];
-+         _65 = Gt(const Indirect { alloc_id: ALLOC0, offset: Size(0 bytes) }: *const [u8], const Indirect { alloc_id: ALLOC1, offset: Size(0 bytes) }: *const [u8]);
++         _65 = const false;
           StorageDead(_67);
           StorageDead(_66);
-          _64 = Not(move _65);
+-         _64 = Not(move _65);
++         _64 = const true;
           StorageDead(_65);
-          _63 = opaque::<bool>(move _64) -> [return: bb6, unwind unreachable];
+-         _63 = opaque::<bool>(move _64) -> [return: bb6, unwind unreachable];
++         _63 = opaque::<bool>(const true) -> [return: bb6, unwind unreachable];
       }
   
       bb6: {
