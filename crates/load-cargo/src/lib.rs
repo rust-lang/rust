@@ -317,7 +317,7 @@ fn load_crate_graph(
     // wait until Vfs has loaded all roots
     for task in receiver {
         match task {
-            vfs::loader::Message::Progress { n_done, n_total, config_version: _ } => {
+            vfs::loader::Message::Progress { n_done, n_total, .. } => {
                 if n_done == n_total {
                     break;
                 }
