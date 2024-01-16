@@ -99,9 +99,9 @@
   </Type>
 
   <Type Name="core::pin::Pin&lt;*&gt;">
-    <DisplayString>Pin({(void*)pointer}: {pointer})</DisplayString>
+    <DisplayString>Pin({(void*)__pointer}: {__pointer})</DisplayString>
     <Expand>
-      <ExpandedItem>pointer</ExpandedItem>
+      <ExpandedItem>__pointer</ExpandedItem>
     </Expand>
   </Type>
 
