@@ -81,4 +81,5 @@ if isWindows; then
     # echo "\n"
     # echo "MAJAHA /etc/pacman.d/mirrorlist.mingw64"
     # cat /etc/pacman.d/mirrorlist.mingw64
+    echo "PATH: $PATH"
 fi
