@@ -41,8 +41,8 @@ pub enum TypeAnnotationNeeded {
     E0284,
 }
 
-impl Into<rustc_errors::DiagnosticId> for TypeAnnotationNeeded {
-    fn into(self) -> rustc_errors::DiagnosticId {
+impl Into<String> for TypeAnnotationNeeded {
+    fn into(self) -> String {
         match self {
             Self::E0282 => rustc_errors::error_code!(E0282),
             Self::E0283 => rustc_errors::error_code!(E0283),
