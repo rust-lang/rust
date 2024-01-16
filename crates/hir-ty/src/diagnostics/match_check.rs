@@ -7,8 +7,7 @@
 
 mod pat_util;
 
-pub(crate) mod deconstruct_pat;
-pub(crate) mod usefulness;
+pub(crate) mod pat_analysis;
 
 use chalk_ir::Mutability;
 use hir_def::{
@@ -26,8 +25,6 @@ use crate::{
 };
 
 use self::pat_util::EnumerateAndAdjustIterator;
-
-pub(crate) use self::usefulness::MatchArm;
 
 #[derive(Clone, Debug)]
 pub(crate) enum PatternError {
