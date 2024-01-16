@@ -127,10 +127,13 @@ where
         }
     }
 
+    debug!(?assumed_wf_types);
+
     let infcx_compat = infcx.fork();
 
-    debug!(?assumed_wf_types);
-    let implied_bounds = infcx.implied_bounds_tys(param_env, body_def_id, &assumed_wf_types);
+    // We specifically want to call the non-compat version of `implied_bounds_tys`; we do this always.
+    let implied_bounds =
+        infcx.implied_bounds_tys_compat(param_env, body_def_id, &assumed_wf_types, false);
     let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
 
     let errors = infcx.resolve_regions(&outlives_env);
@@ -166,9 +169,13 @@ where
         false
     };
 
-    if is_bevy {
+    // If we have set `no_implied_bounds_compat`, then do not attempt compatibility.
+    // We could also just always enter if `is_bevy`, and call `implied_bounds_tys`,
+    // but that does result in slightly more work when this option is set and
+    // just obscures what we mean here anyways. Let's just be explicit.
+    if is_bevy && !infcx.tcx.sess.opts.unstable_opts.no_implied_bounds_compat {
         let implied_bounds =
-            infcx_compat.implied_bounds_tys_compat(param_env, body_def_id, &assumed_wf_types);
+            infcx_compat.implied_bounds_tys_compat(param_env, body_def_id, &assumed_wf_types, true);
         let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
         let errors_compat = infcx_compat.resolve_regions(&outlives_env);
         if errors_compat.is_empty() {
@@ -770,7 +777,7 @@ fn resolve_regions_with_wf_tys<'tcx>(
     let infcx = tcx.infer_ctxt().build();
     let outlives_environment = OutlivesEnvironment::with_bounds(
         param_env,
-        infcx.implied_bounds_tys_compat(param_env, id, wf_tys),
+        infcx.implied_bounds_tys(param_env, id, wf_tys),
     );
     let region_bound_pairs = outlives_environment.region_bound_pairs();
 

@@ -12,13 +12,17 @@ pub use rustc_middle::traits::query::OutlivesBound;
 pub type BoundsCompat<'a, 'tcx: 'a> = impl Iterator<Item = OutlivesBound<'tcx>> + 'a;
 pub type Bounds<'a, 'tcx: 'a> = impl Iterator<Item = OutlivesBound<'tcx>> + 'a;
 pub trait InferCtxtExt<'a, 'tcx> {
+    /// Do *NOT* call this directly.
     fn implied_bounds_tys_compat(
         &'a self,
         param_env: ty::ParamEnv<'tcx>,
         body_id: LocalDefId,
         tys: &'a FxIndexSet<Ty<'tcx>>,
+        compat: bool,
     ) -> BoundsCompat<'a, 'tcx>;
 
+    /// If `-Z no-implied-bounds-compat` is set, calls `implied_bounds_tys_compat`
+    /// with `compat` set to `true`, otherwise `false`.
     fn implied_bounds_tys(
         &'a self,
         param_env: ty::ParamEnv<'tcx>,
@@ -132,8 +136,10 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
         param_env: ParamEnv<'tcx>,
         body_id: LocalDefId,
         tys: &'a FxIndexSet<Ty<'tcx>>,
+        compat: bool,
     ) -> BoundsCompat<'a, 'tcx> {
-        tys.iter().flat_map(move |ty| implied_outlives_bounds(self, param_env, body_id, *ty, true))
+        tys.iter()
+            .flat_map(move |ty| implied_outlives_bounds(self, param_env, body_id, *ty, compat))
     }
 
     fn implied_bounds_tys(
@@ -142,6 +148,14 @@ impl<'a, 'tcx: 'a> InferCtxtExt<'a, 'tcx> for InferCtxt<'tcx> {
         body_id: LocalDefId,
         tys: &'a FxIndexSet<Ty<'tcx>>,
     ) -> Bounds<'a, 'tcx> {
-        tys.iter().flat_map(move |ty| implied_outlives_bounds(self, param_env, body_id, *ty, false))
+        tys.iter().flat_map(move |ty| {
+            implied_outlives_bounds(
+                self,
+                param_env,
+                body_id,
+                *ty,
+                !self.tcx.sess.opts.unstable_opts.no_implied_bounds_compat,
+            )
+        })
     }
 }

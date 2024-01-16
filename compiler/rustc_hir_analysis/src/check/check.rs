@@ -368,7 +368,7 @@ fn check_opaque_meets_bounds<'tcx>(
         // Can have different predicates to their defining use
         hir::OpaqueTyOrigin::TyAlias { .. } => {
             let wf_tys = ocx.assumed_wf_types_and_report_errors(param_env, def_id)?;
-            let implied_bounds = infcx.implied_bounds_tys_compat(param_env, def_id, &wf_tys);
+            let implied_bounds = infcx.implied_bounds_tys(param_env, def_id, &wf_tys);
             let outlives_env = OutlivesEnvironment::with_bounds(param_env, implied_bounds);
             ocx.resolve_regions_and_report_errors(defining_use_anchor, &outlives_env)?;
         }
