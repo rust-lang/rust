@@ -59,6 +59,8 @@ pub use dec2flt::ParseFloatError;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use error::ParseIntError;
 
+pub(crate) use nonzero::NonZero;
+
 #[stable(feature = "nonzero", since = "1.28.0")]
 pub use nonzero::{NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize};
 
@@ -482,7 +484,7 @@ impl u8 {
         Self = u8,
         ActualT = u8,
         SignedT = i8,
-        NonZeroT = NonZeroU8,
+        NonZeroT = NonZero<u8>,
         BITS = 8,
         MAX = 255,
         rot = 2,
@@ -1097,7 +1099,7 @@ impl u16 {
         Self = u16,
         ActualT = u16,
         SignedT = i16,
-        NonZeroT = NonZeroU16,
+        NonZeroT = NonZero<u16>,
         BITS = 16,
         MAX = 65535,
         rot = 4,
@@ -1146,7 +1148,7 @@ impl u32 {
         Self = u32,
         ActualT = u32,
         SignedT = i32,
-        NonZeroT = NonZeroU32,
+        NonZeroT = NonZero<u32>,
         BITS = 32,
         MAX = 4294967295,
         rot = 8,
@@ -1170,7 +1172,7 @@ impl u64 {
         Self = u64,
         ActualT = u64,
         SignedT = i64,
-        NonZeroT = NonZeroU64,
+        NonZeroT = NonZero<u64>,
         BITS = 64,
         MAX = 18446744073709551615,
         rot = 12,
@@ -1194,7 +1196,7 @@ impl u128 {
         Self = u128,
         ActualT = u128,
         SignedT = i128,
-        NonZeroT = NonZeroU128,
+        NonZeroT = NonZero<u128>,
         BITS = 128,
         MAX = 340282366920938463463374607431768211455,
         rot = 16,
@@ -1220,7 +1222,7 @@ impl usize {
         Self = usize,
         ActualT = u16,
         SignedT = isize,
-        NonZeroT = NonZeroUsize,
+        NonZeroT = NonZero<usize>,
         BITS = 16,
         MAX = 65535,
         rot = 4,
@@ -1245,7 +1247,7 @@ impl usize {
         Self = usize,
         ActualT = u32,
         SignedT = isize,
-        NonZeroT = NonZeroUsize,
+        NonZeroT = NonZero<usize>,
         BITS = 32,
         MAX = 4294967295,
         rot = 8,
@@ -1270,7 +1272,7 @@ impl usize {
         Self = usize,
         ActualT = u64,
         SignedT = isize,
-        NonZeroT = NonZeroUsize,
+        NonZeroT = NonZero<usize>,
         BITS = 64,
         MAX = 18446744073709551615,
         rot = 12,
