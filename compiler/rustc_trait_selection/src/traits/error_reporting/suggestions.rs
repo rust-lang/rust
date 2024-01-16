@@ -3081,6 +3081,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                         ))
                                     })
                                     .collect::<Vec<_>>();
+                                types.sort();
                                 let post = if types.len() > 9 {
                                     types.truncate(8);
                                     format!("\nand {} others", len - 8)
