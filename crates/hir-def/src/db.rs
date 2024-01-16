@@ -117,12 +117,14 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
 
     // region:data
 
+    #[salsa::transparent]
     #[salsa::invoke(StructData::struct_data_query)]
     fn struct_data(&self, id: StructId) -> Arc<StructData>;
 
     #[salsa::invoke(StructData::struct_data_with_diagnostics_query)]
     fn struct_data_with_diagnostics(&self, id: StructId) -> (Arc<StructData>, DefDiagnostics);
 
+    #[salsa::transparent]
     #[salsa::invoke(StructData::union_data_query)]
     fn union_data(&self, id: UnionId) -> Arc<StructData>;
 
@@ -132,6 +134,7 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     #[salsa::invoke(EnumData::enum_data_query)]
     fn enum_data(&self, e: EnumId) -> Arc<EnumData>;
 
+    #[salsa::transparent]
     #[salsa::invoke(EnumVariantData::enum_variant_data_query)]
     fn enum_variant_data(&self, id: EnumVariantId) -> Arc<EnumVariantData>;
 
@@ -141,12 +144,14 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
         id: EnumVariantId,
     ) -> (Arc<EnumVariantData>, DefDiagnostics);
 
+    #[salsa::transparent]
     #[salsa::invoke(ImplData::impl_data_query)]
     fn impl_data(&self, e: ImplId) -> Arc<ImplData>;
 
     #[salsa::invoke(ImplData::impl_data_with_diagnostics_query)]
     fn impl_data_with_diagnostics(&self, e: ImplId) -> (Arc<ImplData>, DefDiagnostics);
 
+    #[salsa::transparent]
     #[salsa::invoke(TraitData::trait_data_query)]
     fn trait_data(&self, e: TraitId) -> Arc<TraitData>;
 

@@ -122,7 +122,7 @@ smallvec = { version = "1.10.0", features = [
   "union",
   "const_generics",
 ] }
-smol_str = "0.2.0"
+smol_str = "0.2.1"
 text-size = "1.1.1"
 tracing = "0.1.40"
 tracing-tree = "0.3.0"

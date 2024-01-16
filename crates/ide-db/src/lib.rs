@@ -217,16 +217,11 @@ impl RootDatabase {
             hir_db::FileItemTreeQuery
             hir_db::CrateDefMapQueryQuery
             hir_db::BlockDefMapQuery
-            hir_db::StructDataQuery
             hir_db::StructDataWithDiagnosticsQuery
-            hir_db::UnionDataQuery
             hir_db::UnionDataWithDiagnosticsQuery
             hir_db::EnumDataQuery
-            hir_db::EnumDataQuery
             hir_db::EnumVariantDataWithDiagnosticsQuery
-            hir_db::ImplDataQuery
             hir_db::ImplDataWithDiagnosticsQuery
-            hir_db::TraitDataQuery
             hir_db::TraitDataWithDiagnosticsQuery
             hir_db::TraitAliasDataQuery
             hir_db::TypeAliasDataQuery
