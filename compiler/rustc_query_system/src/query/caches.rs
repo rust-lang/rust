@@ -2,8 +2,11 @@ use crate::dep_graph::DepNodeIndex;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::{self, Sharded};
-use rustc_data_structures::sync::OnceLock;
+use rustc_data_structures::sync::{Lock, OnceLock};
+use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_index::{Idx, IndexVec};
+use rustc_span::def_id::DefId;
+use rustc_span::def_id::DefIndex;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -148,6 +151,8 @@ where
 
     #[inline(always)]
     fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
+        // FIXME: lock_shard_by_hash will use high bits which are usually zero in the index() passed
+        // here. This makes sharding essentially useless, always selecting the zero'th shard.
         let lock = self.cache.lock_shard_by_hash(key.index() as u64);
         if let Some(Some(value)) = lock.get(*key) { Some(*value) } else { None }
     }
@@ -166,5 +171,77 @@ where
                 }
             }
         }
+    }
+}
+
+pub struct DefIdCacheSelector;
+
+impl<'tcx, V: 'tcx> CacheSelector<'tcx, V> for DefIdCacheSelector {
+    type Cache = DefIdCache<V>
+    where
+        V: Copy;
+}
+
+pub struct DefIdCache<V> {
+    /// Stores the local DefIds in a dense map. Local queries are much more often dense, so this is
+    /// a win over hashing query keys at marginal memory cost (~5% at most) compared to FxHashMap.
+    ///
+    /// The second element of the tuple is the set of keys actually present in the IndexVec, used
+    /// for faster iteration in `iter()`.
+    // FIXME: This may want to be sharded, like VecCache. However *how* to shard an IndexVec isn't
+    // super clear; VecCache is effectively not sharded today (see FIXME there). For now just omit
+    // that complexity here.
+    local: Lock<(IndexVec<DefIndex, Option<(V, DepNodeIndex)>>, Vec<DefIndex>)>,
+    foreign: DefaultCache<DefId, V>,
+}
+
+impl<V> Default for DefIdCache<V> {
+    fn default() -> Self {
+        DefIdCache { local: Default::default(), foreign: Default::default() }
+    }
+}
+
+impl<V> QueryCache for DefIdCache<V>
+where
+    V: Copy,
+{
+    type Key = DefId;
+    type Value = V;
+
+    #[inline(always)]
+    fn lookup(&self, key: &DefId) -> Option<(V, DepNodeIndex)> {
+        if key.krate == LOCAL_CRATE {
+            let cache = self.local.lock();
+            cache.0.get(key.index).and_then(|v| *v)
+        } else {
+            self.foreign.lookup(key)
+        }
+    }
+
+    #[inline]
+    fn complete(&self, key: DefId, value: V, index: DepNodeIndex) {
+        if key.krate == LOCAL_CRATE {
+            let mut cache = self.local.lock();
+            let (cache, present) = &mut *cache;
+            let slot = cache.ensure_contains_elem(key.index, Default::default);
+            if slot.is_none() {
+                // FIXME: Only store the present set when running in incremental mode. `iter` is not
+                // used outside of saving caches to disk and self-profile.
+                present.push(key.index);
+            }
+            *slot = Some((value, index));
+        } else {
+            self.foreign.complete(key, value, index)
+        }
+    }
+
+    fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
+        let guard = self.local.lock();
+        let (cache, present) = &*guard;
+        for &idx in present.iter() {
+            let value = cache[idx].unwrap();
+            f(&DefId { krate: LOCAL_CRATE, index: idx }, &value.0, value.1);
+        }
+        self.foreign.iter(f);
     }
 }

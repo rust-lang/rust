@@ -10,7 +10,8 @@ pub use self::job::{
 
 mod caches;
 pub use self::caches::{
-    CacheSelector, DefaultCacheSelector, QueryCache, SingleCacheSelector, VecCacheSelector,
+    CacheSelector, DefIdCacheSelector, DefaultCacheSelector, QueryCache, SingleCacheSelector,
+    VecCacheSelector,
 };
 
 mod config;
