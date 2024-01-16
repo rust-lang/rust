@@ -463,9 +463,9 @@ pub(super) fn definition(
     };
 
     let label = match (value, layout_info) {
-        (Some(value), Some(layout_info)) => format!("{label} = {value}{layout_info}"),
+        (Some(value), Some(layout_info)) => format!("{layout_info}\n{label} = {value}"),
         (Some(value), None) => format!("{label} = {value}"),
-        (None, Some(layout_info)) => format!("{label}{layout_info}"),
+        (None, Some(layout_info)) => format!("{layout_info}\n{label}"),
         (None, None) => label,
     };
 
@@ -617,8 +617,6 @@ fn render_memory_layout(
     offset: impl FnOnce(&Layout) -> Option<u64>,
     tag: impl FnOnce(&Layout) -> Option<usize>,
 ) -> Option<String> {
-    // field
-
     let config = config?;
     let layout = layout().ok()?;
 
