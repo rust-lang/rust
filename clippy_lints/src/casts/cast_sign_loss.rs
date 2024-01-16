@@ -11,8 +11,28 @@ use super::CAST_SIGN_LOSS;
 /// Includes methods that panic rather than returning a negative value.
 ///
 /// Methods that can overflow and return a negative value must not be included in this list,
-/// because checking for negative return values from those functions can be useful.
-const METHODS_RET_POSITIVE: &[&str] = &["checked_abs", "rem_euclid", "checked_rem_euclid"];
+/// because casting their return values can still result in sign loss.
+const METHODS_RET_POSITIVE: &[&str] = &[
+    "checked_abs",
+    "saturating_abs",
+    "isqrt",
+    "checked_isqrt",
+    "rem_euclid",
+    "checked_rem_euclid",
+    "wrapping_rem_euclid",
+];
+
+/// A list of methods that act like `pow()`, and can never return:
+/// - a negative value from a non-negative base
+/// - a negative value from a negative base and even exponent
+/// - a non-negative value from a negative base and odd exponent
+///
+/// Methods that can overflow and return a negative value must not be included in this list,
+/// because casting their return values can still result in sign loss.
+const METHODS_POW: &[&str] = &["pow", "saturating_pow", "checked_pow"];
+
+/// A list of methods that act like `unwrap()`, and don't change the sign of the inner value.
+const METHODS_UNWRAP: &[&str] = &["unwrap", "unwrap_unchecked", "expect", "into_ok"];
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_op: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) {
     if should_lint(cx, cast_op, cast_from, cast_to) {
