@@ -596,7 +596,7 @@ fn merge_groups_full() {
 
 #[test]
 fn merge_groups_long_full() {
-    check_crate("std::foo::bar::Baz", r"use std::foo::bar::Qux;", r"use std::foo::bar::{Qux, Baz};")
+    check_crate("std::foo::bar::Baz", r"use std::foo::bar::Qux;", r"use std::foo::bar::{Baz, Qux};")
 }
 
 #[test]
@@ -604,7 +604,7 @@ fn merge_groups_long_last() {
     check_module(
         "std::foo::bar::Baz",
         r"use std::foo::bar::Qux;",
-        r"use std::foo::bar::{Qux, Baz};",
+        r"use std::foo::bar::{Baz, Qux};",
     )
 }
 
@@ -613,7 +613,7 @@ fn merge_groups_long_full_list() {
     check_crate(
         "std::foo::bar::Baz",
         r"use std::foo::bar::{Qux, Quux};",
-        r"use std::foo::bar::{Qux, Quux, Baz};",
+        r"use std::foo::bar::{Baz, Quux, Qux};",
     )
 }
 
@@ -622,7 +622,7 @@ fn merge_groups_long_last_list() {
     check_module(
         "std::foo::bar::Baz",
         r"use std::foo::bar::{Qux, Quux};",
-        r"use std::foo::bar::{Qux, Quux, Baz};",
+        r"use std::foo::bar::{Baz, Quux, Qux};",
     )
 }
 
@@ -631,7 +631,7 @@ fn merge_groups_long_full_nested() {
     check_crate(
         "std::foo::bar::Baz",
         r"use std::foo::bar::{Qux, quux::{Fez, Fizz}};",
-        r"use std::foo::bar::{Qux, quux::{Fez, Fizz}, Baz};",
+        r"use std::foo::bar::{quux::{Fez, Fizz}, Baz, Qux};",
     )
 }
 
@@ -650,7 +650,7 @@ fn merge_groups_full_nested_deep() {
     check_crate(
         "std::foo::bar::quux::Baz",
         r"use std::foo::bar::{Qux, quux::{Fez, Fizz}};",
-        r"use std::foo::bar::{Qux, quux::{Fez, Fizz, Baz}};",
+        r"use std::foo::bar::{Qux, quux::{Baz, Fez, Fizz}};",
     )
 }
 
@@ -659,7 +659,7 @@ fn merge_groups_full_nested_long() {
     check_crate(
         "std::foo::bar::Baz",
         r"use std::{foo::bar::Qux};",
-        r"use std::{foo::bar::{Qux, Baz}};",
+        r"use std::{foo::bar::{Baz, Qux}};",
     );
 }
 
@@ -668,7 +668,7 @@ fn merge_groups_last_nested_long() {
     check_crate(
         "std::foo::bar::Baz",
         r"use std::{foo::bar::Qux};",
-        r"use std::{foo::bar::{Qux, Baz}};",
+        r"use std::{foo::bar::{Baz, Qux}};",
     );
 }
 
@@ -733,7 +733,7 @@ fn merge_mod_into_glob() {
     check_with_config(
         "token::TokenKind",
         r"use token::TokenKind::*;",
-        r"use token::TokenKind::{*, self};",
+        r"use token::TokenKind::{self, *};",
         &InsertUseConfig {
             granularity: ImportGranularity::Crate,
             enforce_granularity: true,
@@ -742,7 +742,6 @@ fn merge_mod_into_glob() {
             skip_glob_imports: false,
         },
     )
-    // FIXME: have it emit `use token::TokenKind::{self, *}`?
 }
 
 #[test]
@@ -750,7 +749,7 @@ fn merge_self_glob() {
     check_with_config(
         "self",
         r"use self::*;",
-        r"use self::{*, self};",
+        r"use self::{self, *};",
         &InsertUseConfig {
             granularity: ImportGranularity::Crate,
             enforce_granularity: true,
@@ -759,7 +758,6 @@ fn merge_self_glob() {
             skip_glob_imports: false,
         },
     )
-    // FIXME: have it emit `use {self, *}`?
 }
 
 #[test]
@@ -769,7 +767,7 @@ fn merge_glob() {
         r"
 use syntax::{SyntaxKind::*};",
         r"
-use syntax::{SyntaxKind::{*, self}};",
+use syntax::{SyntaxKind::{self, *}};",
     )
 }
 
@@ -778,7 +776,7 @@ fn merge_glob_nested() {
     check_crate(
         "foo::bar::quux::Fez",
         r"use foo::bar::{Baz, quux::*};",
-        r"use foo::bar::{Baz, quux::{*, Fez}};",
+        r"use foo::bar::{Baz, quux::{Fez, *}};",
     )
 }
 
@@ -787,7 +785,7 @@ fn merge_nested_considers_first_segments() {
     check_crate(
         "hir_ty::display::write_bounds_like_dyn_trait",
         r"use hir_ty::{autoderef, display::{HirDisplayError, HirFormatter}, method_resolution};",
-        r"use hir_ty::{autoderef, display::{HirDisplayError, HirFormatter, write_bounds_like_dyn_trait}, method_resolution};",
+        r"use hir_ty::{autoderef, display::{write_bounds_like_dyn_trait, HirDisplayError, HirFormatter}, method_resolution};",
     );
 }
 

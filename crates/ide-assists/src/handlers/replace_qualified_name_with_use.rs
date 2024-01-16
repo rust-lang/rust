@@ -313,7 +313,7 @@ fn main() {
     ",
             r"
 mod std { pub mod fmt { pub trait Display {} } }
-use std::fmt::{Display, self};
+use std::fmt::{self, Display};
 
 fn main() {
     fmt;

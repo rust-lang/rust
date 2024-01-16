@@ -16,7 +16,7 @@ use syntax::{
 
 use crate::{
     imports::merge_imports::{
-        common_prefix, eq_attrs, eq_visibility, try_merge_imports, use_tree_path_cmp, MergeBehavior,
+        common_prefix, eq_attrs, eq_visibility, try_merge_imports, use_tree_cmp, MergeBehavior,
     },
     RootDatabase,
 };
@@ -357,6 +357,8 @@ fn insert_use_(
     use_item: ast::Use,
 ) {
     let scope_syntax = scope.as_syntax_node();
+    let insert_use_tree =
+        use_item.use_tree().expect("`use_item` should have a use tree for `insert_path`");
     let group = ImportGroup::new(insert_path);
     let path_node_iter = scope_syntax
         .children()
@@ -364,8 +366,7 @@ fn insert_use_(
         .flat_map(|(use_, node)| {
             let tree = use_.use_tree()?;
             let path = tree.path()?;
-            let has_tl = tree.use_tree_list().is_some();
-            Some((path, has_tl, node))
+            Some((path, tree, node))
         });
 
     if group_imports {
@@ -381,9 +382,7 @@ fn insert_use_(
         // find the element that would come directly after our new import
         let post_insert: Option<(_, _, SyntaxNode)> = group_iter
             .inspect(|(.., node)| last = Some(node.clone()))
-            .find(|&(ref path, has_tl, _)| {
-                use_tree_path_cmp(insert_path, false, path, has_tl) != Ordering::Greater
-            });
+            .find(|(_, use_tree, _)| use_tree_cmp(&insert_use_tree, use_tree) != Ordering::Greater);
 
         if let Some((.., node)) = post_insert {
             cov_mark::hit!(insert_group);

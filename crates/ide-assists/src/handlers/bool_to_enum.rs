@@ -986,7 +986,7 @@ fn foo() {
 }
 
 //- /main.rs
-use foo::{Foo, Bool};
+use foo::{Bool, Foo};
 
 mod foo;
 
@@ -1662,7 +1662,7 @@ impl Foo {
 }
 
 //- /foo.rs
-use crate::{Foo, Bool};
+use crate::{Bool, Foo};
 
 fn foo() -> bool {
     Foo::BOOL == Bool::True
