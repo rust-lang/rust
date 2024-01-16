@@ -580,7 +580,7 @@ pub trait LintContext {
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     #[rustc_lint_diagnostics]
-    fn struct_span_lint<S: Into<MultiSpan>>(
+    fn span_lint<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
         span: S,
