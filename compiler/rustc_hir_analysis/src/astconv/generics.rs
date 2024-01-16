@@ -656,7 +656,7 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
         } else {
             let mut multispan = MultiSpan::from_span(span);
             multispan.push_span_label(span_late, note);
-            tcx.struct_span_lint_hir(
+            tcx.node_span_lint(
                 LATE_BOUND_LIFETIME_ARGUMENTS,
                 args.args[0].hir_id(),
                 multispan,

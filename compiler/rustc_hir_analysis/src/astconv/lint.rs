@@ -238,7 +238,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 diag.stash(self_ty.span, StashKey::TraitMissingMethod);
             } else {
                 let msg = "trait objects without an explicit `dyn` are deprecated";
-                tcx.struct_span_lint_hir(
+                tcx.node_span_lint(
                     BARE_TRAIT_OBJECTS,
                     self_ty.hir_id,
                     self_ty.span,

@@ -2075,7 +2075,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub fn struct_span_lint_hir(
+    pub fn node_span_lint(
         self,
         lint: &'static Lint,
         hir_id: HirId,

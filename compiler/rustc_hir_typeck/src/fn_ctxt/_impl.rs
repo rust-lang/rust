@@ -62,7 +62,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
 
                 let msg = format!("unreachable {kind}");
-                self.tcx().struct_span_lint_hir(
+                self.tcx().node_span_lint(
                     lint::builtin::UNREACHABLE_CODE,
                     id,
                     span,

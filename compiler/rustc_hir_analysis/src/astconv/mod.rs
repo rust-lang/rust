@@ -1394,7 +1394,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let ty = self.projected_ty_from_poly_trait_ref(span, assoc_ty_did, assoc_segment, bound);
 
         if let Some(variant_def_id) = variant_resolution {
-            tcx.struct_span_lint_hir(
+            tcx.node_span_lint(
                 AMBIGUOUS_ASSOCIATED_ITEMS,
                 hir_ref_id,
                 span,

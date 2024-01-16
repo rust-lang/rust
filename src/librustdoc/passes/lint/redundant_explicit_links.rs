@@ -176,7 +176,7 @@ fn check_inline_or_reference_unknown_redundancy(
             &item.attrs.doc_strings,
         )?;
 
-        cx.tcx.struct_span_lint_hir(crate::lint::REDUNDANT_EXPLICIT_LINKS, hir_id, explicit_span, "redundant explicit link target", |lint| {
+        cx.tcx.node_span_lint(crate::lint::REDUNDANT_EXPLICIT_LINKS, hir_id, explicit_span, "redundant explicit link target", |lint| {
             lint.span_label(explicit_span, "explicit target is redundant")
                 .span_label(display_span, "because label contains path that resolves to same destination")
                 .note("when a link's destination is not specified,\nthe label is used to resolve intra-doc links")
@@ -226,7 +226,7 @@ fn check_reference_redundancy(
             &item.attrs.doc_strings,
         )?;
 
-        cx.tcx.struct_span_lint_hir(crate::lint::REDUNDANT_EXPLICIT_LINKS, hir_id, explicit_span, "redundant explicit link target", |lint| {
+        cx.tcx.node_span_lint(crate::lint::REDUNDANT_EXPLICIT_LINKS, hir_id, explicit_span, "redundant explicit link target", |lint| {
             lint.span_label(explicit_span, "explicit target is redundant")
                 .span_label(display_span, "because label contains path that resolves to same destination")
                 .span_note(def_span, "referenced explicit link target defined here")

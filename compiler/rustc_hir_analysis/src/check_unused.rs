@@ -40,7 +40,7 @@ fn check_unused_traits(tcx: TyCtxt<'_>, (): ()) {
         } else {
             "unused import".to_owned()
         };
-        tcx.struct_span_lint_hir(
+        tcx.node_span_lint(
             lint::builtin::UNUSED_IMPORTS,
             item.hir_id(),
             path.span,

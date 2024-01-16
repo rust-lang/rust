@@ -563,7 +563,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         if codegen_fn_attrs.inline == InlineAttr::Always {
             if let (Some(no_sanitize_span), Some(inline_span)) = (no_sanitize_span, inline_span) {
                 let hir_id = tcx.local_def_id_to_hir_id(did);
-                tcx.struct_span_lint_hir(
+                tcx.node_span_lint(
                     lint::builtin::INLINE_NO_SANITIZE,
                     hir_id,
                     no_sanitize_span,

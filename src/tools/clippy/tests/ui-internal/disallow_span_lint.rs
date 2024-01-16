@@ -21,7 +21,7 @@ pub fn b(
     span: impl Into<MultiSpan>,
     msg: impl Into<DiagnosticMessage>,
 ) {
-    tcx.struct_span_lint_hir(lint, hir_id, span, msg, |_| {});
+    tcx.node_span_lint(lint, hir_id, span, msg, |_| {});
 }
 
 fn main() {}
