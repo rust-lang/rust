@@ -35,33 +35,33 @@ fn main() {
 }
 
 fn test_continue(args: Vec<String>) {
-    let result = run!(args, ControlFlow::Continue::<(), bool>(true));
+    let result = run!(args, || ControlFlow::Continue::<(), bool>(true));
     assert_eq!(result, Ok(true));
 }
 
 fn test_break(args: Vec<String>) {
-    let result = run!(args, ControlFlow::Break::<bool, i32>(false));
+    let result = run!(args, || ControlFlow::Break::<bool, i32>(false));
     assert_eq!(result, Err(stable_mir::CompilerError::Interrupted(false)));
 }
 
 #[allow(unreachable_code)]
 fn test_skipped(mut args: Vec<String>) {
     args.push("--version".to_string());
-    let result = run!(args, unreachable!() as ControlFlow<()>);
+    let result = run!(args, || unreachable!() as ControlFlow<()>);
     assert_eq!(result, Err(stable_mir::CompilerError::Skipped));
 }
 
 #[allow(unreachable_code)]
 fn test_failed(mut args: Vec<String>) {
     args.push("--cfg=broken".to_string());
-    let result = run!(args, unreachable!() as ControlFlow<()>);
+    let result = run!(args, || unreachable!() as ControlFlow<()>);
     assert_eq!(result, Err(stable_mir::CompilerError::CompilationFailed));
 }
 
 /// Test that we are able to pass a closure and set the return according to the captured value.
 fn test_captured(args: Vec<String>) {
     let captured = "10".to_string();
-    let result = run!(args, ControlFlow::Continue::<(), usize>(captured.len()));
+    let result = run!(args, || ControlFlow::Continue::<(), usize>(captured.len()));
     assert_eq!(result, Ok(captured.len()));
 }
 
