@@ -1,6 +1,6 @@
 use super::TRANSMUTE_INT_TO_CHAR;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::sugg;
+use clippy_utils::{std_or_core, sugg};
 use rustc_ast as ast;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
@@ -25,6 +25,7 @@ pub(super) fn check<'tcx>(
                 e.span,
                 &format!("transmute from a `{from_ty}` to a `char`"),
                 |diag| {
+                    let Some(top_crate) = std_or_core(cx) else { return };
                     let arg = sugg::Sugg::hir(cx, arg, "..");
                     let arg = if let ty::Int(_) = from_ty.kind() {
                         arg.as_ty(ast::UintTy::U32.name_str())
@@ -34,7 +35,7 @@ pub(super) fn check<'tcx>(
                     diag.span_suggestion(
                         e.span,
                         "consider using",
-                        format!("std::char::from_u32({arg}).unwrap()"),
+                        format!("{top_crate}::char::from_u32({arg}).unwrap()"),
                         Applicability::Unspecified,
                     );
                 },

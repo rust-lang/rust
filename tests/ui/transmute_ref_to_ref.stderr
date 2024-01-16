@@ -19,8 +19,8 @@ LL |         let b: &[u8] = unsafe { std::mem::transmute(a) };
 error: transmute from a reference to a reference
   --> $DIR/transmute_ref_to_ref.rs:15:42
    |
-LL |         let alt_slice: &[u32] = unsafe { core::mem::transmute(bytes) };
-   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(bytes as *const [u8] as *const [u32])`
+LL |         let alt_slice: &[u32] = unsafe { std::mem::transmute(bytes) };
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `&*(bytes as *const [u8] as *const [u32])`
 
 error: aborting due to 3 previous errors
 
