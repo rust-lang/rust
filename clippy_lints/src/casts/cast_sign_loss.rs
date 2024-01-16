@@ -102,24 +102,20 @@ fn expr_sign(cx: &LateContext<'_>, expr: &Expr<'_>, ty: Ty<'_>) -> Sign {
     if let Some(val) = get_const_int_eval(cx, expr, ty) {
         return if val >= 0 { Sign::ZeroOrPositive } else { Sign::Negative };
     }
+
     // Calling on methods that always return non-negative values.
     if let ExprKind::MethodCall(path, caller, args, ..) = expr.kind {
         let mut method_name = path.ident.name.as_str();
 
-        if method_name == "unwrap"
-            && let Some(arglist) = method_chain_args(expr, &["unwrap"])
-            && let ExprKind::MethodCall(inner_path, ..) = &arglist[0].0.kind
-        {
-            method_name = inner_path.ident.name.as_str();
-        }
-        if method_name == "expect"
-            && let Some(arglist) = method_chain_args(expr, &["expect"])
+        // Peel unwrap(), expect(), etc.
+        while let Some(&found_name) = METHODS_UNWRAP.iter().find(|&name| &method_name == name)
+            && let Some(arglist) = method_chain_args(expr, &[found_name])
             && let ExprKind::MethodCall(inner_path, ..) = &arglist[0].0.kind
         {
             method_name = inner_path.ident.name.as_str();
         }
 
-        if method_name == "pow"
+        if METHODS_POW.iter().any(|&name| method_name == name)
             && let [arg] = args
         {
             return pow_call_result_sign(cx, caller, arg);
