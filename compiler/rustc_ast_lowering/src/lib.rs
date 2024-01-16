@@ -662,9 +662,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let (opt_hash_including_bodies, attrs_hash) = if self.tcx.needs_crate_hash() {
             self.tcx.with_stable_hashing_context(|mut hcx| {
                 let mut stable_hasher = StableHasher::new();
-                hcx.with_hir_bodies(node.def_id(), &bodies, |hcx| {
-                    node.hash_stable(hcx, &mut stable_hasher)
-                });
+                node.hash_stable(&mut hcx, &mut stable_hasher);
+                // Bodies are stored out of line, so we need to pull them explicitly in the hash.
+                bodies.hash_stable(&mut hcx, &mut stable_hasher);
                 let h1 = stable_hasher.finish();
 
                 let mut stable_hasher = StableHasher::new();

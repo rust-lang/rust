@@ -12,7 +12,6 @@ use rustc_span::def_id::DefPathHash;
 pub trait HashStableContext:
     rustc_ast::HashStableContext + rustc_target::HashStableContext
 {
-    fn hash_body_id(&mut self, _: BodyId, hasher: &mut StableHasher);
 }
 
 impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for HirId {
@@ -77,12 +76,6 @@ impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for ForeignItemId
     #[inline]
     fn to_stable_hash_key(&self, hcx: &HirCtx) -> DefPathHash {
         self.owner_id.def_id.to_stable_hash_key(hcx)
-    }
-}
-
-impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for BodyId {
-    fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        hcx.hash_body_id(*self, hasher)
     }
 }
 
