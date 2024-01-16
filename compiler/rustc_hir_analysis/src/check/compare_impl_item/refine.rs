@@ -283,7 +283,7 @@ fn report_mismatched_rpitit_signature<'tcx>(
         });
 
     let span = unmatched_bound.unwrap_or(span);
-    tcx.emit_spanned_lint(
+    tcx.emit_node_span_lint(
         REFINING_IMPL_TRAIT,
         tcx.local_def_id_to_hir_id(impl_m_def_id.expect_local()),
         span,

@@ -158,7 +158,7 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
             // is not exhaustive enough.
             //
             // NB: The partner lint for structs lives in `compiler/rustc_hir_analysis/src/check/pat.rs`.
-            rcx.tcx.emit_spanned_lint(
+            rcx.tcx.emit_node_span_lint(
                 NON_EXHAUSTIVE_OMITTED_PATTERNS,
                 rcx.match_lint_level,
                 rcx.scrut_span,

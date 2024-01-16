@@ -587,7 +587,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         };
         let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
         let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
-        fcx.tcx.emit_spanned_lint(
+        fcx.tcx.emit_node_span_lint(
             lint,
             self.expr.hir_id,
             self.span,
@@ -900,7 +900,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
             let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
 
-            fcx.tcx.emit_spanned_lint(
+            fcx.tcx.emit_node_span_lint(
                 lint::builtin::CENUM_IMPL_DROP_CAST,
                 self.expr.hir_id,
                 self.span,
@@ -934,7 +934,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         };
 
         let lint = errors::LossyProvenancePtr2Int { expr_ty, cast_ty, sugg };
-        fcx.tcx.emit_spanned_lint(
+        fcx.tcx.emit_node_span_lint(
             lint::builtin::LOSSY_PROVENANCE_CASTS,
             self.expr.hir_id,
             self.span,
@@ -950,7 +950,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
         let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
         let lint = errors::LossyProvenanceInt2Ptr { expr_ty, cast_ty, sugg };
-        fcx.tcx.emit_spanned_lint(
+        fcx.tcx.emit_node_span_lint(
             lint::builtin::FUZZY_PROVENANCE_CASTS,
             self.expr.hir_id,
             self.span,
