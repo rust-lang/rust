@@ -85,4 +85,6 @@ if isWindows; then
     which gcc
     echo WHICH clang:
     which clang
+    echo "#### LS OF /mingw$bits/bin/: ####"
+    ls /mingw$bits/bin/
 fi

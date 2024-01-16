@@ -53,12 +53,6 @@ if isWindows; then
     echo "#### LS OF C DRIVE: ####"
     ls /c/
 
-    echo "#### LS OF /c/msys64/: ####"
-    ls /c/msys64/
-
-    echo "#### LS OF /c/mingw64/bin/: ####"
-    ls /c/mingw64/bin/
-
     # Delete these pre-installed tools because we are using the MSYS2 setup action versions
     # instead, so we can't accidentally use them.
     # Delete Windows-Git
