@@ -700,7 +700,7 @@ impl LintContext for EarlyContext<'_> {
         msg: impl Into<DiagnosticMessage>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
-        self.builder.struct_lint(lint, span.map(|s| s.into()), msg, decorate)
+        self.builder.opt_span_lint(lint, span.map(|s| s.into()), msg, decorate)
     }
 
     fn get_lint_level(&self, lint: &'static Lint) -> Level {
