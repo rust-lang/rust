@@ -262,9 +262,7 @@ impl<'a> SymbolCollector<'a> {
             DefWithBodyId::FunctionId(id) => Some(self.db.function_data(id).name.to_smol_str()),
             DefWithBodyId::StaticId(id) => Some(self.db.static_data(id).name.to_smol_str()),
             DefWithBodyId::ConstId(id) => Some(self.db.const_data(id).name.as_ref()?.to_smol_str()),
-            DefWithBodyId::VariantId(id) => {
-                Some(self.db.enum_data(id.parent).variants[id.local_id].name.to_smol_str())
-            }
+            DefWithBodyId::VariantId(id) => Some(self.db.enum_variant_data(id).name.to_smol_str()),
             DefWithBodyId::InTypeConstId(_) => Some("in type const".into()),
         }
     }

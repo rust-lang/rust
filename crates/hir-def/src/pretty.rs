@@ -39,11 +39,9 @@ pub(crate) fn print_path(db: &dyn DefDatabase, path: &Path, buf: &mut dyn Write)
             LangItemTarget::Trait(it) => {
                 write!(buf, "{}", db.trait_data(it).name.display(db.upcast()))?
             }
-            LangItemTarget::EnumVariant(it) => write!(
-                buf,
-                "{}",
-                db.enum_data(it.parent).variants[it.local_id].name.display(db.upcast())
-            )?,
+            LangItemTarget::EnumVariant(it) => {
+                write!(buf, "{}", db.enum_variant_data(it).name.display(db.upcast()))?
+            }
         }
 
         if let Some(s) = s {

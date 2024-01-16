@@ -6,8 +6,8 @@
 pub use hir_def::db::{
     AttrsQuery, BlockDefMapQuery, BlockItemTreeQueryQuery, BodyQuery, BodyWithSourceMapQuery,
     ConstDataQuery, ConstVisibilityQuery, CrateDefMapQueryQuery, CrateLangItemsQuery,
-    CrateSupportsNoStdQuery, DefDatabase, DefDatabaseStorage, EnumDataQuery,
-    EnumDataWithDiagnosticsQuery, ExprScopesQuery, ExternCrateDeclDataQuery,
+    CrateSupportsNoStdQuery, DefDatabase, DefDatabaseStorage, EnumDataQuery, EnumVariantDataQuery,
+    EnumVariantDataWithDiagnosticsQuery, ExprScopesQuery, ExternCrateDeclDataQuery,
     FieldVisibilitiesQuery, FieldsAttrsQuery, FieldsAttrsSourceMapQuery, FileItemTreeQuery,
     FunctionDataQuery, FunctionVisibilityQuery, GenericParamsQuery, ImplDataQuery,
     ImplDataWithDiagnosticsQuery, ImportMapQuery, InternAnonymousConstQuery, InternBlockQuery,
@@ -19,7 +19,7 @@ pub use hir_def::db::{
     MacroRulesDataQuery, ProcMacroDataQuery, StaticDataQuery, StructDataQuery,
     StructDataWithDiagnosticsQuery, TraitAliasDataQuery, TraitDataQuery,
     TraitDataWithDiagnosticsQuery, TypeAliasDataQuery, UnionDataQuery,
-    UnionDataWithDiagnosticsQuery, VariantsAttrsQuery, VariantsAttrsSourceMapQuery,
+    UnionDataWithDiagnosticsQuery,
 };
 pub use hir_expand::db::{
     AstIdMapQuery, DeclMacroExpanderQuery, ExpandDatabase, ExpandDatabaseStorage,

@@ -440,6 +440,12 @@ impl ast::Struct {
     }
 }
 
+impl ast::Union {
+    pub fn kind(&self) -> StructKind {
+        StructKind::from_node(self)
+    }
+}
+
 impl ast::RecordExprField {
     pub fn for_field_name(field_name: &ast::NameRef) -> Option<ast::RecordExprField> {
         let candidate = Self::for_name_ref(field_name)?;

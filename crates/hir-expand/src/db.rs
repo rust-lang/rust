@@ -218,6 +218,9 @@ pub fn real_span_map(db: &dyn ExpandDatabase, file_id: FileId) -> Arc<RealSpanMa
     let mut pairs = vec![(syntax::TextSize::new(0), span::ROOT_ERASED_FILE_AST_ID)];
     let ast_id_map = db.ast_id_map(file_id.into());
     let tree = db.parse(file_id).tree();
+    // FIXME: Descend into modules and other item containing items that are not annotated with attributes
+    // and allocate pairs for those as well. This gives us finer grained span anchors resulting in
+    // better incrementality
     pairs.extend(
         tree.items()
             .map(|item| (item.syntax().text_range().start(), ast_id_map.ast_id(&item).erase())),

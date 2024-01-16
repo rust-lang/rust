@@ -4,7 +4,7 @@ use chalk_ir::cast::Cast;
 use hir_def::{
     path::{Path, PathSegment},
     resolver::{ResolveValueResult, TypeNs, ValueNs},
-    AdtId, AssocItemId, EnumVariantId, GenericDefId, ItemContainerId, Lookup,
+    AdtId, AssocItemId, GenericDefId, ItemContainerId, Lookup,
 };
 use hir_expand::name::Name;
 use stdx::never;
@@ -395,8 +395,7 @@ impl InferenceContext<'_> {
             _ => return None,
         };
         let enum_data = self.db.enum_data(enum_id);
-        let local_id = enum_data.variant(name)?;
-        let variant = EnumVariantId { parent: enum_id, local_id };
+        let variant = enum_data.variant(name)?;
         self.write_variant_resolution(id, variant.into());
         Some((ValueNs::EnumVariantId(variant), subst.clone()))
     }

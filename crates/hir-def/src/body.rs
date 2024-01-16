@@ -26,7 +26,7 @@ use crate::{
     },
     nameres::DefMap,
     path::{ModPath, Path},
-    src::{HasChildSource, HasSource},
+    src::HasSource,
     BlockId, DefWithBodyId, HasModule, Lookup,
 };
 
@@ -160,8 +160,9 @@ impl Body {
                     src.map(|it| it.body())
                 }
                 DefWithBodyId::VariantId(v) => {
-                    let src = v.parent.child_source(db);
-                    src.map(|it| it[v.local_id].expr())
+                    let s = v.lookup(db);
+                    let src = s.source(db);
+                    src.map(|it| it.expr())
                 }
                 DefWithBodyId::InTypeConstId(c) => c.lookup(db).id.map(|_| c.source(db).expr()),
             }

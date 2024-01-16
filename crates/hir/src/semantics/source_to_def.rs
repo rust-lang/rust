@@ -201,7 +201,7 @@ impl SourceToDefCtx<'_, '_> {
         &mut self,
         src: InFile<ast::Variant>,
     ) -> Option<EnumVariantId> {
-        self.to_def(src, keys::VARIANT)
+        self.to_def(src, keys::ENUM_VARIANT)
     }
     pub(super) fn extern_crate_to_def(
         &mut self,

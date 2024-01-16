@@ -594,7 +594,7 @@ impl SplitWildcard {
                 let mut ctors: SmallVec<[_; 1]> = enum_data
                     .variants
                     .iter()
-                    .map(|(local_id, _)| EnumVariantId { parent: *enum_id, local_id })
+                    .map(|&(variant, _)| variant)
                     .filter(|&variant| {
                         // If `exhaustive_patterns` is enabled, we exclude variants known to be
                         // uninhabited.

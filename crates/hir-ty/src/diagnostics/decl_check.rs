@@ -582,11 +582,11 @@ impl<'a> DeclValidator<'a> {
         // Check the field names.
         let enum_fields_replacements = data
             .variants
-            .values()
-            .filter_map(|variant| {
+            .iter()
+            .filter_map(|(_, name)| {
                 Some(Replacement {
-                    current_name: variant.name.clone(),
-                    suggested_text: to_camel_case(&variant.name.to_smol_str())?,
+                    current_name: name.clone(),
+                    suggested_text: to_camel_case(&name.to_smol_str())?,
                     expected_case: CaseType::UpperCamelCase,
                 })
             })

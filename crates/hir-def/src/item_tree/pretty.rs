@@ -318,7 +318,7 @@ impl Printer<'_> {
                 self.print_generic_params(generic_params);
                 self.print_where_clause_and_opening_brace(generic_params);
                 self.indented(|this| {
-                    for variant in variants.clone() {
+                    for variant in FileItemTreeId::range_iter(variants.clone()) {
                         let Variant { name, fields, ast_id: _ } = &this.tree[variant];
                         this.print_attrs_of(variant, "\n");
                         w!(this, "{}", name.display(self.db.upcast()));

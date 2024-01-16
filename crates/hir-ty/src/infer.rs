@@ -40,8 +40,8 @@ use hir_def::{
     path::{ModPath, Path},
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
     type_ref::TypeRef,
-    AdtId, AssocItemId, DefWithBodyId, EnumVariantId, FieldId, FunctionId, ItemContainerId, Lookup,
-    TraitId, TupleFieldId, TupleId, TypeAliasId, VariantId,
+    AdtId, AssocItemId, DefWithBodyId, FieldId, FunctionId, ItemContainerId, Lookup, TraitId,
+    TupleFieldId, TupleId, TypeAliasId, VariantId,
 };
 use hir_expand::name::{name, Name};
 use indexmap::IndexSet;
@@ -87,28 +87,30 @@ pub(crate) fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Arc<Infer
         DefWithBodyId::ConstId(c) => ctx.collect_const(&db.const_data(c)),
         DefWithBodyId::StaticId(s) => ctx.collect_static(&db.static_data(s)),
         DefWithBodyId::VariantId(v) => {
-            ctx.return_ty = TyBuilder::builtin(match db.enum_data(v.parent).variant_body_type() {
-                hir_def::layout::IntegerType::Pointer(signed) => match signed {
-                    true => BuiltinType::Int(BuiltinInt::Isize),
-                    false => BuiltinType::Uint(BuiltinUint::Usize),
+            ctx.return_ty = TyBuilder::builtin(
+                match db.enum_data(v.lookup(db.upcast()).parent.into()).variant_body_type() {
+                    hir_def::layout::IntegerType::Pointer(signed) => match signed {
+                        true => BuiltinType::Int(BuiltinInt::Isize),
+                        false => BuiltinType::Uint(BuiltinUint::Usize),
+                    },
+                    hir_def::layout::IntegerType::Fixed(size, signed) => match signed {
+                        true => BuiltinType::Int(match size {
+                            Integer::I8 => BuiltinInt::I8,
+                            Integer::I16 => BuiltinInt::I16,
+                            Integer::I32 => BuiltinInt::I32,
+                            Integer::I64 => BuiltinInt::I64,
+                            Integer::I128 => BuiltinInt::I128,
+                        }),
+                        false => BuiltinType::Uint(match size {
+                            Integer::I8 => BuiltinUint::U8,
+                            Integer::I16 => BuiltinUint::U16,
+                            Integer::I32 => BuiltinUint::U32,
+                            Integer::I64 => BuiltinUint::U64,
+                            Integer::I128 => BuiltinUint::U128,
+                        }),
+                    },
                 },
-                hir_def::layout::IntegerType::Fixed(size, signed) => match signed {
-                    true => BuiltinType::Int(match size {
-                        Integer::I8 => BuiltinInt::I8,
-                        Integer::I16 => BuiltinInt::I16,
-                        Integer::I32 => BuiltinInt::I32,
-                        Integer::I64 => BuiltinInt::I64,
-                        Integer::I128 => BuiltinInt::I128,
-                    }),
-                    false => BuiltinType::Uint(match size {
-                        Integer::I8 => BuiltinUint::U8,
-                        Integer::I16 => BuiltinUint::U16,
-                        Integer::I32 => BuiltinUint::U32,
-                        Integer::I64 => BuiltinUint::U64,
-                        Integer::I128 => BuiltinUint::U128,
-                    }),
-                },
-            });
+            );
         }
         DefWithBodyId::InTypeConstId(c) => {
             // FIXME(const-generic-body): We should not get the return type in this way.
@@ -1062,7 +1064,7 @@ impl<'a> InferenceContext<'a> {
                 Some(ResolveValueResult::ValueNs(value, _)) => match value {
                     ValueNs::EnumVariantId(var) => {
                         let substs = ctx.substs_from_path(path, var.into(), true);
-                        let ty = self.db.ty(var.parent.into());
+                        let ty = self.db.ty(var.lookup(self.db.upcast()).parent.into());
                         let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
                         return (ty, Some(var.into()));
                     }
@@ -1105,7 +1107,7 @@ impl<'a> InferenceContext<'a> {
             }
             TypeNs::EnumVariantId(var) => {
                 let substs = ctx.substs_from_path(path, var.into(), true);
-                let ty = self.db.ty(var.parent.into());
+                let ty = self.db.ty(var.lookup(self.db.upcast()).parent.into());
                 let ty = self.insert_type_vars(ty.substitute(Interner, &substs));
                 forbid_unresolved_segments((ty, Some(var.into())), unresolved)
             }
@@ -1131,8 +1133,7 @@ impl<'a> InferenceContext<'a> {
                     if let Some((AdtId::EnumId(id), _)) = ty.as_adt() {
                         let enum_data = self.db.enum_data(id);
                         let name = current_segment.first().unwrap().name;
-                        if let Some(local_id) = enum_data.variant(name) {
-                            let variant = EnumVariantId { parent: id, local_id };
+                        if let Some(variant) = enum_data.variant(name) {
                             return if remaining_segments.len() == 1 {
                                 (ty, Some(variant.into()))
                             } else {
@@ -1247,8 +1248,7 @@ impl<'a> InferenceContext<'a> {
                 // this could be an enum variant or associated type
                 if let Some((AdtId::EnumId(enum_id), _)) = ty.as_adt() {
                     let enum_data = self.db.enum_data(enum_id);
-                    if let Some(local_id) = enum_data.variant(segment) {
-                        let variant = EnumVariantId { parent: enum_id, local_id };
+                    if let Some(variant) = enum_data.variant(segment) {
                         return (ty, Some(variant.into()));
                     }
                 }

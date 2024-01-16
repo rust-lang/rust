@@ -9,7 +9,7 @@ use hir_def::{
         Abi, FieldsShape, Integer, LayoutCalculator, LayoutS, Primitive, ReprOptions, Scalar, Size,
         StructKind, TargetDataLayout, WrappingRange,
     },
-    LocalEnumVariantId, LocalFieldId, StructId,
+    LocalFieldId, StructId,
 };
 use la_arena::{Idx, RawIdx};
 use rustc_abi::AddressSpace;
@@ -32,15 +32,15 @@ mod adt;
 mod target;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct RustcEnumVariantIdx(pub LocalEnumVariantId);
+pub struct RustcEnumVariantIdx(pub usize);
 
 impl rustc_index::Idx for RustcEnumVariantIdx {
     fn new(idx: usize) -> Self {
-        RustcEnumVariantIdx(Idx::from_raw(RawIdx::from(idx as u32)))
+        RustcEnumVariantIdx(idx)
     }
 
     fn index(self) -> usize {
-        u32::from(self.0.into_raw()) as usize
+        self.0
     }
 }
 

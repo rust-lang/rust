@@ -222,7 +222,8 @@ impl RootDatabase {
             hir_db::UnionDataQuery
             hir_db::UnionDataWithDiagnosticsQuery
             hir_db::EnumDataQuery
-            hir_db::EnumDataWithDiagnosticsQuery
+            hir_db::EnumDataQuery
+            hir_db::EnumVariantDataWithDiagnosticsQuery
             hir_db::ImplDataQuery
             hir_db::ImplDataWithDiagnosticsQuery
             hir_db::TraitDataQuery
@@ -239,9 +240,7 @@ impl RootDatabase {
             hir_db::BodyQuery
             hir_db::ExprScopesQuery
             hir_db::GenericParamsQuery
-            hir_db::VariantsAttrsQuery
             hir_db::FieldsAttrsQuery
-            hir_db::VariantsAttrsSourceMapQuery
             hir_db::FieldsAttrsSourceMapQuery
             hir_db::AttrsQuery
             hir_db::CrateLangItemsQuery
