@@ -321,6 +321,36 @@ error: casting `isize` to `usize` may lose the sign of the value
 LL |     -1isize as usize;
    |     ^^^^^^^^^^^^^^^^
 
+error: casting `i8` to `u8` may lose the sign of the value
+  --> tests/ui/cast.rs:119:5
+   |
+LL |     (-1i8).abs() as u8;
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: casting `i16` to `u16` may lose the sign of the value
+  --> tests/ui/cast.rs:120:5
+   |
+LL |     (-1i16).abs() as u16;
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> tests/ui/cast.rs:121:5
+   |
+LL |     (-1i32).abs() as u32;
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i64` to `u64` may lose the sign of the value
+  --> tests/ui/cast.rs:122:5
+   |
+LL |     (-1i64).abs() as u64;
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: casting `isize` to `usize` may lose the sign of the value
+  --> tests/ui/cast.rs:123:5
+   |
+LL |     (-1isize).abs() as usize;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
 error: casting `i64` to `i8` may truncate the value
   --> tests/ui/cast.rs:179:5
    |
@@ -445,10 +475,34 @@ LL |     let c = u8::try_from(q / 1000);
    |             ~~~~~~~~~~~~~~~~~~~~~~
 
 error: casting `i32` to `u32` may lose the sign of the value
+  --> tests/ui/cast.rs:372:9
+   |
+LL |         (x * x) as u32;
+   |         ^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> tests/ui/cast.rs:373:9
+   |
+LL |         x.pow(2) as u32;
+   |         ^^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> tests/ui/cast.rs:377:32
+   |
+LL |     let _a = |x: i32| -> u32 { (x * x * x * x) as u32 };
+   |                                ^^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:379:5
    |
 LL |     (-2_i32).pow(3) as u32;
    |     ^^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> tests/ui/cast.rs:383:5
+   |
+LL |     (x * x) as u32;
+   |     ^^^^^^^^^^^^^^
 
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:384:5
@@ -463,6 +517,12 @@ LL |     (y * y * y * y * -2) as u16;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting `i16` to `u16` may lose the sign of the value
+  --> tests/ui/cast.rs:390:5
+   |
+LL |     (y * y * y * y * 2) as u16;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i16` to `u16` may lose the sign of the value
   --> tests/ui/cast.rs:391:5
    |
 LL |     (y * y * y * 2) as u16;
@@ -473,6 +533,12 @@ error: casting `i16` to `u16` may lose the sign of the value
    |
 LL |     (y * y * y * -2) as u16;
    |     ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> tests/ui/cast.rs:397:9
+   |
+LL |         (a * a * b * b * c * c) as u32;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:398:9
@@ -487,6 +553,12 @@ LL |         (a * -b * c) as u32;
    |         ^^^^^^^^^^^^^^^^^^^
 
 error: casting `i32` to `u32` may lose the sign of the value
+  --> tests/ui/cast.rs:402:9
+   |
+LL |         (a * b * c * c) as u32;
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:403:9
    |
 LL |         (a * -2) as u32;
@@ -497,6 +569,12 @@ error: casting `i32` to `u32` may lose the sign of the value
    |
 LL |         (a * b * c * -2) as u32;
    |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: casting `i32` to `u32` may lose the sign of the value
+  --> tests/ui/cast.rs:407:9
+   |
+LL |         (a / b) as u32;
+   |         ^^^^^^^^^^^^^^
 
 error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:408:9
@@ -516,5 +594,11 @@ error: casting `i32` to `u32` may lose the sign of the value
 LL |         a.pow(3) as u32;
    |         ^^^^^^^^^^^^^^^
 
-error: aborting due to 63 previous errors
+error: casting `i32` to `u32` may lose the sign of the value
+  --> tests/ui/cast.rs:414:9
+   |
+LL |         (a.abs() * b.pow(2) / c.abs()) as u32
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 77 previous errors
 
