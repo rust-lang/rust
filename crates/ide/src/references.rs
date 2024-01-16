@@ -21,7 +21,6 @@ use ide_db::{
 use itertools::Itertools;
 use nohash_hasher::IntMap;
 use syntax::{
-    algo::find_node_at_offset,
     ast::{self, HasName},
     match_ast, AstNode,
     SyntaxKind::*,
@@ -98,9 +97,8 @@ pub(crate) fn find_all_refs(
                         .or_default()
                         .push((extra_ref.focus_or_full_range(), None));
                 }
-                let decl_range = nav.focus_or_full_range();
                 Declaration {
-                    is_mut: decl_mutability(&def, sema.parse(nav.file_id).syntax(), decl_range),
+                    is_mut: matches!(def, Definition::Local(l) if l.is_mut(sema.db)),
                     nav,
                 }
             });
@@ -187,21 +185,6 @@ pub(crate) fn find_defs<'a>(
             })
             .collect(),
     )
-}
-
-pub(crate) fn decl_mutability(def: &Definition, syntax: &SyntaxNode, range: TextRange) -> bool {
-    match def {
-        Definition::Local(_) | Definition::Field(_) => {}
-        _ => return false,
-    };
-
-    match find_node_at_offset::<ast::LetStmt>(syntax, range.start()) {
-        Some(stmt) if stmt.initializer().is_some() => match stmt.pat() {
-            Some(ast::Pat::IdentPat(it)) => it.mut_token().is_some(),
-            _ => false,
-        },
-        _ => false,
-    }
 }
 
 /// Filter out all non-literal usages for adt-defs
