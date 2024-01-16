@@ -25,8 +25,7 @@ async fn real_main() {
 
 fn main() {
     let future = real_main();
-    let waker = std::task::Waker::noop();
-    let mut cx = &mut core::task::Context::from_waker(&waker);
+    let mut cx = &mut core::task::Context::from_waker(std::task::Waker::noop());
     let mut future = core::pin::pin!(future);
     while let core::task::Poll::Pending = future.as_mut().poll(&mut cx) {}
 }
