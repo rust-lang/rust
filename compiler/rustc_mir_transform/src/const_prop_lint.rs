@@ -112,7 +112,7 @@ impl<'tcx> Value<'tcx> {
                     fields.get(FieldIdx::from_u32(idx.try_into().ok()?)).unwrap_or(&Value::Uninit)
                 }
                 (
-                    PlaceElem::ConstantIndex { offset, min_length: 1, from_end: false },
+                    PlaceElem::ConstantIndex { offset, min_length: _, from_end: false },
                     Value::Aggregate { fields, .. },
                 ) => fields
                     .get(FieldIdx::from_u32(offset.try_into().ok()?))
