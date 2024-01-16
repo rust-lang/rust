@@ -34,7 +34,7 @@ impl InferenceContext<'_> {
 
         self.add_required_obligations_for_value_path(generic_def, &substs);
 
-        let ty = self.db.value_ty(value_def).substitute(Interner, &substs);
+        let ty = self.db.value_ty(value_def)?.substitute(Interner, &substs);
         let ty = self.normalize_associated_types_in(ty);
         Some(ty)
     }
@@ -98,7 +98,7 @@ impl InferenceContext<'_> {
         let Some(generic_def) = value_def.to_generic_def_id() else {
             // `value_def` is the kind of item that can never be generic (i.e. statics, at least
             // currently). We can just skip the binders to get its type.
-            let (ty, binders) = self.db.value_ty(value_def).into_value_and_skipped_binders();
+            let (ty, binders) = self.db.value_ty(value_def)?.into_value_and_skipped_binders();
             stdx::always!(
                 parent_substs.is_none() && binders.is_empty(Interner),
                 "non-empty binders for non-generic def",

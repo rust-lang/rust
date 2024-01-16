@@ -2012,3 +2012,31 @@ fn rustc_test_issue_52437() {
     "#,
     );
 }
+
+#[test]
+fn incorrect_variant_form_through_alias_caught() {
+    check_types(
+        r#"
+enum Enum { Braced {}, Unit, Tuple() }
+type Alias = Enum;
+
+fn main() {
+    Alias::Braced;
+  //^^^^^^^^^^^^^ {unknown}
+    let Alias::Braced = loop {};
+      //^^^^^^^^^^^^^ !
+  let Alias::Braced(..) = loop {};
+    //^^^^^^^^^^^^^^^^^ Enum
+
+    Alias::Unit();
+  //^^^^^^^^^^^^^ {unknown}
+    Alias::Unit{};
+  //^^^^^^^^^^^^^ Enum
+    let Alias::Unit() = loop {};
+      //^^^^^^^^^^^^^ Enum
+    let Alias::Unit{} = loop {};
+      //^^^^^^^^^^^^^ Enum
+}
+"#,
+    )
+}

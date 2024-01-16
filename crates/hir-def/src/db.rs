@@ -95,21 +95,7 @@ pub trait DefDatabase: InternDatabase + ExpandDatabase + Upcast<dyn ExpandDataba
     #[salsa::invoke(DefMap::crate_def_map_query)]
     fn crate_def_map_query(&self, krate: CrateId) -> Arc<DefMap>;
 
-    /// Computes the block-level `DefMap`, returning `None` when `block` doesn't contain any inner
-    /// items directly.
-    ///
-    /// For example:
-    ///
-    /// ```
-    /// fn f() { // (0)
-    ///     { // (1)
-    ///         fn inner() {}
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// The `block_def_map` for block 0 would return `None`, while `block_def_map` of block 1 would
-    /// return a `DefMap` containing `inner`.
+    /// Computes the block-level `DefMap`.
     #[salsa::invoke(DefMap::block_def_map_query)]
     fn block_def_map(&self, block: BlockId) -> Arc<DefMap>;
 
