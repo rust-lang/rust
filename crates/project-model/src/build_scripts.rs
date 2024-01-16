@@ -60,6 +60,7 @@ impl WorkspaceBuildScripts {
     fn build_command(
         config: &CargoConfig,
         allowed_features: &FxHashSet<String>,
+        workspace_root: &AbsPathBuf,
     ) -> io::Result<Command> {
         let mut cmd = match config.run_build_script_command.as_deref() {
             Some([program, args @ ..]) => {
@@ -72,6 +73,9 @@ impl WorkspaceBuildScripts {
 
                 cmd.args(["check", "--quiet", "--workspace", "--message-format=json"]);
                 cmd.args(&config.extra_args);
+
+                cmd.arg("--manifest-path");
+                cmd.arg(workspace_root.join("Cargo.toml").as_os_str());
 
                 if let Some(target_dir) = &config.target_dir {
                     cmd.arg("--target-dir").arg(target_dir);
@@ -143,7 +147,11 @@ impl WorkspaceBuildScripts {
         let allowed_features = workspace.workspace_features();
 
         match Self::run_per_ws(
-            Self::build_command(config, &allowed_features)?,
+            Self::build_command(
+                config,
+                &allowed_features,
+                &workspace.workspace_root().to_path_buf(),
+            )?,
             workspace,
             current_dir,
             progress,
@@ -153,7 +161,11 @@ impl WorkspaceBuildScripts {
             {
                 // building build scripts failed, attempt to build with --keep-going so
                 // that we potentially get more build data
-                let mut cmd = Self::build_command(config, &allowed_features)?;
+                let mut cmd = Self::build_command(
+                    config,
+                    &allowed_features,
+                    &workspace.workspace_root().to_path_buf(),
+                )?;
                 cmd.args(["-Z", "unstable-options", "--keep-going"]).env("RUSTC_BOOTSTRAP", "1");
                 let mut res = Self::run_per_ws(cmd, workspace, current_dir, progress)?;
                 res.error = Some(error);
@@ -169,6 +181,7 @@ impl WorkspaceBuildScripts {
         config: &CargoConfig,
         workspaces: &[&CargoWorkspace],
         progress: &dyn Fn(String),
+        workspace_root: &AbsPathBuf,
     ) -> io::Result<Vec<WorkspaceBuildScripts>> {
         assert_eq!(config.invocation_strategy, InvocationStrategy::Once);
 
@@ -181,7 +194,7 @@ impl WorkspaceBuildScripts {
                 ))
             }
         };
-        let cmd = Self::build_command(config, &Default::default())?;
+        let cmd = Self::build_command(config, &Default::default(), workspace_root)?;
         // NB: Cargo.toml could have been modified between `cargo metadata` and
         // `cargo check`. We shouldn't assume that package ids we see here are
         // exactly those from `config`.

@@ -23,6 +23,7 @@ pub(crate) struct Project<'a> {
     tmp_dir: Option<TestDir>,
     roots: Vec<PathBuf>,
     config: serde_json::Value,
+    root_dir_contains_symlink: bool,
 }
 
 impl Project<'_> {
@@ -45,6 +46,7 @@ impl Project<'_> {
                     "enable": false,
                 }
             }),
+            root_dir_contains_symlink: false,
         }
     }
 
@@ -55,6 +57,11 @@ impl Project<'_> {
 
     pub(crate) fn root(mut self, path: &str) -> Self {
         self.roots.push(path.into());
+        self
+    }
+
+    pub(crate) fn with_root_dir_contains_symlink(mut self) -> Self {
+        self.root_dir_contains_symlink = true;
         self
     }
 
@@ -74,7 +81,14 @@ impl Project<'_> {
     }
 
     pub(crate) fn server(self) -> Server {
-        let tmp_dir = self.tmp_dir.unwrap_or_else(TestDir::new);
+        let tmp_dir = self.tmp_dir.unwrap_or_else(|| {
+            if self.root_dir_contains_symlink {
+                TestDir::new_symlink()
+            } else {
+                TestDir::new()
+            }
+        });
+
         static INIT: Once = Once::new();
         INIT.call_once(|| {
             let filter: tracing_subscriber::filter::Targets =

@@ -275,6 +275,8 @@ impl GlobalState {
         tracing::info!(%cause, "will fetch build data");
         let workspaces = Arc::clone(&self.workspaces);
         let config = self.config.cargo();
+        let root_path = self.config.root_path().clone();
+
         self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, move |sender| {
             sender.send(Task::FetchBuildData(BuildDataProgress::Begin)).unwrap();
 
@@ -284,7 +286,12 @@ impl GlobalState {
                     sender.send(Task::FetchBuildData(BuildDataProgress::Report(msg))).unwrap()
                 }
             };
-            let res = ProjectWorkspace::run_all_build_scripts(&workspaces, &config, &progress);
+            let res = ProjectWorkspace::run_all_build_scripts(
+                &workspaces,
+                &config,
+                &progress,
+                &root_path,
+            );
 
             sender.send(Task::FetchBuildData(BuildDataProgress::End((workspaces, res)))).unwrap();
         });
