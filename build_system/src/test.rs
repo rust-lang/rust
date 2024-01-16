@@ -527,7 +527,7 @@ fn setup_rustc(env: &mut Env, args: &TestArg) -> Result<(), String> {
         }
     })?;
     let rustc = String::from_utf8(
-        run_command_with_env(&[&"rustup", &OsStr::new(&*toolchain), &"which", &"rustc"], rust_dir, Some(env))?.stdout,
+        run_command_with_env(&[&"rustup", &toolchain, &"which", &"rustc"], rust_dir, Some(env))?.stdout,
     )
     .map_err(|error| format!("Failed to retrieve rustc path: {:?}", error))
     .and_then(|rustc| {
