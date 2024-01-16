@@ -1572,11 +1572,11 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! ifelse {
-        ($condition:expr , $true_expr:expr , $($opt:tt)*) => {
-            if $condition {
+        ($cond:expr , $true_expr:expr , $($arg:tt)*) => {
+            if $cond {
                 $true_expr
             } else {
-                ifelse!($($opt)*)
+                ifelse!($($arg)*)
             }
         };
         ($false_expr:expr) => ($false_expr);
