@@ -393,30 +393,7 @@ pub(crate) fn hover_for_definition(
         Definition::BuiltinType(it) => Some(it.ty(db)),
         _ => None,
     };
-    let notable_traits = def_ty
-        .map(|ty| {
-            db.notable_traits_in_deps(ty.krate(db).into())
-                .iter()
-                .flat_map(|it| &**it)
-                .filter_map(move |&trait_| {
-                    let trait_ = trait_.into();
-                    ty.impls_trait(db, trait_, &[]).then(|| {
-                        (
-                            trait_,
-                            trait_
-                                .items(db)
-                                .into_iter()
-                                .filter_map(hir::AssocItem::as_type_alias)
-                                .map(|alias| {
-                                    (ty.normalize_trait_assoc_type(db, &[], alias), alias.name(db))
-                                })
-                                .collect::<Vec<_>>(),
-                        )
-                    })
-                })
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
+    let notable_traits = def_ty.map(|ty| notable_traits(db, &ty)).unwrap_or_default();
 
     render::definition(sema.db, def, famous_defs.as_ref(), &notable_traits, config).map(|markup| {
         HoverResult {
@@ -432,6 +409,32 @@ pub(crate) fn hover_for_definition(
             .collect(),
         }
     })
+}
+
+fn notable_traits(
+    db: &RootDatabase,
+    ty: &hir::Type,
+) -> Vec<(hir::Trait, Vec<(Option<hir::Type>, hir::Name)>)> {
+    db.notable_traits_in_deps(ty.krate(db).into())
+        .iter()
+        .flat_map(|it| &**it)
+        .filter_map(move |&trait_| {
+            let trait_ = trait_.into();
+            ty.impls_trait(db, trait_, &[]).then(|| {
+                (
+                    trait_,
+                    trait_
+                        .items(db)
+                        .into_iter()
+                        .filter_map(hir::AssocItem::as_type_alias)
+                        .map(|alias| {
+                            (ty.normalize_trait_assoc_type(db, &[], alias), alias.name(db))
+                        })
+                        .collect::<Vec<_>>(),
+                )
+            })
+        })
+        .collect::<Vec<_>>()
 }
 
 fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
@@ -583,7 +586,9 @@ fn dedupe_or_merge_hover_actions(actions: Vec<HoverAction>) -> Vec<HoverAction> 
     }
 
     if !go_to_type_targets.is_empty() {
-        deduped_actions.push(HoverAction::GoToType(go_to_type_targets.into_iter().collect()));
+        deduped_actions.push(HoverAction::GoToType(
+            go_to_type_targets.into_iter().sorted_by(|a, b| a.mod_path.cmp(&b.mod_path)).collect(),
+        ));
     }
 
     deduped_actions

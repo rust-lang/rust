@@ -3,8 +3,8 @@ use std::{mem, ops::Not};
 
 use either::Either;
 use hir::{
-    Adt, AsAssocItem, CaptureKind, HasSource, HirDisplay, Layout, LayoutError, Name, Semantics,
-    Trait, Type, TypeInfo,
+    Adt, AsAssocItem, CaptureKind, HasCrate, HasSource, HirDisplay, Layout, LayoutError, Name,
+    Semantics, Trait, Type, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase,
@@ -25,7 +25,7 @@ use syntax::{
 
 use crate::{
     doc_links::{remove_links, rewrite_links},
-    hover::walk_and_push_ty,
+    hover::{notable_traits, walk_and_push_ty},
     HoverAction, HoverConfig, HoverResult, Markup, MemoryLayoutHoverConfig,
     MemoryLayoutHoverRenderKind,
 };
@@ -471,38 +471,8 @@ pub(super) fn definition(
         _ => None,
     };
 
-    let notable_traits = {
-        let mut desc = String::new();
-        let mut needs_impl_header = true;
-        for (trait_, assoc_types) in notable_traits {
-            desc.push_str(if mem::take(&mut needs_impl_header) {
-                " // notable traits implemented: "
-            } else {
-                ", "
-            });
-            format_to!(desc, "{}", trait_.name(db).display(db),);
-            if !assoc_types.is_empty() {
-                desc.push('<');
-                format_to!(
-                    desc,
-                    "{}",
-                    assoc_types.into_iter().format_with(", ", |(ty, name), f| {
-                        f(&name.display(db))?;
-                        f(&" = ")?;
-                        match ty {
-                            Some(ty) => f(&ty.display(db)),
-                            None => f(&"?"),
-                        }
-                    })
-                );
-                desc.push('>');
-            }
-        }
-        desc.is_empty().not().then(|| desc)
-    };
-
     let mut desc = String::new();
-    if let Some(notable_traits) = notable_traits {
+    if let Some(notable_traits) = render_notable_trait_comment(db, notable_traits) {
         desc.push_str(&notable_traits);
         desc.push('\n');
     }
@@ -517,6 +487,39 @@ pub(super) fn definition(
     }
 
     markup(docs.map(Into::into), desc, mod_path)
+}
+
+fn render_notable_trait_comment(
+    db: &RootDatabase,
+    notable_traits: &[(Trait, Vec<(Option<Type>, Name)>)],
+) -> Option<String> {
+    let mut desc = String::new();
+    let mut needs_impl_header = true;
+    for (trait_, assoc_types) in notable_traits {
+        desc.push_str(if mem::take(&mut needs_impl_header) {
+            " // notable traits implemented: "
+        } else {
+            ", "
+        });
+        format_to!(desc, "{}", trait_.name(db).display(db),);
+        if !assoc_types.is_empty() {
+            desc.push('<');
+            format_to!(
+                desc,
+                "{}",
+                assoc_types.into_iter().format_with(", ", |(ty, name), f| {
+                    f(&name.display(db))?;
+                    f(&" = ")?;
+                    match ty {
+                        Some(ty) => f(&ty.display(db)),
+                        None => f(&"?"),
+                    }
+                })
+            );
+            desc.push('>');
+        }
+    }
+    desc.is_empty().not().then(|| desc)
 }
 
 fn type_info(
@@ -536,8 +539,12 @@ fn type_info(
         }
     };
     walk_and_push_ty(sema.db, &original, &mut push_new_def);
-
-    res.markup = if let Some(adjusted_ty) = adjusted {
+    let mut desc = match render_notable_trait_comment(sema.db, &notable_traits(sema.db, &original))
+    {
+        Some(desc) => desc + "\n",
+        None => String::new(),
+    };
+    desc += &if let Some(adjusted_ty) = adjusted {
         walk_and_push_ty(sema.db, &adjusted_ty, &mut push_new_def);
         let original = original.display(sema.db).to_string();
         let adjusted = adjusted_ty.display(sema.db).to_string();
@@ -549,10 +556,10 @@ fn type_info(
             apad = static_text_diff_len + adjusted.len().max(original.len()),
             opad = original.len(),
         )
-        .into()
     } else {
-        Markup::fenced_block(&original.display(sema.db))
+        Markup::fenced_block(&original.display(sema.db)).into()
     };
+    res.markup = desc.into();
     if let Some(actions) = HoverAction::goto_type_from_targets(sema.db, targets) {
         res.actions.push(actions);
     }
@@ -606,6 +613,9 @@ fn closure_ty(
         render_memory_layout(config.memory_layout, || original.layout(sema.db), |_| None, |_| None)
     {
         format_to!(markup, "{layout}");
+    }
+    if let Some(trait_) = c.fn_trait(sema.db).get_id(sema.db, original.krate(sema.db).into()) {
+        push_new_def(hir::Trait::from(trait_).into())
     }
     format_to!(
         markup,
