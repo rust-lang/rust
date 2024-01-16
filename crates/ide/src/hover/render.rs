@@ -3,8 +3,8 @@ use std::{mem, ops::Not};
 
 use either::Either;
 use hir::{
-    db::DefDatabase, Adt, AsAssocItem, AssocItem, CaptureKind, HasCrate, HasSource, HirDisplay,
-    Layout, LayoutError, Semantics, TypeInfo,
+    Adt, AsAssocItem, CaptureKind, HasSource, HirDisplay, Layout, LayoutError, Name, Semantics,
+    Trait, Type, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase,
@@ -117,7 +117,9 @@ pub(super) fn try_expr(
     };
     walk_and_push_ty(sema.db, &inner_ty, &mut push_new_def);
     walk_and_push_ty(sema.db, &body_ty, &mut push_new_def);
-    res.actions.push(HoverAction::goto_type_from_targets(sema.db, targets));
+    if let Some(actions) = HoverAction::goto_type_from_targets(sema.db, targets) {
+        res.actions.push(actions);
+    }
 
     let inner_ty = inner_ty.display(sema.db).to_string();
     let body_ty = body_ty.display(sema.db).to_string();
@@ -195,7 +197,9 @@ pub(super) fn deref_expr(
         )
         .into()
     };
-    res.actions.push(HoverAction::goto_type_from_targets(sema.db, targets));
+    if let Some(actions) = HoverAction::goto_type_from_targets(sema.db, targets) {
+        res.actions.push(actions);
+    }
 
     Some(res)
 }
@@ -302,7 +306,9 @@ pub(super) fn struct_rest_pat(
 
         Markup::fenced_block(&s)
     };
-    res.actions.push(HoverAction::goto_type_from_targets(sema.db, targets));
+    if let Some(actions) = HoverAction::goto_type_from_targets(sema.db, targets) {
+        res.actions.push(actions);
+    }
     res
 }
 
@@ -388,6 +394,7 @@ pub(super) fn definition(
     db: &RootDatabase,
     def: Definition,
     famous_defs: Option<&FamousDefs<'_, '_>>,
+    notable_traits: &[(Trait, Vec<(Option<Type>, Name)>)],
     config: &HoverConfig,
 ) -> Option<Markup> {
     let mod_path = definition_mod_path(db, &def);
@@ -464,58 +471,35 @@ pub(super) fn definition(
         _ => None,
     };
 
-    let def_ty = match def {
-        Definition::Local(it) => Some(it.ty(db)),
-        Definition::GenericParam(hir::GenericParam::ConstParam(it)) => Some(it.ty(db)),
-        Definition::GenericParam(hir::GenericParam::TypeParam(it)) => Some(it.ty(db)),
-        Definition::Field(field) => Some(field.ty(db)),
-        Definition::TupleField(it) => Some(it.ty(db)),
-        Definition::Function(it) => Some(it.ty(db)),
-        Definition::Adt(it) => Some(it.ty(db)),
-        Definition::Const(it) => Some(it.ty(db)),
-        Definition::Static(it) => Some(it.ty(db)),
-        Definition::TypeAlias(it) => Some(it.ty(db)),
-        Definition::BuiltinType(it) => Some(it.ty(db)),
-        _ => None,
-    };
-    let notable_traits = def_ty.and_then(|ty| {
+    let notable_traits = {
         let mut desc = String::new();
         let mut needs_impl_header = true;
-        for &trait_ in db.notable_traits_in_deps(ty.krate(db).into()).iter().flat_map(|it| &**it) {
-            let trait_ = trait_.into();
-            if ty.impls_trait(db, trait_, &[]) {
-                let aliases: Vec<_> = trait_
-                    .items(db)
-                    .into_iter()
-                    .filter_map(AssocItem::as_type_alias)
-                    .map(|alias| (ty.normalize_trait_assoc_type(db, &[], alias), alias.name(db)))
-                    .collect();
-                desc.push_str(if mem::take(&mut needs_impl_header) {
-                    " // notable traits impls: "
-                } else {
-                    ", "
-                });
-                format_to!(desc, "{}", trait_.name(db).display(db),);
-                if !aliases.is_empty() {
-                    desc.push('<');
-                    format_to!(
-                        desc,
-                        "{}",
-                        aliases.into_iter().format_with(", ", |(ty, name), f| {
-                            f(&name.display(db))?;
-                            f(&" = ")?;
-                            match ty {
-                                Some(ty) => f(&ty.display(db)),
-                                None => f(&"?"),
-                            }
-                        })
-                    );
-                    desc.push('>');
-                }
+        for (trait_, assoc_types) in notable_traits {
+            desc.push_str(if mem::take(&mut needs_impl_header) {
+                " // notable traits implemented: "
+            } else {
+                ", "
+            });
+            format_to!(desc, "{}", trait_.name(db).display(db),);
+            if !assoc_types.is_empty() {
+                desc.push('<');
+                format_to!(
+                    desc,
+                    "{}",
+                    assoc_types.into_iter().format_with(", ", |(ty, name), f| {
+                        f(&name.display(db))?;
+                        f(&" = ")?;
+                        match ty {
+                            Some(ty) => f(&ty.display(db)),
+                            None => f(&"?"),
+                        }
+                    })
+                );
+                desc.push('>');
             }
         }
         desc.is_empty().not().then(|| desc)
-    });
+    };
 
     let mut desc = String::new();
     if let Some(notable_traits) = notable_traits {
@@ -569,7 +553,9 @@ fn type_info(
     } else {
         Markup::fenced_block(&original.display(sema.db))
     };
-    res.actions.push(HoverAction::goto_type_from_targets(sema.db, targets));
+    if let Some(actions) = HoverAction::goto_type_from_targets(sema.db, targets) {
+        res.actions.push(actions);
+    }
     Some(res)
 }
 
@@ -629,7 +615,9 @@ fn closure_ty(
     );
 
     let mut res = HoverResult::default();
-    res.actions.push(HoverAction::goto_type_from_targets(sema.db, targets));
+    if let Some(actions) = HoverAction::goto_type_from_targets(sema.db, targets) {
+        res.actions.push(actions);
+    }
     res.markup = markup.into();
     Some(res)
 }
@@ -783,7 +771,9 @@ fn keyword_hints(
                     KeywordHint {
                         description,
                         keyword_mod,
-                        actions: vec![HoverAction::goto_type_from_targets(sema.db, targets)],
+                        actions: HoverAction::goto_type_from_targets(sema.db, targets)
+                            .into_iter()
+                            .collect(),
                     }
                 }
                 _ => KeywordHint {

@@ -6989,7 +6989,7 @@ fn main() {
         expect![[r#"
             *34325236457856836345234*
             ```text
-            34325236457856836345234 (0x744C659178614489D92|0x111010001001100011001011001000101111000011000010100010010001001110110010010)
+            34325236457856836345234 (0x744C659178614489D92|0b111010001001100011001011001000101111000011000010100010010001001110110010010)
             ```
         "#]],
     );
@@ -7002,7 +7002,7 @@ fn main() {
         expect![[r#"
             *134_123424_21*
             ```text
-            13412342421 (0x31F701A95|0x1100011111011100000001101010010101)
+            13412342421 (0x31F701A95|0b1100011111011100000001101010010101)
             ```
         "#]],
     );
@@ -7015,7 +7015,7 @@ fn main() {
         expect![[r#"
             *0x12423423*
             ```text
-            306328611 (0x12423423|0x10010010000100011010000100011)
+            306328611 (0x12423423|0b10010010000100011010000100011)
             ```
         "#]],
     );
@@ -7028,7 +7028,7 @@ fn main() {
         expect![[r#"
             *0b1111_1111*
             ```text
-            255 (0xFF|0x11111111)
+            255 (0xFF|0b11111111)
             ```
         "#]],
     );
@@ -7041,7 +7041,7 @@ fn main() {
         expect![[r#"
             *0o12345*
             ```text
-            5349 (0x14E5|0x1010011100101)
+            5349 (0x14E5|0b1010011100101)
             ```
         "#]],
     );
@@ -7080,7 +7080,7 @@ fn main(notable$0: u32) {}
             *notable*
 
             ```rust
-             // notable traits impls: Notable<Assoc = &str, Assoc2 = char>
+             // notable traits implemented: Notable<Assoc = &str, Assoc2 = char>
              // size = 4, align = 4
             notable: u32
             ```
@@ -7112,10 +7112,100 @@ impl Iterator for S {
             ```
 
             ```rust
-             // notable traits impls: Notable, Future<Output = u32>, Iterator<Item = S>
+             // notable traits implemented: Notable, Future<Output = u32>, Iterator<Item = S>
              // size = 0, align = 1
             struct S
             ```
+        "#]],
+    );
+}
+
+#[test]
+fn notable_actions() {
+    check_actions(
+        r#"
+//- minicore: future, iterator
+struct S;
+struct S2;
+#[doc(notable_trait)]
+trait Notable {}
+impl Notable for S$0 {}
+impl core::future::Future for S {
+    type Output = u32;
+}
+impl Iterator for S {
+    type Item = S2;
+}
+"#,
+        expect![[r#"
+            [
+                Implementation(
+                    FilePosition {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 7,
+                    },
+                ),
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "test::Notable",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 21..59,
+                                focus_range: 49..56,
+                                name: "Notable",
+                                kind: Trait,
+                                description: "trait Notable",
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "core::future::Future",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 6012..6220,
+                                focus_range: 6077..6083,
+                                name: "Future",
+                                kind: Trait,
+                                container_name: "future",
+                                description: "pub trait Future",
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "core::iter::traits::iterator::Iterator",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    1,
+                                ),
+                                full_range: 6850..7316,
+                                focus_range: 6894..6902,
+                                name: "Iterator",
+                                kind: Trait,
+                                container_name: "iterator",
+                                description: "pub trait Iterator",
+                            },
+                        },
+                        HoverGotoTypeData {
+                            mod_path: "test::S2",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 10..20,
+                                focus_range: 17..19,
+                                name: "S2",
+                                kind: Struct,
+                                description: "struct S2",
+                            },
+                        },
+                    ],
+                ),
+            ]
         "#]],
     );
 }

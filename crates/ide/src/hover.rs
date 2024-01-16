@@ -3,10 +3,10 @@ mod render;
 #[cfg(test)]
 mod tests;
 
-use std::iter;
+use std::{iter, ops::Not};
 
 use either::Either;
-use hir::{db::DefDatabase, DescendPreference, HasSource, LangItem, Semantics};
+use hir::{db::DefDatabase, DescendPreference, HasCrate, HasSource, LangItem, Semantics};
 use ide_db::{
     base_db::FileRange,
     defs::{Definition, IdentClass, NameRefClass, OperatorClass},
@@ -64,7 +64,7 @@ pub enum HoverAction {
 }
 
 impl HoverAction {
-    fn goto_type_from_targets(db: &RootDatabase, targets: Vec<hir::ModuleDef>) -> Self {
+    fn goto_type_from_targets(db: &RootDatabase, targets: Vec<hir::ModuleDef>) -> Option<Self> {
         let targets = targets
             .into_iter()
             .filter_map(|it| {
@@ -77,8 +77,8 @@ impl HoverAction {
                     nav: it.try_to_nav(db)?.call_site(),
                 })
             })
-            .collect();
-        HoverAction::GoToType(targets)
+            .collect::<Vec<_>>();
+        targets.is_empty().not().then_some(HoverAction::GoToType(targets))
     }
 }
 
@@ -315,7 +315,7 @@ fn hover_simple(
                     ast::IntNumber(num) => {
                         res.markup = match num.value() {
                             Ok(num) => {
-                                Markup::fenced_block_text(format_args!("{num} (0x{num:X}|0x{num:b})"))
+                                Markup::fenced_block_text(format_args!("{num} (0x{num:X}|0b{num:b})"))
                             },
                             Err(e) => {
                                 Markup::fenced_block_text(format_args!("{e}"))
@@ -365,25 +365,67 @@ fn hover_ranged(
     })
 }
 
+// FIXME: Why is this pub(crate)?
 pub(crate) fn hover_for_definition(
     sema: &Semantics<'_, RootDatabase>,
     file_id: FileId,
-    definition: Definition,
+    def: Definition,
     scope_node: &SyntaxNode,
     config: &HoverConfig,
 ) -> Option<HoverResult> {
-    let famous_defs = match &definition {
+    let famous_defs = match &def {
         Definition::BuiltinType(_) => Some(FamousDefs(sema, sema.scope(scope_node)?.krate())),
         _ => None,
     };
-    render::definition(sema.db, definition, famous_defs.as_ref(), config).map(|markup| {
+
+    let db = sema.db;
+    let def_ty = match def {
+        Definition::Local(it) => Some(it.ty(db)),
+        Definition::GenericParam(hir::GenericParam::ConstParam(it)) => Some(it.ty(db)),
+        Definition::GenericParam(hir::GenericParam::TypeParam(it)) => Some(it.ty(db)),
+        Definition::Field(field) => Some(field.ty(db)),
+        Definition::TupleField(it) => Some(it.ty(db)),
+        Definition::Function(it) => Some(it.ty(db)),
+        Definition::Adt(it) => Some(it.ty(db)),
+        Definition::Const(it) => Some(it.ty(db)),
+        Definition::Static(it) => Some(it.ty(db)),
+        Definition::TypeAlias(it) => Some(it.ty(db)),
+        Definition::BuiltinType(it) => Some(it.ty(db)),
+        _ => None,
+    };
+    let notable_traits = def_ty
+        .map(|ty| {
+            db.notable_traits_in_deps(ty.krate(db).into())
+                .iter()
+                .flat_map(|it| &**it)
+                .filter_map(move |&trait_| {
+                    let trait_ = trait_.into();
+                    ty.impls_trait(db, trait_, &[]).then(|| {
+                        (
+                            trait_,
+                            trait_
+                                .items(db)
+                                .into_iter()
+                                .filter_map(hir::AssocItem::as_type_alias)
+                                .map(|alias| {
+                                    (ty.normalize_trait_assoc_type(db, &[], alias), alias.name(db))
+                                })
+                                .collect::<Vec<_>>(),
+                        )
+                    })
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    render::definition(sema.db, def, famous_defs.as_ref(), &notable_traits, config).map(|markup| {
         HoverResult {
-            markup: render::process_markup(sema.db, definition, &markup, config),
+            markup: render::process_markup(sema.db, def, &markup, config),
             actions: [
-                show_implementations_action(sema.db, definition),
-                show_fn_references_action(sema.db, definition),
-                runnable_action(sema, definition, file_id),
-                goto_type_action_for_def(sema.db, definition),
+                show_implementations_action(sema.db, def),
+                show_fn_references_action(sema.db, def),
+                runnable_action(sema, def, file_id),
+                goto_type_action_for_def(sema.db, def, &notable_traits),
             ]
             .into_iter()
             .flatten()
@@ -446,13 +488,24 @@ fn runnable_action(
     }
 }
 
-fn goto_type_action_for_def(db: &RootDatabase, def: Definition) -> Option<HoverAction> {
+fn goto_type_action_for_def(
+    db: &RootDatabase,
+    def: Definition,
+    notable_traits: &[(hir::Trait, Vec<(Option<hir::Type>, hir::Name)>)],
+) -> Option<HoverAction> {
     let mut targets: Vec<hir::ModuleDef> = Vec::new();
     let mut push_new_def = |item: hir::ModuleDef| {
         if !targets.contains(&item) {
             targets.push(item);
         }
     };
+
+    for &(trait_, ref assocs) in notable_traits {
+        push_new_def(trait_.into());
+        assocs.iter().filter_map(|(ty, _)| ty.as_ref()).for_each(|ty| {
+            walk_and_push_ty(db, ty, &mut push_new_def);
+        });
+    }
 
     if let Definition::GenericParam(hir::GenericParam::TypeParam(it)) = def {
         let krate = it.module(db).krate();
@@ -469,13 +522,13 @@ fn goto_type_action_for_def(db: &RootDatabase, def: Definition) -> Option<HoverA
             Definition::GenericParam(hir::GenericParam::ConstParam(it)) => it.ty(db),
             Definition::Field(field) => field.ty(db),
             Definition::Function(function) => function.ret_type(db),
-            _ => return None,
+            _ => return HoverAction::goto_type_from_targets(db, targets),
         };
 
         walk_and_push_ty(db, &ty, &mut push_new_def);
     }
 
-    Some(HoverAction::goto_type_from_targets(db, targets))
+    HoverAction::goto_type_from_targets(db, targets)
 }
 
 fn walk_and_push_ty(
