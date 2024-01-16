@@ -160,14 +160,10 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     pat.span,
                     "this lock is not assigned to a binding and is immediately dropped".to_string(),
                 );
-                cx.emit_spanned_lint(LET_UNDERSCORE_LOCK, span, NonBindingLet::SyncLock { sub });
+                cx.emit_span_lint(LET_UNDERSCORE_LOCK, span, NonBindingLet::SyncLock { sub });
             // Only emit let_underscore_drop for top-level `_` patterns.
             } else if can_use_init.is_some() {
-                cx.emit_spanned_lint(
-                    LET_UNDERSCORE_DROP,
-                    local.span,
-                    NonBindingLet::DropType { sub },
-                );
+                cx.emit_span_lint(LET_UNDERSCORE_DROP, local.span, NonBindingLet::DropType { sub });
             }
         });
     }

@@ -145,7 +145,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                         }),
                         _ => None,
                     };
-                    cx.emit_spanned_lint(
+                    cx.emit_span_lint(
                         OPAQUE_HIDDEN_INFERRED_BOUND,
                         pred_span,
                         OpaqueHiddenInferredBoundLint {
