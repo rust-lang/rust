@@ -55,7 +55,9 @@ fn detect_errors_from_rustc_stderr_file(p: PathBuf) -> HashMap<DiagnosticCode, u
 
 impl Tester {
     fn new() -> Result<Self> {
-        let tmp_file = AbsPathBuf::assert("/tmp/ra-rustc-test.rs".into());
+        let mut path = std::env::temp_dir();
+        path.push("ra-rustc-test.rs");
+        let tmp_file = AbsPathBuf::try_from(path).unwrap();
         std::fs::write(&tmp_file, "")?;
         let mut cargo_config = CargoConfig::default();
         cargo_config.sysroot = Some(RustLibSource::Discover);
@@ -122,26 +124,43 @@ impl Tester {
         change.change_file(self.root_file, Some(Arc::from(text)));
         self.host.apply_change(change);
         let diagnostic_config = DiagnosticsConfig::test_sample();
-        let diags = self
-            .host
-            .analysis()
-            .diagnostics(&diagnostic_config, ide::AssistResolveStrategy::None, self.root_file)
-            .unwrap();
+
         let mut actual = HashMap::new();
-        for diag in diags {
-            if !matches!(diag.code, DiagnosticCode::RustcHardError(_)) {
-                continue;
+        let panicked = match std::panic::catch_unwind(|| {
+            self.host
+                .analysis()
+                .diagnostics(&diagnostic_config, ide::AssistResolveStrategy::None, self.root_file)
+                .unwrap()
+        }) {
+            Err(e) => Some(e),
+            Ok(diags) => {
+                for diag in diags {
+                    if !matches!(diag.code, DiagnosticCode::RustcHardError(_)) {
+                        continue;
+                    }
+                    if !should_have_no_error && !SUPPORTED_DIAGNOSTICS.contains(&diag.code) {
+                        continue;
+                    }
+                    *actual.entry(diag.code).or_insert(0) += 1;
+                }
+                None
             }
-            if !should_have_no_error && !SUPPORTED_DIAGNOSTICS.contains(&diag.code) {
-                continue;
-            }
-            *actual.entry(diag.code).or_insert(0) += 1;
-        }
+        };
         // Ignore tests with diagnostics that we don't emit.
         ignore_test |= expected.keys().any(|k| !SUPPORTED_DIAGNOSTICS.contains(k));
         if ignore_test {
             println!("{p:?} IGNORE");
             self.ignore_count += 1;
+        } else if let Some(panic) = panicked {
+            if let Some(msg) = panic
+                .downcast_ref::<String>()
+                .map(String::as_str)
+                .or_else(|| panic.downcast_ref::<&str>().copied())
+            {
+                println!("{msg:?} ")
+            }
+            println!("PANIC");
+            self.fail_count += 1;
         } else if actual == expected {
             println!("{p:?} PASS");
             self.pass_count += 1;
@@ -225,11 +244,11 @@ impl flags::RustcTests {
                 let tester = AssertUnwindSafe(&mut tester);
                 let p = p.clone();
                 move || {
+                    let _guard = stdx::panic_context::enter(p.display().to_string());
                     let tester = tester;
                     tester.0.test(p);
                 }
             }) {
-                println!("panic detected at test {:?}", p);
                 std::panic::resume_unwind(e);
             }
         }
