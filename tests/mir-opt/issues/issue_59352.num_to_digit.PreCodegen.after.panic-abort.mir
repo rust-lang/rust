@@ -51,7 +51,7 @@ fn num_to_digit(_1: char) -> u32 {
     }
 
     bb4: {
-        _7 = core::panicking::panic(const "called `Option::unwrap()` on a `None` value") -> unwind unreachable;
+        _7 = option::unwrap_failed() -> unwind unreachable;
     }
 
     bb5: {

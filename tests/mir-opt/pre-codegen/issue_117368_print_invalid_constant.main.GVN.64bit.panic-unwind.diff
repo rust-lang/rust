@@ -64,7 +64,7 @@
       }
   
       bb2: {
-          _11 = core::panicking::panic(const "called `Option::unwrap()` on a `None` value") -> unwind continue;
+          _11 = option::unwrap_failed() -> unwind continue;
       }
   
       bb3: {

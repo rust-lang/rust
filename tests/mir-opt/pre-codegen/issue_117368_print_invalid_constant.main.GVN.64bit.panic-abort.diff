@@ -64,7 +64,7 @@
       }
   
       bb1: {
-          _11 = core::panicking::panic(const "called `Option::unwrap()` on a `None` value") -> unwind unreachable;
+          _11 = option::unwrap_failed() -> unwind unreachable;
       }
   
       bb2: {
