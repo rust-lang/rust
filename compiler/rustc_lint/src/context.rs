@@ -532,7 +532,7 @@ pub trait LintContext {
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     #[rustc_lint_diagnostics]
-    fn lookup_with_diagnostics(
+    fn span_lint_with_diagnostics(
         &self,
         lint: &'static Lint,
         span: Option<impl Into<MultiSpan>>,
