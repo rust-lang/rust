@@ -516,7 +516,7 @@ impl GlobalState {
             for ws in &**self.workspaces {
                 let (other, mut crate_proc_macros) =
                     ws.to_crate_graph(&mut load, &self.config.extra_env());
-                crate_graph.extend(other, &mut crate_proc_macros);
+                crate_graph.extend(other, &mut crate_proc_macros, |_| {});
                 proc_macros.push(crate_proc_macros);
             }
             (crate_graph, proc_macros, crate_graph_file_dependencies)

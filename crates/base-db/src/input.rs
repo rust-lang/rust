@@ -9,7 +9,7 @@
 use std::{fmt, mem, ops, str::FromStr};
 
 use cfg::CfgOptions;
-use la_arena::{Arena, Idx};
+use la_arena::{Arena, Idx, RawIdx};
 use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
 use syntax::SmolStr;
@@ -157,6 +157,10 @@ impl CrateOrigin {
     pub fn is_lib(&self) -> bool {
         matches!(self, CrateOrigin::Library { .. })
     }
+
+    pub fn is_lang(&self) -> bool {
+        matches!(self, CrateOrigin::Lang { .. })
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -174,7 +178,7 @@ impl From<&str> for LangCrateOrigin {
         match s {
             "alloc" => LangCrateOrigin::Alloc,
             "core" => LangCrateOrigin::Core,
-            "proc-macro" => LangCrateOrigin::ProcMacro,
+            "proc-macro" | "proc_macro" => LangCrateOrigin::ProcMacro,
             "std" => LangCrateOrigin::Std,
             "test" => LangCrateOrigin::Test,
             _ => LangCrateOrigin::Other,
@@ -522,7 +526,7 @@ impl CrateGraph {
         self.arena.iter().map(|(idx, _)| idx)
     }
 
-    // FIXME: used for `handle_hack_cargo_workspace`, should be removed later
+    // FIXME: used for fixing up the toolchain sysroot, should be removed and done differently
     #[doc(hidden)]
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (CrateId, &mut CrateData)> + '_ {
         self.arena.iter_mut()
@@ -619,7 +623,12 @@ impl CrateGraph {
     /// This will deduplicate the crates of the graph where possible.
     /// Note that for deduplication to fully work, `self`'s crate dependencies must be sorted by crate id.
     /// If the crate dependencies were sorted, the resulting graph from this `extend` call will also have the crate dependencies sorted.
-    pub fn extend(&mut self, mut other: CrateGraph, proc_macros: &mut ProcMacroPaths) {
+    pub fn extend(
+        &mut self,
+        mut other: CrateGraph,
+        proc_macros: &mut ProcMacroPaths,
+        on_finished: impl FnOnce(&FxHashMap<CrateId, CrateId>),
+    ) {
         let topo = other.crates_in_topological_order();
         let mut id_map: FxHashMap<CrateId, CrateId> = FxHashMap::default();
         for topo in topo {
@@ -670,6 +679,8 @@ impl CrateGraph {
 
         *proc_macros =
             mem::take(proc_macros).into_iter().map(|(id, macros)| (id_map[&id], macros)).collect();
+
+        on_finished(&id_map);
     }
 
     fn find_path(
@@ -720,6 +731,29 @@ impl CrateGraph {
 
     fn hacky_find_crate<'a>(&'a self, display_name: &'a str) -> impl Iterator<Item = CrateId> + 'a {
         self.iter().filter(move |it| self[*it].display_name.as_deref() == Some(display_name))
+    }
+
+    /// Removes all crates from this crate graph except for the ones in `to_keep` and fixes up the dependencies.
+    /// Returns a mapping from old crate ids to new crate ids.
+    pub fn remove_crates_except(&mut self, to_keep: &[CrateId]) -> Vec<Option<CrateId>> {
+        let mut id_map = vec![None; self.arena.len()];
+        self.arena = std::mem::take(&mut self.arena)
+            .into_iter()
+            .filter_map(|(id, data)| if to_keep.contains(&id) { Some((id, data)) } else { None })
+            .enumerate()
+            .map(|(new_id, (id, data))| {
+                id_map[id.into_raw().into_u32() as usize] =
+                    Some(CrateId::from_raw(RawIdx::from_u32(new_id as u32)));
+                data
+            })
+            .collect();
+        for (_, data) in self.arena.iter_mut() {
+            data.dependencies.iter_mut().for_each(|dep| {
+                dep.crate_id =
+                    id_map[dep.crate_id.into_raw().into_u32() as usize].expect("crate was filtered")
+            });
+        }
+        id_map
     }
 }
 
