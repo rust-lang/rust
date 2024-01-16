@@ -4,7 +4,7 @@
 use std::fmt::Debug;
 
 use rustc_const_eval::interpret::{ImmTy, Projectable};
-use rustc_const_eval::interpret::{InterpCx, InterpResult, OpTy, Scalar};
+use rustc_const_eval::interpret::{InterpCx, InterpResult, Scalar};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
 use rustc_hir::HirId;
@@ -83,20 +83,14 @@ struct ConstPropagator<'mir, 'tcx> {
 
 #[derive(Debug, Clone)]
 enum Value<'tcx> {
-    Immediate(OpTy<'tcx>),
+    Immediate(ImmTy<'tcx>),
     Aggregate { variant: VariantIdx, fields: IndexVec<FieldIdx, Value<'tcx>> },
     Uninit,
 }
 
-impl<'tcx> From<OpTy<'tcx>> for Value<'tcx> {
-    fn from(v: OpTy<'tcx>) -> Self {
-        Self::Immediate(v)
-    }
-}
-
 impl<'tcx> From<ImmTy<'tcx>> for Value<'tcx> {
     fn from(v: ImmTy<'tcx>) -> Self {
-        Self::Immediate(v.into())
+        Self::Immediate(v)
     }
 }
 
@@ -149,7 +143,7 @@ impl<'tcx> Value<'tcx> {
         Some(this)
     }
 
-    fn immediate(&self) -> Option<&OpTy<'tcx>> {
+    fn immediate(&self) -> Option<&ImmTy<'tcx>> {
         match self {
             Value::Immediate(op) => Some(op),
             _ => None,
@@ -260,7 +254,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     /// Returns the value, if any, of evaluating `c`.
-    fn eval_constant(&mut self, c: &ConstOperand<'tcx>) -> Option<OpTy<'tcx>> {
+    fn eval_constant(&mut self, c: &ConstOperand<'tcx>) -> Option<ImmTy<'tcx>> {
         // FIXME we need to revisit this for #67176
         if c.has_param() {
             return None;
@@ -274,14 +268,16 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         // manually normalized.
         let val = self.tcx.try_normalize_erasing_regions(self.param_env, c.const_).ok()?;
 
-        self.use_ecx(|this| this.ecx.eval_mir_constant(&val, Some(c.span), None))
+        self.use_ecx(|this| this.ecx.eval_mir_constant(&val, Some(c.span), None))?
+            .as_mplace_or_imm()
+            .right()
     }
 
     /// Returns the value, if any, of evaluating `place`.
     #[instrument(level = "trace", skip(self), ret)]
-    fn eval_place(&mut self, place: Place<'tcx>) -> Option<OpTy<'tcx>> {
+    fn eval_place(&mut self, place: Place<'tcx>) -> Option<ImmTy<'tcx>> {
         match self.get_const(place)? {
-            Value::Immediate(op) => Some(op.clone()),
+            Value::Immediate(imm) => Some(imm.clone()),
             Value::Aggregate { .. } => None,
             Value::Uninit => None,
         }
@@ -289,7 +285,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     /// Returns the value, if any, of evaluating `op`. Calls upon `eval_constant`
     /// or `eval_place`, depending on the variant of `Operand` used.
-    fn eval_operand(&mut self, op: &Operand<'tcx>) -> Option<OpTy<'tcx>> {
+    fn eval_operand(&mut self, op: &Operand<'tcx>) -> Option<ImmTy<'tcx>> {
         match *op {
             Operand::Constant(ref c) => self.eval_constant(c),
             Operand::Move(place) | Operand::Copy(place) => self.eval_place(place),
@@ -668,13 +664,12 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     let to = self.ecx.layout_of(to).ok()?;
                     // `offset` for immediates only supports scalar/scalar-pair ABIs,
                     // so bail out if the target is not one.
-                    if value.as_mplace_or_imm().is_right() {
-                        match (value.layout.abi, to.abi) {
-                            (Abi::Scalar(..), Abi::Scalar(..)) => {}
-                            (Abi::ScalarPair(..), Abi::ScalarPair(..)) => {}
-                            _ => return None,
-                        }
+                    match (value.layout.abi, to.abi) {
+                        (Abi::Scalar(..), Abi::Scalar(..)) => {}
+                        (Abi::ScalarPair(..), Abi::ScalarPair(..)) => {}
+                        _ => return None,
                     }
+
                     value.offset(Size::ZERO, to, &self.ecx).ok()?.into()
                 }
                 _ => return None,
