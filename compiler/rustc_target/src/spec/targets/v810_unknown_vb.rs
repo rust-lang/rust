@@ -5,7 +5,7 @@ pub fn target() -> Target {
     Target {
         llvm_target: "v810-unknown-vb".into(),
         pointer_width: 32,
-        data_layout: "e-p:32:32-i32:32-f32:32-n32:32".into(),
+        data_layout: "e-p:32:32-i32:32-i64:32-f32:32-a:0:32-n32:32-S32".into(),
         arch: "v810".into(),
         options: base,
     }
