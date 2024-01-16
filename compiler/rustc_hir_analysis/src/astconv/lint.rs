@@ -240,24 +240,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 diag.stash(self_ty.span, StashKey::TraitMissingMethod);
             } else {
                 let msg = "trait objects without an explicit `dyn` are deprecated";
-                tcx.struct_span_lint_hir(
-                    BARE_TRAIT_OBJECTS,
-                    self_ty.hir_id,
-                    self_ty.span,
-                    msg,
-                    |lint| {
-                        if self_ty.span.can_be_used_for_suggestions()
-                            && !self.maybe_lint_impl_trait(self_ty, lint)
-                        {
-                            lint.multipart_suggestion_verbose(
-                                "use `dyn`",
-                                sugg,
-                                Applicability::MachineApplicable,
-                            );
-                        }
-                        self.maybe_lint_blanket_trait_impl(self_ty, lint);
-                    },
-                );
+                tcx.node_span_lint(BARE_TRAIT_OBJECTS, self_ty.hir_id, self_ty.span, msg, |lint| {
+                    if self_ty.span.can_be_used_for_suggestions()
+                        && !self.maybe_lint_impl_trait(self_ty, lint)
+                    {
+                        lint.multipart_suggestion_verbose(
+                            "use `dyn`",
+                            sugg,
+                            Applicability::MachineApplicable,
+                        );
+                    }
+                    self.maybe_lint_blanket_trait_impl(self_ty, lint);
+                });
             }
         }
     }

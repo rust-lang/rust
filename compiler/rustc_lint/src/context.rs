@@ -676,7 +676,7 @@ impl<'tcx> LintContext for LateContext<'tcx> {
         let hir_id = self.last_node_with_lint_attrs;
 
         match span {
-            Some(s) => self.tcx.struct_span_lint_hir(lint, hir_id, s, msg, decorate),
+            Some(s) => self.tcx.node_span_lint(lint, hir_id, s, msg, decorate),
             None => self.tcx.node_lint(lint, hir_id, msg, decorate),
         }
     }

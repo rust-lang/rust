@@ -270,7 +270,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             if !spans.is_empty() {
                 let (default_modifier, default_result) =
                     reg_class.default_modifier(asm_arch).unwrap();
-                self.tcx.struct_span_lint_hir(
+                self.tcx.node_span_lint(
                     lint::builtin::ASM_SUB_REGISTER,
                     expr.hir_id,
                     spans,

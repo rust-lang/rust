@@ -154,7 +154,7 @@ where
 
 pub fn span_lint_hir(cx: &LateContext<'_>, lint: &'static Lint, hir_id: HirId, sp: Span, msg: &str) {
     #[expect(clippy::disallowed_methods)]
-    cx.tcx.struct_span_lint_hir(lint, hir_id, sp, msg.to_string(), |diag| {
+    cx.tcx.node_span_lint(lint, hir_id, sp, msg.to_string(), |diag| {
         docs_link(diag, lint);
     });
 }
@@ -168,7 +168,7 @@ pub fn span_lint_hir_and_then(
     f: impl FnOnce(&mut Diagnostic),
 ) {
     #[expect(clippy::disallowed_methods)]
-    cx.tcx.struct_span_lint_hir(lint, hir_id, sp, msg.to_string(), |diag| {
+    cx.tcx.node_span_lint(lint, hir_id, sp, msg.to_string(), |diag| {
         f(diag);
         docs_link(diag, lint);
     });
