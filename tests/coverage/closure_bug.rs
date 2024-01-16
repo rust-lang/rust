@@ -3,6 +3,7 @@
 // the coverage report. However, an unstable sort was causing them to be treated
 // inconsistently when preparing coverage spans.
 
+#[rustfmt::skip]
 fn main() {
     let truthy = std::env::args().len() == 1;
 

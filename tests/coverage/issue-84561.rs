@@ -3,6 +3,8 @@
 // failure-status: 101
 #[derive(PartialEq, Eq)]
 struct Foo(u32);
+
+#[rustfmt::skip]
 fn test3() {
     let is_true = std::env::args().len() == 1;
     let bar = Foo(1);

@@ -1,5 +1,5 @@
 Function name: closure_bug::main
-Raw bytes (201): 0x[01, 01, 26, 01, 05, 05, 02, 05, 02, 97, 01, 09, 05, 02, 09, 92, 01, 97, 01, 09, 05, 02, 09, 92, 01, 97, 01, 09, 05, 02, 8f, 01, 0d, 09, 92, 01, 97, 01, 09, 05, 02, 0d, 8a, 01, 8f, 01, 0d, 09, 92, 01, 97, 01, 09, 05, 02, 0d, 8a, 01, 8f, 01, 0d, 09, 92, 01, 97, 01, 09, 05, 02, 87, 01, 11, 0d, 8a, 01, 8f, 01, 0d, 09, 92, 01, 97, 01, 09, 05, 02, 11, 82, 01, 87, 01, 11, 0d, 8a, 01, 8f, 01, 0d, 09, 92, 01, 97, 01, 09, 05, 02, 11, 01, 06, 01, 03, 0a, 01, 09, 05, 01, 0e, 05, 01, 0f, 00, 17, 02, 00, 17, 00, 18, 97, 01, 02, 09, 00, 0a, 97, 01, 06, 05, 01, 0e, 09, 01, 0f, 00, 17, 92, 01, 00, 17, 00, 18, 8f, 01, 02, 09, 00, 0a, 8f, 01, 06, 05, 01, 0e, 0d, 01, 0f, 00, 17, 8a, 01, 00, 17, 00, 18, 87, 01, 02, 09, 00, 0a, 87, 01, 06, 05, 01, 0e, 11, 01, 0f, 00, 17, 82, 01, 00, 17, 00, 18, 7f, 01, 01, 00, 02]
+Raw bytes (201): 0x[01, 01, 26, 01, 05, 05, 02, 05, 02, 97, 01, 09, 05, 02, 09, 92, 01, 97, 01, 09, 05, 02, 09, 92, 01, 97, 01, 09, 05, 02, 8f, 01, 0d, 09, 92, 01, 97, 01, 09, 05, 02, 0d, 8a, 01, 8f, 01, 0d, 09, 92, 01, 97, 01, 09, 05, 02, 0d, 8a, 01, 8f, 01, 0d, 09, 92, 01, 97, 01, 09, 05, 02, 87, 01, 11, 0d, 8a, 01, 8f, 01, 0d, 09, 92, 01, 97, 01, 09, 05, 02, 11, 82, 01, 87, 01, 11, 0d, 8a, 01, 8f, 01, 0d, 09, 92, 01, 97, 01, 09, 05, 02, 11, 01, 07, 01, 03, 0a, 01, 09, 05, 01, 0e, 05, 01, 0f, 00, 17, 02, 00, 17, 00, 18, 97, 01, 02, 09, 00, 0a, 97, 01, 06, 05, 01, 0e, 09, 01, 0f, 00, 17, 92, 01, 00, 17, 00, 18, 8f, 01, 02, 09, 00, 0a, 8f, 01, 06, 05, 01, 0e, 0d, 01, 0f, 00, 17, 8a, 01, 00, 17, 00, 18, 87, 01, 02, 09, 00, 0a, 87, 01, 06, 05, 01, 0e, 11, 01, 0f, 00, 17, 82, 01, 00, 17, 00, 18, 7f, 01, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 38
@@ -42,7 +42,7 @@ Number of expressions: 38
 - expression 36 operands: lhs = Expression(37, Add), rhs = Counter(2)
 - expression 37 operands: lhs = Counter(1), rhs = Expression(0, Sub)
 Number of file 0 mappings: 17
-- Code(Counter(0)) at (prev + 6, 1) to (start + 3, 10)
+- Code(Counter(0)) at (prev + 7, 1) to (start + 3, 10)
 - Code(Counter(0)) at (prev + 9, 5) to (start + 1, 14)
 - Code(Counter(1)) at (prev + 1, 15) to (start + 0, 23)
 - Code(Expression(0, Sub)) at (prev + 0, 23) to (start + 0, 24)
@@ -72,14 +72,14 @@ Number of file 0 mappings: 17
     = (c4 + ((c3 + ((c2 + ((c1 + (c0 - c1)) - c2)) - c3)) - c4))
 
 Function name: closure_bug::main::{closure#0}
-Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 0d, 09, 00, 12, 05, 00, 15, 00, 19, 02, 00, 23, 00, 28, 07, 00, 29, 00, 2a]
+Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 0e, 09, 00, 12, 05, 00, 15, 00, 19, 02, 00, 23, 00, 28, 07, 00, 29, 00, 2a]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 2
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 - expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
 Number of file 0 mappings: 4
-- Code(Counter(0)) at (prev + 13, 9) to (start + 0, 18)
+- Code(Counter(0)) at (prev + 14, 9) to (start + 0, 18)
 - Code(Counter(1)) at (prev + 0, 21) to (start + 0, 25)
 - Code(Expression(0, Sub)) at (prev + 0, 35) to (start + 0, 40)
     = (c0 - c1)
@@ -87,14 +87,14 @@ Number of file 0 mappings: 4
     = (c1 + (c0 - c1))
 
 Function name: closure_bug::main::{closure#1}
-Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 16, 09, 00, 12, 05, 00, 15, 00, 19, 02, 00, 23, 00, 28, 07, 00, 29, 00, 2a]
+Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 17, 09, 00, 12, 05, 00, 15, 00, 19, 02, 00, 23, 00, 28, 07, 00, 29, 00, 2a]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 2
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 - expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
 Number of file 0 mappings: 4
-- Code(Counter(0)) at (prev + 22, 9) to (start + 0, 18)
+- Code(Counter(0)) at (prev + 23, 9) to (start + 0, 18)
 - Code(Counter(1)) at (prev + 0, 21) to (start + 0, 25)
 - Code(Expression(0, Sub)) at (prev + 0, 35) to (start + 0, 40)
     = (c0 - c1)
@@ -102,14 +102,14 @@ Number of file 0 mappings: 4
     = (c1 + (c0 - c1))
 
 Function name: closure_bug::main::{closure#2}
-Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 1f, 09, 00, 12, 05, 00, 15, 00, 19, 02, 00, 23, 00, 28, 07, 00, 29, 00, 2a]
+Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 20, 09, 00, 12, 05, 00, 15, 00, 19, 02, 00, 23, 00, 28, 07, 00, 29, 00, 2a]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 2
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 - expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
 Number of file 0 mappings: 4
-- Code(Counter(0)) at (prev + 31, 9) to (start + 0, 18)
+- Code(Counter(0)) at (prev + 32, 9) to (start + 0, 18)
 - Code(Counter(1)) at (prev + 0, 21) to (start + 0, 25)
 - Code(Expression(0, Sub)) at (prev + 0, 35) to (start + 0, 40)
     = (c0 - c1)
@@ -117,14 +117,14 @@ Number of file 0 mappings: 4
     = (c1 + (c0 - c1))
 
 Function name: closure_bug::main::{closure#3}
-Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 28, 09, 00, 12, 05, 00, 15, 00, 19, 02, 00, 23, 00, 28, 07, 00, 29, 00, 2a]
+Raw bytes (28): 0x[01, 01, 02, 01, 05, 05, 02, 04, 01, 29, 09, 00, 12, 05, 00, 15, 00, 19, 02, 00, 23, 00, 28, 07, 00, 29, 00, 2a]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 2
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 - expression 1 operands: lhs = Counter(1), rhs = Expression(0, Sub)
 Number of file 0 mappings: 4
-- Code(Counter(0)) at (prev + 40, 9) to (start + 0, 18)
+- Code(Counter(0)) at (prev + 41, 9) to (start + 0, 18)
 - Code(Counter(1)) at (prev + 0, 21) to (start + 0, 25)
 - Code(Expression(0, Sub)) at (prev + 0, 35) to (start + 0, 40)
     = (c0 - c1)

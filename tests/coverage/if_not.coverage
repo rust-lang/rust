@@ -1,6 +1,7 @@
    LL|       |#![feature(coverage_attribute)]
    LL|       |// edition: 2021
    LL|       |
+   LL|       |#[rustfmt::skip]
    LL|     12|fn if_not(cond: bool) {
    LL|     12|    if
    LL|     12|        !
