@@ -24,7 +24,7 @@ use rustc_hir::HirId;
 use rustc_index::IndexVec;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::{
-    reveal_actual_level, struct_lint_level, LevelAndSource, LintExpectation, LintLevelSource,
+    lint_level, reveal_actual_level, LevelAndSource, LintExpectation, LintLevelSource,
     ShallowLintLevelMap,
 };
 use rustc_middle::query::Providers;
@@ -1062,7 +1062,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                 if self.lint_added_lints {
                     let lint = builtin::UNKNOWN_LINTS;
                     let (level, src) = self.lint_level(builtin::UNKNOWN_LINTS);
-                    struct_lint_level(
+                    lint_level(
                         self.sess,
                         lint,
                         level,
@@ -1096,7 +1096,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     /// Used to emit a lint-related diagnostic based on the current state of
     /// this lint context.
     ///
-    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
     #[rustc_lint_diagnostics]
     #[track_caller]
     pub(crate) fn opt_span_lint(
@@ -1107,7 +1107,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         decorate: impl for<'a, 'b> FnOnce(&'b mut DiagnosticBuilder<'a, ()>),
     ) {
         let (level, src) = self.lint_level(lint);
-        struct_lint_level(self.sess, lint, level, src, span, msg, decorate)
+        lint_level(self.sess, lint, level, src, span, msg, decorate)
     }
 
     #[track_caller]
@@ -1118,7 +1118,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         decorate: impl for<'a> DecorateLint<'a, ()>,
     ) {
         let (level, src) = self.lint_level(lint);
-        struct_lint_level(self.sess, lint, level, src, Some(span), decorate.msg(), |lint| {
+        lint_level(self.sess, lint, level, src, Some(span), decorate.msg(), |lint| {
             decorate.decorate_lint(lint);
         });
     }
@@ -1126,7 +1126,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     #[track_caller]
     pub fn emit_lint(&self, lint: &'static Lint, decorate: impl for<'a> DecorateLint<'a, ()>) {
         let (level, src) = self.lint_level(lint);
-        struct_lint_level(self.sess, lint, level, src, None, decorate.msg(), |lint| {
+        lint_level(self.sess, lint, level, src, None, decorate.msg(), |lint| {
             decorate.decorate_lint(lint);
         });
     }

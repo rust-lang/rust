@@ -530,7 +530,7 @@ pub trait LintContext {
     /// Emit a lint at the appropriate level, with an optional associated span and an existing
     /// diagnostic.
     ///
-    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
     #[rustc_lint_diagnostics]
     fn span_lint_with_diagnostics(
         &self,
@@ -553,7 +553,7 @@ pub trait LintContext {
     // set the span in their `decorate` function (preferably using set_span).
     /// Emit a lint at the appropriate level, with an optional associated span.
     ///
-    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
     #[rustc_lint_diagnostics]
     fn opt_span_lint<S: Into<MultiSpan>>(
         &self,
@@ -578,7 +578,7 @@ pub trait LintContext {
 
     /// Emit a lint at the appropriate level, with an associated span.
     ///
-    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
     #[rustc_lint_diagnostics]
     fn span_lint<S: Into<MultiSpan>>(
         &self,
@@ -600,7 +600,7 @@ pub trait LintContext {
 
     /// Emit a lint at the appropriate level, with no associated span.
     ///
-    /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    /// [`lint_level`]: rustc_middle::lint::lint_level#decorate-signature
     #[rustc_lint_diagnostics]
     fn lint(
         &self,
