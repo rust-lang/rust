@@ -722,19 +722,32 @@ pub(crate) struct LabeledLoopInBreak {
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub sub: WrapExpressionInParentheses,
+    pub sub: WrapInParentheses,
 }
 
 #[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    parse_sugg_wrap_expression_in_parentheses,
-    applicability = "machine-applicable"
-)]
-pub(crate) struct WrapExpressionInParentheses {
-    #[suggestion_part(code = "(")]
-    pub left: Span,
-    #[suggestion_part(code = ")")]
-    pub right: Span,
+
+pub(crate) enum WrapInParentheses {
+    #[multipart_suggestion(
+        parse_sugg_wrap_expression_in_parentheses,
+        applicability = "machine-applicable"
+    )]
+    Expression {
+        #[suggestion_part(code = "(")]
+        left: Span,
+        #[suggestion_part(code = ")")]
+        right: Span,
+    },
+    #[multipart_suggestion(
+        parse_sugg_wrap_macro_in_parentheses,
+        applicability = "machine-applicable"
+    )]
+    MacroArgs {
+        #[suggestion_part(code = "(")]
+        left: Span,
+        #[suggestion_part(code = ")")]
+        right: Span,
+    },
 }
 
 #[derive(Diagnostic)]
@@ -936,7 +949,7 @@ pub(crate) struct InvalidExpressionInLetElse {
     pub span: Span,
     pub operator: &'static str,
     #[subdiagnostic]
-    pub sugg: WrapExpressionInParentheses,
+    pub sugg: WrapInParentheses,
 }
 
 #[derive(Diagnostic)]
@@ -945,7 +958,7 @@ pub(crate) struct InvalidCurlyInLetElse {
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub sugg: WrapExpressionInParentheses,
+    pub sugg: WrapInParentheses,
 }
 
 #[derive(Diagnostic)]
