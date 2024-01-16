@@ -387,7 +387,7 @@ fn report_conflicting_impls<'tcx>(
     let impl_span = tcx.def_span(impl_def_id);
 
     // Work to be done after we've built the DiagnosticBuilder. We have to define it
-    // now because the struct_lint methods don't return back the DiagnosticBuilder
+    // now because the lint emit methods don't return back the DiagnosticBuilder
     // that's passed in.
     fn decorate<'tcx>(
         tcx: TyCtxt<'tcx>,

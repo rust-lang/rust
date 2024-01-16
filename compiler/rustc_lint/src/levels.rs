@@ -1099,7 +1099,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
     #[rustc_lint_diagnostics]
     #[track_caller]
-    pub(crate) fn struct_lint(
+    pub(crate) fn opt_span_lint(
         &self,
         lint: &'static Lint,
         span: Option<MultiSpan>,
