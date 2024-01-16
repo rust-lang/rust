@@ -82,4 +82,8 @@ if isWindows; then
     # echo "MAJAHA /etc/pacman.d/mirrorlist.mingw64"
     # cat /etc/pacman.d/mirrorlist.mingw64
     echo "PATH: $PATH"
+    echo "### ENV"
+    env
+    echo "### FSTAB"
+    cat /etc/fstab
 fi
