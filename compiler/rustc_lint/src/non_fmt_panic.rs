@@ -251,7 +251,7 @@ fn check_panic_str<'tcx>(
                 .map(|span| fmt_span.from_inner(InnerSpan::new(span.start, span.end)))
                 .collect(),
         };
-        cx.emit_spanned_lint(
+        cx.emit_span_lint(
             NON_FMT_PANICS,
             arg_spans,
             NonFmtPanicUnused {
@@ -268,7 +268,7 @@ fn check_panic_str<'tcx>(
                     .collect()
             });
         let count = brace_spans.as_ref().map(|v| v.len()).unwrap_or(/* any number >1 */ 2);
-        cx.emit_spanned_lint(
+        cx.emit_span_lint(
             NON_FMT_PANICS,
             brace_spans.unwrap_or_else(|| vec![span]),
             NonFmtPanicBraces {
