@@ -66,8 +66,7 @@ fn should_lint<'cx>(cx: &LateContext<'cx>, cast_op: &Expr<'_>, cast_from: Ty<'cx
             // a % b => [a]
             let exprs = exprs_with_selected_binop_peeled(cast_op);
             for expr in exprs {
-                let ty = cx.typeck_results().expr_ty(expr);
-                match expr_sign(cx, expr, ty) {
+                match expr_sign(cx, expr, None) {
                     Sign::Negative => negative_count += 1,
                     Sign::Uncertain => uncertain_count += 1,
                     Sign::ZeroOrPositive => (),
@@ -85,7 +84,11 @@ fn should_lint<'cx>(cx: &LateContext<'cx>, cast_op: &Expr<'_>, cast_from: Ty<'cx
     }
 }
 
-fn get_const_int_eval<'cx>(cx: &LateContext<'cx>, expr: &Expr<'_>, ty: impl Into<Option<Ty<'cx>>>) -> Option<i128> {
+fn get_const_signed_int_eval<'cx>(
+    cx: &LateContext<'cx>,
+    expr: &Expr<'_>,
+    ty: impl Into<Option<Ty<'cx>>>,
+) -> Option<i128> {
     let ty = ty.into().unwrap_or_else(|| cx.typeck_results().expr_ty(expr));
 
     if let Constant::Int(n) = constant(cx, cx.typeck_results(), expr)?
@@ -96,6 +99,22 @@ fn get_const_int_eval<'cx>(cx: &LateContext<'cx>, expr: &Expr<'_>, ty: impl Into
     None
 }
 
+fn get_const_unsigned_int_eval<'cx>(
+    cx: &LateContext<'cx>,
+    expr: &Expr<'_>,
+    ty: impl Into<Option<Ty<'cx>>>,
+) -> Option<u128> {
+    let ty = ty.into().unwrap_or_else(|| cx.typeck_results().expr_ty(expr));
+
+    if let Constant::Int(n) = constant(cx, cx.typeck_results(), expr)?
+        && let ty::Uint(_ity) = *ty.kind()
+    {
+        return Some(n);
+    }
+    None
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 enum Sign {
     ZeroOrPositive,
     Negative,
@@ -104,8 +123,11 @@ enum Sign {
 
 fn expr_sign<'cx>(cx: &LateContext<'cx>, expr: &Expr<'_>, ty: impl Into<Option<Ty<'cx>>>) -> Sign {
     // Try evaluate this expr first to see if it's positive
-    if let Some(val) = get_const_int_eval(cx, expr, ty) {
+    if let Some(val) = get_const_signed_int_eval(cx, expr, ty) {
         return if val >= 0 { Sign::ZeroOrPositive } else { Sign::Negative };
+    }
+    if let Some(_val) = get_const_unsigned_int_eval(cx, expr, None) {
+        return Sign::ZeroOrPositive;
     }
 
     // Calling on methods that always return non-negative values.
@@ -144,12 +166,13 @@ fn expr_sign<'cx>(cx: &LateContext<'cx>, expr: &Expr<'_>, ty: impl Into<Option<T
 /// Otherwise, returns [`Sign::Uncertain`].
 fn pow_call_result_sign(cx: &LateContext<'_>, base: &Expr<'_>, exponent: &Expr<'_>) -> Sign {
     let base_sign = expr_sign(cx, base, None);
-    let exponent_val = get_const_int_eval(cx, exponent, None);
+
+    // Rust's integer pow() functions take an unsigned exponent.
+    let exponent_val = get_const_unsigned_int_eval(cx, exponent, None);
     let exponent_is_even = exponent_val.map(|val| val % 2 == 0);
 
     match (base_sign, exponent_is_even) {
         // Non-negative bases always return non-negative results, ignoring overflow.
-        // This is because Rust's integer pow() functions take an unsigned exponent.
         (Sign::ZeroOrPositive, _) => Sign::ZeroOrPositive,
 
         // Any base raised to an even exponent is non-negative.

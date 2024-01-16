@@ -600,5 +600,5 @@ error: casting `i32` to `u32` may lose the sign of the value
 LL |         (a.abs() * b.pow(2) / c.abs()) as u32
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 77 previous errors
+error: aborting due to 76 previous errors
 
