@@ -1,12 +1,7 @@
 #![no_std]
 extern crate alloc;
 
-use alloc::{
-    borrow::Cow,
-    boxed::Box,
-    string::{String, ToString},
-    sync::Arc,
-};
+use alloc::{borrow::Cow, boxed::Box, string::String, sync::Arc};
 use core::{
     borrow::Borrow,
     cmp::{self, Ordering},
@@ -41,7 +36,7 @@ pub struct SmolStr(Repr);
 impl SmolStr {
     #[deprecated = "Use `new_inline` instead"]
     pub const fn new_inline_from_ascii(len: usize, bytes: &[u8]) -> SmolStr {
-        let _len_is_short = [(); INLINE_CAP + 1][len];
+        assert!(len <= INLINE_CAP);
 
         const ZEROS: &[u8] = &[0; INLINE_CAP];
 
@@ -102,9 +97,12 @@ impl SmolStr {
         self.0.as_str()
     }
 
+    #[allow(clippy::inherent_to_string_shadow_display)]
     #[inline(always)]
     pub fn to_string(&self) -> String {
-        self.as_str().to_string()
+        use alloc::borrow::ToOwned;
+
+        self.as_str().to_owned()
     }
 
     #[inline(always)]
@@ -118,11 +116,8 @@ impl SmolStr {
     }
 
     #[inline(always)]
-    pub fn is_heap_allocated(&self) -> bool {
-        match self.0 {
-            Repr::Heap(..) => true,
-            _ => false,
-        }
+    pub const fn is_heap_allocated(&self) -> bool {
+        matches!(self.0, Repr::Heap(..))
     }
 
     fn from_char_iter<I: iter::Iterator<Item = char>>(mut iter: I) -> SmolStr {
@@ -154,14 +149,19 @@ impl SmolStr {
 }
 
 impl Default for SmolStr {
+    #[inline(always)]
     fn default() -> SmolStr {
-        SmolStr::new("")
+        SmolStr(Repr::Inline {
+            len: InlineSize::_V0,
+            buf: [0; INLINE_CAP],
+        })
     }
 }
 
 impl Deref for SmolStr {
     type Target = str;
 
+    #[inline(always)]
     fn deref(&self) -> &str {
         self.as_str()
     }
@@ -237,7 +237,7 @@ impl PartialOrd for SmolStr {
 
 impl hash::Hash for SmolStr {
     fn hash<H: hash::Hasher>(&self, hasher: &mut H) {
-        self.as_str().hash(hasher)
+        self.as_str().hash(hasher);
     }
 }
 
@@ -273,11 +273,11 @@ where
         if size + len > INLINE_CAP {
             let mut heap = String::with_capacity(size + len);
             heap.push_str(core::str::from_utf8(&buf[..len]).unwrap());
-            heap.push_str(&slice);
+            heap.push_str(slice);
             heap.extend(iter);
             return SmolStr(Repr::Heap(heap.into_boxed_str().into()));
         }
-        (&mut buf[len..][..size]).copy_from_slice(slice.as_bytes());
+        buf[len..][..size].copy_from_slice(slice.as_bytes());
         len += size;
     }
     SmolStr(Repr::Inline {
@@ -516,7 +516,7 @@ impl Repr {
     #[inline]
     fn as_str(&self) -> &str {
         match self {
-            Repr::Heap(data) => &*data,
+            Repr::Heap(data) => data,
             Repr::Static(data) => data,
             Repr::Inline { len, buf } => {
                 let len = *len as usize;
@@ -555,6 +555,7 @@ pub struct Writer {
 }
 
 impl Writer {
+    #[must_use]
     pub const fn new() -> Self {
         Writer {
             inline: [0; INLINE_CAP],
@@ -576,15 +577,15 @@ impl fmt::Write for Writer {
                 self.inline[old_len..self.len].copy_from_slice(s.as_bytes());
 
                 return Ok(()); // skip the heap push below
-            } else {
-                self.heap.reserve(self.len);
+            }
 
-                // copy existing inline bytes over to the heap
-                unsafe {
-                    self.heap
-                        .as_mut_vec()
-                        .extend_from_slice(&self.inline[..old_len]);
-                }
+            self.heap.reserve(self.len);
+
+            // copy existing inline bytes over to the heap
+            unsafe {
+                self.heap
+                    .as_mut_vec()
+                    .extend_from_slice(&self.inline[..old_len]);
             }
         }
 
