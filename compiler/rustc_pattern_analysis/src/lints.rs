@@ -1,14 +1,11 @@
-use rustc_session::lint;
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::ErrorGuaranteed;
 
-use crate::errors::{
-    self, NonExhaustiveOmittedPattern, NonExhaustiveOmittedPatternLintOnArm, Uncovered,
-};
+use crate::errors::{NonExhaustiveOmittedPattern, NonExhaustiveOmittedPatternLintOnArm, Uncovered};
 use crate::pat::PatOrWild;
 use crate::rustc::{
-    self, Constructor, DeconstructedPat, MatchArm, MatchCtxt, PlaceCtxt, RevealedTy,
-    RustcMatchCheckCtxt, SplitConstructorSet, WitnessPat,
+    Constructor, DeconstructedPat, MatchArm, MatchCtxt, PlaceCtxt, RevealedTy, RustcMatchCheckCtxt,
+    SplitConstructorSet, WitnessPat,
 };
 
 /// A column of patterns in the matrix, where a column is the intuitive notion of "subpatterns that
@@ -195,27 +192,4 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'a, 'p, 'tcx>(
         }
     }
     Ok(())
-}
-
-pub(crate) fn lint_overlapping_range_endpoints<'a, 'p, 'tcx>(
-    cx: MatchCtxt<'a, 'p, 'tcx>,
-    overlapping_range_endpoints: &[rustc::OverlappingRanges<'p, 'tcx>],
-) {
-    let rcx = cx.tycx;
-    for overlap in overlapping_range_endpoints {
-        let overlap_as_pat = rcx.hoist_pat_range(&overlap.overlaps_on, overlap.pat.ty());
-        let overlaps: Vec<_> = overlap
-            .overlaps_with
-            .iter()
-            .map(|pat| pat.data().unwrap().span)
-            .map(|span| errors::Overlap { range: overlap_as_pat.clone(), span })
-            .collect();
-        let pat_span = overlap.pat.data().unwrap().span;
-        rcx.tcx.emit_spanned_lint(
-            lint::builtin::OVERLAPPING_RANGE_ENDPOINTS,
-            rcx.match_lint_level,
-            pat_span,
-            errors::OverlappingRangeEndpoints { overlap: overlaps, range: pat_span },
-        );
-    }
 }

@@ -27,11 +27,9 @@ use rustc_middle::ty::Ty;
 #[cfg(feature = "rustc")]
 use rustc_span::ErrorGuaranteed;
 
-use crate::constructor::{Constructor, ConstructorSet};
+use crate::constructor::{Constructor, ConstructorSet, IntRange};
 #[cfg(feature = "rustc")]
-use crate::lints::{
-    lint_nonexhaustive_missing_variants, lint_overlapping_range_endpoints, PatternColumn,
-};
+use crate::lints::{lint_nonexhaustive_missing_variants, PatternColumn};
 use crate::pat::DeconstructedPat;
 #[cfg(feature = "rustc")]
 use crate::rustc::RustcMatchCheckCtxt;
@@ -77,6 +75,17 @@ pub trait TypeCx: Sized + fmt::Debug {
 
     /// Raise a bug.
     fn bug(&self, fmt: fmt::Arguments<'_>) -> !;
+
+    /// Lint that the range `pat` overlapped with all the ranges in `overlaps_with`, where the range
+    /// they overlapped over is `overlaps_on`. We only detect singleton overlaps.
+    /// The default implementation does nothing.
+    fn lint_overlapping_range_endpoints(
+        &self,
+        _pat: &DeconstructedPat<'_, Self>,
+        _overlaps_on: IntRange,
+        _overlaps_with: &[&DeconstructedPat<'_, Self>],
+    ) {
+    }
 }
 
 /// Context that provides information global to a match.
@@ -111,16 +120,10 @@ pub fn analyze_match<'p, 'tcx>(
 
     let report = compute_match_usefulness(cx, arms, scrut_ty, scrut_validity)?;
 
-    let pat_column = PatternColumn::new(arms);
-
-    // Lint ranges that overlap on their endpoints, which is likely a mistake.
-    if !report.overlapping_range_endpoints.is_empty() {
-        lint_overlapping_range_endpoints(cx, &report.overlapping_range_endpoints);
-    }
-
     // Run the non_exhaustive_omitted_patterns lint. Only run on refutable patterns to avoid hitting
     // `if let`s. Only run if the match is exhaustive otherwise the error is redundant.
     if tycx.refutable && report.non_exhaustiveness_witnesses.is_empty() {
+        let pat_column = PatternColumn::new(arms);
         lint_nonexhaustive_missing_variants(cx, arms, &pat_column, scrut_ty)?;
     }
 
