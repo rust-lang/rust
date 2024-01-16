@@ -88,7 +88,7 @@ fn handle_static_mut_ref(
             "shared ",
         )
     };
-    tcx.emit_spanned_lint(
+    tcx.emit_node_span_lint(
         STATIC_MUT_REF,
         hir_id,
         span,

@@ -278,7 +278,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
 
     fn report_assert_as_lint(&self, source_info: &SourceInfo, lint: AssertLint<impl Debug>) {
         if let Some(lint_root) = self.lint_root(*source_info) {
-            self.tcx.emit_spanned_lint(lint.lint(), lint_root, source_info.span, lint);
+            self.tcx.emit_node_span_lint(lint.lint(), lint_root, source_info.span, lint);
         }
     }
 

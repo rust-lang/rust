@@ -199,7 +199,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             && !assign.span.from_expansion()
         {
             let is_field_assign = matches!(lhs.kind, hir::ExprKind::Field(..));
-            self.tcx.emit_spanned_lint(
+            self.tcx.emit_node_span_lint(
                 lint::builtin::DEAD_CODE,
                 assign.hir_id,
                 assign.span,
@@ -899,7 +899,7 @@ impl<'tcx> DeadVisitor<'tcx> {
         };
 
         let hir_id = tcx.local_def_id_to_hir_id(first_item.def_id);
-        self.tcx.emit_spanned_lint(DEAD_CODE, hir_id, MultiSpan::from_spans(spans), diag);
+        self.tcx.emit_node_span_lint(DEAD_CODE, hir_id, MultiSpan::from_spans(spans), diag);
     }
 
     fn warn_multiple(
