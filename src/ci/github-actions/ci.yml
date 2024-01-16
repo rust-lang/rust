@@ -137,7 +137,7 @@ x--expand-yaml-anchors--remove:
             dos2unix
             diffutils
           pacboy: >
-            gcc:p
+            clang:p
             cmake:p
           # should cmake and jq just always be x86_64?
           # jq:p
