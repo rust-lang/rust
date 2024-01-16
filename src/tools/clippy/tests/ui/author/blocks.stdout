@@ -48,7 +48,11 @@ if let ExprKind::Closure { capture_clause: CaptureBy::Value { .. }, fn_decl: fn_
     && expr2 = &cx.tcx.hir().body(body_id1).value
     && let ExprKind::Block(block, None) = expr2.kind
     && block.stmts.is_empty()
-    && block.expr.is_none()
+    && let Some(trailing_expr) = block.expr
+    && let ExprKind::DropTemps(expr3) = trailing_expr.kind
+    && let ExprKind::Block(block1, None) = expr3.kind
+    && block1.stmts.is_empty()
+    && block1.expr.is_none()
 {
     // report your lint here
 }
