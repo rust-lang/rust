@@ -56,26 +56,7 @@ fn should_lint<'cx>(cx: &LateContext<'cx>, cast_op: &Expr<'_>, cast_from: Ty<'cx
             }
 
             // Don't lint if `cast_op` is known to be positive, ignoring overflow.
-            if let Sign::ZeroOrPositive = expr_sign(cx, cast_op, cast_from) {
-                return false;
-            }
-
-            let (mut uncertain_count, mut negative_count) = (0, 0);
-            // Peel off possible binary expressions, for example:
-            // x * x / y => [x, x, y]
-            // a % b => [a]
-            let exprs = exprs_with_selected_binop_peeled(cast_op);
-            for expr in exprs {
-                match expr_sign(cx, expr, None) {
-                    Sign::Negative => negative_count += 1,
-                    Sign::Uncertain => uncertain_count += 1,
-                    Sign::ZeroOrPositive => (),
-                };
-            }
-
-            // Lint if there are any uncertain results (because they could be negative or positive),
-            // or an odd number of negative results.
-            uncertain_count > 0 || negative_count % 2 == 1
+            expr_sign(cx, cast_op, cast_from) == Sign::ZeroOrPositive
         },
 
         (false, true) => !cast_to.is_signed(),
@@ -153,7 +134,32 @@ fn expr_sign<'cx>(cx: &LateContext<'cx>, expr: &Expr<'_>, ty: impl Into<Option<T
         }
     }
 
-    Sign::Uncertain
+    let mut uncertain_count = 0;
+    let mut negative_count = 0;
+
+    // Peel off possible binary expressions, for example:
+    // x * x / y => [x, x, y]
+    // a % b => [a]
+    let exprs = exprs_with_muldiv_binop_peeled(expr);
+    for expr in exprs {
+        match expr_sign(cx, expr, None) {
+            Sign::Negative => negative_count += 1,
+            Sign::Uncertain => uncertain_count += 1,
+            Sign::ZeroOrPositive => (),
+        };
+    }
+
+    // A mul/div is:
+    // - uncertain if there are any uncertain values (because they could be negative or positive),
+    // - negative if there are an odd number of negative values,
+    // - positive or zero otherwise.
+    if uncertain_count > 0 {
+        Sign::Uncertain
+    } else if negative_count % 2 == 1 {
+        Sign::Negative
+    } else {
+        Sign::ZeroOrPositive
+    }
 }
 
 /// Return the sign of the `pow` call's result, ignoring overflow.
@@ -193,7 +199,7 @@ fn pow_call_result_sign(cx: &LateContext<'_>, base: &Expr<'_>, exponent: &Expr<'
 /// which the result could always be positive under certain conditions, ignoring overflow.
 ///
 /// Expressions using other operators are preserved, so we can try to evaluate them later.
-fn exprs_with_selected_binop_peeled<'a>(expr: &'a Expr<'_>) -> Vec<&'a Expr<'a>> {
+fn exprs_with_muldiv_binop_peeled<'a>(expr: &'a Expr<'_>) -> Vec<&'a Expr<'a>> {
     #[inline]
     fn collect_operands<'a>(expr: &'a Expr<'a>, operands: &mut Vec<&'a Expr<'a>>) {
         match expr.kind {
