@@ -30,14 +30,12 @@ use super::sub::Sub;
 use crate::infer::{DefineOpaqueTypes, InferCtxt, TypeTrace};
 use crate::traits::{Obligation, PredicateObligations};
 use rustc_middle::infer::canonical::OriginalQueryValues;
-use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue, EffectVarValue};
-use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use rustc_middle::infer::unify_key::{ConstVariableValue, EffectVarValue};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::relate::{RelateResult, TypeRelation};
 use rustc_middle::ty::{self, InferConst, ToPredicate, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::ty::{AliasRelationDirection, TyVar};
 use rustc_middle::ty::{IntType, UintType};
-use rustc_span::DUMMY_SP;
 
 #[derive(Clone)]
 pub struct CombineFields<'infcx, 'tcx> {
@@ -328,8 +326,12 @@ impl<'tcx> InferCtxt<'tcx> {
         ct: ty::Const<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
-        let span =
-            self.inner.borrow_mut().const_unification_table().probe_value(target_vid).origin.span;
+        let span = match self.inner.borrow_mut().const_unification_table().probe_value(target_vid) {
+            ConstVariableValue::Known { value } => {
+                bug!("instantiating a known const var: {target_vid:?} {value} {ct}")
+            }
+            ConstVariableValue::Unknown { origin, universe: _ } => origin.span,
+        };
         // FIXME(generic_const_exprs): Occurs check failures for unevaluated
         // constants and generic expressions are not yet handled correctly.
         let Generalization { value_may_be_infer: value, needs_wf: _ } = generalize::generalize(
@@ -340,16 +342,10 @@ impl<'tcx> InferCtxt<'tcx> {
             ty::Variance::Invariant,
         )?;
 
-        self.inner.borrow_mut().const_unification_table().union_value(
-            target_vid,
-            ConstVarValue {
-                origin: ConstVariableOrigin {
-                    kind: ConstVariableOriginKind::ConstInference,
-                    span: DUMMY_SP,
-                },
-                val: ConstVariableValue::Known { value },
-            },
-        );
+        self.inner
+            .borrow_mut()
+            .const_unification_table()
+            .union_value(target_vid, ConstVariableValue::Known { value });
         Ok(value)
     }
 
