@@ -1,9 +1,9 @@
 use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::{clip, method_chain_args, sext};
+use clippy_utils::{method_chain_args, sext};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty, UintTy};
+use rustc_middle::ty::{self, Ty};
 
 use super::CAST_SIGN_LOSS;
 
@@ -22,10 +22,7 @@ const METHODS_RET_POSITIVE: &[&str] = &[
     "wrapping_rem_euclid",
 ];
 
-/// A list of methods that act like `pow()`, and can never return:
-/// - a negative value from a non-negative base
-/// - a negative value from a negative base and even exponent
-/// - a non-negative value from a negative base and odd exponent
+/// A list of methods that act like `pow()`. See `pow_call_result_sign()` for details.
 ///
 /// Methods that can overflow and return a negative value must not be included in this list,
 /// because casting their return values can still result in sign loss.
@@ -34,7 +31,13 @@ const METHODS_POW: &[&str] = &["pow", "saturating_pow", "checked_pow"];
 /// A list of methods that act like `unwrap()`, and don't change the sign of the inner value.
 const METHODS_UNWRAP: &[&str] = &["unwrap", "unwrap_unchecked", "expect", "into_ok"];
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_op: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) {
+pub(super) fn check<'cx>(
+    cx: &LateContext<'cx>,
+    expr: &Expr<'_>,
+    cast_op: &Expr<'_>,
+    cast_from: Ty<'cx>,
+    cast_to: Ty<'_>,
+) {
     if should_lint(cx, cast_op, cast_from, cast_to) {
         span_lint(
             cx,
@@ -45,7 +48,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_op: &Expr<'_>, c
     }
 }
 
-fn should_lint(cx: &LateContext<'_>, cast_op: &Expr<'_>, cast_from: Ty<'_>, cast_to: Ty<'_>) -> bool {
+fn should_lint<'cx>(cx: &LateContext<'cx>, cast_op: &Expr<'_>, cast_from: Ty<'cx>, cast_to: Ty<'_>) -> bool {
     match (cast_from.is_integral(), cast_to.is_integral()) {
         (true, true) => {
             if !cast_from.is_signed() || cast_to.is_signed() {
@@ -82,7 +85,9 @@ fn should_lint(cx: &LateContext<'_>, cast_op: &Expr<'_>, cast_from: Ty<'_>, cast
     }
 }
 
-fn get_const_int_eval(cx: &LateContext<'_>, expr: &Expr<'_>, ty: Ty<'_>) -> Option<i128> {
+fn get_const_int_eval<'cx>(cx: &LateContext<'cx>, expr: &Expr<'_>, ty: impl Into<Option<Ty<'cx>>>) -> Option<i128> {
+    let ty = ty.into().unwrap_or_else(|| cx.typeck_results().expr_ty(expr));
+
     if let Constant::Int(n) = constant(cx, cx.typeck_results(), expr)?
         && let ty::Int(ity) = *ty.kind()
     {
@@ -97,7 +102,7 @@ enum Sign {
     Uncertain,
 }
 
-fn expr_sign(cx: &LateContext<'_>, expr: &Expr<'_>, ty: Ty<'_>) -> Sign {
+fn expr_sign<'cx>(cx: &LateContext<'cx>, expr: &Expr<'_>, ty: impl Into<Option<Ty<'cx>>>) -> Sign {
     // Try evaluate this expr first to see if it's positive
     if let Some(val) = get_const_int_eval(cx, expr, ty) {
         return if val >= 0 { Sign::ZeroOrPositive } else { Sign::Negative };
@@ -112,6 +117,8 @@ fn expr_sign(cx: &LateContext<'_>, expr: &Expr<'_>, ty: Ty<'_>) -> Sign {
             && let Some(arglist) = method_chain_args(expr, &[found_name])
             && let ExprKind::MethodCall(inner_path, ..) = &arglist[0].0.kind
         {
+            // The original type has changed, but we can't use `ty` here anyway, because it has been
+            // moved.
             method_name = inner_path.ident.name.as_str();
         }
 
@@ -130,31 +137,31 @@ fn expr_sign(cx: &LateContext<'_>, expr: &Expr<'_>, ty: Ty<'_>) -> Sign {
 /// Return the sign of the `pow` call's result, ignoring overflow.
 ///
 /// If the base is positive, the result is always positive.
-/// If the base is negative, and the exponent is a even number, the result is always positive,
-/// otherwise if the exponent is an odd number, the result is always negative.
+/// If the exponent is a even number, the result is always positive,
+/// Otherwise, if the base is negative, and the exponent is an odd number, the result is always
+/// negative.
 ///
-/// If either value can't be evaluated, [`Sign::Uncertain`] will be returned.
+/// Otherwise, returns [`Sign::Uncertain`].
 fn pow_call_result_sign(cx: &LateContext<'_>, base: &Expr<'_>, exponent: &Expr<'_>) -> Sign {
-    let base_ty = cx.typeck_results().expr_ty(base);
-    let Some(base_val) = get_const_int_eval(cx, base, base_ty) else {
-        return Sign::Uncertain;
-    };
-    // Non-negative bases raised to non-negative exponents are always non-negative, ignoring overflow.
-    // (Rust's integer pow() function takes an unsigned exponent.)
-    if base_val >= 0 {
-        return Sign::ZeroOrPositive;
-    }
+    let base_sign = expr_sign(cx, base, None);
+    let exponent_val = get_const_int_eval(cx, exponent, None);
+    let exponent_is_even = exponent_val.map(|val| val % 2 == 0);
 
-    let Some(Constant::Int(n)) = constant(cx, cx.typeck_results(), exponent) else {
-        return Sign::Uncertain;
-    };
+    match (base_sign, exponent_is_even) {
+        // Non-negative bases always return non-negative results, ignoring overflow.
+        // This is because Rust's integer pow() functions take an unsigned exponent.
+        (Sign::ZeroOrPositive, _) => Sign::ZeroOrPositive,
 
-    // A negative value raised to an even exponent is non-negative, and an odd exponent
-    // is negative, ignoring overflow.
-    if clip(cx.tcx, n, UintTy::U32) % 2 == 0 {
-        return Sign::ZeroOrPositive;
-    } else {
-        return Sign::Negative;
+        // Any base raised to an even exponent is non-negative.
+        // This is true even if we don't know the value of the base.
+        (_, Some(true)) => Sign::ZeroOrPositive,
+
+        // A negative base raised to an odd exponent is non-negative.
+        (Sign::Negative, Some(false)) => Sign::Negative,
+
+        // Negative or unknown base to an unknown exponent, or an unknown base to an odd exponent.
+        (Sign::Negative | Sign::Uncertain, None) => Sign::Uncertain,
+        (Sign::Uncertain, Some(false)) => Sign::Uncertain,
     }
 }
 
