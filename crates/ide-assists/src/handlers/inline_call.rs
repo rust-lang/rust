@@ -484,12 +484,10 @@ fn inline(
             body = make::block_expr(let_stmts, Some(body.into())).clone_for_update();
         }
     } else if let Some(stmt_list) = body.stmt_list() {
-        ted::insert_all(
-            ted::Position::after(
-                stmt_list.l_curly_token().expect("L_CURLY for StatementList is missing."),
-            ),
-            let_stmts.into_iter().map(|stmt| stmt.syntax().clone().into()).collect(),
-        );
+        let position = stmt_list.l_curly_token().expect("L_CURLY for StatementList is missing.");
+        let_stmts.into_iter().rev().for_each(|let_stmt| {
+            ted::insert(ted::Position::after(position.clone()), let_stmt.syntax().clone());
+        });
     }
 
     let original_indentation = match node {
