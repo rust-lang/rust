@@ -1,8 +1,8 @@
 use crate::diagnostic::IntoDiagnosticArg;
 use crate::{DiagCtxt, Level, MultiSpan, StashKey};
 use crate::{
-    Diagnostic, DiagnosticId, DiagnosticMessage, DiagnosticStyledString, ErrorGuaranteed,
-    ExplicitBug, SubdiagnosticMessage,
+    Diagnostic, DiagnosticMessage, DiagnosticStyledString, ErrorGuaranteed, ExplicitBug,
+    SubdiagnosticMessage,
 };
 use rustc_lint_defs::Applicability;
 use rustc_span::source_map::Spanned;
@@ -395,8 +395,11 @@ impl<'a, G: EmissionGuarantee> DiagnosticBuilder<'a, G> {
     forward!((span, with_span)(
         sp: impl Into<MultiSpan>,
     ));
+    forward!((is_lint, with_is_lint)(
+        name: String, has_future_breakage: bool,
+    ));
     forward!((code, with_code)(
-        s: DiagnosticId,
+        s: String,
     ));
     forward!((arg, with_arg)(
         name: impl Into<Cow<'static, str>>, arg: impl IntoDiagnosticArg,
@@ -437,15 +440,11 @@ impl<G: EmissionGuarantee> Drop for DiagnosticBuilder<'_, G> {
 #[macro_export]
 macro_rules! struct_span_code_err {
     ($dcx:expr, $span:expr, $code:ident, $($message:tt)*) => ({
-        $dcx.struct_span_err(
-            $span,
-            format!($($message)*),
-        )
-        .with_code($crate::error_code!($code))
+        $dcx.struct_span_err($span, format!($($message)*)).with_code($crate::error_code!($code))
     })
 }
 
 #[macro_export]
 macro_rules! error_code {
-    ($code:ident) => {{ $crate::DiagnosticId::Error(stringify!($code).to_owned()) }};
+    ($code:ident) => {{ stringify!($code).to_owned() }};
 }

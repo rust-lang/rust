@@ -20,9 +20,8 @@ use rustc_errors::emitter::{DynEmitter, HumanEmitter, HumanReadableErrorType};
 use rustc_errors::json::JsonEmitter;
 use rustc_errors::registry::Registry;
 use rustc_errors::{
-    error_code, fallback_fluent_bundle, DiagCtxt, DiagnosticBuilder, DiagnosticId,
-    DiagnosticMessage, ErrorGuaranteed, FatalAbort, FluentBundle, IntoDiagnostic,
-    LazyFallbackBundle, TerminalUrl,
+    error_code, fallback_fluent_bundle, DiagCtxt, DiagnosticBuilder, DiagnosticMessage,
+    ErrorGuaranteed, FatalAbort, FluentBundle, IntoDiagnostic, LazyFallbackBundle, TerminalUrl,
 };
 use rustc_macros::HashStable_Generic;
 pub use rustc_span::def_id::StableCrateId;
@@ -906,7 +905,7 @@ impl Session {
         CodegenUnits::Default(16)
     }
 
-    pub fn teach(&self, code: &DiagnosticId) -> bool {
+    pub fn teach(&self, code: &str) -> bool {
         self.opts.unstable_opts.teach && self.dcx().must_teach(code)
     }
 
