@@ -3,6 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::get_parent_expr;
 use clippy_utils::source::snippet_with_context;
 use rustc_ast::ast::{LitIntType, LitKind};
+use rustc_data_structures::packed::Pu128;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -69,7 +70,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingAdd {
             && clippy_utils::SpanlessEq::new(cx).eq_expr(l, target)
             && BinOpKind::Add == op1.node
             && let ExprKind::Lit(lit) = value.kind
-            && let LitKind::Int(1, LitIntType::Unsuffixed) = lit.node
+            && let LitKind::Int(Pu128(1), LitIntType::Unsuffixed) = lit.node
             && block.expr.is_none()
         {
             let mut app = Applicability::MachineApplicable;
