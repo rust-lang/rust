@@ -710,6 +710,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 self.slice(start, |pat| self.pat(pat));
                 self.slice(end, |pat| self.pat(pat));
             },
+            PatKind::Err(_) => kind!("Err"),
         }
     }
 
