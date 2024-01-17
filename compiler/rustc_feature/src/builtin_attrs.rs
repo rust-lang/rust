@@ -493,7 +493,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     // DuplicatesOk since it has its own validation
     ungated!(
         stable, Normal,
-        template!(List: r#"feature = "name", since = "version""#), DuplicatesOk, @only_local: true,
+        template!(List: r#"feature = "name", since = "version""#), DuplicatesOk,
     ),
     ungated!(
         unstable, Normal,
