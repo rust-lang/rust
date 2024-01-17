@@ -589,18 +589,16 @@ impl GlobalState {
             vfs::loader::Message::Progress { n_total, n_done, dir, config_version } => {
                 always!(config_version <= self.vfs_config_version);
 
+                let state = match n_done {
+                    None => Progress::Begin,
+                    Some(done) if done == n_total => Progress::End,
+                    Some(_) => Progress::Report,
+                };
+                let n_done = n_done.unwrap_or_default();
+
                 self.vfs_progress_config_version = config_version;
                 self.vfs_progress_n_total = n_total;
                 self.vfs_progress_n_done = n_done;
-
-                let state = if n_done == 0 {
-                    Progress::Begin
-                } else if n_done < n_total {
-                    Progress::Report
-                } else {
-                    assert_eq!(n_done, n_total);
-                    Progress::End
-                };
 
                 let mut message = format!("{n_done}/{n_total}");
                 if let Some(dir) = dir {

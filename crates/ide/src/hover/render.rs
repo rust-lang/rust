@@ -497,7 +497,7 @@ fn render_notable_trait_comment(
     let mut needs_impl_header = true;
     for (trait_, assoc_types) in notable_traits {
         desc.push_str(if mem::take(&mut needs_impl_header) {
-            " // notable traits implemented: "
+            " // Implements notable traits: "
         } else {
             ", "
         });
@@ -530,6 +530,7 @@ fn type_info(
     if let Some(res) = closure_ty(sema, config, &ty) {
         return Some(res);
     };
+    let db = sema.db;
     let TypeInfo { original, adjusted } = ty;
     let mut res = HoverResult::default();
     let mut targets: Vec<hir::ModuleDef> = Vec::new();
@@ -538,29 +539,64 @@ fn type_info(
             targets.push(item);
         }
     };
-    walk_and_push_ty(sema.db, &original, &mut push_new_def);
-    let mut desc = match render_notable_trait_comment(sema.db, &notable_traits(sema.db, &original))
-    {
-        Some(desc) => desc + "\n",
-        None => String::new(),
-    };
-    desc += &if let Some(adjusted_ty) = adjusted {
-        walk_and_push_ty(sema.db, &adjusted_ty, &mut push_new_def);
-        let original = original.display(sema.db).to_string();
-        let adjusted = adjusted_ty.display(sema.db).to_string();
+    walk_and_push_ty(db, &original, &mut push_new_def);
+
+    res.markup = if let Some(adjusted_ty) = adjusted {
+        walk_and_push_ty(db, &adjusted_ty, &mut push_new_def);
+
+        let notable = {
+            let mut desc = String::new();
+            let mut needs_impl_header = true;
+            for (trait_, assoc_types) in notable_traits(db, &original) {
+                desc.push_str(if mem::take(&mut needs_impl_header) {
+                    "Implements Notable Traits: "
+                } else {
+                    ", "
+                });
+                format_to!(desc, "{}", trait_.name(db).display(db),);
+                if !assoc_types.is_empty() {
+                    desc.push('<');
+                    format_to!(
+                        desc,
+                        "{}",
+                        assoc_types.into_iter().format_with(", ", |(ty, name), f| {
+                            f(&name.display(db))?;
+                            f(&" = ")?;
+                            match ty {
+                                Some(ty) => f(&ty.display(db)),
+                                None => f(&"?"),
+                            }
+                        })
+                    );
+                    desc.push('>');
+                }
+            }
+            if !desc.is_empty() {
+                desc.push('\n');
+            }
+            desc
+        };
+
+        let original = original.display(db).to_string();
+        let adjusted = adjusted_ty.display(db).to_string();
         let static_text_diff_len = "Coerced to: ".len() - "Type: ".len();
         format!(
-            "```text\nType: {:>apad$}\nCoerced to: {:>opad$}\n```\n",
+            "```text\nType: {:>apad$}\nCoerced to: {:>opad$}\n{notable}```\n",
             original,
             adjusted,
             apad = static_text_diff_len + adjusted.len().max(original.len()),
             opad = original.len(),
         )
+        .into()
     } else {
-        Markup::fenced_block(&original.display(sema.db)).into()
+        let mut desc = match render_notable_trait_comment(db, &notable_traits(db, &original)) {
+            Some(desc) => desc + "\n",
+            None => String::new(),
+        };
+        format_to!(desc, "{}", original.display(db));
+        Markup::fenced_block(&desc)
     };
-    res.markup = desc.into();
-    if let Some(actions) = HoverAction::goto_type_from_targets(sema.db, targets) {
+    if let Some(actions) = HoverAction::goto_type_from_targets(db, targets) {
         res.actions.push(actions);
     }
     Some(res)
