@@ -330,7 +330,7 @@ pub(crate) struct HygieneData {
     /// would have collisions without a disambiguator.
     /// The keys of this map are always computed with `ExpnData.disambiguator`
     /// set to 0.
-    expn_data_disambiguators: FxHashMap<Hash64, u32>,
+    expn_data_disambiguators: UnhashMap<Hash64, u32>,
 }
 
 impl HygieneData {
@@ -359,7 +359,7 @@ impl HygieneData {
                 dollar_crate_name: kw::DollarCrate,
             }],
             syntax_context_map: FxHashMap::default(),
-            expn_data_disambiguators: FxHashMap::default(),
+            expn_data_disambiguators: UnhashMap::default(),
         }
     }
 

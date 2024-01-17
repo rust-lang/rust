@@ -314,7 +314,19 @@ impl_stable_traits_for_trivial_type!(char);
 impl_stable_traits_for_trivial_type!(());
 
 impl_stable_traits_for_trivial_type!(Hash64);
-impl_stable_traits_for_trivial_type!(Hash128);
+
+// We need a custom impl as the default hash function will only hash half the bits. For stable
+// hashing we want to hash the full 128-bit hash.
+impl<CTX> HashStable<CTX> for Hash128 {
+    #[inline]
+    fn hash_stable(&self, _: &mut CTX, hasher: &mut StableHasher) {
+        self.as_u128().hash(hasher);
+    }
+}
+
+unsafe impl StableOrd for Hash128 {
+    const CAN_USE_UNSTABLE_SORT: bool = true;
+}
 
 impl<CTX> HashStable<CTX> for ! {
     fn hash_stable(&self, _ctx: &mut CTX, _hasher: &mut StableHasher) {
