@@ -503,12 +503,12 @@ enum InlineSize {
 
 #[derive(Clone, Debug)]
 enum Repr {
-    Heap(Arc<str>),
-    Static(&'static str),
     Inline {
         len: InlineSize,
         buf: [u8; INLINE_CAP],
     },
+    Static(&'static str),
+    Heap(Arc<str>),
 }
 
 impl Repr {
