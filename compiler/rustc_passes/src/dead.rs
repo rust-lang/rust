@@ -128,7 +128,10 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
         if let Some(def_id) = self.typeck_results().type_dependent_def_id(id) {
             self.check_def_id(def_id);
         } else {
-            bug!("no type-dependent def for method");
+            assert!(
+                self.typeck_results().tainted_by_errors.is_some(),
+                "no type-dependent def for method"
+            );
         }
     }
 
