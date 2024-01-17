@@ -7094,7 +7094,7 @@ fn main(notable$0: u32) {}
             *notable*
 
             ```rust
-             // notable traits implemented: Notable<Assoc = &str, Assoc2 = char>
+             // Implements notable traits: Notable<Assoc = &str, Assoc2 = char>
              // size = 4, align = 4
             notable: u32
             ```
@@ -7126,7 +7126,7 @@ impl Iterator for S {
             ```
 
             ```rust
-             // notable traits implemented: Notable, Future<Output = u32>, Iterator<Item = S>
+             // Implements notable traits: Notable, Future<Output = u32>, Iterator<Item = S>
              // size = 0, align = 1
             struct S
             ```
@@ -7154,8 +7154,8 @@ fn main() {
 }
 "#,
         expect![[r#"
-             // notable traits implemented: Notable, Future<Output = u32>, Iterator<Item = S>
             ```rust
+             // Implements notable traits: Notable, Future<Output = u32>, Iterator<Item = S>
             S
             ```"#]],
     );

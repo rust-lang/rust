@@ -105,7 +105,7 @@ impl NotifyActor {
                         let n_total = config.load.len();
                         self.send(loader::Message::Progress {
                             n_total,
-                            n_done: 0,
+                            n_done: None,
                             config_version,
                             dir: None,
                         });
@@ -120,14 +120,14 @@ impl NotifyActor {
                             let files =
                                 self.load_entry(entry, watch, |file| loader::Message::Progress {
                                     n_total,
-                                    n_done: i,
+                                    n_done: Some(i),
                                     dir: Some(file),
                                     config_version,
                                 });
                             self.send(loader::Message::Loaded { files });
                             self.send(loader::Message::Progress {
                                 n_total,
-                                n_done: i + 1,
+                                n_done: Some(i + 1),
                                 config_version,
                                 dir: None,
                             });

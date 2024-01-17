@@ -52,7 +52,7 @@ pub enum Message {
         /// The total files to be loaded.
         n_total: usize,
         /// The files that have been loaded successfully.
-        n_done: usize,
+        n_done: Option<usize>,
         /// The dir being loaded, `None` if its for a file.
         dir: Option<AbsPathBuf>,
         /// The [`Config`] version.

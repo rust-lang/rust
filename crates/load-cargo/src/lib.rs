@@ -318,7 +318,7 @@ fn load_crate_graph(
     for task in receiver {
         match task {
             vfs::loader::Message::Progress { n_done, n_total, .. } => {
-                if n_done == n_total {
+                if n_done == Some(n_total) {
                     break;
                 }
             }
