@@ -7,6 +7,19 @@ SOURCE_FILE
     BANG "!"
     WHITESPACE " "
     TOKEN_TREE
+      L_CURLY "{"
+      R_CURLY "}"
+  ERROR
+    SEMICOLON ";"
+  WHITESPACE "\n"
+  MACRO_CALL
+    PATH
+      PATH_SEGMENT
+        NAME_REF
+          IDENT "macro_rules"
+    BANG "!"
+    WHITESPACE " "
+    TOKEN_TREE
       L_PAREN "("
       R_PAREN ")"
   WHITESPACE "\n"
@@ -21,5 +34,6 @@ SOURCE_FILE
       L_BRACK "["
       R_BRACK "]"
   WHITESPACE "\n"
-error 15: expected SEMICOLON
-error 31: expected SEMICOLON
+error 15: expected an item
+error 32: expected SEMICOLON
+error 48: expected SEMICOLON

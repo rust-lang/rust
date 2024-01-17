@@ -18,18 +18,6 @@ SOURCE_FILE
     BANG "!"
     WHITESPACE " "
     TOKEN_TREE
-      L_CURLY "{"
-      R_CURLY "}"
-    SEMICOLON ";"
-  WHITESPACE "\n"
-  MACRO_CALL
-    PATH
-      PATH_SEGMENT
-        NAME_REF
-          IDENT "macro_rules"
-    BANG "!"
-    WHITESPACE " "
-    TOKEN_TREE
       L_PAREN "("
       R_PAREN ")"
     SEMICOLON ";"

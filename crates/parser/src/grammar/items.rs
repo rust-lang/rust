@@ -60,7 +60,6 @@ pub(super) fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool) {
 
     // test macro_rules_as_macro_name
     // macro_rules! {}
-    // macro_rules! {};
     // macro_rules! ();
     // macro_rules! [];
     // fn main() {
@@ -68,6 +67,7 @@ pub(super) fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool) {
     // }
 
     // test_err macro_rules_as_macro_name
+    // macro_rules! {};
     // macro_rules! ()
     // macro_rules! []
     if paths::is_use_path_start(p)
