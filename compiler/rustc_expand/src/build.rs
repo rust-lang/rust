@@ -405,6 +405,9 @@ impl<'a> ExtCtxt<'a> {
     pub fn expr_tuple(&self, sp: Span, exprs: ThinVec<P<ast::Expr>>) -> P<ast::Expr> {
         self.expr(sp, ast::ExprKind::Tup(exprs))
     }
+    pub fn expr_loop(&self, sp: Span, block: P<ast::Block>) -> P<ast::Expr> {
+        self.expr(sp, ast::ExprKind::Loop(block, None, sp))
+    }
 
     pub fn expr_fail(&self, span: Span, msg: Symbol) -> P<ast::Expr> {
         self.expr_call_global(

@@ -1,4 +1,5 @@
 #![allow(unused_imports)]
+#![allow(unused_variables)]
 //use crate::util::check_builtin_macro_attribute;
 //use crate::util::check_autodiff;
 
@@ -32,9 +33,7 @@ pub fn expand(
             return vec![item];
         }
     };
-    let input = item.clone();
     let orig_item: P<ast::Item> = item.clone().expect_item();
-    let mut d_item: P<ast::Item> = item.clone().expect_item();
     let primal = orig_item.ident.clone();
 
     // Allow using `#[autodiff(...)]` only on a Fn
@@ -46,29 +45,27 @@ pub fn expand(
         ecx.sess
             .dcx()
             .emit_err(errors::AutoDiffInvalidApplication { span: item.span() });
-        return vec![input];
+        return vec![item];
     };
     let x: AutoDiffAttrs = AutoDiffAttrs::from_ast(&meta_item_vec, has_ret);
     dbg!(&x);
     let span = ecx.with_def_site_ctxt(fn_item.span);
 
-    let (d_decl, old_names, new_args) = gen_enzyme_decl(ecx, &sig.decl, &x, span, sig_span);
+    let (d_sig, old_names, new_args) = gen_enzyme_decl(ecx, &sig, &x, span, sig_span);
     let d_body = gen_enzyme_body(ecx, primal, &old_names, &new_args, span, sig_span);
-    let meta_item_name = meta_item_vec[0].meta_item().unwrap();
-    d_item.ident = meta_item_name.path.segments[0].ident;
-    // update d_item
-    if let ItemKind::Fn(box ast::Fn { sig, body, .. }) = &mut d_item.kind {
-        *sig.decl = d_decl;
-        *body = Some(d_body);
-    } else {
-        ecx.sess
-            .dcx()
-            .emit_err(errors::AutoDiffInvalidApplication { span: item.span() });
-        return vec![input];
-    }
+    let d_ident = meta_item_vec[0].meta_item().unwrap().path.segments[0].ident;
+
+    // The first element of it is the name of the function to be generated
+    let asdf = ItemKind::Fn(Box::new(ast::Fn {
+        defaultness: ast::Defaultness::Final,
+        sig: d_sig,
+        generics: Generics::default(),
+        body: Some(d_body),
+    }));
+    let d_fn = ecx.item(span, d_ident, rustc_ast::AttrVec::default(), asdf);
 
     let orig_annotatable = Annotatable::Item(orig_item.clone());
-    let d_annotatable = Annotatable::Item(d_item.clone());
+    let d_annotatable = Annotatable::Item(d_fn);
     return vec![orig_annotatable, d_annotatable];
 }
 
@@ -98,6 +95,9 @@ fn assure_mut_ref(ty: &ast::Ty) -> ast::Ty {
 fn gen_enzyme_body(ecx: &ExtCtxt<'_>, primal: Ident, old_names: &[String], new_names: &[String], span: Span, sig_span: Span) -> P<ast::Block> {
     let blackbox_path = ecx.std_path(&[Symbol::intern("hint"), Symbol::intern("black_box")]);
     let zeroed_path = ecx.std_path(&[Symbol::intern("mem"), Symbol::intern("zeroed")]);
+    let empty_loop_block = ecx.block(span, ThinVec::new());
+    let loop_expr = ecx.expr_loop(span, empty_loop_block);
+
 
     let primal_call_expr = ecx.expr_path(ecx.path_ident(span, primal));
     let blackbox_call_expr = ecx.expr_path(ecx.path(span, blackbox_path));
@@ -117,12 +117,17 @@ fn gen_enzyme_body(ecx: &ExtCtxt<'_>, primal: Ident, old_names: &[String], new_n
         could_be_bare_literal: false,
     }));
     // create ::core::hint::black_box(array(arr));
-    let _primal_call = ecx.expr_call(
+    let primal_call = ecx.expr_call(
         span,
         primal_call_expr.clone(),
         old_names.iter().map(|name| {
             ecx.expr_path(ecx.path_ident(span, Ident::from_str(name)))
         }).collect(),
+    );
+    let black_box0 = ecx.expr_call(
+        sig_span,
+        blackbox_call_expr.clone(),
+        thin_vec![primal_call.clone()],
     );
 
     // create ::core::hint::black_box(grad_arr, tang_y));
@@ -135,15 +140,18 @@ fn gen_enzyme_body(ecx: &ExtCtxt<'_>, primal: Ident, old_names: &[String], new_n
     );
 
     // create ::core::hint::black_box(unsafe { ::core::mem::zeroed() })
-    let black_box2 = ecx.expr_call(
+    let _black_box2 = ecx.expr_call(
         sig_span,
         blackbox_call_expr.clone(),
         thin_vec![unsafe_block_with_zeroed_call.clone()],
     );
 
     let mut body = ecx.block(span, ThinVec::new());
-    body.stmts.push(ecx.stmt_expr(black_box1));
-    body.stmts.push(ecx.stmt_expr(black_box2));
+    body.stmts.push(ecx.stmt_expr(primal_call));
+    //body.stmts.push(ecx.stmt_expr(black_box0));
+    //body.stmts.push(ecx.stmt_expr(black_box1));
+    //body.stmts.push(ecx.stmt_expr(black_box2));
+    body.stmts.push(ecx.stmt_expr(loop_expr));
     body
 }
 
@@ -153,8 +161,9 @@ fn gen_enzyme_body(ecx: &ExtCtxt<'_>, primal: Ident, old_names: &[String], new_n
 // zero-initialized by Enzyme). Active arguments are not handled yet.
 // Each argument of the primal function (and the return type if existing) must be annotated with an
 // activity.
-fn gen_enzyme_decl(_ecx: &ExtCtxt<'_>, decl: &ast::FnDecl, x: &AutoDiffAttrs, _span: Span, _sig_span: Span)
-        -> (ast::FnDecl, Vec<String>, Vec<String>) {
+fn gen_enzyme_decl(_ecx: &ExtCtxt<'_>, sig: &ast::FnSig, x: &AutoDiffAttrs, span: Span, _sig_span: Span)
+        -> (ast::FnSig, Vec<String>, Vec<String>) {
+    let decl: P<ast::FnDecl> = sig.decl.clone();
     assert!(decl.inputs.len() == x.input_activity.len());
     assert!(decl.output.has_ret() == x.has_ret_activity());
     let mut d_decl = decl.clone();
@@ -162,7 +171,7 @@ fn gen_enzyme_decl(_ecx: &ExtCtxt<'_>, decl: &ast::FnDecl, x: &AutoDiffAttrs, _s
     let mut new_inputs = Vec::new();
     let mut old_names = Vec::new();
     for (arg, activity) in decl.inputs.iter().zip(x.input_activity.iter()) {
-        dbg!(&arg);
+        //dbg!(&arg);
         d_inputs.push(arg.clone());
         match activity {
             DiffActivity::Duplicated => {
@@ -200,5 +209,10 @@ fn gen_enzyme_decl(_ecx: &ExtCtxt<'_>, decl: &ast::FnDecl, x: &AutoDiffAttrs, _s
         }
     }
     d_decl.inputs = d_inputs.into();
-    (d_decl, old_names, new_inputs)
+    let d_sig = FnSig {
+        header: sig.header.clone(),
+        decl: d_decl,
+        span,
+    };
+    (d_sig, old_names, new_inputs)
 }
