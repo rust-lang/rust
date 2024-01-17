@@ -118,4 +118,33 @@ fn bad_trait_object(arg0: &(dyn Any + Send)) {
     unimplemented!();
 }
 
-fn main() {}
+trait Proj {
+    type S;
+}
+
+impl Proj for () {
+    type S = ();
+}
+
+impl Proj for i32 {
+    type S = i32;
+}
+
+trait Base<T> {
+    fn is_base(&self);
+}
+
+trait Derived<B: Proj>: Base<B::S> + Base<()> {
+    fn is_derived(&self);
+}
+
+fn f<P: Proj>(obj: &dyn Derived<P>) {
+    obj.is_derived();
+    Base::<P::S>::is_base(obj);
+    Base::<()>::is_base(obj);
+}
+
+fn main() {
+    let _x: fn(_) = f::<()>;
+    let _x: fn(_) = f::<i32>;
+}
