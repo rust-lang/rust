@@ -1013,7 +1013,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                                 .extend(
                                     // Group the return ty with its def id, if we had one.
                                     entry.return_ty.map(|ty| {
-                                        (tcx.require_lang_item(LangItem::FnOnce, None), ty)
+                                        (tcx.require_lang_item(LangItem::FnOnceOutput, None), ty)
                                     }),
                                 );
                         }
