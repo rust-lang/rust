@@ -658,7 +658,7 @@ fn check_link_ordinal(tcx: TyCtxt<'_>, attr: &ast::Attribute) -> Option<u16> {
         // if the resulting EXE runs, as I haven't yet built the necessary DLL -- see earlier comment
         // about LINK.EXE failing.)
         if *ordinal <= u16::MAX as u128 {
-            Some(*ordinal as u16)
+            Some(ordinal.get() as u16)
         } else {
             let msg = format!("ordinal value in `link_ordinal` is too large: `{}`", &ordinal);
             tcx.dcx()

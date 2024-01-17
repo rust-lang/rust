@@ -2069,7 +2069,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let mut ret = Vec::new();
                 for meta in attr.meta_item_list()? {
                     match meta.lit()?.kind {
-                        LitKind::Int(a, _) => ret.push(a as usize),
+                        LitKind::Int(a, _) => ret.push(a.get() as usize),
                         _ => panic!("invalid arg index"),
                     }
                 }

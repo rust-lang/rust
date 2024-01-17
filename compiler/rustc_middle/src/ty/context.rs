@@ -745,7 +745,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 ],
             ) = attr.meta_item_list().as_deref()
             {
-                Bound::Included(a)
+                Bound::Included(a.get())
             } else {
                 self.dcx().span_delayed_bug(
                     attr.span,

@@ -2981,10 +2981,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // fixed expression:
                         if let ExprKind::Lit(lit) = idx.kind
                             && let ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) = lit.node
-                            && i < types
-                                .len()
-                                .try_into()
-                                .expect("expected tuple index to be < usize length")
+                            && i.get()
+                                < types
+                                    .len()
+                                    .try_into()
+                                    .expect("expected tuple index to be < usize length")
                         {
                             err.span_suggestion(
                                 brackets_span,

@@ -492,7 +492,7 @@ fn lint_uint_literal<'tcx>(
     let lit_val: u128 = match lit.node {
         // _v is u8, within range by definition
         ast::LitKind::Byte(_v) => return,
-        ast::LitKind::Int(v, _) => v,
+        ast::LitKind::Int(v, _) => v.get(),
         _ => bug!(),
     };
     if lit_val < min || lit_val > max {
@@ -555,7 +555,7 @@ fn lint_literal<'tcx>(
         ty::Int(t) => {
             match lit.node {
                 ast::LitKind::Int(v, ast::LitIntType::Signed(_) | ast::LitIntType::Unsuffixed) => {
-                    lint_int_literal(cx, type_limits, e, lit, t, v)
+                    lint_int_literal(cx, type_limits, e, lit, t, v.get())
                 }
                 _ => bug!(),
             };
@@ -842,7 +842,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                             ast::LitKind::Int(
                                 v,
                                 ast::LitIntType::Signed(_) | ast::LitIntType::Unsuffixed,
-                            ) => v as i128,
+                            ) => v.get() as i128,
                             _ => return true,
                         },
                         _ => bug!(),
@@ -853,7 +853,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
                     let (min, max): (u128, u128) = uint_ty_range(uint_ty);
                     let lit_val: u128 = match lit.kind {
                         hir::ExprKind::Lit(li) => match li.node {
-                            ast::LitKind::Int(v, _) => v,
+                            ast::LitKind::Int(v, _) => v.get(),
                             _ => return true,
                         },
                         _ => bug!(),
