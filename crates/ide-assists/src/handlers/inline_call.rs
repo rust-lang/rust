@@ -759,7 +759,7 @@ impl Foo {
 
 fn main() {
     let x = {
-        let ref this = Foo(3);
+        let this = &Foo(3);
         Foo(this.0 + 2)
     };
 }
@@ -795,7 +795,7 @@ impl Foo {
 
 fn main() {
     let x = {
-        let ref this = Foo(3);
+        let this = &Foo(3);
         Foo(this.0 + 2)
     };
 }
@@ -833,7 +833,7 @@ impl Foo {
 fn main() {
     let mut foo = Foo(3);
     {
-        let ref mut this = foo;
+        let this = &mut foo;
         this.0 = 0;
     };
 }
@@ -920,7 +920,7 @@ impl Foo {
     }
     fn bar(&self) {
         {
-            let ref this = self;
+            let this = &self;
             this;
             this;
         };
@@ -1595,7 +1595,7 @@ impl Enum {
 
 fn a() -> bool {
     {
-        let ref this = Enum::A;
+        let this = &Enum::A;
         this == &Enum::A || this == &Enum::B
     }
 }
@@ -1655,6 +1655,82 @@ fn main() {
     let b = {
         let a = a;
       a as A
+    };
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn method_by_reborrow() {
+        check_assist(
+            inline_call,
+            r#"
+pub struct Foo(usize);
+
+impl Foo {
+    fn add1(&mut self) {
+        self.0 += 1;
+    }
+}
+
+pub fn main() {
+    let f = &mut Foo(0);
+    f.add1$0();
+}
+"#,
+            r#"
+pub struct Foo(usize);
+
+impl Foo {
+    fn add1(&mut self) {
+        self.0 += 1;
+    }
+}
+
+pub fn main() {
+    let f = &mut Foo(0);
+    {
+        let this = &mut *f;
+        this.0 += 1;
+    };
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn method_by_mut() {
+        check_assist(
+            inline_call,
+            r#"
+pub struct Foo(usize);
+
+impl Foo {
+    fn add1(mut self) {
+        self.0 += 1;
+    }
+}
+
+pub fn main() {
+    let mut f = Foo(0);
+    f.add1$0();
+}
+"#,
+            r#"
+pub struct Foo(usize);
+
+impl Foo {
+    fn add1(mut self) {
+        self.0 += 1;
+    }
+}
+
+pub fn main() {
+    let mut f = Foo(0);
+    {
+        let mut this = f;
+        this.0 += 1;
     };
 }
 "#,
