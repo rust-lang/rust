@@ -180,7 +180,7 @@ impl Deref for SmolStr {
 
 impl PartialEq<SmolStr> for SmolStr {
     fn eq(&self, other: &SmolStr) -> bool {
-        self.as_str() == other.as_str()
+        self.0.ptr_eq(&other.0) || self.as_str() == other.as_str()
     }
 }
 
@@ -424,7 +424,7 @@ const _: () = {
     assert!(WS.as_bytes()[N_NEWLINES] == b' ');
 };
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(u8)]
 enum InlineSize {
     _V0 = 0,
@@ -534,6 +534,24 @@ impl Repr {
                 let buf = &buf[..len];
                 unsafe { ::core::str::from_utf8_unchecked(buf) }
             }
+        }
+    }
+
+    fn ptr_eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Heap(l0), Self::Heap(r0)) => Arc::ptr_eq(l0, r0),
+            (Self::Static(l0), Self::Static(r0)) => core::ptr::eq(l0, r0),
+            (
+                Self::Inline {
+                    len: l_len,
+                    buf: l_buf,
+                },
+                Self::Inline {
+                    len: r_len,
+                    buf: r_buf,
+                },
+            ) => l_len == r_len && l_buf == r_buf,
+            _ => false,
         }
     }
 }
