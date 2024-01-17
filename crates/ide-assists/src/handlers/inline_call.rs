@@ -15,7 +15,7 @@ use ide_db::{
 };
 use itertools::{izip, Itertools};
 use syntax::{
-    ast::{self, edit::IndentLevel, edit_in_place::Indent, HasArgList, PathExpr},
+    ast::{self, edit::IndentLevel, edit_in_place::Indent, HasArgList, Pat, PathExpr},
     ted, AstNode, NodeOrToken, SyntaxKind,
 };
 
@@ -278,7 +278,7 @@ fn get_fn_params(
 
     let mut params = Vec::new();
     if let Some(self_param) = param_list.self_param() {
-        // FIXME this should depend on the receiver as well as the self_param
+        // Keep `ref` and `mut` and transform them into `&` and `mut` later
         params.push((
             make::ident_pat(
                 self_param.amp_token().is_some(),
@@ -409,16 +409,56 @@ fn inline(
     let mut let_stmts = Vec::new();
 
     // Inline parameter expressions or generate `let` statements depending on whether inlining works or not.
-    for ((pat, param_ty, _), usages, expr) in izip!(params, param_use_nodes, arguments) {
+    for ((pat, param_ty, param), usages, expr) in izip!(params, param_use_nodes, arguments) {
         // izip confuses RA due to our lack of hygiene info currently losing us type info causing incorrect errors
         let usages: &[ast::PathExpr] = &usages;
         let expr: &ast::Expr = expr;
 
         let mut insert_let_stmt = || {
             let ty = sema.type_of_expr(expr).filter(TypeInfo::has_adjustment).and(param_ty.clone());
-            let_stmts.push(
-                make::let_stmt(pat.clone(), ty, Some(expr.clone())).clone_for_update().into(),
-            );
+
+            let is_self = param
+                .name(sema.db)
+                .and_then(|name| name.as_text())
+                .is_some_and(|name| name == "self");
+
+            if is_self {
+                let mut this_pat = make::ident_pat(false, false, make::name("this"));
+                let mut expr = expr.clone();
+                match pat {
+                    Pat::IdentPat(pat) => match (pat.ref_token(), pat.mut_token()) {
+                        // self => let this = obj
+                        (None, None) => {}
+                        // mut self => let mut this = obj
+                        (None, Some(_)) => {
+                            this_pat = make::ident_pat(false, true, make::name("this"));
+                        }
+                        // &self => let this = &obj
+                        (Some(_), None) => {
+                            expr = make::expr_ref(expr, false);
+                        }
+                        // let foo = &mut X; &mut self => let this = &mut obj
+                        // let mut foo = X;  &mut self => let this = &mut *obj (reborrow)
+                        (Some(_), Some(_)) => {
+                            let should_reborrow = sema
+                                .type_of_expr(&expr)
+                                .map(|ty| ty.original.is_mutable_reference());
+                            expr = if let Some(true) = should_reborrow {
+                                make::expr_reborrow(expr)
+                            } else {
+                                make::expr_ref(expr, true)
+                            };
+                        }
+                    },
+                    _ => {}
+                };
+                let_stmts
+                    .push(make::let_stmt(this_pat.into(), ty, Some(expr)).clone_for_update().into())
+            } else {
+                let_stmts.push(
+                    make::let_stmt(pat.clone(), ty, Some(expr.clone())).clone_for_update().into(),
+                );
+            }
         };
 
         // check if there is a local var in the function that conflicts with parameter
