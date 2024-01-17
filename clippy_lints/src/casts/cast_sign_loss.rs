@@ -1,3 +1,4 @@
+use std::convert::Infallible;
 use std::ops::ControlFlow;
 
 use clippy_utils::consts::{constant, Constant};
@@ -63,8 +64,11 @@ fn should_lint<'cx>(cx: &LateContext<'cx>, cast_op: &Expr<'_>, cast_from: Ty<'cx
                 return false;
             }
 
-            // We don't check for sums of all-positive or all-negative values, but we could.
             if let Sign::ZeroOrPositive = expr_muldiv_sign(cx, cast_op) {
+                return false;
+            }
+
+            if let Sign::ZeroOrPositive = expr_add_sign(cx, cast_op) {
                 return false;
             }
 
@@ -182,13 +186,13 @@ fn pow_call_result_sign(cx: &LateContext<'_>, base: &Expr<'_>, exponent: &Expr<'
     }
 }
 
-/// Peels binary operators such as [`BinOpKind::Mul`], [`BinOpKind::Div`] or [`BinOpKind::Rem`],
-/// which the result could always be positive under certain conditions, ignoring overflow.
+/// Peels binary operators such as [`BinOpKind::Mul`] or [`BinOpKind::Rem`],
+/// where the result could always be positive. See [`exprs_with_muldiv_binop_peeled()`] for details.
 ///
 /// Returns the sign of the list of peeled expressions.
 fn expr_muldiv_sign(cx: &LateContext<'_>, expr: &Expr<'_>) -> Sign {
-    let mut uncertain_count = 0;
     let mut negative_count = 0;
+    let mut uncertain_count = 0;
 
     // Peel off possible binary expressions, for example:
     // x * x / y => [x, x, y]
@@ -215,18 +219,58 @@ fn expr_muldiv_sign(cx: &LateContext<'_>, expr: &Expr<'_>) -> Sign {
     }
 }
 
+/// Peels binary operators such as [`BinOpKind::Add`], where the result could always be positive.
+/// See [`exprs_with_add_binop_peeled()`] for details.
+///
+/// Returns the sign of the list of peeled expressions.
+fn expr_add_sign(cx: &LateContext<'_>, expr: &Expr<'_>) -> Sign {
+    let mut negative_count = 0;
+    let mut uncertain_count = 0;
+    let mut positive_count = 0;
+
+    // Peel off possible binary expressions, for example:
+    // a + b + c => [a, b, c]
+    let exprs = exprs_with_add_binop_peeled(expr);
+    for expr in exprs {
+        match expr_sign(cx, expr, None) {
+            Sign::Negative => negative_count += 1,
+            Sign::Uncertain => uncertain_count += 1,
+            Sign::ZeroOrPositive => positive_count += 1,
+        };
+    }
+
+    // A sum is:
+    // - uncertain if there are any uncertain values (because they could be negative or positive),
+    // - positive or zero if there are only positive (or zero) values,
+    // - negative if there are only negative (or zero) values.
+    // We could split Zero out into its own variant, but we don't yet.
+    if uncertain_count > 0 {
+        Sign::Uncertain
+    } else if negative_count == 0 {
+        Sign::ZeroOrPositive
+    } else if positive_count == 0 {
+        Sign::Negative
+    } else {
+        Sign::Uncertain
+    }
+}
+
 /// Peels binary operators such as [`BinOpKind::Mul`], [`BinOpKind::Div`] or [`BinOpKind::Rem`],
-/// which the result could always be positive under certain conditions, ignoring overflow.
+/// where the result depends on:
+/// - the number of negative values in the entire expression, or
+/// - the number of negative values on the left hand side of the expression.
+/// Ignores overflow.
+///
 ///
 /// Expressions using other operators are preserved, so we can try to evaluate them later.
 fn exprs_with_muldiv_binop_peeled<'e>(expr: &'e Expr<'_>) -> Vec<&'e Expr<'e>> {
     let mut res = vec![];
 
-    for_each_expr(expr, |sub_expr| {
+    for_each_expr(expr, |sub_expr| -> ControlFlow<Infallible, Descend> {
         // We don't check for mul/div/rem methods here, but we could.
         if let ExprKind::Binary(op, lhs, _rhs) = sub_expr.kind {
             if matches!(op.node, BinOpKind::Mul | BinOpKind::Div) {
-                // For binary operators which both contribute to the sign of the result,
+                // For binary operators where both sides contribute to the sign of the result,
                 // collect all their operands, recursively. This ignores overflow.
                 ControlFlow::Continue(Descend::Yes)
             } else if matches!(op.node, BinOpKind::Rem | BinOpKind::Shr) {
@@ -244,6 +288,38 @@ fn exprs_with_muldiv_binop_peeled<'e>(expr: &'e Expr<'_>) -> Vec<&'e Expr<'e>> {
                 // That's tricky to do using for_each_expr(), so we just keep the lhs intact.
                 res.push(lhs);
                 ControlFlow::Continue(Descend::No)
+            } else {
+                // The sign of the result of other binary operators depends on the values of the operands,
+                // so try to evaluate the expression.
+                res.push(sub_expr);
+                ControlFlow::Continue(Descend::No)
+            }
+        } else {
+            // For other expressions, including unary operators and constants, try to evaluate the expression.
+            res.push(sub_expr);
+            ControlFlow::Continue(Descend::No)
+        }
+    });
+
+    res
+}
+
+/// Peels binary operators such as [`BinOpKind::Add`], where the result depends on:
+/// - all the expressions being positive, or
+/// - all the expressions being negative.
+/// Ignores overflow.
+///
+/// Expressions using other operators are preserved, so we can try to evaluate them later.
+fn exprs_with_add_binop_peeled<'e>(expr: &'e Expr<'_>) -> Vec<&'e Expr<'e>> {
+    let mut res = vec![];
+
+    for_each_expr(expr, |sub_expr| -> ControlFlow<Infallible, Descend> {
+        // We don't check for add methods here, but we could.
+        if let ExprKind::Binary(op, _lhs, _rhs) = sub_expr.kind {
+            if matches!(op.node, BinOpKind::Add) {
+                // For binary operators where both sides contribute to the sign of the result,
+                // collect all their operands, recursively. This ignores overflow.
+                ControlFlow::Continue(Descend::Yes)
             } else {
                 // The sign of the result of other binary operators depends on the values of the operands,
                 // so try to evaluate the expression.
