@@ -9,7 +9,7 @@
 //! or [`BinaryHeap<T>`], the adapters guarantee to consume enough items per step to make room
 //! for the results (represented by [`InPlaceIterable`]), provide transitive access to `source`
 //! (via [`SourceIter`]) and thus the underlying allocation.
-//! And finally there are alignment and size constriants to consider, this is currently ensured via
+//! And finally there are alignment and size constraints to consider, this is currently ensured via
 //! const eval instead of trait bounds in the specialized [`SpecFromIter`] implementation.
 //!
 //! [`BinaryHeap<T>`]: crate::collections::BinaryHeap
