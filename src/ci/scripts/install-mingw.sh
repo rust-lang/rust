@@ -82,9 +82,11 @@ if isWindows; then
     # echo "MAJAHA /etc/pacman.d/mirrorlist.mingw64"
     # cat /etc/pacman.d/mirrorlist.mingw64
     echo WHICH GCC:
-    which gcc
+    which gcc || true
     echo WHICH clang:
-    which clang
+    which clang || true
     echo "#### LS OF /mingw$bits/bin/: ####"
     ls /mingw$bits/bin/
+    echo "#### LS OF /clang$bits/bin/: ####"
+    ls /clang$bits/bin/
 fi
