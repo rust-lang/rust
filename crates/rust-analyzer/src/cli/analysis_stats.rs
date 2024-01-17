@@ -63,6 +63,7 @@ impl flags::AnalysisStats {
             true => None,
             false => Some(RustLibSource::Discover),
         };
+        cargo_config.sysroot_query_metadata = self.query_sysroot_metadata;
         let no_progress = &|_| ();
 
         let mut db_load_sw = self.stop_watch();
