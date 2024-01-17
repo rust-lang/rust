@@ -135,18 +135,25 @@ impl TaitConstraintLocator<'_> {
             return;
         }
 
-        if let Some(hir_sig) = self.tcx.hir_node_by_def_id(item_def_id).fn_decl() {
-            if hir_sig.output.get_infer_ret_ty().is_some() {
-                let guar = self.tcx.dcx().span_delayed_bug(
-                    hir_sig.output.span(),
-                    "inferring return types and opaque types do not mix well",
-                );
-                self.found = Some(ty::OpaqueHiddenType {
-                    span: DUMMY_SP,
-                    ty: Ty::new_error(self.tcx, guar),
-                });
-                return;
-            }
+        // Function items with `_` in their return type already emit an error, skip any
+        // "non-defining use" errors for them.
+        // Note that we use `Node::fn_sig` instead of `Node::fn_decl` here, because the former
+        // excludes closures, which are allowed to have `_` in their return type.
+        let hir_node = self.tcx.hir_node_by_def_id(item_def_id);
+        debug_assert!(
+            !matches!(hir_node, Node::ForeignItem(..)),
+            "foreign items cannot constrain opaque types",
+        );
+        if let Some(hir_sig) = hir_node.fn_sig()
+            && hir_sig.decl.output.get_infer_ret_ty().is_some()
+        {
+            let guar = self.tcx.dcx().span_delayed_bug(
+                hir_sig.decl.output.span(),
+                "inferring return types and opaque types do not mix well",
+            );
+            self.found =
+                Some(ty::OpaqueHiddenType { span: DUMMY_SP, ty: Ty::new_error(self.tcx, guar) });
+            return;
         }
 
         // Calling `mir_borrowck` can lead to cycle errors through
