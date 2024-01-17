@@ -481,12 +481,6 @@ LL |         (x * x) as u32;
    |         ^^^^^^^^^^^^^^
 
 error: casting `i32` to `u32` may lose the sign of the value
-  --> tests/ui/cast.rs:373:9
-   |
-LL |         x.pow(2) as u32;
-   |         ^^^^^^^^^^^^^^^
-
-error: casting `i32` to `u32` may lose the sign of the value
   --> tests/ui/cast.rs:377:32
    |
 LL |     let _a = |x: i32| -> u32 { (x * x * x * x) as u32 };
