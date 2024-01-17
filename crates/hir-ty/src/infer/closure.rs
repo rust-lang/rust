@@ -27,8 +27,8 @@ use crate::{
     static_lifetime, to_chalk_trait_id,
     traits::FnTrait,
     utils::{self, generics, Generics},
-    Adjust, Adjustment, Binders, BindingMode, ChalkTraitId, ClosureId, DynTy, FnPointer, FnSig,
-    Interner, Substitution, Ty, TyExt,
+    Adjust, Adjustment, Binders, BindingMode, ChalkTraitId, ClosureId, DynTy, FnAbi, FnPointer,
+    FnSig, Interner, Substitution, Ty, TyExt,
 };
 
 use super::{Expectation, InferenceContext};
@@ -98,7 +98,11 @@ impl InferenceContext<'_> {
                     cov_mark::hit!(dyn_fn_param_informs_call_site_closure_signature);
                     return Some(FnPointer {
                         num_binders: bound.len(Interner),
-                        sig: FnSig { abi: (), safety: chalk_ir::Safety::Safe, variadic: false },
+                        sig: FnSig {
+                            abi: FnAbi::RustCall,
+                            safety: chalk_ir::Safety::Safe,
+                            variadic: false,
+                        },
                         substitution: FnSubst(Substitution::from_iter(Interner, sig_tys)),
                     });
                 }

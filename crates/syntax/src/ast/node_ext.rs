@@ -53,6 +53,12 @@ fn text_of_first_token(node: &SyntaxNode) -> TokenText<'_> {
     }
 }
 
+impl ast::Abi {
+    pub fn abi_string(&self) -> Option<ast::String> {
+        support::token(&self.syntax, SyntaxKind::STRING).and_then(ast::String::cast)
+    }
+}
+
 impl ast::HasModuleItem for ast::StmtList {}
 
 impl ast::BlockExpr {

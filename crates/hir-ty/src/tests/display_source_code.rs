@@ -239,9 +239,9 @@ fn test() {
     let f = foo;
       //^ fn(i32) -> i64
     let f = S::<i8>;
-      //^ fn(i8) -> S<i8>
+      //^ extern "rust-call" fn(i8) -> S<i8>
     let f = E::A;
-      //^ fn(usize) -> E
+      //^ extern "rust-call" fn(usize) -> E
 }
 "#,
     );

@@ -192,11 +192,16 @@ pub(crate) fn print_type_ref(
             print_type_ref(db, elem, buf)?;
             write!(buf, "]")?;
         }
-        TypeRef::Fn(args_and_ret, varargs, is_unsafe) => {
+        TypeRef::Fn(args_and_ret, varargs, is_unsafe, abi) => {
             let ((_, return_type), args) =
                 args_and_ret.split_last().expect("TypeRef::Fn is missing return type");
             if *is_unsafe {
                 write!(buf, "unsafe ")?;
+            }
+            if let Some(abi) = abi {
+                buf.write_str("extern ")?;
+                buf.write_str(abi)?;
+                buf.write_char(' ')?;
             }
             write!(buf, "fn(")?;
             for (i, (_, typeref)) in args.iter().enumerate() {

@@ -39,9 +39,9 @@ use crate::{
     static_lifetime, to_chalk_trait_id,
     traits::FnTrait,
     utils::{generics, Generics},
-    Adjust, Adjustment, AdtId, AutoBorrow, Binders, CallableDefId, FnPointer, FnSig, FnSubst,
-    Interner, Rawness, Scalar, Substitution, TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt,
-    TyKind,
+    Adjust, Adjustment, AdtId, AutoBorrow, Binders, CallableDefId, FnAbi, FnPointer, FnSig,
+    FnSubst, Interner, Rawness, Scalar, Substitution, TraitEnvironment, TraitRef, Ty, TyBuilder,
+    TyExt, TyKind,
 };
 
 use super::{
@@ -224,7 +224,11 @@ impl InferenceContext<'_> {
 
                 let sig_ty = TyKind::Function(FnPointer {
                     num_binders: 0,
-                    sig: FnSig { abi: (), safety: chalk_ir::Safety::Safe, variadic: false },
+                    sig: FnSig {
+                        abi: FnAbi::RustCall,
+                        safety: chalk_ir::Safety::Safe,
+                        variadic: false,
+                    },
                     substitution: FnSubst(
                         Substitution::from_iter(Interner, sig_tys.iter().cloned())
                             .shifted_in(Interner),

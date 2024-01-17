@@ -1453,10 +1453,10 @@ impl Expectation {
         match self {
             Expectation::HasType(ety) => {
                 let ety = table.resolve_ty_shallow(ety);
-                if !ety.is_ty_var() {
-                    Expectation::HasType(ety)
-                } else {
+                if ety.is_ty_var() {
                     Expectation::None
+                } else {
+                    Expectation::HasType(ety)
                 }
             }
             Expectation::RValueLikeUnsized(ety) => Expectation::RValueLikeUnsized(ety.clone()),
