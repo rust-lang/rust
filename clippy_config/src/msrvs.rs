@@ -3,6 +3,7 @@ use rustc_semver::RustcVersion;
 use rustc_session::Session;
 use rustc_span::{sym, Symbol};
 use serde::Deserialize;
+use std::fmt;
 
 macro_rules! msrv_aliases {
     ($($major:literal,$minor:literal,$patch:literal {
@@ -56,6 +57,16 @@ msrv_aliases! {
 #[derive(Debug, Clone)]
 pub struct Msrv {
     stack: Vec<RustcVersion>,
+}
+
+impl fmt::Display for Msrv {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(msrv) = self.current() {
+            write!(f, "{msrv}")
+        } else {
+            f.write_str("1.0.0")
+        }
+    }
 }
 
 impl<'de> Deserialize<'de> for Msrv {

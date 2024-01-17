@@ -26,6 +26,7 @@ extern crate rustc_abi;
 extern crate rustc_arena;
 extern crate rustc_ast;
 extern crate rustc_ast_pretty;
+extern crate rustc_attr;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
 extern crate rustc_errors;
@@ -153,6 +154,7 @@ mod implicit_return;
 mod implicit_saturating_add;
 mod implicit_saturating_sub;
 mod implied_bounds_in_impls;
+mod incompatible_msrv;
 mod inconsistent_struct_constructor;
 mod index_refutable_slice;
 mod indexing_slicing;
@@ -1094,6 +1096,7 @@ pub fn register_lints(store: &mut rustc_lint::LintStore, conf: &'static Conf) {
     store.register_late_pass(move |_| {
         Box::new(thread_local_initializer_can_be_made_const::ThreadLocalInitializerCanBeMadeConst::new(msrv()))
     });
+    store.register_late_pass(move |_| Box::new(incompatible_msrv::IncompatibleMsrv::new(msrv())));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
