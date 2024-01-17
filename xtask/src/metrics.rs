@@ -113,7 +113,11 @@ impl Metrics {
     ) -> anyhow::Result<()> {
         assert!(Path::new(path).exists(), "unable to find bench in {path}");
         eprintln!("\nMeasuring analysis-stats/{name}");
-        let output = cmd!(sh, "./target/release/rust-analyzer -q analysis-stats {path}").read()?;
+        let output = cmd!(
+            sh,
+            "./target/release/rust-analyzer -q analysis-stats {path} --query-sysroot-metadata"
+        )
+        .read()?;
         for (metric, value, unit) in parse_metrics(&output) {
             self.report(&format!("analysis-stats/{name}/{metric}"), value, unit.into());
         }
