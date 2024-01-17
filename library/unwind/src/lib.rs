@@ -121,8 +121,14 @@ extern "C" {}
 #[link(name = "unwind", kind = "static", modifiers = "-bundle")]
 extern "C" {}
 
-#[cfg(any(target_os = "freebsd", target_os = "netbsd"))]
+#[cfg(target_os = "netbsd")]
 #[link(name = "gcc_s")]
+extern "C" {}
+
+#[cfg(target_os = "freebsd")]
+#[link(name = "gcc", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
+#[link(name = "gcc_eh", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
+#[link(name = "gcc_s", cfg(not(target_feature = "crt-static")))]
 extern "C" {}
 
 #[cfg(all(target_os = "openbsd", target_arch = "sparc64"))]
