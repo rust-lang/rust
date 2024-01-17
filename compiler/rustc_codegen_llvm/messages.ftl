@@ -39,6 +39,9 @@ codegen_llvm_lto_dylib = lto cannot be used for `dylib` crate type without `-Zdy
 
 codegen_llvm_lto_proc_macro = lto cannot be used for `proc-macro` crate type without `-Zdylib-lto`
 
+codegen_llvm_mismatch_data_layout =
+    data-layout for target `{$rustc_target}`, `{$rustc_layout}`, differs from LLVM target's `{$llvm_target}` default layout, `{$llvm_layout}`
+
 codegen_llvm_missing_features =
     add the missing features in a `target_feature` attribute
 
