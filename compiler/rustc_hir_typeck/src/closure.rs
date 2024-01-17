@@ -760,16 +760,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     get_future_output(obligation.predicate, obligation.cause.span)
                 })?
             }
+            ty::Alias(ty::Projection, _) => {
+                return Some(Ty::new_error_with_message(
+                    self.tcx,
+                    closure_span,
+                    "this projection should have been projected to an opaque type",
+                ));
+            }
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, args, .. }) => self
                 .tcx
                 .explicit_item_bounds(def_id)
                 .iter_instantiated_copied(self.tcx, args)
                 .find_map(|(p, s)| get_future_output(p.as_predicate(), s))?,
             ty::Error(_) => return Some(ret_ty),
-            _ => span_bug!(
-                closure_span,
-                "async fn coroutine return type not an inference variable: {ret_ty}"
-            ),
+            _ => {
+                span_bug!(closure_span, "invalid async fn coroutine return type: {ret_ty:?}")
+            }
         };
 
         let output_ty = self.normalize(closure_span, output_ty);
