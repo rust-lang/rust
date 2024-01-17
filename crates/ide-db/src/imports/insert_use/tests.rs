@@ -137,6 +137,16 @@ fn insert_start_indent() {
     use std::bar::B;
     use std::bar::C;",
     );
+    check_none(
+        "std::bar::r#AA",
+        r"
+    use std::bar::B;
+    use std::bar::C;",
+        r"
+    use std::bar::r#AA;
+    use std::bar::B;
+    use std::bar::C;",
+    );
 }
 
 #[test]
@@ -173,7 +183,21 @@ fn insert_middle_indent() {
     use std::bar::EE;
     use std::bar::F;
     use std::bar::G;",
-    )
+    );
+    check_none(
+        "std::bar::r#EE",
+        r"
+    use std::bar::A;
+    use std::bar::D;
+    use std::bar::F;
+    use std::bar::G;",
+        r"
+    use std::bar::A;
+    use std::bar::D;
+    use std::bar::r#EE;
+    use std::bar::F;
+    use std::bar::G;",
+    );
 }
 
 #[test]
@@ -210,7 +234,21 @@ fn insert_end_indent() {
     use std::bar::F;
     use std::bar::G;
     use std::bar::ZZ;",
-    )
+    );
+    check_none(
+        "std::bar::r#ZZ",
+        r"
+    use std::bar::A;
+    use std::bar::D;
+    use std::bar::F;
+    use std::bar::G;",
+        r"
+    use std::bar::A;
+    use std::bar::D;
+    use std::bar::F;
+    use std::bar::G;
+    use std::bar::r#ZZ;",
+    );
 }
 
 #[test]
@@ -228,7 +266,21 @@ use std::bar::EE;
 use std::bar::{D, Z}; // example of weird imports due to user
 use std::bar::F;
 use std::bar::G;",
-    )
+    );
+    check_none(
+        "std::bar::r#EE",
+        r"
+use std::bar::A;
+use std::bar::{D, Z}; // example of weird imports due to user
+use std::bar::F;
+use std::bar::G;",
+        r"
+use std::bar::A;
+use std::bar::r#EE;
+use std::bar::{D, Z}; // example of weird imports due to user
+use std::bar::F;
+use std::bar::G;",
+    );
 }
 
 #[test]
@@ -596,7 +648,16 @@ fn merge_groups_full() {
 
 #[test]
 fn merge_groups_long_full() {
-    check_crate("std::foo::bar::Baz", r"use std::foo::bar::Qux;", r"use std::foo::bar::{Baz, Qux};")
+    check_crate(
+        "std::foo::bar::Baz",
+        r"use std::foo::bar::Qux;",
+        r"use std::foo::bar::{Baz, Qux};",
+    );
+    check_crate(
+        "std::foo::bar::r#Baz",
+        r"use std::foo::bar::Qux;",
+        r"use std::foo::bar::{r#Baz, Qux};",
+    );
 }
 
 #[test]
@@ -614,7 +675,12 @@ fn merge_groups_long_full_list() {
         "std::foo::bar::Baz",
         r"use std::foo::bar::{Qux, Quux};",
         r"use std::foo::bar::{Baz, Quux, Qux};",
-    )
+    );
+    check_crate(
+        "std::foo::bar::r#Baz",
+        r"use std::foo::bar::{Qux, Quux};",
+        r"use std::foo::bar::{r#Baz, Quux, Qux};",
+    );
 }
 
 #[test]
@@ -632,7 +698,12 @@ fn merge_groups_long_full_nested() {
         "std::foo::bar::Baz",
         r"use std::foo::bar::{Qux, quux::{Fez, Fizz}};",
         r"use std::foo::bar::{quux::{Fez, Fizz}, Baz, Qux};",
-    )
+    );
+    check_crate(
+        "std::foo::bar::r#Baz",
+        r"use std::foo::bar::{Qux, quux::{Fez, Fizz}};",
+        r"use std::foo::bar::{quux::{Fez, Fizz}, r#Baz, Qux};",
+    );
 }
 
 #[test]
