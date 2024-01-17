@@ -1,6 +1,7 @@
 //@no-rustfix
 
 #![feature(repr128)]
+#![feature(isqrt)]
 #![allow(incomplete_features)]
 #![warn(
     clippy::cast_precision_loss,
@@ -149,8 +150,8 @@ fn main() {
     (-1isize).checked_isqrt().expect("-1 is a small number") as usize;
 
     (-1i8).rem_euclid(1i8) as u8;
-    (-1i8).wrapping_rem_euclid(1i8).unwrap() as u16;
-    (-1i16).rem_euclid(1i16).unwrap() as u16;
+    (-1i8).wrapping_rem_euclid(1i8) as u16;
+    (-1i16).rem_euclid(1i16) as u16;
     (-1i16).rem_euclid(1i16) as u32;
     (-1i32).rem_euclid(1i32) as u32;
     (-1i32).rem_euclid(1i32) as u64;
@@ -400,11 +401,11 @@ fn issue11642() {
     (-2_i32).pow(3) as u32;
     //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
 
-    (2_i32 % 1) as u32;
-    (2_i32 % -1) as u32;
-    (-2_i32 % 1) as u32;
+    (3_i32 % 2) as u32;
+    (3_i32 % -2) as u32;
+    (-5_i32 % 2) as u32;
     //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
-    (-2_i32 % -1) as u32;
+    (-5_i32 % -2) as u32;
     //~^ ERROR: casting `i32` to `u32` may lose the sign of the value
     (2_i32 >> 1) as u32;
     (-2_i32 >> 1) as u32;
