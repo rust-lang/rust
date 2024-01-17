@@ -917,6 +917,19 @@ class RustBuild(object):
             if toml_val is not None:
                 env["{}_{}".format(var_name, host_triple_sanitized)] = toml_val
 
+        # In src/etc/rust_analyzer_settings.json, we configure rust-analyzer to
+        # pass RUSTC_BOOTSTRAP=1 to all cargo invocations because the standard
+        # library uses unstable Cargo features. Without RUSTC_BOOTSTRAP,
+        # rust-analyzer would fail to fetch workspace layout when the system's
+        # default toolchain is not nightly.
+        #
+        # But that setting has the collateral effect of rust-analyzer also
+        # passing RUSTC_BOOTSTRAP=1 to all x.py invocations too (the various
+        # overrideCommand). For compiling bootstrap, that is unwanted and can
+        # cause spurious rebuilding of bootstrap when rust-analyzer x.py
+        # invocations are interleaved with handwritten ones on the command line.
+        env.pop("RUSTC_BOOTSTRAP", None)
+
         # preserve existing RUSTFLAGS
         env.setdefault("RUSTFLAGS", "")
 
