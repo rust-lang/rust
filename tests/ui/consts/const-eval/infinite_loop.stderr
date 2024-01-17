@@ -1,5 +1,5 @@
 error: constant evaluation is taking a long time
-  --> $DIR/infinite_loop.rs:6:9
+  --> $DIR/infinite_loop.rs:12:9
    |
 LL | /         while n != 0 {
 LL | |
@@ -10,9 +10,9 @@ LL | |         }
    = note: this lint makes sure the compiler doesn't get stuck due to infinite loops in const eval.
            If your compilation actually takes a long time, you can safely allow the lint.
 help: the constant being evaluated
-  --> $DIR/infinite_loop.rs:4:18
+  --> $DIR/infinite_loop.rs:10:18
    |
-LL |       let _ = [(); {
+LL |       let s = [(); {
    |  __________________^
 LL | |         let mut n = 113383; // #20 in https://oeis.org/A006884
 LL | |         while n != 0 {
