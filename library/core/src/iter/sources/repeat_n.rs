@@ -110,6 +110,34 @@ impl<A> Drop for RepeatN<A> {
     }
 }
 
+trait SpecRepeatN<A> {
+    unsafe fn spec_next_unchecked(&mut self) -> A;
+}
+
+impl<A: Clone> SpecRepeatN<A> for RepeatN<A> {
+    default unsafe fn spec_next_unchecked(&mut self) -> A {
+        self.count -= 1;
+
+        if self.count == 0 {
+            // SAFETY: we just lowered the count to zero so it won't be dropped
+            // later, and thus it's okay to take it here.
+            unsafe { ManuallyDrop::take(&mut self.element) }
+        } else {
+            A::clone(&self.element)
+        }
+    }
+}
+
+impl<A: Copy> SpecRepeatN<A> for RepeatN<A> {
+    unsafe fn spec_next_unchecked(&mut self) -> A {
+        self.count -= 1;
+
+        // For `Copy` types, we can always just read the item directly,
+        // so skip having a branch that would need to be optimized out.
+        *self.element
+    }
+}
+
 #[unstable(feature = "iter_repeat_n", issue = "104434")]
 impl<A: Clone> Iterator for RepeatN<A> {
     type Item = A;
@@ -120,15 +148,8 @@ impl<A: Clone> Iterator for RepeatN<A> {
             return None;
         }
 
-        self.count -= 1;
-        Some(if self.count == 0 {
-            // SAFETY: the check above ensured that the count used to be non-zero,
-            // so element hasn't been dropped yet, and we just lowered the count to
-            // zero so it won't be dropped later, and thus it's okay to take it here.
-            unsafe { ManuallyDrop::take(&mut self.element) }
-        } else {
-            A::clone(&self.element)
-        })
+        // SAFETY: Just confirmed above that the iterator is non-empty
+        unsafe { Some(self.spec_next_unchecked()) }
     }
 
     #[inline]

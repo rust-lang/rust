@@ -2448,7 +2448,7 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
         let len = self.len();
 
         if new_len > len {
-            self.extend_with(new_len - len, value)
+            self.extend_trusted(core::iter::repeat_n(value, new_len - len));
         } else {
             self.truncate(new_len);
         }
@@ -2559,38 +2559,6 @@ impl<T, A: Allocator, const N: usize> Vec<[T; N], A> {
         // `new_cap * size_of::<T>()` == `cap * size_of::<[T; N]>()`
         // - `len` <= `cap`, so `len * N` <= `cap * N`.
         unsafe { Vec::<T, A>::from_raw_parts_in(ptr.cast(), new_len, new_cap, alloc) }
-    }
-}
-
-impl<T: Clone, A: Allocator> Vec<T, A> {
-    #[cfg(not(no_global_oom_handling))]
-    /// Extend the vector by `n` clones of value.
-    fn extend_with(&mut self, n: usize, value: T) {
-        self.reserve(n);
-
-        unsafe {
-            let mut ptr = self.as_mut_ptr().add(self.len());
-            // Use SetLenOnDrop to work around bug where compiler
-            // might not realize the store through `ptr` through self.set_len()
-            // don't alias.
-            let mut local_len = SetLenOnDrop::new(&mut self.len);
-
-            // Write all elements except the last one
-            for _ in 1..n {
-                ptr::write(ptr, value.clone());
-                ptr = ptr.add(1);
-                // Increment the length in every step in case clone() panics
-                local_len.increment_len(1);
-            }
-
-            if n > 0 {
-                // We can write the last element directly without cloning needlessly
-                ptr::write(ptr, value);
-                local_len.increment_len(1);
-            }
-
-            // len set by scope guard
-        }
     }
 }
 
