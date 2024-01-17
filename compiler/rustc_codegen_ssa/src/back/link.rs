@@ -1273,7 +1273,7 @@ fn link_sanitizer_runtime(
     } else {
         let filename = format!("librustc{channel}_rt.{name}.a");
         let path = find_sanitizer_runtime(sess, &filename).join(&filename);
-        linker.link_whole_rlib(&path);
+        linker.link_whole_staticlib_by_path(&path);
     }
 }
 
@@ -2506,20 +2506,20 @@ fn add_native_libs_from_crate(
                             // If rlib contains native libs as archives, they are unpacked to tmpdir.
                             let path = tmpdir.join(filename.as_str());
                             if whole_archive {
-                                cmd.link_whole_rlib(&path);
+                                cmd.link_whole_staticlib_by_path(&path);
                             } else {
-                                cmd.link_rlib(&path);
+                                cmd.link_staticlib_by_path(&path);
                             }
                         }
                     } else {
                         if whole_archive {
-                            cmd.link_whole_staticlib(
+                            cmd.link_whole_staticlib_by_name(
                                 name,
                                 verbatim,
                                 search_paths.get_or_init(|| archive_search_paths(sess)),
                             );
                         } else {
-                            cmd.link_staticlib(name, verbatim)
+                            cmd.link_staticlib_by_name(name, verbatim)
                         }
                     }
                 }
@@ -2534,7 +2534,7 @@ fn add_native_libs_from_crate(
                 // link kind is unspecified.
                 if !link_output_kind.can_link_dylib() && !sess.target.crt_static_allows_dylibs {
                     if link_static {
-                        cmd.link_staticlib(name, verbatim)
+                        cmd.link_staticlib_by_name(name, verbatim)
                     }
                 } else {
                     if link_dynamic {
@@ -2791,7 +2791,7 @@ fn add_static_crate<'a>(
         } else {
             fix_windows_verbatim_for_gcc(path)
         };
-        cmd.link_rlib(&rlib_path);
+        cmd.link_staticlib_by_path(&rlib_path);
     };
 
     if !are_upstream_rust_objects_already_included(sess)

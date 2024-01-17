@@ -170,10 +170,15 @@ pub trait Linker {
     fn link_framework_by_name(&mut self, _name: &str, _verbatim: bool, _as_needed: bool) {
         bug!("framework linked with unsupported linker")
     }
-    fn link_staticlib(&mut self, lib: &str, verbatim: bool);
-    fn link_rlib(&mut self, lib: &Path);
-    fn link_whole_rlib(&mut self, lib: &Path);
-    fn link_whole_staticlib(&mut self, lib: &str, verbatim: bool, search_path: &[PathBuf]);
+    fn link_staticlib_by_name(&mut self, name: &str, verbatim: bool);
+    fn link_staticlib_by_path(&mut self, path: &Path);
+    fn link_whole_staticlib_by_name(
+        &mut self,
+        name: &str,
+        verbatim: bool,
+        search_paths: &[PathBuf],
+    );
+    fn link_whole_staticlib_by_path(&mut self, path: &Path);
     fn include_path(&mut self, path: &Path);
     fn framework_path(&mut self, path: &Path);
     fn output_filename(&mut self, path: &Path);
@@ -464,13 +469,13 @@ impl<'a> Linker for GccLinker<'a> {
             }
         }
     }
-    fn link_staticlib(&mut self, lib: &str, verbatim: bool) {
+    fn link_staticlib_by_name(&mut self, name: &str, verbatim: bool) {
         self.hint_static();
-        self.cmd.arg(format!("-l{}{lib}", if verbatim && self.is_gnu { ":" } else { "" },));
+        self.cmd.arg(format!("-l{}{name}", if verbatim && self.is_gnu { ":" } else { "" },));
     }
-    fn link_rlib(&mut self, lib: &Path) {
+    fn link_staticlib_by_path(&mut self, path: &Path) {
         self.hint_static();
-        self.cmd.arg(lib);
+        self.cmd.arg(path);
     }
     fn include_path(&mut self, path: &Path) {
         self.cmd.arg("-L").arg(path);
@@ -511,29 +516,34 @@ impl<'a> Linker for GccLinker<'a> {
     // don't otherwise explicitly reference them. This can occur for
     // libraries which are just providing bindings, libraries with generic
     // functions, etc.
-    fn link_whole_staticlib(&mut self, lib: &str, verbatim: bool, search_path: &[PathBuf]) {
+    fn link_whole_staticlib_by_name(
+        &mut self,
+        name: &str,
+        verbatim: bool,
+        search_paths: &[PathBuf],
+    ) {
         self.hint_static();
         let target = &self.sess.target;
         if !target.is_like_osx {
             self.linker_arg("--whole-archive");
-            self.cmd.arg(format!("-l{}{lib}", if verbatim && self.is_gnu { ":" } else { "" },));
+            self.cmd.arg(format!("-l{}{name}", if verbatim && self.is_gnu { ":" } else { "" }));
             self.linker_arg("--no-whole-archive");
         } else {
             // -force_load is the macOS equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
             self.linker_arg("-force_load");
-            let lib = find_native_static_library(lib, verbatim, search_path, self.sess);
+            let lib = find_native_static_library(name, verbatim, search_paths, self.sess);
             self.linker_arg(&lib);
         }
     }
 
-    fn link_whole_rlib(&mut self, lib: &Path) {
+    fn link_whole_staticlib_by_path(&mut self, path: &Path) {
         self.hint_static();
         if self.sess.target.is_like_osx {
             self.linker_arg("-force_load");
-            self.linker_arg(&lib);
+            self.linker_arg(&path);
         } else {
-            self.linker_args(&[OsString::from("--whole-archive"), lib.into()]);
+            self.linker_args(&[OsString::from("--whole-archive"), path.into()]);
             self.linker_arg("--no-whole-archive");
         }
     }
@@ -817,8 +827,8 @@ impl<'a> Linker for MsvcLinker<'a> {
         }
     }
 
-    fn link_rlib(&mut self, lib: &Path) {
-        self.cmd.arg(lib);
+    fn link_staticlib_by_path(&mut self, path: &Path) {
+        self.cmd.arg(path);
     }
     fn add_object(&mut self, path: &Path) {
         self.cmd.arg(path);
@@ -845,8 +855,8 @@ impl<'a> Linker for MsvcLinker<'a> {
         self.cmd.arg(format!("{}{}", name, if verbatim { "" } else { ".lib" }));
     }
 
-    fn link_staticlib(&mut self, lib: &str, verbatim: bool) {
-        self.cmd.arg(format!("{}{}", lib, if verbatim { "" } else { ".lib" }));
+    fn link_staticlib_by_name(&mut self, name: &str, verbatim: bool) {
+        self.cmd.arg(format!("{}{}", name, if verbatim { "" } else { ".lib" }));
     }
 
     fn full_relro(&mut self) {
@@ -885,10 +895,15 @@ impl<'a> Linker for MsvcLinker<'a> {
         bug!("frameworks are not supported on windows")
     }
 
-    fn link_whole_staticlib(&mut self, lib: &str, verbatim: bool, _search_path: &[PathBuf]) {
-        self.cmd.arg(format!("/WHOLEARCHIVE:{}{}", lib, if verbatim { "" } else { ".lib" }));
+    fn link_whole_staticlib_by_name(
+        &mut self,
+        name: &str,
+        verbatim: bool,
+        _search_paths: &[PathBuf],
+    ) {
+        self.cmd.arg(format!("/WHOLEARCHIVE:{}{}", name, if verbatim { "" } else { ".lib" }));
     }
-    fn link_whole_rlib(&mut self, path: &Path) {
+    fn link_whole_staticlib_by_path(&mut self, path: &Path) {
         let mut arg = OsString::from("/WHOLEARCHIVE:");
         arg.push(path);
         self.cmd.arg(arg);
@@ -1043,8 +1058,8 @@ impl<'a> Linker for EmLinker<'a> {
         self.cmd.arg("-L").arg(path);
     }
 
-    fn link_staticlib(&mut self, lib: &str, _verbatim: bool) {
-        self.cmd.arg("-l").arg(lib);
+    fn link_staticlib_by_name(&mut self, name: &str, _verbatim: bool) {
+        self.cmd.arg("-l").arg(name);
     }
 
     fn output_filename(&mut self, path: &Path) {
@@ -1057,21 +1072,26 @@ impl<'a> Linker for EmLinker<'a> {
 
     fn link_dylib_by_name(&mut self, name: &str, verbatim: bool, _as_needed: bool) {
         // Emscripten always links statically
-        self.link_staticlib(name, verbatim);
+        self.link_staticlib_by_name(name, verbatim);
     }
 
-    fn link_whole_staticlib(&mut self, lib: &str, verbatim: bool, _search_path: &[PathBuf]) {
+    fn link_whole_staticlib_by_name(
+        &mut self,
+        name: &str,
+        verbatim: bool,
+        _search_paths: &[PathBuf],
+    ) {
         // not supported?
-        self.link_staticlib(lib, verbatim);
+        self.link_staticlib_by_name(name, verbatim);
     }
 
-    fn link_whole_rlib(&mut self, lib: &Path) {
+    fn link_whole_staticlib_by_path(&mut self, path: &Path) {
         // not supported?
-        self.link_rlib(lib);
+        self.link_staticlib_by_path(path);
     }
 
-    fn link_rlib(&mut self, lib: &Path) {
-        self.add_object(lib);
+    fn link_staticlib_by_path(&mut self, path: &Path) {
+        self.add_object(path);
     }
 
     fn full_relro(&mut self) {
@@ -1227,12 +1247,12 @@ impl<'a> Linker for WasmLd<'a> {
         self.cmd.arg("-l").arg(name);
     }
 
-    fn link_staticlib(&mut self, lib: &str, _verbatim: bool) {
-        self.cmd.arg("-l").arg(lib);
+    fn link_staticlib_by_name(&mut self, name: &str, _verbatim: bool) {
+        self.cmd.arg("-l").arg(name);
     }
 
-    fn link_rlib(&mut self, lib: &Path) {
-        self.cmd.arg(lib);
+    fn link_staticlib_by_path(&mut self, path: &Path) {
+        self.cmd.arg(path);
     }
 
     fn include_path(&mut self, path: &Path) {
@@ -1257,12 +1277,17 @@ impl<'a> Linker for WasmLd<'a> {
 
     fn no_relro(&mut self) {}
 
-    fn link_whole_staticlib(&mut self, lib: &str, _verbatim: bool, _search_path: &[PathBuf]) {
-        self.cmd.arg("--whole-archive").arg("-l").arg(lib).arg("--no-whole-archive");
+    fn link_whole_staticlib_by_name(
+        &mut self,
+        name: &str,
+        _verbatim: bool,
+        _search_paths: &[PathBuf],
+    ) {
+        self.cmd.arg("--whole-archive").arg("-l").arg(name).arg("--no-whole-archive");
     }
 
-    fn link_whole_rlib(&mut self, lib: &Path) {
-        self.cmd.arg("--whole-archive").arg(lib).arg("--no-whole-archive");
+    fn link_whole_staticlib_by_path(&mut self, path: &Path) {
+        self.cmd.arg("--whole-archive").arg(path).arg("--no-whole-archive");
     }
 
     fn gc_sections(&mut self, _keep_metadata: bool) {
@@ -1367,13 +1392,13 @@ impl<'a> Linker for L4Bender<'a> {
     fn link_dylib_by_name(&mut self, _name: &str, _verbatim: bool, _as_needed: bool) {
         bug!("dylibs are not supported on L4Re");
     }
-    fn link_staticlib(&mut self, lib: &str, _verbatim: bool) {
+    fn link_staticlib_by_name(&mut self, name: &str, _verbatim: bool) {
         self.hint_static();
-        self.cmd.arg(format!("-PC{lib}"));
+        self.cmd.arg(format!("-PC{name}"));
     }
-    fn link_rlib(&mut self, lib: &Path) {
+    fn link_staticlib_by_path(&mut self, path: &Path) {
         self.hint_static();
-        self.cmd.arg(lib);
+        self.cmd.arg(path);
     }
     fn include_path(&mut self, path: &Path) {
         self.cmd.arg("-L").arg(path);
@@ -1408,15 +1433,20 @@ impl<'a> Linker for L4Bender<'a> {
 
     fn set_output_kind(&mut self, _output_kind: LinkOutputKind, _out_filename: &Path) {}
 
-    fn link_whole_staticlib(&mut self, lib: &str, _verbatim: bool, _search_path: &[PathBuf]) {
+    fn link_whole_staticlib_by_name(
+        &mut self,
+        name: &str,
+        _verbatim: bool,
+        _search_paths: &[PathBuf],
+    ) {
         self.hint_static();
-        self.cmd.arg("--whole-archive").arg(format!("-l{lib}"));
+        self.cmd.arg("--whole-archive").arg(format!("-l{name}"));
         self.cmd.arg("--no-whole-archive");
     }
 
-    fn link_whole_rlib(&mut self, lib: &Path) {
+    fn link_whole_staticlib_by_path(&mut self, path: &Path) {
         self.hint_static();
-        self.cmd.arg("--whole-archive").arg(lib).arg("--no-whole-archive");
+        self.cmd.arg("--whole-archive").arg(path).arg("--no-whole-archive");
     }
 
     fn gc_sections(&mut self, keep_metadata: bool) {
@@ -1534,14 +1564,14 @@ impl<'a> Linker for AixLinker<'a> {
         self.cmd.arg(format!("-l{name}"));
     }
 
-    fn link_staticlib(&mut self, lib: &str, _verbatim: bool) {
+    fn link_staticlib_by_name(&mut self, name: &str, _verbatim: bool) {
         self.hint_static();
-        self.cmd.arg(format!("-l{lib}"));
+        self.cmd.arg(format!("-l{name}"));
     }
 
-    fn link_rlib(&mut self, lib: &Path) {
+    fn link_staticlib_by_path(&mut self, path: &Path) {
         self.hint_static();
-        self.cmd.arg(lib);
+        self.cmd.arg(path);
     }
 
     fn include_path(&mut self, path: &Path) {
@@ -1584,15 +1614,20 @@ impl<'a> Linker for AixLinker<'a> {
         }
     }
 
-    fn link_whole_staticlib(&mut self, lib: &str, verbatim: bool, search_path: &[PathBuf]) {
+    fn link_whole_staticlib_by_name(
+        &mut self,
+        name: &str,
+        verbatim: bool,
+        search_paths: &[PathBuf],
+    ) {
         self.hint_static();
-        let lib = find_native_static_library(lib, verbatim, search_path, self.sess);
+        let lib = find_native_static_library(name, verbatim, search_paths, self.sess);
         self.cmd.arg(format!("-bkeepfile:{}", lib.to_str().unwrap()));
     }
 
-    fn link_whole_rlib(&mut self, lib: &Path) {
+    fn link_whole_staticlib_by_path(&mut self, path: &Path) {
         self.hint_static();
-        self.cmd.arg(format!("-bkeepfile:{}", lib.to_str().unwrap()));
+        self.cmd.arg(format!("-bkeepfile:{}", path.to_str().unwrap()));
     }
 
     fn gc_sections(&mut self, _keep_metadata: bool) {
@@ -1759,11 +1794,11 @@ impl<'a> Linker for PtxLinker<'a> {
 
     fn set_output_kind(&mut self, _output_kind: LinkOutputKind, _out_filename: &Path) {}
 
-    fn link_rlib(&mut self, path: &Path) {
+    fn link_staticlib_by_path(&mut self, path: &Path) {
         self.cmd.arg("--rlib").arg(path);
     }
 
-    fn link_whole_rlib(&mut self, path: &Path) {
+    fn link_whole_staticlib_by_path(&mut self, path: &Path) {
         self.cmd.arg("--rlib").arg(path);
     }
 
@@ -1797,11 +1832,16 @@ impl<'a> Linker for PtxLinker<'a> {
         panic!("external dylibs not supported")
     }
 
-    fn link_staticlib(&mut self, _lib: &str, _verbatim: bool) {
+    fn link_staticlib_by_name(&mut self, _name: &str, _verbatim: bool) {
         panic!("staticlibs not supported")
     }
 
-    fn link_whole_staticlib(&mut self, _lib: &str, _verbatim: bool, _search_path: &[PathBuf]) {
+    fn link_whole_staticlib_by_name(
+        &mut self,
+        _name: &str,
+        _verbatim: bool,
+        _search_paths: &[PathBuf],
+    ) {
         panic!("staticlibs not supported")
     }
 
@@ -1848,11 +1888,11 @@ impl<'a> Linker for BpfLinker<'a> {
 
     fn set_output_kind(&mut self, _output_kind: LinkOutputKind, _out_filename: &Path) {}
 
-    fn link_rlib(&mut self, path: &Path) {
+    fn link_staticlib_by_path(&mut self, path: &Path) {
         self.cmd.arg(path);
     }
 
-    fn link_whole_rlib(&mut self, path: &Path) {
+    fn link_whole_staticlib_by_path(&mut self, path: &Path) {
         self.cmd.arg(path);
     }
 
@@ -1887,11 +1927,16 @@ impl<'a> Linker for BpfLinker<'a> {
         panic!("external dylibs not supported")
     }
 
-    fn link_staticlib(&mut self, _lib: &str, _verbatim: bool) {
+    fn link_staticlib_by_name(&mut self, _name: &str, _verbatim: bool) {
         panic!("staticlibs not supported")
     }
 
-    fn link_whole_staticlib(&mut self, _lib: &str, _verbatim: bool, _search_path: &[PathBuf]) {
+    fn link_whole_staticlib_by_name(
+        &mut self,
+        _name: &str,
+        _verbatim: bool,
+        _search_paths: &[PathBuf],
+    ) {
         panic!("staticlibs not supported")
     }
 
