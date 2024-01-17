@@ -1733,6 +1733,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
                 },
             }
         },
+        PatKind::Err(_) => true,
     }
 }
 
