@@ -1,5 +1,6 @@
 #![deny(rustc::untranslatable_diagnostic)]
 
+use crate::base::ast::NestedMetaItem;
 use crate::errors;
 use crate::expand::{self, AstFragment, Invocation};
 use crate::module::DirOwnership;
@@ -19,6 +20,7 @@ use rustc_feature::Features;
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics, RegisteredTools};
 use rustc_parse::{parser, MACRO_ARGUMENTS};
+use rustc_session::config::CollapseMacroDebuginfo;
 use rustc_session::errors::report_lit_error;
 use rustc_session::{parse::ParseSess, Limit, Session};
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
@@ -761,6 +763,55 @@ impl SyntaxExtension {
         }
     }
 
+    fn collapse_debuginfo_by_name(sess: &Session, attr: &Attribute) -> CollapseMacroDebuginfo {
+        use crate::errors::CollapseMacroDebuginfoIllegal;
+        // #[collapse_debuginfo] without enum value (#[collapse_debuginfo(no/external/yes)])
+        // considered as `yes`
+        attr.meta_item_list().map_or(CollapseMacroDebuginfo::Yes, |l| {
+            let [NestedMetaItem::MetaItem(item)] = &l[..] else {
+                sess.dcx().emit_err(CollapseMacroDebuginfoIllegal { span: attr.span });
+                return CollapseMacroDebuginfo::Unspecified;
+            };
+            if !item.is_word() {
+                sess.dcx().emit_err(CollapseMacroDebuginfoIllegal { span: item.span });
+                CollapseMacroDebuginfo::Unspecified
+            } else {
+                match item.name_or_empty() {
+                    sym::no => CollapseMacroDebuginfo::No,
+                    sym::external => CollapseMacroDebuginfo::External,
+                    sym::yes => CollapseMacroDebuginfo::Yes,
+                    _ => {
+                        sess.dcx().emit_err(CollapseMacroDebuginfoIllegal { span: item.span });
+                        CollapseMacroDebuginfo::Unspecified
+                    }
+                }
+            }
+        })
+    }
+
+    /// if-ext - if macro from different crate (related to callsite code)
+    /// | cmd \ attr    | no  | (unspecified) | external | yes |
+    /// | no            | no  | no            | no       | no  |
+    /// | (unspecified) | no  | no            | if-ext   | yes |
+    /// | external      | no  | if-ext        | if-ext   | yes |
+    /// | yes           | yes | yes           | yes      | yes |
+    fn get_collapse_debuginfo(sess: &Session, attrs: &[ast::Attribute], is_local: bool) -> bool {
+        let collapse_debuginfo_attr = attr::find_by_name(attrs, sym::collapse_debuginfo)
+            .map(|v| Self::collapse_debuginfo_by_name(sess, v))
+            .unwrap_or(CollapseMacroDebuginfo::Unspecified);
+        let flag = sess.opts.unstable_opts.collapse_macro_debuginfo;
+        let attr = collapse_debuginfo_attr;
+        let ext = !is_local;
+        #[rustfmt::skip]
+        let collapse_table = [
+            [false, false, false, false],
+            [false, false, ext,   true],
+            [false, ext,   ext,   true],
+            [true,  true,  true,  true],
+        ];
+        collapse_table[flag as usize][attr as usize]
+    }
+
     /// Constructs a syntax extension with the given properties
     /// and other properties converted from attributes.
     pub fn new(
@@ -772,6 +823,7 @@ impl SyntaxExtension {
         edition: Edition,
         name: Symbol,
         attrs: &[ast::Attribute],
+        is_local: bool,
     ) -> SyntaxExtension {
         let allow_internal_unstable =
             attr::allow_internal_unstable(sess, attrs).collect::<Vec<Symbol>>();
@@ -780,8 +832,8 @@ impl SyntaxExtension {
         let local_inner_macros = attr::find_by_name(attrs, sym::macro_export)
             .and_then(|macro_export| macro_export.meta_item_list())
             .is_some_and(|l| attr::list_contains_name(&l, sym::local_inner_macros));
-        let collapse_debuginfo = attr::contains_name(attrs, sym::collapse_debuginfo);
-        tracing::debug!(?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
+        let collapse_debuginfo = Self::get_collapse_debuginfo(sess, attrs, is_local);
+        tracing::debug!(?name, ?local_inner_macros, ?collapse_debuginfo, ?allow_internal_unsafe);
 
         let (builtin_name, helper_attrs) = attr::find_by_name(attrs, sym::rustc_builtin_macro)
             .map(|attr| {

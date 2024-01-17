@@ -2535,8 +2535,7 @@ impl<'tcx> TyCtxt<'tcx> {
         if self.sess.opts.unstable_opts.debug_macros || !span.from_expansion() {
             return span;
         }
-        let collapse_debuginfo_enabled = self.features().collapse_debuginfo;
-        hygiene::walk_chain_collapsed(span, upto, collapse_debuginfo_enabled)
+        hygiene::walk_chain_collapsed(span, upto, self.features().collapse_debuginfo)
     }
 
     #[inline]
