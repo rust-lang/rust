@@ -7,6 +7,15 @@ LL | fn test() -> Pointer<_> {
    |              |       not allowed in type signatures
    |              help: replace with the correct return type: `Pointer<i32>`
 
-error: aborting due to 1 previous error
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
+  --> $DIR/issue-77179.rs:17:25
+   |
+LL |     fn bar() -> Pointer<_>;
+   |                         ^
+   |                         |
+   |                         not allowed in type signatures
+   |                         help: use type parameters instead: `T`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0121`.
