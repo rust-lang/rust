@@ -345,9 +345,18 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         Some(self.insert(Value::Constant { value, disambiguator }))
     }
 
+    fn insert_bool(&mut self, flag: bool) -> VnIndex {
+        // Booleans are deterministic.
+        self.insert(Value::Constant { value: Const::from_bool(self.tcx, flag), disambiguator: 0 })
+    }
+
     fn insert_scalar(&mut self, scalar: Scalar, ty: Ty<'tcx>) -> VnIndex {
         self.insert_constant(Const::from_scalar(self.tcx, scalar, ty))
             .expect("scalars are deterministic")
+    }
+
+    fn insert_tuple(&mut self, values: Vec<VnIndex>) -> VnIndex {
+        self.insert(Value::Aggregate(AggregateTy::Tuple, VariantIdx::from_u32(0), values))
     }
 
     #[instrument(level = "trace", skip(self), ret)]
@@ -767,10 +776,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
 
             // Operations.
-            Rvalue::Len(ref mut place) => {
-                let place = self.simplify_place_value(place, location)?;
-                Value::Len(place)
-            }
+            Rvalue::Len(ref mut place) => return self.simplify_len(place, location),
             Rvalue::Cast(kind, ref mut value, to) => {
                 let from = value.ty(self.local_decls, self.tcx);
                 let value = self.simplify_operand(value, location)?;
@@ -785,17 +791,36 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 Value::Cast { kind, value, from, to }
             }
             Rvalue::BinaryOp(op, box (ref mut lhs, ref mut rhs)) => {
+                let ty = lhs.ty(self.local_decls, self.tcx);
                 let lhs = self.simplify_operand(lhs, location);
                 let rhs = self.simplify_operand(rhs, location);
-                Value::BinaryOp(op, lhs?, rhs?)
+                // Only short-circuit options after we called `simplify_operand`
+                // on both operands for side effect.
+                let lhs = lhs?;
+                let rhs = rhs?;
+                if let Some(value) = self.simplify_binary(op, false, ty, lhs, rhs) {
+                    return Some(value);
+                }
+                Value::BinaryOp(op, lhs, rhs)
             }
             Rvalue::CheckedBinaryOp(op, box (ref mut lhs, ref mut rhs)) => {
+                let ty = lhs.ty(self.local_decls, self.tcx);
                 let lhs = self.simplify_operand(lhs, location);
                 let rhs = self.simplify_operand(rhs, location);
-                Value::CheckedBinaryOp(op, lhs?, rhs?)
+                // Only short-circuit options after we called `simplify_operand`
+                // on both operands for side effect.
+                let lhs = lhs?;
+                let rhs = rhs?;
+                if let Some(value) = self.simplify_binary(op, true, ty, lhs, rhs) {
+                    return Some(value);
+                }
+                Value::CheckedBinaryOp(op, lhs, rhs)
             }
             Rvalue::UnaryOp(op, ref mut arg) => {
                 let arg = self.simplify_operand(arg, location)?;
+                if let Some(value) = self.simplify_unary(op, arg) {
+                    return Some(value);
+                }
                 Value::UnaryOp(op, arg)
             }
             Rvalue::Discriminant(ref mut place) => {
@@ -893,6 +918,150 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         }
 
         Some(self.insert(Value::Aggregate(ty, variant_index, fields)))
+    }
+
+    #[instrument(level = "trace", skip(self), ret)]
+    fn simplify_unary(&mut self, op: UnOp, value: VnIndex) -> Option<VnIndex> {
+        let value = match (op, self.get(value)) {
+            (UnOp::Not, Value::UnaryOp(UnOp::Not, inner)) => return Some(*inner),
+            (UnOp::Neg, Value::UnaryOp(UnOp::Neg, inner)) => return Some(*inner),
+            (UnOp::Not, Value::BinaryOp(BinOp::Eq, lhs, rhs)) => {
+                Value::BinaryOp(BinOp::Ne, *lhs, *rhs)
+            }
+            (UnOp::Not, Value::BinaryOp(BinOp::Ne, lhs, rhs)) => {
+                Value::BinaryOp(BinOp::Eq, *lhs, *rhs)
+            }
+            _ => return None,
+        };
+
+        Some(self.insert(value))
+    }
+
+    #[instrument(level = "trace", skip(self), ret)]
+    fn simplify_binary(
+        &mut self,
+        op: BinOp,
+        checked: bool,
+        lhs_ty: Ty<'tcx>,
+        lhs: VnIndex,
+        rhs: VnIndex,
+    ) -> Option<VnIndex> {
+        // Floats are weird enough that none of the logic below applies.
+        let reasonable_ty =
+            lhs_ty.is_integral() || lhs_ty.is_bool() || lhs_ty.is_char() || lhs_ty.is_any_ptr();
+        if !reasonable_ty {
+            return None;
+        }
+
+        let layout = self.ecx.layout_of(lhs_ty).ok()?;
+
+        let as_bits = |value| {
+            let constant = self.evaluated[value].as_ref()?;
+            if layout.abi.is_scalar() {
+                let scalar = self.ecx.read_scalar(constant).ok()?;
+                scalar.to_bits(constant.layout.size).ok()
+            } else {
+                // `constant` is a wide pointer. Do not evaluate to bits.
+                None
+            }
+        };
+
+        // Represent the values as `Left(bits)` or `Right(VnIndex)`.
+        use Either::{Left, Right};
+        let a = as_bits(lhs).map_or(Right(lhs), Left);
+        let b = as_bits(rhs).map_or(Right(rhs), Left);
+        let result = match (op, a, b) {
+            // Neutral elements.
+            (BinOp::Add | BinOp::BitOr | BinOp::BitXor, Left(0), Right(p))
+            | (
+                BinOp::Add
+                | BinOp::BitOr
+                | BinOp::BitXor
+                | BinOp::Sub
+                | BinOp::Offset
+                | BinOp::Shl
+                | BinOp::Shr,
+                Right(p),
+                Left(0),
+            )
+            | (BinOp::Mul, Left(1), Right(p))
+            | (BinOp::Mul | BinOp::Div, Right(p), Left(1)) => p,
+            // Attempt to simplify `x & ALL_ONES` to `x`, with `ALL_ONES` depending on type size.
+            (BinOp::BitAnd, Right(p), Left(ones)) | (BinOp::BitAnd, Left(ones), Right(p))
+                if ones == layout.size.truncate(u128::MAX)
+                    || (layout.ty.is_bool() && ones == 1) =>
+            {
+                p
+            }
+            // Absorbing elements.
+            (BinOp::Mul | BinOp::BitAnd, _, Left(0))
+            | (BinOp::Rem, _, Left(1))
+            | (
+                BinOp::Mul | BinOp::Div | BinOp::Rem | BinOp::BitAnd | BinOp::Shl | BinOp::Shr,
+                Left(0),
+                _,
+            ) => self.insert_scalar(Scalar::from_uint(0u128, layout.size), lhs_ty),
+            // Attempt to simplify `x | ALL_ONES` to `ALL_ONES`.
+            (BinOp::BitOr, _, Left(ones)) | (BinOp::BitOr, Left(ones), _)
+                if ones == layout.size.truncate(u128::MAX)
+                    || (layout.ty.is_bool() && ones == 1) =>
+            {
+                self.insert_scalar(Scalar::from_uint(ones, layout.size), lhs_ty)
+            }
+            // Sub/Xor with itself.
+            (BinOp::Sub | BinOp::BitXor, a, b) if a == b => {
+                self.insert_scalar(Scalar::from_uint(0u128, layout.size), lhs_ty)
+            }
+            // Comparison:
+            // - if both operands can be computed as bits, just compare the bits;
+            // - if we proved that both operands have the same value, we can insert true/false;
+            // - otherwise, do nothing, as we do not try to prove inequality.
+            (BinOp::Eq, Left(a), Left(b)) => self.insert_bool(a == b),
+            (BinOp::Eq, a, b) if a == b => self.insert_bool(true),
+            (BinOp::Ne, Left(a), Left(b)) => self.insert_bool(a != b),
+            (BinOp::Ne, a, b) if a == b => self.insert_bool(false),
+            _ => return None,
+        };
+
+        if checked {
+            let false_val = self.insert_bool(false);
+            Some(self.insert_tuple(vec![result, false_val]))
+        } else {
+            Some(result)
+        }
+    }
+
+    fn simplify_len(&mut self, place: &mut Place<'tcx>, location: Location) -> Option<VnIndex> {
+        // Trivial case: we are fetching a statically known length.
+        let place_ty = place.ty(self.local_decls, self.tcx).ty;
+        if let ty::Array(_, len) = place_ty.kind() {
+            return self.insert_constant(Const::from_ty_const(*len, self.tcx));
+        }
+
+        let mut inner = self.simplify_place_value(place, location)?;
+
+        // The length information is stored in the fat pointer.
+        // Reborrowing copies length information from one pointer to the other.
+        while let Value::Address { place: borrowed, .. } = self.get(inner)
+            && let [PlaceElem::Deref] = borrowed.projection[..]
+            && let Some(borrowed) = self.locals[borrowed.local]
+        {
+            inner = borrowed;
+        }
+
+        // We have an unsizing cast, which assigns the length to fat pointer metadata.
+        if let Value::Cast { kind, from, to, .. } = self.get(inner)
+            && let CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize) = kind
+            && let Some(from) = from.builtin_deref(true)
+            && let ty::Array(_, len) = from.ty.kind()
+            && let Some(to) = to.builtin_deref(true)
+            && let ty::Slice(..) = to.ty.kind()
+        {
+            return self.insert_constant(Const::from_ty_const(*len, self.tcx));
+        }
+
+        // Fallback: a symbolic `Len`.
+        Some(self.insert(Value::Len(inner)))
     }
 }
 
