@@ -31,66 +31,20 @@ use core::{
 /// Note that a specialized interner might be a better solution for some use cases.
 ///
 /// `WS`: A string of 32 newlines followed by 128 spaces.
-#[derive(Clone)]
 pub struct SmolStr(Repr);
 
-mod bench {
-    extern crate test;
-    use test::Bencher;
-    fn test_strings() -> [crate::SmolStr; 200] {
-        [0; 200].map(|_| crate::SmolStr::new("0123456780"))
-    }
-    #[bench]
-    fn bench_derive_clone(b: &mut Bencher) {
-        let it = test::black_box(test_strings());
-        b.iter(|| {
-            (0..1000)
-                .map(|_| it.iter().map(|e| e.clone()))
-                .flatten()
-                .filter(|o| o.is_heap_allocated())
-                .count()
-        })
-    }
-    #[bench]
-    fn bench_new_clone(b: &mut Bencher) {
-        let it = test::black_box(test_strings());
-        b.iter(|| {
-            (0..1000)
-                .map(|_| it.iter().map(|e| e.new_clone()))
-                .flatten()
-                .filter(|o| o.is_heap_allocated())
-                .count()
-        })
-    }
-    #[bench]
-    fn bench_match_clone(b: &mut Bencher) {
-        let it = test::black_box(test_strings());
-        b.iter(|| {
-            (0..1000)
-                .map(|_| it.iter().map(|e| e.match_clone()))
-                .flatten()
-                .filter(|o| o.is_heap_allocated())
-                .count()
-        })
+impl Clone for SmolStr{
+    #[inline]
+    fn clone(&self) -> Self {
+        if !self.is_heap_allocated() {
+            return unsafe { core::ptr::read(self as *const SmolStr) };
+        }
+        Self(self.0.clone())
     }
 }
 
 impl SmolStr {
     
-    #[inline(always)]
-    pub fn new_clone(&self) -> Self {
-        if !self.is_heap_allocated() {
-            return unsafe { core::mem::transmute_copy(self) };
-        }
-        Self(self.0.clone())
-    }
-    #[inline(always)]
-    pub fn match_clone(&self) -> Self {
-        match &self.0 {
-            Repr::Heap(h) => return Self(Repr::Heap(h.clone())),
-            _ => unsafe { core::mem::transmute_copy(self) },
-        }
-    }
     #[deprecated = "Use `new_inline` instead"]
     pub const fn new_inline_from_ascii(len: usize, bytes: &[u8]) -> SmolStr {
         assert!(len <= INLINE_CAP);
