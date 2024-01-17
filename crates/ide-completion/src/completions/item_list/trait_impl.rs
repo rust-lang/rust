@@ -38,7 +38,7 @@ use ide_db::{
 };
 use syntax::{
     ast::{self, edit_in_place::AttrsOwnerEdit, HasTypeBounds},
-    AstNode, SyntaxElement, SyntaxKind, TextRange, T,
+    format_smolstr, AstNode, SmolStr, SyntaxElement, SyntaxKind, TextRange, T,
 };
 use text_edit::TextEdit;
 
@@ -180,7 +180,7 @@ fn add_function_impl(
 ) {
     let fn_name = func.name(ctx.db);
 
-    let label = format!(
+    let label = format_smolstr!(
         "fn {}({})",
         fn_name.display(ctx.db),
         if func.assoc_fn_params(ctx.db).is_empty() { "" } else { ".." }
@@ -254,7 +254,7 @@ fn add_type_alias_impl(
 ) {
     let alias_name = type_alias.name(ctx.db).unescaped().to_smol_str();
 
-    let label = format!("type {alias_name} =");
+    let label = format_smolstr!("type {alias_name} =");
 
     let mut item = CompletionItem::new(SymbolKind::TypeAlias, replacement_range, label);
     item.lookup_by(format!("type {alias_name}"))
@@ -329,7 +329,7 @@ fn add_const_impl(
                 let replacement = format!("{label} ");
 
                 let mut item = CompletionItem::new(SymbolKind::Const, replacement_range, label);
-                item.lookup_by(format!("const {const_name}"))
+                item.lookup_by(format_smolstr!("const {const_name}"))
                     .set_documentation(const_.docs(ctx.db))
                     .set_relevance(CompletionRelevance {
                         is_item_from_trait: true,
@@ -348,7 +348,7 @@ fn add_const_impl(
     }
 }
 
-fn make_const_compl_syntax(const_: &ast::Const, needs_whitespace: bool) -> String {
+fn make_const_compl_syntax(const_: &ast::Const, needs_whitespace: bool) -> SmolStr {
     let const_ = if needs_whitespace {
         insert_whitespace_into_node::insert_ws_into(const_.syntax().clone())
     } else {
@@ -368,7 +368,7 @@ fn make_const_compl_syntax(const_: &ast::Const, needs_whitespace: bool) -> Strin
 
     let syntax = const_.text().slice(range).to_string();
 
-    format!("{} =", syntax.trim_end())
+    format_smolstr!("{} =", syntax.trim_end())
 }
 
 fn function_declaration(node: &ast::Fn, needs_whitespace: bool) -> String {

@@ -81,7 +81,7 @@ use rustc_hash::FxHashSet;
 use stdx::{impl_from, never};
 use syntax::{
     ast::{self, HasAttrs as _, HasName},
-    AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, TextRange, T,
+    format_smolstr, AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, TextRange, T,
 };
 use triomphe::Arc;
 
@@ -4284,9 +4284,9 @@ impl Type {
             .filter_map(|arg| {
                 // arg can be either a `Ty` or `constant`
                 if let Some(ty) = arg.ty(Interner) {
-                    Some(SmolStr::new(ty.display(db).to_string()))
+                    Some(format_smolstr!("{}", ty.display(db)))
                 } else if let Some(const_) = arg.constant(Interner) {
-                    Some(SmolStr::new_inline(&const_.display(db).to_string()))
+                    Some(format_smolstr!("{}", const_.display(db)))
                 } else {
                     None
                 }

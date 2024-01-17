@@ -96,19 +96,19 @@ impl<S: Span> Bindings<S> {
                     | MetaVarKind::Expr
                     | MetaVarKind::Ident => {
                         Fragment::Tokens(tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
-                            text: SmolStr::new_inline("missing"),
+                            text: SmolStr::new_static("missing"),
                             span,
                         })))
                     }
                     MetaVarKind::Lifetime => {
                         Fragment::Tokens(tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
-                            text: SmolStr::new_inline("'missing"),
+                            text: SmolStr::new_static("'missing"),
                             span,
                         })))
                     }
                     MetaVarKind::Literal => {
                         Fragment::Tokens(tt::TokenTree::Leaf(tt::Leaf::Ident(tt::Ident {
-                            text: SmolStr::new_inline("\"missing\""),
+                            text: SmolStr::new_static("\"missing\""),
                             span,
                         })))
                     }

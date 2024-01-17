@@ -1,6 +1,7 @@
 //! Completes references after dot (fields and method calls).
 
 use ide_db::FxHashSet;
+use syntax::SmolStr;
 
 use crate::{
     context::{CompletionContext, DotAccess, DotAccessKind, ExprCtx, PathCompletionCtx, Qualified},
@@ -20,8 +21,11 @@ pub(crate) fn complete_dot(
 
     // Suggest .await syntax for types that implement Future trait
     if receiver_ty.impls_into_future(ctx.db) {
-        let mut item =
-            CompletionItem::new(CompletionItemKind::Keyword, ctx.source_range(), "await");
+        let mut item = CompletionItem::new(
+            CompletionItemKind::Keyword,
+            ctx.source_range(),
+            SmolStr::new_static("await"),
+        );
         item.detail("expr.await");
         item.add_to(acc, ctx.db);
     }
