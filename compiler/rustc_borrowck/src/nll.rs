@@ -12,6 +12,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, OpaqueHiddenType, TyCtxt};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
+use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::ResultsCursor;
 use rustc_span::symbol::sym;
 use std::env;
@@ -27,7 +28,7 @@ use crate::{
     facts::{AllFacts, AllFactsExt, RustcFacts},
     location::LocationTable,
     polonius,
-    region_infer::{values::RegionValueElements, RegionInferenceContext},
+    region_infer::RegionInferenceContext,
     renumber,
     type_check::{self, MirTypeckRegionConstraints, MirTypeckResults},
     universal_regions::UniversalRegions,
@@ -98,7 +99,7 @@ pub(crate) fn compute_regions<'cx, 'tcx>(
 
     let universal_regions = Rc::new(universal_regions);
 
-    let elements = &Rc::new(RegionValueElements::new(body));
+    let elements = &Rc::new(DenseLocationMap::new(body));
 
     // Run the MIR type-checker.
     let MirTypeckResults { constraints, universal_region_relations, opaque_type_values } =
