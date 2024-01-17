@@ -1265,7 +1265,7 @@ fn link_sanitizer_runtime(
         let path = find_sanitizer_runtime(sess, &filename);
         let rpath = path.to_str().expect("non-utf8 component in path");
         linker.args(&["-Wl,-rpath", "-Xlinker", rpath]);
-        linker.link_dylib(&filename, false, true);
+        linker.link_dylib_by_name(&filename, false, true);
     } else if sess.target.is_like_msvc && flavor == LinkerFlavor::Msvc(Lld::No) && name == "asan" {
         // MSVC provides the `/INFERASANLIBS` argument to automatically find the
         // compatible ASAN library.
@@ -2526,7 +2526,7 @@ fn add_native_libs_from_crate(
             }
             NativeLibKind::Dylib { as_needed } => {
                 if link_dynamic {
-                    cmd.link_dylib(name, verbatim, as_needed.unwrap_or(true))
+                    cmd.link_dylib_by_name(name, verbatim, as_needed.unwrap_or(true))
                 }
             }
             NativeLibKind::Unspecified => {
@@ -2538,13 +2538,13 @@ fn add_native_libs_from_crate(
                     }
                 } else {
                     if link_dynamic {
-                        cmd.link_dylib(name, verbatim, true);
+                        cmd.link_dylib_by_name(name, verbatim, true);
                     }
                 }
             }
             NativeLibKind::Framework { as_needed } => {
                 if link_dynamic {
-                    cmd.link_framework(name, as_needed.unwrap_or(true))
+                    cmd.link_framework_by_name(name, verbatim, as_needed.unwrap_or(true))
                 }
             }
             NativeLibKind::RawDylib => {
@@ -2859,13 +2859,20 @@ fn add_dynamic_crate(cmd: &mut dyn Linker, sess: &Session, cratepath: &Path) {
     // Just need to tell the linker about where the library lives and
     // what its name is
     let parent = cratepath.parent();
+    // When producing a dll, the MSVC linker may not actually emit a
+    // `foo.lib` file if the dll doesn't actually export any symbols, so we
+    // check to see if the file is there and just omit linking to it if it's
+    // not present.
+    if sess.target.is_like_msvc && !cratepath.with_extension("dll.lib").exists() {
+        return;
+    }
     if let Some(dir) = parent {
         cmd.include_path(&rehome_sysroot_lib_dir(sess, dir));
     }
     let stem = cratepath.file_stem().unwrap().to_str().unwrap();
     // Convert library file-stem into a cc -l argument.
     let prefix = if stem.starts_with("lib") && !sess.target.is_like_windows { 3 } else { 0 };
-    cmd.link_rust_dylib(&stem[prefix..], parent.unwrap_or_else(|| Path::new("")));
+    cmd.link_dylib_by_name(&stem[prefix..], false, true);
 }
 
 fn relevant_lib(sess: &Session, lib: &NativeLib) -> bool {
