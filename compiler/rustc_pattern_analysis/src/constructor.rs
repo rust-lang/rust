@@ -155,13 +155,13 @@ use std::iter::once;
 use smallvec::SmallVec;
 
 use rustc_apfloat::ieee::{DoubleS, IeeeFloat, SingleS};
-use rustc_index::bit_set::{BitSet, GrowableBitSet};
-use rustc_index::IndexVec;
+use rustc_index::bit_set::GrowableBitSet;
 
 use self::Constructor::*;
 use self::MaybeInfiniteInt::*;
 use self::SliceKind::*;
 
+use crate::index;
 use crate::usefulness::PlaceCtxt;
 use crate::TypeCx;
 
@@ -804,7 +804,10 @@ pub enum ConstructorSet<Cx: TypeCx> {
     Struct { empty: bool },
     /// This type has the following list of constructors. If `variants` is empty and
     /// `non_exhaustive` is false, don't use this; use `NoConstructors` instead.
-    Variants { variants: IndexVec<Cx::VariantIdx, VariantVisibility>, non_exhaustive: bool },
+    Variants {
+        variants: index::IdxContainer<Cx::VariantIdx, VariantVisibility>,
+        non_exhaustive: bool,
+    },
     /// The type is `&T`.
     Ref,
     /// The type is a union.
@@ -904,7 +907,7 @@ impl<Cx: TypeCx> ConstructorSet<Cx> {
                 }
             }
             ConstructorSet::Variants { variants, non_exhaustive } => {
-                let mut seen_set: BitSet<_> = BitSet::new_empty(variants.len());
+                let mut seen_set = index::IdxSet::new_empty(variants.len());
                 for idx in seen.iter().map(|c| c.as_variant().unwrap()) {
                     seen_set.insert(idx);
                 }
