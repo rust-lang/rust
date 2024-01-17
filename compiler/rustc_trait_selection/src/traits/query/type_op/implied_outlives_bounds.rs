@@ -48,14 +48,14 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ImpliedOutlivesBounds<'tcx> {
             param_env.and(ty)
         });
 
-        tcx.implied_outlives_bounds_compat(canonicalized)
+        tcx.implied_outlives_bounds(canonicalized)
     }
 
     fn perform_locally_with_next_solver(
         ocx: &ObligationCtxt<'_, 'tcx>,
         key: ParamEnvAnd<'tcx, Self>,
     ) -> Result<Self::QueryResponse, NoSolution> {
-        compute_implied_outlives_bounds_compat_inner(ocx, key.param_env, key.value.ty)
+        compute_implied_outlives_bounds_inner(ocx, key.param_env, key.value.ty)
     }
 }
 
