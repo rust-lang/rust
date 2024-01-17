@@ -112,6 +112,7 @@ impl<A> Drop for RepeatN<A> {
 
 trait SpecRepeatN<A> {
     unsafe fn spec_next_unchecked(&mut self) -> A;
+    fn spec_fold<B, F: FnMut(B, A) -> B>(self, b: B, f: F) -> B;
 }
 
 impl<A: Clone> SpecRepeatN<A> for RepeatN<A> {
@@ -126,6 +127,18 @@ impl<A: Clone> SpecRepeatN<A> for RepeatN<A> {
             A::clone(&self.element)
         }
     }
+
+    default fn spec_fold<B, F: FnMut(B, A) -> B>(mut self, mut b: B, mut f: F) -> B {
+        let mut count = self.count;
+        if let Some(element) = self.take_element() {
+            while count > 1 {
+                count -= 1;
+                b = f(b, element.clone());
+            }
+            b = f(b, element);
+        }
+        b
+    }
 }
 
 impl<A: Copy> SpecRepeatN<A> for RepeatN<A> {
@@ -135,6 +148,17 @@ impl<A: Copy> SpecRepeatN<A> for RepeatN<A> {
         // For `Copy` types, we can always just read the item directly,
         // so skip having a branch that would need to be optimized out.
         *self.element
+    }
+
+    fn spec_fold<B, F: FnMut(B, A) -> B>(self, mut b: B, mut f: F) -> B {
+        let mut count = self.count;
+        let element = *self.element;
+
+        while count > 0 {
+            count -= 1;
+            b = f(b, element);
+        }
+        b
     }
 }
 
@@ -173,6 +197,11 @@ impl<A: Clone> Iterator for RepeatN<A> {
             self.count = len - skip;
             Ok(())
         }
+    }
+
+    #[inline]
+    fn fold<B, F: FnMut(B, A) -> B>(self, init: B, f: F) -> B {
+        self.spec_fold(init, f)
     }
 
     #[inline]

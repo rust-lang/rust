@@ -2887,7 +2887,7 @@ impl<T, A: Allocator> Vec<T, A> {
                     // Since the loop executes user code which can panic we have to update
                     // the length every step to correctly drop what we've written.
                     // NB can't overflow since we would have had to alloc the address space
-                    local_len.increment_len(1);
+                    local_len.increment_len_unchecked(1);
                 });
             }
         } else {
