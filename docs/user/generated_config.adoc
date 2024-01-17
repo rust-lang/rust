@@ -777,6 +777,11 @@ Internal config, path to proc-macro server executable.
 --
 Exclude imports from find-all-references.
 --
+[[rust-analyzer.renameExternalItems.enable]]rust-analyzer.renameExternalItems.enable (default: `false`)::
++
+--
+Allow renaming of items not belonging to any workspace crates.
+--
 [[rust-analyzer.runnables.command]]rust-analyzer.runnables.command (default: `null`)::
 +
 --
