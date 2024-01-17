@@ -1838,6 +1838,11 @@ impl<'a> State<'a> {
                 self.commasep(Inconsistent, after, |s, p| s.print_pat(p));
                 self.word("]");
             }
+            PatKind::Err(_) => {
+                self.popen();
+                self.word("/*ERROR*/");
+                self.pclose();
+            }
         }
         self.ann.post(self, AnnNode::Pat(pat))
     }

@@ -177,7 +177,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatInfo { binding_mode: def_bm, top_info: ti, decl_origin: pat_info.decl_origin };
 
         let ty = match pat.kind {
-            PatKind::Wild => expected,
+            PatKind::Wild | PatKind::Err(_) => expected,
             // FIXME(never_patterns): check the type is uninhabited. If that is not possible within
             // typeck, do that in a later phase.
             PatKind::Never => expected,
@@ -325,6 +325,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Ref(..) => AdjustMode::Reset,
             // A `_` pattern works with any expected type, so there's no need to do anything.
             PatKind::Wild
+            // A malformed pattern doesn't have an expected type, so let's just accept any type.
+            | PatKind::Err(_)
             // Bindings also work with whatever the expected type is,
             // and moreover if we peel references off, that will give us the wrong binding type.
             // Also, we can have a subpattern `binding @ pat`.
@@ -754,7 +756,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         | PatKind::Box(..)
                         | PatKind::Ref(..)
                         | PatKind::Lit(..)
-                        | PatKind::Range(..) => break 'block None,
+                        | PatKind::Range(..)
+                        | PatKind::Err(_) => break 'block None,
                     },
 
                     // Don't provide suggestions in other cases

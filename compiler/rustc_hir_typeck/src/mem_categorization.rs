@@ -767,7 +767,8 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
             | PatKind::Lit(..)
             | PatKind::Range(..)
             | PatKind::Never
-            | PatKind::Wild => {
+            | PatKind::Wild
+            | PatKind::Err(_) => {
                 // always ok
             }
         }

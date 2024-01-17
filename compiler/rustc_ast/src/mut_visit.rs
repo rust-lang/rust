@@ -1267,7 +1267,7 @@ pub fn noop_visit_pat<T: MutVisitor>(pat: &mut P<Pat>, vis: &mut T) {
     let Pat { id, kind, span, tokens } = pat.deref_mut();
     vis.visit_id(id);
     match kind {
-        PatKind::Wild | PatKind::Rest | PatKind::Never => {}
+        PatKind::Wild | PatKind::Rest | PatKind::Never | PatKind::Err(_) => {}
         PatKind::Ident(_binding_mode, ident, sub) => {
             vis.visit_ident(ident);
             visit_opt(sub, |sub| vis.visit_pat(sub));

@@ -345,6 +345,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
 
             hir::PatKind::Or(pats) => PatKind::Or { pats: self.lower_patterns(pats) },
+
+            hir::PatKind::Err(guar) => PatKind::Error(guar),
         };
 
         Box::new(Pat { span, ty, kind })

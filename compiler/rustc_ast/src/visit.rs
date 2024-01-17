@@ -568,7 +568,7 @@ pub fn walk_pat<'a, V: Visitor<'a>>(visitor: &mut V, pattern: &'a Pat) {
             walk_list!(visitor, visit_expr, lower_bound);
             walk_list!(visitor, visit_expr, upper_bound);
         }
-        PatKind::Wild | PatKind::Rest | PatKind::Never => {}
+        PatKind::Wild | PatKind::Rest | PatKind::Never | PatKind::Err(_) => {}
         PatKind::Tuple(elems) | PatKind::Slice(elems) | PatKind::Or(elems) => {
             walk_list!(visitor, visit_pat, elems);
         }
