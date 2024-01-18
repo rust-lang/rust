@@ -668,8 +668,10 @@ pub enum TerminatorKind<'tcx> {
     ///
     /// [#71117]: https://github.com/rust-lang/rust/issues/71117
     Call {
-        /// The function that’s being called.
-        func: Operand<'tcx>,
+        /// The function that’s being called, including the `Span` of the
+        /// function, without the dot and receiver
+        /// e.g. `foo(a, b)` in `x.foo(a, b)`
+        func: Spanned<Operand<'tcx>>,
         /// Arguments the function is called with.
         /// These are owned by the callee, which is free to modify them.
         /// This allows the memory occupied by "by-value" arguments to be
@@ -685,9 +687,6 @@ pub enum TerminatorKind<'tcx> {
         unwind: UnwindAction,
         /// Where this call came from in HIR/THIR.
         call_source: CallSource,
-        /// This `Span` is the span of the function, without the dot and receiver
-        /// e.g. `foo(a, b)` in `x.foo(a, b)`
-        fn_span: Span,
     },
 
     /// Evaluates the operand, which must have type `bool`. If it is not equal to `expected`,
