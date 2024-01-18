@@ -1,0 +1,19 @@
+name: Rust
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: rust-lang/simpleinfra/github-actions/simple-ci@master
+    - name: "32-bit cross testing"
+      run: |
+        rustup toolchain install nightly
+        rustup override set nightly
+        rustup component add miri
+        cargo +nightly miri test --target i686-unknown-linux-gnu
+    strategy:
+      matrix:
+        os: [ubuntu, windows, macos]
