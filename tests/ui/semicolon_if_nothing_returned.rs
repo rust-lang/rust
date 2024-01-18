@@ -1,5 +1,10 @@
+//@aux-build:proc_macro_attr.rs
+
 #![warn(clippy::semicolon_if_nothing_returned)]
 #![allow(clippy::redundant_closure, clippy::uninlined_format_args, clippy::needless_late_init)]
+
+#[macro_use]
+extern crate proc_macro_attr;
 
 fn get_unit() {}
 
@@ -119,4 +124,26 @@ fn let_else_stmts() {
     let Some(x) = function_returning_option() else {
         return;
     };
+}
+
+mod issue12123 {
+    #[rustfmt::skip]
+    mod this_triggers {
+        #[fake_main]
+        async fn main() {
+            
+        }
+    }
+
+    mod and_this {
+        #[fake_main]
+        async fn main() {
+            println!("hello");
+        }
+    }
+
+    mod but_this_does_not {
+        #[fake_main]
+        async fn main() {}
+    }
 }
