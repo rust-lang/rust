@@ -219,7 +219,7 @@ pub fn implements_trait<'tcx>(
 
 /// Same as `implements_trait` but allows using a `ParamEnv` different from the lint context.
 ///
-/// The `callee_id` argument is used to determine the "effect arg", if one is needed.
+/// The `callee_id` argument is used to determine whether this is a function call in a `const fn` environment, used for checking const traits.
 pub fn implements_trait_with_env<'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ParamEnv<'tcx>,
@@ -243,7 +243,9 @@ pub fn implements_trait_with_env_from_iter<'tcx>(
     // Clippy shouldn't have infer types
     assert!(!ty.has_infer());
 
-    // If a `callee_id` is passed, then "assert" it is a body owner.
+    // If a `callee_id` is passed, then we assert that it is a body owner
+    // through calling `body_owner_kind`, which would panic if the callee
+    // does not have a body.
     if let Some(callee_id) = callee_id {
         let _ = tcx.hir().body_owner_kind(callee_id);
     }
