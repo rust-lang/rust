@@ -106,6 +106,9 @@ fn rustc_unescape_error_to_string(err: unescape::EscapeError) -> (&'static str, 
         EE::NonAsciiCharInByte  => {
             "Byte literals must not contain non-ASCII characters"
         }
+        EE::NulInCStr  => {
+            "C strings literals must not contain null characters"
+        }
         EE::UnskippedWhitespaceWarning => "Whitespace after this escape is not skipped",
         EE::MultipleSkippedLinesWarning => "Multiple lines are skipped by this escape",
 
