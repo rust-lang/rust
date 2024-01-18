@@ -118,9 +118,8 @@ fn nearest_token_after_node(
     token_type: syntax::SyntaxKind,
 ) -> Option<syntax::SyntaxToken> {
     node.siblings_with_tokens(syntax::Direction::Next)
-        .filter_map(|it| it.as_token().map(|it| it.clone()))
-        .filter(|it| it.kind() == token_type)
-        .next()
+        .filter_map(|it| it.as_token().cloned())
+        .find(|it| it.kind() == token_type)
 }
 
 #[cfg(test)]

@@ -633,8 +633,8 @@ fn decl_macro_expander(
                         map.as_ref(),
                         map.span_for_range(macro_rules.macro_rules_token().unwrap().text_range()),
                     );
-                    let mac = mbe::DeclarativeMacro::parse_macro_rules(&tt, is_2021, new_meta_vars);
-                    mac
+
+                    mbe::DeclarativeMacro::parse_macro_rules(&tt, is_2021, new_meta_vars)
                 }
                 None => mbe::DeclarativeMacro::from_err(
                     mbe::ParseError::Expected("expected a token tree".into()),
@@ -651,8 +651,8 @@ fn decl_macro_expander(
                         map.as_ref(),
                         map.span_for_range(macro_def.macro_token().unwrap().text_range()),
                     );
-                    let mac = mbe::DeclarativeMacro::parse_macro2(&tt, is_2021, new_meta_vars);
-                    mac
+
+                    mbe::DeclarativeMacro::parse_macro2(&tt, is_2021, new_meta_vars)
                 }
                 None => mbe::DeclarativeMacro::from_err(
                     mbe::ParseError::Expected("expected a token tree".into()),
@@ -722,7 +722,7 @@ fn macro_expand(
                     db.decl_macro_expander(loc.def.krate, id).expand(db, arg.clone(), macro_call_id)
                 }
                 MacroDefKind::BuiltIn(it, _) => {
-                    it.expand(db, macro_call_id, &arg).map_err(Into::into)
+                    it.expand(db, macro_call_id, arg).map_err(Into::into)
                 }
                 // This might look a bit odd, but we do not expand the inputs to eager macros here.
                 // Eager macros inputs are expanded, well, eagerly when we collect the macro calls.
@@ -746,10 +746,10 @@ fn macro_expand(
                     };
                 }
                 MacroDefKind::BuiltInEager(it, _) => {
-                    it.expand(db, macro_call_id, &arg).map_err(Into::into)
+                    it.expand(db, macro_call_id, arg).map_err(Into::into)
                 }
                 MacroDefKind::BuiltInAttr(it, _) => {
-                    let mut res = it.expand(db, macro_call_id, &arg);
+                    let mut res = it.expand(db, macro_call_id, arg);
                     fixup::reverse_fixups(&mut res.value, &undo_info);
                     res
                 }

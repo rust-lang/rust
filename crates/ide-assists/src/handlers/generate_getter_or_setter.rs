@@ -42,7 +42,7 @@ pub(crate) fn generate_setter(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
     let (strukt, info_of_record_fields, mut fn_names) = extract_and_parse(ctx, AssistType::Set)?;
 
     // No record fields to do work on :(
-    if info_of_record_fields.len() == 0 {
+    if info_of_record_fields.is_empty() {
         return None;
     }
 
@@ -163,7 +163,7 @@ pub(crate) fn generate_getter_impl(
     let (strukt, info_of_record_fields, fn_names) =
         extract_and_parse(ctx, if mutable { AssistType::MutGet } else { AssistType::Get })?;
     // No record fields to do work on :(
-    if info_of_record_fields.len() == 0 {
+    if info_of_record_fields.is_empty() {
         return None;
     }
 
@@ -318,15 +318,13 @@ fn extract_and_parse_record_fields(
                 })
                 .collect::<Vec<RecordFieldInfo>>();
 
-            if info_of_record_fields_in_selection.len() == 0 {
+            if info_of_record_fields_in_selection.is_empty() {
                 return None;
             }
 
             Some((info_of_record_fields_in_selection, field_names))
         }
-        ast::FieldList::TupleFieldList(_) => {
-            return None;
-        }
+        ast::FieldList::TupleFieldList(_) => None,
     }
 }
 
@@ -409,7 +407,7 @@ fn build_source_change(
         // getter and end of impl ( i.e. `}` ) with an
         // extra line for no reason
         if i < record_fields_count - 1 {
-            buf = buf + "\n";
+            buf += "\n";
         }
     }
 

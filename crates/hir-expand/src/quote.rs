@@ -18,13 +18,13 @@ pub(crate) const fn dollar_crate(span: Span) -> tt::Ident<Span> {
 #[macro_export]
 macro_rules! __quote {
     ($span:ident) => {
-        Vec::<crate::tt::TokenTree>::new()
+        Vec::<$crate::tt::TokenTree>::new()
     };
 
     ( @SUBTREE($span:ident) $delim:ident $($tt:tt)* ) => {
         {
             let children = $crate::__quote!($span $($tt)*);
-            crate::tt::Subtree {
+            $crate::tt::Subtree {
                 delimiter: crate::tt::Delimiter {
                     kind: crate::tt::DelimiterKind::$delim,
                     open: $span,

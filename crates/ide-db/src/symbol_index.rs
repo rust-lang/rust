@@ -329,7 +329,7 @@ impl Query {
                 for index in indices.iter() {
                     op = op.add(index.map.search(&automaton));
                 }
-                self.search_maps(&indices, op.union(), cb)
+                self.search_maps(indices, op.union(), cb)
             }
             SearchMode::Fuzzy => {
                 let automaton = fst::automaton::Subsequence::new(&self.lowercased);
@@ -337,7 +337,7 @@ impl Query {
                 for index in indices.iter() {
                     op = op.add(index.map.search(&automaton));
                 }
-                self.search_maps(&indices, op.union(), cb)
+                self.search_maps(indices, op.union(), cb)
             }
             SearchMode::Prefix => {
                 let automaton = fst::automaton::Str::new(&self.lowercased).starts_with();
@@ -345,7 +345,7 @@ impl Query {
                 for index in indices.iter() {
                     op = op.add(index.map.search(&automaton));
                 }
-                self.search_maps(&indices, op.union(), cb)
+                self.search_maps(indices, op.union(), cb)
             }
         }
     }

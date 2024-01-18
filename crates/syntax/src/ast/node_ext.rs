@@ -356,8 +356,12 @@ impl ast::UseTreeList {
         let remove_brace_in_use_tree_list = |u: &ast::UseTreeList| {
             let use_tree_count = u.use_trees().count();
             if use_tree_count == 1 {
-                u.l_curly_token().map(ted::remove);
-                u.r_curly_token().map(ted::remove);
+                if let Some(a) = u.l_curly_token() {
+                    ted::remove(a)
+                }
+                if let Some(a) = u.r_curly_token() {
+                    ted::remove(a)
+                }
                 u.comma().for_each(ted::remove);
             }
         };

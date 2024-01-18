@@ -111,7 +111,7 @@ fn generic_arg_list(expr: &Expr) -> Option<GenericArgList> {
                 pe.path()?.segment()?.generic_arg_list()
             } else {
                 cov_mark::hit!(not_applicable_if_non_path_function_call);
-                return None;
+                None
             }
         }
         Expr::AwaitExpr(expr) => generic_arg_list(&expr.expr()?),

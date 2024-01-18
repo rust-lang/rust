@@ -354,7 +354,7 @@ impl ChangeFixture {
             files,
             change: Change {
                 source_change,
-                proc_macros: proc_macros.is_empty().not().then(|| proc_macros),
+                proc_macros: proc_macros.is_empty().not().then_some(proc_macros),
             },
         }
     }

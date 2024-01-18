@@ -85,10 +85,7 @@ pub(crate) fn generate_trait_from_impl(acc: &mut Assists, ctx: &AssistContext<'_
 
     let assoc_items = impl_ast.assoc_item_list()?;
     let first_element = assoc_items.assoc_items().next();
-    if first_element.is_none() {
-        // No reason for an assist.
-        return None;
-    }
+    first_element.as_ref()?;
 
     let impl_name = impl_ast.self_ty()?;
 

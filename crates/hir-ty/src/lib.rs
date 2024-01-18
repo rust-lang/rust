@@ -228,7 +228,7 @@ impl MemoryMap {
         let mut transform = |(addr, val): (&usize, &Box<[u8]>)| {
             let addr = *addr;
             let align = if addr == 0 { 64 } else { (addr - (addr & (addr - 1))).min(64) };
-            f(val, align).and_then(|it| Ok((addr, it)))
+            f(val, align).map(|it| (addr, it))
         };
         match self {
             MemoryMap::Empty => Ok(Default::default()),

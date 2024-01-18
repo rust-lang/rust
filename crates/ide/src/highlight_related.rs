@@ -475,8 +475,7 @@ fn find_defs(sema: &Semantics<'_, RootDatabase>, token: SyntaxToken) -> FxHashSe
     sema.descend_into_macros(DescendPreference::None, token)
         .into_iter()
         .filter_map(|token| IdentClass::classify_token(sema, &token))
-        .map(IdentClass::definitions_no_ops)
-        .flatten()
+        .flat_map(IdentClass::definitions_no_ops)
         .collect()
 }
 

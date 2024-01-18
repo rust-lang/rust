@@ -174,7 +174,7 @@ impl Diagnostic {
         node: InFile<SyntaxNodePtr>,
     ) -> Diagnostic {
         let file_id = node.file_id;
-        Diagnostic::new(code, message, ctx.sema.diagnostics_display_range(node.clone()))
+        Diagnostic::new(code, message, ctx.sema.diagnostics_display_range(node))
             .with_main_node(node.map(|x| x.to_node(&ctx.sema.parse_or_expand(file_id))))
     }
 
@@ -281,7 +281,7 @@ impl DiagnosticsContext<'_> {
                 }
             }
         })()
-        .unwrap_or_else(|| sema.diagnostics_display_range(node.clone()))
+        .unwrap_or_else(|| sema.diagnostics_display_range(*node))
     }
 }
 
@@ -448,8 +448,8 @@ fn handle_lint_attributes(
     diagnostics_of_range: &mut FxHashMap<InFile<SyntaxNode>, &mut Diagnostic>,
 ) {
     let file_id = sema.hir_file_for(root);
-    let mut preorder = root.preorder();
-    while let Some(ev) = preorder.next() {
+    let preorder = root.preorder();
+    for ev in preorder {
         match ev {
             syntax::WalkEvent::Enter(node) => {
                 for attr in node.children().filter_map(ast::Attr::cast) {

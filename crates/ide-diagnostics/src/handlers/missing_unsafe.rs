@@ -15,7 +15,7 @@ pub(crate) fn missing_unsafe(ctx: &DiagnosticsContext<'_>, d: &hir::MissingUnsaf
         ctx,
         DiagnosticCode::RustcHardError("E0133"),
         "this operation is unsafe and requires an unsafe function or block",
-        d.expr.clone().map(|it| it.into()),
+        d.expr.map(|it| it.into()),
     )
     .with_fixes(fixes(ctx, d))
 }

@@ -277,7 +277,7 @@ impl flags::AnalysisStats {
             }
             all += 1;
             let Err(e) = db.layout_of_adt(
-                hir_def::AdtId::from(a).into(),
+                hir_def::AdtId::from(a),
                 Substitution::empty(Interner),
                 db.trait_environment(a.into()),
             ) else {

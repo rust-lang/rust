@@ -639,7 +639,7 @@ impl CrateGraph {
             let res = self.arena.iter().find_map(|(id, data)| {
                 match (&data.origin, &crate_data.origin) {
                     (a, b) if a == b => {
-                        if data.eq_ignoring_origin_and_deps(&crate_data, false) {
+                        if data.eq_ignoring_origin_and_deps(crate_data, false) {
                             return Some((id, false));
                         }
                     }
@@ -651,8 +651,8 @@ impl CrateGraph {
                         // version and discard the library one as the local version may have
                         // dev-dependencies that we want to keep resolving. See #15656 for more
                         // information.
-                        if data.eq_ignoring_origin_and_deps(&crate_data, true) {
-                            return Some((id, if a.is_local() { false } else { true }));
+                        if data.eq_ignoring_origin_and_deps(crate_data, true) {
+                            return Some((id, !a.is_local()));
                         }
                     }
                     (_, _) => return None,

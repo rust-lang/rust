@@ -38,7 +38,7 @@ pub struct CfgOverrides {
 
 impl CfgOverrides {
     pub fn len(&self) -> usize {
-        self.global.len() + self.selective.iter().map(|(_, it)| it.len()).sum::<usize>()
+        self.global.len() + self.selective.values().map(|it| it.len()).sum::<usize>()
     }
 }
 
@@ -177,7 +177,7 @@ impl ProjectWorkspace {
         };
         let res = match manifest {
             ProjectManifest::ProjectJson(project_json) => {
-                let file = fs::read_to_string(&project_json)
+                let file = fs::read_to_string(project_json)
                     .with_context(|| format!("Failed to read json file {project_json}"))?;
                 let data = serde_json::from_str(&file)
                     .with_context(|| format!("Failed to deserialize json file {project_json}"))?;
@@ -194,7 +194,7 @@ impl ProjectWorkspace {
             ProjectManifest::CargoToml(cargo_toml) => {
                 let toolchain = version(cargo_toml.parent(), toolchain::cargo(), "cargo ")?;
                 let meta = CargoWorkspace::fetch_metadata(
-                    &cargo_toml,
+                    cargo_toml,
                     cargo_toml.parent(),
                     config,
                     progress,
@@ -241,7 +241,7 @@ impl ProjectWorkspace {
                         .map_err(|p| Some(format!("rustc source path is not absolute: {p}"))),
                     Some(RustLibSource::Discover) => {
                         sysroot.as_ref().ok().and_then(Sysroot::discover_rustc_src).ok_or_else(
-                            || Some(format!("Failed to discover rustc source for sysroot.")),
+                            || Some("Failed to discover rustc source for sysroot.".to_string()),
                         )
                     }
                     None => Err(None),
@@ -287,7 +287,7 @@ impl ProjectWorkspace {
 
                 let cfg_overrides = config.cfg_overrides.clone();
                 let data_layout = target_data_layout::get(
-                    Some(&cargo_toml),
+                    Some(cargo_toml),
                     config.target.as_deref(),
                     &config.extra_env,
                 );

@@ -384,9 +384,7 @@ fn on_right_angle_typed(file: &SourceFile, offset: TextSize) -> Option<TextEdit>
     if file_text.char_at(after_arrow) != Some('{') {
         return None;
     }
-    if find_node_at_offset::<ast::RetType>(file.syntax(), offset).is_none() {
-        return None;
-    }
+    find_node_at_offset::<ast::RetType>(file.syntax(), offset)?;
 
     Some(TextEdit::insert(after_arrow, " ".to_string()))
 }

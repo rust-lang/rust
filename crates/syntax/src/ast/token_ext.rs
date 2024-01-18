@@ -478,6 +478,38 @@ impl Radix {
     }
 }
 
+impl ast::Char {
+    pub fn value(&self) -> Option<char> {
+        let mut text = self.text();
+        if text.starts_with('\'') {
+            text = &text[1..];
+        } else {
+            return None;
+        }
+        if text.ends_with('\'') {
+            text = &text[0..text.len() - 1];
+        }
+
+        unescape_char(text).ok()
+    }
+}
+
+impl ast::Byte {
+    pub fn value(&self) -> Option<u8> {
+        let mut text = self.text();
+        if text.starts_with("b\'") {
+            text = &text[2..];
+        } else {
+            return None;
+        }
+        if text.ends_with('\'') {
+            text = &text[0..text.len() - 1];
+        }
+
+        unescape_byte(text).ok()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::ast::{self, make, FloatNumber, IntNumber};
@@ -577,37 +609,5 @@ bcde", b"abcde",
         check_float_value("1__0.__0__f32", 10.0);
         check_int_value("0b__1_0_", 2);
         check_int_value("1_1_1_1_1_1", 111111);
-    }
-}
-
-impl ast::Char {
-    pub fn value(&self) -> Option<char> {
-        let mut text = self.text();
-        if text.starts_with('\'') {
-            text = &text[1..];
-        } else {
-            return None;
-        }
-        if text.ends_with('\'') {
-            text = &text[0..text.len() - 1];
-        }
-
-        unescape_char(text).ok()
-    }
-}
-
-impl ast::Byte {
-    pub fn value(&self) -> Option<u8> {
-        let mut text = self.text();
-        if text.starts_with("b\'") {
-            text = &text[2..];
-        } else {
-            return None;
-        }
-        if text.ends_with('\'') {
-            text = &text[0..text.len() - 1];
-        }
-
-        unescape_byte(text).ok()
     }
 }

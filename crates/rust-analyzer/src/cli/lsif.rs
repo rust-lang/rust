@@ -217,8 +217,7 @@ impl LsifManager<'_> {
             let mut edges = token.references.iter().fold(
                 HashMap::<_, Vec<lsp_types::NumberOrString>>::new(),
                 |mut edges, it| {
-                    let entry =
-                        edges.entry((it.range.file_id, it.is_definition)).or_insert_with(Vec::new);
+                    let entry = edges.entry((it.range.file_id, it.is_definition)).or_default();
                     entry.push((*self.range_map.get(&it.range).unwrap()).into());
                     edges
                 },
@@ -296,7 +295,7 @@ impl flags::Lsif {
             with_proc_macro_server: ProcMacroServerChoice::Sysroot,
             prefill_caches: false,
         };
-        let path = AbsPathBuf::assert(env::current_dir()?.join(&self.path));
+        let path = AbsPathBuf::assert(env::current_dir()?.join(self.path));
         let manifest = ProjectManifest::discover_single(&path)?;
 
         let workspace = ProjectWorkspace::load(manifest, &cargo_config, no_progress)?;

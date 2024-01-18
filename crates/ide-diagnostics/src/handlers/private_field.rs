@@ -13,7 +13,7 @@ pub(crate) fn private_field(ctx: &DiagnosticsContext<'_>, d: &hir::PrivateField)
             d.field.name(ctx.sema.db).display(ctx.sema.db),
             d.field.parent_def(ctx.sema.db).name(ctx.sema.db).display(ctx.sema.db)
         ),
-        d.expr.clone().map(|it| it.into()),
+        d.expr.map(|it| it.into()),
     )
 }
 

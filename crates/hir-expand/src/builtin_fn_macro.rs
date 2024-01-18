@@ -125,7 +125,7 @@ fn mk_pound(span: Span) -> tt::Subtree {
         vec![crate::tt::Leaf::Punct(crate::tt::Punct {
             char: '#',
             spacing: crate::tt::Spacing::Alone,
-            span: span,
+            span,
         })
         .into()],
         span,
@@ -279,9 +279,9 @@ fn format_args_expand_general(
     let pound = mk_pound(span);
     let mut tt = tt.clone();
     tt.delimiter.kind = tt::DelimiterKind::Parenthesis;
-    return ExpandResult::ok(quote! {span =>
+    ExpandResult::ok(quote! {span =>
         builtin #pound format_args #tt
-    });
+    })
 }
 
 fn asm_expand(
@@ -624,7 +624,7 @@ fn relative_file(
 
 fn parse_string(tt: &tt::Subtree) -> Result<String, ExpandError> {
     tt.token_trees
-        .get(0)
+        .first()
         .and_then(|tt| match tt {
             tt::TokenTree::Leaf(tt::Leaf::Literal(it)) => unquote_str(it),
             _ => None,

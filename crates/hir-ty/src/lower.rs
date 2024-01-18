@@ -1192,11 +1192,7 @@ impl<'a> TyLoweringContext<'a> {
                 return None;
             }
 
-            if bounds.first().and_then(|b| b.trait_id()).is_none() {
-                // When there's no trait bound, that's an error. This happens when the trait refs
-                // are unresolved.
-                return None;
-            }
+            bounds.first().and_then(|b| b.trait_id())?;
 
             // As multiple occurrences of the same auto traits *are* permitted, we deduplicate the
             // bounds. We shouldn't have repeated elements besides auto traits at this point.
@@ -1241,7 +1237,7 @@ impl<'a> TyLoweringContext<'a> {
                     });
                     crate::wrap_empty_binders(clause)
                 });
-                predicates.extend(sized_clause.into_iter());
+                predicates.extend(sized_clause);
                 predicates.shrink_to_fit();
             }
             predicates

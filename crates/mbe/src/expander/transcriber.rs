@@ -187,7 +187,7 @@ fn expand_subtree<S: Span>(
                 for punct in puncts {
                     arena.push(
                         tt::Leaf::from({
-                            let mut it = punct.clone();
+                            let mut it = *punct;
                             marker(&mut it.span);
                             it
                         })

@@ -387,7 +387,7 @@ impl<'a> DeclValidator<'a> {
 
         for (id, replacement) in pats_replacements {
             if let Ok(source_ptr) = source_map.pat_syntax(id) {
-                if let Some(ptr) = source_ptr.value.clone().cast::<ast::IdentPat>() {
+                if let Some(ptr) = source_ptr.value.cast::<ast::IdentPat>() {
                     let root = source_ptr.file_syntax(self.db.upcast());
                     let ident_pat = ptr.to_node(&root);
                     let parent = match ident_pat.syntax().parent() {

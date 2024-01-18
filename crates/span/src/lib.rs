@@ -226,7 +226,7 @@ impl fmt::Debug for HirFileIdRepr {
 
 impl From<FileId> for HirFileId {
     fn from(id: FileId) -> Self {
-        _ = Self::ASSERT_MAX_FILE_ID_IS_SAME;
+        Self::ASSERT_MAX_FILE_ID_IS_SAME;
         assert!(id.index() <= Self::MAX_HIR_FILE_ID, "FileId index {} is too large", id.index());
         HirFileId(id.index())
     }
@@ -234,7 +234,7 @@ impl From<FileId> for HirFileId {
 
 impl From<MacroFileId> for HirFileId {
     fn from(MacroFileId { macro_call_id: MacroCallId(id) }: MacroFileId) -> Self {
-        _ = Self::ASSERT_MAX_FILE_ID_IS_SAME;
+        Self::ASSERT_MAX_FILE_ID_IS_SAME;
         let id = id.as_u32();
         assert!(id <= Self::MAX_HIR_FILE_ID, "MacroCallId index {} is too large", id);
         HirFileId(id | Self::MACRO_FILE_TAG_MASK)

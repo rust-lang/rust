@@ -184,9 +184,9 @@ impl Connection {
             };
         }
 
-        return Err(ProtocolError::new(String::from(
+        Err(ProtocolError::new(String::from(
             "Initialization has been aborted during initialization",
-        )));
+        )))
     }
 
     /// Finishes the initialization process by sending an `InitializeResult` to the client
@@ -244,9 +244,9 @@ impl Connection {
             }
         }
 
-        return Err(ProtocolError::new(String::from(
+        Err(ProtocolError::new(String::from(
             "Initialization has been aborted during initialization",
-        )));
+        )))
     }
 
     /// Initialize the connection. Sends the server capabilities
@@ -358,12 +358,14 @@ impl Connection {
                 )))
             }
             Err(RecvTimeoutError::Timeout) => {
-                return Err(ProtocolError::new(format!("timed out waiting for exit notification")))
+                return Err(ProtocolError::new(
+                    "timed out waiting for exit notification".to_string(),
+                ))
             }
             Err(RecvTimeoutError::Disconnected) => {
-                return Err(ProtocolError::new(format!(
-                    "channel disconnected waiting for exit notification"
-                )))
+                return Err(ProtocolError::new(
+                    "channel disconnected waiting for exit notification".to_string(),
+                ))
             }
         }
         Ok(true)

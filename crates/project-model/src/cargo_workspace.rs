@@ -441,7 +441,7 @@ impl CargoWorkspace {
             .collect::<Vec<ManifestPath>>();
 
         // some packages has this pkg as dep. return their manifests
-        if parent_manifests.len() > 0 {
+        if !parent_manifests.is_empty() {
             return Some(parent_manifests);
         }
 

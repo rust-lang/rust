@@ -106,7 +106,7 @@ fn replace_fake_sys_root(s: &mut String) {
     let fake_sysroot_path = get_test_path("fake-sysroot");
     let fake_sysroot_path = if cfg!(windows) {
         let normalized_path =
-            fake_sysroot_path.to_str().expect("expected str").replace(r#"\"#, r#"\\"#);
+            fake_sysroot_path.to_str().expect("expected str").replace('\\', r#"\\"#);
         format!(r#"{}\\"#, normalized_path)
     } else {
         format!("{}/", fake_sysroot_path.to_str().expect("expected str"))
