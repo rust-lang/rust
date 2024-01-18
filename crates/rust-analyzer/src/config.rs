@@ -494,8 +494,9 @@ config_data! {
         /// Exclude imports from find-all-references.
         references_excludeImports: bool = "false",
 
-        /// Allow renaming of items not belonging to any workspace crates.
-        renameExternalItems_enable : bool = "false",
+        /// Allow renaming of items not belonging to the loaded workspaces.
+        rename_allowExternalItems: bool = "false",
+
 
         /// Command to be executed instead of 'cargo' for runnables.
         runnables_command: Option<String> = "null",
@@ -1743,7 +1744,7 @@ impl Config {
     }
 
     pub fn rename(&self) -> bool {
-        self.data.renameExternalItems_enable
+        self.data.rename_allowExternalItems
     }
 
     // FIXME: VSCode seems to work wrong sometimes, see https://github.com/microsoft/vscode/issues/193124

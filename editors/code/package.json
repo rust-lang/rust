@@ -1503,8 +1503,8 @@
                     "default": false,
                     "type": "boolean"
                 },
-                "rust-analyzer.renameExternalItems.enable": {
-                    "markdownDescription": "Allow renaming of items not belonging to any workspace crates.",
+                "rust-analyzer.rename.allowExternalItems": {
+                    "markdownDescription": "Allow renaming of items not belonging to the loaded workspaces.",
                     "default": false,
                     "type": "boolean"
                 },
