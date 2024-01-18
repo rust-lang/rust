@@ -1007,7 +1007,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 }
                 e.hash(&mut self.s);
             },
-            PatKind::Never | PatKind::Wild => {},
+            PatKind::Never | PatKind::Wild | PatKind::Err(_) => {},
         }
     }
 

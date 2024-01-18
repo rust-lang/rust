@@ -23,8 +23,8 @@ use rustc_data_structures::unify as ut;
 use rustc_errors::{DiagCtxt, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::infer::canonical::{Canonical, CanonicalVarValues};
-use rustc_middle::infer::unify_key::{ConstVarValue, ConstVariableValue, EffectVarValue};
 use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind, ToType};
+use rustc_middle::infer::unify_key::{ConstVariableValue, EffectVarValue};
 use rustc_middle::mir::interpret::{ErrorHandled, EvalToValTreeResult};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::{select, DefiningAnchor};
@@ -1086,7 +1086,7 @@ impl<'tcx> InferCtxt<'tcx> {
             .inner
             .borrow_mut()
             .const_unification_table()
-            .new_key(ConstVarValue { origin, val: ConstVariableValue::Unknown { universe } })
+            .new_key(ConstVariableValue::Unknown { origin, universe })
             .vid;
         ty::Const::new_var(self.tcx, vid, ty)
     }
@@ -1095,10 +1095,7 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner
             .borrow_mut()
             .const_unification_table()
-            .new_key(ConstVarValue {
-                origin,
-                val: ConstVariableValue::Unknown { universe: self.universe() },
-            })
+            .new_key(ConstVariableValue::Unknown { origin, universe: self.universe() })
             .vid
     }
 
@@ -1217,10 +1214,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     .inner
                     .borrow_mut()
                     .const_unification_table()
-                    .new_key(ConstVarValue {
-                        origin,
-                        val: ConstVariableValue::Unknown { universe: self.universe() },
-                    })
+                    .new_key(ConstVariableValue::Unknown { origin, universe: self.universe() })
                     .vid;
                 ty::Const::new_var(
                     self.tcx,
@@ -1410,9 +1404,9 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 
     pub fn probe_const_var(&self, vid: ty::ConstVid) -> Result<ty::Const<'tcx>, ty::UniverseIndex> {
-        match self.inner.borrow_mut().const_unification_table().probe_value(vid).val {
+        match self.inner.borrow_mut().const_unification_table().probe_value(vid) {
             ConstVariableValue::Known { value } => Ok(value),
-            ConstVariableValue::Unknown { universe } => Err(universe),
+            ConstVariableValue::Unknown { origin: _, universe } => Err(universe),
         }
     }
 
@@ -1709,7 +1703,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 // `ty::ConstKind::Infer(ty::InferConst::Var(v))`.
                 //
                 // Not `inlined_probe_value(v)` because this call site is colder.
-                match self.inner.borrow_mut().const_unification_table().probe_value(v).val {
+                match self.inner.borrow_mut().const_unification_table().probe_value(v) {
                     ConstVariableValue::Unknown { .. } => false,
                     ConstVariableValue::Known { .. } => true,
                 }
@@ -1876,7 +1870,6 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for ShallowResolver<'a, 'tcx> {
                 .borrow_mut()
                 .const_unification_table()
                 .probe_value(vid)
-                .val
                 .known()
                 .unwrap_or(ct),
             ty::ConstKind::Infer(InferConst::EffectVar(vid)) => self

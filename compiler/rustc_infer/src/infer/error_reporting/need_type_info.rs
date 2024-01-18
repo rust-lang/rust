@@ -13,7 +13,9 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{Body, Closure, Expr, ExprKind, FnRetTy, HirId, Local, LocalSource};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
+use rustc_middle::infer::unify_key::{
+    ConstVariableOrigin, ConstVariableOriginKind, ConstVariableValue,
+};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter, Print, Printer};
 use rustc_middle::ty::{self, InferConst};
@@ -178,16 +180,22 @@ fn fmt_printer<'a, 'tcx>(infcx: &'a InferCtxt<'tcx>, ns: Namespace) -> FmtPrinte
         }
     };
     printer.ty_infer_name_resolver = Some(Box::new(ty_getter));
-    let const_getter = move |ct_vid| {
-        if infcx.probe_const_var(ct_vid).is_ok() {
+    let const_getter = move |ct_vid| match infcx
+        .inner
+        .borrow_mut()
+        .const_unification_table()
+        .probe_value(ct_vid)
+    {
+        ConstVariableValue::Known { value: _ } => {
             warn!("resolved const var in error message");
-        }
-        if let ConstVariableOriginKind::ConstParameterDefinition(name, _) =
-            infcx.inner.borrow_mut().const_unification_table().probe_value(ct_vid).origin.kind
-        {
-            return Some(name);
-        } else {
             None
+        }
+        ConstVariableValue::Unknown { origin, universe: _ } => {
+            if let ConstVariableOriginKind::ConstParameterDefinition(name, _) = origin.kind {
+                return Some(name);
+            } else {
+                None
+            }
         }
     };
     printer.const_infer_name_resolver = Some(Box::new(const_getter));
@@ -303,7 +311,12 @@ impl<'tcx> InferCtxt<'tcx> {
             GenericArgKind::Const(ct) => {
                 if let ty::ConstKind::Infer(InferConst::Var(vid)) = ct.kind() {
                     let origin =
-                        self.inner.borrow_mut().const_unification_table().probe_value(vid).origin;
+                        match self.inner.borrow_mut().const_unification_table().probe_value(vid) {
+                            ConstVariableValue::Known { value } => {
+                                bug!("resolved infer var: {vid:?} {value}")
+                            }
+                            ConstVariableValue::Unknown { origin, universe: _ } => origin,
+                        };
                     if let ConstVariableOriginKind::ConstParameterDefinition(name, def_id) =
                         origin.kind
                     {
