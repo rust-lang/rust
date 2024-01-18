@@ -1,4 +1,5 @@
 // edition: 2021
+// check-pass
 
 use std::future::Future;
 use std::task::Poll;
@@ -17,7 +18,6 @@ impl Future for MyFuture {
 
 impl MyTrait for u32 {
     fn foo(&self) -> MyFuture {
-        //~^ ERROR method `foo` should be async
         MyFuture
     }
 }

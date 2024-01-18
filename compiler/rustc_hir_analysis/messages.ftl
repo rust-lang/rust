@@ -33,10 +33,6 @@ hir_analysis_associated_type_trait_uninferred_generic_params = cannot use the as
 
 hir_analysis_associated_type_trait_uninferred_generic_params_multipart_suggestion = use a fully qualified path with explicit lifetimes
 
-hir_analysis_async_trait_impl_should_be_async =
-    method `{$method_name}` should be async because the method from the trait is async
-    .trait_item_label = required because the trait method is async
-
 hir_analysis_auto_deref_reached_recursion_limit = reached the recursion limit while auto-dereferencing `{$ty}`
     .label = deref recursion limit reached
     .help = consider increasing the recursion limit by adding a `#![recursion_limit = "{$suggested_limit}"]` attribute to your crate (`{$crate_name}`)

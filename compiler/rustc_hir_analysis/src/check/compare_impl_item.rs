@@ -74,7 +74,6 @@ fn check_method_is_structurally_compatible<'tcx>(
     compare_generic_param_kinds(tcx, impl_m, trait_m, delay)?;
     compare_number_of_method_arguments(tcx, impl_m, trait_m, delay)?;
     compare_synthetic_generics(tcx, impl_m, trait_m, delay)?;
-    compare_asyncness(tcx, impl_m, trait_m, delay)?;
     check_region_bounds_on_impl_item(tcx, impl_m, trait_m, delay)?;
     Ok(())
 }
@@ -412,36 +411,6 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for RemapLateBound<'_, 'tcx> {
             r
         }
     }
-}
-
-fn compare_asyncness<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    impl_m: ty::AssocItem,
-    trait_m: ty::AssocItem,
-    delay: bool,
-) -> Result<(), ErrorGuaranteed> {
-    if tcx.asyncness(trait_m.def_id).is_async() {
-        match tcx.fn_sig(impl_m.def_id).skip_binder().skip_binder().output().kind() {
-            ty::Alias(ty::Opaque, ..) => {
-                // allow both `async fn foo()` and `fn foo() -> impl Future`
-            }
-            ty::Error(_) => {
-                // We don't know if it's ok, but at least it's already an error.
-            }
-            _ => {
-                return Err(tcx
-                    .dcx()
-                    .create_err(crate::errors::AsyncTraitImplShouldBeAsync {
-                        span: tcx.def_span(impl_m.def_id),
-                        method_name: trait_m.name,
-                        trait_item_span: tcx.hir().span_if_local(trait_m.def_id),
-                    })
-                    .emit_unless(delay));
-            }
-        };
-    }
-
-    Ok(())
 }
 
 /// Given a method def-id in an impl, compare the method signature of the impl
