@@ -1,5 +1,3 @@
-#![cfg(not(test))]
-
 // These symbols are all defined by `libm`,
 // or by `compiler-builtins` on unsupported platforms.
 
