@@ -131,7 +131,7 @@ mod issue12123 {
     mod this_triggers {
         #[fake_main]
         async fn main() {
-            
+
         }
     }
 
@@ -139,6 +139,13 @@ mod issue12123 {
         #[fake_main]
         async fn main() {
             println!("hello");
+        }
+    }
+
+    #[rustfmt::skip]
+    mod maybe_this {
+        /** */ #[fake_main]
+        async fn main() {
         }
     }
 

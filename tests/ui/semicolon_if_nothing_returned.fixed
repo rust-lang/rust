@@ -129,16 +129,23 @@ fn let_else_stmts() {
 mod issue12123 {
     #[rustfmt::skip]
     mod this_triggers {
-        #[fake_main];
+        #[fake_main]
         async fn main() {
-            
+
         }
     }
 
     mod and_this {
-        #[fake_main];
+        #[fake_main]
         async fn main() {
             println!("hello");
+        }
+    }
+
+    #[rustfmt::skip]
+    mod maybe_this {
+        /** */ #[fake_main]
+        async fn main() {
         }
     }
 

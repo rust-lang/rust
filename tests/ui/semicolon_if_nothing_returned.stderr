@@ -31,17 +31,5 @@ error: consider adding a `;` to the last statement for consistent formatting
 LL |         ptr::drop_in_place(s.as_mut_ptr())
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: add a `;` here: `ptr::drop_in_place(s.as_mut_ptr());`
 
-error: consider adding a `;` to the last statement for consistent formatting
-  --> $DIR/semicolon_if_nothing_returned.rs:132:9
-   |
-LL |         #[fake_main]
-   |         ^^^^^^^^^^^^ help: add a `;` here: `#[fake_main];`
-
-error: consider adding a `;` to the last statement for consistent formatting
-  --> $DIR/semicolon_if_nothing_returned.rs:139:9
-   |
-LL |         #[fake_main]
-   |         ^^^^^^^^^^^^ help: add a `;` here: `#[fake_main];`
-
-error: aborting due to 7 previous errors
+error: aborting due to 5 previous errors
 
