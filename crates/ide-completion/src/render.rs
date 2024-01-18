@@ -17,7 +17,7 @@ use ide_db::{
     imports::import_assets::LocatedImport,
     RootDatabase, SnippetCap, SymbolKind,
 };
-use syntax::{AstNode, SmolStr, SyntaxKind, TextRange};
+use syntax::{format_smolstr, AstNode, SmolStr, SyntaxKind, TextRange};
 use text_edit::TextEdit;
 
 use crate::{
@@ -202,7 +202,7 @@ fn field_with_receiver(
 ) -> SmolStr {
     receiver.map_or_else(
         || field_name.into(),
-        |receiver| format!("{}.{field_name}", receiver.display(db)).into(),
+        |receiver| format_smolstr!("{}.{field_name}", receiver.display(db)),
     )
 }
 

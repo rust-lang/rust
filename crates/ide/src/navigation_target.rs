@@ -17,7 +17,7 @@ use ide_db::{
 use stdx::never;
 use syntax::{
     ast::{self, HasName},
-    AstNode, SmolStr, SyntaxNode, TextRange,
+    format_smolstr, AstNode, SmolStr, SyntaxNode, TextRange,
 };
 
 /// `NavigationTarget` represents an element in the editor's UI which you can
@@ -457,7 +457,7 @@ impl TryToNav for hir::Field {
                 |(FileRange { file_id, range: full_range }, focus_range)| {
                     NavigationTarget::from_syntax(
                         file_id,
-                        format!("{}", self.index()).into(),
+                        format_smolstr!("{}", self.index()),
                         focus_range,
                         full_range,
                         SymbolKind::Field,

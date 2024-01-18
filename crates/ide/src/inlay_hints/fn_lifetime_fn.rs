@@ -4,11 +4,11 @@
 //! ```
 use ide_db::{syntax_helpers::node_ext::walk_ty, FxHashMap};
 use itertools::Itertools;
-use syntax::SmolStr;
 use syntax::{
     ast::{self, AstNode, HasGenericParams, HasName},
     SyntaxToken,
 };
+use syntax::{format_smolstr, SmolStr};
 
 use crate::{InlayHint, InlayHintPosition, InlayHintsConfig, InlayKind, LifetimeElisionHints};
 
@@ -80,7 +80,7 @@ pub(super) fn hints(
     let mut gen_idx_name = {
         let mut gen = (0u8..).map(|idx| match idx {
             idx if idx < 10 => SmolStr::from_iter(['\'', (idx + 48) as char]),
-            idx => format!("'{idx}").into(),
+            idx => format_smolstr!("'{idx}"),
         });
         move || gen.next().unwrap_or_default()
     };
