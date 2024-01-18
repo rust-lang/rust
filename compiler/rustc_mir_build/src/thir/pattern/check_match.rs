@@ -1,9 +1,8 @@
 use rustc_pattern_analysis::errors::Uncovered;
 use rustc_pattern_analysis::rustc::{
-    Constructor, DeconstructedPat, RustcMatchCheckCtxt as MatchCheckCtxt, Usefulness,
+    Constructor, DeconstructedPat, MatchArm, RustcMatchCheckCtxt as MatchCheckCtxt, Usefulness,
     UsefulnessReport, WitnessPat,
 };
-use rustc_pattern_analysis::{analyze_match, MatchArm};
 
 use crate::errors::*;
 
@@ -386,6 +385,18 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         }
     }
 
+    fn analyze_patterns(
+        &mut self,
+        cx: &MatchCheckCtxt<'p, 'tcx>,
+        arms: &[MatchArm<'p, 'tcx>],
+        scrut_ty: Ty<'tcx>,
+    ) -> Result<UsefulnessReport<'p, 'tcx>, ErrorGuaranteed> {
+        rustc_pattern_analysis::analyze_match(&cx, &arms, scrut_ty).map_err(|err| {
+            self.error = Err(err);
+            err
+        })
+    }
+
     #[instrument(level = "trace", skip(self))]
     fn check_let(&mut self, pat: &'p Pat<'tcx>, scrutinee: Option<ExprId>, span: Span) {
         assert!(self.let_source != LetSource::None);
@@ -431,14 +442,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             }
         }
 
-        let scrut_ty = scrut.ty;
-        let report = match analyze_match(&cx, &tarms, scrut_ty) {
-            Ok(report) => report,
-            Err(err) => {
-                self.error = Err(err);
-                return;
-            }
-        };
+        let Ok(report) = self.analyze_patterns(&cx, &tarms, scrut.ty) else { return };
 
         match source {
             // Don't report arm reachability of desugared `match $iter.into_iter() { iter => .. }`
@@ -470,7 +474,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
                 );
             } else {
                 self.error = Err(report_non_exhaustive_match(
-                    &cx, self.thir, scrut_ty, scrut.span, witnesses, arms, expr_span,
+                    &cx, self.thir, scrut.ty, scrut.span, witnesses, arms, expr_span,
                 ));
             }
         }
@@ -552,7 +556,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         let cx = self.new_cx(refutability, None, scrut, pat.span);
         let pat = self.lower_pattern(&cx, pat)?;
         let arms = [MatchArm { pat, arm_data: self.lint_level, has_guard: false }];
-        let report = analyze_match(&cx, &arms, pat.ty().inner())?;
+        let report = self.analyze_patterns(&cx, &arms, pat.ty().inner())?;
         Ok((cx, report))
     }
 
