@@ -70,16 +70,9 @@ pub(super) fn item_or_macro(p: &mut Parser<'_>, stop_on_r_curly: bool) {
     // macro_rules! {};
     // macro_rules! ()
     // macro_rules! []
-    if paths::is_use_path_start(p)
-        || (p.at_contextual_kw(T![macro_rules]) && p.nth_at(1, BANG) && !p.nth_at(2, IDENT))
-    {
-        match macro_call(p) {
-            BlockLike::Block => (),
-            BlockLike::NotBlock => {
-                p.expect(T![;]);
-            }
-        }
-        m.complete(p, MACRO_CALL);
+    let no_ident = p.at_contextual_kw(T![macro_rules]) && p.nth_at(1, BANG) && !p.nth_at(2, IDENT);
+    if paths::is_use_path_start(p) || no_ident {
+        macro_call(p, m);
         return;
     }
 
@@ -436,10 +429,16 @@ fn fn_(p: &mut Parser<'_>, m: Marker) {
     m.complete(p, FN);
 }
 
-fn macro_call(p: &mut Parser<'_>) -> BlockLike {
+fn macro_call(p: &mut Parser<'_>, m: Marker) {
     assert!(paths::is_use_path_start(p));
     paths::use_path(p);
-    macro_call_after_excl(p)
+    match macro_call_after_excl(p) {
+        BlockLike::Block => (),
+        BlockLike::NotBlock => {
+            p.expect(T![;]);
+        }
+    }
+    m.complete(p, MACRO_CALL);
 }
 
 pub(super) fn macro_call_after_excl(p: &mut Parser<'_>) -> BlockLike {
