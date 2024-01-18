@@ -1519,6 +1519,11 @@ impl<'a> State<'a> {
                 self.pclose();
             }
             PatKind::MacCall(m) => self.print_mac(m),
+            PatKind::Err(_) => {
+                self.popen();
+                self.word("/*ERROR*/");
+                self.pclose();
+            }
         }
         self.ann.post(self, AnnNode::Pat(pat))
     }
