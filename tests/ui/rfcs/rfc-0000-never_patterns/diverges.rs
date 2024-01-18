@@ -1,4 +1,5 @@
 // check-pass
+// edition: 2018
 #![feature(never_patterns)]
 #![allow(incomplete_features)]
 #![deny(unreachable_patterns)]
@@ -29,4 +30,9 @@ fn never_match() -> ! {
     }
     // Ensures this typechecks because of divergence and not the type of the match expression.
     println!();
+}
+
+// Note: divergence is not detected for async fns when the `!` is in the argument (#120240).
+async fn async_let(x: Void) -> ! {
+    let ! = x;
 }
