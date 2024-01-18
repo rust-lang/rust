@@ -49,7 +49,7 @@ fn check_pass_and_stdio(ra_fixture: &str, expected_stdout: &str, expected_stderr
             let mut err = String::new();
             let line_index = |size: TextSize| {
                 let mut size = u32::from(size) as usize;
-                let mut lines = ra_fixture.lines().enumerate();
+                let lines = ra_fixture.lines().enumerate();
                 for (i, l) in lines {
                     if let Some(x) = size.checked_sub(l.len()) {
                         size = x;
