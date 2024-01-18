@@ -15,6 +15,15 @@ fn main() {
         eprintln!("warning: `tidy` is not installed; diffs will not be generated");
     }
 
+    if !config.profiler_support && config.mode == Mode::CoverageRun {
+        let actioned = if config.bless { "blessed" } else { "checked" };
+        eprintln!(
+            r#"
+WARNING: profiler runtime is not available, so `.coverage` files won't be {actioned}
+help: try setting `profiler = true` in the `[build]` section of `config.toml`"#
+        );
+    }
+
     log_config(&config);
     run_tests(config);
 }
