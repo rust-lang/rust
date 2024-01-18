@@ -358,7 +358,7 @@ mod spec_extend;
 ///
 /// `vec![x; n]`, `vec![a, b, c, d]`, and
 /// [`Vec::with_capacity(n)`][`Vec::with_capacity`], will all produce a `Vec`
-/// with exactly the requested capacity. If <code>[len] == [capacity]</code>,
+/// with at least the requested capacity. If <code>[len] == [capacity]</code>,
 /// (as is the case for the [`vec!`] macro), then a `Vec<T>` can be converted to
 /// and from a [`Box<[T]>`][owned slice] without reallocating or moving the elements.
 ///
@@ -1023,8 +1023,11 @@ impl<T, A: Allocator> Vec<T, A> {
 
     /// Shrinks the capacity of the vector as much as possible.
     ///
-    /// It will drop down as close as possible to the length but the allocator
-    /// may still inform the vector that there is space for a few more elements.
+    /// The behavior of this method depends on the allocator, which may either shrink the vector
+    /// in-place or reallocate. The resulting vector might still have some excess capacity, just as
+    /// is the case for [`with_capacity`]. See [`Allocator::shrink`] for more details.
+    ///
+    /// [`with_capacity`]: Vec::with_capacity
     ///
     /// # Examples
     ///
@@ -1074,10 +1077,10 @@ impl<T, A: Allocator> Vec<T, A> {
 
     /// Converts the vector into [`Box<[T]>`][owned slice].
     ///
-    /// If the vector has excess capacity, its items will be moved into a
-    /// newly-allocated buffer with exactly the right capacity.
+    /// Before doing the conversion, this method discards excess capacity like [`shrink_to_fit`].
     ///
     /// [owned slice]: Box
+    /// [`shrink_to_fit`]: Vec::shrink_to_fit
     ///
     /// # Examples
     ///
@@ -3290,8 +3293,10 @@ impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
 impl<T, A: Allocator> From<Vec<T, A>> for Box<[T], A> {
     /// Convert a vector into a boxed slice.
     ///
-    /// If `v` has excess capacity, its items will be moved into a
-    /// newly-allocated buffer with exactly the right capacity.
+    /// Before doing the conversion, this method discards excess capacity like [`Vec::shrink_to_fit`].
+    ///
+    /// [owned slice]: Box
+    /// [`Vec::shrink_to_fit`]: Vec::shrink_to_fit
     ///
     /// # Examples
     ///
