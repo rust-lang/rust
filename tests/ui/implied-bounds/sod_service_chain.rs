@@ -1,5 +1,4 @@
-// check-pass
-// Related to crater regressions on #118553
+// Found in a crater run on #118553
 
 pub trait Debug {}
 
@@ -30,6 +29,9 @@ impl<P: Service, S: Service<Input = P::Output>> ServiceChainBuilder<P, S> {
     pub fn next<NS: Service<Input = S::Output>>(
         self,
     ) -> ServiceChainBuilder<ServiceChain<P, S>, NS> {
+        //~^ the associated type
+        //~| the associated type
+        //~| the associated type
         panic!();
     }
 }

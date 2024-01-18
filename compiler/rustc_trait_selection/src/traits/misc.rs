@@ -194,7 +194,7 @@ pub fn all_fields_implement_trait<'tcx>(
                 infcx.implied_bounds_tys(
                     param_env,
                     parent_cause.body_id,
-                    FxIndexSet::from_iter([self_type]),
+                    &FxIndexSet::from_iter([self_type]),
                 ),
             );
             let errors = infcx.resolve_regions(&outlives_env);
