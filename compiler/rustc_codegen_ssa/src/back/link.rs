@@ -52,6 +52,15 @@ use std::path::{Path, PathBuf};
 use std::process::{ExitStatus, Output, Stdio};
 use std::{env, fmt, fs, io, mem, str};
 
+#[derive(Default)]
+pub struct SearchPaths(OnceCell<Vec<PathBuf>>);
+
+impl SearchPaths {
+    pub(super) fn get(&self, sess: &Session) -> &[PathBuf] {
+        self.0.get_or_init(|| archive_search_paths(sess))
+    }
+}
+
 pub fn ensure_removed(dcx: &DiagCtxt, path: &Path) {
     if let Err(e) = fs::remove_file(path) {
         if e.kind() != io::ErrorKind::NotFound {
@@ -2445,7 +2454,7 @@ fn add_native_libs_from_crate(
     archive_builder_builder: &dyn ArchiveBuilderBuilder,
     codegen_results: &CodegenResults,
     tmpdir: &Path,
-    search_paths: &OnceCell<Vec<PathBuf>>,
+    search_paths: &SearchPaths,
     bundled_libs: &FxHashSet<Symbol>,
     cnum: CrateNum,
     link_static: bool,
@@ -2513,11 +2522,7 @@ fn add_native_libs_from_crate(
                         }
                     } else {
                         if whole_archive {
-                            cmd.link_whole_staticlib_by_name(
-                                name,
-                                verbatim,
-                                search_paths.get_or_init(|| archive_search_paths(sess)),
-                            );
+                            cmd.link_whole_staticlib_by_name(name, verbatim, search_paths);
                         } else {
                             cmd.link_staticlib_by_name(name, verbatim)
                         }
@@ -2581,7 +2586,7 @@ fn add_local_native_libraries(
         }
     }
 
-    let search_paths = OnceCell::new();
+    let search_paths = SearchPaths::default();
     // All static and dynamic native library dependencies are linked to the local crate.
     let link_static = true;
     let link_dynamic = true;
@@ -2623,7 +2628,7 @@ fn add_upstream_rust_crates<'a>(
         .find(|(ty, _)| *ty == crate_type)
         .expect("failed to find crate type in dependency format list");
 
-    let search_paths = OnceCell::new();
+    let search_paths = SearchPaths::default();
     for &cnum in &codegen_results.crate_info.used_crates {
         // We may not pass all crates through to the linker. Some crates may appear statically in
         // an existing dylib, meaning we'll pick up all the symbols from the dylib.
@@ -2698,7 +2703,7 @@ fn add_upstream_native_libraries(
     tmpdir: &Path,
     link_output_kind: LinkOutputKind,
 ) {
-    let search_path = OnceCell::new();
+    let search_paths = SearchPaths::default();
     for &cnum in &codegen_results.crate_info.used_crates {
         // Static libraries are not linked here, they are linked in `add_upstream_rust_crates`.
         // FIXME: Merge this function to `add_upstream_rust_crates` so that all native libraries
@@ -2720,7 +2725,7 @@ fn add_upstream_native_libraries(
             archive_builder_builder,
             codegen_results,
             tmpdir,
-            &search_path,
+            &search_paths,
             &Default::default(),
             cnum,
             link_static,

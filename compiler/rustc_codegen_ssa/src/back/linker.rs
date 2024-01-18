@@ -1,5 +1,6 @@
 use super::command::Command;
 use super::symbol_export;
+use crate::back::link::SearchPaths;
 use crate::errors;
 use rustc_span::symbol::sym;
 
@@ -175,7 +176,7 @@ pub trait Linker {
         &mut self,
         name: &str,
         verbatim: bool,
-        search_paths: &[PathBuf],
+        search_paths: &SearchPaths,
     );
     fn link_staticlib_by_path(&mut self, path: &Path);
     fn link_whole_staticlib_by_path(&mut self, path: &Path);
@@ -496,7 +497,7 @@ impl<'a> Linker for GccLinker<'a> {
         &mut self,
         name: &str,
         verbatim: bool,
-        search_paths: &[PathBuf],
+        search_paths: &SearchPaths,
     ) {
         self.hint_static();
         let target = &self.sess.target;
@@ -508,7 +509,8 @@ impl<'a> Linker for GccLinker<'a> {
             // -force_load is the macOS equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
             self.linker_arg("-force_load");
-            let lib = find_native_static_library(name, verbatim, search_paths, self.sess);
+            let lib =
+                find_native_static_library(name, verbatim, search_paths.get(self.sess), self.sess);
             self.linker_arg(&lib);
         }
     }
@@ -842,7 +844,7 @@ impl<'a> Linker for MsvcLinker<'a> {
         &mut self,
         name: &str,
         verbatim: bool,
-        _search_paths: &[PathBuf],
+        _search_paths: &SearchPaths,
     ) {
         self.cmd.arg(format!("/WHOLEARCHIVE:{}{}", name, if verbatim { "" } else { ".lib" }));
     }
@@ -1073,7 +1075,7 @@ impl<'a> Linker for EmLinker<'a> {
         &mut self,
         name: &str,
         verbatim: bool,
-        _search_paths: &[PathBuf],
+        _search_paths: &SearchPaths,
     ) {
         // not supported?
         self.link_staticlib_by_name(name, verbatim);
@@ -1261,7 +1263,7 @@ impl<'a> Linker for WasmLd<'a> {
         &mut self,
         name: &str,
         _verbatim: bool,
-        _search_paths: &[PathBuf],
+        _search_paths: &SearchPaths,
     ) {
         self.cmd.arg("--whole-archive").arg("-l").arg(name).arg("--no-whole-archive");
     }
@@ -1414,7 +1416,7 @@ impl<'a> Linker for L4Bender<'a> {
         &mut self,
         name: &str,
         _verbatim: bool,
-        _search_paths: &[PathBuf],
+        _search_paths: &SearchPaths,
     ) {
         self.hint_static();
         self.cmd.arg("--whole-archive").arg(format!("-l{name}"));
@@ -1600,10 +1602,11 @@ impl<'a> Linker for AixLinker<'a> {
         &mut self,
         name: &str,
         verbatim: bool,
-        search_paths: &[PathBuf],
+        search_paths: &SearchPaths,
     ) {
         self.hint_static();
-        let lib = find_native_static_library(name, verbatim, search_paths, self.sess);
+        let lib =
+            find_native_static_library(name, verbatim, search_paths.get(self.sess), self.sess);
         self.cmd.arg(format!("-bkeepfile:{}", lib.to_str().unwrap()));
     }
 
@@ -1815,7 +1818,7 @@ impl<'a> Linker for PtxLinker<'a> {
         &mut self,
         _name: &str,
         _verbatim: bool,
-        _search_paths: &[PathBuf],
+        _search_paths: &SearchPaths,
     ) {
         panic!("staticlibs not supported")
     }
@@ -1909,7 +1912,7 @@ impl<'a> Linker for BpfLinker<'a> {
         &mut self,
         _name: &str,
         _verbatim: bool,
-        _search_paths: &[PathBuf],
+        _search_paths: &SearchPaths,
     ) {
         panic!("staticlibs not supported")
     }
