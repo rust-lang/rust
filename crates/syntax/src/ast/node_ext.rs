@@ -327,6 +327,14 @@ impl ast::UseTree {
     pub fn parent_use_tree_list(&self) -> Option<ast::UseTreeList> {
         self.syntax().parent().and_then(ast::UseTreeList::cast)
     }
+
+    pub fn top_use_tree(&self) -> ast::UseTree {
+        let mut this = self.clone();
+        while let Some(use_tree_list) = this.parent_use_tree_list() {
+            this = use_tree_list.parent_use_tree();
+        }
+        this
+    }
 }
 
 impl ast::UseTreeList {
