@@ -8,7 +8,6 @@
 #![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(try_blocks)]
-#![recursion_limit = "256"]
 
 #[macro_use]
 extern crate tracing;

@@ -5,9 +5,6 @@
 #![feature(if_let_guard)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
-#![feature(never_type)]
-#![feature(rustc_attrs)]
-#![recursion_limit = "256"]
 #![allow(internal_features)]
 
 #[macro_use]

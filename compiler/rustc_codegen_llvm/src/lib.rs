@@ -14,9 +14,7 @@
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(min_specialization)]
-#![feature(never_type)]
 #![feature(impl_trait_in_assoc_type)]
-#![recursion_limit = "256"]
 #![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 
