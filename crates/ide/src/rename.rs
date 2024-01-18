@@ -372,7 +372,7 @@ mod tests {
     use test_utils::assert_eq_text;
     use text_edit::TextEdit;
 
-    use crate::{fixture, FileId};
+    use crate::fixture;
 
     use super::{RangeInfo, RenameError};
 
@@ -400,18 +400,17 @@ mod tests {
         match rename_result {
             Ok(source_change) => {
                 let mut text_edit_builder = TextEdit::builder();
-                let mut file_id: Option<FileId> = None;
-                for edit in source_change.source_file_edits {
-                    file_id = Some(edit.0);
-                    for indel in edit.1 .0.into_iter() {
-                        text_edit_builder.replace(indel.delete, indel.insert);
-                    }
+                let (&file_id, edit) = match source_change.source_file_edits.len() {
+                    0 => return,
+                    1 => source_change.source_file_edits.iter().next().unwrap(),
+                    _ => (&position.file_id, &source_change.source_file_edits[&position.file_id]),
+                };
+                for indel in edit.0.iter() {
+                    text_edit_builder.replace(indel.delete, indel.insert.clone());
                 }
-                if let Some(file_id) = file_id {
-                    let mut result = analysis.file_text(file_id).unwrap().to_string();
-                    text_edit_builder.finish().apply(&mut result);
-                    assert_eq_text!(ra_fixture_after, &*result);
-                }
+                let mut result = analysis.file_text(file_id).unwrap().to_string();
+                text_edit_builder.finish().apply(&mut result);
+                assert_eq_text!(ra_fixture_after, &*result);
             }
             Err(err) => {
                 if ra_fixture_after.starts_with("error:") {
@@ -2649,7 +2648,7 @@ pub struct S;
 //- /main.rs crate:main deps:lib new_source_root:local
 use lib::S$0;
 "#,
-            "use lib::Baz;",
+            "use lib::Baz;\n",
         );
     }
 
