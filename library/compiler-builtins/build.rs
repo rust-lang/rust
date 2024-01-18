@@ -59,12 +59,7 @@ fn main() {
         // * wasm - clang for wasm is somewhat hard to come by and it's
         //   unlikely that the C is really that much better than our own Rust.
         // * nvptx - everything is bitcode, not compatible with mixed C/Rust
-        // * riscv - the rust-lang/rust distribution container doesn't have a C
-        //   compiler.
-        if !target.contains("wasm")
-            && !target.contains("nvptx")
-            && (!target.starts_with("riscv") || target.contains("xous"))
-        {
+        if !target.contains("wasm") && !target.contains("nvptx") {
             #[cfg(feature = "c")]
             c::compile(&llvm_target, &target);
         }
@@ -519,7 +514,7 @@ mod c {
             }
         }
 
-        if target_arch == "mips" {
+        if target_arch == "mips" || target_arch == "riscv32" || target_arch == "riscv64" {
             sources.extend(&[("__bswapsi2", "bswapsi2.c")]);
         }
 
