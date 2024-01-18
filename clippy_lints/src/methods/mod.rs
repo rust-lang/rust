@@ -113,6 +113,7 @@ mod unnecessary_iter_cloned;
 mod unnecessary_join;
 mod unnecessary_lazy_eval;
 mod unnecessary_literal_unwrap;
+mod unnecessary_result_map_or_else;
 mod unnecessary_sort_by;
 mod unnecessary_to_owned;
 mod unwrap_expect_used;
@@ -3913,6 +3914,31 @@ declare_clippy_lint! {
     "cloning an `Option` via `as_ref().cloned()`"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for usage of `.map_or_else()` "map closure" for `Result` type.
+    ///
+    /// ### Why is this bad?
+    /// This can be written more concisely by using `unwrap_or_else()`.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// # fn handle_error(_: ()) -> u32 { 0 }
+    /// let x: Result<u32, ()> = Ok(0);
+    /// let y = x.map_or_else(|err| handle_error(err), |n| n);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// # fn handle_error(_: ()) -> u32 { 0 }
+    /// let x: Result<u32, ()> = Ok(0);
+    /// let y = x.unwrap_or_else(|err| handle_error(err));
+    /// ```
+    #[clippy::version = "1.77.0"]
+    pub UNNECESSARY_RESULT_MAP_OR_ELSE,
+    suspicious,
+    "making no use of the \"map closure\" when calling `.map_or_else(|err| handle_error(err), |n| n)`"
+}
+
 pub struct Methods {
     avoid_breaking_exported_api: bool,
     msrv: Msrv,
@@ -4070,6 +4096,7 @@ impl_lint_pass!(Methods => [
     MANUAL_IS_VARIANT_AND,
     STR_SPLIT_AT_NEWLINE,
     OPTION_AS_REF_CLONED,
+    UNNECESSARY_RESULT_MAP_OR_ELSE,
 ]);
 
 /// Extracts a method call name, args, and `Span` of the method name.
@@ -4553,6 +4580,7 @@ impl Methods {
                 },
                 ("map_or_else", [def, map]) => {
                     result_map_or_else_none::check(cx, expr, recv, def, map);
+                    unnecessary_result_map_or_else::check(cx, expr, recv, def, map);
                 },
                 ("next", []) => {
                     if let Some((name2, recv2, args2, _, _)) = method_call(recv) {
