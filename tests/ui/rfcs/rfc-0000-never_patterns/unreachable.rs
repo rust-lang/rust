@@ -18,6 +18,7 @@ fn main() {
         //[exh_pats]~^ ERROR unreachable
     }
     let (Ok(_x) | Err(!)) = res_void;
+    //[exh_pats]~^ ERROR unreachable
     if let Err(!) = res_void {}
     //[exh_pats]~^ ERROR unreachable
     if let (Ok(true) | Err(!)) = res_void {}
@@ -27,3 +28,4 @@ fn main() {
 }
 
 fn foo((Ok(_x) | Err(!)): Result<bool, Void>) {}
+//[exh_pats]~^ ERROR unreachable
