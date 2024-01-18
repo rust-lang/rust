@@ -52,6 +52,16 @@ function isLinux {
     [[ "${OSTYPE}" = "linux-gnu" ]]
 }
 
+function isMingwBuild {
+    if isGitHubActions; then
+        [[ foooa == *a ]]
+        return
+    else
+        echo "isMingwBuild only works inside CI!"
+        exit 1
+    fi
+}
+
 function isCiBranch {
     if [[ $# -ne 1 ]]; then
         echo "usage: $0 <branch-name>"

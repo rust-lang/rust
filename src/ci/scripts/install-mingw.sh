@@ -46,47 +46,19 @@ if isWindows; then
             ;;
     esac
 
-    if [[ "${CUSTOM_MINGW-0}" -ne 1 ]]; then
-        echo "1pacman -Qg mingw-w64-x86_64-toolchain:"
-        # pacman -Qg mingw-w64-x86_64-toolchain # this gets run even for msvc jobs,
-        # # checks if the package (group) is installed
-        # pacman -Syu --noconfirm
-        # pacman -S --noconfirm --needed mingw-w64-$arch-toolchain mingw-w64-$arch-cmake \
-        #     mingw-w64-$arch-gcc \
-        #     mingw-w64-$arch-python
-        # ^the python package is actually for python3 #suspect, is this python even used?
-        # #ciCommandAddPath "/mingw${bits}/bin"
-        # ^alternatively, could maybe run bash without --noprofile and --norc in ci.yml
-        # echo "CUSTOM MINGW PATH 0: /mingw${bits}/bin | $(cygpath -w "/mingw${bits}/bin")"
-        # echo "2pacman -Qg mingw-w64-x86_64-toolchain:"
-        # pacman -Qg mingw-w64-x86_64-toolchain
-    else
-        mingw_dir="mingw${bits}"
+    if isMingwBuild; then
+        if [[ "${CUSTOM_MINGW-0}" -eq 0 ]]; then
+            pacboy -S gcc:p
+            # Maybe even:
+            # pacboy -S clang:p
+            # It kinda works, for the opposite CI jobs that gcc works for.
+            # the windows part of install-clang.sh has something to say about this.
+        else
+            mingw_dir="mingw${bits}"
 
-        curl -o mingw.7z "${MIRRORS_BASE}/${mingw_archive}"
-        # ^This doesn't seem to include python. Should install in msys2 step instead?
-        7z x -y mingw.7z > /dev/null
-        ciCommandAddPath "$(pwd)/${mingw_dir}/bin"
-        #echo "CUSTM MINGW PATH 1: $(pwd)/${mingw_dir}/bin | $(cygpath -w $(pwd)/${mingw_dir}/bin)"
+            curl -o mingw.7z "${MIRRORS_BASE}/${mingw_archive}"
+            7z x -y mingw.7z > /dev/null
+            ciCommandAddPath "$(pwd)/${mingw_dir}/bin"
+        fi
     fi
-    # echo "MAJAHA 4: $(cygpath -w $(which git))"
-    # echo "MAJAHA 4: $(cygpath -w $(which python))"
-    # echo "MAJAHA 4: $(cygpath -w $(which gcc))"
-    echo "MAJAHA cmake: $(cygpath -w $(which cmake))"
-    # echo "LS: $(ls)"
-    # echo "GITHUB_PATH: $GITHUB_PATH"
-    # cat "$GITHUB_PATH"
-    # echo "MAJAHA /etc/pacman.conf"
-    # cat /etc/pacman.conf
-    # echo "\n"
-    # echo "MAJAHA /etc/pacman.d/mirrorlist.mingw64"
-    # cat /etc/pacman.d/mirrorlist.mingw64
-    echo WHICH GCC:
-    which gcc || true
-    echo WHICH clang:
-    which clang || true
-    echo "#### LS OF /mingw$bits/bin/: ####"
-    ls /mingw$bits/bin/
-    echo "#### LS OF /clang$bits/bin/: ####"
-    ls /clang$bits/bin/
 fi

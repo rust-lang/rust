@@ -122,13 +122,13 @@ x--expand-yaml-anchors--remove:
         uses: msys2/setup-msys2@76b1bed68bac51ebe46cb431077217d4b98e2b7b #git SHA for v2.21.0
         with:
           # i686 jobs use mingw32. x86_64 and cross-compile jobs use mingw64.
-          msystem: ${{ contains(matrix.name, 'i686') && 'clang32' || 'clang64' }}
+          msystem: ${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}
           # don't try to download package updates from the network
           update: false
           # don't try to use the msys that comes built-in to the github runner,
           # so we can control what is installed (i.e. not python)
           release: true
-          # Inherit the full path from the windows environment, with msys's */bin/
+          # Inherit the full path from the Windows environment, with MSYS2's */bin/
           # dirs placed in front. This lets us run Windows-native Python etc.
           path-type: inherit
           install: >
@@ -137,20 +137,7 @@ x--expand-yaml-anchors--remove:
             dos2unix
             diffutils
           pacboy: >
-            clang:p
             cmake:p
-          # should cmake and jq just always be x86_64?
-          # jq:p
-          # 7zip:p
-          #   toolchain:p
-          #python:p
-          #   mingw-w64-x86_64-python
-          #   mingw-w64-x86_64-jq
-          #   mingw-w64-x86_64-7zip
-          #   mingw-w64-x86_64-toolchain
-          #   mingw-w64-i686-toolchain
-          #   mingw-w64-x86_64-cmake
-          # mingw-w64-x86_64-sccache
       
       # - name: disable git crlf conversion
       #   run: src/ci/scripts/disable-git-crlf-conversion.sh
@@ -374,7 +361,7 @@ jobs:
               # We are intentionally allowing an old toolchain on this builder (and that's
               # incompatible with LLVM downloads today).
               NO_DOWNLOAD_CI_LLVM: 1
-              #CUSTOM_MINGW: 1
+              CUSTOM_MINGW: 1
               CC: clang
               CXX: clang++
             <<: *job-windows-8c
@@ -388,9 +375,7 @@ jobs:
               # We are intentionally allowing an old toolchain on this builder (and that's
               # incompatible with LLVM downloads today).
               NO_DOWNLOAD_CI_LLVM: 1
-              #CUSTOM_MINGW: 1
-              CC: clang
-              CXX: clang++
+              CUSTOM_MINGW: 1
             <<: *job-windows-8c
           
           - name: dist-i686-mingw
@@ -403,10 +388,8 @@ jobs:
               # incompatible with LLVM downloads today).
               NO_DOWNLOAD_CI_LLVM: 1
               SCRIPT: python x.py dist bootstrap --include-default-paths
-              #CUSTOM_MINGW: 1
+              CUSTOM_MINGW: 1
               DIST_REQUIRE_ALL_TOOLS: 1
-              CC: clang
-              CXX: clang++
             <<: *job-windows-8c
 
           - name: dist-x86_64-mingw
@@ -419,10 +402,8 @@ jobs:
               # We are intentionally allowing an old toolchain on this builder (and that's
               # incompatible with LLVM downloads today).
               NO_DOWNLOAD_CI_LLVM: 1
-              #CUSTOM_MINGW: 1
+              CUSTOM_MINGW: 1
               DIST_REQUIRE_ALL_TOOLS: 1
-              CC: clang
-              CXX: clang++
             <<: *job-windows-8c
 
           - name: x86_64-gnu

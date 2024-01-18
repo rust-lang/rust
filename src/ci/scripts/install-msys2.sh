@@ -1,32 +1,12 @@
 #!/bin/bash
-# Download and install MSYS2, needed primarily for the test suite (run-make) but
-# also used by the MinGW toolchain for assembling things.
+# Clean up and prepare the MSYS2 installation. MSYS2 is needed primarily for
+# the test suite (run-make), but is also used by the MinGW toolchain for assembling things.
 
 set -euo pipefail
 IFS=$'\n\t'
 
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
-# should try to remove windows git from the path.
-# There are two different windows gits at C:\Program Files\Git\mingw64\bin\git.exe
-# and C:\Program Files\Git\bin\git.exe ?!
 if isWindows; then
-    echo "Path of / : $(cygpath -w /)"
-    echo "PATH: $PATH"
-    echo "##### /mingw64/bin"
-    ls /mingw64/bin
-    echo "##### /bin"
-    ls /bin
-    echo "MAJAHA PWD: $(pwd) | $(cygpath -w $(pwd))"
-    echo "MSYSTEM: ${MSYSTEM-unset}"
-    echo "MAJAHA 1: $(cygpath -w $(which git))"
-    msys2Path="c:/msys64"
-    mkdir -p "${msys2Path}/home/${USERNAME}"
-    #ciCommandAddPath "${msys2Path}/usr/bin"
-    #^ This is what rotates the CI shell from Git bash to msys bash i think
-    echo "MAJAHA 2: $(cygpath -w $(which git))"
-    echo "GITHUB_PATH: $GITHUB_PATH"
-    cat "$GITHUB_PATH"
-
     # Detect the native Python version installed on the agent. On GitHub
     # Actions, the C:\hostedtoolcache\windows\Python directory contains a
     # subdirectory for each installed Python version.
@@ -42,16 +22,8 @@ if isWindows; then
     if ! [[ -f "${python_home}/python3.exe" ]]; then
         cp "${python_home}/python.exe" "${python_home}/python3.exe"
     fi
-    echo "MAJAHA 1: $(cygpath -w $(which python))"
     ciCommandAddPath "C:\\hostedtoolcache\\windows\\Python\\${native_python_version}\\x64"
     ciCommandAddPath "C:\\hostedtoolcache\\windows\\Python\\${native_python_version}\\x64\\Scripts"
-    echo "MAJAHA 2: $(cygpath -w $(which python))"
-    echo "LS: $(ls)"
-    echo "GITHUB_PATH: $GITHUB_PATH"
-    cat "$GITHUB_PATH"
-
-    echo "#### LS OF C DRIVE: ####"
-    ls /c/
 
     # Delete these pre-installed tools because we are using the MSYS2 setup action versions
     # instead, so we can't accidentally use them.
@@ -63,7 +35,7 @@ if isWindows; then
     rm -r "/c/Strawberry/"
     # Delete native CMake
     rm -r "/c/Program Files/CMake/"
-    # wtf why is this even here??
+    # Delete these other copies of mingw, I don't even know where they come from.
     rm -r "/c/mingw64/"
     rm -r "/c/mingw32/"
 fi

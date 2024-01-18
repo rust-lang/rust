@@ -37,11 +37,7 @@ if isMacOS; then
     # Configure `AR` specifically so rustbuild doesn't try to infer it as
     # `clang-ar` by accident.
     ciCommandSetEnv AR "ar"
-elif isWindows && [[ ${CUSTOM_MINGW-0} -ne 1 ]]; then
-    # This seems to contradict what's going on in install-mingw.sh.
-    # if CUSTOM_MINGW ins't set, that script installs mingw, but this script
-    # ensure's it isn't used! (to compile llvm, anyway)
-
+elif isWindows && ! isMingwBuild; then
     # If we're compiling for MSVC then we, like most other distribution builders,
     # switch to clang as the compiler. This'll allow us eventually to enable LTO
     # amongst LLVM and rustc. Note that we only do this on MSVC as I don't think
@@ -52,13 +48,13 @@ elif isWindows && [[ ${CUSTOM_MINGW-0} -ne 1 ]]; then
     # don't want to run the installer directly; extracting it is more reliable
     # in CI environments.
 
-    # mkdir -p citools/clang-rust
-    # cd citools
-    # retry curl -f "${MIRRORS_BASE}/LLVM-${LLVM_VERSION}-win64.exe" \
-    #     -o "LLVM-${LLVM_VERSION}-win64.exe"
-    # 7z x -oclang-rust/ "LLVM-${LLVM_VERSION}-win64.exe"
-    # ciCommandSetEnv RUST_CONFIGURE_ARGS \
-    #     "${RUST_CONFIGURE_ARGS} --set llvm.clang-cl=$(pwd)/clang-rust/bin/clang-cl.exe"
+    mkdir -p citools/clang-rust
+    cd citools
+    retry curl -f "${MIRRORS_BASE}/LLVM-${LLVM_VERSION}-win64.exe" \
+        -o "LLVM-${LLVM_VERSION}-win64.exe"
+    7z x -oclang-rust/ "LLVM-${LLVM_VERSION}-win64.exe"
+    ciCommandSetEnv RUST_CONFIGURE_ARGS \
+        "${RUST_CONFIGURE_ARGS} --set llvm.clang-cl=$(pwd)/clang-rust/bin/clang-cl.exe"
 
     # Disable downloading CI LLVM on this builder;
     # setting up clang-cl just above conflicts with the default if-unchanged option.
@@ -68,5 +64,5 @@ fi
 if isWindows; then
     # GitHub image 20210928.2 added LLVM, but it is broken (and we don't want
     # to use it anyways).
-    rm -rf /c/Program\ Files/LLVM # interesting, should do with Git etc?
+    rm -rf /c/Program\ Files/LLVM
 fi
