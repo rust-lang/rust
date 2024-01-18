@@ -2094,14 +2094,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         span: Span,
         target: Target,
     ) -> bool {
-        let hir = self.tcx.hir();
-
         if let Target::ForeignFn = target
-            && let Some(parent) = hir.opt_parent_id(hir_id)
             && let hir::Node::Item(Item {
                 kind: ItemKind::ForeignMod { abi: Abi::Unadjusted, .. },
                 ..
-            }) = self.tcx.hir_node(parent)
+            }) = self.tcx.parent_hir_node(hir_id)
         {
             let Some(list) = attr.meta_item_list() else {
                 // The attribute form is validated on AST.
@@ -2116,10 +2113,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             for meta in list {
                 if let Some(LitKind::Int(val, _)) = meta.lit().map(|lit| &lit.kind) {
                     if *val >= arg_count {
-                        self.tcx.sess.emit_err(errors::RustcIntrinsicConstVectorArgOutOfBounds {
+                        self.tcx.dcx().emit_err(errors::RustcIntrinsicConstVectorArgOutOfBounds {
                             attr_span: attr.span,
                             span: span,
-                            index: *val,
+                            index: val.get(),
                             arg_count: decl.inputs.len(),
                         });
                         return false;
@@ -2161,7 +2158,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         None
                     }
 
-                    let param_ty = decl.inputs[*val as usize];
+                    let param_ty = decl.inputs[val.get() as usize];
                     let type_id = get_type_def(self.tcx, param_ty);
                     let is_simd = if let Some(type_id) = type_id {
                         self.tcx
@@ -2173,15 +2170,15 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         false
                     };
                     if !is_simd {
-                        self.tcx.sess.emit_err(errors::RustcIntrinsicConstVectorArgNonVector {
+                        self.tcx.dcx().emit_err(errors::RustcIntrinsicConstVectorArgNonVector {
                             attr_span: attr.span,
                             param_span: param_ty.span,
-                            index: *val,
+                            index: val.get(),
                         });
                         return false;
                     }
                 } else {
-                    self.tcx.sess.emit_err(errors::RustcIntrinsicConstVectorArgInvalid {
+                    self.tcx.dcx().emit_err(errors::RustcIntrinsicConstVectorArgInvalid {
                         span: meta.span(),
                     });
                     return false;
@@ -2189,7 +2186,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
         } else {
             self.tcx
-                .sess
+                .dcx()
                 .emit_err(errors::RustcIntrinsicConstVectorArg { attr_span: attr.span, span });
             return false;
         }

@@ -867,7 +867,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             if let mir::Operand::Constant(constant) = &arg.node {
                                 let (llval, ty) = self.early_evaluate_const_vector(bx, constant);
                                 let llval = llval.unwrap_or_else(|| {
-                                    bx.tcx().sess.emit_err(errors::ShuffleIndicesEvaluation {
+                                    bx.tcx().dcx().emit_err(errors::ShuffleIndicesEvaluation {
                                         span: constant.span,
                                     });
                                     // We've errored, so we don't have to produce working code.
@@ -928,7 +928,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     .map(|item: &NestedMetaItem| match item {
                         NestedMetaItem::Lit(MetaItemLit {
                             kind: LitKind::Int(index, _), ..
-                        }) => *index as usize,
+                        }) => index.get() as usize,
                         _ => span_bug!(item.span(), "attribute argument must be an integer"),
                     })
                     .collect()
@@ -947,7 +947,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let (llval, ty) = self.early_evaluate_const_vector(bx, &constant);
                     let llval = llval.unwrap_or_else(|| {
                         bx.tcx()
-                            .sess
+                            .dcx()
                             .emit_err(errors::ConstVectorEvaluation { span: constant.span });
                         // We've errored, so we don't have to produce working code.
                         let llty = bx.backend_type(bx.layout_of(ty));
