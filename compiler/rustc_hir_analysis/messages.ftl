@@ -206,6 +206,9 @@ hir_analysis_manual_implementation =
     .label = manual implementations of `{$trait_name}` are experimental
     .help = add `#![feature(unboxed_closures)]` to the crate attributes to enable
 
+hir_analysis_method_should_return_future = method should be `async` or return a future, but it is synchronous
+    .note = this method is `async` so it expects a future to be returned
+
 hir_analysis_missing_one_of_trait_item = not all trait items implemented, missing one of: `{$missing_items_msg}`
     .label = missing one of `{$missing_items_msg}` in implementation
     .note = required because of this annotation
