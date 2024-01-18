@@ -362,8 +362,6 @@ jobs:
               # incompatible with LLVM downloads today).
               NO_DOWNLOAD_CI_LLVM: 1
               CUSTOM_MINGW: 1
-              CC: clang
-              CXX: clang++
             <<: *job-windows-8c
 
           - name: x86_64-mingw

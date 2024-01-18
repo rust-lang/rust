@@ -48,9 +48,9 @@ if isWindows; then
 
     if isMingwBuild; then
         if [[ "${CUSTOM_MINGW-0}" -eq 0 ]]; then
-            pacboy -S gcc:p
+            pacboy -S --noconfirm gcc:p
             # Maybe even:
-            # pacboy -S clang:p
+            # pacboy -S --noconfirm clang:p
             # It kinda works, for the opposite CI jobs that gcc works for.
             # the windows part of install-clang.sh has something to say about this.
         else
