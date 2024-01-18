@@ -1485,7 +1485,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         }
 
         let inherent_impls = tcx.with_stable_hashing_context(|hcx| {
-            tcx.crate_inherent_impls(()).inherent_impls.to_sorted(&hcx, true)
+            tcx.crate_inherent_impls(()).unwrap().inherent_impls.to_sorted(&hcx, true)
         });
         for (def_id, impls) in inherent_impls {
             record_defaulted_array!(self.tables.inherent_impls[def_id.to_def_id()] <- impls.iter().map(|def_id| {
@@ -2028,7 +2028,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
         let all_impls = tcx.with_stable_hashing_context(|hcx| {
-            tcx.crate_inherent_impls(()).incoherent_impls.to_sorted(&hcx, true)
+            tcx.crate_inherent_impls(()).unwrap().incoherent_impls.to_sorted(&hcx, true)
         });
 
         let all_impls: Vec<_> = all_impls

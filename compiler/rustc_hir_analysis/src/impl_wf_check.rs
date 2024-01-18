@@ -17,7 +17,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{LocalDefId, LocalModDefId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
-use rustc_span::{Span, Symbol};
+use rustc_span::{ErrorGuaranteed, Span, Symbol};
 
 mod min_specialization;
 
@@ -51,24 +51,29 @@ mod min_specialization;
 /// impl<'a> Trait<Foo> for Bar { type X = &'a i32; }
 /// //   ^ 'a is unused and appears in assoc type, error
 /// ```
-fn check_mod_impl_wf(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
+fn check_mod_impl_wf(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) -> Result<(), ErrorGuaranteed> {
     let min_specialization = tcx.features().min_specialization;
     let module = tcx.hir_module_items(module_def_id);
+    let mut res = Ok(());
     for id in module.items() {
         if matches!(tcx.def_kind(id.owner_id), DefKind::Impl { .. }) {
-            enforce_impl_params_are_constrained(tcx, id.owner_id.def_id);
+            res = res.and(enforce_impl_params_are_constrained(tcx, id.owner_id.def_id));
             if min_specialization {
-                check_min_specialization(tcx, id.owner_id.def_id);
+                res = res.and(check_min_specialization(tcx, id.owner_id.def_id));
             }
         }
     }
+    res
 }
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers { check_mod_impl_wf, ..*providers };
 }
 
-fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) {
+fn enforce_impl_params_are_constrained(
+    tcx: TyCtxt<'_>,
+    impl_def_id: LocalDefId,
+) -> Result<(), ErrorGuaranteed> {
     // Every lifetime used in an associated type must be constrained.
     let impl_self_ty = tcx.type_of(impl_def_id).instantiate_identity();
     if impl_self_ty.references_error() {
@@ -80,7 +85,10 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
                 "potentially unconstrained type parameters weren't evaluated: {impl_self_ty:?}",
             ),
         );
-        return;
+        // This is super fishy, but our current `rustc_hir_analysis::check_crate` pipeline depends on
+        // `type_of` having been called much earlier, and thus this value being read from cache.
+        // Compilation must continue in order for other important diagnostics to keep showing up.
+        return Ok(());
     }
     let impl_generics = tcx.generics_of(impl_def_id);
     let impl_predicates = tcx.predicates_of(impl_def_id);
@@ -113,13 +121,19 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
         })
         .collect();
 
+    let mut res = Ok(());
     for param in &impl_generics.params {
         match param.kind {
             // Disallow ANY unconstrained type parameters.
             ty::GenericParamDefKind::Type { .. } => {
                 let param_ty = ty::ParamTy::for_def(param);
                 if !input_parameters.contains(&cgp::Parameter::from(param_ty)) {
-                    report_unused_parameter(tcx, tcx.def_span(param.def_id), "type", param_ty.name);
+                    res = Err(report_unused_parameter(
+                        tcx,
+                        tcx.def_span(param.def_id),
+                        "type",
+                        param_ty.name,
+                    ));
                 }
             }
             ty::GenericParamDefKind::Lifetime => {
@@ -127,27 +141,28 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
                 if lifetimes_in_associated_types.contains(&param_lt) && // (*)
                     !input_parameters.contains(&param_lt)
                 {
-                    report_unused_parameter(
+                    res = Err(report_unused_parameter(
                         tcx,
                         tcx.def_span(param.def_id),
                         "lifetime",
                         param.name,
-                    );
+                    ));
                 }
             }
             ty::GenericParamDefKind::Const { .. } => {
                 let param_ct = ty::ParamConst::for_def(param);
                 if !input_parameters.contains(&cgp::Parameter::from(param_ct)) {
-                    report_unused_parameter(
+                    res = Err(report_unused_parameter(
                         tcx,
                         tcx.def_span(param.def_id),
                         "const",
                         param_ct.name,
-                    );
+                    ));
                 }
             }
         }
     }
+    res
 
     // (*) This is a horrible concession to reality. I think it'd be
     // better to just ban unconstrained lifetimes outright, but in
@@ -169,7 +184,12 @@ fn enforce_impl_params_are_constrained(tcx: TyCtxt<'_>, impl_def_id: LocalDefId)
     // used elsewhere are not projected back out.
 }
 
-fn report_unused_parameter(tcx: TyCtxt<'_>, span: Span, kind: &str, name: Symbol) {
+fn report_unused_parameter(
+    tcx: TyCtxt<'_>,
+    span: Span,
+    kind: &str,
+    name: Symbol,
+) -> ErrorGuaranteed {
     let mut err = struct_span_code_err!(
         tcx.dcx(),
         span,
@@ -188,5 +208,5 @@ fn report_unused_parameter(tcx: TyCtxt<'_>, span: Span, kind: &str, name: Symbol
             "proving the result of expressions other than the parameter are unique is not supported",
         );
     }
-    err.emit();
+    err.emit()
 }

@@ -1745,12 +1745,10 @@ impl<'a: 'ast, 'ast, 'tcx> LateResolutionVisitor<'a, '_, 'ast, 'tcx> {
             // Doing analysis on local `DefId`s would cause infinite recursion.
             return;
         }
+        let Ok(impls) = self.r.tcx.inherent_impls(def_id) else { return };
         // Look at all the associated functions without receivers in the type's
         // inherent impls to look for builders that return `Self`
-        let mut items = self
-            .r
-            .tcx
-            .inherent_impls(def_id)
+        let mut items = impls
             .iter()
             .flat_map(|i| self.r.tcx.associated_items(i).in_definition_order())
             // Only assoc fn with no receivers.
