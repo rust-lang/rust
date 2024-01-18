@@ -137,6 +137,17 @@ pub(crate) fn check_assist_not_applicable_by_label(assist: Handler, ra_fixture: 
     check(assist, ra_fixture, ExpectedResult::NotApplicable, Some(label));
 }
 
+#[track_caller]
+pub(crate) fn check_assist_not_applicable_for_import_one(assist: Handler, ra_fixture: &str) {
+    check_with_config(
+        TEST_CONFIG_IMPORT_ONE,
+        assist,
+        ra_fixture,
+        ExpectedResult::NotApplicable,
+        None,
+    );
+}
+
 /// Check assist in unresolved state. Useful to check assists for lazy computation.
 #[track_caller]
 pub(crate) fn check_assist_unresolved(assist: Handler, ra_fixture: &str) {

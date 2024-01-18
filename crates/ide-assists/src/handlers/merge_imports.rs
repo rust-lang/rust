@@ -19,7 +19,7 @@ use Edit::*;
 
 // Assist: merge_imports
 //
-// Merges two imports with a common prefix.
+// Merges neighbor imports with a common prefix.
 //
 // ```
 // use std::$0fmt::Formatter;
@@ -32,37 +32,23 @@ use Edit::*;
 pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let (target, edits) = if ctx.has_empty_selection() {
         // Merge a neighbor
-        let tree: ast::UseTree = ctx.find_node_at_offset()?;
-        let mut target = tree.syntax().text_range();
+        let mut tree: ast::UseTree = ctx.find_node_at_offset()?;
+        if ctx.config.insert_use.granularity == ImportGranularity::One
+            && tree.parent_use_tree_list().is_some()
+        {
+            cov_mark::hit!(resolve_top_use_tree_for_import_one);
+            tree = tree.top_use_tree();
+        }
+        let target = tree.syntax().text_range();
 
         let edits = if let Some(use_item) = tree.syntax().parent().and_then(ast::Use::cast) {
+            cov_mark::hit!(merge_with_use_item_neighbors);
             let mut neighbor = next_prev().find_map(|dir| neighbor(&use_item, dir)).into_iter();
             use_item.try_merge_from(&mut neighbor, &ctx.config.insert_use)
         } else {
+            cov_mark::hit!(merge_with_use_tree_neighbors);
             let mut neighbor = next_prev().find_map(|dir| neighbor(&tree, dir)).into_iter();
-            let mut edits = tree.clone().try_merge_from(&mut neighbor, &ctx.config.insert_use);
-
-            if edits.is_none() && ctx.config.insert_use.granularity == ImportGranularity::One {
-                let one_tree = tree
-                    .parent_use_tree_list()
-                    .map(|it| it.parent_use_tree().top_use_tree())
-                    .filter(|top_tree| top_tree.path().is_none())
-                    .and_then(|one_tree| {
-                        one_tree.syntax().parent().and_then(ast::Use::cast).zip(Some(one_tree))
-                    });
-                if let Some((use_item, one_tree)) = one_tree {
-                    let mut neighbor = next_prev()
-                        .find_map(|dir| syntax::algo::neighbor(&use_item, dir))
-                        .into_iter();
-                    edits = use_item.try_merge_from(&mut neighbor, &ctx.config.insert_use);
-
-                    if edits.is_some() {
-                        target = one_tree.syntax().text_range();
-                    }
-                }
-            }
-
-            edits
+            tree.clone().try_merge_from(&mut neighbor, &ctx.config.insert_use)
         };
         (target, edits?)
     } else {
@@ -79,9 +65,11 @@ pub(crate) fn merge_imports(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
         let edits = match_ast! {
             match first_selected {
                 ast::Use(use_item) => {
+                    cov_mark::hit!(merge_with_selected_use_item_neighbors);
                     use_item.try_merge_from(&mut selected_nodes.filter_map(ast::Use::cast), &ctx.config.insert_use)
                 },
                 ast::UseTree(use_tree) => {
+                    cov_mark::hit!(merge_with_selected_use_tree_neighbors);
                     use_tree.try_merge_from(&mut selected_nodes.filter_map(ast::UseTree::cast), &ctx.config.insert_use)
                 },
                 _ => return None,
@@ -171,7 +159,10 @@ impl Edit {
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_assist, check_assist_import_one, check_assist_not_applicable};
+    use crate::tests::{
+        check_assist, check_assist_import_one, check_assist_not_applicable,
+        check_assist_not_applicable_for_import_one,
+    };
 
     use super::*;
 
@@ -202,6 +193,7 @@ mod tests {
 
     #[test]
     fn test_merge_equal() {
+        cov_mark::check!(merge_with_use_item_neighbors);
         check_assist(
             merge_imports,
             r"
@@ -212,6 +204,13 @@ use std::fmt::{Display, Debug};
 use std::fmt::{Display, Debug};
 ",
         );
+
+        // The assist macro below calls `check_assist_import_one` 4 times with different input
+        // use item variations based on the first 2 input parameters, but only 2 calls
+        // contain `use {std::fmt$0::{Display, Debug}};` for which the top use tree will need
+        // to be resolved.
+        cov_mark::check_count!(resolve_top_use_tree_for_import_one, 2);
+        cov_mark::check_count!(merge_with_use_item_neighbors, 4);
         check_assist_import_one_variations!(
             "std::fmt$0::{Display, Debug}",
             "std::fmt::{Display, Debug}",
@@ -287,14 +286,14 @@ use std::{fmt, $0fmt::Display};
 use std::{fmt::{self, Display}};
 ",
         );
-        check_assist_import_one(
+    }
+
+    #[test]
+    fn not_applicable_to_single_one_style_import() {
+        cov_mark::check!(resolve_top_use_tree_for_import_one);
+        check_assist_not_applicable_for_import_one(
             merge_imports,
-            r"
-use {std::{fmt, $0fmt::Display}};
-",
-            r"
-use {std::{fmt::{self, Display}}};
-",
+            "use {std::{fmt, $0fmt::Display}};",
         );
     }
 
@@ -386,6 +385,7 @@ pub(in this::path) use std::fmt::{Debug, Display};
 
     #[test]
     fn test_merge_nested() {
+        cov_mark::check!(merge_with_use_tree_neighbors);
         check_assist(
             merge_imports,
             r"
@@ -393,15 +393,6 @@ use std::{fmt$0::Debug, fmt::Display};
 ",
             r"
 use std::{fmt::{Debug, Display}};
-",
-        );
-        check_assist_import_one(
-            merge_imports,
-            r"
-use {std::{fmt$0::Debug, fmt::Display}};
-",
-            r"
-use {std::{fmt::{Debug, Display}}};
 ",
         );
     }
@@ -415,15 +406,6 @@ use std::{fmt::Debug, fmt$0::Display};
 ",
             r"
 use std::{fmt::{Debug, Display}};
-",
-        );
-        check_assist_import_one(
-            merge_imports,
-            r"
-use {std::{fmt::Debug, fmt$0::Display}};
-",
-            r"
-use {std::{fmt::{Debug, Display}}};
 ",
         );
     }
@@ -475,15 +457,6 @@ use std::{fmt$0::{self, Debug}, fmt::{Write, Display}};
 ",
             r"
 use std::{fmt::{self, Debug, Display, Write}};
-",
-        );
-        check_assist_import_one(
-            merge_imports,
-            r"
-use {std::{fmt$0::{self, Debug}, fmt::{Write, Display}}};
-",
-            r"
-use {std::{fmt::{self, Debug, Display, Write}}};
 ",
         );
     }
@@ -682,6 +655,7 @@ use foo::{bar::Baz, *};
 
     #[test]
     fn merge_selection_uses() {
+        cov_mark::check!(merge_with_selected_use_item_neighbors);
         check_assist(
             merge_imports,
             r"
@@ -697,6 +671,8 @@ use std::fmt::{Debug, Display, Write};
 use std::fmt::Result;
 ",
         );
+
+        cov_mark::check!(merge_with_selected_use_item_neighbors);
         check_assist_import_one(
             merge_imports,
             r"
@@ -716,6 +692,7 @@ use std::fmt::Result;
 
     #[test]
     fn merge_selection_use_trees() {
+        cov_mark::check!(merge_with_selected_use_tree_neighbors);
         check_assist(
             merge_imports,
             r"
@@ -733,7 +710,9 @@ use std::{
     fmt::Result,
 };",
         );
+
         // FIXME: Remove redundant braces. See also unnecessary-braces diagnostic.
+        cov_mark::check!(merge_with_selected_use_tree_neighbors);
         check_assist(
             merge_imports,
             r"use std::$0{fmt::Display, fmt::Debug}$0;",
