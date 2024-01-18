@@ -1586,6 +1586,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
+    /// # #![warn(dereferencing_mut_binding)]
     /// let x = Some(123u32);
     /// let _y = match &x {
     ///     Some(mut x) => {
@@ -1604,7 +1605,7 @@ declare_lint! {
     /// `u32`, which was deeped surprising. After edition 2024, adding `mut` will not change the
     /// type of `x`. This lint warns users of editions before 2024 to update their code.
     pub DEREFERENCING_MUT_BINDING,
-    Warn,
+    Allow,
     "detects `mut x` bindings that change the type of `x`"
 }
 

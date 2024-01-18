@@ -1,3 +1,4 @@
+#![warn(dereferencing_mut_binding)]
 fn main() {
     struct U;
 

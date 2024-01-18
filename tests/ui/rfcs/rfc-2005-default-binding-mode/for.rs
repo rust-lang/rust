@@ -1,3 +1,4 @@
+#![warn(dereferencing_mut_binding)]
 struct Foo {}
 
 pub fn main() {

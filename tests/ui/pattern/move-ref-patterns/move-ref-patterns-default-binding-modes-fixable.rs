@@ -1,5 +1,6 @@
 // run-rustfix
 #![allow(unused_variables)]
+#![warn(dereferencing_mut_binding)]
 fn main() {
     struct U;
 
