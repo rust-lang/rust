@@ -554,7 +554,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         &block.terminator().kind
                     {
                         // Just point to the function, to reduce the chance of overlapping spans.
-                        let function_span = match func {
+                        let function_span = match &func.node {
                             Operand::Constant(c) => c.span,
                             Operand::Copy(place) | Operand::Move(place) => {
                                 if let Some(l) = place.as_local() {

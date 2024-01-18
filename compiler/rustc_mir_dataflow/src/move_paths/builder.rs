@@ -465,9 +465,8 @@ impl<'b, 'a, 'tcx, F: Fn(Ty<'tcx>) -> bool> Gatherer<'b, 'a, 'tcx, F> {
                 target,
                 unwind: _,
                 call_source: _,
-                fn_span: _,
             } => {
-                self.gather_operand(func);
+                self.gather_operand(&func.node);
                 for arg in args {
                     self.gather_operand(&arg.node);
                 }

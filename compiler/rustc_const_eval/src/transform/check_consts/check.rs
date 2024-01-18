@@ -713,11 +713,11 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
         self.super_terminator(terminator, location);
 
         match &terminator.kind {
-            TerminatorKind::Call { func, args, fn_span, call_source, .. } => {
+            TerminatorKind::Call { func, args, call_source, .. } => {
                 let ConstCx { tcx, body, param_env, .. } = *self.ccx;
                 let caller = self.def_id();
 
-                let fn_ty = func.ty(body, tcx);
+                let fn_ty = func.node.ty(body, tcx);
 
                 let (mut callee, mut fn_args) = match *fn_ty.kind() {
                     ty::FnDef(def_id, fn_args) => (def_id, fn_args),
@@ -784,7 +784,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             caller,
                             callee,
                             args: fn_args,
-                            span: *fn_span,
+                            span: func.span,
                             call_source: *call_source,
                             feature: Some(if tcx.features().const_trait_impl {
                                 sym::effects
@@ -831,7 +831,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                         caller,
                         callee,
                         args: fn_args,
-                        span: *fn_span,
+                        span: func.span,
                         call_source: *call_source,
                         feature: None,
                     });

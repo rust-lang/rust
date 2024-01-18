@@ -116,9 +116,8 @@ impl<'cx, 'tcx> Visitor<'tcx> for LoanInvalidationsGenerator<'cx, 'tcx> {
                 target: _,
                 unwind: _,
                 call_source: _,
-                fn_span: _,
             } => {
-                self.consume_operand(location, func);
+                self.consume_operand(location, &func.node);
                 for arg in args {
                     self.consume_operand(location, &arg.node);
                 }

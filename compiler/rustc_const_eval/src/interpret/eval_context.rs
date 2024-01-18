@@ -18,7 +18,7 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{self, GenericArgsRef, ParamEnv, Ty, TyCtxt, TypeFoldable, Variance};
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_session::Limit;
-use rustc_span::Span;
+use rustc_span::{source_map::Spanned, Span};
 use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{
@@ -620,8 +620,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     block.terminator(),
                     block.terminator().kind,
                 );
-                if let mir::TerminatorKind::Call { fn_span, .. } = block.terminator().kind {
-                    source_info.span = fn_span;
+                if let mir::TerminatorKind::Call { func: Spanned { span, .. }, .. } =
+                    block.terminator().kind
+                {
+                    source_info.span = span;
                 }
             }
 

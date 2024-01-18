@@ -111,18 +111,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.go_to_block(target_block);
             }
 
-            Call {
-                ref func,
-                ref args,
-                destination,
-                target,
-                unwind,
-                call_source: _,
-                fn_span: _,
-            } => {
+            Call { ref func, ref args, destination, target, unwind, call_source: _ } => {
                 let old_stack = self.frame_idx();
                 let old_loc = self.frame().loc;
-                let func = self.eval_operand(func, None)?;
+                let func = self.eval_operand(&func.node, None)?;
                 let args = self.eval_fn_call_arguments(args)?;
 
                 let fn_sig_binder = func.layout.ty.fn_sig(*self.tcx);

@@ -741,19 +741,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         helper: TerminatorCodegenHelper<'tcx>,
         bx: &mut Bx,
         terminator: &mir::Terminator<'tcx>,
-        func: &mir::Operand<'tcx>,
+        func: &Spanned<mir::Operand<'tcx>>,
         args: &[Spanned<mir::Operand<'tcx>>],
         destination: mir::Place<'tcx>,
         target: Option<mir::BasicBlock>,
         unwind: mir::UnwindAction,
-        fn_span: Span,
         mergeable_succ: bool,
     ) -> MergingSucc {
         let source_info = terminator.source_info;
         let span = source_info.span;
 
         // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
-        let callee = self.codegen_operand(bx, func);
+        let callee = self.codegen_operand(bx, &func.node);
 
         let (instance, mut llfn) = match *callee.layout.ty.kind() {
             ty::FnDef(def_id, args) => (
@@ -829,8 +828,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         if intrinsic == Some(sym::caller_location) {
             return if let Some(target) = target {
-                let location =
-                    self.get_caller_location(bx, mir::SourceInfo { span: fn_span, ..source_info });
+                let location = self
+                    .get_caller_location(bx, mir::SourceInfo { span: func.span, ..source_info });
 
                 if let ReturnDest::IndirectOperand(tmp, _) = ret_dest {
                     location.val.store(bx, tmp);
@@ -1019,16 +1018,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             } else {
                 args.len()
             };
+            let fn_span = func.span;
             assert_eq!(
                 fn_abi.args.len(),
                 mir_args + 1,
                 "#[track_caller] fn's must have 1 more argument in their ABI than in their MIR: {instance:?} {fn_span:?} {fn_abi:?}",
             );
             let location =
-                self.get_caller_location(bx, mir::SourceInfo { span: fn_span, ..source_info });
+                self.get_caller_location(bx, mir::SourceInfo { span: func.span, ..source_info });
             debug!(
-                "codegen_call_terminator({:?}): location={:?} (fn_span {:?})",
-                terminator, location, fn_span
+                "codegen_call_terminator({:?}): location={:?} (func.span {:?})",
+                terminator, location, func.span
             );
 
             let last_arg = fn_abi.args.last().unwrap();
@@ -1256,7 +1256,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 target,
                 unwind,
                 call_source: _,
-                fn_span,
             } => self.codegen_call_terminator(
                 helper,
                 bx,
@@ -1266,7 +1265,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 destination,
                 target,
                 unwind,
-                fn_span,
                 mergeable_succ(),
             ),
             mir::TerminatorKind::CoroutineDrop | mir::TerminatorKind::Yield { .. } => {

@@ -17,8 +17,7 @@ use rustc_middle::mir::MirPass;
 use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::Span;
-
+use rustc_span::{source_map::Spanned, Span};
 pub struct SanityCheck;
 
 fn has_rustc_mir_with(tcx: TyCtxt<'_>, def_id: DefId, name: Symbol) -> Option<MetaItem> {
@@ -198,8 +197,11 @@ impl PeekCall {
         use mir::Operand;
 
         let span = terminator.source_info.span;
-        if let mir::TerminatorKind::Call { func: Operand::Constant(func), args, .. } =
-            &terminator.kind
+        if let mir::TerminatorKind::Call {
+            func: Spanned { node: Operand::Constant(func), .. },
+            args,
+            ..
+        } = &terminator.kind
         {
             if let ty::FnDef(def_id, fn_args) = *func.const_.ty().kind() {
                 let name = tcx.item_name(def_id);

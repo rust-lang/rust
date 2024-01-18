@@ -267,17 +267,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         source_info,
                         TerminatorKind::Call {
-                            func: Operand::Constant(Box::new(ConstOperand {
-                                span: test.span,
-                                user_ty: None,
-                                const_: method,
-                            })),
+                            func: Spanned {
+                                node: Operand::Constant(Box::new(ConstOperand {
+                                    span: test.span,
+                                    user_ty: None,
+                                    const_: method,
+                                })),
+                                span: source_info.span,
+                            },
                             args: vec![Spanned { node: Operand::Move(ref_string), span: DUMMY_SP }],
                             destination: ref_str,
                             target: Some(eq_block),
                             unwind: UnwindAction::Continue,
                             call_source: CallSource::Misc,
-                            fn_span: source_info.span,
                         },
                     );
                     self.non_scalar_compare(
@@ -516,17 +518,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             block,
             source_info,
             TerminatorKind::Call {
-                func: Operand::Constant(Box::new(ConstOperand {
+                func: Spanned {
+                    node: Operand::Constant(Box::new(ConstOperand {
+                        span: source_info.span,
+
+                        // FIXME(#54571): This constant comes from user input (a
+                        // constant in a pattern). Are there forms where users can add
+                        // type annotations here?  For example, an associated constant?
+                        // Need to experiment.
+                        user_ty: None,
+
+                        const_: method,
+                    })),
                     span: source_info.span,
-
-                    // FIXME(#54571): This constant comes from user input (a
-                    // constant in a pattern). Are there forms where users can add
-                    // type annotations here?  For example, an associated constant?
-                    // Need to experiment.
-                    user_ty: None,
-
-                    const_: method,
-                })),
+                },
                 args: vec![
                     Spanned { node: Operand::Copy(val), span: DUMMY_SP },
                     Spanned { node: expect, span: DUMMY_SP },
@@ -535,7 +540,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 target: Some(eq_block),
                 unwind: UnwindAction::Continue,
                 call_source: CallSource::MatchCmp,
-                fn_span: source_info.span,
             },
         );
         self.diverge_from(block);

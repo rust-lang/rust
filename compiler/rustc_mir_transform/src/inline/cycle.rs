@@ -163,7 +163,7 @@ pub(crate) fn mir_inliner_callees<'tcx>(
     for bb_data in body.basic_blocks.iter() {
         let terminator = bb_data.terminator();
         if let TerminatorKind::Call { func, .. } = &terminator.kind {
-            let ty = func.ty(&body.local_decls, tcx);
+            let ty = func.node.ty(&body.local_decls, tcx);
             let call = match ty.kind() {
                 ty::FnDef(def_id, args) => (*def_id, *args),
                 _ => continue,

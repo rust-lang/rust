@@ -168,7 +168,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                     )
                     .collect::<PResult<Vec<_>>>()?;
                 Ok(TerminatorKind::Call {
-                    func: fun,
+                    func: Spanned { node: fun, span: *fn_span },
                     args,
                     destination,
                     target: Some(target),
@@ -176,7 +176,6 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                     call_source: if *from_hir_call { CallSource::Normal } else {
                         CallSource::OverloadedOperator
                     },
-                    fn_span: *fn_span,
                 })
             },
         )

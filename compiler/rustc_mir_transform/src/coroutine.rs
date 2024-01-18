@@ -653,7 +653,7 @@ fn transform_async_context<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
         match &bb_data.terminator().kind {
             TerminatorKind::Call { func, .. } => {
-                let func_ty = func.ty(body, tcx);
+                let func_ty = func.node.ty(body, tcx);
                 if let ty::FnDef(def_id, _) = *func_ty.kind() {
                     if def_id == get_context_def_id {
                         let local = eliminate_get_context_call(&mut body[bb]);
@@ -1860,10 +1860,9 @@ impl<'tcx> Visitor<'tcx> for EnsureCoroutineFieldAssignmentsNeverAlias<'_> {
                 target: Some(_),
                 unwind: _,
                 call_source: _,
-                fn_span: _,
             } => {
                 self.check_assigned_place(*destination, |this| {
-                    this.visit_operand(func, location);
+                    this.visit_operand(&func.node, location);
                     for arg in args {
                         this.visit_operand(&arg.node, location);
                     }

@@ -699,9 +699,8 @@ impl<'cx, 'tcx, R> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx, R> for MirBorro
                 target: _,
                 unwind: _,
                 call_source: _,
-                fn_span: _,
             } => {
-                self.consume_operand(loc, (func, span), flow_state);
+                self.consume_operand(loc, (&func.node, span), flow_state);
                 for arg in args {
                     self.consume_operand(loc, (&arg.node, arg.span), flow_state);
                 }

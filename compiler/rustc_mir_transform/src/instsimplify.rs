@@ -206,7 +206,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         let Some(destination_block) = *target else { return };
 
         // Only bother looking more if it's easy to know what we're calling
-        let Some((fn_def_id, fn_args)) = func.const_fn_def() else { return };
+        let Some((fn_def_id, fn_args)) = func.node.const_fn_def() else { return };
 
         // Clone needs one subst, so we can cheaply rule out other stuff
         if fn_args.len() != 1 {
@@ -263,7 +263,7 @@ impl<'tcx> InstSimplifyContext<'tcx, '_> {
         let Some(target_block) = target else {
             return;
         };
-        let func_ty = func.ty(self.local_decls, self.tcx);
+        let func_ty = func.node.ty(self.local_decls, self.tcx);
         let Some((intrinsic_name, args)) = resolve_rust_intrinsic(self.tcx, func_ty) else {
             return;
         };

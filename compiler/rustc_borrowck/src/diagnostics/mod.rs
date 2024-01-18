@@ -103,7 +103,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let terminator = self.body[location.block].terminator();
         debug!("add_moved_or_invoked_closure_note: terminator={:?}", terminator);
         if let TerminatorKind::Call {
-            func: Operand::Constant(box ConstOperand { const_, .. }),
+            func: Spanned { node: Operand::Constant(box ConstOperand { const_, .. }), .. },
             args,
             ..
         } = &terminator.kind
@@ -430,7 +430,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }) = &bbd.terminator
                     {
                         if let Some(source) =
-                            BorrowedContentSource::from_call(func.ty(self.body, tcx), tcx)
+                            BorrowedContentSource::from_call(func.node.ty(self.body, tcx), tcx)
                         {
                             return source;
                         }
@@ -855,7 +855,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         debug!("move_spans: target_temp = {:?}", target_temp);
 
         if let Some(Terminator {
-            kind: TerminatorKind::Call { fn_span, call_source, .. }, ..
+            kind: TerminatorKind::Call { func: Spanned { span: fn_span, .. }, call_source, .. },
+            ..
         }) = &self.body[location.block].terminator
         {
             let Some((method_did, method_args)) = rustc_middle::util::find_self_call(

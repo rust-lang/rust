@@ -365,8 +365,8 @@ impl<'tcx> Inliner<'tcx> {
     ) -> Option<CallSite<'tcx>> {
         // Only consider direct calls to functions
         let terminator = bb_data.terminator();
-        if let TerminatorKind::Call { ref func, fn_span, .. } = terminator.kind {
-            let func_ty = func.ty(caller_body, self.tcx);
+        if let TerminatorKind::Call { ref func, .. } = terminator.kind {
+            let func_ty = func.node.ty(caller_body, self.tcx);
             if let ty::FnDef(def_id, args) = *func_ty.kind() {
                 // To resolve an instance its args have to be fully normalized.
                 let args = self.tcx.try_normalize_erasing_regions(self.param_env, args).ok()?;
@@ -382,7 +382,7 @@ impl<'tcx> Inliner<'tcx> {
                 }
 
                 let fn_sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args);
-                let source_info = SourceInfo { span: fn_span, ..terminator.source_info };
+                let source_info = SourceInfo { span: func.span, ..terminator.source_info };
 
                 return Some(CallSite { callee, fn_sig, block: bb, source_info });
             }

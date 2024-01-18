@@ -1206,7 +1206,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 }
             }
             TerminatorKind::Call { func, .. } => {
-                let func_ty = func.ty(&self.body.local_decls, self.tcx);
+                let func_ty = func.node.ty(&self.body.local_decls, self.tcx);
                 match func_ty.kind() {
                     ty::FnPtr(..) | ty::FnDef(..) => {}
                     _ => self.fail(

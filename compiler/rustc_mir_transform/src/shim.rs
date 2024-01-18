@@ -525,13 +525,12 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         self.block(
             vec![statement],
             TerminatorKind::Call {
-                func,
+                func: Spanned { node: func, span: self.span },
                 args: vec![Spanned { node: Operand::Move(ref_loc), span: DUMMY_SP }],
                 destination: dest,
                 target: Some(next),
                 unwind: UnwindAction::Cleanup(cleanup),
                 call_source: CallSource::Normal,
-                fn_span: self.span,
             },
             false,
         );
@@ -816,7 +815,7 @@ fn build_call_shim<'tcx>(
         &mut blocks,
         statements,
         TerminatorKind::Call {
-            func: callee,
+            func: Spanned { node: callee, span },
             args,
             destination: Place::return_place(),
             target: Some(BasicBlock::new(1)),
@@ -826,7 +825,6 @@ fn build_call_shim<'tcx>(
                 UnwindAction::Continue
             },
             call_source: CallSource::Misc,
-            fn_span: span,
         },
         false,
     );

@@ -265,7 +265,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     source_info,
                     TerminatorKind::Call {
-                        func: fun,
+                        func: Spanned { node: fun, span: fn_span },
                         args,
                         unwind: UnwindAction::Continue,
                         destination,
@@ -282,7 +282,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         } else {
                             CallSource::OverloadedOperator
                         },
-                        fn_span,
                     },
                 );
                 this.diverge_from(block);

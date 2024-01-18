@@ -839,10 +839,10 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
         };
 
         match terminator.kind {
-            mir::TerminatorKind::Call { ref func, ref args, ref fn_span, .. } => {
-                let callee_ty = func.ty(self.body, tcx);
+            mir::TerminatorKind::Call { ref func, ref args, .. } => {
+                let callee_ty = func.node.ty(self.body, tcx);
                 let callee_ty = self.monomorphize(callee_ty);
-                self.check_fn_args_move_size(callee_ty, args, *fn_span, location);
+                self.check_fn_args_move_size(callee_ty, args, func.span, location);
                 visit_fn_use(self.tcx, callee_ty, true, source, &mut self.output)
             }
             mir::TerminatorKind::Drop { ref place, .. } => {

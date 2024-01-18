@@ -33,7 +33,7 @@ use rustc_data_structures::graph::WithSuccessors;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::*;
 use rustc_middle::ty;
-use rustc_span::{BytePos, Pos, Span, DUMMY_SP};
+use rustc_span::{source_map::Spanned, BytePos, Pos, Span, DUMMY_SP};
 
 fn bcb(index: u32) -> BasicCoverageBlock {
     BasicCoverageBlock::from_u32(index)
@@ -135,13 +135,12 @@ impl<'tcx> MockBlocks<'tcx> {
         self.add_block_from(
             some_from_block,
             TerminatorKind::Call {
-                func: Operand::Copy(self.dummy_place.clone()),
+                func: Spanned { node: Operand::Copy(self.dummy_place.clone()), span: DUMMY_SP },
                 args: vec![],
                 destination: self.dummy_place.clone(),
                 target: Some(TEMP_BLOCK),
                 unwind: UnwindAction::Continue,
                 call_source: CallSource::Misc,
-                fn_span: DUMMY_SP,
             },
         )
     }

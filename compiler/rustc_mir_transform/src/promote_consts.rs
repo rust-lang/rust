@@ -260,7 +260,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                     self.validate_rvalue(rhs)
                 }
                 Right(terminator) => match &terminator.kind {
-                    TerminatorKind::Call { func, args, .. } => self.validate_call(func, args),
+                    TerminatorKind::Call { func, args, .. } => self.validate_call(&func.node, args),
                     TerminatorKind::Yield { .. } => Err(Unpromotable),
                     kind => {
                         span_bug!(terminator.source_info.span, "{:?} not promotable", kind);
@@ -727,10 +727,8 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             };
 
             match terminator.kind {
-                TerminatorKind::Call {
-                    mut func, mut args, call_source: desugar, fn_span, ..
-                } => {
-                    self.visit_operand(&mut func, loc);
+                TerminatorKind::Call { mut func, mut args, call_source: desugar, .. } => {
+                    self.visit_operand(&mut func.node, loc);
                     for arg in &mut args {
                         self.visit_operand(&mut arg.node, loc);
                     }
@@ -746,7 +744,6 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             destination: Place::from(new_temp),
                             target: Some(new_target),
                             call_source: desugar,
-                            fn_span,
                         },
                         source_info: SourceInfo::outermost(terminator.source_info.span),
                         ..terminator

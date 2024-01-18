@@ -136,7 +136,7 @@ impl<'tcx> TerminatorClassifier<'tcx> for CallRecursion<'tcx> {
         let caller = body.source.def_id();
         let param_env = tcx.param_env(caller);
 
-        let func_ty = func.ty(body, tcx);
+        let func_ty = func.node.ty(body, tcx);
         if let ty::FnDef(callee, args) = *func_ty.kind() {
             let normalized_args = tcx.normalize_erasing_regions(param_env, args);
             let (callee, call_args) = if let Ok(Some(instance)) =

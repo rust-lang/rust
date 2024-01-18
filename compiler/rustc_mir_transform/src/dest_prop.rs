@@ -621,7 +621,7 @@ impl WriteInfo {
             }
             TerminatorKind::Call { destination, func, args, .. } => {
                 self.add_place(*destination);
-                self.add_operand(func);
+                self.add_operand(&func.node);
                 for arg in args {
                     self.add_operand(&arg.node);
                 }

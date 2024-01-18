@@ -156,7 +156,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block,
                     synth_info,
                     TerminatorKind::Call {
-                        func: exchange_malloc,
+                        func: Spanned { node: exchange_malloc, span: expr_span },
                         args: vec![
                             Spanned { node: Operand::Move(size), span: DUMMY_SP },
                             Spanned { node: Operand::Move(align), span: DUMMY_SP },
@@ -165,7 +165,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         target: Some(success),
                         unwind: UnwindAction::Continue,
                         call_source: CallSource::Misc,
-                        fn_span: expr_span,
                     },
                 );
                 this.diverge_from(block);

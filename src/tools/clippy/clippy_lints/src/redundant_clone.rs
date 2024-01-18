@@ -258,7 +258,7 @@ fn is_call_with_ref_arg<'tcx>(
     } = kind
         && args.len() == 1
         && let mir::Operand::Move(mir::Place { local, .. }) = &args[0].node
-        && let ty::FnDef(def_id, _) = *func.ty(mir, cx.tcx).kind()
+        && let ty::FnDef(def_id, _) = *func.node.ty(mir, cx.tcx).kind()
         && let (inner_ty, 1) = walk_ptrs_ty_depth(args[0].node.ty(mir, cx.tcx))
         && !is_copy(cx, inner_ty)
     {

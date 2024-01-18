@@ -237,7 +237,7 @@ fn filtered_terminator_span(terminator: &Terminator<'_>) -> Option<Span> {
         // Call `func` operand can have a more specific span when part of a chain of calls
         | TerminatorKind::Call { ref func, .. } => {
             let mut span = terminator.source_info.span;
-            if let mir::Operand::Constant(box constant) = func {
+            if let mir::Operand::Constant(box constant) = &func.node {
                 if constant.span.lo() > span.lo() {
                     span = span.with_lo(constant.span.lo());
                 }

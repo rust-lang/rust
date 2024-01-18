@@ -520,9 +520,8 @@ macro_rules! make_mir_visitor {
                         target: _,
                         unwind: _,
                         call_source: _,
-                        fn_span: _
                     } => {
-                        self.visit_operand(func, location);
+                        self.visit_operand(&$($mutability)? func.node, location);
                         for arg in args {
                             self.visit_operand(&$($mutability)? arg.node, location);
                         }

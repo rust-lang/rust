@@ -648,12 +648,15 @@ where
             )],
             terminator: Some(Terminator {
                 kind: TerminatorKind::Call {
-                    func: Operand::function_handle(
-                        tcx,
-                        drop_fn,
-                        [ty.into()],
-                        self.source_info.span,
-                    ),
+                    func: Spanned {
+                        node: Operand::function_handle(
+                            tcx,
+                            drop_fn,
+                            [ty.into()],
+                            self.source_info.span,
+                        ),
+                        span: self.source_info.span,
+                    },
                     args: vec![Spanned {
                         node: Operand::Move(Place::from(ref_place)),
                         span: DUMMY_SP,
@@ -662,7 +665,6 @@ where
                     target: Some(succ),
                     unwind: unwind.into_action(),
                     call_source: CallSource::Misc,
-                    fn_span: self.source_info.span,
                 },
                 source_info: self.source_info,
             }),

@@ -1367,12 +1367,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // FIXME: check the values
             }
             TerminatorKind::Call { func, args, destination, call_source, target, .. } => {
-                self.check_operand(func, term_location);
+                self.check_operand(&func.node, term_location);
                 for arg in args {
                     self.check_operand(&arg.node, term_location);
                 }
 
-                let func_ty = func.ty(body, tcx);
+                let func_ty = func.node.ty(body, tcx);
                 debug!("func_ty.kind: {:?}", func_ty.kind());
 
                 let sig = match func_ty.kind() {
@@ -1441,7 +1441,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         .add_location(region_vid, term_location);
                 }
 
-                self.check_call_inputs(body, term, func, &sig, args, term_location, *call_source);
+                self.check_call_inputs(
+                    body,
+                    term,
+                    &func.node,
+                    &sig,
+                    args,
+                    term_location,
+                    *call_source,
+                );
             }
             TerminatorKind::Assert { cond, msg, .. } => {
                 self.check_operand(cond, term_location);

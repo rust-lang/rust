@@ -67,7 +67,7 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
             }
 
             TerminatorKind::Call { ref func, .. } => {
-                let func_ty = func.ty(self.body, self.tcx);
+                let func_ty = func.node.ty(self.body, self.tcx);
                 let func_id =
                     if let ty::FnDef(func_id, _) = func_ty.kind() { Some(func_id) } else { None };
                 let sig = func_ty.fn_sig(self.tcx);

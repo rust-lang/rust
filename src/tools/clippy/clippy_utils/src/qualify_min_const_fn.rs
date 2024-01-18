@@ -316,9 +316,8 @@ fn check_terminator<'tcx>(
             destination: _,
             target: _,
             unwind: _,
-            fn_span: _,
         } => {
-            let fn_ty = func.ty(body, tcx);
+            let fn_ty = func.node.ty(body, tcx);
             if let ty::FnDef(fn_def_id, _) = *fn_ty.kind() {
                 if !is_const_fn(tcx, fn_def_id, msrv) {
                     return Err((
@@ -342,7 +341,7 @@ fn check_terminator<'tcx>(
                     ));
                 }
 
-                check_operand(tcx, func, span, body)?;
+                check_operand(tcx, &func.node, span, body)?;
 
                 for arg in args {
                     check_operand(tcx, &arg.node, span, body)?;
