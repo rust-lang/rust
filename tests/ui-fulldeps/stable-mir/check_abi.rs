@@ -12,14 +12,12 @@
 #![feature(ascii_char, ascii_char_variants)]
 
 extern crate rustc_hir;
-extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_smir;
 extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
-use rustc_middle::ty::TyCtxt;
 use rustc_smir::rustc_internal;
 use stable_mir::abi::{ArgAbi, CallConvention, FieldsShape, PassMode, VariantsShape};
 use stable_mir::mir::mono::Instance;
@@ -32,7 +30,7 @@ use std::ops::ControlFlow;
 const CRATE_NAME: &str = "input";
 
 /// This function uses the Stable MIR APIs to get information about the test crate.
-fn test_stable_mir(_tcx: TyCtxt<'_>) -> ControlFlow<()> {
+fn test_stable_mir() -> ControlFlow<()> {
     // Find items in the local crate.
     let items = stable_mir::all_local_items();
 
@@ -117,7 +115,7 @@ fn main() {
         CRATE_NAME.to_string(),
         path.to_string(),
     ];
-    run!(args, tcx, test_stable_mir(tcx)).unwrap();
+    run!(args, test_stable_mir).unwrap();
 }
 
 fn generate_input(path: &str) -> std::io::Result<()> {
