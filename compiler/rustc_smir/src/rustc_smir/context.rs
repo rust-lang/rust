@@ -29,7 +29,7 @@ use stable_mir::{Crate, CrateItem, CrateNum, DefId, Error, Filename, ItemKind, S
 use std::cell::RefCell;
 use std::iter;
 
-use crate::rustc_internal::RustcInternal;
+use crate::rustc_internal::{internal, RustcInternal};
 use crate::rustc_smir::builder::BodyBuilder;
 use crate::rustc_smir::{alloc, new_item_kind, smir_crate, Stable, Tables};
 
@@ -322,8 +322,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
     }
 
     fn const_literal(&self, cnst: &stable_mir::ty::Const) -> String {
-        let mut tables = self.0.borrow_mut();
-        cnst.internal(&mut *tables).to_string()
+        internal(cnst).to_string()
     }
 
     fn span_of_an_item(&self, def_id: stable_mir::DefId) -> Span {

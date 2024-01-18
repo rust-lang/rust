@@ -24,35 +24,11 @@ use std::ops::Index;
 mod internal;
 pub mod pretty;
 
-/// Convert an internal Rust compiler item into its stable counterpart, if one exists.
-///
-/// # Warning
-///
-/// This function is unstable, and its behavior may change at any point.
-/// E.g.: Items that were previously supported, may no longer be supported, or its translation may
-/// change.
-///
-/// # Panics
-///
-/// This function will panic if StableMIR has not been properly initialized.
 pub fn stable<'tcx, S: Stable<'tcx>>(item: S) -> S::T {
     with_tables(|tables| item.stable(tables))
 }
 
-/// Convert a stable item into its internal Rust compiler counterpart, if one exists.
-///
-/// # Warning
-///
-/// This function is unstable, and it's behavior may change at any point.
-/// Not every stable item can be converted to an internal one.
-/// Furthermore, items that were previously supported, may no longer be supported in newer versions.
-///
-/// # Panics
-///
-/// This function will panic if StableMIR has not been properly initialized.
-pub fn internal<'tcx, S: RustcInternal<'tcx>>(tcx: TyCtxt<'tcx>, item: S) -> S::T {
-    // The tcx argument ensures that the item won't outlive the type context.
-    let _ = tcx;
+pub fn internal<'tcx, S: RustcInternal<'tcx>>(item: S) -> S::T {
     with_tables(|tables| item.internal(tables))
 }
 
@@ -293,7 +269,7 @@ macro_rules! optional {
     };
 }
 
-/// Prefer using [run] and [run_with_tcx] instead.
+/// Prefer using [run!] and [run_with_tcx] instead.
 ///
 /// This macro implements the instantiation of a StableMIR driver, and it will invoke
 /// the given callback after the compiler analyses.
