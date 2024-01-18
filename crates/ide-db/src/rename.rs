@@ -81,7 +81,7 @@ impl Definition {
             // Can we not rename non-local items?
             // Then bail if non-local
             if !rename_external && !krate.origin(sema.db).is_local() {
-                bail!("Cannot rename a non-local definition. Set `renameExternalItems` to `true` to allow renaming for this item.")
+                bail!("Cannot rename a non-local definition. Set `rename_allowExternalItems` to `true` to allow renaming for this item.")
             }
         }
 
