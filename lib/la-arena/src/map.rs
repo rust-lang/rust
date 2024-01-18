@@ -253,7 +253,7 @@ where
     /// Ensures a value is in the entry by inserting the default value if empty, and returns a mutable reference
     /// to the value in the entry.
     pub fn or_default(self) -> &'a mut V {
-        self.or_default()
+        self.or_insert_with(Default::default)
     }
 }
 
