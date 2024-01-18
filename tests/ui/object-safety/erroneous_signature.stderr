@@ -1,0 +1,15 @@
+error[E0412]: cannot find type `MissingType` in this scope
+  --> $DIR/erroneous_signature.rs:2:22
+   |
+LL |     fn err(&self) -> MissingType;
+   |                      ^^^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `MissingType` in this scope
+  --> $DIR/erroneous_signature.rs:7:22
+   |
+LL |     fn err(&self) -> MissingType {
+   |                      ^^^^^^^^^^^ not found in this scope
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0412`.
