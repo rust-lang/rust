@@ -412,6 +412,14 @@ fn reference_to_node(
 ) -> Option<(ast::PathSegment, SyntaxNode, hir::Module)> {
     let segment =
         reference.name.as_name_ref()?.syntax().parent().and_then(ast::PathSegment::cast)?;
+
+    // filter out the reference in marco
+    let s_range = segment.syntax().text_range();
+    let origin_range = sema.original_range(segment.syntax()).range;
+    if s_range != origin_range {
+        return None;
+    }
+
     let parent = segment.parent_path().syntax().parent()?;
     let expr_or_pat = match_ast! {
         match parent {
