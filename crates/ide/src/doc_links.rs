@@ -64,13 +64,12 @@ pub(crate) fn rewrite_links(db: &RootDatabase, markdown: &str, definition: Defin
             // * path-based links: `../../module/struct.MyStruct.html`
             // * module-based links (AKA intra-doc links): `super::super::module::MyStruct`
             if let Some((target, title)) = rewrite_intra_doc_link(db, definition, target, title) {
-                return (None, target, title);
+                (None, target, title)
+            } else if let Some(target) = rewrite_url_link(db, definition, target) {
+                (Some(LinkType::Inline), target, title.to_string())
+            } else {
+                (None, target.to_string(), title.to_string())
             }
-            if let Some(target) = rewrite_url_link(db, definition, target) {
-                return (Some(LinkType::Inline), target, title.to_string());
-            }
-
-            (None, target.to_string(), title.to_string())
         }
     });
     let mut out = String::new();
@@ -369,16 +368,21 @@ fn rewrite_intra_doc_link(
 ) -> Option<(String, String)> {
     let (link, ns) = parse_intra_doc_link(target);
 
+    let (link, anchor) = match link.split_once('#') {
+        Some((new_link, anchor)) => (new_link, Some(anchor)),
+        None => (link, None),
+    };
+
     let resolved = resolve_doc_path_for_def(db, def, link, ns)?;
     let mut url = get_doc_base_urls(db, resolved, None, None).0?;
 
-    let (_, file, frag) = filename_and_frag_for_def(db, resolved)?;
+    let (_, file, _) = filename_and_frag_for_def(db, resolved)?;
     if let Some(path) = mod_path_of_def(db, resolved) {
         url = url.join(&path).ok()?;
     }
 
     url = url.join(&file).ok()?;
-    url.set_fragment(frag.as_deref());
+    url.set_fragment(anchor);
 
     Some((url.into(), strip_prefixes_suffixes(title).to_string()))
 }

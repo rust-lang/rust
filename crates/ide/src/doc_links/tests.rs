@@ -664,3 +664,29 @@ pub struct $0Foo;
         expect![["[`foo`]"]],
     );
 }
+
+#[test]
+fn rewrite_intra_doc_link() {
+    check_rewrite(
+        r#"
+        //- minicore: eq, derive
+        //- /main.rs crate:foo
+        //! $0[PartialEq]
+        fn main() {}
+        "#,
+        expect!["[PartialEq](https://doc.rust-lang.org/stable/core/cmp/trait.PartialEq.html)"],
+    );
+}
+
+#[test]
+fn rewrite_intra_doc_link_with_anchor() {
+    check_rewrite(
+        r#"
+        //- minicore: eq, derive
+        //- /main.rs crate:foo
+        //! $0[PartialEq#derivable]
+        fn main() {}
+        "#,
+        expect!["[PartialEq#derivable](https://doc.rust-lang.org/stable/core/cmp/trait.PartialEq.html#derivable)"],
+    );
+}
