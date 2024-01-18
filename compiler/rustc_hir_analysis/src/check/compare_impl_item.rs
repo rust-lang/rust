@@ -1,5 +1,5 @@
 use super::potentially_plural_count;
-use crate::errors::LifetimesOrBoundsMismatchOnTrait;
+use crate::errors::{LifetimesOrBoundsMismatchOnTrait, MethodShouldReturnFuture};
 use hir::def_id::{DefId, DefIdMap, LocalDefId};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_errors::{codes::*, pluralize, struct_span_code_err, Applicability, ErrorGuaranteed};
@@ -10,7 +10,7 @@ use rustc_hir::{GenericParamKind, ImplItemKind};
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
-use rustc_infer::traits::util;
+use rustc_infer::traits::{util, FulfillmentError};
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::util::ExplicitSelf;
@@ -664,8 +664,13 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     // RPITs.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(errors);
-        return Err(reported);
+        if let Err(guar) = try_report_async_mismatch(tcx, infcx, &errors, trait_m, impl_m, impl_sig)
+        {
+            return Err(guar);
+        }
+
+        let guar = infcx.err_ctxt().report_fulfillment_errors(errors);
+        return Err(guar);
     }
 
     // Finally, resolve all regions. This catches wily misuses of
@@ -2216,4 +2221,48 @@ fn assoc_item_kind_str(impl_item: &ty::AssocItem) -> &'static str {
         ty::AssocKind::Fn => "method",
         ty::AssocKind::Type => "type",
     }
+}
+
+/// Manually check here that `async fn foo()` wasn't matched against `fn foo()`,
+/// and extract a better error if so.
+fn try_report_async_mismatch<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    infcx: &InferCtxt<'tcx>,
+    errors: &[FulfillmentError<'tcx>],
+    trait_m: ty::AssocItem,
+    impl_m: ty::AssocItem,
+    impl_sig: ty::FnSig<'tcx>,
+) -> Result<(), ErrorGuaranteed> {
+    if !tcx.asyncness(trait_m.def_id).is_async() {
+        return Ok(());
+    }
+
+    let ty::Alias(ty::Projection, ty::AliasTy { def_id: async_future_def_id, .. }) =
+        *tcx.fn_sig(trait_m.def_id).skip_binder().skip_binder().output().kind()
+    else {
+        bug!("expected `async fn` to return an RPITIT");
+    };
+
+    for error in errors {
+        if let traits::BindingObligation(def_id, _) = *error.root_obligation.cause.code()
+            && def_id == async_future_def_id
+            && let Some(proj) = error.root_obligation.predicate.to_opt_poly_projection_pred()
+            && let Some(proj) = proj.no_bound_vars()
+            && infcx.can_eq(
+                error.root_obligation.param_env,
+                proj.term.ty().unwrap(),
+                impl_sig.output(),
+            )
+        {
+            // FIXME: We should suggest making the fn `async`, but extracting
+            // the right span is a bit difficult.
+            return Err(tcx.sess.dcx().emit_err(MethodShouldReturnFuture {
+                span: tcx.def_span(impl_m.def_id),
+                method_name: trait_m.name,
+                trait_item_span: tcx.hir().span_if_local(trait_m.def_id),
+            }));
+        }
+    }
+
+    Ok(())
 }

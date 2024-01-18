@@ -1502,6 +1502,16 @@ pub struct NotSupportedDelegation<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(hir_analysis_method_should_return_future)]
+pub struct MethodShouldReturnFuture {
+    #[primary_span]
+    pub span: Span,
+    pub method_name: Symbol,
+    #[note]
+    pub trait_item_span: Option<Span>,
+}
+
+#[derive(Diagnostic)]
 #[diag(hir_analysis_unused_generic_parameter)]
 pub(crate) struct UnusedGenericParameter {
     #[primary_span]
