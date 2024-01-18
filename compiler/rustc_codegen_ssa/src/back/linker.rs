@@ -489,19 +489,19 @@ impl<'a> Linker for GccLinker<'a> {
         search_paths: &SearchPaths,
     ) {
         self.hint_static();
+        let colon = if verbatim && self.is_gnu { ":" } else { "" };
         if !whole_archive {
-            self.cmd.arg(format!("-l{}{name}", if verbatim && self.is_gnu { ":" } else { "" }));
-        } else if !self.sess.target.is_like_osx {
-            self.linker_arg("--whole-archive");
-            self.cmd.arg(format!("-l{}{name}", if verbatim && self.is_gnu { ":" } else { "" }));
-            self.linker_arg("--no-whole-archive");
-        } else {
+            self.cmd.arg(format!("-l{colon}{name}"));
+        } else if self.sess.target.is_like_osx {
             // -force_load is the macOS equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
             self.linker_arg("-force_load");
-            let lib =
-                find_native_static_library(name, verbatim, search_paths.get(self.sess), self.sess);
-            self.linker_arg(&lib);
+            let search_paths = search_paths.get(self.sess);
+            self.linker_arg(find_native_static_library(name, verbatim, search_paths, self.sess));
+        } else {
+            self.linker_arg("--whole-archive");
+            self.cmd.arg(format!("-l{colon}{name}"));
+            self.linker_arg("--no-whole-archive");
         }
     }
 
@@ -511,9 +511,10 @@ impl<'a> Linker for GccLinker<'a> {
             self.cmd.arg(path);
         } else if self.sess.target.is_like_osx {
             self.linker_arg("-force_load");
-            self.linker_arg(&path);
+            self.linker_arg(path);
         } else {
-            self.linker_args(&[OsString::from("--whole-archive"), path.into()]);
+            self.linker_arg("--whole-archive");
+            self.linker_arg(path);
             self.linker_arg("--no-whole-archive");
         }
     }
@@ -830,11 +831,9 @@ impl<'a> Linker for MsvcLinker<'a> {
         whole_archive: bool,
         _search_paths: &SearchPaths,
     ) {
-        if !whole_archive {
-            self.cmd.arg(format!("{}{}", name, if verbatim { "" } else { ".lib" }));
-        } else {
-            self.cmd.arg(format!("/WHOLEARCHIVE:{}{}", name, if verbatim { "" } else { ".lib" }));
-        }
+        let prefix = if whole_archive { "/WHOLEARCHIVE:" } else { "" };
+        let suffix = if verbatim { "" } else { ".lib" };
+        self.cmd.arg(format!("{prefix}{name}{suffix}"));
     }
 
     fn link_staticlib_by_path(&mut self, path: &Path, whole_archive: bool) {
@@ -1066,7 +1065,7 @@ impl<'a> Linker for EmLinker<'a> {
     }
 
     fn link_staticlib_by_path(&mut self, path: &Path, _whole_archive: bool) {
-        self.add_object(path);
+        self.cmd.arg(path);
     }
 
     fn include_path(&mut self, path: &Path) {
@@ -1398,8 +1397,7 @@ impl<'a> Linker for L4Bender<'a> {
         if !whole_archive {
             self.cmd.arg(format!("-PC{name}"));
         } else {
-            self.cmd.arg("--whole-archive").arg(format!("-l{name}"));
-            self.cmd.arg("--no-whole-archive");
+            self.cmd.arg("--whole-archive").arg(format!("-l{name}")).arg("--no-whole-archive");
         }
     }
 
@@ -1583,9 +1581,10 @@ impl<'a> Linker for AixLinker<'a> {
         if !whole_archive {
             self.cmd.arg(format!("-l{name}"));
         } else {
-            let lib =
-                find_native_static_library(name, verbatim, search_paths.get(self.sess), self.sess);
-            self.cmd.arg(format!("-bkeepfile:{}", lib.to_str().unwrap()));
+            let mut arg = OsString::from("-bkeepfile:");
+            let search_path = search_paths.get(self.sess);
+            arg.push(find_native_static_library(name, verbatim, search_path, self.sess));
+            self.cmd.arg(arg);
         }
     }
 
@@ -1594,7 +1593,9 @@ impl<'a> Linker for AixLinker<'a> {
         if !whole_archive {
             self.cmd.arg(path);
         } else {
-            self.cmd.arg(format!("-bkeepfile:{}", path.to_str().unwrap()));
+            let mut arg = OsString::from("-bkeepfile:");
+            arg.push(path);
+            self.cmd.arg(arg);
         }
     }
 
