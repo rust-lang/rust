@@ -924,14 +924,17 @@ class RustBuild(object):
         # default toolchain is not nightly.
         #
         # But that setting has the collateral effect of rust-analyzer also
-        # passing RUSTC_BOOTSTRAP=1 to all x.py invocations too (the various
-        # overrideCommand). For compiling bootstrap, that is unwanted and can
-        # cause spurious rebuilding of bootstrap when rust-analyzer x.py
-        # invocations are interleaved with handwritten ones on the command line.
-        env.pop("RUSTC_BOOTSTRAP", None)
+        # passing RUSTC_BOOTSTRAP=1 to all x.py invocations too (the various overrideCommand).
+        # For compiling bootstrap that can cause spurious rebuilding of bootstrap when
+        # rust-analyzer x.py invocations are interleaved with handwritten ones on the
+        # command line.
+        #
+        # Set RUSTC_BOOTSTRAP=1 consistently.
+        env["RUSTC_BOOTSTRAP"] = "1"
 
-        # preserve existing RUSTFLAGS
-        env.setdefault("RUSTFLAGS", "")
+        default_rustflags = "" if env.get("RUSTFLAGS_BOOTSTRAP", "") else "-Zallow-features="
+
+        env.setdefault("RUSTFLAGS", default_rustflags)
 
         target_features = []
         if self.get_toml("crt-static", build_section) == "true":
