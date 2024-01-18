@@ -56,34 +56,30 @@ jobs:
               RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu"
               SCRIPT: make ci-mingw
               NO_DOWNLOAD_CI_LLVM: 1
-              CC: clang
-              CXX: clang++
+              CUSTOM_MINGW: 1
             os: windows-2019-8core-32gb
           - name: x86_64-mingw
             env:
               SCRIPT: make ci-mingw
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-profiler"
               NO_DOWNLOAD_CI_LLVM: 1
-              CC: clang
-              CXX: clang++
+              CUSTOM_MINGW: 1
             os: windows-2019-8core-32gb
           - name: dist-i686-mingw
             env:
               RUST_CONFIGURE_ARGS: "--build=i686-pc-windows-gnu --enable-full-tools --enable-profiler"
               NO_DOWNLOAD_CI_LLVM: 1
               SCRIPT: python x.py dist bootstrap --include-default-paths
+              CUSTOM_MINGW: 1
               DIST_REQUIRE_ALL_TOOLS: 1
-              CC: clang
-              CXX: clang++
             os: windows-2019-8core-32gb
           - name: dist-x86_64-mingw
             env:
               SCRIPT: python x.py dist bootstrap --include-default-paths
               RUST_CONFIGURE_ARGS: "--build=x86_64-pc-windows-gnu --enable-full-tools --enable-profiler"
               NO_DOWNLOAD_CI_LLVM: 1
+              CUSTOM_MINGW: 1
               DIST_REQUIRE_ALL_TOOLS: 1
-              CC: clang
-              CXX: clang++
             os: windows-2019-8core-32gb
           - name: x86_64-gnu
             os: ubuntu-20.04-4core-16gb
@@ -102,12 +98,12 @@ jobs:
       - if: "contains(matrix.os, 'windows')"
         uses: msys2/setup-msys2@76b1bed68bac51ebe46cb431077217d4b98e2b7b
         with:
-          msystem: "${{ contains(matrix.name, 'i686') && 'clang32' || 'clang64' }}"
+          msystem: "${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}"
           update: false
           release: true
           path-type: inherit
           install: "make git dos2unix diffutils\n"
-          pacboy: "clang:p cmake:p\n"
+          pacboy: "cmake:p\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -493,12 +489,12 @@ jobs:
       - if: "contains(matrix.os, 'windows')"
         uses: msys2/setup-msys2@76b1bed68bac51ebe46cb431077217d4b98e2b7b
         with:
-          msystem: "${{ contains(matrix.name, 'i686') && 'clang32' || 'clang64' }}"
+          msystem: "${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}"
           update: false
           release: true
           path-type: inherit
           install: "make git dos2unix diffutils\n"
-          pacboy: "clang:p cmake:p\n"
+          pacboy: "cmake:p\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
@@ -630,12 +626,12 @@ jobs:
       - if: "contains(matrix.os, 'windows')"
         uses: msys2/setup-msys2@76b1bed68bac51ebe46cb431077217d4b98e2b7b
         with:
-          msystem: "${{ contains(matrix.name, 'i686') && 'clang32' || 'clang64' }}"
+          msystem: "${{ contains(matrix.name, 'i686') && 'mingw32' || 'mingw64' }}"
           update: false
           release: true
           path-type: inherit
           install: "make git dos2unix diffutils\n"
-          pacboy: "clang:p cmake:p\n"
+          pacboy: "cmake:p\n"
       - name: checkout the source code
         uses: actions/checkout@v4
         with:
