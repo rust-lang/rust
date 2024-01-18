@@ -1645,11 +1645,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 if index >= args.len() as u128 {
                                     span_mirbug!(self, term, "index out of bounds");
                                 } else {
-                                    if !matches!(args[index as usize], Operand::Constant(_)) {
-                                        self.tcx().sess.emit_err(IntrinsicConstVectorArgNonConst {
-                                            span: term.source_info.span,
-                                            index,
-                                        });
+                                    if !matches!(
+                                        args[index.get() as usize],
+                                        Spanned { node: Operand::Constant(_), .. }
+                                    ) {
+                                        self.tcx().dcx().emit_err(
+                                            IntrinsicConstVectorArgNonConst {
+                                                span: term.source_info.span,
+                                                index: index.get(),
+                                            },
+                                        );
                                     }
                                 }
                             }
