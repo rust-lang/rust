@@ -671,10 +671,8 @@ impl<'db> SemanticsImpl<'db> {
         mut token: SyntaxToken,
         f: &mut dyn FnMut(InFile<SyntaxToken>) -> ControlFlow<()>,
     ) {
-        let _p = profile::span("descend_into_macros");
-
+        let _p = tracing::span!(tracing::Level::INFO, "descend_into_macros");
         let mut include_macro_file_id_and_span = None;
-
         let sa = match token.parent().and_then(|parent| self.analyze_no_infer(&parent)) {
             Some(it) => it,
             None => {
@@ -1303,7 +1301,7 @@ impl<'db> SemanticsImpl<'db> {
         offset: Option<TextSize>,
         infer_body: bool,
     ) -> Option<SourceAnalyzer> {
-        let _p = profile::span("Semantics::analyze_impl");
+        let _p = tracing::span!(tracing::Level::INFO, "Semantics::analyze_impl");
         let node = self.find_file(node);
 
         let container = self.with_ctx(|ctx| ctx.find_container(node))?;

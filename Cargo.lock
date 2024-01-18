@@ -19,11 +19,11 @@ checksum = "f26201604c87b1e01bd3d98f8d5d9a8fcbb815e8cedb41ffccbeb4bf593a35fe"
 
 [[package]]
 name = "always-assert"
-version = "0.1.3"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4436e0292ab1bb631b42973c61205e704475fe8126af845c8d923c0996328127"
+checksum = "a1078fa1ce1e34b1872d8611ad921196d76bdd7027e949fbe31231abde201892"
 dependencies = [
- "log",
+ "tracing",
 ]
 
 [[package]]
@@ -78,6 +78,7 @@ dependencies = [
  "span",
  "stdx",
  "syntax",
+ "tracing",
  "triomphe",
  "vfs",
 ]
@@ -497,6 +498,7 @@ dependencies = [
  "span",
  "stdx",
  "syntax",
+ "tracing",
  "triomphe",
  "tt",
 ]
@@ -671,6 +673,7 @@ dependencies = [
  "test-fixture",
  "test-utils",
  "text-edit",
+ "tracing",
 ]
 
 [[package]]
@@ -691,6 +694,7 @@ dependencies = [
  "test-fixture",
  "test-utils",
  "text-edit",
+ "tracing",
 ]
 
 [[package]]
@@ -748,6 +752,7 @@ dependencies = [
  "test-fixture",
  "test-utils",
  "text-edit",
+ "tracing",
 ]
 
 [[package]]
@@ -1343,6 +1348,7 @@ dependencies = [
  "once_cell",
  "perf-event",
  "tikv-jemalloc-ctl",
+ "tracing",
  "winapi",
 ]
 
@@ -1582,7 +1588,6 @@ dependencies = [
  "tikv-jemallocator",
  "toolchain",
  "tracing",
- "tracing-log",
  "tracing-subscriber",
  "tracing-tree",
  "triomphe",
@@ -1596,26 +1601,26 @@ dependencies = [
 
 [[package]]
 name = "rust-analyzer-salsa"
-version = "0.17.0-pre.5"
+version = "0.17.0-pre.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca9d387a9801f4fb9b366789ad1bfc08448cafc49cf148d907cfcd88ab665d7f"
+checksum = "719825638c59fd26a55412a24561c7c5bcf54364c88b9a7a04ba08a6eafaba8d"
 dependencies = [
  "indexmap",
  "lock_api",
- "log",
  "oorandom",
  "parking_lot",
  "rust-analyzer-salsa-macros",
  "rustc-hash",
  "smallvec",
+ "tracing",
  "triomphe",
 ]
 
 [[package]]
 name = "rust-analyzer-salsa-macros"
-version = "0.17.0-pre.5"
+version = "0.17.0-pre.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a2035f385d7fae31e9b086f40b272ee1d79c484472f31c9a10348a406e841eaf"
+checksum = "4d96498e9684848c6676c399032ebc37c52da95ecbefa83d71ccc53b9f8a4a8e"
 dependencies = [
  "heck",
  "proc-macro2",
@@ -1864,6 +1869,7 @@ dependencies = [
  "stdx",
  "test-utils",
  "text-edit",
+ "tracing",
  "triomphe",
  "ungrammar",
 ]
@@ -1891,6 +1897,7 @@ dependencies = [
  "rustc-hash",
  "stdx",
  "text-size",
+ "tracing",
 ]
 
 [[package]]

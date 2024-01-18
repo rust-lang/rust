@@ -2068,7 +2068,7 @@ pub fn mir_body_for_closure_query(
 }
 
 pub fn mir_body_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Result<Arc<MirBody>> {
-    let _p = profile::span("mir_body_query").detail(|| match def {
+    let detail = match def {
         DefWithBodyId::FunctionId(it) => db.function_data(it).name.display(db.upcast()).to_string(),
         DefWithBodyId::StaticId(it) => db.static_data(it).name.display(db.upcast()).to_string(),
         DefWithBodyId::ConstId(it) => db
@@ -2082,7 +2082,8 @@ pub fn mir_body_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Result<Arc<Mi
             db.enum_variant_data(it).name.display(db.upcast()).to_string()
         }
         DefWithBodyId::InTypeConstId(it) => format!("in type const {it:?}"),
-    });
+    };
+    let _p = tracing::span!(tracing::Level::INFO, "mir_body_query", ?detail).entered();
     let body = db.body(def);
     let infer = db.infer(def);
     let mut result = lower_to_mir(db, def, &body, &infer, body.body_expr)?;

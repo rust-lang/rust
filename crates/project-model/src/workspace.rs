@@ -647,7 +647,7 @@ impl ProjectWorkspace {
         load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
         extra_env: &FxHashMap<String, String>,
     ) -> (CrateGraph, ProcMacroPaths) {
-        let _p = profile::span("ProjectWorkspace::to_crate_graph");
+        let _p = tracing::span!(tracing::Level::INFO, "ProjectWorkspace::to_crate_graph").entered();
 
         let (mut crate_graph, proc_macros) = match self {
             ProjectWorkspace::Json { project, sysroot, rustc_cfg, toolchain } => {
@@ -891,7 +891,7 @@ fn cargo_to_crate_graph(
     target_layout: TargetLayoutLoadResult,
     toolchain: Option<&Version>,
 ) -> (CrateGraph, ProcMacroPaths) {
-    let _p = profile::span("cargo_to_crate_graph");
+    let _p = tracing::span!(tracing::Level::INFO, "cargo_to_crate_graph").entered();
     let mut res = (CrateGraph::default(), ProcMacroPaths::default());
     let crate_graph = &mut res.0;
     let proc_macros = &mut res.1;
@@ -1088,7 +1088,7 @@ fn detached_files_to_crate_graph(
     sysroot: Option<&Sysroot>,
     target_layout: TargetLayoutLoadResult,
 ) -> (CrateGraph, ProcMacroPaths) {
-    let _p = profile::span("detached_files_to_crate_graph");
+    let _p = tracing::span!(tracing::Level::INFO, "detached_files_to_crate_graph").entered();
     let mut crate_graph = CrateGraph::default();
     let (public_deps, _libproc_macro) = match sysroot {
         Some(sysroot) => sysroot_to_crate_graph(
@@ -1384,7 +1384,7 @@ fn sysroot_to_crate_graph(
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     toolchain: Option<&Version>,
 ) -> (SysrootPublicDeps, Option<CrateId>) {
-    let _p = profile::span("sysroot_to_crate_graph");
+    let _p = tracing::span!(tracing::Level::INFO, "sysroot_to_crate_graph").entered();
     match sysroot.mode() {
         SysrootMode::Workspace(cargo) => {
             let (mut cg, mut pm) = cargo_to_crate_graph(

@@ -26,7 +26,7 @@ pub fn find_path(
     prefer_no_std: bool,
     prefer_prelude: bool,
 ) -> Option<ModPath> {
-    let _p = profile::span("find_path");
+    let _p = tracing::span!(tracing::Level::INFO, "find_path").entered();
     find_path_inner(FindPathCtx { db, prefixed: None, prefer_no_std, prefer_prelude }, item, from)
 }
 
@@ -38,7 +38,7 @@ pub fn find_path_prefixed(
     prefer_no_std: bool,
     prefer_prelude: bool,
 ) -> Option<ModPath> {
-    let _p = profile::span("find_path_prefixed");
+    let _p = tracing::span!(tracing::Level::INFO, "find_path_prefixed").entered();
     find_path_inner(
         FindPathCtx { db, prefixed: Some(prefix_kind), prefer_no_std, prefer_prelude },
         item,
@@ -497,7 +497,7 @@ fn find_local_import_locations(
     item: ItemInNs,
     from: ModuleId,
 ) -> Vec<(ModuleId, Name)> {
-    let _p = profile::span("find_local_import_locations");
+    let _p = tracing::span!(tracing::Level::INFO, "find_local_import_locations").entered();
 
     // `from` can import anything below `from` with visibility of at least `from`, and anything
     // above `from` with any visibility. That means we do not need to descend into private siblings

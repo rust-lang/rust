@@ -39,6 +39,7 @@ mod handlers {
 
 pub mod config;
 pub mod lsp;
+pub mod tracing;
 use self::lsp::ext as lsp_ext;
 
 #[cfg(test)]
