@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(hasher_prefixfree_extras)]
+#![allow(rustc::default_hash_types)]
 
 //! Fast, non-cryptographic hash used by rustc and Firefox.
 //!

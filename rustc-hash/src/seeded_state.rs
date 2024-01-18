@@ -48,9 +48,6 @@ mod tests {
         let a = FxHashMapSeed::<&str, u32>::with_hasher(FxSeededState::with_seed(1));
         let b = FxHashMapSeed::<&str, u32>::with_hasher(FxSeededState::with_seed(2));
 
-        assert_ne!(
-            a.hasher().build_hasher().hash,
-            b.hasher().build_hasher().hash
-        );
+        assert_ne!(a.hasher().build_hasher().hash, b.hasher().build_hasher().hash);
     }
 }

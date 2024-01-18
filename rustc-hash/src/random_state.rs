@@ -83,9 +83,7 @@ mod tests {
         // `1 / 2.pow(bit_size_of::<usize>())`. Or 1/1.7e19 for 64 bit platforms or 1/4294967295
         // for 32 bit platforms. I suppose this is acceptable.
         let a = FxHashMapRand::<&str, u32>::default();
-        let b = thread::spawn(|| FxHashMapRand::<&str, u32>::default())
-            .join()
-            .unwrap();
+        let b = thread::spawn(|| FxHashMapRand::<&str, u32>::default()).join().unwrap();
 
         assert_ne!(a.hasher().seed, b.hasher().seed);
     }
