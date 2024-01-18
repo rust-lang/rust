@@ -644,7 +644,6 @@ compiler-team = [
 ]
 compiler-team-contributors = [
     "@TaKO8Ki",
-    "@WaffleLapkin",
     "@b-naber",
 ]
 compiler = [
